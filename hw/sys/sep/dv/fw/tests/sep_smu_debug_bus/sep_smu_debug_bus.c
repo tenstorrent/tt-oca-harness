@@ -2,11 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_debug_bus - retire-trace producer for smu_sep_debug_bus_test.
+ * sep_smu_debug_bus - SEP retire-trace producer for the SMU debug-bus test.
  *
- * Frontdoor-brings the dedicated SMC DFD-arm image, publishes SEP_WAIT
- * through alias scratch3, parks at debug_bus_wait_for_go polling GO, then
- * executes the exact self-loop marker so the SMC CLA can snapshot PC[15:0].
+ * Brings up the dedicated SMC debug-arm image, publishes a wait marker in
+ * shared scratch, parks in debug_bus_wait_for_go until the SMC sends GO, then
+ * executes the self-loop marker whose PC the SMC CLA matches.
  */
 
 #include <stdint.h>
@@ -33,8 +33,6 @@ __attribute__((used, noinline, noreturn)) void sep_smu_debug_bus_fail_loop(void)
     }
 }
 
-static void (*const keep_fail)(void) = sep_smu_debug_bus_fail_loop;
-
 static int run_debug_bus(void) {
     uint32_t seen;
 
@@ -45,8 +43,8 @@ static int run_debug_bus(void) {
         return -11;
     }
 
-    /* Card S3: SMC must clear scratch2/3 first. Wait for PH_CLEARED so a
-     * late SMC start cannot wipe SEP_WAIT. */
+    /* The SMC clears the shared scratch when it starts; wait for that so a
+     * late SMC start cannot wipe the wait marker. */
     if (sep_smc_scratch_wait(DEBUG_BUS_PHASE_ALIAS, DEBUG_BUS_PH_CLEARED,
                              DEBUG_BUS_HANDSHAKE_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), DEBUG_BUS_S0_FAIL);
@@ -67,9 +65,7 @@ static int run_debug_bus(void) {
         return -13;
     }
 
-    (void)keep_fail;
     debug_bus_marker();
-    return -14;
 }
 
 int main(void) {

@@ -90,11 +90,11 @@ module idma_frontend_wrapper #(
   /////////////
 
   // define local parameter for internal data width of axi reg interface
-  localparam int unsigned DMA_CTRL_REG_DATA_W = 32;
-  localparam int unsigned DMA_CTRL_REG_STRB_W = DMA_CTRL_REG_DATA_W / 8;
+  localparam int unsigned DmaCtrlRegDataW = 32;
+  localparam int unsigned DmaCtrlRegStrbW = DmaCtrlRegDataW / 8;
 
-  typedef logic [DMA_CTRL_REG_DATA_W-1:0] reg_data_t;
-  typedef logic [DMA_CTRL_REG_STRB_W-1:0] reg_strb_t;
+  typedef logic [DmaCtrlRegDataW-1:0] reg_data_t;
+  typedef logic [DmaCtrlRegStrbW-1:0] reg_strb_t;
 
   /////////////////////////////////////////
   // Setup iDMA Control Typedefs/Structs //
@@ -178,7 +178,7 @@ module idma_frontend_wrapper #(
       .AxiDataWidth(CTRL_DATA_WIDTH),
       .AxiIdWidth  (CTRL_ID_WIDTH),
       .AxiUserWidth(CTRL_USER_WIDTH),
-      .RegDataWidth(DMA_CTRL_REG_DATA_W),
+      .RegDataWidth(DmaCtrlRegDataW),
       .axi_req_t   (slv_axi_req_t),
       .axi_rsp_t   (slv_axi_resp_t),
       .reg_req_t   (reg_req_t),

@@ -22,17 +22,17 @@
 module drbg
   import drbg_pkg::*;
 #(
-  parameter int unsigned SEED_FIFO_DEPTH = DRBG_DEFAULT_SEED_FIFO_DEPTH, // Number of complete packed seeds queued for CSRNG.
+  parameter int unsigned SEED_FIFO_DEPTH = DrbgDefaultSeedFifoDepth,     // Number of complete packed seeds queued for CSRNG.
                                                                          // Must be at least 1.
-  parameter int unsigned EDN_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_ENDPOINT_COUNT, // Number of EDN endpoints exposed as AXI-Stream outputs.
+  parameter int unsigned EDN_ENDPOINT_COUNT = DrbgDefaultEdnEndpointCount,     // Number of EDN endpoints exposed as AXI-Stream outputs.
                                                                                // Each output carries an independent random-data stream.
                                                                                // Must be at least 1.
-  parameter int unsigned EDN_NATIVE_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_NATIVE_ENDPOINT_COUNT, // Number of native EDN req/rsp endpoints.
+  parameter int unsigned EDN_NATIVE_ENDPOINT_COUNT = DrbgDefaultEdnNativeEndpointCount,      // Number of native EDN req/rsp endpoints.
                                                                                              // Each exposes a raw edn_pkg bundle that bypasses
                                                                                              // the AXI-Stream FIFOs.
-  localparam int unsigned EDN_NATIVE_PORT_WIDTH =           // Width of the native EDN ports, which is 1 when EDN_NATIVE_ENDPOINT_COUNT is 0. The single slot is then unused and its request should be tied off.
+  localparam int unsigned EdnNativePortWidth =           // Width of the native EDN ports, which is 1 when EDN_NATIVE_ENDPOINT_COUNT is 0. The single slot is then unused and its request should be tied off.
         (EDN_NATIVE_ENDPOINT_COUNT == 0) ? 1 : EDN_NATIVE_ENDPOINT_COUNT,
-  parameter int unsigned ENDPOINT_FIFO_DEPTH = DRBG_DEFAULT_ENDPOINT_FIFO_DEPTH, // Depth of the FIFO on each AXI-Stream EDN endpoint.
+  parameter int unsigned ENDPOINT_FIFO_DEPTH = DrbgDefaultEndpointFifoDepth,     // Depth of the FIFO on each AXI-Stream EDN endpoint.
                                                                                  // Must be at least 1.
   parameter type csrng_axil_req_t = drbg_axil64_req_t,      // CSRNG AXI-Lite request type.
   parameter type csrng_axil_rsp_t = drbg_axil64_resp_t,     // CSRNG AXI-Lite response type.
@@ -57,9 +57,9 @@ module drbg
   input  drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_i, // EDN AXI-Stream ready from
                                                               // consumers.
 
-  input  edn_pkg::edn_req_t [EDN_NATIVE_PORT_WIDTH-1:0] edn_native_req_i, // Native EDN client requests (bypass AXI-Stream).
+  input  edn_pkg::edn_req_t [EdnNativePortWidth-1:0] edn_native_req_i,    // Native EDN client requests (bypass AXI-Stream).
                                                                           // Port width is 1 when EDN_NATIVE_ENDPOINT_COUNT is 0.
-  output edn_pkg::edn_rsp_t [EDN_NATIVE_PORT_WIDTH-1:0] edn_native_rsp_o, // Native EDN client responses.
+  output edn_pkg::edn_rsp_t [EdnNativePortWidth-1:0] edn_native_rsp_o,    // Native EDN client responses.
 
   input  csrng_axil_req_t csrng_axil_req_i,                 // CSRNG AXI-Lite CSR request.
   output csrng_axil_rsp_t csrng_axil_rsp_o,                 // CSRNG AXI-Lite CSR response.
@@ -100,8 +100,8 @@ module drbg
 
   `include "prim_assert.sv"
 
-  localparam int unsigned CSRNG_NUM_HW_APPS = csrng_reg_pkg::NumApps - 1;
-  localparam int unsigned EDN_TOTAL_ENDPOINTS = EDN_ENDPOINT_COUNT + EDN_NATIVE_ENDPOINT_COUNT;
+  localparam int unsigned CsrngNumHwApps = csrng_reg_pkg::NumApps - 1;
+  localparam int unsigned EdnTotalEndpoints = EDN_ENDPOINT_COUNT + EDN_NATIVE_ENDPOINT_COUNT;
 
   drbg_axil32_req_t  csrng_axil32_req;
   drbg_axil32_resp_t csrng_axil32_rsp;
@@ -137,14 +137,14 @@ module drbg
   logic [4:0] seed_packer_word_count;
   logic [$clog2(SEED_FIFO_DEPTH + 1)-1:0] seed_queue_depth;
 
-  csrng_pkg::csrng_req_t [CSRNG_NUM_HW_APPS-1:0] csrng_hw_req;
-  csrng_pkg::csrng_rsp_t [CSRNG_NUM_HW_APPS-1:0] csrng_hw_rsp;
+  csrng_pkg::csrng_req_t [CsrngNumHwApps-1:0] csrng_hw_req;
+  csrng_pkg::csrng_rsp_t [CsrngNumHwApps-1:0] csrng_hw_rsp;
   csrng_pkg::csrng_req_t edn_csrng_req;
   csrng_pkg::csrng_rsp_t edn_csrng_rsp;
 
   // Total EDN endpoints: AXI-Stream (for Key Manager) + native (for crypto blocks)
-  edn_pkg::edn_req_t [EDN_TOTAL_ENDPOINTS-1:0] edn_all_req;
-  edn_pkg::edn_rsp_t [EDN_TOTAL_ENDPOINTS-1:0] edn_all_rsp;
+  edn_pkg::edn_req_t [EdnTotalEndpoints-1:0] edn_all_req;
+  edn_pkg::edn_rsp_t [EdnTotalEndpoints-1:0] edn_all_rsp;
 
   // AXI-Stream adapter subset
   edn_pkg::edn_req_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_endpoint_req;
@@ -202,7 +202,7 @@ module drbg
     assign edn_axis_endpoint_rsp[i] = edn_all_rsp[i];
   end
 
-  // Map native endpoints to EDN indices [EDN_ENDPOINT_COUNT .. EDN_TOTAL_ENDPOINTS-1]
+  // Map native endpoints to EDN indices [EDN_ENDPOINT_COUNT .. EdnTotalEndpoints-1]
   if (EDN_NATIVE_ENDPOINT_COUNT > 0) begin : gen_native_edn
     for (genvar i = 0; i < EDN_NATIVE_ENDPOINT_COUNT; i++) begin : gen_native_edn_map
       assign edn_all_req[EDN_ENDPOINT_COUNT + i] = edn_native_req_i[i];
@@ -234,8 +234,8 @@ module drbg
   );
 
   axi_lite_to_tlul #(
-    .AXI_ADDR_WIDTH (DRBG_AXIL32_ADDR_WIDTH),
-    .AXI_DATA_WIDTH (DRBG_AXIL32_DATA_WIDTH),
+    .AXI_ADDR_WIDTH (DrbgAxil32AddrWidth),
+    .AXI_DATA_WIDTH (DrbgAxil32DataWidth),
     .axi_lite_req_t (drbg_axil32_req_t),
     .axi_lite_rsp_t (drbg_axil32_resp_t)
   ) u_csrng_axi_lite_to_tlul (
@@ -267,8 +267,8 @@ module drbg
   );
 
   axi_lite_to_tlul #(
-    .AXI_ADDR_WIDTH (DRBG_AXIL32_ADDR_WIDTH),
-    .AXI_DATA_WIDTH (DRBG_AXIL32_DATA_WIDTH),
+    .AXI_ADDR_WIDTH (DrbgAxil32AddrWidth),
+    .AXI_DATA_WIDTH (DrbgAxil32DataWidth),
     .axi_lite_req_t (drbg_axil32_req_t),
     .axi_lite_rsp_t (drbg_axil32_resp_t)
   ) u_edn_axi_lite_to_tlul (
@@ -288,8 +288,8 @@ module drbg
 
   assign csrng_hw_req[0] = edn_csrng_req;
   assign edn_csrng_rsp = csrng_hw_rsp[0];
-  if (CSRNG_NUM_HW_APPS > 1) begin : gen_unused_hw_apps
-    for (genvar i = 1; i < CSRNG_NUM_HW_APPS; i++) begin : gen_tieoff
+  if (CsrngNumHwApps > 1) begin : gen_unused_hw_apps
+    for (genvar i = 1; i < CsrngNumHwApps; i++) begin : gen_tieoff
       assign csrng_hw_req[i] = csrng_pkg::CSRNG_REQ_DEFAULT;
     end
   end
@@ -314,7 +314,7 @@ module drbg
   );
 
   edn #(
-    .NumEndPoints(EDN_TOTAL_ENDPOINTS)
+    .NumEndPoints(EdnTotalEndpoints)
   ) u_edn (
     .clk_i                  (clk_i),
     .rst_ni                 (rst_ni),
@@ -336,14 +336,14 @@ module drbg
 
   `OCAH_OT_ASSERT_INIT(SeedDepthValid_A, SEED_FIFO_DEPTH > 0)
   `OCAH_OT_ASSERT_INIT(EndpointCountValid_A, EDN_ENDPOINT_COUNT > 0)
-  `OCAH_OT_ASSERT_INIT(TotalEndpointCountValid_A, EDN_TOTAL_ENDPOINTS > 0)
+  `OCAH_OT_ASSERT_INIT(TotalEndpointCountValid_A, EdnTotalEndpoints > 0)
   `OCAH_OT_ASSERT_INIT(EndpointDepthValid_A, ENDPOINT_FIFO_DEPTH > 0)
 
   `OCAH_OT_ASSERT(CsrngNoTlOnUnsupported_A,
                   csrng_bridge_unsupported_pulse |-> !csrng_tl_h2d.a_valid)
   `OCAH_OT_ASSERT(EdnNoTlOnUnsupported_A, edn_bridge_unsupported_pulse |-> !edn_tl_h2d.a_valid)
   `OCAH_OT_ASSERT(SeedFipsTopLevel_A,
-                  seed_queue_valid |-> seed_queue_fips == DRBG_CSRNG_SEED_FIPS_PROVISIONAL)
+                  seed_queue_valid |-> seed_queue_fips == DrbgCsrngSeedFipsProvisional)
 
   `OCAH_OT_ASSERT_KNOWN(CsrngAlertTxKnown_A, csrng_alert_tx_o)
   `OCAH_OT_ASSERT_KNOWN(EdnAlertTxKnown_A, edn_alert_tx_o)

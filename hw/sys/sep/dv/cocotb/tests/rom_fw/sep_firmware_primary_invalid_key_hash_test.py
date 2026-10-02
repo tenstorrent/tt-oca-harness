@@ -2,55 +2,19 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest fails the public-key hash bind; the backup boots.
 
-STIMULUS. One bit of the primary manifest's RSA-3072 modulus is flipped
-(``sep_manifest_mutate.corrupt_public_key``) and the TBS is re-hashed, so the
-slot is structurally perfect and fails at exactly one place: the comparison of
-SHA-256(modulus) against the digest the ROM has compiled in for the selected slot
-. The backup is untouched and still binds
-to ROM key slot 0, so the run must recover and boot from it.
+One bit of the primary's RSA-3072 modulus is flipped and the signed region is re-hashed, so the
+slot fails only the SHA-256(modulus) comparison against the ROM's compiled-in digest for the
+selected slot. A wholesale overwrite could be caught by a coarser check; one bit is caught only
+by the hash comparison. The flipped modulus no longer matches its signature, so this shows that
+the bind fires before the verifier, not that the bind alone stops a self-consistent foreign
+key; a variant re-signed with another ROM key would show that.
 
-WHY ONE BIT. A wholesale overwrite of the modulus would also be caught by a much
-coarser check on it; a single flip can only be caught by the hash comparison
-itself, so this pins the rejection to the key-authorization check.
+Key authorization runs before ``rsa_3072_verify``, so the stale signature is never examined and
+no ``RSA_EXEC`` may appear between the primary read and the backup read. The refusal returns to
+the per-slot retry loop in ``rom_manifest_boot``, so the untouched backup boots; in
+``sep_firmware_backup_invalid_key_hash_test`` both slots fail and the run is terminal.
 
-WHAT THIS STIMULUS DOES *NOT* DEMONSTRATE, AND WHY IT IS BUILT THIS WAY. The
-reference testcase re-signs the primary with a DIFFERENT valid key
-(``bootcode_regression.yaml::sep_firmware_primary_invalid_key_hash_test``), so its
-manifest carries a foreign modulus whose signature is self-consistent with it.
-That version shows the digest bind is the last line of defence: without the bind
-the image would RSA-verify and boot on a key the part never trusted. This version
-cannot show that -- the flipped modulus no longer matches its own signature, so
-deleting the bind would move the rejection to ``rsa_3072_verify`` rather than let
-the boot through. What it does show is that the bind FIRES, on the smallest
-possible difference, before the modulus reaches the verifier.
-
-The reason for the substitution is that this mutation stays inside Python: it flips a
-modulus byte and re-hashes, where the re-signed form would sign with a key the manifest
-does not name. Six keys now ship
-(``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key{0..5}.pem``), so a re-signed
-variant is buildable -- the revoke family already grafts whole slots out of the
-per-slot images. It is worth having alongside this one; it is a different claim, not a
-better version of this one.
-
-WHY THE RE-HASH MATTERS, AND WHY NO RE-SIGN. The modulus lives inside the TBS
-(offset 168, ), so without recomputing ``manifest_hash`` the
-slot would be thrown out by ``manifest_check_integrity`` long before the key check and this test would be
-asserting on the wrong rejection. Re-signing is neither possible nor needed:
-the key-authorization check runs before ``rsa_3072_verify``, so the stale signature is never examined -- and
-``RSA_EXEC`` must therefore NOT appear between the primary read and the
-backup read, which is asserted below.
-
-CRYPTO FAILURES DO FALL OVER. Manifest validation is called inside the
-per-slot attempt, so its error returns to ``rom_manifest_boot``'s retry loop
-(the comment at ``rom_main.c:355-357``). That is
-the behaviour under test: this is the pair to
-``sep_firmware_backup_invalid_key_hash_test``, where both slots carry the defect
-and the run is terminal instead.
-
-``+esrc_noise_force`` is required here and only here among the key-hash pair:
-the BACKUP is valid, so the full RSA-3072 modexp runs on OTBN, which parks in
-UrndRefresh until EDN grants entropy. The RSA assertions are untouched, so
-``RSA_VERIFY_OK`` still means the signature really verified.
+Needs ``+esrc_noise_force``: the backup's RSA-3072 modexp stalls OTBN until EDN grants entropy.
 """
 
 from __future__ import annotations

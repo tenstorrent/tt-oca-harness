@@ -26,7 +26,7 @@ from fw_coverage.renode_trace import TRACE_NAME
 from runlib.results import run_is_complete
 
 ELF_NAME = "boot_rom.elf"
-BOOT_ROM_MODES = ("boot_rom", "boot_rom_ot", "boot_rom_ot_pio")
+BOOT_ROM_MODES = ("boot_rom", "boot_rom_pio")
 RENODE_VERSION = "v1.16.1"
 RENODE_REVISION = "d66b0c2aa3d420408eccecfd1d3bab0fd702a6db"
 RENODE_URL = "https://github.com/renode/renode.git"

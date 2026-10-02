@@ -10,30 +10,28 @@
 #include "metal/interrupt.h"
 #include "smc_io.h"
 #include "smc_test.h"
-#include "tt_smc_ecc.h" // include this custom library for ecc error bit generation
+#include "tt_smc_ecc.h" // ECC encoder and bus error interrupt handler
 
-// define interrupt controllers
 struct metal_cpu *cpu;
 struct metal_interrupt *cpu_controller;
 struct metal_buserror *buserrorunit;
 
-// add flags to check which type was caused
+// Set by the bus error handler for each error type it services
 volatile bool serviced_sram_error __attribute__((section(".data")));
 volatile bool serviced_single_bit_interrupt __attribute__((section(".data")));
 volatile bool serviced_double_bit_interrupt __attribute__((section(".data")));
 
-// add DCACHE stress test array
-#define DCACHE_STRESS_ARRAY_ELEMENTS \
-    20 // this can mess up test as single bit errors can be detected before double bit errors
-       // Can also result in double bit error interrupt not being triggered if too low
+/* Too many elements lets a single-bit error be detected before the double-bit
+ * error; too few may not raise the double-bit error interrupt at all. */
+#define DCACHE_STRESS_ARRAY_ELEMENTS 20
 
-// add array to stress test the dcache
+// Data that keeps the data cache busy while the testbench injects errors
 volatile uint64_t dcache_stress_array[DCACHE_STRESS_ARRAY_ELEMENTS];
 volatile uint64_t dcache_stress_array1[DCACHE_STRESS_ARRAY_ELEMENTS];
 volatile uint64_t dcache_stress_array2[DCACHE_STRESS_ARRAY_ELEMENTS];
 volatile uint64_t dcache_stress_array3[DCACHE_STRESS_ARRAY_ELEMENTS];
 
-// Global variable for SPM address & value
+// Scratchpad word under test and the value it must hold
 uint32_t spm_addr = 0x80000;
 uint64_t true_mem_val;
 
@@ -42,8 +40,6 @@ int main(void) {
     int hartid = metal_cpu_get_current_hartid();
 
     if (hartid == 0) {
-
-        // /* ************ LOCAL Interrupt Setup ************** */
 
         // setup CPU & CPU interrupt controller
         cpu = metal_cpu_get(hartid);
@@ -59,7 +55,7 @@ int main(void) {
             test_fail(hartid);
         }
 
-        // enable the buserror unit
+        // Route bus error unit interrupts to the handler
         buserrorunit = metal_cpu_get_buserror(cpu);
         if (buserrorunit == NULL) {
             test_fail(hartid);
@@ -70,7 +66,7 @@ int main(void) {
             test_fail(hartid);
         }
 
-        // Set all interrupts to be disabled
+        // Start with every error interrupt and event disabled
         metal_buserror_set_local_interrupt(buserrorunit, METAL_BUSERROR_EVENT_LOAD_STORE_ERROR,
                                            false); // for SRAM errors
         metal_buserror_set_local_interrupt(buserrorunit,
@@ -80,7 +76,6 @@ int main(void) {
                                            METAL_BUSERROR_EVENT_DATA_UNCORRECTABLE_ECC_ERROR,
                                            false); // for dcache 2 bit
 
-        // Set causes to be disabled
         metal_buserror_set_event_enabled(buserrorunit, METAL_BUSERROR_EVENT_LOAD_STORE_ERROR,
                                          false); // for SRAM errors
         metal_buserror_set_event_enabled(buserrorunit,
@@ -90,14 +85,11 @@ int main(void) {
                                          METAL_BUSERROR_EVENT_DATA_UNCORRECTABLE_ECC_ERROR,
                                          false); // for dcache 2 bit
 
-        /* ****************** LOCAL Interrupt setup End **************** */
-
-        // initialize the flags
         serviced_sram_error = false;
         serviced_single_bit_interrupt = false;
         serviced_double_bit_interrupt = false;
 
-        // set the random seed (wait for TB AXI write_scratch to replace get_seed)
+        // Wait for the testbench to replace the seed request with a seed
         write_scratch(hartid, get_seed);
         volatile uint32_t current_scratch_val = get_seed;
         while (current_scratch_val == get_seed) {
@@ -105,41 +97,34 @@ int main(void) {
         }
         srand(current_scratch_val);
 
-        /* ************** SRAM LINT Test Start ************** */
-
+        /* SRAM ECC error */
         metal_buserror_set_local_interrupt(buserrorunit, METAL_BUSERROR_EVENT_LOAD_STORE_ERROR,
                                            true); // for SRAM errors
         metal_buserror_set_event_enabled(buserrorunit, METAL_BUSERROR_EVENT_LOAD_STORE_ERROR,
                                          true); // for SRAM errors
 
-        // randomize true_mem_val
         true_mem_val = (((uint64_t)rand() << 48) | ((uint64_t)rand() << 32) |
                         ((uint64_t)rand() << 16) | (uint64_t)rand());
         uint8_t mem_parity = generate_ecc_bits_for_64bit_data(true_mem_val);
 
-        // sync with coco_tb
-        write_scratch(1, (uint32_t)(true_mem_val &
-                                    0xFFFFFFFF)); // write to scratch the value to be written to SPM
-        write_scratch(2, (uint32_t)(true_mem_val >> 32)); // write upper 32 bits to SPM
-        write_scratch(3, mem_parity);                     // write the memory parity to scratch
-        write_scratch(
-            hartid,
-            sram_start); // write to scratch to signal for coco_tb to load values in to memory
+        // Hand the data word and its ECC byte to the testbench, then ask it to load them
+        write_scratch(1, (uint32_t)(true_mem_val & 0xFFFFFFFF));
+        write_scratch(2, (uint32_t)(true_mem_val >> 32));
+        write_scratch(3, mem_parity);
+        write_scratch(hartid, sram_start);
 
-        // waiting for double bit error to be caught
+        // Read the scratchpad until the double-bit error interrupt is serviced
         while (read_scratch(hartid) == sram_start) {
             read_spm(spm_addr);
         }
 
-        // After interrupt ran for double bit error, poll memory to check for single bit error
-        // correction
+        // Then read until the word comes back corrected, and tell the testbench
         while (read_scratch(hartid) == sram_int_done) {
             if (read_spm(spm_addr) == true_mem_val) {
                 write_scratch(hartid, sram_doublebit);
             }
         }
 
-        // check if the value is correct
         if ((read_spm(spm_addr) != true_mem_val)) {
             test_fail(hartid);
         }
@@ -149,10 +134,7 @@ int main(void) {
         metal_buserror_set_event_enabled(buserrorunit, METAL_BUSERROR_EVENT_LOAD_STORE_ERROR,
                                          false); // for SRAM errors
 
-        /* ************** SRAM LINT Test End ************** */
-
-        /* ************* DCACHE LINT Test Start **************** */
-
+        /* Data-cache ECC errors */
         metal_buserror_set_local_interrupt(buserrorunit,
                                            METAL_BUSERROR_EVENT_DATA_CORRECTABLE_ECC_ERROR,
                                            true); // for dcache 1 bit
@@ -160,20 +142,17 @@ int main(void) {
                                          METAL_BUSERROR_EVENT_DATA_CORRECTABLE_ECC_ERROR,
                                          true); // for dcache 1 bit
 
-        // while dcache_singlebit_done is not in scratch reg repeat
+        // Exercise the data cache until the single-bit error interrupt is serviced
         while (read_scratch(hartid) != dcache_singlebit_done) {
-            // write to the entire array to fill the dcache, while waiting for interrupt
             for (int i = 0; i < DCACHE_STRESS_ARRAY_ELEMENTS; i++) {
-                dcache_stress_array[i] =
-                    ((uint64_t)i * 0x987654321ULL) + hartid; // Arbitrary data pattern
-                dcache_stress_array1[i] =
-                    ((uint64_t)i * 0x123456789ULL) + hartid; // Arbitrary data pattern
+                dcache_stress_array[i] = ((uint64_t)i * 0x987654321ULL) + hartid;
+                dcache_stress_array1[i] = ((uint64_t)i * 0x123456789ULL) + hartid;
             }
 
-            // write to scratch to signal for testbench to do dcache 1 bit error
+            // Request a single-bit data-cache error
             write_scratch(hartid, dcache_1bit_start);
 
-            // sum the array to ensure it is not optimized out
+            // Read the arrays back through the data cache
             uint64_t sum = 0;
             for (int i = 0; i < DCACHE_STRESS_ARRAY_ELEMENTS; i++) {
                 sum += dcache_stress_array[i] + dcache_stress_array1[i];
@@ -194,27 +173,24 @@ int main(void) {
                                          METAL_BUSERROR_EVENT_DATA_UNCORRECTABLE_ECC_ERROR,
                                          true); // for dcache 2 bit
 
-        // while dcache_doublebit_done is not in scratch reg repeat
+        // Exercise the data cache until the double-bit error interrupt is serviced
         while (read_scratch(hartid) != dcache_doublebit_done) {
-            // write to the entire array to fill the dcache, while waiting for interrupt
             for (int i = 0; i < DCACHE_STRESS_ARRAY_ELEMENTS; i++) {
-                dcache_stress_array2[i] =
-                    ((uint64_t)i * 0x1636634ULL) + hartid; // Arbitrary data pattern
-                dcache_stress_array3[i] =
-                    ((uint64_t)i * 0x1636634ULL) + hartid; // Arbitrary data pattern
+                dcache_stress_array2[i] = ((uint64_t)i * 0x1636634ULL) + hartid;
+                dcache_stress_array3[i] = ((uint64_t)i * 0x1636634ULL) + hartid;
             }
 
-            // write to scratch to signal for testbench to do dcache 2 bit error
+            // Request a double-bit data-cache error
             write_scratch(hartid, dcache_2bit_start);
 
-            // sum the array to ensure it is not optimized out
+            // Read the arrays back through the data cache
             uint64_t sum = 0;
             for (int i = 0; i < DCACHE_STRESS_ARRAY_ELEMENTS; i++) {
                 sum += dcache_stress_array2[i] + dcache_stress_array3[i];
             }
         }
 
-        // check if all errors triggered interrupts
+        // Every injected error must have raised its interrupt
         if (!((serviced_single_bit_interrupt && serviced_double_bit_interrupt) &&
               serviced_sram_error)) {
             test_fail(hartid);
@@ -226,7 +202,6 @@ int main(void) {
         metal_buserror_set_event_enabled(buserrorunit,
                                          METAL_BUSERROR_EVENT_DATA_UNCORRECTABLE_ECC_ERROR,
                                          false); // for dcache 2 bit
-        /* ************* DCACHE LINT Test End **************** */
 
         test_pass(hartid);
     }
@@ -234,19 +209,16 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main() {
     while (true) {
-        // For SRAM test, need to read from dcache to write into spm
-        // this runs while waiting for interrupt to be called and after it is called
+        // Keep reading the scratchpad while the SRAM phase runs
         if (read_scratch(0) == sram_start || read_scratch(0) == sram_doublebit ||
             read_scratch(0) == sram_int_done) {
             read_spm(spm_addr);
         }
-        // if you are done with the SRAM test, loop
+        // Idle once the data-cache phase starts
         if (read_scratch(0) == dcache_1bit_start) {
             __asm__("wfi");
         }

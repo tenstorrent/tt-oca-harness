@@ -24,7 +24,7 @@ module smc_4core_cpu (
                                                                           // while low, the cluster boundary
                                                                           // stays isolated and cluster_ded_o
                                                                           // is cleared.
-  input  logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    rst_core_ni,  // Active-low per-core reset; the
+  input  logic  [smc_4core_cpu_pkg::NumCpuCores-1:0]    rst_core_ni,    // Active-low per-core reset; the
                                                                         // core also stays in reset until
                                                                         // the scratch RAM zero-fill
                                                                         // completes and while the cluster
@@ -46,10 +46,10 @@ module smc_4core_cpu (
                                                                             // outstanding-transaction state
                                                                             // so isolation can complete.
 
-  input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0] reset_vector_i,  // Per-core boot address
+  input  logic [smc_4core_cpu_pkg::NumCpuCores-1:0][55:0] reset_vector_i,    // Per-core boot address
                                                                              // into the cluster.
 
-  input  logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0]      interrupts_i,  // Cluster interrupt lines,
+  input  logic [smc_4core_cpu_pkg::NumCpuInterrupts-1:0]      interrupts_i,    // Cluster interrupt lines,
                                                                                // passed unchanged to
                                                                                // DigitalTop.
 
@@ -92,16 +92,16 @@ module smc_4core_cpu (
 
   output logic                                            cluster_ded_o,  // Registered OR of the cluster's
                                                                           // uncorrectable-error flags.
-  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0]    wb_pc_valid_o,  // Per-core qualifier for
+  output logic [smc_4core_cpu_pkg::NumCpuCores-1:0][1-1:0]    wb_pc_valid_o,    // Per-core qualifier for
                                                                                 // wb_reg_pc_o, forced low while
                                                                                 // the cluster boundary is
                                                                                 // isolated.
-  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0]   wb_reg_pc_o,  // Per-core writeback program
+  output logic [smc_4core_cpu_pkg::NumCpuCores-1:0][58-1:0]   wb_reg_pc_o,    // Per-core writeback program
                                                                               // counter, forced to zero while
                                                                               // the cluster boundary is
                                                                               // isolated.
 
-  output logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    wdt_reset_o,  // Per-core watchdog timeout from
+  output logic  [smc_4core_cpu_pkg::NumCpuCores-1:0]    wdt_reset_o,    // Per-core watchdog timeout from
                                                                         // the cluster, forced low while
                                                                         // the cluster boundary is
                                                                         // isolated.
@@ -112,23 +112,23 @@ module smc_4core_cpu (
   input  chipyard_4core_mem_pkg::rom_tilelink_rsp_t             rom_intf_rsp_i,  // TileLink A-channel ready and
                                                                                  // D-channel response to the
                                                                                  // cluster boot ROM port.
-  output chipyard_4core_mem_pkg::scratch_ram_req_t              scratch_ram_intf_req_o     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],  // Scratch RAM bank requests,
+  output chipyard_4core_mem_pkg::scratch_ram_req_t              scratch_ram_intf_req_o     [chipyard_4core_mem_pkg::NumSramBanks-1:0],    // Scratch RAM bank requests,
                                                                                                                                           // driven by the zero-fill
                                                                                                                                           // sequencer until the zero-fill
                                                                                                                                           // completes.
-  input  chipyard_4core_mem_pkg::scratch_ram_rsp_t              scratch_ram_intf_rsp_i     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],  // Scratch RAM bank read data.
-  output chipyard_4core_mem_pkg::l1_icache_tag_req_t            l1_icache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache tag bank
+  input  chipyard_4core_mem_pkg::scratch_ram_rsp_t              scratch_ram_intf_rsp_i     [chipyard_4core_mem_pkg::NumSramBanks-1:0],    // Scratch RAM bank read data.
+  output chipyard_4core_mem_pkg::l1_icache_tag_req_t            l1_icache_tag_intf_req_o   [chipyard_4core_mem_pkg::NumIcacheTagBanks-1:0],     // Instruction-cache tag bank
                                                                                                                                                 // requests.
-  input  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t            l1_icache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache tag bank read
+  input  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t            l1_icache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NumIcacheTagBanks-1:0],     // Instruction-cache tag bank read
                                                                                                                                                 // data.
-  output chipyard_4core_mem_pkg::l1_icache_data_req_t           l1_icache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache data bank
+  output chipyard_4core_mem_pkg::l1_icache_data_req_t           l1_icache_data_intf_req_o  [chipyard_4core_mem_pkg::NumIcacheDataBanks-1:0],     // Instruction-cache data bank
                                                                                                                                                  // requests.
-  input  chipyard_4core_mem_pkg::l1_icache_data_rsp_t           l1_icache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache data bank read
+  input  chipyard_4core_mem_pkg::l1_icache_data_rsp_t           l1_icache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NumIcacheDataBanks-1:0],     // Instruction-cache data bank read
                                                                                                                                                  // data.
-  output chipyard_4core_mem_pkg::l1_dcache_tag_req_t            l1_dcache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag bank requests.
-  input  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t            l1_dcache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag bank read data.
-  output chipyard_4core_mem_pkg::l1_dcache_data_req_t           l1_dcache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data bank requests.
-  input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t           l1_dcache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data bank read data.
+  output chipyard_4core_mem_pkg::l1_dcache_tag_req_t            l1_dcache_tag_intf_req_o   [chipyard_4core_mem_pkg::NumDcacheTagBanks-1:0],  // Data-cache tag bank requests.
+  input  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t            l1_dcache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NumDcacheTagBanks-1:0],  // Data-cache tag bank read data.
+  output chipyard_4core_mem_pkg::l1_dcache_data_req_t           l1_dcache_data_intf_req_o  [chipyard_4core_mem_pkg::NumDcacheDataBanks-1:0],  // Data-cache data bank requests.
+  input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t           l1_dcache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NumDcacheDataBanks-1:0],  // Data-cache data bank read data.
 
   input  logic                                            disable_sram_auto_init_i,  // High skips the scratch RAM
                                                                                      // zero-fill after
@@ -142,8 +142,8 @@ module smc_4core_cpu (
                                                                      // debug clock gate.
 );
   // Mem Init signals
-  chipyard_4core_mem_pkg::scratch_ram_req_t scratch_ram_intf_req_pre_init [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
-  chipyard_4core_mem_pkg::scratch_ram_rsp_t scratch_ram_intf_rsp_pre_init [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+  chipyard_4core_mem_pkg::scratch_ram_req_t scratch_ram_intf_req_pre_init [chipyard_4core_mem_pkg::NumSramBanks-1:0];
+  chipyard_4core_mem_pkg::scratch_ram_rsp_t scratch_ram_intf_rsp_pre_init [chipyard_4core_mem_pkg::NumSramBanks-1:0];
 
   typedef enum logic [2:0] {
     MEM_ZERO_IDLE = 3'b001,
@@ -153,7 +153,7 @@ module smc_4core_cpu (
 
   logic init_mem_enable;
   logic init_mem_complete, nxt_init_mem_complete;
-  logic [chipyard_4core_mem_pkg::SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH-1:0] zero_addr, next_zero_addr;
+  logic [chipyard_4core_mem_pkg::Smc4coreScratchRamAddrWidth-1:0] zero_addr, next_zero_addr;
   zero_state_e state, nxt_state;
 
   // ----------
@@ -200,11 +200,11 @@ module smc_4core_cpu (
   // Cluster boundary isolation & clamping: isolate the L2-frontend AXI slave +
   // MMIO master and clamp wb_pc/wdt_reset so reset-domain glitches can't leak out.
 
-  localparam int CLUSTER_ISOLATE_CYCLES = 4;
+  localparam int ClusterIsolateCycles = 4;
 
   logic cluster_boundary_isolate;
   logic cluster_boundary_ready;
-  logic [CLUSTER_ISOLATE_CYCLES-1:0] cluster_boundary_isolate_shift;
+  logic [ClusterIsolateCycles-1:0] cluster_boundary_isolate_shift;
 
   smc_pkg::smc_cpu_l2_frontend_axi_req_t  l2_frontend_axi_isolated_req;
   smc_pkg::smc_cpu_l2_frontend_axi_resp_t l2_frontend_axi_isolated_resp;
@@ -221,38 +221,38 @@ module smc_4core_cpu (
   smc_pkg::smc_cpu_mmio_axi_resp_t mmio_axi_cpu_resp;
 
   // Raw (pre-clamp) status crossings driven by DigitalTop
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0]  wb_pc_valid_raw;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0] wb_reg_pc_raw;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]         wdt_reset_raw;
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0][1-1:0]  wb_pc_valid_raw;
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0][58-1:0] wb_reg_pc_raw;
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0]         wdt_reset_raw;
 
   // Ready to connect: mem init, cores+uncore out of reset (HW/cold-boot backstop),
   // no isolate request -> immediate isolate, delayed de-isolate via shift below.
   assign cluster_boundary_ready = init_mem_complete & (&rst_core_ni) & rst_uncore_ni
                                   & ~isolate_req_i;
 
-  // Delays de-isolation by CLUSTER_ISOLATE_CYCLES after the boundary is ready.
+  // Delays de-isolation by ClusterIsolateCycles after the boundary is ready.
   always_ff @(posedge clk_i or negedge rst_uncore_ni) begin
     if (~rst_uncore_ni) begin
       cluster_boundary_isolate_shift <= '0;
     end else begin
       cluster_boundary_isolate_shift <= {
-        cluster_boundary_isolate_shift[CLUSTER_ISOLATE_CYCLES-2:0], cluster_boundary_ready
+        cluster_boundary_isolate_shift[ClusterIsolateCycles-2:0], cluster_boundary_ready
       };
     end
   end
 
   // Isolate immediately when not ready; release only after ready holds for the full shift depth.
   assign cluster_boundary_isolate = ~cluster_boundary_ready
-                                    | ~cluster_boundary_isolate_shift[CLUSTER_ISOLATE_CYCLES-1];
+                                    | ~cluster_boundary_isolate_shift[ClusterIsolateCycles-1];
 
   axi_isolate #(
     .NumPending          (4),
     .TerminateTransaction(1'b0),  // Block transactions instead of terminating them
     .AtopSupport         (1'b0),
-    .AxiAddrWidth        (smc_pkg::AXI_ADDR_WIDTH),
-    .AxiDataWidth        (smc_pkg::AXI_DATA_WIDTH),
-    .AxiIdWidth          (smc_pkg::SMC_CPU_L2_FRONTEND_AXI_ID_WIDTH),
-    .AxiUserWidth        (smc_pkg::AXI_USER_WIDTH),
+    .AxiAddrWidth        (smc_pkg::AxiAddrWidth),
+    .AxiDataWidth        (smc_pkg::AxiDataWidth),
+    .AxiIdWidth          (smc_pkg::SmcCpuL2FrontendAxiIdWidth),
+    .AxiUserWidth        (smc_pkg::AxiUserWidth),
     .axi_req_t           (smc_pkg::smc_cpu_l2_frontend_axi_req_t),
     .axi_resp_t          (smc_pkg::smc_cpu_l2_frontend_axi_resp_t)
   ) u_l2_frontend_axi_isolate (
@@ -272,10 +272,10 @@ module smc_4core_cpu (
     .NumPending          (4),
     .TerminateTransaction(1'b1),    // terminate MMIO in case of x prop issues during reset
     .AtopSupport         (1'b0),
-    .AxiAddrWidth        (smc_pkg::AXI_ADDR_WIDTH),
-    .AxiDataWidth        (smc_pkg::AXI_DATA_WIDTH),
-    .AxiIdWidth          (smc_pkg::SMC_CPU_MMIO_AXI_ID_WIDTH),
-    .AxiUserWidth        (smc_pkg::AXI_USER_WIDTH),
+    .AxiAddrWidth        (smc_pkg::AxiAddrWidth),
+    .AxiDataWidth        (smc_pkg::AxiDataWidth),
+    .AxiIdWidth          (smc_pkg::SmcCpuMmioAxiIdWidth),
+    .AxiUserWidth        (smc_pkg::AxiUserWidth),
     .axi_req_t           (smc_pkg::smc_cpu_mmio_axi_req_t),
     .axi_resp_t          (smc_pkg::smc_cpu_mmio_axi_resp_t)
   ) u_mmio_axi_isolate (
@@ -302,11 +302,11 @@ module smc_4core_cpu (
 
   logic rst_uncore;
   logic rst_debug;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] int_rst_core;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] int_rst_core_n;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] mem_init_core_reset_n;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] hart_reset_n;
-  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] hart_reset_req;
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0] int_rst_core;
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0] int_rst_core_n;
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0] mem_init_core_reset_n;
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0] hart_reset_n;
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0] hart_reset_req;
 
   prim_inv u_uncore_reset_inv (
     .in_i  (rst_uncore_ni),
@@ -319,14 +319,14 @@ module smc_4core_cpu (
   );
 
   prim_and2 #(
-    .Width(smc_4core_cpu_pkg::NUM_CPU_CORES)
+    .Width(smc_4core_cpu_pkg::NumCpuCores)
   ) u_mem_init_core_reset_and (
-    .in0_i ({smc_4core_cpu_pkg::NUM_CPU_CORES{init_mem_complete}}),
+    .in0_i ({smc_4core_cpu_pkg::NumCpuCores{init_mem_complete}}),
     .in1_i (rst_core_ni),
     .out_o (mem_init_core_reset_n)
   );
 
-  for (genvar core = 0; core < smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin : gen_hart_reset_inv
+  for (genvar core = 0; core < smc_4core_cpu_pkg::NumCpuCores; core++) begin : gen_hart_reset_inv
     prim_inv u_hart_reset_inv (
       .in_i  (hart_reset_req[core]),
       .out_o (hart_reset_n[core])
@@ -334,14 +334,14 @@ module smc_4core_cpu (
   end
 
   prim_and2 #(
-    .Width(smc_4core_cpu_pkg::NUM_CPU_CORES)
+    .Width(smc_4core_cpu_pkg::NumCpuCores)
   ) u_hart_core_reset_and (
     .in0_i (mem_init_core_reset_n),
     .in1_i (hart_reset_n),
     .out_o (int_rst_core_n)
   );
 
-  for (genvar core = 0; core < smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin : gen_core_reset_inv
+  for (genvar core = 0; core < smc_4core_cpu_pkg::NumCpuCores; core++) begin : gen_core_reset_inv
     prim_inv u_core_reset_inv (
       .in_i  (int_rst_core_n[core]),
       .out_o (int_rst_core[core])
@@ -566,7 +566,7 @@ module smc_4core_cpu (
             nxt_state = MEM_ZERO_DONE;
             nxt_init_mem_complete = 1'b1;
           end else begin
-            next_zero_addr = zero_addr + chipyard_4core_mem_pkg::SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH'(1);
+            next_zero_addr = zero_addr + chipyard_4core_mem_pkg::Smc4coreScratchRamAddrWidth'(1);
           end
         end
       end
@@ -581,10 +581,10 @@ module smc_4core_cpu (
     endcase
   end
 
-  for (genvar i = 0; i < chipyard_4core_mem_pkg::NUM_SRAM_BANKS; i++) begin : gen_scratch_rams
+  for (genvar i = 0; i < chipyard_4core_mem_pkg::NumSramBanks; i++) begin : gen_scratch_rams
     // When PRST is de-asserted, we initialize the SMC scratch with all zeroes
-    logic [chipyard_4core_mem_pkg::SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH-1:0] muxed_addr;
-    logic [chipyard_4core_mem_pkg::SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] muxed_wdata;
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamAddrWidth-1:0] muxed_addr;
+    logic [chipyard_4core_mem_pkg::Smc4coreScratchRamDataWidth-1:0] muxed_wdata;
     logic muxed_en;
     logic muxed_wmode;
 

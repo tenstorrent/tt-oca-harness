@@ -28,7 +28,7 @@ module pvt_wrap
   axil_okay_slv #(
     .axil_req_t  (axil_req_t),
     .axil_resp_t (axil_resp_t),
-    .RESP_WIDTH  (smc_pkg::AXI_LITE_32_DATA_WIDTH),
+    .RESP_WIDTH  (smc_pkg::AxiLite32DataWidth),
     .RESP_DATA   ('0)
   ) u_axil_okay_slv (
     .clk_i      (clk_i),

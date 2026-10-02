@@ -154,16 +154,16 @@ The vector layout is:
 
 [source,systemverilog]
 ----
-cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
-cpu_interrupts_o[NUM_EXT_INTERRUPTS+:32]        = peripheral_interrupts_i;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+32)+:32]   = mailbox_interrupts;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+1]     = cla_interrupt;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+2]     = dma_intp;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+3]     = zeroer_intp;
+cpu_interrupts_o[NumExtInterrupts-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
+cpu_interrupts_o[NumExtInterrupts+:32]        = peripheral_interrupts_i;
+cpu_interrupts_o[(NumExtInterrupts+32)+:32]   = mailbox_interrupts;
+cpu_interrupts_o[(NumExtInterrupts+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
+cpu_interrupts_o[(NumExtInterrupts+64)+1]     = cla_interrupt;
+cpu_interrupts_o[(NumExtInterrupts+64)+2]     = dma_intp;
+cpu_interrupts_o[(NumExtInterrupts+64)+3]     = zeroer_intp;
 ----
 
-`NUM_EXT_INTERRUPTS = 256` and `NUM_CPU_INTERRUPTS = 328`.
+`NumExtInterrupts = 256` and `NumCpuInterrupts = 328`.
 
 ifdef::backend-html5[]
 ++++
@@ -195,7 +195,7 @@ endif::backend-html5[]
 |`hw/sys/smc/rtl/smc_base.sv` synchronizes `ext_interrupts_i` to `clk_smc`
 (`prim_sync3 u_ext_interrupts_sync3`; wired from `smc.sv`
 `smc_ext_interrupts_i`) and drives
-`cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_smc_clk`.
+`cpu_interrupts_o[NumExtInterrupts-1:0] = ext_interrupts_smc_clk`.
 
 |`256`
 |SEP mailbox interrupt 0
@@ -374,13 +374,13 @@ locked_field_access_interrupt`, sourced from the eFuse controller path.
 |GPIO interrupt OR, lower half
 |OR-reduction across the lower half of bonded GPIO interrupt sources
 |`smc_peripherals.sv` drives `peripheral_interrupts_o[28] =
-\|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0]`.
+\|gpio_interrupt[smc_pkg::NumBondedGpio/2-1:0]`.
 
 |`285`
 |GPIO interrupt OR, upper half
 |OR-reduction across the upper half of bonded GPIO interrupt sources
 |`smc_peripherals.sv` drives `peripheral_interrupts_o[29] =
-\|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]`.
+\|gpio_interrupt[smc_pkg::NumBondedGpio-1:smc_pkg::NumBondedGpio/2]`.
 
 |`286`
 |AXI hang detector OR
@@ -405,7 +405,7 @@ overwritten in `smc_peripherals.sv`.
 |SMC mailbox interrupts `[31:0]`
 |Inbound SMC mailbox interrupt channels 31:0
 |`smc_base.sv` drives
-`cpu_interrupts_o[(NUM_EXT_INTERRUPTS+32)+:32] = mailbox_interrupts`;
+`cpu_interrupts_o[(NumExtInterrupts+32)+:32] = mailbox_interrupts`;
 `mailbox.sv` drives `inbound_interrupt_o[m]` per mailbox channel.
 
 |`320`

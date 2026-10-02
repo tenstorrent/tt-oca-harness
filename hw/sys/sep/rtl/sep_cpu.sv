@@ -17,7 +17,7 @@
 // [sep_local_base_addr_i, sep_local_base_addr_i + 0x3000_0000) to 0x1000_0000 plus the
 // offset. An IFU demux then sends boot ROM addresses to the ROM port, SEP SRAM addresses to
 // the SRAM port, and everything else to a DECERR slave; an LSU demux sends boot ROM addresses
-// to the ROM port and everything else to the xbar port. Master AxUSER carries SEP_SOURCE_ID
+// to the ROM port and everything else to the xbar port. Master AxUSER carries SepSourceId
 // and AtoP is 0. The TCM structs connect to sep_tcm_wrapper, instantiated in
 // sep_ip_integration.
 //
@@ -132,7 +132,7 @@ module sep_cpu (
   input  sep_pkg::sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,  // Debug-module system-bus
                                                                  // response.
   input  sep_pkg::sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,  // Request into the core DMA slave port for ICCM and DCCM access.
-  output sep_pkg::sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,  // Response from the core DMA slave port; B and R USER carry SEP_SOURCE_ID.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,  // Response from the core DMA slave port; B and R USER carry SepSourceId.
   input  logic [31:0]                 sep_local_base_addr_i  // Base of the SEP local alias window;
                                                              // LSU, IFU, and debug addresses inside
                                                              // it are remapped to 0x1000_0000 plus
@@ -490,17 +490,17 @@ module sep_cpu (
 
   // Tie off missing AXI user fields in EL2 wrapper connections (raw signals)
   // Masters: drive req user fields to 0, and ignore resp user by tying to 0
-  assign ifu_axi_req_raw.aw.user = sep_pkg::SEP_SOURCE_ID;
-  assign ifu_axi_req_raw.w.user  = sep_pkg::SEP_SOURCE_ID;
-  assign ifu_axi_req_raw.ar.user = sep_pkg::SEP_SOURCE_ID;
+  assign ifu_axi_req_raw.aw.user = sep_pkg::SepSourceId;
+  assign ifu_axi_req_raw.w.user  = sep_pkg::SepSourceId;
+  assign ifu_axi_req_raw.ar.user = sep_pkg::SepSourceId;
 
-  assign lsu_axi_req_raw.aw.user = sep_pkg::SEP_SOURCE_ID;
-  assign lsu_axi_req_raw.w.user  = sep_pkg::SEP_SOURCE_ID;
-  assign lsu_axi_req_raw.ar.user = sep_pkg::SEP_SOURCE_ID;
+  assign lsu_axi_req_raw.aw.user = sep_pkg::SepSourceId;
+  assign lsu_axi_req_raw.w.user  = sep_pkg::SepSourceId;
+  assign lsu_axi_req_raw.ar.user = sep_pkg::SepSourceId;
 
-  assign dbg_axi_req_raw.aw.user = sep_pkg::SEP_SOURCE_ID;
-  assign dbg_axi_req_raw.w.user  = sep_pkg::SEP_SOURCE_ID;
-  assign dbg_axi_req_raw.ar.user = sep_pkg::SEP_SOURCE_ID;
+  assign dbg_axi_req_raw.aw.user = sep_pkg::SepSourceId;
+  assign dbg_axi_req_raw.w.user  = sep_pkg::SepSourceId;
+  assign dbg_axi_req_raw.ar.user = sep_pkg::SepSourceId;
 
   // Tie off ATOP (atomic operation) fields - not supported by EL2
   assign ifu_axi_req_raw.aw.atop = '0;
@@ -508,8 +508,8 @@ module sep_cpu (
   assign dbg_axi_req_raw.aw.atop = '0;
 
   // Slave: EL2 wrapper doesn't produce user on responses
-  assign cpu_tcm_axi_resp_o.b.user = sep_pkg::SEP_SOURCE_ID;
-  assign cpu_tcm_axi_resp_o.r.user = sep_pkg::SEP_SOURCE_ID;
+  assign cpu_tcm_axi_resp_o.b.user = sep_pkg::SepSourceId;
+  assign cpu_tcm_axi_resp_o.r.user = sep_pkg::SepSourceId;
 
   //////////////////////////////////
   // Local Alias Address Remapper //
@@ -526,8 +526,8 @@ module sep_cpu (
     .mst_req_o          (lsu_axi_req),
     .mst_resp_i         (lsu_axi_resp),
     .local_alias_base_i (sep_local_base_addr_i),
-    .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
-    .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
+    .region_size_i      (sep_pkg::SepLocalAliasRegionSize[31:0]),
+    .target_base_i      (sep_pkg::SepLocalAliasRegionBase[31:0])
   );
 
   // IFU Bus Remap
@@ -541,8 +541,8 @@ module sep_cpu (
     .mst_req_o          (ifu_axi_req),
     .mst_resp_i         (ifu_axi_resp),
     .local_alias_base_i (sep_local_base_addr_i),
-    .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
-    .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
+    .region_size_i      (sep_pkg::SepLocalAliasRegionSize[31:0]),
+    .target_base_i      (sep_pkg::SepLocalAliasRegionBase[31:0])
   );
 
   // DBG Bus Remap
@@ -556,8 +556,8 @@ module sep_cpu (
     .mst_req_o          (dbg_axi_req_o),
     .mst_resp_i         (dbg_axi_resp_i),
     .local_alias_base_i (sep_local_base_addr_i),
-    .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
-    .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
+    .region_size_i      (sep_pkg::SepLocalAliasRegionSize[31:0]),
+    .target_base_i      (sep_pkg::SepLocalAliasRegionBase[31:0])
   );
 
   ///////////////////
@@ -566,7 +566,7 @@ module sep_cpu (
 
   sep_pkg::sep_32_64_3_12_axi_req_t  [sep_pkg::SEP_IFU_DEMUX_NUM_PORTS-1:0] ifu_demux_req;
   sep_pkg::sep_32_64_3_12_axi_resp_t [sep_pkg::SEP_IFU_DEMUX_NUM_PORTS-1:0] ifu_demux_resp;
-  sep_pkg::sep_ifu_demux_port_t ifu_aw_select, ifu_ar_select;
+  sep_pkg::sep_ifu_demux_port_e ifu_aw_select, ifu_ar_select;
 
   always_comb begin
     if ((ifu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
@@ -648,7 +648,7 @@ module sep_cpu (
 
   sep_pkg::sep_32_64_3_12_axi_req_t  [sep_pkg::SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_req;
   sep_pkg::sep_32_64_3_12_axi_resp_t [sep_pkg::SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_resp;
-  sep_pkg::sep_lsu_demux_port_t lsu_aw_select, lsu_ar_select;
+  sep_pkg::sep_lsu_demux_port_e lsu_aw_select, lsu_ar_select;
 
   always_comb begin
     if ((lsu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin

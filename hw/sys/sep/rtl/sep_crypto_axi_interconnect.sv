@@ -121,10 +121,10 @@ module sep_crypto_axi_interconnect (
 
   // Drain depth of every isolate matches the crypto demux transaction limit.
   // Host-path axi_to_axi_lite instances use the same limit.
-  localparam int unsigned ISOLATE_NUM_PENDING = 4;
+  localparam int unsigned IsolateNumPending = 4;
 
-  sep_pkg::sep_32_64_6_12_axi_req_t  [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_reqs;
-  sep_pkg::sep_32_64_6_12_axi_resp_t [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST-1:0] sep_crypto_axi_resps;
+  sep_pkg::sep_32_64_6_12_axi_req_t  [sep_crypto_pkg::SepCryptoNumAxiMst-1:0] sep_crypto_axi_reqs;
+  sep_pkg::sep_32_64_6_12_axi_resp_t [sep_crypto_pkg::SepCryptoNumAxiMst-1:0] sep_crypto_axi_resps;
 
   ////////////////
   // AXI4 Demux //
@@ -138,7 +138,7 @@ module sep_crypto_axi_interconnect (
   logic entropy_src_write, entropy_src_read, trng_write, trng_read;
   logic abr_write, abr_read;  // Adams Bridge PQC
   logic aw_is_burst, ar_is_burst;
-  logic [sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL-1:0] aw_select, ar_select;
+  logic [sep_crypto_pkg::SepCryptoNumAxiMstSel-1:0] aw_select, ar_select;
 
   assign aw_is_burst = (|sep_crypto_axi_req_i.aw.len);
   assign ar_is_burst = (|sep_crypto_axi_req_i.ar.len);
@@ -205,71 +205,65 @@ module sep_crypto_axi_interconnect (
             (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::ABR_RULE.end_addr);
 
     if (aw_is_burst) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
-          sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
     end else if (abr_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_ABR);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_ABR);
     end else if (trng_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_TRNG);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_TRNG);
     end else if (entropy_src_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(
           sep_crypto_pkg::SEP_CRYPTO_AXI_ENTROPY_SRC);
     end else if (edn_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_EDN);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_EDN);
     end else if (csrng_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_CSRNG);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_CSRNG);
     end else if (km_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_KM);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_KM);
     end else if (lifecycle_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
-          sep_crypto_pkg::SEP_CRYPTO_AXI_LIFECYCLE);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_LIFECYCLE);
     end else if (fuse_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_FUSE);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_FUSE);
     end else if (kmac_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_KMAC);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_KMAC);
     end else if (aes_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_AES);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_AES);
     end else if (hmac_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_HMAC);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_HMAC);
     end else if (otbn_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN);
     end else begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
-          sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
+      aw_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
     end
 
     if (ar_is_burst) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
-          sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
     end else if (abr_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_ABR);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_ABR);
     end else if (trng_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_TRNG);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_TRNG);
     end else if (entropy_src_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(
           sep_crypto_pkg::SEP_CRYPTO_AXI_ENTROPY_SRC);
     end else if (edn_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_EDN);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_EDN);
     end else if (csrng_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_CSRNG);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_CSRNG);
     end else if (km_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_KM);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_KM);
     end else if (lifecycle_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
-          sep_crypto_pkg::SEP_CRYPTO_AXI_LIFECYCLE);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_LIFECYCLE);
     end else if (fuse_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_FUSE);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_FUSE);
     end else if (kmac_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_KMAC);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_KMAC);
     end else if (aes_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_AES);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_AES);
     end else if (hmac_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_HMAC);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_HMAC);
     end else if (otbn_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN);
     end else begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
-          sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
+      ar_select = sep_crypto_pkg::SepCryptoNumAxiMstSel'(sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
     end
   end
 
@@ -283,7 +277,7 @@ module sep_crypto_axi_interconnect (
     .r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
     .axi_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
     .axi_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t),
-    .NoMstPorts      (sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST),
+    .NoMstPorts      (sep_crypto_pkg::SepCryptoNumAxiMst),
     .MaxTrans        (4),
     .AxiLookBits     (2),
     .UniqueIds       (1'b0),
@@ -384,8 +378,8 @@ module sep_crypto_axi_interconnect (
     .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
     .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
     .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
-    .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+    .AxiMaxWriteTxns (IsolateNumPending),
+    .AxiMaxReadTxns  (IsolateNumPending),
     .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
     .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
     .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
@@ -401,7 +395,7 @@ module sep_crypto_axi_interconnect (
   );
 
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -455,8 +449,8 @@ module sep_crypto_axi_interconnect (
     .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
     .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
     .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
-    .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+    .AxiMaxWriteTxns (IsolateNumPending),
+    .AxiMaxReadTxns  (IsolateNumPending),
     .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
     .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
     .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
@@ -472,7 +466,7 @@ module sep_crypto_axi_interconnect (
   );
 
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -526,8 +520,8 @@ module sep_crypto_axi_interconnect (
     .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
     .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
     .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
-    .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+    .AxiMaxWriteTxns (IsolateNumPending),
+    .AxiMaxReadTxns  (IsolateNumPending),
     .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
     .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
     .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
@@ -543,7 +537,7 @@ module sep_crypto_axi_interconnect (
   );
 
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -597,8 +591,8 @@ module sep_crypto_axi_interconnect (
     .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
     .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
     .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
-    .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+    .AxiMaxWriteTxns (IsolateNumPending),
+    .AxiMaxReadTxns  (IsolateNumPending),
     .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
     .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
     .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
@@ -614,7 +608,7 @@ module sep_crypto_axi_interconnect (
   );
 
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -640,7 +634,7 @@ module sep_crypto_axi_interconnect (
 
   // KM -> sep_crypto_otbn_wrapper key CSRs
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -660,7 +654,7 @@ module sep_crypto_axi_interconnect (
 
   // KM -> aes_wrapper key CSRs
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -680,7 +674,7 @@ module sep_crypto_axi_interconnect (
 
   // KM -> hmac_wrapper key CSRs
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -700,7 +694,7 @@ module sep_crypto_axi_interconnect (
 
   // KM -> kmac_wrapper key CSRs
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -720,10 +714,10 @@ module sep_crypto_axi_interconnect (
 
   // KM -> ABR sideload key CSRs
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
-    .AxiAddrWidth         (km_intf_pkg::KM_AXI_ADDR_WIDTH),
-    .AxiDataWidth         (km_intf_pkg::KM_AXI_DATA_WIDTH),
+    .AxiAddrWidth         (km_intf_pkg::KmAxiAddrWidth),
+    .AxiDataWidth         (km_intf_pkg::KmAxiDataWidth),
     .axi_lite_req_t       (km_intf_pkg::km_axil_req_t),
     .axi_lite_resp_t      (km_intf_pkg::km_axil_resp_t)
   ) u_abr_key_isolate (
@@ -740,10 +734,10 @@ module sep_crypto_axi_interconnect (
 
   // KM -> sep_efuse_wrapper
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
-    .AxiAddrWidth         (km_intf_pkg::KM_AXI_ADDR_WIDTH),
-    .AxiDataWidth         (km_intf_pkg::KM_AXI_DATA_WIDTH),
+    .AxiAddrWidth         (km_intf_pkg::KmAxiAddrWidth),
+    .AxiDataWidth         (km_intf_pkg::KmAxiDataWidth),
     .axi_lite_req_t       (km_intf_pkg::km_axil_req_t),
     .axi_lite_resp_t      (km_intf_pkg::km_axil_resp_t)
   ) u_km_efuse_isolate (
@@ -866,8 +860,8 @@ module sep_crypto_axi_interconnect (
     .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
     .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
     .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
-    .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+    .AxiMaxWriteTxns (IsolateNumPending),
+    .AxiMaxReadTxns  (IsolateNumPending),
     .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
     .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
     .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
@@ -883,7 +877,7 @@ module sep_crypto_axi_interconnect (
   );
 
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
@@ -911,8 +905,8 @@ module sep_crypto_axi_interconnect (
     .AxiDataWidth    (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
     .AxiIdWidth      (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
     .AxiUserWidth    (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
-    .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+    .AxiMaxWriteTxns (IsolateNumPending),
+    .AxiMaxReadTxns  (IsolateNumPending),
     .full_req_t      (sep_pkg::sep_32_64_6_12_axi_req_t),
     .full_resp_t     (sep_pkg::sep_32_64_6_12_axi_resp_t),
     .lite_req_t      (drbg_pkg::drbg_axil64_req_t),
@@ -928,7 +922,7 @@ module sep_crypto_axi_interconnect (
   );
 
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
@@ -956,8 +950,8 @@ module sep_crypto_axi_interconnect (
     .AxiDataWidth    (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
     .AxiIdWidth      (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
     .AxiUserWidth    (sep_pkg::SEP_32_64_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns (ISOLATE_NUM_PENDING),
-    .AxiMaxReadTxns  (ISOLATE_NUM_PENDING),
+    .AxiMaxWriteTxns (IsolateNumPending),
+    .AxiMaxReadTxns  (IsolateNumPending),
     .full_req_t      (sep_pkg::sep_32_64_6_12_axi_req_t),
     .full_resp_t     (sep_pkg::sep_32_64_6_12_axi_resp_t),
     .lite_req_t      (drbg_pkg::drbg_axil64_req_t),
@@ -973,7 +967,7 @@ module sep_crypto_axi_interconnect (
   );
 
   axi_lite_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AxiAddrWidth         (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
     .AxiDataWidth         (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
@@ -1078,7 +1072,7 @@ module sep_crypto_axi_interconnect (
   assign sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_LIFECYCLE] = lifecycle_axi_resp_i;
 
   axi_isolate #(
-    .NumPending           (ISOLATE_NUM_PENDING),
+    .NumPending           (IsolateNumPending),
     .TerminateTransaction (1'b1),
     .AtopSupport          (1'b0),
     .AxiAddrWidth         (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),

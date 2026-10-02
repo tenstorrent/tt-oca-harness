@@ -2,19 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Run every SEP and entropy-source DV model self-test.
 
-Each ``env/sep_*_golden.py`` carries a standalone self-test (a KAT / NIST / FIPS /
-RFC vector check, or hand-computed reference vectors) in its ``__main__`` block.
-``env/sep_efuse_default_shadow.py`` follows the same pattern: its ``__main__``
-block fails when the committed expected-shadow file differs from a fresh copy.
-Those guard against transcription errors in the golden, but ``__main__`` blocks
-only run when the file is executed directly -- so without a driver they are never
-enforced in CI. This runner executes each golden as a subprocess and asserts a
-clean exit, so a broken golden fails a single fast CI step instead of silently
-shipping and corrupting a downstream KAT compare.
+Executes each listed module's ``__main__`` self-test as a subprocess and fails on a nonzero
+exit, so a broken golden fails one fast CI step instead of a downstream KAT compare.
 
 Usage (no simulator needed):
     python3 cocotb/env/run_golden_selftests.py
-Exit code 0 = all goldens self-tested clean; nonzero = at least one failed.
 """
 
 from __future__ import annotations
@@ -38,6 +30,8 @@ _GOLDENS = (
     _HERE / "sep_entropy_golden.py",
     _HERE / "sep_lcc_golden.py",
     _HERE / "sep_crc_golden.py",
+    _HERE / "sep_oca_console.py",
+    _HERE.parent / "tests" / "rom_fw" / "sep_measurement_golden.py",
     # Freshness of the committed expected shadow the SV-UVM sense test loads.
     _HERE / "sep_efuse_default_shadow.py",
 )

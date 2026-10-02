@@ -12,6 +12,11 @@ coordinator is the single writer of everything else in the run tree.
 
 Exit status 2 is an environment error, written into the leaf's ``result.json`` when the leaf
 directory is known, so the coordinator grades it as such rather than as a test failure.
+
+A ``<task>.graded.json`` mark beside the completion record means the coordinator has already
+graded the attempt without this worker. The worker checks for it before the attempt starts and
+again immediately before it writes ``result.json`` or the completion record; once it is there,
+the worker leaves neither, removing a ``result.json`` it has already written, and exits 2.
 """
 
 from __future__ import annotations
@@ -25,10 +30,13 @@ from typing import Any
 
 from .executors.base import LeafTask, error_result, now_iso
 from .executors.manifest import (
+    AttemptGraded,
     ManifestError,
     attempt_args,
     execute_attempt,
+    graded_path,
     load_manifest,
+    refuse_graded,
     repo_identity,
     task_from_manifest,
     write_completion,
@@ -103,6 +111,7 @@ def run_manifest(path: Path) -> int:
 
     data = load_manifest(path)
     task = task_from_manifest(data)
+    graded = graded_path(task.run_dir, task.task_id)
     _say(
         f"manifest {path} task={task.task_id} "
         + (f"build target={task.target}" if task.is_build else f"item={task.item} seed={task.seed}")
@@ -162,13 +171,22 @@ def run_manifest(path: Path) -> int:
             tool=tool,
             simulators=registries.simulators,
             policies=registries.policies,
+            graded_marker=graded,
         )
+    except AttemptGraded:
+        raise
     except Exception as exc:  # noqa: BLE001
         reason = f"environment_error: attempt raised {type(exc).__name__}: {exc}"
-        write_error(task, reason, flow=flow, root=root, tool=tool)
         _say(reason)
+        refuse_graded(graded)
+        write_error(task, reason, flow=flow, root=root, tool=tool)
         return ENVIRONMENT_ERROR_EXIT
     completion = Path(str(data.get("completion") or (task.leaf_dir / "completion.json")))
+    try:
+        refuse_graded(graded)
+    except AttemptGraded:
+        task.result_json.unlink(missing_ok=True)
+        raise
     write_completion(completion, task, result, result_json)
     _say(f"done status={result.status} result={result_json}")
     return exit_code_for_status(result.status)
@@ -185,6 +203,9 @@ def main(argv: list[str] | None = None) -> int:
     started = now_iso()
     try:
         return run_manifest(path)
+    except AttemptGraded as exc:
+        _say(f"{exc}; leaving neither result.json nor the completion record")
+        return ENVIRONMENT_ERROR_EXIT
     except (ManifestError, WorkerError, ConfigError) as exc:
         print(f"ERROR: worker: {exc}", file=sys.stderr, flush=True)
         _record_environment_error(path, str(exc), started)
@@ -205,6 +226,12 @@ def _record_environment_error(path: Path, reason: str, started_at: str) -> None:
         root = Path(str(data.get("repo_root") or run_dir))
         if not run_dir.is_dir():
             return
+        if data.get("task_id"):
+            try:
+                refuse_graded(graded_path(run_dir, str(data["task_id"])))
+            except AttemptGraded as exc:
+                _say(f"{exc}; writing no result.json")
+                return
         result = StageResult(
             stage=str(data.get("stage", "sim")),
             item=str(data.get("item", "")),

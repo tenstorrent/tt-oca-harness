@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle with a CLASS_KEY that is not the payload's encryption key: the injected
+# fault of sep_firmware_invalid_decryption_class_key_test. Only CLASS_KEY differs from
+# sep_efuse_lc_prod_class_key.toml. It is an explicit zero, the value of an unprogrammed
+# fuse. SBOOT_DIS stays 0 and the lifecycle stays PROD so the ROM enforces the crypto
+# chain and reaches decryption.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[CLASS_KEY]
+  [CLASS_KEY.fields.key]
+  value = 0x0000000000000000000000000000000000000000000000000000000000000000

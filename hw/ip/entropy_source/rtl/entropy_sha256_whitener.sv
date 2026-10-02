@@ -39,8 +39,8 @@ module entropy_sha256_whitener (
   /////////////////////
   // Local parameters
   /////////////////////
-  localparam int unsigned SHA256_BLOCK_WORDS = 16;  // SHA-256 input: 512 bits = 16 × 32-bit words
-  localparam int unsigned SHA256_DIGEST_WORDS = 8;  // SHA-256 output: 256 bits = 8 × 32-bit words
+  localparam int unsigned Sha256BlockWords = 16;  // SHA-256 input: 512 bits = 16 × 32-bit words
+  localparam int unsigned Sha256DigestWords = 8;  // SHA-256 output: 256 bits = 8 × 32-bit words
 
   /////////////
   // Signals
@@ -127,7 +127,7 @@ module entropy_sha256_whitener (
       // Output phase: stream digest words
       whitened_valid_o = 1'b1;
       whitened_data_o = output_buffer_q[
-          3'(4'(SHA256_DIGEST_WORDS) - output_words_remaining_q)
+          3'(4'(Sha256DigestWords) - output_words_remaining_q)
       ];
       input_phase_d = 1'b0;
 
@@ -152,7 +152,7 @@ module entropy_sha256_whitener (
         input_word_count_d = input_word_count_q + 4'd1;
 
         // Trigger hash processing on 16th word
-        if (input_word_count_q == 4'(SHA256_BLOCK_WORDS - 1)) begin
+        if (input_word_count_q == 4'(Sha256BlockWords - 1)) begin
           sha_hash_process = 1'b1;
           hashing_d = 1'b1;
           input_phase_d = 1'b0;
@@ -164,10 +164,10 @@ module entropy_sha256_whitener (
       input_phase_d = 1'b0;
       if (sha_hash_done_q) begin
         hashing_d = 1'b0;
-        output_words_remaining_d = 4'(SHA256_DIGEST_WORDS);
+        output_words_remaining_d = 4'(Sha256DigestWords);
 
         // Load digest into output buffer (extract lower 32 bits)
-        for (int i = 0; i < SHA256_DIGEST_WORDS; i++) begin
+        for (int i = 0; i < Sha256DigestWords; i++) begin
           output_buffer_d[i] = sha_digest[i][31:0];
         end
       end

@@ -29,6 +29,15 @@ so a write answers DECERR rather than the SLVERR the AXI-Lite converter makes of
 any write error behind it. A watched write and read of SEP_NMI_VEC must each
 show their handshake at that port, so a watcher that sees nothing fails.
 
+CHK-SYS-RESERVED-NO-LOOPBACK: no system-CSR hole or reserved-row probe arrives
+at the local crossbar's ext initiator. The peripheral crossbar forwards an
+address outside the mailbox and system CSR windows back to that initiator
+(``hw/sys/sep/doc/fabric.adoc``), so a reserved address the local crossbar sends
+to sep_system_peripherals returns there instead of being refused at its first
+decode. A watched write and read of the first External address, which takes
+that route, must each show their handshake at the ext initiator, so a watcher
+that sees nothing fails.
+
 CHK-TOKEN-FAULT-EXTENT: TOKEN_MATCH_FAULT, the last register the RDL gives the
 eFuse token MMR, reads OKAY with its RDL reset, and the first word after it is
 refused. The extent therefore ends where the RDL ends it.
@@ -67,6 +76,7 @@ from collections import Counter
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_unmapped_access_seq import (
+    EXT_LOOPBACK_CTRL,
     GROUP_EFUSE_CTRL,
     GROUP_EFUSE_MMR,
     GROUP_MBOX,
@@ -139,6 +149,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
 
         # --- Lite-port watcher control ---------------------------------------
         lite_ctrl_fails = await ua.lite_control()
+        loop_fails: list[str] = await ua.ext_control()
 
         # --- TOKEN_MATCH_FAULT extent end -----------------------------------
         resp, val, to = await ua.access("r", TOKEN_MATCH_FAULT, may_refuse=True)
@@ -175,6 +186,8 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 n_watched += 1
                 if r.lite_reached:
                     decode_fails.append(f"{where} reached the system-CSR AXI-Lite port")
+                if r.ext_reached:
+                    loop_fails.append(f"{where} arrived at the local crossbar's ext initiator")
             if r.timed_out:
                 per_group[p.group].append(f"{where} timed out")
             elif r.resp == RESP_OKAY:
@@ -190,7 +203,10 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 alias_fails.append(f"{where} moved " + ", ".join(r.changed))
             lite_note = ""
             if r.lite_reached is not None:
-                lite_note = f" system-CSR Lite {'reached' if r.lite_reached else 'not reached'}"
+                lite_note = (
+                    f" system-CSR Lite {'reached' if r.lite_reached else 'not reached'},"
+                    f" ext initiator {'reached' if r.ext_reached else 'not reached'}"
+                )
             self.logger.info(
                 "UNMAPPED-PROBE: %s %s resp=%s rdata=0x%08x%s",
                 p.group,
@@ -210,6 +226,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
         if n_watched == 0:
             decode_fails.append("no probe watched the system-CSR AXI-Lite port")
         verdict["CHK-SYSCSR-HOLE-DECODE"] = decode_fails
+        if n_watched == 0:
+            loop_fails.append("no probe watched the local crossbar's ext initiator")
+        verdict["CHK-SYS-RESERVED-NO-LOOPBACK"] = loop_fails
 
         # Tally of the codes CHK-UNMAPPED-CODE graded, per group and channel.
         for (g, op), c in codes.items():
@@ -363,6 +382,11 @@ class sep_unmapped_access_policy_test(sep_base_test):
             f"the watcher saw the {cfg.lite_ctrl.name} control write and read at the "
             f"system-CSR AXI-Lite port, and none of the {n_watched} "
             f"{' and '.join(LITE_WATCHED)} probe(s) reached it"
+        )
+        counts["CHK-SYS-RESERVED-NO-LOOPBACK"] = (
+            f"the watcher saw the 0x{EXT_LOOPBACK_CTRL:08x} control write and read at the "
+            f"local crossbar's ext initiator, and none of the {n_watched} "
+            f"{' and '.join(LITE_WATCHED)} probe(s) arrived there"
         )
         bad = []
         for chk, fails in verdict.items():

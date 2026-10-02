@@ -2,61 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
- * @brief I2C P2 Concurrent Interface Operation Test
+ * @file i2c_p2_concurrent.c
+ * @brief I2C P2 Two-Controller Write Test
  *
- * =============================================================================
- * Test Description
- * =============================================================================
- *
- * This test verifies that multiple I2C interfaces within the system can operate
- * simultaneously without interference.
- *
- * Test Objective:
- * - Verify I2C_0 and I2C_1 can operate concurrently as independent interfaces
- * - Ensure state machines and data buffers operate independently
- * - Verify data integrity on both interfaces during concurrent operation
- *
- * Expected Result:
- * - Both I2C interfaces complete transactions successfully
- * - No interference between interfaces
- * - Full data integrity maintained on both interfaces
- *
- * =============================================================================
- * Test Architecture: Concurrent I2C Operation
- * =============================================================================
- *
- * I2C_0: Controller Mode (internal loopback with external VIP slave)
- * I2C_1: Controller Mode (internal loopback with external VIP slave)
- *
- * Both interfaces operate simultaneously to verify independence.
- *
- * =============================================================================
- * Configuration Details
- * =============================================================================
- *
- * I2C_0 Configuration (Controller Mode):
- *   - Speed: Standard mode (100 kHz)
- *   - Target Address: 0x20 (external VIP)
- *   - FIFO Thresholds: RX=29, FMT=5
- *
- * I2C_1 Configuration (Controller Mode):
- *   - Speed: Standard mode (100 kHz)
- *   - Target Address: 0x30 (external VIP)
- *   - FIFO Thresholds: RX=29, FMT=5
- *
- * =============================================================================
- * Test Flow
- * =============================================================================
- *
- * Step 1: System Initialization
- * Step 2: Wrapper Control Enable (both as Controllers)
- * Step 3: Initialize both I2C interfaces
- * Step 4: Concurrent write operations on both interfaces
- * Step 5: Verify data integrity
- * Step 6: Test Complete
- *
- * =============================================================================
+ * Verifies that the I2C_0 and I2C_1 controllers, configured side by side, can
+ * each issue a write to an external target at its own address. The writes run
+ * one after the other, not at the same time. A NACK is only logged, so the
+ * test fails only on another write error, and the data is not read back.
  */
 
 #include <stdint.h>
@@ -159,8 +111,7 @@ int main(void) {
     write_scratch(1, 0x00000040);
     simputs("\nStep 4: Concurrent Write Operations\n");
 
-    // Use blocking write with STOP to properly complete transactions
-    // This ensures SCL and SDA are properly released after each write
+    // Blocking writes with STOP, so each controller releases the bus before the next write
     simputs("  I2C_0 writing to target 0x20...\n");
     ret = i2c_controller_write(I2C_0_IDX, I2C_0_TARGET_ADDR, i2c0_write_data,
                                sizeof(i2c0_write_data), true);
@@ -194,7 +145,7 @@ int main(void) {
     write_scratch(1, 0x00000050);
     simputs("\nStep 5: Verify Transactions Completed\n");
 
-    // Both transactions should be complete since i2c_controller_write() waits internally
+    // i2c_controller_write with STOP returns only after the controller goes idle
     simputs("  Both I2C transactions completed successfully\n");
     write_scratch(1, 0x00000052);
 
@@ -204,6 +155,4 @@ int main(void) {
     simputs("###################################################\n");
     write_scratch(1, 0xEBEDEBE4);
     test_pass(0);
-
-    return I2C_OK;
 }

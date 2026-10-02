@@ -138,8 +138,8 @@ module uart_16550
   axil_req_t  axil_mst_req;
   axil_resp_t axil_mst_resp;
 
-  axil_req_t  [NUM_REG_MAPS-1:0] axil_slv_reqs;
-  axil_resp_t [NUM_REG_MAPS-1:0] axil_slv_resps;
+  axil_req_t  [NumRegMaps-1:0] axil_slv_reqs;
+  axil_resp_t [NumRegMaps-1:0] axil_slv_resps;
 
   assign axil_mst_req.aw_valid = axil_req_i.aw_valid;
   assign axil_mst_req.aw.addr  = axil_req_i.aw.addr;
@@ -189,7 +189,7 @@ module uart_16550
     .r_chan_t        (axil_r_chan_t),
     .axi_req_t       (axil_req_t),
     .axi_resp_t      (axil_resp_t),
-    .NoMstPorts      (NUM_REG_MAPS),
+    .NoMstPorts      (NumRegMaps),
     .MaxTrans        (1),
     .FallThrough     (1'b0),
     .SpillAw         (1'b1), // Pipeline AW to ease timing and area

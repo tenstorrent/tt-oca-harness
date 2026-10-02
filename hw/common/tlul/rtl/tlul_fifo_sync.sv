@@ -31,10 +31,10 @@ module tlul_fifo_sync #(
   output [SPARE_RSP_W-1:0]  spare_rsp_o   // Spare response bits leaving with tl_h_o.
 );
   // Put everything on the request side into one FIFO
-  localparam int unsigned REQFIFO_WIDTH = $bits(tlul_pkg::tl_h2d_t) - 2 + SPARE_REQ_W;
+  localparam int unsigned ReqFifoWidth = $bits(tlul_pkg::tl_h2d_t) - 2 + SPARE_REQ_W;
 
   prim_fifo_sync #(
-    .Width(REQFIFO_WIDTH),
+    .Width(ReqFifoWidth),
     .Pass(REQ_PASS),
     .Depth(REQ_DEPTH)
   ) u_reqfifo (
@@ -70,10 +70,10 @@ module tlul_fifo_sync #(
 
   // Put everything on the response side into the other FIFO
 
-  localparam int unsigned RSPFIFO_WIDTH = $bits(tlul_pkg::tl_d2h_t) - 2 + SPARE_RSP_W;
+  localparam int unsigned RspFifoWidth = $bits(tlul_pkg::tl_d2h_t) - 2 + SPARE_RSP_W;
 
   prim_fifo_sync #(
-    .Width(RSPFIFO_WIDTH),
+    .Width(RspFifoWidth),
     .Pass(RSP_PASS),
     .Depth(RSP_DEPTH)
   ) u_rspfifo (

@@ -2,39 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
+ * @file i2c_p2_mixmode.c
  * @brief I2C P2 Mixed-Mode Operation Test
  *
- * =============================================================================
- * Test Description
- * =============================================================================
- *
- * This test verifies the I2C module can act as both Controller and Target
- * simultaneously (mixed-mode operation).
- *
- * Test Objective:
- * - Verify I2C_0 can operate as Controller
- * - Verify I2C_1 can operate as Target
- * - Verify both roles can operate without interference
- *
- * Expected Result:
- * - Both Controller and Target operations complete successfully
- * - No state machine conflicts
- * - Data integrity maintained on both paths
- *
- * =============================================================================
- * Configuration Details
- * =============================================================================
- *
- * I2C_0 Configuration (Controller Mode):
- *   - Speed: Standard mode (100 kHz)
- *   - Target Address: 0x10 (I2C_1)
- *
- * I2C_1 Configuration (Target Mode):
- *   - Address: 0x10 (7-bit)
- *   - Responds to Controller requests
- *
- * =============================================================================
+ * Checks that I2C_0 as controller completes a write to I2C_1 as target and
+ * that the target receives the transaction without error.
  */
 
 #include <stdint.h>
@@ -151,6 +123,4 @@ int main(void) {
     simputs("###################################################\n");
     write_scratch(1, 0xEBEDEBE4);
     test_pass(0);
-
-    return I2C_OK;
 }
