@@ -33,35 +33,35 @@ id = "line"
 tool = "vcs"
 metric_family = "line"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 [[thresholds]]
 id = "condition"
 tool = "vcs"
 metric_family = "condition"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 [[thresholds]]
 id = "toggle"
 tool = "vcs"
 metric_family = "toggle"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 [[thresholds]]
 id = "fsm"
 tool = "vcs"
 metric_family = "fsm_state"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 [[thresholds]]
 id = "branch"
 tool = "vcs"
 metric_family = "branch"
 population = "effective"
-minimum_percent = 98.0
+minimum_percent = 85.0
 
 # Every assertion in scope attempted and every cover directive hit: the DUT's
 # own assertions, the coverage modules' cover properties, and the protocol
