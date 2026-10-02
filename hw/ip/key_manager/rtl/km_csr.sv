@@ -128,25 +128,25 @@ module km_csr
   // =========================================================================
 
   // Bit positions within the SCRAMBLER_CTRL register (per RDL).
-  localparam int unsigned SCRAMBLER_CTRL_ENABLE_BIT_POS = 0;
-  localparam int unsigned SCRAMBLER_CTRL_LOCK_BIT_POS = 1;
+  localparam int unsigned ScramblerCtrlEnableBitPos = 0;
+  localparam int unsigned ScramblerCtrlLockBitPos = 1;
 
   // Bit positions for the internal IRQ aggregation vector (excludes mailbox).
-  localparam int unsigned IRQ_AGG_ROM_PARITY_ERR_BIT = 0;
-  localparam int unsigned IRQ_AGG_SRAM_PARITY_ERR_BIT = 1;
-  localparam int unsigned IRQ_AGG_ROM_WRITE_ERR_BIT = 2;
-  localparam int unsigned IRQ_AGG_SRAM_WRITE_LOCK_ERR_BIT = 3;
-  localparam int unsigned IRQ_AGG_AXI_SLVERR_BIT = 4;
-  localparam int unsigned IRQ_AGG_AXI_DECERR_BIT = 5;
-  localparam int unsigned IRQ_AGG_DRBG_ERR_BIT = 6;
-  localparam int unsigned IRQ_AGG_WIPE_STATE_BIT = 7;
-  localparam int unsigned IRQ_AGG_OTP_CHANGE_BIT = 8;
-  localparam int unsigned IRQ_AGG_OTP_SIGINT_BIT = 9;
-  localparam int unsigned IRQ_AGG_EXEC_VIOLATION_BIT = 10;
-  localparam int unsigned IRQ_AGG_ROM_ACCESS_VIOLATION_BIT = 11;
+  localparam int unsigned IrqAggRomParityErrBit = 0;
+  localparam int unsigned IrqAggSramParityErrBit = 1;
+  localparam int unsigned IrqAggRomWriteErrBit = 2;
+  localparam int unsigned IrqAggSramWriteLockErrBit = 3;
+  localparam int unsigned IrqAggAxiSlverrBit = 4;
+  localparam int unsigned IrqAggAxiDecerrBit = 5;
+  localparam int unsigned IrqAggDrbgErrBit = 6;
+  localparam int unsigned IrqAggWipeStateBit = 7;
+  localparam int unsigned IrqAggOtpChangeBit = 8;
+  localparam int unsigned IrqAggOtpSigintBit = 9;
+  localparam int unsigned IrqAggExecViolationBit = 10;
+  localparam int unsigned IrqAggRomAccessViolationBit = 11;
 
   // Total number of IRQ sources aggregated into km_irq_o.
-  localparam int unsigned NUM_IRQ_SOURCES = 12;
+  localparam int unsigned NumIrqSources = 12;
 
   //=========================================================================
   // AXI4-Lite Interface Conversion
@@ -263,35 +263,35 @@ module km_csr
   // IRQ Aggregation
   //=========================================================================
 
-  logic [NUM_IRQ_SOURCES-1:0] irq_status;
-  logic [NUM_IRQ_SOURCES-1:0] irq_enable;
-  logic [NUM_IRQ_SOURCES-1:0] irq_masked;
+  logic [NumIrqSources-1:0] irq_status;
+  logic [NumIrqSources-1:0] irq_enable;
+  logic [NumIrqSources-1:0] irq_masked;
 
-  assign irq_status[IRQ_AGG_ROM_PARITY_ERR_BIT]      = hwif_out.IRQ_STATUS.rom_parity_err.value;
-  assign irq_status[IRQ_AGG_SRAM_PARITY_ERR_BIT]     = hwif_out.IRQ_STATUS.sram_parity_err.value;
-  assign irq_status[IRQ_AGG_ROM_WRITE_ERR_BIT]        = hwif_out.IRQ_STATUS.rom_write_err.value;
-  assign irq_status[IRQ_AGG_SRAM_WRITE_LOCK_ERR_BIT] = hwif_out.IRQ_STATUS.sram_write_lock_err.value;
-  assign irq_status[IRQ_AGG_AXI_SLVERR_BIT]          = hwif_out.IRQ_STATUS.axi_slverr.value;
-  assign irq_status[IRQ_AGG_AXI_DECERR_BIT]          = hwif_out.IRQ_STATUS.axi_decerr.value;
-  assign irq_status[IRQ_AGG_DRBG_ERR_BIT]            = hwif_out.IRQ_STATUS.drbg_err.value;
-  assign irq_status[IRQ_AGG_WIPE_STATE_BIT]           = hwif_out.IRQ_STATUS.wipe_state.value;
-  assign irq_status[IRQ_AGG_OTP_CHANGE_BIT]           = hwif_out.IRQ_STATUS.otp_change.value;
-  assign irq_status[IRQ_AGG_OTP_SIGINT_BIT]           = hwif_out.IRQ_STATUS.otp_sigint.value;
-  assign irq_status[IRQ_AGG_EXEC_VIOLATION_BIT]       = hwif_out.IRQ_STATUS.exec_violation.value;
-  assign irq_status[IRQ_AGG_ROM_ACCESS_VIOLATION_BIT] = hwif_out.IRQ_STATUS.rom_access_violation.value;
+  assign irq_status[IrqAggRomParityErrBit]      = hwif_out.IRQ_STATUS.rom_parity_err.value;
+  assign irq_status[IrqAggSramParityErrBit]     = hwif_out.IRQ_STATUS.sram_parity_err.value;
+  assign irq_status[IrqAggRomWriteErrBit]        = hwif_out.IRQ_STATUS.rom_write_err.value;
+  assign irq_status[IrqAggSramWriteLockErrBit]   = hwif_out.IRQ_STATUS.sram_write_lock_err.value;
+  assign irq_status[IrqAggAxiSlverrBit]          = hwif_out.IRQ_STATUS.axi_slverr.value;
+  assign irq_status[IrqAggAxiDecerrBit]          = hwif_out.IRQ_STATUS.axi_decerr.value;
+  assign irq_status[IrqAggDrbgErrBit]            = hwif_out.IRQ_STATUS.drbg_err.value;
+  assign irq_status[IrqAggWipeStateBit]           = hwif_out.IRQ_STATUS.wipe_state.value;
+  assign irq_status[IrqAggOtpChangeBit]           = hwif_out.IRQ_STATUS.otp_change.value;
+  assign irq_status[IrqAggOtpSigintBit]           = hwif_out.IRQ_STATUS.otp_sigint.value;
+  assign irq_status[IrqAggExecViolationBit]       = hwif_out.IRQ_STATUS.exec_violation.value;
+  assign irq_status[IrqAggRomAccessViolationBit]  = hwif_out.IRQ_STATUS.rom_access_violation.value;
 
-  assign irq_enable[IRQ_AGG_ROM_PARITY_ERR_BIT]      = hwif_out.IRQ_ENABLE.rom_parity_en.value;
-  assign irq_enable[IRQ_AGG_SRAM_PARITY_ERR_BIT]     = hwif_out.IRQ_ENABLE.sram_parity_en.value;
-  assign irq_enable[IRQ_AGG_ROM_WRITE_ERR_BIT]        = hwif_out.IRQ_ENABLE.rom_write_en.value;
-  assign irq_enable[IRQ_AGG_SRAM_WRITE_LOCK_ERR_BIT] = hwif_out.IRQ_ENABLE.sram_write_lock_en.value;
-  assign irq_enable[IRQ_AGG_AXI_SLVERR_BIT]          = hwif_out.IRQ_ENABLE.axi_slverr_en.value;
-  assign irq_enable[IRQ_AGG_AXI_DECERR_BIT]          = hwif_out.IRQ_ENABLE.axi_decerr_en.value;
-  assign irq_enable[IRQ_AGG_DRBG_ERR_BIT]            = hwif_out.IRQ_ENABLE.drbg_err_en.value;
-  assign irq_enable[IRQ_AGG_WIPE_STATE_BIT]           = hwif_out.IRQ_ENABLE.wipe_state_en.value;
-  assign irq_enable[IRQ_AGG_OTP_CHANGE_BIT]           = hwif_out.IRQ_ENABLE.otp_change_en.value;
-  assign irq_enable[IRQ_AGG_OTP_SIGINT_BIT]           = hwif_out.IRQ_ENABLE.otp_sigint_en.value;
-  assign irq_enable[IRQ_AGG_EXEC_VIOLATION_BIT]       = hwif_out.IRQ_ENABLE.exec_violation_en.value;
-  assign irq_enable[IRQ_AGG_ROM_ACCESS_VIOLATION_BIT] = hwif_out.IRQ_ENABLE.rom_access_violation_en.value;
+  assign irq_enable[IrqAggRomParityErrBit]      = hwif_out.IRQ_ENABLE.rom_parity_en.value;
+  assign irq_enable[IrqAggSramParityErrBit]     = hwif_out.IRQ_ENABLE.sram_parity_en.value;
+  assign irq_enable[IrqAggRomWriteErrBit]        = hwif_out.IRQ_ENABLE.rom_write_en.value;
+  assign irq_enable[IrqAggSramWriteLockErrBit]   = hwif_out.IRQ_ENABLE.sram_write_lock_en.value;
+  assign irq_enable[IrqAggAxiSlverrBit]          = hwif_out.IRQ_ENABLE.axi_slverr_en.value;
+  assign irq_enable[IrqAggAxiDecerrBit]          = hwif_out.IRQ_ENABLE.axi_decerr_en.value;
+  assign irq_enable[IrqAggDrbgErrBit]            = hwif_out.IRQ_ENABLE.drbg_err_en.value;
+  assign irq_enable[IrqAggWipeStateBit]           = hwif_out.IRQ_ENABLE.wipe_state_en.value;
+  assign irq_enable[IrqAggOtpChangeBit]           = hwif_out.IRQ_ENABLE.otp_change_en.value;
+  assign irq_enable[IrqAggOtpSigintBit]           = hwif_out.IRQ_ENABLE.otp_sigint_en.value;
+  assign irq_enable[IrqAggExecViolationBit]       = hwif_out.IRQ_ENABLE.exec_violation_en.value;
+  assign irq_enable[IrqAggRomAccessViolationBit]  = hwif_out.IRQ_ENABLE.rom_access_violation_en.value;
 
   assign irq_masked = irq_status & irq_enable;
   assign km_irq_o = |irq_masked;
@@ -813,13 +813,13 @@ module km_csr
   // - Soft reset is cleared by full reset sequence
 
   // Magic code that triggers a soft reset when written to SOFT_RST_CODE.
-  localparam logic [31:0] SOFT_RST_CODE_MAGIC = 32'h53525354;  // ASCII "SRST"
+  localparam logic [31:0] SoftRstCodeMagic = 32'h53525354;  // ASCII "SRST"
 
   // Detect when SOFT_RST_CODE register contains the magic code
   // Use register block interface (hwif_out) to check register value
   // Register resets to 0, so this will only be true after firmware writes the magic code
   logic soft_rst_code_match;
-  assign soft_rst_code_match = (hwif_out.SOFT_RST_CODE.code.value == SOFT_RST_CODE_MAGIC);
+  assign soft_rst_code_match = (hwif_out.SOFT_RST_CODE.code.value == SoftRstCodeMagic);
 
   // Register soft reset signal to prevent glitches
   // Active-low: 0 = reset asserted, 1 = normal operation.

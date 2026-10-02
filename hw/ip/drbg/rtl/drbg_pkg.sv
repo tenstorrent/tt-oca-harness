@@ -17,52 +17,52 @@ package drbg_pkg;
   // =========================================================================
 
   // Default complete-seed queue depth feeding wrapped CSRNG.
-  localparam int unsigned DRBG_DEFAULT_SEED_FIFO_DEPTH = 1;
+  localparam int unsigned DrbgDefaultSeedFifoDepth = 1;
   // Default number of exposed EDN endpoint AXI-Stream outputs.
-  localparam int unsigned DRBG_DEFAULT_EDN_ENDPOINT_COUNT = 1;
+  localparam int unsigned DrbgDefaultEdnEndpointCount = 1;
   // Default number of native EDN req/rsp endpoints (bypass AXI-Stream).
-  localparam int unsigned DRBG_DEFAULT_EDN_NATIVE_ENDPOINT_COUNT = 0;
+  localparam int unsigned DrbgDefaultEdnNativeEndpointCount = 0;
   // Default depth of each EDN endpoint output FIFO.
-  localparam int unsigned DRBG_DEFAULT_ENDPOINT_FIFO_DEPTH = 8;
+  localparam int unsigned DrbgDefaultEndpointFifoDepth = 8;
 
   // =========================================================================
   // Provisional FIPS Policy
   // =========================================================================
 
   // Current feature-release CSRNG seed FIPS policy.
-  localparam logic DRBG_CSRNG_SEED_FIPS_PROVISIONAL = 1'b1;
+  localparam logic DrbgCsrngSeedFipsProvisional = 1'b1;
 
   // =========================================================================
   // AXI-Lite Type Definitions
   // =========================================================================
 
   // 64-bit external AXI-Lite address width for CSRNG and EDN CSRs.
-  localparam int unsigned DRBG_AXIL64_ADDR_WIDTH = 32;
+  localparam int unsigned DrbgAxil64AddrWidth = 32;
   // 64-bit external AXI-Lite data width for CSRNG and EDN CSRs.
-  localparam int unsigned DRBG_AXIL64_DATA_WIDTH = 64;
+  localparam int unsigned DrbgAxil64DataWidth = 64;
   // 64-bit external AXI-Lite strobe width for CSRNG and EDN CSRs.
-  localparam int unsigned DRBG_AXIL64_STRB_WIDTH = DRBG_AXIL64_DATA_WIDTH / 8;
+  localparam int unsigned DrbgAxil64StrbWidth = DrbgAxil64DataWidth / 8;
 
   // 32-bit internal AXI-Lite address width used before TL-UL bridging.
-  localparam int unsigned DRBG_AXIL32_ADDR_WIDTH = 32;
+  localparam int unsigned DrbgAxil32AddrWidth = 32;
   // 32-bit internal AXI-Lite data width used before TL-UL bridging.
-  localparam int unsigned DRBG_AXIL32_DATA_WIDTH = 32;
+  localparam int unsigned DrbgAxil32DataWidth = 32;
   // 32-bit internal AXI-Lite strobe width used before TL-UL bridging.
-  localparam int unsigned DRBG_AXIL32_STRB_WIDTH = DRBG_AXIL32_DATA_WIDTH / 8;
+  localparam int unsigned DrbgAxil32StrbWidth = DrbgAxil32DataWidth / 8;
 
   // 64-bit external AXI-Lite address type.
-  typedef logic [DRBG_AXIL64_ADDR_WIDTH-1:0] drbg_axil64_addr_t;
+  typedef logic [DrbgAxil64AddrWidth-1:0] drbg_axil64_addr_t;
   // 64-bit external AXI-Lite data type.
-  typedef logic [DRBG_AXIL64_DATA_WIDTH-1:0] drbg_axil64_data_t;
+  typedef logic [DrbgAxil64DataWidth-1:0] drbg_axil64_data_t;
   // 64-bit external AXI-Lite strobe type.
-  typedef logic [DRBG_AXIL64_STRB_WIDTH-1:0] drbg_axil64_strb_t;
+  typedef logic [DrbgAxil64StrbWidth-1:0] drbg_axil64_strb_t;
 
   // 32-bit internal AXI-Lite address type.
-  typedef logic [DRBG_AXIL32_ADDR_WIDTH-1:0] drbg_axil32_addr_t;
+  typedef logic [DrbgAxil32AddrWidth-1:0] drbg_axil32_addr_t;
   // 32-bit internal AXI-Lite data type.
-  typedef logic [DRBG_AXIL32_DATA_WIDTH-1:0] drbg_axil32_data_t;
+  typedef logic [DrbgAxil32DataWidth-1:0] drbg_axil32_data_t;
   // 32-bit internal AXI-Lite strobe type.
-  typedef logic [DRBG_AXIL32_STRB_WIDTH-1:0] drbg_axil32_strb_t;
+  typedef logic [DrbgAxil32StrbWidth-1:0] drbg_axil32_strb_t;
 
   // 64-bit AXI-Lite channel, request, and response types.
   // Expands to drbg_axil64_aw_chan_t, drbg_axil64_w_chan_t,
@@ -81,14 +81,14 @@ package drbg_pkg;
   // =========================================================================
 
   // DRBG wrapper AXI-Stream data width.
-  localparam int unsigned DRBG_AXIS_DATA_WIDTH = 32;
+  localparam int unsigned DrbgAxisDataWidth = 32;
   // DRBG wrapper AXI-Stream strobe width.
-  localparam int unsigned DRBG_AXIS_STRB_WIDTH = DRBG_AXIS_DATA_WIDTH / 8;
+  localparam int unsigned DrbgAxisStrbWidth = DrbgAxisDataWidth / 8;
 
   // DRBG wrapper AXI-Stream data type.
-  typedef logic [DRBG_AXIS_DATA_WIDTH-1:0] drbg_axis_data_t;
+  typedef logic [DrbgAxisDataWidth-1:0] drbg_axis_data_t;
   // DRBG wrapper AXI-Stream strobe type.
-  typedef logic [DRBG_AXIS_STRB_WIDTH-1:0] drbg_axis_strb_t;
+  typedef logic [DrbgAxisStrbWidth-1:0] drbg_axis_strb_t;
 
   // AXI-Stream request bundle driven by the DRBG wrapper.
   // tuser is a generic per-beat AXI-Stream sideband. The bit currently forwards

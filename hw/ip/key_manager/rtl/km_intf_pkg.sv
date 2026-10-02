@@ -24,16 +24,16 @@ package km_intf_pkg;
   // AXI4-Lite Type Definitions (32-bit)
   // =========================================================================
 
-  localparam int unsigned KM_AXI_ADDR_WIDTH = 32;  // AXI4-Lite address width.
-  localparam int unsigned KM_AXI_DATA_WIDTH = 32;  // AXI4-Lite data width.
-  localparam int unsigned KM_AXI_STRB_WIDTH = KM_AXI_DATA_WIDTH / 8;  // AXI4-Lite write-strobe width.
+  localparam int unsigned KmAxiAddrWidth = 32;  // AXI4-Lite address width.
+  localparam int unsigned KmAxiDataWidth = 32;  // AXI4-Lite data width.
+  localparam int unsigned KmAxiStrbWidth = KmAxiDataWidth / 8;  // AXI4-Lite write-strobe width.
 
   // 32-bit AXI address type for the Key Manager subsystem.
-  typedef logic [KM_AXI_ADDR_WIDTH-1:0] km_addr_t;
+  typedef logic [KmAxiAddrWidth-1:0] km_addr_t;
   // 32-bit AXI data type for the Key Manager subsystem.
-  typedef logic [KM_AXI_DATA_WIDTH-1:0] km_data_t;
+  typedef logic [KmAxiDataWidth-1:0] km_data_t;
   // 4-bit AXI write-strobe type (one bit per data byte).
-  typedef logic [KM_AXI_STRB_WIDTH-1:0] km_strb_t;
+  typedef logic [KmAxiStrbWidth-1:0] km_strb_t;
 
   //=========================================================================
   // AXI4-Lite Channel and Request/Response Types
@@ -133,10 +133,10 @@ package km_intf_pkg;
   // register maps, so only those reach the eFuse controller.
 
   // Internal memory
-  localparam km_addr_t ROM_BASE_ADDR = 32'h0000_0000;  // ROM window base.
-  localparam km_addr_t ROM_END_ADDR = 32'h0000_3FFF;  // ROM window end (inclusive).
-  localparam km_addr_t SRAM_BASE_ADDR = 32'h0000_8000;  // SRAM window base.
-  localparam km_addr_t SRAM_END_ADDR = 32'h0000_FFFF;  // SRAM window end (inclusive).
+  localparam km_addr_t RomBaseAddr = 32'h0000_0000;  // ROM window base.
+  localparam km_addr_t RomEndAddr = 32'h0000_3FFF;  // ROM window end (inclusive).
+  localparam km_addr_t SramBaseAddr = 32'h0000_8000;  // SRAM window base.
+  localparam km_addr_t SramEndAddr = 32'h0000_FFFF;  // SRAM window end (inclusive).
 
   // Last address of a rule that spans one register block's decode window. A block keeps
   // only `addr_width` low address bits, so a rule any wider than its window would let the
@@ -146,104 +146,102 @@ package km_intf_pkg;
   endfunction
 
   // Internal peripherals
-  localparam km_addr_t MBOX_BASE_ADDR = 32'h0001_0000;  // Mailbox register window base.
-  localparam km_addr_t MBOX_END_ADDR = km_window_end(
-      MBOX_BASE_ADDR, km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH
+  localparam km_addr_t MboxBaseAddr = 32'h0001_0000;  // Mailbox register window base.
+  localparam km_addr_t MboxEndAddr = km_window_end(
+      MboxBaseAddr, km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH
   );  // Mailbox register window end
-  localparam km_addr_t KPV_BASE_ADDR = 32'h0001_2000;  // KPV register window base
-  localparam km_addr_t KPV_END_ADDR = km_window_end(
-      KPV_BASE_ADDR, km_kpv_reg_pkg::KM_KPV_REG_MIN_ADDR_WIDTH
+  localparam km_addr_t KpvBaseAddr = 32'h0001_2000;  // KPV register window base
+  localparam km_addr_t KpvEndAddr = km_window_end(
+      KpvBaseAddr, km_kpv_reg_pkg::KM_KPV_REG_MIN_ADDR_WIDTH
   );  // KPV register window end
-  localparam km_addr_t KMCSR_BASE_ADDR = 32'h0001_4000;  // KMCSR register window base
-  localparam km_addr_t KMCSR_END_ADDR = km_window_end(
-      KMCSR_BASE_ADDR, km_csr_reg_pkg::KM_CSR_REG_MIN_ADDR_WIDTH
+  localparam km_addr_t KmcsrBaseAddr = 32'h0001_4000;  // KMCSR register window base
+  localparam km_addr_t KmcsrEndAddr = km_window_end(
+      KmcsrBaseAddr, km_csr_reg_pkg::KM_CSR_REG_MIN_ADDR_WIDTH
   );  // KMCSR register window end
-  localparam km_addr_t DRBG_SAMPLER_BASE_ADDR = 32'h0001_5000;  // DRBG sampler window base
-  localparam km_addr_t DRBG_SAMPLER_END_ADDR = km_window_end(
-      DRBG_SAMPLER_BASE_ADDR, km_drbg_sampler_reg_pkg::KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH
+  localparam km_addr_t DrbgSamplerBaseAddr = 32'h0001_5000;  // DRBG sampler window base
+  localparam km_addr_t DrbgSamplerEndAddr = km_window_end(
+      DrbgSamplerBaseAddr, km_drbg_sampler_reg_pkg::KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH
   );  // DRBG sampler window end
 
   // OTP / eFuse access port. The crossbar routes the OTP page to xbar master port 8.
   // key_manager.sv forwards only the MAP, CTRL and MMR register maps to efuse_req_o, with
-  // addr[KM_AXI_ADDR_WIDTH-1:OTP_REMAP_ADDR_WIDTH] replaced by OTP_EFUSE_REMAP_BASE, so the
+  // addr[KmAxiAddrWidth-1:OtpRemapAddrWidth] replaced by OTP_EFUSE_REMAP_BASE, so the
   // shared SEP efuse_interface_controller is reached at the same offsets. The register maps
   // come from the generated KM address map and must lie inside the page.
-  localparam int unsigned OTP_REMAP_ADDR_WIDTH = 12;  // Offset bits the OTP remap keeps.
-  localparam km_addr_t OTP_PAGE_MASK = km_addr_t'(
-      (32'd1 << OTP_REMAP_ADDR_WIDTH) - 1
+  localparam int unsigned OtpRemapAddrWidth = 12;  // Offset bits the OTP remap keeps.
+  localparam km_addr_t OtpPageMask = km_addr_t'(
+      (32'd1 << OtpRemapAddrWidth) - 1
   );  // OTP page offset bits
-  localparam km_addr_t OTP_MAP_BASE_ADDR = km_addr_t'(
+  localparam km_addr_t OtpMapBaseAddr = km_addr_t'(
       key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR
   );  // eFuse shadow map base
-  localparam km_addr_t OTP_MAP_END_ADDR = OTP_MAP_BASE_ADDR + km_addr_t'(
+  localparam km_addr_t OtpMapEndAddr = OtpMapBaseAddr + km_addr_t'(
       key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_SIZE - 1
   );  // eFuse shadow map end
-  localparam km_addr_t OTP_CTRL_BASE_ADDR = km_addr_t'(
+  localparam km_addr_t OtpCtrlBaseAddr = km_addr_t'(
       key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR
   );  // eFuse interface control base
-  localparam km_addr_t OTP_CTRL_END_ADDR = OTP_CTRL_BASE_ADDR + km_addr_t'(
+  localparam km_addr_t OtpCtrlEndAddr = OtpCtrlBaseAddr + km_addr_t'(
       key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_CTRL_SIZE - 1
   );  // eFuse interface control end
-  localparam km_addr_t OTP_MMR_BASE_ADDR = km_addr_t'(
+  localparam km_addr_t OtpMmrBaseAddr = km_addr_t'(
       key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR
   );  // eFuse token MMR base
-  localparam km_addr_t OTP_MMR_END_ADDR = OTP_MMR_BASE_ADDR + km_addr_t'(
+  localparam km_addr_t OtpMmrEndAddr = OtpMmrBaseAddr + km_addr_t'(
       key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MMR_SIZE - 1
   );  // eFuse token MMR end
-  localparam km_addr_t OTP_BASE_ADDR = OTP_MAP_BASE_ADDR & ~OTP_PAGE_MASK;  // OTP page base
-  localparam km_addr_t OTP_END_ADDR = km_window_end(
-      OTP_BASE_ADDR, OTP_REMAP_ADDR_WIDTH
-  );  // OTP page end
+  localparam km_addr_t OtpBaseAddr = OtpMapBaseAddr & ~OtpPageMask;  // OTP page base
+  localparam km_addr_t OtpEndAddr = km_window_end(OtpBaseAddr, OtpRemapAddrWidth);  // OTP page end
 
   // True when addr falls in the MAP, CTRL or MMR register map of the OTP page.
   function automatic logic otp_addr_decoded(km_addr_t addr);
-    return (addr >= OTP_MAP_BASE_ADDR && addr <= OTP_MAP_END_ADDR) ||
-           (addr >= OTP_CTRL_BASE_ADDR && addr <= OTP_CTRL_END_ADDR) ||
-           (addr >= OTP_MMR_BASE_ADDR && addr <= OTP_MMR_END_ADDR);
+    return (addr >= OtpMapBaseAddr && addr <= OtpMapEndAddr) ||
+           (addr >= OtpCtrlBaseAddr && addr <= OtpCtrlEndAddr) ||
+           (addr >= OtpMmrBaseAddr && addr <= OtpMmrEndAddr);
   endfunction
 
   // External crypto engine ports
-  localparam km_addr_t OTBN_BASE_ADDR = 32'h0001_8000;  // OTBN window base
-  localparam km_addr_t OTBN_END_ADDR = km_window_end(
-      OTBN_BASE_ADDR, otbn_wrapper_key_reg_pkg::OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+  localparam km_addr_t OtbnBaseAddr = 32'h0001_8000;  // OTBN window base
+  localparam km_addr_t OtbnEndAddr = km_window_end(
+      OtbnBaseAddr, otbn_wrapper_key_reg_pkg::OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
   );  // OTBN window end
-  localparam km_addr_t AES_BASE_ADDR = 32'h0001_9000;  // AES window base
-  localparam km_addr_t AES_END_ADDR = km_window_end(
-      AES_BASE_ADDR, aes_wrapper_key_reg_pkg::AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+  localparam km_addr_t AesBaseAddr = 32'h0001_9000;  // AES window base
+  localparam km_addr_t AesEndAddr = km_window_end(
+      AesBaseAddr, aes_wrapper_key_reg_pkg::AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
   );  // AES window end
-  localparam km_addr_t KMAC_BASE_ADDR = 32'h0001_A000;  // KMAC window base
-  localparam km_addr_t KMAC_END_ADDR = km_window_end(
-      KMAC_BASE_ADDR, kmac_wrapper_key_reg_pkg::KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+  localparam km_addr_t KmacBaseAddr = 32'h0001_A000;  // KMAC window base
+  localparam km_addr_t KmacEndAddr = km_window_end(
+      KmacBaseAddr, kmac_wrapper_key_reg_pkg::KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
   );  // KMAC window end
-  localparam km_addr_t HMAC_BASE_ADDR = 32'h0001_B000;  // HMAC window base
-  localparam km_addr_t HMAC_END_ADDR = km_window_end(
-      HMAC_BASE_ADDR, hmac_wrapper_key_reg_pkg::HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+  localparam km_addr_t HmacBaseAddr = 32'h0001_B000;  // HMAC window base
+  localparam km_addr_t HmacEndAddr = km_window_end(
+      HmacBaseAddr, hmac_wrapper_key_reg_pkg::HMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
   );  // HMAC window end
-  localparam km_addr_t ABR_BASE_ADDR = 32'h0001_C000;  // Adams Bridge window base
-  localparam km_addr_t ABR_END_ADDR = km_window_end(
-      ABR_BASE_ADDR, abr_wrapper_key_reg_pkg::ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
+  localparam km_addr_t AbrBaseAddr = 32'h0001_C000;  // Adams Bridge window base
+  localparam km_addr_t AbrEndAddr = km_window_end(
+      AbrBaseAddr, abr_wrapper_key_reg_pkg::ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
   );  // Adams Bridge window end
 
   // Virtual ROM, decoded by picorv32_wrapper only under OCAH_KM_VROM
-  localparam km_addr_t VROM_BASE_ADDR = 32'h1000_0000;  // Virtual ROM window base
-  localparam km_addr_t VROM_END_ADDR = 32'h1000_FFFF;  // Virtual ROM window end
+  localparam km_addr_t VromBaseAddr = 32'h1000_0000;  // Virtual ROM window base
+  localparam km_addr_t VromEndAddr = 32'h1000_FFFF;  // Virtual ROM window end
 
   // Region sizes derived from the address ranges above.
-  localparam int unsigned ROM_SIZE_BYTES = ROM_END_ADDR - ROM_BASE_ADDR + 1;  // 16 KB
-  localparam int unsigned SRAM_SIZE_BYTES = SRAM_END_ADDR - SRAM_BASE_ADDR + 1;  // 32 KB
-  localparam int unsigned VROM_SIZE_BYTES = VROM_END_ADDR - VROM_BASE_ADDR + 1;  // 64 KB
+  localparam int unsigned RomSizeBytes = RomEndAddr - RomBaseAddr + 1;  // 16 KB
+  localparam int unsigned SramSizeBytes = SramEndAddr - SramBaseAddr + 1;  // 32 KB
+  localparam int unsigned VromSizeBytes = VromEndAddr - VromBaseAddr + 1;  // 64 KB
 
   // SRAM write-lock granularity: 1 KB per lockable region.
-  localparam int unsigned SRAM_LOCK_REGION_BYTES = 1024;  // Bytes per write-lock region
-  localparam int unsigned SRAM_NUM_LOCK_REGIONS = SRAM_SIZE_BYTES / SRAM_LOCK_REGION_BYTES;  // Lock region count
+  localparam int unsigned SramLockRegionBytes = 1024;  // Bytes per write-lock region
+  localparam int unsigned SramNumLockRegions = SramSizeBytes / SramLockRegionBytes;  // Lock region count
 
   // =========================================================================
   // DRBG AXI-Stream Interface (KM is slave, DRBG is master)
   // =========================================================================
 
   // DRBG AXI-Stream bus widths (32-bit data, 4-bit strobe).
-  localparam int unsigned KM_DRBG_AXIS_DATA_WIDTH = 32;
-  localparam int unsigned KM_DRBG_AXIS_STRB_WIDTH = KM_DRBG_AXIS_DATA_WIDTH / 8;
+  localparam int unsigned KmDrbgAxisDataWidth = 32;
+  localparam int unsigned KmDrbgAxisStrbWidth = KmDrbgAxisDataWidth / 8;
 
   // DRBG AXI-Stream request (DRBG master -> KM sampler slave).
   //
@@ -254,8 +252,8 @@ package km_intf_pkg;
   // bit-shifted) bind.
   typedef struct packed {
     logic                               tvalid;
-    logic [KM_DRBG_AXIS_DATA_WIDTH-1:0] tdata;
-    logic [KM_DRBG_AXIS_STRB_WIDTH-1:0] tstrb;
+    logic [KmDrbgAxisDataWidth-1:0]     tdata;
+    logic [KmDrbgAxisStrbWidth-1:0]     tstrb;
     logic                               tuser;
   } km_drbg_axis_req_t;
 

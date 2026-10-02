@@ -36,7 +36,7 @@ module axi_lite_mailbox_unit #(
   parameter type r_chan_t   = logic,                        // R channel type.
   parameter type axi_req_t  = logic,                        // AXI-Lite request type.
   parameter type axi_resp_t = logic,                        // AXI-Lite response type.
-  localparam int unsigned STRB_WIDTH = DATA_WIDTH / 8,      // Write-strobe width.
+  localparam int unsigned StrbWidth = DATA_WIDTH / 8,       // Write-strobe width.
   localparam int unsigned MailboxSizeW = $clog2(MAILBOX_SIZE) // Lowest address bit of the port
                                                               // select.
 ) (

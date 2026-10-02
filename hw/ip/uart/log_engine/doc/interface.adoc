@@ -23,8 +23,8 @@ endif::backend-html5[]
 |===
 |Setting |Value |Source
 |`FIFO_DEPTH` |4 by default |Module parameter: buffered 64-bit words.
-|`NUM_LOG_ENTRIES` |16 |Package constant and generated register inventory.
-|Maximum region |512 KiB |Package constant `MAX_LOG_REGION_SIZE`.
+|`NumLogEntries` |16 |Package constant and generated register inventory.
+|Maximum region |512 KiB |Package constant `MaxLogRegionSize`.
 |Fetch address/data |56/64 bits |Package types.
 |Write address/data |32/32 bits |Package types.
 |CSR data |32 bits |Register interface; address width comes from the generated map.

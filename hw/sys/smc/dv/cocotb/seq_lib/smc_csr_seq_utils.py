@@ -353,7 +353,7 @@ class SmcCsrSeq(smc_base_test_seq):
     async def arm_i2c_gpio_lsio(self, idx: int, label: str) -> None:
         """Force the I2C``idx`` pad group onto LSIO via GPIO DATA_CTRL.lsio_select.
 
-        Verilator codegen of ``i2c_wrap``'s ``MAX_NUM_I2CS`` always_comb writes
+        Verilator codegen of ``i2c_wrap``'s ``MaxNumI2cs`` always_comb writes
         OOB and then zeros ``i2c_en_o`` / ``i2c_controller_mode_en_o``, so the
         CDC'd ``i2c_enable_smc_clk`` never rises and GPIO holds ``scl_i/sda_i``
         at 0. Software ``lsio_select`` is the supported override (same as

@@ -51,8 +51,8 @@ module axi_lite_to_tlul
 	// Local Parameters
 	// --------------------------------------------------
 	// AXI Responses (Fallback if not defined in axi_pkg)
-	localparam logic [1:0] AXI_RESP_OKAY   = 2'b00;
-	localparam logic [1:0] AXI_RESP_SLVERR = 2'b10;
+	localparam logic [1:0] AxiRespOkay   = 2'b00;
+	localparam logic [1:0] AxiRespSlverr = 2'b10;
 
 	// FSM States
 	typedef enum logic [2:0] {
@@ -125,8 +125,8 @@ module axi_lite_to_tlul
 
 		// Default AXI Outputs (Zero out the structs first)
 		axi_lite_rsp_o = '0;
-		axi_lite_rsp_o.b.resp = AXI_RESP_OKAY;
-		axi_lite_rsp_o.r.resp = AXI_RESP_OKAY;
+		axi_lite_rsp_o.b.resp = AxiRespOkay;
+		axi_lite_rsp_o.r.resp = AxiRespOkay;
 
 		// Default TL-UL Outputs (Zero out the struct first)
 		tl_o = '0;
@@ -192,7 +192,7 @@ module axi_lite_to_tlul
 			AXI_R_RESP: begin
 				axi_lite_rsp_o.r_valid = 1'b1;
 				axi_lite_rsp_o.r.data  = resp_data_q;
-				axi_lite_rsp_o.r.resp  = req_error_q ? AXI_RESP_SLVERR : AXI_RESP_OKAY;
+				axi_lite_rsp_o.r.resp  = req_error_q ? AxiRespSlverr : AxiRespOkay;
 
 				if (axi_lite_req_i.r_ready) begin
 					state_d = IDLE;
@@ -231,7 +231,7 @@ module axi_lite_to_tlul
 
 			AXI_B_RESP: begin
 				axi_lite_rsp_o.b_valid = 1'b1;
-				axi_lite_rsp_o.b.resp  = req_error_q ? AXI_RESP_SLVERR : AXI_RESP_OKAY;
+				axi_lite_rsp_o.b.resp  = req_error_q ? AxiRespSlverr : AxiRespOkay;
 
 				if (axi_lite_req_i.b_ready) begin
 					state_d = IDLE;

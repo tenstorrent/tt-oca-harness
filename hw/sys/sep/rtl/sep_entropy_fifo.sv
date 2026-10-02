@@ -277,13 +277,13 @@ module sep_entropy_fifo
   //   DATA      -> pool data pop  (pulses pool_rready when data present;
   //                                SLVERR when the pool is empty)
   //   else      -> RRESP=SLVERR, RDATA=0
-  localparam logic [15:0] STATUS_OFFSET =
+  localparam logic [15:0] StatusOffset =
       16'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_STATUS_BASE_ADDR
           - sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
-  localparam logic [15:0] IRQ_CAUSE_OFFSET =
+  localparam logic [15:0] IrqCauseOffset =
       16'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_IRQ_CAUSE_BASE_ADDR
           - sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
-  localparam logic [15:0] DATA_OFFSET =
+  localparam logic [15:0] DataOffset =
       16'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_DATA_BASE_ADDR
           - sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
 
@@ -317,9 +317,9 @@ module sep_entropy_fifo
     rd_resp_next = axi_pkg::RESP_OKAY;
     rd_pop       = 1'b0;
     unique case (rd_offset)
-      STATUS_OFFSET: rd_data_next = status_word;
-      IRQ_CAUSE_OFFSET: rd_data_next = {61'b0, pool_err_o, fill_stall_o, pool_low_o};
-      DATA_OFFSET: begin
+      StatusOffset: rd_data_next = status_word;
+      IrqCauseOffset: rd_data_next = {61'b0, pool_err_o, fill_stall_o, pool_low_o};
+      DataOffset: begin
         rd_data_next = entropy_clear_i ? 64'b0 : pool_rdata;
         rd_pop       = pool_rvalid & ~entropy_clear_i;
         // Distinguish "no entropy available" from a popped word: an
@@ -357,7 +357,7 @@ module sep_entropy_fifo
         rd_pending_q <= 1'b1;
         rd_data_q    <= rd_data_next;
         rd_resp_q    <= rd_resp_next;
-        rd_entropy_q <= (rd_offset == DATA_OFFSET);
+        rd_entropy_q <= (rd_offset == DataOffset);
       end else if (rd_pending_q && s_axil_req.r_ready) begin
         rd_pending_q <= 1'b0;
         rd_entropy_q <= 1'b0;

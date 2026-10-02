@@ -3,7 +3,7 @@
 
 // DMA buffered log bytes to a UART under AXI-Lite CSR control.
 //
-// The log region is split into NUM_LOG_ENTRIES equal slots. Each non-zero LOG_CTRL LOG_LEN
+// The log region is split into NumLogEntries equal slots. Each non-zero LOG_CTRL LOG_LEN
 // requests a transfer from its slot; an arbiter tree serves one entry at a time, and
 // LOG_LEN clears when that transfer completes.
 // log_fetch_axil reads log words from the slot; log_write_axil writes them to
@@ -52,7 +52,7 @@ module log_engine
   log_region_size_t log_region_size;
   log_fetch_addr_t  log_region_addr;
   log_write_addr_t  log_write_addr;
-  log_len_t         log_lens       [NUM_LOG_ENTRIES]; // Used unpacked array to fit structure of
+  log_len_t         log_lens       [NumLogEntries];   // Used unpacked array to fit structure of
                                                       // u_arbiter_tree.data_i
 
   // Current log entry
@@ -73,19 +73,19 @@ module log_engine
   // Arbitation Logic //
   //////////////////////
 
-  logic [NUM_LOG_ENTRIES-1:0] log_reqs;
+  logic [NumLogEntries-1:0] log_reqs;
 
   always_comb begin
-    for (int i = 0; i < NUM_LOG_ENTRIES; i++) begin
+    for (int i = 0; i < NumLogEntries; i++) begin
       log_reqs[i] = log_lens[i] != log_len_t'(0);
     end
   end
 
-  logic [NUM_LOG_ENTRIES-1:0] arb_gnt;
+  logic [NumLogEntries-1:0] arb_gnt;
 
   prim_arbiter_tree #(
-    .N          (NUM_LOG_ENTRIES),
-    .DW         (LOG_LEN_WIDTH),
+    .N          (NumLogEntries),
+    .DW         (LogLenWidth),
     .EnDataPort (1'b1)
   ) u_arbiter_tree (
     .clk_i,
@@ -135,9 +135,9 @@ module log_engine
   end
 
   axi_lite_from_mem #(
-    .MemAddrWidth    (LOG_FETCH_ADDR_WIDTH),
-    .AxiAddrWidth    (LOG_FETCH_ADDR_WIDTH),
-    .DataWidth       (LOG_FETCH_DATA_WIDTH),
+    .MemAddrWidth    (LogFetchAddrWidth),
+    .AxiAddrWidth    (LogFetchAddrWidth),
+    .DataWidth       (LogFetchDataWidth),
     .MaxRequests     (1),
     .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
     .axi_req_t       (log_fetch_axil_req_t),
@@ -174,7 +174,7 @@ module log_engine
 
   assign next_log_bytes_fetched =
       log_len_t'(log_words_fetched_cnt + log_words_fetched_cnt_t'(1)) *
-      log_len_t'(LOG_WORD_SIZE);
+      log_len_t'(LogWordSize);
 
   always_comb begin
     log_fetch_mem_req        = 1'b0;
@@ -246,14 +246,14 @@ module log_engine
     end
   end
 
-  // Valid programming is at most MAX_LOG_REGION_SIZE and aligned so every
+  // Valid programming is at most MaxLogRegionSize and aligned so every
   // slot contains complete fetch beats. The clamp and beat floor make invalid
   // programming safe without allowing a fetch to cross a slot boundary.
   assign supported_log_region_size =
-      log_region_size > log_region_size_t'(MAX_LOG_REGION_SIZE) ?
-      log_region_size_t'(MAX_LOG_REGION_SIZE) : log_region_size;
+      log_region_size > log_region_size_t'(MaxLogRegionSize) ?
+      log_region_size_t'(MaxLogRegionSize) : log_region_size;
   assign max_log_len = log_len_t'(
-      supported_log_region_size / log_region_size_t'(NUM_LOG_ENTRIES)
+      supported_log_region_size / log_region_size_t'(NumLogEntries)
   );
   assign max_transfer_len = log_word_floor(max_log_len);
   assign effective_log_len =
@@ -261,7 +261,7 @@ module log_engine
   assign log_word_addr =
       log_region_addr +
       log_fetch_addr_t'(max_log_len) * log_fetch_addr_t'(log_index) +
-      log_fetch_addr_t'(log_words_fetched_cnt) * log_fetch_addr_t'(LOG_WORD_SIZE);
+      log_fetch_addr_t'(log_words_fetched_cnt) * log_fetch_addr_t'(LogWordSize);
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
@@ -281,7 +281,7 @@ module log_engine
   ////////////////
 
   prim_fifo_sync #(
-    .Width             (LOG_FETCH_DATA_WIDTH),
+    .Width             (LogFetchDataWidth),
     .Pass              (1'b1),
     .Depth             (FIFO_DEPTH),
     .OutputZeroIfEmpty (1'b1),
@@ -323,9 +323,9 @@ module log_engine
   assign log_write_axil_resp = log_write_axil_resp_i;
 
   axi_lite_from_mem #(
-    .MemAddrWidth    (LOG_WRITE_ADDR_WIDTH),
-    .AxiAddrWidth    (LOG_WRITE_ADDR_WIDTH),
-    .DataWidth       (LOG_WRITE_DATA_WIDTH),
+    .MemAddrWidth    (LogWriteAddrWidth),
+    .AxiAddrWidth    (LogWriteAddrWidth),
+    .DataWidth       (LogWriteDataWidth),
     .MaxRequests     (1),
     .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
     .axi_req_t       (log_write_axil_req_t),
@@ -407,7 +407,7 @@ module log_engine
               log_write_fsm_state_next   = ST_LOG_WRITE_IDLE;
             end else begin  // Log write not done
               rdata_fifo_rd_ready =
-                                byte_ptr == log_word_byte_ptr_t'(LOG_WORD_SIZE - 1);
+                                byte_ptr == log_word_byte_ptr_t'(LogWordSize - 1);
 
               log_bytes_written_cnt_next = log_bytes_written_cnt +
                                                          log_bytes_written_cnt_t'(1);
@@ -509,7 +509,7 @@ module log_engine
 
   // LOG_CTRL Registers
   always_comb begin
-    for (int i = 0; i < NUM_LOG_ENTRIES; i++) begin
+    for (int i = 0; i < NumLogEntries; i++) begin
       log_lens[i] = reg_out.LOG_CTRL[i].LOG_LEN.value;
       if (log_index == log_index_t'(i)) begin
         reg_in.LOG_CTRL[i].LOG_LEN.hwclr = log_write_done;
@@ -524,39 +524,39 @@ module log_engine
   // Assertions //
   ////////////////
 
-  `OCAH_OT_ASSERT_INIT(paramCheckNumLogEntries, NUM_LOG_ENTRIES > 0)
+  `OCAH_OT_ASSERT_INIT(paramCheckNumLogEntries, NumLogEntries > 0)
   `OCAH_OT_ASSERT_INIT(LogLenMaximumRepresentable_A, $bits(log_len_t)
-                       == 16 && log_len_t'(MAX_LOG_LEN) == 16'h8000)
-  `OCAH_OT_ASSERT_INIT(NonAlignedSlotRoundsDown_A, log_word_floor(log_len_t'(LOG_WORD_SIZE + 7)
-                       ) == log_len_t'(LOG_WORD_SIZE))
-  `OCAH_OT_ASSERT_INIT(LogRegionAlignmentValid_A, LOG_REGION_ALIGNMENT == 128)
+                       == 16 && log_len_t'(MaxLogLen) == 16'h8000)
+  `OCAH_OT_ASSERT_INIT(NonAlignedSlotRoundsDown_A, log_word_floor(log_len_t'(LogWordSize + 7)
+                       ) == log_len_t'(LogWordSize))
+  `OCAH_OT_ASSERT_INIT(LogRegionAlignmentValid_A, LogRegionAlignment == 128)
 
   `OCAH_OT_ASSERT(SupportedLogRegionWithinMaximum_A,
-                  supported_log_region_size <= log_region_size_t'(MAX_LOG_REGION_SIZE))
+                  supported_log_region_size <= log_region_size_t'(MaxLogRegionSize))
   `OCAH_OT_ASSERT(
       SupportedLogRegionExactMin_A,
-      supported_log_region_size == (log_region_size > log_region_size_t'(MAX_LOG_REGION_SIZE) ? log_region_size_t'(MAX_LOG_REGION_SIZE) : log_region_size))
+      supported_log_region_size == (log_region_size > log_region_size_t'(MaxLogRegionSize) ? log_region_size_t'(MaxLogRegionSize) : log_region_size))
   `OCAH_OT_ASSERT(
       OversizeLogRegionClamped_A,
-      log_region_size > log_region_size_t'(MAX_LOG_REGION_SIZE) |-> supported_log_region_size == log_region_size_t'(MAX_LOG_REGION_SIZE))
+      log_region_size > log_region_size_t'(MaxLogRegionSize) |-> supported_log_region_size == log_region_size_t'(MaxLogRegionSize))
   `OCAH_OT_ASSERT(
       MaxLogLenExactFloor_A,
-      max_log_len == log_len_t'(supported_log_region_size / log_region_size_t'(NUM_LOG_ENTRIES)))
+      max_log_len == log_len_t'(supported_log_region_size / log_region_size_t'(NumLogEntries)))
   `OCAH_OT_ASSERT(MaxTransferLenExactFloor_A, max_transfer_len == log_word_floor(max_log_len))
   `OCAH_OT_ASSERT(MaxTransferRemainderBelowBeat_A,
-                  max_log_len - max_transfer_len < log_len_t'(LOG_WORD_SIZE))
+                  max_log_len - max_transfer_len < log_len_t'(LogWordSize))
   `OCAH_OT_ASSERT(
       MisalignedLogRegionRounded_A,
-      log_region_size % log_region_size_t'(LOG_REGION_ALIGNMENT) != log_region_size_t'(0) |-> max_transfer_len <= max_log_len)
+      log_region_size % log_region_size_t'(LogRegionAlignment) != log_region_size_t'(0) |-> max_transfer_len <= max_log_len)
   `OCAH_OT_ASSERT(TransferCapacityBeatAligned_A,
-                  max_transfer_len % log_len_t'(LOG_WORD_SIZE) == log_len_t'(0))
+                  max_transfer_len % log_len_t'(LogWordSize) == log_len_t'(0))
   `OCAH_OT_ASSERT(EffectiveLogLenWithinSlot_A, effective_log_len <= max_transfer_len)
   `OCAH_OT_ASSERT(EffectiveLogLenExactMin_A,
                   effective_log_len == (log_len > max_transfer_len ? max_transfer_len : log_len))
   `OCAH_OT_ASSERT(FetchResponseWithinSlot_A,
                   log_fetch_mem_resp_valid |-> next_log_bytes_fetched <= max_transfer_len)
   `OCAH_OT_ASSERT(FetchWordCounterWithinMaximum_A,
-                  log_words_fetched_cnt < log_words_fetched_cnt_t'(MAX_LOG_LEN / LOG_WORD_SIZE))
+                  log_words_fetched_cnt < log_words_fetched_cnt_t'(MaxLogLen / LogWordSize))
   `OCAH_OT_ASSERT_INIT(LogRegionAddrWidth_A, 32 + $bits
                        (reg_out.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value) == $bits(log_fetch_addr_t
                                                                                       ))

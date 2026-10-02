@@ -53,7 +53,7 @@ module jtag_caps_reg
     //--------------------------------------------------------------------------
     // Local Parameters
     //--------------------------------------------------------------------------
-    localparam int unsigned REG_WIDTH = 60;  // JTAG_CAPS register: 60 bits (bits 0-59)
+    localparam int unsigned RegWidth = 60;  // JTAG_CAPS register: 60 bits (bits 0-59)
 
     //--------------------------------------------------------------------------
     // Local Type Definitions
@@ -97,7 +97,7 @@ module jtag_caps_reg
     // [8]     = bsr_inst_en (1 bit)
     // [7:0]   = och_ver (8 bits)
 
-    localparam logic [REG_WIDTH-1:0] CAPS_VALUE = {
+    localparam logic [RegWidth-1:0] CapsValue = {
         u6_t'(NUM_XTRIG_INT_CT),       // Bits [59:54] - num_xtrig_int_ct
         u6_t'(NUM_XTRIG_CTP),          // Bits [53:48] - num_xtrig_ctp
         u4_t'(NUM_EXTRA_STAPS),        // Bits [47:44] - num_xtra_stap
@@ -123,16 +123,16 @@ module jtag_caps_reg
     // JTAG Capabilities Register
     //--------------------------------------------------------------------------
     // 60-bit read-only capabilities register
-    // Always captures the CAPS_VALUE on capture, shifts on shift
+    // Always captures the CapsValue on capture, shifts on shift
     prim_jtag_scan_reg #(
-        .WIDTH(REG_WIDTH),
-        .RESET_VAL(CAPS_VALUE),
+        .WIDTH(RegWidth),
+        .RESET_VAL(CapsValue),
         .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
     ) u_caps_scan_reg (
         .scan_ctrl_i   (scan_ctrl_i),
         .scan_in_i     (scan_in_i),
         .scan_out_o    (scan_out_o),
-        .data_in_i     (CAPS_VALUE),  // Always capture the capabilities value (read-only)
+        .data_in_i     (CapsValue),  // Always capture the capabilities value (read-only)
         /* verilator lint_off PINCONNECTEMPTY */
         .data_out_o    (/* UNUSED */) // No update register needed for read-only capabilities
         /* verilator lint_on PINCONNECTEMPTY */

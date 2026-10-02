@@ -107,14 +107,14 @@ module sep_crypto_otbn_wrapper (
     assign otbn_keymgr_key.key[1][i*32 +: 32] = key_csr_hwif_out.KEY_SHARE1[i].data.value;
   end
 
-  localparam int unsigned OTBN_KEY_CSR_ADDR_WIDTH = otbn_wrapper_key_reg_pkg::OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned OtbnKeyCsrAddrWidth = otbn_wrapper_key_reg_pkg::OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH;
 
   otbn_wrapper_key_reg u_otbn_wrapper_key_reg (
     .clk       (clk_i),
     .arst_n    (rst_ni),
 
     .s_axil_awvalid (otbn_key_axil_req_i.aw_valid),
-    .s_axil_awaddr  (otbn_key_axil_req_i.aw.addr[OTBN_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_awaddr  (otbn_key_axil_req_i.aw.addr[OtbnKeyCsrAddrWidth-1:0]),
     .s_axil_awprot  (otbn_key_axil_req_i.aw.prot),
     .s_axil_awready (otbn_key_axil_resp_o.aw_ready),
 
@@ -128,7 +128,7 @@ module sep_crypto_otbn_wrapper (
     .s_axil_bresp   (otbn_key_axil_resp_o.b.resp),
 
     .s_axil_arvalid (otbn_key_axil_req_i.ar_valid),
-    .s_axil_araddr  (otbn_key_axil_req_i.ar.addr[OTBN_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_araddr  (otbn_key_axil_req_i.ar.addr[OtbnKeyCsrAddrWidth-1:0]),
     .s_axil_arprot  (otbn_key_axil_req_i.ar.prot),
     .s_axil_arready (otbn_key_axil_resp_o.ar_ready),
 

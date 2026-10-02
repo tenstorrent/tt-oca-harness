@@ -21,7 +21,7 @@
 /* Maximum number of devices on the I3C bus. */
 #define I3C_MAX_DEVICES 11
 
-/* I3C controller instances in the SMC; must match smc_config_pkg::NUM_I3C. */
+/* I3C controller instances in the SMC; must match smc_config_pkg::NumI3c. */
 #define I3C_NUM_CONTROLLERS 6
 
 /* Command wait bound; 0 = unbounded, which is what every caller gets today.

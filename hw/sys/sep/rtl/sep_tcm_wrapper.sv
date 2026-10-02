@@ -28,14 +28,14 @@ module sep_tcm_wrapper
   if (pt.DCCM_ENABLE == 1) begin : gen_dccm
     logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_FDATA_WIDTH-1:0] dccm_wr_fdata_bank;
     logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_FDATA_WIDTH-1:0] dccm_bank_fdout;
-    localparam int unsigned DCCM_INDEX_DEPTH = pt.DCCM_SIZE * 1024 / (pt.DCCM_BYTE_WIDTH * pt.DCCM_NUM_BANKS); // Depth of memory bank
+    localparam int unsigned DccmIndexDepth = pt.DCCM_SIZE * 1024 / (pt.DCCM_BYTE_WIDTH * pt.DCCM_NUM_BANKS); // Depth of memory bank
 
     for (genvar i = 0; i < pt.DCCM_NUM_BANKS; i++) begin : gen_bank
       assign dccm_wr_fdata_bank[i][pt.DCCM_FDATA_WIDTH-1:0] = {tcm_req_i.dccm_wr_ecc_bank[i], tcm_req_i.dccm_wr_data_bank[i]};
       assign tcm_rsp_o.dccm_bank_dout[i] = dccm_bank_fdout[i][31:0];
       assign tcm_rsp_o.dccm_bank_ecc [i] = dccm_bank_fdout[i][38:32];
 
-      case (DCCM_INDEX_DEPTH)
+      case (DccmIndexDepth)
         32768: begin : gen_dccm_ram
           ram_32768x39 u_ram (
             // Primary ports
@@ -257,7 +257,7 @@ module sep_tcm_wrapper
           );
         end
         default: begin : gen_invalid_ram
-          $error("Invalid DCCM_INDEX_DEPTH: %d", DCCM_INDEX_DEPTH);
+          $error("Invalid DccmIndexDepth: %d", DccmIndexDepth);
           $fatal;
         end
       endcase
