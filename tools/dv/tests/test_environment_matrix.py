@@ -41,11 +41,8 @@ HOSTED_WORKFLOWS = (
     REPO_ROOT / ".github/workflows/sim.yml",
     REPO_ROOT / ".github/workflows/regress.yml",
 )
-# A matrix row runs on the hosted image, or on the label the repository variable names with the
-# hosted image as its fallback.
-HOSTED_RUNNER_RE = re.compile(
-    r"^(ubuntu-latest|\$\{\{ vars\.DV_LARGE_RUNNER \|\| 'ubuntu-latest' \}\})$"
-)
+# Every hosted matrix row runs on the standard GitHub-hosted image.
+HOSTED_RUNNER_RE = re.compile(r"^ubuntu-latest$")
 
 # The two tools a bare clone runs with no license: the open simulator and the open formal backend.
 LICENSE_FREE_TOOLS = {"verilator", "sby"}
