@@ -530,15 +530,17 @@ grades ROM *hardware* access only (`sep_boot_rom_smoke_test`,
 
 A named ROM run needs the Boot ROM + manifest + BL1 image. Each test declares
 both keys of a `firmware = { name = ..., mode = ... }` pair (`mode` alone does not
-select a `[c_build.*]` block), and the three profiles select three different
-blocks in `sep_sim_cfg.toml`, all driving `hw/sys/sep/bootrom/prod/Makefile`:
+select a `[c_build.*]` block), and the two profiles select two different blocks
+in `sep_sim_cfg.toml`, both driving `hw/sys/sep/bootrom/prod/Makefile`:
 
-`boot_rom`:: `sep_rom_non_secure_boot_test` — `[c_build.boot_rom]`, the SMC-SRAM
-  manifest path.
-`boot_rom_ot`:: `sep_rom_ot_dma_boot_test` and `sep_rom_ot_secure_boot_test` —
-  `[c_build.boot_rom_ot]`, the OpenTitan SPI host with the SECURE_DMA drain.
-`boot_rom_ot_pio`:: `sep_rom_ot_pio_boot_test` — `[c_build.boot_rom_ot_pio]`, the
-  same transport with the CPU-PIO drain.
+`boot_rom`:: `[c_build.boot_rom]`, built into `build/`, drains the SPI RX FIFO
+  with the secure DMA. `sep_rom_non_secure_boot_test` boots this image down the
+  SMC-SRAM manifest path and `sep_rom_ot_dma_boot_test` /
+  `sep_rom_ot_secure_boot_test` boot it over the SPI host: which path runs is a
+  strap set at run time, not a build difference.
+`boot_rom_pio`:: `[c_build.boot_rom_pio]`, built into `build_pio/`, drains the
+  RX FIFO by CPU programmed I/O instead. `sep_rom_ot_pio_boot_test` is its only
+  user.
 
 The one prerequisite a build step must not mutate git for is the manifest packer
 submodule; without it the pack half dies with `No module named tt_boot_manifest`:

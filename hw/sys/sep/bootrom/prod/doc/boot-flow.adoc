@@ -26,6 +26,7 @@ if (cold_scratch[7] is zero?) then (yes)
 else (no)
   if (Value is in ICCM?) then (yes)
     :Report warm dispatch;
+    :Poison cold_scratch[7] with 0;
     :Jump to BL1 warm handler;
     stop
   else (no)
