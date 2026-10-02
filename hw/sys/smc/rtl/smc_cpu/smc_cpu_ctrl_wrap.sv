@@ -228,19 +228,17 @@ module smc_cpu_ctrl_wrap #(
   assign reset_wdt_count = ~{(NUM_CPU_CORES){rst_primary_ni}} | count_reset[NUM_CPU_CORES-1:0] | ~wdt_timeout_cluster_i[NUM_CPU_CORES-1:0];
 
   // wdt_timeout_cluster_i is from the rst_uncore_ni domain, which can be async reset, being captured on clk_smc_i
-  generate
-    for (genvar i = 0; i < NUM_CPU_CORES; i = i + 1) begin : gen_core_cycle_count
-      always_ff @(posedge clk_smc_i) begin
-        if (reset_wdt_count[i]) begin
-          cycle_count[i] <= max_count;
-        end else begin
-          if (wdt_timeout_cluster_i[i] && (cycle_count[i] != 32'h0)) begin
-            cycle_count[i] <= cycle_count[i] - 32'd1;
-          end
+  for (genvar i = 0; i < NUM_CPU_CORES; i = i + 1) begin : gen_core_cycle_count
+    always_ff @(posedge clk_smc_i) begin
+      if (reset_wdt_count[i]) begin
+        cycle_count[i] <= max_count;
+      end else begin
+        if (wdt_timeout_cluster_i[i] && (cycle_count[i] != 32'h0)) begin
+          cycle_count[i] <= cycle_count[i] - 32'd1;
         end
       end
     end
-  endgenerate
+  end
 
   always_comb begin
     smc_wdt_timeout = {(MaxCPUCores) {1'b0}};
@@ -412,30 +410,28 @@ module smc_cpu_ctrl_wrap #(
   // Reset Control Logic //
   /////////////////////////
 
-  generate
-    for (genvar i = 0; i < MaxCPUCores; i++) begin : gen_pulse
-      if (i < NUM_CPU_CORES) begin : gen_pulse_core_resets
-        prim_pulse_signal #(
-          .COUNT_WIDTH(16),
-          .IS_ACTIVE_HIGH(0)
-        ) u_pulse_core_reset (
-          .clk_i(clk_smc_i),
-          .rst_ni(rst_primary_ni),
+  for (genvar i = 0; i < MaxCPUCores; i++) begin : gen_pulse
+    if (i < NUM_CPU_CORES) begin : gen_pulse_core_resets
+      prim_pulse_signal #(
+        .COUNT_WIDTH(16),
+        .IS_ACTIVE_HIGH(0)
+      ) u_pulse_core_reset (
+        .clk_i(clk_smc_i),
+        .rst_ni(rst_primary_ni),
 
-          .pulse_start_i(core_resets_pulse_start[i]),
-          .pre_pulse_wait_i(pre_reset_pulse_wait),
-          .post_pulse_wait_i(post_reset_pulse_wait),
+        .pulse_start_i(core_resets_pulse_start[i]),
+        .pre_pulse_wait_i(pre_reset_pulse_wait),
+        .post_pulse_wait_i(post_reset_pulse_wait),
 
-          .pulse_in_i(int_core_reset_n[i]),
-          .pulse_out_o(core_reset_pulse_out[i]),
-          .pulse_done_o(core_reset_pulse_done[i])
-        );
-      end else begin : gen_tie_off_core_reset_and_done
-        assign core_reset_pulse_out[i] = 1'b0;
-        assign core_reset_pulse_done[i] = 1'b1;
-      end
+        .pulse_in_i(int_core_reset_n[i]),
+        .pulse_out_o(core_reset_pulse_out[i]),
+        .pulse_done_o(core_reset_pulse_done[i])
+      );
+    end else begin : gen_tie_off_core_reset_and_done
+      assign core_reset_pulse_out[i] = 1'b0;
+      assign core_reset_pulse_done[i] = 1'b1;
     end
-  endgenerate
+  end
 
 
   // Software-reset drain handshake: one `withhold` holds off the software reset

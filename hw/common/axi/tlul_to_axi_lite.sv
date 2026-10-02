@@ -83,16 +83,14 @@ module tlul_to_axi_lite
 	// TL-UL Incoming Command Integrity Checking
 	// --------------------------------------------------
 	logic intg_err;
-	generate
-		if (CMD_INTG_CHECK) begin : gen_cmd_intg_check
-			tlul_cmd_intg_chk u_cmd_intg_chk (
-				.tl_i(tl_i),
-				.err_o(intg_err)
-			);
-		end else begin : gen_no_intg_check
-			assign intg_err = 1'b0;
-		end
-	endgenerate
+	if (CMD_INTG_CHECK) begin : gen_cmd_intg_check
+		tlul_cmd_intg_chk u_cmd_intg_chk (
+			.tl_i(tl_i),
+			.err_o(intg_err)
+		);
+	end else begin : gen_no_intg_check
+		assign intg_err = 1'b0;
+	end
 
 	// --------------------------------------------------
 	// FSM Sequential Logic
