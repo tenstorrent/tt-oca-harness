@@ -1503,6 +1503,10 @@ and is empty when the publisher recorded none.
 The overview shows `coverage_total_percent`. The block page shows
 `results[].coverage.effective_metrics`.
 
+Percentages on the pages and on the badges share three colour bands, set by
+`PASS_AT` and `WARN_AT` in both `doc/ui-supplemental/js/dashboard.js` and
+`tools/doc/render_badges.py`. The two pairs must agree.
+
 === Charts
 
 Charts are drawn with https://echarts.apache.org[Apache ECharts], vendored

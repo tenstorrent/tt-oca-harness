@@ -18,8 +18,8 @@
   var TEST_HISTORY_URL = './data/test-history.json';
 
   // Bands shared by pass rate and every coverage column.
-  var PASS_AT = 95;
-  var WARN_AT = 70;
+  var PASS_AT = 98;
+  var WARN_AT = 85;
 
   var GRID_LINE = '#e6e6e6';
 
