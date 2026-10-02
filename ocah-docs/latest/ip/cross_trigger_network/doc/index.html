@@ -1004,7 +1004,13 @@ CTPs and the CTM.</p>
 <div class="paragraph">
 <p>The CTN provides a unified CSR address space accessed via a single AXI-Lite
 subordinate port. An internal AXI-Lite crossbar (<code>axi_lite_xbar</code>) routes
-transactions to the CTM and external CTPs based on address decoding.</p>
+transactions to the CTM and external CTPs based on address decoding. The
+crossbar registers all five channels at the subordinate port, so no
+combinational path runs from the port&#8217;s inputs to its outputs, and each
+channel adds one cycle of latency. Each channel&#8217;s register holds up to two
+beats and keeps its READY high while it holds fewer than two. The crossbar
+serves one CSR access at a time, so the port can accept a second request on
+a channel while the crossbar is still serving the first.</p>
 </div>
 <div class="paragraph">
 <p><a href="#ctn-address-allocation-table">Table 2</a> lists the CTM and external-CTP address ranges.</p>
