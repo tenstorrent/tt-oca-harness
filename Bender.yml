@@ -4,23 +4,37 @@
 package:
   name: tt-oca-harness
   authors:
+    # Tenstorrent
     - "Noah Betik <nbetik@tenstorrent.com>"
     - "Nicole Boettcher <nboettcher@tenstorrent.com>"
+    - "Grace Chang <gchang@tenstorrent.com>"
     - "Frank Chen <fchen@tenstorrent.com>"
     - "Zhimin Chen <zhiminchen@tenstorrent.com>"
     - "Carlos Gewehr <cgewehr@tenstorrent.com>"
     - "Minshao Ho <minshaoho@tenstorrent.com>"
     - "Andrew Hsiao <ahsiao@tenstorrent.com>"
     - "Bruce Hsu <brucehsu@tenstorrent.com>"
+    - "Daniel Kim <danielkim@tenstorrent.com>"
     - "Henry Lai <yenhenglai@tenstorrent.com>"
     - "Leo Li <lizhili@tenstorrent.com>"
     - "Haohao Liao <hliao@tenstorrent.com>"
+    - "Calvin McCoy <cmccoy@tenstorrent.com>"
     - "Ben Melton <bmelton@tenstorrent.com>"
     - "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
     - "Kai Qin <kqin@tenstorrent.com>"
     - "Paul Scheidt <pscheidt@tenstorrent.com>"
     - "Adam Taback <ataback@tenstorrent.com>"
-    - "Grace Chang <gchang@tenstorrent.com>"
+    - "Nils Wistoff <nwistoff@tenstorrent.com>"
+    # lowRISC
+    - "Jay Alphey <jay.alphey@lowrisc.org>"
+    - "Tye Buckingham <tye.buckingham@lowrisc.org>"
+    - "Daniel Green <daniel.green@lowrisc.org>"
+    - "Martin Jackson <martin.jackson@lowrisc.org>"
+    - "Luís Marques <luismarques@lowrisc.org>"
+    - "James McCorrie <james.mccorrie@lowrisc.org>"
+    - "Colin McKellar <colin.mckellar@lowrisc.org>"
+    - "Rupert Swarbrick <rswarbrick@lowrisc.org>"
+    - "Alice Ziuziakowska <a.ziuziakowska@lowrisc.org>"
 
 # Path dependencies on the vendored trees (transitive pins in Bender.local).
 dependencies:

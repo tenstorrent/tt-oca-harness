@@ -177,5 +177,6 @@ STAP,stap,STAPs,staps,EDN,edn,OT,hart,Hart,THRE,thre,WEL,DED,ded,\
 inout,Inout,ist,wit,dout,oen,chainIn,LockIn,DAA,clen,aack,thi,pres,te,\
 Dum,ND,nd,RUNN,ASSIGNIN,Synopsys,synopsys,unsecure,Unsecure,UNSECURE,\
 interruptor,Interruptor,interruptors,Interruptors,\
-SpecField,specfield\
+SpecField,specfield,\
+Tye,tye\
 """
