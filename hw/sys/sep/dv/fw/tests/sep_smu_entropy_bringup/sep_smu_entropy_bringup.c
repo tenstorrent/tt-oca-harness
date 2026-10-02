@@ -4,22 +4,21 @@
 /*
  * sep_smu_entropy_bringup - SEP entropy stack brought up from firmware.
  *
- * Runs the ESRC -> CSRNG -> EDN bring-up that hw/sys/sep/dv/fw/drivers/
- * sep_entropy.h already provides, in the order that driver documents:
+ * Runs the sep_entropy.h ESRC -> CSRNG -> EDN bring-up in the driver's order:
  *
- *   1. sep_entropy_configure()        PHASE-A: mux, ESRC config with the
- *                                     generators OFF, CSRNG enable, EDN
- *                                     commands staged but EDN still disabled.
+ *   1. sep_entropy_configure()        PHASE-A: ESRC set up with generators
+ *                                     off, CSRNG enabled, EDN commands staged.
  *   2. sep_entropy_start_generators() turn the ring-osc generators on.
- *   3. spin so a first seed can accumulate.
+ *   3. sep_entropy_wait_boot_phase()  wait for the ESRC boot phase to finish.
  *   4. sep_entropy_enable_edn()       PHASE-B: enable EDN last.
  *
  * The order is a hardware constraint (EDN commands are staged before EDN is
- * enabled), so each phase gets its own fail loop and the testbench can tell
- * which one did not take.
+ * enabled). Each checked phase has its own fail loop so the testbench can tell
+ * which one did not take. The test calls the phases rather than
+ * sep_entropy_bringup() because the phase boundaries are what it checks.
  *
- * The raw noise itself comes from the testbench: under Verilator the ESRC ring
- * oscillators do not self-oscillate, so +esrc_noise_force drives the 12
+ * The raw noise comes from the testbench: under Verilator the ESRC ring
+ * oscillators do not self-oscillate, so +esrc_noise_force drives the
  * decorrelator lanes. Everything this firmware programs, and everything the
  * hardware then does with that noise, is real.
  *
@@ -42,12 +41,6 @@
 #define PH_GENERATORS 0x5EED0003u
 #define PH_BOOT_PHASE_DONE 0x5EED0004u
 #define PH_EDN_ENABLED 0x5EED0005u
-
-/* The boot-gate poll, its bound, and the MAIN_SM_STATUS bit names all live in
- * sep_entropy.h so this test and sep_entropy_bringup()'s callers agree on one
- * definition. This test still drives the four phases separately rather than
- * calling sep_entropy_bringup(), because the phase boundaries are its subject:
- * it marks each one in scratch and checks the readback in between. */
 
 __attribute__((used, noinline, noreturn)) void sep_smu_entropy_pass_loop(void) {
     while (1) {
@@ -101,7 +94,6 @@ int main(void) {
     WRITE_REG(SC_PHASE, PH_CONFIGURED);
     fence_io();
 
-    /* Generators on. */
     sep_entropy_start_generators();
     fence_io();
     if (READ_REG(SEP_ESRC_RING_OSC_ENABLE) != SEP_RING_OSC_ALL_ON) {
@@ -110,10 +102,9 @@ int main(void) {
     WRITE_REG(SC_PHASE, PH_GENERATORS);
     fence_io();
 
-    /* Wait for the entropy source's own boot gate rather than for a fixed
-     * delay. Until BOOT_PHASE_DONE asserts, entropy_stream_valid is gated and
-     * enabling EDN would issue an Instantiate against a source that cannot
-     * answer it. */
+    /* Wait for the entropy source's own boot gate rather than a fixed delay.
+     * Until it opens the entropy stream is gated, and enabling EDN would issue
+     * an Instantiate that the source cannot answer. */
     switch (sep_entropy_wait_boot_phase()) {
     case SEP_ENTROPY_OK:
         break;

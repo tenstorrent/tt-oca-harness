@@ -569,6 +569,24 @@ class ExpectFailRunStage(unittest.TestCase):
                 self.assertEqual(record["matched_failure"], nodes[-1][:400])
                 self.assertEqual(len(record["observed_failures"]), min(len(nodes), 8))
 
+    def test_a_cocotb_file_that_reads_as_a_pass_gets_graded_xml_only_when_the_leaf_fails(self):
+        xml = self.leaf_xml()
+        graded = xml.with_name("graded.xml")
+        body = "<testsuites><testsuite><testcase name='t_x'/></testsuite></testsuites>"
+        for log, status in (("TEST FAILED", "PASS"), ("TEST PASSED", "FAIL")):
+            with self.subTest(log=log):
+                xml.parent.mkdir(parents=True, exist_ok=True)
+                xml.write_text(body)
+                result = self.run_leaf(None, log=log, framework="cocotb", tool="verilator")
+                self.assertEqual(result.status, status, result.reason)
+                self.assertEqual(xml.read_text(), body)
+                if status == "PASS":
+                    self.assertFalse(graded.exists())
+                    continue
+                failure = ET.parse(graded).getroot().find("./testsuite/testcase/failure")
+                assert failure is not None
+                self.assertEqual(failure.get("type"), "expected_fail_passed")
+
     def test_a_cocotb_leaf_never_grades_a_previous_synthesized_xml(self):
         xml = self.leaf_xml()
         xml.parent.mkdir(parents=True)

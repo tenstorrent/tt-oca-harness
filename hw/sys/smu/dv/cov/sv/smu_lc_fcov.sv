@@ -30,7 +30,7 @@ module smu_lc_fcov #(
   input wire rst_primary_smc_clk_ni,
 
   // Lifecycle broadcast at the SMU boundary.
-  input wire [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,
+  input wire [2*smc_pkg::LcStateWidth-1:0] lc_state_i,
   input wire [1:0] lcc_demote_state_1_i,
   input wire [1:0] lcc_demote_state_2_i,
 

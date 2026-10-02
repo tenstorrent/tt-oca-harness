@@ -37,7 +37,7 @@ from sep_reg_meta import sym
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # The dispatch runs before any transport is selected, so the SPI build variant is
 # irrelevant; reuse the OT one rather than adding a firmware profile.
-_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
+_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 # WARM_HANDLER_RANGE_BASE / _END in vector.S, named by symbol rather than line.

@@ -46,7 +46,7 @@ XTRIG_SMC_CLK_STOP_LANES = 1
 DTP_NUM_INT_CT = XTRIG_NUM_INT_CT + XTRIG_SMC_INT_CT_LANES
 DTP_NUM_CLK_STOP_REQ = XTRIG_NUM_CLK_STOP_REQ + XTRIG_SMC_CLK_STOP_LANES
 # hw/sys/smc/doc/port_table.adoc `smc_ext_interrupts_i` ("Width is 256") and
-# hw/sys/smc/doc/interrupts.adoc (`NUM_EXT_INTERRUPTS = 256`): the SMC port that
+# hw/sys/smc/doc/interrupts.adoc (`NumExtInterrupts = 256`): the SMC port that
 # the SMU `smc_ext_interrupts_i` row (`[CFG.NUM_INT_TO_SMC-1:0]`) feeds.
 NUM_INT_TO_SMC = 256
 # hw/sys/smu/doc/port_table.adoc `lc_state_o` (`[2*LC_STATE_WIDTH-1:0]`, tie

@@ -1,14 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// smc_uart_log_engine_region_size_test
-//
-// Verify per-entry slot start address math:
-//   slot_i_base = LOG_REGION_ADDR + (LOG_REGION_SIZE / NUM_LOG_ENTRIES) * i
-// With NUM_LOG_ENTRIES=16 and LOG_REGION_SIZE=256, each slot is 16 bytes.
-//
-// Pre-load each slot with a unique pattern (byte j of slot i = ((i << 4) | j)),
-// then trigger one entry at a time, verify the read-back bytes match the slot.
+/**
+ * @brief UART Log Engine Region Size - Per-Entry Slot Addressing
+ *
+ * Verifies that the log engine divides its log region evenly among its 16
+ * entries: with a 256-byte region, each entry triggered alone sends exactly its
+ * own 16-byte slot in order, and no error is raised.
+ */
 
 #include <stdint.h>
 
@@ -87,7 +86,7 @@ int main(void) {
     info_msg_s(0, "smc_uart_log_engine_region_size_test start");
 
     //--------------------------------------------------------------------------
-    // Pre-load each slot with a unique pattern: slot i, byte j = (i<<4)|j
+    // Each byte encodes its slot and its offset within the slot
     //--------------------------------------------------------------------------
     volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
     for (uint32_t i = 0; i < NUM_ENTRIES; i++) {
@@ -97,15 +96,16 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // UART loopback + engine setup (mirror of single_entry_test)
+    // UART at the fastest rate with 8-bit words, FIFOs and internal loopback,
+    // so every byte the engine writes comes back on the receive side
     //--------------------------------------------------------------------------
     write_reg(WRAP0_CTRL_REG, 1u);
     write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u);
     write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u);
     write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u);
     write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u);
-    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u); // LOOP
-    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u); // FCR.FIFO_EN
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u);
+    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u);
     write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x01u);
 
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
@@ -117,9 +117,8 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
 
     //--------------------------------------------------------------------------
-    // Positive control for the terminal "INTR_STATUS & 0x11 == 0" check: drive
-    // both status bits through INTR_TEST, then clear them, so the end-of-test
-    // zero is a checked outcome.
+    // Show both error status bits can be set and cleared, so the zero status
+    // checked at the end of the test is meaningful.
     {
         const uint32_t both =
             LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm | LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bm;
@@ -132,7 +131,6 @@ int main(void) {
             test_fail(0);
         }
         info_msg_hex32_s(0, "  positive control: INTR_TEST set status=", s);
-        /* Mask before W1C: while ENABLE is set the level source re-latches. */
         write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, both);
         s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & both;
@@ -144,16 +142,13 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // For each entry, trigger SLOT_SIZE bytes, verify the read-back stream
-    // matches (i << 4) | j for j in 0..SLOT_SIZE-1.
+    // Each entry must send exactly its own slot's bytes, in order
     //--------------------------------------------------------------------------
     for (uint32_t i = 0; i < NUM_ENTRIES; i++) {
         info_msg_hex32_s(0, "region_size: entry=", i);
 
-        // Trigger
         write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF + (i * 4u), SLOT_SIZE);
 
-        // Drain SLOT_SIZE bytes and check
         for (uint32_t j = 0; j < SLOT_SIZE; j++) {
             uint8_t b;
             if (read_byte_with_timeout(&b) != 0) {
@@ -173,7 +168,7 @@ int main(void) {
             }
         }
 
-        // Wait for LOG_CTRL[i] to clear
+        // Hardware clears the entry length when the transfer completes
         {
             uint32_t t = 200u; /* bound expires before the harness timeout */
             while (t > 0u &&
@@ -196,14 +191,10 @@ int main(void) {
         }
     }
 
-cleanup:
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0u);
     write_reg(WRAP0_CTRL_REG, 0u);
 
     info_msg_s(0, "smc_uart_log_engine_region_size_test done");
     test_pass(0);
-
-    while (1) __asm__("wfi");
-    return 0;
 }

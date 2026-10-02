@@ -35,17 +35,17 @@ interface i3c_coverage_if (
 );
 
   // Per-instance address window used to recover a register offset from an AXI address.
-  localparam int unsigned INSTANCE_SPACING =
+  localparam int unsigned InstanceSpacing =
         int'(oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_I3C_CSR_STRIDE);
 
   // Port offsets come from the generated address map, so a regeneration that moves
   // a port cannot leave this interface sampling a neighbouring register. The map
   // indexes by instance; index 0 gives the offset within any instance's window.
-  localparam logic [11:0] COMMAND_PORT_OFF  =
+  localparam logic [11:0] CommandPortOff  =
         12'(oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_COMMAND_PORT_BASE_ADDR(
       0
   ));
-  localparam logic [11:0] RESPONSE_PORT_OFF =
+  localparam logic [11:0] ResponsePortOff =
         12'(oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RESPONSE_PORT_BASE_ADDR(
       0
   ));
@@ -75,7 +75,7 @@ interface i3c_coverage_if (
   logic        stop_evt;
 
   function automatic logic [11:0] port_off(input logic [31:0] addr);
-    return addr % INSTANCE_SPACING;
+    return addr % InstanceSpacing;
   endfunction
 
   //***********************************************************************
@@ -91,7 +91,7 @@ interface i3c_coverage_if (
   // data beat is observed. Qualify against the live address whenever one is handshaking.
   wire [31:0] wr_addr = (awvalid && awready) ? awaddr : last_awaddr;
   wire        cmd_port_write = wvalid && wready &&
-                                 (port_off(wr_addr) == COMMAND_PORT_OFF);
+                                 (port_off(wr_addr) == CommandPortOff);
 
   //***********************************************************************
   // Capture command-descriptor low word on COMMAND_PORT write
@@ -118,7 +118,7 @@ interface i3c_coverage_if (
   //***********************************************************************
   always @(posedge clk) begin
     resp_sample <= 1'b0;
-    if (rvalid && rready && (port_off(last_araddr) == RESPONSE_PORT_OFF)) begin
+    if (rvalid && rready && (port_off(last_araddr) == ResponsePortOff)) begin
       resp_err    <= rdata[31:28];   // err_status[31:28] (matches i3c_api / HCI response)
       resp_sample <= 1'b1;
     end

@@ -8,13 +8,12 @@
 #include "sep_smu_lc_handoff_protocol.h"
 
 /*
- * smu_lifecycle_security_handoff -- SMC PVT-arm firmware.
+ * SMU lifecycle security handoff - SMC PVT arm firmware.
  *
- * Programs COMBINED_PVT process-clock observation (card sequence from
- * combined_pvt_sanity) plus dedicated-pad hw2_ovrd clear, then publishes
- * PVT_EN on scratch2. Stackless: no function calls in main().
- *
- * SEP cannot reach 0xC040_3xxx over the SEP->SMC alias (access fault / trap).
+ * Arms the PVT process-clock observation and clears the observation pad's
+ * hardware override, then tells the SEP that PVT is enabled. The SEP cannot
+ * reach the SMC PVT registers through its alias window, so the SMC does it.
+ * The image is stackless: main() makes no function calls.
  */
 SMC_STACKLESS_ENTRY(smu_sep_lc_handoff_entry)
 

@@ -3,67 +3,13 @@
 
 /**
  * @file i2c_smbus_model_test.c
- * @brief I2C SMBus Alert Test against the SV SMBus peer - OpenTitan I2C Version
+ * @brief I2C SMBus Alert Test against the testbench SMBus peer
  *
- * =============================================================================
- * Test Purpose
- * =============================================================================
- *
- * This test verifies SMBus Alert and Suspend functionality of the OpenTitan
- * I2C IP:
- *   - SMBus Alert (SMBALERT#): Device -> Host signal propagation
- *   - Alert Response Address (ARA): Host reads alert source
- *   - Interrupt status and clearing (INTR_STATE.SMBALERT set, then W1C)
- *
- * SMBSUS# is driven in Step 5 but is NOT verified here -- see the Step 5 note
- * in the Test Flow section below.
- *
- * =============================================================================
- * Test Architecture
- * =============================================================================
- *
- * LEVEL 1: Wrapper Control (0xC0009E00)
- *   - Controls GPIO pad multiplexing
- *   - Selects I2C mode (Controller/Target)
- *   - MUST be configured FIRST before IP-level configuration
- *
- * LEVEL 2: OpenTitan I2C IP Control (0xC0009000 + 0x200*idx)
- *   - OpenTitan I2C IP protocol layer
- *   - Handles SMBus Alert/Suspend signals
- *   - Base addresses:
- *     * I2C_0: 0xC0009000 (Target/Device)
- *     * I2C_1: 0xC0009200 (Controller/Host)
- *     * I2C_2: 0xC0009400 (Controller/Host)
- *
- * =============================================================================
- * Test Flow
- * =============================================================================
- *
- * 1. System Initialization
- *    - Peripheral reset and clock setup
- *
- * 2. LEVEL 1 - Enable I2C Wrapper
- *    - Enable I2C_0 as Controller mode (for ARA read)
- *
- * 3. LEVEL 2 - Initialize I2C IP
- *    - Initialize I2C_0 as Controller
- *    - External SV model (pmbus_slave_i2c0 @ 0x40) acts as Target
- *
- * 4. Test SMBus Alert (Device -> Host)
- *    - Device asserts SMBALERT#
- *    - Host detects alert status
- *    - Host detects alert interrupt
- *    - Host performs ARA read (0x0C)
- *    - Verify alert cleared after ARA
- *
- * 5. Drive SMBus Suspend (Host -> Device) -- stimulus only, not checked
- *    - Host asserts SMBSUS#, then deasserts it
- *    - Nothing observes it: the SMBus peer in this testbench
- *      (tb_uvm/sv/I2C_SMBUS_MODEL.sv) hardwires SMBSUS_N = 1'bz and samples
- *      that pin nowhere, so no "device detected suspend" fact exists to check
- *      and none is reported. See Step 5 below.
- *
- * =============================================================================
+ * Checks SMBus alert handling on I2C_0 as controller against the SMBus peer
+ * in the testbench: the alert reaches the SMBus status and the alert
+ * interrupt, the Alert Response Address read returns the peer's address, the
+ * alert clears after that read, and the interrupt clears on write-1-to-clear.
+ * SMBSUS# is driven but not checked, because the peer does not observe it.
  */
 
 #include <stdint.h>
@@ -78,10 +24,9 @@
 //=============================================================================
 
 /**
- * @brief Enable I2C Wrapper Control
+ * @brief Connect an I2C instance to the pads in controller or target mode.
  *
- * This is LEVEL 1 of the two-level I2C architecture.
- * Must be done BEFORE configuring the I2C IP.
+ * Must run before the I2C IP of that instance is configured.
  *
  * @param idx I2C instance (0, 1, or 2)
  * @param controller_mode true for Controller mode, false for Target mode
@@ -90,9 +35,9 @@ static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
     uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
 
     i2c_ctrl__I2C_CTRL_t ctrl = {.w = 0};
-    ctrl.f.I2C_EN = 1; // Enable GPIO pad mux
+    ctrl.f.I2C_EN = 1;
     ctrl.f.I2C_CONTROLLER_MODE_EN = controller_mode ? 1 : 0;
-    ctrl.f.SMBUS_EN = 1; // Enable SMBus functionality (CRITICAL for SMBALERT#/SMBSUS# routing)
+    ctrl.f.SMBUS_EN = 1; // Pass the SMBus alert signal through the wrapper
 
     write_reg(wrapper_addr, ctrl.w);
 
@@ -116,7 +61,7 @@ static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
 static bool wait_until(bool (*cond_fn)(uint32_t), uint32_t idx, bool expected,
                        uint32_t timeout_cycles) {
     uint32_t elapsed = 0;
-    uint32_t check_interval = timeout_cycles / 10; // Check every 10% of timeout
+    uint32_t check_interval = timeout_cycles / 10; // Report progress every 10% of the timeout
     if (check_interval == 0) check_interval = 1;
 
     while (timeout_cycles--) {
@@ -172,7 +117,6 @@ static bool smbus_get_alert_status(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
     bool status1, status2, status3;
 
-    // Read 1: Initial read
     i2c__SMBUS_STATUS_t smbus_status1 = {
         .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR(0) -
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -182,7 +126,6 @@ static bool smbus_get_alert_status(uint32_t idx) {
     for (volatile int i = 0; i < 100; i++)
         ;
 
-    // Read 2: Confirmation read
     i2c__SMBUS_STATUS_t smbus_status2 = {
         .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR(0) -
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -192,7 +135,6 @@ static bool smbus_get_alert_status(uint32_t idx) {
     for (volatile int i = 0; i < 100; i++)
         ;
 
-    // Read 3: Final confirmation
     i2c__SMBUS_STATUS_t smbus_status3 = {
         .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR(0) -
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -204,48 +146,11 @@ static bool smbus_get_alert_status(uint32_t idx) {
 }
 
 /**
- * @brief Check SMBus Alert interrupt status
- *
- * Reads INTR_STATE.SMBALERT twice and also accepts SMBUS_STATUS.SMBALERT.
- *
- * @param idx I2C instance index
- * @return true if alert interrupt is pending, false otherwise
- */
-static bool smbus_irq_alert_stat(uint32_t idx) {
-    uint32_t base = i2c_get_base(idx);
-    bool intr1, intr2;
-
-    // Method 1: Check INTR_STATE register
-    i2c__INTR_STATE_t intr_state = {
-        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
-                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    intr1 = intr_state.f.SMBALERT ? true : false;
-
-    // Settle between reads
-    for (volatile int i = 0; i < 50; i++)
-        ;
-
-    // Method 2: Re-read for confirmation
-    i2c__INTR_STATE_t intr_state2 = {
-        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
-                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    intr2 = intr_state2.f.SMBALERT ? true : false;
-
-    // Also check if SMBus status indicates alert (as backup verification)
-    bool smbus_alert_active = smbus_get_alert_status(idx);
-
-    // Either INTR_STATE read or the SMBUS_STATUS sample counts as alert
-    return intr1 || intr2 || smbus_alert_active;
-}
-
-/**
  * @brief INTR_STATE.SMBALERT, and nothing else.
  *
- * Deliberately not smbus_irq_alert_stat(): that one ORs in
- * smbus_get_alert_status(), which is the same SMBUS_STATUS predicate that
- * already gated CHECKERs 1/2, so it reports "interrupt pending" on a DUT whose
- * SMBALERT interrupt never fires. CHECKERs 3/5 name the interrupt, so they have
- * to sample the interrupt.
+ * CHECKERs 3, 5 and 11 name the interrupt, so they sample only the interrupt
+ * state; SMBUS_STATUS already gated CHECKERs 1/2 and would report an alert on
+ * a DUT whose SMBALERT interrupt never fires.
  *
  * @param idx I2C instance index
  * @return true if INTR_STATE.SMBALERT is set
@@ -266,50 +171,7 @@ static bool smbus_intr_alert_only(uint32_t idx) {
 static void smbus_clear_alert_irq(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
     i2c__INTR_STATE_t intr_clear = {.w = 0};
-    intr_clear.f.SMBALERT = 1; // Write 1 to clear
-    write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
-                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
-              intr_clear.w);
-}
-
-//=============================================================================
-// SMBus Suspend Functions
-//=============================================================================
-
-/**
- * @brief Check SMBus Suspend status (Target mode)
- *
- * @param idx I2C instance index
- * @return true if SMBSUS# is active (low), false otherwise
- */
-static bool smbus_get_suspend_status(uint32_t idx) {
-    uint32_t base = i2c_get_base(idx);
-    i2c__SMBUS_STATUS_t smbus_status = {
-        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_STATUS_BASE_ADDR(0) -
-                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    return smbus_status.f.SMBSUS ? true : false;
-}
-
-/**
- * @brief Check SMBus Suspend interrupt status
- *
- * @param idx I2C instance index
- * @return true if suspend interrupt is pending, false otherwise
- */
-static bool smbus_irq_suspend_stat(uint32_t idx) {
-    (void)idx; // Suppress unused parameter warning
-    // The I2C IP has no SMBSUS interrupt; SMBUS_STATUS.SMBSUS is the only observe path.
-    return false;
-}
-
-/**
- * @brief Clear SMBus Suspend interrupt
- *
- * @param idx I2C instance index
- */
-static void smbus_clear_suspend_irq(uint32_t idx) {
-    uint32_t base = i2c_get_base(idx);
-    i2c__INTR_STATE_t intr_clear = {.w = 0};
+    intr_clear.f.SMBALERT = 1;
     write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
               intr_clear.w);
@@ -320,15 +182,11 @@ static void smbus_clear_suspend_irq(uint32_t idx) {
 //=============================================================================
 
 int main(void) {
-    const uint32_t CONTROLLER_IDX =
-        0; // I2C_0 as Controller/Host (detects SMBALERT# and performs ARA)
-    const uint8_t SLAVE_ADDR = 0x40; // External SV model address (7-bit) - matches pmbus_slave_i2c0
-    uint32_t base;                   // I2C base address (used throughout the function)
+    const uint32_t CONTROLLER_IDX = 0;
+    const uint8_t SLAVE_ADDR = 0x40; // 7-bit address of the testbench SMBus peer
+    uint32_t base;
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
     simputs("\n");
     simputs("################################################\n");
     simputs("##  I2C SMBus Alert/Suspend Test             ##\n");
@@ -337,9 +195,6 @@ int main(void) {
     simputs("[MAIN] Firmware main() started\n");
     simputs("[MAIN] Test initialization complete\n");
 
-    //=========================================================================
-    // Step 1: System Initialization
-    //=========================================================================
     simputs("[MAIN] Entering Step 1: System Initialization\n");
     write_scratch(0, 0x00000010);
     write_scratch(1, 0x00000010);
@@ -351,19 +206,12 @@ int main(void) {
     simputs("[MAIN] Step 1 completed marker written (scratch[0]=0x11, scratch[1]=0x11)\n");
     simputs("[MAIN] Step 1 completed\n");
 
-    //=========================================================================
-    // Step 2: LEVEL 1 - Wrapper Control Enable
-    //         Enable GPIO pad mux (MUST be done FIRST)
-    //         NOTE: Only I2C_0 enabled as Controller to communicate with external SV model
-    //=========================================================================
     simputs("[MAIN] Entering Step 2: LEVEL 1 - Wrapper Control Enable\n");
     write_scratch(0, 0x00000020);
     write_scratch(1, 0x00000020);
     simputs("[MAIN] Step 2 marker written (scratch[0]=0x20, scratch[1]=0x20)\n");
     simputs("\nStep 2: LEVEL 1 - Wrapper Control Enable\n");
 
-    // Enable I2C_0 Wrapper (Controller mode) - for detecting SMBALERT# and ARA read
-    // External SV model (pmbus_slave_i2c0 @ 0x40) acts as Target/Device
     simputs("[MAIN] Calling i2c_wrapper_enable(CONTROLLER_IDX=0, true)...\n");
     i2c_wrapper_enable(CONTROLLER_IDX, true);
     simputs("[MAIN] i2c_wrapper_enable() returned\n");
@@ -373,16 +221,13 @@ int main(void) {
     simputs("[MAIN] Step 2 completed marker written (scratch[0]=0x21, scratch[1]=0x21)\n");
     simputs("[MAIN] Step 2 completed\n");
 
-    //=========================================================================
-    // Step 3: LEVEL 2 - I2C IP Initialization
-    //=========================================================================
     simputs("[MAIN] Entering Step 3: LEVEL 2 - I2C IP Initialization\n");
     write_scratch(0, 0x00000030);
     write_scratch(1, 0x00000030);
     simputs("[MAIN] Step 3 marker written (scratch[0]=0x30, scratch[1]=0x30)\n");
     simputs("\nStep 3: LEVEL 2 - I2C IP Initialization\n");
 
-    // Compute optimal timing parameters
+    // Derive the bus timing from the physical bus characteristics
     i2c_timing_physical_t physical_params = {
         .speed = I2C_SPEED_STANDARD, // 100 kHz
         .clock_period_nanos = 5,     // 200 MHz peripheral clock
@@ -398,21 +243,18 @@ int main(void) {
         i2c_get_default_timing(I2C_SPEED_STANDARD, 100, &computed_timing);
     }
 
-    // Initialize I2C_0 as Controller (detects SMBALERT# and performs ARA read)
-    // External SV model (pmbus_slave_i2c0 @ 0x40) acts as Target/Device
     simputs("  Initializing I2C_0 Controller...\n");
     simputshex32("  External SV model address: 0x", (uint32_t)SLAVE_ADDR);
     simputs(" (pmbus_slave_i2c0)\n");
 
-    i2c_controller_config_t ctrlr_cfg = {
-        .timing = computed_timing,
-        .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
-                 .fmt_thresh = I2C_DEFAULT_FMT_THRESH,
-                 .tx_thresh = 0,
-                 .acq_thresh = 0},
-        .enable_interrupts =
-            false, // We use polling, but will enable SMBus alert interrupt separately
-        .timeout_cycles = 0};
+    // Interrupts stay off here; the SMBus alert interrupt is enabled below
+    i2c_controller_config_t ctrlr_cfg = {.timing = computed_timing,
+                                         .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
+                                                  .fmt_thresh = I2C_DEFAULT_FMT_THRESH,
+                                                  .tx_thresh = 0,
+                                                  .acq_thresh = 0},
+                                         .enable_interrupts = false,
+                                         .timeout_cycles = 0};
 
     simputs("[MAIN] Calling i2c_controller_init(CONTROLLER_IDX=0, &ctrlr_cfg)...\n");
     ret = i2c_controller_init(CONTROLLER_IDX, &ctrlr_cfg);
@@ -426,12 +268,12 @@ int main(void) {
     }
     simputs("[MAIN] Controller initialized successfully\n");
 
-    // Enable SMBus Alert interrupt for Controller mode
+    // Enable the SMBus alert interrupt
     base = i2c_get_base(CONTROLLER_IDX);
     i2c__INTR_ENABLE_t intr_en = {
         .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    intr_en.f.SMBALERT = 1; // Enable SMBus Alert interrupt
+    intr_en.f.SMBALERT = 1;
     write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
               intr_en.w);
@@ -445,11 +287,6 @@ int main(void) {
     simputs("[MAIN] Step 3 completed marker written (scratch[0]=0x31, scratch[1]=0x31)\n");
     simputs("[MAIN] Step 3 completed\n");
 
-    //=========================================================================
-    // Step 4: Test SMBus Alert (Device -> Host)
-    //         NOTE: External SV model (pmbus_slave_i2c0) will assert SMBALERT#
-    //         I2C_0 Controller will detect the alert and perform ARA read
-    //=========================================================================
     simputs("[MAIN] Entering Step 4: Test SMBus Alert (Device -> Host)\n");
     write_scratch(0, 0x00000040);
     write_scratch(1, 0x00000040);
@@ -458,24 +295,21 @@ int main(void) {
     simputs("  NOTE: External SV model (pmbus_slave_i2c0 @ 0x40) will assert SMBALERT#\n");
     simputs("  I2C_0 Controller will detect alert and perform ARA read\n");
 
-    // Clear initial state
+    // Start from a cleared alert interrupt
     simputs("[MAIN] Clearing initial alert state...\n");
     smbus_clear_alert_irq(CONTROLLER_IDX);
     simputs("[MAIN] Initial alert state cleared\n");
     simputs("  Initial state cleared (ALERT=0)\n");
 
-    // Wait for external SV model to assert SMBALERT#
-    // NOTE: SV model can assert alert via assert_alert task or internal logic
-    // Give Cocotb time to trigger alert after seeing Step 4 marker
+    // Give the testbench time to assert SMBALERT# after it sees the Step 4 marker
     simputs("[MAIN] Waiting for external SV model to assert SMBALERT#...\n");
     simputs("  [ALERT] Waiting for external SV model to assert SMBALERT#...\n");
     simputs("  [ALERT] (SV model should assert alert via assert_alert task or internal logic)\n");
     simputs("[MAIN] Giving Cocotb time to trigger alert (waiting 10000 cycles)...\n");
     for (volatile uint32_t i = 0; i < 10000; i++)
-        ; // ~100us @ 100MHz - give Cocotb time to trigger
+        ;
     simputs("[MAIN] Wait loop completed, checking alert status...\n");
 
-    // Check current alert status
     bool initial_alert_status = smbus_get_alert_status(CONTROLLER_IDX);
     simputs("  [ALERT] Initial Host alert status: ");
     simputs(initial_alert_status ? "ACTIVE (1)" : "INACTIVE (0)");
@@ -563,7 +397,6 @@ int main(void) {
     simputshex32("", (uint32_t)ret);
     simputs("\n");
 
-    // Checker 6: ARA read must succeed
     if (ret != I2C_OK) {
         simputs("  ERROR: ARA read failed (ret=");
         simputshex32("", (uint32_t)ret);
@@ -581,9 +414,7 @@ int main(void) {
     simputshex32("  [ALERT] ARA response address: ", (uint32_t)alert_addr);
     simputs("\n");
 
-    // Checker 7 & 8: Verify response address
-    // Expected: response_byte = 0x80, alert_addr = 0x40
-    const uint8_t EXPECTED_ALERT_ADDR = 0x40; // pmbus_slave_i2c0 address
+    const uint8_t EXPECTED_ALERT_ADDR = 0x40;
     if (alert_addr != EXPECTED_ALERT_ADDR) {
         simputs("  ERROR: ARA response address mismatch\n");
         simputs("  [CHECKER 7/8 FAILED] Expected alert_addr=0x");
@@ -591,7 +422,6 @@ int main(void) {
         simputs(", got 0x");
         simputshex32("", (uint32_t)alert_addr);
         simputs("\n");
-        // Debug output enabled on error
         simputs("  [DEBUG] Expected response_byte=0x80 (0x40 << 1), extracted addr=0x40\n");
         write_scratch(0, 0xBAD00043);
         test_fail(0);
@@ -642,29 +472,20 @@ int main(void) {
     }
     simputs("  [CHECKER 11 PASSED] INTR_STATE.SMBALERT observed set, then cleared\n");
 
-    // NOTE: External SV model will deassert alert after ARA read
     simputs("  [ALERT] Host performed ARA read; SV model should deassert alert\n");
 
     write_scratch(0, 0x00000041);
     write_scratch(1, 0x00000041);
 
-    //=========================================================================
-    // Step 5: Test SMBus Suspend (Host -> Device)
-    //         NOTE: I2C_0 Controller asserts SMBSUS#
-    //         (stimulus only -- the SV model does not sample SMBSUS#)
-    //=========================================================================
     write_scratch(0, 0x00000050);
     write_scratch(1, 0x00000050);
     simputs("\nStep 5: Test SMBus Suspend (Host -> Device)\n");
     simputs("  NOTE: I2C_0 Controller asserts SMBSUS#\n");
-    // No suspend verdict is printed below: the SMBus peer hardwires
-    // SMBSUS_N = 1'bz (tb_uvm/sv/I2C_SMBUS_MODEL.sv) and samples it nowhere, so
-    // nothing in this configuration can observe whether the device saw the
-    // suspend. The stimulus stays; the claim does not.
+    // The testbench SMBus peer does not observe SMBSUS#, so this step is
+    // stimulus only and prints no suspend verdict.
     simputs("  NOTE: the SV model does not sample SMBSUS#, so this step is\n");
     simputs("        stimulus only -- it is not checked and not reported\n");
 
-    // Clear initial state
     i2c_smbus_suspend(CONTROLLER_IDX, false); // Ensure suspend is deasserted
     simputs("  Initial state cleared (SUSPEND=0)\n");
 
@@ -684,13 +505,9 @@ int main(void) {
     write_scratch(0, 0x00000051);
     write_scratch(1, 0x00000051);
 
-    //=========================================================================
-    // Test Complete - Signal to testbench
-    //=========================================================================
     write_scratch(0, 0x00000090);
     write_scratch(1, 0x00000090);
 
-    // Signal setup complete to testbench
     write_scratch(0, 0xEBEDEBE4);
     write_scratch(1, 0xEBEDEBE4);
     simputs("\n");
@@ -707,11 +524,4 @@ int main(void) {
     simputs("\n################################################\n");
 
     test_pass(0);
-
-    simputs("\n=== Test Complete ===\n");
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

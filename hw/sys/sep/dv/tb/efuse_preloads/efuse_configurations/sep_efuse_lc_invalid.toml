@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Invalid lifecycle state, everything else at zero.
+#
+# The field is {~raw, raw}; 0x69 is raw 0x9, well-formed so the RTL's diff decode passes
+# it through and lc_state_is_valid() (bootrom/prod/src/lifecycle.c) must reject it.
+# Used by sep_lifecycle_invalid_smc_reset_test. The ROM refuses to boot, so no other
+# fuse in this file matters.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0x69   # invalid (raw=0x9)

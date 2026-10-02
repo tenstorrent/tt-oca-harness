@@ -176,10 +176,11 @@ EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
 
 `own` excludes the records `sep_base_test` emits during bring-up, so a leaf
 cannot satisfy the gate on infrastructure alone. A leaf whose `own` count is
-zero **fails**. Firmware-console leaves emit `CHK-FW-CONSOLE` from `poll_boot`
-after the mailbox PASS magic, and that ID is not in `BASE_IDS`, so it counts
-as the leaf's own evidence. `_EvidenceFilter.NO_OWN_EVIDENCE` is empty and
-may only shrink.
+zero **fails**. Firmware leaves emit `CHK-FW-CONSOLE` from `poll_boot` after
+the mailbox PASS magic, or `CHK-VERDICT` after `cold_scratch[0]` reports
+completion on the scratch0-gated leaves; neither ID is in `BASE_IDS`, so
+either counts as the leaf's own evidence. `_EvidenceFilter.NO_OWN_EVIDENCE`
+is empty and may only shrink.
 
 Leaves may also declare more: `min_evidence = N` sets a floor on `own`, and
 `required_evidence = ("CHK-A", ...)` names IDs that must appear.
@@ -271,9 +272,9 @@ uv run --locked python3 tools/dv/fw_coverage/gen_sep_rom_coverage.py \
 ```
 
 The generator accepts only passing, complete traces and uses the leaf-local
-`boot_rom.elf` staged by the firmware profile. It reports `boot_rom`,
-`boot_rom_ot`, and `boot_rom_ot_pio` separately because their PCs cannot be
-interpreted with one shared ELF. See
+`boot_rom.elf` staged by the firmware profile. It reports `boot_rom` and
+`boot_rom_pio` separately because their PCs cannot be interpreted with one
+shared ELF. See
 [`tools/dv/fw_coverage/README.md`](../../../../tools/dv/fw_coverage/README.md)
 for the complete command and tool prerequisites.
 

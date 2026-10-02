@@ -49,11 +49,11 @@ module smc_wrapper (
 
   // GPIO control (lsio select passed through; per-pin pad I/O replaced by
   // gpio_pad_io below)
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select_o,
+  output logic [smc_pkg::NumGpioWraps-1:0] lsio_interface_select_o,
 
   // Physical GPIO pad bus -- one prim_pad_shim.sv per pin stands in for the
   // padring here.
-  inout  wire [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_io,
+  inout  wire [smc_pkg::NumGpioWraps-1:0] gpio_pad_io,
 
   input  logic rst_cool_n_from_pin_i,
 
@@ -81,12 +81,12 @@ module smc_wrapper (
   input  logic clk_telemetry_i,
   input  logic rst_telemetry_ni,
 
-  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atdata_i,
-  input  telemetry_receiver_pkg::atb_id_t         [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atid_i,
-  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atready_o,
-  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atvalid_i,
-  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afvalid_o,
-  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afready_i,
+  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atdata_i,
+  input  telemetry_receiver_pkg::atb_id_t         [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atid_i,
+  output logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atready_o,
+  input  logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atvalid_i,
+  output logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_afvalid_o,
+  input  logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_afready_i,
 
   output logic smc_cluster_ded_o,
 
@@ -96,7 +96,7 @@ module smc_wrapper (
   output smc_pkg::smc_axi_addr_t smc_global_base_o,
   output logic [31:0]            smc_region_size_o,
 
-  input  logic [smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0] smc_ext_interrupts_i,
+  input  logic [smc_4core_cpu_pkg::NumExtInterrupts-1:0]   smc_ext_interrupts_i,
   input  logic [7:0]                                       sep_mailbox_interrupts_i,
   input  logic                                             sep_wdt_reset_n_i,
 
@@ -108,13 +108,13 @@ module smc_wrapper (
 
   input  logic sep_security_disable_i,
 
-  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,
+  input  logic [2*smc_pkg::LcStateWidth-1:0]   lc_state_i,
   output logic                                 lc_sigint_err_o,
 
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] smc_ndmreset_request_i,
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] smc_ndmreset_process_o,
+  input  logic [smc_config_pkg::CpuClusterCount-1:0] smc_ndmreset_request_i,
+  output logic [smc_config_pkg::CpuClusterCount-1:0] smc_ndmreset_process_o,
 
-  output logic [smc_pkg::NUM_MAILBOXES-1:0] smc_ext_mailbox_interrupts_o,
+  output logic [smc_pkg::NumMailboxes-1:0] smc_ext_mailbox_interrupts_o,
 
   input  logic        cfg_flr_pf_active_i,
   output logic [31:0] isolate_req_o,
@@ -175,8 +175,8 @@ module smc_wrapper (
   // smc_ip_integration, so this leaves the wrapper for observation only.
   output logic                                                 gated_clk_periph_i3c_o,
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o,
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_o,
+  output logic [smc_pkg::NumGpioWraps-1:0]   gpio_interrupt_o,
+  output logic [smc_config_pkg::NumUart-1:0] uart_interrupt_o,
 
   // eFuse debug bus (internal shim state, surfaced for DV visibility)
   output logic [15:0] efuse_debug_bus_o
@@ -198,18 +198,18 @@ module smc_wrapper (
   smc_efuse_pkg::fuse_command_req_t  efuse_shim_command_req;
   smc_efuse_pkg::fuse_command_resp_t efuse_shim_command_resp;
 
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en;
+  logic [smc_pkg::NumGpioWraps-1:0] pad2core;
+  logic [smc_pkg::NumGpioWraps-1:0] core2pad;
+  logic [smc_pkg::NumGpioWraps-1:0] pad2core_en;
+  logic [smc_pkg::NumGpioWraps-1:0] core2pad_en;
 
   // I3C table memory macros (smc <-> smc_ip_integration)
-  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src;
-  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink;
-  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
-  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
-  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
-  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
+  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_src;
+  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink;
+  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_src;
+  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink;
+  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_src;
+  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_sink;
 
   // Trace sink memories (smc <-> smc_ip_integration)
   trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req;
@@ -219,25 +219,25 @@ module smc_wrapper (
   chipyard_4core_mem_pkg::rom_req_t            smc_rom_intf_req;
   chipyard_4core_mem_pkg::rom_rsp_t            smc_rom_intf_rsp;
   chipyard_4core_mem_pkg::scratch_ram_req_t    smc_scratch_ram_intf_req
-        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumSramBanks-1:0];
   chipyard_4core_mem_pkg::scratch_ram_rsp_t    smc_scratch_ram_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumSramBanks-1:0];
   chipyard_4core_mem_pkg::l1_icache_tag_req_t  smc_l1_icache_tag_intf_req
-        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumIcacheTagBanks-1:0];
   chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  smc_l1_icache_tag_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumIcacheTagBanks-1:0];
   chipyard_4core_mem_pkg::l1_icache_data_req_t smc_l1_icache_data_intf_req
-        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumIcacheDataBanks-1:0];
   chipyard_4core_mem_pkg::l1_icache_data_rsp_t smc_l1_icache_data_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumIcacheDataBanks-1:0];
   chipyard_4core_mem_pkg::l1_dcache_tag_req_t  smc_l1_dcache_tag_intf_req
-        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumDcacheTagBanks-1:0];
   chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  smc_l1_dcache_tag_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumDcacheTagBanks-1:0];
   chipyard_4core_mem_pkg::l1_dcache_data_req_t smc_l1_dcache_data_intf_req
-        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumDcacheDataBanks-1:0];
   chipyard_4core_mem_pkg::l1_dcache_data_rsp_t smc_l1_dcache_data_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumDcacheDataBanks-1:0];
 
   /////////////////////
   // SMC core        //

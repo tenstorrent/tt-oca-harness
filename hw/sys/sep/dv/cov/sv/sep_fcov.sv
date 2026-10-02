@@ -157,7 +157,7 @@ module sep_fcov (
   localparam logic [31:0] FiltBase = INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
   localparam logic [31:0] FiltStride   = INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR -
                                          INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam int unsigned FiltEntries = sep_pkg::INBOUND_FILTER_NUM_FILTERS;
+  localparam int unsigned FiltEntries = sep_pkg::InboundFilterNumFilters;
   localparam logic [31:0] FiltEnd = FiltBase + FiltStride * FiltEntries;
   localparam logic [31:0] FiltCfgOff = INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET;
   localparam logic [31:0] FiltStartOff = INBOUND_FILTER_CTRL_0__START_ADDR_REG_OFFSET;
@@ -2385,8 +2385,8 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_mbox_rand_cg";
     cp_wirqt: coverpoint mbox_wirqt_q iff (mbox_wirqt_used) {
-      bins low = {[8'd1 : 8'(sep_pkg::MAILBOX_DEPTH / 2 - 1)]};
-      bins high = {[8'(sep_pkg::MAILBOX_DEPTH / 2) : 8'(sep_pkg::MAILBOX_DEPTH - 1)]};
+      bins low = {[8'd1 : 8'(sep_pkg::MailboxDepth / 2 - 1)]};
+      bins high = {[8'(sep_pkg::MailboxDepth / 2) : 8'(sep_pkg::MailboxDepth - 1)]};
     }
   endgroup
 

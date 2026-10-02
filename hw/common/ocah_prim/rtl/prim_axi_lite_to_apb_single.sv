@@ -57,19 +57,19 @@ module prim_axi_lite_to_apb_single #(
   input  data_t      prdata_i  // APB PRDATA.
 );
 
-  localparam int unsigned EXTENDED_ADDR_WIDTH = AXI_ADDR_WIDTH + 1;
+  localparam int unsigned ExtendedAddrWidth = AXI_ADDR_WIDTH + 1;
 
-  logic [EXTENDED_ADDR_WIDTH-1:0] paddr_out;
+  logic [ExtendedAddrWidth-1:0] paddr_out;
 
   AXI_LITE #(
     .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-    .AXI_ADDR_WIDTH(EXTENDED_ADDR_WIDTH)
+    .AXI_ADDR_WIDTH(ExtendedAddrWidth)
   ) axi_lite ();
 
   typedef struct packed {
     int unsigned idx;
-    logic [EXTENDED_ADDR_WIDTH-1:0] start_addr;
-    logic [EXTENDED_ADDR_WIDTH-1:0] end_addr;
+    logic [ExtendedAddrWidth-1:0] start_addr;
+    logic [ExtendedAddrWidth-1:0] end_addr;
   } rule_t;
 
   localparam rule_t [0:0] ApbRuleT = '{
@@ -79,7 +79,7 @@ module prim_axi_lite_to_apb_single #(
   axi_lite_to_apb_intf #(
     .NoApbSlaves(1),
     .NoRules(1),
-    .AddrWidth(EXTENDED_ADDR_WIDTH),
+    .AddrWidth(ExtendedAddrWidth),
     .DataWidth(AXI_DATA_WIDTH),
     .PipelineRequest(PIPELINE_REQUEST),
     .PipelineResponse(PIPELINE_RESPONSE),

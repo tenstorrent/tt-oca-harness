@@ -9,8 +9,8 @@
 
 bind cross_trigger_network ocah_axi_fv #(
   .IS_LITE             (1'b1),
-  .ADDR_WIDTH          (cross_trigger_network_pkg::AXI_LITE_ADDR_WIDTH),
-  .DATA_WIDTH          (cross_trigger_network_pkg::AXI_LITE_DATA_WIDTH),
+  .ADDR_WIDTH          (cross_trigger_network_pkg::AxiLiteAddrWidth),
+  .DATA_WIDTH          (cross_trigger_network_pkg::AxiLiteDataWidth),
   .ID_WIDTH            (1),
   .MAX_OUTSTANDING     (1),
   .ASSUME_MASTER_RULES (1'b1),

@@ -33,25 +33,25 @@ module sep_outbound_mbx
   output logic       fw_char_valid_o
 );
 
-  localparam logic [31:0] MAGIC0 = 32'hA5A5_5A5A;
-  localparam logic [31:0] MAGIC_PASS = 32'hCAFE_BABE;
-  localparam logic [31:0] MAGIC_FAIL = 32'hDEAD_BEEF;
-  localparam logic [31:0] STDOUT_LO = SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT[31:0];
+  localparam logic [31:0] Magic0 = 32'hA5A5_5A5A;
+  localparam logic [31:0] MagicPass = 32'hCAFE_BABE;
+  localparam logic [31:0] MagicFail = 32'hDEAD_BEEF;
+  localparam logic [31:0] StdoutLo = SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT[31:0];
 
-  localparam int unsigned AW = $bits(req_i.aw.addr);
-  localparam int unsigned IDW = $bits(req_i.aw.id);
+  localparam int unsigned Aw = $bits(req_i.aw.addr);
+  localparam int unsigned Idw = $bits(req_i.aw.id);
 
-  logic [IDW-1:0] aw_id_q;
-  logic [AW-1:0]  aw_addr_q;
+  logic [Idw-1:0] aw_id_q;
+  logic [Aw-1:0]  aw_addr_q;
   logic           b_valid_q;
   logic           ar_active_q;
-  logic [IDW-1:0] r_id_q;
+  logic [Idw-1:0] r_id_q;
   logic [8:0]     r_beats_q;
   logic           magic_seen_q;
 
   // Address of the in-flight write (handle AW+W arriving on the same cycle).
-  wire [AW-1:0] cur_awaddr = req_i.aw_valid ? req_i.aw.addr : aw_addr_q;
-  wire          to_stdout  = (cur_awaddr[31:0] == STDOUT_LO);
+  wire [Aw-1:0] cur_awaddr = req_i.aw_valid ? req_i.aw.addr : aw_addr_q;
+  wire          to_stdout  = (cur_awaddr[31:0] == StdoutLo);
   wire          w_fire     = req_i.w_valid & resp_o.w_ready;
   // 32-bit lane selected by the write strobe (upper lane for strb 0xF0).
   wire [31:0]   mbx_word   = (req_i.w.strb[7:4] != 4'h0) ? req_i.w.data[63:32]
@@ -127,17 +127,17 @@ module sep_outbound_mbx
         // Test-completion magic: 32-bit word stores (low or high lane).
         if (req_i.w.strb == 8'h0F || req_i.w.strb == 8'hF0) begin
           if (!magic_seen_q) begin
-            if (mbx_word == MAGIC0) magic_seen_q <= 1'b1;
+            if (mbx_word == Magic0) magic_seen_q <= 1'b1;
           end else begin
-            if (mbx_word == MAGIC_PASS) begin
+            if (mbx_word == MagicPass) begin
               fw_done_o    <= 1'b1;
               fw_pass_o    <= 1'b1;
               magic_seen_q <= 1'b0;
-            end else if (mbx_word == MAGIC_FAIL) begin
+            end else if (mbx_word == MagicFail) begin
               fw_done_o    <= 1'b1;
               fw_pass_o    <= 1'b0;
               magic_seen_q <= 1'b0;
-            end else if (mbx_word != MAGIC0) begin
+            end else if (mbx_word != Magic0) begin
               magic_seen_q <= 1'b0;
             end
           end

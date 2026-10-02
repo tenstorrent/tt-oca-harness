@@ -11,7 +11,7 @@ module i2c_target_fsm
   import i2c_pkg::*;
 #(
   parameter  int unsigned TARGET_RX_FIFO_DEPTH = 64,        // ACQ FIFO depth.
-  localparam int unsigned TARGET_RX_FIFO_DEPTH_WIDTH = $clog2(TARGET_RX_FIFO_DEPTH+1) // clog2(depth+1) for ACQ fill.
+  localparam int unsigned TargetRxFifoDepthWidth = $clog2(TARGET_RX_FIFO_DEPTH+1) // clog2(depth+1) for ACQ fill.
 ) (
   input  logic                                  clk_i,      // System clock.
   input  logic                                  rst_ni,     // Async reset, active-low.
@@ -35,7 +35,7 @@ module i2c_target_fsm
   output logic                                  acq_fifo_wvalid_o, // Push valid data into the ACQ
                                                                    // FIFO.
   output logic [TARGET_RX_FIFO_WIDTH-1:0]       acq_fifo_wdata_o, // Data to write to the ACQ FIFO.
-  input  logic [TARGET_RX_FIFO_DEPTH_WIDTH-1:0] acq_fifo_depth_i, // Fill level of the ACQ FIFO.
+  input  logic [TargetRxFifoDepthWidth-1:0]     acq_fifo_depth_i, // Fill level of the ACQ FIFO.
   output logic                                  acq_fifo_full_o, // High while two or fewer ACQ FIFO
                                                                  // entries are free.
   input  logic [TARGET_RX_FIFO_WIDTH-1:0]       acq_fifo_rdata_i, // ACQ peek used only for
@@ -274,12 +274,12 @@ module i2c_target_fsm
   // space to send a NACK. This means that we can notify software that a NACK
   // has happened while still keeping space for a subsequent stop or repeated
   // start.
-  logic [TARGET_RX_FIFO_DEPTH_WIDTH-1:0] acq_fifo_remainder;
+  logic [TargetRxFifoDepthWidth-1:0] acq_fifo_remainder;
   assign acq_fifo_remainder = TARGET_RX_FIFO_DEPTH - acq_fifo_depth_i;
   // This is used for acq_fifo_full_o to send the ACQ FIFO full alert to
   // software.
-  assign acq_fifo_plenty_space = acq_fifo_remainder > TARGET_RX_FIFO_DEPTH_WIDTH'(2);
-  assign acq_fifo_full_or_last_space = acq_fifo_remainder <= TARGET_RX_FIFO_DEPTH_WIDTH'(1);
+  assign acq_fifo_plenty_space = acq_fifo_remainder > TargetRxFifoDepthWidth'(2);
+  assign acq_fifo_full_or_last_space = acq_fifo_remainder <= TargetRxFifoDepthWidth'(1);
 
   // State definitions
   typedef enum logic [4:0] {
@@ -701,7 +701,7 @@ module i2c_target_fsm
   // start byte has already been deposited, and there is no need for checking
   // the value of the current state for this signal.
   assign stretch_tx = !tx_fifo_rvalid_i || unhandled_tx_stretch_event_i ||
-                        (acq_fifo_depth_i > TARGET_RX_FIFO_DEPTH_WIDTH'(1'b1));
+                        (acq_fifo_depth_i > TargetRxFifoDepthWidth'(1'b1));
 
   // Only used for assertion
   logic unused_acq_rdata;

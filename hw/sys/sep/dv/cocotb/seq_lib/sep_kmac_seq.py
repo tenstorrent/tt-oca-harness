@@ -4,8 +4,7 @@
 
 Runs one keyed KMAC-256 (cSHAKE, PREFIX="KMAC") over a message, with the key
 either from the KM sideload port (CFG.sideload=1) or the public KEY_SHARE CSRs
-(SW-key path, sideload=0) -- mirroring the reference sep_km_kmac_sideload_kat_test_seq
-op helper (RAL there; direct AXI here, like SepAes/SepHmac). Masking is enabled
+(SW-key path, sideload=0). Direct AXI, like SepAes/SepHmac. Masking is enabled
 (EnMasking), so the digest is read as STATE share0 ^ share1. 32-bit beats (size=2).
 
 KMAC register map (base from the generated SEP header; offsets from kmac.adoc):

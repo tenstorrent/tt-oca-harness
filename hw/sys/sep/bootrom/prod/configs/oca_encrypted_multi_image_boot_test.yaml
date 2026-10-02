@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# OCA-classic RSA-3072 signed boot image with an AES-256-CBC encrypted payload that
+# carries the three images of oca_multi_image_boot_test.yaml, BL1 last in the TOC.
+manifest_format: oca-classic
+manifest_identifier: "OCAHEMU"
+description: "OCAH SEP boot ROM AES-256-CBC encrypted multi-image payload, BL1 last in the TOC"
+# Encryption requires secure_boot: 1; the producer rejects it otherwise.
+secure_boot: 1
+
+signature_type: 0x01                 # RSA-3072 PKCS#1 v1.5 / SHA-256
+signing_authority: local
+signing_key_name: "test_rom_key_0"
+signing_key_file: "tests/signing_keys/rsa_private_key.rom_key0.pem"
+public_key_select_classic: 0x01
+public_key_encoding: 0x02            # RAW
+signature_encoding: 0x02             # RAW
+
+encrypted_payload: 1
+encryption_type: 0x02                # AES-256-CBC
+encryption_key_derivation_function: 0x0001   # SP 800-108r1 CTR-HMAC-SHA-256
+encryption_shared_secret_select: 1   # 1-based index; SEP provisions CLASS_KEY as slot 1
+# Must equal the CLASS_KEY fuse bank, or the payload hash fails after a clean decrypt.
+encryption_secret: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+# Pinned: an absent IV or KDF input is random per pack, so no two builds would match.
+encryption_iv: "101112131415161718191a1b1c1d1e1f"
+encryption_kdf_input: "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8"
+
+timestamp: 1764633600
+manifest_content_version:
+  major: 1
+  minor: 0
+  patch: 0
+payload_images:
+  # BL1 is last: the ROM must find it by image type, as entry 0 is not executable.
+  - type: "OCAHSEP BLMEMMAP"
+    path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
+  - type: "OCAHSEP _VENDOR1"
+    path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
+  - type: "OCAHSEP BLSTAGE1"
+    path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
+    # bl1_pass_test runs only from ICCM, which the ROM must fill by DMA: the LSU cannot store there.
+    load_addr: 0xC0000000

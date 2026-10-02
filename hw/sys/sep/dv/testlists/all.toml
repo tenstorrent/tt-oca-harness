@@ -62,6 +62,7 @@ tests = [
     "sep_rom_sanity_test",
     "sep_spi_ot_dma_rx_test",
     "sep_esrc_e2e_smoke_test",
+    "sep_esrc_e2e_fifo_closed_test",
     "sep_esrc_ht_watermark_arming_test",
     "sep_esrc_fips_lock_test",
     "sep_esrc_alert_delivery_test",
@@ -152,7 +153,6 @@ tests = [
     "sep_abr_access_size_test",
     "sep_abr_concurrent_rw_test",
     "sep_unmapped_access_policy_test",
-    "sep_fabric_burst_wrap_test",
     "sep_sram_burst_type_test",
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
@@ -211,6 +211,7 @@ tests = [
     "sep_lcc_lc_state_w1s_transient_test",
     "sep_clock_uvm_wdt_rst_input_reset_path_test",
     "sep_esrc_e2e_smoke_test",
+    "sep_esrc_e2e_fifo_closed_test",
     "sep_esrc_ht_watermark_arming_test",
     "sep_esrc_fips_lock_test",
     "sep_esrc_alert_delivery_test",
@@ -290,7 +291,6 @@ tests = [
     "sep_abr_access_size_test",
     "sep_abr_concurrent_rw_test",
     "sep_unmapped_access_policy_test",
-    "sep_fabric_burst_wrap_test",
     "sep_sram_burst_type_test",
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
@@ -334,115 +334,17 @@ tests = [
     "sep_firmware_backup_unpopulated_rom_key_slot_test",
     "sep_spi_detect_success_test",
     "sep_spi_primary_fail_backup_test",
-    # TP080. Subclass of the entry above; adds an SRAM scoreboard to the same
-    # failover. Covers the EXT SRAM half of the requirement only -- this ROM never
-    # clears SMC SRAM, so a green run here says nothing about that half. Slower
-    # than most of this group, mostly for an inherited reason: the clear it
-    # asserts is 65536 CPU stores, which the entry above pays as well. Compare in
-    # clk_i is fixed at 1.25 ns, so simulated time tracks the cycle count.
-    # Wall seconds still depend on the host.
     "sep_failover_sram_clear_assertion_test",
     "sep_spi_not_detected_terminal_test",
-    "sep_firmware_mbist_pass_test",
     "sep_firmware_mbist_only_fail_test",
+    "sep_firmware_mbist_pass_test",
     "sep_boot_recovery_test",
     "sep_rotate_update_set_test",
     "sep_firmware_primary_invalid_key_hash_test",
     "sep_firmware_backup_invalid_key_hash_test",
-    # The six-member ROM public-key revoke family. They share ONE
-    # implementation, rom_fw/sep_pubkey_rom_revoked_base.py, and differ only in
-    # _REVOKED_SLOT and the single OTP bit their own preload blows. Slot 0 is
-    # the strictest member (the populated digest the image binds to) and is the
-    # matched partner of sep_firmware_backup_rom_key_valid_test below.
-    "sep_firmware_backup_pubkey_rom_0_revoked_key_test",
-    "sep_firmware_backup_pubkey_rom_1_revoked_key_test",
-    "sep_firmware_backup_pubkey_rom_2_revoked_key_test",
-    "sep_firmware_backup_pubkey_rom_3_revoked_key_test",
-    "sep_firmware_backup_pubkey_rom_4_revoked_key_test",
     "sep_firmware_backup_pubkey_rom_5_revoked_key_test",
-    "sep_firmware_backup_invalid_signature_type_test",
-    "sep_firmware_backup_rom_key_index_invalid_test",
-    # Positive: valid ROM key slot on the backup, and a completed boot. Runs a
-    # real RSA-3072 modexp on OTBN, so it is one of the slower entries here.
-    "sep_firmware_backup_rom_key_valid_test",
-    # Primary-side pair. Both end in a boot from the BACKUP, not a terminal
-    # failure, and both run a modexp on the recovering slot.
-    "sep_firmware_primary_invalid_public_key_selection_test",
-    "sep_firmware_primary_invalid_security_version_test",
-    # The primary-side counterparts of the group above. The six-member
-    # PRIMARY revoke family shares ONE implementation,
-    # rom_fw/sep_pubkey_rom_revoked_primary_base.py, but NOT one
-    # outcome: slot 0 is TERMINAL, because the shipped backup selects ROM slot 0
-    # as well and one fuse bit therefore refuses both manifests, while slots 1-5
-    # fail over and boot from the unrevoked backup. The shared base measures which
-    # of the two applies from the image rather than trusting the slot number, so a
-    # packer change to the backup's rom_key_index fails loudly instead of leaving a
-    # member asserting the wrong shape.
-    "sep_firmware_primary_pubkey_rom_0_revoked_key_test",
-    "sep_firmware_primary_pubkey_rom_1_revoked_key_test",
-    "sep_firmware_primary_pubkey_rom_2_revoked_key_test",
-    "sep_firmware_primary_pubkey_rom_3_revoked_key_test",
-    "sep_firmware_primary_pubkey_rom_4_revoked_key_test",
-    "sep_firmware_primary_pubkey_rom_5_revoked_key_test",
-    # The two signature entries share error code 0x0003000c and are separable only
-    # on the console: the VALUE case pins PUBK_SEL= to two occurrences and requires
-    # RSA_VERIFY_FAIL, the TYPE case pins it to one and forbids RSA_VERIFY_FAIL.
-    "sep_firmware_primary_invalid_signature_test",
-    "sep_firmware_primary_invalid_signature_type_test",
-    "sep_firmware_primary_rom_key_index_invalid_test",
-    # Positive: valid ROM key slot on the PRIMARY, booting with NO failover at all,
-    # and the matched partner of the revoke-0 member above -- the same flash bytes,
-    # one bit of CHIPLET_PUBK_REVOKE apart.
-    "sep_firmware_primary_rom_key_valid_test",
-    # BL1 version, chiplet fused keys, demotion.
-    # ACCEPT boundary of the rollback check, on a fuse floor spread across all eight
-    # thermometer words so a truncated decode fails on FUSE_VER=0x00000008.
-    "sep_firmware_bl1_ver_test",
-    # The four-member CHIPLET FUSED key family. They share ONE implementation,
-    # rom_fw/sep_chiplet_pubkey_base.py, and differ only in _CHIPLET_KEY and the
-    # base they pick. This is the fused-key arm of the signature path
-    # (manifest_crypto.c), distinct code from the ROM-key arm the
-    # pubkey_rom_* families cover. Each positive member and its revoke twin run
-    # byte-identical flash images, one CHIPLET_PUBK_REVOKE bit apart.
-    "sep_firmware_chiplet_pubkey_0_test",
-    "sep_firmware_chiplet_pubkey_0_revoke_test",
-    "sep_firmware_chiplet_pubkey_1_test",
-    "sep_firmware_chiplet_pubkey_1_revoke_test",
-    # The digest-SOURCE discriminator the four members
-    # above cannot be. Their fuse digest equals public_key_digests[0], so a ROM
-    # comparing against the compiled-in table instead of the fuse is invisible to
-    # them. Here the SELECTED fuse (HASH0) holds a decoy while the unselected one
-    # (HASH1) holds the real digest, so BOTH a compiled-in-table comparison and a
-    # wrong-fuse-address read boot and fail this testcase. Same flash image as the
-    # positive member; the only difference is the fuse words, which are in turn
-    # byte-identical to sep_efuse_lc_prod_chiplet_key1.toml's -- making this and
-    # sep_firmware_chiplet_pubkey_1_test a matched pair on the FUSE side.
-    "sep_firmware_chiplet_pubkey_0_wrong_digest_test",
-    # The [S25] demotion decision: eight members covering SIX of the seven
-    # outcomes the block can produce -- see rom_fw/sep_demotion_decision_base.py
-    # for the collapse map. The three PROD_END members are one observable (O1),
-    # because rom_main.c returns before any manifest input is read; the
-    # remaining five are O2a, O2b, O3a, O4 and O5. The seventh outcome, O3b
-    # (unauth_flag_0_prod_sel_bit_set), has no testcase. Every member checks the
-    # DEMOTE_1/DEMOTE_2 registers and not only the console, through the tb_top
-    # probes, because every [S25] console string is printed from a local
-    # computed one line earlier. The shared stimulus lives in
-    # rom_fw/sep_demotion_prod_base.py (PROD, secure boot disabled on both
-    # surfaces) and rom_fw/sep_demotion_prod_end_base.py.
-    "sep_firmware_demotion_decision_auth_flag_0_prod_end_test",
-    "sep_firmware_demotion_decision_no_flag_prod_end_test",
-    "sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test",
-    "sep_firmware_demotion_decision_auth_flag_0_prod_test",
-    "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test",
-    "sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test",
-    "sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test",
-    "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test",
     "sep_bl1_size_invalid_test",
     "sep_bl1_entry_invalid_test",
-    # Expected FAIL: this test asserts the TP049 step-5 outcome (a decryption
-    # failure is terminal) and the ROM does not produce it; the framework has no
-    # xfail mechanism, so a run whose ONLY failure is this test is the expected
-    # result. See its [[tests]] entry in rom_fw.toml.
     "sep_decryption_failure_terminal_test",
     "sep_decryption_failure_failover_test",
     "sep_mbist_fail_continue_test",
@@ -450,12 +352,138 @@ tests = [
     "sep_warm_reset_below_range_hang_test",
     "sep_warm_reset_unarmed_cold_boot_test",
     "sep_warm_reset_bad_target_exception_test",
-    # SLOW: two full RSA-3072 modexps on the real OTBN, one per manifest slot;
-    # not a hang. See its [[tests]] entry in rom_fw.toml.
     "sep_otbn_rsa_verify_failure_test",
+    "sep_firmware_backup_pubkey_rom_0_revoked_key_test",
+    "sep_firmware_backup_pubkey_rom_1_revoked_key_test",
+    "sep_firmware_backup_pubkey_rom_2_revoked_key_test",
+    "sep_firmware_backup_pubkey_rom_3_revoked_key_test",
+    "sep_firmware_backup_pubkey_rom_4_revoked_key_test",
+    "sep_firmware_backup_invalid_signature_type_test",
+    "sep_firmware_backup_rom_key_index_invalid_test",
+    "sep_firmware_backup_rom_key_valid_test",
+    "sep_firmware_primary_invalid_public_key_selection_test",
+    "sep_firmware_primary_invalid_security_version_test",
+    "sep_firmware_primary_pubkey_rom_0_revoked_key_test",
+    "sep_firmware_primary_pubkey_rom_1_revoked_key_test",
+    "sep_firmware_primary_pubkey_rom_2_revoked_key_test",
+    "sep_firmware_primary_pubkey_rom_3_revoked_key_test",
+    "sep_firmware_primary_pubkey_rom_4_revoked_key_test",
+    "sep_firmware_primary_pubkey_rom_5_revoked_key_test",
+    "sep_firmware_primary_invalid_signature_test",
+    "sep_firmware_primary_invalid_signature_type_test",
+    "sep_firmware_primary_rom_key_index_invalid_test",
+    "sep_firmware_primary_rom_key_valid_test",
+    "sep_firmware_bl1_ver_test",
+    "sep_firmware_chiplet_pubkey_0_test",
+    "sep_firmware_chiplet_pubkey_1_test",
+    "sep_firmware_chiplet_pubkey_0_revoke_test",
+    "sep_firmware_chiplet_pubkey_1_revoke_test",
+    "sep_firmware_demotion_decision_auth_flag_0_prod_end_test",
+    "sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test",
+    "sep_firmware_demotion_decision_no_flag_prod_end_test",
+    "sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test",
+    "sep_firmware_demotion_decision_auth_flag_0_prod_test",
+    "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test",
+    "sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test",
+    "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test",
+    "sep_firmware_chiplet_pubkey_0_wrong_digest_test",
     "sep_rom_oca_encrypted_boot_test",
     "sep_rom_oca_otp_key_boot_test",
     "sep_rom_oca_tamper_test",
+    "sep_firmware_encrypted_boot_test",
+    "sep_firmware_invalid_decryption_class_key_test",
+    "sep_firmware_invalid_encryption_iv_test",
+    "sep_firmware_invalid_decryption_kdf_input_test",
+    "sep_firmware_primary_manifest_magic_test",
+    "sep_firmware_backup_manifest_magic_test",
+    "sep_firmware_manifest_primary_invalid_chiplet_id_test",
+    "sep_firmware_manifest_backup_invalid_chiplet_id_test",
+    "sep_firmware_manifest_primary_invalid_package_id_test",
+    "sep_firmware_manifest_backup_invalid_package_id_test",
+    "sep_firmware_manifest_primary_lc_state_failure_test",
+    "sep_firmware_manifest_backup_lc_state_failure_test",
+    "sep_firmware_manifest_primary_invalid_system_id_test",
+    "sep_firmware_manifest_primary_unselected_identity_byte_test",
+    "sep_firmware_manifest_primary_unsupported_lifecycle_level_test",
+    "sep_firmware_validate_backup_manifest_test",
+    "sep_firmware_bad_manifest_hash_test",
+    "sep_firmware_backup_manifest_major_version_invalid_test",
+    "sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test",
+    "sep_firmware_manifest_primary_missing_sepbl1_test",
+    "sep_firmware_manifest_backup_missing_sepbl1_test",
+    "sep_firmware_manifest_primary_reordered_sepbl1_test",
+    "sep_firmware_manifest_backup_reordered_sepbl1_test",
+    "sep_firmware_backup_manifest_major_version_valid_minor_0_length_incorrect_test",
+    "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_large_test",
+    "sep_firmware_demotion_decision_unauth_flag_30_prod_end_test",
+    "sep_firmware_demotion_bl2_request_prod_end_test",
+    "sep_firmware_demotion_bl1_disable_over_bl2_request_prod_test",
+    "sep_firmware_demotion_bl2_request_prod_test",
+    "sep_firmware_demotion_bl1_disable_secure_prod_test",
+    "sep_firmware_demotion_decision_no_flag_prod_test",
+    "sep_boot_measurement_golden_test",
+    "sep_rsa_verify_redundant_compare_test",
+    "sep_lifecycle_invalid_smc_reset_test",
+    "sep_firmware_primary_manifest_major_version_invalid_test",
+    "sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test",
+    "sep_firmware_primary_manifest_major_version_valid_minor_0_length_incorrect_test",
+    "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test",
+    "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_large_test",
+    "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test",
+    "sep_firmware_primary_payload_invalid_payload_hash_length_test",
+    "sep_firmware_backup_payload_invalid_payload_hash_length_test",
+    "sep_manifest_payload_limits_test",
+    "sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test",
+    "sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test",
+    "sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test",
+    "sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test",
+    "sep_firmware_primary_encrypted_invalid_payload_image_count_test",
+    "sep_firmware_backup_encrypted_invalid_payload_image_count_test",
+    "sep_firmware_primary_non_encrypted_invalid_payload_image_count_test",
+    "sep_firmware_backup_non_encrypted_invalid_payload_image_count_test",
+    "sep_firmware_backup_encrypted_payload_image_count_cap_test",
+    "sep_firmware_backup_non_encrypted_payload_image_count_cap_test",
+    "sep_firmware_backup_non_encrypted_payload_image_count_at_cap_test",
+    "sep_firmware_primary_encrypted_payload_images_overlapping_test",
+    "sep_firmware_backup_encrypted_payload_images_overlapping_test",
+    "sep_firmware_primary_non_encrypted_payload_images_overlapping_test",
+    "sep_firmware_backup_non_encrypted_payload_images_overlapping_test",
+    "sep_firmware_primary_encrypted_payload_images_descending_order_test",
+    "sep_firmware_primary_non_encrypted_payload_images_descending_order_test",
+    "sep_firmware_primary_encrypted_payload_image_offset_misaligned_test",
+    "sep_firmware_backup_encrypted_payload_image_offset_misaligned_test",
+    "sep_firmware_primary_non_encrypted_payload_image_offset_misaligned_test",
+    "sep_firmware_backup_non_encrypted_payload_image_offset_misaligned_test",
+    "sep_firmware_primary_encrypted_payload_image_exceeds_bound_test",
+    "sep_firmware_backup_encrypted_payload_image_exceeds_bound_test",
+    "sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test",
+    "sep_firmware_backup_non_encrypted_payload_image_exceeds_bound_test",
+    "sep_firmware_primary_encrypted_toc_payload_size_mismatch_test",
+    "sep_firmware_backup_encrypted_toc_payload_size_mismatch_test",
+    "sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test",
+    "sep_firmware_backup_non_encrypted_toc_payload_size_mismatch_test",
+    "sep_firmware_payload_correct_sep_sram_4kb_test",
+    "sep_firmware_payload_correct_sep_sram_29kb_test",
+    "sep_firmware_payload_exceeds_slot_window_fixed_test",
+    "sep_firmware_payload_exceeds_slot_window_random_test",
+    "sep_firmware_primary_no_payload_images_test",
+    "sep_firmware_backup_no_payload_images_test",
+    "sep_firmware_primary_and_backup_no_payload_images_test",
+    "sep_firmware_payload_overlaps_manifest_test",
+    "sep_firmware_primary_payload_offset_into_backup_test",
+    "sep_firmware_cleartext_image_corrupt_hash_test",
+    "sep_firmware_secondary_chiplet_bootcode_test",
+    "sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test",
+    "sep_firmware_fuse_lock_secure_test_dev_test",
+    "sep_firmware_fuse_lock_secure_prod_test",
+    "sep_firmware_fuse_lock_non_secure_test_dev_test",
+    "sep_firmware_fuse_lock_non_secure_prod_test",
+    "sep_mixed_failure_primary_backup_test",
+    "sep_key_revocation_bitmap_random_test",
+    "sep_firmware_primary_rom_key_slot1_valid_test",
+    "sep_chiplet_id_per_byte_variations_test",
+    "sep_package_id_per_byte_variations_test",
+    "sep_manifest_v1x_length_test",
     "sep_rom_lc_state_invalid_test",
     # TEST_DEV chiplet debug lock (SEP-ROM-SB-025) and the LC_STATE decode
     # (SEP-ROM-FUSE-020).

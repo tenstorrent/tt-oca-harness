@@ -5,39 +5,21 @@
  * @file main.c
  * @brief OCTS P1 Credit Mechanism Test - DUT as PRIMARY, BFM as SECONDARY
  *
- * DUT acts as PRIMARY timer (generates sync signals and credit pulses)
- * BFM acts as SECONDARY timer (receives signals and monitors credit expiration)
- *
- * Test verifies:
- *   1. TMR_CNT_CREDIT pulse generation and reception
- *   2. Credit counter accumulation in SECONDARY
- *   3. Timer counter monotonicity with multiple sampling
- *   4. Long-term synchronization deviation < 50ns
- *
- * Steps:
- *   1. Initialize OCTS PRIMARY mode
- *   2. Set timer preset value and control registers
- *   3. Start timer (generates sync_load and credit pulses)
- *   4. Sample counters at regular intervals (NUM_SAMPLES samples @ SAMPLE_INTERVAL cycles)
- *   5. Monitor credit expiration events
- *   6. Calculate maximum deviation
- *   7. Report results via scratch registers
+ * Runs the DUT system timer as the OCTS PRIMARY with the credit mechanism
+ * enabled and checks that its count increases across periodic samples. The
+ * firmware does not check credit expiry or synchronization deviation; it logs
+ * and reports the credit-expiry count, the highest sampled count and a
+ * deviation estimate via scratch registers.
  */
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "smc_defines.h"
 #include "smc_test.h"
 #include "virt_console.h"
 
-#define WAIT_CYCLES 50
-#define MAX_PRESET_VALUE 0x10000ULL
-#define SAMPLE_INTERVAL 10000 /* Sample every 10k cycles */
-#define NUM_SAMPLES 10        /* samples taken SAMPLE_INTERVAL cycles apart */
-#define SAMPLE_TOTAL_TIME (SAMPLE_INTERVAL * NUM_SAMPLES) /* 100k cycles ~ 1ms */
-
-/* System Timer register definitions are provided by smc_defines.h -> smc_top_regs.h */
+#define SAMPLE_INTERVAL 10000 /* Busy-loop iterations between samples */
+#define NUM_SAMPLES 10
 
 static void wait_cycles(uint32_t cycles) {
     for (volatile uint32_t i = 0; i < cycles; i++) {
@@ -65,7 +47,7 @@ static uint32_t timer_is_primary(void) {
 
 static uint32_t timer_is_running(void) {
     uint32_t status = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR);
-    return (status & 0x10) != 0; // RUNNING bit is at bit 4
+    return (status & 0x10) != 0;
 }
 
 static void timer_init(void) {
@@ -73,11 +55,7 @@ static void timer_init(void) {
 
     simputs("Initializing OCTS PRIMARY timer (P1 Credit Test)\n");
 
-    /* CTRL Register Configuration (STEP << 16 | PULSE_WIDTH << 8 | CREDIT_VAL)
-     * CREDIT_VAL = 0x10 (16) - Must be > PULSE_WIDTH
-     * PULSE_WIDTH = 0x02 (2) - Must be < CREDIT_VAL
-     * STEP = 0x01 (1) - Step size for SECONDARY timer
-     */
+    /* The credit value must exceed the sync pulse width. */
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR, 0x00010210);
 
     ctrl_val = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR);
@@ -91,9 +69,7 @@ static void timer_init(void) {
     }
     simputs("CTRL register initialized: 0x00010210\n");
 
-    /* Enable GPIO pad lsio interface to prevent X-prop on reset
-     * This is required for proper timer operation
-     */
+    /* The timer needs its pad interface enabled to avoid X propagation from reset. */
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR, 1);
     wait_cycles(10);
     uint32_t gpio_enable_val = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR);
@@ -140,7 +116,7 @@ static void timer_start(uint64_t preset_value) {
         }
     }
 
-    /* Ensure CTRL register is set before starting timer */
+    /* The configuration must still hold before the timer starts. */
     uint32_t ctrl_check = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR);
     if (ctrl_check != 0x00010210) {
         simputs("ERROR: CTRL register not properly initialized before timer start\n");
@@ -151,13 +127,11 @@ static void timer_start(uint64_t preset_value) {
         }
     }
 
-    /* Start timer by writing to TIMER_START register */
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR, 1);
 
-    /* Wait for timer to start and verify it's running */
     wait_cycles(50);
 
-    /* Verify timer is running by checking STATUS.RUNNING bit */
+    /* Bounded wait for the timer to report running. */
     uint32_t max_wait_cycles = 1000;
     uint32_t wait_count = 0;
     while (!timer_is_running() && wait_count < max_wait_cycles) {
@@ -200,26 +174,23 @@ int main(void) {
     timer_start(0x1000ULL);
     write_scratch(0, 0x01);
 
-    /* Phase: Sample timer counters at regular intervals */
+    /* Sample the count and the credit-expired counter at a fixed interval. */
     simputs("Phase: Sampling timer counters (20 samples @ 10k cycles)\n");
     write_scratch(0, 0x02);
 
     for (i = 0; i < NUM_SAMPLES; i++) {
         wait_cycles(SAMPLE_INTERVAL);
 
-        /* Read current timer count */
         count_samples[i] = timer_get_count();
-
-        /* Read credit expired counter */
         credit_expired_samples[i] = timer_get_credit_expired();
 
-        /* Track credit expiration events */
+        /* Count the samples where the credit-expired counter advanced. */
         if (credit_expired_samples[i] > credit_expired_prev) {
             credit_expired_count++;
             credit_expired_prev = credit_expired_samples[i];
         }
 
-        /* Verify monotonicity */
+        /* The count must increase between samples. */
         if (i > 0 && count_samples[i] <= count_samples[i - 1]) {
             simputs("ERROR: Counter not incrementing\n");
             simputshex32("  Sample ", i);
@@ -232,7 +203,6 @@ int main(void) {
             }
         }
 
-        /* Track maximum count */
         if (count_samples[i] > max_count) {
             max_count = count_samples[i];
         }
@@ -244,7 +214,7 @@ int main(void) {
         }
     }
 
-    /* Verify we detected credit expiration events */
+    /* Logged only; the count is reported via scratch below. */
     if (credit_expired_count == 0) {
         simputs("WARNING: No credit expiration events detected\n");
     } else {
@@ -271,8 +241,6 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {
@@ -280,7 +248,6 @@ int other_main(int hartid) {
     while (1) {
         __asm__("wfi");
     }
-    return 0;
 }
 
 int secondary_main(void) {

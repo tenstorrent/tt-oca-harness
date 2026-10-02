@@ -40,7 +40,7 @@ module tlul_to_axi_lite
 	// --------------------------------------------------
 	// Local Parameters
 	// --------------------------------------------------
-	localparam logic [1:0] AXI_RESP_OKAY = 2'b00;
+	localparam logic [1:0] AxiRespOkay = 2'b00;
 	// Size req_size to the actual TL-UL a_size port width, not a global pkg constant, so it tracks the connected bus
 	localparam int unsigned ReqSizeW = $bits(tl_i.a_size);
 
@@ -156,8 +156,8 @@ module tlul_to_axi_lite
 		axi_lite_req_o = '0;
 
 		// Capture Sticky Error from AXI response
-		if ((axi_lite_rsp_i.b_valid && axi_lite_rsp_i.b.resp != AXI_RESP_OKAY) ||
-				(axi_lite_rsp_i.r_valid && axi_lite_rsp_i.r.resp != AXI_RESP_OKAY)) begin
+		if ((axi_lite_rsp_i.b_valid && axi_lite_rsp_i.b.resp != AxiRespOkay) ||
+				(axi_lite_rsp_i.r_valid && axi_lite_rsp_i.r.resp != AxiRespOkay)) begin
 			sticky_err_d = 1'b1;
 		end
 
@@ -206,7 +206,7 @@ module tlul_to_axi_lite
 
 				if (axi_lite_rsp_i.r_valid) begin
 					resp_data_d  = axi_lite_rsp_i.r.data;
-					resp_error_d = (axi_lite_rsp_i.r.resp != AXI_RESP_OKAY);
+					resp_error_d = (axi_lite_rsp_i.r.resp != AxiRespOkay);
 					state_d      = TL_D_RESP;
 				end
 			end
@@ -243,7 +243,7 @@ module tlul_to_axi_lite
 				axi_lite_req_o.b_ready = 1'b1;
 
 				if (axi_lite_rsp_i.b_valid) begin
-					resp_error_d = (axi_lite_rsp_i.b.resp != AXI_RESP_OKAY);
+					resp_error_d = (axi_lite_rsp_i.b.resp != AxiRespOkay);
 					state_d      = TL_D_RESP;
 				end
 			end

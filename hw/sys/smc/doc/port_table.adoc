@@ -46,55 +46,55 @@ endif::backend-html5[]
 |`pvt_process_clk_obs_i` |`logic` |Input |1 |PVT process monitor clock observation input. |PVT → GPIO padring (muxed) |N/A
 |`pvt_process_clk_obs_en_i` |`logic` |Input |1 |PVT process monitor clock observation enable. |Control logic → GPIO padring |N/A
 |`cat_therm_i` |`logic` |Input |1 |CAT thermal sensor input. |CAT thermal sensor → PVT wrap |N/A, tie to '0 if unused
-|`lsio_interface_select_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |LSIO interface selection for each GPIO wrap. |GPIO padring → GPIO wraps |N/A
-|`pad2core_i` |`logic` |Input |`[NUM_GPIO_WRAPS-1:0]` |GPIO input data from pad ring to core. |GPIO padring → SMC |N/A
-|`core2pad_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO output data from core to pad ring. |SMC → GPIO padring |N/A
-|`pad2core_en_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO pad-to-core path enable. |SMC → GPIO padring |N/A
-|`core2pad_en_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |GPIO core-to-pad path enable. |SMC → GPIO padring |N/A
+|`lsio_interface_select_o` |`logic` |Output |`[NumGpioWraps-1:0]` |LSIO interface selection for each GPIO wrap. |GPIO padring → GPIO wraps |N/A
+|`pad2core_i` |`logic` |Input |`[NumGpioWraps-1:0]` |GPIO input data from pad ring to core. |GPIO padring → SMC |N/A
+|`core2pad_o` |`logic` |Output |`[NumGpioWraps-1:0]` |GPIO output data from core to pad ring. |SMC → GPIO padring |N/A
+|`pad2core_en_o` |`logic` |Output |`[NumGpioWraps-1:0]` |GPIO pad-to-core path enable. |SMC → GPIO padring |N/A
+|`core2pad_en_o` |`logic` |Output |`[NumGpioWraps-1:0]` |GPIO core-to-pad path enable. |SMC → GPIO padring |N/A
 |`rst_cool_n_from_pin_i` |`logic` |Input |1 |Cool reset input from GPIO pin 61. |GPIO pin 61 → Reset Unit |N/A
 |`clk_telemetry_i` |`logic` |Input |1 |Telemetry clock domain. Separate clock for ATB telemetry data collection. |Telemetry clock source |N/A
 |`rst_telemetry_ni` |`logic` |Input |1 |Telemetry reset (active low). Resets telemetry receiver logic. |Telemetry reset source |N/A
-|`telemetry_atdata_i` |`telemetry_receiver_pkg::telemetry_data_t` |Input |`[NUM_TELEMETRY_RECEIVERS-1:0]` |ATB telemetry data input array. |ATB sources → Telemetry receivers |N/A
-|`telemetry_atid_i` |`telemetry_receiver_pkg::atb_id_t` |Input |`[NUM_TELEMETRY_RECEIVERS-1:0]` |ATB telemetry ID input array. |ATB sources → Telemetry receivers |N/A
-|`telemetry_atready_o` |`logic` |Output |`[NUM_TELEMETRY_RECEIVERS-1:0]` |ATB telemetry ready output. |Telemetry receivers → ATB sources |N/A
-|`telemetry_atvalid_i` |`logic` |Input |`[NUM_TELEMETRY_RECEIVERS-1:0]` |ATB telemetry valid input. |ATB sources → Telemetry receivers |N/A
-|`telemetry_afvalid_o` |`logic` |Output |`[NUM_TELEMETRY_RECEIVERS-1:0]` |ATB flush valid output. |Telemetry receivers → ATB sources |N/A
-|`telemetry_afready_i` |`logic` |Input |`[NUM_TELEMETRY_RECEIVERS-1:0]` |ATB flush ready input. |ATB sources → Telemetry receivers |N/A
+|`telemetry_atdata_i` |`telemetry_receiver_pkg::telemetry_data_t` |Input |`[NumTelemetryReceivers-1:0]` |ATB telemetry data input array. |ATB sources → Telemetry receivers |N/A
+|`telemetry_atid_i` |`telemetry_receiver_pkg::atb_id_t` |Input |`[NumTelemetryReceivers-1:0]` |ATB telemetry ID input array. |ATB sources → Telemetry receivers |N/A
+|`telemetry_atready_o` |`logic` |Output |`[NumTelemetryReceivers-1:0]` |ATB telemetry ready output. |Telemetry receivers → ATB sources |N/A
+|`telemetry_atvalid_i` |`logic` |Input |`[NumTelemetryReceivers-1:0]` |ATB telemetry valid input. |ATB sources → Telemetry receivers |N/A
+|`telemetry_afvalid_o` |`logic` |Output |`[NumTelemetryReceivers-1:0]` |ATB flush valid output. |Telemetry receivers → ATB sources |N/A
+|`telemetry_afready_i` |`logic` |Input |`[NumTelemetryReceivers-1:0]` |ATB flush ready input. |ATB sources → Telemetry receivers |N/A
 |`smc_cluster_ded_o` |`logic` |Output |1 |Cluster double error detection output. |CPU cluster → External systems |N/A
 |`smc_wdt_first_timeout_o` |`logic` |Output |1 |First watchdog timeout signal. |CPU cluster WDT → Reset Unit |N/A
 |`smc_wdt_second_timeout_o` |`logic` |Output |1 |Second watchdog timeout signal. |Reset Unit → External systems |N/A
 |`smc_region_size_o` |`logic` |Output |`[31:0]` |SMC address region size output. |SMC Internal Registers → External systems |N/A
-|`smc_ext_interrupts_i` |`logic` |Input |`[NUM_EXT_INTERRUPTS-1:0]` |External interrupt inputs. Width is 256. Active-high level or a pulse long enough to be sampled on `clk_smc`. Synchronized to `clk_smc` (3-stage) in `smc_base`; a short asynchronous pulse can be lost. |External sources → Interrupt aggregator |N/A, tie to '0 if unused
+|`smc_ext_interrupts_i` |`logic` |Input |`[NumExtInterrupts-1:0]` |External interrupt inputs. Width is 256. Active-high level or a pulse long enough to be sampled on `clk_smc`. Synchronized to `clk_smc` (3-stage) in `smc_base`; a short asynchronous pulse can be lost. |External sources → Interrupt aggregator |N/A, tie to '0 if unused
 |`sep_mailbox_interrupts_i` |`logic` |Input |`[7:0]` |SEP → SMC mailbox interrupt inputs (8 channels). Routed to internal interrupts to the SMC CPU. |SEP → Interrupt aggregator |N/A, tie to '0 if unused
 |`sep_wdt_reset_n_i` |`logic` |Input |1 |SEP watchdog reset (active low). Active-low polarity is inverted before routing to internal interrupts to the SMC CPU. |SEP → Interrupt aggregator |N/A
 |`smc_fuse_sense_done_o` |`logic` |Output |1 |Fuse sense completion output. |eFuse controller → Memory repair logic |N/A
 |`smc_fuse_reset_n_delayed_o` |`logic` |Output |1 |Delayed fuse reset output (after 16 pipeline stages). |eFuse controller → External systems |N/A
 |`skip_mem_repair_o` |`logic` |Output |1 |Skip memory repair output. |Reset Unit → Memory repair logic |N/A
 |`ext_boot_seq_done_i` |`logic` |Input |1 |Asynchronous external boot sequence completion (memory repair and shadow register override done). Qualified in `smc_peripherals` and routed to the SMC and SEP eFuse controllers. |External boot/repair controller → SMC peripherals |N/A
-|`lc_state_i` |`logic` |Input |`[2*LC_STATE_WIDTH-1:0]` (8 bits) |Lifecycle state input, differentially encoded. |Lifecycle controller → SMC Internal Registers |From SEP; tie to 8'hf0 if unused (encoded TEST_DEV)
-|`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NUM_MAILBOXES-1:0]` |External mailbox interrupt outputs (32 interrupts, mapped to IDs 156-187). |Mailbox controller → External targets |N/A
+|`lc_state_i` |`logic` |Input |`[2*LcStateWidth-1:0]` (8 bits) |Lifecycle state input, differentially encoded. |Lifecycle controller → SMC Internal Registers |From SEP; tie to 8'hf0 if unused (encoded TEST_DEV)
+|`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NumMailboxes-1:0]` |External mailbox interrupt outputs (32 interrupts, mapped to IDs 156-187). |Mailbox controller → External targets |N/A
 |`cfg_flr_pf_active_i` |`logic` |Input |1 |Function Level Reset (FLR) PF active signal. |PCIe/System → Reset Unit |N/A, tie to '0 if unused
-|`smc_ndmreset_request_i` |`logic` |Input |`[CPU_CLUSTER_COUNT-1:0]` |NDM reset request from external CPU cluster `i` on bit `i`. Synchronized onto `clk_smc`. |External CPU clusters → SMC |Tie to '0 if unused
-|`smc_ndmreset_process_o` |`logic` |Output |`[CPU_CLUSTER_COUNT-1:0]` |Firmware response to external CPU cluster `i` on bit `i`. |SMC → external CPU clusters |N/A
+|`smc_ndmreset_request_i` |`logic` |Input |`[CpuClusterCount-1:0]` |NDM reset request from external CPU cluster `i` on bit `i`. Synchronized onto `clk_smc`. |External CPU clusters → SMC |Tie to '0 if unused
+|`smc_ndmreset_process_o` |`logic` |Output |`[CpuClusterCount-1:0]` |Firmware response to external CPU cluster `i` on bit `i`. |SMC → external CPU clusters |N/A
 |`isolate_req_o` |`logic` |Output |`[31:0]` |Isolation request output for 32 subsystems. |Reset Unit → 32 subsystems |N/A
 |`ss_reset_complete_i` |`logic` |Input |`[31:0]` |Subsystem reset completion status. |32 subsystems → Reset Unit |32'hFFFFFFFF
 |`ss_config_o` |`logic` |Output |`[31:0]` |Subsystem configuration output. |Reset Unit → 32 subsystems |N/A
 |`ss_reset_ctrl_o` |`smc_reset_unit_pkg::reset_ctrl_t` |Output |`[31:0]` |Subsystem reset control output array. |Reset Unit → 32 subsystems |N/A
 |`sync_irq_o` |`logic` |Output |1 |Software-controlled global synchronisation bit (`SYNC_REG.sync` in the reset unit). Not an interrupt aggregate output. |Reset unit → External |N/A
-|`gpio_interrupt_o` |`logic` |Output |`[NUM_GPIO_WRAPS-1:0]` |Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into `peripheral_interrupts_o[30:29]` internally. |`smc_padring` → external consumers |N/A, leave floating if unused
-|`uart_interrupt_o` |`logic` |Output |`[NUM_UART-1:0]` |Raw UART interrupt outputs, one bit per UART instance, in the peripheral clock domain. Already aggregated into `peripheral_interrupts_o[21:18]` internally via CDC. |`uart_wrap` → external consumers |N/A, leave floating if unused
+|`gpio_interrupt_o` |`logic` |Output |`[NumGpioWraps-1:0]` |Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into `peripheral_interrupts_o[30:29]` internally. |`smc_padring` → external consumers |N/A, leave floating if unused
+|`uart_interrupt_o` |`logic` |Output |`[NumUart-1:0]` |Raw UART interrupt outputs, one bit per UART instance, in the peripheral clock domain. Already aggregated into `peripheral_interrupts_o[21:18]` internally via CDC. |`uart_wrap` → external consumers |N/A, leave floating if unused
 |`smc_rom_intf_req_o` |`rom_req_t` |Output |- |ROM memory interface request. Width depends on CPU cluster configuration |CPU cluster → Boot ROM |N/A
 |`smc_rom_intf_rsp_i` |`rom_rsp_t` |Input |- |ROM memory interface response. Width depends on CPU cluster configuration |Boot ROM → CPU cluster |N/A
 |`smc_scratch_ram_intf_req_o` |`scratch_ram_req_t` |Output |`[NUM_SRAM_BANKS2-1:0]` |Scratch RAM interface requests. Width depends on CPU cluster configuration |CPU cluster → Scratch RAM banks |N/A
 |`smc_scratch_ram_intf_rsp_i` |`scratch_ram_rsp_t` |Input |`[NUM_SRAM_BANKS2-1:0]` |Scratch RAM interface responses. Width depends on CPU cluster configuration |Scratch RAM banks → CPU cluster |N/A
-|`smc_l1_icache_tag_intf_req_o` |`l1_icache_tag_req_t` |Output |`[NUM_ICACHE_TAG_BANKS-1:0]` |L1 I-cache tag interface requests. Width depends on CPU cluster configuration |CPU cluster → L1 I-cache tag banks |N/A
-|`smc_l1_icache_tag_intf_rsp_i` |`l1_icache_tag_rsp_t` |Input |`[NUM_ICACHE_TAG_BANKS-1:0]` |L1 I-cache tag interface responses. Width depends on CPU cluster configuration |L1 I-cache tag banks → CPU cluster |N/A
-|`smc_l1_icache_data_intf_req_o` |`l1_icache_data_req_t` |Output |`[NUM_ICACHE_DATA_BANKS-1:0]` |L1 I-cache data interface requests. Width depends on CPU cluster configuration |CPU cluster → L1 I-cache data banks |N/A
-|`smc_l1_icache_data_intf_rsp_i` |`l1_icache_data_rsp_t` |Input |`[NUM_ICACHE_DATA_BANKS-1:0]` |L1 I-cache data interface responses. Width depends on CPU cluster configuration |L1 I-cache data banks → CPU cluster |N/A
-|`smc_l1_dcache_tag_intf_req_o` |`l1_dcache_tag_req_t` |Output |`[NUM_DCACHE_TAG_BANKS-1:0]` |L1 D-cache tag interface requests. Width depends on CPU cluster configuration |CPU cluster → L1 D-cache tag banks |N/A
-|`smc_l1_dcache_tag_intf_rsp_i` |`l1_dcache_tag_rsp_t` |Input |`[NUM_DCACHE_TAG_BANKS-1:0]` |L1 D-cache tag interface responses. Width depends on CPU cluster configuration |L1 D-cache tag banks → CPU cluster |N/A
-|`smc_l1_dcache_data_intf_req_o` |`l1_dcache_data_req_t` |Output |`[NUM_DCACHE_DATA_BANKS-1:0]` |L1 D-cache data interface requests. Width depends on CPU cluster configuration |CPU cluster → L1 D-cache data banks |N/A
-|`smc_l1_dcache_data_intf_rsp_i` |`l1_dcache_data_rsp_t` |Input |`[NUM_DCACHE_DATA_BANKS-1:0]` |L1 D-cache data interface responses. Width depends on CPU cluster configuration |L1 D-cache data banks → CPU cluster |N/A
+|`smc_l1_icache_tag_intf_req_o` |`l1_icache_tag_req_t` |Output |`[NumIcacheTagBanks-1:0]` |L1 I-cache tag interface requests. Width depends on CPU cluster configuration |CPU cluster → L1 I-cache tag banks |N/A
+|`smc_l1_icache_tag_intf_rsp_i` |`l1_icache_tag_rsp_t` |Input |`[NumIcacheTagBanks-1:0]` |L1 I-cache tag interface responses. Width depends on CPU cluster configuration |L1 I-cache tag banks → CPU cluster |N/A
+|`smc_l1_icache_data_intf_req_o` |`l1_icache_data_req_t` |Output |`[NumIcacheDataBanks-1:0]` |L1 I-cache data interface requests. Width depends on CPU cluster configuration |CPU cluster → L1 I-cache data banks |N/A
+|`smc_l1_icache_data_intf_rsp_i` |`l1_icache_data_rsp_t` |Input |`[NumIcacheDataBanks-1:0]` |L1 I-cache data interface responses. Width depends on CPU cluster configuration |L1 I-cache data banks → CPU cluster |N/A
+|`smc_l1_dcache_tag_intf_req_o` |`l1_dcache_tag_req_t` |Output |`[NumDcacheTagBanks-1:0]` |L1 D-cache tag interface requests. Width depends on CPU cluster configuration |CPU cluster → L1 D-cache tag banks |N/A
+|`smc_l1_dcache_tag_intf_rsp_i` |`l1_dcache_tag_rsp_t` |Input |`[NumDcacheTagBanks-1:0]` |L1 D-cache tag interface responses. Width depends on CPU cluster configuration |L1 D-cache tag banks → CPU cluster |N/A
+|`smc_l1_dcache_data_intf_req_o` |`l1_dcache_data_req_t` |Output |`[NumDcacheDataBanks-1:0]` |L1 D-cache data interface requests. Width depends on CPU cluster configuration |CPU cluster → L1 D-cache data banks |N/A
+|`smc_l1_dcache_data_intf_rsp_i` |`l1_dcache_data_rsp_t` |Input |`[NumDcacheDataBanks-1:0]` |L1 D-cache data interface responses. Width depends on CPU cluster configuration |L1 D-cache data banks → CPU cluster |N/A
 |`smc_disable_sram_auto_init_i` |`logic` |Input |1 |Disable SRAM automatic initialization. |Control logic → CPU cluster |1'b0
 |`smc_init_mem_done_o` |`logic` |Output |1 |Memory initialization completion signal. |CPU cluster → Control logic |N/A
 |`chiplet_is_primary_i` |`logic` |Input |1 |Chiplet is primary signal. Used for System Timer OCTS |GPIO Padring Straps (strap 25) → SMC |N/A
@@ -102,7 +102,7 @@ endif::backend-html5[]
 |`jtag_reset_ctrl_i` |`smc_pkg::jtag_smc_reset_ctrl_t` |Input |- |Typed reset-override control struct carrying all SMC reset override enables and active-low values. Driven by DTP via JTAG IC_RESET. Tie all enables to 0 when not used. |DTP → SMC reset unit |All enables 0
 |`cla_gpio_enable_o` |`logic` |Output |1 |CLA GPIO enable output. |DFD controller → CLA |N/A
 |`tdr_dbg_ctrl_clock_stop_en_i` |`logic` |Input |1 |DEBUG_CONTROL CLA clock-stop enable. |DTP → DFD |1'b0
-|`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |`logic` |Output |1 |CLA halt-clock status under enable; also drives `cpu_interrupts_o[NUM_EXT_INTERRUPTS+64]` (internal interrupt 0), bit 320. |DFD → DTP / interrupt |N/A
+|`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |`logic` |Output |1 |CLA halt-clock status under enable; also drives `cpu_interrupts_o[NumExtInterrupts+64]` (internal interrupt 0), bit 320. |DFD → DTP / interrupt |N/A
 |`xtrigger_ss_i` |`smc_pkg::xtrigger_t` |Input |- |Cross-trigger subsystem input. SMU drives from `dtp_xtrig_ctm_src_req[1:0]`. Internal SMU connection; not an SMU external port. |SMU internal: DTP `xtrig_ctm_src_req_o[1:0]` → SMC |N/A
 |`xtrigger_ss_o` |`smc_pkg::xtrigger_t` |Output |- |Cross-trigger subsystem output. SMU routes to `dtp_xtrig_ctm_dst_req[1:0]`. Internal SMU connection; not an SMU external port. |SMU internal: SMC → DTP `xtrig_ctm_dst_req_i[1:0]` |N/A
 |`trace_mem_req_o` |`dfd_trace_mem_pkg::SinkMemPktIn_s` |Output |`[TRC_RAM_INSTANCES-1:0]` |Trace memory interface requests. |DFD controller → Trace memory |N/A, leave floating if unused

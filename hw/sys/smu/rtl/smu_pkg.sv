@@ -9,6 +9,8 @@
 // directly takes precedence over CFG_IDX. NoSepCfg differs from DefaultCfg only in SEP. The
 // JTAG, cross-trigger and pipeline fields configure the DTP instance in smu, each forwarded to
 // the DTP parameter of the same name unless its clause says otherwise.
+// XTRIG_NUM_INT_CT and XTRIG_NUM_CLK_STOP_REQ are the SMU-exposed counts; smu adds the
+// SMC-reserved lanes (XtrigSmcIntCtLanes, XtrigSmcClkStopLanes) before passing them to DTP.
 //
 // DefaultCfg enables every JTAG feature with one extra STAP and zero ID fields, and sets 16
 // CTPs, 8 exposed internal CT lanes, 8 exposed clock-stop requests, all lanes in pulse-sync
@@ -20,9 +22,9 @@ package smu_pkg;
 
   import dtp_pkg::*;
 
-  localparam int unsigned XTRIG_SMC_INT_CT_LANES = 2;
-  localparam int unsigned XTRIG_SMC_CLK_STOP_LANES = 1;
-  localparam int unsigned XTRIG_INT_CT_MODE_WIDTH = 32;
+  localparam int unsigned XtrigSmcIntCtLanes = 2;
+  localparam int unsigned XtrigSmcClkStopLanes = 1;
+  localparam int unsigned XtrigIntCtModeWidth = 32;
 
   typedef struct packed {
     int unsigned NUM_INT_TO_SMC;  // Width of smc_ext_interrupts_i, 1 to 256; smu zero-extends
@@ -66,19 +68,19 @@ package smu_pkg;
     int unsigned XTRIG_NUM_CTP;           // External cross-trigger port count, at least 1;
                                           // forwarded to the DTP XTRIG_NUM_CTP.
                                           // XTRIG_NUM_CTP + XTRIG_NUM_INT_CT +
-                                          // XTRIG_SMC_INT_CT_LANES must equal the 26 CT ports
+                                          // XtrigSmcIntCtLanes must equal the 26 CT ports
                                           // of the generated cross-trigger matrix map.
     int unsigned XTRIG_NUM_INT_CT;        // SMU-exposed internal CT lane count, 1 to 32; the
-                                          // DTP gets these plus the XTRIG_SMC_INT_CT_LANES
+                                          // DTP gets these plus the XtrigSmcIntCtLanes
                                           // SMC lanes below them.
     int unsigned XTRIG_NUM_CLK_STOP_REQ;  // SMU-exposed clock-stop request count, at least 1;
                                           // the DTP gets these plus the
-                                          // XTRIG_SMC_CLK_STOP_LANES SMC lane below them.
-    logic [XTRIG_INT_CT_MODE_WIDTH-1:0] XTRIG_INT_CT_MODE;  // Per exposed lane, 0 for pulse
-                                                            // sync and 1 for req/ack. Bits at
-                                                            // and above XTRIG_NUM_INT_CT are
-                                                            // ignored, and the SMC lanes are
-                                                            // always pulse sync.
+                                          // XtrigSmcClkStopLanes SMC lane below them.
+    logic [XtrigIntCtModeWidth-1:0] XTRIG_INT_CT_MODE;  // Per exposed lane, 0 for pulse
+                                                        // sync and 1 for req/ack. Bits at
+                                                        // and above XTRIG_NUM_INT_CT are
+                                                        // ignored, and the SMC lanes are
+                                                        // always pulse sync.
 
     // Pipeline depths
     logic [1:0] SMC_OTP_RD_PL_DEPTH;  // DTP JTAG2AXI read pipeline depth toward the SMC OTP, 0
@@ -138,7 +140,7 @@ package smu_pkg;
   } smu_cfg_t;
 
   localparam smu_cfg_t DefaultCfg = '{
-      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS.
+      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NumExtInterrupts.
       JTAG_BSR_ENABLE: 1'b1,
       JTAG_EXTEST_TRAIN_ENABLE: 1'b1,
       JTAG_EXTEST_PULSE_ENABLE: 1'b1,
@@ -155,9 +157,9 @@ package smu_pkg;
       JTAG_IDCODE_PART_NUM: 16'h0000,
       JTAG_IDCODE_SI_REV: 4'h0,
       JTAG_OCH_VER: 8'h00,
-      XTRIG_NUM_CTP: dtp_pkg::DEFAULT_NUM_CTP,
-      XTRIG_NUM_INT_CT: dtp_pkg::DEFAULT_NUM_INT_CT - XTRIG_SMC_INT_CT_LANES,
-      XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ - XTRIG_SMC_CLK_STOP_LANES,
+      XTRIG_NUM_CTP: dtp_pkg::DefaultNumCtp,
+      XTRIG_NUM_INT_CT: dtp_pkg::DefaultNumIntCt - XtrigSmcIntCtLanes,
+      XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DefaultNumClkStopReq - XtrigSmcClkStopLanes,
       XTRIG_INT_CT_MODE: '0,
       SMC_OTP_RD_PL_DEPTH: 2'h3,
       SMC_OTP_WR_PL_DEPTH: 2'h3,
@@ -175,7 +177,7 @@ package smu_pkg;
   };
 
   localparam smu_cfg_t NoSepCfg = '{
-      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS.
+      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NumExtInterrupts.
       JTAG_BSR_ENABLE: 1'b1,
       JTAG_EXTEST_TRAIN_ENABLE: 1'b1,
       JTAG_EXTEST_PULSE_ENABLE: 1'b1,
@@ -192,9 +194,9 @@ package smu_pkg;
       JTAG_IDCODE_PART_NUM: 16'h0000,
       JTAG_IDCODE_SI_REV: 4'h0,
       JTAG_OCH_VER: 8'h00,
-      XTRIG_NUM_CTP: dtp_pkg::DEFAULT_NUM_CTP,
-      XTRIG_NUM_INT_CT: dtp_pkg::DEFAULT_NUM_INT_CT - XTRIG_SMC_INT_CT_LANES,
-      XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ - XTRIG_SMC_CLK_STOP_LANES,
+      XTRIG_NUM_CTP: dtp_pkg::DefaultNumCtp,
+      XTRIG_NUM_INT_CT: dtp_pkg::DefaultNumIntCt - XtrigSmcIntCtLanes,
+      XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DefaultNumClkStopReq - XtrigSmcClkStopLanes,
       XTRIG_INT_CT_MODE: '0,
       SMC_OTP_RD_PL_DEPTH: 2'h3,
       SMC_OTP_WR_PL_DEPTH: 2'h3,
@@ -219,12 +221,12 @@ package smu_pkg;
 
   // DTP internal CT lane count: the exposed lanes plus the SMC-reserved lanes.
   function automatic int unsigned dtp_xtrig_num_int_ct(input smu_cfg_t cfg);
-    return cfg.XTRIG_NUM_INT_CT + XTRIG_SMC_INT_CT_LANES;
+    return cfg.XTRIG_NUM_INT_CT + XtrigSmcIntCtLanes;
   endfunction
 
   // DTP clock-stop request count: the exposed requests plus the SMC-reserved lane.
   function automatic int unsigned dtp_xtrig_num_clk_stop_req(input smu_cfg_t cfg);
-    return cfg.XTRIG_NUM_CLK_STOP_REQ + XTRIG_SMC_CLK_STOP_LANES;
+    return cfg.XTRIG_NUM_CLK_STOP_REQ + XtrigSmcClkStopLanes;
   endfunction
 
   // Extra STAP port count: JTAG_NUM_EXTRA_STAPS, but at least one for the tie-off.
@@ -233,11 +235,11 @@ package smu_pkg;
   endfunction
 
   // DTP per-lane CT mode vector, wide enough for every legal XTRIG_NUM_INT_CT.
-  typedef logic [XTRIG_INT_CT_MODE_WIDTH+XTRIG_SMC_INT_CT_LANES-1:0] dtp_ct_mode_t;
+  typedef logic [XtrigIntCtModeWidth+XtrigSmcIntCtLanes-1:0] dtp_ct_mode_t;
 
   // DTP per-lane CT mode: the exposed lanes' modes above the zeroed SMC-reserved lanes.
   function automatic dtp_ct_mode_t dtp_xtrig_int_ct_mode(input smu_cfg_t cfg);
-    return {cfg.XTRIG_INT_CT_MODE & ~('1 << cfg.XTRIG_NUM_INT_CT), {XTRIG_SMC_INT_CT_LANES{1'b0}}};
+    return {cfg.XTRIG_INT_CT_MODE & ~('1 << cfg.XTRIG_NUM_INT_CT), {XtrigSmcIntCtLanes{1'b0}}};
   endfunction
 
 endpackage : smu_pkg

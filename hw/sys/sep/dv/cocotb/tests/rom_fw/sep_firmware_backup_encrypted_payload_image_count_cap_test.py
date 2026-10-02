@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Backup's ENCRYPTED TOC declares one image past the ROM's cap; the ROM halts.
+
+The toc_cap golden holds the entry array, so only the compiled ``OCA_TOC_MAX_IMAGES`` refuses it.
+Needs ``+esrc_noise_force``: an RSA-3072 modexp and an AES decryption.
+"""
+
+from __future__ import annotations
+
+import pyuvm
+from rom_fw import sep_toc_defect as td
+from rom_fw.sep_backup_toc_fail_base import sep_backup_toc_fail_base
+
+
+@pyuvm.test()
+class sep_firmware_backup_encrypted_payload_image_count_cap_test(sep_backup_toc_fail_base):
+    """Encrypted backup TOC image_count is cap + 1 and fits -> both slots refused -> halt."""
+
+    toc_field = td.IMAGE_COUNT_CAP
+    encrypted = True

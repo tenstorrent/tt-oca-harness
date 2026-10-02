@@ -83,7 +83,7 @@ module sep_crypto_abr_wrapper
   // into single accesses. AXI permits splitting only a modifiable transaction,
   // so the modifiable bit is forced here. The sep_crypto demux has already
   // refused every AxLEN != 0 request.
-  localparam int unsigned ABR_AXI_MAX_TXNS = 4;
+  localparam int unsigned AbrAxiMaxTxns = 4;
 
   sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_cache_forced;
   sep_pkg::sep_32_32_6_12_axi_req_t  abr_axi32_req;
@@ -98,7 +98,7 @@ module sep_crypto_abr_wrapper
   end
 
   axi_dw_converter #(
-    .AxiMaxReads         (ABR_AXI_MAX_TXNS),
+    .AxiMaxReads         (AbrAxiMaxTxns),
     .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
     .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
     .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
@@ -128,8 +128,8 @@ module sep_crypto_abr_wrapper
     .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
     .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
     .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-    .AxiMaxWriteTxns (ABR_AXI_MAX_TXNS),
-    .AxiMaxReadTxns  (ABR_AXI_MAX_TXNS),
+    .AxiMaxWriteTxns (AbrAxiMaxTxns),
+    .AxiMaxReadTxns  (AbrAxiMaxTxns),
     .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
     .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
     .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
@@ -202,7 +202,7 @@ module sep_crypto_abr_wrapper
   abr_wrapper_key__in_t  abr_key_hwif_in;
   abr_wrapper_key__out_t abr_key_hwif_out;
 
-  localparam int unsigned ABR_KEY_CSR_ADDR_WIDTH =
+  localparam int unsigned AbrKeyCsrAddrWidth =
         abr_wrapper_key_reg_pkg::ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH;
 
   abr_wrapper_key_reg u_abr_key_csr (
@@ -211,7 +211,7 @@ module sep_crypto_abr_wrapper
 
     // AW channel
     .s_axil_awvalid (abr_key_axil_req_i.aw_valid),
-    .s_axil_awaddr  (abr_key_axil_req_i.aw.addr[ABR_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_awaddr  (abr_key_axil_req_i.aw.addr[AbrKeyCsrAddrWidth-1:0]),
     .s_axil_awprot  (abr_key_axil_req_i.aw.prot),
     .s_axil_awready (abr_key_axil_resp_o.aw_ready),
 
@@ -228,7 +228,7 @@ module sep_crypto_abr_wrapper
 
     // AR channel
     .s_axil_arvalid (abr_key_axil_req_i.ar_valid),
-    .s_axil_araddr  (abr_key_axil_req_i.ar.addr[ABR_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_araddr  (abr_key_axil_req_i.ar.addr[AbrKeyCsrAddrWidth-1:0]),
     .s_axil_arprot  (abr_key_axil_req_i.ar.prot),
     .s_axil_arready (abr_key_axil_resp_o.ar_ready),
 

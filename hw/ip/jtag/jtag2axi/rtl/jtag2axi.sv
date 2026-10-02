@@ -134,69 +134,69 @@ module jtag2axi #(
   //--------------------------------------------------------------------------
 
   // JTAG Operation Codes
-  localparam logic [1:0] JTAG_OP_NOP = 2'b00;
-  localparam logic [1:0] JTAG_OP_READ = 2'b01;
-  localparam logic [1:0] JTAG_OP_WRITE = 2'b10;
+  localparam logic [1:0] JtagOpNop = 2'b00;
+  localparam logic [1:0] JtagOpRead = 2'b01;
+  localparam logic [1:0] JtagOpWrite = 2'b10;
 
   // AXI Status Codes for JTAG Capture
-  localparam logic [1:0] CAPTURE_STATUS_SUCCESS = 2'b00;
-  localparam logic [1:0] CAPTURE_STATUS_SLVERR = 2'b01;
-  localparam logic [1:0] CAPTURE_STATUS_DECERR = 2'b10;
-  localparam logic [1:0] CAPTURE_STATUS_BUSY_OR_FULL = 2'b11;
+  localparam logic [1:0] CaptureStatusSuccess = 2'b00;
+  localparam logic [1:0] CaptureStatusSlverr = 2'b01;
+  localparam logic [1:0] CaptureStatusDecerr = 2'b10;
+  localparam logic [1:0] CaptureStatusBusyOrFull = 2'b11;
 
   // AXI Constants
-  localparam logic [1:0] AXI_BURST_INCR = 2'b01;
-  localparam logic [7:0] AXI_LEN_SINGLE = 8'b00000000;
-  localparam logic [2:0] AXI_PROT_DEFAULT = 3'b000;  // Unprivileged, Secure, Data
-  localparam logic [3:0] AXI_CACHE_DEFAULT = 4'b0010;  // Normal Non-cacheable Non-bufferable
+  localparam logic [1:0] AxiBurstIncr = 2'b01;
+  localparam logic [7:0] AxiLenSingle = 8'b00000000;
+  localparam logic [2:0] AxiProtDefault = 3'b000;  // Unprivileged, Secure, Data
+  localparam logic [3:0] AxiCacheDefault = 4'b0010;  // Normal Non-cacheable Non-bufferable
 
-  localparam logic [1023:0] DEADBEEF_CONST = {32{32'hDEADBEEF}};
+  localparam logic [1023:0] DeadBeefConst = {32{32'hDEADBEEF}};
   logic [DATA_WIDTH-1:0] RDATA_PENDING_VALUE_CONST;
-  assign RDATA_PENDING_VALUE_CONST = DEADBEEF_CONST[DATA_WIDTH-1:0];
+  assign RDATA_PENDING_VALUE_CONST = DeadBeefConst[DATA_WIDTH-1:0];
 
   // Size field width: 1 bit for 8-16, 2 bits for 32-64, 3 bits for 128-1024
-  localparam int SCAN_CHAIN_SIZE_FIELD_WIDTH = (DATA_WIDTH <= 16) ? 1 : (DATA_WIDTH <= 64) ? 2 : 3;
-  localparam int WSTRB_FIELD_WIDTH = DATA_WIDTH / 8;
-  localparam int PIPELINE_DEPTH_FIELD_BITS = (FIFO_DEPTH == 0) ? 1 : $clog2(FIFO_DEPTH + 1);
+  localparam int ScanChainSizeFieldWidth = (DATA_WIDTH <= 16) ? 1 : (DATA_WIDTH <= 64) ? 2 : 3;
+  localparam int WstrbFieldWidth = DATA_WIDTH / 8;
+  localparam int PipelineDepthFieldBits = (FIFO_DEPTH == 0) ? 1 : $clog2(FIFO_DEPTH + 1);
 
-  localparam int AXISINGLEOP_OP_BITS = 2;
-  localparam int AXISINGLEOP_SIZE_BITS = SCAN_CHAIN_SIZE_FIELD_WIDTH;
-  localparam int AXISINGLEOP_WSTRB_BITS = WSTRB_FIELD_WIDTH;
-  localparam int AXISINGLEOP_DATA_BITS = DATA_WIDTH;
-  localparam int AXISINGLEOP_ADDR_BITS = ADDR_WIDTH;
-  localparam int AXISINGLEOP_OP_LOW = 0;
-  localparam int AXISINGLEOP_OP_HIGH = AXISINGLEOP_OP_LOW + AXISINGLEOP_OP_BITS - 1;
-  localparam int AXISINGLEOP_SIZE_LOW = AXISINGLEOP_OP_HIGH + 1;
-  localparam int AXISINGLEOP_SIZE_HIGH = AXISINGLEOP_SIZE_LOW + AXISINGLEOP_SIZE_BITS - 1;
-  localparam int AXISINGLEOP_WSTRB_LOW = AXISINGLEOP_SIZE_HIGH + 1;
-  localparam int AXISINGLEOP_WSTRB_HIGH = AXISINGLEOP_WSTRB_LOW + AXISINGLEOP_WSTRB_BITS - 1;
-  localparam int AXISINGLEOP_DATA_LOW = AXISINGLEOP_WSTRB_HIGH + 1;
-  localparam int AXISINGLEOP_DATA_HIGH = AXISINGLEOP_DATA_LOW + AXISINGLEOP_DATA_BITS - 1;
-  localparam int AXISINGLEOP_ADDR_LOW = AXISINGLEOP_DATA_HIGH + 1;
-  localparam int AXISINGLEOP_ADDR_HIGH = AXISINGLEOP_ADDR_LOW + AXISINGLEOP_ADDR_BITS - 1;
-  localparam int AXISINGLEOP_LEN = AXISINGLEOP_ADDR_HIGH + 1;
+  localparam int AxiSingleOpOpBits = 2;
+  localparam int AxiSingleOpSizeBits = ScanChainSizeFieldWidth;
+  localparam int AxiSingleOpWstrbBits = WstrbFieldWidth;
+  localparam int AxiSingleOpDataBits = DATA_WIDTH;
+  localparam int AxiSingleOpAddrBits = ADDR_WIDTH;
+  localparam int AxiSingleOpOpLow = 0;
+  localparam int AxiSingleOpOpHigh = AxiSingleOpOpLow + AxiSingleOpOpBits - 1;
+  localparam int AxiSingleOpSizeLow = AxiSingleOpOpHigh + 1;
+  localparam int AxiSingleOpSizeHigh = AxiSingleOpSizeLow + AxiSingleOpSizeBits - 1;
+  localparam int AxiSingleOpWstrbLow = AxiSingleOpSizeHigh + 1;
+  localparam int AxiSingleOpWstrbHigh = AxiSingleOpWstrbLow + AxiSingleOpWstrbBits - 1;
+  localparam int AxiSingleOpDataLow = AxiSingleOpWstrbHigh + 1;
+  localparam int AxiSingleOpDataHigh = AxiSingleOpDataLow + AxiSingleOpDataBits - 1;
+  localparam int AxiSingleOpAddrLow = AxiSingleOpDataHigh + 1;
+  localparam int AxiSingleOpAddrHigh = AxiSingleOpAddrLow + AxiSingleOpAddrBits - 1;
+  localparam int AxiSingleOpLen = AxiSingleOpAddrHigh + 1;
 
-  localparam int AXISERIESCTRL_OP_BITS = 2;
-  localparam int AXISERIESCTRL_SIZE_BITS = SCAN_CHAIN_SIZE_FIELD_WIDTH;
-  localparam int AXISERIESCTRL_PD_BITS = PIPELINE_DEPTH_FIELD_BITS;
-  localparam int AXISERIESCTRL_ADDR_BITS = ADDR_WIDTH;
-  localparam int AXISERIESCTRL_RESET_BITS = 1;
-  localparam int AXISERIESCTRL_OP_LOW = 0;
-  localparam int AXISERIESCTRL_OP_HIGH = AXISERIESCTRL_OP_LOW + AXISERIESCTRL_OP_BITS - 1;
-  localparam int AXISERIESCTRL_SIZE_LOW = AXISERIESCTRL_OP_HIGH + 1;
-  localparam int AXISERIESCTRL_SIZE_HIGH = AXISERIESCTRL_SIZE_LOW + AXISERIESCTRL_SIZE_BITS - 1;
-  localparam int AXISERIESCTRL_PD_LOW = AXISERIESCTRL_SIZE_HIGH + 1;
-  localparam int AXISERIESCTRL_PD_HIGH = AXISERIESCTRL_PD_LOW + AXISERIESCTRL_PD_BITS - 1;
-  localparam int AXISERIESCTRL_ADDR_LOW = AXISERIESCTRL_PD_HIGH + 1;
-  localparam int AXISERIESCTRL_ADDR_HIGH = AXISERIESCTRL_ADDR_LOW + AXISERIESCTRL_ADDR_BITS - 1;
-  localparam int AXISERIESCTRL_RESET_LOW = AXISERIESCTRL_ADDR_HIGH + 1;
-  localparam int AXISERIESCTRL_RESET_HIGH = AXISERIESCTRL_RESET_LOW + AXISERIESCTRL_RESET_BITS - 1;
-  localparam int AXISERIESCTRL_LEN = AXISERIESCTRL_RESET_HIGH + 1;
+  localparam int AxiSeriesCtrlOpBits = 2;
+  localparam int AxiSeriesCtrlSizeBits = ScanChainSizeFieldWidth;
+  localparam int AxiSeriesCtrlPdBits = PipelineDepthFieldBits;
+  localparam int AxiSeriesCtrlAddrBits = ADDR_WIDTH;
+  localparam int AxiSeriesCtrlResetBits = 1;
+  localparam int AxiSeriesCtrlOpLow = 0;
+  localparam int AxiSeriesCtrlOpHigh = AxiSeriesCtrlOpLow + AxiSeriesCtrlOpBits - 1;
+  localparam int AxiSeriesCtrlSizeLow = AxiSeriesCtrlOpHigh + 1;
+  localparam int AxiSeriesCtrlSizeHigh = AxiSeriesCtrlSizeLow + AxiSeriesCtrlSizeBits - 1;
+  localparam int AxiSeriesCtrlPdLow = AxiSeriesCtrlSizeHigh + 1;
+  localparam int AxiSeriesCtrlPdHigh = AxiSeriesCtrlPdLow + AxiSeriesCtrlPdBits - 1;
+  localparam int AxiSeriesCtrlAddrLow = AxiSeriesCtrlPdHigh + 1;
+  localparam int AxiSeriesCtrlAddrHigh = AxiSeriesCtrlAddrLow + AxiSeriesCtrlAddrBits - 1;
+  localparam int AxiSeriesCtrlResetLow = AxiSeriesCtrlAddrHigh + 1;
+  localparam int AxiSeriesCtrlResetHigh = AxiSeriesCtrlResetLow + AxiSeriesCtrlResetBits - 1;
+  localparam int AxiSeriesCtrlLen = AxiSeriesCtrlResetHigh + 1;
 
-  localparam int SERIES_DATA_MAX_MAPPED_BITS = DATA_WIDTH;
-  localparam int AXISERIESDATAINCR_MAX_LEN = SERIES_DATA_MAX_MAPPED_BITS;
-  localparam int AXISERIESDATANOINCR_MAX_LEN = SERIES_DATA_MAX_MAPPED_BITS;
-  localparam int AXISERIESDATAWITHERRORSTATUS_MAX_LEN = SERIES_DATA_MAX_MAPPED_BITS + 1;
+  localparam int SeriesDataMaxMappedBits = DATA_WIDTH;
+  localparam int AxiSeriesDataIncrMaxLen = SeriesDataMaxMappedBits;
+  localparam int AxiSeriesDataNoIncrMaxLen = SeriesDataMaxMappedBits;
+  localparam int AxiSeriesDataWithErrorStatusMaxLen = SeriesDataMaxMappedBits + 1;
 
   function automatic integer max4(input integer a, input integer b, input integer c,
                                   input integer d);
@@ -220,20 +220,17 @@ module jtag2axi #(
 
   // READ and WRITE are the only op codes that issue an AXI transfer.
   function automatic logic is_axi_op(input logic [1:0] op);
-    return (op == JTAG_OP_READ) || (op == JTAG_OP_WRITE);
+    return (op == JtagOpRead) || (op == JtagOpWrite);
   endfunction
 
-  localparam int SHARED_SR_LEN = max4(
-      AXISINGLEOP_LEN,
-      AXISERIESCTRL_LEN,
-      AXISERIESDATAINCR_MAX_LEN,
-      AXISERIESDATAWITHERRORSTATUS_MAX_LEN
+  localparam int SharedSrLen = max4(
+      AxiSingleOpLen, AxiSeriesCtrlLen, AxiSeriesDataIncrMaxLen, AxiSeriesDataWithErrorStatusMaxLen
   );
-  localparam int SERIES_RSP_FIFO_SIZE = FIFO_DEPTH + 1;
-  localparam int CDC_LOG_DEPTH = (FIFO_DEPTH + 2 <= 2) ? 1 : $clog2(FIFO_DEPTH + 2);
-  localparam int unsigned BEAT_BYTES = DATA_WIDTH / 8;
-  localparam int unsigned BYTE_OFFSET_BITS = (BEAT_BYTES <= 1) ? 0 : $clog2(BEAT_BYTES);
-  localparam logic [2:0] MAX_AXSIZE = 3'(BYTE_OFFSET_BITS);
+  localparam int SeriesRspFifoSize = FIFO_DEPTH + 1;
+  localparam int CdcLogDepth = (FIFO_DEPTH + 2 <= 2) ? 1 : $clog2(FIFO_DEPTH + 2);
+  localparam int unsigned BeatBytes = DATA_WIDTH / 8;
+  localparam int unsigned ByteOffsetBits = (BeatBytes <= 1) ? 0 : $clog2(BeatBytes);
+  localparam logic [2:0] MaxAxSize = 3'(ByteOffsetBits);
 
   //--------------------------------------------------------------------------
   // AXI Channel and Request/Response Typedefs (PULP AXI)
@@ -255,13 +252,13 @@ module jtag2axi #(
   // the data-bus width in bytes. SingleOp keeps host-packed WSTRB/DATA and
   // does not use these.
   function automatic int unsigned beat_byte_offset(input logic [ADDR_WIDTH-1:0] addr);
-    localparam int unsigned OffW = (BYTE_OFFSET_BITS == 0) ? 1 : BYTE_OFFSET_BITS;
+    localparam int unsigned OffW = (ByteOffsetBits == 0) ? 1 : ByteOffsetBits;
     logic [OffW-1:0] offset_bits;
     offset_bits = '0;
-    if (BYTE_OFFSET_BITS != 0) begin
+    if (ByteOffsetBits != 0) begin
       offset_bits = addr[OffW-1:0];
     end
-    return (BYTE_OFFSET_BITS == 0) ? 0 : int'(offset_bits);
+    return (ByteOffsetBits == 0) ? 0 : int'(offset_bits);
   endfunction
 
   function automatic j2a_strb_t series_lane_wstrb(input logic [ADDR_WIDTH-1:0] addr,
@@ -269,7 +266,7 @@ module jtag2axi #(
     automatic int unsigned offset = beat_byte_offset(addr);
     automatic int unsigned num_bytes = size_to_bytes(axsize);
     automatic j2a_strb_t mask;
-    if (num_bytes >= BEAT_BYTES) begin
+    if (num_bytes >= BeatBytes) begin
       return '1;
     end
     mask = j2a_strb_t'((j2a_strb_t'(1) << num_bytes) - 1);
@@ -300,29 +297,29 @@ module jtag2axi #(
   //--------------------------------------------------------------------------
   // JTAG TDR Shared Shift Register and Update Latches (TCK Domain)
   //--------------------------------------------------------------------------
-  logic [SHARED_SR_LEN-1:0] shift_register_q_tclk;
-  logic [SHARED_SR_LEN-1:0] update_register_q_tclk;
-  logic [SHARED_SR_LEN-1:0] capture_data_tclk;
+  logic [SharedSrLen-1:0] shift_register_q_tclk;
+  logic [SharedSrLen-1:0] update_register_q_tclk;
+  logic [SharedSrLen-1:0] capture_data_tclk;
 
-  logic [SCAN_CHAIN_SIZE_FIELD_WIDTH-1:0] latched_series_size_for_len_tclk;
-  logic [$clog2(SHARED_SR_LEN+1)-1:0] active_instr_len_tclk;
+  logic [ScanChainSizeFieldWidth-1:0] latched_series_size_for_len_tclk;
+  logic [$clog2(SharedSrLen+1)-1:0] active_instr_len_tclk;
 
   always_ff @(negedge tck_i or negedge trst_ni) begin
     if (!trst_ni) begin
       latched_series_size_for_len_tclk <= '0;
     end else begin
       if (update_en_i && select_AXISeriesCtrl_i && !security_disable_i) begin
-        latched_series_size_for_len_tclk <= shift_register_q_tclk[AXISERIESCTRL_SIZE_HIGH : AXISERIESCTRL_SIZE_LOW];
+        latched_series_size_for_len_tclk <= shift_register_q_tclk[AxiSeriesCtrlSizeHigh : AxiSeriesCtrlSizeLow];
       end
     end
   end
 
   always_comb begin
-    active_instr_len_tclk = SHARED_SR_LEN;
+    active_instr_len_tclk = SharedSrLen;
     if (select_AXISingleOp_i) begin
-      active_instr_len_tclk = AXISINGLEOP_LEN;
+      active_instr_len_tclk = AxiSingleOpLen;
     end else if (select_AXISeriesCtrl_i) begin
-      active_instr_len_tclk = AXISERIESCTRL_LEN;
+      active_instr_len_tclk = AxiSeriesCtrlLen;
     end else if (select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i || select_AXISeriesDataWithErrorStatus_i) begin
       automatic int mapped_data_bits_local;
       mapped_data_bits_local = size_to_bits(3'(latched_series_size_for_len_tclk));
@@ -338,16 +335,16 @@ module jtag2axi #(
              select_AXISeriesDataNoIncr_i || select_AXISeriesDataWithErrorStatus_i) ) begin
       active_instr_len_tclk = 1;
     end
-    if (active_instr_len_tclk > SHARED_SR_LEN) begin
-      active_instr_len_tclk = SHARED_SR_LEN;
+    if (active_instr_len_tclk > SharedSrLen) begin
+      active_instr_len_tclk = SharedSrLen;
     end
   end
 
-  logic [SHARED_SR_LEN-1:0] shift_register_d_tclk;
+  logic [SharedSrLen-1:0] shift_register_d_tclk;
 
   always_comb begin
-    automatic logic [SHARED_SR_LEN-1:0]            next_sr_val;
-    automatic logic [$clog2(SHARED_SR_LEN+1)-1:0] current_len;
+    automatic logic [SharedSrLen-1:0]            next_sr_val;
+    automatic logic [$clog2(SharedSrLen+1)-1:0] current_len;
 
     shift_register_d_tclk = shift_register_q_tclk;
     current_len = active_instr_len_tclk;
@@ -356,9 +353,9 @@ module jtag2axi #(
     if (capture_en_i) begin
       shift_register_d_tclk = capture_data_tclk;
     end else if (shift_en_i) begin
-      if (current_len > 0 && current_len <= SHARED_SR_LEN) begin
+      if (current_len > 0 && current_len <= SharedSrLen) begin
         next_sr_val[current_len-1] = scan_in_i;
-        for (int bit_idx = 0; bit_idx < SHARED_SR_LEN - 1; bit_idx = bit_idx + 1) begin
+        for (int bit_idx = 0; bit_idx < SharedSrLen - 1; bit_idx = bit_idx + 1) begin
           if (bit_idx < int'(current_len) - 1) begin
             next_sr_val[bit_idx] = shift_register_q_tclk[bit_idx+1];
           end
@@ -390,17 +387,17 @@ module jtag2axi #(
   //--------------------------------------------------------------------------
   // JTAG Scan Chain Data Extraction (TCK Domain)
   //--------------------------------------------------------------------------
-  logic [AXISINGLEOP_OP_BITS-1:0]    single_op_op_tclk;
-  logic [AXISINGLEOP_SIZE_BITS-1:0]  single_op_size_tclk;
-  logic [AXISINGLEOP_WSTRB_BITS-1:0] single_op_wstrb_tclk;
-  logic [AXISINGLEOP_DATA_BITS-1:0]  single_op_data_tclk;
-  logic [AXISINGLEOP_ADDR_BITS-1:0]  single_op_addr_tclk;
+  logic [AxiSingleOpOpBits-1:0]    single_op_op_tclk;
+  logic [AxiSingleOpSizeBits-1:0]  single_op_size_tclk;
+  logic [AxiSingleOpWstrbBits-1:0] single_op_wstrb_tclk;
+  logic [AxiSingleOpDataBits-1:0]  single_op_data_tclk;
+  logic [AxiSingleOpAddrBits-1:0]  single_op_addr_tclk;
 
-  assign single_op_op_tclk    = update_register_q_tclk[AXISINGLEOP_OP_HIGH    : AXISINGLEOP_OP_LOW];
-  assign single_op_size_tclk  = update_register_q_tclk[AXISINGLEOP_SIZE_HIGH  : AXISINGLEOP_SIZE_LOW];
-  assign single_op_wstrb_tclk = update_register_q_tclk[AXISINGLEOP_WSTRB_HIGH : AXISINGLEOP_WSTRB_LOW];
-  assign single_op_data_tclk  = update_register_q_tclk[AXISINGLEOP_DATA_HIGH  : AXISINGLEOP_DATA_LOW];
-  assign single_op_addr_tclk  = update_register_q_tclk[AXISINGLEOP_ADDR_HIGH  : AXISINGLEOP_ADDR_LOW];
+  assign single_op_op_tclk    = update_register_q_tclk[AxiSingleOpOpHigh    : AxiSingleOpOpLow];
+  assign single_op_size_tclk  = update_register_q_tclk[AxiSingleOpSizeHigh  : AxiSingleOpSizeLow];
+  assign single_op_wstrb_tclk = update_register_q_tclk[AxiSingleOpWstrbHigh : AxiSingleOpWstrbLow];
+  assign single_op_data_tclk  = update_register_q_tclk[AxiSingleOpDataHigh  : AxiSingleOpDataLow];
+  assign single_op_addr_tclk  = update_register_q_tclk[AxiSingleOpAddrHigh  : AxiSingleOpAddrLow];
 
   logic [DATA_WIDTH-1:0] series_data_val_tclk;
   assign series_data_val_tclk = update_register_q_tclk[DATA_WIDTH-1:0];
@@ -409,7 +406,7 @@ module jtag2axi #(
   logic                  series_data_errstat_incr_stat_bit_tclk;
 
   always_comb begin
-    automatic logic [$clog2(SHARED_SR_LEN+1)-1:0] current_mapped_data_len_local;
+    automatic logic [$clog2(SharedSrLen+1)-1:0] current_mapped_data_len_local;
     automatic int num_bytes_to_copy;
     series_data_errstat_val_tclk = '0;
 
@@ -423,7 +420,7 @@ module jtag2axi #(
       end
     end
 
-    if (current_mapped_data_len_local < SHARED_SR_LEN) begin
+    if (current_mapped_data_len_local < SharedSrLen) begin
       series_data_errstat_incr_stat_bit_tclk = update_register_q_tclk[current_mapped_data_len_local];
     end else begin
       series_data_errstat_incr_stat_bit_tclk = 1'b0;
@@ -439,12 +436,12 @@ module jtag2axi #(
   logic [1:0]                             single_tx_op_tclk;
   logic [ADDR_WIDTH-1:0]                  single_tx_addr_tclk;
   logic [DATA_WIDTH-1:0]                  single_tx_data_tclk;
-  logic [SCAN_CHAIN_SIZE_FIELD_WIDTH-1:0] single_tx_axi_size_tclk;
-  logic [WSTRB_FIELD_WIDTH-1:0]           single_tx_wstrb_tclk;
+  logic [ScanChainSizeFieldWidth-1:0]     single_tx_axi_size_tclk;
+  logic [WstrbFieldWidth-1:0]             single_tx_wstrb_tclk;
 
   // Series control state
-  logic [AXISERIESCTRL_SIZE_BITS-1:0] series_ctrl_size_tclk_r;
-  logic [AXISERIESCTRL_PD_BITS-1:0]   series_ctrl_pipeline_depth_tclk_r;
+  logic [AxiSeriesCtrlSizeBits-1:0]   series_ctrl_size_tclk_r;
+  logic [AxiSeriesCtrlPdBits-1:0]     series_ctrl_pipeline_depth_tclk_r;
   logic [ADDR_WIDTH-1:0]              series_ctrl_address_tclk_r;
   logic [1:0]                         series_ctrl_op_mode_tclk_r;
 
@@ -458,7 +455,7 @@ module jtag2axi #(
   logic                  sticky_axi_status_full_tclk;
 
   // Read pipeline preload counter
-  logic [PIPELINE_DEPTH_FIELD_BITS-1:0] series_read_preload_count_tclk;
+  logic [PipelineDepthFieldBits-1:0] series_read_preload_count_tclk;
 
   // Counters
   // `plain_reads_pending_tclk`: plain series reads enqueued by JTAG but not
@@ -495,7 +492,7 @@ module jtag2axi #(
     logic [ADDR_WIDTH-1:0]                  addr;
     logic [DATA_WIDTH-1:0]                  data;
     logic [1:0]                             op;
-    logic [SCAN_CHAIN_SIZE_FIELD_WIDTH-1:0] jtag_size;
+    logic [ScanChainSizeFieldWidth-1:0]     jtag_size;
     logic                                   increment_addr;
     logic                                   is_series_data_with_error_status_op;
   } series_request_fifo_entry_t;
@@ -516,7 +513,7 @@ module jtag2axi #(
     logic [1:0]            rresp;
   } series_read_rsp_t;
 
-  logic [$clog2(SERIES_RSP_FIFO_SIZE+1)-1:0] series_rsp_fifo_count_tclk;
+  logic [$clog2(SeriesRspFifoSize+1)-1:0]    series_rsp_fifo_count_tclk;
   logic                                      series_rsp_fifo_full_tclk;
   logic                                      series_rsp_fifo_empty_tclk;
   logic                                      series_rsp_fifo_push_tclk;
@@ -542,8 +539,8 @@ module jtag2axi #(
   logic [1:0]                             current_op_tclk;
   logic [ADDR_WIDTH-1:0]                  current_addr_tclk;
   logic [DATA_WIDTH-1:0]                  current_data_tclk;
-  logic [SCAN_CHAIN_SIZE_FIELD_WIDTH-1:0] current_jtag_size_tclk;
-  logic [WSTRB_FIELD_WIDTH-1:0]           current_custom_wstrb_tclk;
+  logic [ScanChainSizeFieldWidth-1:0]     current_jtag_size_tclk;
+  logic [WstrbFieldWidth-1:0]             current_custom_wstrb_tclk;
   logic                                   current_use_custom_wstrb_tclk;
   logic                                   current_incr_series_addr_tclk;
   logic                                   current_tx_is_series_read_tclk;
@@ -552,7 +549,7 @@ module jtag2axi #(
 
   // Derived
   logic [2:0]                   current_axi_axsize_tclk;
-  logic [WSTRB_FIELD_WIDTH-1:0] current_wstrb_tclk;
+  logic [WstrbFieldWidth-1:0]   current_wstrb_tclk;
   logic                         axi_transaction_in_progress_tclk;
 
   // FSM combinational completion flags
@@ -605,7 +602,7 @@ module jtag2axi #(
   logic write_discard_rsp_q;
   logic read_discard_rsp_q;
 
-  localparam logic [1:0] OUTSTANDING_MAX = 2'b11;
+  localparam logic [1:0] OutstandingMax = 2'b11;
   logic [1:0] write_outstanding_q;
   logic [1:0] write_outstanding_d;
   logic [1:0] read_outstanding_q;
@@ -634,7 +631,7 @@ module jtag2axi #(
     .r_chan_t          (j2a_r_t),
     .axi_req_t         (j2a_req_t),
     .axi_resp_t        (j2a_resp_t),
-    .LogDepth          (CDC_LOG_DEPTH),
+    .LogDepth          (CdcLogDepth),
     .SyncStages        (3),
     .ClearOnAsyncReset (1'b1)
   ) u_axi_cdc (
@@ -685,11 +682,11 @@ module jtag2axi #(
   // Do not consume a CDC beat after its clear sequence has started. A
   // partially assembled write is flushed; a complete pair is drained.
   assign dst_resp.aw_ready = !dst_clear_pending && aw_buf_ready &&
-                               (write_outstanding_q != OUTSTANDING_MAX);
+                               (write_outstanding_q != OutstandingMax);
   assign dst_resp.w_ready  = !dst_clear_pending && w_buf_ready &&
-                               (write_outstanding_q != OUTSTANDING_MAX);
+                               (write_outstanding_q != OutstandingMax);
   assign dst_resp.ar_ready = !dst_clear_pending && ar_buf_ready &&
-                               (read_outstanding_q != OUTSTANDING_MAX);
+                               (read_outstanding_q != OutstandingMax);
 
   assign aw_input_valid = dst_req.aw_valid && dst_resp.aw_ready;
   assign w_input_valid  = dst_req.w_valid && dst_resp.w_ready;
@@ -944,7 +941,7 @@ module jtag2axi #(
   // Series Request FIFO Storage (TCK)
   //--------------------------------------------------------------------------
   assign series_ctrl_update_op_tclk =
-        update_register_q_tclk[AXISERIESCTRL_OP_HIGH:AXISERIESCTRL_OP_LOW];
+        update_register_q_tclk[AxiSeriesCtrlOpHigh:AxiSeriesCtrlOpLow];
   assign series_mode_is_axi_tclk = is_axi_op(series_ctrl_op_mode_tclk_r);
   assign ctrl_flush_pulse_tclk = update_en_i && !security_disable_i &&
         select_AXISeriesCtrl_i && is_axi_op(series_ctrl_update_op_tclk);
@@ -1014,7 +1011,7 @@ module jtag2axi #(
 
   prim_fifo_sync #(
     .Width            (RspFifoWidth),
-    .Depth            (SERIES_RSP_FIFO_SIZE),
+    .Depth            (SeriesRspFifoSize),
     .Pass             (1'b0),
     .OutputZeroIfEmpty(1'b0),
     .NeverClears      (1'b0),
@@ -1045,7 +1042,7 @@ module jtag2axi #(
       current_tx_is_series_read_tclk                   <= 1'b0;
       current_tx_is_from_single_buffer_tclk            <= 1'b0;
       current_is_series_data_with_error_status_op_tclk <= 1'b0;
-      current_op_tclk                                  <= JTAG_OP_NOP;
+      current_op_tclk                                  <= JtagOpNop;
       current_addr_tclk                                <= '0;
       current_data_tclk                                <= '0;
       current_jtag_size_tclk                           <= '0;
@@ -1084,7 +1081,7 @@ module jtag2axi #(
           current_incr_series_addr_tclk                    <= 1'b0;
         end else begin
           current_tx_is_series_read_tclk                   <=
-                        (series_request_fifo_dout_tclk.op == JTAG_OP_READ);
+                        (series_request_fifo_dout_tclk.op == JtagOpRead);
           current_is_series_data_with_error_status_op_tclk <=
                         series_request_fifo_dout_tclk.is_series_data_with_error_status_op;
           current_op_tclk                                  <= series_request_fifo_dout_tclk.op;
@@ -1099,7 +1096,7 @@ module jtag2axi #(
         current_tx_is_series_read_tclk                   <= 1'b0;
         current_tx_is_from_single_buffer_tclk            <= 1'b0;
         current_is_series_data_with_error_status_op_tclk <= 1'b0;
-        current_op_tclk                                  <= JTAG_OP_NOP;
+        current_op_tclk                                  <= JtagOpNop;
         current_addr_tclk                                <= '0;
         current_data_tclk                                <= '0;
         current_jtag_size_tclk                           <= '0;
@@ -1135,15 +1132,15 @@ module jtag2axi #(
         if (security_disable_i) begin
           axi_state_d_tclk = AXI_IDLE;
         end else if (single_tx_req_valid_tclk) begin
-          if (single_tx_op_tclk == JTAG_OP_WRITE) begin
+          if (single_tx_op_tclk == JtagOpWrite) begin
             axi_state_d_tclk = AXI_SEND_ADDR_W;
-          end else if (single_tx_op_tclk == JTAG_OP_READ) begin
+          end else if (single_tx_op_tclk == JtagOpRead) begin
             axi_state_d_tclk = AXI_SEND_ADDR_R;
           end else begin
             axi_state_d_tclk = AXI_IDLE;
           end
         end else if (!series_request_fifo_empty_tclk) begin
-          if (series_request_fifo_dout_tclk.op == JTAG_OP_READ) begin
+          if (series_request_fifo_dout_tclk.op == JtagOpRead) begin
             if (series_reads_in_flight_tclk < (series_ctrl_pipeline_depth_tclk_r + 1)) begin
               series_request_fifo_pop_tclk = 1'b1;
               axi_state_d_tclk             = AXI_SEND_ADDR_R;
@@ -1179,10 +1176,10 @@ module jtag2axi #(
         if (src_resp.b_valid) begin
           fsm_updates_bresp_status_tclk_comb = 1'b1;
           next_status_tclk_comb =
-                        (src_resp.b.resp == 2'b00) ? CAPTURE_STATUS_SUCCESS :
-                        (src_resp.b.resp == 2'b10) ? CAPTURE_STATUS_SLVERR  :
-                        (src_resp.b.resp == 2'b11) ? CAPTURE_STATUS_DECERR  :
-                                                     CAPTURE_STATUS_SLVERR;
+                        (src_resp.b.resp == 2'b00) ? CaptureStatusSuccess :
+                        (src_resp.b.resp == 2'b10) ? CaptureStatusSlverr  :
+                        (src_resp.b.resp == 2'b11) ? CaptureStatusDecerr  :
+                                                     CaptureStatusSlverr;
           axi_state_d_tclk = AXI_UPDATE_STATUS;
         end
       end
@@ -1212,10 +1209,10 @@ module jtag2axi #(
                         ? src_resp.r.data
                         : series_lane_rdata(src_resp.r.data, current_addr_tclk);
           next_status_tclk_comb =
-                        (src_resp.r.resp == 2'b00) ? CAPTURE_STATUS_SUCCESS :
-                        (src_resp.r.resp == 2'b10) ? CAPTURE_STATUS_SLVERR  :
-                        (src_resp.r.resp == 2'b11) ? CAPTURE_STATUS_DECERR  :
-                                                     CAPTURE_STATUS_SLVERR;
+                        (src_resp.r.resp == 2'b00) ? CaptureStatusSuccess :
+                        (src_resp.r.resp == 2'b10) ? CaptureStatusSlverr  :
+                        (src_resp.r.resp == 2'b11) ? CaptureStatusDecerr  :
+                                                     CaptureStatusSlverr;
           if (src_resp.r.last) begin
             axi_state_d_tclk = AXI_UPDATE_STATUS;
           end
@@ -1249,12 +1246,12 @@ module jtag2axi #(
     src_req.aw        = '0;
     src_req.aw.id     = ID_WIDTH'(0);
     src_req.aw.addr   = current_addr_tclk;
-    src_req.aw.len    = AXI_LEN_SINGLE;
+    src_req.aw.len    = AxiLenSingle;
     src_req.aw.size   = current_axi_axsize_tclk;
-    src_req.aw.burst  = AXI_BURST_INCR;
+    src_req.aw.burst  = AxiBurstIncr;
     src_req.aw.lock   = 1'b0;
-    src_req.aw.cache  = AXI_CACHE_DEFAULT;
-    src_req.aw.prot   = AXI_PROT_DEFAULT;
+    src_req.aw.cache  = AxiCacheDefault;
+    src_req.aw.prot   = AxiProtDefault;
     src_req.aw.qos    = 4'b0;
     src_req.aw.region = 4'b0;
     src_req.aw.atop   = '0;
@@ -1271,12 +1268,12 @@ module jtag2axi #(
     src_req.ar        = '0;
     src_req.ar.id     = ID_WIDTH'(0);
     src_req.ar.addr   = current_addr_tclk;
-    src_req.ar.len    = AXI_LEN_SINGLE;
+    src_req.ar.len    = AxiLenSingle;
     src_req.ar.size   = current_axi_axsize_tclk;
-    src_req.ar.burst  = AXI_BURST_INCR;
+    src_req.ar.burst  = AxiBurstIncr;
     src_req.ar.lock   = 1'b0;
-    src_req.ar.cache  = AXI_CACHE_DEFAULT;
-    src_req.ar.prot   = AXI_PROT_DEFAULT;
+    src_req.ar.cache  = AxiCacheDefault;
+    src_req.ar.prot   = AxiProtDefault;
     src_req.ar.qos    = 4'b0;
     src_req.ar.region = 4'b0;
     src_req.ar.user   = USER_WIDTH'(0);
@@ -1285,8 +1282,8 @@ module jtag2axi #(
   // AxSIZE must not exceed the bus width (IHI 0022 A3.4.1).
   always_comb begin
     current_axi_axsize_tclk = 3'(current_jtag_size_tclk);
-    if (current_axi_axsize_tclk > MAX_AXSIZE) begin
-      current_axi_axsize_tclk = MAX_AXSIZE;
+    if (current_axi_axsize_tclk > MaxAxSize) begin
+      current_axi_axsize_tclk = MaxAxSize;
     end
   end
 
@@ -1294,7 +1291,7 @@ module jtag2axi #(
   // generated mask for series writes.
   always_comb begin
     current_wstrb_tclk = '0;
-    if (current_op_tclk == JTAG_OP_WRITE) begin
+    if (current_op_tclk == JtagOpWrite) begin
       if (current_use_custom_wstrb_tclk) begin
         current_wstrb_tclk = current_custom_wstrb_tclk;
       end else begin
@@ -1310,11 +1307,11 @@ module jtag2axi #(
   logic [1:0]                             single_tx_op_tclk_d;
   logic [ADDR_WIDTH-1:0]                  single_tx_addr_tclk_d;
   logic [DATA_WIDTH-1:0]                  single_tx_data_tclk_d;
-  logic [SCAN_CHAIN_SIZE_FIELD_WIDTH-1:0] single_tx_axi_size_tclk_d;
-  logic [WSTRB_FIELD_WIDTH-1:0]           single_tx_wstrb_tclk_d;
+  logic [ScanChainSizeFieldWidth-1:0]     single_tx_axi_size_tclk_d;
+  logic [WstrbFieldWidth-1:0]             single_tx_wstrb_tclk_d;
 
-  logic [AXISERIESCTRL_SIZE_BITS-1:0] series_ctrl_size_tclk_r_d;
-  logic [AXISERIESCTRL_PD_BITS-1:0]   series_ctrl_pipeline_depth_tclk_r_d;
+  logic [AxiSeriesCtrlSizeBits-1:0]   series_ctrl_size_tclk_r_d;
+  logic [AxiSeriesCtrlPdBits-1:0]     series_ctrl_pipeline_depth_tclk_r_d;
   logic [ADDR_WIDTH-1:0]              series_ctrl_address_tclk_r_d;
   logic [1:0]                         series_ctrl_op_mode_tclk_r_d;
 
@@ -1327,7 +1324,7 @@ module jtag2axi #(
   logic                  sticky_axi_status_full_tclk_d;
   logic                  series_status_takes_completion;
 
-  logic [PIPELINE_DEPTH_FIELD_BITS-1:0] series_read_preload_count_tclk_d;
+  logic [PipelineDepthFieldBits-1:0]    series_read_preload_count_tclk_d;
   logic [$clog2(FIFO_DEPTH+2)-1:0]      plain_reads_pending_tclk_d;
   logic [$clog2(FIFO_DEPTH+2)-1:0]      series_reads_in_flight_tclk_d;
   logic [$clog2(FIFO_DEPTH+2)-1:0]      series_reads_pushed_tclk_d;
@@ -1382,11 +1379,11 @@ module jtag2axi #(
       series_reads_in_flight_tclk_d    = '0;
       series_reads_pushed_tclk_d       = '0;
       if (single_op_aborted_tclk) begin
-        last_single_op_status_tclk_d = CAPTURE_STATUS_DECERR;
+        last_single_op_status_tclk_d = CaptureStatusDecerr;
         last_read_data_tclk_d        = '0;
       end
-      if (series_aborted_tclk && (sticky_axi_status_tclk_d == CAPTURE_STATUS_SUCCESS)) begin
-        sticky_axi_status_tclk_d = CAPTURE_STATUS_DECERR;
+      if (series_aborted_tclk && (sticky_axi_status_tclk_d == CaptureStatusSuccess)) begin
+        sticky_axi_status_tclk_d = CaptureStatusDecerr;
       end
     end
 
@@ -1402,7 +1399,7 @@ module jtag2axi #(
     if (axi_state_q_tclk == AXI_IDLE && axi_state_d_tclk != AXI_IDLE &&
             single_tx_req_valid_tclk) begin
       single_tx_req_valid_tclk_d     = 1'b0;
-      last_single_op_was_read_tclk_d = (single_tx_op_tclk == JTAG_OP_READ);
+      last_single_op_was_read_tclk_d = (single_tx_op_tclk == JtagOpRead);
     end
 
     // Track series reads in flight on AXI (used for pipeline_depth gate).
@@ -1421,33 +1418,33 @@ module jtag2axi #(
     if (update_en_i && !security_disable_i) begin
       if (select_AXISingleOp_i) begin
         automatic logic [1:0] single_op_val;
-        single_op_val = update_register_q_tclk[AXISINGLEOP_OP_HIGH:AXISINGLEOP_OP_LOW];
+        single_op_val = update_register_q_tclk[AxiSingleOpOpHigh:AxiSingleOpOpLow];
         // READ/WRITE while a beat is in flight is a rejected operation.
         // NOP (and reserved) Update-DR is a status poll and must not set
         // sticky_full or clear pending.
-        if (single_op_val == JTAG_OP_READ || single_op_val == JTAG_OP_WRITE) begin
+        if (single_op_val == JtagOpRead || single_op_val == JtagOpWrite) begin
           if (!(axi_transaction_in_progress_tclk || single_tx_req_valid_tclk)) begin
             single_tx_req_valid_tclk_d     = 1'b1;
             single_tx_op_tclk_d            = single_op_val;
-            single_tx_addr_tclk_d          = update_register_q_tclk[AXISINGLEOP_ADDR_HIGH : AXISINGLEOP_ADDR_LOW];
-            single_tx_data_tclk_d          = update_register_q_tclk[AXISINGLEOP_DATA_HIGH : AXISINGLEOP_DATA_LOW];
-            single_tx_axi_size_tclk_d      = update_register_q_tclk[AXISINGLEOP_SIZE_HIGH : AXISINGLEOP_SIZE_LOW];
-            single_tx_wstrb_tclk_d         = update_register_q_tclk[AXISINGLEOP_WSTRB_HIGH: AXISINGLEOP_WSTRB_LOW];
+            single_tx_addr_tclk_d          = update_register_q_tclk[AxiSingleOpAddrHigh : AxiSingleOpAddrLow];
+            single_tx_data_tclk_d          = update_register_q_tclk[AxiSingleOpDataHigh : AxiSingleOpDataLow];
+            single_tx_axi_size_tclk_d      = update_register_q_tclk[AxiSingleOpSizeHigh : AxiSingleOpSizeLow];
+            single_tx_wstrb_tclk_d         = update_register_q_tclk[AxiSingleOpWstrbHigh: AxiSingleOpWstrbLow];
             single_op_pending_tclk_d       = 1'b1;
-            last_single_op_was_read_tclk_d = (single_op_val == JTAG_OP_READ);
+            last_single_op_was_read_tclk_d = (single_op_val == JtagOpRead);
           end else begin
             sticky_axi_status_full_tclk_d = 1'b1;
-            last_single_op_status_tclk_d  = CAPTURE_STATUS_BUSY_OR_FULL;
+            last_single_op_status_tclk_d  = CaptureStatusBusyOrFull;
             single_op_pending_tclk_d      = 1'b0;
           end
         end
       end else if (select_AXISeriesCtrl_i) begin
         automatic logic [1:0] op_val;
-        automatic logic [AXISERIESCTRL_PD_BITS-1:0] pd_val;
-        op_val = update_register_q_tclk[AXISERIESCTRL_OP_HIGH:AXISERIESCTRL_OP_LOW];
-        pd_val = (update_register_q_tclk[AXISERIESCTRL_PD_HIGH:AXISERIESCTRL_PD_LOW] > FIFO_DEPTH) ?
-                         FIFO_DEPTH[PIPELINE_DEPTH_FIELD_BITS-1:0] :
-                         update_register_q_tclk[AXISERIESCTRL_PD_HIGH:AXISERIESCTRL_PD_LOW];
+        automatic logic [AxiSeriesCtrlPdBits-1:0] pd_val;
+        op_val = update_register_q_tclk[AxiSeriesCtrlOpHigh:AxiSeriesCtrlOpLow];
+        pd_val = (update_register_q_tclk[AxiSeriesCtrlPdHigh:AxiSeriesCtrlPdLow] > FIFO_DEPTH) ?
+                         FIFO_DEPTH[PipelineDepthFieldBits-1:0] :
+                         update_register_q_tclk[AxiSeriesCtrlPdHigh:AxiSeriesCtrlPdLow];
 
         // Only a READ or WRITE op reprograms series CTRL state
         // (including the read preload counter). A NOP or reserved
@@ -1455,11 +1452,11 @@ module jtag2axi #(
         // preload/address/pipeline-depth state accumulated by the
         // in-flight series operation intact.
         if (is_axi_op(op_val)) begin
-          series_ctrl_size_tclk_r_d           = update_register_q_tclk[AXISERIESCTRL_SIZE_HIGH:AXISERIESCTRL_SIZE_LOW];
+          series_ctrl_size_tclk_r_d           = update_register_q_tclk[AxiSeriesCtrlSizeHigh:AxiSeriesCtrlSizeLow];
           series_ctrl_pipeline_depth_tclk_r_d = pd_val;
-          series_ctrl_address_tclk_r_d        = update_register_q_tclk[AXISERIESCTRL_ADDR_HIGH:AXISERIESCTRL_ADDR_LOW];
+          series_ctrl_address_tclk_r_d        = update_register_q_tclk[AxiSeriesCtrlAddrHigh:AxiSeriesCtrlAddrLow];
           series_ctrl_op_mode_tclk_r_d        = op_val;
-          if (op_val == JTAG_OP_READ) begin
+          if (op_val == JtagOpRead) begin
             series_read_preload_count_tclk_d = pd_val;
           end else begin
             series_read_preload_count_tclk_d = '0;
@@ -1468,13 +1465,13 @@ module jtag2axi #(
           // accounting counters are flushed centrally via
           // `ctrl_flush_pulse_tclk`; nothing extra needed here.
         end
-        if (update_register_q_tclk[AXISERIESCTRL_RESET_HIGH]) begin
-          sticky_axi_status_tclk_d      = CAPTURE_STATUS_SUCCESS;
+        if (update_register_q_tclk[AxiSeriesCtrlResetHigh]) begin
+          sticky_axi_status_tclk_d      = CaptureStatusSuccess;
           sticky_axi_status_full_tclk_d = 1'b0;
         end
       end else if ((select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i ||
                           select_AXISeriesDataWithErrorStatus_i) && series_mode_is_axi_tclk) begin
-        automatic logic [$clog2(SHARED_SR_LEN+1)-1:0] current_mapped_data_len_local;
+        automatic logic [$clog2(SharedSrLen+1)-1:0] current_mapped_data_len_local;
         automatic int num_bytes_to_copy;
         automatic logic [DATA_WIDTH-1:0] data_val;
         automatic logic incr_addr_bit;
@@ -1497,17 +1494,17 @@ module jtag2axi #(
               data_val[byte_idx*8+:8] = update_register_q_tclk[byte_idx*8+:8];
             end
           end
-          if (current_mapped_data_len_local < SHARED_SR_LEN) begin
+          if (current_mapped_data_len_local < SharedSrLen) begin
             incr_addr_bit = update_register_q_tclk[current_mapped_data_len_local];
           end else begin
             incr_addr_bit = 1'b0;
           end
         end
 
-        is_plain_read = (series_ctrl_op_mode_tclk_r == JTAG_OP_READ) &&
+        is_plain_read = (series_ctrl_op_mode_tclk_r == JtagOpRead) &&
                                 !select_AXISeriesDataWithErrorStatus_i;
 
-        if (series_ctrl_op_mode_tclk_r == JTAG_OP_READ) begin
+        if (series_ctrl_op_mode_tclk_r == JtagOpRead) begin
           // Two distinct gates for reads:
           //   `can_accept` = backpressure-class admit gate: FIFO
           //                  not full and AXI in-flight bound
@@ -1560,7 +1557,7 @@ module jtag2axi #(
           // status path.
           sticky_axi_status_full_tclk_d = 1'b1;
           if (select_AXISeriesDataWithErrorStatus_i) begin
-            last_single_op_status_tclk_d  = CAPTURE_STATUS_BUSY_OR_FULL;
+            last_single_op_status_tclk_d  = CaptureStatusBusyOrFull;
             series_errstat_pending_tclk_d = 1'b0;
           end
         end
@@ -1570,7 +1567,7 @@ module jtag2axi #(
 
     // Read pipeline preload decrement on capture (TCK-local)
     if (capture_en_i && (select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i) &&
-            (series_ctrl_op_mode_tclk_r == JTAG_OP_READ)) begin
+            (series_ctrl_op_mode_tclk_r == JtagOpRead)) begin
       if (series_read_preload_count_tclk > 0) begin
         series_read_preload_count_tclk_d = series_read_preload_count_tclk - 1'b1;
       end
@@ -1607,7 +1604,7 @@ module jtag2axi #(
     // applied to sticky_axi_status_tclk_d. SINGLE_OP completions report only
     // through the SINGLE_OP status.
     series_status_takes_completion = !current_tx_is_from_single_buffer_tclk &&
-                                     (sticky_axi_status_tclk_d == CAPTURE_STATUS_SUCCESS);
+                                     (sticky_axi_status_tclk_d == CaptureStatusSuccess);
 
     // FSM completion status updates (write response path).
     if (fsm_updates_bresp_status_tclk_comb) begin
@@ -1648,7 +1645,7 @@ module jtag2axi #(
   always_ff @(posedge tck_i or negedge trst_ni) begin
     if (!trst_ni) begin
       single_tx_req_valid_tclk          <= 1'b0;
-      single_tx_op_tclk                 <= JTAG_OP_NOP;
+      single_tx_op_tclk                 <= JtagOpNop;
       single_tx_addr_tclk               <= '0;
       single_tx_data_tclk               <= '0;
       single_tx_axi_size_tclk           <= '0;
@@ -1657,14 +1654,14 @@ module jtag2axi #(
       series_ctrl_size_tclk_r           <= '0;
       series_ctrl_pipeline_depth_tclk_r <= '0;
       series_ctrl_address_tclk_r        <= '0;
-      series_ctrl_op_mode_tclk_r        <= JTAG_OP_NOP;
+      series_ctrl_op_mode_tclk_r        <= JtagOpNop;
 
       single_op_pending_tclk            <= 1'b0;
       series_errstat_pending_tclk       <= 1'b0;
-      last_single_op_status_tclk        <= CAPTURE_STATUS_SUCCESS;
+      last_single_op_status_tclk        <= CaptureStatusSuccess;
       last_read_data_tclk               <= '0;
       last_single_op_was_read_tclk      <= 1'b0;
-      sticky_axi_status_tclk            <= CAPTURE_STATUS_SUCCESS;
+      sticky_axi_status_tclk            <= CaptureStatusSuccess;
       sticky_axi_status_full_tclk       <= 1'b0;
 
       series_read_preload_count_tclk    <= '0;
@@ -1714,24 +1711,24 @@ module jtag2axi #(
 
     if (select_AXISingleOp_i) begin
       if (single_op_pending_tclk) begin
-        capture_data_tclk[AXISINGLEOP_OP_HIGH:AXISINGLEOP_OP_LOW] = CAPTURE_STATUS_BUSY_OR_FULL;
+        capture_data_tclk[AxiSingleOpOpHigh:AxiSingleOpOpLow] = CaptureStatusBusyOrFull;
       end else begin
-        capture_data_tclk[AXISINGLEOP_OP_HIGH:AXISINGLEOP_OP_LOW] = last_single_op_status_tclk;
+        capture_data_tclk[AxiSingleOpOpHigh:AxiSingleOpOpLow] = last_single_op_status_tclk;
       end
 
       if (last_single_op_was_read_tclk) begin
         if (single_op_pending_tclk) begin
-          capture_data_tclk[AXISINGLEOP_DATA_HIGH:AXISINGLEOP_DATA_LOW] = RDATA_PENDING_VALUE_CONST;
+          capture_data_tclk[AxiSingleOpDataHigh:AxiSingleOpDataLow] = RDATA_PENDING_VALUE_CONST;
         end else begin
-          capture_data_tclk[AXISINGLEOP_DATA_HIGH:AXISINGLEOP_DATA_LOW] = last_read_data_tclk;
+          capture_data_tclk[AxiSingleOpDataHigh:AxiSingleOpDataLow] = last_read_data_tclk;
         end
       end else begin
-        capture_data_tclk[AXISINGLEOP_DATA_HIGH:AXISINGLEOP_DATA_LOW] = single_op_data_tclk;
+        capture_data_tclk[AxiSingleOpDataHigh:AxiSingleOpDataLow] = single_op_data_tclk;
       end
 
-      capture_data_tclk[AXISINGLEOP_SIZE_HIGH:AXISINGLEOP_SIZE_LOW]   = single_op_size_tclk;
-      capture_data_tclk[AXISINGLEOP_WSTRB_HIGH:AXISINGLEOP_WSTRB_LOW] = single_op_wstrb_tclk;
-      capture_data_tclk[AXISINGLEOP_ADDR_HIGH:AXISINGLEOP_ADDR_LOW]   = single_op_addr_tclk;
+      capture_data_tclk[AxiSingleOpSizeHigh:AxiSingleOpSizeLow]   = single_op_size_tclk;
+      capture_data_tclk[AxiSingleOpWstrbHigh:AxiSingleOpWstrbLow] = single_op_wstrb_tclk;
+      capture_data_tclk[AxiSingleOpAddrHigh:AxiSingleOpAddrLow]   = single_op_addr_tclk;
 
     end else if (select_AXISeriesCtrl_i) begin
       // Address capture must present the post-increment value when the
@@ -1756,14 +1753,14 @@ module jtag2axi #(
       end
 
       if (sticky_axi_status_full_tclk) begin
-        capture_data_tclk[AXISERIESCTRL_OP_HIGH:AXISERIESCTRL_OP_LOW] = CAPTURE_STATUS_BUSY_OR_FULL;
+        capture_data_tclk[AxiSeriesCtrlOpHigh:AxiSeriesCtrlOpLow] = CaptureStatusBusyOrFull;
       end else begin
-        capture_data_tclk[AXISERIESCTRL_OP_HIGH:AXISERIESCTRL_OP_LOW] = sticky_axi_status_tclk;
+        capture_data_tclk[AxiSeriesCtrlOpHigh:AxiSeriesCtrlOpLow] = sticky_axi_status_tclk;
       end
-      capture_data_tclk[AXISERIESCTRL_SIZE_HIGH:AXISERIESCTRL_SIZE_LOW] = series_ctrl_size_tclk_r;
-      capture_data_tclk[AXISERIESCTRL_PD_HIGH:AXISERIESCTRL_PD_LOW]     = series_ctrl_pipeline_depth_tclk_r;
-      capture_data_tclk[AXISERIESCTRL_ADDR_HIGH:AXISERIESCTRL_ADDR_LOW] = visible_addr;
-      capture_data_tclk[AXISERIESCTRL_RESET_HIGH] = 1'b0;
+      capture_data_tclk[AxiSeriesCtrlSizeHigh:AxiSeriesCtrlSizeLow] = series_ctrl_size_tclk_r;
+      capture_data_tclk[AxiSeriesCtrlPdHigh:AxiSeriesCtrlPdLow]     = series_ctrl_pipeline_depth_tclk_r;
+      capture_data_tclk[AxiSeriesCtrlAddrHigh:AxiSeriesCtrlAddrLow] = visible_addr;
+      capture_data_tclk[AxiSeriesCtrlResetHigh] = 1'b0;
 
     end else if (select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i) begin
       automatic int mapped_len_for_capture_local;
@@ -1773,7 +1770,7 @@ module jtag2axi #(
       if (mapped_len_for_capture_local > DATA_WIDTH) mapped_len_for_capture_local = DATA_WIDTH;
       num_bytes_to_copy = mapped_len_for_capture_local >> 3;  // bits-to-bytes: divide by 8
 
-      if (series_ctrl_op_mode_tclk_r == JTAG_OP_READ) begin
+      if (series_ctrl_op_mode_tclk_r == JtagOpRead) begin
         for (int byte_idx = 0; byte_idx < DATA_WIDTH / 8; byte_idx++) begin
           if (byte_idx < num_bytes_to_copy) begin
             if (series_read_preload_count_tclk > 0) begin
@@ -1799,7 +1796,7 @@ module jtag2axi #(
       end
 
     end else if (select_AXISeriesDataWithErrorStatus_i) begin
-      automatic logic [$clog2(SHARED_SR_LEN+1)-1:0] mapped_data_bits_cap_local;
+      automatic logic [$clog2(SharedSrLen+1)-1:0] mapped_data_bits_cap_local;
       automatic int num_bytes_to_copy;
       automatic logic[DATA_WIDTH-1:0] capture_value_data_local;
       automatic logic [1:0] captured_op_status_local;
@@ -1808,10 +1805,10 @@ module jtag2axi #(
       if (mapped_data_bits_cap_local > DATA_WIDTH) mapped_data_bits_cap_local = DATA_WIDTH;
       num_bytes_to_copy = int'(mapped_data_bits_cap_local) >> 3;  // bits-to-bytes: divide by 8
 
-      if (series_ctrl_op_mode_tclk_r == JTAG_OP_READ) begin
+      if (series_ctrl_op_mode_tclk_r == JtagOpRead) begin
         if (series_errstat_pending_tclk) begin
           capture_value_data_local = RDATA_PENDING_VALUE_CONST;
-          captured_op_status_local = CAPTURE_STATUS_BUSY_OR_FULL;
+          captured_op_status_local = CaptureStatusBusyOrFull;
         end else begin
           capture_value_data_local = last_read_data_tclk;
           captured_op_status_local = last_single_op_status_tclk;
@@ -1827,11 +1824,11 @@ module jtag2axi #(
         end
       end
 
-      if (mapped_data_bits_cap_local < SHARED_SR_LEN) begin
+      if (mapped_data_bits_cap_local < SharedSrLen) begin
         if (series_errstat_pending_tclk) begin
           capture_data_tclk[mapped_data_bits_cap_local] = 1'b1;  // Busy
         end else begin
-          if (captured_op_status_local == CAPTURE_STATUS_SUCCESS) begin
+          if (captured_op_status_local == CaptureStatusSuccess) begin
             capture_data_tclk[mapped_data_bits_cap_local] = 1'b0;
           end else begin
             capture_data_tclk[mapped_data_bits_cap_local] = 1'b1;

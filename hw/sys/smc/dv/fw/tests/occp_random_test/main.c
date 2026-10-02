@@ -7,7 +7,6 @@
  */
 
 #include "occp_test_common.h"
-#include <string.h>
 
 static void run_test_suite(test_context_t *ctx) {
     simputs("=== Starting Random OCCP Protocol Test ===\n");
@@ -97,8 +96,6 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

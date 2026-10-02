@@ -3,18 +3,22 @@
 
 """Derived JUnit XML: the structured-result guarantee for simulation leaves.
 
-Framework-neutral rule: every executed simulation leaf ends with xUnit XML at
-``<leaf>/results/results.xml``. A framework that writes its own (cocotb) is left
-untouched; otherwise (UVM leaves, or a leaf whose simulator died before the framework
-could write) the runner synthesizes a single-testcase file from the already-classified
-``StageResult``. A run in which no leaf executed and whose aggregate status is
-non-passing gets one run-level stage XML at ``<run>/results/results.xml`` so
-pre-simulation failures stay visible to JUnit consumers.
+Framework-neutral rule: every graded simulation leaf except a skipped one ends with
+xUnit XML at ``<leaf>/results/results.xml`` in the directory of its graded attempt. A
+framework that writes its own (cocotb) is left untouched; otherwise (UVM leaves, a leaf
+whose simulator died before the framework could write, or a leaf whose graded result
+names no file, such as one the coordinator graded without a result of its own) the runner
+synthesizes a single-testcase file from the already-classified ``StageResult``. When the
+graded status is FAIL, ERROR, TIMEOUT or UNKNOWN and the framework's file records no
+failure or error node, or does not parse, the runner also writes
+``<leaf>/results/graded.xml``, the same single-testcase file, beside it. A run that grades
+no leaf and whose aggregate status is non-passing gets one run-level stage XML at
+``<run>/results/results.xml`` so pre-simulation failures stay visible to JUnit consumers.
 
 Synthesized files are derived reporting artifacts: they are written strictly after
 status classification, are never read back as parser evidence, and carry a suite-level
 ``producer`` property so native framework output can always be told apart from runner
-output (and only marked files are ever cleaned up).
+output (and the functions here clean up only marked files).
 """
 
 from __future__ import annotations
@@ -27,7 +31,7 @@ from pathlib import Path
 from .compat import UTC
 from .models import Flow, StageResult
 from .paths import repo_rel
-from .results import aggregate_status, exit_code_for_status
+from .results import NON_PASS_STATUSES, aggregate_status, exit_code_for_status
 
 PRODUCER = "run_dv.py junit-fallback"
 
@@ -40,6 +44,10 @@ _LEAF_STAGES = {"sim", "regress"}
 
 def results_xml_path(leaf_dir: Path) -> Path:
     return leaf_dir / "results" / "results.xml"
+
+
+def graded_xml_path(leaf_dir: Path) -> Path:
+    return leaf_dir / "results" / "graded.xml"
 
 
 def is_generated_junit(path: Path) -> bool:
@@ -58,6 +66,15 @@ def discard_generated_junit(path: Path) -> None:
     """Remove `path` when it carries the producer marker; a native file is left alone."""
     if path.is_file() and is_generated_junit(path):
         path.unlink()
+
+
+def _records_a_failure(path: Path) -> bool:
+    """True when `path` parses and holds a failure or error node."""
+    try:
+        root_elem = ET.parse(path).getroot()
+    except (OSError, ET.ParseError):
+        return False
+    return any(elem.tag in {"failure", "error"} for elem in root_elem.iter())
 
 
 def _rel(root: Path, path: Path | str | None) -> str:
@@ -194,19 +211,65 @@ def ensure_leaf_junit(
     tool: str,
     result: StageResult,
     leaf_dir: Path,
+    result_json: Path | None = None,
 ) -> Path | None:
-    """Guarantee structured XML for one executed leaf; never touch a native file.
+    """Guarantee structured XML for one graded leaf; never touch a native file.
 
+    `result_json` names the record that holds the grade, the leaf's own by default.
     Returns the synthesized path, or None when the framework already wrote one.
     """
     xml_path = results_xml_path(leaf_dir)
     if xml_path.exists():
         return None
+    _write_atomic(xml_path, _leaf_suites(flow, root, run_dir, tool, result, leaf_dir, result_json))
+    return xml_path
+
+
+def ensure_graded_junit(
+    *,
+    flow: Flow,
+    root: Path,
+    run_dir: Path,
+    tool: str,
+    result: StageResult,
+    leaf_dir: Path,
+    result_json: Path | None = None,
+) -> Path | None:
+    """Publish a non-passing grade beside a framework file that reads as a pass.
+
+    Writes `results/graded.xml` when `results/results.xml` is the framework's own, the
+    graded status is FAIL, ERROR, TIMEOUT or UNKNOWN, and that file records no failure or
+    error node or does not parse; otherwise removes a marked `graded.xml`. The framework's
+    file is never touched, and a `graded.xml` without the marker is left alone. Returns the
+    written path, or None.
+    """
+    xml_path = results_xml_path(leaf_dir)
+    graded_path = graded_xml_path(leaf_dir)
+    native = xml_path.is_file() and not is_generated_junit(xml_path)
+    if not native or result.status not in NON_PASS_STATUSES or _records_a_failure(xml_path):
+        discard_generated_junit(graded_path)
+        return None
+    if graded_path.exists() and not is_generated_junit(graded_path):
+        return None
+    suites = _leaf_suites(flow, root, run_dir, tool, result, leaf_dir, result_json)
+    _write_atomic(graded_path, suites)
+    return graded_path
+
+
+def _leaf_suites(
+    flow: Flow,
+    root: Path,
+    run_dir: Path,
+    tool: str,
+    result: StageResult,
+    leaf_dir: Path,
+    result_json: Path | None,
+) -> ET.Element:
     seed = (result.metadata or {}).get("seed")
     name = f"{result.item}[seed={seed}]" if seed is not None else str(result.item)
-    leaf_json = leaf_dir / "result.json"
+    leaf_json = result_json or leaf_dir / "result.json"
     case = _testcase(flow, result, name=name, system_out=_result_lines(root, result, leaf_json))
-    suites = _suites(
+    return _suites(
         flow,
         root,
         run_dir,
@@ -215,8 +278,6 @@ def ensure_leaf_junit(
         cases=[case],
         result_json=leaf_json,
     )
-    _write_atomic(xml_path, suites)
-    return xml_path
 
 
 def materialize_interruption_junit(
@@ -289,9 +350,9 @@ def materialize_stage_junit(
     tool: str,
     stages: list[StageResult],
 ) -> Path | None:
-    """Run-level stage XML for a non-passing run in which no leaf executed.
+    """Run-level stage XML for a non-passing run that grades no leaf other than a skipped one.
 
-    When gated off (a leaf executed, the run passes, or structured XML already
+    When gated off (a leaf was graded, the run passes, or structured XML already
     represents the run), a stale marked file from a previous invocation into the same
     run dir is removed; a file without the producer marker is never touched.
     """
@@ -301,12 +362,12 @@ def materialize_stage_junit(
         if run_xml.is_file() and is_generated_junit(run_xml):
             run_xml.unlink()
 
-    executed_leaf = any(
+    graded_leaf = any(
         stage.stage in _LEAF_STAGES and stage.item is not None and stage.status != "SKIP"
         for stage in stages
     )
     failing = _first_failing_stage(stages)
-    if executed_leaf or failing is None or aggregate_status(stages) == "PASS":
+    if graded_leaf or failing is None or aggregate_status(stages) == "PASS":
         _cleanup()
         return None
     # Structured XML elsewhere in the run dir (leaf files from an earlier invocation)

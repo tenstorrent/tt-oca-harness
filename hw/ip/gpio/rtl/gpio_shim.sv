@@ -88,7 +88,7 @@ module gpio_shim
   output gpio_axil_resp_t axil_resp_o                       // AXI-Lite CSR response.
 );
 
-  localparam int unsigned GPIO_REG_ADDR_WIDTH = $clog2(gpio_wrap_addrmap_pkg::GPIO_WRAP_SIZE);
+  localparam int unsigned GpioRegAddrWidth = $clog2(gpio_wrap_addrmap_pkg::GPIO_WRAP_SIZE);
 
   // GPIO Control Register hardware interface
   gpio_ctrl_reg_pkg::gpio_ctrl__in_t gpio_ctrl_hwif_in;
@@ -115,13 +115,13 @@ module gpio_shim
   // the ctrl aperture is the half-open range [base, base+size); base+size and above are out of
   // range and route to the error subordinate.
   always_comb begin
-    if (axil_req_to_demux.aw.addr[GPIO_REG_ADDR_WIDTH-1:0] < gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
+    if (axil_req_to_demux.aw.addr[GpioRegAddrWidth-1:0] < gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
       aw_select = 1'b0;
     end else begin
       aw_select = 1'b1;
     end
 
-    if (axil_req_to_demux.ar.addr[GPIO_REG_ADDR_WIDTH-1:0] < gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
+    if (axil_req_to_demux.ar.addr[GpioRegAddrWidth-1:0] < gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
       ar_select = 1'b0;
     end else begin
       ar_select = 1'b1;
@@ -158,12 +158,12 @@ module gpio_shim
 
   // Connect demuxed port [1] to AXI-Lite error slave
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH(gpio_pkg::ADDR_WIDTH),
-    .AXI_DATA_WIDTH(gpio_pkg::DATA_WIDTH),
+    .AXI_ADDR_WIDTH(gpio_pkg::AddrWidth),
+    .AXI_DATA_WIDTH(gpio_pkg::DataWidth),
     .axil_req_t(gpio_axil_req_t),
     .axil_resp_t(gpio_axil_resp_t),
     .RESP(axi_pkg::RESP_DECERR),
-    .RESP_WIDTH(gpio_pkg::DATA_WIDTH),
+    .RESP_WIDTH(gpio_pkg::DataWidth),
     .RESP_DATA(32'hBADCAB1E),
     .MAX_TRANS(1)
   ) u_axil_err_slv (

@@ -71,8 +71,8 @@ module efuse_program_interface #(
   output logic is_program_timeout_debug_o  // One-cycle pulse when a program operation times out.
 );
 
-  localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;
-  localparam efuse_data_t EFUSE_PROGRAM_ERROR_DATA = efuse_data_t'('hbadcab1e);
+  localparam fuse_command_req_t FuseCommandReqDefault = '0;
+  localparam efuse_data_t EfuseProgramErrorData = efuse_data_t'('hbadcab1e);
 
   // Timeout logic
   logic [27:0] timeout_count_q, timeout_count_d;
@@ -168,7 +168,7 @@ module efuse_program_interface #(
           program_done_d = 1'b1;
           program_busy_d = 1'b0;
           program_err_d = 1'b1;
-          fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
+          fuse_command_req_d = FuseCommandReqDefault;
           program_state_d = ST_PROGRAM_IDLE;
 
         end else if (fuse_command_resp_i.valid) begin
@@ -176,7 +176,7 @@ module efuse_program_interface #(
           program_done_d = 1'b1;
           program_busy_d = 1'b0;
           program_err_d = fuse_command_resp_i.status;
-          fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
+          fuse_command_req_d = FuseCommandReqDefault;
           program_state_d = ST_PROGRAM_IDLE;
 
           program_read_back_data_d = fuse_command_resp_i.data;
@@ -191,7 +191,7 @@ module efuse_program_interface #(
             program_done_d = 1'b1;
             program_busy_d = 1'b0;
             program_err_d = 1'b1;
-            fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
+            fuse_command_req_d = FuseCommandReqDefault;
             program_state_d = ST_PROGRAM_IDLE;
 
             program_timeout_event = 1'b1;
@@ -207,8 +207,8 @@ module efuse_program_interface #(
         program_busy_d = 1'b0;
         program_done_d = 1'b1;
         program_err_d = 1'b1;
-        program_read_back_data_d = EFUSE_PROGRAM_ERROR_DATA;
-        fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
+        program_read_back_data_d = EfuseProgramErrorData;
+        fuse_command_req_d = FuseCommandReqDefault;
       end
 
     endcase
@@ -236,7 +236,7 @@ module efuse_program_interface #(
   // Fuse command output register: on the Class 2b secure scan chain
   if (1'b1) begin : gen_fuse_cmd_req_s3c_scan
     always_ff @(posedge clk_i or negedge rst_ni) begin
-      if (!rst_ni) fuse_command_req_q <= FUSE_COMMAND_REQ_DEFAULT;
+      if (!rst_ni) fuse_command_req_q <= FuseCommandReqDefault;
       else fuse_command_req_q <= fuse_command_req_d;
     end
   end
@@ -260,7 +260,7 @@ module efuse_program_interface #(
   assign is_program_timeout_debug_o = program_timeout_event;
 
   always_comb begin
-    fuse_command_req_o = FUSE_COMMAND_REQ_DEFAULT;
+    fuse_command_req_o = FuseCommandReqDefault;
     if (program_state_q == ST_WAIT_RESP) begin
       fuse_command_req_o = fuse_command_req_q;
     end
@@ -273,7 +273,7 @@ module efuse_program_interface #(
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       IllegalProgramStateFailsClosed_A,
-      ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |=> program_state_q == ST_PROGRAM_IDLE && !program_busy_o && program_done_o && program_error_o && !fuse_command_req_o.valid && program_read_back_data_o == EFUSE_PROGRAM_ERROR_DATA,
+      ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |=> program_state_q == ST_PROGRAM_IDLE && !program_busy_o && program_done_o && program_error_o && !fuse_command_req_o.valid && program_read_back_data_o == EfuseProgramErrorData,
       clk_i, !rst_ni)
   // verilog_format: on
 

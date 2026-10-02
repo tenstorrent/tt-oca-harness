@@ -58,7 +58,7 @@ section); most integrations leave all override enables deasserted.
 
 Connect `smc_ndmreset_request_i[i]` to the NDM reset request from
 external CPU cluster `i`, and return `smc_ndmreset_process_o[i]` to
-that cluster. Set `CPU_CLUSTER_COUNT` in `smc_config_pkg` to the number
+that cluster. Set `CpuClusterCount` in `smc_config_pkg` to the number
 of clusters. This harness sets it to 4. The parameter sizes both ports,
 and `NDMRESET_CLUSTER_COUNT` reads that value back. The register fields
 stay 32 bits wide. Tie unused request inputs to 0.
@@ -160,8 +160,8 @@ I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.
 
 The SMC padring drives one GPIO pad per `u_gpio_interface` instance, so the
-adopter must integrate `smc_pkg::NUM_GPIO_WRAPS` pads:
-`smc_pkg::NUM_BONDED_GPIO` bonded pads plus `smc_pkg::NUM_UNBONDED_GPIO`
+adopter must integrate `smc_pkg::NumGpioWraps` pads:
+`smc_pkg::NumBondedGpio` bonded pads plus `smc_pkg::NumUnbondedGpio`
 unbonded pads. If the adopter chooses to capture configuration straps from GPIO
 pads, this can only be done from the bonded pads. The pads for the SDA and SCL
 lines of I3C[1] must be unbonded for security when transmitting OCCP traffic.
@@ -643,8 +643,8 @@ Do not connect an external interrupt controller to `sync_irq_o`.
 External interrupt sources visible to the adopter are `smc_ext_interrupts_i` (SMC
 external interrupt input vector, width `NUM_INT_TO_SMC`),
 `smc_ext_mailbox_interrupts_o` (outbound mailbox notifications, width
-`NUM_MAILBOXES`), `gpio_interrupt_o` (GPIO edge/level events, width
-`NUM_GPIO_WRAPS`), and `uart_interrupt_o` (UART TX/RX events, width `NUM_UART`).
+`NumMailboxes`), `gpio_interrupt_o` (GPIO edge/level events, width
+`NumGpioWraps`), and `uart_interrupt_o` (UART TX/RX events, width `NumUart`).
 Drive `smc_ext_interrupts_i` as an active-high level or as a pulse that stays
 high long enough to be sampled on `clk_smc`. The pin is three-flop
 synchronized; a short asynchronous pulse can be lost. There is no

@@ -14,8 +14,8 @@
 // the PTAP 3DCR select is set, captures inside the CDC settle window after a
 // completion, and the captures dtp_jtag2axi_model exempts carry no contract.
 // Series-data captures (the pipelined read FIFO) are not predicted. No
-// comparison, no reporting. The cocotb realization has no twin
-// (DTP_TB_ARCH).
+// comparison, no reporting. The cocotb twin is
+// env/dtp_jtag2axi_status_ref_model.py.
 
 `uvm_analysis_imp_decl(_dtp_j2a_status_event)
 `uvm_analysis_imp_decl(_dtp_j2a_status_axi)

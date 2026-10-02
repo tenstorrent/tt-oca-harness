@@ -91,8 +91,8 @@ in {
       kroki
       # Build Tools
       gnumake
-      bender
-      verilator
+      bender-patched
+      verilator-patched
       sv-lang
       gcc
       ccache

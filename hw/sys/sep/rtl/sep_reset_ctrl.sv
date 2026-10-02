@@ -270,12 +270,12 @@ module sep_reset_ctrl (
   // synchronizers asynchronously, so a hard reset drops a held override and
   // the mux follows the functional reset with no clock. The packing order
   // matches sep_sw_rst_t (abr, trng, kmac, hmac, aes, otbn, km).
-  localparam int unsigned NUM_JTAG_IP_RST = $bits(sep_pkg::sep_sw_rst_t);
+  localparam int unsigned NumJtagIpRst = $bits(sep_pkg::sep_sw_rst_t);
 
-  logic [NUM_JTAG_IP_RST-1:0] jtag_ip_ovrd_tck;
-  logic [NUM_JTAG_IP_RST-1:0] jtag_ip_val_tck;
-  logic [NUM_JTAG_IP_RST-1:0] jtag_ip_ovrd_sync;
-  logic [NUM_JTAG_IP_RST-1:0] jtag_ip_val_sync;
+  logic [NumJtagIpRst-1:0] jtag_ip_ovrd_tck;
+  logic [NumJtagIpRst-1:0] jtag_ip_val_tck;
+  logic [NumJtagIpRst-1:0] jtag_ip_ovrd_sync;
+  logic [NumJtagIpRst-1:0] jtag_ip_val_sync;
 
   assign jtag_ip_ovrd_tck = {
     jtag_sep_reset_ctrl_i.ovrd.abr_jtag_rst_n_ovrd,
@@ -298,7 +298,7 @@ module sep_reset_ctrl (
   };
 
   prim_flop_2sync #(
-    .Width(NUM_JTAG_IP_RST)
+    .Width(NumJtagIpRst)
   ) u_jtag_ip_ovrd_sync (
     .clk_i (clk_i),
     .d_i   (jtag_ip_ovrd_tck),
@@ -307,7 +307,7 @@ module sep_reset_ctrl (
   );
 
   prim_flop_2sync #(
-    .Width(NUM_JTAG_IP_RST)
+    .Width(NumJtagIpRst)
   ) u_jtag_ip_val_sync (
     .clk_i (clk_i),
     .d_i   (jtag_ip_val_tck),

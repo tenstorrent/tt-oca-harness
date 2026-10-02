@@ -2,15 +2,15 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
+ * @file i2c_tx_stretch_timeout_recovery.c
  * @brief I2C target TX stretch timeout recovery test
  *
- * I2C_1 acts as controller and I2C_0 acts as target. The controller first
- * issues a READ while the target TX FIFO is empty, causing automatic TX clock
- * stretch until the controller times out.
- * Firmware then disables the target to release the stretch, disables the
- * controller to exercise the automatic STOP recovery path, reinitializes both
- * sides, and verifies that a following 16-byte WRITE is received correctly.
+ * I2C_1 is the controller and I2C_0 the target. A controller read against an
+ * empty target TX FIFO stretches the clock until the controller reports a
+ * stretch timeout. Firmware then disables the target to release the stretch
+ * and the controller to request automatic STOP recovery, waits for both to go
+ * idle, reinitializes both sides, and checks that a 16-byte write arrives
+ * intact.
  */
 
 #include <stdint.h>
@@ -25,7 +25,6 @@
 #define TARGET_ADDR 0x10
 #define VERIFY_WRITE_LEN 16
 #define READ_STRETCH_TIMEOUT_CYCLES 2000
-#define READ_STRETCH_SETTLE_CYCLES 256
 
 /* Poll bound for the stretch timeout report. Generous against the ~100 us the
  * bus needs to reach the stretch, but finite so a stretch that never happens
@@ -63,10 +62,8 @@ static int wait_for_target_idle(uint32_t idx) {
     return I2C_ERROR_TIMEOUT;
 }
 
-/* Last INTR_STATE sampled by clear_controller_events_and_wait() before it
- * cleared: the sample that carries the property under test has to be taken
- * before the blanket 0xFFFFFFFF clear destroys it. Callers that provoke a
- * timeout read this. */
+/* Interrupt state as it was before the last clear_controller_events_and_wait()
+ * cleared the controller events. */
 static uint32_t g_last_intr_state_before_clear;
 
 static int clear_controller_events_and_wait(uint32_t idx) {
@@ -136,12 +133,9 @@ static int init_controller(void) {
 
     i2c_config_timeout(CONTROLLER_IDX, READ_STRETCH_TIMEOUT_CYCLES, true, true);
 
-    /* Enable the STRETCH_TIMEOUT interrupt for the property under test.
-     *
-     * INTR_STATE.STRETCH_TIMEOUT latches whether or not the interrupt is
-     * enabled (INTR_ENABLE masks irq_o only), so the status read below does
-     * not depend on this. Enabling it as well keeps the interrupt line as a
-     * second, independent observation of the same event. */
+    /* The stretch timeout status latches whether or not its interrupt is
+     * enabled; enabling the interrupt adds the interrupt line as a second
+     * observation of the same event. */
     i2c_enable_interrupts(CONTROLLER_IDX, I2C__INTR_ENABLE__STRETCH_TIMEOUT_bm);
     return I2C_OK;
 }
@@ -257,18 +251,9 @@ static int trigger_read_timeout(void) {
 
     write_scratch(1, 0x00000026);
 
-    /* Wait for the stretch timeout to be reported, rather than spinning a fixed
-     * count and assuming it happened.
-     *
-     * The fixed READ_STRETCH_SETTLE_CYCLES window was 256 iterations ~= 50.6 us,
-     * against the ~98.7 us this test's own programmed timing needs just to get
-     * START + address + ACK onto the bus -- so recovery began before the target
-     * had started stretching, and the stretch under test never occurred. Nothing
-     * measured it either way, so the test passed on a bus that stayed idle.
-     *
-     * Polling the status bit makes the wait self-timing and turns the property
-     * into something that can fail: with the enqueue above removed, no timeout
-     * is ever reported and this returns an error. */
+    /* Wait for the stretch timeout to be reported: a fixed delay can end before
+     * the target has started stretching, and a timeout that never comes must
+     * fail the test. */
     {
         uint32_t polls = 0;
         i2c__INTR_STATE_t intr = {.w = 0};
@@ -454,10 +439,4 @@ int main(void) {
     simputs("## I2C TX Stretch Timeout Recovery Test PASSED           ##\n");
     simputs("############################################################\n");
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

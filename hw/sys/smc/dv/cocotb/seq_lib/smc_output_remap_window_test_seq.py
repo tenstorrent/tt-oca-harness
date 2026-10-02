@@ -117,8 +117,8 @@ def _pkg_user(name: str) -> int:
     return int(match.group(1), 16 if "'h" in text else 10)
 
 
-MMODE_ID = _pkg_user("MMODE_SRC_ID")
-OTHER_ID = _pkg_user("OTHERS_SRC_ID")
+MMODE_ID = _pkg_user("MmodeSrcId")
+OTHER_ID = _pkg_user("OthersSrcId")
 assert MMODE_ID != 0 and MMODE_ID != OTHER_ID, "entry 0 needs a non-wildcard M-mode source ID"
 
 _FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"

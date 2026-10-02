@@ -9,12 +9,6 @@
 int main(void) {
 
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
 int secondary_main(void) {

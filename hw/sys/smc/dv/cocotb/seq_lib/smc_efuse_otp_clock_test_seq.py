@@ -51,7 +51,7 @@ CLOCK_GATE_CONTROL_RESET = SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT
 #
 # CHIP_ID carries an exact expectation: misc_wrap.h defines
 # CHIP_CONFIG__CHIP_ID__CHIP_ID_reset = 0x0 (chip_config.rdl ``chip_id = 0x0``),
-# and the field is driven ``hw=w`` from the smc_config_pkg::CHIP_ID integration
+# and the field is driven ``hw=w`` from the smc_config_pkg::ChipId integration
 # parameter, which is 0 for this chiplet.
 CHIP_CONFIG_READS = [
     (

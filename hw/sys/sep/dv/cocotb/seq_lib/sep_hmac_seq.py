@@ -3,9 +3,8 @@
 """OpenTitan HMAC run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Configures the HMAC engine for keyed HMAC-SHA256, pushes a message through the
-MSG FIFO, waits for done, and reads the digest -- mirroring the reference suite
-sep_km_hmac_sideload_kat_test_seq op helpers (RAL there; direct AXI here, like
-SepAes/SepOtbn). 32-bit beats (size=2) via the wrapper's 64->32 dw-converter.
+MSG FIFO, waits for done, and reads the digest. Direct AXI, like SepAes/SepOtbn.
+32-bit beats (size=2) via the wrapper's 64->32 dw-converter.
 
 HMAC register map (base from the generated SEP header; offsets from hmac.adoc):
   INTR_STATE @ 0x000 (RW1C: bit0 hmac_done, bit2 hmac_err)
