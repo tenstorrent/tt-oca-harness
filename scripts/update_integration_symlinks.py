@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = ROOT / "integration"
-GENERATED_ROOTS = tuple(INTEGRATION / name for name in ("rdl", "ipxact", "constraint"))
+GENERATED_ROOTS = tuple(INTEGRATION / name for name in ("rdl", "ipxact", "constraints"))
 INCLUDE_RE = re.compile(r'^\s*`include\s+"([^"]+)"', re.MULTILINE)
 RdlUnit = tuple[str, tuple[Path, ...]]
 
@@ -192,10 +192,10 @@ def constraint_links() -> dict[Path, Path]:
         for source in sorted(synth_dir.glob("*.sdc")) + sorted(
             synth_dir.glob(f"{system}_cdc_max_delay*.tcl")
         ):
-            add_link(links, Path("constraint") / system / "synth" / source.name, source)
+            add_link(links, Path("constraints") / system / "synth" / source.name, source)
 
     for source in sorted((ROOT / "flows/synth/constraints").glob("*.tcl")):
-        add_link(links, Path("constraint/shared") / source.name, source)
+        add_link(links, Path("constraints/shared") / source.name, source)
     return links
 
 

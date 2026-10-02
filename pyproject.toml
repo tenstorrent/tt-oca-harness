@@ -163,7 +163,7 @@ skip = """\
 */dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
 */local/pdks/*,\
 \
-*/integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
+*/integration/rdl/*,*/integration/ipxact/*,*/integration/constraints/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
 */doc/*/modules/*,*/_build/*,\
 */virtual_platform/downloads/*,*/virtual_platform/local/*,*/virtual_platform/local-ctr/*,\

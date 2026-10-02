@@ -11,12 +11,12 @@ are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.
 
 To give the different systems a unified view of how the constraints are defined,
-these constraints are collected with symlinks under `integration/constraint`
+these constraints are collected with symlinks under `integration/constraints`
 using a common hierarchy, described below. If the collateral inventory changes,
 run `scripts/update_integration_symlinks.py` to regenerate the index.
 
 The constraints for each system build on shared code, linked at
-`integration/constraint/shared`. This consists of four files:
+`integration/constraints/shared`. This consists of four files:
 `clock_periods.tcl` (which sets the target clock periods every block reads),
 `async_clock_groups.tcl` (which defines clock groups with default bounds),
 `cdc_max_delay_procs.tcl` (which defines procs for emitting CDC constraints)
@@ -24,7 +24,7 @@ and `hier_reuse_procs.tcl` (which lets a parent replay a block's constraints
 under an instance prefix).
 
 The constraints for each system can use this shared code and are visible through
-symlinks at `integration/constraint/<block>/synth`. This directory contains the
+symlinks at `integration/constraints/<block>/synth`. This directory contains the
 following files:
 
 * `constraints.sdc`:
