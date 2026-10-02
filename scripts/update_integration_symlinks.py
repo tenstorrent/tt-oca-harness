@@ -41,6 +41,7 @@ def production_rdl_sources() -> list[Path]:
             "hw/common/regs/*.rdl",
             "vendor/*/*/overlay/**/*.rdl",
             "vendor/tenstorrent/aou/upstream/csr/*.rdl",
+            "vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/*.rdl",
             "vendor/chipsalliance/i3c-core/upstream/src/rdl/*.rdl",
         )
         if "gen" not in path.parts and "memory_interface" not in path.parts
