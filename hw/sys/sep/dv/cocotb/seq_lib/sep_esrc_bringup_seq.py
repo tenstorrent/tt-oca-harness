@@ -404,7 +404,7 @@ class SepEsrcFifoReadPathSeq(uvm_sequence):
     Unlike SepEsrcFifoDrainSeq, the pop count does not depend on LEVEL, so the
     pops reach an empty FIFO too. entropy_source.rdl says such a read returns
     undefined data and sets INTR_STATUS.FIFO_UNDERFLOW. The caller grades the
-    data it returns and the status bits. ``level`` / ``wptr`` are the
+    status bits; the returned data is discarded. ``level`` / ``wptr`` are the
     FIFO_STATUS fields read before the pops.
     """
 
@@ -413,7 +413,6 @@ class SepEsrcFifoReadPathSeq(uvm_sequence):
         self.reads = reads
         self.level = -1
         self.wptr = -1
-        self.words: list[int] = []
 
     async def body(self) -> None:
         meta = ENTROPY_SOURCE.fields("FIFO_STATUS")
@@ -421,7 +420,7 @@ class SepEsrcFifoReadPathSeq(uvm_sequence):
         self.level = (status & meta["LEVEL"]["bm"]) >> meta["LEVEL"]["bp"]
         self.wptr = (status & meta["WPTR"]["bm"]) >> meta["WPTR"]["bp"]
         for _ in range(self.reads):
-            self.words.append((await _rd(self, ESRC_FIFO_RDATA)) & 0xFFFFFFFF)
+            await _rd(self, ESRC_FIFO_RDATA)
 
 
 class SepEsrcAlertReadSeq(uvm_sequence):

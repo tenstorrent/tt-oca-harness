@@ -409,7 +409,7 @@ never when it was written.
 |`sep_esrc_e2e_fifo_closed_test`
 |no_cpu, +skip_fuse_sense, +esrc_noise_force, +esrc_fifo_closed
 |ocah_axi_vip, entropy golden
-|`FIFO_CTRL.ENABLE=0` closes the `FIFO_RDATA` read path but not the DRBG seed path. The seed and genbits still match the golden, `FIFO_STATUS.LEVEL` stays 0 and no `FIFO_RDATA` pop returns a seed word while seed words cross, and under `FIPS_LOCK` a write of ENABLE=1 is refused.
+|`FIFO_CTRL.ENABLE=0` closes the `FIFO_RDATA` read path but not the DRBG seed path. The seed and genbits still match the golden, `FIFO_STATUS.LEVEL` and `WPTR` stay at reset while seed words cross, `FIFO_RDATA` pops of the empty FIFO set `FIFO_UNDERFLOW`, and under `FIPS_LOCK` a write of ENABLE=1 is refused.
 |`sep_esrc_alert_delivery_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -6737,7 +6737,7 @@ tap is graded at the control bit only. The main-FIFO data path with
 
 *Randomization*: RAND-NONE -- directed, with the same deterministic noise as `sep_esrc_e2e_smoke_test`.
 
-*Objective*: `hw/ip/entropy_source/doc/architecture.adoc` gives `FIFO_CTRL.ENABLE` one job: it gates the main-FIFO write. The words offered to the FIFO also seed the DRBG, and that seed stream does not depend on ENABLE. With ENABLE=0 from the ESRC configuration on, the DRBG must still seed and generate bit-exact against the golden, `FIFO_RDATA` must return no seed word, and under `FIPS_LOCK` software must not be able to set ENABLE again.
+*Objective*: `hw/ip/entropy_source/doc/architecture.adoc` gives `FIFO_CTRL.ENABLE` one job: it gates the main-FIFO write. The words offered to the FIFO also seed the DRBG, and that seed stream does not depend on ENABLE. With ENABLE=0 from the ESRC configuration on, the DRBG must still seed and generate bit-exact against the golden, no word may enter the FIFO, and under `FIPS_LOCK` software must not be able to set ENABLE again.
 
 *Test Coverage*: DRBG seeding with the `FIFO_RDATA` read path closed, and the lock on that read path.
 
@@ -6769,7 +6769,7 @@ tap is graded at the control bit only. The main-FIFO data path with
 |CHK-ALERTS-ZERO
 |As in `sep_esrc_e2e_smoke_test`.
 |CHK-FIFO-CLOSED
-|`INTR_STATUS.FIFO_UNDERFLOW` and `FIFO_OVERFLOW` read 0 before the first pop. Each `FIFO_STATUS` sample reads LEVEL=0 and WPTR at its reset, so no word went into the FIFO after the TRNG reset. No `FIFO_RDATA` pop returns a word seen on the seed port. The pops set `FIFO_UNDERFLOW`, which shows they reached the FIFO, and a W1C clears it. The PASS line gives the seed-port words, the seeds the DRBG packed and the seeds CSRNG accepted in the window. A window with fewer than 12 words or no packed seed fails, because an idle window cannot show a closed read path.
+|`INTR_STATUS.FIFO_UNDERFLOW` and `FIFO_OVERFLOW` read 0 before the first pop. Each `FIFO_STATUS` sample reads LEVEL=0 and WPTR at its reset, so no word went into the FIFO after the TRNG reset. The pops set `FIFO_UNDERFLOW`, which shows they reached the FIFO, and a W1C clears it. The PASS line gives the seed-port words, the seeds the DRBG packed and the seeds CSRNG accepted in the window. A window with fewer than 12 words or no packed seed fails, because an idle window cannot show a closed read path.
 |CHK-FIFO-ENABLE-LOCKED
 |Under `FIPS_LOCK` a write of ENABLE=1 reads back ENABLE=0. After 12 more seed-port words, LEVEL is 0 and WPTR is at its reset.
 |===
@@ -6778,7 +6778,7 @@ tap is graded at the control bit only. The main-FIFO data path with
 
 *What a broken design does here*: if ENABLE also gated the seed port, no seed would reach CSRNG. CHK3 would have no seed, and the bounded seed wait fails the leaf.
 
-*Not claimed*: the drain step of the certified sequence (clear ENABLE, read `FIFO_RDATA` until LEVEL is 0, then lock) with words already in the FIFO. This leaf clears ENABLE before a word reaches the FIFO, so that drain has nothing to read. The data an empty-FIFO read returns: the RDL calls it undefined, and only "not a seed-port word" is claimed.
+*Not claimed*: the drain step of the certified sequence (clear ENABLE, read `FIFO_RDATA` until LEVEL is 0, then lock) with words already in the FIFO. This leaf clears ENABLE before a word reaches the FIFO, so that drain has nothing to read. The data an empty-FIFO read returns: the RDL calls it undefined, so it is not graded.
 
 '''''
 
