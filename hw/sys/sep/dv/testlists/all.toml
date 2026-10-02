@@ -29,11 +29,11 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold all 130. `rom_fw`
+# (full-CPU target) are disjoint and together hold all 131. `rom_fw`
 # is not a member: a different owner, a third RTL target, and firmware rather
-# than hardware contracts. `all` is the coverage set. expected_count is 130.
+# than hardware contracts. `all` is the coverage set. expected_count is 131.
 name = "all"
-expected_count = 130
+expected_count = 131
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -90,6 +90,7 @@ tests = [
     "sep_mailbox_datapath_walk_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
+    "sep_reset_mid_transfer_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
     "sep_sram_datapath_breadth_test",
     "sep_boot_rom_lsu_read_test",
@@ -240,6 +241,7 @@ tests = [
     "sep_mailbox_datapath_walk_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
+    "sep_reset_mid_transfer_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
     "sep_sram_datapath_breadth_test",
     "sep_spi_ot_host_csr_irq_rand_test",

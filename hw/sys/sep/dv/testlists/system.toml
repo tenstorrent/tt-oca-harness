@@ -229,6 +229,22 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# Cold reset (rst_ni, asynchronous assertion) landed inside the response window
+# of a CPU-LSU access to one probe register per converted register port, and
+# inside fuse sensing. Each path must answer the next access with the RDL reset
+# value and then a written value; the next sense must match the staged image.
+# Real fuse sense on the committed default preload.
+name = "sep_reset_mid_transfer_recovery_test"
+module = "system.sep_reset_mid_transfer_recovery_test"
+seed = 1
+reseed = 2
+timeout_sec = 5400
+tags = ["reset", "fabric", "efuse", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+sep_efuse_preload"]
+
+[[tests]]
 # Inbound-filter per-entry RULE matrix (the reference suite's
 # sep_inbound_filter_blockbydefault_test +
 # sep_inbound_filter_programming_ownership_test +

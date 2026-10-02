@@ -554,6 +554,30 @@ def _ipxact_fields() -> dict[int, tuple[int, tuple[FieldMeta, ...]]]:
     return out
 
 
+@lru_cache(maxsize=1)
+def _ipxact_reset_words() -> dict[int, int]:
+    """32-bit word address -> reset value assembled from the IP-XACT field resets.
+
+    Covers registers wider than 32 bits word by word, which the generated
+    ``_REG_DEFAULT`` symbols do not (a 256-bit field has none). A field with no
+    ``resets`` element contributes 0; ``word_reset`` refuses such a word.
+    """
+    out: dict[int, int] = {}
+    for addr, width, fields in _iter_ipxact_registers():
+        value = 0
+        for one in fields:
+            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            node = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
+            if node is not None:
+                value |= (_ipxact_num(node.text) & ((1 << width_f) - 1)) << lsb
+        for word in range(max(width // 32, 1)):
+            out[addr + 4 * word] = (value >> (32 * word)) & 0xFFFF_FFFF
+    if not out:
+        raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
+    return out
+
+
 def register_fields(addr: int) -> tuple[int, tuple[FieldMeta, ...]]:
     """``(width_bits, fields)`` of the register at absolute ``addr``.
 
@@ -564,6 +588,17 @@ def register_fields(addr: int) -> tuple[int, tuple[FieldMeta, ...]]:
     if addr not in regs:
         raise KeyError(f"0x{addr:08x} is not a register in {_GEN_IPXACT.name}")
     return regs[addr]
+
+
+def word_reset(addr: int) -> int:
+    """RDL reset value of the 32-bit word at ``addr``, from the IP-XACT.
+
+    Raises ``KeyError`` for an address the IP-XACT gives no register, and
+    ``ValueError`` for a word with a field that has no RDL reset.
+    """
+    if word_has_unreset_field(addr):
+        raise ValueError(f"0x{addr:08x} holds a field with no RDL reset value")
+    return _ipxact_reset_words()[addr]
 
 
 # The shape of ordinary read-write storage, and the default for a hand-built

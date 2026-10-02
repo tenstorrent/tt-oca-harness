@@ -610,6 +610,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Both reset observables are released at rest, and the CPU observable drops and restores under a real reset source, so it is live rather than stuck at one. `dbg_rstb_i` isolation is not claimed: the pin has no netlist path to either observable in this build.
+|`sep_reset_mid_transfer_recovery_test`
+|no_cpu, real fuse sense (`+sep_efuse_preload`)
+|ocah_axi_vip, eFuse image golden
+|A cold reset (`rst_ni`) lands inside the response window of a CPU-LSU read or write to a probe register on each converted register port (OTBN, AES, HMAC, KMAC, CSRNG, EDN, watchdog, SPI host, DMA, Adams Bridge), and inside fuse sensing. The next access returns the RDL reset value, a write after it reads back, no response for the abandoned access appears, the reset returns the shadow to its reset value, and the next sense matches the staged image.
 |`sep_wdt_aon_timer_internals_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -5027,6 +5031,122 @@ row, so this entry earns none and its absence is not an oversight. The two
 checkers above are worth running as a reset-tree liveness guard; they are not a
 feature credit. Closing the isolation claim needs both a run mode where
 `dbg_rstb_i` reaches `sep_cpu` and a specification statement to check it against.
+
+'''''
+
+[[sep_reset_mid_transfer_recovery_test]]
+===== `sep_reset_mid_transfer_recovery_test`
+
+*Phase*: 2
+
+*Bucket*: Memory, boot, reset, WDT, clock
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense on the committed
+default preload (`+sep_efuse_preload`)
+
+*Source Module*: `sep_reset_mid_transfer_recovery_test`
+
+*BFM / Model*: ocah_axi_vip, eFuse image golden
+
+*Randomization*: RANDCFG -- the armed, in-flight and post-reset data values come
+from the run seed (`SepSeededRng`). The probes, both ops, every reset offset and
+every sense offset are walked on every seed.
+
+*Objective*: Proves that a cold reset which lands with a register access
+outstanding, or with fuse sensing in progress, leaves every path usable.
+`rst_ni` has asynchronous assertion (`doc/integrator/src/smu-sep.adoc`, Clock
+and Reset Requirements) and resets the whole subsystem
+(`hw/sys/sep/doc/clk_rst.adoc`, Reset Architecture), so it is the one SEP reset
+that can land on any cycle. The `SW_RESET_N` domains isolate and drain their
+paths before their reset asserts (`hw/sys/sep/doc/reset_controller.adoc`,
+Isolation and Reset Sequencing), so no software reset is used and none can
+reach these cases.
+
+*Test Coverage*: one read-write probe register on each converted register port
+the CPU-LSU master reaches: OTBN `LOAD_CHECKSUM`, AES `CTRL_AUX_SHADOWED`, HMAC
+`INTR_ENABLE`, KMAC `ENTROPY_PERIOD`, CSRNG and EDN `INTR_ENABLE`, watchdog
+`WKUP_THOLD_LO`, SPI host `CONFIGOPTS`, DMA `SRC_ADDR_LO` and the Adams Bridge
+`notif_cmd_done_intr_count_r` counter. Each probe is read and written. Fuse
+sensing is reset on every early cycle and at points across the sense time.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up with real fuse sense; the base class compares the sensed shadow with
+  the staged image after every sense-done. `clk_wdt_i` runs at eight core
+  periods, as in `sep_reg_bit_bash_rand_test`: a watchdog threshold access
+  waits on the `clk_wdt_i` register synchronizer and outlasts the AXI timeout
+  at the 200 kHz default.
+. For each probe and op, run the probe access with no reset on the VIP master
+  with its own AXI ID (3) and record the request and response handshakes on the
+  `s_axi` pins. The response window is the cycle count from the last request
+  handshake to the response handshake.
+. For each offset in the window (every cycle up to 24 cycles, otherwise ten
+  evenly spaced cycles with both ends): write a non-reset value to the probe
+  and read it back, start the probe access, and assert `rst_ni` on the falling
+  clock edge that many cycles after the request handshake. Hold it 20 cycles,
+  release it and wait for sense-done.
+. Read the probe, write a new value and read it back, through the SEP
+  sequencer.
+. Measure the sense time. Then for every cycle 0 to 31 after the `rst_ni`
+  release, and seven points across the sense time and two cycles before its
+  end: assert `rst_ni` after a completed sense and read the shadow
+  (`efuse_shadow_probe_o`) at the end of the hold, release it, assert `rst_ni`
+  again at that offset with sense-done low and read the shadow again, then let
+  the next sense complete.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-PROBE-LIVE
+|With no reset, each probe access completes OKAY: a read returns the value
+written before it and a write reads back. Each probe is a real access, and its
+window is measured on the DUT rather than assumed.
+|CHK-ARM
+|Before each landing the probe holds a written value that is not its RDL reset,
+so CHK-RESET-VALUE fails on a path the reset did not reach.
+|CHK-MIDFLIGHT
+|At every landing the request handshake has completed. For each probe and op at
+least one landing comes before the response is accepted on `s_axi`, and for
+every such landing the VIP master abandons the access (its completion carries
+no response). The watchdog response window varies with the `clk_wdt_i` phase,
+so a watchdog landing can come after its response; it is logged by offset and
+grades recovery only.
+|CHK-RESET-VALUE
+|The first read after the reset completes OKAY with the probe's reset value from
+the register export (`abr_reg.rdl` for the Adams Bridge counter), within half
+the AXI timeout. A bridge left waiting for the response it lost wedges this
+read and fails it by name, and a bridge that replays the lost response returns
+a value this read can reject.
+|CHK-RECOVER
+|A write after the reset reads back exactly, OKAY.
+|CHK-NO-STALE
+|No R or B beat with the abandoned access's ID appears after the reset. The
+sequencer issues ID 0, so such a beat can only be a response the DUT kept
+across the reset.
+|CHK-SHADOW-CLEAR
+|With `rst_ni` low, every shadow word reads its reset value, both after a
+completed sense and with sense-done low. The reset value is the RDL reset from
+the register export, except the LC_STATE word: it reads the INVALID hold
+(`{~4'b1111, 4'b1111}`) that `hw/sys/sep/doc/otp_fuse_controller.adoc` (Fuse
+Sensing and Boot Sequencing) gives before sensing completes. The staged image
+differs from the reset value in at least one word, so a shadow that keeps its
+value through the reset fails this check.
+|CHK-SENSE-RESTART
+|A reset that lands with sense-done low is followed by a sense that completes,
+and the sensed shadow matches the staged image word for word. The shadow read
+its reset value before that sense (CHK-SHADOW-CLEAR), so the match comes from
+words the restarted sense wrote.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Not claimed*: the DMA master path (the DMA engine's own outbound accesses),
+eFuse programming and the token digest engines with a reset in flight, and a
+Key Manager reset while the Key Manager runs. No probe here starts those
+operations. The JTAG reset overrides also skip the isolation sequence, but they
+are a debug path (`hw/sys/sep/doc/clk_rst.adoc`) and are not used.
 
 '''''
 
