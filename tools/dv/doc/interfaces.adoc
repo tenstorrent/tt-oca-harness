@@ -168,9 +168,11 @@ per-leaf directories, and `cov/`
 |Status maps to exit code as the runner page tabulates, and run-level
 aggregation orders `ERROR > TIMEOUT > FAIL > UNKNOWN > PASS`. Return code
 zero from a simulator is never sufficient for `PASS`. An explicit `--run-dir`
-is reused as supplied and never creates or updates `latest`. Most subprocess
-stages leave a replayable script under `scripts/`. Checked by the smoke job
-on every pull request and by the result and stage tests.
+is reused as supplied and never creates or updates `latest`; each attempt's
+previous leaf `result.json`, completion record, job log, and `results/` JUnit
+files are removed before it is submitted. Most subprocess stages leave a
+replayable script under `scripts/`. Checked by the smoke job on every pull
+request and by the result and stage tests.
 
 |Native run result: run-level `result.json`, `stages/regress/regression.json`,
 per-leaf `result.json`, and `results/results.xml`

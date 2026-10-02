@@ -65,6 +65,22 @@ def completion_path(run_dir: Path, task_id: str) -> Path:
     return jobs_dir(run_dir) / f"{task_id}.done.json"
 
 
+def clear_attempt_outputs(task: LeafTask) -> None:
+    """Remove the leaf ``result.json``, the completion record and the JUnit files under
+    ``results/`` from the attempt's paths.
+
+    Task ids and flat leaf directories repeat across invocations into one run directory, so
+    whatever sits at these paths before the attempt runs was written by an earlier one.
+    """
+    task.result_json.unlink(missing_ok=True)
+    completion_path(task.run_dir, task.task_id).unlink(missing_ok=True)
+    results = task.leaf_dir / "results"
+    if results.is_dir():
+        for path in results.glob("*.xml"):
+            if path.is_file():
+                path.unlink(missing_ok=True)
+
+
 def repo_identity(root: Path) -> tuple[str | None, bool | None]:
     """(HEAD commit, dirty flag) of the checkout, or Nones when git cannot answer."""
     try:
@@ -240,7 +256,13 @@ def execute_attempt(
     simulators: dict[str, Any],
     policies: dict[str, Any],
 ) -> tuple[StageResult, str | None]:
-    """Run one attempt and write its leaf ``result.json``; the repo-relative path comes back."""
+    """Run one attempt and write its leaf ``result.json``; the repo-relative path comes back.
+
+    Outputs an earlier invocation left at the attempt's paths are removed first; a dry run
+    removes nothing.
+    """
+    if not getattr(args, "dry_run", False):
+        clear_attempt_outputs(task)
     result = run_stage(
         flow,
         root,
@@ -298,6 +320,7 @@ __all__ = [
     "OVERRIDABLE_ARGS",
     "ManifestError",
     "attempt_args",
+    "clear_attempt_outputs",
     "completion_path",
     "execute_attempt",
     "jobs_dir",

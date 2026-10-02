@@ -15,7 +15,7 @@ pre-simulation failures stay visible to JUnit consumers.
 Synthesized files are derived reporting artifacts: they are written strictly after
 status classification, are never read back as parser evidence, and carry a suite-level
 ``producer`` property so native framework output can always be told apart from runner
-output (and only marked files are ever cleaned up).
+output (and the functions here clean up only marked files).
 """
 
 from __future__ import annotations

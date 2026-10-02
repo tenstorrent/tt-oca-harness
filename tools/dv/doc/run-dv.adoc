@@ -3106,12 +3106,13 @@ an earlier attempt of a retried leaf that left no result gets no file. A leaf
 that ran records the path as `artifacts.results_xml` in its `result.json`.
 
 A synthesized file is a reporting artifact, written after grading, atomically,
-and never read back as evidence; before a leaf runs, the runner removes one
-that an earlier invocation into the same directory left, and a leaf the
-coordinator grades replaces one in its attempt's directory. Its suite carries
-a `producer` property with the value `run_dv.py junit-fallback`, and only a
-file carrying that marker is ever removed or replaced; a file without it is
-left alone even when it sits where the runner would write.
+and never read back as evidence, and a leaf the coordinator grades replaces one
+in its attempt's directory. Its suite carries a `producer` property with the
+value `run_dv.py junit-fallback`. Before an attempt runs, the runner removes
+every XML file that an earlier invocation into the same directory left under
+the attempt's `results/`, with or without that marker. From then on only a
+file carrying the marker is removed or replaced; a file without it is left
+alone even when it sits where the runner would write.
 
 Two run-level files follow the same rule. A handled interruption writes
 `<run>/results/results.xml` with one errored testcase of type `interruption`
@@ -3460,8 +3461,10 @@ The following behaviors are not part of the runner contract:
   `--timeout` reaches many subprocess stages, but Bender filelist generation
   and in-process Verilator/Xcelium cocotb build stages are unbounded.
 * An explicit `--run-dir` is reused as supplied, is not made unique, and does
-  not update `latest`. Choose an empty directory unless performing the
-  documented coverage replay.
+  not update `latest`. Before an attempt is submitted, the leaf `result.json`,
+  completion record, job log, and `results/` JUnit files an earlier run left
+  at its paths are removed; everything else that run left stays. Choose an
+  empty directory unless performing the documented coverage replay.
 * `--max-failures 0` satisfies the stop condition immediately and therefore
   skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
   despite running no tests; the record says so (`tests.completed = false`,

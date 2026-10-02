@@ -220,6 +220,54 @@ class ManifestTest(ManifestCase):
             )
         self.assertFalse(task.result_json.exists())
 
+    def leave_earlier_outputs(self, task: LeafTask) -> list[Path]:
+        """What an earlier invocation into this run directory left at the attempt's paths."""
+        xml = task.leaf_dir / "results" / "results.xml"
+        done = completion_path(self.run_dir, task.task_id)
+        for path in (xml, task.result_json, done):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}", encoding="utf-8")
+        return [xml, task.result_json, done]
+
+    def test_execute_attempt_removes_what_an_earlier_invocation_left(self) -> None:
+        task = self.task()
+        earlier = self.leave_earlier_outputs(task)
+        args = parse_args(["--dut", DUT, "--items", self.item])
+        with (
+            mock.patch("runlib.executors.manifest.run_stage", side_effect=OSError("disk")),
+            self.assertRaises(OSError),
+        ):
+            execute_attempt(
+                flow=self.flow,
+                root=REPO_ROOT,
+                sim_cfg={},
+                catalog=self.catalog,
+                task=task,
+                args=args,
+                tool="verilator",
+                simulators={},
+                policies={},
+            )
+        self.assertEqual([path for path in earlier if path.exists()], [])
+
+    def test_dry_run_removes_nothing(self) -> None:
+        task = self.task()
+        earlier = self.leave_earlier_outputs(task)
+        args = parse_args(["--dut", DUT, "--items", self.item, "--dry-run"])
+        with mock.patch("runlib.executors.manifest.run_stage", return_value=stage_result(task)):
+            execute_attempt(
+                flow=self.flow,
+                root=REPO_ROOT,
+                sim_cfg={},
+                catalog=self.catalog,
+                task=task,
+                args=args,
+                tool="verilator",
+                simulators={},
+                policies={},
+            )
+        self.assertEqual([path for path in earlier if not path.exists()], [])
+
 
 def run_worker(path: Path) -> int:
     """The worker's exit status, with its console lines kept out of the test output."""

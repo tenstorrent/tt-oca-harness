@@ -22,7 +22,9 @@ record and ``result.json`` the worker wrote settle it first, then the scheduler'
 only ``artifact_grace_sec`` without either makes it ``LOST``. A terminal state the scheduler
 reports for a job that ran is likewise held until the leaf's ``result.json`` is visible or that
 grace has passed, which absorbs a shared filesystem's lag. The verdict comes from that file
-alone; scheduler state decides only whether an attempt is over.
+alone; scheduler state decides only whether an attempt is over. Submission removes whatever
+an earlier invocation left at the attempt's ``result.json``, completion record, job log and
+``results/*.xml`` paths, so those files can only come from the attempt's own job.
 
 A query that fails as a whole leaves every asked handle in its previous state and lengthens
 the next wait; consecutive failures past a bound abort the run, as do consecutive submission
@@ -59,7 +61,7 @@ from .base import (
     render_argv,
     result_from_fragment,
 )
-from .manifest import completion_path, jobs_dir
+from .manifest import clear_attempt_outputs, completion_path, jobs_dir
 
 DEFAULT_WORKER_ARGV = [
     "{python}",
@@ -104,6 +106,11 @@ def script_path(run_dir: Path, task_id: str) -> Path:
 
 def job_log_path(run_dir: Path, task_id: str) -> Path:
     return logs_dir(run_dir) / f"{task_id}.log"
+
+
+def array_log_path(run_dir: Path, label: str, index: int) -> Path:
+    """The job log of element ``index`` of array ``label``, as the scheduler expands it."""
+    return logs_dir(run_dir) / f"{label}.{index}.log"
 
 
 def array_tasks_path(run_dir: Path, label: str) -> Path:
@@ -352,9 +359,11 @@ class ClusterExecutor(Executor):
     def submit(self, task: LeafTask) -> JobHandle:
         if task.manifest_path is None:
             raise ClusterError(f"{task.task_id}: no manifest was written for this attempt")
+        clear_attempt_outputs(task)
         script = self._write_script(task)
         joblog = job_log_path(self._run_dir, task.task_id)
         joblog.parent.mkdir(parents=True, exist_ok=True)
+        joblog.unlink(missing_ok=True)
         values = {
             **task.resources.placeholders(),
             "jobname": self._job_name(task),
@@ -437,6 +446,8 @@ class ClusterExecutor(Executor):
         for task in tasks:
             if task.manifest_path is None:
                 raise ClusterError(f"{task.task_id}: no manifest was written for this attempt")
+        for task in tasks:
+            clear_attempt_outputs(task)
         self._array_sequence += 1
         label = f"{tasks[0].stage}-arr{self._array_sequence:04d}"
         script = self._write_array_script(tasks, label)
@@ -444,6 +455,8 @@ class ClusterExecutor(Executor):
         token = self._dialect.array_log_token
         joblog_pattern = logs_dir(self._run_dir) / f"{label}.{token}.log"
         joblog_pattern.parent.mkdir(parents=True, exist_ok=True)
+        for index in range(1, len(tasks) + 1):
+            array_log_path(self._run_dir, label, index).unlink(missing_ok=True)
         values = {
             **tasks[0].resources.placeholders(),
             "jobname": self._dialect.array_jobname(
@@ -496,7 +509,7 @@ class ClusterExecutor(Executor):
             observed_at=stamp,
         )
         for index, task in enumerate(tasks, start=1):
-            joblog = logs_dir(self._run_dir) / f"{label}.{index}.log"
+            joblog = array_log_path(self._run_dir, label, index)
             handle = JobHandle(
                 executor=self.name,
                 driver=self.driver,
@@ -1131,6 +1144,7 @@ __all__ = [
     "QueryOutcome",
     "SchedulerDialect",
     "SubmitOutcome",
+    "array_log_path",
     "array_tasks_path",
     "base_job_id",
     "job_log_path",

@@ -92,6 +92,17 @@ if task_id.startswith("sim-000001"):
 os.execv(sys.executable, [sys.executable, worker, manifest])
 """
 
+# A worker that exits 0 at once and runs the command it is given 1.5 s later, detached, as a
+# result that reaches a shared filesystem after the job has ended.
+DELAYED_WORKER = """
+import subprocess, sys
+subprocess.Popen(
+    [sys.executable, "-c", "import os, sys, time; time.sleep(1.5); os.execv(sys.argv[1], sys.argv[1:])",
+     *sys.argv[1:]],
+    start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+)
+"""
+
 
 class FakeClock:
     def __init__(self) -> None:
@@ -336,6 +347,31 @@ class ClusterExecutorTests(FakeSchedulerCase):
             "failed reported with exit code 127 but no result.json appeared within 3s",
             final[handle.task_id].reason,
         )
+
+    def test_submission_clears_what_an_earlier_invocation_left(self) -> None:
+        self.scenario(
+            jobs={"default": {"states": ["PEND", "RUN", "EXIT:127"], "run_script": False}}
+        )
+        executor = self.executor(artifact_grace_sec=3.0)
+        tasks = [self.task(15), self.task(16, item="t_beta"), self.task(17, item="t_gamma")]
+        stale: list[Path] = []
+        for task in tasks:
+            xml = task.leaf_dir / "results" / "results.xml"
+            xml.parent.mkdir(parents=True)
+            xml.write_text("<testsuites/>\n", encoding="utf-8")
+            task.result_json.write_text(json.dumps({"status": "PASS"}), encoding="utf-8")
+            done = completion_path(self.run_dir, task.task_id)
+            done.write_text(json.dumps({"return_code": 0}), encoding="utf-8")
+            stale += [xml, task.result_json, done]
+        handles = [executor.submit(tasks[0]), *executor.submit_many(tasks[1:])]
+        self.assertIsNotNone(handles[1].array_job_id, "the last two go out as one array")
+        self.assertEqual([path for path in stale if path.exists()], [])
+        final, _ = self.settle(executor, handles)
+        for handle in handles:
+            self.assertEqual(final[handle.task_id].state, JobState.FAILED)
+            self.assertIn("no result.json appeared", final[handle.task_id].reason)
+            self.assertIsNone(executor.collect(handle).result)
+        executor.close()
 
     def test_vanished_job_that_left_a_result_reconciles_from_the_completion_record(self) -> None:
         self.scenario(jobs={"default": {"states": ["PEND", "RUN", "VANISH"]}})
@@ -1554,6 +1590,76 @@ class CoordinatorTest(unittest.TestCase):
         self.assertEqual((retried["status"], retried["metadata"]["attempt"]), ("PASS", 1))
         self.assertFalse(self.junit_path(retried, 0).exists())
 
+    # A job that exits 127 before its worker starts, as a missing interpreter makes it.
+    NO_START = {"states": ["PEND", "RUN", "EXIT:127"], "run_script": False}
+
+    def rerun(self, **tables: Any) -> tuple[int, dict[str, Any]]:
+        """A second invocation into the run directory the first one used, on a fresh scheduler."""
+        (self.state / "calls.log").unlink(missing_ok=True)
+        (self.state / "jobs.json").unlink(missing_ok=True)
+        self.scenario(**tables)
+        return self.run_dv()
+
+    def test_a_reused_flat_run_dir_grades_the_new_attempt(self) -> None:
+        self.items = self.items[:1]
+        self.scenario()
+        code, summary = self.run_dv()
+        self.assertEqual(code, 0, summary.get("status"))
+        self.write_site(artifact_grace_sec=1)
+        code, summary = self.rerun(jobs={"default": self.NO_START})
+        self.assertEqual(code, 2, summary.get("status"))
+        (leaf,) = self.leaves(summary)
+        self.assertEqual(leaf["status"], "ERROR")
+        self.assertIn("with exit code 127 but no result.json appeared", leaf["reason"])
+        self.assertFalse((self.run_dir / leaf["item"] / "result.json").exists())
+        path = self.run_dir / leaf["item"] / "results" / "results.xml"
+        self.assertTrue(is_generated_junit(path))
+        suites = ET.parse(path).getroot()
+        recorded = {prop.get("name"): prop.get("value") for prop in suites.iter("property")}
+        self.assertEqual(REPO_ROOT / recorded["result_json"], self.run_dir / "result.json")
+        error = suites.find(".//testcase/error")
+        assert error is not None
+        self.assertEqual(error.get("type"), "environment_error")
+
+    def test_a_reused_run_dir_reads_a_lost_job_as_lost(self) -> None:
+        self.scenario()
+        code, summary = self.run_dv()
+        self.assertEqual(code, 0, summary.get("status"))
+        earlier_logs = [
+            REPO_ROOT / leaf["artifacts"]["executor_log"] for leaf in self.leaves(summary)
+        ]
+        self.assertTrue(all(path.is_file() for path in earlier_logs), earlier_logs)
+        self.write_site(artifact_grace_sec=1)
+        lost = {"states": ["PEND", "RUN", "VANISH"], "run_script": False, "history": "none"}
+        code, summary = self.rerun(jobs={"default": lost})
+        self.assertEqual(code, 2, summary.get("status"))
+        for leaf in self.leaves(summary):
+            self.assertEqual(leaf["status"], "ERROR")
+            self.assertEqual(leaf["metadata"]["scheduler"]["state"], "LOST")
+            self.assertIn("ended lost: missing from the live query", leaf["reason"])
+            self.assertIsNone(leaf.get("log"), "the job never started, so it has no log")
+            self.assertNotIn("executor_log", leaf.get("artifacts") or {})
+        self.assertEqual([path for path in earlier_logs if path.exists()], [])
+
+    def test_a_reused_run_dir_waits_for_a_result_that_lands_within_the_grace(self) -> None:
+        self.scenario()
+        code, summary = self.run_dv()
+        self.assertEqual(code, 0, summary.get("status"))
+        delayed = self.tmp / "delayed_worker.py"
+        delayed.write_text(DELAYED_WORKER, encoding="utf-8")
+        self.write_site(
+            worker=[sys.executable, str(delayed), sys.executable, str(FAKE_WORKER)],
+            artifact_grace_sec=5,
+        )
+        code, summary = self.rerun()
+        self.assertEqual(code, 0, summary.get("status"))
+        self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
+        # The detached workers write their completion records after the results the run read.
+        records = [completion_path(self.run_dir, f"sim-{leaf:06d}-a0") for leaf in (0, 1)]
+        deadline = time.monotonic() + 10
+        while not all(path.is_file() for path in records) and time.monotonic() < deadline:
+            time.sleep(0.1)
+
     def test_a_wave_debug_rerun_is_its_own_job(self) -> None:
         self.scenario()
         failing = self.items[0]
@@ -1737,6 +1843,15 @@ class SchedulerBuildTest(CoordinatorTest):
     def test_a_lost_first_attempt_leaves_no_junit_beside_its_retry(self) -> None:
         """Skipped here: a lost leaf does not depend on where the build ran."""
 
+    def test_a_reused_flat_run_dir_grades_the_new_attempt(self) -> None:
+        """Skipped here: the reused build directory has its own test below."""
+
+    def test_a_reused_run_dir_reads_a_lost_job_as_lost(self) -> None:
+        """Skipped here: the reused build directory has its own test below."""
+
+    def test_a_reused_run_dir_waits_for_a_result_that_lands_within_the_grace(self) -> None:
+        """Skipped here: the reused build directory has its own test below."""
+
     def test_interruption_cancels_the_jobs_and_records_them(self) -> None:
         """Skipped here: the interruption tests assume no build job precedes the leaves."""
 
@@ -1808,6 +1923,23 @@ class SchedulerBuildTest(CoordinatorTest):
         )
         self.assertEqual(bucket["count"], 2)
         self.assertEqual(summary["tests"]["completed"], True)
+
+    def test_a_reused_run_dir_grades_the_new_build(self) -> None:
+        self.scenario()
+        code, summary = self.run_dv()
+        self.assertEqual(code, 0, summary.get("status"))
+        self.write_site(artifact_grace_sec=1)
+        code, summary = self.rerun(jobs={"build-hdl_compile": self.NO_START})
+        self.assertEqual(code, 2, summary.get("status"))
+        build = next(stage for stage in summary["stages"] if stage["name"] == "hdl_compile")
+        self.assertEqual(build["status"], "ERROR")
+        self.assertIn("with exit code 127 but no result.json appeared", build["reason"])
+        for leaf in self.leaves(summary):
+            self.assertEqual(leaf["status"], "ERROR")
+            self.assertTrue(
+                leaf["reason"].startswith("dependency_blocked: hdl_compile of target default ERROR")
+            )
+        self.assertEqual(len(self.submit_commands()), 1, "no leaf reached the scheduler")
 
     def test_build_defaults_and_build_submit_argv_shape_the_build_job(self) -> None:
         marker = "-app" if self.driver == "lsf" else "--comment=compile"
