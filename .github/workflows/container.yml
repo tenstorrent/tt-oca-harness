@@ -55,8 +55,7 @@ env:
 jobs:
   # Build the image with Nix and publish it to GHCR under its immutable
   # content-hash tag. skopeo streams the nix-built archive straight to the
-  # registry: no `docker load`, so nothing unpacks the multi-GB image onto the
-  # runner's small root volume. This keeps the heavy build off the daemon.
+  # registry, so the build never goes through a container engine.
   build-and-publish:
     name: Build and publish Nix image
     # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
@@ -89,26 +88,11 @@ jobs:
               hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
               virtual_platform/tt-oca-harness-model
 
-      # ocah_deps.nix builds gcc, boost and openssl from source; the closure
-      # outgrows a hosted runner's root volume and the failure surfaces deep in a
-      # build as "ld.bfd: final link failed: No space left on device". Reclaim the
-      # preinstalled toolchains this job never uses before building.
-      - name: Free disk space for the nix build
-        run: |
-          echo "before:"; df -h / | tail -1
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
-                      /usr/local/.ghcup /usr/local/share/boost \
-                      /usr/local/lib/node_modules /opt/hostedtoolcache \
-                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
-          sudo docker image prune -af >/dev/null 2>&1 || true
-          sudo install -d -m 0755 /mnt/nix-build
-          echo "after:"; df -h / | tail -1
-
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
         with:
           extra_nix_config: |
-            build-dir = /mnt/nix-build
+            max-jobs = auto
 
       - name: Ensure skopeo
         run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
@@ -174,10 +158,8 @@ jobs:
             echo "- digest: \`${digest}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Pull the freshly published image on a clean runner and exercise it. Because
-  # this runner never ran the nix build, the ~30 GB the image unpacks into on
-  # `docker pull` has the whole root volume to itself and fits where the combined
-  # build+load did not. Only after this passes is the consumed :main tag moved.
+  # Pull the published image on a clean runner and exercise it. Only after this
+  # passes is the consumed :main tag moved.
   verify-and-promote:
     name: Verify image and promote main
     # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
@@ -207,18 +189,6 @@ jobs:
             submodule update --init --recursive \
               hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
               virtual_platform/tt-oca-harness-model
-
-      # docker pull unpacks the multi-GB image into the daemon's data-root on the
-      # small root volume; reclaim the preinstalled toolchains first.
-      - name: Free disk space for the image pull
-        run: |
-          echo "before:"; df -h / | tail -1
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
-                      /usr/local/.ghcup /usr/local/share/boost \
-                      /usr/local/lib/node_modules /opt/hostedtoolcache \
-                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
-          sudo docker image prune -af >/dev/null 2>&1 || true
-          echo "after:"; df -h / | tail -1
 
       # docker-run.sh resolves the image tag from the flake via `nix eval`, then
       # pulls REGISTRY_IMAGE:<hash>; a native nix keeps that off the container.
