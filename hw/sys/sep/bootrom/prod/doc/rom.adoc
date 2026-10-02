@@ -342,9 +342,10 @@ in reset (<<sec:fuses>>).
 [frame=ends]
 |===
 |*Register* |*Address* |*Reset domain* |*Assignment*
-|`cold_scratch[0]` |`0x10802000` |any reset |Terminal verdict only. The ROM writes only
-`0xDEADBEEF` (FAIL), when it halts; after a successful hand-off BL1 owns the word (the DV
-`bl1_pass_test` writes `0xACAFACA1` PASS or `0xDEADBEEF` FAIL).
+|`cold_scratch[0]` |`0x10802000` |any reset |Terminal verdict only. The ROM writes
+`0xDEADBEEF` (FAIL) from `rom_err_fail()` and the trap handlers; the MBIST and PMP failure
+halts in `vector.S` report on `cold_scratch[1]` alone. After a successful hand-off BL1 owns the
+word (the DV `bl1_pass_test` writes `0xACAFACA1` PASS or `0xDEADBEEF` FAIL).
 |`cold_scratch[1]` |`0x10802008` |any reset |Machine-readable status channel — every
 `STATUS_OUT()` encoded status word lands here (<<sec:status>>).
 |`cold_scratch[2]` |`0x10802010` |any reset |Virtual console: packed debug text, decoded by
@@ -2994,8 +2995,9 @@ implementation-specific.
 the last value identifies the current/failing stage.
 |Status ring |SMC SRAM (offset from scratch[11]) |Every non-`DEBUG` status, consumed by the
 SMC and forwarded to the platform (OCCP). Strap- and hand-shake-gated (<<sec:smc_sync>>).
-|Verdict scratch |`cold_scratch[0]` |Terminal verdict only: `0xDEADBEEF` FAIL from the ROM;
-after hand-off, whatever BL1 writes (`0xACAFACA1` PASS or `0xDEADBEEF` FAIL in DV).
+|Verdict scratch |`cold_scratch[0]` |Terminal verdict only: `0xDEADBEEF` FAIL from
+`rom_err_fail()` or a trap handler; after hand-off, whatever BL1 writes (`0xACAFACA1` PASS
+or `0xDEADBEEF` FAIL in DV).
 |Virtual console |`cold_scratch[2]` |Packed debug text (debug builds only; decoded by the DV
 monitor).
 |===
