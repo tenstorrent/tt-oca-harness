@@ -59,7 +59,7 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_global_base_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_region_size_o*}] -add_delay
 # Addition: `sep_global_base_o*` / `sep_region_size_o*` mirror the SMC apertures
-# above; tied to '0 when SEP=0 but still SMUCLK-domain CSR outputs when SEP=1.
+# above; tied to '0 when CFG.SEP=0 but still SMUCLK-domain CSR outputs when CFG.SEP=1.
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_global_base_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_region_size_o*}] -add_delay
 

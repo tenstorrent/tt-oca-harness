@@ -727,8 +727,8 @@ module smc_internal_regs #(
     .test_i          (test_en_i),
     .slv_req_i       (axil_mR_ctrl_req_i),
     .slv_resp_o      (axil_mR_ctrl_resp_o),
-    .slv_aw_select_i (axil_mR_ctrl_req_i.aw.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
-    .slv_ar_select_i (axil_mR_ctrl_req_i.ar.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
+    .slv_aw_select_i (axil_mR_ctrl_req_i.aw.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]),
+    .slv_ar_select_i (axil_mR_ctrl_req_i.ar.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]),
     .mst_reqs_o      (axil_mR_ctrl_reqs),
     .mst_resps_i     (axil_mR_ctrl_resps)
   );
@@ -740,7 +740,7 @@ module smc_internal_regs #(
 
       .s_axil_awready (axil_mR_ctrl_resps[i].aw_ready),
       .s_axil_awvalid (axil_mR_ctrl_reqs[i].aw_valid),
-      .s_axil_awaddr  ({1'b0, axil_mR_ctrl_reqs[i].aw.addr[2:0]}),
+      .s_axil_awaddr  ({1'b0, axil_mR_ctrl_reqs[i].aw.addr[MmodeRemapSelStartIdx-1:0]}),
       .s_axil_awprot  (axil_mR_ctrl_reqs[i].aw.prot),
       .s_axil_wready  (axil_mR_ctrl_resps[i].w_ready),
       .s_axil_wvalid  (axil_mR_ctrl_reqs[i].w_valid),
@@ -751,7 +751,7 @@ module smc_internal_regs #(
       .s_axil_bresp   (axil_mR_ctrl_resps[i].b.resp),
       .s_axil_arready (axil_mR_ctrl_resps[i].ar_ready),
       .s_axil_arvalid (axil_mR_ctrl_reqs[i].ar_valid),
-      .s_axil_araddr  ({1'b0, axil_mR_ctrl_reqs[i].ar.addr[2:0]}),
+      .s_axil_araddr  ({1'b0, axil_mR_ctrl_reqs[i].ar.addr[MmodeRemapSelStartIdx-1:0]}),
       .s_axil_arprot  (axil_mR_ctrl_reqs[i].ar.prot),
       .s_axil_rready  (axil_mR_ctrl_reqs[i].r_ready),
       .s_axil_rvalid  (axil_mR_ctrl_resps[i].r_valid),
@@ -799,7 +799,7 @@ module smc_internal_regs #(
   localparam int unsigned XvisorRemapSelStartIdx = $clog2(
       smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_SIZE
   );
-  localparam int unsigned XvisorRemapSelEndIdx = MmodeRemapSelStartIdx + smc_pkg::XvisorRemapSelW - 1;
+  localparam int unsigned XvisorRemapSelEndIdx = XvisorRemapSelStartIdx + smc_pkg::XvisorRemapSelW - 1;
 
   smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NumXvisorOutputRemapRegions-1:0] axil_xR_ctrl_reqs;
   smc_pkg::smc_axil_32_64_resp_t [smc_pkg::NumXvisorOutputRemapRegions-1:0] axil_xR_ctrl_resps;
@@ -826,8 +826,8 @@ module smc_internal_regs #(
     .test_i          (test_en_i),
     .slv_req_i       (axil_xR_ctrl_req_i),
     .slv_resp_o      (axil_xR_ctrl_resp_o),
-    .slv_aw_select_i (axil_xR_ctrl_req_i.aw.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
-    .slv_ar_select_i (axil_xR_ctrl_req_i.ar.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
+    .slv_aw_select_i (axil_xR_ctrl_req_i.aw.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]),
+    .slv_ar_select_i (axil_xR_ctrl_req_i.ar.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]),
     .mst_reqs_o      (axil_xR_ctrl_reqs),
     .mst_resps_i     (axil_xR_ctrl_resps)
   );
@@ -839,7 +839,7 @@ module smc_internal_regs #(
 
       .s_axil_awready (axil_xR_ctrl_resps[i].aw_ready),
       .s_axil_awvalid (axil_xR_ctrl_reqs[i].aw_valid),
-      .s_axil_awaddr  ({1'b0, axil_xR_ctrl_reqs[i].aw.addr[2:0]}),
+      .s_axil_awaddr  ({1'b0, axil_xR_ctrl_reqs[i].aw.addr[XvisorRemapSelStartIdx-1:0]}),
       .s_axil_awprot  (axil_xR_ctrl_reqs[i].aw.prot),
       .s_axil_wready  (axil_xR_ctrl_resps[i].w_ready),
       .s_axil_wvalid  (axil_xR_ctrl_reqs[i].w_valid),
@@ -850,7 +850,7 @@ module smc_internal_regs #(
       .s_axil_bresp   (axil_xR_ctrl_resps[i].b.resp),
       .s_axil_arready (axil_xR_ctrl_resps[i].ar_ready),
       .s_axil_arvalid (axil_xR_ctrl_reqs[i].ar_valid),
-      .s_axil_araddr  ({1'b0, axil_xR_ctrl_reqs[i].ar.addr[2:0]}),
+      .s_axil_araddr  ({1'b0, axil_xR_ctrl_reqs[i].ar.addr[XvisorRemapSelStartIdx-1:0]}),
       .s_axil_arprot  (axil_xR_ctrl_reqs[i].ar.prot),
       .s_axil_rready  (axil_xR_ctrl_reqs[i].r_ready),
       .s_axil_rvalid  (axil_xR_ctrl_resps[i].r_valid),
@@ -926,8 +926,8 @@ module smc_internal_regs #(
     .test_i           (test_en_i),
     .slv_req_i        (axil_aR_ctrl_req_i),
     .slv_resp_o       (axil_aR_ctrl_resp_o),
-    .slv_aw_select_i  (axil_aR_ctrl_req_i.aw.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: use bits [7:5] for 8 regions
-    .slv_ar_select_i  (axil_aR_ctrl_req_i.ar.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: use bits [7:5] for 8 regions
+    .slv_aw_select_i  (axil_aR_ctrl_req_i.aw.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),
+    .slv_ar_select_i  (axil_aR_ctrl_req_i.ar.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),
     .mst_reqs_o       (axil_aR_ctrl_reqs),
     .mst_resps_i      (axil_aR_ctrl_resps)
   );
@@ -939,7 +939,7 @@ module smc_internal_regs #(
 
       .s_axil_awready (axil_aR_ctrl_resps[i].aw_ready),
       .s_axil_awvalid (axil_aR_ctrl_reqs[i].aw_valid),
-      .s_axil_awaddr  (axil_aR_ctrl_reqs[i].aw.addr[4:0]),  // 0x20 spacing: bits [4:0] for register offset
+      .s_axil_awaddr  (axil_aR_ctrl_reqs[i].aw.addr[AliasRemapSelStartIdx-1:0]),
       .s_axil_awprot  (axil_aR_ctrl_reqs[i].aw.prot),
       .s_axil_wready  (axil_aR_ctrl_resps[i].w_ready),
       .s_axil_wvalid  (axil_aR_ctrl_reqs[i].w_valid),
@@ -950,7 +950,7 @@ module smc_internal_regs #(
       .s_axil_bresp   (axil_aR_ctrl_resps[i].b.resp),
       .s_axil_arready (axil_aR_ctrl_resps[i].ar_ready),
       .s_axil_arvalid (axil_aR_ctrl_reqs[i].ar_valid),
-      .s_axil_araddr  (axil_aR_ctrl_reqs[i].ar.addr[4:0]),  // 0x20 spacing: bits [4:0] for register offset
+      .s_axil_araddr  (axil_aR_ctrl_reqs[i].ar.addr[AliasRemapSelStartIdx-1:0]),
       .s_axil_arprot  (axil_aR_ctrl_reqs[i].ar.prot),
       .s_axil_rready  (axil_aR_ctrl_reqs[i].r_ready),
       .s_axil_rvalid  (axil_aR_ctrl_resps[i].r_valid),
