@@ -381,7 +381,7 @@ never when it was written.
 |`sep_abr_access_size_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|The ABR access-size rules of `adams_bridge.adoc`: a 64-bit read returns both registers it covers, a narrow read the addressed bytes with every other byte lane zero, a 64-bit write lands exactly the words its strobe covers whole, and every partial-word strobe answers SLVERR without moving the register. Past the register map (`0xC018`) a word access completes OKAY (read 0, write discarded, no live register moved) and a partial-word write answers SLVERR (`[[abr-aperture-decode]]`).
+|The ABR access-size rules of `adams_bridge.adoc`: a 64-bit read returns both registers it covers, a narrow read the addressed bytes with every other byte lane zero, a 64-bit write lands exactly the words its strobe covers whole, and every partial-word strobe answers SLVERR without moving the register. Past the register map (`0xC018`) the crypto demux answers every word read, word write and partial-word write with DECERR, and no live register moves (`[[abr-aperture-decode]]`).
 |`sep_abr_concurrent_rw_test`
 |no_cpu + external SMN master, +skip_fuse_sense
 |ocah_axi_vip
