@@ -5767,7 +5767,7 @@ leaf is fixed and runs every seed.
 |CHK-IRQ-39
 |`sep_internal_interrupts[39]` (PIC source 40) asserts with the sticky bit.
 |CHK-WHICH-TOKEN
-|Collapse on CHIPLET and SEC_DISABLE sets bits 8 and 16 (OR with SIP bit 0).
+|Each collapse sets only its own fault bit. Of the three fields (SIP bit 0, CHIPLET bit 8, SEC_DISABLE bit 16), FAULT holds exactly SIP after the SIP collapse, SIP and CHIPLET after the CHIPLET collapse, and all three after the SEC_DISABLE collapse. A decode in which one collapse sets another token's bit fails at that collapse.
 |CHK-JTAG-FAULT
 |After `RMA_CHIP_1`, a JTAG read of `TOKEN_MATCH_FAULT` matches the AXI read. PROD/RMA_SIP JTAG token-block allow is `sep_efuse_jtag_axil_el2_cpu_mux_test`, not this check.
 |CHK-FAULT-RESET
