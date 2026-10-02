@@ -186,8 +186,9 @@ def _selftest() -> None:
     assert len(rows) >= 30, len(rows)
     assert rows[0].base == 0x1000_0000
     cells = [c for r in rows for c in (r.hole, r.past) if c is not None]
-    # A 64-bit rdata must parse somewhere, or the bit-2 read word would silently drop.
-    assert any(c.hi_noted for c in cells)
+    # Every error slave answers the same word on both halves of the bus, so the
+    # map states 32-bit rdata throughout and no cell carries an upper word.
+    assert not any(c.hi_noted for c in cells), [c.text for c in cells if c.hi_noted]
 
 
 _selftest()

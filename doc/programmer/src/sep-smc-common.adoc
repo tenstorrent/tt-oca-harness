@@ -1,0 +1,286 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-smc-common-blocks-communication]]
+== SEP & SMC Common Blocks and Communication
+
+[[sep-smc-axi-filters]]
+=== AXI Inbound/Outbound Filters
+
+SEP and SMC both gate their inbound and outbound AXI traffic through the
+common AXI filter block. AXI filtering uses a match then permit algorithm
+to determine which filter configuration entry an inbound/outbound transaction
+matches, and whether that filter entry permits the operation to take place.
+If the transaction does not match any filter entry, the transaction is denied
+and terminated in the default case, with the exception of the SMC outbound
+filter which is permit-by-default.
+
+An AXI filter entry consists of an address range described by the `START_ADDR`
+and `END_ADDR` registers, and a configuration in `FILTER_CONFIG`, describing
+the transaction types that are permitted for the address range.
+
+A filter entry must be enabled by setting the `entry_enabled` (bit 4) field.
+Filter entries with this bit unset do not participate in the match then permit
+algorithm.
+
+Each filter entry can be locked by setting the `locked` (bit 63) field in
+the `FILTER_CONFIG` register, preventing further modification.
+
+The `allow_burst` (bit 24) field controls whether AXI burst transactions are
+permitted to the address range. If this field is set, the address rounding
+granule is increased from 8 bytes to 4 KiB.
+
+ifdef::backend-html5[]
+See xref:ocah-docs:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter]
+for more details on the match then permit algorithm, address granule
+rules, and blocked transaction behavior.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See <<axi-traffic-filter>> for more details on the match then permit algorithm,
+address granule rules, and blocked transaction behavior.
+endif::backend-pdf[]
+
+[[sep-smc-axi-filter-instances]]
+.SEP & SMC AXI Filter Instances
+[width="100%",cols="1,1,2,1",options="header",]
+|=======================================================================
+|Component |Direction |Behavior on unmatched traffic |Bypass
+|SEP |Inbound |Blocked |Only while SEP debug is enabled.
+|SEP |Outbound |Blocked |Never
+|SMC |Inbound |Blocked |Never
+|SMC |Outbound |Permitted |Never
+|=======================================================================
+
+The SMC outbound AXI filter differs from the SMC inbound and the SEP inbound and
+outbound filters in that unmatched traffic is *permitted* rather
+than blocked. In this case, the filtering configuration behaves as a deny-list
+rather than an allow-list. To deny outbound access to a memory region from the
+SMC, a matching filter entry must be created that does not have the
+`read_allowed` (bit 0) or `write_allowed` (bit 1) fields set in the filter's
+corresponding `FILTER_CONFIG` register.
+
+The following C code examples demonstrate configuring an AXI filter to permit
+(SEP inbound, SEP outbound, SMC inbound) or deny (SMC outbound) external AXI
+requests.
+
+[[axi-filter-example]]
+==== Example
+
+.AXI filter example C definitions.
+[source,sourceCode,c]
+----
+// AXI Filter register addresses.
+// In SEP-local address space.
+#define SEP_FILTER_OUTBOUND_BASE 0x10A20000
+#define SEP_FILTER_INBOUND_BASE  0x10A21000
+// In SMC-local address space.
+#define SMC_FILTER_INBOUND_BASE  0xC0015000
+#define SMC_FILTER_OUTBOUND_BASE 0xC0016000
+
+#define FILTER_ENTRY_BASE(base, i)    ((base) + (i) * 0x20)
+#define FILTER_CONFIG_LO(base, i)     (FILTER_ENTRY_BASE((base), (i)) + 0x0)
+#define FILTER_CONFIG_HI(base, i)     (FILTER_ENTRY_BASE((base), (i)) + 0x4)
+#define FILTER_START_ADDR_LO(base, i) (FILTER_ENTRY_BASE((base), (i)) + 0x8)
+#define FILTER_START_ADDR_HI(base, i) (FILTER_ENTRY_BASE((base), (i)) + 0xC)
+#define FILTER_END_ADDR_LO(base, i)   (FILTER_ENTRY_BASE((base), (i)) + 0x10)
+#define FILTER_END_ADDR_HI(base, i)   (FILTER_ENTRY_BASE((base), (i)) + 0x14)
+
+// AXI Filter register constants.
+#define FILTER_CFG_READ_ALLOWED  0x1
+#define FILTER_CFG_WRITE_ALLOWED 0x2
+#define FILTER_CFG_ENTRY_ENABLED 0x10
+#define FILTER_CFG_ALLOW_NS      0x100
+#define FILTER_CFG_SRC_ID(x)     (((x) & 0xF) << 16)
+#define FILTER_CFG_ALLOW_BURST   0x1000000
+----
+
+.AXI filter example C configuration and usage.
+[source,sourceCode,c]
+----
+// Using SEP inbound filter entry `i`,
+// open address range [`start`, `start` + length`] to
+// inbound secure and single-beat transactions only.
+// Note that `start` will be rounded down to be 8B-aligned,
+// and `start` + `length` will be rounded up to be 8B-aligned.
+void sep_inbound_filter_open_range(uintptr_t start, size_t length, uint8_t i) {
+
+    // Clear the filter configuration, disabling the entry.
+    write32(FILTER_CONFIG_LO(SEP_FILTER_INBOUND_BASE, i), 0);
+
+    // Make sure the write has committed.
+    asm volatile("fence" ::: "memory");
+
+    uintptr_t end = start + length;
+    write32(FILTER_START_ADDR_LO(SEP_FILTER_INBOUND_BASE, i),
+            (uint32_t)start);
+    write32(FILTER_START_ADDR_HI(SEP_FILTER_INBOUND_BASE, i),
+            (uint32_t)(start >> 32));
+    write32(FILTER_END_ADDR_LO(SEP_FILTER_INBOUND_BASE, i),
+            (uint32_t)end);
+    write32(FILTER_END_ADDR_HI(SEP_FILTER_INBOUND_BASE, i),
+            (uint32_t)(end >> 32));
+
+    // Make sure the write has committed before enabling the entry.
+    asm volatile("fence" ::: "memory");
+
+    uint32_t config_lo = FILTER_CFG_READ_ALLOWED | FILTER_CFG_WRITE_ALLOWED
+                           | FILTER_CFG_ENTRY_ENABLED;
+
+    write32(FILTER_CONFIG_HI(SEP_FILTER_INBOUND_BASE, i), 0);
+
+    // Make sure the write has committed before enabling the entry.
+    asm volatile("fence" ::: "memory");
+
+    write32(FILTER_CONFIG_LO(SEP_FILTER_INBOUND_BASE, i), config_lo);
+}
+
+// Using SMC inbound entry `i`,
+// open address range [`start`, `start` + `length`] to
+// inbound secure single-beat or burst transactions.
+// Note that `start` will be rounded down to be 4KiB-aligned,
+// and `start` + `length` will be rounded up to be 4KiB-aligned.
+void smc_inbound_filter_open_range_burst(uintptr_t start, size_t length, uint8_t i) {
+
+    // Clear the filter configuration, disabling the entry.
+    write32(FILTER_CONFIG_LO(SMC_FILTER_INBOUND_BASE, i), 0);
+
+    // Make sure the write has committed.
+    asm volatile("fence" ::: "memory");
+
+    uintptr_t end = start + length;
+    write32(FILTER_START_ADDR_LO(SMC_FILTER_INBOUND_BASE, i),
+            (uint32_t)start);
+    write32(FILTER_START_ADDR_HI(SMC_FILTER_INBOUND_BASE, i),
+            (uint32_t)(start >> 32));
+    write32(FILTER_END_ADDR_LO(SMC_FILTER_INBOUND_BASE, i),
+            (uint32_t)end);
+    write32(FILTER_END_ADDR_HI(SMC_FILTER_INBOUND_BASE, i),
+            (uint32_t)(end >> 32));
+
+    // Make sure the write has committed before enabling the entry.
+    asm volatile("fence" ::: "memory");
+
+    uint32_t config_lo = FILTER_CFG_READ_ALLOWED | FILTER_CFG_WRITE_ALLOWED
+                           | FILTER_CFG_ALLOW_BURST
+                           | FILTER_CFG_ENTRY_ENABLED;
+
+    write32(FILTER_CONFIG_HI(SMC_FILTER_INBOUND_BASE, i), 0);
+
+    // Make sure the write has committed before enabling the entry.
+    asm volatile("fence" ::: "memory");
+
+    write32(FILTER_CONFIG_LO(SMC_FILTER_INBOUND_BASE, i), config_lo);
+}
+----
+
+[NOTE]
+====
+The hardware places no constraints on the order in which register writes
+are executed. This means ordinary writes that modify the address range and
+permissions risk temporarily opening up a wider access window before the new
+access permissions are committed.
+
+The code examples above guard different steps of configuring the
+filter with `fence` instructions, to ensure that configuration of those
+registers is sequenced correctly to avoid this possibility.
+====
+
+[[sep-smc-mailboxes]]
+=== Mailboxes
+
+The SEP and SMC contain mailbox instances which can be used for message-passing
+between other cores on the SMC, the SEP and the SMC, as well as the Application
+Processors and the SEP or SMC. Mailboxes consist of a read and write FIFO,
+exposed through the `READ_DATA` and `WRITE_DATA` registers respectively.
+FIFO messages consist of 64-bit data words.
+
+Interrupts can optionally be enabled to fire whenever the number of data words
+in the read FIFO exceeds the configured threshold, or the number of data words
+in the write FIFO falls below the configured threshold. The read and write
+fill level thresholds are configured in the `RIRQT` and `WIRQT` registers
+respectively. Individual interrupt conditions can be enabled by setting bits
+in the `IRQEN` register.
+
+[NOTE]
+====
+The SEP and Key Manager address maps contain a separate mailbox for
+communication between each other. The SEP to KM mailbox implements a different
+register interface from the SEP to SMC mailbox register interface described
+here.
+====
+
+[WARNING]
+====
+As the SEP CPU implements the 32-bit RV32 architecture and the mailbox
+data registers are 64-bits wide, SEP reads from the mailbox discard the
+upper/lower half of the popped data, and SEP writes to the mailbox write
+zeroes to the half of the data register not written. When communicating
+between the SMC and the SEP through the mailbox, only one 32-bit half of
+each entry should be used, and the choice must be agreed on by the software
+of both components.
+====
+
+.Mailbox example C definitions.
+[source,sourceCode,c]
+----
+// Mailbox register addresses.
+// In SMC-local address space.
+#define MAILBOX_BASE             0xC0018000
+#define MAILBOX_OUTBOUND_BASE(i) (MAILBOX_BASE + ((i) * 0x1000) + 0x0)
+#define MAILBOX_INBOUND_BASE(i)  (MAILBOX_BASE + ((i) * 0x1000) + 0x800)
+
+#define MAILBOX_REG_WRITE_DATA(i)      (MAILBOX_OUTBOUND_BASE(i) + 0x0)
+#define MAILBOX_REG_OUTBOUND_STATUS(i) (MAILBOX_OUTBOUND_BASE(i) + 0x10)
+#define MAILBOX_REG_READ_DATA(i)       (MAILBOX_INBOUND_BASE(i) + 0x8)
+#define MAILBOX_REG_INBOUND_STATUS(i)  (MAILBOX_INBOUND_BASE(i) + 0x10)
+#define MAILBOX_REG_INBOUND_RIRQT(i)   (MAILBOX_INBOUND_BASE(i) + 0x28)
+#define MAILBOX_REG_INBOUND_IRQS(i)    (MAILBOX_INBOUND_BASE(i) + 0x30)
+#define MAILBOX_REG_INBOUND_IRQEN(i)   (MAILBOX_INBOUND_BASE(i) + 0x38)
+
+// Mailbox register constants.
+#define MAILBOX_STATUS_EMPTY 0x1
+#define MAILBOX_STATUS_FULL  0x2
+
+#define MAILBOX_IRQ_WTIRQ 0x1
+#define MAILBOX_IRQ_RTIRQ 0x2
+#define MAILBOX_IRQ_EIRQ  0x4
+----
+
+.Mailbox example C configuration and usage.
+[source,sourceCode,c]
+----
+// Send a message through mailbox `i`.
+void mailbox_send(uint8_t i, uint32_t message) {
+
+    // Poll until the outbound FIFO has space.
+    while (read32(MAILBOX_REG_OUTBOUND_STATUS(i)) & MAILBOX_STATUS_FULL);
+
+    write32(MAILBOX_REG_WRITE_DATA(i), message);
+}
+
+// Enable and configure the read threshold interrupt on
+// mailbox `i` to signal when there are any messages
+// pending in the FIFO.
+void mailbox_configure_read_threshold_interrupt(uint8_t i) {
+    write32(MAILBOX_REG_INBOUND_RIRQT(i), 0);
+    write32(MAILBOX_REG_INBOUND_IRQEN(i), MAILBOX_IRQ_RTIRQ);
+}
+
+// Handle the read threshold interrupt by handling each message
+// in the FIFO and acknowledging the interrupt once empty.
+void mailbox_handle_read_threshold_interrupt(uint8_t i) {
+    // While the inbound port is not empty,
+    // pop messages and handle them.
+    while (!(read32(MAILBOX_REG_INBOUND_STATUS(i)) & MAILBOX_STATUS_EMPTY)) {
+
+        uint32_t message = read32(MAILBOX_REG_READ_DATA(i));
+
+        // Handle the message here...
+        (void) message;
+    }
+
+    // Acknowledge the receive threshold interrupt,
+    // clearing the interrupt pending bit.
+    write32(MAILBOX_REG_INBOUND_IRQS(i), MAILBOX_IRQ_RTIRQ);
+}
+----

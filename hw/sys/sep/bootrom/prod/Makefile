@@ -195,9 +195,9 @@ OCA_LIB_OBJS := $(patsubst $(OCA_LIB_DIR)/%.c,$(OCA_OBJ_DIR)/%.o,$(OCA_LIB_SRCS)
 # reports OCA_FAIL_UNSUPPORTED_VARIANT rather than a false pass. Turning PQC off
 # is the largest ROM-size lever available if the 64 KiB budget gets tight.
 
-# Entropy chain bring-up (ESRC -> DRBG/CSRNG -> EDN) in the ROM. On by default;
-# with it off the crypto blocks fall back to the DV +sep_crypto_edn_force
-# shortcut, which is what this replaces.
+# Entropy chain bring-up (ESRC -> DRBG/CSRNG -> EDN) in the ROM. On by default.
+# Setting it to 0 produces a diagnostic build in which the ROM does not provide
+# entropy to crypto blocks, so entropy-dependent secure boot cannot complete.
 SEP_ENTROPY_BRINGUP ?= 1
 
 # One-way entropy lock bypasses, independent of each other. Both locks are

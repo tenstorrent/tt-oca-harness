@@ -206,7 +206,7 @@ module cross_trigger_network
         MaxMstTrans:        1,                       // Single outstanding transaction
         MaxSlvTrans:        1,
         FallThrough:        1'b0,
-        LatencyMode:        axi_pkg::NO_LATENCY,
+        LatencyMode:        axi_pkg::CUT_SLV_PORTS,  // No combinational path across the CSR port
         PipelineStages:     0,
         AxiIdWidthSlvPorts: 1,                       // Not used for AXI-Lite
         AxiIdUsedSlvPorts:  1,

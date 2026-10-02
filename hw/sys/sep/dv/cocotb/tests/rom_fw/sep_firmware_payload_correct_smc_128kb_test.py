@@ -9,7 +9,6 @@ The size also fits SEP SRAM, so only the SMC ``PAYLOAD_DST=`` and the forbidden
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw import sep_payload_size_base as psb
 
 _PAYLOAD_BYTES = 128 * 1024

@@ -230,7 +230,7 @@ endif::backend-html5[]
 
 |0 |debug (DBG_1) |SEP_DBG |Coarse-grained debug enable for the *SEP* scope: the local gate for SEP internal state. `1'b1`: SEP-scope debug / scan-dump access disabled and inbound (`ext`) traffic is filtered before it can reach SEP internal state. `1'b0`: enabled -- inbound traffic bypasses the filter and scan dump is allowed. SEP_DBG is a local gate, not the chiplet ingress: `SIP_DBG` (bit 24) admits external debug traffic into the chiplet, `CHIPLET_DBG` (bit 1) admits it to chiplet-internal resources, and `SEP_DBG` then governs whether it can reach SEP internal state. Debugging SEP assets from an external debugger therefore requires *all three* -- Case 3 of <<dtp-path-gating>> -- not `SEP_DBG` alone.
 
-|1 |debug (DBG_1) |CHIPLET_DBG |Coarse-grained debug enable for the *chiplet* scope. `1'b1`: chiplet-scope debug / scan-dump access disabled. `1'b0`: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when `SIP_DBG` is open as well (Case 2 of <<dtp-path-gating>>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while `secure_tm = 1`. In `TEST_DEV`, this bit set in `SIP_DIS` or `SYS_DIS` makes the production ROM enforce secure boot; see <<secure-boot-enforcement>>.
+|1 |debug (DBG_1) |CHIPLET_DBG |Coarse-grained debug enable for the *chiplet* scope. `1'b1`: chiplet-scope debug / scan-dump access disabled. `1'b0`: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when `SIP_DBG` is open as well (Case 2 of <<dtp-path-gating>>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while `secure_tm = 1`. In `TEST_DEV` and `RMA_SiP`, this bit set in `SIP_DIS` or `SYS_DIS` makes the production ROM enforce secure boot; it has no such effect in `RMA_CHIPLET`. See <<secure-boot-enforcement>>.
 
 |2 |debug (DBG_1) |SEP_FUSE_DBG |`1'b1`: the DFT-inserted access path into the SEP OTP is disabled. `1'b0`: enabled. This gate also covers the OTP IP-vendor test and calibration interface (used during ATE for vendor-specific OTP test functions and internal-voltage calibration), which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.
 
@@ -817,18 +817,21 @@ is required in this order:
 including when `SBOOT_DIS` is set.
 . Otherwise, a set `SBOOT_DIS` fuse disables secure boot.
 . Otherwise, the lifecycle policy requires secure boot in `PROD` and
-`PROD_END`, and in `TEST_DEV` when chiplet-scope debug is disabled
-(`CHIPLET_DBG` set in `SIP_DIS` or `SYS_DIS`, or either vector read-locked).
-It does not require it in `TEST_DEV` with chiplet debug enabled, or in the
-RMA states.
+`PROD_END`, and in `TEST_DEV` and `RMA_SiP` when chiplet-scope debug is
+disabled (`CHIPLET_DBG` set in `SIP_DIS` or `SYS_DIS`, or either vector
+read-locked). It does not require it in `TEST_DEV` or `RMA_SiP` with chiplet
+debug enabled, or in `RMA_CHIPLET` at all.
 
-The `TEST_DEV` rule means a locked-down debug posture cannot be bypassed by
+The debug-lock rule means a locked-down debug posture cannot be bypassed by
 loading unsigned code. The ROM reads `CHIPLET_DBG` from the `SIP_DIS` and
 `SYS_DIS` fuse shadows rather than from `FEAT_CTRL`, which `SEC_DIS` and
-demotion can force open on a part whose fuses disable debug.
+demotion can force open on a part whose fuses disable debug. For the same
+reason the rule holds in `RMA_SiP`, where the lifecycle controller does not
+apply `SYS_DIS` to feature control but the fuse still records the lock.
+`RMA_CHIPLET` applies neither vector, and the ROM ignores the lock there too.
 
-An owner relying on lifecycle-enforced secure boot, or on the `TEST_DEV`
-debug-lock rule, must leave `SBOOT_DIS` unburned and write-lock it via the
+An owner relying on lifecycle-enforced secure boot, or on the debug-lock
+rule, must leave `SBOOT_DIS` unburned and write-lock it via the
 LOCK field. `SBOOT_DIS` does not override
 a manifest's own requirement for verification.
 

@@ -1398,13 +1398,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "telemetry stays released and clocked while primary/periph fall",
         ),
     ],
-    # CHK-SMU-SEC-TOKEN-S1 is logged by the body as an observation the card does not
-    # claim, so it is not a row here.
     "smu_composition_parameter_test": [
         (
             "CHK-SMU-SEC-TOKEN-S2",
             "CHK-SMU-SEC-TOKEN-S2",
-            "SEP_SEC_DISABLE_TOKEN is 256 bits at the wrapper and at smu and reaches smu unchanged",
+            "SEP_SEC_DISABLE_TOKEN is 256 bits at the SEP eFuse controller and is the digest "
+            "the bench binds in CFG",
         ),
         (
             "CHK-SMU-OTPAXI-SEP-S3",

@@ -328,6 +328,14 @@ tests = [
     "sep_otbn_no_op_bypass_test",
     "sep_firmware_enforced_secure_boot_flow_test",
     "sep_firmware_cntl_secure_boot_flow_test",
+    # A PROD part refuses a manifest missing its secure-boot flag, signature or
+    # public key.
+    "sep_firmware_sboot_class_only_refuse_test",
+    "sep_firmware_sboot_flag_cleared_signed_refuse_test",
+    "sep_firmware_signature_absent_refuse_test",
+    "sep_firmware_signature_zeroed_refuse_test",
+    "sep_firmware_public_key_absent_refuse_test",
+    "sep_firmware_public_key_zeroed_refuse_test",
     "sep_firmware_backup_invalid_signature_test",
     "sep_firmware_backup_invalid_security_version_test",
     "sep_firmware_backup_invalid_public_key_selection_test",
@@ -492,6 +500,11 @@ tests = [
     "sep_rom_dbg_lock_read_locked_refuse_test",
     "sep_rom_dbg_lock_secure_boot_test",
     "sep_rom_dbg_lock_sboot_dis_boot_test",
+    # The same debug lock in the RMA states.
+    "sep_rom_rma_sip_dbg_lock_refuse_test",
+    "sep_rom_rma_chiplet_dbg_lock_boot_test",
+    "sep_rom_rma_dbg_lock_secure_boot_test",
+    "sep_rom_rma_dbg_open_boot_test",
     "sep_rom_lc_state_invalid_0x4_test",
     "sep_rom_lc_state_invalid_0x5_test",
     "sep_rom_dma_stall_terminal_test",

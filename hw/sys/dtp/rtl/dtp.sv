@@ -36,11 +36,11 @@ module dtp
   parameter int unsigned JTAG_IC_RESET_SEP_ENABLE = 1,  // Bit 0 enables the SEP slice of the
                                                         // IC_RESET TDR. int unsigned so SpyGlass
                                                         // elaborate -param can override it; in smu
-                                                        // it follows SEP.
+                                                        // it follows CFG.SEP.
   parameter int unsigned JTAG_SEP_DBG_ENABLE      = 1,  // Bit 0 enables the SEP debug STAP and the
                                                         // JTAG2AXI bridge to the SEP OTP. int
                                                         // unsigned so SpyGlass elaborate -param can
-                                                        // override it; in smu it follows SEP.
+                                                        // override it; in smu it follows CFG.SEP.
 
   parameter int unsigned  JTAG_NUM_EXTRA_STAPS = 1,  // Number of additional STAPs for local
                                                      // connectivity.

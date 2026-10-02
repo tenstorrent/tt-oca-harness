@@ -8,7 +8,7 @@
 // sep_global_base_addr_o and sep_region_size_o publish the SEP aperture from sep_cpu_ctrl
 // CSRs for the SMU AXI crossbar SEP-target rule.
 // External-aperture requests inside the eFuse shim CSR window are diverted to the eFuse
-// wrapper; the rest leave on sep_external_axi_req_o. PIC source i+1 is internal interrupt i
+// wrapper; the rest leave on sep_external_axi_req_o through an axi_cut. PIC source i+1 is internal interrupt i
 // for the NUM_INTERNAL_IRQS internal sources (mailbox, DMA, WDT, SPI, crypto, eFuse and
 // bridge faults), followed by extintsrc_req_i. The WDT bark drives the CPU NMI, which jumps
 // to SEP_NMI_VEC.
@@ -533,10 +533,25 @@ NumExtDemuxPorts
     .mst_resps_i     (ext_demux_resp)
   );
 
-  assign sep_external_axi_req_o                = ext_demux_req [EXT_DEMUX_EXTERNAL];
-  assign ext_demux_resp[EXT_DEMUX_EXTERNAL]    = sep_external_axi_resp_i;
   assign efuse_shim_axi_req                    = ext_demux_req [EXT_DEMUX_EFUSE_SHIM];
   assign ext_demux_resp[EXT_DEMUX_EFUSE_SHIM]  = efuse_shim_axi_resp;
+
+  axi_cut #(
+    .aw_chan_t  (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
+    .w_chan_t   (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
+    .b_chan_t   (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
+    .ar_chan_t  (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
+    .r_chan_t   (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
+    .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t)
+  ) u_sep_external_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (ext_demux_req[EXT_DEMUX_EXTERNAL]),
+    .slv_resp_o (ext_demux_resp[EXT_DEMUX_EXTERNAL]),
+    .mst_req_o  (sep_external_axi_req_o),
+    .mst_resp_i (sep_external_axi_resp_i)
+  );
 
   /////////////////////
   // Interrupt Logic //

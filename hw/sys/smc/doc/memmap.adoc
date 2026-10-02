@@ -70,6 +70,10 @@ The inbound port reaches a unit only while its whole aperture lies below
 beyond it and answer `DECERR`. The SMC harts reach the PLIC and CLINT inside the
 CPU cluster regardless of `REGION_SIZE`.
 
+The I2C, UART, I3C, AVSBus and Telemetry Receiver windows answer `SLVERR`, with
+read data `0xBADCAB1E`, while the peripheral's `CLOCK_GATE_CONTROL` enable in
+SMC_BASE_CONFIG is set and its clock is stopped.
+
 === AXI-Lite External Window
 
 The `smc_external` window at `BASE + 0x040_0000` is the adopter extension
@@ -98,7 +102,7 @@ by boot firmware.
 
 The eFuse SHIM control block is the exception. Its placement is fixed at the
 base of the window, `BASE + 0x040_0000`, and its size is the
-`EFUSE_SHIM_SIZE` parameter (`SMC_EFUSE_SHIM_SIZE` at the SMU). The peripheral
+`EFUSE_SHIM_SIZE` parameter (`CFG.SMC_EFUSE_SHIM_SIZE` at the SMU). The peripheral
 crossbar routes that range to the eFuse controller,
 which forwards it unchanged on `efuse_bank_ctrl` to the adopter's SHIM. It
 never appears on the external port. The adopter defines the SHIM's control

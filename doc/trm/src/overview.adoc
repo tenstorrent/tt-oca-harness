@@ -13,7 +13,7 @@
   hardware-accelerated cryptography (OTBN PKA, AES, HMAC-SHA2, KMAC-SHA3,
   TRNG, DRBG, Key Manager). A security hierarchy across chiplets enables
   SiP-wide security management. The inclusion of the SEP is an elaboration
-  option, controlled by the SMU's `SEP` parameter. The system integrator
+  option, controlled by the SMU's `CFG.SEP` field. The system integrator
   selects which chiplets include an SEP as part of the SiP security architecture.
 
 * *System Management Controller (SMC)* -- Firmware-driven orchestration engine

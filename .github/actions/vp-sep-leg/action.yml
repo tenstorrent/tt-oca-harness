@@ -205,28 +205,15 @@ runs:
         username: ${{ github.actor }}
         password: ${{ github.token }}
 
-    # Removing the precursor job made the registry the only source of this
-    # image; docker-run.sh would otherwise fall through a miss into a local
-    # build that outlives the job's timeout and produces nothing. Check the tag
-    # first, so a miss says which hash is unpublished instead of burning an hour.
+    # The registry is the only source of this image; a miss must not fall
+    # through into a local build.
     - name: Provision toolchain image
       if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        hash="$(./scripts/docker-run.sh image-hash)"
-        ref="${OCAH_CONTAINER_REGISTRY_IMAGE}:${hash}"
-        if ! docker manifest inspect "$ref" >/dev/null 2>&1; then
-          echo "::error::$ref is not published"
-          {
-            echo "### Toolchain image not published"
-            echo
-            echo "This tree resolves to \`$hash\`, which the container workflow has"
-            echo "not published. It runs on changes to the flake, \`nix/\`,"
-            echo "\`ocah_deps.nix\` and the uv workspace; if it has not run for this"
-            echo "commit, run it before dispatching this one."
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 1
-        fi
+        ./scripts/ci/await_toolchain_image.sh
         ./scripts/docker-run.sh ensure
 
     - name: Check toolchains

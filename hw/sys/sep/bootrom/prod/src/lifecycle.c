@@ -77,6 +77,12 @@ bool lc_state_is_rma(uint32_t lc_state) {
     }
 }
 
+bool lc_state_follows_debug_lock(uint32_t lc_state) {
+    // Not RMA_CHIPLET: it is manifest-optional whatever the disable vectors say.
+    return lc_state == LC_STATE_TEST_DEV || lc_state == LC_STATE_RMA_SIP_LO ||
+           lc_state == LC_STATE_RMA_SIP_HI;
+}
+
 // ---------------------------------------------------------------------------
 // Feature control and demotion registers
 // ---------------------------------------------------------------------------
@@ -250,8 +256,9 @@ void rom_chiplet_dbg_policy(uint32_t lc_state) {
     simputsdec24("FUSE: CHIPLET_DBG_DIS: ", disabled);
 
     // Reported only where the lock is what the device's enforcement rests on:
-    // PROD and PROD_END enforce regardless, and SBOOT_DIS overrides it.
-    if (disabled && lc_state == LC_STATE_TEST_DEV && !sboot_dis_disabled()) {
+    // PROD and PROD_END enforce regardless, RMA_CHIPLET never applies it, and
+    // SBOOT_DIS overrides it.
+    if (disabled && lc_state_follows_debug_lock(lc_state) && !sboot_dis_disabled()) {
         simputs("SBOOT_DBG_LOCK\n");
         report_status(STATUS_TYPE_INFO, SEP_MSG_SBOOT_DBG_LOCK);
     }
