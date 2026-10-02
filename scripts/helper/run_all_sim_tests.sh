@@ -47,3 +47,5 @@ for dut in $duts; do
   echo "$DV_SCRIPT --dut $dut --items all --sim-jobs $JOBS > $REPO_ROOT/local/sim_reports/${dut}_sim.log 2>&1"
   $DV_SCRIPT --dut $dut --items all --sim-jobs $JOBS >$REPO_ROOT/local/sim_reports/${dut}_sim.log 2>&1
 done
+
+echo "Sim Tests Complete - run $SCRIPT_DIR/list_all_sim_tests.sh to see results"

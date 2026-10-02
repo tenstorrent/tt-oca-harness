@@ -43,3 +43,5 @@ for BLOCK in $_BLOCKS; do
   echo "OCAH_YOSYS_SYNTH_TCL=$REPO_ROOT/flows/synth/yosys/scripts/readiness.tcl make synth-yosys-all BLOCK=$BLOCK > $REPO_ROOT/local/synth_reports/$(echo $BLOCK)_readiness.log 2>&1"
   OCAH_YOSYS_SYNTH_TCL=$REPO_ROOT/flows/synth/yosys/scripts/readiness.tcl make synth-yosys-all BLOCK=$BLOCK >$REPO_ROOT/local/synth_reports/"$BLOCK"_readiness.log 2>&1
 done
+
+echo "Readiness Checks Complete - run $SCRIPT_DIR/list_all_synth_readiness.sh to see results"
