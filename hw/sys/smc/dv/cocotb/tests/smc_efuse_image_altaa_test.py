@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse image-pattern leaf: every field 0xAAAA..., no write lock set."""
+"""eFuse image-pattern leaf: every field 0xAAAA..., odd LOCKS write-lock slots set."""
 
 from __future__ import annotations
 

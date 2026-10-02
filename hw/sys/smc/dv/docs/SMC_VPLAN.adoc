@@ -6250,10 +6250,10 @@ Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compar
 
 *Test Coverage*:
 
-* Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern alt55` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds 0x5555...; the write-lock bit of each schema block is set, which is LOCKS slots 0-4 (the schema carries one lock pair for all of SPARE, so SPARE1 to SPARE27 stay write-unlocked). Every read lock is clear, so every word compares content.
-* Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. A blocked read is held to `EFUSE_BLOCKED_READ_DATA`, as in `smc_efuse_map_read_test`.
+* Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern alt55` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds 0x5555...; the write-lock bit of each schema block is set, which is LOCKS slots 0-4 (the schema carries one lock pair for all of SPARE, so SPARE1 to SPARE27 stay write-unlocked). Every read lock is clear, so every word compares content, and LOCKS is never zero, so sensing it is visible and a write of 0 to it is a real clear attempt.
+* Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. A blocked read is held to `EFUSE_BLOCKED_READ_DATA` with an OKAY response, as in `smc_efuse_map_read_test`. The OKAY response code is an observed-RTL expectation shared with that leaf, not a sentence of the specification: `architecture.adoc` (lines 354-356) gives `0xbadcab1e` only for the JTAG lifecycle error slave, and with an error response.
 * After sense all 256 words are read. Every non-LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
-* LOCKS is written with 0 and keeps the image value, then with all-ones and reads all-ones; a sweep of all 256 words then sees LOCKS at all-ones and every other word blocked.
+* LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 256 words then sees LOCKS at all-ones and every other word return the blocked signature.
 * A cold reset follows. `tb_fuse_sense_done` must read 0 under it and set again after release, and all 256 words must again equal the image, so the shadow writes and the LOCKS set are gone.
 * Proof class is transport and lock enforcement: the bank is the DV model of the OTP macro, and nothing here claims fuse programming.
 
@@ -6266,10 +6266,10 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-IMG-IMAGE` |The generated image has a non-zero data word and no read lock, every data word equals the pattern word, and the bank model's word 0 equals image word 0, so the image reached the model
+|`CHK-EFUSE-IMG-IMAGE` |The generated image has a non-zero LOCKS, at least one write-locked and one write-unlocked data word, a non-zero data word and no read lock, every data word equals the pattern word, and the bank model's word 0 equals image word 0, so the image reached the model
 |`CHK-EFUSE-IMG-SENSE` |All 256 SMC_EFUSE_MAP words read after the first sense equal the image
-|`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; the two counts sum to every non-LOCKS word
-|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps the image value across a write of 0, reads all-ones after a write of all-ones, and every other word then reads the blocked signature
+|`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; each of the two counts is at least one
+|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and every non-LOCKS word read afterwards returns the blocked signature
 |`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 256 words again equal the image
 |`CHK-EFUSE-IMG-SCOREBOARD` |Both content sweeps compared 256 words, and the scoreboard booked at least the number of exact-value compares the sequence issues
 |===
@@ -6289,10 +6289,10 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 
 *Test Coverage*:
 
-* Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern altaa` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds 0xAAAA... and no write lock is set. Every read lock is clear, so every word compares content.
-* Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. A blocked read is held to `EFUSE_BLOCKED_READ_DATA`, as in `smc_efuse_map_read_test`.
+* Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern altaa` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds 0xAAAA...; the write locks of the odd schema slots are set (bit `2i` of 0x4444..., since 0xAAAA... sets no even bit), which write-locks `I2C_I3C_ID` and `OCCP_TRANSPORT_TIMEOUT`. Every read lock is clear, so every word compares content, and LOCKS is never zero, so sensing it is visible and a write of 0 to it is a real clear attempt.
+* Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. A blocked read is held to `EFUSE_BLOCKED_READ_DATA` with an OKAY response, as in `smc_efuse_map_read_test`. The OKAY response code is an observed-RTL expectation shared with that leaf, not a sentence of the specification: `architecture.adoc` (lines 354-356) gives `0xbadcab1e` only for the JTAG lifecycle error slave, and with an error response.
 * After sense all 256 words are read. Every non-LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
-* LOCKS is written with 0 and keeps the image value, then with all-ones and reads all-ones; a sweep of all 256 words then sees LOCKS at all-ones and every other word blocked.
+* LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 256 words then sees LOCKS at all-ones and every other word return the blocked signature.
 * A cold reset follows. `tb_fuse_sense_done` must read 0 under it and set again after release, and all 256 words must again equal the image, so the shadow writes and the LOCKS set are gone.
 * Proof class is transport and lock enforcement: the bank is the DV model of the OTP macro, and nothing here claims fuse programming.
 
@@ -6305,10 +6305,10 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-IMG-IMAGE` |The generated image has a non-zero data word and no read lock, every data word equals the pattern word, and the bank model's word 0 equals image word 0, so the image reached the model
+|`CHK-EFUSE-IMG-IMAGE` |The generated image has a non-zero LOCKS, at least one write-locked and one write-unlocked data word, a non-zero data word and no read lock, every data word equals the pattern word, and the bank model's word 0 equals image word 0, so the image reached the model
 |`CHK-EFUSE-IMG-SENSE` |All 256 SMC_EFUSE_MAP words read after the first sense equal the image
-|`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; the two counts sum to every non-LOCKS word
-|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps the image value across a write of 0, reads all-ones after a write of all-ones, and every other word then reads the blocked signature
+|`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; each of the two counts is at least one
+|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and every non-LOCKS word read afterwards returns the blocked signature
 |`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 256 words again equal the image
 |`CHK-EFUSE-IMG-SCOREBOARD` |Both content sweeps compared 256 words, and the scoreboard booked at least the number of exact-value compares the sequence issues
 |===
@@ -6328,10 +6328,10 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 
 *Test Coverage*:
 
-* Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern random` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds a value drawn over its full width from the leaf seed, and each schema block's write lock is drawn from the same seed; the leaf passes for any seed because every compare is against the image the seed produced. Every read lock is clear, so every word compares content.
-* Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. A blocked read is held to `EFUSE_BLOCKED_READ_DATA`, as in `smc_efuse_map_read_test`.
+* Before the first reset releases, `efuse_preload/pattern_efuse.py --pattern random` writes a configuration that fills every schema field to full width and `generate_efuse_preload.py` turns it into the image the leaf's `+smc_efuse_hex` names in the run directory. Every field holds a value drawn over its full width from the leaf seed, and the same seed picks which schema blocks are write-locked, never none and never all of them; the leaf passes for any seed because every compare is against the image the seed produced. Every read lock is clear, so every word compares content, and LOCKS is never zero, so sensing it is visible and a write of 0 to it is a real clear attempt.
+* Every expectation comes from that image and the generated map (`smc_addr.h`, `blocks/smc_efuse_map.h`), never from a DUT read: word `n` backs `SMC_EFUSE_MAP_BASE + 4*n`, and each word's region and lock bits come from the generated symbols. A blocked read is held to `EFUSE_BLOCKED_READ_DATA` with an OKAY response, as in `smc_efuse_map_read_test`. The OKAY response code is an observed-RTL expectation shared with that leaf, not a sentence of the specification: `architecture.adoc` (lines 354-356) gives `0xbadcab1e` only for the JTAG lifecycle error slave, and with an error response.
 * After sense all 256 words are read. Every non-LOCKS word is written with its complement and read back: a write-unlocked word holds the complement, a write-locked one still holds the image.
-* LOCKS is written with 0 and keeps the image value, then with all-ones and reads all-ones; a sweep of all 256 words then sees LOCKS at all-ones and every other word blocked.
+* LOCKS is written with 0 and keeps its sensed non-zero value, then with all-ones and reads all-ones, then with 0 again and still reads all-ones; a sweep of all 256 words then sees LOCKS at all-ones and every other word return the blocked signature.
 * A cold reset follows. `tb_fuse_sense_done` must read 0 under it and set again after release, and all 256 words must again equal the image, so the shadow writes and the LOCKS set are gone.
 * Proof class is transport and lock enforcement: the bank is the DV model of the OTP macro, and nothing here claims fuse programming.
 
@@ -6344,10 +6344,10 @@ Drive `smc_efuse_image_pattern_test_seq`. Each checker below is a named compare 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-IMG-IMAGE` |The generated image has a non-zero data word and no read lock, and the bank model's word 0 equals image word 0, so the image reached the model
+|`CHK-EFUSE-IMG-IMAGE` |The generated image has a non-zero LOCKS, at least one write-locked and one write-unlocked data word, a non-zero data word and no read lock, and the bank model's word 0 equals image word 0, so the image reached the model
 |`CHK-EFUSE-IMG-SENSE` |All 256 SMC_EFUSE_MAP words read after the first sense equal the image
-|`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; the two counts sum to every non-LOCKS word
-|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps the image value across a write of 0, reads all-ones after a write of all-ones, and every other word then reads the blocked signature
+|`CHK-EFUSE-IMG-WRITE` |After a complement write to every non-LOCKS word, each write-unlocked word reads its complement and each write-locked word still reads the image; each of the two counts is at least one
+|`CHK-EFUSE-IMG-LOCKS-SET-ONLY` |LOCKS keeps its sensed non-zero value across a write of 0, reads all-ones after a write of all-ones and keeps all-ones across a second write of 0, and every non-LOCKS word read afterwards returns the blocked signature
 |`CHK-EFUSE-IMG-RESENSE` |`tb_fuse_sense_done` reads 0 under the cold reset and sets after release, and all 256 words again equal the image
 |`CHK-EFUSE-IMG-SCOREBOARD` |Both content sweeps compared 256 words, and the scoreboard booked at least the number of exact-value compares the sequence issues
 |===

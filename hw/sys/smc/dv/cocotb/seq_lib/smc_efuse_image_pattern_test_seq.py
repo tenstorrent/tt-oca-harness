@@ -21,18 +21,23 @@ the DUT:
 * data words -- word ``n`` of the image backs ``SMC_EFUSE_MAP_BASE + 4*n``.
 * lock slots -- the region of each word and its ``*_WRITE_LOCK`` /
   ``*_READ_LOCK`` bit come from ``smc_addr.h`` and ``blocks/smc_efuse_map.h``.
-  LOCKS (words 0 and 1) is set-only and carries no lock of its own; every other
-  region is blocked by its LOCKS bits (``architecture.adoc``, field lock table).
+  LOCKS (at ``SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR``) is set-only and carries
+  no lock of its own; every other region is blocked by its LOCKS bits
+  (``architecture.adoc``, field lock table).
   A blocked read is expected to return ``EFUSE_BLOCKED_READ_DATA`` with OKAY, the
-  same expectation ``smc_efuse_map_read_test`` holds read-locked rows to.
+  same expectation ``smc_efuse_map_read_test`` holds read-locked rows to. The
+  OKAY response code is the observed RTL behaviour, not a sentence of the
+  architecture document.
 
 **Scenario.** Sense; read all 256 words. Write the complement of every non-LOCKS
 word, then read them all: a write-unlocked word holds the complement, a
-write-locked one still holds the image. Write 0 to LOCKS (no bit clears), then
-all-ones (every bit sets), and read all 256 words again: LOCKS reads all-ones
-and every other word now reads the blocked signature. Cold reset, observe sense
-restart, and read all 256 words against the image once more -- the shadow
-writes above are gone because the shadow file is reloaded from the bank.
+write-locked one still holds the image. Every image senses a non-zero LOCKS, so
+a write of 0 is a real clear attempt: LOCKS must keep its sensed value, read
+all-ones after a write of all-ones, and keep all-ones across a second write of
+0. A sweep of all 256 words then sees every non-LOCKS word blocked. Cold
+reset, observe sense restart, and read all 256 words against the image once
+more -- the shadow writes above are gone because the shadow file is reloaded
+from the bank.
 """
 
 from __future__ import annotations
@@ -58,9 +63,15 @@ _SMC_EFUSE_MAP_H = (
 )
 _WORD_MASK = 0xFFFF_FFFF
 EFUSE_MAP_WORDS = EFUSE_MAP_SIZE // 4
-_LOCKS_WORDS = (
-    smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR") - EFUSE_MAP_BASE
-) // 4
+_LOCKS_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+#: Map words that hold LOCKS, low word first.
+LOCKS_WORDS = range(
+    (_LOCKS_BASE - EFUSE_MAP_BASE) // 4,
+    (smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR") - EFUSE_MAP_BASE) // 4,
+)
+#: Every map word outside LOCKS.
+DATA_WORDS = tuple(w for w in range(EFUSE_MAP_WORDS) if w not in LOCKS_WORDS)
+_LOCKS_ALL_SET = (1 << (32 * len(LOCKS_WORDS))) - 1
 
 
 @dataclass(frozen=True)
@@ -112,7 +123,7 @@ def region_of(word: int) -> _Region | None:
     for region in REGIONS:
         if region.first_word <= word < region.end_word:
             return region
-    assert word < _LOCKS_WORDS, f"word {word} is in no region of SMC_EFUSE_MAP"
+    assert word in LOCKS_WORDS, f"word {word} is in no region of SMC_EFUSE_MAP"
     return None
 
 
@@ -125,7 +136,7 @@ class EfuseImage:
 
     @property
     def locks(self) -> int:
-        return self.words[0] | (self.words[1] << 32)
+        return sum(self.words[w] << (32 * i) for i, w in enumerate(LOCKS_WORDS))
 
     def read_locked(self, word: int, locks: int | None = None) -> bool:
         region = region_of(word)
@@ -156,11 +167,11 @@ def word_addr(word: int) -> int:
 
 
 #: SEP_IN AXI accesses one run issues: three 256-word read sweeps, a complement
-#: write and a readback of every non-LOCKS word, and the four LOCKS writes plus
-#: two LOCKS readbacks of the set-only leg.
-EXPECTED_ACCESSES = 3 * EFUSE_MAP_WORDS + 2 * (EFUSE_MAP_WORDS - _LOCKS_WORDS) + 6
+#: write and a readback of every non-LOCKS word, and three write-then-readback
+#: rounds over the LOCKS words in the set-only leg.
+EXPECTED_ACCESSES = 3 * EFUSE_MAP_WORDS + 2 * len(DATA_WORDS) + 3 * 2 * len(LOCKS_WORDS)
 #: Of those, the reads that carry an exact expectation (every read does).
-EXPECTED_VALUE_CHECKS = 3 * EFUSE_MAP_WORDS + (EFUSE_MAP_WORDS - _LOCKS_WORDS) + 2
+EXPECTED_VALUE_CHECKS = 3 * EFUSE_MAP_WORDS + len(DATA_WORDS) + 3 * len(LOCKS_WORDS)
 
 
 class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
@@ -178,10 +189,11 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
     async def _dispatch_reset_item(self, item: SmcResetItem) -> None:
         await self.dispatch_reset(item)
 
-    async def _sweep(self, label: str, expect) -> int:
-        for word in range(EFUSE_MAP_WORDS):
+    async def _sweep(self, label: str, expect) -> list[int]:
+        return [
             await self.csr_read(f"{label}_W{word}", word_addr(word), expected=expect(word))
-        return EFUSE_MAP_WORDS
+            for word in range(EFUSE_MAP_WORDS)
+        ]
 
     async def body(self) -> None:
         image = self.image
@@ -189,7 +201,7 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
         dut = cocotb.top
 
         await self.wait_fuse_sense_done()
-        self.content_compares.append(await self._sweep("SENSE", image.expect_read))
+        self.content_compares.append(len(await self._sweep("SENSE", image.expect_read)))
         cocotb.log.info(
             "CHK-EFUSE-IMG-SENSE: all %d SMC_EFUSE_MAP words read back equal to %s "
             "after the first sense (%d read-locked by the image)",
@@ -198,7 +210,7 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
             sum(image.read_locked(w) for w in range(EFUSE_MAP_WORDS)),
         )
 
-        data_words = range(_LOCKS_WORDS, EFUSE_MAP_WORDS)
+        data_words = DATA_WORDS
         for word in data_words:
             await self.csr_write(f"COMPL_W{word}", word_addr(word), ~image.words[word] & _WORD_MASK)
         for word in data_words:
@@ -209,9 +221,9 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 self.unlocked_words += 1
                 expected = ~image.words[word] & _WORD_MASK
             await self.csr_read(f"COMPL_RB_W{word}", word_addr(word), expected=expected)
-        assert self.locked_words + self.unlocked_words == len(data_words), (
-            f"complement leg classified {self.locked_words + self.unlocked_words} of "
-            f"{len(data_words)} words"
+        assert self.locked_words >= 1 and self.unlocked_words >= 1, (
+            f"complement leg saw {self.locked_words} write-locked and "
+            f"{self.unlocked_words} write-unlocked words; it needs at least one of each"
         )
         cocotb.log.info(
             "CHK-EFUSE-IMG-WRITE: %d write-unlocked words hold their complement and "
@@ -221,33 +233,38 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
             self.locked_words,
         )
 
-        locks_lo = word_addr(0)
-        locks_hi = word_addr(1)
-        await self.csr_write("LOCKS_LO_ZERO", locks_lo, 0)
-        await self.csr_write("LOCKS_HI_ZERO", locks_hi, 0)
-        await self.csr_read("LOCKS_LO_KEPT", locks_lo, expected=image.words[0])
-        await self.csr_read("LOCKS_HI_KEPT", locks_hi, expected=image.words[1])
-        await self.csr_write("LOCKS_LO_ONES", locks_lo, _WORD_MASK)
-        await self.csr_write("LOCKS_HI_ONES", locks_hi, _WORD_MASK)
-        all_locked = (1 << 64) - 1
+        assert image.locks != 0, (
+            f"{image.path.name} senses LOCKS = 0, so a write of 0 cannot tell a "
+            "set-only LOCKS from a plain read-write register"
+        )
+        sensed = [image.words[w] for w in LOCKS_WORDS]
+        ones = [_WORD_MASK] * len(LOCKS_WORDS)
+        for label, data, expected in (
+            ("CLEAR", 0, sensed),
+            ("SET", _WORD_MASK, ones),
+            ("CLEAR_AFTER_SET", 0, ones),
+        ):
+            for word in LOCKS_WORDS:
+                await self.csr_write(f"LOCKS_{label}_W{word}", word_addr(word), data)
+            for word, exp in zip(LOCKS_WORDS, expected):
+                await self.csr_read(f"LOCKS_{label}_RB_W{word}", word_addr(word), expected=exp)
 
         def _after_set(word: int) -> int:
-            if word < _LOCKS_WORDS:
+            if word in LOCKS_WORDS:
                 return _WORD_MASK
-            return image.expect_read(word, all_locked)
+            return image.expect_read(word, _LOCKS_ALL_SET)
 
-        await self._sweep("LOCKED", _after_set)
-        blocked = sum(_after_set(w) == EFUSE_BLOCKED_READ_DATA for w in range(EFUSE_MAP_WORDS))
-        assert blocked == EFUSE_MAP_WORDS - _LOCKS_WORDS, (
-            f"{blocked} words predicted blocked under all-ones LOCKS, expected "
-            f"{EFUSE_MAP_WORDS - _LOCKS_WORDS}"
+        observed = await self._sweep("LOCKED", _after_set)
+        blocked = sum(observed[w] == EFUSE_BLOCKED_READ_DATA for w in DATA_WORDS)
+        assert blocked == len(DATA_WORDS), (
+            f"{blocked} of {len(DATA_WORDS)} non-LOCKS words returned the blocked "
+            "signature under all-ones LOCKS"
         )
         cocotb.log.info(
-            "CHK-EFUSE-IMG-LOCKS-SET-ONLY: LOCKS kept 0x%08x_%08x across a write of 0, "
-            "read 0xffffffff_ffffffff after a write of all-ones, and then all %d other "
-            "words read the blocked signature 0x%08x",
-            image.words[1],
-            image.words[0],
+            "CHK-EFUSE-IMG-LOCKS-SET-ONLY: LOCKS kept its sensed 0x%016x across a write "
+            "of 0, read all-ones after a write of all-ones and kept all-ones across a "
+            "second write of 0; all %d other words then read the blocked signature 0x%08x",
+            image.locks,
             blocked,
             EFUSE_BLOCKED_READ_DATA,
         )
@@ -269,7 +286,7 @@ class smc_efuse_image_pattern_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self._send(SmcResetOp.COLD_RST_HI)
         await self._wait_released("efuse image cold release")
         await self.wait_fuse_sense_done()
-        self.content_compares.append(await self._sweep("RESENSE", image.expect_read))
+        self.content_compares.append(len(await self._sweep("RESENSE", image.expect_read)))
         cocotb.log.info(
             "CHK-EFUSE-IMG-RESENSE: tb_fuse_sense_done read 0 under the cold reset and "
             "set again after release; all %d words read back equal to %s, so the "

@@ -18,6 +18,7 @@ import cocotb
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib._one_shot import _OneShot
 from seq_lib.smc_efuse_image_pattern_test_seq import (
+    DATA_WORDS,
     EFUSE_MAP_WORDS,
     EXPECTED_ACCESSES,
     EXPECTED_VALUE_CHECKS,
@@ -96,7 +97,7 @@ class smc_efuse_image_pattern_base(smc_base_test):
 
     def _check_image(self) -> None:
         image = self.image
-        data = range(2, EFUSE_MAP_WORDS)
+        data = DATA_WORDS
         nonzero = sum(1 for w in data if image.words[w])
         assert nonzero, f"{image.path.name} has no non-zero data word; the sweep proves nothing"
         read_locked = [w for w in range(EFUSE_MAP_WORDS) if image.read_locked(w)]
@@ -111,6 +112,18 @@ class smc_efuse_image_pattern_base(smc_base_test):
                 f"{image.path.name}: {len(off)} data words differ from 0x{expected_word:08x}, "
                 f"first at word {off[0] if off else '-'}"
             )
+        assert image.locks != 0, (
+            f"{image.path.name} has LOCKS = 0; sensing it cannot be told from reset, and "
+            "the set-only leg needs a sensed bit to try to clear"
+        )
+        locked = sum(1 for w in data if image.write_locked(w))
+        assert 0 < locked < len(data), (
+            f"{image.path.name} write-locks {locked} of {len(data)} data words; the "
+            "complement leg needs both write-locked and write-unlocked words"
+        )
+        assert image.words[0] != 0, (
+            f"{image.path.name} word 0 is 0, so the bank-model word 0 compare cannot fail"
+        )
         otp0 = int(cocotb.top.tb_efuse_otp_word0.value)
         assert otp0 == image.words[0], (
             f"bank-model word 0 is 0x{otp0:08x} but {image.path.name} word 0 is "
@@ -120,15 +133,17 @@ class smc_efuse_image_pattern_base(smc_base_test):
             {region_of(w).name for w in data if image.write_locked(w)}, key=str
         )
         cocotb.log.info(
-            "CHK-EFUSE-IMG-IMAGE: %s pattern=%s seed=%d LOCKS=0x%016x, %d of %d data "
-            "words non-zero, no read lock, bank-model word 0 matches; write-locked "
-            "regions: %s",
+            "CHK-EFUSE-IMG-IMAGE: %s pattern=%s seed=%d LOCKS=0x%016x (non-zero), %d of %d "
+            "data words non-zero, %d write-locked, no read lock, bank-model word 0 "
+            "0x%08x matches; write-locked regions: %s",
             image.path.name,
             self.pattern,
             self.random_seed(),
             image.locks,
             nonzero,
             len(data),
+            locked,
+            otp0,
             ", ".join(write_locked_regions) or "none",
         )
 

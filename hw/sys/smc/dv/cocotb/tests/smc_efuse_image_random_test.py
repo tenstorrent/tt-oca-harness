@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse image-pattern leaf: random full-width fields and write locks from the leaf seed."""
+"""eFuse image-pattern leaf: random full-width fields, seeded proper subset of write locks."""
 
 from __future__ import annotations
 
