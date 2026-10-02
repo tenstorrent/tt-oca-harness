@@ -301,7 +301,8 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         )
         self.logger.info(
             "CHK-WIRQT PASS: write-threshold IRQ set (tx=%d>%d, %s half); STATUS and "
-            "IRQS.wtirq matched the golden at every push from IRQS=0x%08x at tx=0; "
+            "IRQS.wtirq matched the golden at every first-batch push from IRQS=0x%08x "
+            "at tx=0; "
             "IRQS=0x%08x IRQP=0x%08x with IRQEN set, IRQP=0x%08x IRQS=0x%08x with "
             "IRQEN clear, IRQS=0x%08x after W1C while above (level-held re-assert)",
             self.gold.tx,
@@ -314,12 +315,28 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             irqs_held,
             reassert,
         )
-        # Phase 2 -- top up to full.
+        # Phase 2 -- top up to full. Every top-up push stays above WIRQT, so the
+        # golden expects IRQS.wtirq set at each one: the W1C above must not leave
+        # it clear, and the bit must not drop as the FIFO fills.
+        fill_irqs = reassert
         for i in range(self.cfg_mb.first_batch, self.cfg_mb.depth):
             rc = await self.mb.push64(self.cfg_mb.payloads[i])
             assert rc == RESP_OKAY, f"CHK-64B FAIL: push {i} answered resp={rc}, expected OKAY"
             self.gold.push()
             await self._check_status(f"push64-fill #{i + 1}", "CHK-64B")
+            fill_irqs = await self._check_wtirq(f"push64-fill #{i + 1}")
+        self.logger.info(
+            "CHK-WIRQT PASS: IRQS.wtirq matched the golden after each of the %d "
+            "top-up pushes from tx=%d to full (depth=%d, wirqt=%d, %s half); "
+            "IRQS=0x%08x at tx=%d",
+            self.cfg_mb.depth - self.cfg_mb.first_batch,
+            self.cfg_mb.first_batch,
+            self.cfg_mb.depth,
+            self.gold.wirqt,
+            self.cfg_mb.half,
+            fill_irqs,
+            self.gold.tx,
+        )
         st = await self.mb.rd_csr(STATUS)
         assert st & ST_FULL, (
             f"CHK-64B FAIL: TX FIFO not full after {self.cfg_mb.depth} pushes (STATUS=0x{st:08x})"
