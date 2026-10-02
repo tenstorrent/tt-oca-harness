@@ -84,7 +84,12 @@ jobs:
         # asciidoctor-diagram renders the PlantUML diagrams in the integrator and
         # programmer guides during their PDF builds.
         run: |
-          gem install asciidoctor:2.0.26 asciidoctor-pdf:2.3.9 asciidoctor-diagram:2.3.1
+          gem install \
+            asciidoctor:2.0.26 \
+            asciidoctor-pdf:2.3.9 \
+            asciidoctor-diagram:3.2.1 \
+            asciidoctor-diagram-plantuml:1.2026.2 \
+            asciidoctor-diagram-ditaamini:1.0.3
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6

@@ -1,0 +1,1212 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smc-programming-guide]]
+== SMC Programming Guide
+
+This Chapter details the bring-up process and run-time operation of the SMC
+for the purposes of firmware development, with references to the Production
+SMC ROM.
+
+The Appendix contains a detailed reference to the Production SMC ROM, along
+with documentation on configurable functionality, such as compile-time options
+and hookable functions.
+
+[[smc-bring-up]]
+=== SMC Bring-up
+
+[[smc-address-map]]
+==== Address Map
+
+The SMC accesses its resources and peripherals through its fixed local-alias
+aperture, at the RTL-fixed base address `LOCAL_BASE` (`0xC000_0000`), and with
+programmable size `REGION_SIZE`, which defaults to 16 MiB.
+
+External masters can access the SMC's resources through the SMC's global system
+address, which is assigned by the integrator. This must be matched by firmware
+in the `GLOBAL_BASE` register. The global aperture is also of size
+`REGION_SIZE`.
+
+The integrator's assignment of global system addresses to SMCs should be a
+function of each chiplet's Chiplet ID, which can be read from the eFuse block.
+It is the integrator's responsibility to assign subsystems to global address
+ranges that do not overlap with each other, or with the SMC's local-alias
+aperture.
+
+Addresses throughout this chapter are expressed as `BASE + offset`, where
+`BASE` is either the local-alias base address `LOCAL_BASE`, or the global
+system base `GLOBAL_BASE`. `offset` is bounded by `REGION_SIZE`. The
+`GLOBAL_BASE` and `REGION_SIZE` registers are part of the CPU Control block.
+
+ifdef::backend-html5[]
+See the
+xref:ocah-docs:smc:memmap.adoc#smc-memory-map[Memory Map]
+chapter of the Technical Reference Manual for the full generated component
+address map.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See the _Memory Map_ chapter of the Technical Reference Manual for the full
+generated component address map.
+endif::backend-pdf[]
+
+The `ext_out` port is a catch-all for outbound memory requests from the SEP and
+SMC that do not match any programmed aperture. Unmatched inbound memory requests
+from external masters on `ext_in` are not passed-through to `ext_out` -- only
+the SMC window exposed by `GLOBAL_BASE` and `REGION_SIZE` is accessible
+externally, otherwise a decode error is returned. Firmware *must* program
+`GLOBAL_BASE` and `REGION_SIZE` *before any cross-subsystem AXI traffic is
+issued*.
+
+[[smc-cpu]]
+==== SMC CPU
+
+The SMC CPU consists of 4 Rocket RV64 cores. The cores implement the
+RV64GC instruction set, as well as the Zba, Zbb, and Zbs instructions.
+The cores support Machine, Supervisor, and User mode privilege levels.
+
+The CPU cold-reset vector is `0xC004_0000`, corresponding to the start of ROM
+memory -- see the SMC's address map above. Each core's reset vector can be
+modified to a warm-reset (a reset that does not clear SRAM) vector by writing
+the location to the core's `RESET_VECTOR` register, which is part of the CPU
+Control block.
+
+During early bring-up, it is advised to allow only one core to perform some
+early initialization procedures. Each core's ID can be read from the `mhartid`
+CSR. The programmer should only allow the core with `mhartid` set to 0 to
+perform early initialization of memory (for example, copying runtime data from
+ROM to SRAM), while the rest of the cores wait to be released from a loop.
+In the 1-core configuration, the single core has `mhartid` set to 0.
+
+In the production SMC ROM, the `__metal_synchronize_harts` function is used by
+the primary core to signal initialization is complete, and for the secondary
+cores to wait until they are released.
+By default, the production SMC ROM parks the remaining secondary cores in a
+`wfi` loop. The programmer may redefine the `secondary_main` function in C code
+to provide code for the secondary cores.
+
+The core ID read from the `mhartid` register *must* also be used to give each
+core a unique stack region for C code.
+
+The production SMC ROM linker script --
+`hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld` places the executable `.text`
+and read-only data `.rodata` sections in ROM. The `.data` section and other
+runtime data are included in the ROM image, but have runtime addresses within
+SRAM at `0xC006_0000`. This data must be copied into SRAM (by the single
+initializing core) before it can be referenced or modified. The stack, heap, and
+the `.bss` section reside only in SRAM.
+
+==== SRAM Initialization using Memory Zeroer
+
+The SMC contains a Memory Zeroer unit at `BASE + 0x0003_8200`, which can be used
+to initialize SRAM before use. This can be performed like so:
+
+. Disable interrupts to the core.
+. Write the SRAM base address (`0xC006_0000`) to the Memory Zeroer's `DEST_ADDR`
+register.
+. Write the size of SRAM (128 KiB = `0x0002_0000`) to the Memory Zeroer's `SIZE`
+register.
+. Write zero to the Memory Zeroer's `CTRL_STATUS` register, which starts the
+operation.
+. Poll the Memory Zeroer's `CTRL_STATUS` register until the `STATUS` bit (bit
+32) is unset, indicating the operation is complete.
+. Restore interrupt state.
+
+See also `__metal_sram_init_early` from the Production ROM in
+`hw/sys/smc/bootrom/prod/boot/sram_init.S`.
+
+The production ROM assumes that SRAM is automatically zeroed on reset. If
+either `SRAM_AUTO_ZERO_DISABLE` or the eFuse `RESERVED_0[6]` is set, the
+Memory Zeroer is used by the production ROM.
+
+==== Memory Built-In Self Test and Repair
+
+The programmer may check the status of the SRAM memory built-in self-test
+(MBIST) and SRAM Memory Repair before usage by reading the `STATUS_SMU` register.
+
+In the Production SMC ROM, this is performed by the \`__metal_mbist_early_check`
+and `__metal_memory_repair_check` respectively. It is recommended to use these
+implementations as reference, as these functions are implemented directly in
+assembly, without using any SRAM for storage, as that is what is being tested.
+Their operation is as follows:
+
+`__metal_mbist_early_check` performs the following steps:
+
+. Check the `MEM_BIST_BYPASS` strap (register `STRAPS_HI` bit 54). If set, skip
+MBIST check, otherwise continue.
+. Read the DFT Control's `STATUS_SMU` register.
+. Check if the MBIST was performed (register `STATUS_SMU` bit 4). If unset,
+assume the MBIST was not required, and return.
+. Check if the MBIST passed (register `STATUS_SMU` bit 8). If set, return -- the
+MBIST has passed.
+. The MBIST has failed, or aborted due to a timeout. If the eFuse
+`RESERVED_2[0]` is set, ignore the failure and return.
+. The MBIST has failed -- park the core in a `wfi` loop.
+
+.Production ROM `__metal_mbist_early_check`.
+[plantuml,ocah-smc-mbist-early_check,svg,scaledwidth=50.0%,align="center"]
+----
+@startuml
+start
+if (Check MEM_BIST_BYPASS strap) then (set)
+else (unset)
+  : Read STATUS_SMU register;
+  if (Check STATUS_SMU bit mbist_done) then (unset)
+  else (set)
+    if (Check STATUS_SMU bit mbist_pass) then (set)
+    else (unset)
+      if (Check eFuse RESERVED_2[0]) then (set)
+      else (unset)
+        : Fail;
+        kill
+      endif
+    endif
+  endif
+endif
+: Return;
+kill
+@enduml
+----
+
+`__metal_memory_repair_check` performs the following steps:
+
+. Check the `MEM_REPAIR_BYPASS` strap (register `STRAPS_LO` bit 13). If set,
+skip memory repair check, otherwise continue.
+. Read the DFT Control's `STATUS_SMU` register.
+. Check if memory repair was performed (register `STATUS_SMU` bit 0). If unset,
+assume memory repair was not required, and return.
+. Check if memory repair passed (register `STATUS_SMU` bit 1). If set, return --
+memory repair has passed.
+. Memory repair has failed. If the eFuse `RESERVED_2[0]` is set, ignore the
+failure and return.
+. Memory repair has failed -- park the core in a `wfi` loop.
+
+.Production ROM `__metal_memory_repair_check`.
+[plantuml,ocah-smc-metal-memory-repair-check,svg,width=50.0%,align="center"]
+----
+@startuml
+start
+if (Check MEM_REPAIR_BYPASS strap) then (set)
+else (unset)
+  : Read STATUS_SMU register;
+  if (Check STATUS_SMU bit mem_repair_done) then (unset)
+  else (set)
+    if (Check STATUS_SMU bit mem_repair_success) then (set)
+    else (unset)
+      if (Check eFuse RESERVED_2[0]) then (set)
+      else (unset)
+        : Fail;
+        kill
+      endif
+    endif
+  endif
+endif
+: Return;
+kill
+@enduml
+----
+
+==== Per-Core Reset
+
+ifdef::backend-html5[]
+See the
+xref:ocah-docs:smc:cpu.adoc#smc-core-reset[SMC CPU reset description]
+in the Technical Reference Manual for the hardware behavior and associated
+risks.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See the _SMC CPU Reset, Boot, and Initialization_ section of the Technical
+Reference Manual for the hardware behavior and associated risks.
+endif::backend-pdf[]
+
+[WARNING]
+====
+Do not reset a hart while any hart is performing coherent memory accesses.
+====
+
+A safe startup scenario, subject to the warning above, is when three of four
+harts remain parked after ROM boot and must start at a different firmware
+address. Before they join normal coherent operation, software can program a
+parked hart's `RESET_VECTOR[n]` and pulse its reset to start it at that address.
+Avoid this flow where possible for the reasons described in the Technical
+Reference Manual.
+
+[[smc-ndm-reset]]
+==== External CPU Cluster NDM Reset
+
+Read `NDMRESET_REQUEST` bit `i` as the NDM reset request from external
+CPU cluster `i`. Write `NDMRESET_PROCESS` bit `i` to answer that
+cluster. Read `NDMRESET_CLUSTER_COUNT` and mask both registers with
+that value.
+
+This harness reports 4 in `NDMRESET_CLUSTER_COUNT`. Bits of
+`NDMRESET_REQUEST` at and above the count read as 0. Writes to those
+bits of `NDMRESET_PROCESS` stay in the register.
+
+ifdef::backend-html5[]
+The register block is
+xref:ocah-docs:smc:memmap.adoc#smc-ndm-reset-block[Chip Config, Scratch, NDM Reset, and Misc Wrap]
+in the Technical Reference Manual.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+The register block is in the _Chip Config, Scratch, NDM Reset, and Misc
+Wrap_ section of the Technical Reference Manual.
+endif::backend-pdf[]
+
+[[smc-general-operation]]
+=== General Operation
+
+[[smc-interrupt-control]]
+==== Interrupt Control
+
+There are 3 architectural interrupt sources that the cores of the SMU receive:
+
+. *Timer interrupts* -- Interrupts generated by the system timer. In the SMC,
+the source of timer interrupts is the core local interruptor (CLINT).
+. *Software interrupts* -- Interrupts signalled by other cores in the system.
+In the SMC, software-initiated interrupts are signalled through the CLINT.
+. *External interrupts* -- Interrupts from all other peripherals. External
+interrupts are aggregated by the platform local interrupt controller (PLIC).
+
+External interrupts have the highest priority, followed by Software interrupts,
+then Timer interrupts.
+
+The `mtvec` CSR stores the trap vector which the cores transfer control to upon
+taking an interrupt or encountering an exception. The `mtvec` CSR contains the
+base address `BASE` of the trap vector, as well as a `MODE` field that
+determines how the trap vector address is computed:
+
+. If `MODE` is set to *Direct* (`0b00`), then all interrupts and exceptions
+cause the program counter to be set to `mtvec.BASE`.
+. If `MODE` is set to *Vectored* (`0b01`), then exceptions cause the program
+counter to be set to `mtvec.BASE`, and interrupts cause the program counter
+to be set to `mtvec.BASE + (0x4 * i)`, where `i` is the architectural
+interrupt type (Timer, Software, or External, per-privilege level).
+
+Since program counter destinations in *Vectored* mode form a tightly-packed
+array, the entries for each interrupt should consist of a single jump
+instruction to a programmer-defined exception/interrupt handler function.
+
+.Exception and Interrupt Dispatch
+[plantuml,exception-interrupt-dispatch,svg,width=90.0%,align="center"]
+----
+@startuml
+: Trap occurs;
+if (mtvec.MODE) then (Direct (0b00))
+  : Set pc to mtvec.BASE;
+  : Jump instruction to Exception and Interrupt handler;
+  kill
+else (Vectored (0b01))
+  if (Trap type) then (Exception)
+  : Set pc to mtvec.BASE;
+  : Jump instruction to Exception-only handler;
+  kill
+  else (Interrupt)
+    switch (Interrupt Source)
+    case (External Interrupt)
+      : Set pc to mtvec.BASE + (0x4 * 11);
+      : Jump instruction to External Interrupt handler;
+      kill
+    case (Timer Interrupt)
+      : Set pc to mtvec.BASE + (0x4 * 7);
+      : Jump instruction to Timer Interrupt handler;
+      kill
+    case (Software Interrupt)
+      : Set pc to mtvec.BASE + (0x4 * 3);
+      : Jump instruction to Software Interrupt handler;
+      kill
+    endswitch
+  endif
+  kill
+endif
+kill
+@enduml
+----
+
+[[smc-timer-software-interrupt-control]]
+===== Timer and Software Interrupt Control
+
+The SMC uses the core local interruptor (CLINT) for Timer interrupts,
+as well as for software-initiated inter-processor interrupts (IPIs).
+The base address for the CLINT -- `CLINT_BASE` -- is `0xC800_0000`.
+
+The current value of the timer is stored in the CLINT's `MTIME` register, at
+`CLINT_BASE + 0xBFF8`. The CLINT stores a timer comparison value corresponding
+to each core of the SMC in the CLINT `MTIMECMP` register array, at
+`CLINT_BASE + 0x2000 + (0x8 * hartid)`. Both registers are 64-bits wide.
+
+A timer interrupt becomes pending for a core once `MTIME` exceeds the core's
+corresponding `MTIMECMP` value. To dismiss the interrupt, the timer interrupt
+handler should set the core's corresponding `MTIMECMP` register to a new value
+in the future.
+
+[WARNING]
+====
+There may be a delay between writing `MTIMECMP` and the timer interrupt pending
+bit falling, during which a spurious timer interrupt may occur if interrupts are
+enabled again (for example, by returning from the timer interrupt handler).
+For robustness against spurious timer interrupts, the timer interrupt handler
+should verify the interrupt condition (`MTIMECMP > MTIME`) before calling
+periodic functions and re-scheduling.
+====
+
+The following code samples should be used to read the full 64-bit `MTIME` value
+using 32-bit reads, guarding against overflow between the two halves, and
+setting the value of `MTIMECMP` without causing a spurious interrupt:
+
+.CLINT example C definitions.
+[source,sourceCode,c]
+----
+// CLINT addresses.
+// In SMC-local address space.
+#define CLINT_BASE                    0xC8000000
+#define CLINT_REG_MSIP(hartid)        (CLINT_BASE + ((hartid) * 0x4))
+#define CLINT_REG_MTIMECMP_LO(hartid) (CLINT_BASE + 0x4000 + ((hartid) * 0x8))
+#define CLINT_REG_MTIMECMP_HI(hartid) (CLINT_BASE + 0x4004 + ((hartid) * 0x8))
+#define CLINT_REG_MTIME_LO            (CLINT_BASE + 0xBFF8)
+#define CLINT_REG_MTIME_HI            (CLINT_BASE + 0xBFFC)
+----
+
+.Reading `MTIME` example C usage.
+[source,sourceCode,c]
+----
+uint64_t read_clint_mtime(void) {
+    uint32_t hi, lo;
+
+    // Make sure the high half has not overflowed
+    // while reading the lower half.
+    do {
+        hi = read32(CLINT_REG_MTIME_HI);
+        lo = read32(CLINT_REG_MTIME_LO);
+    } while (read32(CLINT_REG_MTIME_HI) != hi);
+
+    return ((uint64_t)hi << 32) | lo;
+}
+----
+
+.Writing `MTIMECMP` example C usage.
+[source,sourceCode,c]
+----
+
+unsigned long read_hartid(void) {
+    // Determine the current hartid by
+    // reading from the `mhartid` CSR.
+    unsigned long hartid;
+    __asm__ volatile(
+        "csrr %[hartid], mhartid"
+        : [hartid] "=r"(hartid)
+        :: "memory"
+    );
+    return hartid;
+}
+
+void write_clint_mtimecmp(uint64_t value) {
+    unsigned long hartid = read_hartid();
+
+    write32(CLINT_REG_MTIMECMP_HI(hartid), 0xFFFFFFFF);
+    write32(CLINT_REG_MTIMECMP_LO(hartid), (uint32_t)value);
+    write32(CLINT_REG_MTIMECMP_HI(hartid), (uint32_t)(value >> 32));
+}
+----
+
+Cores can send interrupts to other cores of the SMC by writing a value of `1`
+to the target core's corresponding `MSIP` register, at
+`CLINT_BASE + (0x4 * hartid)`. This writes directly to the target core's
+`MIE.msip` bit.
+Upon taking a software interrupt, a core may clear its software interrupt
+pending bit by writing `0` to its corresponding `MSIP` register.
+
+.Sending Software Interrupt to another core example C usage.
+[source,sourceCode,c]
+----
+void software_interrupt_send(unsigned long target_hartid) {
+    write32(CLINT_REG_MSIP(target_hartid), 1);
+}
+
+void software_interrupt_clear(unsigned long target_hartid) {
+    write32(CLINT_REG_MSIP(target_hartid), 0);
+}
+----
+
+[[smc-external-interrupt-control]]
+===== External Interrupt Control
+
+The SMC uses the standard RISC-V platform-level interrupt controller (PLIC) for
+managing external interrupts, see
+https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf[here]
+for the RISC-V PLIC Specification and layout.
+
+ifdef::backend-html5[]
+See the
+xref:ocah-docs:smc:interrupts.adoc#cpu-interrupt-vector-map[SMC CPU Interrupt Vector Map]
+chapter of the Technical Reference Manual for the full generated interrupt map.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See the _SMC CPU Interrupt Vector Map_ section of the Technical Reference
+Manual for the full generated interrupt map.
+endif::backend-pdf[]
+
+The allocation of additional interrupt IDs within the External interrupts block
+is defined by the integrator.
+
+The process of determining and servicing the specific external interrupt is as
+follows, where `PLIC_BASE` = `0xC400_0000`:
+
+. Claim the highest priority pending interrupt ID by reading from the PLIC
+`CLAIM` register for the hart at `PLIC_BASE + 0x20_0004 + (0x1000 * hartid)`.
+. If the returned interrupt ID is 0, return from the interrupt handler -- any
+pending interrupts have been claimed by other cores on the system.
+. Dispatch to the corresponding interrupt handling routine, based on the
+claimed interrupt ID.
+. Complete the interrupt *at the peripheral*, clearing its interrupt pending
+signal *to the PLIC*.
+. Finally, complete the external interrupt *at the PLIC*, by writing the claimed
+interrupt ID to the PLIC `COMPLETE` register for the hart, also at
+`PLIC_BASE + 0x20_0004 + (0x1000 * hartid)`.
+
+[WARNING]
+====
+If the interrupt is cleared at the PLIC before it is cleared at the interrupting
+peripheral, the interrupt may be raised again to the PLIC, causing a future
+spurious interrupt. Clearing of interrupt signals should be done from the
+inner-most source first (peripheral first, then PLIC), akin to popping the stack
+that narrowed in on the interrupt condition.
+====
+
+.External Interrupt Handling Flow
+[plantuml,external-interrupt-dispatch,svg,width=90.0%,align="center"]
+----
+@startuml
+: External interrupt taken - Control transferred to external interrupt handler;
+: Claim interrupt at the PLIC, receiving an interrupt ID;
+: Determine the interrupting peripheral from the interrupt ID;
+: Handle the interrupt condition - peripheral no longer signalling the interrupt;
+: Complete the interrupt at the PLIC;
+: Return from external interrupt handler;
+kill
+@enduml
+----
+
+[[smc-watchdog]]
+==== Watchdog Timers
+
+Each core of the SMC has a dedicated watchdog timer (WDT), that can generate
+an interrupt and optionally a reset of the core if not serviced within a
+configurable period of time. The watchdog timers are driven by the SMU clock
+signal `clk_smu_i`.
+
+The `COUNT` register contains the raw WDT timer value, and increments at the
+frequency of the SMU clock signal `clk_smu_i`. The `wdogscale` field in the
+`CTRL` register contains a right-shift amount which is applied to the `COUNT`
+register, effectively dividing the WDT tick rate by 2^`CTRL.wdogscale`^.
+The scaled counter after shifting can be read from the `SCALED_COUNT` register.
+The `SCALED_COUNT` register is compared to the `CMP` register to determine if
+the WDT has expired. If `SCALED_COUNT >= CMP`, a watchdog timer interrupt is
+raised.
+
+Every register write (with the exception of `KEY`) requires unlocking by writing
+the value `0x51F15E` to the `KEY` register. The WDT automatically locks after
+one register write after unlocking.
+
+The `wdogenalways` (bit 12) and `wdogcoreawake` (bit 13) fields of `CTRL`
+control under what conditions `COUNT` is incremented. If `wdogcoreawake` is set,
+`COUNT` is only incremented while the core is not in reset. If `wdogenalways`
+is set, `COUNT` always increments. `wdogenalways` takes priority over
+`wdogcoreawake` if both bits are set.
+
+If `wdogzerocmp` (bit 9) is enabled in `CTRL`, the watchdog timer `COUNT` will
+reset to `0` once the comparison threshold `CMP` has been reached and an
+interrupt has been fired. Otherwise, `COUNT` will continue incrementing and
+must be manually written to to set it to a lower value (after unlocking a
+register write by writing to `KEY`).
+
+If `wdogrsten` (bit 8) is enabled in `CTRL` and the WDT fires, the core being
+reset will not be able to service its own WDT interrupt. Other SMC cores
+*should* enable interrupts from each other's watchdog timers to be notified when
+a core is reset by the watchdog, so that SMC software can robustly recover from
+the failure or reallocate work while the reset core is brought up again.
+
+In the event of a watchdog timer interrupt, software -- running on a core other
+than the one reset by `wdogrsten` being set -- should clear the interrupt at the
+watchdog by:
+
+. Resetting `COUNT` to be lower than `CMP`. This may not be necessary if
+`CTRL.wdogzerocmp` is also set and not enough time has passed for the interrupt
+to be reasserted.
+. Clear the latched interrupt pending bit `CTRL.wdogip0` (bit 28) by writing `0`
+to it.
+
+.WDT example C definitions.
+[source,sourceCode,c]
+----
+// WDT register addresses.
+// In SMC-local address space.
+#define WDT_BASE              0xC0000000
+#define WDT_REG_CTRL(hartid)  (WDT_BASE + ((hartid) * 0x400) + 0x0)
+#define WDT_REG_COUNT(hartid) (WDT_BASE + ((hartid) * 0x400) + 0x8)
+#define WDT_REG_FEED(hartid)  (WDT_BASE + ((hartid) * 0x400) + 0x18)
+#define WDT_REG_KEY(hartid)   (WDT_BASE + ((hartid) * 0x400) + 0x1C)
+#define WDT_REG_CMP(hartid)   (WDT_BASE + ((hartid) * 0x400) + 0x20)
+
+// WDT register constants.
+#define WDT_KEY_UNLOCK 0x0051F15E
+#define WDT_FEED_VALUE 0x0D09F00D
+
+#define WDT_CTRL_WDOGRSTEN    0x100
+#define WDT_CTRL_WDOGENALWAYS 0x1000
+----
+
+.WDT example C configuration and usage.
+[source,sourceCode,c]
+----
+unsigned long read_hartid(void) {
+    // Determine the current hartid by
+    // reading from the `mhartid` CSR.
+    unsigned long hartid;
+    __asm__ volatile(
+        "csrr %[hartid], mhartid"
+        : [hartid] "=r"(hartid)
+        :: "memory"
+    );
+    return hartid;
+}
+
+static void wdt_write(uintptr_t addr, uint32_t value) {
+    // Helper to write to one of the core's WDT registers,
+    // unlocking it before performing the actual write.
+    unsigned long hartid = read_hartid();
+
+    // Unlock.
+    write32(WDT_REG_KEY(hartid), WDT_KEY_UNLOCK);
+
+    // Write.
+    write32(addr, value);
+}
+
+void wdt_configure(void) {
+    unsigned long hartid = read_hartid();
+
+    // 10ms at an assumed 50MHz SMU clock.
+    // = 500000 cycles. Use a divisor of 8
+    // (wdogscale = 3) so that the compare
+    // value fits in `CMP`, which is 16-bits.
+    uint32_t wdogscale = 3;
+    uint16_t compare = (uint16_t)(500000 >> wdogscale);
+    uint32_t ctrl = wdogscale | WDT_CTRL_WDOGRSTEN | WDT_CTRL_WDOGENALWAYS;
+
+    // Reset the count so that updating `CMP` and `CTRL`
+    // doesn't accidentally cause a WDT interrupt if
+    // `CMP` is decreased to below `SCALED_COUNT`.
+    wdt_write(WDT_REG_COUNT(hartid), 0);
+    wdt_write(WDT_REG_CMP(hartid), compare);
+    wdt_write(WDT_REG_CTRL(hartid), ctrl);
+
+    // Reset count.
+    wdt_write(WDT_REG_COUNT(hartid), 0);
+}
+
+void wdt_service(void) {
+    unsigned long hartid = read_hartid();
+
+    wdt_write(WDT_REG_FEED(hartid), WDT_FEED_VALUE);
+}
+----
+
+==== Logging Peripherals (UART, Log Engine)
+
+Software may log info and error messages by transmitting over UART. For more
+advanced and flexible use-cases, such as logging asynchronously and from
+multiple cores, the Log Engine peripheral can drive UART transmission on the
+CPU's behalf, with messages fed in from SMC memory.
+
+The UARTs and Log Engines sit within the UART Controller block. Within this
+block, there are 4 UART and Log Engine pairs.
+
+===== UART
+
+The UART baud rate is configured by writing the 16-byte clock divisor value
+to the `DLM` (most-significant byte) and `DLL` (least-significant byte)
+registers. To access these registers, the `DLAB` bit (bit 7) must be enabled
+in the `LCR` register. Once configured, the `DLAB` bit should be disabled to
+access the registers hidden by that bit.
+
+FIFO configuration is done using the `FCR` and `ECR` registers. The FIFO is
+enabled by setting the least-significant bit in the `FCR` register.
+The `RCVR_TRIGGER_MS2B` field of `ECR` and `RCVR_TRIGGER` field of `FCR` form
+a 4-bit value which determines the receive FIFO trigger level. While the receive
+FIFO contains more than this amount of characters, the UART asserts the
+Received Data Ready interrupt.
+
+.UART Receive FIFO levels
+[width="100%",cols="25%,25%,25%,25%",options="header",]
+|=======================================================================
+|Value |`ECR.RCVR_TRIGGER_MS2B` |`FCR.RCVR_TRIGGER` |FIFO trigger level
+|`0x0` (`0b0000`) |`0b00` |`0b00` | 1 character.
+|`0x1` (`0b0001`) |`0b00` |`0b01` | 4 characters.
+|`0x2` (`0b0010`) |`0b00` |`0b10` | 8 characters.
+|`0x3` (`0b0011`) |`0b00` |`0b11` | 14 characters.
+|`0x4` (`0b0100`) |`0b01` |`0b00` | 32 characters.
+|`0x5` (`0b0101`) |`0b01` |`0b01` | 64 characters.
+|`0x6` (`0b0110`) |`0b01` |`0b10` | 128 characters.
+|`0x7` (`0b0111`) |`0b01` |`0b11` | 256 characters.
+|`0x8` (`0b1000`) |`0b10` |`0b00` | 512 characters.
+|`0x9` (`0b1001`) |`0b10` |`0b01` | 1024 characters.
+|`0xA` (`0b1010`) |`0b10` |`0b10` | 2048 characters.
+|`0xB` (`0b1011`) |`0b10` |`0b11` | 4096 characters.
+|=======================================================================
+
+Data is written by writing to the `THR` register. If the FIFO is enabled, the
+written data will be pushed onto the transmission FIFO. Data is popped from the
+receive FIFO by reading the `RBR` register. Note that the `THR` and `RBR`
+registers are accessible only when the `DLAB` bit of `LCR` is disabled.
+
+.UART example C definitions.
+[source,sourceCode,c]
+----
+// UART Register addresses.
+// In SMC-local address space.
+#define UART_BASE        0xC0006100
+#define UART_REG_RBR_THR (UART_BASE + 0x0) // DLAB=0, Reads access RBR, writes access THR.
+#define UART_REG_DLL     (UART_BASE + 0x0) // DLAB=1
+#define UART_REG_IER     (UART_BASE + 0x4) // DLAB=0
+#define UART_REG_DLM     (UART_BASE + 0x4) // DLAB=1
+#define UART_REG_IIR_FCR (UART_BASE + 0x8) // Reads access IIR, writes access FCR.
+#define UART_REG_LCR     (UART_BASE + 0xC)
+#define UART_REG_LSR     (UART_BASE + 0x14)
+#define UART_REG_ECR     (UART_BASE + 0x20)
+
+// Register constants.
+#define UART_IER_ALL 0x1f
+
+#define UART_FCR_FIFO_ENABLE       0x1
+#define UART_FCR_RCVR_FIFO_RESET   0x2
+#define UART_FCR_XMIT_FIFO_RESET   0x4
+#define UART_FCR_DMA_MODE_SELECT_0 0x0
+#define UART_FCR_DMA_MODE_SELECT_1 0x8
+#define UART_FCR_RCVR_TRIGGER_256C 0xC0
+
+#define UART_LCR_PEN    0x8 // Parity enable bit.
+#define UART_LCR_STB_2S 0x4 // 2 stop bits.
+#define UART_LCR_STB_1S 0x0 // 1 stop bit.
+#define UART_LCR_WLS_8B 0x3 // 8 bits per character.
+#define UART_LCR_DLAB   0x80
+
+#define UART_LSR_THRE 0x20
+
+#define UART_ECR_RCVR_TRIGGER_MS2B_256C 0x1
+----
+
+.UART example C configuration and usage (no FIFO).
+[source,sourceCode,c]
+----
+void uart_configure_nofifo(void) {
+    // Reset the UART.
+    // Disable interrupts.
+    write32(UART_REG_IER, 0);
+    // A divisor of 0 disables the transmitter and receiver.
+    write32(UART_REG_LCR, UART_LCR_DLAB);
+    write32(UART_REG_DLL, 0);
+    write32(UART_REG_DLM, 0);
+    // Reset and disable FIFOs.
+    write32(UART_REG_IIR_FCR,
+            UART_FCR_RCVR_FIFO_RESET | UART_FCR_XMIT_FIFO_RESET
+              | UART_FCR_DMA_MODE_SELECT_0);
+
+    // UART configuration: 8 bits per character, 1 stop bit, no parity bits.
+    uint32_t uart_config = UART_LCR_WLS_8B | UART_LCR_STB_1S;
+
+    // Write configuration to LCR, and enable DLAB to configure baud rate.
+    write32(UART_REG_LCR, uart_config | UART_LCR_DLAB);
+
+    // Calculate clock divisor for the intended baud rate.
+    uint16_t divisor = div_ceil(CLOCK_FREQUENCY, 16 * TARGET_BAUD) - 1;
+
+    // Write divisor bytes to DLL and DLM.
+    write32(UART_REG_DLL, (uint32_t)((uint8_t)divisor));
+    write32(UART_REG_DLM, (uint32_t)((uint8_t)(divisor >> 8)));
+
+    // Write configuration again to LCR, clearing the DLAB bit.
+    write32(UART_REG_LCR, uart_config);
+
+    // Enable interrupts.
+    write32(UART_REG_IER, UART_IER_ALL);
+}
+
+void uart_write(const char *str) {
+    while (*str) {
+        // Poll LSR until THR is empty.
+        while (!(read32(UART_REG_LSR) & UART_LSR_THRE));
+
+        // Write the character to THR.
+        write32(UART_REG_RBR_THR, (uint32_t)(*str));
+        str++;
+    }
+}
+----
+
+.UART example C configuration and usage (with FIFO).
+[source,sourceCode,c]
+----
+void uart_configure_fifo(void) {
+    // Reset the UART.
+    // Disable interrupts.
+    write32(UART_REG_IER, 0);
+    // A divisor of 0 disables the transmitter and receiver.
+    write32(UART_REG_LCR, UART_LCR_DLAB);
+    write32(UART_REG_DLL, 0);
+    write32(UART_REG_DLM, 0);
+    // Reset and disable FIFOs.
+    write32(UART_REG_IIR_FCR, UART_FCR_RCVR_FIFO_RESET | UART_FCR_XMIT_FIFO_RESET);
+
+    // FIFO configuration: Enabled, 256-character trigger level.
+    write32(UART_REG_ECR, UART_ECR_RCVR_TRIGGER_MS2B_256C);
+    write32(UART_REG_IIR_FCR,
+            UART_FCR_RCVR_TRIGGER_256C | UART_FCR_FIFO_ENABLE
+              | UART_FCR_DMA_MODE_SELECT_0);
+
+    // UART configuration: 8 bits per character, 1 stop bit, no parity bits.
+    uint32_t uart_config = UART_LCR_WLS_8B | UART_LCR_STB_1S;
+
+    // Write uart configuration to LCR, and enable DLAB to configure baud rate.
+    write32(UART_REG_LCR, uart_config | UART_LCR_DLAB);
+
+    // Calculate clock divisor for the intended baud rate.
+    uint16_t divisor = div_ceil(CLOCK_FREQUENCY, 16 * TARGET_BAUD) - 1;
+
+    // Write divisor bytes to DLL and DLM.
+    write32(UART_REG_DLL, (uint32_t)((uint8_t)divisor));
+    write32(UART_REG_DLM, (uint32_t)((uint8_t)(divisor >> 8)));
+
+    // Write configuration again to LCR, clearing the DLAB bit.
+    write32(UART_REG_LCR, uart_config);
+
+    // Enable interrupts.
+    write32(UART_REG_IER, UART_IER_ALL);
+}
+
+void uart_write_fifo(const char *str) {
+    while (*str) {
+        // Poll until transmit FIFO is empty.
+        while (!(read32(UART_REG_LSR) & UART_LSR_THRE));
+
+        // Burst write up to 4096 characters at a time.
+        for (size_t i = 0; i < 4096; i++) {
+            if (*str == 0) return;
+            write32(UART_REG_RBR_THR, (uint32_t)(*str));
+            str++;
+        }
+    }
+}
+----
+
+===== Log Engine Configuration
+
+The Log Engine is a DMA-based logging peripheral that can efficiently transfer
+log messages from SMC memory to a UART on the CPU's behalf.
+The UART exposes the `txrdy_o` signal directly to the Log Engine which notifies
+it that more bytes can be accepted into the transmit FIFO.
+
+Each Log Engine supports up to 16 log entries, which represent a message to be
+transmitted. The Log Engine uses round-robin scheduling for fairness in
+multi-threaded usage.
+
+Before configuration begins, software should disable the Log Engine's
+operation by writing `0` to the Log Engine's `CTRL` register. After
+configuration is complete, the Log Engine can be enabled by writing `1`
+to the `CTRL` register.
+
+The Log Engine is configured by writing the address and size of the region of
+SMC memory that will be used for log entries, into the `LOG_REGION_ADDR`
+and `LOG_REGION_SIZE` registers respectively. This memory buffer is divided
+evenly into the 16 regions, each representing a separate log entry.
+
+The Log Engine will write bytes to the UART address specified in the
+`LOG_WRITE_ADDR` register. This must be set to the address of the associated
+UART's `THR` register, which feeds the transmission FIFO.
+
+The UART used by the Log Engine must be configured first, before it can be used
+by the Log Engine. The UART used must also be configured to use DMA Mode 0 by
+clearing the `DMA_MODE_SELECT` bit in the UART's `FCR` register.
+See the previous section on configuring the UART.
+
+.Log Entry Memory Buffer
+[width="100%",cols="25%,25%,25%,25%",options="header",]
+|=======================================================================
+|Start Address |End Address |Size |Description
+|`LOG_REGION_ADDR`
+|`LOG_REGION_ADDR + (1 * (LOG_REGION_SIZE / 16))`
+|`LOG_REGION_SIZE / 16`
+|Log Entry 1/16
+|`LOG_REGION_ADDR + (1 * (LOG_REGION_SIZE / 16))`
+|`LOG_REGION_ADDR + (2 * (LOG_REGION_SIZE / 16))`
+|`LOG_REGION_SIZE / 16`
+|Log Entry 2/16
+|`LOG_REGION_ADDR + (2 * (LOG_REGION_SIZE / 16))`
+|`LOG_REGION_ADDR + (3 * (LOG_REGION_SIZE / 16))`
+|`LOG_REGION_SIZE / 16`
+|Log Entry 3/16
+|... |... |... |...
+|`LOG_REGION_ADDR + (15 * (LOG_REGION_SIZE / 16))`
+|`LOG_REGION_ADDR + LOG_REGION_SIZE`
+|`LOG_REGION_SIZE / 16`
+|Log Entry 16/16
+|=======================================================================
+
+The size of memory region written to `LOG_REGION_SIZE` must be a multiple of
+128-bytes, meaning each log entry is a multiple of 8-bytes in size.
+
+.Log Engine and UART example C definitions.
+[source,sourceCode,c]
+----
+// Log Engine Register addresses.
+// In SMC-local address space.
+#define LOG_ENGINE_BASE                   0xC0006200
+#define LOG_ENGINE_REG_CTRL               (LOG_ENGINE_BASE + 0x0)
+#define LOG_ENGINE_REG_LOG_REGION_SIZE    (LOG_ENGINE_BASE + 0x4)
+#define LOG_ENGINE_REG_LOG_REGION_ADDR_LO (LOG_ENGINE_BASE + 0x8)
+#define LOG_ENGINE_REG_LOG_REGION_ADDR_HI (LOG_ENGINE_BASE + 0xC)
+#define LOG_ENGINE_REG_LOG_WRITE_ADDR     (LOG_ENGINE_BASE + 0x10)
+#define LOG_ENGINE_REG_INTR_STATUS        (LOG_ENGINE_BASE + 0x14)
+#define LOG_ENGINE_REG_INTR_ENABLE        (LOG_ENGINE_BASE + 0x18)
+#define LOG_ENGINE_REG_LOG_CTRL(num)      (LOG_ENGINE_BASE + 0x40 + ((num) * 0x4))
+
+// UART Register addresses.
+#define UART_BASE        0xC0006100
+#define UART_REG_RBR_THR (UART_BASE + 0x0)
+
+// Register constants.
+#define LOG_ENGINE_CTRL_ENABLE        1
+#define LOG_ENGINE_CTRL_DISABLE       0
+#define LOG_ENGINE_INTR_LOG_FETCH_ERR 0x1
+#define LOG_ENGINE_INTR_LOG_WRITE_ERR 0x10
+
+// Sample log region.
+#define LOG_ENTRY_SIZE  1024
+#define LOG_REGION_SIZE (LOG_ENTRY_SIZE * 16)
+char log_region[LOG_REGION_SIZE];
+----
+
+.Log Engine example C configuration.
+[source,sourceCode,c]
+----
+// Configure the Log Engine to read logs from `log_region`.
+void configure(char *log_region, uint32_t log_region_size) {
+    // Disable operation.
+    write32(LOG_ENGINE_REG_CTRL, LOG_ENGINE_CTRL_DISABLE);
+
+    // Write address of log region.
+    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_LO, (uint32_t)log_region);
+    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_HI, (uint32_t)(log_region >> 32));
+
+    // Write size of log region.
+    write32(LOG_ENGINE_REG_LOG_REGION_SIZE, log_region_size);
+
+    // Write the address of the UART THR register.
+    write32(LOG_ENGINE_REG_LOG_WRITE_ADDR, UART_REG_RBR_THR);
+
+    // Enable error interrupts.
+    write32(LOG_ENGINE_REG_INTR_ENABLE,
+            LOG_ENGINE_INTR_LOG_FETCH_ERR | LOG_ENGINE_INTR_LOG_WRITE_ERR);
+
+    // Enable operation.
+    write32(LOG_ENGINE_REG_CTRL, LOG_ENGINE_CTRL_ENABLE);
+}
+----
+
+===== Log Engine Operation
+
+To engage the Log Engine in transmitting a log entry, software must:
+
+. Choose a vacant log entry index.
+. Copy or write the message to be sent into the chosen log entry index's
+corresponding region in the memory buffer.
+. Write the length of the to be sent message into the log entry's corresponding
+`LOG_CTRL` register in the Log Engine.
+
+Reading from the `LOG_CTRL` register array returns the number of remaining
+bytes for each log entry. A log entry has finished transmission once reading
+the corresponding `LOG_CTRL` register returns `0`.
+
+.Log Engine example C usage.
+[source,sourceCode,c]
+----
+// Print formatted output to UART, using the Log Engine.
+void log_engine_printf(const char *format, ...) {
+    // Determine and pick a vacant log entry index.
+    // In this example, the arbitrary index `5` suffices.
+    int index = 5;
+
+    va_list args;
+    va_start(args, format);
+
+    // Write the message into the vacant log entry region,
+    // writing at most `LOG_ENTRY_SIZE` bytes.
+    int len = vsnprintf(&log_region[index * LOG_ENTRY_SIZE],
+                        LOG_ENTRY_SIZE, format, args);
+
+    va_end(args);
+
+    if (len < 0) {
+        // Printing failed.
+        return;
+    }
+
+    // Write the length of the message. This queues up the transmission.
+    write32(LOG_ENGINE_REG_LOG_CTRL(index), len);
+
+    // Poll for completion.
+    while (read32(LOG_ENGINE_REG_LOG_CTRL(index)) != 0);
+}
+----
+
+[NOTE]
+====
+A more performant implementation may choose to skip polling for completion, and
+only initially block while all log entries are in-use.
+
+As the log engine can only feed the UART transmit FIFO, message reception and
+draining the receive FIFO remains the responsibility of the cores.
+====
+
+[[smc-gpio]]
+==== GPIO
+
+The SMC exposes 65 GPIO pins, each controlled through its own register
+instance within the GPIO block.
+
+The per-pin `DATA_CTRL` register contains the pin's configuration and value.
+The `pad2core` field (bit 31) contains the current sampled value of the pin.
+The `core2pad` field (bit 0) contains the current value driven to the pad.
+
+The `enable_rx_tx` field determines the direction of pin:
+.GPIO `enable_rx_tx` values.
+[width="100%",cols="50%,50%",options="header",]
+|=======================================================================
+|Value |Description
+|`0b01` | Output / TX
+|`0b10` | Input / RX
+|=======================================================================
+
+The pin may also raise edge-sensitive or level-sensitive interrupts.
+The interrupt condition is configured in the `interrupt_type` field:
+
+.GPIO `interrupt_type` values.
+[width="100%",cols="50%,50%",options="header",]
+|=======================================================================
+|Value |Description
+|`0b00` | Level interrupt, Active-high
+|`0b01` | Level interrupt, Active-low
+|`0b10` | Edge interrupt, Rising-edge
+|`0b11` | Edge interrupt, Falling-edge
+|=======================================================================
+
+To enable interrupts for the specific pin, `interrupt_enable` (bit 18) must
+be set.
+
+The per-pin `DATA_CTRL_ENABLE` register provides per-field LSIO overrides.
+When an LSIO peripheral controls the pad (`DATA_CTRL.interface_enable` is not set),
+setting a bit here forces the corresponding `DATA_CTRL` field to take effect
+for that field only.
+
+. `use_reg_core2pad` (bit 0) forces the register-controlled `DATA_CTRL.core2pad`
+onto the pad, regardless of LSIO output.
+. `use_reg_tx` (bit 4) forces the register-controlled `DATA_CTRL.enable_rx_tx[0]`
+(TX enable) value, regardless of the LSIO output.
+. `use_reg_rx` (bit 5) forces the register-controlled `DATA_CTRL.enable_rx_tx[1]`
+(RX enable) value, regardless of the LSIO output.
+
+`DATA_CTRL_ENABLE` is only meaningful for pins where an LSIO peripheral is used.
+For general-purpose register-driven pin usage by the cores, `DATA_CTRL_ENABLE`
+should be left at `0`.
+
+.GPIO example C definitions.
+[source,sourceCode,c]
+----
+// GPIO Register addresses.
+// In SMC-local address space.
+#define GPIO_BASE                      0xC0003000
+#define GPIO_PIN_BASE(pin)             (GPIO_BASE + ((pin) * 0x10))
+#define GPIO_REG_DATA_CTRL(pin)        (GPIO_PIN_BASE(pin) + 0x0)
+#define GPIO_REG_DATA_CTRL_ENABLE(pin) (GPIO_PIN_BASE(pin) + 0x4)
+#define GPIO_REG_ACCESS_FILTER(pin)    (GPIO_PIN_BASE(pin) + 0x8)
+
+// Register constants.
+#define GPIO_DATA_CTRL_CORE2PAD         0x1
+#define GPIO_DATA_CTRL_ENABLE_RX_TX_TX  0x10
+#define GPIO_DATA_CTRL_ENABLE_RX_TX_RX  0x20
+#define GPIO_DATA_CTRL_INTERFACE_ENABLE 0x10000
+#define GPIO_DATA_CTRL_INTERRUPT_ENABLE 0x40000
+#define GPIO_DATA_CTRL_INTR_RISING_EDGE 0x200000
+#define GPIO_DATA_CTRL_PAD2CORE         0x80000000
+----
+
+.GPIO example C configuration and usage.
+[source,sourceCode,c]
+----
+void gpio_configure_output(size_t pin, bool value) {
+    // Enable the GPIO and set the direction to TX.
+    uint32_t gpio_ctrl = GPIO_DATA_CTRL_INTERFACE_ENABLE | GPIO_DATA_CTRL_ENABLE_RX_TX_TX;
+    // If `value` is set, drive the GPIO.
+    if (value) {
+        gpio_ctrl |= GPIO_DATA_CTRL_CORE2PAD;
+    }
+    write32(GPIO_REG_DATA_CTRL(pin), gpio_ctrl);
+}
+
+void gpio_set(size_t pin, bool value) {
+    // Read the GPIO settings, then drive the value based on `value`.
+    uint32_t gpio_ctrl = read32(GPIO_REG_DATA_CTRL(pin));
+    if (value) {
+        gpio_ctrl |= GPIO_DATA_CTRL_CORE2PAD;
+    } else {
+        gpio_ctrl &= ~GPIO_DATA_CTRL_CORE2PAD;
+    }
+    write32(GPIO_REG_DATA_CTRL(pin), gpio_ctrl);
+}
+
+bool gpio_read(size_t pin) {
+    // Configure as input first if not already done.
+    write32(GPIO_REG_DATA_CTRL(pin),
+            GPIO_DATA_CTRL_INTERFACE_ENABLE | GPIO_DATA_CTRL_ENABLE_RX_TX_RX);
+    return (read32(GPIO_REG_DATA_CTRL(pin)) & GPIO_DATA_CTRL_PAD2CORE) ? true : false;
+}
+
+void gpio_configure_interrupt(size_t pin) {
+    write32(GPIO_REG_DATA_CTRL(pin),
+            GPIO_DATA_CTRL_INTERFACE_ENABLE | GPIO_DATA_CTRL_ENABLE_RX_TX_RX
+              | GPIO_DATA_CTRL_INTERRUPT_ENABLE | GPIO_DATA_CTRL_INTR_RISING_EDGE);
+}
+----
+
+[[smc-efuse]]
+==== eFuse
+
+The eFuse block provides One-Time Programmable (OTP) storage for device
+identity, security, and boot configuration.
+
+At boot time, the eFuse array is loaded into shadow registers by hardware, such
+that eFuse data can be read by software during early bring-up without the timing
+constraints of the underlying eFuse implementation.
+
+Direct read and program operations are performed using the eFuse control
+interface, which can program arbitrary data bits and read whole data words
+(32 bits at a time). Programming operations are not reflected in the shadow
+registers until the next reset.
+
+[WARNING]
+====
+Bits of eFuse data are *One-Time Programmable* -- A bit that is set using the
+control interface can *never* be cleared.
+====
+
+The `LOCKS` register can be used to lock read and/or write access to fields
+containing eFuse data words. Bits of the `LOCKS` register cannot be cleared
+once they are set by software, but are reset at reset.
+
+Locks cover whole fields of eFuse data, not necessarily individual 32-bit words.
+For example, all 9 `I2C_I3C_ID` data words are controlled by a single lock in
+the `LOCKS` register. Accesses through both the shadow registers and direct
+word-read/bit-write accesses through the control interface are affected by the
+setting of the `LOCKS` register.
+
+Some fields in the shadow registers may be locked by the hardware integrator.
+In that case, access through the shadow registers is forbidden, regardless of
+the setting of `LOCKS` by software. This locking does not affect
+word-read/bit-write accesses through the control interface.
+
+The assignment of data fields and words within the eFuse data region can be
+found in the
+ifdef::backend-html5[]
+xref:ocah-docs:ip:efuse/doc/index.adoc#efuse-memory-map[Memory Map]
+section of the eFuse chapter in the Technical Reference Manual.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Memory Map_ section of the eFuse chapter of the Technical Reference
+Manual.
+endif::backend-pdf[]
+
+.eFuse example C definitions.
+[source,sourceCode,c]
+----
+// eFuse Register addresses.
+// In SMC-local address space.
+#define EFUSE_CTRL_BASE             0xC0008000
+#define EFUSE_CTRL_REG_PROGRAM_CTRL (EFUSE_CTRL_BASE + 0x4)
+#define EFUSE_CTRL_REG_READ_CTRL    (EFUSE_CTRL_BASE + 0x8)
+#define EFUSE_CTRL_REG_READ_DATA    (EFUSE_CTRL_BASE + 0x10)
+
+// Register constants.
+#define EFUSE_PROGRAM_CTRL_DATA_ONE 0x10000
+#define EFUSE_PROGRAM_CTRL_GO       0x20000
+#define EFUSE_PROGRAM_CTRL_DONE     0x2000000
+#define EFUSE_PROGRAM_CTRL_ERROR    0x4000000
+#define EFUSE_PROGRAM_CTRL_ENABLE   0x8000000
+
+#define EFUSE_READ_CTRL_GO     0x10000
+#define EFUSE_READ_CTRL_DONE   0x2000000
+#define EFUSE_READ_CTRL_ERROR  0x4000000
+#define EFUSE_READ_CTRL_ENABLE 0x10000000
+----
+
+.eFuse example C usage.
+[source,sourceCode,c]
+----
+// Program bit `bit_index` of the OTP bank to a 1.
+// Returns whether or not the write succeeded.
+// Note that this operation is irreversible.
+bool efuse_program_bit(uint16_t bit_index) {
+
+    uint32_t ctrl = EFUSE_PROGRAM_CTRL_ENABLE
+                      | EFUSE_PROGRAM_CTRL_DATA_ONE
+                      | EFUSE_PROGRAM_CTRL_GO
+                      | bit_index;
+
+    // Perform the operation.
+    write32(EFUSE_CTRL_REG_PROGRAM_CTRL, ctrl);
+
+    // Poll for completion.
+    while (!(read32(EFUSE_CTRL_REG_PROGRAM_CTRL) & EFUSE_PROGRAM_CTRL_DONE));
+
+    bool success = !(read32(EFUSE_CTRL_REG_PROGRAM_CTRL)
+                       & EFUSE_PROGRAM_CTRL_ERROR);
+
+    // Reset the `PROGRAM_CTRL` register to release program mode.
+    write32(EFUSE_CTRL_REG_PROGRAM_CTRL, 0);
+
+    return success;
+}
+
+// Read the value of bit `bit_index` of the OTP bank into
+// `*bit_value`. Returns whether or not the read succeeded.
+// If the operation fails, `*bit_value` remains unmodified.
+bool efuse_read_bit(uint16_t bit_index, bool *bit_value) {
+
+    // eFuse reads read a whole word (32-bits) at a time.
+    // Get the address of the containing word and bit offset
+    // within it for the requested bit.
+    uint16_t word = bit_index & ~0x1F;
+    uint16_t word_bit = bit_index & 0x1F;
+
+    uint32_t ctrl = EFUSE_READ_CTRL_ENABLE
+                      | EFUSE_READ_CTRL_GO
+                      | word;
+
+    // Perform the operation.
+    write32(EFUSE_CTRL_REG_READ_CTRL, ctrl);
+
+    // Poll for completion.
+    while (!(read32(EFUSE_CTRL_REG_READ_CTRL) & EFUSE_READ_CTRL_DONE));
+
+    bool success = !(read32(EFUSE_CTRL_REG_READ_CTRL)
+                       & EFUSE_READ_CTRL_ERROR);
+
+    if (success) {
+        uint32_t word_value = read32(EFUSE_CTRL_REG_READ_DATA);
+        *bit_value = (word_value >> word_bit) & 0x1;
+    }
+
+    // Reset the `READ_CTRL` register to release read mode.
+    write32(EFUSE_CTRL_REG_READ_CTRL, 0);
+
+    return success;
+}
+----
