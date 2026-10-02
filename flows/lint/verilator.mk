@@ -46,6 +46,13 @@ OCAH_LINT_VERILATOR_TOP ?= $(FLOW_DESIGN)
 # than trying to reformat the shared variable.
 OCAH_LINT_VERILATOR_DEFINES := +define+SYNTHESIS=1
 
+OCAH_LINT_VERILATOR_FLAGS = -sv --language 1800-2023 \
+	--timing \
+	--timescale $(OCAH_FLOW_TIMESCALE) \
+	$(OCAH_LINT_VERILATOR_DEFINES) \
+	-Wno-fatal \
+	+define+ASSERTS_OFF
+
 ## Generate this block's bender filelist for verilator lint, without running verilator.
 .PHONY: ocah-lint-verilator-flist
 ocah-lint-verilator-flist:
@@ -64,55 +71,31 @@ ocah-lint-verilator-flist:
 .PHONY: ocah-lint-verilator
 ocah-lint-verilator: ocah-lint-verilator-flist
 	$(call ocah_require_host_tool,verilator,./scripts/docker-run.sh run-here make ocah-lint-verilator)
-	verilator --lint-only -sv --language 1800-2023 \
-		--timing \
-		--timescale $(OCAH_FLOW_TIMESCALE) \
+	verilator --lint-only $(OCAH_LINT_VERILATOR_FLAGS) \
 		--top-module $(OCAH_LINT_VERILATOR_TOP) \
-		$(OCAH_LINT_VERILATOR_DEFINES) \
 		-FI $(OCAH_VENDOR_DEFINES_SVH) \
 		$(OCAH_LINT_VERILATOR_EXTRA_FLAGS) \
-		-Wno-fatal \
-		+define+ASSERTS_OFF \
 		$(OCAH_LINT_VERILATOR_WAIVER_FILES) \
 		$(if $(VERILATOR_LINT_PATH),$(OCAH_LINT_VERILATOR_FILTER_PATHS)) \
 		-f $(OCAH_LINT_VERILATOR_FLIST)
 
 OCAH_LINT_VERILATOR_PUBLIC_DIR := $(OCAH_LINT_VERILATOR_DIR)/$(FLOW_DESIGN)_public_flat_rw
-OCAH_LINT_VERILATOR_PUBLIC_FLIST := $(OCAH_LINT_VERILATOR_PUBLIC_DIR)/packages.f
-OCAH_LINT_VERILATOR_PUBLIC_TOP := ocah_public_flat_rw_top
 
-# --public-flat-rw registers every package parameter by name, whether or not
-# the top imports the package, so an empty top over the block's packages
-# exercises each registration the cocotb benches compile. The generated C++
-# must also build: the registrations fail in the C++ compile, not in
-# Verilator. Modules are left out because publishing a whole subsystem is
-# what the SMC, SEP and SMU benches drop the flag to avoid.
+# --public-flat-rw registers every package parameter by name, so an empty top
+# over the block's filelist builds each package registration the cocotb
+# benches compile while Verilator drops the uninstantiated modules. The
+# registrations fail in the C++ compile, hence --build.
 ## Build this block's packages into a Verilator model under --public-flat-rw.
 .PHONY: ocah-lint-verilator-public
 ocah-lint-verilator-public: ocah-lint-verilator-flist
 	$(call ocah_require_host_tool,verilator,./scripts/docker-run.sh run-here make ocah-lint-verilator-public)
-	@rm -rf $(OCAH_LINT_VERILATOR_PUBLIC_DIR)
 	@mkdir -p $(OCAH_LINT_VERILATOR_PUBLIC_DIR)
-	@{ grep -E '^\+(incdir|define)\+' $(OCAH_LINT_VERILATOR_FLIST); \
-	   grep -vE '^[-+]' $(OCAH_LINT_VERILATOR_FLIST) | while read -r f; do \
-	     case "$$f" in \
-	       *.svh) echo "$$f" ;; \
-	       *) if grep -qE '^[[:space:]]*package[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*;' "$$f"; then echo "$$f"; fi ;; \
-	     esac; \
-	   done; } > $(OCAH_LINT_VERILATOR_PUBLIC_FLIST)
-	@printf 'module %s;\nendmodule\n' $(OCAH_LINT_VERILATOR_PUBLIC_TOP) \
-		> $(OCAH_LINT_VERILATOR_PUBLIC_DIR)/$(OCAH_LINT_VERILATOR_PUBLIC_TOP).sv
-	@echo "$(FLOW_DESIGN): $$(grep -vcE '^\+|\.svh$$' $(OCAH_LINT_VERILATOR_PUBLIC_FLIST)) packages"
-	verilator --cc --build -j 0 -sv --language 1800-2023 \
-		--timing \
-		--timescale $(OCAH_FLOW_TIMESCALE) \
-		--top-module $(OCAH_LINT_VERILATOR_PUBLIC_TOP) \
-		--public-flat-rw \
-		$(OCAH_LINT_VERILATOR_DEFINES) \
-		-Wno-fatal -Wno-lint -Wno-style \
-		+define+ASSERTS_OFF \
-		-f $(OCAH_LINT_VERILATOR_PUBLIC_FLIST) \
-		$(OCAH_LINT_VERILATOR_PUBLIC_DIR)/$(OCAH_LINT_VERILATOR_PUBLIC_TOP).sv \
+	@printf 'module ocah_public_flat_rw_top;\nendmodule\n' > $(OCAH_LINT_VERILATOR_PUBLIC_DIR)/top.sv
+	verilator --cc --build -j 0 --public-flat-rw $(OCAH_LINT_VERILATOR_FLAGS) \
+		--top-module ocah_public_flat_rw_top \
+		-Wno-lint -Wno-style \
+		-f $(OCAH_LINT_VERILATOR_FLIST) \
+		$(OCAH_LINT_VERILATOR_PUBLIC_DIR)/top.sv \
 		-Mdir $(OCAH_LINT_VERILATOR_PUBLIC_DIR)/obj
 
 endif

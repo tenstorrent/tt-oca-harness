@@ -690,7 +690,7 @@ statement has the companion's own documentation.
 |---|---|
 | SystemVerilog lint (slang) | `make lint-slang-all` lints every `flow.mk` top (`dtp`, `sep`, `smc`, `smu`, `aou` today). `flows/common.mk` also globs `hw/ip/*/flow.mk`; none exist. `BLOCK=` is a top, not an IP. `make lint-slang` from a block's own flow lints that block alone |
 | SystemVerilog lint (Verilator) | `make lint-verilator-all` lints each discovered top the same way; add `BLOCK=<block…>` to restrict it |
-| Verilator `--public-flat-rw` build | `make lint-verilator-public-all BLOCK=smu` builds every package in the block's filelist under the flag cocotb's Verilator runner forces; CI runs it for `smu` |
+| Verilator `--public-flat-rw` build | `make lint-verilator-public-all BLOCK=smu` builds the block's packages under the flag cocotb's Verilator runner forces |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
