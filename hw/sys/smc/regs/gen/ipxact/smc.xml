@@ -912,7 +912,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>debug_module</ipxact:name>
           <ipxact:displayName>Debug Module Hart Interface</ipxact:displayName>
-          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
+          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. Only the harts of the CPU cluster reach this region; SMC bus initiators outside the cluster do not. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
           <ipxact:addressOffset>'hc0001000</ipxact:addressOffset>
           <ipxact:range>'h868</ipxact:range>
           <ipxact:register>
@@ -3876,8 +3876,8 @@ bit is:
         should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
         flags to detect Start/Stop events.
 * `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
-        When a START (or repeated START) is detected, an `AcqStart` or `AcqRestart`
-        entry is written. When a STOP is detected, an `AcqStop` or `AcqNackStop`
+        When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`
+        entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`
         entry is written.</ipxact:description>
                 <ipxact:bitOffset>7</ipxact:bitOffset>
                 <ipxact:resets>
@@ -8448,7 +8448,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>size</ipxact:name>
-              <ipxact:description>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</ipxact:description>
+              <ipxact:description>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

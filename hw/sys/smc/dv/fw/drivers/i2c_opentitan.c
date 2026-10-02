@@ -771,8 +771,8 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
     }
 
     // =========================================================================
-    // Controller FSM constraint (i2c_controller_fsm.sv): from PopFmtFifo the FSM returns to
-    // Idle when fmt_fifo_depth_i == 1, so a READ command that is the last FMT entry never
+    // Controller FSM constraint (i2c_controller_fsm.sv): from POP_FMT_FIFO the FSM returns to
+    // IDLE when fmt_fifo_depth_i == 1, so a READ command that is the last FMT entry never
     // executes and the read hangs. Keep the depth above 1 across the address/read-command
     // pair: wait for two free FMT slots, then write both entries back to back so the FSM sees
     // depth >= 2 when it pops the address entry.

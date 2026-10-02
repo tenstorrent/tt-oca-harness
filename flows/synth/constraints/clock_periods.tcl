@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 ################################################################################
-# clock_periods.tcl - the one table of clock periods every block SDC reads
+# clock_periods.tcl - target clock periods, in picoseconds
 #
-# Units are picoseconds. Each hw/sys/<block>/synth/constraints.sdc sources this
-# file before its create_clock calls, so a period changes in one place.
+# One table for every block: a block reads the entries it needs and ignores the
+# rest, so a period is defined once no matter how many blocks see that clock.
+# Sourced by each hw/sys/<block>/synth/constraints.sdc before any file that
+# stamps a clock or an I/O delay, and by the closed block flow in place of its
+# own copy.
 #
-# SYSCLK is set to 1000 MHz, above the 800 MHz target, so the major paths are
-# closed with margin.
+# SYSCLK is at 1000MHz, overclocked so that we can solve major paths and meet
+# timing at 800MHz.
 ################################################################################
 
 global clock_periods

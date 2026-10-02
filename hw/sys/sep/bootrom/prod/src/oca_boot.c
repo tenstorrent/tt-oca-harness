@@ -100,7 +100,7 @@ uint32_t rom_oca_demotion_control(void) {
 
 // For the OpenTitan controller the flash is not memory-mapped, so `src` is a
 // flash byte offset read through the SPI host; otherwise `src` is an absolute
-// address (Cadence XIP window or SMC SRAM) copied by the secure DMA.
+// address (XIP window or SMC SRAM) copied by the secure DMA.
 static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool from_spi) {
     // Every storage read on the boot path goes through the transport shim's
     // bounds gate first (SEP-ROM-SPI-010). It is the only check that the SOURCE
@@ -111,7 +111,7 @@ static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool
     // and defaults to reject.
     //
     // It speaks flash byte offsets on both controllers. The OpenTitan path
-    // already carries one; the Cadence path carries an absolute XIP address, so
+    // already carries one; the XIP path carries an absolute window address, so
     // the base the caller added is taken back off here. A source below the
     // window has no offset representation at all, so it is refused rather than
     // wrapped. Non-SPI sources (a manifest the SMC staged in its SRAM) are not
@@ -121,23 +121,35 @@ static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool
         const uint32_t flash_off = src;
 #else
         if (src < (uint32_t)SEP_SPI_BASE) {
+            report_status(STATUS_TYPE_WARN, SEP_MSG_IMAGE_OOB);
             simputs("FLASH_READ_OOB\n");
             return OCA_BOOT_ERR_READ_OUT_OF_BOUNDS;
         }
         const uint32_t flash_off = src - (uint32_t)SEP_SPI_BASE;
 #endif
         if (!boot_flash_bounds_ok(flash_off, len, dst, len)) {
+            report_status(STATUS_TYPE_WARN, SEP_MSG_IMAGE_OOB);
             simputs("FLASH_READ_OOB\n");
             return OCA_BOOT_ERR_READ_OUT_OF_BOUNDS;
         }
     }
 
+    // The flash and DMA drivers report their failures in their own code spaces;
+    // fold each into this module's, so a caller can tell a refused read from a
+    // failed flash transfer from a failed DMA without decoding three schemes.
 #if BOOT_SPI_CONTROLLER_OT
     if (from_spi) {
-        return boot_flash_read(dst, src, len);
+        const uint32_t rc = boot_flash_read(dst, src, len);
+        if (rc != 0u) {
+            // The OpenTitan driver returns a SEP_MSG_SPI_OT_* code and reports
+            // nothing itself.
+            report_status(STATUS_TYPE_WARN, (uint16_t)rc);
+            return OCA_BOOT_ERR_FLASH_READ;
+        }
+        return 0u;
     }
 #endif
-    return sep_dma_copy(dst, src, len);
+    return (sep_dma_copy(dst, src, len) != 0u) ? OCA_BOOT_ERR_DMA : 0u;
 }
 
 // Zero SEP SRAM between retry attempts so a partially staged bad slot cannot be
@@ -237,9 +249,10 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     // The head has to be in RAM before the library sees it: on the OpenTitan
     // path storage is not memory-mapped at all, so "peek in place" in the
     // reference CLI becomes "read the first cache line, then peek".
-    if (manifest_src_read((uint32_t)(uintptr_t)body, src_addr, OCA_MANIFEST_PEEK_MIN, from_spi) !=
-        0u) {
-        return OCA_BOOT_ERR_DMA;
+    uint32_t rd =
+        manifest_src_read((uint32_t)(uintptr_t)body, src_addr, OCA_MANIFEST_PEEK_MIN, from_spi);
+    if (rd != 0u) {
+        return rd;
     }
 
     oca_manifest_peek_t pk;
@@ -257,9 +270,9 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     }
 
     // -- body ---------------------------------------------------------------
-    if (manifest_src_read((uint32_t)(uintptr_t)body, src_addr, (uint32_t)pk.body_size, from_spi) !=
-        0u) {
-        return OCA_BOOT_ERR_DMA;
+    rd = manifest_src_read((uint32_t)(uintptr_t)body, src_addr, (uint32_t)pk.body_size, from_spi);
+    if (rd != 0u) {
+        return rd;
     }
 
     // The manifest's CLAIMED security-version flags, before anything has
@@ -338,9 +351,10 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     }
     uint8_t *const payload = body + payload_off;
 
-    if (manifest_src_read((uint32_t)(uintptr_t)payload, (uint32_t)payload_addr,
-                          (uint32_t)payload_span, from_spi) != 0u) {
-        return OCA_BOOT_ERR_DMA;
+    rd = manifest_src_read((uint32_t)(uintptr_t)payload, (uint32_t)payload_addr,
+                           (uint32_t)payload_span, from_spi);
+    if (rd != 0u) {
+        return rd;
     }
 
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_START_PAYLOAD_VALIDATION);

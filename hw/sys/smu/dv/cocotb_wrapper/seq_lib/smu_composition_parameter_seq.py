@@ -19,7 +19,7 @@ The bench binds SEP_SEC_DISABLE_TOKEN to the SHA-256 of the all-zero 32-byte
 token in place of the metal digest, and the token the wrapper carries is
 compared against that digest, computed here. No specification in this tree
 states the packed layout of the build configuration struct; the per-field
-`Cfg` compares that go through `decode_cfg` are drift checks on the
+`CFG` compares that go through `decode_cfg` are drift checks on the
 elaboration and carry no evidence token.
 """
 
@@ -119,25 +119,25 @@ class smu_composition_parameter_seq:
                 evidence="CHK-SMU-OTPAXI-SEP-S3",
             )
 
-        # SMU-NOSEP.S4, plumbing: the wrapper's Cfg is the one smu elaborates.
-        cfg_handle = hier(smu, "Cfg")
-        cfg_raw = sample(cfg_handle, "smu.Cfg")
+        # SMU-NOSEP.S4, plumbing: the wrapper's CFG is the one smu elaborates.
+        cfg_handle = hier(smu, "CFG")
+        cfg_raw = sample(cfg_handle, "smu.CFG")
         sb.expect_eq(
-            "wrapper Cfg reaches smu unchanged",
-            sample(hier(wrapper, "Cfg"), "smu_wrapper.Cfg"),
+            "wrapper CFG reaches smu unchanged",
+            sample(hier(wrapper, "CFG"), "smu_wrapper.CFG"),
             cfg_raw,
             evidence="CHK-SMU-NOSEP-S4",
         )
 
         # Drift: the struct layout has no specification, so the decode and the
         # per-field compares carry no token.
-        sb.expect_eq("smu.Cfg packed width drift", bit_width(cfg_handle, "smu.Cfg"), CFG_TOTAL_BITS)
+        sb.expect_eq("smu.CFG packed width drift", bit_width(cfg_handle, "smu.CFG"), CFG_TOTAL_BITS)
         fields = decode_cfg(cfg_raw)
         expected = dict(CFG_SPEC_DEFAULTS)
         expected["XTRIG_INT_CT_MODE"] = xtrig_mode
         for name, want in expected.items():
-            sb.expect_eq(f"Cfg.{name} drift (SEP={expected_sep})", fields[name], want)
-        self.log.info("Cfg decoded (SEP=%d): %s", expected_sep, fields)
+            sb.expect_eq(f"CFG.{name} drift (SEP={expected_sep})", fields[name], want)
+        self.log.info("CFG decoded (SEP=%d): %s", expected_sep, fields)
 
         # SMU-NOSEP.S4, consumers: each parameter read where it is consumed is
         # the specified default, plus the SMC reservation where the

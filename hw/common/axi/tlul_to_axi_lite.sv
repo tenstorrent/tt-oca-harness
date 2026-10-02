@@ -16,9 +16,9 @@ module tlul_to_axi_lite
 		parameter int unsigned AXI_USER_WIDTH    = 1,
 		parameter type         axi_lite_req_t    = logic,
 		parameter type         axi_lite_rsp_t    = logic,
-		parameter bit          EnableRspIntgGen      = 1'b1,  // Generate response integrity
-		parameter bit          EnableDataIntgGen     = 1'b1,  // Generate data integrity for responses
-		parameter bit          CmdIntgCheck          = 1'b0   // Check incoming command integrity
+		parameter bit          ENABLE_RSP_INTG_GEN   = 1'b1,  // Generate response integrity
+		parameter bit          ENABLE_DATA_INTG_GEN  = 1'b1,  // Generate data integrity for responses
+		parameter bit          CMD_INTG_CHECK        = 1'b0   // Check incoming command integrity
 	) (
 		input  logic      clk_i,
 		input  logic      rst_ni,
@@ -69,30 +69,28 @@ module tlul_to_axi_lite
 	logic w_done_q,  w_done_d;
 
 	// Response tracking
-	logic [AXI_DATA_WIDTH-1:0]   resp_data_q, resp_data_d;
-	logic                        resp_error_q, resp_error_d;
+	logic [AXI_DATA_WIDTH-1:0]     resp_data_q, resp_data_d;
+	logic                          resp_error_q, resp_error_d;
 
 	// Sticky error tracking
-	logic                        sticky_err_q, sticky_err_d;
+	logic                          sticky_err_q, sticky_err_d;
 
 	// Integrity signals
-	logic [D2HRspIntgWidth-1:0]  rsp_intg;
-	logic [DataIntgWidth-1:0]    data_intg;
+	logic [D2H_RSP_INTG_WIDTH-1:0] rsp_intg;
+	logic [DATA_INTG_WIDTH-1:0]    data_intg;
 
 	// --------------------------------------------------
 	// TL-UL Incoming Command Integrity Checking
 	// --------------------------------------------------
 	logic intg_err;
-	generate
-		if (CmdIntgCheck) begin : gen_cmd_intg_check
-			tlul_cmd_intg_chk u_cmd_intg_chk (
-				.tl_i(tl_i),
-				.err_o(intg_err)
-			);
-		end else begin : gen_no_intg_check
-			assign intg_err = 1'b0;
-		end
-	endgenerate
+	if (CMD_INTG_CHECK) begin : gen_cmd_intg_check
+		tlul_cmd_intg_chk u_cmd_intg_chk (
+			.tl_i(tl_i),
+			.err_o(intg_err)
+		);
+	end else begin : gen_no_intg_check
+		assign intg_err = 1'b0;
+	end
 
 	// --------------------------------------------------
 	// FSM Sequential Logic
@@ -103,7 +101,7 @@ module tlul_to_axi_lite
 			req_addr_q   <= '0;
 			req_data_q   <= '0;
 			req_mask_q   <= '0;
-			req_opcode_q <= tlul_pkg::Get;
+			req_opcode_q <= tlul_pkg::GET;
 			req_source_q <= '0;
 			req_size_q   <= '0;
 			aw_done_q    <= 1'b0;
@@ -183,7 +181,7 @@ module tlul_to_axi_lite
 					aw_done_d    = 1'b0;
 					w_done_d     = 1'b0;
 
-					if (tl_i.a_opcode == tlul_pkg::Get) begin
+					if (tl_i.a_opcode == tlul_pkg::GET) begin
 						state_d = AXI_AR_REQ;
 					end else begin
 						state_d = AXI_AW_W_REQ;
@@ -260,10 +258,10 @@ module tlul_to_axi_lite
 				tl_o.d_error  = resp_error_q;
 				tl_o.d_data   = resp_data_q;
 
-				if (req_opcode_q == tlul_pkg::Get) begin
-					tl_o.d_opcode = tlul_pkg::AccessAckData;
+				if (req_opcode_q == tlul_pkg::GET) begin
+					tl_o.d_opcode = tlul_pkg::ACCESS_ACK_DATA;
 				end else begin
-					tl_o.d_opcode = tlul_pkg::AccessAck;
+					tl_o.d_opcode = tlul_pkg::ACCESS_ACK;
 				end
 
 				if (tl_i.d_ready) begin
@@ -280,28 +278,28 @@ module tlul_to_axi_lite
 	// --------------------------------------------------
 	always_comb begin
 		// Generate response integrity (SECDED ECC for opcode, size, error)
-		if (EnableRspIntgGen) begin
+		if (ENABLE_RSP_INTG_GEN) begin
 			automatic tl_d2h_rsp_intg_t rsp;
-			automatic logic [D2HRspMaxWidth-1:0] unused_payload;
+			automatic logic [D2H_RSP_MAX_WIDTH-1:0] unused_payload;
 
 			rsp.opcode = tl_o.d_opcode;
 			rsp.size = tl_o.d_size;
 			rsp.error = tl_o.d_error;
 
 			{rsp_intg, unused_payload} =
-				prim_secded_pkg::prim_secded_inv_64_57_enc(D2HRspMaxWidth'(rsp));
+				prim_secded_pkg::prim_secded_inv_64_57_enc(D2H_RSP_MAX_WIDTH'(rsp));
 		end else begin
-			rsp_intg = {D2HRspIntgWidth{1'b1}};
+			rsp_intg = {D2H_RSP_INTG_WIDTH{1'b1}};
 		end
 
 		// Generate data integrity (SECDED ECC for data)
-		if (EnableDataIntgGen) begin
-			automatic logic [DataMaxWidth-1:0] unused_data;
+		if (ENABLE_DATA_INTG_GEN) begin
+			automatic logic [DATA_MAX_WIDTH-1:0] unused_data;
 
 			{data_intg, unused_data} =
-				prim_secded_pkg::prim_secded_inv_39_32_enc(DataMaxWidth'(tl_o.d_data));
+				prim_secded_pkg::prim_secded_inv_39_32_enc(DATA_MAX_WIDTH'(tl_o.d_data));
 		end else begin
-			data_intg = {DataIntgWidth{1'b1}};
+			data_intg = {DATA_INTG_WIDTH{1'b1}};
 		end
 	end
 

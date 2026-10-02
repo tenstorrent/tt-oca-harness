@@ -8,21 +8,21 @@
 // filter_hit_o marks a match; tx_rule_pass_o is the allow decision for that beat.
 
 module traffic_filter #(
-  parameter bit EnSrcIdFilter = 1'b0,                       // Match on source ID.
-  parameter bit EnNsFilter = 1'b0,                          // Requires the beat NS flag to equal
+  parameter bit EN_SRC_ID_FILTER = 1'b0,                    // Match on source ID.
+  parameter bit EN_NS_FILTER = 1'b0,                        // Requires the beat NS flag to equal
                                                             // cfg_allow_ns_i.
-  parameter bit EnGroupIdFilter = 1'b0,                     // Match on group ID.
-  parameter int unsigned AddrWidth = 64,                    // Address compare width.
-  parameter int unsigned SrcIdWidth = 4,                    // Source ID width.
-  parameter int unsigned GroupIdWidth = 4,                  // Width of the rule and beat group IDs
-                                                            // compared under EnGroupIdFilter.
-  parameter int unsigned DataBusWidthLog2 = 3,              // log2 of data-bus bytes; address
+  parameter bit EN_GROUP_ID_FILTER = 1'b0,                  // Match on group ID.
+  parameter int unsigned ADDR_WIDTH = 64,                   // Address compare width.
+  parameter int unsigned SRC_ID_WIDTH = 4,                  // Source ID width.
+  parameter int unsigned GROUP_ID_WIDTH = 4,                // Width of the rule and beat group IDs
+                                                            // compared under EN_GROUP_ID_FILTER.
+  parameter int unsigned DATA_BUS_WIDTH_LOG2 = 3,           // log2 of data-bus bytes; address
                                                             // compare granularity when bursts are
                                                             // disabled.
 
-  localparam type addr_t     = logic [AddrWidth-1:0],       // Address type.
-  localparam type src_id_t   = logic [SrcIdWidth-1:0],      // Source ID type.
-  localparam type group_id_t = logic [GroupIdWidth-1:0]     // Group ID type.
+  localparam type addr_t     = logic [ADDR_WIDTH-1:0],      // Address type.
+  localparam type src_id_t   = logic [SRC_ID_WIDTH-1:0],    // Source ID type.
+  localparam type group_id_t = logic [GROUP_ID_WIDTH-1:0]   // Group ID type.
 ) (
   input logic             cfg_allow_traffic_type_i,         // Allow when this rule hits.
   input addr_t            cfg_start_addr_i,                 // Inclusive start of the address
@@ -40,12 +40,12 @@ module traffic_filter #(
                                                             // the range compare to 4 KiB; when low,
                                                             // only single-beat transfers match.
   input src_id_t          cfg_src_id_i,                     // Source ID a beat must carry under
-                                                            // EnSrcIdFilter; all zeros matches any
-                                                            // source.
+                                                            // EN_SRC_ID_FILTER; all zeros matches
+                                                            // any source.
   input group_id_t        cfg_group_id_i,                   // Group ID a beat must carry under
-                                                            // EnGroupIdFilter.
+                                                            // EN_GROUP_ID_FILTER.
   input logic             cfg_allow_ns_i,                   // NS value a beat must carry under
-                                                            // EnNsFilter: 1 matches non-secure, 0
+                                                            // EN_NS_FILTER: 1 matches non-secure, 0
                                                             // secure initiators.
 
   input logic             tx_valid_i,                       // Address-beat valid; gates
@@ -71,26 +71,26 @@ module traffic_filter #(
   logic tx_in_range;
   always_comb begin
     if (cfg_burst_en_i) begin
-      tx_in_range = (tx_addr_i[AddrWidth-1:12] >= cfg_start_addr_i[AddrWidth-1:12]) &&
-                        (tx_addr_i[AddrWidth-1:12] <= cfg_end_addr_i[AddrWidth-1:12]);
+      tx_in_range = (tx_addr_i[ADDR_WIDTH-1:12] >= cfg_start_addr_i[ADDR_WIDTH-1:12]) &&
+                        (tx_addr_i[ADDR_WIDTH-1:12] <= cfg_end_addr_i[ADDR_WIDTH-1:12]);
     end else begin
-      tx_in_range = (tx_addr_i[AddrWidth-1:DataBusWidthLog2] >= cfg_start_addr_i[AddrWidth-1:DataBusWidthLog2]) &&
-                        (tx_addr_i[AddrWidth-1:DataBusWidthLog2] <= cfg_end_addr_i[AddrWidth-1:DataBusWidthLog2]);
+      tx_in_range = (tx_addr_i[ADDR_WIDTH-1:DATA_BUS_WIDTH_LOG2] >= cfg_start_addr_i[ADDR_WIDTH-1:DATA_BUS_WIDTH_LOG2]) &&
+                        (tx_addr_i[ADDR_WIDTH-1:DATA_BUS_WIDTH_LOG2] <= cfg_end_addr_i[ADDR_WIDTH-1:DATA_BUS_WIDTH_LOG2]);
     end
   end
 
   logic pass_src_id, pass_burst, pass_ns, pass_group_id;
   always_comb begin
     // If NS filtering is enabled, we only let traffic matching the secure level pass if the filter allows it
-    pass_ns = EnNsFilter ? (tx_ns_initiator_i == cfg_allow_ns_i) : 1'b1;
+    pass_ns = EN_NS_FILTER ? (tx_ns_initiator_i == cfg_allow_ns_i) : 1'b1;
 
     // If Group ID filtering is enabled, we ignore if all input bits are set to 0,
     // otherwise traffic with matching group_id is needed
-    pass_group_id = EnGroupIdFilter ? !(|tx_group_id_i) | (tx_group_id_i == cfg_group_id_i) : 1'b1;
+    pass_group_id = EN_GROUP_ID_FILTER ? !(|tx_group_id_i) | (tx_group_id_i == cfg_group_id_i) : 1'b1;
 
     // If SRC ID filtering is enabled, we ignore if all cfg bits are set to 0,
     // otherwise traffic with matching src_id is needed
-    pass_src_id = EnSrcIdFilter ? !(|cfg_src_id_i) | (tx_src_id_i == cfg_src_id_i) : 1'b1;
+    pass_src_id = EN_SRC_ID_FILTER ? !(|cfg_src_id_i) | (tx_src_id_i == cfg_src_id_i) : 1'b1;
 
     // If bursts are not enabled, we only pass with tx_len == 0
     pass_burst = cfg_burst_en_i | (tx_len_i == axi_pkg::len_t'(0));

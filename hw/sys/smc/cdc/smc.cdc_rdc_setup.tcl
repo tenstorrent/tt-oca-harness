@@ -39,7 +39,7 @@ puts "INFO: Loading SMC-specific CDC/RDC constraints"
 configure_glitch_free_cells -ignore_modules {prim_ag_clk_mux}
 
 # prim_ag_clk_mux (e.g. avsbus_controller u_refclk_apbclk_mux): inner flops can sit under
-# different clock roots until exclusive clock modeling is complete in hw/sys/smc/synth/constraints.sdc.
+# different clock roots until exclusive clock modeling is complete in hw/sys/smc/synth/smc_clocks.sdc.
 # define_glitch_free_mux + configure_glitch_free_cells declare the mux glitch-safe per
 # methodology; treat residual inner-cell flop crossings as structural/library-contained
 # analysis, not pad-boundary CDC.
@@ -198,21 +198,16 @@ if { [sizeof_collection $avs_fifo_cells] > 0 } {
 # The refclk counter's cnt_update_async_fifo (inside prim_refclk_count_w_cdc)
 # is constrained in flows/cdc/cdc_rdc_setup.tcl and skipped here.
 
-# Synced gray pointer output flops (gen_sync[N].d0nt_wrap_sync) of a prim_fifo_async
-# sync_wptr/sync_rptr, one prim_flop_2sync per pointer bit.
+# Synced gray pointer output stage (u_sync_2/q_o) of a prim_fifo_async
+# sync_wptr/sync_rptr prim_flop_2sync, one bit per pointer bit.
 proc smc_prim_fifo_sync_ptr_pins { cell_hier ptr_inst } {
-    set flops ""
-    foreach c [get_object_name [get_cells "$cell_hier/$ptr_inst/*" -quiet]] {
-        if { [string match "*.d0nt_wrap_sync" $c] } {
-            set flops [add_to_collection $flops [get_cells $c -quiet]]
-        }
-    }
-    if { [sizeof_collection $flops] == 0 } {
-        puts "WARNING: prim_fifo_async ($cell_hier): no $ptr_inst/gen_sync\[N\].d0nt_wrap_sync cells found - pointer sync stage left unconstrained"
+    set pins [get_pins "$cell_hier/$ptr_inst/u_sync_2/q_o/Q*" -quiet]
+    if { [sizeof_collection $pins] == 0 } {
+        puts "WARNING: prim_fifo_async ($cell_hier): no $ptr_inst/u_sync_2/q_o pins found - pointer sync stage left unconstrained"
         return ""
     }
-    puts "INFO: prim_fifo_async ($cell_hier): $ptr_inst has [sizeof_collection $flops] pointer bits"
-    return [get_pins -of_objects $flops -filter {name == Q} -quiet]
+    puts "INFO: prim_fifo_async ($cell_hier): $ptr_inst has [sizeof_collection $pins] pointer bits"
+    return $pins
 }
 
 # Try wildcard ref_name match first (handles parameterized elaborated names);

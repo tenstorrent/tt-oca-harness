@@ -86,25 +86,22 @@ module cross_trigger_matrix
   );
 
   // Generate selector modules for each CT_Src port
-  genvar i;
-  generate
-    for (i = 0; i < NUM_CT_SRC; i++) begin : gen_src_selectors
-      // Select mask for this CT_Src, one config register per port
-      logic [NUM_CT_DST-1:0] select_mask;
+  for (genvar i = 0; i < NUM_CT_SRC; i++) begin : gen_src_selectors
+    // Select mask for this CT_Src, one config register per port
+    logic [NUM_CT_DST-1:0] select_mask;
 
-      assign select_mask = reg_out.CT_SRC[i].CONFIG_0.CT_DST_SELECT.value;
+    assign select_mask = reg_out.CT_SRC[i].CONFIG_0.CT_DST_SELECT.value;
 
-      // Instantiate selector module for this CT_Src
-      ctm_src_selector #(
-        .NUM_CT_DST(NUM_CT_DST)
-      ) u_src_selector (
-        .clk_i      (clk_i),
-        .rst_ni     (rst_ni),
-        .ct_dst_i   (ct_dst_i),
-        .select_i   (select_mask),
-        .ct_src_o   (ct_src_o[i])
-      );
-    end
-  endgenerate
+    // Instantiate selector module for this CT_Src
+    ctm_src_selector #(
+      .NUM_CT_DST(NUM_CT_DST)
+    ) u_src_selector (
+      .clk_i      (clk_i),
+      .rst_ni     (rst_ni),
+      .ct_dst_i   (ct_dst_i),
+      .select_i   (select_mask),
+      .ct_src_o   (ct_src_o[i])
+    );
+  end
 
 endmodule : cross_trigger_matrix

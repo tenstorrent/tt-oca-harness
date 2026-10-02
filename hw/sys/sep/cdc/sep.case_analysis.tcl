@@ -10,7 +10,7 @@
 # struct-flattened pin warns instead of silently no-oping.
 
 if { [info procs cdc_is_block_top] eq "" } {
-    source $::env(GIT_ROOT)/flows/synth/constraints/cdc_hier_procs.tcl
+    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
 }
 
 proc _sep_case { value pattern } {

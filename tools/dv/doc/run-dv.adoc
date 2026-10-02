@@ -1251,8 +1251,9 @@ checks `podman`, not `vcs`.
 implements the same four operations behind the regression loop: submit an
 attempt, poll its state, cancel it, and collect its result. The loop never
 takes a verdict from the executor; the leaf's own `result.json` grades it, and
-an attempt that ends without one grades `ERROR` with a reason that starts with
-`environment_error`.
+an attempt that ends without one grades `ERROR` with an `environment_error`
+failure bucket and a reason that starts with `environment_error`, or `TIMEOUT`
+with a `timeout` bucket when the scheduler's wall time expired.
 
 [cols="<2,<1,<4",options="header"]
 |===
@@ -1436,7 +1437,8 @@ and renders `submit_argv` with that script as `{script}`,
 with its status and output, is appended to
 `<run>/stages/regress/logs/executor.log`; a leaf graded from a job carries the
 job id and final scheduler state under `metadata.scheduler` and its job log
-under `artifacts.executor_log`.
+under `artifacts.executor_log`. A leaf whose job left no `result.json` also
+takes the job log as its log.
 
 With `arrays = true` the first attempts the coordinator submits in one turn go
 out as one job array per chunk of at most `array_chunk_size` attempts, bounded
@@ -1476,7 +1478,10 @@ finished job grades `ERROR` (`environment_error`), a missing one is `LOST`.
 |The job ran to its end. The leaf's own `result.json` grades it, with the
 exit code recovered from the query or the completion record when the
 scheduler reports none; no `result.json` within the grace is `ERROR`
-(`environment_error`).
+(`environment_error`), with the exit code in the reason when the observation
+that ends the wait carries one. LSF's live query reports it; on Slurm a failed
+job's code arrives only once the job has left the live query and `sacct`
+answers, and a completed job reads as `0`.
 
 |`TIMED_OUT`
 |The scheduler's wall time expired: `TIMEOUT`, with the job log as the
@@ -1533,8 +1538,9 @@ wave and console options a debug rerun changes. The worker verifies the digest,
 the checkout, and the run tree, reloads the configuration from the tree, runs
 exactly one stage, writes the leaf's `result.json` and a `<task>.done.json`
 completion record beside the manifest, and exits with the leaf's status code.
-A manifest that cannot be trusted or run leaves an `ERROR` result whose reason
-starts with `environment_error` and exits `2`. Workers write nothing else: the
+When a manifest cannot be trusted or run, the worker leaves an `ERROR` result
+with an `environment_error` failure bucket and a reason that starts with
+`environment_error`, and exits `2`. Workers write nothing else: the
 coordinator is the single writer of every aggregate in the run tree.
 
 [[runner-formal]]
@@ -2872,7 +2878,8 @@ stops early for any other reason (`--max-failures`, a failing leaf in a flat
 run, a build failure before the leaves) records `tests.completed = false` and
 `tests.pass_rate = null` and prints the same console note, but carries no
 `interruption` object and gets no run-level interruption testcase; its JUnit
-evidence is the leaf files it wrote.
+evidence is the leaf files it wrote, or the run-level stage file when it
+graded no leaf (<<runner-junit-ownership>>).
 
 === Status and exit codes
 
@@ -2990,9 +2997,11 @@ test, absent from the flow status
 The failure-bucket `kind` is the shared enum: `sim_failure`, `tool_error`,
 `unknown`, `timeout`, `config_error`, `compile_error`, `elaboration_error`,
 `coverage_threshold`, `formal_fail`, `expected_fail_passed`,
-`expected_fail_mismatch`, `interruption`, and `dependency_blocked` (a leaf
-whose scheduler-managed target build failed, <<runner-cluster-dispatch>>);
-the first bucket's kind is the JUnit `type` of a failed or errored leaf. A
+`expected_fail_mismatch`, `interruption`, `environment_error` (an attempt
+that could not run or left no result of its own,
+<<runner-executor-registry>>), and `dependency_blocked` (a leaf whose
+scheduler-managed target build failed, <<runner-cluster-dispatch>>); the
+first bucket's kind is the JUnit `type` of a failed or errored leaf. A
 stage that fails without a
 parser decision takes its stage's default kind (`flist` `config_error`,
 `hdl_compile` and `c_compile` `compile_error`, `elaborate`
@@ -3080,32 +3089,38 @@ tree for 30 days and the normalized bundle for 90 (<<runner-ci-budgets>>).
 [[runner-junit-ownership]]
 === JUnit ownership
 
-Every executed simulation leaf ends with xUnit XML at
-`<leaf>/results/results.xml`. A framework that writes its own file, as cocotb
-does, owns it: the runner reads it as evidence and never rewrites it. When
-the file is absent after grading, for a SystemVerilog UVM leaf or a leaf
-whose simulator died before the framework could write, the runner
-synthesizes a single-testcase file from the graded result, with the node
-mapping above and a `system-out` block naming the log, the leaf
-`result.json`, the parser policy, the `status_source`, the failure buckets,
-and the attempt. Either way the path is recorded as `artifacts.results_xml`
-on the leaf.
+Every graded simulation leaf except a skipped one ends with xUnit XML at
+`<leaf>/results/results.xml`, in the directory of the attempt that graded it.
+A framework that writes its own file, as cocotb does, owns it: the runner
+reads it as evidence and never rewrites it. When the file is absent after
+grading, the runner synthesizes a single-testcase file from the graded
+result, with the node mapping above and a `system-out` block naming the log,
+the leaf `result.json`, the parser policy, the `status_source`, the failure
+buckets, and the attempt. That covers a SystemVerilog UVM leaf, a leaf whose
+simulator died before the framework could write, a worker that recorded an
+`environment_error` without running the test, and a leaf the coordinator
+grades without a result of its own: an attempt that ended without
+`result.json`, a scheduler `TIMEOUT`, and a `dependency_blocked` leaf. The
+file names the leaf's `result.json`, or the run's when the leaf has none, and
+an earlier attempt of a retried leaf that left no result gets no file. A leaf
+that ran records the path as `artifacts.results_xml` in its `result.json`.
 
 A synthesized file is a reporting artifact, written after grading, atomically,
 and never read back as evidence; before a leaf runs, the runner removes one
-that an earlier invocation into the same directory left. Its suite carries a
-`producer` property with the value `run_dv.py junit-fallback`, and only a
+that an earlier invocation into the same directory left, and a leaf the
+coordinator grades replaces one in its attempt's directory. Its suite carries
+a `producer` property with the value `run_dv.py junit-fallback`, and only a
 file carrying that marker is ever removed or replaced; a file without it is
 left alone even when it sits where the runner would write.
 
 Two run-level files follow the same rule. A handled interruption writes
 `<run>/results/results.xml` with one errored testcase of type `interruption`
-(<<runner-interrupted-checkpoints>>). A run that fails before any leaf
-executed writes the same path with one testcase for the first failing stage
-in `ERROR`, `TIMEOUT`, `FAIL`, `UNKNOWN` order, so a compile or filelist
-failure stays visible to a JUnit consumer; a run in which a leaf executed,
-or that passes, removes a marked run-level file left by an earlier
-invocation into the same directory.
+(<<runner-interrupted-checkpoints>>). A run that fails without grading a leaf
+writes the same path with one testcase for the first failing stage in
+`ERROR`, `TIMEOUT`, `FAIL`, `UNKNOWN` order, so a compile or filelist failure
+stays visible to a JUnit consumer; a run that grades a leaf, or that passes,
+removes a marked run-level file left by an earlier invocation into the same
+directory.
 
 [[runner-ci]]
 == Continuous integration

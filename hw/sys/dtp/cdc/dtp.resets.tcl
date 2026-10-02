@@ -21,7 +21,7 @@
 # instead of erroring; -master_reset name strings map through cdc_rst.
 
 if { [info procs cdc_create_port_reset] eq "" } {
-    source $::env(GIT_ROOT)/flows/cdc/vc_procs.tcl
+    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
 }
 
 #=======================================================================================================================

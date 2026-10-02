@@ -21,11 +21,12 @@ puts "INFO: Loading shared CDC/RDC setup"
 
 if { [info procs cdc_conv_ignore_among] eq "" } {
     if { [info script] ne "" } {
-        source [file join [file dirname [file normalize [info script]]] vc_procs.tcl]
+        source [file normalize [file join [file dirname [info script]] \
+            ../synth/constraints/hier_reuse_procs.tcl]]
     } elseif { [info exists ::env(GIT_ROOT)] } {
-        source $::env(GIT_ROOT)/flows/cdc/vc_procs.tcl
+        source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
     } else {
-        error "cdc_rdc_setup.tcl: cannot locate vc_procs.tcl; set GIT_ROOT"
+        error "cdc_rdc_setup.tcl: cannot locate hier_reuse_procs.tcl; set GIT_ROOT"
     }
 }
 
@@ -40,7 +41,7 @@ if { [info procs cdc_conv_ignore_among] eq "" } {
 #   prim_sync3 declares `prim_flop_3sync u_sync3 [WIDTH-1:0] (...)` — a
 #   generate array of single-bit prim_flop_3sync instances named `u_sync3[0]`,
 #   `u_sync3[1]`, etc. The generate brackets `[...]` are NOT matched by the
-#   `*` glob in `get_pins -hier`, so a pattern like `*/u_sync3*/d0nt_wrap_sync/Q`
+#   `*` glob in `get_pins -hier`, so a pattern like `*/u_sync3*/q_ddd/Q`
 #   silently returns an empty collection. This helper sidesteps the bracket-
 #   glob limitation by:
 #     1. Filtering cells by `ref_name == prim_flop_3sync` (no bracket
@@ -48,8 +49,7 @@ if { [info procs cdc_conv_ignore_among] eq "" } {
 #     2. Filtering the resulting cell paths by `string match` against the
 #        caller-supplied parent-path pattern (Tcl `string match` does
 #        match `[`/`]` literally, unlike SpyGlass's `get_*` glob).
-#     3. Building each per-stage pin path explicitly: `<cell>/d0nt_wrap_sync/Q` in the
-#        libcell build, `<cell>/q_d/Q` .. `<cell>/q_ddd/Q` in the NO_LIBCELL RTL fallback.
+#     3. Building each per-stage pin path explicitly: `<cell>/q_d/Q` .. `<cell>/q_ddd/Q`.
 #
 # Returns a Tcl list of pin name strings (consumable by `set_gray_signals -gray_signals`
 # and `cdc_conv_ignore_among`).
@@ -58,9 +58,8 @@ proc collect_prim_flop_3sync_qpins { parent_pattern } {
     set cells [get_cells -hier -filter "ref_name == prim_flop_3sync" -quiet]
     foreach cname [get_object_name $cells] {
         if { [string match $parent_pattern $cname] } {
-            # The libcell build elaborates one 3-stage cell d0nt_wrap_sync; the
-            # NO_LIBCELL RTL fallback elaborates per-stage q_d/q_dd/q_ddd.
-            foreach stage {q_d q_dd q_ddd d0nt_wrap_sync} {
+            # prim_flop_3sync elaborates the three stages as q_d / q_dd / q_ddd.
+            foreach stage {q_d q_dd q_ddd} {
                 set p [get_pins "$cname/$stage/Q" -quiet]
                 if { [sizeof_collection $p] > 0 } {
                     foreach n [get_object_name $p] { lappend out_pins $n }
@@ -223,7 +222,7 @@ if { [sizeof_collection $gray2bin_inputs] > 0 } {
 # The block above marks the `a_i` *input port* of every prim_gray2bin instance as
 # gray; port-level gray alone does not always cover inner reconvergence at
 # decoder outputs where upstream sources are listed as the per-bit
-# `u_sync_ref_count/u_sync3[i]/d0nt_wrap_sync/Q` flops. Annotate those synchronizer Q pins
+# `u_sync_ref_count/u_sync3[i]/q_ddd/Q` flops. Annotate those synchronizer Q pins
 # explicitly so gray/coherency modeling matches the RTL.
 set sync_ref_count_qpins [collect_prim_flop_3sync_qpins {*u_sync_ref_count/u_sync3*}]
 if { [llength $sync_ref_count_qpins] > 0 } {
@@ -250,7 +249,7 @@ if { [sizeof_collection $gray_count_src_pins] > 0 } {
 #
 # RTL signals (per instance) we constrain:
 #   - fifo_wptr_gray_q / fifo_rptr_gray_q : source-side gray pointer flops
-#   - sync_wptr/gen_sync[N].d0nt_wrap_sync / sync_rptr/gen_sync[N].d0nt_wrap_sync
+#   - sync_wptr/u_sync_2/q_o / sync_rptr/u_sync_2/q_o
 #       : synced gray pointer outputs (prim_flop_2sync, one cell per bit)
 #   - storage[Depth] : data array, written on wclk, read combinationally on rclk
 #
@@ -285,10 +284,10 @@ if { [sizeof_collection $cnt_update_fifo_cells] > 0 } {
         }
 
         # Synced gray pointer outputs (prim_flop_2sync output stage).
-        set wptr_sync_pins [get_pins "$cell_hier/sync_wptr/gen_sync\[0\].d0nt_wrap_sync/Q" -quiet]
-        set rptr_sync_pins [get_pins "$cell_hier/sync_rptr/gen_sync\[0\].d0nt_wrap_sync/Q" -quiet]
-        if { [sizeof_collection [get_pins "$cell_hier/sync_wptr/gen_sync\[1\].d0nt_wrap_sync/Q" -quiet]] > 0 } {
-            puts "WARNING: cnt_update_async_fifo ($cell_hier): pointer is wider than 1 bit -- only gen_sync\[0\] is constrained; extend this section"
+        set wptr_sync_pins [get_pins "$cell_hier/sync_wptr/u_sync_2/q_o/Q[0]" -quiet]
+        set rptr_sync_pins [get_pins "$cell_hier/sync_rptr/u_sync_2/q_o/Q[0]" -quiet]
+        if { [sizeof_collection [get_pins "$cell_hier/sync_wptr/u_sync_2/q_o/Q[1]" -quiet]] > 0 } {
+            puts "WARNING: cnt_update_async_fifo ($cell_hier): pointer is wider than 1 bit -- only bit 0 is constrained; extend this section"
         }
         if { [sizeof_collection $wptr_sync_pins] > 0 } {
             set_gray_signals -gray_signals $wptr_sync_pins

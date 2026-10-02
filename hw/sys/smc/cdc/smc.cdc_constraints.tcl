@@ -23,7 +23,7 @@ puts "INFO: Loading SMC-specific CDC constraints"
 # Hierarchy-reusable: anchored instance paths go through cdc_inst; pad2core_i[51] keeps
 # the same port name at the SMU top, so its get_ports reference needs no mapping.
 if { [info procs cdc_conv_apply] eq "" } {
-    source $::env(GIT_ROOT)/flows/cdc/vc_procs.tcl
+    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
 }
 
 ################################################################################
@@ -114,7 +114,7 @@ if { [sizeof_collection $avs_sdata_intdet_q0_pin] > 0 } {
 ################################################################################
 # Per-bit synchronized signals that later meet in a mux/OR/read-data cone but
 # carry no cross-bit coherency requirement. Contributed to the single cumulative
-# configure_cdc_convergence via cdc_conv_ignore_among (see cdc_hier_procs.tcl).
+# configure_cdc_convergence via cdc_conv_ignore_among (see hier_reuse_procs.tcl).
 #
 #   - ext_interrupts_i / ext_debug_bus_i: per-bit external level signals, each
 #     synchronized independently in u_smc_base. Reconvergence in the DFD debug
@@ -150,34 +150,34 @@ proc _smc_conv_ignore { label pattern } {
 
 # cdc_conv_ignore_among combines all pins across all calls into a single group to ignore convergence
 # all signals across these calls have no coherency requirement
-_smc_conv_ignore ext_interrupts {u_smc_base/u_ext_interrupts_sync3/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore ext_debug_bus {u_smc_base/u_ext_debug_bus_sync3/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore i3c_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i3c_irq_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore uart_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_combined_irq_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore i2c_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_irq_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore avsbus_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_avsbus_irq_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore ndmreset_req {u_smc_peripherals/u_smc_peripherals_cdc/u_ndmreset_request_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore sep_wdt_irq {u_smc_peripherals/u_rst_ext_wdt_irq_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore gpio_pad2core {u_smc_peripherals/u_smc_padring/*/u_pad2core_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore dfd_refcnt_gray {u_smc_base/u_internal_regs/u_smc_dfd_wrap/u_ref_cnt_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore avs_unresponsive {u_smc_peripherals/u_avsbus_controller/u_slave_unresponsive_resync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore avs_slave_int {u_smc_peripherals/u_avsbus_controller/u_slave_interrupt_resync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore avs_max_retries {u_smc_peripherals/u_avsbus_controller/u_max_retries_attempted_resync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore avs_readback_en {u_smc_peripherals/u_avsbus_controller/u_avs_readback_en_resync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore avs_rb_fifo_full {u_smc_peripherals/u_avsbus_controller/u_readback_fifo_full_resync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore avs_cmd_gray {u_smc_peripherals/u_avsbus_controller/u_cmd_async_fifo_inst/*/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore avs_rb_gray {u_smc_peripherals/u_avsbus_controller/u_readasync_back_fifo_inst/*/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore avs_resync_pend {u_smc_peripherals/u_avsbus_controller/u_slave_resync_pending_resync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore i2c_debug {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_debug_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore boot_stall {u_smc_peripherals/u_boot_stall_combined_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore reset_complete {u_smc_peripherals/u_smc_reset_unit/u_smc_subsystem_resets/u_reset_complete_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore cool_isolate_req {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_isolate_req_pin_sync/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore cool_flr_smc {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_cfg_flr_pf_active_sync_smc/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore cool_flr_ref {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_cfg_flr_pf_active_sync_ref/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore cool_rst_ni {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_rst_cool_ni_sync_smc/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore cool_rst_no {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_rst_cool_no_sync_smc/*/d0nt_wrap_sync/Q}
-_smc_conv_ignore i3c_scl_pad {u_smc_peripherals/u_i3ccore_wrapper/*/u_i3c/xphy/scl_synchronizer/*/Q}
-_smc_conv_ignore i3c_sda_pad {u_smc_peripherals/u_i3ccore_wrapper/*/u_i3c/xphy/sda_synchronizer/*/Q}
+_smc_conv_ignore ext_interrupts {u_smc_base/u_ext_interrupts_sync3/*/q_ddd/Q}
+_smc_conv_ignore ext_debug_bus {u_smc_base/u_ext_debug_bus_sync3/*/q_ddd/Q}
+_smc_conv_ignore i3c_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i3c_irq_sync/*/q_ddd/Q}
+_smc_conv_ignore uart_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_combined_irq_sync/*/q_ddd/Q}
+_smc_conv_ignore i2c_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_irq_sync/*/q_ddd/Q}
+_smc_conv_ignore avsbus_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_avsbus_irq_sync/*/q_ddd/Q}
+_smc_conv_ignore ndmreset_req {u_smc_peripherals/u_smc_peripherals_cdc/u_ndmreset_request_sync/*/q_ddd/Q}
+_smc_conv_ignore sep_wdt_irq {u_smc_peripherals/u_rst_ext_wdt_irq_sync/*/q_ddd/Q}
+_smc_conv_ignore gpio_pad2core {u_smc_peripherals/u_smc_padring/*/u_pad2core_sync/*/q_ddd/Q}
+_smc_conv_ignore dfd_refcnt_gray {u_smc_base/u_internal_regs/u_smc_dfd_wrap/u_ref_cnt_sync/*/q_ddd/Q}
+_smc_conv_ignore avs_unresponsive {u_smc_peripherals/u_avsbus_controller/u_slave_unresponsive_resync/*/q_ddd/Q}
+_smc_conv_ignore avs_slave_int {u_smc_peripherals/u_avsbus_controller/u_slave_interrupt_resync/*/q_ddd/Q}
+_smc_conv_ignore avs_max_retries {u_smc_peripherals/u_avsbus_controller/u_max_retries_attempted_resync/*/q_ddd/Q}
+_smc_conv_ignore avs_readback_en {u_smc_peripherals/u_avsbus_controller/u_avs_readback_en_resync/*/q_ddd/Q}
+_smc_conv_ignore avs_rb_fifo_full {u_smc_peripherals/u_avsbus_controller/u_readback_fifo_full_resync/*/q_ddd/Q}
+_smc_conv_ignore avs_cmd_gray {u_smc_peripherals/u_avsbus_controller/u_cmd_async_fifo_inst/*/*/q_ddd/Q}
+_smc_conv_ignore avs_rb_gray {u_smc_peripherals/u_avsbus_controller/u_readasync_back_fifo_inst/*/*/q_ddd/Q}
+_smc_conv_ignore avs_resync_pend {u_smc_peripherals/u_avsbus_controller/u_slave_resync_pending_resync/*/q_ddd/Q}
+_smc_conv_ignore i2c_debug {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_debug_sync/*/q_ddd/Q}
+_smc_conv_ignore boot_stall {u_smc_peripherals/u_boot_stall_combined_sync/*/q_ddd/Q}
+_smc_conv_ignore reset_complete {u_smc_peripherals/u_smc_reset_unit/u_smc_subsystem_resets/u_reset_complete_sync/*/q_ddd/Q}
+_smc_conv_ignore cool_isolate_req {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_isolate_req_pin_sync/*/q_ddd/Q}
+_smc_conv_ignore cool_flr_smc {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_cfg_flr_pf_active_sync_smc/*/q_ddd/Q}
+_smc_conv_ignore cool_flr_ref {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_cfg_flr_pf_active_sync_ref/*/q_ddd/Q}
+_smc_conv_ignore cool_rst_ni {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_rst_cool_ni_sync_smc/*/q_ddd/Q}
+_smc_conv_ignore cool_rst_no {u_smc_peripherals/u_smc_reset_unit/u_smc_cool_reset_wrap/u_rst_cool_no_sync_smc/*/q_ddd/Q}
+_smc_conv_ignore i3c_scl_pad {u_smc_peripherals/u_i3ccore_wrapper/*/u_i3c/xphy/scl_synchronizer/u_sync_2/q_o/Q*}
+_smc_conv_ignore i3c_sda_pad {u_smc_peripherals/u_i3ccore_wrapper/*/u_i3c/xphy/sda_synchronizer/u_sync_2/q_o/Q*}
 
 rename _smc_conv_ignore {}
 
@@ -187,7 +187,7 @@ rename _smc_conv_ignore {}
 set _tldm_sync_cells [get_cells -hier -filter {full_name =~ *tlDM*prim_flop_3sync_r} -quiet]
 set _tldm_sync_pins [list]
 foreach_in_collection c $_tldm_sync_cells {
-    set p [get_pins -quiet "[get_object_name $c]/d0nt_wrap_sync/Q"]
+    set p [get_pins -quiet "[get_object_name $c]/q_ddd/Q"]
     if {[sizeof_collection $p] > 0} { lappend _tldm_sync_pins {*}[get_object_name $p] }
 }
 if { [llength $_tldm_sync_pins] > 0 } {

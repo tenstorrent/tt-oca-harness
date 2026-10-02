@@ -29,7 +29,7 @@ module smu_clk_fcov #(
   // 0 on an elaboration without SEP. The SEP, crossbar and SEP-watchdog
   // clock and reset mirrors are tied off there, so the points that measure
   // them are dropped rather than carried unhittable.
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_smu_i,
   input wire rst_primary_smc_clk_ni,
@@ -144,7 +144,7 @@ module smu_clk_fcov #(
   // out of smu.sv's gen_sep branch, and the bench ties their clock and
   // reset mirrors off without it.
   // ------------------------------------------------------------------
-  if (SepPresent) begin : g_sep
+  if (SEP_PRESENT) begin : g_sep
     logic [15:0] sep_cnt_q, xbar_cnt_q, wdt_cnt_q;
     always_ff @(posedge sep_clk_i) begin
       if (in_reset) sep_cnt_q <= '0;

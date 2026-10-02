@@ -24,7 +24,7 @@ waive_violation -add {SMU_SETUP_RESET_ASSERT_MISSING_sep_wdt_loop} \
 
 waive_violation -add {SMU_RDC_CORRUPT_sep_fabric_to_smc_debug_bus} \
     -comment {SEP flops (SEP_CPU_RESET_N / SEP_RESET_N / PRIMARY / KM_COLD) tapped onto the SMC external debug-bus observation sync (u_ext_debug_bus_sync3, unreset, SMUCLK->SMUCLK). Single-bit observation lanes resolve to old/new within the chain while SEP is itself resetting; the only consumer is the DFD (trace capture, debug-armed CLA), no functional consumer.} \
-    -filter {(SrcObject =~ "gen_sep.*") AND (DestObject =~ "u_smc/u_smc_base/u_ext_debug_bus_sync3/u_sync3[*]/d0nt_wrap_sync/Q") AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'") AND (ReasonInfoList:ReasonInfo:ReasonCode == "NFF_BEYOND_UDS")} \
+    -filter {(SrcObject =~ "gen_sep.*") AND (DestObject =~ "u_smc/u_smc_base/u_ext_debug_bus_sync3/u_sync3[*]/q_d/Q") AND (RdcDestResets:DestResetInfo:ResetName == "'no-reset'") AND (ReasonInfoList:ReasonInfo:ReasonCode == "NFF_BEYOND_UDS")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 waive_violation -add {SMU_RDC_CORRUPT_jtag_dtp_stap_to_smc_dtm} \

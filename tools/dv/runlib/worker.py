@@ -232,7 +232,9 @@ def _record_environment_error(path: Path, reason: str, started_at: str) -> None:
             "duration_sec": 0.0,
             "log": None,
             "artifacts": {},
-            "failure_buckets": [],
+            "failure_buckets": [
+                {"kind": "environment_error", "signature": result.reason[:120], "count": 1}
+            ],
             "parser": None,
             "metadata": result.metadata,
             "attempt": data.get("attempt", 0),

@@ -79,7 +79,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>REQ_OUT</ipxact:name>
-            <ipxact:description>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</ipxact:description>
+            <ipxact:description>Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -92,7 +92,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>ACK_IN</ipxact:name>
-            <ipxact:description>Readout of the current synchronized CT_Ack_in signal value.</ipxact:description>
+            <ipxact:description>Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.</ipxact:description>
             <ipxact:bitOffset>5</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -105,7 +105,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>REQ_IN</ipxact:name>
-            <ipxact:description>Readout of the current synchronized CT_Req_in signal value.</ipxact:description>
+            <ipxact:description>Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.</ipxact:description>
             <ipxact:bitOffset>6</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -118,7 +118,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>ACK_OUT</ipxact:name>
-            <ipxact:description>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</ipxact:description>
+            <ipxact:description>Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</ipxact:description>
             <ipxact:bitOffset>7</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

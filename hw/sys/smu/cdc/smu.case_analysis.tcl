@@ -11,7 +11,7 @@
 
 # Pin to the same functional/non-scan values the blocks use (test_en_i/scan_rst_ni = 0).
 if { [info procs cdc_is_block_top] eq "" } {
-    source $::env(GIT_ROOT)/flows/synth/constraints/cdc_hier_procs.tcl
+    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
 }
 if { [cdc_ports_pinned] } {
     set_case_analysis 0 [get_ports {test_en_i}]

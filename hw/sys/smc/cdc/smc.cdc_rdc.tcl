@@ -21,11 +21,15 @@ if { [info script] ne "" } {
 }
 set ocah_smc_flows_dir [file normalize $ocah_smc_cdc_dir/../../../../flows]
 
-source -echo [file join $ocah_smc_flows_dir cdc vc_procs.tcl]
+source -echo [file join $ocah_smc_flows_dir synth constraints hier_reuse_procs.tcl]
 
-# Clocks, generated clocks, IO delays (including the GPIO pad ring), async
-# groups (block-top gated inside).
-source -echo [file join $ocah_smc_cdc_dir ../synth/constraints.sdc]
+# Clocks, generated clocks, async groups and IO delays (block-top gated inside):
+# the files the synthesis SDC composes, without its CDC max-delay layer.
+source -echo [file join $ocah_smc_flows_dir synth constraints clock_periods.tcl]
+source -echo [file join $ocah_smc_cdc_dir ../synth/smc_clocks.sdc]
+source -echo [file join $ocah_smc_cdc_dir ../synth/smc_clock_groups.sdc]
+source -echo [file join $ocah_smc_cdc_dir ../synth/smc_io_delays.sdc]
+source -echo [file join $ocah_smc_cdc_dir ../synth/smc_gpio_io_delays.sdc]
 
 source -echo [file join $ocah_smc_cdc_dir smc.resets.tcl]
 source -echo [file join $ocah_smc_cdc_dir smc.case_analysis.tcl]

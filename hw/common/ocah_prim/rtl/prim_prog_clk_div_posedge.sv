@@ -98,7 +98,7 @@ module prim_prog_clk_div_posedge #(
   // clk_i and div_clk are in the same clock domain (div_clk is derived from
   // clk_i), so a single reset_n_syncd is correct for both rst0_ni and rst1_ni.
   prim_ag_clk_mux #(
-    .SelectOnReset(DIVIDED_CLOCK_ON_RESET)
+    .SELECT_ON_RESET(DIVIDED_CLOCK_ON_RESET)
   ) u_postdiv_mux (
     .clk0_i(clk_i),
     .clk1_i(div_clk),

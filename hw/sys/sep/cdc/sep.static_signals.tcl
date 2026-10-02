@@ -6,10 +6,10 @@
 # Quasi Static Signals
 ########################################################
 # Hierarchy-reusable: port references go through cdc_port_or_pin, `-hier` globs are
-# level-independent. See flows/synth/constraints/cdc_hier_procs.tcl.
+# level-independent. See flows/synth/constraints/hier_reuse_procs.tcl.
 
 if { [info procs cdc_is_block_top] eq "" } {
-    source $::env(GIT_ROOT)/flows/synth/constraints/cdc_hier_procs.tcl
+    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
 }
 
 proc _sep_static_port { pattern } {

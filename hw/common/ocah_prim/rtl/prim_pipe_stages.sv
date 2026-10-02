@@ -23,8 +23,7 @@ module prim_pipe_stages #(
 
   assign stage_data[0] = d_i;
 
-  genvar i;
-  for (i = 0; i < NUM_STAGES; i = i + 1) begin : gen_pipe_stages
+  for (genvar i = 0; i < NUM_STAGES; i = i + 1) begin : gen_pipe_stages
 
     prim_pipe_stage #(
       .WIDTH(WIDTH)

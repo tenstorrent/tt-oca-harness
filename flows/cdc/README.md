@@ -10,10 +10,9 @@ sign-off constraints. The per-block pieces live beside each subsystem:
 
 | Path | Contents |
 |---|---|
-| `flows/synth/constraints/cdc_hier_procs.tcl` | Hierarchy-reuse hooks (`::cdc_hier_prefix`, clock and reset aliases, `::cdc_scenario`, `::cdc_bound_crossings`) and the procs every constraint file uses |
-| `flows/cdc/vc_procs.tcl` | Sign-off helpers on top of those hooks: `cdc_create_port_reset`, the apply-once convergence configuration |
+| `flows/synth/constraints/hier_reuse_procs.tcl` | Hierarchy-reuse hooks (`::cdc_hier_prefix`, clock and reset aliases, `::cdc_scenario`), the procs every constraint file uses, `cdc_create_port_reset` and the apply-once convergence configuration |
 | `flows/cdc/cdc_rdc_setup.tcl` | Type-level synchronizer, verified-IP and gray-signal setup shared by every block; applies once per session |
-| `hw/sys/<block>/synth/constraints.sdc` | Clocks, generated clocks, IO delays and async groups; also the synthesis SDC |
+| `hw/sys/<block>/synth/<block>_{clocks,clock_groups,io_delays}.sdc` | Clocks, generated clocks, async groups and IO delays; the synthesis SDC `constraints.sdc` composes the same files |
 | `hw/sys/<block>/cdc/<block>.cdc_rdc.tcl` | Entry point: sources the block's files in dependency order |
 | `hw/sys/<block>/cdc/<block>.{resets,case_analysis,static_signals,cdc_rdc_setup}.tcl` | Reset tree and assertion sequences, functional case analysis, quasi-static signals, instance-level synchronizer annotation |
 | `hw/sys/<block>/cdc/<block>.vccdc*.waiver.tcl`, `hw/sys/<block>/rdc/<block>.vcrdc*.waiver.tcl` | Reviewed CDC and RDC waivers |
@@ -24,12 +23,10 @@ sign-off constraints. The per-block pieces live beside each subsystem:
   an entry sources (quasi-static signals and convergence constraints are CDC only).
 - `::cdc_scenario` — `synth` (default) or `functional`. The functional scenario is
   the sign-off run: its case-analysis files pin the DFT and strap ports, so those
-  ports take no IO delay, and the async groups are declared with a bare
-  `set_clock_groups -asynchronous`. The synth scenario applies every IO delay and
-  declares the groups with `-allow_paths` plus default bounds.
-- `::cdc_bound_crossings` — `1` (default) bounds the crossings in the synth
-  scenario: `-allow_paths` groups with default bounds plus the block's per-instance
-  max-delay layer. `0` declares bare async groups and applies no bound.
+  ports take no IO delay. The synth scenario applies every IO delay. Both declare
+  the async groups through `set_async_clock_groups` (`-allow_paths` plus the
+  default bounds); the per-instance max-delay layer is applied only by
+  `constraints.sdc`, which the sign-off entry does not source.
 
 ## Replaying a block under a parent
 
@@ -39,6 +36,18 @@ child's boundary constraints (port clocks, IO delays, port resets, its own
 `cdc_apply_async_groups`) are skipped under a prefix; its internal constraints
 re-anchor through `cdc_inst`, and generated clocks it registers with
 `cdc_group_extra` land in the parent's async groups.
+
+## Primitive leaf names
+
+The constraints and waivers are written against the generic primitives the open
+tree elaborates (`hw/common/ocah_prim_generic`, the OpenTitan `prim_generic`
+set): a three-stage synchroniser is `<inst>/q_d`, `q_dd`, `q_ddd` (the tool
+reports crossings and synchroniser outputs on `q_d`), a two-stage one is
+`<inst>/u_sync_1/q_o` and `u_sync_2/q_o`, a flop is `<inst>/q_o`, the hardened
+reset flop is `<inst>/q_d`, and a clock gate is the `<inst>/en_latch` latch.
+Object types are `flop` and `latch`. A technology swap that replaces these
+primitives changes every one of those names, so run with the generic set or
+re-anchor the collateral.
 
 ## Editing
 

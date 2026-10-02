@@ -4,7 +4,7 @@
  * SEP-driven SMC bring-up over the SEP->SMC port (sep_axi_in) -- common helper.
  *
  * The SEP->SMC port maps the SEP-view region 0x4000_0000 to the SMC-local 0xC000_0000
- * space and is NOT behind the SMC sys-inbound BlockByDefault filter, so the real SEP
+ * space and is NOT behind the SMC sys-inbound BLOCK_BY_DEFAULT filter, so the real SEP
  * firmware can reach SMC CPU_CTRL (reset CSRs, scratch) and SMC SRAM directly. The SEP's
  * OWN outbound egress filter must first be opened over this region (sep_smc_open_window()).
  *

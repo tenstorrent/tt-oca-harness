@@ -5,6 +5,13 @@
 
 === Signal Interface
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="stap-signal-interface-table"></span>
+++++
+endif::backend-html5[]
+
 Packed control and bus types remain bundles at the `jtag_stap` boundary; their
 members are not separate scalar ports.
 

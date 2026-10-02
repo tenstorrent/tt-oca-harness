@@ -23,7 +23,7 @@ configure_unconstrained_ports -module entropy_source -input_model virtual_sync_a
 # outputs to the convergence-ignore union instead of waiving the reconvergence. Generate labels carry
 # brackets, so the cells are collected by full_name and each cell's Q pins taken literally.
 if { [info procs cdc_conv_ignore_among] eq "" } {
-    source $::env(GIT_ROOT)/flows/cdc/vc_procs.tcl
+    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
 }
 set _sep_pic_sync_cells [get_cells -hier -filter {full_name =~ *pic_ctrl_inst/IO_CLK_GRP*gw_inst/sync_inst/sync_ff2/*dout} -quiet]
 set _sep_pic_sync_pins [list]

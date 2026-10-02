@@ -4,6 +4,19 @@
 [[avsbus-controller-interface]]
 == Interface
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="configuration-parameters"></span>
+<span id="avsbus-configuration-parameters-table"></span>
+<span id="port-list"></span>
+<span id="avsbus-register-interface-table"></span>
+<span id="avsbus-protocol-signals-table"></span>
+<span id="avsbus-clock-reset-and-dft-signals-table"></span>
+<span id="avsbus-interrupt-and-debug-signals-table"></span>
+++++
+endif::backend-html5[]
+
 The AVSBus Controller presents an AXI4-Lite register interface, a two-wire
 AVSBus protocol interface, and clock, reset, interrupt and DFT interfaces for
 system integration. The register file itself is APB4; the controller contains

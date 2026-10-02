@@ -7,7 +7,7 @@
 #
 # FLAT run with inherited subcomponent constraints: SMC, DTP and SEP are fully
 # elaborated and each block's own entry is re-sourced here, re-anchored at the
-# instance path via the hooks in flows/synth/constraints/cdc_hier_procs.tcl
+# instance path via the hooks in flows/synth/constraints/hier_reuse_procs.tcl
 # (cdc_begin_block sets ::cdc_hier_prefix plus the clock/reset name alias
 # maps; cdc_end_block restores them). Block boundary constraints (create_clock
 # on ports, IO delays, port resets, clock groups) are block-top gated inside
@@ -29,13 +29,16 @@ if { [info script] ne "" } {
 set ocah_smu_sys_dir [file normalize $ocah_smu_cdc_dir/../..]
 set ocah_smu_flows_dir [file normalize $ocah_smu_sys_dir/../../flows]
 
-source -echo [file join $ocah_smu_flows_dir cdc vc_procs.tcl]
+source -echo [file join $ocah_smu_flows_dir synth constraints hier_reuse_procs.tcl]
 
 # ---------------------------------------------------------------------------------
 # SMU boundary truth (prefix "")
 # ---------------------------------------------------------------------------------
 set smu_inherit_children 1
-source -echo [file join $ocah_smu_cdc_dir ../synth/constraints.sdc]
+source -echo [file join $ocah_smu_flows_dir synth constraints clock_periods.tcl]
+source -echo [file join $ocah_smu_cdc_dir ../synth/smu_clocks.sdc]
+source -echo [file join $ocah_smu_cdc_dir ../synth/smu_clock_groups.sdc]
+source -echo [file join $ocah_smu_cdc_dir ../synth/smu_io_delays.sdc]
 source -echo [file join $ocah_smu_cdc_dir smu.resets.tcl]
 source -echo [file join $ocah_smu_cdc_dir smu.case_analysis.tcl]
 if { $::cdc_app eq "cdc" } {
@@ -93,4 +96,5 @@ if { [sizeof_collection [get_cells -quiet gen_sep.u_sep]] > 0 } {
 # generated clock registered by the files above (cdc_group_extra); domains whose clocks
 # do not exist in this configuration are dropped with an INFO.
 # ---------------------------------------------------------------------------------
-cdc_apply_async_groups {REFCLK SMUCLK PERIPHERALCLK SPICLK TELEMETRYCLK JTAG_TCK SEP_WDT_CLK ENTROPY_ROSC_CLK ck_feedthru}
+cdc_apply_async_groups {REFCLK SMUCLK PERIPHERALCLK SPICLK TELEMETRYCLK JTAG_TCK SEP_WDT_CLK ENTROPY_ROSC_CLK ck_feedthru} \
+    -exclude {{AVS_*_FROM_REFCLK* AVS_*_FROM_PERIPHERALCLK*}}

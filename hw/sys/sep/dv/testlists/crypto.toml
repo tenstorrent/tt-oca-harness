@@ -58,9 +58,11 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# ESRC FIPS_LOCK. RANDCFG walks every certified-configuration class every
-# seed; lock sequencing is directed. Write-0 leaves LOCK=1; hardware reset
-# clears it. Observe FIFO stays writable. +skip_fuse_sense.
+# ESRC FIPS_LOCK. RANDCFG walks every certified-configuration class and the
+# debug-pin mux every seed; lock sequencing is directed. Both observe-tap
+# enables are frozen under the lock, one held at 1 and one at 0, picked by the
+# seed. FIFO_CTRL.ENABLE is cleared before the lock and rejects a set under
+# it. Write-0 leaves LOCK=1; hardware reset clears it. +skip_fuse_sense.
 name = "sep_esrc_fips_lock_test"
 module = "crypto.sep_esrc_fips_lock_test"
 seed = 1
@@ -69,6 +71,7 @@ tags = ["entropy", "crypto", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
 
 [[tests]]
 # ESRC persistent-failure alert to PIC source 16, then W1C-clear. RAND-NONE.
@@ -313,10 +316,10 @@ args = ["+skip_fuse_sense"]
 # 64-bit writes land both words, WSTRB 0x0F / 0xF0 land one word and leave the
 # other, every partial-word strobe answers SLVERR with the register unchanged,
 # and a 64-bit beat with one whole and one partial word writes the whole word
-# and answers SLVERR. Past the register map (0xC018) a word access is OKAY,
-# reads 0 and moves no register; a partial-word write is SLVERR. RANDCFG: data
-# values and two dead words from the run seed; every size, offset and strobe is
-# walked. no_cpu; +skip_fuse_sense.
+# and answers SLVERR. Past the register map every access answers as the SEP
+# memory map states (the crypto demux refuses it) and moves no register.
+# RANDCFG: data values and two dead words from the run seed; every size, offset
+# and strobe is walked. no_cpu; +skip_fuse_sense.
 name = "sep_abr_access_size_test"
 module = "crypto.sep_abr_access_size_test"
 seed = 1

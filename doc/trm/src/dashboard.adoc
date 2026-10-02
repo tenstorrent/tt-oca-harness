@@ -8,7 +8,9 @@
 The tables below are rendered in the browser from the DV data published to the
 https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data[`dv-dashboard-data`]
 branch, which carries one directory per block and verification configuration.
-A block verified by more than one framework or simulator reports once for each.
+A block verified by more than one framework or simulator reports once for each,
+except on a simulator where it also publishes a merged series with test counts:
+that series stands in for the others there, and its block page lists them all.
 
 ifdef::backend-html5[]
 ++++

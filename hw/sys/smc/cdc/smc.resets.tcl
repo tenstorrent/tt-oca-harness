@@ -15,7 +15,7 @@
 # name lists map through cdc_rst / cdc_clk.
 
 if { [info procs cdc_conv_apply] eq "" } {
-    source $::env(GIT_ROOT)/flows/cdc/vc_procs.tcl
+    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
 }
 
 set reset_unit_hier u_smc_peripherals/u_smc_reset_unit
@@ -34,7 +34,7 @@ cdc_create_port_reset JTAG_RESET "smc_cpu_jtag_reset_i" -both -type reset -value
 # POWERGOOD_STABLE_N is the 32-stage async-assert / sync-deassert stretched version of POWERGOOD_RESET_N
 # produced by u_powergood_stretcher_n0_scan inside smc_reset_ctrl.
 
-create_reset -name POWERGOOD_STABLE_N [cdc_inst "${reset_unit_hier}/u_smc_reset_ctrl/u_powergood_stretcher_n0_scan/gen_rst_sync_stage\[31\].u_sync_dffr/d0nt_dffr/Q"] -async -type reset -value low -disable_assertions_db
+create_reset -name POWERGOOD_STABLE_N [cdc_inst "${reset_unit_hier}/u_smc_reset_ctrl/u_powergood_stretcher_n0_scan/gen_rst_sync_stage\[31\].u_sync_dffr/q_d/Q"] -async -type reset -value low -disable_assertions_db
 
 set_reset_groups \
     -name POWERGOOD_RESET_GROUP \
@@ -123,14 +123,14 @@ create_reset -name BOOT_STALL_N [cdc_inst "u_smc_peripherals/boot_stall_sticky/Q
 # back through the sync chain to the raw parent. Declaring the tail as a named
 # reset + an assertion sequence from the parent gives a clean boundary.
 #
-# Stamps are placed on gen_rst_sync_stage[WIDTH-1].u_sync_dffr/d0nt_dffr/Q (the last
+# Stamps are placed on gen_rst_sync_stage[WIDTH-1].u_sync_dffr/q_d/Q (the last
 # stage flop Q).
 
 # u_refclk_counter (inside u_smc_cpu_ctrl_wrap): prim_refclk_count_w_cdc syncs the
 # primary reset into the SMCCLK (write) and REFCLK (read) domains using two WIDTH=16
 # prim_sync_reset chains. Source: hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv.
-create_reset -name PRIMARY_RESET_N_REFCNT_SMC_CLK [cdc_inst "${cpu_ctrl_wrap_hier}/u_refclk_counter/u_prst_wr_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/d0nt_dffr/Q"] -both -type reset -value low -disable_assertions_db
-create_reset -name PRIMARY_RESET_N_REFCNT_REF_CLK [cdc_inst "${cpu_ctrl_wrap_hier}/u_refclk_counter/u_prst_rd_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/d0nt_dffr/Q"] -both -type reset -value low -disable_assertions_db
+create_reset -name PRIMARY_RESET_N_REFCNT_SMC_CLK [cdc_inst "${cpu_ctrl_wrap_hier}/u_refclk_counter/u_prst_wr_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
+create_reset -name PRIMARY_RESET_N_REFCNT_REF_CLK [cdc_inst "${cpu_ctrl_wrap_hier}/u_refclk_counter/u_prst_rd_clk_domain_sync/gen_rst_sync_stage\[15\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
 
 # AVS-bus controller internal reset syncs (hw/ip/avsbus_controller/rtl/avsbus_controller.sv).
 # ResetSyncStages = 6 for all four chains.
@@ -138,10 +138,10 @@ create_reset -name PRIMARY_RESET_N_REFCNT_REF_CLK [cdc_inst "${cpu_ctrl_wrap_hie
 #   apb_clk_reset_sync   : sync of rst_ni = rst_primary_periph_clk_n into clk_reg_i  (PERIPHCLK).
 #   avs_clk_reset_sync   : sync of rst_ni = rst_primary_periph_clk_n into avs_clk    (divided from REFCLK).
 #   pre_div_clk_reset_sync : sync of rst_ni = rst_primary_periph_clk_n into apb_ref_muxed_clk.
-create_reset -name AVS_CLK_DIV_RESET_N [cdc_inst "u_smc_peripherals/u_avsbus_controller/u_clk_div/u_reset_sync/gen_rst_sync_stage\[5\].u_sync_dffr/d0nt_dffr/Q"] -both -type reset -value low -disable_assertions_db
-create_reset -name AVS_APB_CLK_RESET_N [cdc_inst "u_smc_peripherals/u_avsbus_controller/u_apb_clk_reset_sync/gen_rst_sync_stage\[5\].u_sync_dffr/d0nt_dffr/Q"] -both -type reset -value low -disable_assertions_db
-create_reset -name AVS_CLK_RESET_N [cdc_inst "u_smc_peripherals/u_avsbus_controller/u_avs_clk_reset_sync/gen_rst_sync_stage\[5\].u_sync_dffr/d0nt_dffr/Q"] -both -type reset -value low -disable_assertions_db
-create_reset -name AVS_PRE_DIV_CLK_RESET_N [cdc_inst "u_smc_peripherals/u_avsbus_controller/u_pre_div_clk_reset_sync/gen_rst_sync_stage\[5\].u_sync_dffr/d0nt_dffr/Q"] -both -type reset -value low -disable_assertions_db
+create_reset -name AVS_CLK_DIV_RESET_N [cdc_inst "u_smc_peripherals/u_avsbus_controller/u_clk_div/u_reset_sync/gen_rst_sync_stage\[5\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
+create_reset -name AVS_APB_CLK_RESET_N [cdc_inst "u_smc_peripherals/u_avsbus_controller/u_apb_clk_reset_sync/gen_rst_sync_stage\[5\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
+create_reset -name AVS_CLK_RESET_N [cdc_inst "u_smc_peripherals/u_avsbus_controller/u_avs_clk_reset_sync/gen_rst_sync_stage\[5\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
+create_reset -name AVS_PRE_DIV_CLK_RESET_N [cdc_inst "u_smc_peripherals/u_avsbus_controller/u_pre_div_clk_reset_sync/gen_rst_sync_stage\[5\].u_sync_dffr/q_d/Q"] -both -type reset -value low -disable_assertions_db
 
 ##############################
 # RESET ASSERTION SEQUENCES #

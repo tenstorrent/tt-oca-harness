@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from ctypes import Structure
 from dataclasses import dataclass
+from enum import IntEnum
 
 import cross_trigger_matrix_reg as _ctm_reg
 import cross_trigger_network_reg as _ctn_reg
@@ -79,6 +80,11 @@ XTRIG_CTP_BASE = _ctn_reg.CTP_0__REG_MAP_BASE_ADDR
 XTRIG_CTP_STRIDE = _ctn_reg.CTP_1__REG_MAP_BASE_ADDR - _ctn_reg.CTP_0__REG_MAP_BASE_ADDR
 XTRIG_CSR_END = XTRIG_CTP_BASE + (XTRIG_NUM_CTP * XTRIG_CTP_STRIDE)
 XTRIG_UNMAPPED_BASE = XTRIG_CSR_END
+# The matrix aperture's register extent; the aperture past it is unmapped.
+XTRIG_CTM_END = XTRIG_CTM_BASE + _ctn_reg.CTM_REG_MAP_SIZE
+# Bytes the registers of one CT_SRC slot and of one port window back.
+XTRIG_CT_SRC_SIZE = _ctn_reg.CTM_CT_SRC_0__REG_FILE_SIZE
+XTRIG_CTP_REG_SIZE = _ctn_reg.CTP_0__REG_MAP_SIZE
 
 XTRIG_CTP_CONFIG_OFFSET = _ctp_reg.CONFIG_REG_OFFSET
 XTRIG_CTP_STATUS_OFFSET = _ctp_reg.STATUS_REG_OFFSET
@@ -135,6 +141,17 @@ def ctp_status_addr(ctp_idx: int) -> int:
 
 def ctp_stretch_addr(ctp_idx: int) -> int:
     return ctp_base_addr(ctp_idx) + XTRIG_CTP_STRETCH_MULT_OFFSET
+
+
+def ctm_hole_addr(output_port: int) -> int:
+    """First hole word of ``CT_SRC[output_port]``'s slot: the word past its register."""
+    check_ctm_port(output_port, "CTM output port")
+    return getattr(_ctn_reg, f"CTM_CT_SRC_{output_port}__REG_FILE_BASE_ADDR") + XTRIG_CT_SRC_SIZE
+
+
+def ctp_hole_addr(ctp_idx: int) -> int:
+    """First hole word of an external CTP's window: the word past its registers."""
+    return ctp_base_addr(ctp_idx) + XTRIG_CTP_REG_SIZE
 
 
 def check_ctp_idx(ctp_idx: int) -> None:
@@ -201,6 +218,70 @@ def apply_wstrb(old_value: int, new_value: int, wstrb: int) -> int:
             mask = 0xFF << (8 * byte_idx)
             merged = (merged & ~mask) | (new_value & mask)
     return merged & 0xFFFFFFFF
+
+
+class DtpXtrigCsrKind(IntEnum):
+    """What a CSR word holds.
+
+    A register, a HOLE (a word inside the matrix register extent or a port
+    window that no register backs), or nothing any block decodes (UNMAPPED).
+    """
+
+    UNMAPPED = 0
+    CTM_SELECT = 1
+    CTP_CONFIG = 2
+    CTP_STATUS = 3
+    CTP_STRETCH = 4
+    HOLE = 5
+
+
+_CSR_DEFAULTS = {
+    DtpXtrigCsrKind.CTM_SELECT: XTRIG_CTM_SELECT_DEFAULT,
+    DtpXtrigCsrKind.CTP_CONFIG: XTRIG_CTP_CONFIG_DEFAULT,
+    DtpXtrigCsrKind.CTP_STATUS: XTRIG_CTP_STATUS_DEFAULT,
+    DtpXtrigCsrKind.CTP_STRETCH: XTRIG_CTP_STRETCH_DEFAULT,
+}
+
+
+def xtrig_csr_default(kind: DtpXtrigCsrKind) -> int:
+    """Reset value of the register a CSR kind names; 0 for a kind that names no register."""
+    return _CSR_DEFAULTS.get(kind, 0)
+
+
+def xtrig_csr_word(addr: int) -> int:
+    """The CSR word an access addresses.
+
+    Every AXI4-Lite access uses the full width of the 32-bit data bus, and a
+    transfer's aligned address is its address rounded down to the transfer
+    size, so a byte address selects the word that contains it and WSTRB the
+    bytes within that word.
+    """
+    return addr & ~0x3
+
+
+def xtrig_csr_decode(addr: int) -> tuple[DtpXtrigCsrKind, int]:
+    """Classify the word a CSR access addresses, with the readback mask of its register.
+
+    The classes follow the cross-trigger network memory map: a HOLE completes
+    OKAY, reads 0, and ignores writes; the matrix aperture past its register
+    extent and every address past the last port window are UNMAPPED and
+    complete DECERR.
+    """
+    word = xtrig_csr_word(addr)
+    if word < XTRIG_CTM_END:
+        if (word - XTRIG_CTM_BASE) % XTRIG_CTM_STRIDE >= XTRIG_CT_SRC_SIZE:
+            return DtpXtrigCsrKind.HOLE, 0
+        return DtpXtrigCsrKind.CTM_SELECT, XTRIG_CTM_SELECT_MASK
+    if word < XTRIG_CTP_BASE or word >= XTRIG_UNMAPPED_BASE:
+        return DtpXtrigCsrKind.UNMAPPED, 0
+    offset = (word - XTRIG_CTP_BASE) % XTRIG_CTP_STRIDE
+    if offset == XTRIG_CTP_CONFIG_OFFSET:
+        return DtpXtrigCsrKind.CTP_CONFIG, XTRIG_CTP_CONFIG_MASK
+    if offset == XTRIG_CTP_STATUS_OFFSET:
+        return DtpXtrigCsrKind.CTP_STATUS, 0
+    if offset == XTRIG_CTP_STRETCH_MULT_OFFSET:
+        return DtpXtrigCsrKind.CTP_STRETCH, XTRIG_CTP_STRETCH_MASK
+    return DtpXtrigCsrKind.HOLE, 0
 
 
 @dataclass

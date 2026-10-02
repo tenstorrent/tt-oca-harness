@@ -11,8 +11,14 @@ import, so a lock added or dropped in the RDL fails here instead of silently
 leaving the walk short. Continuous
 knobs (which legal pre-lock value and which rejected poke) come from the
 run seed. ``SepEsrcFipsLockCfg`` is the SSOT for both programming and
-the post-lock golden. Observe FIFOs stay writable. Reserved ``CTRL.RSVD0``
-is RAZ/WI; the shared TRNG reset and ``rst_ni`` clear the lock.
+the post-lock golden. The lock also freezes the debug-pin mux, which the walk
+covers like any other locked register, and the two observe-tap enables
+(``BIW_OBS_CTRL.RAW_ENABLE``, ``NOISE_OBS_CTRL.RAW_ENABLE``). Those two are
+single-bit, so the two-value walk cannot reach them; ``SepEsrcFipsLockCfg``
+holds one at 1 and the other at 0 across the lock, picked by the seed, so each
+seed grades a rejected clear and a rejected set. ``NOISE_OBS_CTRL.LANE_SEL``
+stays writable under the lock. Reserved ``CTRL.RSVD0`` is RAZ/WI; the shared
+TRNG reset and ``rst_ni`` clear the lock.
 """
 
 from __future__ import annotations
@@ -47,10 +53,20 @@ from seq_lib.sep_esrc_bringup_seq import (
 )
 
 LOCK_BIT = ENTROPY_SOURCE.fields("FIPS_LOCK")["LOCK"]["bm"]
-OBS_ENABLE_BIT = ENTROPY_SOURCE.fields("BIW_OBS_CTRL")["RAW_ENABLE"]["bm"]
+ESRC_NOISE_OBS_CTRL = sym("ENTROPY_SOURCE_NOISE_OBS_CTRL_REG_ADDR")
+ESRC_DEBUG_CTRL = sym("ENTROPY_SOURCE_DEBUG_CTRL_REG_ADDR")
+# The two observe-tap control registers, by RDL name, with their bus address.
+OBS_CTRL_ADDR: dict[str, int] = {
+    "BIW_OBS_CTRL": ESRC_BIW_OBS_CTRL,
+    "NOISE_OBS_CTRL": ESRC_NOISE_OBS_CTRL,
+}
+NOISE_LANE_SEL = ENTROPY_SOURCE.fields("NOISE_OBS_CTRL")["LANE_SEL"]
+# entropy_source has twelve generator lanes; LANE_SEL values 12-15 select none.
+NOISE_LANES = 12
 SHA256_BIT = ENTROPY_SOURCE.fields("CTRL")["SHA256_WHITENING_ENABLE"]["bm"]
 CTRL_RSVD0_BIT = ENTROPY_SOURCE.fields("CTRL")["RSVD0"]["bm"]
 CHURN_BIT = ENTROPY_SOURCE.fields("FIFO_CTRL")["ENTROPY_CHURN_ENABLE"]["bm"]
+FIFO_ENABLE_BIT = ENTROPY_SOURCE.fields("FIFO_CTRL")["ENABLE"]["bm"]
 WINDOW_MASK = ENTROPY_SOURCE.fields("HEALTH_TEST_WINDOW_SIZE")["SIZE"]["bm"]
 WINDOW_RESET = ENTROPY_SOURCE.reset("HEALTH_TEST_WINDOW_SIZE")
 THRESH_MASK = ENTROPY_SOURCE.fields("ALERT_THRESHOLD")["THRESHOLD"]["bm"]
@@ -99,12 +115,13 @@ _WALK_FIELDS: dict[str, frozenset[str]] = {
     "RING_OSC_ENABLE": frozenset({"ENABLE", "SAMPLE_CLK_ENABLE"}),
     "RING_OSC_TUNE": frozenset({"DETUNE", "SAMPLE_CLK_DETUNE"}),
     "RING_OSC_CTRL": frozenset({"SAMPLE_CLK_SELECT"}),
-    "FIFO_CTRL": frozenset({"ENTROPY_CHURN_ENABLE"}),
+    "FIFO_CTRL": frozenset({"ENABLE", "ENTROPY_CHURN_ENABLE"}),
     "ALERT_THRESHOLD": frozenset({"THRESHOLD"}),
     "MARKOV_TEST_PROB_THRESHOLDS": frozenset({"PROB_01_THRESHOLD", "PROB_10_THRESHOLD"}),
     "APT_PROPORTION_1BIT": frozenset({"LIMIT"}),
     "APT_PROPORTION_LO": frozenset({"LIMIT"}),
     "MIN_ENTROPY_H": frozenset({"H"}),
+    "DEBUG_CTRL": frozenset({"SELECT_SIGNAL", "SELECT_FREQ_DIV"}),
     **{f"GENERATOR_{idx}_SAMPLE_CLK_CONFIG": frozenset({"SAMPLE_CLK_DIVIDE"}) for idx in range(12)},
 }
 
@@ -114,6 +131,15 @@ _WALK_EXCLUDED: dict[tuple[str, str], str] = {
     ("CTRL", "MODULE_ENABLE"): (
         "clearing it idles the main state machine for the rest of the walk; its "
         "lock is proven by the reset-recovery vehicle instead"
+    ),
+    ("BIW_OBS_CTRL", "RAW_ENABLE"): (
+        "single-bit observe-tap enable; the two-distinct-value walk cannot move a "
+        "lone 1-bit field to a second off-reset value. CHK-OBS-PRE-LOCK and "
+        "CHK-OBS-ENABLE-LOCKED grade its lock in both directions instead"
+    ),
+    ("NOISE_OBS_CTRL", "RAW_ENABLE"): (
+        "single-bit observe-tap enable, graded by CHK-OBS-PRE-LOCK and "
+        "CHK-OBS-ENABLE-LOCKED like BIW_OBS_CTRL.RAW_ENABLE"
     ),
 }
 
@@ -302,7 +328,7 @@ class SepEsrcFipsLockCfg:
                 # window is SAMPLE_CLK_DIV together with BYPASS.
                 ENTROPY_SOURCE.fields("DECORRELATOR_CTRL")["SAMPLE_CLK_DIV"]["bm"]
                 | ENTROPY_SOURCE.fields("DECORRELATOR_CTRL")["BYPASS"]["bm"],
-                DECOR_CTRL_DIV64,
+                ENTROPY_SOURCE.reset("DECORRELATOR_CTRL"),
             ),
             SepEsrcFipsLockTarget(
                 "RING_OSC", ESRC_RING_OSC_ENABLE, ring_pre, ring_poke, RING_OSC_MASK, RING_OSC_RESET
@@ -326,12 +352,15 @@ class SepEsrcFipsLockCfg:
                 GEN_DIV_MASK,
                 GEN_DIV_RESET,
             ),
+            # Both FIFO_CTRL fields are locked. ENABLE is cleared before the
+            # lock, so the rejected poke is software turning the seed-read path
+            # back on.
             SepEsrcFipsLockTarget(
-                "FIFO_CHURN",
+                "FIFO_CTRL",
                 ESRC_FIFO_CTRL,
-                ENTROPY_SOURCE.value("FIFO_CTRL", ENABLE=1, ENTROPY_CHURN_ENABLE=1),
+                ENTROPY_SOURCE.value("FIFO_CTRL", ENABLE=0, ENTROPY_CHURN_ENABLE=1),
                 ENTROPY_SOURCE.value("FIFO_CTRL", ENABLE=1, ENTROPY_CHURN_ENABLE=0),
-                CHURN_BIT,
+                FIFO_ENABLE_BIT | CHURN_BIT,
                 ENTROPY_SOURCE.reset("FIFO_CTRL"),
             ),
             SepEsrcFipsLockTarget(
@@ -362,6 +391,15 @@ class SepEsrcFipsLockCfg:
                 rng,
             ),
             _locked_target("MIN_ENTROPY_H", ESRC_MIN_ENTROPY_H, "MIN_ENTROPY_H", ("H",), rng),
+            # The debug observation-pin selection and divider. SEP leaves
+            # signal_monitor_o unconnected, so the value has no side effect here.
+            _locked_target(
+                "DEBUG_CTRL",
+                ESRC_DEBUG_CTRL,
+                "DEBUG_CTRL",
+                ("SELECT_SIGNAL", "SELECT_FREQ_DIV"),
+                rng,
+            ),
         ) + tuple(
             # All twelve per-generator sample-clock dividers are locked.
             _locked_target(
@@ -373,7 +411,17 @@ class SepEsrcFipsLockCfg:
             )
             for idx in range(1, 12)
         )
-        self.obs_enable = 1
+        # Observe-tap enables across the lock: one tap is held at 1 and must
+        # reject a clear, the other is held at 0 and must reject a set, so every
+        # seed grades both directions. The seed picks which tap gets which.
+        biw_held = rng.getrandbits(1)
+        self.obs_held = {"BIW_OBS_CTRL": biw_held, "NOISE_OBS_CTRL": biw_held ^ 1}
+        # NOISE_OBS_CTRL.LANE_SEL is not locked. The pre-lock lane is off reset,
+        # and the lane written under the lock differs from it, so CHK-OBS-LANE-SEL
+        # can fail a lock that freezes the whole register.
+        lane_reset = NOISE_LANE_SEL.get("reset", 0)
+        self.lane_pre = rng.choice(tuple(v for v in range(NOISE_LANES) if v != lane_reset))
+        self.lane_post = rng.choice(tuple(v for v in range(NOISE_LANES) if v != self.lane_pre))
         # Ascending MIN_ENTROPY_H points for the advisory-threshold sweep. The
         # three anchors are the register reset and both ends of the Q4.4 range,
         # where the closed form saturates; the rest come from the seed so the
@@ -393,7 +441,8 @@ class SepEsrcFipsLockCfg:
     def summary(self) -> str:
         cells = " ".join(t.summary() for t in self.targets)
         return (
-            f"seed={self.seed} cells={self.n_cells()} "
+            f"seed={self.seed} cells={self.n_cells()} obs_held={self.obs_held} "
+            f"lane_pre={self.lane_pre} lane_post={self.lane_post} "
             f"rec_thresh_h={[f'0x{h:02x}' for h in self.rec_thresh_h]} {cells}"
         )
 
@@ -423,11 +472,22 @@ class SepEsrcFipsLock(SepAxiRegDriver):
         await self._wr(ESRC_CTRL, cur | CTRL_RSVD0_BIT)
         return cur, await self._rd(ESRC_CTRL)
 
-    async def write_obs_enable(self, enable: int) -> None:
-        await self._wr(ESRC_BIW_OBS_CTRL, enable & OBS_ENABLE_BIT)
+    async def write_obs(self, reg: str, enable: int, lane: int = 0) -> None:
+        """Write RAW_ENABLE of one observe-tap register; LANE_SEL for NOISE_OBS_CTRL."""
+        fields = {"RAW_ENABLE": enable}
+        if reg == "NOISE_OBS_CTRL":
+            fields["LANE_SEL"] = lane
+        await self._wr(OBS_CTRL_ADDR[reg], ENTROPY_SOURCE.value(reg, **fields))
 
-    async def read_obs_enable(self) -> int:
-        return (await self._rd(ESRC_BIW_OBS_CTRL)) & OBS_ENABLE_BIT
+    async def read_obs(self, reg: str) -> tuple[int, int]:
+        """RAW_ENABLE and (NOISE_OBS_CTRL only, else 0) LANE_SEL, read from the DUT."""
+        raw = await self._rd(OBS_CTRL_ADDR[reg])
+        en = ENTROPY_SOURCE.fields(reg)["RAW_ENABLE"]
+        enable = (raw & en["bm"]) >> en["bp"]
+        lane = 0
+        if reg == "NOISE_OBS_CTRL":
+            lane = (raw & NOISE_LANE_SEL["bm"]) >> NOISE_LANE_SEL["bp"]
+        return enable, lane
 
     async def write_min_entropy_h(self, h: int) -> None:
         await self._wr(ESRC_MIN_ENTROPY_H, h & MIN_ENTROPY_H_MASK)

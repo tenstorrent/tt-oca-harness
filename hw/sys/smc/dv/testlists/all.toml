@@ -52,7 +52,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 299
+expected_count = 316
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -85,6 +85,20 @@ tests = [
     "smc_clk_multi_window_test",
     "smc_clk_smc_slower_than_ref_test",
     "smc_clk_smc_equal_ref_test",
+    "smc_clk_periph_slower_than_ref_test",
+    "smc_clk_smc_slower_periph_slower_test",
+    "smc_clk_smc_slower_periph_equal_test",
+    "smc_clk_smc_slower_periph_much_faster_test",
+    "smc_clk_smc_equal_periph_slower_test",
+    "smc_clk_smc_equal_periph_faster_test",
+    "smc_clk_smc_equal_periph_much_faster_test",
+    "smc_clk_smc_faster_periph_slower_test",
+    "smc_clk_smc_faster_periph_equal_test",
+    "smc_clk_smc_faster_periph_faster_test",
+    "smc_clk_smc_faster_periph_much_faster_test",
+    "smc_clk_smc_much_faster_periph_equal_test",
+    "smc_clk_smc_much_faster_periph_faster_test",
+    "smc_clk_smc_much_faster_periph_much_faster_test",
     "smc_clk_running_test",
     "smc_clock_domain_connectivity_test",
     "smc_cluster_beu_test",
@@ -153,6 +167,9 @@ tests = [
     "smc_efuse_jtag_lc_access_matrix_test",
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_guard_target_test",
+    "smc_efuse_image_alt55_test",
+    "smc_efuse_image_altaa_test",
+    "smc_efuse_image_random_test",
     "smc_efuse_lock_guard_test",
     "smc_efuse_locked_access_interrupt_test",
     "smc_efuse_map_read_test",
@@ -362,7 +379,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 279
+expected_count = 296
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -395,6 +412,20 @@ tests = [
     "smc_clk_multi_window_test",
     "smc_clk_smc_slower_than_ref_test",
     "smc_clk_smc_equal_ref_test",
+    "smc_clk_periph_slower_than_ref_test",
+    "smc_clk_smc_slower_periph_slower_test",
+    "smc_clk_smc_slower_periph_equal_test",
+    "smc_clk_smc_slower_periph_much_faster_test",
+    "smc_clk_smc_equal_periph_slower_test",
+    "smc_clk_smc_equal_periph_faster_test",
+    "smc_clk_smc_equal_periph_much_faster_test",
+    "smc_clk_smc_faster_periph_slower_test",
+    "smc_clk_smc_faster_periph_equal_test",
+    "smc_clk_smc_faster_periph_faster_test",
+    "smc_clk_smc_faster_periph_much_faster_test",
+    "smc_clk_smc_much_faster_periph_equal_test",
+    "smc_clk_smc_much_faster_periph_faster_test",
+    "smc_clk_smc_much_faster_periph_much_faster_test",
     "smc_clk_running_test",
     "smc_clock_domain_connectivity_test",
     "smc_cluster_beu_test",
@@ -459,6 +490,9 @@ tests = [
     "smc_efuse_jtag_lc_access_matrix_test",
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_guard_target_test",
+    "smc_efuse_image_alt55_test",
+    "smc_efuse_image_altaa_test",
+    "smc_efuse_image_random_test",
     "smc_efuse_lock_guard_test",
     "smc_efuse_locked_access_interrupt_test",
     "smc_efuse_map_read_test",

@@ -1173,10 +1173,10 @@ module smc_peripherals #(
     .INSTANCE_SPACING   (i3ccore_wrap_pkg::I3C_INSTANCE_SPACING),
 
     // I3C Core parameters
-    .DatAw              (i3c_pkg::DatAw),
-    .DctAw              (i3c_pkg::DctAw),
-    .CsrAddrWidth       (I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH),
-    .CsrDataWidth       (I3CCSR_pkg::I3CCSR_DATA_WIDTH)
+    .DAT_AW             (i3c_pkg::DatAw),
+    .DCT_AW             (i3c_pkg::DctAw),
+    .CSR_ADDR_WIDTH     (I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH),
+    .CSR_DATA_WIDTH     (I3CCSR_pkg::I3CCSR_DATA_WIDTH)
   ) u_i3ccore_wrapper (
     .clk_i              (gated_clk_periph_i3c),
     .rst_ni             (rst_primary_periph_clk_n),

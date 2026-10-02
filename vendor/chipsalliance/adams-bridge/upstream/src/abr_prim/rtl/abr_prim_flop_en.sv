@@ -41,9 +41,9 @@ if (Impl == abr_prim_pkg::ImplXilinx) begin : gen_xilinx
     );
 end else begin : gen_generic
     abr_prim_generic_flop_en #(
-      .EnSecBuf(EnSecBuf),
-      .ResetValue(ResetValue),
-      .Width(Width)
+      .EN_SEC_BUF(EnSecBuf),
+      .RESET_VALUE(ResetValue),
+      .WIDTH(Width)
     ) u_impl_generic (
       .*
     );

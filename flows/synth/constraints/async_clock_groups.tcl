@@ -43,6 +43,58 @@
 if { ![info exists ::CDC_DEFAULT_MAX_DELAY] } { set ::CDC_DEFAULT_MAX_DELAY 20000 } ;#  20 ns
 if { ![info exists ::CDC_DEFAULT_MIN_DELAY] } { set ::CDC_DEFAULT_MIN_DELAY -20000 } ;# -20 ns
 
+# Domain registration, for a block whose constraints are replayed at a parent level.
+# A child registers the generated clocks it defines against a canonical domain name;
+# cdc_apply_async_groups then emits one group per domain through the same path as
+# set_async_clock_groups, so a hierarchical run keeps `-allow_paths` and the default
+# bounds. Without them a CDC crossing becomes a false path and the per-instance bounds
+# in *_cdc_max_delay.tcl are masked, which is the opposite of what the bounds are for.
+if { ![array exists ::cdc_domain_extra] } { array set ::cdc_domain_extra {} }
+
+# cdc_clk maps a block-local clock name onto the adopter's. Defined here as an identity
+# when no adopter hook file has been sourced yet, so this file stands alone in the open
+# flow; cdc_max_delay_procs.tcl and hier_reuse_procs.tcl define the same proc.
+if { [info procs cdc_clk] eq "" } {
+    if { ![info exists ::cdc_hier_prefix] } { set ::cdc_hier_prefix "" }
+    if { ![array exists ::cdc_clock_alias] } { array set ::cdc_clock_alias {} }
+    proc cdc_clk { clks } {
+        set out {}
+        foreach c $clks {
+            if { [info exists ::cdc_clock_alias($c)] } {
+                foreach m $::cdc_clock_alias($c) { lappend out $m }
+            } else {
+                lappend out $c
+            }
+        }
+        return $out
+    }
+}
+
+proc cdc_group_extra { domain clks } {
+    set d [lindex [cdc_clk $domain] 0]
+    if { ![info exists ::cdc_domain_extra($d)] } { set ::cdc_domain_extra($d) {} }
+    foreach c [cdc_clk $clks] {
+        if { [lsearch -exact $::cdc_domain_extra($d) $c] < 0 } {
+            lappend ::cdc_domain_extra($d) $c
+        }
+    }
+}
+
+# One group per domain: the domain clock plus everything registered against it. Groups
+# matching no clock are dropped by set_async_clock_groups, so one domain list serves a
+# full-hierarchy run, a reduced configuration and a per-block run alike.
+proc cdc_apply_async_groups { domains args } {
+    set groups {}
+    foreach d $domains {
+        set want [list $d]
+        if { [info exists ::cdc_domain_extra($d)] } {
+            foreach c $::cdc_domain_extra($d) { lappend want $c }
+        }
+        lappend groups $want
+    }
+    set_async_clock_groups $groups {*}$args
+}
+
 # Is this ordered clock pair covered by an exclusion? Patterns match either way
 # round, so a caller need not list a pair twice.
 proc acg_excluded { a b exclude } {

@@ -42,26 +42,36 @@ proc cdc_warn { m } { cdc_stat warnings; puts "WARNING: cdc_max_delay: $m" }
 ################################################################################
 # ADOPTER HOOKS
 ################################################################################
-# ::cdc_hier_prefix and ::cdc_clock_alias, applied through cdc_inst and
-# cdc_clk, come from cdc_hier_procs.tcl beside this file. Both default to
-# no-ops: an empty prefix and no aliases reproduce the shipped behaviour
-# exactly. They exist so a generated file can be reused against a design that
-# instantiates the block somewhere else, or drives it from differently named
-# clocks, without regenerating.
+# Both default to no-ops: an empty prefix and no aliases reproduce the shipped
+# behaviour exactly. They exist so a generated file can be reused against a
+# design that instantiates the block somewhere else, or drives it from
+# differently named clocks, without regenerating.
 #
 #   set ::cdc_hier_prefix        u_chiplet/u_mgmt/u_smc/
 #   set ::cdc_clock_alias(SMCCLK) MY_SYS_CLK
 #
 # They do NOT cover a reconfigured block: if parameters change which CDC
 # elements exist, regenerate instead.
-if { [info procs cdc_inst] eq "" } {
-    if { [info script] ne "" } {
-        source [file join [file dirname [file normalize [info script]]] cdc_hier_procs.tcl]
-    } elseif { [info exists ::env(GIT_ROOT)] } {
-        source $::env(GIT_ROOT)/flows/synth/constraints/cdc_hier_procs.tcl
-    } else {
-        error "cdc_max_delay_procs.tcl: cannot locate cdc_hier_procs.tcl; set GIT_ROOT"
+if { ![info exists ::cdc_hier_prefix] } { set ::cdc_hier_prefix "" }
+if { ![array exists ::cdc_clock_alias] } { array set ::cdc_clock_alias {} }
+
+proc cdc_inst { inst } {
+    if { $::cdc_hier_prefix eq "" } { return $inst }
+    return "${::cdc_hier_prefix}$inst"
+}
+
+# Map clock names onto the adopter's. Takes and returns a list, since a muxed
+# domain resolves to several clocks.
+proc cdc_clk { clks } {
+    set out {}
+    foreach c $clks {
+        if { [info exists ::cdc_clock_alias($c)] } {
+            lappend out $::cdc_clock_alias($c)
+        } else {
+            lappend out $c
+        }
     }
+    return $out
 }
 
 ################################################################################

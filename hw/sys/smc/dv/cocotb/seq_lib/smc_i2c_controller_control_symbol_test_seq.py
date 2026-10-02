@@ -22,8 +22,8 @@ byte the target is returning, where the line is high because it is released,
 and a one bit of the address the controller is sending and the
 not-acknowledge it drives at the end of a read, where the line is high
 because the controller drives it. By the SCL rise each is made on, those
-are the controller states `ClockPulseAck`, `ReadClockPulse`, `ClockPulse` and
-`HostClockPulseAck`. The read points need a device that answers, so the bench
+are the controller states `CLOCK_PULSE_ACK`, `READ_CLOCK_PULSE`, `CLOCK_PULSE` and
+`HOST_CLOCK_PULSE_ACK`. The read points need a device that answers, so the bench
 EEPROM target is on the pads throughout.
 
 Where the controller drives the high, the same pull is also interference,

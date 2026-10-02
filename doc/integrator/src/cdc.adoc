@@ -17,23 +17,24 @@ run `scripts/update_integration_symlinks.py` to regenerate the index.
 
 The constraints for each system build on some shared code, linked at
 `integration/constraint/shared`. This consists of four files:
-`clock_periods.tcl` (the one table of clock periods), `cdc_hier_procs.tcl` (the
-hierarchy-reuse hooks and `cdc_apply_async_groups`), `async_clock_groups.tcl`
-(which declares clock groups with default bounds) and `cdc_max_delay_procs.tcl`
-(which defines procs for emitting CDC constraints).
+`clock_periods.tcl` (the one table of clock periods), `hier_reuse_procs.tcl` (the
+hierarchy-reuse hooks), `async_clock_groups.tcl` (which declares clock groups
+with default bounds and defines `cdc_apply_async_groups`) and
+`cdc_max_delay_procs.tcl` (which defines procs for emitting CDC constraints).
 
 The constraints for each system can use this shared code and are visible through
 symlinks at `integration/constraint/<block>/synth`. This directory contains the
 following files:
 
 * `constraints.sdc`:
-  The block's full timing intent: clock definitions, I/O delays and the
-  asynchronous clock groups, declared through `cdc_apply_async_groups`. It
-  sources `clock_periods.tcl` and `cdc_hier_procs.tcl` from the shared code
-  first and, at block top in the synth scenario, `cdc_max_delay_procs.tcl` and
-  then the next script. The same file is read by the CDC/RDC sign-off run (see
-  <<cdc-signoff-collateral,CDC/RDC sign-off collateral>>). SMC also carries
-  `gpio_io_constraints.sdc`, the pad-ring I/O delays that SMU shares.
+  The block's full timing intent, composed from the sibling files: it sources
+  `clock_periods.tcl` from the shared code, then `<block>_clocks.sdc` (clock
+  definitions), `<block>_clock_groups.sdc` (the asynchronous groups, declared
+  through `cdc_apply_async_groups`) and `<block>_io_delays.sdc`, and finally
+  `cdc_max_delay_procs.tcl` and the next script. SMC also carries
+  `smc_gpio_io_delays.sdc`, the pad-ring I/O delays that SMU shares; SEP carries
+  `sep_entropy_clocks.sdc`. The CDC/RDC sign-off run reads the same sibling
+  files (see <<cdc-signoff-collateral,CDC/RDC sign-off collateral>>).
 
 * `<block>_cdc_max_delay.tcl`:
   This defines periods for generated clocks and any hand-written overrides and
@@ -164,9 +165,9 @@ refine it.
 
 *Layer 1* is `set_async_clock_groups`, defined in
 `flows/synth/constraints/async_clock_groups.tcl` and reached from each block's
-`constraints.sdc` through `cdc_apply_async_groups` (in `cdc_hier_procs.tcl`),
-which resolves each domain's membership and, in the synth scenario, passes the
-block's `::cdc_async_exclude` pairs. It declares the asynchronous groups *with
+`<block>_clock_groups.sdc` through `cdc_apply_async_groups` (in the same file),
+which resolves each domain's membership and passes the block's `-exclude`
+pairs through. It declares the asynchronous groups *with
 `-allow_paths`* and applies a loose 20 ns / -20 ns default to every inter-group
 clock pair.
 
@@ -204,13 +205,15 @@ two deliberate carve-outs:
 [[cdc-signoff-collateral]]
 == CDC/RDC sign-off collateral
 
-The same `constraints.sdc` that synthesis reads is the clock truth for static
-CDC/RDC sign-off, and the rest of that sign-off collateral is checked in beside
-it, so an adopter can run their own tool against the reviewed constraints and
-waivers rather than reconstructing them.
+The same clock, group and I/O-delay files that synthesis reads are the clock
+truth for static CDC/RDC sign-off, and the rest of that sign-off collateral is
+checked in beside them, so an adopter can run their own tool against the
+reviewed constraints and waivers rather than reconstructing them.
 
 * `hw/sys/<block>/cdc/<block>.cdc_rdc.tcl` is the entry point. It sources the
-  block's files in dependency order: the SDC, `<block>.resets.tcl` (the reset
+  block's files in dependency order: `hier_reuse_procs.tcl`, `clock_periods.tcl`
+  and the `<block>_{clocks,clock_groups,io_delays}.sdc` siblings (without the
+  CDC max-delay layer `constraints.sdc` adds), `<block>.resets.tcl` (the reset
   tree and its assertion sequences), `<block>.case_analysis.tcl` (the functional
   pins for DFT and strap ports), `<block>.static_signals.tcl` (quasi-static
   signals, CDC only), the shared type-level setup in
@@ -220,20 +223,21 @@ waivers rather than reconstructing them.
   `hw/sys/<block>/rdc/<block>.vcrdc*.waiver.tcl` hold the reviewed waivers, one
   file for Tenstorrent-owned RTL and, where needed, an `.opensource_ip` file
   for third-party IP. Each waiver carries its rationale in `-comment {}`.
-* `flows/cdc/vc_procs.tcl` wraps the tool commands these files use so they can
-  be replayed under a hierarchy prefix.
+* `flows/synth/constraints/hier_reuse_procs.tcl` wraps the tool commands these
+  files use so they can be replayed under a hierarchy prefix.
 
-Three variables select how the files are read:
+The files name the leaves of the generic primitives (`q_d`/`q_ddd` synchroniser
+stages, `u_sync_1`/`u_sync_2` two-stage synchronisers, `q_o` flops, `en_latch`
+clock gates); `flows/cdc/README.md` lists them. Run the sign-off against the
+generic primitive set or re-anchor the collateral to the swapped names.
+
+Two variables select how the files are read:
 
 * `::cdc_app` is `cdc` (default) or `rdc`; the entry skips CDC-only files for
   `rdc`.
 * `::cdc_scenario` is `synth` (default) or `functional`. The functional scenario
   is the sign-off run: the case-analysis files pin the DFT and strap ports, so
-  `cdc_pinned_port_delay` skips the I/O delays on those ports, and the
-  asynchronous groups are declared with a bare `set_clock_groups -asynchronous`.
-* `::cdc_bound_crossings` (default 1) makes the synth scenario declare the groups
-  with `-allow_paths` and the default bounds and apply the per-instance
-  max-delay layer; 0 declares bare groups and applies no bound.
+  `cdc_pinned_port_delay` skips the I/O delays on those ports.
 
 `hw/sys/smu/cdc/smu.cdc_rdc.tcl` shows how a parent replays a child:
 `cdc_begin_block <prefix> {clock aliases} {reset aliases}`, source the child's
@@ -385,11 +389,11 @@ hold is not a real requirement.
 
 === 4. Declare your own clock groups
 
-Each block's `constraints.sdc` calls `cdc_apply_async_groups` with its list of
-domain names. A domain's group is its clock plus every generated clock
+Each block's `<block>_clock_groups.sdc` calls `cdc_apply_async_groups` with its
+list of domain names. A domain's group is its clock plus every generated clock
 registered against it with `cdc_group_extra`, clocks absent from the session are
-dropped, and in the synth scenario the call reaches `set_async_clock_groups`
-with the block's `::cdc_async_exclude` pairs. Both calls have to come after
+dropped, and the call reaches `set_async_clock_groups` with any `-exclude`
+pairs passed through. Both calls have to come after
 every `create_clock` and `create_generated_clock` they are meant to cover. Call
 `set_async_clock_groups` directly when you need globs or per-call bounds; each
 inner list is one asynchronous group:

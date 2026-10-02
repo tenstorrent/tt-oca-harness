@@ -19,9 +19,10 @@ S5: ext_in round trips into SEP SRAM (local 0x1000_0000, 256 KiB,
     reads back what was written, the narrow reads the bytes of the last word.
 S6: INCR bursts of AxLEN 0x00, 0x55, 0xAA and 0xFF write a byte pattern into
     SRAM and read it back OKAY, and the longest reads and writes back OKAY
-    again while the master holds RREADY and BREADY back. WRAP and FIXED bursts
-    are not sent to SEP SRAM: no specification states how the SEP fabric or
-    the SRAM port answers them, and the SRAM port asserts against them.
+    again while the master holds RREADY and BREADY back. A four-beat WRAP and
+    a four-beat FIXED burst into SRAM are refused: the write is SLVERR and the
+    pattern is unchanged, and every R beat of the read is SLVERR
+    (``fabric.adoc``, "SRAM").
 S7: a write to the entropy pool drain aperture terminates SLVERR
     (``fabric.adoc``: "Writes to it terminate with BRESP=SLVERR"), and a read and
     a write of SEP-local 0x0, which no component owns, are not OKAY.
@@ -208,6 +209,12 @@ BURST_LENS = (0x00, 0x55, 0xAA, 0xFF)
 RESP_BACKPRESSURE_CYCLES = 4
 # First byte of the S6 pattern written under response backpressure.
 STALL_PATTERN_BASE = 0x77
+# The S6 WRAP and FIXED bursts: four 8-byte beats from the third word of the
+# pattern, so the WRAP burst starts inside its 32-byte window, with a payload
+# the pattern does not contain.
+NON_INCR_BEATS = 4
+NON_INCR_OFFSET = 16
+NON_INCR_PAYLOAD_BASE = 0xC0
 # SEP-local 0x2000_0000 and the TRNG window are inside this window, which
 # still ends below the SMC window at its reset base.
 WIN_EXT_SIZE = 0x2100_0000
@@ -391,9 +398,65 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
             master.driver.set_timing(AxiTimingProfile())
         if resp_w != RESP_OKAY or resp_r != RESP_OKAY or data != pattern:
             bad.append(("INCR under RREADY/BREADY backpressure", resp_w, resp_r))
+        bad += await self._non_incr_bursts(master, base, pattern)
         self._log(f"CHK-AXIIN-SEP-BURST mismatches={bad}")
         sb.expect_eq("CHK-AXIIN-SEP-BURST", bad, [], evidence="CHK-AXIIN-SEP-BURST")
         self.steps["S6"] = True
+
+    async def _non_incr_bursts(self, master, base: int, pattern: bytes) -> list:
+        """WRAP and FIXED bursts into SRAM: SLVERR on B and on every R beat, SRAM unchanged."""
+        bad = []
+        seen = []
+        start = base + NON_INCR_OFFSET
+        nbytes = NON_INCR_BEATS * 8
+        payload = bytes((NON_INCR_PAYLOAD_BASE + i) & 0xFF for i in range(nbytes))
+        ars: list[tuple[int, int, int]] = []
+        r_beats: list[tuple[int, int, int]] = []
+        tap = cocotb.start_soon(self._ext_in_read_tap(ars, r_beats))
+        try:
+            for name, burst in (("WRAP", AXI_BURST_WRAP), ("FIXED", AXI_BURST_FIXED)):
+                resp_w, _, _ = await self._ax(
+                    master,
+                    write=True,
+                    addr=start,
+                    payload=payload,
+                    size=3,
+                    burst=burst,
+                    label=f"{name.lower()}_wr",
+                )
+                resp_r, _, _ = await self._ax(
+                    master,
+                    write=False,
+                    addr=start,
+                    payload=nbytes,
+                    size=3,
+                    burst=burst,
+                    label=f"{name.lower()}_rd",
+                )
+                resp_after, data, _ = await self._ax(
+                    master,
+                    write=False,
+                    addr=base,
+                    payload=len(pattern),
+                    size=3,
+                    label=f"{name.lower()}_after",
+                )
+                seen.append((name, resp_name(resp_w), resp_name(resp_r), resp_name(resp_after)))
+                if resp_w != RESP_SLVERR or resp_r != RESP_SLVERR:
+                    bad.append((name, "response", resp_w, resp_r))
+                if resp_after != RESP_OKAY or data != pattern:
+                    bad.append((name, "SRAM changed", resp_after, data[:nbytes].hex()))
+        finally:
+            tap.cancel()
+        bursts, tap_errors = _split_bursts(ars, r_beats)
+        refused = [codes for araddr, codes in bursts if araddr == start]
+        self._log(
+            f"CHK-AXIIN-SEP-BURST non-INCR (burst, BRESP, RRESP, INCR readback)={seen} "
+            f"tapped R beats={refused} tap errors={tap_errors}"
+        )
+        if tap_errors or refused != [(RESP_SLVERR,) * NON_INCR_BEATS] * 2:
+            bad.append(("non-INCR R beats", refused, tap_errors))
+        return bad
 
     async def _errors(self, master, sb) -> None:
         pool_w, _, _ = await self._ax(

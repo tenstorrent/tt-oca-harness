@@ -6,10 +6,10 @@
 # Quasi Static Signals
 ########################################################
 # Hierarchy-reusable: port references go through cdc_port_or_pin, anchored internal paths
-# through cdc_inst, `-hier` globs are level-independent. See cdc_hier_procs.tcl.
+# through cdc_inst, `-hier` globs are level-independent. See hier_reuse_procs.tcl.
 
 if { [info procs cdc_is_block_top] eq "" } {
-    source $::env(GIT_ROOT)/flows/synth/constraints/cdc_hier_procs.tcl
+    source $::env(GIT_ROOT)/flows/synth/constraints/hier_reuse_procs.tcl
 }
 
 # create_static on a block port (or the same-named instance pin at the parent), guarded.
@@ -117,20 +117,20 @@ _smc_static_pin {u_smc_peripherals/u_uart_wrap/gen_uart_log_engine_wraps[0].u_ua
 _smc_static_pin {u_smc_peripherals/u_uart_wrap/gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap/u_uart_log_engine_ctrl_reg/field_storage.CTRL.UART_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_uart_wrap/gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap/u_uart_log_engine_ctrl_reg/field_storage.CTRL.UART_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_uart_wrap/gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap/u_uart_log_engine_ctrl_reg/field_storage.CTRL.UART_EN.value/Q}
-_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_enable_sync/u_sync3[0]/d0nt_wrap_sync/Q}
-_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_enable_sync/u_sync3[1]/d0nt_wrap_sync/Q}
-_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_enable_sync/u_sync3[2]/d0nt_wrap_sync/Q}
+_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_enable_sync/u_sync3[0]/q_ddd/Q}
+_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_enable_sync/u_sync3[1]/q_ddd/Q}
+_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_enable_sync/u_sync3[2]/q_ddd/Q}
 # UART3 (`sync3[3]`): final-stage sync output quasi-static because upstream UART_EN CSR is.
-_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_enable_sync/u_sync3[3]/d0nt_wrap_sync/Q}
+_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_enable_sync/u_sync3[3]/q_ddd/Q}
 _smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[0].I2C_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[1].I2C_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[2].I2C_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[0].SMBUS_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[1].SMBUS_EN.value/Q}
 _smc_static_pin {u_smc_peripherals/u_i2c_wrap/u_i2c_ctrl_reg/field_storage.I2C_CTRL[2].SMBUS_EN.value/Q}
-_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_enable_sync/u_sync3[0]/d0nt_wrap_sync/Q}
-_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_enable_sync/u_sync3[1]/d0nt_wrap_sync/Q}
-_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_enable_sync/u_sync3[2]/d0nt_wrap_sync/Q}
+_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_enable_sync/u_sync3[0]/q_ddd/Q}
+_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_enable_sync/u_sync3[1]/q_ddd/Q}
+_smc_static_pin {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_enable_sync/u_sync3[2]/q_ddd/Q}
 
 # hartResetReg_[0-3] are JTAG-written quasi-static registers — they change only
 # on explicit DMCONTROL.hartreset JTAG writes (10-50MHz TCK).

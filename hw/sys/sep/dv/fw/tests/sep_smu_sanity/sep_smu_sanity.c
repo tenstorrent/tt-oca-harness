@@ -301,7 +301,7 @@ static int stage_kmac(void) {
 
 int main(void) {
     /* The outbound window must be opened BEFORE the first STDOUT store. The
-     * SEP outbound filter is instantiated with BlockByDefault=1
+     * SEP outbound filter is instantiated with BLOCK_BY_DEFAULT=1
      * (sep_system_peripherals.sv), so an unmatched write is isolated and
      * answered with an error, which the EL2 takes as a store access fault;
      * crt0's _trap then jumps to _finish and the firmware dies before it can

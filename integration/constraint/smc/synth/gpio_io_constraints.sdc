@@ -1,1 +1,0 @@
-../../../../hw/sys/smc/synth/gpio_io_constraints.sdc
