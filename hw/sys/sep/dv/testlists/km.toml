@@ -353,3 +353,19 @@ tools = ["vcs"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom.parhex"]
+
+[[tests]]
+# KM DRBG sampler: a DATA read times out after CFG.TIMEOUT cycles while the
+# entropy chain is still disabled; a read with the timeout disabled stays pending
+# until the sequenced KM reset cancels it; the warm path reads the sampler
+# resets; then the same budget completes a read once the chain delivers.
+# Directed. no_cpu; +skip_fuse_sense; +esrc_noise_force for the control leg.
+name = "sep_km_drbg_sampler_timeout_reset_test"
+module = "km.sep_km_drbg_sampler_timeout_reset_test"
+firmware = { name = "km_rom_drbg_sampler", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["km", "drbg", "entropy", "reset", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_drbg_sampler.parhex"]

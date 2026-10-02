@@ -217,6 +217,13 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x0,
         "fixed_from": "program_lock_spares",
     },
+    # Same spare-zero image as the lock matrix: the read-back select test
+    # programs bits of one seed-selected spare field.
+    "sep_efuse_program_read_back_select_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed_from": "program_lock_spares",
+    },
     # Demote product starts at TEST_DEV with DIS=0; the pinned DIS pair is
     # W1S-programmed after the first LC walk.
     "sep_lcc_demote_feat_ctrl_matrix_test": {

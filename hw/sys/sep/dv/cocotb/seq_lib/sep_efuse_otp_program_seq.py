@@ -158,3 +158,60 @@ class sep_efuse_otp_program_seq(uvm_sequence):
                 f"EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error stuck after clear "
                 f"(status=0x{status:08x})"
             )
+
+
+class sep_efuse_otp_program_once_seq(uvm_sequence):
+    """One frontdoor program of one OTP bit, with the read-back verify on or off.
+
+    No retry and no verdict. The sequence records ``EFUSE_PROGRAM_CTRL`` at
+    ``program_done`` in ``self.status`` and the ``program_status`` bit in
+    ``self.program_err``; the caller grades them. ``program_enable`` is cleared
+    after completion, as for :class:`sep_efuse_otp_program_seq`.
+    """
+
+    def __init__(
+        self,
+        bit_addr: int,
+        *,
+        read_back: bool,
+        name: str = "sep_efuse_otp_program_once_seq",
+    ) -> None:
+        super().__init__(name)
+        self.bit_addr = bit_addr
+        self.read_back = read_back
+        self.status: int | None = None
+        self.program_err: bool | None = None
+
+    async def _access(self, op: SepAxiOp, addr: int, *, data: int = 0, label: str = "axi") -> int:
+        item = SepAxiItem(f"{label}_0x{addr:08x}")
+        item.op = op
+        item.addr = addr
+        item.length = 4
+        item.wdata = data
+        await self.start_item(item)
+        await self.finish_item(item)
+        return item.rdata
+
+    async def body(self) -> None:
+        wdata = (
+            _place_addr(self.bit_addr)
+            | _EFUSE_DATA_BIT
+            | _EFUSE_PROGRAM_GO_BIT
+            | (_EFUSE_PROGRAM_READ_BACK_BIT if self.read_back else 0)
+            | _EFUSE_PROGRAM_ENABLE_BIT
+        )
+        await self._access(SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=wdata, label="program_ctrl")
+        for _ in range(_POLL_CYCLES):
+            await ClockCycles(cocotb.top.clk_i, 1)
+            status = await self._access(SepAxiOp.READ, _EFUSE_PROGRAM_CTRL, label="program_status")
+            if status & _EFUSE_PROGRAM_DONE_BIT:
+                await self._access(
+                    SepAxiOp.WRITE, _EFUSE_PROGRAM_CTRL, data=0, label="program_ctrl_clear"
+                )
+                self.status = status
+                self.program_err = bool(status & _EFUSE_PROGRAM_ERR_BIT)
+                return
+        raise AssertionError(
+            f"OTP program bit {self.bit_addr} (read_back={int(self.read_back)}) never "
+            f"signaled program_done within {_POLL_CYCLES} polls"
+        )

@@ -629,6 +629,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |no_cpu, real fuse sense
 |ocah_axi_vip
 |Program × lock on a legal spare field.
+|`sep_efuse_program_read_back_select_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, OTP bank model program-fail injection
+|`EFUSE_PROGRAM_CTRL.efuse_program_read_back` selects the verified program: against a dropped bank write the read-back program reports `program_status` 1 and the plain program reports 0; both program the bit when the write is kept.
 |`sep_lcc_demote_feat_ctrl_matrix_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
@@ -752,6 +756,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
 |A KM CPU load and store past the `OTP_EFUSE_MMR` register map answer SLVERR and do not reach the eFuse shim register, which `key_manager.rdl` excludes from the KM path. The host programs and reads the shim register on its SEP-side window.
+|`sep_km_drbg_sampler_timeout_reset_test`
+|no_cpu, +skip_fuse_sense, +esrc_noise_force
+|ocah_axi_vip, KM CPU image, DRBG scoreboard
+|A KM DRBG-sampler `DATA` read times out after exactly `CFG.TIMEOUT` cycles with SLVERR, zero data and the documented status, while the entropy chain is still disabled. With the timeout disabled the read stays pending until the sequenced KM reset cancels it, and the warm path reads the sampler RDL resets. The same budget completes a read once the chain delivers.
 |`sep_km_vrom_decerr_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
@@ -5214,6 +5222,52 @@ per-IP clock gate.
 
 '''''
 
+[[sep_efuse_program_read_back_select_test]]
+===== `sep_efuse_program_read_back_select_test`
+
+*Phase*: 2
+
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense, `+sep_efuse_prog_fail_count=2`
+
+*Source Module*: `sep_efuse_program_read_back_select_test`
+
+*BFM / Model*: ocah_axi_vip; the OTP bank model drops the first two program writes after reset with no APB error
+
+*Randomization*: RANDCFG — the seed selects one spare field and two distinct bits in it. Every run walks the same four legs.
+
+*Objective*: `EFUSE_PROGRAM_CTRL.efuse_program_read_back` (`efuse_interface_ctrl.rdl`) triggers a read back after a program. `hw/ip/efuse/doc/interface.adoc` names the two commands `FUSE_COMMAND_PROGRAM` and `FUSE_COMMAND_PROGRAM_READ_BACK` (program with verification), and `program_status` is 0 for no error and 1 for an error. A dropped bank write returns no APB error (`hw/ip/efuse/dv/models/README.md`), so only the verified program can report it.
+
+*Test Coverage*: the program command with and without read-back, against a dropped and a kept bank write.
+
+*Test Procedure*:
+
+[arabic]
+. Stage an image with every spare field at 0 at `LC_TEST_DEV`, and sense it.
+. Program bit A without read-back (dropped write), then bit B with read-back (dropped write).
+. Program bit A again without read-back and bit B again with read-back (both writes kept).
+. After each program, read the OTP word through `EFUSE_READ_CTRL` and compare it whole against the image golden with the bits that landed.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-NORB-UNVERIFIED
+|Program without read-back, write dropped: `program_done` with `program_status` 0, and the OTP word still holds the bit clear. A controller that always verifies fails here.
+|CHK-RB-DETECT
+|Program with read-back, write dropped: `program_done` with `program_status` 1, and the OTP word still holds the bit clear. A controller that never verifies fails here.
+|CHK-NORB-PROGRAM
+|Control. The same bit and command with the write kept: `program_status` 0 and the OTP word gains the bit.
+|CHK-RB-PROGRAM
+|Control. The same bit and command with the write kept: `program_status` 0 and the OTP word gains the bit.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
 [[sep_locked_field_access_irq_path_test]]
 ===== `sep_locked_field_access_irq_path_test`
 
@@ -8455,6 +8509,57 @@ the wipe security contract.
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
 
 *Refusal code*: SLVERR. The Key Manager answers every offset of the 4 KB OTP/eFuse window (`0x0001_1000`–`0x0001_1FFF`) outside the MAP, CTRL and MMR register maps itself, with SLVERR and read data `0xBADCAB1E`.
+
+'''''
+
+[[sep_km_drbg_sampler_timeout_reset_test]]
+===== `sep_km_drbg_sampler_timeout_reset_test`
+
+*Phase*: 2
+
+*Bucket*: Key Manager vault
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+esrc_noise_force`, `+km_rom_hex=km_rom_drbg_sampler.parhex`
+
+*Source Module*: `sep_km_drbg_sampler_timeout_reset_test`
+
+*BFM / Model*: ocah_axi_vip, KM CPU image, DRBG scoreboard (`CHK5_km` golden)
+
+*Randomization*: Directed. The image carries one `CFG.TIMEOUT` value.
+
+*Objective*: `hw/ip/key_manager/doc/architecture.adoc` (DRBG sampler register behavior, Errors and reset) and `km_drbg_sampler.rdl`: an active `DATA` read times out after exactly `CFG.TIMEOUT` active cycles and completes with SLVERR and zero data, sets the sticky `STATUS.TIMEOUT_ERR`, increments `COUNT_BAD` and pulses `IRQ_STATUS.DRBG_ERR`; `TIMEOUT = 0` disables the timeout; `ST_REQUEST` asserts TREADY; a warm KM reset restores configuration defaults, counters, error bits and request control. The sequenced KM reset is the KM warm reset (`reset_controller.adoc`, Resetting the Key Manager), and `BOOT_STATUS.COLD_BOOT_DONE` survives it (`km_csr.rdl`).
+
+*Test Coverage*: sampler `ST_TIMEOUT`, a warm reset in `ST_REQUEST`, and `ST_RESPOND` under the same budget.
+
+*Test Procedure*:
+
+[arabic]
+. Release the KM into `km_rom_drbg_sampler` with CSRNG and EDN at their reset (disabled), so no beat reaches the KM. The host records every TREADY run on `km_entropy_tready_o`.
+. Timeout leg: the image sets `CFG.TIMEOUT` = 40, clears the watched `IRQ_STATUS` bits and reads `DATA`.
+. Reset leg: the image writes `CFG` = 0 and reads `DATA`. The host waits four reset timeout budgets, then parks and releases the KM `SW_RESET_N` bit.
+. The image takes its warm path and stores `BOOT_STATUS`, `CFG`, `STATUS` and `IRQ_STATUS` as found.
+. Control leg: the host brings up the entropy chain; the image sets the same `CFG.TIMEOUT`, waits for `STATUS.DRBG_READY` and reads `DATA`.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-SMP-TIMEOUT
+|TREADY is high for exactly `CFG.TIMEOUT` cycles with no handshake; `DATA` reads 0; the load sets `AXI_SLVERR` and `DRBG_ERR`; `STATUS` has `TIMEOUT_ERR` 1, `STREAM_ERR` 0, `COUNT_BAD` 1, `COUNT_GOOD` 0. Precondition: `STATUS` read its RDL reset before the read.
+|CHK-SMP-NO-TIMEOUT
+|With `CFG` = 0 the read holds TREADY with no handshake for four reset timeout budgets and does not complete.
+|CHK-SMP-WARM-CANCEL
+|The KM park drops TREADY while the read is pending, and TREADY stays low while the reset is held.
+|CHK-SMP-WARM-RESET
+|The image runs its warm path (`COLD_BOOT_DONE` 1). `CFG` and `STATUS` read their RDL resets and `IRQ_STATUS.DRBG_ERR` is clear, although the image left `CFG` = 0 and `TIMEOUT_ERR`, `COUNT_BAD` and `DRBG_ERR` set before the reset.
+|CHK-SMP-CONTROL
+|Control for CHK-SMP-TIMEOUT: the same budget with `DRBG_READY` 1 completes with one handshake in less than the budget; `DATA` equals the word on the KM AXI-Stream; no watched `IRQ_STATUS` bit sets; `STATUS` has `COUNT_GOOD` 1 and no error.
+|===
+
+*Pass Criteria*: Every named checker PASSes, and the DRBG scoreboard reports PASS. `UVM_ERROR` is 0.
+
+*Scope limit*: `ST_STREAM_ERR` is not reached. The only `TVALID` withdrawal the specification describes is a TRNG reset while the KM is not quiesced, and `architecture.adoc` tells software to quiesce the KM first.
 
 '''''
 
