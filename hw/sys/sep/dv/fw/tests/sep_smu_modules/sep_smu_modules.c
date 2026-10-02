@@ -9,7 +9,7 @@
  *   - clock/reset/fabric/sram/bootrom
  *   - dma/wdt/aes/hmac/kmac/otbn
  *   - lcc(key lifecycle ctrl)/km mailbox/efuse
- *   - OpenTitan SPI host. The open DUT has no pad mux.
+ *   - OpenTitan SPI host. No select steers it, so the image programs none.
  *
  * Completion is signaled by pass/fail loops for cocotb PC classification.
  */

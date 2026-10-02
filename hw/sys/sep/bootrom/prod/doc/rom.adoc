@@ -730,7 +730,7 @@ After the entry checks, `rom_main()` performs the following platform bring-up, i
 |*Stage* |*Behavior*
 |[S04] SMC access sanity |Write/read-back of four patterns through SMC scratch[7] proves the
 outbound path to the SMC responds before the boot flow depends on it. Mismatch is fatal
-(`0xA001`).
+(`ROM_ERR_SMC_SANITY_FAILED`, `0xA001`).
 |[S05] ROM identity |ROM version string and build-time SHA-256 are emitted (see
 <<sec:boot_measurement>>), and the `'COLD'` marker is written to `cold_scratch[0]`.
 |[S06] straps |Latched straps parsed into the boot configuration (<<sec:straps>>).
@@ -1253,7 +1253,8 @@ SEP -> SHM : status codes -> ring buffer (ongoing)
 Before any protocol decision depends on the SMC, the ROM proves the outbound path works:
 four patterns (`0xA5A55A5A`, `0x12345678`, `0x00000000`, `0xFFFFFFFF`) are written to
 scratch[7] and read back. [[req-SEP-ROM-SMC-020]]*[SEP-ROM-SMC-020]* A read-back mismatch is
-fatal (`0xA001`); the register shall be restored to zero on success.
+fatal (`ROM_ERR_SMC_SANITY_FAILED`, `0xA001`); the register shall be restored to zero on
+success.
 
 === Memory-Repair / DFT Gate ([S03])
 
@@ -1775,8 +1776,8 @@ outcome on every later call. A boot that reaches neither callback — an unsigne
 unencrypted boot — shall not pay for it.
 
 [[req-SEP-ROM-ENT-020]]*[SEP-ROM-ENT-020]* A failed bring-up shall stop the boot, reported as
-`SEP_MSG_ENTROPY_INIT_FAILED` with a console marker naming the stage that failed. It shall
-*not* be treated as a per-slot failure: the requirement is device-level, so the backup
+`SEP_MSG_ENTROPY_INIT_FAILED` with a console marker naming the stage that failed, and halt on
+`ROM_ERR_ENTROPY_INIT_FAILED`. It shall *not* be treated as a per-slot failure: the requirement is device-level, so the backup
 manifest slot carries the identical requirement and rotating to it cannot help, while
 allowing the failure to surface downstream would report it as a signature or decryption
 error and name the wrong cause.
@@ -2957,8 +2958,13 @@ endif::backend-html5[]
 
 === Fatal ROM Error Codes
 
-Fatal errors reported through `rom_err_fail()` (mailbox + `bl0_state.error_code`) use a
-separate 32-bit namespace:
+Fatal errors reported through `rom_err_fail()` are recorded in `bl0_state.error_code`. The
+ROM core's own codes, listed in `include/errors.h`, keep the upper half zero, so
+`rom_err_fail()` also posts them to `cold_scratch[1]` as an ERROR status; the nibble at
+`[15:12]` names the area. A subsystem's codes carry its tag in the upper half instead --
+`0x0002xxxx` for the DMA driver, `0x0003xxxx` for the manifest module
+(<<tbl:oca_boot_err>>) -- and reach only `bl0_state.error_code`, since every such path has
+already reported its own status.
 
 [[tbl:rom_err]]
 .`ROM_ERR_*` fatal codes
@@ -2967,8 +2973,7 @@ separate 32-bit namespace:
 [frame=ends]
 |===
 |*Code* |*Value* |*Cause*
-|(unnamed) |`0xA001` |SMC scratch round-trip mismatch (<<sec:smc_sync>>); the code uses the
-bare literal — a `ROM_ERR_` name should be assigned.
+|`ROM_ERR_SMC_SANITY_FAILED` |`0xA001` |SMC scratch round-trip mismatch (<<sec:smc_sync>>).
 |`ROM_ERR_LIFECYCLE_INVALID` |`0xA002` |Invalid LC state (<<sec:fuses>>).
 |`ROM_ERR_RUNTIME_INIT_FAILED` |`0xB001` |`.data`/`.bss` init self-check failed
 (<<sec:cpu_init>>).
@@ -2982,8 +2987,8 @@ itself, SEP-ROM-STRAP-020).
 (<<sec:cpu_init>>).
 |`ROM_ERR_FUSE_SECRETS_NOT_LOCKED` |`0xF003` |Fuse-secret lock verification failed
 (<<sec:handoff>>).
-|`ROM_ERR_HANDOFF_SELFCHECK_FAILED` |`0xF004` |Pre-hand-off self-check failed
-(<<sec:handoff>>).
+|`ROM_ERR_HANDOFF_SELFCHECK_FAILED` |`0xF004` |Reserved for a pre-hand-off self-check this ROM
+does not implement.
 |`ROM_ERR_ROM_HASH_MISMATCH` |`0xF005` |ROM self-hash recompute mismatch (or unparsable
 embedded hash) (<<sec:boot_measurement>>).
 |`ROM_ERR_MEASUREMENT_FAILED` |`0xF006` |Measurement enrollment failed (hash engine)
@@ -2993,6 +2998,37 @@ i.e. `__bl0_state_reserve` in `link/rom.ld` and `BL0_STATE_RESERVE_BYTES` in
 `include/bl0_state.h` have drifted apart (<<sec:handoff>>).
 |`ROM_ERR_SBOOT_DIS_RSVD_SET` |`0xF008` |`SBOOT_DIS.rsvd[31:1]` read non-zero: a fuse-integrity
 fault (<<sec:fuses>>).
+|`ROM_ERR_ENTROPY_INIT_FAILED` |`0xF009` |Entropy bring-up failed (SEP-ROM-ENT-020).
+|===
+
+The manifest module's codes are `OCA_BOOT_ERR_*` in `include/oca_boot.h`. `0x000300xx` carries a
+validation-library verdict (`oca_result_t`) in the low byte; `0x000301xx` are the module's own
+failures, before or after the library runs. A failed storage read keeps a refused offset apart
+from a failed transfer. On the OpenTitan SPI build (`BOOT_SPI_CONTROLLER_OT=1`) a failed flash
+transfer and a failed DMA from SMC SRAM also differ; on the Cadence build every storage read is
+a secure-DMA copy, so both report `OCA_BOOT_ERR_DMA`:
+
+[[tbl:oca_boot_err]]
+.Manifest-module `OCA_BOOT_ERR_*` codes
+[width="90%",cols="40%,20%,40%",options="header"]
+[grid=rows]
+[frame=ends]
+|===
+|*Code* |*Value* |*Cause*
+|`OCA_BOOT_ERR_DMA` |`0x00030100` |A secure-DMA copy from storage (SMC SRAM, or the XIP window
+on the Cadence build) failed, timed out or was refused; the DMA reports `DMA_ERROR`,
+`DMA_TIMEOUT` or `DMA_OUT_OF_RANGE`.
+|`OCA_BOOT_ERR_STAGE_OVERFLOW` |`0x00030101` |Manifest body and payload exceed SEP SRAM.
+|`OCA_BOOT_ERR_NO_BL1` |`0x00030102` |No BL1 image in the TOC.
+|`OCA_BOOT_ERR_BL1_BAD_ADDR` |`0x00030103` |BL1 load or entry address outside the permitted
+regions, or the DMA copy of BL1 or its ICCM pad failed.
+|`OCA_BOOT_ERR_BL1_TOO_LARGE` |`0x00030104` |BL1 length implausible.
+|`OCA_BOOT_ERR_KEY_UNTRUSTED` |`0x00030105` |Reserved; this ROM does not return it.
+|`OCA_BOOT_ERR_READ_OUT_OF_BOUNDS` |`0x00030106` |A storage read was refused by the bounds gate
+(the boot slot on the OpenTitan build, the XIP window on the Cadence build); reported as
+`IMAGE_OOB`.
+|`OCA_BOOT_ERR_FLASH_READ` |`0x00030107` |The OpenTitan SPI driver failed a read (OpenTitan
+build only); its `SPI_OT_*` code is reported as the status.
 |===
 
 Manifest-path failures use the `MANIFEST_ERR_*` namespace and map from `oca_result_t`; the
@@ -3018,7 +3054,7 @@ denotes a following 16-bit payload word.
 |PMP programmed |`BOOTROM_PRESTART_DONE` (DEBUG) |—
 |runtime init |`RUNTIME_INIT_OK` (DEBUG, from stub; re-reported in [S04]) |`ROM_ERR_RUNTIME_INIT_FAILED`
 |[S04] main entry |`BOOTROM_START_MAIN` (DEBUG) |—
-|[S04] SMC sanity |— |`0xA001` (mailbox)
+|[S04] SMC sanity |— |`ROM_ERR_SMC_SANITY_FAILED` (`0xA001`)
 |[S05] ROM identity |`ROM_HASH` → `INFO_EXT` ×2 (hash prefix) |—
 |[S06] straps |`DEVICE_MODE_INPUTS_CHECK` (DEBUG) |—
 |[S07] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
@@ -3047,15 +3083,17 @@ enforce secure boot |—
 |SMC coordination |`SMC_COORD_CHECK` (DEBUG) |—
 |[S23] manifest |`MANIFEST_LOAD_START` (per attempt); `WAIT_FOR_SMC_MANIFEST_READY`
 (recovery/secondary); `CHECK_MANIFEST_HASH`; `CHECK_USAGE_CONSTRAINTS`; `MANIFEST_VALIDATED`
-|`INVALID_MANIFEST_HASH`, `SPI_OT_BOUNDS_ERROR`, `PAYLOAD_OVERLAPS_MANIFEST`,
-`MANIFEST_LOAD_FAILED` (all slots exhausted) + `OCA_FAIL_*` code
+|`INVALID_MANIFEST_HASH`, `PAYLOAD_OVERLAPS_MANIFEST`; a failed storage read (WARN):
+`IMAGE_OOB` (refused offset), `SPI_OT_*` (flash transport) or a DMA status;
+`MANIFEST_LOAD_FAILED` (all slots exhausted) + `OCA_FAIL_*` or `OCA_BOOT_ERR_*` code
 |[S24] crypto |`VALIDATE_CHECK`; `READ_BL1_SECURITY_VERSION` |`OCA_FAIL_*`
 (rollback / revoked / key unauthorized / signature / decrypt)
 |payload hashes |— |`OCA_FAIL_PAYLOAD_HASH`
 |any SHA-256 or HMAC |— |`HMAC_FIFO_TIMEOUT` (WARN, the engine stopped consuming), then the
 caller's error
-|any secure-DMA copy or fill |— |`DMA_TIMEOUT` (WARN, a transfer that never completed), then the
-caller's error
+|any secure-DMA copy or fill |— |`DMA_OUT_OF_RANGE` (WARN, refused before starting),
+`DMA_ERROR` (WARN, the engine reported an error) or `DMA_TIMEOUT` (WARN, a transfer that
+never completed), then the caller's error
 |[S25] demotion + locks |`FUSE_SECRETS_LOCK`; `FUSE_SECRETS_LOCKED`
 |`FUSE_SECRETS_NOT_LOCKED` (ERROR) + `ROM_ERR_FUSE_SECRETS_NOT_LOCKED`
 |[S17] slot 0 (post-[S10]) |`RECORD_MEASUREMENT` → `INFO_EXT` (slot 0) |`0xF005`

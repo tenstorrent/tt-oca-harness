@@ -106,8 +106,17 @@ window and forwards every access on `ext_trng_axil`. It does not decode offsets
 inside that window: the endpoint is an adopter-defined IP.
 
 The adopter must perform the intra-aperture decode. An address that owns no
-register must return SLVERR and must not alias onto a live register. When no
-external TRNG is connected, terminate `ext_trng_axil` with a DECERR slave.
+register must return an error response and must not alias onto a live register.
+When no external TRNG is connected, terminate `ext_trng_axil` with a DECERR
+slave.
+
+The TRNG path reaches `ext_trng_axil` through an AXI4-to-AXI-Lite conversion
+(64-to-32 downsizer and burst splitter). On that path an errored read returns
+the slave's response verbatim, but an errored write is reported as SLVERR
+regardless of the slave's response. A DECERR slave therefore answers errored
+reads with DECERR and errored writes with SLVERR; both still refuse the access.
+An adopter whose endpoint returns DECERR for an unowned offset sees the same
+asymmetry.
 
 == eFuse and Lifecycle
 
@@ -172,9 +181,61 @@ that path.
 == SPI Host Interface
 
 The SEP provides a SPI host controller through the `sep_io_spi` interface,
-supporting single and quad modes. The controller's own interrupt leaves the
-module as the `irq` field of `sep_io_spi_req_o`, so no separate interrupt
+supporting standard, dual and quad modes. The controller's own interrupt leaves
+the module as the `irq` field of `sep_io_spi_req_o`, so no separate interrupt
 output is needed.
+
+=== SEP SPI Host Pin Assignment
+
+When the SMU is built with the SEP, the SMU drives the SMC SPI port
+(`spi_*_i` of `smc.sv`) from `sep_io_spi_req_o` and returns the data-pad
+inputs to the SEP in `sep_io_spi_rsp_i.sd`. The SMC places these signals on
+GPIO 0-10 and 54. Inside `smc.sv`, no register selects another SPI source for
+these pads.
+
+[options="header", cols="1,2,4"]
+|===
+| GPIO | Function | SEP SPI host source
+
+| 0-3
+| SPI.DATA[0-3]
+| Lane n drives `sd[n]` with output enable `sd_oe[n]`; the pad input returns as `sd[n]`.
+
+| 4-7
+| SPI.DATA[4-7]
+| Not driven. Output disabled, input disabled.
+
+| 8
+| SPI.CS
+| `cs_n`, output enable `cs_oe`.
+
+| 9
+| SPI.CLK
+| `sck`, output enable `sck_oe`.
+
+| 10
+| SPI.DQS
+| Not driven. Output disabled, input disabled.
+
+| 54
+| SPI DQS Loopback
+| Not driven. Output disabled, input disabled.
+|===
+
+In standard mode, SPI.DATA[0] is the host output (COPI) and SPI.DATA[1] is the
+host input (CIPO).
+
+The SMC holds the SPI function select of these pads on whenever the SMU has
+the SEP. A pad follows the SEP SPI host once it is out of cold reset and while
+its GPIO `DATA_CTRL.lsio_disable` is clear; setting `lsio_disable` returns the
+pad to register control. A pad shim outside `smc.sv` can also hand a pad to a
+second function with its `CONTROL.hw2_ovrd`.
+
+On SPI.CS, SPI.CLK and SPI.DATA[0-3], the pad input is enabled only while the
+host does not drive that pad. The host drives a data lane only while chip
+select is asserted, and drives no pad until software sets its
+`CONTROL.OUTPUT_EN`. Until then SPI.CS is undriven, so its level comes from the
+pad pull; the GPIO pin table recommends a pull-up.
 
 == Bring-Up Considerations
 

@@ -278,14 +278,14 @@ module sep_entropy_fifo
   //                                SLVERR when the pool is empty)
   //   else      -> RRESP=SLVERR, RDATA=0
   localparam logic [15:0] STATUS_OFFSET =
-      16'(sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_STATUS_BASE_ADDR
-          - sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
+      16'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_STATUS_BASE_ADDR
+          - sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
   localparam logic [15:0] IRQ_CAUSE_OFFSET =
-      16'(sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_IRQ_CAUSE_BASE_ADDR
-          - sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
+      16'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_IRQ_CAUSE_BASE_ADDR
+          - sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
   localparam logic [15:0] DATA_OFFSET =
-      16'(sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_DATA_BASE_ADDR
-          - sep_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
+      16'(sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_DATA_BASE_ADDR
+          - sep_top_addrmap_pkg::SEP_TOP_ENTROPY_POOL_BASE_ADDR);
 
   logic        rd_pending_q;
   logic [63:0] rd_data_q;
