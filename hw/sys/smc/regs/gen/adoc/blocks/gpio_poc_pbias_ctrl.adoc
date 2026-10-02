@@ -39,6 +39,6 @@ PSW=1 at 1.2V I/O supply
 | 15:11 | `Reserved` | - | - a| Reserved
 | 10:8 | `awprot_requirement` | RW | 0x1 a| When write_filter_enable is set, only allow write accesses with this prot value
 | 7:2 | `Reserved` | - | - a| Reserved
-| 1 | `read_filter_enable` | RW | 0x0 a| Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.
-| 0 | `write_filter_enable` | RW | 0x0 a| Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.
+| 1 | `read_filter_enable` | RW | 0x0 a| Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
+| 0 | `write_filter_enable` | RW | 0x0 a| Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
 |===
