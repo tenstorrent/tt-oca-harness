@@ -6,9 +6,10 @@
 Every scheduler interaction is one of the registry's argv templates rendered and run as a
 subprocess: ``submit_argv`` once per attempt or once per job array, ``query_argv`` for a batch
 of job ids on every poll, ``history_argv`` for ids absent from the live query, and
-``cancel_argv`` on interruption. The executor reads no scheduler output itself; the driver's
-:class:`SchedulerDialect` turns each command's output into normalized observations, so a site
-changes flags in the registry while a driver changes parsing in code.
+``cancel_argv`` on interruption and for a job graded ``LOST`` while the scheduler may still
+run it. The executor reads no scheduler output itself; the driver's :class:`SchedulerDialect`
+turns each command's output into normalized observations, so a site changes flags in the
+registry while a driver changes parsing in code.
 
 With ``arrays`` on, the first attempts of a stage go out as job arrays of at most
 ``array_chunk_size`` elements, one array per coordinator turn. Every element is its own
@@ -23,8 +24,10 @@ only ``artifact_grace_sec`` without either makes it ``LOST``. A terminal state t
 reports for a job that ran is likewise held until the leaf's ``result.json`` is visible or that
 grace has passed, which absorbs a shared filesystem's lag. The verdict comes from that file
 alone; scheduler state decides only whether an attempt is over. Submission removes whatever
-an earlier invocation left at the attempt's ``result.json``, completion record, job log and
-``results/*.xml`` paths, so those files can only come from the attempt's own job.
+an earlier invocation left at the attempt's ``result.json``, completion record, graded mark, job
+log and ``results/*.xml`` paths, so those files can only come from this attempt. Collecting an
+attempt without a ``result.json`` leaves the graded mark, which stops a worker that is still
+running from writing a result for it.
 
 A query that fails as a whole leaves every asked handle in its previous state and lengthens
 the next wait; consecutive failures past a bound abort the run, as do consecutive submission
@@ -61,7 +64,7 @@ from .base import (
     render_argv,
     result_from_fragment,
 )
-from .manifest import clear_attempt_outputs, completion_path, jobs_dir
+from .manifest import clear_attempt_outputs, completion_path, graded_path, jobs_dir
 
 DEFAULT_WORKER_ARGV = [
     "{python}",
@@ -258,6 +261,10 @@ class _Tracked:
     missing_since: float | None = None
     terminal_since: float | None = None
     history: JobObservation | None = None
+    # The latest non-terminal state history reported while the live query missed the job.
+    history_alive: JobObservation | None = None
+    # The latest observation the live query returned for the job.
+    listed: JobObservation | None = None
     # The terminal observation ``poll`` reported; frozen from then on.
     settled: JobObservation | None = None
 
@@ -359,7 +366,7 @@ class ClusterExecutor(Executor):
     def submit(self, task: LeafTask) -> JobHandle:
         if task.manifest_path is None:
             raise ClusterError(f"{task.task_id}: no manifest was written for this attempt")
-        clear_attempt_outputs(task)
+        self._clear_earlier(task)
         script = self._write_script(task)
         joblog = job_log_path(self._run_dir, task.task_id)
         joblog.parent.mkdir(parents=True, exist_ok=True)
@@ -447,7 +454,7 @@ class ClusterExecutor(Executor):
             if task.manifest_path is None:
                 raise ClusterError(f"{task.task_id}: no manifest was written for this attempt")
         for task in tasks:
-            clear_attempt_outputs(task)
+            self._clear_earlier(task)
         self._array_sequence += 1
         label = f"{tasks[0].stage}-arr{self._array_sequence:04d}"
         script = self._write_array_script(tasks, label)
@@ -532,6 +539,11 @@ class ClusterExecutor(Executor):
             f"({tasks[0].task_id} .. {tasks[-1].task_id})"
         )
         return handles
+
+    def _clear_earlier(self, task: LeafTask) -> None:
+        """Remove what an earlier invocation left at the attempt's paths, graded mark included."""
+        clear_attempt_outputs(task)
+        graded_path(self._run_dir, task.task_id).unlink(missing_ok=True)
 
     def _write_array_script(self, tasks: Sequence[LeafTask], label: str) -> Path:
         tasks_file = array_tasks_path(self._run_dir, label)
@@ -626,6 +638,8 @@ class ClusterExecutor(Executor):
                 out[task_id] = tracked.last
                 continue
             seen = answer.observations.get(job_id)
+            if seen is not None:
+                tracked.listed = seen
             if seen is None or seen.state is JobState.RECONCILING:
                 reconciling.append(tracked)
                 continue
@@ -771,9 +785,14 @@ class ClusterExecutor(Executor):
 
         answer = self._query(pending, self._history_template, parse, purpose="history")
         for tracked in pending:
-            seen = answer.observations.get(tracked.handle.native_job_id)
+            job_id = tracked.handle.native_job_id
+            if job_id in answer.failed:
+                continue
+            seen = answer.observations.get(job_id)
             if seen is not None and seen.state.terminal:
                 tracked.history = seen
+            else:
+                tracked.history_alive = seen
 
     def _reconcile(self, tracked: _Tracked, now: float, stamp: str) -> JobObservation:
         """Settle a job the live query does not know: artifacts, then history, then the grace."""
@@ -785,6 +804,7 @@ class ClusterExecutor(Executor):
         if tracked.history is not None:
             return self._settle(tracked, tracked.history, now)
         if now - tracked.missing_since >= self.artifact_grace_sec:
+            self._cancel_unsettled(tracked)
             return self._finish(
                 tracked,
                 JobObservation(
@@ -801,6 +821,37 @@ class ClusterExecutor(Executor):
         )
         tracked.last = waiting
         return waiting
+
+    def _cancel_unsettled(self, tracked: _Tracked) -> None:
+        """Ask once, without waiting for confirmation, to stop a job the scheduler may still run.
+
+        That is a job the live query last listed in a state that settles nothing (LSF's
+        ``UNKWN`` and ``ZOMBI``), or one history last reported pending or running.
+        """
+        job_id = tracked.handle.native_job_id
+        if not job_id:
+            return
+        if tracked.listed is not None and tracked.listed.state is JobState.RECONCILING:
+            why = "the live query still lists it"
+        elif tracked.history_alive is not None:
+            why = f"history reports it {tracked.history_alive.state.value.lower()}"
+        else:
+            return
+        argv = render_argv(
+            self._cfg["cancel_argv"],
+            {"job_id": job_id, "job_ids_csv": job_id},
+            {"job_ids_argv": [job_id]},
+        )
+        result = self._run(argv, "cancel")
+        try:
+            reply = self._dialect.parse_cancel(result, [job_id]).get(job_id, CancelReply.UNKNOWN)
+        except (ValueError, KeyError, TypeError) as exc:
+            self._event(f"unparsable cancel output: {exc}")
+            reply = CancelReply.UNKNOWN
+        self._event(
+            f"{tracked.task.task_id} job {job_id}: cancel sent unconfirmed because {why}; "
+            f"reply {reply.value}"
+        )
 
     def _completion_observation(self, tracked: _Tracked, stamp: str) -> JobObservation | None:
         path = completion_path(self._run_dir, tracked.task.task_id)
@@ -979,6 +1030,8 @@ class ClusterExecutor(Executor):
                 result=result,
                 result_json=repo_rel(self._root, task.result_json),
             )
+        if handle.native_job_id:
+            self._mark_graded(task, seen)
         if seen.state is JobState.TIMED_OUT:
             ended = seen.observed_at or now_iso()
             expired = f"scheduler wall time expired: {seen.reason or 'no detail'}"
@@ -1008,6 +1061,16 @@ class ClusterExecutor(Executor):
             state=seen.state,
             error=seen.reason or seen.state.value.lower(),
         )
+
+    def _mark_graded(self, task: LeafTask, seen: JobObservation) -> None:
+        """Leave the mark that keeps a worker still running from writing this attempt's result."""
+        path = graded_path(self._run_dir, task.task_id)
+        try:
+            write_result(
+                path, {"task_id": task.task_id, "state": seen.state.value, "graded_at": now_iso()}
+            )
+        except OSError as exc:
+            self._event(f"{task.task_id}: cannot write {path}: {exc}")
 
     def _read_result(self, task: LeafTask) -> StageResult | None:
         path = task.result_json

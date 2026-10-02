@@ -37,8 +37,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import fake_scheduler  # noqa: E402
+from dashboard.collect_results import collect_flow_result  # noqa: E402
 from runlib import cli  # noqa: E402
 from runlib.config import load_executors  # noqa: E402
+from runlib.duts import resolve_dut  # noqa: E402
 from runlib.executors import (  # noqa: E402
     CLUSTER_DEFAULT_LIMITS,
     DIALECTS,
@@ -68,7 +70,7 @@ from runlib.executors.cluster import (  # noqa: E402
     script_path,
 )
 from runlib.executors.lsf import LsfDialect  # noqa: E402
-from runlib.executors.manifest import completion_path, manifest_path  # noqa: E402
+from runlib.executors.manifest import completion_path, graded_path, manifest_path  # noqa: E402
 from runlib.executors.slurm import SlurmDialect  # noqa: E402
 from runlib.junit import PRODUCER, is_generated_junit  # noqa: E402
 from runlib.models import ConfigError  # noqa: E402
@@ -425,9 +427,40 @@ class ClusterExecutorTests(FakeSchedulerCase):
         self.assertGreaterEqual(len(reconciling), 4)
         self.assertEqual(final[handle.task_id].state, JobState.LOST)
         self.assertIn("no history record", final[handle.task_id].reason)
+        self.assertEqual(self.calls("cancel"), [], "nothing says the scheduler still runs it")
         outcome = executor.collect(handle)
         self.assertIsNone(outcome.result)
         self.assertEqual(outcome.state, JobState.LOST)
+
+    def test_a_job_lost_while_history_reports_it_running_is_cancelled_once(self) -> None:
+        self.scenario(
+            jobs={
+                "default": {
+                    "states": ["PEND", "RUN", "VANISH"],
+                    "run_script": False,
+                    "history": "RUN",
+                }
+            }
+        )
+        executor = self.executor(artifact_grace_sec=3.0)
+        handle = executor.submit(self.task(18))
+        final, _ = self.settle(executor, [handle])
+        self.assertEqual(final[handle.task_id].state, JobState.LOST)
+        cancels = [row["argv"][1:] for row in self.calls("cancel")]
+        self.assertEqual(cancels, [[handle.native_job_id]])
+        self.assertTrue(
+            any(
+                "cancel sent unconfirmed because history reports it running" in event
+                for event in self.events
+            ),
+            self.events,
+        )
+        outcome = executor.collect(handle)
+        self.assertIsNone(outcome.result)
+        mark = json.loads(graded_path(self.run_dir, handle.task_id).read_text(encoding="utf-8"))
+        self.assertEqual(set(mark), {"task_id", "state", "graded_at"})
+        self.assertEqual((mark["task_id"], mark["state"]), (handle.task_id, "LOST"))
+        executor.close()
 
     def test_history_failure_keeps_reconciling_then_recovers(self) -> None:
         self.scenario(
@@ -737,6 +770,32 @@ class ClusterExecutorTests(FakeSchedulerCase):
 
 class LsfExecutorTest(ClusterExecutorTests):
     driver = "lsf"
+
+    def test_a_job_lost_while_listed_unknown_is_cancelled_once_without_history(self) -> None:
+        self.scenario(
+            jobs={
+                "default": {
+                    "states": ["PEND", *["UNKWN"] * 40],
+                    "run_script": False,
+                    "history": "none",
+                }
+            }
+        )
+        executor = self.executor(artifact_grace_sec=3.0)
+        handle = executor.submit(self.task(19))
+        final, _ = self.settle(executor, [handle])
+        self.assertEqual(final[handle.task_id].state, JobState.LOST)
+        self.assertTrue(self.calls("history"), "history was asked and had no record")
+        cancels = [row["argv"][1:] for row in self.calls("cancel")]
+        self.assertEqual(cancels, [[handle.native_job_id]])
+        self.assertTrue(
+            any(
+                "cancel sent unconfirmed because the live query still lists it" in event
+                for event in self.events
+            ),
+            self.events,
+        )
+        executor.close()
 
 
 class SlurmExecutorTest(ClusterExecutorTests):
@@ -1461,6 +1520,57 @@ class CoordinatorTest(unittest.TestCase):
         self.assertEqual(error.get("type"), "environment_error")
         self.assertEqual(error.get("message"), lost["reason"])
 
+    def unreachable(self) -> dict[str, Any]:
+        """A job the scheduler still knows for 20 polls without settling it, then runs.
+
+        The fake runs a job's script when the job reaches RUN, which here stands for a worker
+        that ran all along on an unreachable host and writes its result after the grade.
+        """
+        if self.driver == "lsf":
+            return {"states": ["PEND", *["UNKWN"] * 20, "RUN", "AUTO"]}
+        return {"states": ["PEND", *["VANISH"] * 20, "RUN", "AUTO"], "history": "RUN"}
+
+    def test_a_lost_job_the_scheduler_still_knows_is_cancelled_and_its_worker_writes_nothing(
+        self,
+    ) -> None:
+        self.write_site(artifact_grace_sec=1)
+        self.scenario(
+            jobs={
+                "default": {"states": ["PEND", *["RUN"] * 35, "AUTO"]},
+                self.job_name_of(1): self.unreachable(),
+            }
+        )
+        code, summary = self.run_dv()
+        self.assertEqual(code, 2, summary.get("status"))
+        lost = next(leaf for leaf in self.leaves(summary) if leaf["item"] == self.items[1])
+        self.assertEqual(lost["status"], "ERROR")
+        self.assertEqual(lost["metadata"]["scheduler"]["state"], "LOST")
+        job_id = lost["metadata"]["scheduler"]["job_id"]
+        cancels = [
+            row["argv"][1:] for row in self.calls() if row["command"] in {"bkill", "scancel"}
+        ]
+        self.assertEqual(cancels, [[job_id]])
+        log = (self.run_dir / "stages" / "regress" / "logs" / "executor.log").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(f"job {job_id}: cancel sent unconfirmed", log)
+        task_id = "sim-000001-a0"
+        self.assertTrue(graded_path(self.run_dir, task_id).is_file())
+        joblog = job_log_path(self.run_dir, "sim-arr0001.2" if self.arrays else task_id)
+        self.assertIn(
+            "leaving neither result.json nor the completion record",
+            joblog.read_text(encoding="utf-8"),
+            "the late worker ran and stopped",
+        )
+        self.assertFalse((self.junit_path(lost, 0).parents[1] / "result.json").exists())
+        self.assertFalse(completion_path(self.run_dir, task_id).exists())
+        error = self.coordinator_case(lost).find("error")
+        assert error is not None
+        self.assertEqual(error.get("type"), "environment_error")
+        collected = collect_flow_result(REPO_ROOT, resolve_dut(REPO_ROOT, self.dut), self.run_dir)
+        statuses = {detail["name"]: detail["status"] for detail in collected["tests_detail"]}
+        self.assertEqual(statuses[self.items[1]], "ERROR")
+
     def test_a_missing_interpreter_reaches_junit_from_the_graded_attempt(self) -> None:
         self.write_site(worker=[str(self.tmp / "missing" / "python3")], artifact_grace_sec=1)
         self.scenario()
@@ -1641,6 +1751,18 @@ class CoordinatorTest(unittest.TestCase):
             self.assertNotIn("executor_log", leaf.get("artifacts") or {})
         self.assertEqual([path for path in earlier_logs if path.exists()], [])
 
+    def test_a_reused_run_dir_clears_the_graded_marks_an_earlier_run_left(self) -> None:
+        self.write_site(artifact_grace_sec=1)
+        self.scenario(jobs={"default": self.NO_START})
+        code, summary = self.run_dv()
+        self.assertEqual(code, 2, summary.get("status"))
+        jobs = self.run_dir / "stages" / "regress" / "jobs"
+        self.assertTrue(list(jobs.glob("*.graded.json")), "the first run graded without results")
+        code, summary = self.rerun()
+        self.assertEqual(code, 0, summary.get("status"))
+        self.assertEqual(self.leaf_statuses(summary), {item: "PASS" for item in self.items})
+        self.assertEqual(list(jobs.glob("*.graded.json")), [])
+
     def test_a_reused_run_dir_waits_for_a_result_that_lands_within_the_grace(self) -> None:
         self.scenario()
         code, summary = self.run_dv()
@@ -1817,6 +1939,11 @@ class SchedulerBuildTest(CoordinatorTest):
         """Skipped here: reruns do not depend on where the build ran."""
 
     def test_a_lost_job_grades_environment_error(self) -> None:
+        """Skipped here: a lost leaf does not depend on where the build ran."""
+
+    def test_a_lost_job_the_scheduler_still_knows_is_cancelled_and_its_worker_writes_nothing(
+        self,
+    ) -> None:
         """Skipped here: a lost leaf does not depend on where the build ran."""
 
     def test_a_missing_interpreter_reaches_junit_from_the_graded_attempt(self) -> None:

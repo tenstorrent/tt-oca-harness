@@ -1469,10 +1469,15 @@ driver's native states onto one lifecycle:
 |Live in the scheduler. `SUSPENDED` waits like `RUNNING`.
 
 |`RECONCILING`
-|Missing from the live query, or reported finished before its `result.json`
-is visible. The completion record and `result.json` settle it first, then
+|Missing from the live query, listed in a state that settles nothing (LSF's
+`UNKWN` and `ZOMBI`), or reported finished before its `result.json` is
+visible. The completion record and `result.json` settle it first, then
 `history_argv`, and `artifact_grace_sec` without either ends the wait: a
 finished job grades `ERROR` (`environment_error`), a missing one is `LOST`.
+A job graded `LOST` that the live query last listed in such a state, or that
+history last reported pending or running, is sent `cancel_argv` once; the
+command and its reply go to the executor log, and nothing waits for the
+cancellation to be confirmed.
 
 |`SUCCEEDED`, `FAILED`
 |The job ran to its end. The leaf's own `result.json` grades it, with the
@@ -1492,7 +1497,10 @@ leaf's log.
 
 |`PREEMPTED`, `LOST`
 |Preempted, requeued, or gone without a record: `ERROR`
-(`environment_error`), which `--retry` reruns as a new attempt.
+(`environment_error`), which `--retry` reruns as a new attempt. The
+coordinator marks every attempt whose job it grades without a `result.json`,
+in this row or another, with `<run>/stages/regress/jobs/<task>.graded.json`,
+so a worker still running for it leaves no result (<<runner-leaf-manifests>>).
 |===
 
 A query that fails, or hangs past `command_timeout_sec`, leaves every asked
@@ -1526,6 +1534,7 @@ the hosted runner, submitting the selected tests as jobs of the runner itself
 farm outside hosted CI. The state maps and parsers live in
 `runlib/executors/lsf.py` and `runlib/executors/slurm.py`.
 
+[[runner-leaf-manifests]]
 ==== Leaf manifests and the worker
 
 A cluster driver runs each attempt through `run_dv.py --worker-manifest
@@ -1540,8 +1549,12 @@ exactly one stage, writes the leaf's `result.json` and a `<task>.done.json`
 completion record beside the manifest, and exits with the leaf's status code.
 When a manifest cannot be trusted or run, the worker leaves an `ERROR` result
 with an `environment_error` failure bucket and a reason that starts with
-`environment_error`, and exits `2`. Workers write nothing else: the
-coordinator is the single writer of every aggregate in the run tree.
+`environment_error`, and exits `2`. A worker that finds the attempt's
+`<task>.graded.json` mark, before the attempt starts or immediately before it
+would write `result.json` or the completion record, leaves neither, removing
+a `result.json` it has already written, says so on its console, and exits
+`2`. Workers write nothing else: the coordinator is the single writer of
+every aggregate in the run tree.
 
 [[runner-formal]]
 == Formal verification
@@ -3462,9 +3475,10 @@ The following behaviors are not part of the runner contract:
   and in-process Verilator/Xcelium cocotb build stages are unbounded.
 * An explicit `--run-dir` is reused as supplied, is not made unique, and does
   not update `latest`. Before an attempt is submitted, the leaf `result.json`,
-  completion record, job log, and `results/` JUnit files an earlier run left
-  at its paths are removed; everything else that run left stays. Choose an
-  empty directory unless performing the documented coverage replay.
+  completion record, graded mark, job log, and `results/` JUnit files an
+  earlier run left at its paths are removed; everything else that run left
+  stays. Choose an empty directory unless performing the documented coverage
+  replay.
 * `--max-failures 0` satisfies the stop condition immediately and therefore
   skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
   despite running no tests; the record says so (`tests.completed = false`,

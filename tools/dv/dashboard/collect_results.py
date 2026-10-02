@@ -405,7 +405,15 @@ def _test_detail_from_record(
         )
         or {}
     )
-    merged = {**record, **{k: v for k, v in leaf.items() if v not in (None, "", [], {})}}
+    # The record holds the attempt's grade and a leaf file can postdate it, so the leaf fills
+    # only the fields the record lacks, and the artifact table key by key.
+    merged = {
+        **{k: v for k, v in leaf.items() if v not in (None, "", [], {})},
+        **{k: v for k, v in record.items() if v is not None},
+    }
+    leaf_artifacts = leaf.get("artifacts") if isinstance(leaf.get("artifacts"), dict) else {}
+    record_artifacts = record.get("artifacts") if isinstance(record.get("artifacts"), dict) else {}
+    merged["artifacts"] = {**leaf_artifacts, **record_artifacts}
     meta = _test_metadata(flow, catalog, groups_by_test, item)
     recorded_artifacts = (
         merged.get("artifacts") if isinstance(merged.get("artifacts"), dict) else {}
