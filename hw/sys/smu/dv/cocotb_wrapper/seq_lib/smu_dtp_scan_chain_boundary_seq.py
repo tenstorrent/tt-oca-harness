@@ -34,11 +34,23 @@ S1  Instruction gating. The iJTAG network is selected only by SELECT_IJTAG
     SELECT_IJTAG the SIBs still read back open, so they were open through the
     IDCODE scan, and that scan's Update-DR closes them for S2.
 
-S2  Chain length. Each SIB is one scan cell and the closed loops add none,
-    so the DR is IJTAG_SIB_COUNT cells long and TDO bit i is the bit shifted
-    in i - SIB_DELAY back. IEEE 1149.1 gives a DR of N cells N TCKs of shift
+S2  Chain length, through the host loops and without them. Each SIB is one
+    scan cell, and an open SIB inserts its host segment on the TDO side of
+    its bit: the bit leaves on ``*_host_scan_out_o`` and comes back on
+    ``*_host_scan_in_i`` (JIU architecture page, "iJTAG Network"). The bench
+    binds each host's scan_in to its own scan_out net
+    (``tb/tb_wrapper_top.sv``, the dfd/dft/dft_secure scan loops), a segment
+    of no cells, so the expected delay is IJTAG_SIB_COUNT whether the SIBs
+    are open or closed. IEEE 1149.1 gives a DR of N cells N TCKs of shift
     latency; the falling-edge retimer moves TDO within the bit period and is
-    not a cell.
+    not a cell. The open pass keeps all three SIBs open across every payload
+    shift, so each payload crosses the three host loops and the wrapper pins;
+    its first IJTAG_SIB_COUNT TDO bits are the captured enables, all 1. The
+    closed pass runs the same payloads with every SIB shut, the control in
+    which the host segments are out of the path and the captured enables are
+    0. With zero-cell loops the two passes have the same delay, so the open
+    pass is what proves the pins carry the shift: a loop that did not return
+    the bit would corrupt it there and nowhere else.
 
 S3  SIB round trip. The last IJTAG_SIB_COUNT bits shifted in land in the
     chain, Update-DR latches them as the SIB enables, and the next Capture-DR
@@ -48,7 +60,9 @@ S3  SIB round trip. The last IJTAG_SIB_COUNT bits shifted in land in the
     also what separates the three boundary pin pairs from one another.
 
 S4  Secondary-TAP select. An unselected STAP drives no host TDO enable and
-    parks its host TMS at TMS-Hold (0 after Test-Logic-Reset). Selecting the
+    parks its host TMS at TMS-Hold, which reads 0 on every TCK of an IDCODE
+    scan after Test-Logic-Reset (the TMS-Hold reset value of the STAP 3DCR,
+    ``jtag_stap`` page, "3DCR Register"). Selecting the
     I/O STAP over TAP_3DCR has to raise its TDO enable for exactly the
     Shift-IR and Shift-DR TCKs of a scan (IEEE 1149.1 Section 4.5.1 drives
     TDO only while shifting; IEEE 1838 runs the STAP through both scans) and
@@ -58,8 +72,8 @@ S4  Secondary-TAP select. An unselected STAP drives no host TDO enable and
 
 S5  The extra STAP host, selected the same way (run before S4). The extra
     STAP sits beside the I/O STAP in the SEP=1 chain and shares its select
-    rules: unselected it parks its host TMS at TMS-Hold and drives no TDO
-    enable; selected over TAP_3DCR its enable covers exactly the IR+DR TCKs
+    rules: unselected it parks its host TMS at TMS-Hold, 0 on every TCK, and
+    drives no TDO enable; selected over TAP_3DCR its enable covers exactly the IR+DR TCKs
     of a scan and its host TMS follows the primary TAP on every TCK, while
     the I/O STAP stays quiet. The selection is written with Config-Hold clear
     in both the PTAP and the STAP 3DCR, so the Test-Logic-Reset S4 starts
@@ -134,6 +148,10 @@ STAP_OBSERVE_CYCLES = 2000
 # SIBs, the last of all in the SIB nearest TDI.
 SIB_ALL_OPEN = ((1 << IJTAG_SIB_COUNT) - 1) << (DR_LEN - IJTAG_SIB_COUNT)
 SIB_ALL_READBACK = (1 << IJTAG_SIB_COUNT) - 1
+
+# The STAP 3DCR TMS-Hold reset value (jtag_stap architecture page, "3DCR
+# Register"): the host TMS of an unselected STAP after Test-Logic-Reset.
+TMS_HOLD_RESET = 0
 
 # Shift-IR plus Shift-DR TCKs of one IDCODE scan: IEEE 1149.1 Section 4.5.1
 # drives TDO only while shifting, and the STAP runs through both scans.
@@ -211,14 +229,13 @@ class smu_dtp_scan_chain_boundary_seq:
         await self.jtag.reset_to_tlr()
         await self.jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         await ClockCycles(dut.clk_smu_i, 8)
-        await self.jtag.shift_ir(DTP_IR_IDCODE)
-        idcode = int(await self.jtag.shift_dr(0, IDCODE_DR_WIDTH, back_to_rti=True))
-        require_jtag_tdo_resolved("IDCODE")
-        if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         self.tdo_driven = 0
         self.tdo_unresolved = 0
         cocotb.start_soon(self._watch_tdo())
+        await self.jtag.shift_ir(DTP_IR_IDCODE)
+        idcode = await self._checked_shift_dr(0, IDCODE_DR_WIDTH, "IDCODE")
+        if idcode != DTP_DEFAULT_IDCODE:
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
 
         await self._ijtag_gating()
         await self._ijtag_chain_payload()
@@ -306,21 +323,47 @@ class smu_dtp_scan_chain_boundary_seq:
             [hex(p) for p in randoms],
             seed,
         )
-        for payload in (*PAYLOADS, *randoms):
-            # The three MSBs are what Update-DR latches into the SIBs; hold
-            # them clear here so this leg only measures the shift path and
-            # S3 owns the SIB state.
-            word = payload & PAYLOAD_MASK
-            captured = await self._checked_shift_dr(word, DR_LEN, f"iJTAG DR payload 0x{payload:x}")
-            expected = (word << SIB_DELAY) & DR_MASK
-            if expected == 0:
-                raise AssertionError("all-zero expectation forbidden (VIP maps X/Z TDO to 0)")
+        payloads = (*PAYLOADS, *randoms)
+        # Open pass: open all three SIBs, then keep their Update-DR bits set
+        # in every payload word so they stay open across each shift.
+        await self._checked_shift_dr(SIB_ALL_OPEN, DR_LEN, "iJTAG SIB open for S2")
+        await self._payload_pass(
+            payloads,
+            sib_bits=SIB_ALL_OPEN,
+            readback=SIB_ALL_READBACK,
+            label="all SIBs open, through the host loops",
+        )
+        # Closed pass: a closing shift first, whose capture still reads them open.
+        await self._checked_shift_dr(0, DR_LEN, "iJTAG SIB close for S2")
+        await self._payload_pass(payloads, sib_bits=0, readback=0, label="all SIBs closed")
+
+    async def _payload_pass(
+        self, payloads: tuple[int, ...], *, sib_bits: int, readback: int, label: str
+    ) -> None:
+        """Shift each payload once; TDO returns it SIB_DELAY bits late after the captured enables."""
+        compared = 0
+        for payload in payloads:
+            word = (payload & PAYLOAD_MASK) | sib_bits
+            captured = await self._checked_shift_dr(
+                word, DR_LEN, f"iJTAG DR payload 0x{payload:x} ({label})"
+            )
+            expected = ((word << SIB_DELAY) | readback) & DR_MASK
+            if expected & ~((1 << SIB_DELAY) - 1) == 0:
+                raise AssertionError("all-zero payload expectation forbidden (VIP maps X/Z to 0)")
             self.sb.expect_eq(
-                f"iJTAG DR returns payload 0x{payload:x} {SIB_DELAY} bits late",
+                f"iJTAG DR returns payload 0x{payload:x} {SIB_DELAY} bits late after the "
+                f"captured enables 0b{readback:03b} ({label})",
                 int(captured) & DR_MASK,
                 expected,
                 evidence="CHK-SMU-IJTAG-CHAIN",
             )
+            compared += 1
+        self.sb.expect_eq(
+            f"iJTAG DR payload compares ({label})",
+            compared,
+            len(PAYLOADS) + 3,
+            evidence="CHK-SMU-IJTAG-CHAIN",
+        )
 
     # ------------------------------------------------------------------
     # S3: Update-DR latches the SIB enables and Capture-DR reads them back.
@@ -393,9 +436,10 @@ class smu_dtp_scan_chain_boundary_seq:
             evidence="CHK-SMU-STAP-IO-SELECT",
         )
         self.sb.expect_eq(
-            "unselected I/O STAP host TMS does not follow the primary TAP",
-            idle["tms_mismatch"] > 0,
-            True,
+            f"unselected I/O STAP host TMS holds TMS-Hold {TMS_HOLD_RESET} on every TCK "
+            f"of an IDCODE scan ({idle['tck_n']} TCKs, at least {EXPECTED_STAP_OEN_TCKS})",
+            (idle["tms_high"], idle["tck_n"] >= EXPECTED_STAP_OEN_TCKS),
+            (idle["tck_n"] if TMS_HOLD_RESET else 0, True),
             evidence="CHK-SMU-STAP-IO-SELECT",
         )
 
@@ -437,9 +481,10 @@ class smu_dtp_scan_chain_boundary_seq:
             evidence="CHK-SMU-STAP-EXTRA-SELECT",
         )
         self.sb.expect_eq(
-            "unselected extra STAP host TMS does not follow the primary TAP",
-            idle["tms_mismatch"] > 0,
-            True,
+            f"unselected extra STAP host TMS holds TMS-Hold {TMS_HOLD_RESET} on every TCK "
+            f"of an IDCODE scan ({idle['tck_n']} TCKs, at least {EXPECTED_STAP_OEN_TCKS})",
+            (idle["tms_high"], idle["tck_n"] >= EXPECTED_STAP_OEN_TCKS),
+            (idle["tck_n"] if TMS_HOLD_RESET else 0, True),
             evidence="CHK-SMU-STAP-EXTRA-SELECT",
         )
 
@@ -507,6 +552,7 @@ class smu_dtp_scan_chain_boundary_seq:
         counts = {name: 0 for name in pins}
         counts["tck_n"] = 0
         counts["tms_mismatch"] = 0
+        counts["tms_high"] = 0
         prev_tck = self._bit("jtag_tck")
         for _ in range(cycles):
             await RisingEdge(self.dut.clk_ref_i)
@@ -515,7 +561,9 @@ class smu_dtp_scan_chain_boundary_seq:
                 counts["tck_n"] += 1
                 for name in pins:
                     counts[name] += self._bit(name)
-                if self._bit(tms_pin) != self._bit("jtag_tms"):
+                host_tms = self._bit(tms_pin)
+                counts["tms_high"] += host_tms
+                if host_tms != self._bit("jtag_tms"):
                     counts["tms_mismatch"] += 1
             prev_tck = tck
         return counts

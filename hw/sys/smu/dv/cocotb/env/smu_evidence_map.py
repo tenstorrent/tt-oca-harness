@@ -399,9 +399,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-IJTAG-CHAIN",
             "CHK-SMU-IJTAG-CHAIN",
-            "under SELECT_IJTAG the DR closed through the wrapper scan pins "
-            "returns each payload exactly IJTAG_SIB_COUNT bits late, for "
-            "five directed and three seeded-random nonzero payloads",
+            "under SELECT_IJTAG, with all three SIBs held open so every "
+            "payload crosses the dfd, dft and dft_secure host loops and the "
+            "wrapper scan pins, the DR returns each payload exactly "
+            "IJTAG_SIB_COUNT bits late after the captured enables 0b111 "
+            "(three SIB bits, and no cell in the bench loops that bind each "
+            "host scan_in to its scan_out); with every SIB closed, the "
+            "control pass, it returns the same payloads IJTAG_SIB_COUNT "
+            "bits late after enables 0b000; five directed and three "
+            "seeded-random nonzero payloads per pass, eight compares each",
         ),
         (
             "CHK-SMU-IJTAG-SIB",
@@ -413,18 +419,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-STAP-IO-SELECT",
             "CHK-SMU-STAP-IO-SELECT",
-            "an unselected I/O STAP drives no TDO enable and its host TMS does "
-            "not follow the primary TAP; after a TAP_3DCR select the enable "
-            "covers exactly IR+DR TCKs, host TMS matches on every TCK, and the "
+            "an unselected I/O STAP drives no TDO enable and its host TMS "
+            "holds the TMS-Hold reset value 0 on every TCK of an IDCODE "
+            "scan; after a TAP_3DCR select the enable covers exactly IR+DR "
+            "TCKs, host TMS matches the primary TAP on every TCK, and the "
             "extra STAP stays quiet",
         ),
         (
             "CHK-SMU-STAP-EXTRA-SELECT",
             "CHK-SMU-STAP-EXTRA-SELECT",
-            "an unselected extra STAP drives no TDO enable and its host TMS does "
-            "not follow the primary TAP; after a TAP_3DCR select without "
-            "Config-Hold the enable covers exactly IR+DR TCKs, host TMS matches "
-            "on every TCK, and the I/O STAP stays quiet",
+            "an unselected extra STAP drives no TDO enable and its host TMS "
+            "holds the TMS-Hold reset value 0 on every TCK of an IDCODE "
+            "scan; after a TAP_3DCR select without Config-Hold the enable "
+            "covers exactly IR+DR TCKs, host TMS matches the primary TAP on "
+            "every TCK, and the I/O STAP stays quiet",
         ),
     ],
     "smu_dtp_bsr_ijtag_scan_test": [
