@@ -28,12 +28,12 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports wdt_rst_ni] -add_delay
 set_output_delay [expr $clock_periods(WDTCLK_PERIOD)*0.5]       -clock [get_clock WDTCLK] [get_ports wdt_timer_rst_req_o] -add_delay
 
-# JTAG
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tms_i] -add_delay
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdi_i] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports jtag_trst_ni] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdo_o] -add_delay
-set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdoEn_o] -add_delay
+# JTAG -- 45% so the negedge TCK flops have a chance of meeting timing
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports jtag_tms_i] -add_delay
+set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdi_i] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.45]  -clock [get_clock ck_feedthru] [get_ports jtag_trst_ni] -add_delay
+set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdo_o] -add_delay
+set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.45]     -clock [get_clock JTAG_TCK] [get_ports jtag_tdoEn_o] -add_delay
 
 # OTP debug AXI-Lite interface
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {axil_sep_otp_jtag_req_i*}] -add_delay
@@ -129,7 +129,9 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {ext_trng_axil_resp_i*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {ext_trng_axis_req_i*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports {ext_trng_axis_rsp_o*}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports ext_trng_irq_i] -add_delay
+# An asynchronous interrupt, resynchronized inside the block, so almost none
+# of the period is owed to its arrival.
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.1]  -clock [get_clock ck_feedthru] [get_ports ext_trng_irq_i] -add_delay
 
 # Key Manager interfaces
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SEPCLK] [get_ports km_unrecoverable_err_o] -add_delay

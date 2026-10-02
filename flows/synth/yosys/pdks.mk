@@ -45,7 +45,7 @@ ${PDK_ROOT}:
 
 $(foreach pdk,$(PDKS),${PDK_ROOT}/$(pdk)) : ${PDK_ROOT}
 	ciel ls --pdk=$(subst ${PDK_ROOT}/,,$@) --pdk-root=$(PDK_ROOT) | grep $($(subst ${PDK_ROOT}/,,$@)_HASH) || ciel build --clear-build-artifacts --pdk=$(subst ${PDK_ROOT}/,,$@) --pdk-root=$(PDK_ROOT) $($(subst ${PDK_ROOT}/,,$@)_HASH)
-	ln -srf $(PDK_ROOT)/ciel/$(subst ${PDK_ROOT}/,,$@) $(PDK_ROOT)/$(subst ${PDK_ROOT}/,,$@)
+	ln -sfn ciel/$(subst ${PDK_ROOT}/,,$@) $@
 
 ${PDK_SENTINEL}: ocah-synth-pdk
 	ciel enable --pdk=$(TECH) --pdk-root=$(PDK_ROOT) $($(TECH)_HASH)

@@ -103,7 +103,7 @@ register.
 |1
 |Select (stap_sel)
 |0
-|Enables the STAP scan interface. When `stap_sel=1`, the STAP routes scan data through the downstream TAP. When `stap_sel=0`, the downstream TAP is not in the scan path and its TMS is held at the TMS-Hold value.
+|Enables the STAP scan interface. When `stap_sel=1`, the STAP routes scan data through the downstream TAP. When `stap_sel=0`, the downstream TAP is not in the scan path and its TMS is held at the TMS-Hold value. While `security_disable_i` is high, a capture of the 3DCR reads this bit as 0 whatever its stored value (<<stap-debug-disable-behavior-table>>).
 
 |0
 |Config-Hold
@@ -143,13 +143,13 @@ asserted, three aspects of STAP operation are blocked (<<stap-debug-disable-beha
 |Signal |Behavior when asserted
 
 |`stap_sel` (internal)
-|Forced to 0 regardless of the 3DCR Select bit, so scan data is not routed through the downstream TAP.
+|Forced to 0 regardless of the 3DCR Select bit, so scan data is not routed through the downstream TAP. The 3DCR captures this forced value, so a scan through the 3DCR reads Select as 0.
 
 |`host_tdo_o`
 |Forced to 0, so the downstream TAP cannot leak data on the host TDO even if it is accessed.
 
 |`client_reg_scan_ctrl.update_en`
-|Forced to 0, so the 3DCR cannot be updated while the STAP is disabled.
+|Forced to 0, so the 3DCR cannot be updated while the STAP is disabled. The stored Select bit keeps its value: when `security_disable_i` clears, a STAP whose stored Select bit is 1 is selected again without a 3DCR write. The disable does not block the 3DCR reset, so TRST clears the stored bit, and so does the scan reset while Config-Hold is 0.
 |===
 
 STAP selection, host TDO, and 3DCR updates are all blocked combinationally at

@@ -15,8 +15,9 @@ between them, and the two answers are different in both response code and data:
 * the eFuse shim window is a real register, EFUSE_BANK_INIT_TIME, which must
   return its generated reset value with OKAY;
 * the mandatory external window is terminated by the reference integration's
-  AXI-Lite error slave, which must answer DECERR with zero data (the same
-  expectation ``smc_external_window_pad_ctrl_decode_test`` makes of it).
+  AXI-Lite error slave, which must answer DECERR with the error-slave word
+  0xBADCAB1E (the same expectation ``smc_external_window_pad_ctrl_decode_test``
+  makes of it).
 
 Crossing the two routes therefore fails on the response code and on the data,
 not only on a count. The cycles in which two activity probes were high together
@@ -42,8 +43,8 @@ EXTERNAL_WINDOW = smc_bootrom_addr(
 )
 AXI_RESP_DECERR = 3
 # The reference integration terminates the adopter window with an error slave
-# that answers with zero data.
-TERMINATOR_RDATA = 0
+# that answers with the word every error slave in the design returns.
+TERMINATOR_RDATA = SmcCsrSeq.ERR_SLAVE_SIGNATURE
 
 # Alternating pairs in the outstanding group. Deep enough that the two ports
 # overlap even when each answers in a couple of cycles.
@@ -155,8 +156,8 @@ class smc_axil_downstream_concurrency_test_seq(SmcCsrSeq):
         for index, item in enumerate(external_reads):
             assert item.rdata == TERMINATOR_RDATA, (
                 f"external-window read {index} answered DECERR carrying data "
-                f"0x{item.rdata:08x} instead of the terminator's zero data, so "
-                f"another responder answered it"
+                f"0x{item.rdata:08x} instead of the terminator's 0x{TERMINATOR_RDATA:08x}, "
+                f"so another responder answered it"
             )
         for index, item in enumerate(efuse_reads):
             assert item.resp_code == 0, (
@@ -175,13 +176,14 @@ class smc_axil_downstream_concurrency_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-AXIL-DOWNSTREAM-CONCURRENCY: %d outstanding accesses alternating between the "
-            "eFuse-shim window 0x%08x (OKAY, 0x%08x) and the external window 0x%08x (DECERR, 0x0) "
-            "kept two downstream manager ports active together for %d cycle(s); per-probe active "
-            "cycles %s",
+            "eFuse-shim window 0x%08x (OKAY, 0x%08x) and the external window 0x%08x (DECERR, "
+            "0x%08X) kept two downstream manager ports active together for %d cycle(s); "
+            "per-probe active cycles %s",
             EXPECTED_ACCESSES,
             EFUSE_SHIM_CTRL_WINDOW,
             EFUSE_BANK_INIT_TIME_RESET,
             EXTERNAL_WINDOW,
+            TERMINATOR_RDATA,
             self.concurrent_cycles,
             self.active_cycles,
         )
