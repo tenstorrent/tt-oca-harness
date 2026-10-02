@@ -6806,6 +6806,8 @@ error path works.
 
 *BFM / Model*: ocah_axi_vip
 
+*Tracking*: #2520
+
 *Randomization*: RAND-NONE — directed match / mismatch / restore.
 
 *Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `hw/sys/sep/doc/security_disable.adoc` says a match does not release the SEP reset, and that the IC_RESET `sep_reset_n` override is an independent step: the override alone releases the reset and leaves life-cycle control closed. `hw/sys/sep/doc/token_processing.adoc` says the match opens feature control without waiting for fuse sensing. `hw/sys/sep/doc/reset_controller.adoc` records the override. This leaf drives the SEP override inputs and reads the reset probes and `FEAT_CTRL`. The bus access and the IC_RESET TDR write are `sep_sec_dis_reset_reach_test`. A read of the `LC_STATE` shadow-map word while SEC_DIS is active and sensing is still open must return AXI OKAY. A match while sensing is still open stops the sense, so `sep_fuse_sense_done_o` stays 0. SEC_DIS is for a part whose sense is already broken, and the recovery flow is a reset after the token. `hw/sys/sep/doc/security_disable.adoc` says the token state is retained across reset, so after that reset SEC_DIS is still active, sense stays stopped, the map stays open and the override still releases the reset. A mismatch token then clears SEC_DIS, and a second reset runs a full sense.
