@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">smc_peripherals</h1>
-<p>Aggregate SMC peripherals, eFuse, and pad-facing I/O.</p><p>Instantiates the peripheral CSR crossbar and its clock-domain crossings, the padring and GPIOs, UART, I2C, I3C, telemetry receivers, AVSBus controller, eFuse wrapper, system timer, misc registers and the SMC reset unit. The SPI controller is outside this module: its signals only pass through the padring to the SPI pads. Returns UART/GPIO interrupts, the gated I3C clock, and debug buses.</p><p>EFUSE_SHIM_SIZE is the vendor eFuse shim CSR carve-out at the base of the opaque smc_external window. Each peripheral clock-gate enable stops its clock when high.</p>
+<p>Aggregate SMC peripherals, eFuse, and pad-facing I/O.</p><p>Instantiates the peripheral CSR crossbar and its clock-domain crossings, the padring and GPIOs, UART, I2C, I3C, telemetry receivers, AVSBus controller, eFuse wrapper, system timer, misc registers and the SMC reset unit. The SPI controller is outside this module: its signals only pass through the padring to the SPI pads. Returns UART/GPIO interrupts, the gated I3C clock, and debug buses.</p><p>EFUSE_SHIM_SIZE is the vendor eFuse shim CSR carve-out at the base of the opaque smc_external window. Each peripheral clock-gate enable stops its clock when high and steers that peripheral&#x27;s crossbar leg into an error slave, so an access to a gated peripheral completes with SLVERR and read data 0xBADCAB1E instead of stalling.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
@@ -700,11 +700,11 @@
 <tr><td><code>scan_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>DFT scan reset, active-low, used in place of functional resets while test_en_i is high.</td></tr>
 <tr><td><code>clk_telemetry_i</code></td><td>input</td><td><code>logic</code></td><td>Telemetry clock, gated by tel_cg_en_i before it reaches the telemetry receivers.</td></tr>
 <tr><td><code>rst_telemetry_ni</code></td><td>input</td><td><code>logic</code></td><td>Telemetry-domain reset, active-low, for the telemetry receivers&#x27; ATB FIFOs.</td></tr>
-<tr><td><code>i3c_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the I3C peripheral clock when high; synchronized to the peripheral clock.</td></tr>
-<tr><td><code>avs_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the AVSBus controller peripheral and reference clocks when high.</td></tr>
-<tr><td><code>i2c_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the I2C peripheral clock when high.</td></tr>
-<tr><td><code>uart_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the UART peripheral clock when high.</td></tr>
-<tr><td><code>tel_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the telemetry receivers&#x27; gated SMC and telemetry clocks when high.</td></tr>
+<tr><td><code>i3c_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the I3C peripheral clock when high; synchronized to the peripheral clock. I3C accesses answer SLVERR while high.</td></tr>
+<tr><td><code>avs_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the AVSBus controller peripheral and reference clocks when high. AVSBus accesses answer SLVERR while high.</td></tr>
+<tr><td><code>i2c_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the I2C peripheral clock when high. I2C accesses answer SLVERR while high.</td></tr>
+<tr><td><code>uart_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the UART peripheral clock when high. UART accesses answer SLVERR while high.</td></tr>
+<tr><td><code>tel_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the telemetry receivers&#x27; gated SMC and telemetry clocks when high. Telemetry accesses answer SLVERR while high.</td></tr>
 <tr><td><code>axil_peripherals_req_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>Request from the local crossbar into the peripheral crossbar.</td></tr>
 <tr><td><code>axil_peripherals_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Response to the local crossbar.</td></tr>
 <tr><td><code>axil_log_engine_req_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_56_64_req_t</code></td><td>Log-engine fetch request from the UART, moved onto the SMC clock.</td></tr>

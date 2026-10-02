@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_axil_prot_filter</h1>
-<p>Block AXI-Lite accesses whose AxPROT fails a programmable requirement.</p><p>write_filter_enable_i and read_filter_enable_i arm the AW and AR checks against awprot_requirement_i and arprot_requirement_i; an access passes only on an exact match. Complete failing writes or reads locally with DECERR, reads returning &#x27;hBADCAB1E sized to DATA_WIDTH, and do not forward them to the subordinate. MAX_TRANS bounds outstanding filtered traffic.</p>
+<p>Block AXI-Lite accesses whose AxPROT fails a programmable requirement.</p><p>write_filter_enable_i and read_filter_enable_i arm the AW and AR checks against awprot_requirement_i and arprot_requirement_i; an access passes only on an exact match. Complete failing writes or reads locally with DECERR, reads returning 0xBADCAB1E in every 32-bit word of the data bus, and do not forward them to the subordinate. MAX_TRANS bounds outstanding filtered traffic.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">

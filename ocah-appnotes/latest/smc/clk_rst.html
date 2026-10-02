@@ -236,6 +236,18 @@ of the gate it controls. <code>u_ndmreset_request_sync</code> has no source cloc
 <code>ndmreset_request_i</code> is asynchronous.</p>
 </div>
 <div class="paragraph">
+<p>Each of the five peripheral enables also steers that peripheral&#8217;s leg of
+the register crossbar into an error slave (<code>u_avsbus_access_gate</code>,
+<code>u_i2c_access_gate</code>, <code>u_uart_access_gate</code>, <code>u_telemetry_access_gate</code> and
+<code>u_i3c_access_gate</code> in <code>u_smc_peripherals</code>, all on <code>clk_smc_i</code>): while the
+enable is set, a read of the gated peripheral&#8217;s window completes with
+<code>SLVERR</code> and data <code>0xBADCAB1E</code> and a write completes with <code>SLVERR</code>, instead
+of waiting on a register block whose clock has stopped. The leg is
+redirected as soon as the <code>CLOCK_GATE_CONTROL</code> write completes; an access
+the peripheral has already accepted finishes there, since its clock stops
+only after the enable has crossed into its domain.</p>
+</div>
+<div class="paragraph">
 <p>The AVSBus clock starts at <code>u_avs_clk_ref_gater</code> and
 <code>u_avs_clk_periph_gater</code>, which drive the <code>clk_ref_i</code> and <code>clk_reg_i</code> ports of
 <code>u_avsbus_controller</code>. Inside it, <code>u_refclk_clkgate</code> and <code>u_apbclk_clkgate</code>
@@ -710,7 +722,11 @@ through a three-stage synchronizer; the unit does not sequence releases from it.
 controls. For example, DMA uses a six-bit hysteresis input and bus-aware wakeup.
 A gate suppresses clock transitions; it does not itself create a power island or
 establish that outstanding bus traffic is drained. Follow the owning block&#8217;s
-quiescence requirements before reset, isolation or clock changes.</p>
+quiescence requirements before reset, isolation or clock changes. The I2C,
+UART, I3C, AVSBus and telemetry windows answer <code>SLVERR</code> with read data
+<code>0xBADCAB1E</code> while their <code>CLOCK_GATE_CONTROL</code> enable is set, so software can
+detect an access to a gated peripheral rather than stall on it; the other gated
+blocks wake on bus activity and need no such response.</p>
 </div>
 </div>
 </div>
