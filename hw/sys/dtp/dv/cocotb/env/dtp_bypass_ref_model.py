@@ -4,10 +4,11 @@
 
 Every DR scan of at most 64 bits while a bypass-class instruction is active
 and the PTAP 3DCR select is clear returns TDI delayed by one TCK (the
-one-bit bypass register: both IEEE encodings and the undefined opcodes
-0x0F and 0x2D-0x3C), INV_BYPASS the inverted delayed image behind a
-captured 1, and ZERO_LENGTH_BYPASS TDI itself. Consumes the reconstructed
-scan stream (``write``) and the per-TCK event stream (``event_export``)
+one-bit bypass register: both IEEE encodings and every opcode with no
+register of its own, 0x0F, 0x10-0x17 and 0x2D-0x3C), INV_BYPASS the
+inverted delayed image behind a captured 1, and ZERO_LENGTH_BYPASS TDI
+itself. Consumes the reconstructed scan stream (``write``) and the per-TCK
+event stream (``event_export``)
 through a ``DtpJtagIrModel``, re-baselines on power-on reset through the TB
 interface, and publishes one ``DtpExpectedItem`` per scan item so the
 scoreboard pairs the two streams in lockstep; scans outside the contract
@@ -29,10 +30,16 @@ __all__ = ["DtpBypassRefModel"]
 
 MAX_SCAN_BITS = 64
 
-# The one-bit bypass register: both IEEE encodings and the opcodes neither
-# instruction table defines past the JTAG2AXI TDRs.
+# The one-bit bypass register: both IEEE encodings and every opcode with no
+# register of its own, undefined or reserved for RISC-V debug.
 _ONE_BIT_BYPASS = frozenset(
-    [int(DtpJtagInstr.BYPASS_00), int(DtpJtagInstr.BYPASS_3F), 0x0F, *range(0x2D, 0x3D)]
+    [
+        int(DtpJtagInstr.BYPASS_00),
+        int(DtpJtagInstr.BYPASS_3F),
+        int(DtpJtagInstr.UNDEFINED_BYPASS_0F),
+        *range(int(DtpJtagInstr.RISCV_RESERVED_0), int(DtpJtagInstr.RISCV_RESERVED_7) + 1),
+        *range(int(DtpJtagInstr.UNDEFINED_BYPASS_2D), int(DtpJtagInstr.UNDEFINED_BYPASS_3C) + 1),
+    ]
 )
 
 
