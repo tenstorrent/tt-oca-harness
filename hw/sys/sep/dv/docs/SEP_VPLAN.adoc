@@ -6743,7 +6743,8 @@ eight Q4.4 points, compared against SP 800-90B 4.4.1 `C = 1 + ceil(20/H)`
 re-derived in the test. The oracle is the standard, not
 `entropy_source_rec_thresh_lut.sv`, which the checker never reads. `APT_LIMIT` is
 an exact binomial cutoff with no closed form; what is claimed for it is that it
-stays inside the 1024-sample window and falls as the assessed min-entropy rises.
+stays inside the 1024-sample window, never rises between sweep points, and is
+lower at the Q4.4 maximum than at `MIN_ENTROPY_H=0x00`.
 |CHK-RANDCFG
 |27 locked registers walked in one invocation, covering 37 of the 40 fields
 `entropy_source.rdl` marks `swwel`. The two observe-tap enables are graded by
