@@ -4,7 +4,7 @@
 // Declare types and helpers for the SMC reset unit.
 //
 // Defines reset_ctrl_t, the per-subsystem cold and warm resets, hold qualifiers and
-// force-to-reference-clock select. Also declares a select_t enumeration of the reset-unit
+// force-to-reference-clock select. Also declares a select_e enumeration of the reset-unit
 // and FLR register maps and a max() helper; the SMC RTL references neither.
 
 package smc_reset_unit_pkg;
@@ -36,6 +36,6 @@ package smc_reset_unit_pkg;
   typedef enum logic [NumRegMaps-1:0] {
     RESET_UNIT = 2'd0,
     FLR = 2'd1
-  } select_t;
+  } select_e;
 
 endpackage

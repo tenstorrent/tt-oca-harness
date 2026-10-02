@@ -21,23 +21,30 @@ CHK-TRNG-UNOWNED covers the TRNG window, which SEP forwards whole to an
 adopter endpoint. The reference integration connects no external TRNG, so no
 offset owns a register and every access must be refused: never OKAY, never
 the value of a neighbouring ESRC register, and no ESRC register moved.
-``memory_map.adoc`` names SLVERR for such an offset and the SMU integrator
-guide names a DECERR slave, so the response code of every TRNG probe is logged
-for the document owner and not graded.
+``memory_map.adoc`` also states the code for that case: the window ends in a
+DECERR slave, so a read answers DECERR, and the AXI4-to-AXI-Lite conversion on
+the TRNG path makes every errored write SLVERR. Each TRNG probe is graded
+against that code.
 
-CHK-DEADSPACE-BURST asserts the same refusal on a beat a single-beat probe
-cannot reach: AXI decodes the request address only, so an INCR begun in a
-block's last live words carries its remaining beats past REG_MAP_SIZE. Each
-burst that answers OKAY where the same address is refused as a single beat
-fails. The master reports one response for the whole burst, so a burst that
-refused only some of its beats cannot be told from one that refused all of
-them; a beat inside the extent is therefore also compared against the value the
-single-beat path reads, which catches data the single beat could not reach. A
-beat past the extent is held to the single-beat no-alias rule: its data must
-not equal a value in the window snapshot, whatever its response code. A
-burst that times out is a failure of the audit, not a pass. A window whose dead space is
-4KB-aligned carries no legal burst into it and is reported as not auditable,
-never counted as a pass; a run where no window was auditable fails.
+CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST grade bursts in the crypto region
+only. ``memory_map.adoc`` ("Single-Beat Register Access") limits register
+regions to single beats and lets the later beats of a burst to one error or
+alias, so a burst into any other register region is outside the specification
+and is not graded. The crypto region is the exception: ``crypto.adoc``
+("Single-Beat Access Only") answers every access whose AxLEN is non-zero with
+DECERR on every beat, and no beat reaches an accelerator. For each block window
+in that region the test issues a four-beat INCR read burst and, where the
+window takes writes, a four-beat INCR write burst, across the extent where the
+window allows it and at the window base otherwise.
+
+CHK-DEADSPACE-BEAT: the bus monitor's per-beat RRESP vector of every read
+burst is DECERR on every beat, inside the extent as well as past it.
+
+CHK-DEADSPACE-BURST: no read-burst beat returns the value of a live register
+in the window snapshot, the write burst answers DECERR, and no armed register
+moves. A burst that times out fails. At least one window must answer a single
+beat at a burst address OKAY, which shows the refusal is the burst rule and
+not a dead address.
 """
 
 from __future__ import annotations
@@ -45,14 +52,28 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_deadspace_seq import (
+    CRYPTO_HI,
+    CRYPTO_LO,
     DEADSPACE_ANCHORS,
     RESP_DECERR,
     RESP_OKAY,
     SepDeadspace,
     SepDeadspaceCfg,
+    in_crypto_region,
 )
 
-_RESP_NAME = {-1: "TIMEOUT", RESP_OKAY: "OKAY", 1: "EXOKAY", 2: "SLVERR", RESP_DECERR: "DECERR"}
+RESP_SLVERR = 2
+_RESP_NAME = {
+    -1: "TIMEOUT",
+    RESP_OKAY: "OKAY",
+    1: "EXOKAY",
+    RESP_SLVERR: "SLVERR",
+    RESP_DECERR: "DECERR",
+}
+
+# Response to an unowned TRNG-window offset with no external TRNG connected,
+# per channel (hw/sys/sep/doc/memory_map.adoc, TRNG aperture).
+TRNG_UNOWNED_RESP = {"r": RESP_DECERR, "w": RESP_SLVERR}
 
 
 @pyuvm.test()
@@ -98,8 +119,6 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             )
 
         refused = 0
-        burst_fails: list[str] = []
-        beat_fails: list[str] = []
         aliased = 0
         accepted = 0
         fails: list[str] = []
@@ -137,148 +156,77 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     tag,
                 )
 
-        # Burst reachability of the refused span, and a HARD FAIL when a beat
-        # lands there. `memory_map.adoc` says an address past a unit's extent
-        # is refused at the fabric and never reaches a unit; it draws no distinction
-        # between a single beat and a later beat of a burst. An INCR begun in the
-        # last live words carries its later beats past REG_MAP_SIZE because AXI
-        # decodes the request address only.
-        #
-        # Those later beats must be refused too, and the refusal is asserted,
-        # not logged, like the wrap anchors above.
-        burst_audited: list[str] = []
-        burst_skipped: list[str] = []
-        beat_audited: list[str] = []
-        beat_discriminating: list[str] = []
-        beat_skipped: list[str] = []
-        data_compared: list[str] = []
-        past_compared: list[str] = []
+        # Bursts are graded in the crypto region only; see the module docstring.
+        burst_fails: list[str] = []
+        beat_fails: list[str] = []
+        burst_graded: list[str] = []
+        controlled: list[str] = []
+        not_graded: list[str] = []
         for win in cfg.windows.values():
-            # A window whose dead space starts on a 4KB boundary cannot be
-            # entered by a legal burst, and one with no live words before it
-            # has nowhere to begin. Neither can carry the contract; both are
-            # named rather than absorbed.
-            if win.dead_lo % 0x1000 == 0:
-                burst_skipped.append(f"{win.name}: dead space is 4KB-aligned")
+            if not in_crypto_region(win.base):
+                not_graded.append(win.name)
                 continue
-            if win.dead_lo <= win.base + 8:
-                burst_skipped.append(f"{win.name}: no live words before it")
-                continue
-            burst_audited.append(win.name)
-            start, resps, timed_out, words, singles, beat_resps = await dead.burst_across_extent(
-                win
+            burst_graded.append(win.name)
+            # Across the extent where a legal burst can reach it, so the burst
+            # also carries beats past the extent; otherwise at the window base.
+            crosses = win.dead_lo % 0x1000 != 0 and win.dead_lo > win.base + 8
+            start = None if crosses else win.base
+            start, _resps, timed_out, words, singles, beat_resps = await dead.burst_across_extent(
+                win, start
             )
             for i, (word, (sresp, sdata)) in enumerate(zip(words, singles)):
-                where = "in-extent" if start + 4 * i < win.dead_lo else "PAST"
                 self.logger.info(
                     "deadspace burst-audit: %s beat%d 0x%08x %-9s burst=0x%08x "
-                    "single=0x%08x(resp=%d) beat_resp=%s",
+                    "beat_resp=%s single=0x%08x(resp=%d)",
                     win.name,
                     i,
                     start + 4 * i,
-                    where,
+                    "in-extent" if start + 4 * i < win.dead_lo else "past",
                     word,
+                    beat_resps[i] if i < len(beat_resps) else "n/a",
                     sdata,
                     sresp,
-                    resps[i] if i < len(resps) else "n/a",
                 )
-            self.logger.info(
-                "deadspace burst-audit: %s beat responses=%s timed_out=%s",
-                win.name,
-                resps,
-                timed_out,
-            )
-
-            # A burst that never completed proves nothing either way, so it is
-            # a failure of the audit rather than a silent pass.
             if timed_out:
-                burst_fails.append(
-                    f"{win.name} burst beginning 0x{start:08x} timed out, so "
-                    f"no beat response is evidence"
-                )
+                burst_fails.append(f"{win.name} read burst at 0x{start:08x} timed out")
                 continue
-            # Per-beat refusal, read off the bus. The master collapses a read
-            # burst to one response, so `resps` cannot say WHICH beats were
-            # refused; the monitor keeps each beat's RRESP in order.
-            #
-            # The rule is one-directional. `memory_map.adoc` requires that an
-            # access past the extent never reaches the unit, so no beat past it
-            # may answer OKAY. It does not require the beats inside the extent
-            # to be served: refusing the whole burst is legal AXI and is the
-            # more conservative answer, so a window that answers every beat
-            # non-OKAY is recorded, not failed. Asserting the other direction
-            # would fail a fabric for being stricter than the specification.
-            if beat_resps:
-                self.logger.info("deadspace beat-audit: %s per-beat RRESP=%s", win.name, beat_resps)
-                for i, r in enumerate(beat_resps):
-                    addr = start + 4 * i
-                    if addr >= win.dead_lo and r == RESP_OKAY:
-                        beat_fails.append(
-                            f"{win.name} beat{i} 0x{addr:08x} is past the "
-                            f"extent but answered OKAY inside the burst "
-                            f"beginning 0x{start:08x}"
-                        )
-                beat_audited.append(win.name)
-                # A window that serves its in-extent beats and refuses only the
-                # tail is the only shape that proves the refusal is per beat
-                # rather than per burst. Without at least one, this checker has
-                # shown that nothing past an extent is served, but not that the
-                # fabric can tell the beats apart.
-                if all(
-                    r == RESP_OKAY for i, r in enumerate(beat_resps) if start + 4 * i < win.dead_lo
-                ):
-                    beat_discriminating.append(win.name)
-            else:
-                beat_skipped.append(
-                    f"{win.name}: the bus monitor captured no {len(words)}-beat "
-                    f"RRESP sequence for the burst at 0x{start:08x}"
+            if not beat_resps:
+                beat_fails.append(
+                    f"{win.name}: no per-beat RRESP vector for the read burst at 0x{start:08x}"
                 )
-
-            # CHK-DEADSPACE-BURST: any non-OKAY single-beat refusal, not
-            # DECERR-only. This test grades refusal only, not the code.
-            # A window whose past-extent single beat answers SLVERR must still
-            # fail an OKAY burst to the same address.
-            worst = max(resps) if resps else RESP_OKAY
-            for i, (sresp, sdata) in enumerate(singles):
-                addr = start + 4 * i
-                if addr >= win.dead_lo:
-                    if sresp != RESP_OKAY and worst == RESP_OKAY:
+            for i, r in enumerate(beat_resps):
+                if r != RESP_DECERR:
+                    beat_fails.append(
+                        f"{win.name} beat{i} 0x{start + 4 * i:08x} answered "
+                        f"{_RESP_NAME.get(r, str(r))} inside a read burst; the crypto "
+                        f"demux answers every beat of a burst DECERR"
+                    )
+            for i, word in enumerate(words):
+                for live_addr, live_val in snaps[win.name].items():
+                    if word == live_val:
                         burst_fails.append(
-                            f"{win.name} 0x{addr:08x} is refused as a single "
-                            f"beat (resp={sresp}) but the burst beginning "
-                            f"0x{start:08x} was accepted (resp={worst})"
+                            f"{win.name} beat{i} 0x{start + 4 * i:08x} of the read burst "
+                            f"returned 0x{word:08x}, the value of live register 0x{live_addr:08x}"
                         )
                         break
-                    # The single-beat no-alias rule, on the burst word: a beat
-                    # past the extent must not return a live register's value,
-                    # whatever its response code.
-                    if win.name not in past_compared:
-                        past_compared.append(win.name)
-                    for live_addr, live_val in snaps[win.name].items():
-                        if words[i] == live_val:
-                            burst_fails.append(
-                                f"{win.name} beat{i} 0x{addr:08x} is past the extent but "
-                                f"returned 0x{words[i]:08x}, the value of live register "
-                                f"0x{live_addr:08x}, inside the burst beginning 0x{start:08x}"
-                            )
-                            break
-                    continue
-                # Inside the extent: compare a beat the burst actually served.
-                # The master's collapsed response is the worst beat of the
-                # burst, so a refused tail would skip an in-extent beat that
-                # answered OKAY. Poison on a refused beat is not data.
-                beat_r = beat_resps[i] if i < len(beat_resps) else None
-                if beat_r != RESP_OKAY or sresp != RESP_OKAY:
-                    continue
-                if win.name not in data_compared:
-                    data_compared.append(win.name)
-                if words[i] != sdata:
+            if any(sresp == RESP_OKAY for sresp, _ in singles):
+                controlled.append(win.name)
+            if win.write_ok:
+                bresp, wr_timed_out, moved = await dead.burst_write(win, start, snaps[win.name])
+                self.logger.info(
+                    "deadspace burst-audit: %s write burst 0x%08x BRESP=%s",
+                    win.name,
+                    start,
+                    _RESP_NAME.get(bresp, str(bresp)),
+                )
+                if wr_timed_out:
+                    burst_fails.append(f"{win.name} write burst at 0x{start:08x} timed out")
+                elif bresp != RESP_DECERR:
                     burst_fails.append(
-                        f"{win.name} 0x{addr:08x} reads 0x{sdata:08x} as a "
-                        f"single beat but 0x{words[i]:08x} as beat{i} of the "
-                        f"burst beginning 0x{start:08x}"
+                        f"{win.name} write burst at 0x{start:08x} answered "
+                        f"{_RESP_NAME.get(bresp, str(bresp))}; the crypto demux answers DECERR"
                     )
-                    break
+                burst_fails.extend(moved)
 
         # Config report, not a checker. Every anchor is placed unconditionally
         # and nothing filters them, so a count against the list that built them
@@ -324,92 +272,70 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             "CHK-DEADSPACE-NO-ALIAS PASS: no allocated register moved across any probe"
         )
 
-        # The TRNG verdicts are part of CHK-DEADSPACE-REFUSE / -NO-ALIAS above,
-        # which already raised on any OKAY, timeout or alias. This line names the
-        # window, requires both a read and a write were refused there, and gives
-        # the response codes the document owner reconciles.
+        # Refusal and no-alias of the TRNG probes are part of CHK-DEADSPACE-REFUSE
+        # / -NO-ALIAS above, which already raised on any OKAY, timeout or alias.
+        # This checker grades the code of each probe and requires a read and a
+        # write in the window.
         trng_rd = sorted({r for op, _a, r, ok in adopter_probes if op == "r" and ok})
         trng_wr = sorted({r for op, _a, r, ok in adopter_probes if op == "w" and ok})
         assert trng_rd and trng_wr, (
             f"CHK-TRNG-UNOWNED FAIL: need a refused read and a refused write in the "
             f"TRNG window, got {len(adopter_probes)} probe(s): {adopter_probes}"
         )
+        trng_bad = [
+            f"{op} 0x{addr:08x} answered {_RESP_NAME.get(r, r)}, "
+            f"memory_map.adoc states {_RESP_NAME[TRNG_UNOWNED_RESP[op]]}"
+            for op, addr, r, _ok in adopter_probes
+            if r != TRNG_UNOWNED_RESP[op]
+        ]
+        for line in trng_bad:
+            self.logger.error("CHK-TRNG-UNOWNED FAIL: %s", line)
+        assert not trng_bad, (
+            f"CHK-TRNG-UNOWNED FAIL: {len(trng_bad)} of {len(adopter_probes)} TRNG-window "
+            "probe(s) answered a code other than the one memory_map.adoc states"
+        )
         self.logger.info(
             "CHK-TRNG-UNOWNED PASS: %d TRNG-window probes refused, none OKAY, no ESRC "
-            "register aliased or moved; read resp=%s write resp=%s (flavour logged, "
-            "not graded: memory_map.adoc names SLVERR, the SMU integrator guide a "
-            "DECERR slave)",
+            "register aliased or moved; every read answered %s and every write %s, "
+            "as memory_map.adoc states with no external TRNG connected",
             len(adopter_probes),
             "/".join(_RESP_NAME[r] for r in trng_rd),
             "/".join(_RESP_NAME[r] for r in trng_wr),
         )
 
-        for line in burst_fails:
-            self.logger.error("CHK-DEADSPACE-BURST FAIL: %s", line)
-        if burst_fails:
-            raise AssertionError(
-                f"CHK-DEADSPACE-BURST FAIL: {len(burst_fails)} window(s) "
-                f"accepted a burst beat in dead space: a burst begun in a "
-                f"block's last live words carries its remaining beats past "
-                f"REG_MAP_SIZE and is answered OKAY"
-            )
-        assert burst_audited, (
-            "CHK-DEADSPACE-BURST FAIL: no window could carry the burst "
-            "contract, so it has no evidence here (" + "; ".join(burst_skipped) + ")"
-        )
-        missing_past = [name for name in burst_audited if name not in past_compared]
-        if missing_past:
-            raise AssertionError(
-                "CHK-DEADSPACE-BURST FAIL: past-extent beat data was not held to the "
-                "no-alias rule on " + ", ".join(missing_past)
-            )
-        missing_data = [name for name in beat_discriminating if name not in data_compared]
-        if missing_data:
-            raise AssertionError(
-                "CHK-DEADSPACE-BURST FAIL: in-extent OKAY beats were not "
-                "compared to the single-beat value: " + ", ".join(missing_data)
-            )
-        self.logger.info(
-            "CHK-DEADSPACE-BURST PASS: %d of %d window(s) refused a burst "
-            "that ends past its allocated extent (%s); in-extent data "
-            "compared on %s; past-extent beat data held to the no-alias rule on %s; "
-            "%d not auditable (%s)",
-            len(burst_audited),
-            len(cfg.windows),
-            ", ".join(burst_audited),
-            ", ".join(data_compared) or "none",
-            ", ".join(past_compared) or "none",
-            len(burst_skipped),
-            "; ".join(burst_skipped) or "none",
-        )
-
+        # Log both checkers' failures before either asserts, so a beat failure
+        # cannot hide what the write burst did.
         for line in beat_fails:
             self.logger.error("CHK-DEADSPACE-BEAT FAIL: %s", line)
-        if beat_fails:
-            raise AssertionError(
-                f"CHK-DEADSPACE-BEAT FAIL: {len(beat_fails)} beat(s) answered "
-                f"against the extent rule inside a burst"
-            )
-        assert beat_audited, (
-            "CHK-DEADSPACE-BEAT FAIL: no burst yielded a per-beat response "
-            "vector, so per-beat refusal has no evidence here (" + "; ".join(beat_skipped) + ")"
+        for line in burst_fails:
+            self.logger.error("CHK-DEADSPACE-BURST FAIL: %s", line)
+        assert not beat_fails, (
+            f"CHK-DEADSPACE-BEAT FAIL: {len(beat_fails)} read-burst beat(s) in the crypto "
+            f"region did not answer DECERR"
         )
-        assert beat_discriminating, (
-            "CHK-DEADSPACE-BEAT FAIL: every audited window refused its whole "
-            "burst, so nothing past an extent was served but the fabric was "
-            "never shown to tell one beat from another"
+        assert burst_graded, (
+            f"CHK-DEADSPACE-BEAT FAIL: no window lies in the crypto region "
+            f"0x{CRYPTO_LO:08x}-0x{CRYPTO_HI - 1:08x}, so the burst rule has no evidence"
         )
         self.logger.info(
-            "CHK-DEADSPACE-BEAT PASS: %d window(s) served no beat past the "
-            "extent (%s), of which %d served their in-extent beats and refused "
-            "only the tail (%s) -- refusal is per beat, not per burst; the rest "
-            "refused the whole burst, which is legal and stricter. %d without a "
-            "vector (%s). Read bursts only: one BRESP covers a write burst, so "
-            "per-beat write refusal is not observable at the protocol level.",
-            len(beat_audited),
-            ", ".join(beat_audited),
-            len(beat_discriminating),
-            ", ".join(beat_discriminating) or "none",
-            len(beat_skipped),
-            "; ".join(beat_skipped) or "none",
+            "CHK-DEADSPACE-BEAT PASS: every beat of a read burst answered DECERR in %d "
+            "crypto-region window(s) (%s)",
+            len(burst_graded),
+            ", ".join(burst_graded),
+        )
+        assert not burst_fails, (
+            f"CHK-DEADSPACE-BURST FAIL: {len(burst_fails)} burst finding(s) in the crypto region"
+        )
+        assert controlled, (
+            "CHK-DEADSPACE-BURST FAIL: no crypto-region window answered a single beat "
+            "at a burst address OKAY, so a dead address would pass the burst checks"
+        )
+        self.logger.info(
+            "CHK-DEADSPACE-BURST PASS: in %d crypto-region window(s) no read-burst beat "
+            "returned a live value, every write burst answered DECERR and moved no armed "
+            "register; a single beat at a burst address answered OKAY in %s. Not graded, "
+            "outside the crypto region (memory_map.adoc, Single-Beat Register Access): %s",
+            len(burst_graded),
+            ", ".join(controlled),
+            ", ".join(not_graded) or "none",
         )

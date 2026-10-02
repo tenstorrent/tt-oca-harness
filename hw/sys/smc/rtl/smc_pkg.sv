@@ -333,7 +333,7 @@ package smc_pkg;
   typedef enum logic {
     DMA = 0,
     ZEROER = 1
-  } data_accelerator_type_t;
+  } data_accelerator_type_e;
 
   // DMA backend internal ID width (for axi_mux inside DMA backend)
   localparam int unsigned DMA_BACKEND_MST_ID_W = SMC_INPUT_FABRIC_SLAVE_ID_WIDTH - 2;  // 2.

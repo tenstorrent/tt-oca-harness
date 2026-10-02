@@ -24,6 +24,6 @@ NumRegMaps
     CHIP_CONFIG         = 3'b010,
     NDM_RESET           = 3'b011,
     ERR_SLV             = 3'b100
-  } select_t;
+  } select_e;
 
 endpackage

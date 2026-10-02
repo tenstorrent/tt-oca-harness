@@ -2,57 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
+ * @file i2c_p1_ackctrl.c
  * @brief I2C P1 ACK Control Mode Test
  *
- * =============================================================================
- * Test Description
- * =============================================================================
- *
- * This test verifies the programmable ACK control feature, including manual
- * ACK/NACK and automatic ACK modes in Target mode.
- *
- * Test Objective:
- * - Verify automatic ACK mode: Target automatically sends ACK when receiving data
- *
- * Expected Result:
- * - Automatic mode: Target automatically ACKs all received bytes
- *
- * =============================================================================
- * Test Architecture: Two-Level I2C Control
- * =============================================================================
- *
- * LEVEL 1: Wrapper Control (0xC0009E00)
- *   - Controls GPIO pad multiplexing
- *   - Selects I2C mode (Controller/Target)
- *
- * LEVEL 2: IP Control (0xC0009000 + 0x200*idx)
- *   - OpenTitan I2C IP protocol layer
- *   - Handles timing, FIFO, interrupts, transactions
- *
- * =============================================================================
- * Configuration Details
- * =============================================================================
- *
- * I2C_0 Configuration (Controller Mode):
- *   - Speed: Standard mode (100 kHz)
- *   - FIFO Thresholds: RX=29, FMT=5
- *
- * I2C_1 Configuration (Target Mode):
- *   - Address: 0x10 (7-bit)
- *   - ACK Control: Automatic
- *   - FIFO Thresholds: TX=5, ACQ=29
- *
- * =============================================================================
- * Test Flow
- * =============================================================================
- *
- * Step 1: System Initialization
- * Step 2: Wrapper Control Enable
- * Step 3: Test Automatic ACK Mode
- * Step 4: Test Complete
- *
- * =============================================================================
+ * Verifies that a target in automatic ACK mode receives a four-byte write
+ * without error, with I2C_0 as controller and I2C_1 as target at standard
+ * speed. Manual ACK/NACK mode is not covered.
  */
 
 #include <stdint.h>
@@ -167,9 +122,6 @@ static int test_automatic_ack_mode(void) {
     return I2C_OK;
 }
 
-// Manual ACK mode needs per-byte ACK/NACK control that i2c_target_receive_transaction()
-// does not provide; this image exercises automatic ACK only.
-
 int main(void) {
     int ret = I2C_OK;
 
@@ -207,6 +159,4 @@ int main(void) {
     simputs("###################################################\n");
     write_scratch(1, 0xEBEDEBE4);
     test_pass(0);
-
-    return I2C_OK;
 }

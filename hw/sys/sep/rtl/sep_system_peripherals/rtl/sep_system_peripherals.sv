@@ -215,8 +215,8 @@ module sep_system_peripherals (
   // AXI Demux (from Address Remap) //
   ////////////////////////////////////
 
-  sep_pkg::address_remap_demux_select_t address_remap_demux_select_aw;
-  sep_pkg::address_remap_demux_select_t address_remap_demux_select_ar;
+  sep_pkg::address_remap_demux_select_e address_remap_demux_select_aw;
+  sep_pkg::address_remap_demux_select_e address_remap_demux_select_ar;
 
   // Direct binary address decode for AXI demux
   // Priority: SMC > SMU > AP > STEE > LOCAL (default)

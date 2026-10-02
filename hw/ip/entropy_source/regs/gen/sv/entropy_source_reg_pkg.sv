@@ -114,9 +114,14 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         logic swwel;
+    } entropy_source__FIFO_CTRL__ENABLE__in_t;
+
+    typedef struct {
+        logic swwel;
     } entropy_source__FIFO_CTRL__ENTROPY_CHURN_ENABLE__in_t;
 
     typedef struct {
+        entropy_source__FIFO_CTRL__ENABLE__in_t ENABLE;
         entropy_source__FIFO_CTRL__ENTROPY_CHURN_ENABLE__in_t ENTROPY_CHURN_ENABLE;
     } entropy_source__FIFO_CTRL__in_t;
 

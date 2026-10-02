@@ -289,7 +289,7 @@ module gpio
     ACTIVE_LOW   = 2'b01,
     RISING_EDGE  = 2'b10,
     FALLING_EDGE = 2'b11
-  } interrupt_type_t;
+  } interrupt_type_e;
 
   always_comb begin
     unique case (reg__interrupt_type)

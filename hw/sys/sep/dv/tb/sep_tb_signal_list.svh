@@ -512,6 +512,16 @@
 `SEP_TB_OUT(logic, sys_csr_axil_awvalid_o)
 `SEP_TB_OUT(logic, sys_csr_axil_awready_o)
 `SEP_TB_OUT(logic [31:0], sys_csr_axil_awaddr_o)
+// AR/AW handshakes at the local crossbar's `ext` initiator: the requests
+// sep_system_peripherals forwards into the local crossbar (SMN inbound traffic,
+// and local-master traffic that the peripheral crossbar does not decode).
+// Observation-only, outside the tb s_axi / m_axi ready/valid cones.
+`SEP_TB_OUT(logic, xbar_ext_in_arvalid_o)
+`SEP_TB_OUT(logic, xbar_ext_in_arready_o)
+`SEP_TB_OUT(logic [31:0], xbar_ext_in_araddr_o)
+`SEP_TB_OUT(logic, xbar_ext_in_awvalid_o)
+`SEP_TB_OUT(logic, xbar_ext_in_awready_o)
+`SEP_TB_OUT(logic [31:0], xbar_ext_in_awaddr_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.

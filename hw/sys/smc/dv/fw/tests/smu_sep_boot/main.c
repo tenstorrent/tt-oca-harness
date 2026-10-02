@@ -7,11 +7,11 @@
 #include "smc_test.h"
 
 /*
- * SMU-SEP DV boot shim.
+ * SMU-SEP boot shim.
  *
- * The reset vector points at smu_sep_boot_entry: the SMU-SEP real-CLA boot flow
- * must not depend on the generic multihart C runtime reaching main before CLA is
- * armed.
+ * Arms the CLA boot path for the SEP from a dedicated reset entry, so the
+ * SMU-SEP boot does not depend on the generic multihart C runtime reaching
+ * main first.
  */
 void smu_sep_boot_entry(void) __attribute__((naked, section(".init"), used));
 void smu_sep_boot_entry(void) {
@@ -32,10 +32,4 @@ void smu_sep_boot_entry(void) {
 int main(void) {
     smu_sep_dv_test_bringup();
     test_pass(0);
-
-    while (true) {
-        __asm__ volatile("wfi");
-    }
-
-    return 0;
 }

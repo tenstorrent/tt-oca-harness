@@ -7,7 +7,6 @@
 #include "metal/cpu.h"
 #include "metal/drivers/riscv_cpu.h"
 #include "metal/interrupt.h"
-#include "metal/watchdog.h"
 #include "smc_io.h"
 #include "smc_test.h"
 #include "virt_console.h"
@@ -75,7 +74,8 @@ static void test_interrupt_handler(int id, void *priv) {
 
 static void reset_plic_enable_registers(void) {
     simputs("Clearing PLIC registers\n");
-    // this function goes through all the enable resets and clears them to avoid X prop
+    // The driver enables a source by read-modify-write, so every enable word
+    // must start from a known value.
     for (uint64_t addr = SMC_TOP_SMC_CLUSTER_PLIC_CORE0_MEIP_ENABLE_BASE_ADDR(0);
          addr <= SMC_TOP_SMC_CLUSTER_PLIC_CORE3_SEIP_ENABLE_BASE_ADDR(5); addr += 4) {
         write_reg(addr, 0x0);
@@ -153,9 +153,6 @@ int main(void) {
         return -1;
     }
 
-    // the interrupt enable function does a read-modify-write, which will break tests
-    // that don't initialize registers with a default value
-    // -> write zeros to clear all enable registers
     reset_plic_enable_registers();
 
     simputs("Initializing PLIC\n");

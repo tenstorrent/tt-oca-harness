@@ -170,7 +170,7 @@ module log_engine
   logic log_fetch_done_status, log_fetch_done_status_next;
   log_words_fetched_cnt_t log_words_fetched_cnt, log_words_fetched_cnt_next;
   log_len_t next_log_bytes_fetched;
-  log_fetch_fsm_state_t log_fetch_fsm_state, log_fetch_fsm_state_next;
+  log_fetch_fsm_state_e log_fetch_fsm_state, log_fetch_fsm_state_next;
 
   assign next_log_bytes_fetched =
       log_len_t'(log_words_fetched_cnt + log_words_fetched_cnt_t'(1)) *
@@ -352,7 +352,7 @@ module log_engine
   log_word_byte_ptr_t byte_ptr;
 
   log_bytes_written_cnt_t log_bytes_written_cnt, log_bytes_written_cnt_next;
-  log_write_fsm_state_t log_write_fsm_state, log_write_fsm_state_next;
+  log_write_fsm_state_e log_write_fsm_state, log_write_fsm_state_next;
 
   always_comb begin
     // Log write request

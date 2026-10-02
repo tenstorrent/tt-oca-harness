@@ -4,7 +4,7 @@
 // Declare pad and mux types for the SMC padring.
 //
 // Holds DefaultDirectionMap, the reset-default direction of each GPIO pad (GPIO 62-64
-// output, all others input), and pad_enable_t, the active-low LSIO enable encoding
+// output, all others input), and pad_enable_e, the active-low LSIO enable encoding
 // (ENABLED is 0, DISABLED is 1) used by smc_padring.
 
 package smc_padring_pkg;
@@ -88,6 +88,6 @@ package smc_padring_pkg;
   typedef enum logic {
     DISABLED = 1'b1,
     ENABLED  = 1'b0
-  } pad_enable_t;
+  } pad_enable_e;
 
 endpackage

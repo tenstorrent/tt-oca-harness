@@ -2,17 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_spi_mux — excluded from the OSS firmware compile
- * (`FW_TEST_EXCLUDE_NAMES`). The image of this name programs EXT_SPI_CTRL,
- * a register in a companion wrapper outside the OCAH hierarchy, so that image
- * lives with the wrapper. No SPI select exists: the OT SPI host reaches the
- * pads only on the SMC LSIO primary plane.
+ * sep_smu_spi_mux — excluded from the firmware build (`FW_TEST_EXCLUDE_NAMES`).
+ * The SPI pad select this test name refers to is outside the OCAH hierarchy,
+ * so this image only parks in the pass loop. No SPI select exists in OCAH: the
+ * OT SPI host reaches the pads only on the SMC LSIO primary plane.
  */
 
-#include <stdint.h>
-
-#include "och_sep_common.h"
-#include "sep.h"
 #include "sep_outbound_filter.h"
 
 __attribute__((used, noinline, noreturn)) void smu_sep_spi_mux_pass_loop(void) {
@@ -30,10 +25,7 @@ __attribute__((used, noinline, noreturn)) void smu_sep_spi_mux_fail_loop(void) {
     }
 }
 
-static void (*const keep_fail)(void) = smu_sep_spi_mux_fail_loop;
-
 int main(void) {
-    (void)keep_fail;
     sep_outbound_filter_init();
     smu_sep_spi_mux_pass_loop();
 }

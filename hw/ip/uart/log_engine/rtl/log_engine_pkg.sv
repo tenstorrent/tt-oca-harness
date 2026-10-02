@@ -70,9 +70,9 @@ package log_engine_pkg;
 
   // Dependent Parameters
   // General parameters
-  typedef log_engine_reg_pkg::log_engine__LOG_REGION_SIZE__LOG_REGION_SIZE__out_t log_region_size_field_t;
-  localparam log_region_size_field_t LOG_REGION_SIZE_FIELD = '{default: '0};
-  localparam int unsigned LOG_REGION_SIZE_W = $bits(LOG_REGION_SIZE_FIELD.value);
+  localparam int unsigned LOG_REGION_SIZE_W = $bits(
+      log_engine_reg_pkg::log_engine__LOG_REGION_SIZE__LOG_REGION_SIZE__out_t
+  );
   typedef logic [LOG_REGION_SIZE_W-1:0] log_region_size_t;
 
   localparam int unsigned MAX_LOG_LEN = MAX_LOG_REGION_SIZE / NUM_LOG_ENTRIES;
@@ -110,12 +110,12 @@ package log_engine_pkg;
     ST_LOG_FETCH_IDLE = 2'd0,
     ST_LOG_FETCH_REQ  = 2'd1,
     ST_LOG_FETCH_WAIT = 2'd2
-  } log_fetch_fsm_state_t;
+  } log_fetch_fsm_state_e;
 
   typedef enum logic [1:0] {
     ST_LOG_WRITE_IDLE = 2'd0,
     ST_LOG_WRITE_REQ  = 2'd1,
     ST_LOG_WRITE_WAIT = 2'd2
-  } log_write_fsm_state_t;
+  } log_write_fsm_state_e;
 
 endpackage

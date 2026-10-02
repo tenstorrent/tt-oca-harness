@@ -149,7 +149,7 @@ module sep_cpu
 
   sep_32_64_3_12_axi_req_t  [SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_req;
   sep_32_64_3_12_axi_resp_t [SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_resp;
-  sep_lsu_demux_port_t lsu_aw_select, lsu_ar_select;
+  sep_lsu_demux_port_e lsu_aw_select, lsu_ar_select;
 
   always_comb begin
     if ((lsu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
