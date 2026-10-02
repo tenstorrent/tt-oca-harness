@@ -2545,6 +2545,27 @@ args = [
   "+esrc_noise_force",
 ]
 
+# Pending: the manifest and ROM do not yet support manifest-selected payload
+# staging into SMC SRAM. Keep these entries disabled until that contract,
+# scratch[13]/[14] window handling and the corresponding ROM markers are
+# implemented.
+#
+# [[tests]]
+# name = "sep_firmware_payload_correct_smc_64kb_test"
+# module = "rom_fw.sep_firmware_payload_correct_smc_64kb_test"
+#
+# [[tests]]
+# name = "sep_firmware_payload_correct_smc_128kb_test"
+# module = "rom_fw.sep_firmware_payload_correct_smc_128kb_test"
+#
+# [[tests]]
+# name = "sep_firmware_payload_correct_smc_200kb_test"
+# module = "rom_fw.sep_firmware_payload_correct_smc_200kb_test"
+#
+# [[tests]]
+# name = "sep_firmware_payload_incorrect_smc_test"
+# module = "rom_fw.sep_firmware_payload_incorrect_smc_test"
+
 [[tests]]
 # Primary payload ends 1 KiB past its slot window (PAYLOAD_LOC_FAIL, 0x1B); backup boots.
 name = "sep_firmware_payload_exceeds_slot_window_fixed_test"

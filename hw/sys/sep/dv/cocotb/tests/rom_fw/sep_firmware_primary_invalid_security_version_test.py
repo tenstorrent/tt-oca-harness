@@ -1,46 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary manifest is below the rollback floor; the backup boots.
+"""Primary manifest lacks a required security flag; the backup boots.
 
-The ``BL1_VERSION`` fuse sets a minimum security version of 1, the PRIMARY carries
-0 and is refused as a rollback, and the BACKUP carries exactly 1 and boots.
-The anti-rollback check is a single comparison, ``manifest_ver < fuse_ver``, reached from ``manifest validation:364``.
+The ``BL1_VERSION`` fuse sets one security flag. The primary's shipped ``security_version`` is 0
+and lacks that flag, so it is refused with ``OCA_FAIL_SECURITY_VERSION``; the backup carries
+exactly that flag and boots. Anti-rollback runs after key authorization and before the
+signature, so the run must show that code once, on the primary, with both compared values, and
+the primary must never reach ``RSA_EXEC``.
 
-THE ORDERING IS ESTABLISHED, NOT ASSUMED, AND IT IS WHY THIS TESTCASE CAN NAME ITS
-REASON. The anti-rollback check runs, BEFORE
-the signature path -- so the rollback verdict preempts signature
-type, key selection, revocation and RSA. That is what makes
-``MANIFEST_ERR_VERSION_ROLLBACK`` -- ``OCA_FAIL_SECURITY_VERSION``, a DEDICATED code
-rather than another user of the shared ``MANIFEST_ERR_SIG_FAILED``, and it is why
-this testcase asserts the intended REASON instead of merely "it was rejected":
-the run must show that code exactly once, on the primary, with the two
-values the ROM actually compared, and must never reach ``PUBK_SEL=`` on the
-primary.
+The shipped images carry ``security_version`` 0, so the asymmetry is built by raising the
+backup. The field is inside the signed region, so the backup is re-sealed with the dev0 key
+(``env/sep_payload_mutate.reseal``), whose modulus digest is ROM key slot 0;
+``verify_signing_key`` first proves the local signer reproduces the shipped signature. The
+primary is not modified and stays fully sealed.
 
-The expected outcome is A Completed boot.
-
-Platform adaptation -- The version scale. Its base config carries ``security_version:
-5`` (``configs/default_test.yaml:55``); the config in THIS tree carries 0
-(``bootrom/prod/configs/secure_boot_test.yaml:65,130``), so the primary cannot be
-lowered below the shipped value and the asymmetry has to be built by raising the backup
-instead.
-
-Platform adaptation -- The backup is re-SIGNED. ``security_version`` is at offset 162,
-inside the signed region, so raising it invalidates ``manifest_hash`` and the signature. The
-backup has to BOOT, so a stale signature is not survivable the way it is for the
-negative testcases: it is re-sealed with the dev0 key that ships in this tree
-(``env/sep_payload_mutate.reseal``), whose modulus digest is the ROM's own key slot 0
-(``digest_rom_key0`` in the generated ``bootrom/prod/<build dir>/key_digests.c``).
-``verify_signing_key`` proves the local
-signer reproduces the shipped signature byte for byte before any mutation, and the
-shared base re-runs ``verify_sealed`` afterwards, so the re-seal is established rather
-than asserted. The PRIMARY is deliberately NOT re-signed and NOT modified: its shipped
-``security_version`` is already 0, so it stays fully sealed and the rollback is the only
-thing wrong with it.
-
-Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
-assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
+Needs ``+esrc_noise_force``: the backup's RSA-3072 modexp stalls OTBN until EDN grants entropy.
 """
 
 from __future__ import annotations
@@ -81,7 +55,7 @@ _BACKUP_VER_ECHO = f"MFST_VER=0x{_BACKUP_SECURITY_VERSION:08x}"
 
 @pyuvm.test()
 class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup_boot_base):
-    """Primary below the rollback floor -> rejected -> backup at the floor boots."""
+    """Primary misses a device flag -> rejected -> matching backup boots."""
 
     primary_defect_marker = f"MANIFEST_ERR=0x{MANIFEST_ERR_VERSION_ROLLBACK:08x}"
     primary_expected_error = MANIFEST_ERR_VERSION_ROLLBACK
@@ -105,8 +79,8 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
     )
 
     def corrupt_primary(self, buf: bytearray) -> None:
-        # The shipped primary already carries 0, which is below the floor this
-        # preload sets. Assert that rather than write it: a write would be a no-op
+        # The shipped primary already carries 0, which omits the flag this preload
+        # sets. Assert that rather than write it: a write would be a no-op
         # wearing a mutation's name, and reading the real value is what proves the
         # rollback is the fuse's verdict on an untouched, still-sealed slot.
         got = mm.security_version(buf, "primary")
@@ -115,19 +89,17 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
             f"{_PRIMARY_SECURITY_VERSION}: the shipped image is not the baseline "
             f"this testcase relies on, so the rollback would not be attributable"
         )
-        assert got < _FUSE_SECURITY_VERSION, (
-            f"primary security_version {got} is not below the fuse floor "
-            f"{_FUSE_SECURITY_VERSION}, so no rollback would be detected"
+        assert (got & _FUSE_SECURITY_VERSION) != _FUSE_SECURITY_VERSION, (
+            f"primary security_version 0x{got:x} contains every device flag "
+            f"0x{_FUSE_SECURITY_VERSION:x}, so no rollback would be detected"
         )
         # Untouched and therefore still completely sealed: the rollback is the
         # ONLY thing wrong with this slot.
         pm.verify_sealed(buf, "primary")
         self.logger.info(
-            "CHK-STIMULUS-PRIMARY-VERSION: primary security_version=%d vs fuse "
-            "floor %d (reject expected because %d < %d); slot untouched and still "
-            "fully sealed",
-            got,
-            _FUSE_SECURITY_VERSION,
+            "CHK-STIMULUS-PRIMARY-VERSION: primary security_version=0x%x vs "
+            "device flags 0x%x (reject expected because required flags are "
+            "missing); slot untouched and still fully sealed",
             got,
             _FUSE_SECURITY_VERSION,
         )
@@ -148,15 +120,15 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
             f"backup security_version is {got} after the write, expected "
             f"{_BACKUP_SECURITY_VERSION}; the mutation did not land"
         )
-        assert got >= _FUSE_SECURITY_VERSION, (
-            f"backup security_version {got} is below the fuse floor "
-            f"{_FUSE_SECURITY_VERSION}: it would be rejected too and nothing "
-            f"would boot"
+        assert (got & _FUSE_SECURITY_VERSION) == _FUSE_SECURITY_VERSION, (
+            f"backup security_version 0x{got:x} does not contain every device "
+            f"flag 0x{_FUSE_SECURITY_VERSION:x}: it would be rejected too and "
+            f"nothing would boot"
         )
         self.logger.info(
-            "CHK-STIMULUS-BACKUP-VERSION: backup security_version %d -> %d, "
-            "exactly at the fuse floor %d (the `manifest_ver == fuse_ver` accept "
-            "boundary); slot re-sealed and re-signed with dev0",
+            "CHK-STIMULUS-BACKUP-VERSION: backup security_version 0x%x -> 0x%x, "
+            "exactly matching the device flags 0x%x; slot re-sealed and re-signed "
+            "with dev0",
             before,
             got,
             _FUSE_SECURITY_VERSION,
@@ -164,11 +136,10 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
 
     def check_efuse(self, image) -> None:
         bl1_ver = image.field_int("BL1_VERSION")
-        popcount = bin(bl1_ver).count("1")
-        assert popcount == _FUSE_SECURITY_VERSION, (
-            f"BL1_VERSION 0x{bl1_ver:x} has thermometer count {popcount}, expected "
-            f"{_FUSE_SECURITY_VERSION}: the fuse minimum is what makes the "
-            f"primary's version a rollback"
+        assert bl1_ver == _FUSE_SECURITY_VERSION, (
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected flag bitmap "
+            f"0x{_FUSE_SECURITY_VERSION:x}: the missing device flag is what "
+            f"makes the primary's version a rollback"
         )
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert revoke == 0, (
@@ -205,36 +176,33 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
         # than argued. Anti-rollback is checked after the root key is authorized
         # and BEFORE the signature, so the primary must never reach the verifier:
         # if the first RSA_EXEC in the run came before the backup read, a manifest
-        # below the floor was handed to the verifier anyway.
+        # missing a required device flag was handed to the verifier anyway.
         assert i_prsa > i_bsrc, (
             f"RSA_EXEC@{i_prsa} appeared before the backup read@{i_bsrc}: the "
             f"primary reached the verifier, so the rollback check did not preempt "
             f"the signature. Console: {console}"
         )
-        # CHK-BACKUP-ACCEPTED-AT-FLOOR: the recovering slot's version was read and
-        # accepted. Equality is the boundary the ROM must pass, so this is the
-        # accept half of the same comparison.
+        # CHK-BACKUP-ACCEPTED: the recovering slot carries every device flag and
+        # was accepted. Exact equality exercises the simplest accepted superset.
         assert i_bsrc < i_bver, (
             f"{_BACKUP_VER_ECHO}@{i_bver} did not follow the backup read@{i_bsrc}"
         )
-        # The fuse floor must have been read twice -- once per slot -- so the
-        # accept and the reject came from the same floor.
-        # Three, and the split is the point: the primary is rejected AT the first
-        # version check so it reads the flags once and stops, while the backup
-        # passes and is checked again after the signature
+        # Three reads, and the split is the point: the primary is rejected at the
+        # first version check so it reads the device flags once and stops, while
+        # the backup passes and reads the same flags again after the signature
         # (OCA_RECHECK_SECURITY_VERSION). A count of two would mean either the
         # primary got past the comparison or the backup was never rechecked.
         n_fuse = sum(1 for line in console if _FUSE_VER_ECHO in line)
         assert n_fuse == 3, (
             f"{_FUSE_VER_ECHO} appeared {n_fuse} times, expected 3 (once for the "
             f"rejected primary, twice for the backup that also gets the "
-            f"post-signature recheck). Both slots are measured against the same "
-            f"floor. Console: {console}"
+            f"post-signature recheck). Both slots are checked against the same "
+            f"device flags. Console: {console}"
         )
         self.logger.info(
             "CHK-ROLLBACK-FAILOVER: %s + %s@%d -> rollback@%d -> backup@%d "
-            "-> %s@%d accepted at the floor; RSA_EXEC first seen at %d, after the "
-            "backup read",
+            "-> %s@%d accepted with all device flags; RSA_EXEC first seen at %d, "
+            "after the backup read",
             _FUSE_VER_ECHO,
             _PRIMARY_VER_ECHO,
             i_pver,
