@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -242,7 +248,7 @@ scan ports and control signals, BIST functionality, and 3DIC support with STAP
 scan ports and control signals derived from internal TDRs.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-module-architecture-figure">PTAP module architecture</a> shows the control, decode, and scan-data paths
+<p><a href="#ptap-module-architecture-figure">Figure 1</a> shows the control, decode, and scan-data paths
 through the PTAP.</p>
 </div>
 <div id="ptap-module-architecture-figure" class="imageblock">
@@ -259,7 +265,7 @@ column gives the IR opcodes, in hex, that select each register for a DR scan. Th
 opcode one-hot onto <code>inst_decoded_o[63:0]</code>. An opcode with no register of its own,
 or one whose enable parameter is 0, selects BYPASS. Dashed registers and bridges
 are present only when their parameter enables them
-(<a href="#ptap-module-hierarchy-table">PTAP module hierarchy</a>). The boundary-scan chain and the iJTAG network
+(<a href="#ptap-module-hierarchy-table">Table 1</a>). The boundary-scan chain and the iJTAG network
 lie outside the PTAP: <code>client_tdi_i</code> is forwarded to them, and their returns enter
 the TDR multiplexer.</p>
 </div>
@@ -277,7 +283,7 @@ a ZERO_LENGTH_BYPASS DR scan. Both ZERO_LENGTH_BYPASS multiplexers take their
 select from <code>inst_decoded_o[3D]</code> ANDed with <code>dr_scan_select_reg</code>, the DR scan
 select registered on the falling TCK edge, and with the inverse of <code>stap_select</code>.
 While <code>stap_select</code> is set, ZERO_LENGTH_BYPASS therefore behaves exactly as
-BYPASS (<a href="#ptap-zero-length-bypass">Zero-Length Bypass</a>).</p>
+BYPASS (<a href="#ptap-zero-length-bypass">Section 3.4.1</a>).</p>
 </div>
 <div class="paragraph">
 <p><code>pwr_on_rst_ni</code> is ANDed with the client TRST in <code>u_trst_n_and</code>. The result,
@@ -290,12 +296,12 @@ instructions and the TMP_STATUS <code>bypass_escape_bit</code>, and returns <cod
 to the TAP controller. The AXI side of each JTAG2AXI bridge runs on <code>clk_i</code> and
 <code>rst_n_i</code> and takes the DFT test-mode enable <code>test_en_i</code>; the figure omits all
 three. Each bridge has its own <code>*_security_disable_i</code> input
-(<a href="#ptap-debug-disable-inputs-table">PTAP debug-disable inputs</a>).</p>
+(<a href="#ptap-debug-disable-inputs-table">Table 16</a>).</p>
 </div>
 <div class="sect2">
 <h3 id="module-hierarchy"><a class="anchor" href="#module-hierarchy"></a><a class="link" href="#module-hierarchy">3.1. Module Hierarchy</a></h3>
 <div class="paragraph">
-<p><a href="#ptap-module-hierarchy-table">PTAP module hierarchy</a> identifies the PTAP submodules and the conditions under
+<p><a href="#ptap-module-hierarchy-table">Table 1</a> identifies the PTAP submodules and the conditions under
 which they are instantiated.</p>
 </div>
 <div class="ptap-module-hierarchy-scroll" tabindex="0" aria-label="Module Hierarchy table, scrollable">
@@ -396,7 +402,7 @@ using one-hot encoding. Each state is assigned a unique bit position within a
 16-bit vector, enabling direct state detection via single-bit comparisons.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-state-encodings-table">PTAP state encodings</a> lists the one-hot encodings and functions of the sixteen
+<p><a href="#ptap-state-encodings-table">Table 2</a> lists the one-hot encodings and functions of the sixteen
 TAP-controller states.</p>
 </div>
 <table id="ptap-state-encodings-table" class="tableblock frame-all grid-all stretch">
@@ -517,7 +523,7 @@ edge of TCK, so they are stable before the next rising edge samples data.</p>
 initialization, JTAG reset, and conditional register preservation.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-reset-hierarchy-table">PTAP reset hierarchy</a> identifies the source and scope of each PTAP reset.</p>
+<p><a href="#ptap-reset-hierarchy-table">Table 3</a> identifies the source and scope of each PTAP reset.</p>
 </div>
 <table id="ptap-reset-hierarchy-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. PTAP reset hierarchy</caption>
@@ -622,7 +628,7 @@ retimed under every instruction, ZERO_LENGTH_BYPASS included.</p>
 information.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-idcode-fields-table">PTAP IDCODE fields</a> defines the identification fields shifted out by IDCODE.</p>
+<p><a href="#ptap-idcode-fields-table">Table 4</a> defines the identification fields shifted out by IDCODE.</p>
 </div>
 <table id="ptap-idcode-fields-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. PTAP IDCODE fields</caption>
@@ -694,7 +700,7 @@ IDCODE TDR will shift out on TDO.</p>
 debug and control of the design.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-debug-control-fields-table">PTAP DEBUG_CONTROL fields</a> defines the clock-stop and debug-control fields of
+<p><a href="#ptap-debug-control-fields-table">Table 5</a> defines the clock-stop and debug-control fields of
 the DEBUG_CONTROL TDR.</p>
 </div>
 <table id="ptap-debug-control-fields-table" class="tableblock frame-all grid-all stretch">
@@ -780,7 +786,7 @@ will be ignored. The contents of the DEBUG_CONTROL TDR will shift out on TDO.</p
 number and general configuration parameters for the DTP.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-jtag-caps-fields-table">PTAP JTAG_CAPS fields</a> defines the version and configuration fields reported by
+<p><a href="#ptap-jtag-caps-fields-table">Table 6</a> defines the version and configuration fields reported by
 JTAG_CAPS.</p>
 </div>
 <table id="ptap-jtag-caps-fields-table" class="tableblock frame-all grid-all stretch">
@@ -1036,7 +1042,7 @@ and the <em>CH_RESET_N</em> signal always responds to every POR, TRST, or TLR ev
 i.e. it is an exact copy of the <em>RESET_N</em> signal.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-tmp-status-fields-table">PTAP TMP_STATUS fields</a> defines the bypass-escape and persistence-status bits.</p>
+<p><a href="#ptap-tmp-status-fields-table">Table 7</a> defines the bypass-escape and persistence-status bits.</p>
 </div>
 <table id="ptap-tmp-status-fields-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 7. PTAP TMP_STATUS fields</caption>
@@ -1087,7 +1093,7 @@ instruction. This register provides an option to bypass all STAPs in the scan
 chain.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-3dcr-fields-table">PTAP 3DCR fields</a> defines the configuration-hold and STAP-selection bits.</p>
+<p><a href="#ptap-3dcr-fields-table">Table 8</a> defines the configuration-hold and STAP-selection bits.</p>
 </div>
 <table id="ptap-3dcr-fields-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 8. PTAP 3DCR fields</caption>
@@ -1157,7 +1163,7 @@ width (checked via an elaboration-time assertion in <code>jtag_ptap</code>). Wit
 <code>jtag_ic_reset_reg</code>, the reset-enable and reset-control bits are interleaved in
 IEEE 1149.1 §17 order: in each port&#8217;s pair, <code>reset_enable</code> is nearer TDO and
 <code>reset_control</code> nearer TDI, so port <em>n</em> occupies TDR bits <code>2*n+1</code> and <code>2*n+2</code>
-(<a href="#ptap-ic-reset-fields-table">PTAP IC_RESET fields</a>). <code>jtag_ptap</code> packs the three struct slices into
+(<a href="#ptap-ic-reset-fields-table">Table 9</a>). <code>jtag_ptap</code> packs the three struct slices into
 that interleaved bus and unpacks the outputs back into structured form. The TDR carries the SMC slice closest to TDI, then SEP, then
 the external slice, followed by the single <code>reset_hold</code> bit.</p>
 </div>
@@ -1168,7 +1174,7 @@ bits. Each <code>Num*IcReset</code> is half the width of its slice&#8217;s struc
 set, and 0 otherwise.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-ic-reset-fields-table">PTAP IC_RESET fields</a> defines the reset-control, reset-enable, and bypass
+<p><a href="#ptap-ic-reset-fields-table">Table 9</a> defines the reset-control, reset-enable, and bypass
 fields in the IC_RESET TDR.</p>
 </div>
 <table id="ptap-ic-reset-fields-table" class="tableblock frame-all grid-all stretch">
@@ -1269,7 +1275,7 @@ iJTAG network and the network return drives TDO.</p>
 configuration parameters for the given JTAG2AXI debugging instrument.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-jtag2axi-capability-fields-table">PTAP JTAG2AXI capability fields</a> defines the configuration fields reported by
+<p><a href="#ptap-jtag2axi-capability-fields-table">Table 10</a> defines the configuration fields reported by
 each JTAG2AXI instrument.</p>
 </div>
 <table id="ptap-jtag2axi-capability-fields-table" class="tableblock frame-all grid-all stretch">
@@ -1346,7 +1352,7 @@ the same name. A size above <code>data_size</code> transfers one full <code>D</c
 <code>D=32</code>, the 2-bit size field admits 3, and the bridge transfers 4 bytes.</p>
 </div>
 <div class="paragraph">
-<p><a href="#jtag2axi-single-operation-layout-figure">JTAG2AXI single-operation layout</a> shows the single-operation TDR for a 64-bit
+<p><a href="#jtag2axi-single-operation-layout-figure">Figure 2</a> shows the single-operation TDR for a 64-bit
 data bus and a 51-bit address bus. In this and the following layout figures the most
 significant bit is on the left, nearest TDI, and bit 0 on the right shifts out to TDO
 first. The bit range of each field is above it and its width below it; field widths
@@ -1359,7 +1365,7 @@ are not drawn to scale.</p>
 <div class="title">Figure 2. JTAG2AXI single-operation layout</div>
 </div>
 <div class="paragraph">
-<p><a href="#jtag2axi-single-operation-fields-table">JTAG2AXI single-operation fields</a> defines the address, data, byte-enable, size,
+<p><a href="#jtag2axi-single-operation-fields-table">Table 11</a> defines the address, data, byte-enable, size,
 and operation fields.</p>
 </div>
 <table id="jtag2axi-single-operation-fields-table" class="tableblock frame-all grid-all stretch">
@@ -1414,7 +1420,7 @@ and operation fields.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">op</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don&#8217;t send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status, or a system reset discarded it (see <a href="#jtag2axi-system-reset">System Reset Recovery</a>). 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don&#8217;t send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status, or a system reset discarded it (see <a href="#jtag2axi-system-reset">Section 3.15.7</a>). 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1446,7 +1452,7 @@ more time efficient for these use cases.</p>
 For <code>D=64</code>, <code>A=51</code>, and <code>FIFO_DEPTH=3</code>, the length is 58 bits.</p>
 </div>
 <div class="paragraph">
-<p><a href="#jtag2axi-series-control-layout-figure">JTAG2AXI series-control layout</a> shows the series-control TDR for 64-bit data,
+<p><a href="#jtag2axi-series-control-layout-figure">Figure 3</a> shows the series-control TDR for 64-bit data,
 51-bit addresses, and FIFO_DEPTH=3.</p>
 </div>
 <div id="jtag2axi-series-control-layout-figure" class="imageblock">
@@ -1456,7 +1462,7 @@ For <code>D=64</code>, <code>A=51</code>, and <code>FIFO_DEPTH=3</code>, the len
 <div class="title">Figure 3. JTAG2AXI series-control layout</div>
 </div>
 <div class="paragraph">
-<p><a href="#jtag2axi-series-control-fields-table">JTAG2AXI series-control fields</a> defines the control fields used to start and
+<p><a href="#jtag2axi-series-control-fields-table">Table 12</a> defines the control fields used to start and
 manage a series of AXI accesses.</p>
 </div>
 <table id="jtag2axi-series-control-fields-table" class="tableblock frame-all grid-all stretch">
@@ -1511,7 +1517,7 @@ manage a series of AXI accesses.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">op</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don&#8217;t do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved; treated as nop. When the debugger reads this field, it means the following: 0: All previous series operations completed successfully and returned an OKAY status. 1: At least one previous series operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous series operation completed but failed and returned a DECERR or other error status, or a system reset discarded a series operation that was in progress or queued (see <a href="#jtag2axi-system-reset">System Reset Recovery</a>). This status is sticky until cleared by AXI_SERIES_CTRL.reset. Codes 1 and 2 report the first failed series operation since the last AXI_SERIES_CTRL.reset; a later failure does not replace it. The completion status of an AXI_SINGLE_OP operation is reported only through AXI_SINGLE_OP.op and does not change codes 0 to 2. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don&#8217;t do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved; treated as nop. When the debugger reads this field, it means the following: 0: All previous series operations completed successfully and returned an OKAY status. 1: At least one previous series operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous series operation completed but failed and returned a DECERR or other error status, or a system reset discarded a series operation that was in progress or queued (see <a href="#jtag2axi-system-reset">Section 3.15.7</a>). This status is sticky until cleared by AXI_SERIES_CTRL.reset. Codes 1 and 2 report the first failed series operation since the last AXI_SERIES_CTRL.reset; a later failure does not replace it. The completion status of an AXI_SINGLE_OP operation is reported only through AXI_SINGLE_OP.op and does not change codes 0 to 2. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1544,10 +1550,10 @@ and Capture-DR returns the payload from those lanes.</p>
 <div class="paragraph">
 <p>The data field is drawn as the payload bytes it holds, with bit 0 aligned across the
 four sizes. The incrementing payload layouts for effective sizes <code>E</code> of 0, 1, 2, and 3
-are shown in <a href="#jtag2axi-incrementing-data-layout-for-size-0-figure">JTAG2AXI incrementing data layout for effective size 0</a>,
-<a href="#jtag2axi-incrementing-data-layout-for-size-1-figure">JTAG2AXI incrementing data layout for effective size 1</a>,
-<a href="#jtag2axi-incrementing-data-layout-for-size-2-figure">JTAG2AXI incrementing data layout for effective size 2</a>,
-<a href="#jtag2axi-incrementing-data-layout-for-size-3-figure">JTAG2AXI incrementing data layout for effective size 3</a>, respectively.
+are shown in <a href="#jtag2axi-incrementing-data-layout-for-size-0-figure">Figure 4</a>,
+<a href="#jtag2axi-incrementing-data-layout-for-size-1-figure">Figure 5</a>,
+<a href="#jtag2axi-incrementing-data-layout-for-size-2-figure">Figure 6</a>,
+<a href="#jtag2axi-incrementing-data-layout-for-size-3-figure">Figure 7</a>, respectively.
 Effective size 3 needs a 64-bit data bus, which the last figure assumes.</p>
 </div>
 <div id="jtag2axi-incrementing-data-layout-for-size-0-figure" class="imageblock">
@@ -1575,7 +1581,7 @@ Effective size 3 needs a 64-bit data bus, which the last figure assumes.</p>
 <div class="title">Figure 7. JTAG2AXI incrementing data layout for effective size 3</div>
 </div>
 <div class="paragraph">
-<p><a href="#jtag2axi-incrementing-data-fields-table">JTAG2AXI incrementing data fields</a> defines the payload shifted through the
+<p><a href="#jtag2axi-incrementing-data-fields-table">Table 13</a> defines the payload shifted through the
 incrementing data instruction.</p>
 </div>
 <table id="jtag2axi-incrementing-data-fields-table" class="tableblock frame-all grid-all stretch">
@@ -1631,10 +1637,10 @@ and Capture-DR returns the payload from those lanes.</p>
 <div class="paragraph">
 <p>The non-incrementing data register has the same layout as the incrementing one, so
 the same figures apply. The non-incrementing payload layouts for effective sizes <code>E</code>
-of 0, 1, 2, and 3 are shown in <a href="#jtag2axi-non-incrementing-data-layout-for-size-0-figure">JTAG2AXI non-incrementing data layout for effective size 0</a>,
-<a href="#jtag2axi-non-incrementing-data-layout-for-size-1-figure">JTAG2AXI non-incrementing data layout for effective size 1</a>,
-<a href="#jtag2axi-non-incrementing-data-layout-for-size-2-figure">JTAG2AXI non-incrementing data layout for effective size 2</a>,
-<a href="#jtag2axi-non-incrementing-data-layout-for-size-3-figure">JTAG2AXI non-incrementing data layout for effective size 3</a>, respectively.</p>
+of 0, 1, 2, and 3 are shown in <a href="#jtag2axi-non-incrementing-data-layout-for-size-0-figure">Figure 8</a>,
+<a href="#jtag2axi-non-incrementing-data-layout-for-size-1-figure">Figure 9</a>,
+<a href="#jtag2axi-non-incrementing-data-layout-for-size-2-figure">Figure 10</a>,
+<a href="#jtag2axi-non-incrementing-data-layout-for-size-3-figure">Figure 11</a>, respectively.</p>
 </div>
 <div id="jtag2axi-non-incrementing-data-layout-for-size-0-figure" class="imageblock">
 <div class="content">
@@ -1661,7 +1667,7 @@ of 0, 1, 2, and 3 are shown in <a href="#jtag2axi-non-incrementing-data-layout-f
 <div class="title">Figure 11. JTAG2AXI non-incrementing data layout for effective size 3</div>
 </div>
 <div class="paragraph">
-<p><a href="#jtag2axi-non-incrementing-data-fields-table">JTAG2AXI non-incrementing data fields</a> defines the payload shifted through the
+<p><a href="#jtag2axi-non-incrementing-data-fields-table">Table 14</a> defines the payload shifted through the
 non-incrementing data instruction.</p>
 </div>
 <table id="jtag2axi-non-incrementing-data-fields-table" class="tableblock frame-all grid-all stretch">
@@ -1716,10 +1722,10 @@ and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="paragraph">
 <p>The error-status payload layouts for effective sizes <code>E</code> of 0, 1, 2, and 3 are
-shown in <a href="#jtag2axi-error-status-data-layout-for-size-0-figure">JTAG2AXI error-status data layout for effective size 0</a>,
-<a href="#jtag2axi-error-status-data-layout-for-size-1-figure">JTAG2AXI error-status data layout for effective size 1</a>,
-<a href="#jtag2axi-error-status-data-layout-for-size-2-figure">JTAG2AXI error-status data layout for effective size 2</a>,
-<a href="#jtag2axi-error-status-data-layout-for-size-3-figure">JTAG2AXI error-status data layout for effective size 3</a>, respectively.
+shown in <a href="#jtag2axi-error-status-data-layout-for-size-0-figure">Figure 12</a>,
+<a href="#jtag2axi-error-status-data-layout-for-size-1-figure">Figure 13</a>,
+<a href="#jtag2axi-error-status-data-layout-for-size-2-figure">Figure 14</a>,
+<a href="#jtag2axi-error-status-data-layout-for-size-3-figure">Figure 15</a>, respectively.
 Effective size 3 needs a 64-bit data bus, which the last figure assumes.</p>
 </div>
 <div id="jtag2axi-error-status-data-layout-for-size-0-figure" class="imageblock">
@@ -1747,7 +1753,7 @@ Effective size 3 needs a 64-bit data bus, which the last figure assumes.</p>
 <div class="title">Figure 15. JTAG2AXI error-status data layout for effective size 3</div>
 </div>
 <div class="paragraph">
-<p><a href="#jtag2axi-data-and-error-status-fields-table">JTAG2AXI data and error-status fields</a> defines the data payload and the shared
+<p><a href="#jtag2axi-data-and-error-status-fields-table">Table 15</a> defines the data payload and the shared
 increment-control and error-status bit.</p>
 </div>
 <table id="jtag2axi-data-and-error-status-fields-table" class="tableblock frame-all grid-all stretch">
@@ -1838,7 +1844,7 @@ Each input is active-high: when it is 1, the corresponding <code>jtag2axi</code>
 blocks AXI transaction generation.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-debug-disable-inputs-table">PTAP debug-disable inputs</a> maps the three JTAG2AXI bridges to their active-high
+<p><a href="#ptap-debug-disable-inputs-table">Table 16</a> maps the three JTAG2AXI bridges to their active-high
 disable inputs.</p>
 </div>
 <table id="ptap-debug-disable-inputs-table" class="tableblock frame-all grid-all stretch">
@@ -1885,7 +1891,7 @@ by the 1149.1 standard, section 7.2.1. All other bits of the instruction
 register always return 0s.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ptap-instruction-encodings-table">PTAP instruction encodings</a> lists the PTAP instruction encodings and associated
+<p><a href="#ptap-instruction-encodings-table">Table 17</a> lists the PTAP instruction encodings and associated
 register lengths.</p>
 </div>
 <table id="ptap-instruction-encodings-table" class="tableblock frame-all grid-all stretch">
@@ -2144,7 +2150,7 @@ register lengths.</p>
 <div class="paragraph">
 <p>The length of each variable-length JTAG2AXI register follows from the bridge&#8217;s
 address width, data width and pipeline depth, and for the series data registers
-from the size last written to <code>*_AXI_SERIES_CTRL</code>. <a href="#ptap-jtag2axi-support">JTAG2AXI Support</a>
+from the size last written to <code>*_AXI_SERIES_CTRL</code>. <a href="#ptap-jtag2axi-support">Section 3.15</a>
 defines each layout.</p>
 </div>
 <div class="paragraph">

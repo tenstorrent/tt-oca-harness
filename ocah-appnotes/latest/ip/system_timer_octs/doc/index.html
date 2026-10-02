@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -200,7 +206,7 @@ synchronization constraints, setup and register access.</p>
 <h2 id="system-timer-octs-architecture"><a class="anchor" href="#system-timer-octs-architecture"></a><a class="link" href="#system-timer-octs-architecture">2. Operation</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#system-timer-octs-diagram">System Timer OCTS primary/secondary synchronization and credit CDC</a> shows how primary and secondary timers exchange
+<p><a href="#system-timer-octs-diagram">Figure 1</a> shows how primary and secondary timers exchange
 synchronization information. The dashed groups hold the logic that acts in only one mode,
 as <code>is_primary_i</code> selects it; the enable and the 64-bit count serve both. The inbound
 sync-load and credit pulses cross into <code>clk_i</code> through a flop and a <code>prim_edge_detector</code>,
@@ -460,7 +466,7 @@ COUNT_HI registers.</p>
 to the rising edge of clk_i.</p>
 </div>
 <div class="paragraph">
-<p><a href="#octs-timing-requirements-table">OCTS Timing Requirements</a> lists the stated setup and hold requirements by
+<p><a href="#octs-timing-requirements-table">Table 3</a> lists the stated setup and hold requirements by
 signal group.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
@@ -633,7 +639,7 @@ coordinated recovery.</p>
 <div class="paragraph">
 <p>Do not treat START as stop/resume. For role, preset or timing changes that
 must preserve a common epoch, coordinate all consumers, reset the timers,
-then repeat <a href="#octs-setup">Configure and Start</a>. An uncoordinated live change can disrupt pulse
+then repeat <a href="#octs-setup">Section 4.1</a>. An uncoordinated live change can disrupt pulse
 capture or move secondary timestamps backward.</p>
 </div>
 </div>
@@ -696,7 +702,7 @@ Use the enclosing subsystem&#8217;s memory map for its base address.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_COUNT_LO/HI</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x14/0x18</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Live count halves; see <a href="#octs-read-count">Read a Timestamp</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Live count halves; see <a href="#octs-read-count">Section 4.2</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CREDIT_EXPIRED</code></p></td>

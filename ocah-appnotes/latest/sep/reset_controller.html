@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -176,7 +182,7 @@
 <p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-reset-domain-diagram">SEP reset domains and reset sequencing</a> shows the reset domains controlled by the SEP Reset
+<p><a href="#sep-reset-domain-diagram">Figure 1</a> shows the reset domains controlled by the SEP Reset
 Controller.</p>
 </div>
 <div id="sep-reset-domain-diagram" class="imageblock">
@@ -189,7 +195,7 @@ Controller.</p>
 <p>Boundary reset inputs enter on the left and the generated resets run in the
 channel on the right, each net in its own colour, with the port it drives named
 at the instance edge. Inside each instance the figure shows which sub-instances
-each reset reaches. <a href="#sep-reset-ctrl-logic-diagram">SEP Reset Controller reset logic</a> shows the logic inside
+each reset reaches. <a href="#sep-reset-ctrl-logic-diagram">Figure 2</a> shows the logic inside
 <code>u_sep_efuse_wrapper</code> and <code>u_sep_reset_ctrl</code>, and
 <a href="crypto.html#sep-crypto-reset-diagram" class="xref page">SEP cryptographic subsystem resets</a> shows the resets inside <code>u_sep_crypto</code>.</p>
 </div>
@@ -197,7 +203,7 @@ each reset reaches. <a href="#sep-reset-ctrl-logic-diagram">SEP Reset Controller
 <p><code>u_sep_efuse_wrapper</code>, part of <code>u_sep_crypto</code>, ANDs <code>rst_ni</code>,
 <code>ext_boot_seq_done_i</code> and fuse-sense done and synchronizes the result into
 <code>sep_intermediate_reset_n</code>. The Reset Controller builds its three outputs from
-it, as <a href="#sep-reset-ctrl-logic-diagram">SEP Reset Controller reset logic</a> shows. The stacked row repeats once for
+it, as <a href="#sep-reset-ctrl-logic-diagram">Figure 2</a> shows. The stacked row repeats once for
 each <code>SW_RESET_N</code> bit.</p>
 </div>
 <div id="sep-reset-ctrl-logic-diagram" class="imageblock">
@@ -252,7 +258,7 @@ reset conditioner paths.</p>
 <h2 id="software-reset-register"><a class="anchor" href="#software-reset-register"></a><a class="link" href="#software-reset-register">1. Software Reset Register</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#sep-sw-reset-n-fields-table">SEP SW_RESET_N fields</a> defines the software reset controls and their reset
+<p><a href="#sep-sw-reset-n-fields-table">Table 1</a> defines the software reset controls and their reset
 values.</p>
 </div>
 <table id="sep-sw-reset-n-fields-table" class="tableblock frame-all grid-all stretch">
@@ -339,7 +345,7 @@ reset.</p>
 <div class="paragraph">
 <p>Each <code>SW_RESET_N</code> bit drives a per-domain sequencer that isolates the domain&#8217;s
 AXI paths before asserting its reset, so no transaction is in flight when reset
-asserts. <a href="#sep-crypto-axi-isolation-diagram">SEP crypto AXI isolation</a> shows every isolate stage in the
+asserts. <a href="#sep-crypto-axi-isolation-diagram">Figure 3</a> shows every isolate stage in the
 crypto AXI interconnect and the sequencer that requests it.</p>
 </div>
 <div id="sep-crypto-axi-isolation-diagram" class="imageblock">
@@ -388,7 +394,7 @@ them complete with SLVERR and read data <code>0x1501A7ED</code>.</p>
 </ol>
 </div>
 <div class="paragraph">
-<p><a href="#sep-isolation-paths-table">Paths isolated before each software reset</a> lists the paths each domain isolates.</p>
+<p><a href="#sep-isolation-paths-table">Table 2</a> lists the paths each domain isolates.</p>
 </div>
 <table id="sep-isolation-paths-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. Paths isolated before each software reset</caption>

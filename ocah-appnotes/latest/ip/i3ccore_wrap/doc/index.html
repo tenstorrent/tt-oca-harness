@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -185,7 +191,7 @@ the bus protocol are specified by that design.</p>
 <div class="title">Figure 1. CHIPS Alliance i3c-core reference architecture</div>
 </div>
 <div class="paragraph">
-<p><a href="#i3c-core-diagram">CHIPS Alliance i3c-core reference architecture</a> shows the upstream core.</p>
+<p><a href="#i3c-core-diagram">Figure 1</a> shows the upstream core.</p>
 </div>
 </div>
 </div>
@@ -225,7 +231,7 @@ reverse-lookup memories, one interrupt, and the recovery pins.</p>
 <div class="title">Figure 2. OCAH I3C wrapper</div>
 </div>
 <div class="paragraph">
-<p><a href="#i3c-wrapper-diagram">OCAH I3C wrapper</a> shows that wrapper around the CHIPS Alliance core,
+<p><a href="#i3c-wrapper-diagram">Figure 2</a> shows that wrapper around the CHIPS Alliance core,
 which it draws as a black box. Parentheses after an instance name give its
 module or, for a block taken from another project, that project; the demux
 is a PULP <code>axi_lite_demux</code>. <code>i3ccore_wrapper</code> runs on one clock, <code>clk_i</code>;

@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -215,7 +221,7 @@ entropy sampling and JTAG debug.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p><a href="#sep-clock-tree">SEP clock tree and clock domains</a> overlays these clock domains on the SEP top-level diagram.
+<p><a href="#sep-clock-tree">Figure 1</a> overlays these clock domains on the SEP top-level diagram.
 The CPU TAP runs on <code>jtag_tck_i</code>; local clock gating and derived clocks are
 described below.
 The CPU has a free-running branch and a pipeline branch gated according to

@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -197,7 +203,7 @@ address, paced by <code>uart_tx_ready_i</code>. The register interface is also
 <div class="title">Figure 1. SMC log-engine wrapper and data paths</div>
 </div>
 <div class="paragraph">
-<p><a href="#log-engine-wrapper-diagram">SMC log-engine wrapper and data paths</a> shows the SMC wrapper and its memory-to-UART
+<p><a href="#log-engine-wrapper-diagram">Figure 1</a> shows the SMC wrapper and its memory-to-UART
 data paths. Parentheses after an instance name give its module or, for a
 block taken from another project, that project: the demuxes, the mux and
 the <code>axi_lite_from_mem</code> converters come from PULP, and <code>u_uart_core</code>,
@@ -415,7 +421,7 @@ request each. They issue no bursts.</p>
 <div class="paragraph">
 <p><code>uart_tx_ready_i</code> permits the write FSM to request the next character transfer.
 The UART integration supplies readiness in the engine&#8217;s clock domain and
-must account for writes already accepted by the bus. See <a href="#log-engine-transfer">Arbitration and Data Transfer</a>
+must account for writes already accepted by the bus. See <a href="#log-engine-transfer">Section 2.2</a>
 for the write data and strobe behavior.</p>
 </div>
 <span id="interrupt-interface"></span>
@@ -507,7 +513,7 @@ identify which pending slot encountered the error.</p>
 <div class="paragraph">
 <p>If progress stops, check UART readiness and outstanding bus responses.
 Do not free pending buffers solely because <code>CTRL.EN</code> was cleared;
-<a href="#log-engine-reset">Reset and Disable</a> describes the disable behavior. Recovery must account
+<a href="#log-engine-reset">Section 2.4</a> describes the disable behavior. Recovery must account
 for any characters already sent, since restarting may duplicate output.</p>
 </div>
 <span id="overview-3"></span>

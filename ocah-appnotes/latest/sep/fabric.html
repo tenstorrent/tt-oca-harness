@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -349,9 +355,9 @@ checks reads and writes independently, forwards permitted requests, and routes
 rejected requests to an AXI error responder.</p>
 </div>
 <div class="paragraph">
-<p>The input paths are shown in <a href="#sep-input-fabric-diagram">SEP input fabric</a>, the local resource
-connections in <a href="#sep-local-fabric-diagram">SEP local fabric</a>, and the outbound paths in
-<a href="#sep-output-fabric-diagram">SEP output fabric</a>. The three figures share one notation. Crossbars
+<p>The input paths are shown in <a href="#sep-input-fabric-diagram">Figure 2</a>, the local resource
+connections in <a href="#sep-local-fabric-diagram">Figure 3</a>, and the outbound paths in
+<a href="#sep-output-fabric-diagram">Figure 4</a>. The three figures share one notation. Crossbars
 are rectangles, muxes and demuxes are trapezoids with the wide side towards the
 many ports, address remaps are hexagons and traffic filters are octagons. Green
 boxes are converters: address-width, data-width, ID-width and protocol
@@ -367,7 +373,7 @@ mark where a path crosses the module boundary.</p>
 <div class="title">Figure 2. SEP input fabric</div>
 </div>
 <div class="paragraph">
-<p><a href="#sep-input-fabric-diagram">SEP input fabric</a> follows a request from the system interconnect through
+<p><a href="#sep-input-fabric-diagram">Figure 2</a> follows a request from the system interconnect through
 <code>sep_system_peripherals</code>. The inbound filter checks it first; while SEP-scope
 debug is enabled, <code>SEP_DBG</code> bypasses the filter. The global-to-local remap then
 rebases the <code>SEP_REGION_SIZE</code> window at <code>SEP_GLOBAL_BASE_ADDR</code> to address 0 and
@@ -389,7 +395,7 @@ as well as the output fabric&#8217;s remaps and outbound filter.</p>
 <div class="title">Figure 3. SEP local fabric</div>
 </div>
 <div class="paragraph">
-<p><a href="#sep-local-fabric-diagram">SEP local fabric</a> shows the local crossbar with its initiators on the
+<p><a href="#sep-local-fabric-diagram">Figure 3</a> shows the local crossbar with its initiators on the
 left and its targets on the right, in crossbar port order. Each CPU master and
 the secure DMA master pass a local alias remap before the crossbar; the remap
 rewrites the 768 MiB window at <code>SEP_LOCAL_BASE_ADDR</code> to <code>0x1000_0000</code>. The IFU
@@ -410,7 +416,7 @@ eFuse shim CSR window to the eFuse wrapper; every other address in the
 <div class="title">Figure 4. SEP output fabric</div>
 </div>
 <div class="paragraph">
-<p><a href="#sep-output-fabric-diagram">SEP output fabric</a> follows local-master traffic that the local
+<p><a href="#sep-output-fabric-diagram">Figure 4</a> follows local-master traffic that the local
 crossbar sends to <code>sep_system_peripherals</code>. The address is zero-extended from
 32 to 56 bits, passes the 16-region alias remap and a register cut, and reaches
 the route demux. The demux takes the first match in the order shown: the SMC
@@ -551,11 +557,11 @@ documented once with the IP in <a href="../ip/axi_filter/doc/index.html#axi-traf
 <div class="title">Figure 5. SEP system-peripheral traffic management</div>
 </div>
 <div class="paragraph">
-<p><a href="#sep-system-peripheral-traffic-management-figure">SEP system-peripheral traffic management</a> illustrates the AXI4 traffic management performed by
+<p><a href="#sep-system-peripheral-traffic-management-figure">Figure 5</a> illustrates the AXI4 traffic management performed by
 the system peripherals block. Its left edge faces the SEP local crossbar and
 its right edge the SMU; the upper lane is the outbound path and the lower lane
-the inbound path, drawn in the notation of <a href="#sep-fabric-topology">Fabric Topology</a>. The figure
-is an overview: <a href="#sep-output-fabric-diagram">SEP output fabric</a> and <a href="#sep-input-fabric-diagram">SEP input fabric</a>
+the inbound path, drawn in the notation of <a href="#sep-fabric-topology">Section 1.2</a>. The figure
+is an overview: <a href="#sep-output-fabric-diagram">Figure 4</a> and <a href="#sep-input-fabric-diagram">Figure 2</a>
 give every element with its instance name and address window. The AXI4
 subordinate port on the left is driven by the local masters that the local
 crossbar connects to it: the CPU LSU, the CPU debug master and the secure DMA.

@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -189,7 +195,7 @@ capabilities of the generic DFD block are not connected in SMC, as detailed belo
 <div class="title">Figure 1. SMC DFD block diagram</div>
 </div>
 <div class="paragraph">
-<p><a href="#smc-dfd-diagram">SMC DFD block diagram</a> shows the DFD block as SMC instantiates it. <code>smc_dfd_wrap</code>
+<p><a href="#smc-dfd-diagram">Figure 1</a> shows the DFD block as SMC instantiates it. <code>smc_dfd_wrap</code>
 contains the DFD IP <code>dfd_top_cla_dst_apb</code> (<code>u_dfd_top</code>), configured with one
 CLA and one debug signal trace (DST) instance. Parts of the generic block
 that SMC does not build are drawn as dashed grey boxes. Inputs and outputs
@@ -265,7 +271,7 @@ bus value.</p>
 <p>The CLA is organized as a set of nodes, each holding several event-action
 pairs (EAPs). An EAP binds one or more events, computed from the debug
 bus, to one or more actions taken when those events occur. The event
-engine evaluates several event types in parallel (<a href="#smc-cla-event-types-table">SMC CLA event types</a>).</p>
+engine evaluates several event types in parallel (<a href="#smc-cla-event-types-table">Table 1</a>).</p>
 </div>
 <table id="smc-cla-event-types-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. SMC CLA event types</caption>

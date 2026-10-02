@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -203,7 +209,7 @@ the shared integration rules and accelerator-specific differences.</p>
 with masking disabled.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-crypto-diagram">SEP cryptographic subsystem and external memory interfaces</a> shows the accelerator interconnect, Key Manager paths, and
+<p><a href="#sep-crypto-diagram">Figure 1</a> shows the accelerator interconnect, Key Manager paths, and
 external memory interfaces.</p>
 </div>
 <div id="sep-crypto-diagram" class="imageblock">
@@ -213,11 +219,11 @@ external memory interfaces.</p>
 <div class="title">Figure 1. SEP cryptographic subsystem and external memory interfaces</div>
 </div>
 <div class="paragraph">
-<p>In <a href="#sep-crypto-diagram">SEP cryptographic subsystem and external memory interfaces</a>, dark lines are host AXI4 and AXI4-Lite paths from the
+<p>In <a href="#sep-crypto-diagram">Figure 1</a>, dark lines are host AXI4 and AXI4-Lite paths from the
 crypto AXI interconnect, and brown lines are the Key Manager private key buses.
 Each accelerator&#8217;s key CSR block is the <code>&lt;accelerator&gt;_wrapper_key_reg</code> block that
 receives the <code>KEY_SHARE0</code>, <code>KEY_SHARE1</code> and <code>KEY_CTRL</code> writes described in
-<a href="#km-key-delivery">Key Manager Key Delivery</a> and drives the core&#8217;s sideload key port. The Key Manager
+<a href="#km-key-delivery">Section 3</a> and drives the core&#8217;s sideload key port. The Key Manager
 reaches the key CSR blocks through its internal crossbar; the Adams Bridge key bus
 leaves on the right, beside the ML-KEM shared-key interrupt that Adams Bridge
 returns. The host paths to the Key Manager mailbox, the external TRNG registers,
@@ -234,7 +240,7 @@ select that can take the external TRNG instead, as the TRNG and DRBG page
 describes. Grey boxes are outside <code>sep_crypto</code>: the memory macros live in the
 integration layer, and the entropy pool is <code>u_entropy_fifo</code> in <code>sep</code>. The Adams
 Bridge SRAMs are 13 macros with masking enabled and 9 without. Interrupts and
-OpenTitan alerts are not drawn; <a href="#sep-crypto-alert-and-fault-routing-table">SEP crypto alert and fault routing</a> lists
+OpenTitan alerts are not drawn; <a href="#sep-crypto-alert-and-fault-routing-table">Table 1</a> lists
 them.</p>
 </div>
 <div class="paragraph">
@@ -266,7 +272,7 @@ entropy source, CSRNG, and EDN share one coordinated reset. See
 <a href="reset_controller.html#sep-reset-controller" class="xref page">SEP Reset Controller</a> and <a href="reset_controller.html#sep-trng-reset" class="xref page">Resetting the TRNG</a>.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-crypto-reset-diagram">SEP cryptographic subsystem resets</a> shows how the resets from the SEP Reset
+<p><a href="#sep-crypto-reset-diagram">Figure 2</a> shows how the resets from the SEP Reset
 Controller reach the instances inside <code>u_sep_crypto</code>.</p>
 </div>
 <div id="sep-crypto-reset-diagram" class="imageblock">
@@ -301,7 +307,7 @@ unused.</p>
 </div>
 <div class="paragraph">
 <p>PIC sources are in <a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>. A receiver&#8217;s pulse and
-integrity-fail stay per-block at the receiver. <a href="#sep-crypto-alert-and-fault-routing-table">SEP crypto alert and fault routing</a> shows which of those,
+integrity-fail stay per-block at the receiver. <a href="#sep-crypto-alert-and-fault-routing-table">Table 1</a> shows which of those,
 the native error IRQs, and the bridge faults are OR&#8217;d onto a PIC source and
 which are not.</p>
 </div>
@@ -428,7 +434,7 @@ value, and while it is 0 the destination has no valid key or seed.</p>
 preference to the accelerator&#8217;s own software key registers, whether software
 must also declare the key length, and the behavior on an invalid or mismatched
 key are accelerator-specific. They are stated in the accelerator reference
-pages and summarized in <a href="#km-key-delivery-summary">Key Manager key delivery per accelerator</a>.</p>
+pages and summarized in <a href="#km-key-delivery-summary">Table 2</a>.</p>
 </div>
 <table id="km-key-delivery-summary" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. Key Manager key delivery per accelerator</caption>

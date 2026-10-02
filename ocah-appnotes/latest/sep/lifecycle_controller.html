@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -187,12 +193,12 @@ Downstream logic uses these outputs to gate debug, test and functional paths.</p
 <div class="paragraph">
 <p>The sections below explain states and security domains, feature-control rules,
 demotion, scan protection and firmware authorization. Hardware gating is
-implemented; the multi-owner signing model in <a href="#demote-signing-model">Deferred Multi-Owner Signing Model</a> is a
+implemented; the multi-owner signing model in <a href="#demote-signing-model">Section 8.2</a> is a
 deferred firmware design. Do not use that model as a description of current
 ROM verification.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-lifecycle-controller-figure">SEP lifecycle controller</a> shows a high-level view of the Life Cycle Controller
+<p><a href="#sep-lifecycle-controller-figure">Figure 1</a> shows a high-level view of the Life Cycle Controller
 components.</p>
 </div>
 <div id="sep-lifecycle-controller-figure" class="imageblock">
@@ -202,7 +208,7 @@ components.</p>
 <div class="title">Figure 1. SEP lifecycle controller</div>
 </div>
 <div class="paragraph">
-<p>In <a href="#sep-lifecycle-controller-figure">SEP lifecycle controller</a>, the inputs enter on the left and the
+<p>In <a href="#sep-lifecycle-controller-figure">Figure 1</a>, the inputs enter on the left and the
 outputs leave on the right, each labelled with its consumer. <code>u_lc_state_dec</code>
 decodes the differentially encoded LC_STATE from the eFuse shadow registers and
 raises <code>lc_sigint_err</code> on a non-complementary codeword, which forces the feature
@@ -236,7 +242,7 @@ its feature-control profile.</p>
 <p>The raw four-bit OTP value is carried as a complementary code in the shadow
 path. A failed integrity check sets <code>lc_sigint_err</code> and forces the base feature
 vector to zero. <code>SEC_DIS</code> is applied afterward and can override that result;
-see <a href="#feat-ctrl-overrides-and-gates">Overrides and Final Gates (SEC_DIS)</a>.</p>
+see <a href="#feat-ctrl-overrides-and-gates">Section 3.5</a>.</p>
 </div>
 <div class="paragraph">
 <p>Hardware orders the RMA token transitions: <code>RMA_SIP_TOKEN</code> first admits
@@ -249,7 +255,7 @@ in key derivation, separating demoted-state keys from non-demoted production
 keys.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-lifecycle-state-machine-figure">SEP lifecycle state machine</a> shows the lifecycle states and transition paths.</p>
+<p><a href="#sep-lifecycle-state-machine-figure">Figure 2</a> shows the lifecycle states and transition paths.</p>
 </div>
 <div id="sep-lifecycle-state-machine-figure" class="imageblock">
 <div class="content">
@@ -258,7 +264,7 @@ keys.</p>
 <div class="title">Figure 2. SEP lifecycle state machine</div>
 </div>
 <div class="paragraph">
-<p>Each rounded box in <a href="#sep-lifecycle-state-machine-figure">SEP lifecycle state machine</a> is a lifecycle state
+<p>Each rounded box in <a href="#sep-lifecycle-state-machine-figure">Figure 2</a> is a lifecycle state
 with its raw OTP encoding, where X marks a bit that does not change the state.
 LC_STATE bits can only be set, so each arrow names the bit that it sets.
 Setting LC_STATE[1] requires an RMA_SIP token match. Setting LC_STATE[2]
@@ -270,7 +276,7 @@ encoding 4&#8217;b1111. The dashed box is the volatile demotion overlay, which a
 in TEST_DEV and PROD without changing the encoding.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-lifecycle-state-encodings-table">SEP lifecycle state encodings</a> lists the raw OTP encodings. The
+<p><a href="#sep-lifecycle-state-encodings-table">Table 1</a> lists the raw OTP encodings. The
 complementary shadow encoding is a transport integrity check, not an
 additional lifecycle state.</p>
 </div>
@@ -320,7 +326,7 @@ local debug group (DBG_1) and DEMOTE_2 opens the inter-chiplet debug-bypass
 group (DBG_2).</p>
 </div>
 <div class="paragraph">
-<p>See <a href="#demote-1-2-in-field-debug-demotion">In-Field Debug Demotion</a>.</p>
+<p>See <a href="#demote-1-2-in-field-debug-demotion">Section 4</a>.</p>
 </div></div></td>
 </tr>
 <tr>
@@ -387,7 +393,7 @@ gate is unnecessary when traffic only passes through it.</p>
 <div class="paragraph">
 <p>A chiplet without a local SEP/LCC contributes no local disable vector.
 The preceding LCC-bearing chiplet controls forwarding to it, as described
-in <a href="#non-primary-chiplets">Non-Primary Chiplets</a>.</p>
+in <a href="#non-primary-chiplets">Section 6</a>.</p>
 </div>
 <div id="sep-security-domains-figure" class="imageblock">
 <div class="content">
@@ -396,19 +402,19 @@ in <a href="#non-primary-chiplets">Non-Primary Chiplets</a>.</p>
 <div class="title">Figure 3. SEP security domains</div>
 </div>
 <div class="paragraph">
-<p>In <a href="#sep-security-domains-figure">SEP security domains</a>, each chiplet with a SEP gates the debug
+<p>In <a href="#sep-security-domains-figure">Figure 3</a>, each chiplet with a SEP gates the debug
 path from its PTAP downwards: SIP_DBG opens the Case 1 targets, CHIPLET_DBG adds
 the Case 2 targets and SEP_DBG adds the Case 3 targets, each listed to the right
 of its gate. The targets are the debug paths that <code>sep_lifecycle_ctrl</code> disables
 through <code>dbg_disable_o</code> and the two fuse DFT disables, as given in
-<a href="#dtp-path-gating">Debug and Test Port Path Gating</a>; the fuse DFT paths also need their own SEP_FUSE_DBG or
+<a href="#dtp-path-gating">Section 5.4</a>; the fuse DFT paths also need their own SEP_FUSE_DBG or
 SMC_FUSE_DBG bit. The green gate belongs to the SiP-owner domain and is a DBG_2
 bit, opened in the field by Demotion 2. The cream gates belong to the
 chiplet-owner domain and are DBG_1 bits, opened by Demotion 1. The I/O STAP
 forwards the chain to the next chiplet&#8217;s PTAP.</p>
 </div>
 <div class="paragraph">
-<p>In <a href="#sep-security-domains-figure">SEP security domains</a>, chiplet 1 is primary, chiplet 2 has no SEP,
+<p>In <a href="#sep-security-domains-figure">Figure 3</a>, chiplet 1 is primary, chiplet 2 has no SEP,
 and chiplet 3 has its own LCC:</p>
 </div>
 <div class="ulist">
@@ -426,7 +432,7 @@ and chiplet 3 has its own LCC:</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The per-path conjunctions are listed in <a href="#dtp-path-gating">Debug and Test Port Path Gating</a>.</p>
+<p>The per-path conjunctions are listed in <a href="#dtp-path-gating">Section 5.4</a>.</p>
 </div>
 </div>
 </div>
@@ -440,17 +446,17 @@ The applicable masks depend on lifecycle state and demotion. Where both
 apply, the enable is <code>~(SIP_DIS | SYS_DIS)</code>.</p>
 </div>
 <div class="paragraph">
-<p><a href="#feature-control-table">Per-LC-state feature control profile</a> gives the complete state-dependent formulas.
-The final <code>SEC_DIS</code> override is described in <a href="#feat-ctrl-overrides-and-gates">Overrides and Final Gates (SEC_DIS)</a>.</p>
+<p><a href="#feature-control-table">Table 4</a> gives the complete state-dependent formulas.
+The final <code>SEC_DIS</code> override is described in <a href="#feat-ctrl-overrides-and-gates">Section 3.5</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="feature-control-vector-definition"><a class="anchor" href="#feature-control-vector-definition"></a><a class="link" href="#feature-control-vector-definition">3.1. Disable Vector Format (SIP_DIS / SYS_DIS)</a></h3>
 <div class="paragraph">
-<p><a href="#sep-feature-disable-vector-table">SEP feature-disable vector</a> defines the <strong>disable</strong> vector format&#8201;&#8212;&#8201;the bit layout shared by
+<p><a href="#sep-feature-disable-vector-table">Table 2</a> defines the <strong>disable</strong> vector format&#8201;&#8212;&#8201;the bit layout shared by
 both SIP_DIS and SYS_DIS (each is 64 bits). Each defined bit gates a specific
 feature or its associated scan chain; the remaining bits are
-reserved for adopter extension (see <a href="#asset-and-scan-chain-protection">Asset and Scan-Chain Protection</a> and
-<a href="#adopter-extension">Adopter Extension</a>).</p>
+reserved for adopter extension (see <a href="#asset-and-scan-chain-protection">Section 5</a> and
+<a href="#adopter-extension">Section 7</a>).</p>
 </div>
 <div class="paragraph">
 <p>In the policy tables, <code>T</code> means enabled and <code>F</code> means disabled.
@@ -483,13 +489,13 @@ and is controlled by Demotion 2. Function bits occupy <code>[63:48]</code>.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP_DBG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>SEP</strong> scope: the local gate for SEP internal state. <code>1&#8217;b1</code>: SEP-scope debug / scan-dump access disabled and inbound (<code>ext</code>) traffic is filtered before it can reach SEP internal state. <code>1&#8217;b0</code>: enabled&#8201;&#8212;&#8201;inbound traffic bypasses the filter and scan dump is allowed. SEP_DBG is a local gate, not the chiplet ingress: <code>SIP_DBG</code> (bit 24) admits external debug traffic into the chiplet, <code>CHIPLET_DBG</code> (bit 1) admits it to chiplet-internal resources, and <code>SEP_DBG</code> then governs whether it can reach SEP internal state. Debugging SEP assets from an external debugger therefore requires <strong>all three</strong>&#8201;&#8212;&#8201;Case 3 of <a href="#dtp-path-gating">Debug and Test Port Path Gating</a>&#8201;&#8212;&#8201;not <code>SEP_DBG</code> alone.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>SEP</strong> scope: the local gate for SEP internal state. <code>1&#8217;b1</code>: SEP-scope debug / scan-dump access disabled and inbound (<code>ext</code>) traffic is filtered before it can reach SEP internal state. <code>1&#8217;b0</code>: enabled&#8201;&#8212;&#8201;inbound traffic bypasses the filter and scan dump is allowed. SEP_DBG is a local gate, not the chiplet ingress: <code>SIP_DBG</code> (bit 24) admits external debug traffic into the chiplet, <code>CHIPLET_DBG</code> (bit 1) admits it to chiplet-internal resources, and <code>SEP_DBG</code> then governs whether it can reach SEP internal state. Debugging SEP assets from an external debugger therefore requires <strong>all three</strong>&#8201;&#8212;&#8201;Case 3 of <a href="#dtp-path-gating">Section 5.4</a>&#8201;&#8212;&#8201;not <code>SEP_DBG</code> alone.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_DBG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>chiplet</strong> scope. <code>1&#8217;b1</code>: chiplet-scope debug / scan-dump access disabled. <code>1&#8217;b0</code>: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when <code>SIP_DBG</code> is open as well (Case 2 of <a href="#dtp-path-gating">Debug and Test Port Path Gating</a>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while <code>secure_tm = 1</code>. In <code>TEST_DEV</code>, this bit set in <code>SIP_DIS</code> or <code>SYS_DIS</code> makes the production ROM enforce secure boot; see <a href="#secure-boot-enforcement">Secure-Boot Enforcement</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>chiplet</strong> scope. <code>1&#8217;b1</code>: chiplet-scope debug / scan-dump access disabled. <code>1&#8217;b0</code>: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when <code>SIP_DBG</code> is open as well (Case 2 of <a href="#dtp-path-gating">Section 5.4</a>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while <code>secure_tm = 1</code>. In <code>TEST_DEV</code> and <code>RMA_SiP</code>, this bit set in <code>SIP_DIS</code> or <code>SYS_DIS</code> makes the production ROM enforce secure boot; it has no such effect in <code>RMA_CHIPLET</code>. See <a href="#secure-boot-enforcement">Section 8.1</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
@@ -507,13 +513,13 @@ and is controlled by Demotion 2. Function bits occupy <code>[63:48]</code>.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4-23</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined local (DBG_1) debug scan chains. See <a href="#adopter-extension">Adopter Extension</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined local (DBG_1) debug scan chains. See <a href="#adopter-extension">Section 7</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_2)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SIP_DBG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>SiP</strong> scope: the inter-chiplet debug-bypass gate (DBG_2, gated by Demotion 2) that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. Debugging a chiplet&#8217;s assets requires SIP_DBG enabled on each LCC-bearing chiplet along the debug path, including the target itself when it has its own LCC; chiplets without a local SEP/LCC contribute no gate (see <a href="#multiple-security-domains">Multiple Security Domains</a>). <code>1&#8217;b1</code>: disabled. <code>1&#8217;b0</code>: enabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>SiP</strong> scope: the inter-chiplet debug-bypass gate (DBG_2, gated by Demotion 2) that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. Debugging a chiplet&#8217;s assets requires SIP_DBG enabled on each LCC-bearing chiplet along the debug path, including the target itself when it has its own LCC; chiplets without a local SEP/LCC contribute no gate (see <a href="#multiple-security-domains">Section 2</a>). <code>1&#8217;b1</code>: disabled. <code>1&#8217;b0</code>: enabled.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">25-47</p></td>
@@ -522,13 +528,13 @@ and is controlled by Demotion 2. Function bits occupy <code>[63:48]</code>.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined
 inter-chiplet debug / DFT forwarding paths. Each allocated bit is consumed
 on the LCC-bearing chiplet to gate the corresponding traffic before it is
-forwarded downstream. See <a href="#adopter-extension">Adopter Extension</a>.</p></td>
+forwarded downstream. See <a href="#adopter-extension">Section 7</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">48-63</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">function</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined functional feature gating. See <a href="#adopter-extension">Adopter Extension</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined functional feature gating. See <a href="#adopter-extension">Section 7</a>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -574,10 +580,10 @@ bypass masks for RMA access without changing OTP.</p>
 <p>The table below gives mask applicability before demotion and the final
 overrides. In TEST_DEV, demotion can bypass the masks for its debug group;
 in PROD, demotion opens that group only subject to both masks. See
-<a href="#feature-control-table">Per-LC-state feature control profile</a> for those exceptions.</p>
+<a href="#feature-control-table">Table 4</a> for those exceptions.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-disable-vector-applicability-table">SEP disable-vector applicability</a> identifies which disable vectors apply in
+<p><a href="#sep-disable-vector-applicability-table">Table 3</a> identifies which disable vectors apply in
 each lifecycle state.</p>
 </div>
 <table id="sep-disable-vector-applicability-table" class="tableblock frame-all grid-all stretch">
@@ -651,7 +657,7 @@ section).</p>
 by secure test mode: the debug group <code>[47:0]</code> and the function group <code>[63:48]</code>
 are both determined solely by the LC state, the DIS vectors, and the SEC_DIS
 override. <code>secure_tm</code> acts on the scan path and on the fuse controller rather
-than on feature control&#8201;&#8212;&#8201;see <a href="#secure-tm-vs-scandump"><code>secure_tm</code> and the Secure Scan Chain</a>.</p>
+than on feature control&#8201;&#8212;&#8201;see <a href="#secure-tm-vs-scandump">Section 5.2</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -827,14 +833,14 @@ Cold reset clears both and removes the volatile debug profile.</p>
 <p>The controls are independent: either may be set first or used alone.
 In TEST_DEV, demotion forces its group open; in PROD, it enables the group
 subject to the disable vectors. Other lifecycle profiles and function bits
-are unchanged. The complete formulas are in <a href="#feature-control-table">Per-LC-state feature control profile</a>.</p>
+are unchanged. The complete formulas are in <a href="#feature-control-table">Table 4</a>.</p>
 </div>
 <div class="paragraph">
 <p>Opening local debug does not open the external access path. For example,
-a Case 3 SEP debug path requires both groups; see <a href="#dtp-path-gating">Debug and Test Port Path Gating</a>.
+a Case 3 SEP debug path requires both groups; see <a href="#dtp-path-gating">Section 5.4</a>.
 The LCC applies register values without authenticating the writer or a
-manifest. Firmware authorization is discussed under <a href="#secure-boot-enforcement">Secure-Boot Enforcement</a>
-and <a href="#demote-signing-model">Deferred Multi-Owner Signing Model</a>.</p>
+manifest. Firmware authorization is discussed under <a href="#secure-boot-enforcement">Section 8.1</a>
+and <a href="#demote-signing-model">Section 8.2</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="demote-lock-behavior"><a class="anchor" href="#demote-lock-behavior"></a><a class="link" href="#demote-lock-behavior">4.1. Programming and Locking</a></h3>
@@ -904,7 +910,7 @@ protection rationale&#8201;&#8212;&#8201;<strong>a</strong> for confidentiality 
 everything else.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-security-asset-classes-table">SEP security asset classes</a> relates the asset classes to scan and scan-dump
+<p><a href="#sep-security-asset-classes-table">Table 6</a> relates the asset classes to scan and scan-dump
 treatment.</p>
 </div>
 <div class="lifecycle-table-scroll" role="region" aria-label="Asset classes and scan-chain treatment" tabindex="0">
@@ -957,7 +963,7 @@ DRBG/EDN, Adams Bridge, and TRNG sequential state; KM/OTBN companion SRAMs
 secret-bearing shadow registers (UIDs / <code>CLASS_KEY</code>) are disconnected from
 downstream while <code>secure_tm = 1</code>, so these consumers hold no real secret during
 scan test. <strong>Scan dump is never permitted&#8201;&#8212;&#8201;for any owner or LC state</strong>: a dump
-command is never admitted on this chain (see <a href="#secure-tm-vs-scandump"><code>secure_tm</code> and the Secure Scan Chain</a>).</p></td>
+command is never admitted on this chain (see <a href="#secure-tm-vs-scandump">Section 5.2</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>2b</strong><br>
@@ -982,7 +988,7 @@ array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The rest of the logic not classified above</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">Yes</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">Yes (gated)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>General scan chains.</strong> Scannable and scan-dumpable when permitted by the <code>*_DBG</code> feature control bits (the scope&#8217;s local gate&#8201;&#8212;&#8201;<code>SEP_DBG</code> or <code>CHIPLET_DBG</code>&#8201;&#8212;&#8201;plus the <code>SIP_DBG</code> debug-access path; see <a href="#multiple-security-domains">Multiple Security Domains</a>) and the LC state. <code>secure_tm</code> plays no part here: these chains hold no secret, so both command classes are admitted whenever the chain is reachable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>General scan chains.</strong> Scannable and scan-dumpable when permitted by the <code>*_DBG</code> feature control bits (the scope&#8217;s local gate&#8201;&#8212;&#8201;<code>SEP_DBG</code> or <code>CHIPLET_DBG</code>&#8201;&#8212;&#8201;plus the <code>SIP_DBG</code> debug-access path; see <a href="#multiple-security-domains">Section 2</a>) and the LC state. <code>secure_tm</code> plays no part here: these chains hold no secret, so both command classes are admitted whenever the chain is reachable.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1019,7 +1025,7 @@ OTP, JTAG and TRoot while the part is shiftable.</p>
 </div>
 <div class="paragraph">
 <p>Secure-chain access requires both an open SIB, under the feature gates in
-<a href="#dtp-path-gating">Debug and Test Port Path Gating</a>, and an allowed command. Test commands require
+<a href="#dtp-path-gating">Section 5.4</a>, and an allowed command. Test commands require
 <code>secure_tm = 1</code>; dump commands are never allowed, for any owner or lifecycle
 state. With <code>secure_tm = 0</code>, no command is admitted on that chain.</p>
 </div>
@@ -1041,16 +1047,16 @@ additional gate.</p>
 <div class="paragraph">
 <p>Each <strong>general</strong> (Class 3) scan chain is gated by a per-scope <code>*_DBG</code>
 feature control bit in <code>feat_ctrl_o</code>; the bit&#8217;s owner&#8201;&#8212;&#8201;which predecessor DIS
-vector sets its default (see <a href="#dis-vector-ownership">DIS Vector Ownership: Predecessor-Programs-Disables</a>)&#8201;&#8212;&#8201;sets the multi-owner
+vector sets its default (see <a href="#dis-vector-ownership">Section 3.2</a>)&#8201;&#8212;&#8201;sets the multi-owner
 default policy. External access to any general chain additionally requires the
 <code>SIP_DBG</code> debug-access path into the chiplet to be open (see
-<a href="#multiple-security-domains">Multiple Security Domains</a>). The Class 2 secure chain is reached through its
+<a href="#multiple-security-domains">Section 2</a>). The Class 2 secure chain is reached through its
 own SIB, which the feature control bits gate in the same way; what distinguishes
 it is that reaching it never permits a dump, because the DFT controller admits
 only test commands there and only while <code>secure_tm = 1</code>.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-scan-chain-gates-table">SEP scan-chain gates</a> maps each asset class to its scan chain and dump gate.</p>
+<p><a href="#sep-scan-chain-gates-table">Table 7</a> maps each asset class to its scan chain and dump gate.</p>
 </div>
 <div class="lifecycle-table-scroll" role="region" aria-label="Feature-bit to scan-chain mapping" tabindex="0">
 <table id="sep-scan-chain-gates-table" class="tableblock frame-all grid-all stretch lifecycle-table">
@@ -1096,7 +1102,7 @@ feature-bit gated like any other chain, but opening it grants test access only&#
 </div>
 <div class="paragraph">
 <p>Reserved-bit ranges available for adopter-defined scan chains (see
-<a href="#adopter-extension">Adopter Extension</a>):</p>
+<a href="#adopter-extension">Section 7</a>):</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1117,7 +1123,7 @@ A granular fuse-debug bit adds another AND term; it never replaces the
 case&#8217;s required bits.</p>
 </div>
 <div class="paragraph">
-<p><a href="#dtp-access-cases-table">DTP access cases</a> defines the three cases used to determine debug-path access.</p>
+<p><a href="#dtp-access-cases-table">Table 8</a> defines the three cases used to determine debug-path access.</p>
 </div>
 <table id="dtp-access-cases-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 8. DTP access cases</caption>
@@ -1158,7 +1164,7 @@ SEP resources. Every bit in the applicable case must be enabled. For example,
 leaving SEP_DBG open while CHIPLET_DBG is closed does not grant SEP access.</p>
 </div>
 <div class="paragraph">
-<p><a href="#dtp-path-feature-gates-table">DTP path feature gates</a> lists the feature-control terms required for each DTP
+<p><a href="#dtp-path-feature-gates-table">Table 9</a> lists the feature-control terms required for each DTP
 path.</p>
 </div>
 <table id="dtp-path-feature-gates-table" class="tableblock frame-all grid-all stretch">
@@ -1185,7 +1191,7 @@ path.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External S-TAP return path</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Case 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Onward forwarding to a downstream chiplet is
-part of the SiP-owner domain (see <a href="#multiple-security-domains">Multiple Security Domains</a>).</p></td>
+part of the SiP-owner domain (see <a href="#multiple-security-domains">Section 2</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG path</p></td>
@@ -1207,7 +1213,7 @@ note below.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure external DFT iJTAG path</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Case 2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The DFT non-secure chain SIB. Not
-gated by <code>secure_tm</code>&#8201;&#8212;&#8201;see <a href="#secure-tm-vs-scandump"><code>secure_tm</code> and the Secure Scan Chain</a>.</p></td>
+gated by <code>secure_tm</code>&#8201;&#8212;&#8201;see <a href="#secure-tm-vs-scandump">Section 5.2</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric JTAG2AXI path</p></td>
@@ -1225,7 +1231,7 @@ gated by <code>secure_tm</code>&#8201;&#8212;&#8201;see <a href="#secure-tm-vs-s
 <td class="tableblock halign-left valign-top"><p class="tableblock">Case 3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The DFT secure chain SIB. Reaching it
 grants test access only, under the command-class rule of
-<a href="#secure-tm-vs-scandump"><code>secure_tm</code> and the Secure Scan Chain</a>.</p></td>
+<a href="#secure-tm-vs-scandump">Section 5.2</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT-inserted SEP fuse path</p></td>
@@ -1279,11 +1285,11 @@ policy would require an adopter-defined bit and corresponding path gating.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Primary chiplets always include a local SEP and LCC; the asset
-partitioning described in <a href="#asset-and-scan-chain-protection">Asset and Scan-Chain Protection</a> applies
+partitioning described in <a href="#asset-and-scan-chain-protection">Section 5</a> applies
 directly. <strong>Non-primary</strong> chiplets may not include a local SEP, in which
 case debug access is governed by the <strong>SiP-owner domain</strong>. The primary
 chiplet&#8217;s SiP-owner feature control gates the DFT traffic before forwarding
-it to the non-primary chiplet (see <a href="#multiple-security-domains">Multiple Security Domains</a>).</p>
+it to the non-primary chiplet (see <a href="#multiple-security-domains">Section 2</a>).</p>
 </div>
 <div class="paragraph">
 <p>For non-primary chiplets, the adopter is responsible for:</p>
@@ -1295,7 +1301,7 @@ it to the non-primary chiplet (see <a href="#multiple-security-domains">Multiple
 </li>
 <li>
 <p>Partitioning those assets across scan chains analogous to the
-class scheme in <a href="#asset-classes">Asset Classes</a> (1a/1b, 2, 3).</p>
+class scheme in <a href="#asset-classes">Section 5.1</a> (1a/1b, 2, 3).</p>
 </li>
 <li>
 <p>Routing the non-primary chiplet&#8217;s scan / DFT traffic through the
@@ -1311,7 +1317,7 @@ never scan-dumpable.</p>
 </div>
 <div class="paragraph">
 <p>The <code>SIP_DBG</code> mechanism documented in
-<a href="#feature-control-vector-definition">Disable Vector Format (SIP_DIS / SYS_DIS)</a> gates the DTP path on the primary
+<a href="#feature-control-vector-definition">Section 3.1</a> gates the DTP path on the primary
 chiplet. The primary LCC therefore governs debug access to a non-primary
 chiplet by controlling whether DFT traffic is forwarded to it.</p>
 </div>
@@ -1324,7 +1330,7 @@ chiplet by controlling whether DFT traffic is forwarded to it.</p>
 <p>If an adopter integrates SEP into a chiplet with assets that require
 their own scan-chain protection&#8201;&#8212;&#8201;assets not covered by the
 chiplet-scope SEP scan chain or the general-logic scan chain in
-<a href="#asset-and-scan-chain-protection">Asset and Scan-Chain Protection</a>&#8201;&#8212;&#8201;the LCC architecture
+<a href="#asset-and-scan-chain-protection">Section 5</a>&#8201;&#8212;&#8201;the LCC architecture
 accommodates this via the <strong>reserved bits</strong> in <code>feat_ctrl_o</code> (and the
 matching positions in SIP_DIS / SYS_DIS):</p>
 </div>
@@ -1348,7 +1354,7 @@ before it is forwarded downstream.</p>
 <p>Each new scan chain or forwarding path is gated by exactly one reserved bit. The
 corresponding bit position in SIP_DIS or SYS_DIS (chosen by which
 predecessor owner sets the default policy&#8201;&#8212;&#8201;see
-<a href="#dis-vector-ownership">DIS Vector Ownership: Predecessor-Programs-Disables</a>) determines the default OTP-programmed
+<a href="#dis-vector-ownership">Section 3.2</a>) determines the default OTP-programmed
 restriction.</p>
 </div>
 <div class="paragraph">
@@ -1361,7 +1367,7 @@ restriction.</p>
 </li>
 <li>
 <p><strong>Asset-class compliance.</strong> Secret-bearing fields used by the new chain
-must follow the asset-class scheme (see <a href="#asset-and-scan-chain-protection">Asset and Scan-Chain Protection</a>):
+must follow the asset-class scheme (see <a href="#asset-and-scan-chain-protection">Section 5</a>):
 actual secrets and integrity-critical state are excluded from scan chains
 (Class 1). A Class 2 chain must never admit a dump command. It may admit
 test commands only while <code>secure_tm = 1</code>, with secret sources disconnected
@@ -1370,7 +1376,7 @@ bit controls reachability; it does not authorize a dump.</p>
 </li>
 <li>
 <p><strong>Per-LC-state policy.</strong> The new bit follows the standard
-per-LC-state formulas for its group (see <a href="#feature-control-table">Per-LC-state feature control profile</a>).
+per-LC-state formulas for its group (see <a href="#feature-control-table">Table 4</a>).
 DBG_1 and DBG_2 are disabled in undemoted PROD and in PROD_END;
 their respective demotion controls relax PROD to honor the disable vectors.
 Function bits continue to honor <code>~(SIP_DIS.FUNC | SYS_DIS.FUNC)</code> in both
@@ -1416,22 +1422,25 @@ including when <code>SBOOT_DIS</code> is set.</p>
 </li>
 <li>
 <p>Otherwise, the lifecycle policy requires secure boot in <code>PROD</code> and
-<code>PROD_END</code>, and in <code>TEST_DEV</code> when chiplet-scope debug is disabled
-(<code>CHIPLET_DBG</code> set in <code>SIP_DIS</code> or <code>SYS_DIS</code>, or either vector read-locked).
-It does not require it in <code>TEST_DEV</code> with chiplet debug enabled, or in the
-RMA states.</p>
+<code>PROD_END</code>, and in <code>TEST_DEV</code> and <code>RMA_SiP</code> when chiplet-scope debug is
+disabled (<code>CHIPLET_DBG</code> set in <code>SIP_DIS</code> or <code>SYS_DIS</code>, or either vector
+read-locked). It does not require it in <code>TEST_DEV</code> or <code>RMA_SiP</code> with chiplet
+debug enabled, or in <code>RMA_CHIPLET</code> at all.</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>The <code>TEST_DEV</code> rule means a locked-down debug posture cannot be bypassed by
+<p>The debug-lock rule means a locked-down debug posture cannot be bypassed by
 loading unsigned code. The ROM reads <code>CHIPLET_DBG</code> from the <code>SIP_DIS</code> and
 <code>SYS_DIS</code> fuse shadows rather than from <code>FEAT_CTRL</code>, which <code>SEC_DIS</code> and
-demotion can force open on a part whose fuses disable debug.</p>
+demotion can force open on a part whose fuses disable debug. For the same
+reason the rule holds in <code>RMA_SiP</code>, where the lifecycle controller does not
+apply <code>SYS_DIS</code> to feature control but the fuse still records the lock.
+<code>RMA_CHIPLET</code> applies neither vector, and the ROM ignores the lock there too.</p>
 </div>
 <div class="paragraph">
-<p>An owner relying on lifecycle-enforced secure boot, or on the <code>TEST_DEV</code>
-debug-lock rule, must leave <code>SBOOT_DIS</code> unburned and write-lock it via the
+<p>An owner relying on lifecycle-enforced secure boot, or on the debug-lock
+rule, must leave <code>SBOOT_DIS</code> unburned and write-lock it via the
 LOCK field. <code>SBOOT_DIS</code> does not override
 a manifest&#8217;s own requirement for verification.</p>
 </div>

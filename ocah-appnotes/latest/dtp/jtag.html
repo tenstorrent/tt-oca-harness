@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -207,7 +213,7 @@ instruction and for the <code>cla_clock_stop</code> readback status.</p>
 </ul>
 </div>
 <div class="paragraph">
-<p><a href="#dtp-jtag-scan-chain-figure">DTP JTAG scan chain</a> shows the PTAP, secondary scan path, and iJTAG instrument
+<p><a href="#dtp-jtag-scan-chain-figure">Figure 1</a> shows the PTAP, secondary scan path, and iJTAG instrument
 network.</p>
 </div>
 <div id="dtp-jtag-scan-chain-figure" class="imageblock">
@@ -217,7 +223,7 @@ network.</p>
 <div class="title">Figure 1. DTP JTAG scan chain</div>
 </div>
 <div class="paragraph">
-<p>Read <a href="#dtp-jtag-scan-chain-figure">DTP JTAG scan chain</a> along the arrows from TDI to TDO. TDI reaches
+<p>Read <a href="#dtp-jtag-scan-chain-figure">Figure 1</a> along the arrows from TDI to TDO. TDI reaches
 every register and external chain at once; the IR and TDR mux returns the
 instruction register in Shift-IR and, in Shift-DR, the register the current
 instruction selects. Italic labels beside a mux name the instructions or the
@@ -281,7 +287,7 @@ the PTAP.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The PTAP contains three JTAG2AXI bridges, each selected by its own group of six
-instructions (<a href="#dtp-jtag2axi-bridges-table">DTP JTAG2AXI bridges</a>). The request and response type
+instructions (<a href="#dtp-jtag2axi-bridges-table">Table 1</a>). The request and response type
 parameters of a bridge set its bus type, address width and data width. Its read
 and write pipeline-depth parameters set how many transactions it queues, where
 0 allows a single outstanding transaction. The table lists the DTP defaults.
@@ -360,7 +366,7 @@ JTAG interface unit synchronizes the vector into the TCK domain and applies
 each field to the named path.</p>
 </div>
 <div class="paragraph">
-<p><a href="#dtp-debug-disable-paths-table">DTP debug-disable paths</a> maps each debug path to its active-high disable field.</p>
+<p><a href="#dtp-debug-disable-paths-table">Table 2</a> maps each debug path to its active-high disable field.</p>
 </div>
 <table id="dtp-debug-disable-paths-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. DTP debug-disable paths</caption>

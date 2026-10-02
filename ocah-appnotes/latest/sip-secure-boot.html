@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>System-in-Package Secure Boot :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item is-current-page" data-depth="2">
+    <a class="nav-link" href="sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="index.html">Application Notes</a></li>
+    <li><a href="sip-secure-boot.html">System-in-Package Secure Boot</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">System-in-Package Secure Boot</h1>
+<div class="sect1">
+<h2 id="sip-secure-boot-introduction"><a class="anchor" href="#sip-secure-boot-introduction"></a><a class="link" href="#sip-secure-boot-introduction">1. Introduction</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This note follows the secure boot of an OCA-based System-in-Package (SiP) whose
+chiplets integrate OCAH, using a package of two chiplets as the example. Each
+chiplet&#8217;s Security Processor (SEP) and System Management Controller (SMC) boot
+from their own ROMs (BL0), then run their first authenticated mutable stage
+(BL1). The flow covers both stages: SEP BL1 starts SMC BL1 on its own chiplet,
+and the primary&#8217;s SMC BL1 delivers the secondaries' firmware. It ends when SMC
+BL1 runs on every chiplet.</p>
+</div>
+<div class="paragraph">
+<p>Chiplet 0 is the <em>primary</em>: its <code>primary_chiplet</code> strap is set, and its SEP
+loads firmware from the SPI boot flash attached to it. Chiplet 1 is a
+<em>secondary</em>: its <code>primary_chiplet</code> strap is clear, so its SEP reads no boot
+flash and instead receives its firmware from chiplet 0, through its own SMC.</p>
+</div>
+<div class="paragraph">
+<p>A package with more secondaries repeats the chiplet 1 steps for each of them.
+Nothing in the ROMs orders those repetitions. Each secondary has its own
+coordination state, so the distributor can serve the secondaries one after
+another or interleave them, and each one authenticates as soon as its own bundle
+is handed over.</p>
+</div>
+<div class="paragraph">
+<p>A chiplet that takes part in this flow carries the two subsystems that boot
+relies on:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <strong>SEP</strong> is the chiplet&#8217;s root of trust. It decides whether firmware may run
+on that chiplet, against trust anchors in that chiplet&#8217;s own ROM and eFuses.</p>
+</li>
+<li>
+<p>The <strong>SMC</strong> is the chiplet&#8217;s management endpoint. Its role in authentication is
+limited and non-cryptographic: it holds a staged bundle in its SRAM and tells
+the SEP, through a scratch register, where the bundle is, but the SEP
+authenticates the bundle without relying on any check the SMC makes. Agents
+outside the chiplet reach it over the
+Open Chiplet Configuration Protocol (OCCP), a request-response protocol
+carried on its I3C and I2C interfaces. That is how a secondary&#8217;s bundle
+arrives: the distributing agent writes it into SMC SRAM over OCCP. Once
+running mutable firmware, the SMC can deliver firmware to other chiplets.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The split is what lets firmware travel across an ordinary management bus. The
+primary can decide what to deliver and when, but it cannot make the delivered
+firmware authentic; when secure boot is enabled, the receiving SEP accepts only
+what verifies against its own trust anchors. Neither the bus nor the primary
+chiplet is inside the secondary&#8217;s trust boundary.</p>
+</div>
+<div class="paragraph">
+<p>A non-primary chiplet may also be built without a SEP; the <em>Non-Primary
+Chiplets</em> section of the Technical Reference Manual (TRM) describes how the
+primary&#8217;s SiP-owner debug controls then govern it. Such a chiplet has nothing in
+OCAH that can authenticate the firmware it receives. This note covers chiplets
+that have a SEP.</p>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-stages"><a class="anchor" href="#sip-secure-boot-stages"></a><a class="link" href="#sip-secure-boot-stages">1.1. Boot stages</a></h3>
+<div class="paragraph">
+<p>The SEP and the SMC each run their own BL0 and then BL1. The two BL0 stages
+start together at reset, and SEP BL1 is what starts SMC BL1:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 44.4444%;">
+<col style="width: 44.4445%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Stage</th>
+<th class="tableblock halign-left valign-top">SEP</th>
+<th class="tableblock halign-left valign-top">SMC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs from the SEP ROM. Copies a bundle, from the SPI flash or from its own
+SMC&#8217;s SRAM as the straps select, into SEP SRAM. Authenticates it, copies SEP BL1
+to its load address (in this example the SEP&#8217;s instruction closely coupled
+memory, ICCM) and jumps to it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs from the SMC ROM. Publishes the SEP coordination state, then serves OCCP
+requests as a target. Accepts a bundle into SMC SRAM and, on
+<code>AuthenticateImage</code>, hands its manifest offset to the SEP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs from SEP ICCM. Places SMC BL1 in SMC SRAM and restarts the SMC cores into
+it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Runs from SMC SRAM, started by SEP BL1. On the primary, drives the package
+management bus as a controller and distributes the secondary&#8217;s bundle.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>SEP BL0 and SMC BL0 are the OCAH boot ROMs; the <em>SEP Production ROM Reference</em>
+and <em>SMC Production ROM Reference</em> chapters of the Programmer&#8217;s Guide cover the
+details this note summarizes. The SEP BL1 and SMC BL1 steps in this note are an
+example integration, built on the interfaces the ROMs and the hardware provide;
+a BL1 implementation can divide the work differently.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-bundle"><a class="anchor" href="#sip-secure-boot-bundle"></a><a class="link" href="#sip-secure-boot-bundle">1.2. Bundles and signatures</a></h3>
+<div class="paragraph">
+<p>Firmware moves as a <em>bundle</em>: an OCA manifest followed by a payload. The
+manifest is a 4096-byte header that carries the usage constraints, any debug
+demotion request, the signer&#8217;s public key, the key-slot selection, the
+signature, and the payload digest. The payload is a table of contents (TOC)
+followed by image data. Each TOC entry gives an image&#8217;s type, offset, length,
+load address, entry point, digest and target chiplet ID.</p>
+</div>
+<div class="paragraph">
+<p>A chain of checks links the manifest&#8217;s signatures to each image:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The <em>manifest hash</em>, a digest of the manifest&#8217;s signed region, checks the
+manifest&#8217;s integrity.</p>
+</li>
+<li>
+<p>The manifest&#8217;s signatures cover the same region. They authenticate the
+manifest and every field in it, including the payload digests.</p>
+</li>
+<li>
+<p>The manifest&#8217;s <em>payload hash</em> and <em>payload hash chain</em> link the manifest to
+the TOC. For a cleartext payload, the payload hash covers the TOC; for an
+encrypted payload, it covers the whole stored ciphertext and is checked before
+decryption. The hash chain covers the plaintext TOC and every image, in TOC
+order.</p>
+</li>
+<li>
+<p>Each TOC entry&#8217;s digest checks its image before the image is loaded or handed
+off.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Only the signature checks depend on secure boot; the other checks run on every
+boot.</p>
+</div>
+<div class="paragraph">
+<p>In this example the two bundles are nested:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Chiplet 0 bundle (in one SPI flash slot)
+  manifest            chiplet 0 signers, chiplet 0 ID constraint
+  payload
+    SEP BL1           chiplet 0 SEP firmware, type "OCAHSEP BLSTAGE1"
+    SMC BL1           chiplet 0 SMC firmware
+    chiplet 1 bundle  opaque image, target chiplet 1
+      manifest        chiplet 1 signers, chiplet 1 ID constraint
+      payload
+        SEP BL1       chiplet 1 SEP firmware, type "OCAHSEP BLSTAGE1"
+        SMC BL1       chiplet 1 SMC firmware</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>SEP BL0 finds SEP BL1 by its TOC type, <code>OCAHSEP BLSTAGE1</code>, and checks that its
+load address lies in ICCM or SEP SRAM. The SMC BL1 entry&#8217;s type and load address
+matter only to SEP BL1.</p>
+</div>
+<div class="paragraph">
+<p>Through that chain, SEP BL0 on chiplet 0 checks the digest of every image in the
+outer payload, so the chiplet 1 bundle is covered by chiplet 0&#8217;s signature when
+it leaves SEP BL0. That check protects neither the later copies nor the bus
+transfer, and it gives the inner bundle no standing on chiplet 1, whose SEP
+verifies it again against its own trust anchors. The ROM does not use the TOC&#8217;s
+target chiplet ID; binding a bundle to a chiplet is the job of the manifest&#8217;s
+identity constraints (<a href="#sip-secure-boot-smc-smc-binding">Section 3.5</a>).</p>
+</div>
+<div class="paragraph">
+<p>SEP BL0 stages the complete bundle in SEP SRAM, and reads a bundle from flash
+out of one slot, so the outer bundle has to fit in both. Both sizes are
+configurable; by default SEP SRAM is 256 KiB, and a slot leaves 252 KiB from its
+manifest to the next slot. Loading bundles into SMC SRAM, which is larger, is a
+planned alternative to SEP SRAM. A design that outgrows these limits can also
+keep the secondary bundles in separate flash regions and have SEP BL1 read them
+after handoff.</p>
+</div>
+<div class="paragraph">
+<p>Bundles are signed offline, before they are written to flash, by the owners of
+the chiplet each bundle is for. The signature travels in the manifest with the
+signer&#8217;s public key. A chiplet stores only digests of the root public keys it
+trusts, its <em>trust anchors</em>, and each anchor belongs to one owner role. Each
+anchor occupies one of the chiplet&#8217;s <em>root-key slots</em>, a single numbering that
+the SEP ROM defines over its own digest table and the eFuse hash banks. A
+manifest names the key its signature was made with by setting that slot&#8217;s bit in
+<code>public_key_select_classic</code>, and the slot&#8217;s bit in <code>CHIPLET_PUBK_REVOKE</code> revokes
+the anchor. The slot numbers are shown in parentheses:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 37.5%;">
+<col style="width: 37.5%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Owner</th>
+<th class="tableblock halign-left valign-top">Classical anchors</th>
+<th class="tableblock halign-left valign-top">Post-quantum anchors (deferred)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet creator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM keys, digests embedded in the SEP ROM image (0-5). <code>CHIPLET_PUBK_HASH0</code> /
+<code>HASH1</code> in eFuse, for additional chiplet-owner keys (16 / 17).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM keys (8-13). <code>CHIPLET_PUBK_PQC_HASH0</code> / <code>HASH1</code> in eFuse (18 / 19).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SiP owner</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIP_PUBK_HASH0</code> / <code>HASH1</code> in eFuse (20 / 24).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIP_PUBK_PQC_HASH0</code> / <code>HASH1</code> in eFuse (21 / 25).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System owner</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SYS_PUBK_HASH</code> in eFuse (22).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SYS_PUBK_PQC_HASH</code> in eFuse (23).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>OCAH assigns no purpose to individual ROM keys. Which of them an integrator
+keeps for development, and revokes in production through <code>CHIPLET_PUBK_REVOKE</code>,
+is that integrator&#8217;s security policy.</p>
+</div>
+<div class="paragraph">
+<p>The current SEP ROM verifies one classical RSA-3072 signature, made with the key
+of the one slot the manifest selects. Any owner&#8217;s anchor can authorize a bundle
+on its own.</p>
+</div>
+<div class="paragraph">
+<p>The TRM also defines a multi-owner signing model, which the current SEP ROM does
+not implement. In that model, each chiplet&#8217;s <code>REQUIRED_SIGNERS</code> eFuse field sets
+which owners must sign the bundles its SEP ROM verifies:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the chiplet creator always signs;</p>
+</li>
+<li>
+<p>the SiP owner also signs when <code>REQUIRED_SIGNERS[0]</code> is burned; and</p>
+</li>
+<li>
+<p>the system owner also signs when <code>REQUIRED_SIGNERS[1]</code> is burned.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>REQUIRED_ALGS</code> then selects, per required owner, a classical signature (ECDSA
+P-384 or RSA), a post-quantum one (ML-DSA), or both, and post-quantum signing
+arrives with the same model. The TRM describes it in its <em>Deferred Multi-Owner
+Signing Model</em> section (part of the SEP chapter&#8217;s <em>Life Cycle Controller</em>
+section).</p>
+</div>
+<div class="paragraph">
+<p>The owners need not be the same parties on each chiplet, and chiplets need not
+share any anchors. Each chiplet&#8217;s creator fixes its ROM keys, and each chiplet&#8217;s
+eFuses hold the keys of that chiplet&#8217;s own owners. Chiplet 0&#8217;s and chiplet 1&#8217;s
+bundles can therefore be signed by different parties, with different keys.
+Chiplet 0&#8217;s signers package the chiplet 1 bundle as it was signed, and chiplet 0
+delivers it without needing to be able to verify chiplet 1&#8217;s signature.</p>
+</div>
+<div class="paragraph">
+<p>Every boot checks the bundle&#8217;s integrity: the manifest hash, the manifest&#8217;s
+identity, lifecycle and version constraints, the payload hash and hash chain,
+and each image&#8217;s digest. When secure boot is enabled, SEP BL0 also authenticates
+the bundle. It rejects the bundle if the presented key&#8217;s SHA-256 modulus digest
+does not match the selected anchor, if the anchor is an unprogrammed eFuse bank,
+or if the anchor&#8217;s slot bit is set in the union of <code>CHIPLET_PUBK_REVOKE</code> and the
+manifest&#8217;s revocation bitmap. It then checks the anti-rollback posture and
+verifies the signature.</p>
+</div>
+<div class="paragraph">
+<p>SEP BL0 decides whether secure boot is enabled separately for each manifest:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>If the manifest sets its signed <code>secure_boot_control</code> enable bit, secure boot
+is enabled, in every lifecycle state, even when <code>SBOOT_DIS</code> is set.</p>
+</li>
+<li>
+<p>If the bit is clear and the <code>SBOOT_DIS</code> fuse is burned, secure boot is
+disabled.</p>
+</li>
+<li>
+<p>If the bit is clear and <code>SBOOT_DIS</code> is not burned, the lifecycle state
+decides:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>in <code>PROD</code> and <code>PROD_END</code>, secure boot is enabled</p>
+</li>
+<li>
+<p>in <code>TEST_DEV</code>, <code>RMA_SIP</code> and <code>RMA_CHIPLET</code> it is not enabled</p>
+<div class="ulist">
+<ul>
+<li>
+<p>if chiplet-scope debug is disabled via fuses, secure boot
+is enabled for <code>TEST_DEV</code> and <code>RMA_SIP</code>. <code>RMA_CHIPLET</code> is not affected</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The fuses disable chiplet-scope debug when <code>CHIPLET_DBG</code> is set in <code>SIP_DIS</code> or
+<code>SYS_DIS</code>, or when either vector is read-locked.</p>
+</div>
+<div class="paragraph">
+<p><code>SBOOT_DIS</code> therefore removes the device&#8217;s own requirement for verified
+firmware, so that unsigned firmware can boot even on a <code>PROD</code> part, but it never
+lets a manifest that requests verification skip it. When secure boot is disabled
+for a manifest, the manifest gets only the integrity checks, and one that
+declares an encrypted payload is rejected, since decryption is available only
+under secure boot. The TRM describes this decision in its <em>Secure-Boot
+Enforcement</em> section, next to the signing model.</p>
+</div>
+<div class="paragraph">
+<p>A manifest can also request a <em>debug demotion</em>: opening debug access for the
+current boot without changing the lifecycle state. The lifecycle controller has
+two demotion registers, one for the chiplet&#8217;s local debug (<code>DEMOTE_1</code>) and one
+for inter-chiplet debug (<code>DEMOTE_2</code>). Each register is fixed once locked, and a
+cold reset clears both. SEP BL0 honours the request only from a manifest that
+validated, and never demotes in <code>PROD_END</code>. It applies the local demotion
+itself; the inter-chiplet one is left to SEP BL1. The TRM describes demotion in
+its <em>In-Field Debug Demotion</em> section.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-overview"><a class="anchor" href="#sip-secure-boot-overview"></a><a class="link" href="#sip-secure-boot-overview">1.3. Flow overview</a></h3>
+<div class="paragraph">
+<p><a href="#sip-secure-boot-overview-diagram">Figure 1</a> shows the flow at package level. Arrows
+show the direction data moves; in this diagram, every access between a SEP and
+its SMC is initiated by the SEP. Neither SMC ROM ever acts as an OCCP
+controller; in this flow, the primary&#8217;s SMC BL1 does, once SEP BL1 has started
+it.</p>
+</div>
+<div id="sip-secure-boot-overview-diagram" class="imageblock kroki">
+<div class="content">
+<img src="_images/sip-secure-boot-overview-9acd7515dc597989df8d4c88ed7a60df7fc41f53.svg" alt="Package boot overview">
+</div>
+<div class="title">Figure 1. Package boot overview</div>
+</div>
+<div class="paragraph">
+<p>The bundles are signed offline and written to the primary&#8217;s flash before the
+package boots. The boot itself has four phases, which
+<a href="#sip-secure-boot-overview-diagram">Figure 1</a> frames and numbers:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Reset.</strong> On every chiplet the SMC ROM publishes its coordination state for its
+own SEP, in its scratch registers and SMC SRAM
+(<a href="#sip-secure-boot-sep-smc-state">Section 2.2</a>), and starts serving OCCP as a target on
+its I3C and I2C interfaces (<a href="#sip-secure-boot-smc-smc-roles">Section 3.1</a>). The primary&#8217;s
+SEP ROM selects the SPI flash. The secondary&#8217;s SEP ROM polls for a staged
+manifest.</p>
+</li>
+<li>
+<p><strong>The primary authenticates.</strong> SEP BL0 on chiplet 0 copies its bundle from the
+SPI flash into SEP SRAM, authenticates it (<a href="#sip-secure-boot-auth-diagram">Figure 3</a>),
+and enters SEP BL1. SEP BL1 restarts chiplet 0&#8217;s SMC into SMC BL1
+(<a href="#sip-secure-boot-sep-smc">Section 2</a>).</p>
+</li>
+<li>
+<p><strong>Distribution.</strong> SMC BL1 on chiplet 0 stages the chiplet 1 bundle in chiplet
+1&#8217;s SMC SRAM over OCCP and hands it over (<a href="#sip-secure-boot-smc-smc">Section 3</a>).</p>
+</li>
+<li>
+<p><strong>The secondary authenticates.</strong> SEP BL0 on chiplet 1 copies the bundle from its
+SMC&#8217;s SRAM into SEP SRAM, checks it against chiplet 1&#8217;s trust anchors
+(<a href="#sip-secure-boot-auth-diagram">Figure 3</a>), and enters SEP BL1. SEP BL1 restarts
+chiplet 1&#8217;s SMC into its own SMC BL1.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The primary&#8217;s <code>boot_recovery</code> strap gives a variant of the same flow. With it
+set, the primary&#8217;s SEP ignores the flash and waits for a staged manifest exactly
+as a secondary does. A board management controller or a host then plays the
+distributing role over OCCP.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sip-secure-boot-sep-smc"><a class="anchor" href="#sip-secure-boot-sep-smc"></a><a class="link" href="#sip-secure-boot-sep-smc">2. SEP-to-SMC coordination interfaces</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>On each chiplet, the SEP and the SMC depend on each other at three points during
+boot:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>During BL0</strong>, the SEP needs state that only the SMC can provide; the two ROMs
+exchange it through the <em>BL0 handshake</em>.</p>
+</li>
+<li>
+<p><strong>At the move to BL1</strong>, the SMC needs the SEP. The SMC ROM cannot authenticate
+firmware, so SEP BL1 places SMC BL1, from the bundle SEP BL0 authenticated, in
+SMC SRAM and restarts the SMC into it.</p>
+</li>
+<li>
+<p><strong>Once both BL1 stages run</strong>, they talk through the SMC-to-SEP mailboxes.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Throughout boot, the SEP leads: during BL0 it initiates every access across the
+link between them, and in this flow it decides what the SMC runs. The interfaces
+are the same on every chiplet.</p>
+</div>
+<div class="paragraph">
+<p>The handshake exists because the two ROMs boot in parallel and neither can
+assume how far the other has got. The SEP ROM needs two things from the SMC:
+where in SMC SRAM its status ring is and, on a secondary, where the staged
+bundle is and when it is complete. The SMC publishes each item in its
+CPU-control scratch registers or in SMC SRAM, then sets a flag. The SEP first
+checks that it can reach the SMC at all, then polls each flag before it reads
+the item; no interrupt is involved.</p>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-sep-smc-path"><a class="anchor" href="#sip-secure-boot-sep-smc-path"></a><a class="link" href="#sip-secure-boot-sep-smc-path">2.1. Access path</a></h3>
+<div class="paragraph">
+<p>The SEP and the SMC both sit inside the chiplet&#8217;s System Management Unit (SMU),
+and the SEP reaches the SMC through a dedicated link there. Every access across
+that link in the BL0 handshake is initiated by the SEP. The SEP&#8217;s SMC window
+bypasses both the SEP&#8217;s outbound traffic filter and the SMC&#8217;s inbound filter.
+The SMC maps that window, <code>0x4000_0000</code> and 16 MiB at reset, onto its local base
+<code>0xC000_0000</code>, so SMC-local address <code>0xC000_0000 + x</code> is SEP address
+<code>0x4000_0000 + x</code>. Traffic in the other direction passes the SEP&#8217;s inbound
+traffic filter. That filter blocks everything until SEP firmware opens it,
+unless SEP debug is enabled: the <code>SEP_DBG</code> feature, which depends on the
+lifecycle state and on the <code>SIP_DIS</code>, <code>SYS_DIS</code> and <code>SEC_DIS</code> fuses. The BL0
+handshake sends nothing in that direction, so the filter&#8217;s state does not affect
+it.</p>
+</div>
+<div class="paragraph">
+<p>The two sides therefore see SMC SRAM at different addresses. The protocol
+exchanges SRAM locations as offsets from the SRAM base, never as addresses:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Resource</th>
+<th class="tableblock halign-left valign-top">SMC-local address</th>
+<th class="tableblock halign-left valign-top">SEP address</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU-control block (<code>RESET_VECTOR[0-3]</code>, <code>RESET_CTRL</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC003_9000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x4003_9000</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch register <em>n</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC003_9080 + 8·n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x4003_9080 + 8·n</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC SRAM (1 MiB)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC006_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x4006_0000</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The window&#8217;s base and size are the SMC&#8217;s <code>GLOBAL_BASE</code> and <code>REGION_SIZE</code>
+registers, in its base-configuration block at <code>0xC001_0000</code>. These registers are
+writable, with no lock. Neither ROM writes them, and the SEP ROM assumes their
+reset values: it always addresses the SMC at <code>0x4000_0000</code>. Firmware that later
+reprograms <code>GLOBAL_BASE</code> moves the SEP&#8217;s view of the SMC with it. The Integrator
+Guide describes how the window&#8217;s base and size are assigned, in its <em>Address Map
+and Aperture</em> section (part of the <em>SMC Integration</em> chapter).</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-sep-smc-state"><a class="anchor" href="#sip-secure-boot-sep-smc-state"></a><a class="link" href="#sip-secure-boot-sep-smc-state">2.2. Shared state</a></h3>
+<div class="paragraph">
+<p>The SEP-SMC interface assigns each scratch register a fixed role and a single
+writer; both ROMs are built against the same assignment. The SMC ROM clears
+indices 8, 9, 11, 13 and 14 on reset, before it publishes anything:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 12.5%;">
+<col style="width: 25%;">
+<col style="width: 12.5%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Index</th>
+<th class="tableblock halign-left valign-top">Name</th>
+<th class="tableblock halign-left valign-top">Writer</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Probe</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Proves that the SEP&#8217;s path to the SMC works before any boot decision depends on
+it. The SEP writes four patterns, reads each back, and clears the entry. A
+mismatch, such as a stuck bit or a write that never lands, stops the SEP boot.
+The index is otherwise unassigned, so the SMC keeps no state here.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manifest address</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Offset of a staged manifest in SMC SRAM, or <code>0xFFFF_FFFF</code> when invalid.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Status to SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Flags the SMC sets, once each, when the state they describe is valid for the
+SEP to read:<br>
+bit 0 <code>SRAM_INIT</code>: the status rings and the SEP-safe range in scratch 13 and 14
+are initialized;<br>
+bit 1 <code>MANIFEST_READY</code>: scratch 8 holds a staged manifest&#8217;s offset;<br>
+bit 2 <code>BUFFER_READY</code>: scratch 11 holds the SEP ring&#8217;s offset;<br>
+bit 3 <code>SRAM_PROTECTED</code>: SMC SRAM is protected.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory-health failure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The value of the SMC&#8217;s <code>DFX_CTRL_STATUS_SMU</code> register, which reports whether
+memory repair and memory built-in self-test (MBIST) completed and passed. The
+SEP writes it here when its memory-health check fails, so the cause can be read
+afterwards.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Status-buffer address</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Offset of the SEP status ring in SMC SRAM.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13, 14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-safe SRAM start and size</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The SMC SRAM range outside the SMC ROM&#8217;s own state and the status rings:
+<code>0xC006_6400</code> through <code>0xC015_AFFF</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The SEP ROM&#8217;s <code>sep_smc_interface.h</code> and the SMC ROM&#8217;s <code>smc_rom_defs.h</code> define
+these indices and the scratch 9 bits; the bit names match on both sides.</p>
+</div>
+<div class="paragraph">
+<p>Two status ring buffers sit at the top of SMC SRAM, one written by the SMC and
+one by the SEP. The SMC owns both buffers: it initializes them and reads them.
+Each ring has a write pointer and a read pointer. In the SEP&#8217;s ring, the SEP
+owns the write pointer and the SMC the read pointer, which lets the two transfer
+entries without further coordination; the SMC owns both pointers of its own
+ring. Each ring holds 512 32-bit entries. Neither writer ever stalls for lack of
+a reader. When its ring is full, the SMC overwrites the oldest entry. The SEP
+cannot move the read pointer, so it drops new entries instead, keeping the last
+slots for warnings and errors. Each entry records a severity, the emitting stage
+(SEP BL0, SEP BL1, SMC BL0 or SMC BL1) and a value. An OCCP agent can read the
+next unread entry of either ring with <code>GetStatus</code> (<a href="#sip-secure-boot-smc-smc">Section 3</a>).</p>
+</div>
+<div class="paragraph">
+<p>The SEP also reads the latched boot straps and the memory-health status from SMC
+registers, and the SMC chip ID for reporting only; the identity a manifest is
+checked against comes from the SEP&#8217;s own eFuses. The <code>primary_chiplet</code> and
+<code>boot_recovery</code> straps select the SPI flash or the SMC SRAM as the SEP&#8217;s boot
+source.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-sep-smc-handshake"><a class="anchor" href="#sip-secure-boot-sep-smc-handshake"></a><a class="link" href="#sip-secure-boot-sep-smc-handshake">2.3. BL0 handshake</a></h3>
+<div class="paragraph">
+<p><a href="#sip-secure-boot-sep-smc-diagram">Figure 2</a> shows the handshake and the BL1 steps that
+follow it.</p>
+</div>
+<div id="sip-secure-boot-sep-smc-diagram" class="imageblock kroki">
+<div class="content">
+<img src="_images/sip-secure-boot-sep-smc-d503bf0e1d752910527062639cebc0267cdacdea.svg" alt="SEP-to-SMC coordination on one chiplet">
+</div>
+<div class="title">Figure 2. SEP-to-SMC coordination on one chiplet</div>
+</div>
+<div class="paragraph">
+<p>The SMC ROM comes up and publishes three things before it starts serving OCCP:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the SEP status-ring offset in scratch 11, with <code>BUFFER_READY</code> set;</p>
+</li>
+<li>
+<p>the SEP-safe SRAM range in scratch 13 and 14, with <code>SRAM_INIT</code> set; and</p>
+</li>
+<li>
+<p>its own progress in its own ring.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The SEP ROM first runs its memory-health check, which stops the boot unless
+memory repair and memory self-test passed or a strap or fuse bypasses the check.
+It then runs its scratch 7 probe. Unless status reporting is disabled by the
+<code>status_report_disable</code> strap, it next waits, without a timeout, for
+<code>BUFFER_READY</code> before it writes to its ring. It rejects a ring offset that does
+not fit in SMC SRAM. The ROMs make no assumption about which of them runs first:
+each waiting side polls a flag that the other side only ever sets.</p>
+</div>
+<div class="paragraph">
+<p>A primary and a secondary then take different paths:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Primary.</strong> SEP BL0 reads the bundle from the SPI flash into SEP SRAM. The
+flash has a primary and a backup slot, each holding a complete, independently
+signed bundle; they can hold the same bundle, or a new one and a known-good
+fallback for an A/B update. SEP BL0 tries the primary slot first and then the
+backup slot; the <code>rotate_update</code> strap swaps the order. SEP SRAM is cleared
+before the second slot is tried. The SMC ROM stays in its OCCP loop. Its SRAM
+is not used for staging.</p>
+</li>
+<li>
+<p><strong>Secondary.</strong> SEP BL0 polls <code>MANIFEST_READY</code> without a timeout. When the bit
+is set, it reads the offset from scratch 8 and copies the manifest and the
+payload from SMC SRAM into SEP SRAM by DMA. It then validates the copy exactly
+as it would a bundle from flash. The SMC ROM has parked in <code>wfi</code> by this
+point. There is one attempt and no backup slot.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>On both paths the manifest lands at the base of SEP SRAM, <code>0x1000_0000</code>, and the
+payload immediately after it, 8-byte aligned. Validation always works on this
+copy in SEP SRAM, never on SMC SRAM, which stays writable from the SMC side.
+<a href="#sip-secure-boot-auth-diagram">Figure 3</a> shows the order in which SEP BL0 checks it;
+<a href="#sip-secure-boot-bundle">Section 1.2</a> describes the checks.</p>
+</div>
+<div id="sip-secure-boot-auth-diagram" class="imageblock kroki">
+<div class="content">
+<img src="_images/sip-secure-boot-auth-8d1a85a33969ebaeaf52a309cbc88871b286f9bf.svg" alt="Bundle checks in SEP BL0">
+</div>
+<div class="title">Figure 3. Bundle checks in SEP BL0</div>
+</div>
+<div class="paragraph">
+<p>Before it hands over, SEP BL0 decides the manifest&#8217;s demotion request and
+measures the boot: it records the digest of the ROM and the digest of the
+manifest it validated, together with the boot state it selected, to root a
+measurement chain that later stages extend. A planned PCR Vault will hold these
+measurements, accumulating them where software cannot alter them and binding the
+device&#8217;s attestation keys to them. Until then, SEP BL0 keeps its measurements in
+software and leaves them for BL1 to register. SEP BL0 then read-locks the secret
+fuses: <code>CLASS_KEY</code>, from which payload-decryption keys are derived; the RMA
+token digests <code>RMA_SIP_TOKEN_DIGEST</code> and <code>RMA_CHIPLET_TOKEN_DIGEST</code>; and the
+secret device unique IDs <code>CHIPLET_UID</code>, <code>SIP_UID</code> and <code>SYS_UID</code>. If it cannot
+confirm every lock, the boot stops. Only then does it write the demotion
+register, so that a fault during that write cannot leave the secrets readable.</p>
+</div>
+<div class="paragraph">
+<p>After authentication, SEP BL0 copies SEP BL1 from SEP SRAM into ICCM with the
+secure DMA. The SEP&#8217;s load/store unit cannot write ICCM. SEP BL0 then executes
+<code>fence.i</code> and <code>fence</code>, and enters BL1 through <code>mret</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-sep-smc-offset"><a class="anchor" href="#sip-secure-boot-sep-smc-offset"></a><a class="link" href="#sip-secure-boot-sep-smc-offset">2.4. Offset checks</a></h3>
+<div class="paragraph">
+<p>SEP BL0 does not take the published offset on trust. It refuses the invalid
+marker <code>0xFFFF_FFFF</code>, and it rejects a manifest or a payload that does not lie
+inside the 1 MiB SMC SRAM window. The manifest identifier, length and digest
+checks then catch anything else wrong with what it reads.</p>
+</div>
+<div class="paragraph">
+<p>In a non-secure lifecycle state, the SMC ROM accepts an <code>AuthenticateImage</code>
+address outside the OCCP-accessible part of SMC SRAM
+(<a href="#sip-secure-boot-smc-smc-staging">Section 3.3</a>), and publishes the invalid marker in
+scratch 8. The SEP refuses it, and there is no retry. A distributing agent must
+therefore pass a correct address the first time.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-sep-smc-restart"><a class="anchor" href="#sip-secure-boot-sep-smc-restart"></a><a class="link" href="#sip-secure-boot-sep-smc-restart">2.5. Restarting the SMC into BL1</a></h3>
+<div class="paragraph">
+<p>The SMC ROM never jumps to authenticated firmware by itself. On the primary it
+is still running its OCCP loop. On the secondary it is parked in <code>wfi</code> after
+<code>AuthenticateImage</code>. In both cases SEP BL1 brings the SMC into BL1 through the
+SMC CPU-control registers:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Write the SMC BL1 image, taken from the authenticated payload in SEP SRAM,
+into the SEP-safe SMC SRAM range published in scratch 13 and 14. The SMC ROM
+keeps its own state below that range and the rings above it, so the copy does
+not disturb a ROM that is still running. On the primary, SEP BL1 also copies
+the chiplet 1 bundle into that range, for SMC BL1 to distribute.</p>
+</li>
+<li>
+<p>Write the SMC BL1 entry address into <code>RESET_VECTOR[n]</code> for each SMC core that
+is to run it. The register resets to the SMC ROM&#8217;s entry point, so without
+this write the cores would restart into the ROM.</p>
+</li>
+<li>
+<p>Start a reset pulse on those cores through the
+<code>coreN_reset_pulse_start_n0_scan</code> bits of <code>RESET_CTRL</code>. Write the register
+read-modify-write, so that its level reset bits stay at 1.
+<code>CORE_RESET_PULSE_COUNT.post_reset_count</code> sets how long reset is held, and
+<code>core_resets_done</code> reads low until the reset completes. The cores leave reset
+at the new vector, so they do not run the SMC ROM again.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>In this flow the SMC restarts only after its bundle has been authenticated, so
+it runs only firmware that its SEP has verified.</p>
+</div>
+<div class="paragraph">
+<p>Because it skips the SMC ROM, SMC BL1 starts with the SRAM contents and scratch
+registers as they were left. It must not rely on the ROM&#8217;s early initialization,
+such as the conditional SRAM zeroing and the memory-health checks.</p>
+</div>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-caution" title="Caution"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The CPU-control registers are an execution path into the SMC. In a secure
+lifecycle state, the SMC ROM confines OCCP accesses to the OCCP-accessible part
+of SMC SRAM, so an OCCP agent cannot reach them. In other lifecycle states the
+ROM allows OCCP accesses outside SRAM, and an agent can then redirect and
+restart the SMC cores itself. <code>ExecuteImage</code> gives the same agent a direct jump
+in those states. In the same states an agent can also rewrite <code>GLOBAL_BASE</code> and
+<code>REGION_SIZE</code>, and so move the SEP&#8217;s window onto the SMC while SEP BL0 is using
+it.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-sep-smc-mailbox"><a class="anchor" href="#sip-secure-boot-sep-smc-mailbox"></a><a class="link" href="#sip-secure-boot-sep-smc-mailbox">2.6. Mailboxes</a></h3>
+<div class="paragraph">
+<p>Once both BL1 stages run, the SMC-to-SEP mailboxes become the runtime channel
+between them. There are eight channels, and each raises its own SEP interrupt
+when its inbox is written. SEP firmware makes a mailbox reachable by programming
+the inbound traffic filter entry over its 4 KiB aperture. Entries are 64 bits
+wide, but the SEP CPU is 32-bit and uses only the low half of each. Neither ROM
+uses the mailboxes; the TRM describes them in its <em>Mailboxes</em> section (part of
+the SEP chapter&#8217;s <em>Peripherals</em>).</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sip-secure-boot-smc-smc"><a class="anchor" href="#sip-secure-boot-smc-smc"></a><a class="link" href="#sip-secure-boot-smc-smc">3. SMC-to-SMC coordination interfaces</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>A secondary&#8217;s SEP never talks to another chiplet. What reaches it is a bundle
+staged in its own SMC&#8217;s SRAM, which the SMC receives over OCCP. This section
+describes the parts of OCCP that the distribution relies on, and then the
+distribution of the chiplet 1 bundle from chiplet 0. The target in this flow is
+the SMC ROM, which serves the OCCP Base and Boot applications.</p>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-smc-smc-roles"><a class="anchor" href="#sip-secure-boot-smc-smc-roles"></a><a class="link" href="#sip-secure-boot-smc-smc-roles">3.1. Roles and transport</a></h3>
+<div class="paragraph">
+<p>The SMC ROM is an OCCP <strong>target</strong> only. On every chiplet, whatever its straps, it
+starts a fixed set of its I3C and I2C interfaces in target mode and polls them
+round-robin; the <em>SMC Production ROM Reference</em> in the Programmer&#8217;s Guide lists
+the set. The distributing agent must therefore drive the bus as a controller. In
+this example that agent is SMC BL1 on chiplet 0, which can run only once chiplet
+0 has authenticated itself. For the recovery variant it is a host or a board
+management controller.</p>
+</div>
+<div class="paragraph">
+<p>Each target&#8217;s bus address comes from its own eFuse identifier slots. When a slot
+is unprogrammed, the address falls back to a value formed from the strap chip
+ID and the <code>CHIP_CONFIG.CHIP_ID</code> register. An I2C address outside <code>0x08</code>-<code>0x77</code>
+is replaced with <code>0x55</code>. On I3C the value is the static address, and the
+controller can assign a dynamic address instead. Chiplets on one bus are
+separately addressable only when their fuses or straps give them distinct
+addresses.</p>
+</div>
+<div class="paragraph">
+<p>A request is a single write transaction: an 8-byte header, the body, and an
+optional body CRC. The response is fetched with a read transaction. With the
+open I3C target driver, a read issued before the response is ready is not
+accepted, and the controller retries it. An I2C target stretches the clock
+instead. The header carries a CRC-8. The body CRC is CRC-8 for bodies up to 14
+bytes and CRC-32 above that. A request without a body CRC is accepted without
+body validation. The ROM latches onto the first interface that delivers a valid
+header with a recognized AppID and MsgID, and ignores the others until it
+unlatches: after one million empty polls, or five consecutive errors. A
+distributing agent should use one interface throughout.</p>
+</div>
+<div class="paragraph">
+<p>The distribution uses these Boot (AppID <code>0x01</code>) and Base (AppID <code>0x00</code>)
+commands:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 12.5%;">
+<col style="width: 62.5%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Command</th>
+<th class="tableblock halign-left valign-top">AppID / MsgID</th>
+<th class="tableblock halign-left valign-top">Use in the distribution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GetVersion</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code> / <code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Confirms that the target answers and runs the Boot application.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WriteData</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code> / <code>0x02</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writes up to 2035 bytes to a 32-bit-aligned SMC address.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ReadData</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code> / <code>0x03</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reads up to 2047 bytes; the response always carries a body CRC. Optional
+read-back of staged data.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GetStatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code> / <code>0x01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reads OCCP status or the next unread SEP (<code>0x8000</code>) or SMC (<code>0x8001</code>) ring
+entry.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AuthenticateImage</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code> / <code>0x02</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hands a staged manifest to the target&#8217;s SEP. Its 10-byte body starts with
+the 64-bit SMC-local manifest address.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>ExecuteImage</code> (<code>0x01</code> / <code>0x01</code>) transfers control to an address without
+authentication. The SMC ROM refuses it in the <code>PROD</code> and <code>PROD_END</code> lifecycle
+states, returning <code>Invalid_Msgid</code>. Delivery therefore cannot bypass the SEP on a
+production part.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-smc-smc-sequence"><a class="anchor" href="#sip-secure-boot-smc-smc-sequence"></a><a class="link" href="#sip-secure-boot-smc-smc-sequence">3.2. Distribution sequence</a></h3>
+<div class="paragraph">
+<p><a href="#sip-secure-boot-smc-smc-diagram">Figure 4</a> shows the distribution of the chiplet 1
+bundle and what follows it.</p>
+</div>
+<div id="sip-secure-boot-smc-smc-diagram" class="imageblock kroki">
+<div class="content">
+<img src="_images/sip-secure-boot-smc-smc-c97446586ddada4021b01ee76e6724af70acc9eb.svg" alt="SMC-to-SMC distribution">
+</div>
+<div class="title">Figure 4. SMC-to-SMC distribution</div>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Probe.</strong> The primary sends Boot <code>GetVersion</code> to chiplet 1&#8217;s address. Unless
+status reporting is disabled on chiplet 1, by its <code>status_report_disable</code>
+strap, the primary can also read chiplet 1&#8217;s status rings with <code>GetStatus</code> to
+confirm that both of chiplet 1&#8217;s ROMs came up. Each read consumes the entry it
+returns.</p>
+</li>
+<li>
+<p><strong>Stage.</strong> The primary writes the chiplet 1 bundle, manifest first, in
+<code>WriteData</code> chunks of at most 2035 bytes each. The target checks each chunk
+against its access policy on its own. A refused chunk does not disturb what is
+already staged. Requests should carry a body CRC, because the target accepts a
+request without one unvalidated. An optional <code>ReadData</code> pass confirms what has
+landed.</p>
+</li>
+<li>
+<p><strong>Hand over.</strong> The primary sends <code>AuthenticateImage</code> with the SMC-local address
+of the staged manifest. The target queues its success response first. It then
+converts the address to an SRAM offset in scratch 8, sets <code>MANIFEST_READY</code>,
+and parks in <code>wfi</code>. The SMC ROM does not inspect the bundle.</p>
+</li>
+<li>
+<p><strong>Authenticate.</strong> Chiplet 1&#8217;s SEP takes over as described in
+<a href="#sip-secure-boot-sep-smc-handshake">Section 2.3</a>. It verifies the bundle against chiplet
+1&#8217;s ROM digests and eFuses only, as <a href="#sip-secure-boot-auth-diagram">Figure 3</a> shows.</p>
+</li>
+<li>
+<p><strong>Restart.</strong> Chiplet 1&#8217;s SEP BL1 restarts chiplet 1&#8217;s SMC into its SMC BL1, as
+described in <a href="#sip-secure-boot-sep-smc-restart">Section 2.5</a>. From then on the two SMC BL1
+instances communicate over whatever protocol their firmware defines.</p>
+</li>
+</ol>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-smc-smc-staging"><a class="anchor" href="#sip-secure-boot-smc-smc-staging"></a><a class="link" href="#sip-secure-boot-smc-smc-staging">3.3. Staging window</a></h3>
+<div class="paragraph">
+<p>The bundle has to be staged where the target accepts it and where the SEP will
+look for it. The current SMC ROM lays out SMC SRAM as follows; the <em>SMC
+Production ROM Reference</em> in the Programmer&#8217;s Guide is the authority for these
+values:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Every OCCP address must be 32-bit aligned. Accesses of zero length, accesses
+whose address arithmetic wraps, and accesses that overlap the SMC ROM&#8217;s own
+state, <code>0xC006_0000</code> to <code>0xC006_63FF</code>, are refused in every lifecycle state.</p>
+</li>
+<li>
+<p>In a secure lifecycle state, the whole access must lie in the <em>OCCP-accessible
+part</em> of SMC SRAM, <code>0xC006_6400</code> to <code>0xC015_FFFF</code>.</p>
+</li>
+<li>
+<p>The status rings occupy the top of that range, and the access policy does not
+protect them. Stage within the <em>SEP-safe range</em>, <code>0xC006_6400</code> to
+<code>0xC015_AFFF</code>, which the SMC ROM also publishes in scratch 13 and 14. In a
+secure lifecycle state a remote agent cannot read those registers, so it has
+to know this range in advance.</p>
+</li>
+<li>
+<p>SEP BL0 reads the payload at the manifest address plus the manifest&#8217;s payload
+offset. It rejects a payload outside SMC SRAM or overlapping the manifest, but
+it does not enforce the staging window. Keeping the payload inside it is the
+signer&#8217;s and the distributor&#8217;s job.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Each chiplet has a single manifest offset and a single <code>MANIFEST_READY</code> bit, so
+a chiplet takes one bundle per boot. The primary finishes staging a secondary&#8217;s
+bundle before it sends <code>AuthenticateImage</code>. That command is the primary&#8217;s claim
+that the staged bundle is complete.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-smc-smc-after"><a class="anchor" href="#sip-secure-boot-smc-smc-after"></a><a class="link" href="#sip-secure-boot-smc-smc-after">3.4. After the handover</a></h3>
+<div class="paragraph">
+<p>Once <code>AuthenticateImage</code> has been accepted, chiplet 1&#8217;s SMC ROM serves no
+further OCCP requests, <code>GetStatus</code> included. The primary cannot watch chiplet
+1&#8217;s SEP authenticate. It learns the outcome only when chiplet 1&#8217;s SMC BL1 comes
+up and answers, which it does only after a successful authentication.</p>
+</div>
+<div class="paragraph">
+<p>A primary should therefore bound the wait with a timeout it sizes for the
+secondary&#8217;s authentication and restart. The two outcomes look like this:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Success.</strong> Chiplet 1&#8217;s SMC BL1 answers. The first status it reports can
+include the SEP ring entries recorded during authentication.</p>
+</li>
+<li>
+<p><strong>Silence.</strong> Chiplet 1&#8217;s SEP BL0 rejected the bundle. It has recorded the
+failure in its ring and is parked in <code>wfi</code>, and its SMC is parked too. Neither
+chiplet 1 ROM retries or accepts another bundle, and neither enables a
+watchdog. The ring record cannot be read over OCCP. Recovery takes a reset of
+chiplet 1, which also reinitializes the rings, followed by a new
+distribution.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Chiplet 0&#8217;s own boot does not depend on chiplet 1&#8217;s verdict. Each chiplet&#8217;s
+authentication result is its own. What the package does with a chiplet that
+does not come up is a policy decision for the BL1 firmware.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sip-secure-boot-smc-smc-binding"><a class="anchor" href="#sip-secure-boot-smc-smc-binding"></a><a class="link" href="#sip-secure-boot-smc-smc-binding">3.5. Binding a bundle to its chiplet</a></h3>
+<div class="paragraph">
+<p>A chiplet accepts any bundle that verifies against one of its anchors. Chiplets
+from different creators, or with different owners' keys fused, usually trust
+different keys. But the ROM key digests are the same on every chiplet built from
+the same SEP ROM, so such chiplets all trust the same keys. Without further
+constraint, a bundle signed with one of those keys is then accepted by any of
+them, and the chiplet 0 and chiplet 1 bundles are interchangeable.</p>
+</div>
+<div class="paragraph">
+<p>The manifest&#8217;s usage constraints tie a bundle to a chiplet. They can require a
+chiplet, package or system ID, which SEP BL0 compares with the SEP&#8217;s own
+<code>SEP_CHIPLET_ID</code>, <code>SEP_SIP_ID</code> and <code>SEP_SYS_ID</code> eFuses. They can also require
+lifecycle states or a version range. Setting that constraint on each bundle
+stops it from being delivered to, and accepted by, a chiplet it was not built
+for. Signing each chiplet&#8217;s bundle with a key only that chiplet trusts, through
+its eFuse slots, has the same effect.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

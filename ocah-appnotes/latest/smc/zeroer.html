@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -178,7 +184,7 @@ zero without CPU intervention. The unit uses a state machine-based
 architecture with dual clock domains.</p>
 </div>
 <div class="paragraph">
-<p><a href="#smc-memory-zeroer-integration-table">SMC Memory Zeroer Integration</a> summarises the zeroer control aperture and
+<p><a href="#smc-memory-zeroer-integration-table">Table 1</a> summarises the zeroer control aperture and
 fabric integration.</p>
 </div>
 <table id="smc-memory-zeroer-integration-table" class="tableblock frame-all grid-all stretch">
@@ -253,7 +259,7 @@ sequences</p>
 <h3 id="state-machine"><a class="anchor" href="#state-machine"></a><a class="link" href="#state-machine">2.1. State Machine</a></h3>
 <div class="paragraph">
 <p>The zeroer state machine has three operating states and an error state
-(<a href="#smc-zeroer-state-machine-table">SMC zeroer state machine</a>).</p>
+(<a href="#smc-zeroer-state-machine-table">Table 2</a>).</p>
 </div>
 <table id="smc-zeroer-state-machine-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. SMC zeroer state machine</caption>
@@ -288,7 +294,7 @@ no interrupt, until reset</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p><a href="#smc-memory-zeroer-diagram">SMC memory zeroer state machine and AXI write flow</a> shows the state machine and its AXI write flow.</p>
+<p><a href="#smc-memory-zeroer-diagram">Figure 1</a> shows the state machine and its AXI write flow.</p>
 </div>
 <div id="smc-memory-zeroer-diagram" class="imageblock">
 <div class="content">
@@ -335,7 +341,7 @@ optional interrupt</p>
 <div class="sect2">
 <h3 id="axi-master-interface"><a class="anchor" href="#axi-master-interface"></a><a class="link" href="#axi-master-interface">2.3. AXI Master Interface</a></h3>
 <div class="paragraph">
-<p><a href="#smc-zeroer-axi4-master-characteristics-table">SMC zeroer AXI4 Master Characteristics</a> summarises the zeroer&#8217;s AXI master
+<p><a href="#smc-zeroer-axi4-master-characteristics-table">Table 3</a> summarises the zeroer&#8217;s AXI master
 interface.</p>
 </div>
 <table id="smc-zeroer-axi4-master-characteristics-table" class="tableblock frame-all grid-all stretch">
@@ -411,7 +417,7 @@ and interface isolation.</p>
 <div class="sect2">
 <h3 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">2.6. Clock Domains</a></h3>
 <div class="paragraph">
-<p><a href="#smc-zeroer-clock-domain-characteristics-table">SMC zeroer Clock Domain Characteristics</a> identifies the AXI and APB clock
+<p><a href="#smc-zeroer-clock-domain-characteristics-table">Table 4</a> identifies the AXI and APB clock
 domains and their roles.</p>
 </div>
 <table id="smc-zeroer-clock-domain-characteristics-table" class="tableblock frame-all grid-all stretch">
@@ -443,7 +449,7 @@ independent of AXI activity</p></td>
 <div class="sect2">
 <h3 id="clock-gating"><a class="anchor" href="#clock-gating"></a><a class="link" href="#clock-gating">2.7. Clock Gating</a></h3>
 <div class="paragraph">
-<p><a href="#smc-zeroer-clock-gating-control-table">SMC zeroer Clock Gating Control</a> gives the gating conditions for each clock
+<p><a href="#smc-zeroer-clock-gating-control-table">Table 5</a> gives the gating conditions for each clock
 domain.</p>
 </div>
 <table id="smc-zeroer-clock-gating-control-table" class="tableblock frame-all grid-all stretch">
@@ -487,7 +493,7 @@ domain.</p>
 <div class="sect3">
 <h4 id="operation-control"><a class="anchor" href="#operation-control"></a><a class="link" href="#operation-control">2.8.1. Operation Control</a></h4>
 <div class="paragraph">
-<p><a href="#smc-zeroer-configuration-and-control-table">SMC zeroer Configuration and Control</a> defines the registers used to configure
+<p><a href="#smc-zeroer-configuration-and-control-table">Table 6</a> defines the registers used to configure
 and start a zeroing operation.</p>
 </div>
 <table id="smc-zeroer-configuration-and-control-table" class="tableblock frame-all grid-all stretch">
@@ -554,7 +560,7 @@ responses are not distinguished from successful responses</p>
 <h2 id="operation-details"><a class="anchor" href="#operation-details"></a><a class="link" href="#operation-details">3. Operation Details</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#smc-zeroer-data-generation-and-control-table">SMC zeroer Data Generation and Control</a> summarises zero-data generation and
+<p><a href="#smc-zeroer-data-generation-and-control-table">Table 7</a> summarises zero-data generation and
 transfer control.</p>
 </div>
 <table id="smc-zeroer-data-generation-and-control-table" class="tableblock frame-all grid-all stretch">

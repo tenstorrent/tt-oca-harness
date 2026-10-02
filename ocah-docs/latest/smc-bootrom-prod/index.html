@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>SMC Production ROM :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>SMC Production ROM Reference :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <link rel="prev" href="../smc/rom.html">
     <link rel="next" href="../smc/fabric.html">
     <meta name="generator" content="Antora 3.1.15">
@@ -687,76 +687,7 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">SMC Production ROM</h1>
-<div id="toc" class="toc">
-<div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#overview">1. Overview</a></li>
-<li><a href="#occp-protocol">2. OCCP protocol</a>
-<ul class="sectlevel2">
-<li><a href="#packet-format">2.1. Packet format</a></li>
-<li><a href="#integrity-checks">2.2. Integrity checks</a></li>
-<li><a href="#applications-and-commands">2.3. Applications and commands</a>
-<ul class="sectlevel3">
-<li><a href="#getversion">2.3.1. GetVersion</a></li>
-<li><a href="#getstatus">2.3.2. GetStatus</a></li>
-<li><a href="#writedata">2.3.3. WriteData</a></li>
-<li><a href="#readdata">2.3.4. ReadData</a></li>
-<li><a href="#executeimage-and-authenticateimage">2.3.5. ExecuteImage and AuthenticateImage</a></li>
-</ul>
-</li>
-<li><a href="#error-responses">2.4. Error responses</a></li>
-<li><a href="#i2c-and-i3c-transport-binding">2.5. I2C and I3C transport binding</a></li>
-</ul>
-</li>
-<li><a href="#boot-flow">3. Boot flow</a>
-<ul class="sectlevel2">
-<li><a href="#assembly-early-boot">3.1. Assembly early boot</a></li>
-<li><a href="#c-boot-phases">3.2. C boot phases</a></li>
-</ul>
-</li>
-<li><a href="#hardware-initialization">4. Hardware initialization</a>
-<ul class="sectlevel2">
-<li><a href="#straps-and-efuses">4.1. Straps and eFuses</a></li>
-<li><a href="#sram-initialization">4.2. SRAM initialization</a></li>
-<li><a href="#mbist-and-memory-repair">4.3. MBIST and memory repair</a></li>
-<li><a href="#clock-hook">4.4. Clock hook</a></li>
-</ul>
-</li>
-<li><a href="#memory-and-security">5. Memory and security</a>
-<ul class="sectlevel2">
-<li><a href="#image-and-sram-layout">5.1. Image and SRAM layout</a></li>
-<li><a href="#memory-access-policy">5.2. OCCP memory-access policy</a></li>
-<li><a href="#lifecycle-handling">5.3. Lifecycle handling</a></li>
-</ul>
-</li>
-<li><a href="#interfaces">6. Communication interfaces</a>
-<ul class="sectlevel2">
-<li><a href="#interface-addressing">6.1. Address selection</a></li>
-<li><a href="#driver-selection">6.2. Driver selection</a></li>
-<li><a href="#i3c-response-flow-control">6.3. I3C response flow control</a></li>
-<li><a href="#gpio-side-effects">6.4. GPIO side effects</a></li>
-</ul>
-</li>
-<li><a href="#status-reporting">7. Status and coordination</a>
-<ul class="sectlevel2">
-<li><a href="#scratch-registers">7.1. Scratch registers</a></li>
-<li><a href="#ring-buffers">7.2. Ring buffers</a></li>
-<li><a href="#ring-buffer-status-values">7.3. Ring-buffer status values</a></li>
-<li><a href="#software-occp-status-word">7.4. Software OCCP status word</a></li>
-<li><a href="#post-word">7.5. POST word</a></li>
-</ul>
-</li>
-<li><a href="#occp-command-processing">8. OCCP command processing</a>
-<ul class="sectlevel2">
-<li><a href="#polling-and-latching">8.1. Polling and latching</a></li>
-<li><a href="#receive-and-dispatch">8.2. Receive and dispatch</a></li>
-<li><a href="#failed-frame-cleanup">8.3. Failed-frame cleanup</a></li>
-<li><a href="#terminal-commands">8.4. Terminal commands</a></li>
-</ul>
-</li>
-</ul>
-</div>
+<h1 class="page">SMC Production ROM Reference</h1>
 <div class="sect1">
 <h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
 <div class="sectionbody">

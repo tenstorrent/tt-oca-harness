@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -370,7 +376,7 @@ where the ROM defines the interface (warm-reset re-entry, <code>bl0_state</code>
 <p>This document is <strong>normative</strong>: it describes the intended behavior of the completed boot ROM and
 is written to serve as the basis for design verification. Where the current
 boot ROM implementation diverges from this specification, the divergence is called out
-explicitly (see <a href="#sec:conv_gap">Implementation Gaps</a>) rather than silently adopted.</p>
+explicitly (see <a href="#sec:conv_gap">Section 1.5</a>) rather than silently adopted.</p>
 </div>
 <div class="sect2">
 <h3 id="normative-language"><a class="anchor" href="#normative-language"></a><a class="link" href="#normative-language">1.1. Normative Language</a></h3>
@@ -403,7 +409,7 @@ verification target.</p>
 <code>SPI</code>, <code>MAN</code> (manifest), <code>SB</code> (secure boot), <code>DEM</code> (demotion), <code>PL</code> (payload), <code>ATT</code>
 (boot measurement), <code>HOFF</code> (hand-off), <code>RETRY</code>, <code>STAT</code> (status reporting). Identifiers are stable
 across revisions of this document; retired requirements are not renumbered. The complete index
-is collected in <a href="#sec:req_index">Requirement Index</a>.</p>
+is collected in <a href="#sec:req_index">Appendix D</a>.</p>
 </div>
 <div class="paragraph">
 <p>A statement carries an identifier when it is both <strong>independently verifiable</strong> against observable
@@ -416,7 +422,7 @@ diagnostic output, and build-time knobs are described without identifiers.</p>
 <h3 id="sec:conv_stages"><a class="anchor" href="#sec:conv_stages"></a><a class="link" href="#sec:conv_stages">1.3. Boot Stage Labels</a></h3>
 <div class="paragraph">
 <p>Boot stages are tagged <code>[SNN]</code>, numbered in execution order from reset entry to the BL1
-hand-off, one label per stage. The full sequence is in <a href="#sec:overview">Boot Flow Overview</a>. A stage that
+hand-off, one label per stage. The full sequence is in <a href="#sec:overview">Section 5</a>. A stage that
 executes twice at different points in the flow&#8201;&#8212;&#8201;the stack canary, written at [S19] and
 re-checked at [S28]&#8201;&#8212;&#8201;carries a label for each, because the ordering is what the label
 exists to express.</p>
@@ -437,7 +443,7 @@ them should be written so the provisional element is replaceable.</p>
 <p>Where this specification prescribes behavior that the boot ROM does not yet provide (or provides differently), the affected section carries a
 <code>WARNING</code> admonition whose first line is <strong>IMPLEMENTATION GAP</strong>, stating what this specification
 requires, what the code currently does, and where the gap is tracked. The full list is
-summarized in <a href="#sec:impl_matrix">Implementation-Status Matrix</a>.</p>
+summarized in <a href="#sec:impl_matrix">Appendix C</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -465,7 +471,7 @@ two in sync).</p>
 <li>
 <p>Status codes: <code>hw/sys/sep/bootrom/prod/include/status_values.h</code>. This header is the single
 source: the ROM compiles against it, the SEP virtual platform&#8217;s status decoder is
-configured to read the same header (<code>STATUS_VALUES_PATH</code>), and <a href="#sec:status_registry">Code Registry</a> is
+configured to read the same header (<code>STATUS_VALUES_PATH</code>), and <a href="#sec:status_registry">Section 21.4</a> is
 generated from it by <code>hw/sys/sep/doc/gen_status_table.py</code>.</p>
 </li>
 <li>
@@ -526,7 +532,7 @@ image in the boot payload and authenticated by BL0.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OCA</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Open Chiplet Atlas. The OCA boot manifest is the metadata structure describing and
-protecting mutable software (see <a href="#sec:manifest">OCA Manifest Format and Parsing</a>).</p></td>
+protecting mutable software (see <a href="#sec:manifest">Section 13</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Manifest</p></td>
@@ -626,12 +632,12 @@ transfer contract.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>tt-oca-manifest</code> repository</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OCA manifest specification documentation, producer tooling and the freestanding C validation library (<code>validators/oca/lib/oca_validator.h</code>) the ROM integrates.
-Implements a <strong>subset</strong> of the OCA specification (see <a href="#sec:impl_matrix">Implementation-Status Matrix</a> for known gaps).</p></td>
+Implements a <strong>subset</strong> of the OCA specification (see <a href="#sec:impl_matrix">Appendix C</a> for known gaps).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RISC-V Privileged Architecture, PMP chapter</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Semantics of <code>pmpaddr*</code>/<code>pmpcfg*</code> NAPOT entries used
-in <a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a>.</p></td>
+in <a href="#sec:pmp">Section 8</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NIST FIPS 180-4 / FIPS 197 / SP 800-108r1 / RFC 8017 (PKCS#1 v1.5)</p></td>
@@ -658,7 +664,7 @@ PMP CSRs, <code>mtvec</code>).</p></td>
 device&#8217;s security state (lifecycle fuses), the only agent that can authenticate mutable
 software, and the gatekeeper that decides whether — and with what security posture — the rest
 of the system is allowed to run. The SEP boots in parallel with the SMC; the two coordinate
-through scratch registers (<a href="#sec:smc_sync">SMC Synchronization</a>), but the SEP never delegates a security decision
+through scratch registers (<a href="#sec:smc_sync">Section 10</a>), but the SEP never delegates a security decision
 to the SMC.</p>
 </div>
 </div>
@@ -687,7 +693,7 @@ and through an LSU→ROM demux for in-place read-only data access.</p>
 <p>Region attributes configured through the VeeR MRAC CSR (<code>0x7C0</code>).</p>
 </li>
 <li>
-<p>RISC-V PMP implemented; used by the ROM as its execution fence (<a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a>).</p>
+<p>RISC-V PMP implemented; used by the ROM as its execution fence (<a href="#sec:pmp">Section 8</a>).</p>
 </li>
 </ul>
 </div>
@@ -713,7 +719,7 @@ and through an LSU→ROM demux for in-place read-only data access.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OTBN</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10900000</code> (IMEM <code>0x10904000</code>, DMEM <code>0x10908000</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Runs the embedded RSA-3072
-modular-exponentiation program for manifest signature verification (<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
+modular-exponentiation program for manifest signature verification (<a href="#sec:secure_boot">Section 15</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HMAC (SHA-256)</p></td>
@@ -724,7 +730,7 @@ manifest hash, payload hashes, measurements; HMAC mode is the PRF for the payloa
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AES</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10910000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AES-256-CBC in-place payload decryption (<a href="#sec:payload">Payload Loading, Decryption and Verification</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES-256-CBC in-place payload decryption (<a href="#sec:payload">Section 17</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA</p></td>
@@ -747,30 +753,30 @@ CHIPLET_PUBK_REVOKE, BL1_VERSION, fuse-key digests, and the LOCKS read-lock regi
 <td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan SPI host</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10B00000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Default boot-flash transport: command/FIFO reads (PIO or
-secure-DMA drain), no XIP (<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>).</p></td>
+secure-DMA drain), no XIP (<a href="#sec:spi">Section 12</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">XIP flash controller</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ctrl in SEP external region <code>0x20000000</code>, XIP window <code>0x30000000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Boot-flash transport option B: memory-mapped XIP reads (<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot-flash transport option B: memory-mapped XIP reads (<a href="#sec:spi">Section 12</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP scratch registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">cold <code>0x10802000</code>, warm <code>0x10802080</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Status reporting channel,
-virtual console, warm-reset re-entry pointer (<a href="#sec:memory_map">Memory Map</a>).</p></td>
+virtual console, warm-reset re-entry pointer (<a href="#sec:memory_map">Section 4</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Outbound AXI filter</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10A20000</code> region</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Egress gate for SEP-mastered AXI transactions;
-opened only for the addresses the ROM must reach (<a href="#sec:cpu_init">CPU Initialization</a>).</p></td>
+opened only for the addresses the ROM must reach (<a href="#sec:cpu_init">Section 6</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timer</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10801000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Not armed by the ROM.</strong> BL1 owns the WDT; the ROM implements
-only the warm-reset re-entry path that a WDT reset triggers (<a href="#sec:warm_reset">Warm-Reset Resume Path</a>).</p></td>
+only the warm-reset re-entry path that a WDT reset triggers (<a href="#sec:warm_reset">Section 7</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">KMAC, key manager mailbox</p></td>
@@ -781,9 +787,9 @@ by BL0.</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The SMC is reached through the SEP outbound window at <code>0x40000000</code> (<a href="#sec:memory_map">Memory Map</a>); the
+<p>The SMC is reached through the SEP outbound window at <code>0x40000000</code> (<a href="#sec:memory_map">Section 4</a>); the
 ROM opens no other outbound window and reports exclusively through <code>cold_scratch</code>
-(<a href="#sec:status">Status and POST Codes</a>).</p>
+(<a href="#sec:status">Section 21</a>).</p>
 </div>
 </div>
 </div>
@@ -794,7 +800,7 @@ ROM opens no other outbound window and reports exclusively through <code>cold_sc
 <div class="sect2">
 <h3 id="sep-address-space"><a class="anchor" href="#sep-address-space"></a><a class="link" href="#sep-address-space">4.1. SEP Address Space</a></h3>
 <div class="paragraph">
-<p><a href="#tbl:memory_map">SEP memory map (boot-relevant regions)</a> lists the regions of the SEP-local address space that participate in the
+<p><a href="#tbl:memory_map">Table 4</a> lists the regions of the SEP-local address space that participate in the
 boot flow. Addresses are as seen by the SEP CPU.</p>
 </div>
 <table id="tbl:memory_map" class="tableblock frame-ends grid-rows stretch">
@@ -819,7 +825,7 @@ boot flow. Addresses are as seen by the SEP CPU.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10000000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Destination for the manifest and payload; BL1 may also
-execute from here when <code>BL1_SRAM_EXEC_ENABLE</code> permits it (<a href="#sec:manifest">OCA Manifest Format and Parsing</a>). Cleared by the ROM
+execute from here when <code>BL1_SRAM_EXEC_ENABLE</code> permits it (<a href="#sec:manifest">Section 13</a>). Cleared by the ROM
 before use ([S15]). The top 8 bytes are reserved: <code>sep_dma_zero()</code> fills from a source word
 the engine re-reads for every beat, and the CPU rewrites that word immediately before each
 fill, so the manifest body, the payload and BL1&#8217;s permitted load span all stop short of it
@@ -851,7 +857,7 @@ the load image (LMA) of <code>.data</code>. Execute/read only.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10802000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[n]</code> at <code>0x10802000 + 8·n</code>; reads 0 after a
-cold reset and <strong>retains</strong> across a warm (WDT) reset. See <a href="#tbl:scratch_regs">SEP scratch register assignments</a>.</p></td>
+cold reset and <strong>retains</strong> across a warm (WDT) reset. See <a href="#tbl:scratch_regs">Table 6</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP warm scratch</p></td>
@@ -860,7 +866,7 @@ cold reset and <strong>retains</strong> across a warm (WDT) reset. See <a href="
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>warm_scratch[n]</code>; <strong>cleared</strong> by a warm (WDT) reset — its
 <code>arst_n</code> is <code>sep_reset_n &amp; wdt_rst_ni</code>. Not usable for state that must survive the reset it
 dispatches from, which is why the warm-handler pointer lives in the cold bank. See
-<a href="#tbl:scratch_regs">SEP scratch register assignments</a>.</p></td>
+<a href="#tbl:scratch_regs">Table 6</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP reset control</p></td>
@@ -898,7 +904,7 @@ program.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP efuse map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse shadow registers; see <a href="#tbl:fuse_fields">SEP efuse map fields touched by BL0</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse shadow registers; see <a href="#tbl:fuse_fields">Table 10</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite mailboxes</p></td>
@@ -938,21 +944,21 @@ boot decisions.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x40000000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP view of the SMC (<code>SEP_SMC_GLOBAL_BASE</code>); the crossbar routes
-<code>[0x4000_0000, 0xC000_0000)</code> outbound. See <a href="#tbl:smc_window">SMC resources accessed by the SEP ROM</a>.</p></td>
+<code>[0x4000_0000, 0xC000_0000)</code> outbound. See <a href="#tbl:smc_window">Table 5</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ICCM</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC0000000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cleared by the ROM ([S16]); the secure BL1 execution
-region, always permitted (<a href="#sec:manifest">OCA Manifest Format and Parsing</a>).</p></td>
+region, always permitted (<a href="#sec:manifest">Section 13</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DCCM</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC0040000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL0 runtime data: <code>.data</code>, <code>.bss</code>, stack, and the <code>bl0_state</code>
-hand-off block at the top (<a href="#sec:handoff">Hand-off to BL1</a>).</p></td>
+hand-off block at the top (<a href="#sec:handoff">Section 19</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PIC</p></td>
@@ -1004,7 +1010,7 @@ SEP↔SMC interface contract (<code>sep_smc_interface.h</code>).</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Captured straps <code>STRAPS_LO</code> / <code>STRAPS_HI</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x40_5800</code> / <code>0x40_5804</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Latched hardware straps
-(<a href="#sec:straps">Primary / Secondary Strap Handling</a>).</p></td>
+(<a href="#sec:straps">Section 11</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CHIP_CONFIG_CHIP_ID</code></p></td>
@@ -1020,7 +1026,7 @@ SEP↔SMC interface contract (<code>sep_smc_interface.h</code>).</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU_CTRL scratch registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10100 + 8·index</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Coordination protocol
-(<a href="#tbl:smc_scratch">SMC scratch registers used in the SEP↔SMC protocol (offset <code>0x10100 + 8·index</code> in the SMC window)</a>).</p></td>
+(<a href="#tbl:smc_scratch">Table 11</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC fuse map: chiplet ID / package ID</p></td>
@@ -1031,7 +1037,7 @@ usage-constraint identity checks ([S23]).</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>DFX_CTRL_STATUS_SMU</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF800</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memory-repair/MBIST completion gate (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory-repair/MBIST completion gate (<a href="#sec:smc_sync">Section 10</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC SRAM</p></td>
@@ -1043,7 +1049,7 @@ recovery and secondary boot.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>CPU_CTRL_RESET_CTRL</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x39020</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Written only on invalid LC state to hold all SMC cores
-in reset (<a href="#sec:fuses">Fuse and System State</a>).</p></td>
+in reset (<a href="#sec:fuses">Section 9</a>).</p></td>
 </tr>
 </tbody>
 </table>
@@ -1079,7 +1085,7 @@ cold boot entry; DV PASS/FAIL codes.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10802008</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">any reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Machine-readable status channel — every
-<code>STATUS_OUT()</code> encoded status word lands here (<a href="#sec:status">Status and POST Codes</a>).</p></td>
+<code>STATUS_OUT()</code> encoded status word lands here (<a href="#sec:status">Section 21</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[2]</code></p></td>
@@ -1094,8 +1100,8 @@ the DV monitor. Debug builds only.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">any reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Warm-reset re-entry pointer: BL1 writes its
 warm handler address here before arming the WDT; the ROM consumes and poisons it
-(<a href="#sec:warm_reset">Warm-Reset Resume Path</a>). The COLD bank, because the value must survive the very reset it
-dispatches from (<a href="#sec:warm_reset">Warm-Reset Resume Path</a>).</p></td>
+(<a href="#sec:warm_reset">Section 7</a>). The COLD bank, because the value must survive the very reset it
+dispatches from (<a href="#sec:warm_reset">Section 7</a>).</p></td>
 </tr>
 </tbody>
 </table>
@@ -1107,7 +1113,7 @@ dispatches from (<a href="#sec:warm_reset">Warm-Reset Resume Path</a>).</p></td>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The boot flow is a strictly ordered sequence of stages, tagged <code>[S01]</code> through <code>[S30]</code> in
-execution order (<a href="#sec:conv_stages">Boot Stage Labels</a>). The implementation carries the same tags, so a stage
+execution order (<a href="#sec:conv_stages">Section 1.3</a>). The implementation carries the same tags, so a stage
 is one cross-reference between specification, code, and DV collateral.</p>
 </div>
 <div class="paragraph">
@@ -1155,191 +1161,191 @@ that follow a validated manifest.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reset entry, warm-reset detection</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hart gate, trap vector, MRAC, warm-reset
 detection <strong>before any DCCM access</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a>, <a href="#sec:warm_reset">Warm-Reset Resume Path</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a>, <a href="#sec:warm_reset">Section 7</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S02]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PMP programming</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Execution fences installed before any C code runs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S03]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT / MEM_REPAIR gate</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Memory-repair and MBIST results checked in <code>vector.S</code>, before
 the DCCM scrub; bypassable by strap</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">SMC Synchronization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">Section 10</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S04]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Runtime init + entry checks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DCCM scrub, <code>.data</code>/<code>.bss</code> init, runtime self-check, SMC
 scratch round-trip sanity</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S05]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ROM identity</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Version string + build-time ROM SHA-256 reported</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S06]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Strap read</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO/HI</code> parsed into boot configuration</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Primary / Secondary Strap Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Section 11</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S07]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Status reporting init</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Status ring buffer in SMC SRAM (strap-gated)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Status and POST Codes</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Section 21</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S08]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fuse-sense readiness</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_sense_done</code> polled to completion; gates every fuse
 read in the flow</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Fuse and System State</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Section 9</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S09]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Clock init</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC-owned PLL from fuses, or 100 MHz refclk (strap-gated)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S10]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>bl0_state</code> init</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hand-off block zeroed; precedes every <code>bl0_state</code> writer</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S11]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle policy</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">LC_STATE read + validated; invalid state bricks the SMU</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Fuse and System State</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Section 9</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Chip ID</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CHIP_CONFIG_CHIP_ID</code> read and reported</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">SMC Synchronization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">Section 10</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S13]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral/bus reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OCAH-specific peripheral reset sequencing</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S14]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Crypto init</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SHA-256 self-test against NIST vector</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S15]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP SRAM clear</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SRAM zeroed before any external content is loaded</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S16]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ICCM clear</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ICCM zeroed for deterministic ECC state</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S17]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Measurement slot 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Verified ROM self-hash enrolled — soft PCR + raw record in
 <code>bl0_state</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S18]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure-boot posture fuses</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DIS</code> chicken bit read into <code>bl0_state</code>; chiplet
 debug lock latched</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Fuse and System State</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Section 9</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S19]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Stack canary write</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Canary placed at <code>__stack_bottom</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S20]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA init</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA engine enabled</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S21]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot mode branch</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI (primary) vs recovery vs secondary; SPI init when applicable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Primary / Secondary Strap Handling</a>, <a href="#sec:spi">SPI Initialization and Manifest Transfer</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Section 11</a>, <a href="#sec:spi">Section 12</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S22]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC scratch coordination</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Manifest-ready hand-shake for recovery and secondary modes</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">SMC Synchronization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">Section 10</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S23]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Manifest load + validate</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Retry loop over primary/backup banks; OCA validation
 including identity and usage constraints; payload load and checks</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a>,
-<a href="#sec:payload">Payload Loading, Decryption and Verification</a>, <a href="#sec:retry">Retry and Backup Bank</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a>,
+<a href="#sec:payload">Section 17</a>, <a href="#sec:retry">Section 20</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S24]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Crypto validation</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure-boot signature chain: revocation, RSA-3072,
 anti-rollback, decrypt</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S25]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Demotion + fuse locks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Demotion registers written/locked; fuse secrets read-locked</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Demotion Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Section 16</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S26]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lock confirmation</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fuse-secret lock state independently re-verified</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S27]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Measurement slot 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot-state record enrolled after demotion — soft PCR + raw record
 in <code>bl0_state</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S28]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Stack canary check</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Canary re-verified, before the hand-off that does not return</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S29]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL1 hand-off</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Pre-hand-off self-check, PMP release, jump to BL1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S30]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Error convergence</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">All failures funnel into <code>rom_err_fail()</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Status and POST Codes</a>,
-<a href="#sec:retry">Retry and Backup Bank</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Section 21</a>,
+<a href="#sec:retry">Section 20</a></p></td>
 </tr>
 </tbody>
 </table>
@@ -1358,7 +1364,7 @@ the first C instruction executes and before any external agent&#8217;s data is t
 <li>
 <p><strong>Retry only what is idempotent.</strong> The manifest/payload load and validation stages
 ([S23] and [S24]) live inside the bank retry loop and have no side effects on
-device state. Failures there move to the backup bank (<a href="#sec:retry">Retry and Backup Bank</a>).</p>
+device state. Failures there move to the backup bank (<a href="#sec:retry">Section 20</a>).</p>
 </li>
 <li>
 <p><strong>One-shot effects after the loop converges.</strong> Stages that mutate device state irreversibly —
@@ -1406,7 +1412,7 @@ rather than a silent hang.</p>
 warm-scratch register is read, so the read is performed with correct memory attributes.</p>
 </li>
 <li>
-<p>The warm-reset check runs next — see <a href="#sec:warm_reset">Warm-Reset Resume Path</a>. It executes <strong>before</strong> the stack is
+<p>The warm-reset check runs next — see <a href="#sec:warm_reset">Section 7</a>. It executes <strong>before</strong> the stack is
 established and before any DCCM write, because on a warm reset DCCM still holds live BL1
 state that must not be disturbed.</p>
 </li>
@@ -1445,12 +1451,12 @@ ROM execution: <code>mie</code> is cleared and <code>mstatus.MIE</code> is clear
 re-enables them.</p>
 </li>
 <li>
-<p>The PMP execution fences are programmed — see <a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a>.</p>
+<p>The PMP execution fences are programmed — see <a href="#sec:pmp">Section 8</a>.</p>
 </li>
 <li>
 <p><strong>MEM_REPAIR / MBIST gate.</strong> The memory-repair and MBIST results are checked here, in
 assembly, before the DCCM scrub below writes 128 KiB into memories whose repair state is
-still unknown ([S03], <a href="#sec:smc_sync">SMC Synchronization</a>).</p>
+still unknown ([S03], <a href="#sec:smc_sync">Section 10</a>).</p>
 </li>
 <li>
 <p><strong>DCCM scrub.</strong> <a id="req-SEP-ROM-CPU-160"></a><strong>[SEP-ROM-CPU-160]</strong> The ROM shall leave DCCM in a
@@ -1496,13 +1502,13 @@ into <code>cold_scratch[0]</code>, and hang in <code>wfi</code>. The ROM shall n
 <div class="paragraph">
 <p><a id="req-SEP-ROM-CPU-080"></a><strong>[SEP-ROM-CPU-080]</strong> The ROM shall not arm the watchdog timer. WDT
 ownership belongs to BL1; the ROM&#8217;s only WDT-related obligation is the warm-reset re-entry
-protocol (<a href="#sec:warm_reset">Warm-Reset Resume Path</a>).</p>
+protocol (<a href="#sec:warm_reset">Section 7</a>).</p>
 </div>
 <div class="paragraph">
 <p>The waits below are unbounded. Each depends on another agent or on analog hardware with no
 deadline the ROM can know, so a part on which one never completes hangs: the accepted failure
 mode for BL0. Each shall report a status immediately before it starts waiting, so a hung part
-is left showing which wait it is in (<a href="#sec:status">Status and POST Codes</a>).</p>
+is left showing which wait it is in (<a href="#sec:status">Section 21</a>).</p>
 </div>
 <table class="tableblock frame-ends grid-rows stretch">
 <colgroup>
@@ -1610,19 +1616,19 @@ outbound path to the SMC responds before the boot flow depends on it. Mismatch i
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S05] ROM identity</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ROM version string and build-time SHA-256 are emitted (see
-<a href="#sec:boot_measurement">Boot Measurement</a>), and the <code>'COLD'</code> marker is written to <code>cold_scratch[0]</code>.</p></td>
+<a href="#sec:boot_measurement">Section 18</a>), and the <code>'COLD'</code> marker is written to <code>cold_scratch[0]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S06] straps</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Latched straps parsed into the boot configuration (<a href="#sec:straps">Primary / Secondary Strap Handling</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Latched straps parsed into the boot configuration (<a href="#sec:straps">Section 11</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S07] status init</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Status ring buffer initialized unless disabled by strap (<a href="#sec:status">Status and POST Codes</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Status ring buffer initialized unless disabled by strap (<a href="#sec:status">Section 21</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S08] fuse sense</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_sense_done</code> polled to completion (<a href="#sec:fuses">Fuse and System State</a>). Unconditional,
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_sense_done</code> polled to completion (<a href="#sec:fuses">Section 9</a>). Unconditional,
 and ahead of every fuse consumer in the flow.</p></td>
 </tr>
 <tr>
@@ -1631,15 +1637,15 @@ and ahead of every fuse consumer in the flow.</p></td>
 reference clock. If set: read the target sysclk frequency from the <code>smu_pll_sysclk</code> fuse
 field (blank fuses fall back to refclk with a warning), poll PLL lock detect, then switch the
 clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock divider
-(<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>). The PLL and the mux are SMC-owned; SEP has none of its own.</p></td>
+(<a href="#sec:spi">Section 12</a>). The PLL and the mux are SMC-owned; SEP has none of its own.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S10] <code>bl0_state</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hand-off block initialized at the top of DCCM (<a href="#sec:handoff">Hand-off to BL1</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Hand-off block initialized at the top of DCCM (<a href="#sec:handoff">Section 19</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S11] lifecycle</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">LC_STATE read + policy (<a href="#sec:fuses">Fuse and System State</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LC_STATE read + policy (<a href="#sec:fuses">Section 9</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S12] chip ID</p></td>
@@ -1667,7 +1673,7 @@ for BL1).</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S17] ROM self-hash</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Embedded hash verified by recompute over the ROM region, then
-enrolled in soft measurement slot 0 (<a href="#sec:boot_measurement">Boot Measurement</a>). Fatal on mismatch (<code>0xF005</code>).
+enrolled in soft measurement slot 0 (<a href="#sec:boot_measurement">Section 18</a>). Fatal on mismatch (<code>0xF005</code>).
 Placed at the earliest point where both of its prerequisites hold: the SHA-256 engine has
 passed its known-answer self-test ([S14]) and <code>bl0_state</code> exists to receive the record
 ([S10]).</p></td>
@@ -1675,11 +1681,11 @@ passed its known-answer self-test ([S14]) and <code>bl0_state</code> exists to r
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S18] SBOOT_DIS, CHIPLET_DBG</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure-boot chicken bit and chiplet debug lock read
-(<a href="#sec:fuses">Fuse and System State</a>).</p></td>
+(<a href="#sec:fuses">Section 9</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S19] canary</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Stack canary written (<a href="#sec:handoff">Hand-off to BL1</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stack canary written (<a href="#sec:handoff">Section 19</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S20] DMA</p></td>
@@ -1749,7 +1755,7 @@ BL1&#8217;s runtime state in DCCM intact.</p>
 </li>
 <li>
 <p>If the value is zero, the boot is a cold boot; the ROM defensively clears
-<code>cold_scratch[7]</code> and proceeds (<a href="#sec:cpu_init">CPU Initialization</a>).</p>
+<code>cold_scratch[7]</code> and proceeds (<a href="#sec:cpu_init">Section 6</a>).</p>
 </li>
 <li>
 <p><a id="req-SEP-ROM-CPU-120"></a><strong>[SEP-ROM-CPU-120]</strong> A non-zero value shall be accepted only if it
@@ -1815,7 +1821,7 @@ execute before validation completes.</p>
 <ol class="arabic">
 <li>
 <p><a id="req-SEP-ROM-PMP-010"></a><strong>[SEP-ROM-PMP-010]</strong> From PMP programming (before the first C
-instruction) until the hand-off release (<a href="#sec:handoff">Hand-off to BL1</a>), instruction fetch shall be
+instruction) until the hand-off release (<a href="#sec:handoff">Section 19</a>), instruction fetch shall be
 possible only from the Boot ROM region (<code>0x1004_0000</code>, 64 KiB). A fetch from any other
 region shall trap (fatal, per SEP-ROM-CPU-070).</p>
 </li>
@@ -1843,7 +1849,7 @@ SEP SRAM and ICCM (<code>RW</code>, for staging). Everything else shall have no 
 <li>
 <p><a id="req-SEP-ROM-PMP-050"></a><strong>[SEP-ROM-PMP-050]</strong> The hand-off release shall be the <strong>last</strong>
 security-relevant action of the ROM: no execute permission beyond ROM may exist until
-every check enumerated in the hand-off self-check (<a href="#sec:handoff">Hand-off to BL1</a>) has passed.</p>
+every check enumerated in the hand-off self-check (<a href="#sec:handoff">Section 19</a>) has passed.</p>
 </li>
 </ol>
 </div>
@@ -1899,7 +1905,7 @@ matching no rule faults. No catch-all entry is used; a window the rule set fails
 shall manifest as a precise trap (fatal per SEP-ROM-CPU-070), never as silent access.</p>
 </li>
 <li>
-<p>The locked rule set implements <a href="#tbl:pmp_regions">Reference PMP region set (as currently programmed)</a> as amended by the fence policy: ROM
+<p>The locked rule set implements <a href="#tbl:pmp_regions">Table 8</a> as amended by the fence policy: ROM
 <code>R-X</code>; DCCM, peripheral block, SMC window, XIP controller registers and XIP
 window <code>RW-</code>; SEP SRAM and ICCM <code>RW-</code> (no execute) until hand-off.</p>
 </li>
@@ -1948,7 +1954,7 @@ no additional protection against that attacker.</p>
 <div class="sect2">
 <h3 id="reference-region-set"><a class="anchor" href="#reference-region-set"></a><a class="link" href="#reference-region-set">8.3. Reference Region Set</a></h3>
 <div class="paragraph">
-<p><a href="#tbl:pmp_regions">Reference PMP region set (as currently programmed)</a> lists the NAPOT region set programmed by the reference implementation
+<p><a href="#tbl:pmp_regions">Table 8</a> lists the NAPOT region set programmed by the reference implementation
 (<code>vector.S</code>, <code>PMP_ENABLE=1</code>). All entries are NAPOT-encoded; <code>pmpaddr</code> values are the
 literal CSR values.</p>
 </div>
@@ -2131,7 +2137,7 @@ fail open.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Development / test. Security optional unless chiplet debug is
-disabled (see <a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
+disabled (see <a href="#sec:secure_boot">Section 15</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>PROD</code></p></td>
@@ -2143,20 +2149,21 @@ disabled (see <a href="#sec:secure_boot">Secure Boot Decision and Signature Veri
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_SiP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2</code>–<code>0x3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Return-material state, system-in-package scope.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Return-material state, system-in-package scope. Security
+optional unless chiplet debug is disabled.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_CHIPLET</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x6</code>–<code>0x7</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Return-material state, chiplet scope.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Return-material state, chiplet scope. Security optional.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>PROD_END</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x8</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">End-of-life production. Secure boot enforced; demotion permanently
-locked out (<a href="#sec:demotion">Demotion Handling</a>).</p></td>
+locked out (<a href="#sec:demotion">Section 16</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">any other</p></td>
@@ -2190,8 +2197,8 @@ status channel.</p>
 <div class="paragraph">
 <p><code>SEP_EFUSE_MAP_SBOOT_DIS</code> (<code>0x1093_0010</code>) bit 0 (<code>disable_secure_boot</code>) is the secure-boot
 chicken bit. It is read once, recorded in <code>bl0_state.sboot_dis</code>, and consumed by the
-secure-boot decision (<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>) and the boot measurement
-(<a href="#sec:boot_measurement">Boot Measurement</a>).</p>
+secure-boot decision (<a href="#sec:secure_boot">Section 15</a>) and the boot measurement
+(<a href="#sec:boot_measurement">Section 18</a>).</p>
 </div>
 <div class="paragraph">
 <p><strong>Only bit 0 carries that meaning.</strong> <code>rsvd[31:1]</code> is <code>hw=rw</code> in the RDL — driven from the fuse
@@ -2213,7 +2220,8 @@ bit means the array is not what the ROM believes it to be; [S18] stops there wit
 <div class="paragraph">
 <p><code>CHIPLET_DBG</code> is bit 1 of the <code>SIP_DIS</code> (<code>0x1093_0018</code>) and <code>SYS_DIS</code> (<code>0x1093_0020</code>)
 disable vectors. Set in either, it closes external debug access to the chiplet and to the SEP,
-and on a <code>TEST_DEV</code> part it makes secure boot enforced (SEP-ROM-SB-025).</p>
+and on a <code>TEST_DEV</code> or <code>RMA_SiP</code> part it makes secure boot enforced (SEP-ROM-SB-025).
+<code>RMA_CHIPLET</code> ignores it.</p>
 </div>
 <div class="paragraph">
 <p>[S18] reads the <code>SIP_DIS_READ_LOCK</code> / <code>SYS_DIS_READ_LOCK</code> bits of <code>LOCKS</code> and, when neither is
@@ -2227,9 +2235,9 @@ bit to 1, and <code>TEST_DEV</code> demotion forces the <code>DBG_1</code> group
 enabled on a part whose fuses disable it.</p>
 </div>
 <div class="paragraph">
-<p>When the lock is what makes a <code>TEST_DEV</code> part enforce secure boot, [S18] reports
-<code>SBOOT_DBG_LOCK</code>. It is not reported in <code>PROD</code> or <code>PROD_END</code>, which enforce regardless, or when
-<code>SBOOT_DIS</code> overrides the lock.</p>
+<p>When the lock is what makes a <code>TEST_DEV</code> or <code>RMA_SiP</code> part enforce secure boot, [S18] reports
+<code>SBOOT_DBG_LOCK</code>. It is not reported in <code>PROD</code> or <code>PROD_END</code>, which enforce regardless, in
+<code>RMA_CHIPLET</code>, which never does, or when <code>SBOOT_DIS</code> overrides the lock.</p>
 </div>
 </div>
 <div class="sect2">
@@ -2256,7 +2264,7 @@ enabled on a part whose fuses disable it.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32 b</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Read-lock control for the six protected fields; SET-only, and
-cleared by reset. Written + verified at [S25]/[S26] (<a href="#sec:handoff">Hand-off to BL1</a>). The <code>SIP_DIS</code> /
+cleared by reset. Written + verified at [S25]/[S26] (<a href="#sec:handoff">Section 19</a>). The <code>SIP_DIS</code> /
 <code>SYS_DIS</code> read-lock bits are read at [S18].</p></td>
 </tr>
 <tr>
@@ -2276,28 +2284,28 @@ cleared by reset. Written + verified at [S25]/[S26] (<a href="#sec:handoff">Hand
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930018</code> / <code>0x10930020</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 b each</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Disable vectors; the ROM
-reads <code>CHIPLET_DBG</code> (bit 1) of each at [S18] (<a href="#sec:fuse_chiplet_dbg">Chiplet Debug Lock ([S18])</a>).</p></td>
+reads <code>CHIPLET_DBG</code> (bit 1) of each at [S18] (<a href="#sec:fuse_chiplet_dbg">Section 9.4</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CLASS_KEY</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930068</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Pre-shared secret for payload-decryption KDF
-(<a href="#sec:payload">Payload Loading, Decryption and Verification</a>). Read-locked before hand-off.</p></td>
+(<a href="#sec:payload">Section 17</a>). Read-locked before hand-off.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CHIPLET_PUBK_REVOKE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10930088</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32 b</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Device-held root-key revocation bits
-(<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
+(<a href="#sec:secure_boot">Section 15</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>BL1_VERSION</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1093008C</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Anti-rollback thermometer for the BL1 manifest security
-version (<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
+version (<a href="#sec:secure_boot">Section 15</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>CHIPLET_PUBK_HASH0</code> / <code>HASH1</code></p></td>
@@ -2305,21 +2313,21 @@ version (<a href="#sec:secure_boot">Secure Boot Decision and Signature Verificat
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b each</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SHA-256 digests of
 the chiplet-creator field-programmable RSA-3072 public keys; select bits 16 / 17
-(<a href="#tbl:key_slots">Root key slots</a>).</p></td>
+(<a href="#tbl:key_slots">Table 17</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIP_PUBK_HASH0</code> / <code>SIP_PUBK_HASH1</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x109300EC</code> / <code>0x10930240</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b each</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SiP-owner key
-digests; select bits 20 / 24 (<a href="#tbl:key_slots">Root key slots</a>).</p></td>
+digests; select bits 20 / 24 (<a href="#tbl:key_slots">Table 17</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SYS_PUBK_HASH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1093012C</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 b</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System-owner key digest; select bit 22
-(<a href="#tbl:key_slots">Root key slots</a>).</p></td>
+(<a href="#tbl:key_slots">Table 17</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SYSCLK_FREQ_MHZ</code></p></td>
@@ -2368,7 +2376,7 @@ Read-locked, never read ([SEP-ROM-HOFF-030]).</p></td>
 <div class="paragraph">
 <p><code>BL2_VERSION</code>, the RMA token digests, and the SiP/system key digests are present in the map
 for later boot stages; BL0 does not consume them but does include them in the fuse-secret
-lock set where applicable (<a href="#sec:handoff">Hand-off to BL1</a>).</p>
+lock set where applicable (<a href="#sec:handoff">Section 19</a>).</p>
 </div>
 </td>
 </tr>
@@ -2510,9 +2518,9 @@ warning recorded.</p>
 <div class="sect2">
 <h3 id="status-ring-buffer"><a class="anchor" href="#status-ring-buffer"></a><a class="link" href="#status-ring-buffer">10.4. Status Ring Buffer</a></h3>
 <div class="paragraph">
-<p>When status reporting is enabled (<a href="#sec:straps">Primary / Secondary Strap Handling</a>), the ROM initializes a produce-only ring
+<p>When status reporting is enabled (<a href="#sec:straps">Section 11</a>), the ROM initializes a produce-only ring
 buffer in SMC SRAM at the offset published in scratch[11] and thereafter mirrors every
-non-debug status code into it (<a href="#sec:status">Status and POST Codes</a>). The SMC consumes the ring and forwards
+non-debug status code into it (<a href="#sec:status">Section 21</a>). The SMC consumes the ring and forwards
 entries to the platform (OCCP). Ring initialization waits for the SMC&#8217;s
 <code>SRAM_INIT</code>/<code>BUFFER_READY</code> indications.</p>
 </div>
@@ -2527,7 +2535,7 @@ still attributable.</p>
 </div>
 <div class="paragraph">
 <p>No boot decision is taken from it. The identity a manifest binds to comes from the SEP eFuse
-chiplet, SiP and system ID fields (<a href="#sec:manifest">OCA Manifest Format and Parsing</a>), which are sensed locally — not from this
+chiplet, SiP and system ID fields (<a href="#sec:manifest">Section 13</a>), which are sensed locally — not from this
 SMC register. Those ID fields are the non-secret per-part identifiers and are not read-locked;
 the read-locks cover the secrets, including the separate UID seeds
 (<a href="#req-SEP-ROM-HOFF-030">SEP-ROM-HOFF-030</a>).</p>
@@ -2553,7 +2561,7 @@ via scratch[13]/[14] against the 1 MiB SMC SRAM window before reading.</p>
 <li>
 <p>The manifest is copied by secure DMA from <code>SMC_SRAM_base + scratch[8]</code> into SEP SRAM and
 from then on follows the same validation path as a SPI-loaded manifest
-(<a href="#sec:manifest">OCA Manifest Format and Parsing</a>).</p>
+(<a href="#sec:manifest">Section 13</a>).</p>
 </li>
 </ol>
 </div>
@@ -2595,7 +2603,7 @@ NOR flash. 0 = secondary: manifest+payload delivered by the SMC (I3C → SMC SRA
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>mem_repair_bypass</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[13]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Permits boot to continue past a memory-repair gate
-failure (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
+failure (<a href="#sec:smc_sync">Section 10</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>status_report_disable</code></p></td>
@@ -2619,7 +2627,7 @@ the 100 MHz reference clock.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rotate_update</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[29]</code> (abs. 61)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 = swap the primary/backup manifest slot order
-for this boot (<a href="#sec:retry">Retry and Backup Bank</a>).</p></td>
+for this boot (<a href="#sec:retry">Section 20</a>).</p></td>
 </tr>
 </tbody>
 </table>
@@ -2651,14 +2659,14 @@ channel:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>BOOT_MODE_SPI</code> (1)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPI NOR flash; SPI controller initialized (<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>); bank
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI NOR flash; SPI controller initialized (<a href="#sec:spi">Section 12</a>); bank
 retry available.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>BOOT_MODE_RECOVERY</code> (2)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Manifest from SMC SRAM (<a href="#sec:smc_sync">SMC Synchronization</a>); single attempt,
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manifest from SMC SRAM (<a href="#sec:smc_sync">Section 10</a>); single attempt,
 no bank retry.</p></td>
 </tr>
 <tr>
@@ -2696,7 +2704,7 @@ SEP SRAM under the same bounds checks as the SPI path, but there is no transport
 <p><a id="req-SEP-ROM-STRAP-020"></a><strong>[SEP-ROM-STRAP-020]</strong> SPI controller initialization failure in
 <code>BOOT_MODE_SPI</code> shall not be immediately fatal: the failure is recorded and the manifest
 retry loop skips the primary slot attempt (falling through to the backup-slot logic, which
-re-initializes the transport, <a href="#sec:retry">Retry and Backup Bank</a>). Boot fails only when no slot yields a valid
+re-initializes the transport, <a href="#sec:retry">Section 20</a>). Boot fails only when no slot yields a valid
 manifest+payload.</p>
 </div>
 </div>
@@ -2761,7 +2769,7 @@ field (payload TOC + images).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x41000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Backup manifest</strong> (4096 B)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>BACKUP_MANIFEST_OFFSET</code> — a complete, independent
-manifest+payload pair (<a href="#sec:retry">Retry and Backup Bank</a>).</p></td>
+manifest+payload pair (<a href="#sec:retry">Section 20</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x41000</code> + <code>payload_offset</code></p></td>
@@ -2783,7 +2791,7 @@ in that window, so a slot cannot name the other slot&#8217;s payload (<code>OCA_
 <div class="paragraph">
 <p>The OCA combined-image configs place the backup manifest at <code>0x41000</code>, matching the offsets
 above, and backup-slot rotation is exercised in simulation. The offsets in
-<a href="#tbl:flash_layout">Boot flash layout</a> remain normative for any producer.</p>
+<a href="#tbl:flash_layout">Table 14</a> remain normative for any producer.</p>
 </div>
 </div>
 <div class="sect2">
@@ -2799,7 +2807,7 @@ shall default to <strong>reject</strong> if the two evaluations disagree (fault-
 <div class="paragraph">
 <p><a id="req-SEP-ROM-SPI-030"></a><strong>[SEP-ROM-SPI-030]</strong> A transport-level read fault shall be retried a
 bounded number of times (OpenTitan driver: 3) before being reported to the loader; a read
-that still fails is handled by slot fallback (<a href="#sec:retry">Retry and Backup Bank</a>), never by accepting partial
+that still fails is handled by slot fallback (<a href="#sec:retry">Section 20</a>), never by accepting partial
 data.</p>
 </div>
 </div>
@@ -2917,7 +2925,7 @@ consuming any manifest field.</p>
 <div class="sect2">
 <h3 id="rom-relevant-field-layout"><a class="anchor" href="#rom-relevant-field-layout"></a><a class="link" href="#rom-relevant-field-layout">13.2. ROM-Relevant Field Layout</a></h3>
 <div class="paragraph">
-<p><a href="#tbl:manifest_fields">OCA CLASSIC manifest — fields consumed by the SEP ROM</a> lists the fields the ROM consumes. Authoritative source:
+<p><a href="#tbl:manifest_fields">Table 15</a> lists the fields the ROM consumes. Authoritative source:
 <code>oca_layout_classic.h</code> / <code>oca_layout.h</code> (<code>tt-oca-manifest</code>); reserved fields not listed here
 must be zero and are covered by the reserved-bits check.</p>
 </div>
@@ -2982,7 +2990,7 @@ fuses (unselected bytes = <code>0xA5</code>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 ea</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lifecycle_*_states</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Allowed-lifecycle bitmasks (bit positions per
-<a href="#tbl:lc_states">Lifecycle states</a>).</p></td>
+<a href="#tbl:lc_states">Table 9</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">148–164</p></td>
@@ -2994,14 +3002,14 @@ fuses (unselected bytes = <code>0xA5</code>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">172</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>demotion_control</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Demotion directive pairs (<a href="#sec:demotion">Demotion Handling</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Demotion directive pairs (<a href="#sec:demotion">Section 16</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">182</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_boot_control</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bit 0 <code>secure_boot_enforced</code>, bit 1 <code>secure_boot_classic</code>
-(<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
+(<a href="#sec:secure_boot">Section 15</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">191</p></td>
@@ -3024,7 +3032,7 @@ but not honored — verifier entries are deferred. Bits 15:6 reserved and ignore
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>encryption_key_derivation_function</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001</code> = SP 800-108 CTR / HMAC-SHA-256
-(provisional, <a href="#sec:payload">Payload Loading, Decryption and Verification</a>).</p></td>
+(provisional, <a href="#sec:payload">Section 17</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">205</p></td>
@@ -3043,14 +3051,14 @@ but not honored — verifier entries are deferred. Bits 15:6 reserved and ignore
 <td class="tableblock halign-left valign-top"><p class="tableblock">275</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>encryption_kdf_input</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Full 64-byte field is the KDF context (<a href="#sec:payload">Payload Loading, Decryption and Verification</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Full 64-byte field is the KDF context (<a href="#sec:payload">Section 17</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2042</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>manifest_security_version</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 independent anti-rollback posture flags
-(superset rule; <a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
+(superset rule; <a href="#sec:secure_boot">Section 15</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2058</p></td>
@@ -3089,7 +3097,7 @@ ROM accepts); <code>0x05</code> ECDSA-P256 defined but rejected.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>public_key_select_classic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128-bit key-authorization bitmap
-(<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
+(<a href="#sec:secure_boot">Section 15</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2120</p></td>
@@ -3115,7 +3123,7 @@ right-zero-padded.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>public_key_classic_revoke</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Manifest root-key revocation bitmap
-(<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p></td>
+(<a href="#sec:secure_boot">Section 15</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2775</p></td>
@@ -3129,7 +3137,7 @@ encrypted. Checked <strong>before</strong> decryption.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>payload_hash_chain</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Chained SHA-256 over the <strong>plaintext</strong> TOC and images
-(<a href="#sec:payload">Payload Loading, Decryption and Verification</a>).</p></td>
+(<a href="#sec:payload">Section 17</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2911</p></td>
@@ -3191,7 +3199,7 @@ right-zero-padded.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>unauthenticated_flags</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Unsigned-tail flags; bit 0 = secure-boot escalation
-(<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>). All other bits reserved (0).</p></td>
+(<a href="#sec:secure_boot">Section 15</a>). All other bits reserved (0).</p></td>
 </tr>
 </tbody>
 </table>
@@ -3205,7 +3213,7 @@ supplying its hardware bindings through the <code>oca_callbacks_t</code> table (
 block, RSA-3072 via OTBN, payload decryption via KDF+AES, identity/lifecycle/version reads
 from fuses, device revocation and security-version state from the efuse map). The library
 holds no static state and performs no device mutation; state commit is a separate explicit
-call (<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>).</p>
+call (<a href="#sec:secure_boot">Section 15</a>).</p>
 </div>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-MAN-030"></a><strong>[SEP-ROM-MAN-030]</strong> Checks shall run in the canonical order (the
@@ -3219,7 +3227,7 @@ call (<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification
 </div>
 <div class="paragraph">
 <p>The corresponding <code>oca_result_t</code> failure codes and their mapping onto ROM status codes are
-tabulated in <a href="#sec:security_inventory">Security-Check Inventory</a>.</p>
+tabulated in <a href="#sec:security_inventory">Appendix B</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3235,12 +3243,12 @@ overflow-checked.</p>
 <p><strong>Usage constraints:</strong> <code>selector_bits</code> enables per-word identity comparisons against the SMC
 fuse map (chiplet/package ID) and lifecycle/version-range windows. The device&#8217;s LC state
 must map to a set bit in the applicable <code>lifecycle_*_states</code> mask (mapping per
-<a href="#tbl:lc_states">Lifecycle states</a>). <a id="req-SEP-ROM-MAN-040"></a><strong>[SEP-ROM-MAN-040]</strong> A selected constraint whose
+<a href="#tbl:lc_states">Table 9</a>). <a id="req-SEP-ROM-MAN-040"></a><strong>[SEP-ROM-MAN-040]</strong> A selected constraint whose
 device-side value cannot be read shall fail the check — "unavailable" is a failure, never a
 silent pass.</p>
 </li>
 <li>
-<p><strong>Payload TOC:</strong> structural validation per <a href="#sec:payload">Payload Loading, Decryption and Verification</a>.</p>
+<p><strong>Payload TOC:</strong> structural validation per <a href="#sec:payload">Section 17</a>.</p>
 </li>
 </ul>
 </div>
@@ -3349,7 +3357,7 @@ ROM&#8217;s.</p>
 <p><a id="req-SEP-ROM-ENT-010"></a><strong>[SEP-ROM-ENT-010]</strong> The ROM shall bring up the entropy chain before
 the first operation that consumes entropy. Bring-up is <strong>lazy and idempotent</strong>: it is invoked
 from the signature-verification and payload-decryption callbacks
-(<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>, <a href="#sec:payload">Payload Loading, Decryption and Verification</a>), performs the sequence once, and returns the recorded
+(<a href="#sec:secure_boot">Section 15</a>, <a href="#sec:payload">Section 17</a>), performs the sequence once, and returns the recorded
 outcome on every later call. A boot that reaches neither callback — an unsigned,
 unencrypted boot — shall not pay for it.</p>
 </div>
@@ -3457,8 +3465,8 @@ commercial IP that is not part of this design.</p>
 <td class="content">
 Simulation still forces the ESRC <strong>noise</strong> source (<code>+esrc_noise_force</code>), because ring
 oscillators do not self-oscillate in simulation. Everything above that — the health tests,
-CSRNG, EDN, and the command handshakes — is exercised for real. This is a much weaker
-shortcut than the whole-chain EDN grant it replaces.
+CSRNG, EDN, and the command handshakes — is exercised for real. The physical
+ring-oscillator noise source itself remains outside this simulation coverage.
 </td>
 </tr>
 </table>
@@ -3486,9 +3494,9 @@ gating, the boot measurement, and the hand-off self-check.</p>
 enforced. No manifest content shall be able to disable it.</p>
 </li>
 <li>
-<p><a id="req-SEP-ROM-SB-020"></a><strong>[SEP-ROM-SB-020]</strong> In <code>TEST_DEV</code> with chiplet debug enabled, and in
-the RMA states, secure boot shall be enabled when <strong>either</strong> trigger is set, and disabled
-otherwise:</p>
+<p><a id="req-SEP-ROM-SB-020"></a><strong>[SEP-ROM-SB-020]</strong> In <code>TEST_DEV</code> and <code>RMA_SiP</code> with chiplet debug
+enabled, and in <code>RMA_CHIPLET</code> whatever the debug lock, secure boot shall be enabled when
+<strong>either</strong> trigger is set, and disabled otherwise:</p>
 <div class="ulist">
 <ul>
 <li>
@@ -3504,14 +3512,17 @@ it.</p>
 </div>
 </li>
 <li>
-<p><a id="req-SEP-ROM-SB-025"></a><strong>[SEP-ROM-SB-025]</strong> In <code>TEST_DEV</code>, secure boot shall be enforced when
-chiplet-scope debug is disabled: <code>CHIPLET_DBG</code> set in <code>SIP_DIS</code> or <code>SYS_DIS</code>, or either
-vector read-locked. No manifest content shall be able to disable it.</p>
+<p><a id="req-SEP-ROM-SB-025"></a><strong>[SEP-ROM-SB-025]</strong> In <code>TEST_DEV</code> and <code>RMA_SiP</code>, secure boot shall be
+enforced when chiplet-scope debug is disabled: <code>CHIPLET_DBG</code> set in <code>SIP_DIS</code> or <code>SYS_DIS</code>,
+or either vector read-locked. No manifest content shall be able to disable it. The lock
+does not apply in <code>RMA_CHIPLET</code>.</p>
 <div class="paragraph">
 <p>A locked debug posture is only a guarantee if unsigned code cannot be loaded in its place, so
-a debug-locked <code>TEST_DEV</code> part is treated as <code>PROD</code> is. The ROM reads the raw fuse shadows once
-at [S18] (<a href="#sec:fuse_chiplet_dbg">Chiplet Debug Lock ([S18])</a>). The RMA states are unaffected: <code>RMA_CHIPLET</code> ignores both
-vectors and <code>RMA_SiP</code> ignores <code>SYS_DIS</code>, and both stay manifest-optional.</p>
+a debug-locked <code>TEST_DEV</code> or <code>RMA_SiP</code> part is treated as <code>PROD</code> is. The ROM reads the raw fuse
+shadows once at [S18] (<a href="#sec:fuse_chiplet_dbg">Section 9.4</a>). <code>RMA_SiP</code> does not apply <code>SYS_DIS</code> to
+feature control, but the fuse is unchanged, so a lock burned before RMA entry still keeps the
+part on the verified path. <code>RMA_CHIPLET</code> applies neither vector to feature control, and the
+ROM does not apply the lock there either.</p>
 </div>
 </li>
 <li>
@@ -3572,56 +3583,56 @@ keeps the decision and the attestation of that decision the same fact.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV (debug locked)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV or RMA_SiP (debug locked)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>enforced</strong></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV (debug locked)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV or RMA_SiP (debug locked)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (manifest outranks the fuse)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV (debug locked)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV or RMA_SiP (debug locked)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">off (chicken bit)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (manifest-declared)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (forced by escalation flag)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">off</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (manifest outranks the fuse)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
@@ -3641,19 +3652,29 @@ read-locked (SEP-ROM-SB-025).</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p><strong>Ratified (2026-07-23):</strong> the RMA states are treated like <code>TEST_DEV</code> — secure boot is
-manifest-optional in both <code>RMA_SiP</code> and <code>RMA_CHIPLET</code>, supporting manufacturing-return
-failure-analysis flows. Protection of RMA entry rests on the fused RMA token digests and the
-authenticated lifecycle transition, not on image signing; a platform can still force
-verification of any individual image via the escalation flag (SEP-ROM-SB-020/-030).</p>
+<p><strong>Ratified (2026-07-23, amended 2026-10-01):</strong> secure boot is manifest-optional in both RMA
+states, supporting manufacturing-return failure-analysis flows, with one exception: an
+<code>RMA_SiP</code> part whose chiplet debug is locked enforces it, as a locked <code>TEST_DEV</code> part does
+(SEP-ROM-SB-025). <code>RMA_CHIPLET</code> stays manifest-optional whatever the debug lock. Protection of
+RMA entry rests on the fused RMA token digests and the authenticated lifecycle transition, not
+on image signing; a platform can still force verification of any individual image via the
+escalation flag (SEP-ROM-SB-020/-030), or of every <code>RMA_SiP</code> image by burning <code>CHIPLET_DBG</code>
+before RMA entry.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
+<div class="paragraph">
+<p><a href="#fig:secure_boot_decision">Figure 11</a> is the whole decision as the ROM implements it: the lifecycle
+and fuse reads latched once per boot at [S11] and [S18], then the precedence applied to each
+manifest slot. The first input that settles the question decides it. Outside <code>PROD</code> /
+<code>PROD_END</code>, secure boot is left off by <code>SBOOT_DIS</code>, by <code>RMA_CHIPLET</code>, or by an open debug
+posture in <code>TEST_DEV</code> / <code>RMA_SiP</code>.</p>
+</div>
 <div id="fig:secure_boot_decision" class="imageblock kroki">
 <div class="content">
-<img src="_images/secure-boot-decision-3cb59b19ecae159da1e0672494215f70c31f1ab4.svg" alt="Secure-boot decision">
+<img src="_images/secure-boot-decision-c3515eedfa75ee10123b66894072b7ca5fdaf9cd.svg" alt="Secure-boot decision">
 </div>
 <div class="title">Figure 11. Secure-boot decision</div>
 </div>
@@ -3696,7 +3717,7 @@ there is no dev/prod distinction in how the ROM resolves them. The table is gene
 build time, always as SHA-256 over the <strong>public</strong> modulus; the build type selects only which
 file form that modulus is read out of — the private test keys in <code>tests/signing_keys/</code> for
 a debug build, public keys from a directory that ships empty for a release build
-(<a href="#sec:impl_matrix">Implementation-Status Matrix</a>).</p></td>
+(<a href="#sec:impl_matrix">Appendix C</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em>reserved</em></p></td>
@@ -3924,10 +3945,10 @@ shall additionally reject a result bit-identical to the signature it supplied, s
 <div class="paragraph">
 <p><strong>IMPLEMENTATION GAP</strong> — the secure-boot decision does not yet implement the unauthenticated
 escalation flag: <code>unauthenticated_flags</code> bit 0 is read by neither the ROM nor the validation
-library (tracked in <a href="#sec:impl_matrix">Implementation-Status Matrix</a>). Every other element of this section — the OCA
+library (tracked in <a href="#sec:impl_matrix">Appendix C</a>). Every other element of this section — the OCA
 128-bit select bitmap, <code>public_key_classic_revoke</code>, the flag-superset anti-rollback check
 before and after signature verification, and the OTP hash-bank addresses of
-<a href="#tbl:key_slots">Root key slots</a> — is implemented as specified.</p>
+<a href="#tbl:key_slots">Table 17</a> — is implemented as specified.</p>
 </div>
 </td>
 </tr>
@@ -3999,7 +4020,7 @@ decision.</p></td>
 <div class="sect2">
 <h3 id="rom-behavior-s25"><a class="anchor" href="#rom-behavior-s25"></a><a class="link" href="#rom-behavior-s25">16.2. ROM Behavior ([S25])</a></h3>
 <div class="paragraph">
-<p>Demotion is a one-shot, post-validation action (ordering invariant 3, <a href="#sec:overview">Boot Flow Overview</a>): it
+<p>Demotion is a one-shot, post-validation action (ordering invariant 3, <a href="#sec:overview">Section 5</a>): it
 executes exactly once, only after the manifest has fully validated, and is never retried.</p>
 </div>
 <div class="olist arabic">
@@ -4038,7 +4059,7 @@ unlock in SEP-ROM-DEM-030, so the recorded decision cannot contradict the regist
 </li>
 <li>
 <p><a id="req-SEP-ROM-DEM-050"></a><strong>[SEP-ROM-DEM-050]</strong> The applied demotion state shall be an input
-to the boot measurement (<a href="#sec:boot_measurement">Boot Measurement</a>), so a demoted boot is
+to the boot measurement (<a href="#sec:boot_measurement">Section 18</a>), so a demoted boot is
 distinguishable in the measurement chain.</p>
 </li>
 </ol>
@@ -4318,7 +4339,7 @@ rejected (the <code>secure-boot invariant</code> check).</p>
 </div>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-PL-060"></a><strong>[SEP-ROM-PL-060]</strong> Hash comparisons shall be constant-time, and any
-decryption or hash failure fails the slot attempt (retry per <a href="#sec:retry">Retry and Backup Bank</a>); decryption
+decryption or hash failure fails the slot attempt (retry per <a href="#sec:retry">Section 20</a>); decryption
 failures shall not be silently retried against the same bytes.</p>
 </div>
 <div class="paragraph">
@@ -4326,7 +4347,7 @@ failures shall not be silently retried against the same bytes.</p>
 spec deliberately permits arbitrary values there, for in-place flash updates); in the
 <strong>staged SRAM copy</strong> the ROM <strong>should</strong> zero them after validation so no unmeasured bytes
 survive into the BL1 environment (legacy-ROM precedent; not yet implemented —
-<a href="#sec:impl_matrix">Implementation-Status Matrix</a>).</p>
+<a href="#sec:impl_matrix">Appendix C</a>).</p>
 </div>
 </div>
 <div class="sect2">
@@ -4352,7 +4373,7 @@ survive into the BL1 environment (legacy-ROM precedent; not yet implemented —
 <p><a id="req-SEP-ROM-PL-080"></a><strong>[SEP-ROM-PL-080]</strong> All key material (class key, derived key, KDF
 inputs) shall be zeroized (<code>explicit_memzero</code>) on every exit path from the decryption
 stage, success or failure. The <code>CLASS_KEY</code> shadow register is read-locked before hand-off
-(<a href="#sec:handoff">Hand-off to BL1</a>).</p>
+(<a href="#sec:handoff">Section 19</a>).</p>
 </li>
 </ul>
 </div>
@@ -4370,7 +4391,7 @@ SP 800-108r1 counter-mode KBKDF with HMAC-SHA-256 as the PRF: key = <code>CLASS_
 <code>info = encryption_kdf_input[0:16]</code>, <code>salt = encryption_kdf_input[16:32]</code>
 (<code>encryption_key_derivation_function = 0x0001</code>). The ratified output length is 32 bytes
 (the AES-256 key); the current implementation still derives 16 bytes for its AES-128 path
-(<a href="#sec:impl_matrix">Implementation-Status Matrix</a>). Treat every detail of this construction — including whether
+(<a href="#sec:impl_matrix">Appendix C</a>). Treat every detail of this construction — including whether
 additional device context (e.g. UID) is mixed in — as replaceable; verification collateral
 shall parameterize the KDF rather than hard-code it.</p>
 </div>
@@ -4608,7 +4629,7 @@ register and confirm every lock bit is set ([S26]). Failure to confirm is fatal
 secret seed the Key Manager derives keys from, so a UID that leaks compromises every key
 derived from it. A UID is <strong>not</strong> an identifier — the non-secret per-part identifiers are the
 ID fuses (<code>CHIPLET_ID</code>, <code>SIP_ID</code>, <code>SYSTEM_ID</code>), which a manifest binds to
-(<a href="#sec:manifest">OCA Manifest Format and Parsing</a>) and which are not read-locked. All six locked fields declare the same
+(<a href="#sec:manifest">Section 13</a>) and which are not read-locked. All six locked fields declare the same
 <code>sw=rw, onwrite=woset, hw=r</code> properties in <code>sep_efuse_map.rdl</code>, so one SET-only write latches
 them together.</p>
 </div>
@@ -4694,12 +4715,12 @@ false accept.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>boot_mode</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">u32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BOOT_MODE_SPI</code> / <code>RECOVERY</code> / <code>SECONDARY</code> (<a href="#tbl:boot_modes">Boot-mode selection</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BOOT_MODE_SPI</code> / <code>RECOVERY</code> / <code>SECONDARY</code> (<a href="#tbl:boot_modes">Table 13</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_boot</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bool</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The secure-boot decision (<a href="#tbl:sb_truth">Secure-boot decision truth table</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The secure-boot decision (<a href="#tbl:sb_truth">Table 16</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sboot_dis</code></p></td>
@@ -4725,7 +4746,7 @@ false accept.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>soft_pcr[2][32]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">u8[2][32]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Soft measurement bank: slot 0 = ROM identity, slot 1 =
-boot state (<a href="#sec:boot_measurement">Boot Measurement</a>). Legacy once the PCRV exists.</p></td>
+boot state (<a href="#sec:boot_measurement">Section 18</a>). Legacy once the PCRV exists.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_hash[32]</code></p></td>
@@ -4735,12 +4756,12 @@ boot state (<a href="#sec:boot_measurement">Boot Measurement</a>). Legacy once t
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>meas_boot_record</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">40 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Raw boot-state record for slot 1 (<a href="#tbl:measurement_input">Boot-state record (<code>struct boot_state_record</code>, packed, little-endian, 40 B)</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Raw boot-state record for slot 1 (<a href="#tbl:measurement_input">Table 22</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>bl2_demotion_decision</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">bool</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Recorded BL2 demotion pair (<a href="#sec:demotion">Demotion Handling</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Recorded BL2 demotion pair (<a href="#sec:demotion">Section 16</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>size</code>, <code>end_magic</code></p></td>
@@ -4758,7 +4779,7 @@ integrity-checks the block via these.</p></td>
 <li>
 <p><a id="req-SEP-ROM-HOFF-060"></a><strong>[SEP-ROM-HOFF-060]</strong> Only after the self-check passes shall the
 ROM release the PMP execution fence for the region BL1 was loaded into — a single rewrite of the
-locked BL1-region rule under <code>mseccfg.RLB=1</code> (SEP-ROM-PMP-080, <a href="#sec:pmp_mechanism">Fence Binding and Release Mechanism (Smepmp)</a>).
+locked BL1-region rule under <code>mseccfg.RLB=1</code> (SEP-ROM-PMP-080, <a href="#sec:pmp_mechanism">Section 8.2</a>).
 The release shall be the last write before the jump sequence.</p>
 </li>
 <li>
@@ -4769,7 +4790,7 @@ and control transfers to <code>load_addr + entry_point</code> (SEP-ROM-MAN-050/-
 <p><a id="req-SEP-ROM-HOFF-070"></a><strong>[SEP-ROM-HOFF-070]</strong> The jump shall order memory correctly for
 freshly written code: <code>mepc ← entry</code>, <code>fence.i</code> (IFU sees the new SRAM contents),
 <code>fence</code> (stores complete), then <code>mret</code>. The ROM never expects control back; the only
-re-entry paths are cold reset and the warm-reset protocol (<a href="#sec:warm_reset">Warm-Reset Resume Path</a>).</p>
+re-entry paths are cold reset and the warm-reset protocol (<a href="#sec:warm_reset">Section 7</a>).</p>
 </li>
 </ol>
 </div>
@@ -4801,7 +4822,7 @@ now closed — the re-check runs inside <code>rom_manifest_validate_handoff()</c
 before <code>rom_handoff_bl1()</code>, which satisfies SEP-ROM-HOFF-010.</p>
 </li>
 <li>
-<p>The PMP release step (SEP-ROM-HOFF-060) is not implemented (see <a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a>).</p>
+<p>The PMP release step (SEP-ROM-HOFF-060) is not implemented (see <a href="#sec:pmp">Section 8</a>).</p>
 </li>
 </ul>
 </div>
@@ -4816,7 +4837,7 @@ before <code>rom_handoff_bl1()</code>, which satisfies SEP-ROM-HOFF-010.</p>
 <h2 id="sec:retry"><a class="anchor" href="#sec:retry"></a><a class="link" href="#sec:retry">20. Retry and Backup Bank</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Boot flash carries two complete, independent manifest+payload pairs (<a href="#tbl:flash_layout">Boot flash layout</a>).
+<p>Boot flash carries two complete, independent manifest+payload pairs (<a href="#tbl:flash_layout">Table 14</a>).
 If anything in the load/validation chain fails against one slot, the ROM retries the entire
 chain against the other before declaring the boot failed.</p>
 </div>
@@ -4860,7 +4881,7 @@ backup configuration TLV; OpenTitan: controller re-bring-up).</p>
 </div>
 <div class="paragraph">
 <p>The one-shot, state-mutating stages (demotion, fuse locks, measurement, hand-off) sit
-strictly <strong>after</strong> the retry loop (ordering invariant 3, <a href="#sec:overview">Boot Flow Overview</a>): a slot failure can
+strictly <strong>after</strong> the retry loop (ordering invariant 3, <a href="#sec:overview">Section 5</a>): a slot failure can
 never leave a half-applied device-state change behind.</p>
 </div>
 <div id="fig:retry_backup_sm" class="imageblock kroki">
@@ -4878,7 +4899,7 @@ a single failure routine (<code>rom_err_fail</code>) that (a) records the error 
 <code>bl0_state.error_code</code>, (b) writes the encoded <code>ERROR</code> status to <code>cold_scratch[1]</code>,
 (c) writes the FAIL verdict (<code>0xDEADBEEF</code>) to <code>cold_scratch[0]</code>, and (d) parks in <code>wfi</code>. The
 ROM never silently resets or falls through on failure; recovery from a fully failed boot is
-the platform&#8217;s job (recovery strap, <a href="#sec:straps">Primary / Secondary Strap Handling</a>).</p>
+the platform&#8217;s job (recovery strap, <a href="#sec:straps">Section 11</a>).</p>
 </div>
 <div class="paragraph">
 <p>The whole per-slot sequence runs inside the retry loop: <code>try_manifest_slot()</code> performs the
@@ -4985,7 +5006,7 @@ the last value identifies the current/failing stage.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Status ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC SRAM (offset from scratch[11])</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Every non-<code>DEBUG</code> status, consumed by the
-SMC and forwarded to the platform (OCCP). Strap- and hand-shake-gated (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
+SMC and forwarded to the platform (OCCP). Strap- and hand-shake-gated (<a href="#sec:smc_sync">Section 10</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Progress scratch</p></td>
@@ -5674,7 +5695,7 @@ anywhere, including here.</p>
 ROM core&#8217;s own codes, listed in <code>include/errors.h</code>, keep the upper half zero, so
 <code>rom_err_fail()</code> also posts them to <code>cold_scratch[1]</code> as an ERROR status; the nibble at
 <code>[15:12]</code> names the area. A subsystem&#8217;s codes carry its tag in the upper half instead&#8201;&#8212;&#8201;<code>0x0002xxxx</code> for the DMA driver, <code>0x0003xxxx</code> for the manifest module
-(<a href="#tbl:oca_boot_err">Manifest-module <code>OCA_BOOT_ERR_*</code> codes</a>)&#8201;&#8212;&#8201;and reach only <code>bl0_state.error_code</code>, since every such path has
+(<a href="#tbl:oca_boot_err">Table 28</a>)&#8201;&#8212;&#8201;and reach only <code>bl0_state.error_code</code>, since every such path has
 already reported its own status.</p>
 </div>
 <table id="tbl:rom_err" class="tableblock frame-ends grid-rows" style="width: 90%;">
@@ -5695,18 +5716,18 @@ already reported its own status.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_SMC_SANITY_FAILED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xA001</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC scratch round-trip mismatch (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC scratch round-trip mismatch (<a href="#sec:smc_sync">Section 10</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_LIFECYCLE_INVALID</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xA002</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Invalid LC state (<a href="#sec:fuses">Fuse and System State</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Invalid LC state (<a href="#sec:fuses">Section 9</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_RUNTIME_INIT_FAILED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xB001</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>.data</code>/<code>.bss</code> init self-check failed
-(<a href="#sec:cpu_init">CPU Initialization</a>).</p></td>
+(<a href="#sec:cpu_init">Section 6</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_SMC_COORD_NOT_READY</code></p></td>
@@ -5717,7 +5738,7 @@ already reported its own status.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_DFT_GATE_BLOCKED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xD001</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Memory-repair gate failed, no bypass
-(<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
+(<a href="#sec:smc_sync">Section 10</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_SPI_INIT_FAILED</code></p></td>
@@ -5728,19 +5749,19 @@ itself, SEP-ROM-STRAP-020).</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_STACK_OVERFLOW</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF001</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Stack canary corrupted (<a href="#sec:handoff">Hand-off to BL1</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stack canary corrupted (<a href="#sec:handoff">Section 19</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_CRYPTO_SELFTEST_FAILED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF002</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SHA-256 known-answer test failed
-(<a href="#sec:cpu_init">CPU Initialization</a>).</p></td>
+(<a href="#sec:cpu_init">Section 6</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_FUSE_SECRETS_NOT_LOCKED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF003</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fuse-secret lock verification failed
-(<a href="#sec:handoff">Hand-off to BL1</a>).</p></td>
+(<a href="#sec:handoff">Section 19</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_HANDOFF_SELFCHECK_FAILED</code></p></td>
@@ -5752,26 +5773,26 @@ does not implement.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_ROM_HASH_MISMATCH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF005</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ROM self-hash recompute mismatch (or unparsable
-embedded hash) (<a href="#sec:boot_measurement">Boot Measurement</a>).</p></td>
+embedded hash) (<a href="#sec:boot_measurement">Section 18</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_MEASUREMENT_FAILED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF006</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Measurement enrollment failed (hash engine)
-(<a href="#sec:boot_measurement">Boot Measurement</a>).</p></td>
+(<a href="#sec:boot_measurement">Section 18</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_BL0_STATE_OVERLAPS_STACK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF007</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>BL0_STATE_ADDR</code> sits below <code><em>stack_top</code>,
 i.e. <code></em>bl0_state_reserve</code> in <code>link/rom.ld</code> and <code>BL0_STATE_RESERVE_BYTES</code> in
-<code>include/bl0_state.h</code> have drifted apart (<a href="#sec:handoff">Hand-off to BL1</a>).</p></td>
+<code>include/bl0_state.h</code> have drifted apart (<a href="#sec:handoff">Section 19</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_SBOOT_DIS_RSVD_SET</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF008</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DIS.rsvd[31:1]</code> read non-zero: a fuse-integrity
-fault (<a href="#sec:fuses">Fuse and System State</a>).</p></td>
+fault (<a href="#sec:fuses">Section 9</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_ENTROPY_INIT_FAILED</code></p></td>
@@ -5853,7 +5874,7 @@ build only); its <code>SPI_OT_*</code> code is reported as the status.</p></td>
 </table>
 <div class="paragraph">
 <p>Manifest-path failures use the <code>MANIFEST_ERR_*</code> namespace and map from <code>oca_result_t</code>; the
-authoritative mapping is <a href="#sec:security_inventory">Security-Check Inventory</a>.</p>
+authoritative mapping is <a href="#sec:security_inventory">Appendix B</a>.</p>
 </div>
 </div>
 </div>
@@ -5862,9 +5883,9 @@ authoritative mapping is <a href="#sec:security_inventory">Security-Check Invent
 <h2 id="sec:stage_trace"><a class="anchor" href="#sec:stage_trace"></a><a class="link" href="#sec:stage_trace">Appendix A: Boot-Stage to Status-Code Traceability</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#tbl:stage_trace">Boot stage → status code traceability</a> maps every boot stage to the status codes it emits, in emission order —
+<p><a href="#tbl:stage_trace">Table 29</a> maps every boot stage to the status codes it emits, in emission order —
 the DV entry point for stage-by-stage checkers. Code <strong>names</strong> are authoritative here; their
-numeric values come only from the generated registry (<a href="#tbl:sep_msg_codes">SEP_MSG_* status codes (156 defined)</a>). <code>→</code> <code>INFO_EXT</code>
+numeric values come only from the generated registry (<a href="#tbl:sep_msg_codes">Table 26</a>). <code>→</code> <code>INFO_EXT</code>
 denotes a following 16-bit payload word.</p>
 </div>
 <table id="tbl:stage_trace" class="tableblock frame-ends grid-rows stretch">
@@ -5979,8 +6000,8 @@ the lock poll (unbounded; hang is the failure mode)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S18] CHIPLET_DBG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DBG_LOCK</code> when the debug lock is what makes a <code>TEST_DEV</code> part
-enforce secure boot</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DBG_LOCK</code> when the debug lock is what makes a <code>TEST_DEV</code> or
+<code>RMA_SiP</code> part enforce secure boot</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 </tr>
 <tr>
@@ -6267,7 +6288,7 @@ execution region; <code>entry_point &lt; length</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Demotion authority</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">validated manifest, LC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PROD_END lock-out; pairs per
-<a href="#tbl:demotion_bits"><code>demotion_control</code> bit assignments</a></p></td>
+<a href="#tbl:demotion_bits">Table 19</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">— (directive, not check)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Only post-validation, one-shot.
 DEM-010..050</p></td>
@@ -6343,14 +6364,14 @@ changed is not lost.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>closed</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The ROM links the freestanding OCA validation library and
 supplies platform callbacks. Verified on the VP and in RTL simulation.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key selection encoding</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>closed</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The OCA 128-bit select bitmap resolves to one slot, and
 the manifest&#8217;s revoke bitmap is read and unioned with the device fuse.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Root key authorization</p></td>
@@ -6358,7 +6379,7 @@ the manifest&#8217;s revoke bitmap is read and unioned with the device fuse.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Added to the validation library during integration: the
 presented key&#8217;s digest is matched against a ROM digest or an OTP hash bank <strong>before</strong> any
 public-key operation, and a signature check reached without it is refused.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fuse-key digest addresses</p></td>
@@ -6366,21 +6387,21 @@ public-key operation, and a signature check reached without it is refused.</p></
 <td class="tableblock halign-left valign-top"><p class="tableblock">The off-by-<code>0x10</code> read is gone; the callback addresses
 the banks by their generated register symbols rather than by an offset from
 <code>CHIPLET_PUBK_REVOKE</code>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Anti-rollback scheme</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>closed</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128-bit flag superset, evaluated before signature
 verification and again after.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Payload check order</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>closed</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Payload hash over the ciphertext before decryption, hash
 chain and per-entry TOC hashes over the plaintext after.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Payload cipher AES-256-CBC</p></td>
@@ -6388,7 +6409,7 @@ chain and per-entry TOC hashes over the plaintext after.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>encryption_type = 0x02</code> implemented end to end
 (driver, KDF, producer) and exercised in RTL by <code>sep_rom_oca_encrypted_boot_test</code>. The
 AES-128 path is retained because the format still defines it.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Retry scope</p></td>
@@ -6396,21 +6417,21 @@ AES-128 path is retained because the format still defines it.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The whole per-slot sequence&#8201;&#8212;&#8201;including signature verification and
 the payload checks&#8201;&#8212;&#8201;runs inside the retry, so a slot failing crypto now rotates to the
 backup. Per-slot verdicts report as warnings; only exhausting every slot is an error.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Retry and Backup Bank</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Section 20</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Packer backup-manifest offset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>closed</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The OCA combined-image configs place the backup
 manifest at <code>0x41000</code>, matching the ROM. Backup rotation is exercised in simulation.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">SPI Initialization and Manifest Transfer</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">Section 12</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Packer SEP IRAM constants</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>obsolete</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The legacy packer and its two configs have been
 removed from this repository; the OCA producer carries no <code>SEP_IRAM_BASE</code> constant.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Crypto block reset release</p></td>
@@ -6420,7 +6441,7 @@ removed from this repository; the OCA producer carries no <code>SEP_IRAM_BASE</c
 released-by-default reset value (<code>HMAC_SW_RST_N</code> resets to 1) and the ROM never writes it.
 The AES release had no call site until the
 encrypted-payload path was exercised in RTL, where the block never reported idle.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PMP fence policy</p></td>
@@ -6428,7 +6449,7 @@ encrypted-payload path was exercised in RTL, where the block never reported idle
 <td class="tableblock halign-left valign-top"><p class="tableblock">The OpenTitan-SPI build grants the required cold data windows,
 keeps SRAM/ICCM non-executable during validation and releases only the selected BL1 region.
 The integrator-defined XIP-controller aperture remains open.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PMP binding/release mechanism</p></td>
@@ -6437,7 +6458,7 @@ The integrator-defined XIP-controller aperture remains open.</p></td>
 cold boot and adds execute permission to one BL1 rule at hand-off
 (SEP-ROM-PMP-060/-070/-080). RLB disposition at the jump is a deferred sub-decision
 (BL1 spec); <code>MML</code> and the full hand-off gate ledger remain deferred.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp_mechanism">Fence Binding and Release Mechanism (Smepmp)</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp_mechanism">Section 8.2</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Exponent constraint</p></td>
@@ -6445,7 +6466,7 @@ cold boot and adds execute permission to one BL1 rule at hand-off
 <td class="tableblock halign-left valign-top"><p class="tableblock">Ratified: SEP secure boot accepts F4 (e = 65537) RSA keys
 only. A permanent constraint, not a consequence of the OTBN program build; any other
 exponent is rejected (SEP-ROM-SB-100).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager public-key provisioning</p></td>
@@ -6454,7 +6475,7 @@ exponent is rejected (SEP-ROM-SB-100).</p></td>
 goes straight to OTBN; the Key Manager has no role in secure-boot verification
 (SEP-ROM-SB-110). The earlier specification text describing a Key Manager software-write-port
 path is withdrawn.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Entropy chain bring-up</p></td>
@@ -6464,13 +6485,13 @@ ESRC → CSRNG → EDN chain lazily from the crypto callbacks that need it, lock
 source-selection configuration, and fails the boot with an attributable status if any stage
 does not come up. The whole-chain testbench grant it replaces is unused; simulation now
 forces only the ESRC noise source.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Entropy Chain Bring-Up</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Section 14</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Handoff self-check ledger</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>unmerged</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Implemented (commit <code>3de14630f</code>); not on <code>main</code>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Stack canary / stack-top at hand-off</p></td>
@@ -6479,21 +6500,22 @@ forces only the ESRC noise source.</p></td>
 immediately before <code>rom_handoff_bl1()</code>, after the crypto stages where the stack actually
 peaks, and the comparison is present in the binary (it was previously dead-stripped, sitting
 after the non-returning hand-off call). Stack-top check still absent (SEP-ROM-HOFF-020).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure-boot escalation flag</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>gap</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>unauthenticated_flags</code> bit 0 not implemented; the
 field is unread by the ROM and the validation library.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RMA secure-boot policy</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ratified</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure boot is manifest-optional in both RMA states
-(decision 2026-07-23), matching the implementation — no code change needed.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure boot is manifest-optional in both RMA states,
+except that a debug-locked <code>RMA_SiP</code> part enforces it (decision 2026-07-23, amended
+2026-10-01), matching the implementation.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Device security-state commit</p></td>
@@ -6502,7 +6524,7 @@ field is unread by the ROM and the validation library.</p></td>
 performs read-only validation and records the commit directive in <code>bl0_state</code>, and SEP BL1
 owns the fuse programming. Anti-rollback and revocation are therefore checked by BL0 and
 advanced by BL1.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Demotion directive source</p></td>
@@ -6514,14 +6536,14 @@ longer reads as a demotion request, and the same predicate governs the <code>DEM
 the two cannot disagree. Still open: <code>bl0_state.bl2_demotion_decision</code> is a single bit, so it
 cannot distinguish "not specified" from "specified as no demotion". Closing that needs a
 two-bit field in the hand-off block, not a policy change.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Demotion Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Section 16</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Payload gap zeroing</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>gap (should)</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Un-hashed inter-image bytes not zeroed after
 validation (legacy ROM did).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot measurement</p></td>
@@ -6530,7 +6552,7 @@ validation (legacy ROM did).</p></td>
 2026-07-24 (<code>src/measurement.c</code>: verified ROM self-hash → slot 0, boot-state record →
 slot 1, raw inputs in <code>bl0_state</code>) and validated in RTL simulation
 (<code>sep_rom_non_secure_boot_test</code> PASS). Not yet merged to <code>main</code>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Measurement encoding</p></td>
@@ -6538,14 +6560,14 @@ slot 1, raw inputs in <code>bl0_state</code>) and validated in RTL simulation
 <td class="tableblock halign-left valign-top"><p class="tableblock">The final record wire format belongs to the
 future Key Manager/PCRV interface; the soft version&#8217;s extend formula is provisional pending
 that ratification. BL1-side PCRV registration is future work.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Payload KDF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>provisional</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SP 800-108r1 KBKDF construction implemented and KAT-checked,
 but the construction is explicitly subject to change.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL1 load address / entry point</p></td>
@@ -6553,32 +6575,32 @@ but the construction is explicitly subject to change.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Per OCA Boot Manifest Spec v0.8 Table 6, TOC
 entries carry <code>load_addr</code>/<code>entry_point</code>; OCAH interpretation for <code>"OCAHSEP BLSTAGE1"</code>
 pinned in SEP-ROM-MAN-050/-060.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>tt-oca-manifest</code> layout tables</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>closed</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Re-verified against the upreved submodule
-(2026-09-02). <a href="#tbl:toc_entry">Payload TOC entry, 276 B (OCA spec v0.8 Table 6)</a> matches <code>oca_layout.h</code> / <code>constants.py</code> (276 B, entry <code>hash</code>
-at 80) and per-entry TOC hashes are verified. <a href="#tbl:manifest_fields">OCA CLASSIC manifest — fields consumed by the SEP ROM</a> was still recorded
+(2026-09-02). <a href="#tbl:toc_entry">Table 21</a> matches <code>oca_layout.h</code> / <code>constants.py</code> (276 B, entry <code>hash</code>
+at 80) and per-entry TOC hashes are verified. <a href="#tbl:manifest_fields">Table 15</a> was still recorded
 against the pre-uprev revision — every offset from <code>payload_encryption_control</code> onward was
 low, the signed region among them (<code>[0,3145)</code> for <code>[0,3172)</code>) — and has been corrected
 field by field.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fuse-sense readiness</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>gap</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Only the PLL path polls <code>smc_fuse_sense_done</code>; other fuse
 reads assume hardware ordering.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Fuse and System State</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Section 9</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral/bus reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>stub</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_peripheral_reset()</code> reports <code>PERIPH_RST_TODO</code> and
 performs no resets.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ROM key digests</p></td>
@@ -6588,13 +6610,13 @@ over the public modulus. <code>BUILD_TYPE</code> picks the source: private test 
 <code>tests/signing_keys/</code> for debug, public keys in <code>release_signing_keys/</code> for release. That
 directory ships empty, so a release build stops until an adopter provisions production keys
 before mask finalization.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ECDSA P-256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>by design</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Defined by the format, rejected by this ROM generation.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PQC signatures and key slots</p></td>
@@ -6603,7 +6625,7 @@ before mask finalization.</p></td>
 classical + PQC signing. In this generation PQC manifest geometry is parsed, but PQC
 signatures and PQC key slots are refused as an unsupported variant rather than accepted
 unverified.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Multi-signer / co-signer verification</p></td>
@@ -6613,21 +6635,21 @@ This generation verifies a single classical RSA-3072 signature against one root 
 verifier and co-signer keys that populate the <code>REQUIRED_SIGNERS</code> and <code>REQUIRED_ALGS</code> fuse
 fields arrive with it. Neither fuse field is read by this ROM. See the Life Cycle
 Controller chapter&#8217;s Secure-Boot Signing Model.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OTP-fuse SPI profile select</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>gated</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Deliberately unimplemented pending OTP-usage
 evaluation (research R13); boot never depends on programmed fuses.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">SPI Initialization and Manifest Transfer</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">Section 12</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Strap-bit definition duplication</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>hygiene</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Strap bit positions defined in both
 <code>boot_straps.h</code> prose and the SEP↔SMC interface header; keep in lockstep.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Primary / Secondary Strap Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Section 11</a></p></td>
 </tr>
 </tbody>
 </table>
@@ -6657,523 +6679,524 @@ evaluation (research R13); boot never depends on programmed fuses.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-010">SEP-ROM-CPU-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Only hart 0 boots; others park</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-020">SEP-ROM-CPU-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Trap vector before first MMIO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-030">SEP-ROM-CPU-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">MRAC before warm-scratch read</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-040">SEP-ROM-CPU-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Outbound filter default-deny; ROM opens no window</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-050">SEP-ROM-CPU-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Interrupts disabled throughout ROM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-060">SEP-ROM-CPU-060</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Runtime-init self-check, fatal on mismatch</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-070">SEP-ROM-CPU-070</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Any trap is fatal: report, FAIL, hang</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-080">SEP-ROM-CPU-080</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ROM never arms the WDT</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-090">SEP-ROM-CPU-090</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SHA-256 known-answer self-test before use</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-100">SEP-ROM-CPU-100</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SRAM + ICCM cleared before external content</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-110">SEP-ROM-CPU-110</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Warm-handler slot read before any DCCM access</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:warm_reset">Warm-Reset Resume Path</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:warm_reset">Section 7</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-120">SEP-ROM-CPU-120</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Warm handler accepted only within ICCM or SEP SRAM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:warm_reset">Warm-Reset Resume Path</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:warm_reset">Section 7</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-130">SEP-ROM-CPU-130</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Poison warm scratch before jump</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:warm_reset">Warm-Reset Resume Path</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:warm_reset">Section 7</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-140">SEP-ROM-CPU-140</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Invalid warm handler hangs, never cold-boots</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:warm_reset">Warm-Reset Resume Path</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:warm_reset">Section 7</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-150">SEP-ROM-CPU-150</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Stack and C globals live in DCCM, not SRAM</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-160">SEP-ROM-CPU-160</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DCCM left deterministic before the C runtime reads it</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">Section 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PMP-010">SEP-ROM-PMP-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fetch only from ROM until hand-off release</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PMP-020">SEP-ROM-PMP-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fences must bind machine mode (lock/Smepmp)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PMP-030">SEP-ROM-PMP-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Next-stage regions RW- until hand-off</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PMP-040">SEP-ROM-PMP-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data windows limited to demonstrated needs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PMP-050">SEP-ROM-PMP-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Release is the last security action</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PMP-060">SEP-ROM-PMP-060</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RLB set before first locked rule; all fence rules
 locked</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PMP-070">SEP-ROM-PMP-070</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">MMWP set after rules; unmatched access traps</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PMP-080">SEP-ROM-PMP-080</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Release = single BL1-rule rewrite under RLB,
 post-self-check</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Section 8</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-FUSE-010">SEP-ROM-FUSE-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No fuse consumption before sense complete</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Fuse and System State</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Section 9</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-FUSE-020">SEP-ROM-FUSE-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Invalid LC ⇒ SMC reset + fatal</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Fuse and System State</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Section 9</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-FUSE-030">SEP-ROM-FUSE-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">LC recorded in bl0_state + reported</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Fuse and System State</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:fuses">Section 9</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SMC-010">SEP-ROM-SMC-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC SRAM values exchanged as offsets</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">SMC Synchronization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">Section 10</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SMC-020">SEP-ROM-SMC-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scratch round-trip sanity, fatal on mismatch</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">SMC Synchronization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">Section 10</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SMC-030">SEP-ROM-SMC-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Memory-repair gate (strap-bypassable)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">SMC Synchronization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">Section 10</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SMC-040">SEP-ROM-SMC-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Wait MANIFEST_READY before scratch[8]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">SMC Synchronization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">Section 10</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SMC-050">SEP-ROM-SMC-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reject invalid offset; bounds-check staging</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">SMC Synchronization</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:smc_sync">Section 10</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-STRAP-010">SEP-ROM-STRAP-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Exactly one boot mode, recorded + reported</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Primary / Secondary Strap Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Section 11</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-STRAP-020">SEP-ROM-STRAP-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI init failure ⇒ skip slot, not fatal</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Primary / Secondary Strap Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:straps">Section 11</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SPI-010">SEP-ROM-SPI-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">All flash access via the transport shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">SPI Initialization and Manifest Transfer</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">Section 12</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SPI-020">SEP-ROM-SPI-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Doubled, laundered bounds gate; default-reject</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">SPI Initialization and Manifest Transfer</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">Section 12</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SPI-030">SEP-ROM-SPI-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Bounded transport retries; never partial data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">SPI Initialization and Manifest Transfer</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">Section 12</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SPI-040">SEP-ROM-SPI-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot never depends on programmed OTP for SPI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">SPI Initialization and Manifest Transfer</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:spi">Section 12</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-MAN-010">SEP-ROM-MAN-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Manifest hash verified every boot</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-MAN-020">SEP-ROM-MAN-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Validate via OCA library + callback table</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-MAN-030">SEP-ROM-MAN-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Canonical check order, first-failure stop</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-MAN-040">SEP-ROM-MAN-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Unavailable constraint input = failure</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-MAN-050">SEP-ROM-MAN-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Launch BLSTAGE1 image at its TOC
 <code>load_addr</code>/<code>entry_point</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-MAN-060">SEP-ROM-MAN-060</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Placement validated against a permitted execution
 region (ICCM always; SRAM per <code>BL1_SRAM_EXEC_ENABLE</code>, default on), entry &lt; length; copy after
 validation only</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">OCA Manifest Format and Parsing</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:manifest">Section 13</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-010">SEP-ROM-SB-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PROD/PROD_END enforce secure boot</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-020">SEP-ROM-SB-020</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open)/RMA: either trigger enables</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV/RMA_SiP (debug open), RMA_CHIPLET: either
+trigger enables</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-025">SEP-ROM-SB-025</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV with CHIPLET_DBG disabled or its vector
-read-locked enforces secure boot</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV or RMA_SiP with CHIPLET_DBG disabled or its
+vector read-locked enforces secure boot</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-030">SEP-ROM-SB-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Escalation flag is escalation-only</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-040">SEP-ROM-SB-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SBOOT_DIS disables unless signed secure_boot_control asks</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-041">SEP-ROM-SB-041</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SBOOT_DIS read once and masked to bit 0; rsvd set is
 terminal</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-045">SEP-ROM-SB-045</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key selector must resolve to exactly one slot</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-050">SEP-ROM-SB-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key digest must match an authorized slot</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-060">SEP-ROM-SB-060</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Revocation = manifest ∪ device, before RSA</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-070">SEP-ROM-SB-070</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Security-version superset, before and again after signature</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-080">SEP-ROM-SB-080</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Authenticate-before-update; commit via BL1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-090">SEP-ROM-SB-090</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RSA-3072-PKCS1v15-SHA256 only; ECDSA rejected</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-100">SEP-ROM-SB-100</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">F4 keys only (e = 65537); any other exponent rejected</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-110">SEP-ROM-SB-110</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Public key goes straight to OTBN; Key Manager not
 involved</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-120">SEP-ROM-SB-120</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">No verified verdict unless OTBN is confirmed to have
 executed</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 15</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ENT-010">SEP-ROM-ENT-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Entropy chain brought up lazily, once, before
 first use</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Entropy Chain Bring-Up</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Section 14</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ENT-020">SEP-ROM-ENT-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Entropy bring-up failure stops the boot; not a
 per-slot failure</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Entropy Chain Bring-Up</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Section 14</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ENT-030">SEP-ROM-ENT-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ESRC <code>FIPS_LOCK</code> after health test, before first
 consumer</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Entropy Chain Bring-Up</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Section 14</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ENT-040">SEP-ROM-ENT-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TRNG source selection locked after bring-up</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Entropy Chain Bring-Up</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Section 14</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ENT-050">SEP-ROM-ENT-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External-TRNG substitution is a link-time seam</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Entropy Chain Bring-Up</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:entropy">Section 14</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-DEM-010">SEP-ROM-DEM-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Demotion only from a validated manifest</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Demotion Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Section 16</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-DEM-020">SEP-ROM-DEM-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PROD_END: never demote; lock both registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Demotion Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Section 16</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-DEM-030">SEP-ROM-DEM-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL1 pair → DEMOTE_1 write+lock; closed
 non-demoted by default, left open only on a stated BL2 request</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Demotion Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Section 16</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-DEM-035">SEP-ROM-DEM-035</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DEMOTE_1 write ordered after the fuse-secret lock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Demotion Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Section 16</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-DEM-040">SEP-ROM-DEM-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL0 never writes DEMOTE_2; BL2 pair recorded as
 VALID ∧ ENABLE</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Demotion Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Section 16</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-DEM-050">SEP-ROM-DEM-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Demotion state feeds the measurement</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Demotion Handling</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:demotion">Section 16</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PL-010">SEP-ROM-PL-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TOC structural validation rules</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PL-020">SEP-ROM-PL-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP_BL1 image must be present</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PL-030">SEP-ROM-PL-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Encrypted: ciphertext hash → decrypt → chain</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PL-040">SEP-ROM-PL-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cleartext payloads still fully hash-checked</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PL-050">SEP-ROM-PL-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Encryption requires secure boot</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PL-060">SEP-ROM-PL-060</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Const-time compares; failures fail the slot</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PL-070">SEP-ROM-PL-070</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Decryption requires non-zero CLASS_KEY</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PL-080">SEP-ROM-PL-080</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key material zeroized on every exit path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-PL-090">SEP-ROM-PL-090</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Payload length fields cross-checked
 (REQ-BTMANFST-59/-60/-62)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Section 17</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ATT-010">SEP-ROM-ATT-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ROM self-hash embedded at build</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ATT-020">SEP-ROM-ATT-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Version + self-hash reported every boot</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ATT-030">SEP-ROM-ATT-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot-state record enrolled in slot 1, raw record
 kept</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ATT-040">SEP-ROM-ATT-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Soft enrollment in bl0_state; BL1 registers into
 PCRV; legacy after</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ATT-050">SEP-ROM-ATT-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Separate slots: 0 = ROM identity, 1 = boot state</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-ATT-060">SEP-ROM-ATT-060</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Self-hash verified by recompute before enrollment</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Boot Measurement</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:boot_measurement">Section 18</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-HOFF-010">SEP-ROM-HOFF-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Canary written early, re-verified pre-hand-off</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-HOFF-020">SEP-ROM-HOFF-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Stack unwound to initial top at hand-off</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-HOFF-030">SEP-ROM-HOFF-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Fuse-secret locks set and independently
 re-verified</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-HOFF-040">SEP-ROM-HOFF-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Gate ledger: full set + complement agree</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-HOFF-050">SEP-ROM-HOFF-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Doubled invariants, fail-fast, counter + tally</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-HOFF-060">SEP-ROM-HOFF-060</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PMP release only after self-check, last write</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-HOFF-070">SEP-ROM-HOFF-070</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Jump orders memory: mepc, fence.i, fence, mret</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Section 19</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-RETRY-010">SEP-ROM-RETRY-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Two slots, rotate-aware order; one attempt
 for SMC paths</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Retry and Backup Bank</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Section 20</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-RETRY-020">SEP-ROM-RETRY-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI-init failure skips first slot, reinit
 for fallback</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Retry and Backup Bank</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Section 20</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-RETRY-030">SEP-ROM-RETRY-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Retry unit = entire validation chain,
 BL1 loadability included</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Retry and Backup Bank</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Section 20</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-RETRY-040">SEP-ROM-RETRY-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Clean state between attempts</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Retry and Backup Bank</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Section 20</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-RETRY-050">SEP-ROM-RETRY-050</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">All failures converge in rom_err_fail</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Retry and Backup Bank</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:retry">Section 20</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-STAT-010">SEP-ROM-STAT-010</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Ring bounds-checked; degrade gracefully</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Status and POST Codes</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Section 21</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-STAT-020">SEP-ROM-STAT-020</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Severity-reserved ring capacity</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Status and POST Codes</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Section 21</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-STAT-030">SEP-ROM-STAT-030</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Status codes single-sourced from the TSV</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Status and POST Codes</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:status">Section 21</a></p></td>
 </tr>
 </tbody>
 </table>

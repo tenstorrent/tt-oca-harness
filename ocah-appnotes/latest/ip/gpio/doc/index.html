@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -201,7 +207,7 @@ and give programming sequences. The register maps follow those sequences.</p>
 <h2 id="gpio-architecture"><a class="anchor" href="#gpio-architecture"></a><a class="link" href="#gpio-architecture">2. Operation</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#gpio-interface-diagram">GPIO controller, interface shim, LSIO mux and strap-capture path</a> shows the two blocks that serve one pad: the <code>gpio</code> controller
+<p><a href="#gpio-interface-diagram">Figure 1</a> shows the two blocks that serve one pad: the <code>gpio</code> controller
 in the SMC pad ring, and the <code>gpio_shim</code> that the adopter&#8217;s pad integration places in front
 of the technology pad macro. Each block receives its own AXI-Lite register slot. In <code>gpio</code>,
 the access filter takes its enables and requirements from the <code>ACCESS_FILTER</code> fields of
@@ -301,7 +307,7 @@ the pad input.</p>
 <h3 id="smc-pad-ring"><a class="anchor" href="#smc-pad-ring"></a><a class="link" href="#smc-pad-ring">2.3. SMC Pad Ring</a></h3>
 <div class="paragraph">
 <p>The SMC instantiates one <code>gpio</code> controller per pad in <code>u_smc_padring</code>, 65 in all.
-<a href="#gpio-padring-diagram">SMC pad ring GPIO interfaces and adopter pad shims</a> shows how the controllers are reached and where the shims sit.
+<a href="#gpio-padring-diagram">Figure 2</a> shows how the controllers are reached and where the shims sit.
 <code>u_smc_padring</code> sits in <code>u_smc_peripherals</code> beside the peripheral crossbar
 <code>u_smc_periph_axi_lite_xbar</code>, which receives the peripheral window from the local crossbar
 <code>u_smc_local_xbar</code> in <code>u_smc_base</code>. The peripheral crossbar sends the GPIO interface
@@ -441,7 +447,7 @@ disabling a filter permits that direction regardless of <code>PROT</code>.</p>
 <code>3&#8217;b001</code> (secure, privileged data), but apply only when enabled. <code>PROT</code>
 expresses transaction attributes, not initiator identity: this filter alone
 does not establish SEP-only access. It protects the interface bank, not the
-shim&#8217;s separate control bank. See <a href="#gpio-filter-programming">Configuring Access Filtering</a> for setup and
+shim&#8217;s separate control bank. See <a href="#gpio-filter-programming">Section 4.5</a> for setup and
 readback requirements.</p>
 </div>
 </div>
@@ -589,7 +595,7 @@ requirements.</p>
 <p>After cold reset is released, read <code>CONTROL.strap_valid</code> and
 <code>CONTROL.strap_value</code> from the control bank. A set <code>strap_valid</code> means the
 pad was configured for input by default and strap capture is supported;
-it does not indicate that reset has completed. See <a href="#gpio-reset-straps">Reset and Strap Capture</a>.</p>
+it does not indicate that reset has completed. See <a href="#gpio-reset-straps">Section 2.6</a>.</p>
 </div>
 <span id="interrupt-configuration"></span>
 </div>
@@ -605,7 +611,7 @@ it does not indicate that reset has completed. See <a href="#gpio-reset-straps">
 use <code>interface_enable = 1</code> and <code>enable_rx_tx = 10</code>.</p>
 </li>
 <li>
-<p>Set <code>DATA_CTRL.interrupt_type</code> using the mode table in <a href="#gpio-interrupt-operation">Interrupts</a>.</p>
+<p>Set <code>DATA_CTRL.interrupt_type</code> using the mode table in <a href="#gpio-interrupt-operation">Section 2.5</a>.</p>
 </li>
 <li>
 <p>Configure the receiving interrupt controller for the GPIO request and
@@ -728,7 +734,7 @@ applying it; <code>PROT</code> does not identify a particular initiator.</p>
 <p>The controller&#8217;s interface bank contains <code>DATA_CTRL</code>, <code>DATA_CTRL_ENABLE</code>
 and <code>ACCESS_FILTER</code>; the shim&#8217;s control bank contains <code>CONTROL</code>.
 The generated <code>gpio_intf</code> and <code>gpio_ctrl</code> maps in
-<a href="#gpio-detailed-register-map">Detailed Register Map</a> define their register offsets, and <code>gpio_wrap</code>
+<a href="#gpio-detailed-register-map">Section 5.2</a> define their register offsets, and <code>gpio_wrap</code>
 defines the bank placement within the composite aperture. The enclosing
 padring determines their system addresses.</p>
 </div>
@@ -739,8 +745,8 @@ padring determines their system addresses.</p>
 <p><code>ACCESS_FILTER</code> resets to <code>0x00010100</code>: read and write filters are disabled,
 with each stored protection requirement set to <code>3&#8217;b001</code>. <code>DATA_CTRL</code> and
 <code>DATA_CTRL_ENABLE</code> software controls reset to zero. Default pad direction
-and post-reset LSIO ownership are described in <a href="#gpio-ownership">Data and Direction Ownership</a> and
-<a href="#gpio-reset-straps">Reset and Strap Capture</a>; zeroed software controls do not imply that every
+and post-reset LSIO ownership are described in <a href="#gpio-ownership">Section 2.1</a> and
+<a href="#gpio-reset-straps">Section 2.6</a>; zeroed software controls do not imply that every
 pad path is disabled.</p>
 </div>
 <div class="paragraph">

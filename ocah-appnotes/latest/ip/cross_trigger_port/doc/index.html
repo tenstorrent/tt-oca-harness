@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -229,7 +235,7 @@ four-phase handshaking with CDC synchronisers at the die boundary.</p>
 programmed at runtime through the AXI-Lite CSR interface:</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctp-configuration-registers-table">CTP configuration registers</a> summarises the runtime controls exposed through
+<p><a href="#ctp-configuration-registers-table">Table 1</a> summarises the runtime controls exposed through
 the CTP CSR interface.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTP configuration registers" tabindex="0">
@@ -291,7 +297,7 @@ core functionality without registers, allowing instantiation for internal
 cross-trigger connections without AXI-Lite overhead.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctp-module-structure-figure">CTP module structure</a> shows the Cross Trigger Port logic and its pad
+<p><a href="#ctp-module-structure-figure">Figure 1</a> shows the Cross Trigger Port logic and its pad
 interfaces.</p>
 </div>
 <div id="ctp-module-structure-figure" class="imageblock">
@@ -319,7 +325,7 @@ AND with <code>p2p_din_valid</code> before any logic uses it. The
 cross-trigger operation:</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctp-submodules-table">CTP submodules</a> identifies the submodules that implement synchronization and
+<p><a href="#ctp-submodules-table">Table 2</a> identifies the submodules that implement synchronization and
 cross-trigger operation.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTP submodule hierarchy" tabindex="0">
@@ -398,8 +404,8 @@ request data signal should connect to the output-enable control pin of the I/O
 pad, and the output data signal of the I/O pin should be driven statically low.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctp-wire-or-behavior-figure">CTP wire-OR behavior</a> shows the open-drain request path and pulse-stretching
-logic used in wire-OR mode. It is <a href="#ctp-module-structure-figure">CTP module structure</a> with every mux
+<p><a href="#ctp-wire-or-behavior-figure">Figure 2</a> shows the open-drain request path and pulse-stretching
+logic used in wire-OR mode. It is <a href="#ctp-module-structure-figure">Figure 1</a> with every mux
 resolved to its wire-OR input. The CT_Req_out pad drives the constant
 <code>invert_i</code>, so its output enable, the stretched pulse, decides when the pad pulls
 the wire. The CTP receives a cross trigger on the falling edge of the
@@ -416,7 +422,7 @@ drawn.</p>
 </div>
 <div class="paragraph">
 <p>Any number of chiplets may have their <em>CT_Req_out</em> pads interconnected as shown
-in <a href="#ctp-wire-or-chiplet-connections-figure">CTP wire-OR chiplet connections</a>. In each chiplet the CLAs reach the
+in <a href="#ctp-wire-or-chiplet-connections-figure">Figure 3</a>. In each chiplet the CLAs reach the
 CTM through the internal CTPs of the Cross Trigger Network, and the CTM reaches
 the external CTP through its <em>CT_Src</em> and <em>CT_Dst</em> signals. The shared wire also
 reaches a package pin.</p>
@@ -440,8 +446,8 @@ for bi-directional communication, or two pads for unidirectional communication.
 All output pads are configured for push-pull operation.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctp-point-to-point-behavior-figure">CTP point-to-point behavior</a> shows the request and acknowledge paths used for
-point-to-point handshaking. It is <a href="#ctp-module-structure-figure">CTP module structure</a> with every mux
+<p><a href="#ctp-point-to-point-behavior-figure">Figure 4</a> shows the request and acknowledge paths used for
+point-to-point handshaking. It is <a href="#ctp-module-structure-figure">Figure 1</a> with every mux
 resolved to its point-to-point input. The output enables of CT_Req_out and
 CT_Ack_out and the input enables of CT_Ack_in and CT_Req_in are registered 1s.
 The input enable of the CT_Req_out pad is 0 in this mode, so only its output
@@ -455,7 +461,7 @@ buffer is drawn, and the pulse stretcher and falling-edge detector are unused.</
 </div>
 <div class="paragraph">
 <p>Any two chiplets may have their four cross trigger pads cross-coupled as shown
-in <a href="#ctp-point-to-point-chiplet-connections-figure">CTP point-to-point chiplet connections</a>. Each CTP lists its pads on
+in <a href="#ctp-point-to-point-chiplet-connections-figure">Figure 5</a>. Each CTP lists its pads on
 the side that faces its partner, in the order that keeps every wire straight, so
 each request output meets a request input and each acknowledge output an
 acknowledge input.</p>
@@ -478,7 +484,7 @@ pulse on <em>CT_Dst</em> and asserts <em>CT_Ack_out</em>. Deassertion proceeds i
 same sequence.</p>
 </div>
 <div class="paragraph">
-<p>The timing of the request/acknowledge handshake is shown in <a href="#ctp-request-acknowledge-timing-figure">CTP request-acknowledge timing</a>.
+<p>The timing of the request/acknowledge handshake is shown in <a href="#ctp-request-acknowledge-timing-figure">Figure 6</a>.
 The timing is illustrative, and the delays are not to scale:</p>
 </div>
 <div id="ctp-request-acknowledge-timing-figure" class="imageblock">
@@ -496,7 +502,7 @@ implements three independent 2-FF synchronizer chains using the
 <code>prim_flop_2sync</code> primitive:</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctp-signal-synchronization-table">CTP signal synchronization</a> identifies the incoming signals synchronized in
+<p><a href="#ctp-signal-synchronization-table">Table 3</a> identifies the incoming signals synchronized in
 each operating mode.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTP signal synchronization" tabindex="0">
@@ -565,7 +571,7 @@ reaches the point-to-point pads when the mode changes.</p>
 <p><strong>Sender State Machine:</strong></p>
 </div>
 <div class="paragraph">
-<p><a href="#ctp-sender-state-transitions-table">CTP sender state transitions</a> lists the sender handshake states, transition
+<p><a href="#ctp-sender-state-transitions-table">Table 4</a> lists the sender handshake states, transition
 conditions, and output actions.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTP sender state transitions" tabindex="0">
@@ -623,7 +629,7 @@ conditions, and output actions.</p>
 <p><strong>Receiver State Machine:</strong></p>
 </div>
 <div class="paragraph">
-<p><a href="#ctp-receiver-state-transitions-table">CTP receiver state transitions</a> lists the receiver handshake states, transition
+<p><a href="#ctp-receiver-state-transitions-table">Table 5</a> lists the receiver handshake states, transition
 conditions, and output actions.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTP receiver state transitions" tabindex="0">

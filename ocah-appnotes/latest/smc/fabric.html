@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -191,9 +197,9 @@ SMC register islands, and the output fabric remaps and filters the traffic that
 leaves the SMC.</p>
 </div>
 <div class="paragraph">
-<p>The input paths are shown in <a href="#smc-input-fabric-diagram">SMC input fabric topology and routing</a>, the local resource
-connections in <a href="#smc-local-fabric-diagram">SMC local fabric and peripheral islands</a>, and the outbound path in
-<a href="#smc-output-fabric-diagram">SMC output fabric and remapping paths</a>. The three figures share the notation of the SEP
+<p>The input paths are shown in <a href="#smc-input-fabric-diagram">Figure 1</a>, the local resource
+connections in <a href="#smc-local-fabric-diagram">Figure 2</a>, and the outbound path in
+<a href="#smc-output-fabric-diagram">Figure 3</a>. The three figures share the notation of the SEP
 fabric figures. Crossbars are rectangles, muxes and demuxes are trapezoids with
 the wide side towards the many ports, address remaps and rebases are hexagons
 and traffic filters are octagons. Green boxes are converters: address-width,
@@ -209,7 +215,7 @@ badges mark where a path crosses the module boundary.</p>
 <div class="title">Figure 1. SMC input fabric topology and routing</div>
 </div>
 <div class="paragraph">
-<p><a href="#smc-input-fabric-diagram">SMC input fabric topology and routing</a> has the six inputs of <code>smc_input_fabric</code> along
+<p><a href="#smc-input-fabric-diagram">Figure 1</a> has the six inputs of <code>smc_input_fabric</code> along
 the top and its four outputs along the bottom. The CPU MMIO and JTAG ports have
 their IDs widened to 4 bits and the log engine&#8217;s AXI-Lite port is converted to
 AXI4. Each of the four SMC-internal initiators then passes its own alias remap;
@@ -230,7 +236,7 @@ bits, and every other address receives DECERR. The SEP input is not filtered.</p
 <div class="title">Figure 2. SMC local fabric and peripheral islands</div>
 </div>
 <div class="paragraph">
-<p><a href="#smc-local-fabric-diagram">SMC local fabric and peripheral islands</a> shows <code>smc_local_fabric</code> in the upper left, the
+<p><a href="#smc-local-fabric-diagram">Figure 2</a> shows <code>smc_local_fabric</code> in the upper left, the
 <code>smc_internal_regs</code> island on the right and the <code>smc_peripherals</code> island along
 the bottom. The three initiators arrive from the input fabric. Each is rebased
 onto the local base: the offset within <code>REGION_SIZE</code> is kept and the upper
@@ -254,14 +260,14 @@ last peripheral crossbar target leaves the SMC as the AXI-Lite extension port.</
 <div class="title">Figure 3. SMC output fabric and remapping paths</div>
 </div>
 <div class="paragraph">
-<p><a href="#smc-output-fabric-diagram">SMC output fabric and remapping paths</a> follows a request from the input fabric to the
+<p><a href="#smc-output-fabric-diagram">Figure 3</a> follows a request from the input fabric to the
 system AXI output. The route demux selects by address. The 8 MiB M-mode window
 at <code>0x0100_0000</code> and the 8 MiB Xvisor window at <code>0x0180_0000</code>, each above either
 the local or the global SMC base, go through their output remaps; every other
 address goes straight through. Each output remap divides its window into eight
 1 MiB regions and replaces address bits [55:20] with the region&#8217;s offset. Each
 path also sets the AxUSER source ID
-(<a href="#smc-source-id-by-traffic-path-table">SMC Source ID by Traffic Path</a>). The output mux merges the three paths
+(<a href="#smc-source-id-by-traffic-path-table">Table 8</a>). The output mux merges the three paths
 and widens the ID to 8 bits. The dashed outline marks the stage that the
 <code>NO_ADDR_REMAP</code> parameter removes: <code>smc_config_pkg</code> clears it, so the remap
 stage is present, and setting it leaves only an ID converter from 6 to 8 bits,
@@ -286,7 +292,7 @@ Xvisor remap region bases.</p>
 </div>
 <div class="paragraph">
 <p>Further outstanding-transaction limits are fixed by package constants rather
-than module parameters (<a href="#smc-fabric-configuration-parameters-table">SMC Fabric Transaction Limits</a>).</p>
+than module parameters (<a href="#smc-fabric-configuration-parameters-table">Table 1</a>).</p>
 </div>
 <table id="smc-fabric-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. SMC Fabric Transaction Limits</caption>
@@ -352,7 +358,7 @@ outstanding transactions to peripherals and configuration registers.</p>
 <h3 id="smc-fabric-dual-network-architecture"><a class="anchor" href="#smc-fabric-dual-network-architecture"></a><a class="link" href="#smc-fabric-dual-network-architecture">1.3. Dual-Network Architecture</a></h3>
 <div class="paragraph">
 <p>The SMC fabric implements two separate networks optimized for different
-traffic types (<a href="#smc-network-characteristics-table">SMC Network Characteristics</a>).</p>
+traffic types (<a href="#smc-network-characteristics-table">Table 2</a>).</p>
 </div>
 <table id="smc-network-characteristics-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. SMC Network Characteristics</caption>
@@ -399,7 +405,7 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 <div class="sect2">
 <h3 id="smc-fabric-axi-interface-widths"><a class="anchor" href="#smc-fabric-axi-interface-widths"></a><a class="link" href="#smc-fabric-axi-interface-widths">2.1. AXI Interface Widths</a></h3>
 <div class="paragraph">
-<p><a href="#fabric-axi-widths">AXI Common Signal Widths</a> lists the common AXI signal widths shared across all AXI4 fabric interfaces.</p>
+<p><a href="#fabric-axi-widths">Table 3</a> lists the common AXI signal widths shared across all AXI4 fabric interfaces.</p>
 </div>
 <table id="fabric-axi-widths" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. AXI Common Signal Widths</caption>
@@ -445,7 +451,7 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 </table>
 <div class="paragraph">
 <p>The AXI transaction ID width varies at each fabric stage because crossbars and multiplexers prepend additional bits to distinguish the originating port.
-<a href="#fabric-axi-id-widths">AXI ID Widths by Fabric Stage</a> lists the ID width at each point in the fabric.</p>
+<a href="#fabric-axi-id-widths">Table 4</a> lists the ID width at each point in the fabric.</p>
 </div>
 <table id="fabric-axi-id-widths" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. AXI ID Widths by Fabric Stage</caption>
@@ -524,7 +530,7 @@ enforcement.</p>
 local and remote resources through the dual-network architecture.</p>
 </div>
 <div class="paragraph">
-<p><a href="#smc-fabric-traffic-managers-table">SMC Fabric Traffic Managers</a> identifies the transaction initiators and their
+<p><a href="#smc-fabric-traffic-managers-table">Table 5</a> identifies the transaction initiators and their
 primary paths.</p>
 </div>
 <table id="smc-fabric-traffic-managers-table" class="tableblock frame-all grid-all stretch">
@@ -595,7 +601,7 @@ flexible address management between local and global address spaces.</p>
 organized by network type and function.</p>
 </div>
 <div class="paragraph">
-<p><a href="#smc-fabric-traffic-subordinates-table">SMC Fabric Traffic Subordinates</a> identifies the transaction targets and their
+<p><a href="#smc-fabric-traffic-subordinates-table">Table 6</a> identifies the transaction targets and their
 network connections.</p>
 </div>
 <table id="smc-fabric-traffic-subordinates-table" class="tableblock frame-all grid-all stretch">
@@ -782,9 +788,9 @@ outbound filter permits it.</p>
 <div class="sect2">
 <h3 id="smc-fabric-inbound-filtering"><a class="anchor" href="#smc-fabric-inbound-filtering"></a><a class="link" href="#smc-fabric-inbound-filtering">4.1. Inbound Filtering</a></h3>
 <div class="paragraph">
-<p><a href="#smc-traffic-filter-diagram">SMC inbound and outbound traffic-filter mechanism</a> shows the decode that both filters implement.
-Their places in the fabric are in <a href="#smc-input-fabric-diagram">SMC input fabric topology and routing</a> and
-<a href="#smc-output-fabric-diagram">SMC output fabric and remapping paths</a>.</p>
+<p><a href="#smc-traffic-filter-diagram">Figure 4</a> shows the decode that both filters implement.
+Their places in the fabric are in <a href="#smc-input-fabric-diagram">Figure 1</a> and
+<a href="#smc-output-fabric-diagram">Figure 3</a>.</p>
 </div>
 <div id="smc-traffic-filter-diagram" class="imageblock">
 <div class="content">
@@ -795,7 +801,7 @@ Their places in the fabric are in <a href="#smc-input-fabric-diagram">SMC input 
 <div class="paragraph">
 <p>The figure draws primitive logic with gate symbols and keeps labelled boxes
 for comparisons and larger blocks. The upper part of
-<a href="#smc-traffic-filter-diagram">SMC inbound and outbound traffic-filter mechanism</a> is one <code>traffic_filter</code>, instantiated for every
+<a href="#smc-traffic-filter-diagram">Figure 4</a> is one <code>traffic_filter</code>, instantiated for every
 entry on each of the AW and AR channels. The entry hits when all five
 conditions on the left hold, which the AND gate with the extended input bar
 combines; the source ID and burst conditions are each an OR of two terms. Its
@@ -876,7 +882,7 @@ attributes:</p>
 <h4 id="smc-fabric-axi-protection-bit-encoding"><a class="anchor" href="#smc-fabric-axi-protection-bit-encoding"></a><a class="link" href="#smc-fabric-axi-protection-bit-encoding">4.3.1. AXI Protection Bit Encoding</a></h4>
 <div class="paragraph">
 <p>AXI protection bits (<code>aw.prot</code> and <code>ar.prot</code>) are 3-bit fields that
-encode transaction security and privilege attributes (<a href="#smc-axi-protection-bit-encoding-table">SMC AXI Protection Bit Encoding</a>).</p>
+encode transaction security and privilege attributes (<a href="#smc-axi-protection-bit-encoding-table">Table 7</a>).</p>
 </div>
 <table id="smc-axi-protection-bit-encoding-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 7. SMC AXI Protection Bit Encoding</caption>
@@ -1134,7 +1140,7 @@ latency.</p>
 <div class="paragraph">
 <p>Each outbound transaction carries a Source ID identifying its privilege
 level and routing path, plus the AxCACHE value from the alias remap
-configuration (<a href="#smc-source-id-by-traffic-path-table">SMC Source ID by Traffic Path</a>).</p>
+configuration (<a href="#smc-source-id-by-traffic-path-table">Table 8</a>).</p>
 </div>
 <table id="smc-source-id-by-traffic-path-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 8. SMC Source ID by Traffic Path</caption>

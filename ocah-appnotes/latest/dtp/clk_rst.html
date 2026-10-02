@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -173,7 +179,7 @@
 <h2 id="dtp-clocks-and-resets"><a class="anchor" href="#dtp-clocks-and-resets"></a><a class="link" href="#dtp-clocks-and-resets">1. Clock Domains</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The DTP operates in two clock domains (<a href="#dtp-clock-domains-table">DTP clock domains</a>).</p>
+<p>The DTP operates in two clock domains (<a href="#dtp-clock-domains-table">Table 1</a>).</p>
 </div>
 <table id="dtp-clock-domains-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. DTP clock domains</caption>
@@ -218,7 +224,7 @@ The CTP handshake crossings are described in the
 <h2 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">2. Reset Architecture</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#dtp-reset-signals-table">DTP reset signals</a> identifies the reset inputs and the logic they reset.</p>
+<p><a href="#dtp-reset-signals-table">Table 2</a> identifies the reset inputs and the logic they reset.</p>
 </div>
 <table id="dtp-reset-signals-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. DTP reset signals</caption>
@@ -308,7 +314,7 @@ for debugger readback.</p>
 <div class="sect2">
 <h3 id="halt-path-architecture"><a class="anchor" href="#halt-path-architecture"></a><a class="link" href="#halt-path-architecture">4.1. Halt Path Architecture</a></h3>
 <div class="paragraph">
-<p><a href="#dtp-clock-stop-diagram">DTP JTAG and CLA clock-stop aggregation</a> shows how JTAG and CLA requests contribute to the chiplet
+<p><a href="#dtp-clock-stop-diagram">Figure 1</a> shows how JTAG and CLA requests contribute to the chiplet
 halt path, with the DTP as the SMU instantiates it. The DEBUG_CONTROL TDR is drawn
 as its five bits, with bit 0 nearest TDO. The grey box below the DTP is the part of
 the SMC DFD block (<code>smc_dfd_wrap</code>) that produces the SMC&#8217;s clock-stop request and
@@ -404,7 +410,7 @@ input indexing, see
 <h2 id="dtp-clock-distribution"><a class="anchor" href="#dtp-clock-distribution"></a><a class="link" href="#dtp-clock-distribution">5. Clock Distribution</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#dtp-clock-tree">DTP system-clock and JTAG-clock distribution</a> shows which DTP blocks use the system clock and which use TCK.
+<p><a href="#dtp-clock-tree">Figure 2</a> shows which DTP blocks use the system clock and which use TCK.
 The DTP has two clocks and no clock gates. <code>clk_i</code>, the system clock (<code>clk_smu_i</code>
 in the SMU), clocks the whole cross-trigger network and the AXI side of the three
 JTAG2AXI bridges. TCK, from <code>jtag_ptap_client_tap_ctrl_i.tck</code>, clocks the rest of
@@ -428,7 +434,7 @@ scan control of the boundary-scan, extended STAP, DFT and DFD ports.</p>
 <h2 id="dtp-reset-distribution"><a class="anchor" href="#dtp-reset-distribution"></a><a class="link" href="#dtp-reset-distribution">6. Reset Distribution</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#dtp-reset-tree">DTP system and JTAG reset distribution</a> shows the reset distribution for DTP system logic and the JTAG scan
+<p><a href="#dtp-reset-tree">Figure 3</a> shows the reset distribution for DTP system logic and the JTAG scan
 paths. Each reset has its own colour, and the input names below the DTP ports are
 the SMU nets that drive them. Gate and flop symbols show where resets are combined,
 and a reset ends on the bottom edge of the flop it resets.</p>

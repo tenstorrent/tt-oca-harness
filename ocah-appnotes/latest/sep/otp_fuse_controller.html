@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -179,7 +185,7 @@ software access and hardware policy enforcement. Programming a fuse and
 updating its shadow are separate operations.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-otp-fuse-bank-diagram">SEP OTP fuse bank</a> shows the fuse-bank organization.</p>
+<p><a href="#sep-otp-fuse-bank-diagram">Figure 1</a> shows the fuse-bank organization.</p>
 </div>
 <div id="sep-otp-fuse-bank-diagram" class="imageblock">
 <div class="content">
@@ -188,7 +194,7 @@ updating its shadow are separate operations.</p>
 <div class="title">Figure 1. SEP OTP fuse bank</div>
 </div>
 <div class="paragraph">
-<p>Each row of <a href="#sep-otp-fuse-bank-diagram">SEP OTP fuse bank</a> is 32 bytes, eight 32-bit words, at
+<p>Each row of <a href="#sep-otp-fuse-bank-diagram">Figure 1</a> is 32 bytes, eight 32-bit words, at
 the offset given on the left from the base of the MAP window; a field that
 crosses a row boundary continues at the start of the next row. The shading
 gives the storage class of each field&#8217;s shadow register. The lock field, the
@@ -198,7 +204,7 @@ non-scannable as well and read as zero downstream while SECURE_TM is 1. The
 nine spare fields fill the last nine rows and are drawn as one band.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-efuse-interface-diagram">eFuse controller and technology-specific interface shim</a> shows the controller boundary and the
+<p><a href="#sep-efuse-interface-diagram">Figure 2</a> shows the controller boundary and the
 technology-specific fuse interface.</p>
 </div>
 <div id="sep-efuse-interface-diagram" class="imageblock">
@@ -269,7 +275,7 @@ shadow register.</p>
 <div class="paragraph">
 <p>The logical <code>LC_STATE</code> output remains <code>4&#8217;b1111</code> until fuse
 sensing completes; only then is the LC_STATE value sensed from the fuses driven
-to downstream logic such as the lifecycle controller. <a href="#sep-fuse-fields-table">SEP fuse fields</a>
+to downstream logic such as the lifecycle controller. <a href="#sep-fuse-fields-table">Table 1</a>
 defines whether software can read and write the shadow register of each fuse
 field. Shadow registers that are not software-visible drive their fuse values
 directly to downstream hardware. All fuse fields other than LOCKS and LC_STATE
@@ -282,7 +288,7 @@ the SEP SRAMs. Once memory repair completes or is bypassed, the SEP CPU is
 enabled and fetches its first instruction from the SEP ROM.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-efuse-sense-diagram">eFuse sensing state machine and shadow-register timing</a> shows the fuse-sensing sequence and shadow-register timing.</p>
+<p><a href="#sep-efuse-sense-diagram">Figure 3</a> shows the fuse-sensing sequence and shadow-register timing.</p>
 </div>
 <div id="sep-efuse-sense-diagram" class="imageblock">
 <div class="content">
@@ -291,7 +297,7 @@ enabled and fetches its first instruction from the SEP ROM.</p>
 <div class="title">Figure 3. eFuse sensing state machine and shadow-register timing</div>
 </div>
 <div class="paragraph">
-<p>The upper part of <a href="#sep-efuse-sense-diagram">eFuse sensing state machine and shadow-register timing</a> shows the four states of the
+<p>The upper part of <a href="#sep-efuse-sense-diagram">Figure 3</a> shows the four states of the
 sensing FSM in <code>efuse_shadow_regs</code>, and the lower part shows one sensing run
 cycle by cycle. ST_READ issues a single READ command for all 256 shadow words.
 The shim then returns one <code>fuse_command_resp.valid</code> strobe per word, and
@@ -317,13 +323,13 @@ can still read locked fuses to populate the shadows.</p>
 <p>There are two exceptions: the <code>LOCKS</code> and <code>LOCKS_SPARE</code> registers have no lock
 slot of their own, and <code>LC_STATE</code> ignores its assigned lock bits. Lifecycle
 transition and token checks still apply to <code>LC_STATE</code>. The slot numbers and
-bit positions are defined in <a href="#sep-fuse-fields-table">SEP fuse fields</a>.</p>
+bit positions are defined in <a href="#sep-fuse-fields-table">Table 1</a>.</p>
 </div>
 <div class="paragraph">
 <p>The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
 shown in the figure, and each interface has its own access control. In addition
-to the shadow-register access control defined by <a href="#sep-fuse-fields-table">SEP fuse fields</a>, the
+to the shadow-register access control defined by <a href="#sep-fuse-fields-table">Table 1</a>, the
 JTAG port shall be further restricted: in the PROD and RMA_SIP states it may
 reach only the eFuse MMR token block. That block is the three token-input arrays
 (RMA_SIP_TOKEN_I, RMA_CHIPLET_TOKEN_I and SEC_DISABLE_TOKEN_I), the TOKEN_EOP
@@ -414,7 +420,7 @@ downstream logic during test.</p>
 <h2 id="fuse-fields"><a class="anchor" href="#fuse-fields"></a><a class="link" href="#fuse-fields">5. Fuse Fields</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#sep-fuse-fields-table">SEP fuse fields</a> lists lock slots, field sizes, shadow access permissions and purposes.
+<p><a href="#sep-fuse-fields-table">Table 1</a> lists lock slots, field sizes, shadow access permissions and purposes.
 Slot numbers select lock bits; they are neither OTP word offsets nor register
 addresses. Access permissions remain subject to the lock and lifecycle rules above.</p>
 </div>
@@ -478,7 +484,7 @@ terminal. Otherwise, LC_STATE[2:1] cannot be updated.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Disables secure boot when
 set to 1, in any lifecycle state. It overrides lifecycle enforcement in PROD
-and PROD_END and the TEST_DEV debug-lock rule, but not a signed manifest&#8217;s
+and PROD_END and the TEST_DEV / RMA_SiP debug-lock rule, but not a signed manifest&#8217;s
 request for verification; see Secure-Boot Enforcement in the Life Cycle
 Controller section.</p></td>
 </tr>
@@ -570,7 +576,7 @@ part to the customer, the development-key bits shall be set (revoked).
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL1 anti-rollback storage. The
 production ROM supplies the low 128 raw bits as security-version flags to
 the manifest validator; the upper 128 bits do not participate in that check.
-See <a href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">Anti-Rollback Security-Version Flags</a>.</p></td>
+See <a href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">Section 6</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL2_VERSION</p></td>

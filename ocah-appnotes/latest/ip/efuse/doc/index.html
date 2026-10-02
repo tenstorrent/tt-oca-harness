@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -262,13 +268,13 @@ that path in preference to <code>EFUSE_READ_CTRL.read_enable</code>, so the two
 enables must be asserted exclusively. <code>program_enable</code> is a mode-ownership
 bit: after <code>PROGRAM_DONE</code>, software deasserts <code>program_enable</code>
 before any later read. The programming sequence is in
-<a href="#smc-dv-efuse-programming">Programming</a>.</p>
+<a href="#smc-dv-efuse-programming">Section 6</a>.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="destination-endpoints"><a class="anchor" href="#destination-endpoints"></a><a class="link" href="#destination-endpoints">3.4. Destination Endpoints</a></h3>
 <div class="paragraph">
-<p><a href="#efuse-destination-endpoints-table">eFuse destination endpoints</a> identifies the consumers of sensed fuse data.</p>
+<p><a href="#efuse-destination-endpoints-table">Table 1</a> identifies the consumers of sensed fuse data.</p>
 </div>
 <table id="efuse-destination-endpoints-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. eFuse destination endpoints</caption>
@@ -314,7 +320,7 @@ access control</p></td>
 <div class="sect2">
 <h3 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">3.6. Features</a></h3>
 <div class="paragraph">
-<p><a href="#efuse-shadow-register-features-table">eFuse shadow-register features</a> summarises the shadow-register capacity and
+<p><a href="#efuse-shadow-register-features-table">Table 2</a> summarises the shadow-register capacity and
 access features.</p>
 </div>
 <table id="efuse-shadow-register-features-table" class="tableblock frame-all grid-all stretch">
@@ -389,7 +395,7 @@ command types, while the macros guarantee a consistent struct layout and
 field ordering across all OTP variants.</p>
 </div>
 <div class="paragraph">
-<p><a href="#efuse-command-type-macros-table">eFuse command type macros</a> relates each command macro to its generated type and
+<p><a href="#efuse-command-type-macros-table">Table 3</a> relates each command macro to its generated type and
 purpose.</p>
 </div>
 <table id="efuse-command-type-macros-table" class="tableblock frame-all grid-all stretch">
@@ -465,7 +471,7 @@ types:</p>
 <div class="sect2">
 <h3 id="foundry-specific-signals"><a class="anchor" href="#foundry-specific-signals"></a><a class="link" href="#foundry-specific-signals">3.9. Foundry-Specific Signals</a></h3>
 <div class="paragraph">
-<p><a href="#example-hardware-interfaces-by-otp-variant-table">Example Hardware Interfaces by OTP Variant</a> compares the signals required by
+<p><a href="#example-hardware-interfaces-by-otp-variant-table">Table 4</a> compares the signals required by
 the supported OTP interface variants.</p>
 </div>
 <table id="example-hardware-interfaces-by-otp-variant-table" class="tableblock frame-all grid-all stretch">
@@ -560,7 +566,7 @@ range with a 4-bit <code>lock</code> permission field:</p>
 </div>
 <div class="paragraph">
 <p>The <code>lock</code> field encodes read, write, and secure-test-mode permissions
-for the field (<a href="#efuse-lock-field-encoding-table">eFuse lock-field encoding</a>).</p>
+for the field (<a href="#efuse-lock-field-encoding-table">Table 5</a>).</p>
 </div>
 <table id="efuse-lock-field-encoding-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 5. eFuse lock-field encoding</caption>
@@ -599,7 +605,7 @@ for the field (<a href="#efuse-lock-field-encoding-table">eFuse lock-field encod
 <h3 id="hardware-vs-software-locks"><a class="anchor" href="#hardware-vs-software-locks"></a><a class="link" href="#hardware-vs-software-locks">3.13. Hardware vs. Software Locks</a></h3>
 <div class="paragraph">
 <p>The same permission semantics are reached through two independent
-mechanisms, and the guard enforces whichever is more restrictive (<a href="#efuse-hardware-and-software-locks-table">eFuse hardware and software locks</a>).</p>
+mechanisms, and the guard enforces whichever is more restrictive (<a href="#efuse-hardware-and-software-locks-table">Table 6</a>).</p>
 </div>
 <table id="efuse-hardware-and-software-locks-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 6. eFuse hardware and software locks</caption>
@@ -670,7 +676,7 @@ to be bypassed.</p>
 <p><strong>Behavior when <code>security_disable_i</code> is asserted:</strong></p>
 </div>
 <div class="paragraph">
-<p><a href="#efuse-security-disable-behavior-table">eFuse security-disable behavior</a> describes the sensing behavior when
+<p><a href="#efuse-security-disable-behavior-table">Table 7</a> describes the sensing behavior when
 security_disable_i is asserted.</p>
 </div>
 <table id="efuse-security-disable-behavior-table" class="tableblock frame-all grid-all stretch">
@@ -728,7 +734,7 @@ chip&#8217;s lifecycle state.</p>
 <p><strong>Lifecycle State Encoding:</strong></p>
 </div>
 <div class="paragraph">
-<p><a href="#efuse-lifecycle-encodings-table">eFuse lifecycle encodings</a> lists the lifecycle encodings used by the eFuse
+<p><a href="#efuse-lifecycle-encodings-table">Table 8</a> lists the lifecycle encodings used by the eFuse
 controller.</p>
 </div>
 <table id="efuse-lifecycle-encodings-table" class="tableblock frame-all grid-all stretch">
@@ -798,7 +804,7 @@ accesses outside the MMR space are blocked with an error response.</p>
 </div>
 <div class="paragraph">
 <p>When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
-to eFuse registers is restricted (<a href="#efuse-lifecycle-based-jtag-permissions-table">eFuse JTAG permissions (SMC)</a>).</p>
+to eFuse registers is restricted (<a href="#efuse-lifecycle-based-jtag-permissions-table">Table 9</a>).</p>
 </div>
 <table id="efuse-lifecycle-based-jtag-permissions-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 9. eFuse JTAG permissions (SMC)</caption>
@@ -857,7 +863,7 @@ assets during secure manufacturing test operations.</p>
 <p><strong>Behavior when <code>secure_tm_i</code> is asserted:</strong></p>
 </div>
 <div class="paragraph">
-<p><a href="#efuse-secure-test-behavior-table">eFuse secure-test behavior</a> describes the restrictions applied when secure_tm_i
+<p><a href="#efuse-secure-test-behavior-table">Table 10</a> describes the restrictions applied when secure_tm_i
 is asserted.</p>
 </div>
 <table id="efuse-secure-test-behavior-table" class="tableblock frame-all grid-all stretch">
@@ -1397,7 +1403,7 @@ authentication, including RMA tokens and security disable tokens.</p>
 and verification operations on the eFuse array. <code>program_enable</code> and
 <code>read_enable</code> are mutually exclusive; software deasserts <code>program_enable</code>
 after <code>PROGRAM_DONE</code> before issuing a read. See
-<a href="#smc-dv-efuse-programming">Programming</a>.</p>
+<a href="#smc-dv-efuse-programming">Section 6</a>.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->

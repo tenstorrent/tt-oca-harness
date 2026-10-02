@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -410,7 +416,7 @@ inverting a match produces a mismatch. The countermeasure detects collapsed
 pairs and disagreement, not every possible fault-injection outcome.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-token-processing-figure">SEP token processing</a> shows the processing path. The six-bit RMA
+<p><a href="#sep-token-processing-figure">Figure 1</a> shows the processing path. The six-bit RMA
 match codes are checked by the lifecycle and fuse-programming consumers.
 SEC_DIS has a separate bypass output qualified by the revision enable.</p>
 </div>
@@ -421,7 +427,7 @@ SEC_DIS has a separate bypass output qualified by the revision enable.</p>
 <div class="title">Figure 1. SEP token processing</div>
 </div>
 <div class="paragraph">
-<p>Each of the three rows in <a href="#sep-token-processing-figure">SEP token processing</a> is one token lane,
+<p>Each of the three rows in <a href="#sep-token-processing-figure">Figure 1</a> is one token lane,
 from its token array and go bit in <code>efuse_mmr_reg</code>, through its SHA-256 engine,
 to its comparator. The expected digests and <code>fuse_sense_done_i</code> are named at
 their point of use; both come from the eFuse shadow registers at the lower

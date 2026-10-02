@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -240,11 +246,11 @@ FSM that serializes and deserializes subframes, a CRC-3 engine shared between
 transmit and receive, and the AVS clock generation logic.</p>
 </div>
 <div class="paragraph">
-<p><a href="#avsbus-controller-diagram">AVSBus controller block diagram</a> shows the FIFO, protocol-engine, and clock-generation
+<p><a href="#avsbus-controller-diagram">Figure 1</a> shows the FIFO, protocol-engine, and clock-generation
 paths. The two clock-domain boxes hold the logic clocked by <code>clk_reg_i</code> and by the
 generated <code>avs_clk</code>; the FIFOs and synchronizers that straddle the gap between them carry
-every crossing. The clock generation is drawn in full in <a href="#avsbus-clock-select-diagram">AVSBus clock selection</a>,
-and the protocol FSM in <a href="#avsbus-protocol-fsm-diagram">AVSBus protocol state machine</a>.</p>
+every crossing. The clock generation is drawn in full in <a href="#avsbus-clock-select-diagram">Figure 3</a>,
+and the protocol FSM in <a href="#avsbus-protocol-fsm-diagram">Figure 2</a>.</p>
 </div>
 <div id="avsbus-controller-diagram" class="imageblock">
 <div class="content">
@@ -284,7 +290,7 @@ into the AVS clock domain.</p>
 <div class="sect2">
 <h3 id="clock-generation-and-management"><a class="anchor" href="#clock-generation-and-management"></a><a class="link" href="#clock-generation-and-management">3.2. Clock Generation and Management</a></h3>
 <div class="paragraph">
-<p><a href="#avsbus-clock-sources-table">AVSBus clock sources</a> identifies the register, reference, and generated AVS
+<p><a href="#avsbus-clock-sources-table">Table 1</a> identifies the register, reference, and generated AVS
 clocks.</p>
 </div>
 <table id="avsbus-clock-sources-table" class="tableblock frame-all grid-all stretch">
@@ -350,7 +356,7 @@ resends the command.</p>
 <div class="sect2">
 <h3 id="command-and-response-fifo-system"><a class="anchor" href="#command-and-response-fifo-system"></a><a class="link" href="#command-and-response-fifo-system">3.4. Command and Response FIFO System</a></h3>
 <div class="paragraph">
-<p><a href="#avsbus-command-and-readback-fifos-table">AVSBus command and readback FIFOs</a> compares the command and readback FIFO roles
+<p><a href="#avsbus-command-and-readback-fifos-table">Table 2</a> compares the command and readback FIFO roles
 and operation.</p>
 </div>
 <table id="avsbus-command-and-readback-fifos-table" class="tableblock frame-all grid-all stretch">
@@ -516,7 +522,7 @@ take their scan bypass from <code>scan_rst_ni</code>.</p>
 <h3 id="protocol-state-machine"><a class="anchor" href="#protocol-state-machine"></a><a class="link" href="#protocol-state-machine">3.8. Protocol State Machine</a></h3>
 <div class="paragraph">
 <p><code>cur_state_debug_o</code> exposes the FSM state as a 17-bit one-hot vector,
-resynchronized to <code>clk_reg_i</code>. The states, in bit order from 0, are (<a href="#avsbus-protocol-state-encodings-table">AVSBus protocol state encodings</a>).</p>
+resynchronized to <code>clk_reg_i</code>. The states, in bit order from 0, are (<a href="#avsbus-protocol-state-encodings-table">Table 3</a>).</p>
 </div>
 <table id="avsbus-protocol-state-encodings-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. AVSBus protocol state encodings</caption>
@@ -591,7 +597,7 @@ arrives during the subframe that carries the next command, which is why the
 mid-subframe states do both at once.</p>
 </div>
 <div class="paragraph">
-<p><a href="#avsbus-protocol-fsm-diagram">AVSBus protocol state machine</a> shows the transitions between these states, grouping
+<p><a href="#avsbus-protocol-fsm-diagram">Figure 2</a> shows the transitions between these states, grouping
 the 17 states into 11 boxes. Each subframe box stands for a SHIFT state, which holds for
 the 32 bits of a subframe, and the END state that follows it, where the transition is
 decided; the three retry boxes pair the six <code>AVS_RETRY_*</code> states the same way. The
@@ -615,7 +621,7 @@ processed after the retries finish. Every retry sequence ends with a slave resyn
 <div class="sect2">
 <h3 id="error-handling-and-diagnostics"><a class="anchor" href="#error-handling-and-diagnostics"></a><a class="link" href="#error-handling-and-diagnostics">3.9. Error Handling and Diagnostics</a></h3>
 <div class="paragraph">
-<p><a href="#avsbus-error-handling-table">AVSBus error handling</a> describes the controller response to each error
+<p><a href="#avsbus-error-handling-table">Table 4</a> describes the controller response to each error
 condition.</p>
 </div>
 <table id="avsbus-error-handling-table" class="tableblock frame-all grid-all stretch">
@@ -706,7 +712,7 @@ bits; the remaining fields occupy the same bit positions as the <code>AVS_CMD</c
 register, so software writes a command in wire order.</p>
 </div>
 <div class="paragraph">
-<p><a href="#avsbus-master-subframe-table">AVSBus Master Subframe</a> defines the fields transmitted in a master subframe.</p>
+<p><a href="#avsbus-master-subframe-table">Table 5</a> defines the fields transmitted in a master subframe.</p>
 </div>
 <table id="avsbus-master-subframe-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 5. AVSBus Master Subframe</caption>
@@ -749,7 +755,7 @@ manufacturer-specific</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Command Code</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[26:23]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD.CMD_CODE</code>, see <a href="#avsbus-controller-cmd-codes">AVSBus Command Codes (Command Group 0)</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD.CMD_CODE</code>, see <a href="#avsbus-controller-cmd-codes">Table 6</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Rail Select</p></td>
@@ -772,7 +778,7 @@ manufacturer-specific</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p><a href="#avsbus-controller-cmd-codes">AVSBus Command Codes (Command Group 0)</a> lists the command-group-zero data types, resolutions,
+<p><a href="#avsbus-controller-cmd-codes">Table 6</a> lists the command-group-zero data types, resolutions,
 and access modes.</p>
 </div>
 <table id="avsbus-controller-cmd-codes" class="tableblock frame-all grid-all stretch">
@@ -844,7 +850,7 @@ maximum power, 0x4-0x7 manufacturer-specific</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p>With command group 1 the command code is manufacturer-specific and <a href="#avsbus-slave-subframe-table">AVSBus Slave Subframe</a>
+<p>With command group 1 the command code is manufacturer-specific and <a href="#avsbus-slave-subframe-table">Table 7</a>
 above does not apply.</p>
 </div>
 <table id="avsbus-slave-subframe-table" class="tableblock frame-all grid-all stretch">
@@ -928,14 +934,14 @@ bit 0 picks the divider (0 = bypass, 1 = divided). The reset value is <code>2&#8
 so the controller comes up on a divided <code>clk_ref_i</code>.</p>
 </div>
 <div class="paragraph">
-<p><a href="#avsbus-clock-select-diagram">AVSBus clock selection</a> shows the clock path. Each source passes a clock gate that
+<p><a href="#avsbus-clock-select-diagram">Figure 3</a> shows the clock path. Each source passes a clock gate that
 <code>TURN_OFF_ALL_PREMUX_CLOCKS</code> closes, then the anti-glitch mux <code>u_refclk_apbclk_mux</code>
 selects one of them, choosing <code>clk_ref_i</code> while in reset. The test mux substitutes
 <code>clk_test_i</code> in test mode. Inside <code>u_clk_div</code>, the glitch-free post-divider mux selects
 either the undivided clock or the divider output. The result, <code>avs_clk</code>, clocks the AVS
 domain and reaches <code>avs_clock_o</code> through <code>u_avs_bus_clkgate</code>, which the protocol FSM closes
 while the bus is idle if <code>STOP_AVS_CLOCK_ON_IDLE</code> is set. Each mux passes its input 0 when
-its select is 0. <a href="#avs-clock-select-table">AVS_CLOCK_SELECT settings</a> lists the four settings.</p>
+its select is 0. <a href="#avs-clock-select-table">Table 8</a> lists the four settings.</p>
 </div>
 <div id="avsbus-clock-select-diagram" class="imageblock">
 <div class="content">
@@ -988,7 +994,7 @@ software writes a non-zero value</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p><a href="#avs-clock-configuration-fields-table">AVS Clock Configuration Fields</a> defines the source-selection and divider
+<p><a href="#avs-clock-configuration-fields-table">Table 9</a> defines the source-selection and divider
 configuration fields.</p>
 </div>
 <table id="avs-clock-configuration-fields-table" class="tableblock frame-all grid-all stretch">
@@ -1053,7 +1059,7 @@ source mux</p></td>
 <div class="sect2">
 <h3 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">4.3. Reset Architecture</a></h3>
 <div class="paragraph">
-<p><a href="#avsbus-reset-domains-table">AVSBus Reset Domains</a> identifies the logic reset by each AVSBus reset input.</p>
+<p><a href="#avsbus-reset-domains-table">Table 10</a> identifies the logic reset by each AVSBus reset input.</p>
 </div>
 <table id="avsbus-reset-domains-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 10. AVSBus Reset Domains</caption>
@@ -1096,7 +1102,7 @@ clock domain never starts.</p>
 and its corresponding <code>AVS_INTERRUPT_MASK</code> bit is clear.</p>
 </div>
 <div class="paragraph">
-<p><a href="#avsbus-interrupt-sources-table">AVSBus Interrupt Sources</a> maps AVS_INTERRUPT bits to the events that set them.</p>
+<p><a href="#avsbus-interrupt-sources-table">Table 11</a> maps AVS_INTERRUPT bits to the events that set them.</p>
 </div>
 <table id="avsbus-interrupt-sources-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 11. AVSBus Interrupt Sources</caption>
@@ -1184,7 +1190,7 @@ because the protocol FSM begins running as soon as reset is deasserted.</p>
 <div class="sect2">
 <h3 id="timing"><a class="anchor" href="#timing"></a><a class="link" href="#timing">4.6. Timing</a></h3>
 <div class="paragraph">
-<p><a href="#avsbus-protocol-timing-table">AVSBus Protocol Timing</a> summarises the subframe and clock timing.</p>
+<p><a href="#avsbus-protocol-timing-table">Table 12</a> summarises the subframe and clock timing.</p>
 </div>
 <table id="avsbus-protocol-timing-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 12. AVSBus Protocol Timing</caption>

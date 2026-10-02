@@ -91,31 +91,25 @@
     <a class="nav-link" href="../index.html">Programmer&#8217;s Guide</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../index.html#smc">SMC</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../index.html#smc-per-core-reset">Per-Core Reset</a>
-  </li>
-  <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../index.html#smc-ndm-reset">External CPU cluster NDM reset</a>
-  </li>
-</ul>
+    <a class="nav-link" href="../index.html#smc-programming-guide">SMC Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../index.html#sep">SEP</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../index.html#cpu-bring-up">CPU Bring-Up</a>
-  </li>
-  <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../index.html#ocah-trng-bring-up">OCAH TRNG Bring-Up</a>
-  </li>
-</ul>
+    <a class="nav-link" href="../index.html#sep-programming-guide">SEP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#aou-software-operation">AXI-over-UCIe Bridge (AoU) Software Operation</a>
+    <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#sep-production-rom">SEP Production ROM</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
   </li>
 </ul>
   </li>
@@ -2173,13 +2167,14 @@ disabled (see <a href="#sec:secure_boot">Secure Boot Decision and Signature Veri
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_SiP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2</code>–<code>0x3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Return-material state, system-in-package scope.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Return-material state, system-in-package scope. Security
+optional unless chiplet debug is disabled.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMA_CHIPLET</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x6</code>–<code>0x7</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Return-material state, chiplet scope.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Return-material state, chiplet scope. Security optional.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>PROD_END</code></p></td>
@@ -2243,7 +2238,8 @@ bit means the array is not what the ROM believes it to be; [S18] stops there wit
 <div class="paragraph">
 <p><code>CHIPLET_DBG</code> is bit 1 of the <code>SIP_DIS</code> (<code>0x1093_0018</code>) and <code>SYS_DIS</code> (<code>0x1093_0020</code>)
 disable vectors. Set in either, it closes external debug access to the chiplet and to the SEP,
-and on a <code>TEST_DEV</code> part it makes secure boot enforced (SEP-ROM-SB-025).</p>
+and on a <code>TEST_DEV</code> or <code>RMA_SiP</code> part it makes secure boot enforced (SEP-ROM-SB-025).
+<code>RMA_CHIPLET</code> ignores it.</p>
 </div>
 <div class="paragraph">
 <p>[S18] reads the <code>SIP_DIS_READ_LOCK</code> / <code>SYS_DIS_READ_LOCK</code> bits of <code>LOCKS</code> and, when neither is
@@ -2257,9 +2253,9 @@ bit to 1, and <code>TEST_DEV</code> demotion forces the <code>DBG_1</code> group
 enabled on a part whose fuses disable it.</p>
 </div>
 <div class="paragraph">
-<p>When the lock is what makes a <code>TEST_DEV</code> part enforce secure boot, [S18] reports
-<code>SBOOT_DBG_LOCK</code>. It is not reported in <code>PROD</code> or <code>PROD_END</code>, which enforce regardless, or when
-<code>SBOOT_DIS</code> overrides the lock.</p>
+<p>When the lock is what makes a <code>TEST_DEV</code> or <code>RMA_SiP</code> part enforce secure boot, [S18] reports
+<code>SBOOT_DBG_LOCK</code>. It is not reported in <code>PROD</code> or <code>PROD_END</code>, which enforce regardless, in
+<code>RMA_CHIPLET</code>, which never does, or when <code>SBOOT_DIS</code> overrides the lock.</p>
 </div>
 </div>
 <div class="sect2">
@@ -3487,8 +3483,8 @@ commercial IP that is not part of this design.</p>
 <td class="content">
 Simulation still forces the ESRC <strong>noise</strong> source (<code>+esrc_noise_force</code>), because ring
 oscillators do not self-oscillate in simulation. Everything above that — the health tests,
-CSRNG, EDN, and the command handshakes — is exercised for real. This is a much weaker
-shortcut than the whole-chain EDN grant it replaces.
+CSRNG, EDN, and the command handshakes — is exercised for real. The physical
+ring-oscillator noise source itself remains outside this simulation coverage.
 </td>
 </tr>
 </table>
@@ -3516,9 +3512,9 @@ gating, the boot measurement, and the hand-off self-check.</p>
 enforced. No manifest content shall be able to disable it.</p>
 </li>
 <li>
-<p><a id="req-SEP-ROM-SB-020"></a><strong>[SEP-ROM-SB-020]</strong> In <code>TEST_DEV</code> with chiplet debug enabled, and in
-the RMA states, secure boot shall be enabled when <strong>either</strong> trigger is set, and disabled
-otherwise:</p>
+<p><a id="req-SEP-ROM-SB-020"></a><strong>[SEP-ROM-SB-020]</strong> In <code>TEST_DEV</code> and <code>RMA_SiP</code> with chiplet debug
+enabled, and in <code>RMA_CHIPLET</code> whatever the debug lock, secure boot shall be enabled when
+<strong>either</strong> trigger is set, and disabled otherwise:</p>
 <div class="ulist">
 <ul>
 <li>
@@ -3534,14 +3530,17 @@ it.</p>
 </div>
 </li>
 <li>
-<p><a id="req-SEP-ROM-SB-025"></a><strong>[SEP-ROM-SB-025]</strong> In <code>TEST_DEV</code>, secure boot shall be enforced when
-chiplet-scope debug is disabled: <code>CHIPLET_DBG</code> set in <code>SIP_DIS</code> or <code>SYS_DIS</code>, or either
-vector read-locked. No manifest content shall be able to disable it.</p>
+<p><a id="req-SEP-ROM-SB-025"></a><strong>[SEP-ROM-SB-025]</strong> In <code>TEST_DEV</code> and <code>RMA_SiP</code>, secure boot shall be
+enforced when chiplet-scope debug is disabled: <code>CHIPLET_DBG</code> set in <code>SIP_DIS</code> or <code>SYS_DIS</code>,
+or either vector read-locked. No manifest content shall be able to disable it. The lock
+does not apply in <code>RMA_CHIPLET</code>.</p>
 <div class="paragraph">
 <p>A locked debug posture is only a guarantee if unsigned code cannot be loaded in its place, so
-a debug-locked <code>TEST_DEV</code> part is treated as <code>PROD</code> is. The ROM reads the raw fuse shadows once
-at [S18] (<a href="#sec:fuse_chiplet_dbg">Chiplet Debug Lock ([S18])</a>). The RMA states are unaffected: <code>RMA_CHIPLET</code> ignores both
-vectors and <code>RMA_SiP</code> ignores <code>SYS_DIS</code>, and both stay manifest-optional.</p>
+a debug-locked <code>TEST_DEV</code> or <code>RMA_SiP</code> part is treated as <code>PROD</code> is. The ROM reads the raw fuse
+shadows once at [S18] (<a href="#sec:fuse_chiplet_dbg">Chiplet Debug Lock ([S18])</a>). <code>RMA_SiP</code> does not apply <code>SYS_DIS</code> to
+feature control, but the fuse is unchanged, so a lock burned before RMA entry still keeps the
+part on the verified path. <code>RMA_CHIPLET</code> applies neither vector to feature control, and the
+ROM does not apply the lock there either.</p>
 </div>
 </li>
 <li>
@@ -3602,56 +3601,56 @@ keeps the decision and the attestation of that decision the same fact.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV (debug locked)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV or RMA_SiP (debug locked)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>enforced</strong></p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV (debug locked)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV or RMA_SiP (debug locked)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (manifest outranks the fuse)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV (debug locked)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PROD / PROD_END / TEST_DEV or RMA_SiP (debug locked)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">off (chicken bit)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (manifest-declared)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (forced by escalation flag)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">off</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>on</strong> (manifest outranks the fuse)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open) / RMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
@@ -3671,19 +3670,29 @@ read-locked (SEP-ROM-SB-025).</p>
 </td>
 <td class="content">
 <div class="paragraph">
-<p><strong>Ratified (2026-07-23):</strong> the RMA states are treated like <code>TEST_DEV</code> — secure boot is
-manifest-optional in both <code>RMA_SiP</code> and <code>RMA_CHIPLET</code>, supporting manufacturing-return
-failure-analysis flows. Protection of RMA entry rests on the fused RMA token digests and the
-authenticated lifecycle transition, not on image signing; a platform can still force
-verification of any individual image via the escalation flag (SEP-ROM-SB-020/-030).</p>
+<p><strong>Ratified (2026-07-23, amended 2026-10-01):</strong> secure boot is manifest-optional in both RMA
+states, supporting manufacturing-return failure-analysis flows, with one exception: an
+<code>RMA_SiP</code> part whose chiplet debug is locked enforces it, as a locked <code>TEST_DEV</code> part does
+(SEP-ROM-SB-025). <code>RMA_CHIPLET</code> stays manifest-optional whatever the debug lock. Protection of
+RMA entry rests on the fused RMA token digests and the authenticated lifecycle transition, not
+on image signing; a platform can still force verification of any individual image via the
+escalation flag (SEP-ROM-SB-020/-030), or of every <code>RMA_SiP</code> image by burning <code>CHIPLET_DBG</code>
+before RMA entry.</p>
 </div>
 </td>
 </tr>
 </table>
 </div>
+<div class="paragraph">
+<p><a href="#fig:secure_boot_decision">Secure-boot decision</a> is the whole decision as the ROM implements it: the lifecycle
+and fuse reads latched once per boot at [S11] and [S18], then the precedence applied to each
+manifest slot. The first input that settles the question decides it. Outside <code>PROD</code> /
+<code>PROD_END</code>, secure boot is left off by <code>SBOOT_DIS</code>, by <code>RMA_CHIPLET</code>, or by an open debug
+posture in <code>TEST_DEV</code> / <code>RMA_SiP</code>.</p>
+</div>
 <div id="fig:secure_boot_decision" class="imageblock kroki">
 <div class="content">
-<img src="_images/secure-boot-decision-3cb59b19ecae159da1e0672494215f70c31f1ab4.svg" alt="Secure-boot decision">
+<img src="_images/secure-boot-decision-c3515eedfa75ee10123b66894072b7ca5fdaf9cd.svg" alt="Secure-boot decision">
 </div>
 <div class="title">Figure 11. Secure-boot decision</div>
 </div>
@@ -6009,8 +6018,8 @@ the lock poll (unbounded; hang is the failure mode)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S18] CHIPLET_DBG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DBG_LOCK</code> when the debug lock is what makes a <code>TEST_DEV</code> part
-enforce secure boot</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DBG_LOCK</code> when the debug lock is what makes a <code>TEST_DEV</code> or
+<code>RMA_SiP</code> part enforce secure boot</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 </tr>
 <tr>
@@ -6521,8 +6530,9 @@ field is unread by the ROM and the validation library.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RMA secure-boot policy</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ratified</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure boot is manifest-optional in both RMA states
-(decision 2026-07-23), matching the implementation — no code change needed.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure boot is manifest-optional in both RMA states,
+except that a debug-locked <code>RMA_SiP</code> part enforces it (decision 2026-07-23, amended
+2026-10-01), matching the implementation.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
 </tr>
 <tr>
@@ -6916,13 +6926,14 @@ validation only</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-020">SEP-ROM-SB-020</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV (debug open)/RMA: either trigger enables</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV/RMA_SiP (debug open), RMA_CHIPLET: either
+trigger enables</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-025">SEP-ROM-SB-025</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV with CHIPLET_DBG disabled or its vector
-read-locked enforces secure boot</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TEST_DEV or RMA_SiP with CHIPLET_DBG disabled or its
+vector read-locked enforces secure boot</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
 </tr>
 <tr>

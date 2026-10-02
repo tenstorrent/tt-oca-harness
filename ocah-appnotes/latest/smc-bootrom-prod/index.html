@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>SMC Production ROM :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>SMC Production ROM Reference :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -159,7 +165,7 @@
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
-    <li><a href="index.html">SMC Production ROM</a></li>
+    <li><a href="index.html">SMC Production ROM Reference</a></li>
   </ul>
 </nav>
 </div>
@@ -168,76 +174,7 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">SMC Production ROM</h1>
-<div id="toc" class="toc">
-<div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#overview">1. Overview</a></li>
-<li><a href="#occp-protocol">2. OCCP protocol</a>
-<ul class="sectlevel2">
-<li><a href="#packet-format">2.1. Packet format</a></li>
-<li><a href="#integrity-checks">2.2. Integrity checks</a></li>
-<li><a href="#applications-and-commands">2.3. Applications and commands</a>
-<ul class="sectlevel3">
-<li><a href="#getversion">2.3.1. GetVersion</a></li>
-<li><a href="#getstatus">2.3.2. GetStatus</a></li>
-<li><a href="#writedata">2.3.3. WriteData</a></li>
-<li><a href="#readdata">2.3.4. ReadData</a></li>
-<li><a href="#executeimage-and-authenticateimage">2.3.5. ExecuteImage and AuthenticateImage</a></li>
-</ul>
-</li>
-<li><a href="#error-responses">2.4. Error responses</a></li>
-<li><a href="#i2c-and-i3c-transport-binding">2.5. I2C and I3C transport binding</a></li>
-</ul>
-</li>
-<li><a href="#boot-flow">3. Boot flow</a>
-<ul class="sectlevel2">
-<li><a href="#assembly-early-boot">3.1. Assembly early boot</a></li>
-<li><a href="#c-boot-phases">3.2. C boot phases</a></li>
-</ul>
-</li>
-<li><a href="#hardware-initialization">4. Hardware initialization</a>
-<ul class="sectlevel2">
-<li><a href="#straps-and-efuses">4.1. Straps and eFuses</a></li>
-<li><a href="#sram-initialization">4.2. SRAM initialization</a></li>
-<li><a href="#mbist-and-memory-repair">4.3. MBIST and memory repair</a></li>
-<li><a href="#clock-hook">4.4. Clock hook</a></li>
-</ul>
-</li>
-<li><a href="#memory-and-security">5. Memory and security</a>
-<ul class="sectlevel2">
-<li><a href="#image-and-sram-layout">5.1. Image and SRAM layout</a></li>
-<li><a href="#memory-access-policy">5.2. OCCP memory-access policy</a></li>
-<li><a href="#lifecycle-handling">5.3. Lifecycle handling</a></li>
-</ul>
-</li>
-<li><a href="#interfaces">6. Communication interfaces</a>
-<ul class="sectlevel2">
-<li><a href="#interface-addressing">6.1. Address selection</a></li>
-<li><a href="#driver-selection">6.2. Driver selection</a></li>
-<li><a href="#i3c-response-flow-control">6.3. I3C response flow control</a></li>
-<li><a href="#gpio-side-effects">6.4. GPIO side effects</a></li>
-</ul>
-</li>
-<li><a href="#status-reporting">7. Status and coordination</a>
-<ul class="sectlevel2">
-<li><a href="#scratch-registers">7.1. Scratch registers</a></li>
-<li><a href="#ring-buffers">7.2. Ring buffers</a></li>
-<li><a href="#ring-buffer-status-values">7.3. Ring-buffer status values</a></li>
-<li><a href="#software-occp-status-word">7.4. Software OCCP status word</a></li>
-<li><a href="#post-word">7.5. POST word</a></li>
-</ul>
-</li>
-<li><a href="#occp-command-processing">8. OCCP command processing</a>
-<ul class="sectlevel2">
-<li><a href="#polling-and-latching">8.1. Polling and latching</a></li>
-<li><a href="#receive-and-dispatch">8.2. Receive and dispatch</a></li>
-<li><a href="#failed-frame-cleanup">8.3. Failed-frame cleanup</a></li>
-<li><a href="#terminal-commands">8.4. Terminal commands</a></li>
-</ul>
-</li>
-</ul>
-</div>
+<h1 class="page">SMC Production ROM Reference</h1>
 <div class="sect1">
 <h2 id="overview"><a class="anchor" href="#overview"></a><a class="link" href="#overview">1. Overview</a></h2>
 <div class="sectionbody">
@@ -997,12 +934,12 @@ Any initialization error is fatal to the C boot flow.</p>
 </div>
 <div class="paragraph">
 <div class="title">Phase 5&#8201;&#8212;&#8201;OCCP processing</div>
-<p>Enters the non-returning command loop described in <a href="#occp-command-processing">OCCP command processing</a>.
+<p>Enters the non-returning command loop described in <a href="#occp-command-processing">Section 8</a>.
 The ROM FW emits the <code>SMC_STATUS_BOOT_COMPLETE</code> ring-buffer value when the loop
 is entered, but it does not set POST boot phase 6 at that point. POST phase 6
 is set only before an accepted <code>ExecuteImage</code> transfers control.
 Direct execution or authenticated handoff terminates command processing as
-described in <a href="#occp-protocol">OCCP protocol</a>.</p>
+described in <a href="#occp-protocol">Section 2</a>.</p>
 </div>
 </div>
 </div>
@@ -1092,7 +1029,7 @@ execution and is not a captured strap.</p>
 </table>
 <div class="paragraph">
 <p>The four chip-ID strap bits are read from <code>STRAPS_LO</code> bits 11, 12, 15, and 23.
-They contribute to the I2C/I3C identifier fallback described in <a href="#interface-addressing">Address selection</a>.</p>
+They contribute to the I2C/I3C identifier fallback described in <a href="#interface-addressing">Section 6.1</a>.</p>
 </div>
 <div class="paragraph">
 <p>The eFuse driver reads I2C/I3C identifier slots 0, 1, 3, 6, and 7 and the <code>RESERVED_1</code> transport timeout.
@@ -1425,7 +1362,7 @@ The target hardware does not accept a private read until its response-start thre
 <div class="paragraph">
 <p>The HCI receive implementation separately tracks each inbound frame&#8217;s descriptor length and unconsumed bytes.
 That accounting persists across the OCCP layer&#8217;s header and body reads and supports exact incomplete/oversized-frame reporting.
-See <a href="#occp-protocol">OCCP protocol</a> for the packet binding and controller-visible errors.</p>
+See <a href="#occp-protocol">Section 2</a> for the packet binding and controller-visible errors.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1849,7 +1786,7 @@ It only rejects OCCP <code>GetStatus</code>.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p><code>GetStatus</code> IDs <code>0x0000</code> through <code>0x0003</code> expose individual fields in the status-message envelope described in <a href="#occp-protocol">OCCP protocol</a>.</p>
+<p><code>GetStatus</code> IDs <code>0x0000</code> through <code>0x0003</code> expose individual fields in the status-message envelope described in <a href="#occp-protocol">Section 2</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1933,7 +1870,7 @@ before an accepted <code>ExecuteImage</code> transfers control.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>This section describes the ROM command-loop implementation.
-Packet formats, command semantics, CRCs, transport binding, and controller-visible errors are defined in <a href="#occp-protocol">OCCP protocol</a>.</p>
+Packet formats, command semantics, CRCs, transport binding, and controller-visible errors are defined in <a href="#occp-protocol">Section 2</a>.</p>
 </div>
 <div id="occp-processing-flow" class="imageblock kroki">
 <div class="content">

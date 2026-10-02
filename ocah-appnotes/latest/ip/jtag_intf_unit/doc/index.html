@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -232,7 +238,7 @@ and the JTAG2AXI pipeline depths.</p>
 a unified debug access point.</p>
 </div>
 <div class="paragraph">
-<p><a href="#jtag-interface-unit-scan-chain-figure">JTAG Interface Unit scan chain</a> shows the PTAP, STAP chain, and iJTAG network
+<p><a href="#jtag-interface-unit-scan-chain-figure">Figure 1</a> shows the PTAP, STAP chain, and iJTAG network
 at the debug access point. Follow the arrows from TDI to TDO: italic labels beside
 a mux name the instructions or select bit that choose its input, 0 or 1 at a mux
 input is the select value that picks it, and italic labels in the STAPs and SIBs
@@ -266,7 +272,7 @@ iJTAG network enables instrument-level access to debug blocks.</p>
 insertion optimized for different physical routing distances.</p>
 </div>
 <div class="paragraph">
-<p><a href="#jiu-stap-chain-hierarchy-table">JIU STAP chain hierarchy</a> relates each STAP level to its lockup-latch
+<p><a href="#jiu-stap-chain-hierarchy-table">Table 1</a> relates each STAP level to its lockup-latch
 configuration and physical role.</p>
 </div>
 <table id="jiu-stap-chain-hierarchy-table" class="tableblock frame-all grid-all stretch">
@@ -348,7 +354,7 @@ PTAP for the JTAG2AXI bridges.</p>
 <p>Each field is active-high (1 = path disabled).</p>
 </div>
 <div class="paragraph">
-<p><a href="#jiu-debug-disable-fields-table">JIU debug-disable fields</a> maps each debug access point to its synchronized
+<p><a href="#jiu-debug-disable-fields-table">Table 2</a> maps each debug access point to its synchronized
 disable field.</p>
 </div>
 <table id="jiu-debug-disable-fields-table" class="tableblock frame-all grid-all stretch">
@@ -428,7 +434,7 @@ DFT Secure SIB, the DFT Non-Secure SIB and the DFD SIB, and the DFD SIB&#8217;s 
 returns to the PTAP. Each SIB is one bit long. While a SIB is open, its segment
 is inserted on the TDO side of its bit: the SIB bit drives the segment&#8217;s scan
 input, and the segment&#8217;s return continues to the next SIB. With every SIB closed
-the iJTAG DR is three bits long, laid out as in <a href="#jiu-ijtag-sib-bit-map-table">JIU iJTAG DR with every SIB closed</a>.</p>
+the iJTAG DR is three bits long, laid out as in <a href="#jiu-ijtag-sib-bit-map-table">Table 3</a>.</p>
 </div>
 <table id="jiu-ijtag-sib-bit-map-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. JIU iJTAG DR with every SIB closed</caption>
@@ -533,7 +539,7 @@ Integrator-defined debug instruments are attached to this port.</p>
 <div class="paragraph">
 <p>The interface unit instantiates multiple JTAG2AXI bridges. Each bridge is a set
 of PTAP TDRs selected by its own instructions and gated by its own
-<code>dbg_disable_i</code> field (<a href="#jiu-debug-disable-fields-table">JIU debug-disable fields</a>); no bridge is reached
+<code>dbg_disable_i</code> field (<a href="#jiu-debug-disable-fields-table">Table 2</a>); no bridge is reached
 through the iJTAG network.</p>
 </div>
 <div class="ulist">
@@ -564,7 +570,7 @@ fuse controller CSRs through an AXI4-lite-to-APB bridge.</p>
 <h3 id="jtag-intf-unit-interface"><a class="anchor" href="#jtag-intf-unit-interface"></a><a class="link" href="#jtag-intf-unit-interface">4.1. Instruction Encodings</a></h3>
 <span id="jiu-signal-interface-table"></span>
 <div class="paragraph">
-<p>The JTAG interface unit uses 6-bit instruction encodings (<a href="#jiu-instruction-encodings-table">JIU instruction encodings</a>).</p>
+<p>The JTAG interface unit uses 6-bit instruction encodings (<a href="#jiu-instruction-encodings-table">Table 4</a>).</p>
 </div>
 <table id="jiu-instruction-encodings-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. JIU instruction encodings</caption>

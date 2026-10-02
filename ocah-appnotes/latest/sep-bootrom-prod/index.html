@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -399,7 +405,7 @@ the failure verdict, and enters a non-returning <code>wfi</code> loop.</p>
 <div class="paragraph">
 <p>A trap takes a separate path. <code>trap_handler_c()</code> writes the failure verdict
 alone, so neither <code>bl0_state</code> nor the machine-readable status word records a
-trap-terminated boot. <a href="#sep-prod-rom-status-errors">Status and error reporting</a> describes both trap
+trap-terminated boot. <a href="#sep-prod-rom-status-errors">Section 7</a> describes both trap
 vectors.</p>
 </div>
 </div>
@@ -680,9 +686,9 @@ terminal error, and stop.</p>
 <div class="paragraph">
 <p><code>SBOOT_DIS</code> is an eFuse override that disables secure boot. When it is clear,
 PROD and PROD_END enforce secure boot regardless of the manifest request, and
-so does TEST_DEV when <code>CHIPLET_DBG</code> is set in <code>SIP_DIS</code> or <code>SYS_DIS</code> (or
-either vector is read-locked). Otherwise TEST_DEV and RMA enable secure boot
-when the manifest requests it. An encrypted
+so do TEST_DEV and RMA_SiP when <code>CHIPLET_DBG</code> is set in <code>SIP_DIS</code> or
+<code>SYS_DIS</code> (or either vector is read-locked). Otherwise TEST_DEV and both RMA
+states enable secure boot when the manifest requests it. An encrypted
 payload is rejected when secure boot is not active.</p>
 </div>
 </div>
@@ -901,11 +907,13 @@ verification, accepted the signature, and completed crypto validation. It also
 forbids <code>SBOOT_OFF</code>, so a silent downgrade cannot satisfy the test.</p>
 </div>
 <div class="paragraph">
-<p>That testcase supplies OTBN entropy through the
-<code>+sep_crypto_edn_force</code> DV shortcut because the current BL0 does not bring up
-the entropy-source, CSRNG, and EDN chain. The test therefore demonstrates the
-manifest, transport, OTBN RSA, and handoff path; it does not demonstrate ROM
-entropy-chain initialization.</p>
+<p>That testcase injects deterministic raw noise at the entropy-source
+decorrelator inputs with <code>+esrc_noise_force</code> because the ring oscillators do
+not self-oscillate under Verilator. BL0 brings up the entropy source, CSRNG,
+and EDN chain; the health tests and downstream command handshakes remain real.
+The test therefore demonstrates ROM entropy-chain initialization as well as
+the manifest, transport, OTBN RSA, and handoff paths. It does not demonstrate
+the physical ring-oscillator noise source.</p>
 </div>
 <div class="paragraph">
 <p>The DMA and PIO receive paths are covered separately because they are separate

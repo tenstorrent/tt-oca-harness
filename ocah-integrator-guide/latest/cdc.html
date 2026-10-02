@@ -237,10 +237,13 @@ using a common hierarchy, described below. If the collateral inventory changes,
 run <code>scripts/update_integration_symlinks.py</code> to regenerate the index.</p>
 </div>
 <div class="paragraph">
-<p>The constraints for each system can build on some shared code, linked at
-<code>integration/constraint/shared</code>. This consists of two files:
-<code>async_clock_groups.tcl</code> (which defines clock groups with default bounds) and
-<code>cdc_max_delay_procs.tcl</code> (which defines procs for emitting CDC constraints).</p>
+<p>The constraints for each system build on shared code, linked at
+<code>integration/constraint/shared</code>. This consists of four files:
+<code>clock_periods.tcl</code> (which sets the target clock periods every block reads),
+<code>async_clock_groups.tcl</code> (which defines clock groups with default bounds),
+<code>cdc_max_delay_procs.tcl</code> (which defines procs for emitting CDC constraints)
+and <code>hier_reuse_procs.tcl</code> (which lets a parent replay a block&#8217;s constraints
+under an instance prefix).</p>
 </div>
 <div class="paragraph">
 <p>The constraints for each system can use this shared code and are visible through
@@ -251,9 +254,24 @@ following files:</p>
 <ul>
 <li>
 <p><code>constraints.sdc</code>:
-The block&#8217;s full timing intent, including the clock definitions and the
-asynchronous clock groups. This sources <code>cdc_max_delay_procs.tcl</code> from the
-shared code and then sources the next script.</p>
+Composes the block&#8217;s timing intent from the files below and from the shared
+code, in the order they are listed here. It carries no constraints of its own
+beyond the caveats recorded in its header.</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_clocks.sdc</code>:
+The block&#8217;s clock definitions: the <code>create_clock</code> stampings on its clock
+ports and the generated clocks derived from them. Reads the periods from
+<code>clock_periods.tcl</code>.</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_clock_groups.sdc</code>:
+The asynchronous clock groups, declared with <code>-allow_paths</code> so the
+per-instance bounds below are not masked by a false path.</p>
+</li>
+<li>
+<p><code>&lt;block&gt;_io_delays.sdc</code>:
+The input and output delays on the block&#8217;s ports.</p>
 </li>
 <li>
 <p><code>&lt;block&gt;_cdc_max_delay.tcl</code>:
@@ -268,6 +286,13 @@ that has already sourced <code>cdc_max_delay_procs.tcl</code> to define the proc
 it uses.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>Two blocks carry an extra file. SEP adds <code>sep_entropy_clocks.sdc</code>, whose
+ripple-divider clocks are built from the RTL hierarchy and are skipped when the
+entropy source is blackboxed. SMC adds <code>smc_gpio_io_delays.sdc</code> for the GPIO
+padring; SMU passes the same padring through, so its <code>smu_io_delays.sdc</code>
+sources that file rather than keeping a second copy of it.</p>
 </div>
 </div>
 </div>

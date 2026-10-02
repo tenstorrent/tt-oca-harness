@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#smc-programming-guide">SMC Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-programming-guide">SEP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-production-rom">SEP Production ROM</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="smc-programming-guide"><a class="anchor" href="#smc-programming-guide"></a><a class="link" href="#smc-programming-guide">1. SMC Programming Guide</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This Chapter details the bring-up process and run-time operation of the SMC
+for the purposes of firmware development, with references to the Production
+SMC ROM.</p>
+</div>
+<div class="paragraph">
+<p>The Appendix contains a detailed reference to the Production SMC ROM, along
+with documentation on configurable functionality, such as compile-time options
+and hookable functions.</p>
+</div>
+<div class="sect2">
+<h3 id="smc-bring-up"><a class="anchor" href="#smc-bring-up"></a><a class="link" href="#smc-bring-up">1.1. SMC Bring-up</a></h3>
+<div class="sect3">
+<h4 id="smc-address-map"><a class="anchor" href="#smc-address-map"></a><a class="link" href="#smc-address-map">1.1.1. Address Map</a></h4>
+<div class="paragraph">
+<p>The SMC accesses its resources and peripherals through its fixed local-alias
+aperture, at the RTL-fixed base address <code>LOCAL_BASE</code> (<code>0xC000_0000</code>), and with
+programmable size <code>REGION_SIZE</code>, which defaults to 16 MiB.</p>
+</div>
+<div class="paragraph">
+<p>External masters can access the SMC&#8217;s resources through the SMC&#8217;s global system
+address, which is assigned by the integrator. This must be matched by firmware
+in the <code>GLOBAL_BASE</code> register. The global aperture is also of size
+<code>REGION_SIZE</code>.</p>
+</div>
+<div class="paragraph">
+<p>The integrator&#8217;s assignment of global system addresses to SMCs should be a
+function of each chiplet&#8217;s Chiplet ID, which can be read from the eFuse block.
+It is the integrator&#8217;s responsibility to assign subsystems to global address
+ranges that do not overlap with each other, or with the SMC&#8217;s local-alias
+aperture.</p>
+</div>
+<div class="paragraph">
+<p>Addresses throughout this chapter are expressed as <code>BASE + offset</code>, where
+<code>BASE</code> is either the local-alias base address <code>LOCAL_BASE</code>, or the global
+system base <code>GLOBAL_BASE</code>. <code>offset</code> is bounded by <code>REGION_SIZE</code>. The
+<code>GLOBAL_BASE</code> and <code>REGION_SIZE</code> registers are part of the CPU Control block.</p>
+</div>
+<div class="paragraph">
+<p>See the
+<a href="../../ocah-docs/latest/smc/memmap.html#smc-memory-map" class="xref page">Memory Map</a>
+chapter of the Technical Reference Manual for the full generated component
+address map.</p>
+</div>
+<div class="paragraph">
+<p>The <code>ext_out</code> port is a catch-all for outbound memory requests from the SEP and
+SMC that do not match any programmed aperture. Unmatched inbound memory requests
+from external masters on <code>ext_in</code> are not passed-through to <code>ext_out</code>&#8201;&#8212;&#8201;only
+the SMC window exposed by <code>GLOBAL_BASE</code> and <code>REGION_SIZE</code> is accessible
+externally, otherwise a decode error is returned. Firmware <strong>must</strong> program
+<code>GLOBAL_BASE</code> and <code>REGION_SIZE</code> <strong>before any cross-subsystem AXI traffic is
+issued</strong>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-cpu"><a class="anchor" href="#smc-cpu"></a><a class="link" href="#smc-cpu">1.1.2. SMC CPU</a></h4>
+<div class="paragraph">
+<p>The SMC CPU consists of 4 Rocket RV64 cores. The cores implement the
+RV64GC instruction set, as well as the Zba, Zbb, and Zbs instructions.
+The cores support Machine, Supervisor, and User mode privilege levels.</p>
+</div>
+<div class="paragraph">
+<p>The CPU cold-reset vector is <code>0xC004_0000</code>, corresponding to the start of ROM
+memory&#8201;&#8212;&#8201;see the SMC&#8217;s address map above. Each core&#8217;s reset vector can be
+modified to a warm-reset (a reset that does not clear SRAM) vector by writing
+the location to the core&#8217;s <code>RESET_VECTOR</code> register, which is part of the CPU
+Control block.</p>
+</div>
+<div class="paragraph">
+<p>During early bring-up, it is advised to allow only one core to perform some
+early initialization procedures. Each core&#8217;s ID can be read from the <code>mhartid</code>
+CSR. The programmer should only allow the core with <code>mhartid</code> set to 0 to
+perform early initialization of memory (for example, copying runtime data from
+ROM to SRAM), while the rest of the cores wait to be released from a loop.
+In the 1-core configuration, the single core has <code>mhartid</code> set to 0.</p>
+</div>
+<div class="paragraph">
+<p>In the production SMC ROM, the <code>__metal_synchronize_harts</code> function is used by
+the primary core to signal initialization is complete, and for the secondary
+cores to wait until they are released.
+By default, the production SMC ROM parks the remaining secondary cores in a
+<code>wfi</code> loop. The programmer may redefine the <code>secondary_main</code> function in C code
+to provide code for the secondary cores.</p>
+</div>
+<div class="paragraph">
+<p>The core ID read from the <code>mhartid</code> register <strong>must</strong> also be used to give each
+core a unique stack region for C code.</p>
+</div>
+<div class="paragraph">
+<p>The production SMC ROM linker script&#8201;&#8212;&#8201;<code>hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld</code> places the executable <code>.text</code>
+and read-only data <code>.rodata</code> sections in ROM. The <code>.data</code> section and other
+runtime data are included in the ROM image, but have runtime addresses within
+SRAM at <code>0xC006_0000</code>. This data must be copied into SRAM (by the single
+initializing core) before it can be referenced or modified. The stack, heap, and
+the <code>.bss</code> section reside only in SRAM.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sram-initialization-using-memory-zeroer"><a class="anchor" href="#sram-initialization-using-memory-zeroer"></a><a class="link" href="#sram-initialization-using-memory-zeroer">1.1.3. SRAM Initialization using Memory Zeroer</a></h4>
+<div class="paragraph">
+<p>The SMC contains a Memory Zeroer unit at <code>BASE + 0x0003_8200</code>, which can be used
+to initialize SRAM before use. This can be performed like so:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Disable interrupts to the core.</p>
+</li>
+<li>
+<p>Write the SRAM base address (<code>0xC006_0000</code>) to the Memory Zeroer&#8217;s <code>DEST_ADDR</code>
+register.</p>
+</li>
+<li>
+<p>Write the size of SRAM (128 KiB = <code>0x0002_0000</code>) to the Memory Zeroer&#8217;s <code>SIZE</code>
+register.</p>
+</li>
+<li>
+<p>Write zero to the Memory Zeroer&#8217;s <code>CTRL_STATUS</code> register, which starts the
+operation.</p>
+</li>
+<li>
+<p>Poll the Memory Zeroer&#8217;s <code>CTRL_STATUS</code> register until the <code>STATUS</code> bit (bit
+32) is unset, indicating the operation is complete.</p>
+</li>
+<li>
+<p>Restore interrupt state.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>See also <code>__metal_sram_init_early</code> from the Production ROM in
+<code>hw/sys/smc/bootrom/prod/boot/sram_init.S</code>.</p>
+</div>
+<div class="paragraph">
+<p>The production ROM assumes that SRAM is automatically zeroed on reset. If
+either <code>SRAM_AUTO_ZERO_DISABLE</code> or the eFuse <code>RESERVED_0[6]</code> is set, the
+Memory Zeroer is used by the production ROM.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="memory-built-in-self-test-and-repair"><a class="anchor" href="#memory-built-in-self-test-and-repair"></a><a class="link" href="#memory-built-in-self-test-and-repair">1.1.4. Memory Built-In Self Test and Repair</a></h4>
+<div class="paragraph">
+<p>The programmer may check the status of the SRAM memory built-in self-test
+(MBIST) and SRAM Memory Repair before usage by reading the <code>STATUS_SMU</code> register.</p>
+</div>
+<div class="paragraph">
+<p>In the Production SMC ROM, this is performed by the `<em>metal_mbist_early_check`
+and <code></em>metal_memory_repair_check</code> respectively. It is recommended to use these
+implementations as reference, as these functions are implemented directly in
+assembly, without using any SRAM for storage, as that is what is being tested.
+Their operation is as follows:</p>
+</div>
+<div class="paragraph">
+<p><code>__metal_mbist_early_check</code> performs the following steps:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Check the <code>MEM_BIST_BYPASS</code> strap (register <code>STRAPS_HI</code> bit 54). If set, skip
+MBIST check, otherwise continue.</p>
+</li>
+<li>
+<p>Read the DFT Control&#8217;s <code>STATUS_SMU</code> register.</p>
+</li>
+<li>
+<p>Check if the MBIST was performed (register <code>STATUS_SMU</code> bit 4). If unset,
+assume the MBIST was not required, and return.</p>
+</li>
+<li>
+<p>Check if the MBIST passed (register <code>STATUS_SMU</code> bit 8). If set, return&#8201;&#8212;&#8201;the
+MBIST has passed.</p>
+</li>
+<li>
+<p>The MBIST has failed, or aborted due to a timeout. If the eFuse
+<code>RESERVED_2[0]</code> is set, ignore the failure and return.</p>
+</li>
+<li>
+<p>The MBIST has failed&#8201;&#8212;&#8201;park the core in a <code>wfi</code> loop.</p>
+</li>
+</ol>
+</div>
+<div class="imageblock text-center kroki">
+<div class="content">
+<img src="_images/ocah-smc-mbist-early_check-78c6e61068edd05787cbd001dfcabcddfbbf1ee2.svg" alt="Production ROM `__metal_mbist_early_check`.">
+</div>
+<div class="title">Figure 1. Production ROM <code>__metal_mbist_early_check</code>.</div>
+</div>
+<div class="paragraph">
+<p><code>__metal_memory_repair_check</code> performs the following steps:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Check the <code>MEM_REPAIR_BYPASS</code> strap (register <code>STRAPS_LO</code> bit 13). If set,
+skip memory repair check, otherwise continue.</p>
+</li>
+<li>
+<p>Read the DFT Control&#8217;s <code>STATUS_SMU</code> register.</p>
+</li>
+<li>
+<p>Check if memory repair was performed (register <code>STATUS_SMU</code> bit 0). If unset,
+assume memory repair was not required, and return.</p>
+</li>
+<li>
+<p>Check if memory repair passed (register <code>STATUS_SMU</code> bit 1). If set, return&#8201;&#8212;&#8201;memory repair has passed.</p>
+</li>
+<li>
+<p>Memory repair has failed. If the eFuse <code>RESERVED_2[0]</code> is set, ignore the
+failure and return.</p>
+</li>
+<li>
+<p>Memory repair has failed&#8201;&#8212;&#8201;park the core in a <code>wfi</code> loop.</p>
+</li>
+</ol>
+</div>
+<div class="imageblock text-center kroki">
+<div class="content">
+<img src="_images/ocah-smc-metal-memory-repair-check-29624e296817e055363cfba9cd5e215381bd7e27.svg" alt="Production ROM `__metal_memory_repair_check`." width="50.0%">
+</div>
+<div class="title">Figure 2. Production ROM <code>__metal_memory_repair_check</code>.</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="per-core-reset"><a class="anchor" href="#per-core-reset"></a><a class="link" href="#per-core-reset">1.1.5. Per-Core Reset</a></h4>
+<div class="paragraph">
+<p>See the
+<a href="../../ocah-docs/latest/smc/cpu.html#smc-core-reset" class="xref page">SMC CPU reset description</a>
+in the Technical Reference Manual for the hardware behavior and associated
+risks.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Do not reset a hart while any hart is performing coherent memory accesses.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A safe startup scenario, subject to the warning above, is when three of four
+harts remain parked after ROM boot and must start at a different firmware
+address. Before they join normal coherent operation, software can program a
+parked hart&#8217;s <code>RESET_VECTOR[n]</code> and pulse its reset to start it at that address.
+Avoid this flow where possible for the reasons described in the Technical
+Reference Manual.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-ndm-reset"><a class="anchor" href="#smc-ndm-reset"></a><a class="link" href="#smc-ndm-reset">1.1.6. External CPU Cluster NDM Reset</a></h4>
+<div class="paragraph">
+<p>Read <code>NDMRESET_REQUEST</code> bit <code>i</code> as the NDM reset request from external
+CPU cluster <code>i</code>. Write <code>NDMRESET_PROCESS</code> bit <code>i</code> to answer that
+cluster. Read <code>NDMRESET_CLUSTER_COUNT</code> and mask both registers with
+that value.</p>
+</div>
+<div class="paragraph">
+<p>This harness reports 4 in <code>NDMRESET_CLUSTER_COUNT</code>. Bits of
+<code>NDMRESET_REQUEST</code> at and above the count read as 0. Writes to those
+bits of <code>NDMRESET_PROCESS</code> stay in the register.</p>
+</div>
+<div class="paragraph">
+<p>The register block is
+<a href="../../ocah-docs/latest/smc/memmap.html#smc-ndm-reset-block" class="xref page">Chip Config, Scratch, NDM Reset, and Misc Wrap</a>
+in the Technical Reference Manual.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-general-operation"><a class="anchor" href="#smc-general-operation"></a><a class="link" href="#smc-general-operation">1.2. General Operation</a></h3>
+<div class="sect3">
+<h4 id="smc-interrupt-control"><a class="anchor" href="#smc-interrupt-control"></a><a class="link" href="#smc-interrupt-control">1.2.1. Interrupt Control</a></h4>
+<div class="paragraph">
+<p>There are 3 architectural interrupt sources that the cores of the SMU receive:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Timer interrupts</strong>&#8201;&#8212;&#8201;Interrupts generated by the system timer. In the SMC,
+the source of timer interrupts is the core local interruptor (CLINT).</p>
+</li>
+<li>
+<p><strong>Software interrupts</strong>&#8201;&#8212;&#8201;Interrupts signalled by other cores in the system.
+In the SMC, software-initiated interrupts are signalled through the CLINT.</p>
+</li>
+<li>
+<p><strong>External interrupts</strong>&#8201;&#8212;&#8201;Interrupts from all other peripherals. External
+interrupts are aggregated by the platform local interrupt controller (PLIC).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>External interrupts have the highest priority, followed by Software interrupts,
+then Timer interrupts.</p>
+</div>
+<div class="paragraph">
+<p>The <code>mtvec</code> CSR stores the trap vector which the cores transfer control to upon
+taking an interrupt or encountering an exception. The <code>mtvec</code> CSR contains the
+base address <code>BASE</code> of the trap vector, as well as a <code>MODE</code> field that
+determines how the trap vector address is computed:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>If <code>MODE</code> is set to <strong>Direct</strong> (<code>0b00</code>), then all interrupts and exceptions
+cause the program counter to be set to <code>mtvec.BASE</code>.</p>
+</li>
+<li>
+<p>If <code>MODE</code> is set to <strong>Vectored</strong> (<code>0b01</code>), then exceptions cause the program
+counter to be set to <code>mtvec.BASE</code>, and interrupts cause the program counter
+to be set to <code>mtvec.BASE + (0x4 * i)</code>, where <code>i</code> is the architectural
+interrupt type (Timer, Software, or External, per-privilege level).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Since program counter destinations in <strong>Vectored</strong> mode form a tightly-packed
+array, the entries for each interrupt should consist of a single jump
+instruction to a programmer-defined exception/interrupt handler function.</p>
+</div>
+<div class="imageblock text-center kroki">
+<div class="content">
+<img src="_images/exception-interrupt-dispatch-8c5f21ca45b44907bccbab9274c2ec3129f28908.svg" alt="Exception and Interrupt Dispatch" width="90.0%">
+</div>
+<div class="title">Figure 3. Exception and Interrupt Dispatch</div>
+</div>
+<div class="sect4">
+<h5 id="smc-timer-software-interrupt-control"><a class="anchor" href="#smc-timer-software-interrupt-control"></a><a class="link" href="#smc-timer-software-interrupt-control">Timer and Software Interrupt Control</a></h5>
+<div class="paragraph">
+<p>The SMC uses the core local interruptor (CLINT) for Timer interrupts,
+as well as for software-initiated inter-processor interrupts (IPIs).
+The base address for the CLINT&#8201;&#8212;&#8201;<code>CLINT_BASE</code>&#8201;&#8212;&#8201;is <code>0xC800_0000</code>.</p>
+</div>
+<div class="paragraph">
+<p>The current value of the timer is stored in the CLINT&#8217;s <code>MTIME</code> register, at
+<code>CLINT_BASE + 0xBFF8</code>. The CLINT stores a timer comparison value corresponding
+to each core of the SMC in the CLINT <code>MTIMECMP</code> register array, at
+<code>CLINT_BASE + 0x2000 + (0x8 * hartid)</code>. Both registers are 64-bits wide.</p>
+</div>
+<div class="paragraph">
+<p>A timer interrupt becomes pending for a core once <code>MTIME</code> exceeds the core&#8217;s
+corresponding <code>MTIMECMP</code> value. To dismiss the interrupt, the timer interrupt
+handler should set the core&#8217;s corresponding <code>MTIMECMP</code> register to a new value
+in the future.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>There may be a delay between writing <code>MTIMECMP</code> and the timer interrupt pending
+bit falling, during which a spurious timer interrupt may occur if interrupts are
+enabled again (for example, by returning from the timer interrupt handler).
+For robustness against spurious timer interrupts, the timer interrupt handler
+should verify the interrupt condition (<code>MTIMECMP &gt; MTIME</code>) before calling
+periodic functions and re-scheduling.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The following code samples should be used to read the full 64-bit <code>MTIME</code> value
+using 32-bit reads, guarding against overflow between the two halves, and
+setting the value of <code>MTIMECMP</code> without causing a spurious interrupt:</p>
+</div>
+<div class="listingblock">
+<div class="title">CLINT example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// CLINT addresses.
+// In SMC-local address space.
+#define CLINT_BASE                    0xC8000000
+#define CLINT_REG_MSIP(hartid)        (CLINT_BASE + ((hartid) * 0x4))
+#define CLINT_REG_MTIMECMP_LO(hartid) (CLINT_BASE + 0x4000 + ((hartid) * 0x8))
+#define CLINT_REG_MTIMECMP_HI(hartid) (CLINT_BASE + 0x4004 + ((hartid) * 0x8))
+#define CLINT_REG_MTIME_LO            (CLINT_BASE + 0xBFF8)
+#define CLINT_REG_MTIME_HI            (CLINT_BASE + 0xBFFC)</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Reading <code>MTIME</code> example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">uint64_t read_clint_mtime(void) {
+    uint32_t hi, lo;
+
+    // Make sure the high half has not overflowed
+    // while reading the lower half.
+    do {
+        hi = read32(CLINT_REG_MTIME_HI);
+        lo = read32(CLINT_REG_MTIME_LO);
+    } while (read32(CLINT_REG_MTIME_HI) != hi);
+
+    return ((uint64_t)hi &lt;&lt; 32) | lo;
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Writing <code>MTIMECMP</code> example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">unsigned long read_hartid(void) {
+    // Determine the current hartid by
+    // reading from the `mhartid` CSR.
+    unsigned long hartid;
+    __asm__ volatile(
+        "csrr %[hartid], mhartid"
+        : [hartid] "=r"(hartid)
+        :: "memory"
+    );
+    return hartid;
+}
+
+void write_clint_mtimecmp(uint64_t value) {
+    unsigned long hartid = read_hartid();
+
+    write32(CLINT_REG_MTIMECMP_HI(hartid), 0xFFFFFFFF);
+    write32(CLINT_REG_MTIMECMP_LO(hartid), (uint32_t)value);
+    write32(CLINT_REG_MTIMECMP_HI(hartid), (uint32_t)(value &gt;&gt; 32));
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Cores can send interrupts to other cores of the SMC by writing a value of <code>1</code>
+to the target core&#8217;s corresponding <code>MSIP</code> register, at
+<code>CLINT_BASE + (0x4 * hartid)</code>. This writes directly to the target core&#8217;s
+<code>MIE.msip</code> bit.
+Upon taking a software interrupt, a core may clear its software interrupt
+pending bit by writing <code>0</code> to its corresponding <code>MSIP</code> register.</p>
+</div>
+<div class="listingblock">
+<div class="title">Sending Software Interrupt to another core example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void software_interrupt_send(unsigned long target_hartid) {
+    write32(CLINT_REG_MSIP(target_hartid), 1);
+}
+
+void software_interrupt_clear(unsigned long target_hartid) {
+    write32(CLINT_REG_MSIP(target_hartid), 0);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="smc-external-interrupt-control"><a class="anchor" href="#smc-external-interrupt-control"></a><a class="link" href="#smc-external-interrupt-control">External Interrupt Control</a></h5>
+<div class="paragraph">
+<p>The SMC uses the standard RISC-V platform-level interrupt controller (PLIC) for
+managing external interrupts, see
+<a href="https://github.com/riscv/riscv-plic-spec/releases/download/1.0.0/riscv-plic-1.0.0.pdf">here</a>
+for the RISC-V PLIC Specification and layout.</p>
+</div>
+<div class="paragraph">
+<p>See the
+<a href="../../ocah-docs/latest/smc/interrupts.html#cpu-interrupt-vector-map" class="xref page">SMC CPU Interrupt Vector Map</a>
+chapter of the Technical Reference Manual for the full generated interrupt map.</p>
+</div>
+<div class="paragraph">
+<p>The allocation of additional interrupt IDs within the External interrupts block
+is defined by the integrator.</p>
+</div>
+<div class="paragraph">
+<p>The process of determining and servicing the specific external interrupt is as
+follows, where <code>PLIC_BASE</code> = <code>0xC400_0000</code>:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Claim the highest priority pending interrupt ID by reading from the PLIC
+<code>CLAIM</code> register for the hart at <code>PLIC_BASE + 0x20_0004 + (0x1000 * hartid)</code>.</p>
+</li>
+<li>
+<p>If the returned interrupt ID is 0, return from the interrupt handler&#8201;&#8212;&#8201;any
+pending interrupts have been claimed by other cores on the system.</p>
+</li>
+<li>
+<p>Dispatch to the corresponding interrupt handling routine, based on the
+claimed interrupt ID.</p>
+</li>
+<li>
+<p>Complete the interrupt <strong>at the peripheral</strong>, clearing its interrupt pending
+signal <strong>to the PLIC</strong>.</p>
+</li>
+<li>
+<p>Finally, complete the external interrupt <strong>at the PLIC</strong>, by writing the claimed
+interrupt ID to the PLIC <code>COMPLETE</code> register for the hart, also at
+<code>PLIC_BASE + 0x20_0004 + (0x1000 * hartid)</code>.</p>
+</li>
+</ol>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>If the interrupt is cleared at the PLIC before it is cleared at the interrupting
+peripheral, the interrupt may be raised again to the PLIC, causing a future
+spurious interrupt. Clearing of interrupt signals should be done from the
+inner-most source first (peripheral first, then PLIC), akin to popping the stack
+that narrowed in on the interrupt condition.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="imageblock text-center kroki">
+<div class="content">
+<img src="_images/external-interrupt-dispatch-ca0271b32d839fef1d153992cc4cb80c239070cd.svg" alt="External Interrupt Handling Flow" width="90.0%">
+</div>
+<div class="title">Figure 4. External Interrupt Handling Flow</div>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-watchdog"><a class="anchor" href="#smc-watchdog"></a><a class="link" href="#smc-watchdog">1.2.2. Watchdog Timers</a></h4>
+<div class="paragraph">
+<p>Each core of the SMC has a dedicated watchdog timer (WDT), that can generate
+an interrupt and optionally a reset of the core if not serviced within a
+configurable period of time. The watchdog timers are driven by the SMU clock
+signal <code>clk_smu_i</code>.</p>
+</div>
+<div class="paragraph">
+<p>The <code>COUNT</code> register contains the raw WDT timer value, and increments at the
+frequency of the SMU clock signal <code>clk_smu_i</code>. The <code>wdogscale</code> field in the
+<code>CTRL</code> register contains a right-shift amount which is applied to the <code>COUNT</code>
+register, effectively dividing the WDT tick rate by 2<sup><code>CTRL.wdogscale</code></sup>.
+The scaled counter after shifting can be read from the <code>SCALED_COUNT</code> register.
+The <code>SCALED_COUNT</code> register is compared to the <code>CMP</code> register to determine if
+the WDT has expired. If <code>SCALED_COUNT &gt;= CMP</code>, a watchdog timer interrupt is
+raised.</p>
+</div>
+<div class="paragraph">
+<p>Every register write (with the exception of <code>KEY</code>) requires unlocking by writing
+the value <code>0x51F15E</code> to the <code>KEY</code> register. The WDT automatically locks after
+one register write after unlocking.</p>
+</div>
+<div class="paragraph">
+<p>The <code>wdogenalways</code> (bit 12) and <code>wdogcoreawake</code> (bit 13) fields of <code>CTRL</code>
+control under what conditions <code>COUNT</code> is incremented. If <code>wdogcoreawake</code> is set,
+<code>COUNT</code> is only incremented while the core is not in reset. If <code>wdogenalways</code>
+is set, <code>COUNT</code> always increments. <code>wdogenalways</code> takes priority over
+<code>wdogcoreawake</code> if both bits are set.</p>
+</div>
+<div class="paragraph">
+<p>If <code>wdogzerocmp</code> (bit 9) is enabled in <code>CTRL</code>, the watchdog timer <code>COUNT</code> will
+reset to <code>0</code> once the comparison threshold <code>CMP</code> has been reached and an
+interrupt has been fired. Otherwise, <code>COUNT</code> will continue incrementing and
+must be manually written to to set it to a lower value (after unlocking a
+register write by writing to <code>KEY</code>).</p>
+</div>
+<div class="paragraph">
+<p>If <code>wdogrsten</code> (bit 8) is enabled in <code>CTRL</code> and the WDT fires, the core being
+reset will not be able to service its own WDT interrupt. Other SMC cores
+<strong>should</strong> enable interrupts from each other&#8217;s watchdog timers to be notified when
+a core is reset by the watchdog, so that SMC software can robustly recover from
+the failure or reallocate work while the reset core is brought up again.</p>
+</div>
+<div class="paragraph">
+<p>In the event of a watchdog timer interrupt, software&#8201;&#8212;&#8201;running on a core other
+than the one reset by <code>wdogrsten</code> being set&#8201;&#8212;&#8201;should clear the interrupt at the
+watchdog by:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Resetting <code>COUNT</code> to be lower than <code>CMP</code>. This may not be necessary if
+<code>CTRL.wdogzerocmp</code> is also set and not enough time has passed for the interrupt
+to be reasserted.</p>
+</li>
+<li>
+<p>Clear the latched interrupt pending bit <code>CTRL.wdogip0</code> (bit 28) by writing <code>0</code>
+to it.</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="title">WDT example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// WDT register addresses.
+// In SMC-local address space.
+#define WDT_BASE              0xC0000000
+#define WDT_REG_CTRL(hartid)  (WDT_BASE + ((hartid) * 0x400) + 0x0)
+#define WDT_REG_COUNT(hartid) (WDT_BASE + ((hartid) * 0x400) + 0x8)
+#define WDT_REG_FEED(hartid)  (WDT_BASE + ((hartid) * 0x400) + 0x18)
+#define WDT_REG_KEY(hartid)   (WDT_BASE + ((hartid) * 0x400) + 0x1C)
+#define WDT_REG_CMP(hartid)   (WDT_BASE + ((hartid) * 0x400) + 0x20)
+
+// WDT register constants.
+#define WDT_KEY_UNLOCK 0x0051F15E
+#define WDT_FEED_VALUE 0x0D09F00D
+
+#define WDT_CTRL_WDOGRSTEN    0x100
+#define WDT_CTRL_WDOGENALWAYS 0x1000</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">WDT example C configuration and usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">unsigned long read_hartid(void) {
+    // Determine the current hartid by
+    // reading from the `mhartid` CSR.
+    unsigned long hartid;
+    __asm__ volatile(
+        "csrr %[hartid], mhartid"
+        : [hartid] "=r"(hartid)
+        :: "memory"
+    );
+    return hartid;
+}
+
+static void wdt_write(uintptr_t addr, uint32_t value) {
+    // Helper to write to one of the core's WDT registers,
+    // unlocking it before performing the actual write.
+    unsigned long hartid = read_hartid();
+
+    // Unlock.
+    write32(WDT_REG_KEY(hartid), WDT_KEY_UNLOCK);
+
+    // Write.
+    write32(addr, value);
+}
+
+void wdt_configure(void) {
+    unsigned long hartid = read_hartid();
+
+    // 10ms at an assumed 50MHz SMU clock.
+    // = 500000 cycles. Use a divisor of 8
+    // (wdogscale = 3) so that the compare
+    // value fits in `CMP`, which is 16-bits.
+    uint32_t wdogscale = 3;
+    uint16_t compare = (uint16_t)(500000 &gt;&gt; wdogscale);
+    uint32_t ctrl = wdogscale | WDT_CTRL_WDOGRSTEN | WDT_CTRL_WDOGENALWAYS;
+
+    // Reset the count so that updating `CMP` and `CTRL`
+    // doesn't accidentally cause a WDT interrupt if
+    // `CMP` is decreased to below `SCALED_COUNT`.
+    wdt_write(WDT_REG_COUNT(hartid), 0);
+    wdt_write(WDT_REG_CMP(hartid), compare);
+    wdt_write(WDT_REG_CTRL(hartid), ctrl);
+
+    // Reset count.
+    wdt_write(WDT_REG_COUNT(hartid), 0);
+}
+
+void wdt_service(void) {
+    unsigned long hartid = read_hartid();
+
+    wdt_write(WDT_REG_FEED(hartid), WDT_FEED_VALUE);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="logging-peripherals-uart-log-engine"><a class="anchor" href="#logging-peripherals-uart-log-engine"></a><a class="link" href="#logging-peripherals-uart-log-engine">1.2.3. Logging Peripherals (UART, Log Engine)</a></h4>
+<div class="paragraph">
+<p>Software may log info and error messages by transmitting over UART. For more
+advanced and flexible use-cases, such as logging asynchronously and from
+multiple cores, the Log Engine peripheral can drive UART transmission on the
+CPU&#8217;s behalf, with messages fed in from SMC memory.</p>
+</div>
+<div class="paragraph">
+<p>The UARTs and Log Engines sit within the UART Controller block. Within this
+block, there are 4 UART and Log Engine pairs.</p>
+</div>
+<div class="sect4">
+<h5 id="uart"><a class="anchor" href="#uart"></a><a class="link" href="#uart">UART</a></h5>
+<div class="paragraph">
+<p>The UART baud rate is configured by writing the 16-byte clock divisor value
+to the <code>DLM</code> (most-significant byte) and <code>DLL</code> (least-significant byte)
+registers. To access these registers, the <code>DLAB</code> bit (bit 7) must be enabled
+in the <code>LCR</code> register. Once configured, the <code>DLAB</code> bit should be disabled to
+access the registers hidden by that bit.</p>
+</div>
+<div class="paragraph">
+<p>FIFO configuration is done using the <code>FCR</code> and <code>ECR</code> registers. The FIFO is
+enabled by setting the least-significant bit in the <code>FCR</code> register.
+The <code>RCVR_TRIGGER_MS2B</code> field of <code>ECR</code> and <code>RCVR_TRIGGER</code> field of <code>FCR</code> form
+a 4-bit value which determines the receive FIFO trigger level. While the receive
+FIFO contains more than this amount of characters, the UART asserts the
+Received Data Ready interrupt.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. UART Receive FIFO levels</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top"><code>ECR.RCVR_TRIGGER_MS2B</code></th>
+<th class="tableblock halign-left valign-top"><code>FCR.RCVR_TRIGGER</code></th>
+<th class="tableblock halign-left valign-top">FIFO trigger level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0</code> (<code>0b0000</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 character.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1</code> (<code>0b0001</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2</code> (<code>0b0010</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x3</code> (<code>0b0011</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x4</code> (<code>0b0100</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x5</code> (<code>0b0101</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x6</code> (<code>0b0110</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x7</code> (<code>0b0111</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x8</code> (<code>0b1000</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">512 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x9</code> (<code>0b1001</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1024 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xA</code> (<code>0b1010</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2048 characters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xB</code> (<code>0b1011</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4096 characters.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Data is written by writing to the <code>THR</code> register. If the FIFO is enabled, the
+written data will be pushed onto the transmission FIFO. Data is popped from the
+receive FIFO by reading the <code>RBR</code> register. Note that the <code>THR</code> and <code>RBR</code>
+registers are accessible only when the <code>DLAB</code> bit of <code>LCR</code> is disabled.</p>
+</div>
+<div class="listingblock">
+<div class="title">UART example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// UART Register addresses.
+// In SMC-local address space.
+#define UART_BASE        0xC0006100
+#define UART_REG_RBR_THR (UART_BASE + 0x0) // DLAB=0, Reads access RBR, writes access THR.
+#define UART_REG_DLL     (UART_BASE + 0x0) // DLAB=1
+#define UART_REG_IER     (UART_BASE + 0x4) // DLAB=0
+#define UART_REG_DLM     (UART_BASE + 0x4) // DLAB=1
+#define UART_REG_IIR_FCR (UART_BASE + 0x8) // Reads access IIR, writes access FCR.
+#define UART_REG_LCR     (UART_BASE + 0xC)
+#define UART_REG_LSR     (UART_BASE + 0x14)
+#define UART_REG_ECR     (UART_BASE + 0x20)
+
+// Register constants.
+#define UART_IER_ALL 0x1f
+
+#define UART_FCR_FIFO_ENABLE       0x1
+#define UART_FCR_RCVR_FIFO_RESET   0x2
+#define UART_FCR_XMIT_FIFO_RESET   0x4
+#define UART_FCR_DMA_MODE_SELECT_0 0x0
+#define UART_FCR_DMA_MODE_SELECT_1 0x8
+#define UART_FCR_RCVR_TRIGGER_256C 0xC0
+
+#define UART_LCR_PEN    0x8 // Parity enable bit.
+#define UART_LCR_STB_2S 0x4 // 2 stop bits.
+#define UART_LCR_STB_1S 0x0 // 1 stop bit.
+#define UART_LCR_WLS_8B 0x3 // 8 bits per character.
+#define UART_LCR_DLAB   0x80
+
+#define UART_LSR_THRE 0x20
+
+#define UART_ECR_RCVR_TRIGGER_MS2B_256C 0x1</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">UART example C configuration and usage (no FIFO).</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void uart_configure_nofifo(void) {
+    // Reset the UART.
+    // Disable interrupts.
+    write32(UART_REG_IER, 0);
+    // A divisor of 0 disables the transmitter and receiver.
+    write32(UART_REG_LCR, UART_LCR_DLAB);
+    write32(UART_REG_DLL, 0);
+    write32(UART_REG_DLM, 0);
+    // Reset and disable FIFOs.
+    write32(UART_REG_IIR_FCR,
+            UART_FCR_RCVR_FIFO_RESET | UART_FCR_XMIT_FIFO_RESET
+              | UART_FCR_DMA_MODE_SELECT_0);
+
+    // UART configuration: 8 bits per character, 1 stop bit, no parity bits.
+    uint32_t uart_config = UART_LCR_WLS_8B | UART_LCR_STB_1S;
+
+    // Write configuration to LCR, and enable DLAB to configure baud rate.
+    write32(UART_REG_LCR, uart_config | UART_LCR_DLAB);
+
+    // Calculate clock divisor for the intended baud rate.
+    uint16_t divisor = div_ceil(CLOCK_FREQUENCY, 16 * TARGET_BAUD) - 1;
+
+    // Write divisor bytes to DLL and DLM.
+    write32(UART_REG_DLL, (uint32_t)((uint8_t)divisor));
+    write32(UART_REG_DLM, (uint32_t)((uint8_t)(divisor &gt;&gt; 8)));
+
+    // Write configuration again to LCR, clearing the DLAB bit.
+    write32(UART_REG_LCR, uart_config);
+
+    // Enable interrupts.
+    write32(UART_REG_IER, UART_IER_ALL);
+}
+
+void uart_write(const char *str) {
+    while (*str) {
+        // Poll LSR until THR is empty.
+        while (!(read32(UART_REG_LSR) &amp; UART_LSR_THRE));
+
+        // Write the character to THR.
+        write32(UART_REG_RBR_THR, (uint32_t)(*str));
+        str++;
+    }
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">UART example C configuration and usage (with FIFO).</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void uart_configure_fifo(void) {
+    // Reset the UART.
+    // Disable interrupts.
+    write32(UART_REG_IER, 0);
+    // A divisor of 0 disables the transmitter and receiver.
+    write32(UART_REG_LCR, UART_LCR_DLAB);
+    write32(UART_REG_DLL, 0);
+    write32(UART_REG_DLM, 0);
+    // Reset and disable FIFOs.
+    write32(UART_REG_IIR_FCR, UART_FCR_RCVR_FIFO_RESET | UART_FCR_XMIT_FIFO_RESET);
+
+    // FIFO configuration: Enabled, 256-character trigger level.
+    write32(UART_REG_ECR, UART_ECR_RCVR_TRIGGER_MS2B_256C);
+    write32(UART_REG_IIR_FCR,
+            UART_FCR_RCVR_TRIGGER_256C | UART_FCR_FIFO_ENABLE
+              | UART_FCR_DMA_MODE_SELECT_0);
+
+    // UART configuration: 8 bits per character, 1 stop bit, no parity bits.
+    uint32_t uart_config = UART_LCR_WLS_8B | UART_LCR_STB_1S;
+
+    // Write uart configuration to LCR, and enable DLAB to configure baud rate.
+    write32(UART_REG_LCR, uart_config | UART_LCR_DLAB);
+
+    // Calculate clock divisor for the intended baud rate.
+    uint16_t divisor = div_ceil(CLOCK_FREQUENCY, 16 * TARGET_BAUD) - 1;
+
+    // Write divisor bytes to DLL and DLM.
+    write32(UART_REG_DLL, (uint32_t)((uint8_t)divisor));
+    write32(UART_REG_DLM, (uint32_t)((uint8_t)(divisor &gt;&gt; 8)));
+
+    // Write configuration again to LCR, clearing the DLAB bit.
+    write32(UART_REG_LCR, uart_config);
+
+    // Enable interrupts.
+    write32(UART_REG_IER, UART_IER_ALL);
+}
+
+void uart_write_fifo(const char *str) {
+    while (*str) {
+        // Poll until transmit FIFO is empty.
+        while (!(read32(UART_REG_LSR) &amp; UART_LSR_THRE));
+
+        // Burst write up to 4096 characters at a time.
+        for (size_t i = 0; i &lt; 4096; i++) {
+            if (*str == 0) return;
+            write32(UART_REG_RBR_THR, (uint32_t)(*str));
+            str++;
+        }
+    }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="log-engine-configuration"><a class="anchor" href="#log-engine-configuration"></a><a class="link" href="#log-engine-configuration">Log Engine Configuration</a></h5>
+<div class="paragraph">
+<p>The Log Engine is a DMA-based logging peripheral that can efficiently transfer
+log messages from SMC memory to a UART on the CPU&#8217;s behalf.
+The UART exposes the <code>txrdy_o</code> signal directly to the Log Engine which notifies
+it that more bytes can be accepted into the transmit FIFO.</p>
+</div>
+<div class="paragraph">
+<p>Each Log Engine supports up to 16 log entries, which represent a message to be
+transmitted. The Log Engine uses round-robin scheduling for fairness in
+multi-threaded usage.</p>
+</div>
+<div class="paragraph">
+<p>Before configuration begins, software should disable the Log Engine&#8217;s
+operation by writing <code>0</code> to the Log Engine&#8217;s <code>CTRL</code> register. After
+configuration is complete, the Log Engine can be enabled by writing <code>1</code>
+to the <code>CTRL</code> register.</p>
+</div>
+<div class="paragraph">
+<p>The Log Engine is configured by writing the address and size of the region of
+SMC memory that will be used for log entries, into the <code>LOG_REGION_ADDR</code>
+and <code>LOG_REGION_SIZE</code> registers respectively. This memory buffer is divided
+evenly into the 16 regions, each representing a separate log entry.</p>
+</div>
+<div class="paragraph">
+<p>The Log Engine will write bytes to the UART address specified in the
+<code>LOG_WRITE_ADDR</code> register. This must be set to the address of the associated
+UART&#8217;s <code>THR</code> register, which feeds the transmission FIFO.</p>
+</div>
+<div class="paragraph">
+<p>The UART used by the Log Engine must be configured first, before it can be used
+by the Log Engine. The UART used must also be configured to use DMA Mode 0 by
+clearing the <code>DMA_MODE_SELECT</code> bit in the UART&#8217;s <code>FCR</code> register.
+See the previous section on configuring the UART.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Log Entry Memory Buffer</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Start Address</th>
+<th class="tableblock halign-left valign-top">End Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR + (1 * (LOG_REGION_SIZE / 16))</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_SIZE / 16</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Log Entry 1/16</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR + (1 * (LOG_REGION_SIZE / 16))</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR + (2 * (LOG_REGION_SIZE / 16))</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_SIZE / 16</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Log Entry 2/16</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR + (2 * (LOG_REGION_SIZE / 16))</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR + (3 * (LOG_REGION_SIZE / 16))</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_SIZE / 16</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Log Entry 3/16</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&#8230;&#8203;</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR + (15 * (LOG_REGION_SIZE / 16))</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_ADDR + LOG_REGION_SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_REGION_SIZE / 16</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Log Entry 16/16</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The size of memory region written to <code>LOG_REGION_SIZE</code> must be a multiple of
+128-bytes, meaning each log entry is a multiple of 8-bytes in size.</p>
+</div>
+<div class="listingblock">
+<div class="title">Log Engine and UART example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Log Engine Register addresses.
+// In SMC-local address space.
+#define LOG_ENGINE_BASE                   0xC0006200
+#define LOG_ENGINE_REG_CTRL               (LOG_ENGINE_BASE + 0x0)
+#define LOG_ENGINE_REG_LOG_REGION_SIZE    (LOG_ENGINE_BASE + 0x4)
+#define LOG_ENGINE_REG_LOG_REGION_ADDR_LO (LOG_ENGINE_BASE + 0x8)
+#define LOG_ENGINE_REG_LOG_REGION_ADDR_HI (LOG_ENGINE_BASE + 0xC)
+#define LOG_ENGINE_REG_LOG_WRITE_ADDR     (LOG_ENGINE_BASE + 0x10)
+#define LOG_ENGINE_REG_INTR_STATUS        (LOG_ENGINE_BASE + 0x14)
+#define LOG_ENGINE_REG_INTR_ENABLE        (LOG_ENGINE_BASE + 0x18)
+#define LOG_ENGINE_REG_LOG_CTRL(num)      (LOG_ENGINE_BASE + 0x40 + ((num) * 0x4))
+
+// UART Register addresses.
+#define UART_BASE        0xC0006100
+#define UART_REG_RBR_THR (UART_BASE + 0x0)
+
+// Register constants.
+#define LOG_ENGINE_CTRL_ENABLE        1
+#define LOG_ENGINE_CTRL_DISABLE       0
+#define LOG_ENGINE_INTR_LOG_FETCH_ERR 0x1
+#define LOG_ENGINE_INTR_LOG_WRITE_ERR 0x10
+
+// Sample log region.
+#define LOG_ENTRY_SIZE  1024
+#define LOG_REGION_SIZE (LOG_ENTRY_SIZE * 16)
+char log_region[LOG_REGION_SIZE];</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Log Engine example C configuration.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Configure the Log Engine to read logs from `log_region`.
+void configure(char *log_region, uint32_t log_region_size) {
+    // Disable operation.
+    write32(LOG_ENGINE_REG_CTRL, LOG_ENGINE_CTRL_DISABLE);
+
+    // Write address of log region.
+    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_LO, (uint32_t)log_region);
+    write32(LOG_ENGINE_REG_LOG_REGION_ADDR_HI, (uint32_t)(log_region &gt;&gt; 32));
+
+    // Write size of log region.
+    write32(LOG_ENGINE_REG_LOG_REGION_SIZE, log_region_size);
+
+    // Write the address of the UART THR register.
+    write32(LOG_ENGINE_REG_LOG_WRITE_ADDR, UART_REG_RBR_THR);
+
+    // Enable error interrupts.
+    write32(LOG_ENGINE_REG_INTR_ENABLE,
+            LOG_ENGINE_INTR_LOG_FETCH_ERR | LOG_ENGINE_INTR_LOG_WRITE_ERR);
+
+    // Enable operation.
+    write32(LOG_ENGINE_REG_CTRL, LOG_ENGINE_CTRL_ENABLE);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="log-engine-operation"><a class="anchor" href="#log-engine-operation"></a><a class="link" href="#log-engine-operation">Log Engine Operation</a></h5>
+<div class="paragraph">
+<p>To engage the Log Engine in transmitting a log entry, software must:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Choose a vacant log entry index.</p>
+</li>
+<li>
+<p>Copy or write the message to be sent into the chosen log entry index&#8217;s
+corresponding region in the memory buffer.</p>
+</li>
+<li>
+<p>Write the length of the to be sent message into the log entry&#8217;s corresponding
+<code>LOG_CTRL</code> register in the Log Engine.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Reading from the <code>LOG_CTRL</code> register array returns the number of remaining
+bytes for each log entry. A log entry has finished transmission once reading
+the corresponding <code>LOG_CTRL</code> register returns <code>0</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Log Engine example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Print formatted output to UART, using the Log Engine.
+void log_engine_printf(const char *format, ...) {
+    // Determine and pick a vacant log entry index.
+    // In this example, the arbitrary index `5` suffices.
+    int index = 5;
+
+    va_list args;
+    va_start(args, format);
+
+    // Write the message into the vacant log entry region,
+    // writing at most `LOG_ENTRY_SIZE` bytes.
+    int len = vsnprintf(&amp;log_region[index * LOG_ENTRY_SIZE],
+                        LOG_ENTRY_SIZE, format, args);
+
+    va_end(args);
+
+    if (len &lt; 0) {
+        // Printing failed.
+        return;
+    }
+
+    // Write the length of the message. This queues up the transmission.
+    write32(LOG_ENGINE_REG_LOG_CTRL(index), len);
+
+    // Poll for completion.
+    while (read32(LOG_ENGINE_REG_LOG_CTRL(index)) != 0);
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>A more performant implementation may choose to skip polling for completion, and
+only initially block while all log entries are in-use.</p>
+</div>
+<div class="paragraph">
+<p>As the log engine can only feed the UART transmit FIFO, message reception and
+draining the receive FIFO remains the responsibility of the cores.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-gpio"><a class="anchor" href="#smc-gpio"></a><a class="link" href="#smc-gpio">1.2.4. GPIO</a></h4>
+<div class="paragraph">
+<p>The SMC exposes 65 GPIO pins, each controlled through its own register
+instance within the GPIO block.</p>
+</div>
+<div class="paragraph">
+<p>The per-pin <code>DATA_CTRL</code> register contains the pin&#8217;s configuration and value.
+The <code>pad2core</code> field (bit 31) contains the current sampled value of the pin.
+The <code>core2pad</code> field (bit 0) contains the current value driven to the pad.</p>
+</div>
+<div class="paragraph">
+<p>The <code>enable_rx_tx</code> field determines the direction of pin:
+.GPIO <code>enable_rx_tx</code> values.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output / TX</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input / RX</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The pin may also raise edge-sensitive or level-sensitive interrupts.
+The interrupt condition is configured in the <code>interrupt_type</code> field:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. GPIO <code>interrupt_type</code> values.</caption>
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Level interrupt, Active-high</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Level interrupt, Active-low</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b10</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Edge interrupt, Rising-edge</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0b11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Edge interrupt, Falling-edge</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>To enable interrupts for the specific pin, <code>interrupt_enable</code> (bit 18) must
+be set.</p>
+</div>
+<div class="paragraph">
+<p>The per-pin <code>DATA_CTRL_ENABLE</code> register provides per-field LSIO overrides.
+When an LSIO peripheral controls the pad (<code>DATA_CTRL.interface_enable</code> is not set),
+setting a bit here forces the corresponding <code>DATA_CTRL</code> field to take effect
+for that field only.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>use_reg_core2pad</code> (bit 0) forces the register-controlled <code>DATA_CTRL.core2pad</code>
+onto the pad, regardless of LSIO output.</p>
+</li>
+<li>
+<p><code>use_reg_tx</code> (bit 4) forces the register-controlled <code>DATA_CTRL.enable_rx_tx[0]</code>
+(TX enable) value, regardless of the LSIO output.</p>
+</li>
+<li>
+<p><code>use_reg_rx</code> (bit 5) forces the register-controlled <code>DATA_CTRL.enable_rx_tx[1]</code>
+(RX enable) value, regardless of the LSIO output.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><code>DATA_CTRL_ENABLE</code> is only meaningful for pins where an LSIO peripheral is used.
+For general-purpose register-driven pin usage by the cores, <code>DATA_CTRL_ENABLE</code>
+should be left at <code>0</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">GPIO example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// GPIO Register addresses.
+// In SMC-local address space.
+#define GPIO_BASE                      0xC0003000
+#define GPIO_PIN_BASE(pin)             (GPIO_BASE + ((pin) * 0x10))
+#define GPIO_REG_DATA_CTRL(pin)        (GPIO_PIN_BASE(pin) + 0x0)
+#define GPIO_REG_DATA_CTRL_ENABLE(pin) (GPIO_PIN_BASE(pin) + 0x4)
+#define GPIO_REG_ACCESS_FILTER(pin)    (GPIO_PIN_BASE(pin) + 0x8)
+
+// Register constants.
+#define GPIO_DATA_CTRL_CORE2PAD         0x1
+#define GPIO_DATA_CTRL_ENABLE_RX_TX_TX  0x10
+#define GPIO_DATA_CTRL_ENABLE_RX_TX_RX  0x20
+#define GPIO_DATA_CTRL_INTERFACE_ENABLE 0x10000
+#define GPIO_DATA_CTRL_INTERRUPT_ENABLE 0x40000
+#define GPIO_DATA_CTRL_INTR_RISING_EDGE 0x200000
+#define GPIO_DATA_CTRL_PAD2CORE         0x80000000</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">GPIO example C configuration and usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void gpio_configure_output(size_t pin, bool value) {
+    // Enable the GPIO and set the direction to TX.
+    uint32_t gpio_ctrl = GPIO_DATA_CTRL_INTERFACE_ENABLE | GPIO_DATA_CTRL_ENABLE_RX_TX_TX;
+    // If `value` is set, drive the GPIO.
+    if (value) {
+        gpio_ctrl |= GPIO_DATA_CTRL_CORE2PAD;
+    }
+    write32(GPIO_REG_DATA_CTRL(pin), gpio_ctrl);
+}
+
+void gpio_set(size_t pin, bool value) {
+    // Read the GPIO settings, then drive the value based on `value`.
+    uint32_t gpio_ctrl = read32(GPIO_REG_DATA_CTRL(pin));
+    if (value) {
+        gpio_ctrl |= GPIO_DATA_CTRL_CORE2PAD;
+    } else {
+        gpio_ctrl &amp;= ~GPIO_DATA_CTRL_CORE2PAD;
+    }
+    write32(GPIO_REG_DATA_CTRL(pin), gpio_ctrl);
+}
+
+bool gpio_read(size_t pin) {
+    // Configure as input first if not already done.
+    write32(GPIO_REG_DATA_CTRL(pin),
+            GPIO_DATA_CTRL_INTERFACE_ENABLE | GPIO_DATA_CTRL_ENABLE_RX_TX_RX);
+    return (read32(GPIO_REG_DATA_CTRL(pin)) &amp; GPIO_DATA_CTRL_PAD2CORE) ? true : false;
+}
+
+void gpio_configure_interrupt(size_t pin) {
+    write32(GPIO_REG_DATA_CTRL(pin),
+            GPIO_DATA_CTRL_INTERFACE_ENABLE | GPIO_DATA_CTRL_ENABLE_RX_TX_RX
+              | GPIO_DATA_CTRL_INTERRUPT_ENABLE | GPIO_DATA_CTRL_INTR_RISING_EDGE);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-efuse"><a class="anchor" href="#smc-efuse"></a><a class="link" href="#smc-efuse">1.2.5. eFuse</a></h4>
+<div class="paragraph">
+<p>The eFuse block provides One-Time Programmable (OTP) storage for device
+identity, security, and boot configuration.</p>
+</div>
+<div class="paragraph">
+<p>At boot time, the eFuse array is loaded into shadow registers by hardware, such
+that eFuse data can be read by software during early bring-up without the timing
+constraints of the underlying eFuse implementation.</p>
+</div>
+<div class="paragraph">
+<p>Direct read and program operations are performed using the eFuse control
+interface, which can program arbitrary data bits and read whole data words
+(32 bits at a time). Programming operations are not reflected in the shadow
+registers until the next reset.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Bits of eFuse data are <strong>One-Time Programmable</strong>&#8201;&#8212;&#8201;A bit that is set using the
+control interface can <strong>never</strong> be cleared.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The <code>LOCKS</code> register can be used to lock read and/or write access to fields
+containing eFuse data words. Bits of the <code>LOCKS</code> register cannot be cleared
+once they are set by software, but are reset at reset.</p>
+</div>
+<div class="paragraph">
+<p>Locks cover whole fields of eFuse data, not necessarily individual 32-bit words.
+For example, all 9 <code>I2C_I3C_ID</code> data words are controlled by a single lock in
+the <code>LOCKS</code> register. Accesses through both the shadow registers and direct
+word-read/bit-write accesses through the control interface are affected by the
+setting of the <code>LOCKS</code> register.</p>
+</div>
+<div class="paragraph">
+<p>Some fields in the shadow registers may be locked by the hardware integrator.
+In that case, access through the shadow registers is forbidden, regardless of
+the setting of <code>LOCKS</code> by software. This locking does not affect
+word-read/bit-write accesses through the control interface.</p>
+</div>
+<div class="paragraph">
+<p>The assignment of data fields and words within the eFuse data region can be
+found in the
+<a href="../../ocah-docs/latest/ip/efuse/doc/index.html#efuse-memory-map" class="xref page">Memory Map</a>
+section of the eFuse chapter in the Technical Reference Manual.</p>
+</div>
+<div class="listingblock">
+<div class="title">eFuse example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// eFuse Register addresses.
+// In SMC-local address space.
+#define EFUSE_CTRL_BASE             0xC0008000
+#define EFUSE_CTRL_REG_PROGRAM_CTRL (EFUSE_CTRL_BASE + 0x4)
+#define EFUSE_CTRL_REG_READ_CTRL    (EFUSE_CTRL_BASE + 0x8)
+#define EFUSE_CTRL_REG_READ_DATA    (EFUSE_CTRL_BASE + 0x10)
+
+// Register constants.
+#define EFUSE_PROGRAM_CTRL_DATA_ONE 0x10000
+#define EFUSE_PROGRAM_CTRL_GO       0x20000
+#define EFUSE_PROGRAM_CTRL_DONE     0x2000000
+#define EFUSE_PROGRAM_CTRL_ERROR    0x4000000
+#define EFUSE_PROGRAM_CTRL_ENABLE   0x8000000
+
+#define EFUSE_READ_CTRL_GO     0x10000
+#define EFUSE_READ_CTRL_DONE   0x2000000
+#define EFUSE_READ_CTRL_ERROR  0x4000000
+#define EFUSE_READ_CTRL_ENABLE 0x10000000</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">eFuse example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Program bit `bit_index` of the OTP bank to a 1.
+// Returns whether or not the write succeeded.
+// Note that this operation is irreversible.
+bool efuse_program_bit(uint16_t bit_index) {
+
+    uint32_t ctrl = EFUSE_PROGRAM_CTRL_ENABLE
+                      | EFUSE_PROGRAM_CTRL_DATA_ONE
+                      | EFUSE_PROGRAM_CTRL_GO
+                      | bit_index;
+
+    // Perform the operation.
+    write32(EFUSE_CTRL_REG_PROGRAM_CTRL, ctrl);
+
+    // Poll for completion.
+    while (!(read32(EFUSE_CTRL_REG_PROGRAM_CTRL) &amp; EFUSE_PROGRAM_CTRL_DONE));
+
+    bool success = !(read32(EFUSE_CTRL_REG_PROGRAM_CTRL)
+                       &amp; EFUSE_PROGRAM_CTRL_ERROR);
+
+    // Reset the `PROGRAM_CTRL` register to release program mode.
+    write32(EFUSE_CTRL_REG_PROGRAM_CTRL, 0);
+
+    return success;
+}
+
+// Read the value of bit `bit_index` of the OTP bank into
+// `*bit_value`. Returns whether or not the read succeeded.
+// If the operation fails, `*bit_value` remains unmodified.
+bool efuse_read_bit(uint16_t bit_index, bool *bit_value) {
+
+    // eFuse reads read a whole word (32-bits) at a time.
+    // Get the address of the containing word and bit offset
+    // within it for the requested bit.
+    uint16_t word = bit_index &amp; ~0x1F;
+    uint16_t word_bit = bit_index &amp; 0x1F;
+
+    uint32_t ctrl = EFUSE_READ_CTRL_ENABLE
+                      | EFUSE_READ_CTRL_GO
+                      | word;
+
+    // Perform the operation.
+    write32(EFUSE_CTRL_REG_READ_CTRL, ctrl);
+
+    // Poll for completion.
+    while (!(read32(EFUSE_CTRL_REG_READ_CTRL) &amp; EFUSE_READ_CTRL_DONE));
+
+    bool success = !(read32(EFUSE_CTRL_REG_READ_CTRL)
+                       &amp; EFUSE_READ_CTRL_ERROR);
+
+    if (success) {
+        uint32_t word_value = read32(EFUSE_CTRL_REG_READ_DATA);
+        *bit_value = (word_value &gt;&gt; word_bit) &amp; 0x1;
+    }
+
+    // Reset the `READ_CTRL` register to release read mode.
+    write32(EFUSE_CTRL_REG_READ_CTRL, 0);
+
+    return success;
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

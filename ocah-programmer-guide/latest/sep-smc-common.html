@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#smc-programming-guide">SMC Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-programming-guide">SEP Programming Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#sep-production-rom">SEP Production ROM</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="sep-smc-common-blocks-communication"><a class="anchor" href="#sep-smc-common-blocks-communication"></a><a class="link" href="#sep-smc-common-blocks-communication">1. SEP &amp; SMC Common Blocks and Communication</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="sep-smc-axi-filters"><a class="anchor" href="#sep-smc-axi-filters"></a><a class="link" href="#sep-smc-axi-filters">1.1. AXI Inbound/Outbound Filters</a></h3>
+<div class="paragraph">
+<p>SEP and SMC both gate their inbound and outbound AXI traffic through the
+common AXI filter block. AXI filtering uses a match then permit algorithm
+to determine which filter configuration entry an inbound/outbound transaction
+matches, and whether that filter entry permits the operation to take place.
+If the transaction does not match any filter entry, the transaction is denied
+and terminated in the default case, with the exception of the SMC outbound
+filter which is permit-by-default.</p>
+</div>
+<div class="paragraph">
+<p>An AXI filter entry consists of an address range described by the <code>START_ADDR</code>
+and <code>END_ADDR</code> registers, and a configuration in <code>FILTER_CONFIG</code>, describing
+the transaction types that are permitted for the address range.</p>
+</div>
+<div class="paragraph">
+<p>A filter entry must be enabled by setting the <code>entry_enabled</code> (bit 4) field.
+Filter entries with this bit unset do not participate in the match then permit
+algorithm.</p>
+</div>
+<div class="paragraph">
+<p>Each filter entry can be locked by setting the <code>locked</code> (bit 63) field in
+the <code>FILTER_CONFIG</code> register, preventing further modification.</p>
+</div>
+<div class="paragraph">
+<p>The <code>allow_burst</code> (bit 24) field controls whether AXI burst transactions are
+permitted to the address range. If this field is set, the address rounding
+granule is increased from 8 bytes to 4 KiB.</p>
+</div>
+<div class="paragraph">
+<p>See <a href="../../ocah-docs/latest/ip/axi_filter/doc/index.html#axi-traffic-filter" class="xref page">AXI Traffic Filter</a>
+for more details on the match then permit algorithm, address granule
+rules, and blocked transaction behavior.</p>
+</div>
+<table id="sep-smc-axi-filter-instances" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP &amp; SMC AXI Filter Instances</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Component</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Behavior on unmatched traffic</th>
+<th class="tableblock halign-left valign-top">Bypass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Blocked</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Only while SEP debug is enabled.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Blocked</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Never</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Inbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Blocked</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Never</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permitted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Never</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The SMC outbound AXI filter differs from the SMC inbound and the SEP inbound and
+outbound filters in that unmatched traffic is <strong>permitted</strong> rather
+than blocked. In this case, the filtering configuration behaves as a deny-list
+rather than an allow-list. To deny outbound access to a memory region from the
+SMC, a matching filter entry must be created that does not have the
+<code>read_allowed</code> (bit 0) or <code>write_allowed</code> (bit 1) fields set in the filter&#8217;s
+corresponding <code>FILTER_CONFIG</code> register.</p>
+</div>
+<div class="paragraph">
+<p>The following C code examples demonstrate configuring an AXI filter to permit
+(SEP inbound, SEP outbound, SMC inbound) or deny (SMC outbound) external AXI
+requests.</p>
+</div>
+<div class="sect3">
+<h4 id="axi-filter-example"><a class="anchor" href="#axi-filter-example"></a><a class="link" href="#axi-filter-example">1.1.1. Example</a></h4>
+<div class="listingblock">
+<div class="title">AXI filter example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// AXI Filter register addresses.
+// In SEP-local address space.
+#define SEP_FILTER_OUTBOUND_BASE 0x10A20000
+#define SEP_FILTER_INBOUND_BASE  0x10A21000
+// In SMC-local address space.
+#define SMC_FILTER_INBOUND_BASE  0xC0015000
+#define SMC_FILTER_OUTBOUND_BASE 0xC0016000
+
+#define FILTER_ENTRY_BASE(base, i)    ((base) + (i) * 0x20)
+#define FILTER_CONFIG_LO(base, i)     (FILTER_ENTRY_BASE((base), (i)) + 0x0)
+#define FILTER_CONFIG_HI(base, i)     (FILTER_ENTRY_BASE((base), (i)) + 0x4)
+#define FILTER_START_ADDR_LO(base, i) (FILTER_ENTRY_BASE((base), (i)) + 0x8)
+#define FILTER_START_ADDR_HI(base, i) (FILTER_ENTRY_BASE((base), (i)) + 0xC)
+#define FILTER_END_ADDR_LO(base, i)   (FILTER_ENTRY_BASE((base), (i)) + 0x10)
+#define FILTER_END_ADDR_HI(base, i)   (FILTER_ENTRY_BASE((base), (i)) + 0x14)
+
+// AXI Filter register constants.
+#define FILTER_CFG_READ_ALLOWED  0x1
+#define FILTER_CFG_WRITE_ALLOWED 0x2
+#define FILTER_CFG_ENTRY_ENABLED 0x10
+#define FILTER_CFG_ALLOW_NS      0x100
+#define FILTER_CFG_SRC_ID(x)     (((x) &amp; 0xF) &lt;&lt; 16)
+#define FILTER_CFG_ALLOW_BURST   0x1000000</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">AXI filter example C configuration and usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Using SEP inbound filter entry `i`,
+// open address range [`start`, `start` + length`] to
+// inbound secure and single-beat transactions only.
+// Note that `start` will be rounded down to be 8B-aligned,
+// and `start` + `length` will be rounded up to be 8B-aligned.
+void sep_inbound_filter_open_range(uintptr_t start, size_t length, uint8_t i) {
+
+    // Clear the filter configuration, disabling the entry.
+    write32(FILTER_CONFIG_LO(SEP_FILTER_INBOUND_BASE, i), 0);
+
+    // Make sure the write has committed.
+    asm volatile("fence" ::: "memory");
+
+    uintptr_t end = start + length;
+    write32(FILTER_START_ADDR_LO(SEP_FILTER_INBOUND_BASE, i),
+            (uint32_t)start);
+    write32(FILTER_START_ADDR_HI(SEP_FILTER_INBOUND_BASE, i),
+            (uint32_t)(start &gt;&gt; 32));
+    write32(FILTER_END_ADDR_LO(SEP_FILTER_INBOUND_BASE, i),
+            (uint32_t)end);
+    write32(FILTER_END_ADDR_HI(SEP_FILTER_INBOUND_BASE, i),
+            (uint32_t)(end &gt;&gt; 32));
+
+    // Make sure the write has committed before enabling the entry.
+    asm volatile("fence" ::: "memory");
+
+    uint32_t config_lo = FILTER_CFG_READ_ALLOWED | FILTER_CFG_WRITE_ALLOWED
+                           | FILTER_CFG_ENTRY_ENABLED;
+
+    write32(FILTER_CONFIG_HI(SEP_FILTER_INBOUND_BASE, i), 0);
+
+    // Make sure the write has committed before enabling the entry.
+    asm volatile("fence" ::: "memory");
+
+    write32(FILTER_CONFIG_LO(SEP_FILTER_INBOUND_BASE, i), config_lo);
+}
+
+// Using SMC inbound entry `i`,
+// open address range [`start`, `start` + `length`] to
+// inbound secure single-beat or burst transactions.
+// Note that `start` will be rounded down to be 4KiB-aligned,
+// and `start` + `length` will be rounded up to be 4KiB-aligned.
+void smc_inbound_filter_open_range_burst(uintptr_t start, size_t length, uint8_t i) {
+
+    // Clear the filter configuration, disabling the entry.
+    write32(FILTER_CONFIG_LO(SMC_FILTER_INBOUND_BASE, i), 0);
+
+    // Make sure the write has committed.
+    asm volatile("fence" ::: "memory");
+
+    uintptr_t end = start + length;
+    write32(FILTER_START_ADDR_LO(SMC_FILTER_INBOUND_BASE, i),
+            (uint32_t)start);
+    write32(FILTER_START_ADDR_HI(SMC_FILTER_INBOUND_BASE, i),
+            (uint32_t)(start &gt;&gt; 32));
+    write32(FILTER_END_ADDR_LO(SMC_FILTER_INBOUND_BASE, i),
+            (uint32_t)end);
+    write32(FILTER_END_ADDR_HI(SMC_FILTER_INBOUND_BASE, i),
+            (uint32_t)(end &gt;&gt; 32));
+
+    // Make sure the write has committed before enabling the entry.
+    asm volatile("fence" ::: "memory");
+
+    uint32_t config_lo = FILTER_CFG_READ_ALLOWED | FILTER_CFG_WRITE_ALLOWED
+                           | FILTER_CFG_ALLOW_BURST
+                           | FILTER_CFG_ENTRY_ENABLED;
+
+    write32(FILTER_CONFIG_HI(SMC_FILTER_INBOUND_BASE, i), 0);
+
+    // Make sure the write has committed before enabling the entry.
+    asm volatile("fence" ::: "memory");
+
+    write32(FILTER_CONFIG_LO(SMC_FILTER_INBOUND_BASE, i), config_lo);
+}</code></pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The hardware places no constraints on the order in which register writes
+are executed. This means ordinary writes that modify the address range and
+permissions risk temporarily opening up a wider access window before the new
+access permissions are committed.</p>
+</div>
+<div class="paragraph">
+<p>The code examples above guard different steps of configuring the
+filter with <code>fence</code> instructions, to ensure that configuration of those
+registers is sequenced correctly to avoid this possibility.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sep-smc-mailboxes"><a class="anchor" href="#sep-smc-mailboxes"></a><a class="link" href="#sep-smc-mailboxes">1.2. Mailboxes</a></h3>
+<div class="paragraph">
+<p>The SEP and SMC contain mailbox instances which can be used for message-passing
+between other cores on the SMC, the SEP and the SMC, as well as the Application
+Processors and the SEP or SMC. Mailboxes consist of a read and write FIFO,
+exposed through the <code>READ_DATA</code> and <code>WRITE_DATA</code> registers respectively.
+FIFO messages consist of 64-bit data words.</p>
+</div>
+<div class="paragraph">
+<p>Interrupts can optionally be enabled to fire whenever the number of data words
+in the read FIFO exceeds the configured threshold, or the number of data words
+in the write FIFO falls below the configured threshold. The read and write
+fill level thresholds are configured in the <code>RIRQT</code> and <code>WIRQT</code> registers
+respectively. Individual interrupt conditions can be enabled by setting bits
+in the <code>IRQEN</code> register.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The SEP and Key Manager address maps contain a separate mailbox for
+communication between each other. The SEP to KM mailbox implements a different
+register interface from the SEP to SMC mailbox register interface described
+here.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>As the SEP CPU implements the 32-bit RV32 architecture and the mailbox
+data registers are 64-bits wide, SEP reads from the mailbox discard the
+upper/lower half of the popped data, and SEP writes to the mailbox write
+zeroes to the half of the data register not written. When communicating
+between the SMC and the SEP through the mailbox, only one 32-bit half of
+each entry should be used, and the choice must be agreed on by the software
+of both components.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="title">Mailbox example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Mailbox register addresses.
+// In SMC-local address space.
+#define MAILBOX_BASE             0xC0018000
+#define MAILBOX_OUTBOUND_BASE(i) (MAILBOX_BASE + ((i) * 0x1000) + 0x0)
+#define MAILBOX_INBOUND_BASE(i)  (MAILBOX_BASE + ((i) * 0x1000) + 0x800)
+
+#define MAILBOX_REG_WRITE_DATA(i)      (MAILBOX_OUTBOUND_BASE(i) + 0x0)
+#define MAILBOX_REG_OUTBOUND_STATUS(i) (MAILBOX_OUTBOUND_BASE(i) + 0x10)
+#define MAILBOX_REG_READ_DATA(i)       (MAILBOX_INBOUND_BASE(i) + 0x8)
+#define MAILBOX_REG_INBOUND_STATUS(i)  (MAILBOX_INBOUND_BASE(i) + 0x10)
+#define MAILBOX_REG_INBOUND_RIRQT(i)   (MAILBOX_INBOUND_BASE(i) + 0x28)
+#define MAILBOX_REG_INBOUND_IRQS(i)    (MAILBOX_INBOUND_BASE(i) + 0x30)
+#define MAILBOX_REG_INBOUND_IRQEN(i)   (MAILBOX_INBOUND_BASE(i) + 0x38)
+
+// Mailbox register constants.
+#define MAILBOX_STATUS_EMPTY 0x1
+#define MAILBOX_STATUS_FULL  0x2
+
+#define MAILBOX_IRQ_WTIRQ 0x1
+#define MAILBOX_IRQ_RTIRQ 0x2
+#define MAILBOX_IRQ_EIRQ  0x4</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Mailbox example C configuration and usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Send a message through mailbox `i`.
+void mailbox_send(uint8_t i, uint32_t message) {
+
+    // Poll until the outbound FIFO has space.
+    while (read32(MAILBOX_REG_OUTBOUND_STATUS(i)) &amp; MAILBOX_STATUS_FULL);
+
+    write32(MAILBOX_REG_WRITE_DATA(i), message);
+}
+
+// Enable and configure the read threshold interrupt on
+// mailbox `i` to signal when there are any messages
+// pending in the FIFO.
+void mailbox_configure_read_threshold_interrupt(uint8_t i) {
+    write32(MAILBOX_REG_INBOUND_RIRQT(i), 0);
+    write32(MAILBOX_REG_INBOUND_IRQEN(i), MAILBOX_IRQ_RTIRQ);
+}
+
+// Handle the read threshold interrupt by handling each message
+// in the FIFO and acknowledging the interrupt once empty.
+void mailbox_handle_read_threshold_interrupt(uint8_t i) {
+    // While the inbound port is not empty,
+    // pop messages and handle them.
+    while (!(read32(MAILBOX_REG_INBOUND_STATUS(i)) &amp; MAILBOX_STATUS_EMPTY)) {
+
+        uint32_t message = read32(MAILBOX_REG_READ_DATA(i));
+
+        // Handle the message here...
+        (void) message;
+    }
+
+    // Acknowledge the receive threshold interrupt,
+    // clearing the interrupt pending bit.
+    write32(MAILBOX_REG_INBOUND_IRQS(i), MAILBOX_IRQ_RTIRQ);
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

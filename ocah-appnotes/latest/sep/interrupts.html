@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -195,7 +201,7 @@ Bit <code>i</code> of that vector is PIC source <code>i + 1</code>. The core&#82
 is numbered from 1, and the core ties source 0 to zero, so the low bit of the
 driven vector is the first programmable source. The comment directly above
 <code>NUM_INTERNAL_IRQS</code> in <code>sep_pkg.sv</code> numbers sources by that vector index, one
-less than the PIC source in <a href="#sep-pic-source-assignments-table">SEP PIC source assignments</a>.</p>
+less than the PIC source in <a href="#sep-pic-source-assignments-table">Table 1</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">2.1. SEP CPU Interrupt Vector Map</a></h3>
@@ -207,7 +213,7 @@ SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
 passed in at the SEP block boundary.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sep-pic-source-assignments-table">SEP PIC source assignments</a> lists the assigned PIC sources and the range
+<p><a href="#sep-pic-source-assignments-table">Table 1</a> lists the assigned PIC sources and the range
 reserved for chip-level inputs.</p>
 </div>
 <table id="sep-pic-source-assignments-table" class="tableblock frame-all grid-all stretch">
@@ -289,7 +295,7 @@ reserved for chip-level inputs.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>13</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">WDT alert</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog timer aggregated alert. Note: the WDT <strong>bark</strong> goes to the NMI pin,
-not here; see <a href="#sep-non-pic-paths">Non-PIC Interrupt Paths</a>.</p></td>
+not here; see <a href="#sep-non-pic-paths">Section 2.2</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>14</code></p></td>
@@ -479,7 +485,7 @@ fault. See
 <div class="paragraph">
 <p>Three CPU interrupt pins bypass the EL2 PIC entirely. The core also reports its
 own memory errors through a path that is neither a pin nor a PIC source; see
-<a href="#sep-memory-error-reporting">Memory ECC Errors</a>.</p>
+<a href="#sep-memory-error-reporting">Section 2.2.3</a>.</p>
 </div>
 <span id="nmi-watchdog-timer-bark"></span>
 <div class="sect3">
@@ -531,7 +537,7 @@ counters below are live.</p>
 <h5 id="sep-interrupts-correctable-single-bit-errors"><a class="anchor" href="#sep-interrupts-correctable-single-bit-errors"></a><a class="link" href="#sep-interrupts-correctable-single-bit-errors">Correctable (single-bit) errors</a></h5>
 <div class="paragraph">
 <p>Hardware corrects the data and the access is retried, so no data is lost and no
-trap is taken. Each protected memory has a counter CSR (<a href="#sep-correctable-error-counters-table">SEP correctable-error counters</a>).</p>
+trap is taken. Each protected memory has a counter CSR (<a href="#sep-correctable-error-counters-table">Table 2</a>).</p>
 </div>
 <table id="sep-correctable-error-counters-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. SEP correctable-error counters</caption>
@@ -603,7 +609,7 @@ lets transient flips accumulate before firmware is told.</p>
 <h5 id="sep-interrupts-uncorrectable-double-bit-errors"><a class="anchor" href="#sep-interrupts-uncorrectable-double-bit-errors"></a><a class="link" href="#sep-interrupts-uncorrectable-double-bit-errors">Uncorrectable (double-bit) errors</a></h5>
 <div class="paragraph">
 <p>These cannot be masked and have no enable bit. The access returned no valid
-data, so the core traps on the instruction that hit the error (<a href="#sep-uncorrectable-error-traps-table">SEP uncorrectable-error traps</a>).</p>
+data, so the core traps on the instruction that hit the error (<a href="#sep-uncorrectable-error-traps-table">Table 3</a>).</p>
 </div>
 <table id="sep-uncorrectable-error-traps-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. SEP uncorrectable-error traps</caption>

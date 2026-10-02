@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -193,7 +199,7 @@ not a property conferred by naming an aperture inbound or outbound.</p>
 <div class="title">Figure 1. SMC mailbox wrapper and interrupt routing</div>
 </div>
 <div class="paragraph">
-<p><a href="#mailbox-wrapper-diagram">SMC mailbox wrapper and interrupt routing</a> shows the SMC instance of the mailbox,
+<p><a href="#mailbox-wrapper-diagram">Figure 1</a> shows the SMC instance of the mailbox,
 <code>u_smc_axil_mailbox</code>, and its interrupt connections. The SMC configures 32
 mailboxes of depth 2, with 32-bit address and 64-bit data. The port comes
 from the mailbox target of <code>smc_internal_axi_lite_xbar</code>, and the unit runs on

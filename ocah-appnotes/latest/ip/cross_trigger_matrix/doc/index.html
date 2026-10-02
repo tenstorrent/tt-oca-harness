@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -195,7 +201,7 @@ Each device connected to the CTM acts as both a source and a sink.</p>
 register map:</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctm-configuration-constants-table">CTM configuration constants</a> lists the source and destination counts used by
+<p><a href="#ctm-configuration-constants-table">Table 1</a> lists the source and destination counts used by
 the CTM register map.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTM configuration constants" tabindex="0">
@@ -273,7 +279,7 @@ implements a combinatorial AND-OR crossbar with registered outputs to route
 cross-trigger pulses between CTPs and internal cross-trigger sources.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctm-routing-structure-figure">CTM routing structure</a> shows how the CTM selects and combines sources for each
+<p><a href="#ctm-routing-structure-figure">Figure 1</a> shows how the CTM selects and combines sources for each
 registered destination.</p>
 </div>
 <div id="ctm-routing-structure-figure" class="imageblock">
@@ -303,7 +309,7 @@ registration. Each of the N CT_Src output ports is driven by a dedicated
 <code>ctm_src_selector</code> module that performs the following operation:</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctm-routing-stages-table">CTM routing stages</a> describes the selection, combination, and register stages
+<p><a href="#ctm-routing-stages-table">Table 2</a> describes the selection, combination, and register stages
 of destination routing.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTM routing stages" tabindex="0">
@@ -346,7 +352,7 @@ input pulses arrive simultaneously.</p>
 <div class="sect2">
 <h3 id="port-indexing"><a class="anchor" href="#port-indexing"></a><a class="link" href="#port-indexing">2.2. Port Indexing</a></h3>
 <div class="paragraph">
-<p><a href="#ctm-port-indices-table">CTM port indices</a> maps matrix indices to external CTPs, internal CTPs, and
+<p><a href="#ctm-port-indices-table">Table 3</a> maps matrix indices to external CTPs, internal CTPs, and
 clock-stop connections.</p>
 </div>
 <table id="ctm-port-indices-table" class="tableblock frame-all grid-all stretch">

@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -188,7 +194,7 @@ and the
 <div class="title">Figure 1. OpenTitan I2C core reference architecture</div>
 </div>
 <div class="paragraph">
-<p><a href="#i2c-core-diagram">OpenTitan I2C core reference architecture</a> shows the upstream core.</p>
+<p><a href="#i2c-core-diagram">Figure 1</a> shows the upstream core.</p>
 </div>
 </div>
 </div>
@@ -212,7 +218,7 @@ and the
 <div class="title">Figure 2. OCAH I2C wrapper and generated register interface</div>
 </div>
 <div class="paragraph">
-<p><a href="#i2c-wrapper-diagram">OCAH I2C wrapper and generated register interface</a> shows the OCAH wrapper around that core. <code>i2c_wrap</code>
+<p><a href="#i2c-wrapper-diagram">Figure 2</a> shows the OCAH wrapper around that core. <code>i2c_wrap</code>
 has one AXI4-Lite slave port, with 32-bit address and data, and runs on a
 single clock, <code>clk_i</code>; in the SMC that is the gated peripheral clock, and the
 bus reaches it through <code>smc_peripherals_cdc</code>. Parentheses after an

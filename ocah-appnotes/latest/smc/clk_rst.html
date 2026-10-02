@@ -88,7 +88,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -372,7 +378,7 @@ warm, fuse and per-subsystem resets.</p>
 <div class="paragraph">
 <p><code>u_smc_reset_sync</code> gives each output an asynchronous assertion and a
 deassertion synchronised to its clock. <code>u_smc_cool_reset_wrap</code> runs the FLR
-sequence and isolation logic described in <a href="#smc-function-level-reset">Function Level Reset and Isolation</a>.
+sequence and isolation logic described in <a href="#smc-function-level-reset">Section 3</a>.
 Its gates act on each of the 32 bits; the inputs labelled SMCEN, REG and
 PINEN are the <code>ISOLATE_REQ_SMCEN_REG</code>, <code>ISOLATE_REQ_REG</code> and
 <code>ISOLATE_REQ_PINEN_REG</code> bits. <code>skip_mem_repair_o</code> is high while the
@@ -628,7 +634,7 @@ this request bypasses memory repair/MBIST; it is not a general SRAM-retention gu
 <div class="sect2">
 <h3 id="isolation-connections"><a class="anchor" href="#isolation-connections"></a><a class="link" href="#isolation-connections">3.3. Isolation Connections</a></h3>
 <div class="paragraph">
-<p><a href="#smc-flr-isolation-diagram">SMC FLR isolation connections between chiplets</a> shows cool-reset and isolation connections between primary
+<p><a href="#smc-flr-isolation-diagram">Figure 4</a> shows cool-reset and isolation connections between primary
 and secondary chiplets. The next three figures repeat the same drawing
 and highlight the path that each kind of request activates, so they can
 be compared directly.</p>
@@ -657,10 +663,10 @@ secondary chiplet ties its <code>ISOLATE_REQ</code> and <code>cfg_flr_pf_active_
 leaves its <code>isolate_req_o</code> unconnected. The labels REG, PINEN and SMCEN
 on the isolation OR&#8217;s inputs name the registers that qualify each source.
 The drawing leaves out the de-glitchers and synchronisers shown in
-<a href="#smc-reset-distribution-figure">SMC reset unit architecture</a>.</p>
+<a href="#smc-reset-distribution-figure">Figure 3</a>.</p>
 </div>
 <div class="paragraph">
-<p><a href="#smc-flr-software-diagram">SMC-driven FLR isolation</a> shows isolation propagation for an SMC software request.
+<p><a href="#smc-flr-software-diagram">Figure 5</a> shows isolation propagation for an SMC software request.
 Software sets bits of <code>ISOLATE_REQ_REG</code>, which reach <code>isolate_req_o</code> directly.
 Software cannot start the FLR counters, so this request isolates tiles without
 a cool reset.</p>
@@ -672,7 +678,7 @@ a cool reset.</p>
 <div class="title">Figure 5. SMC-driven FLR isolation</div>
 </div>
 <div class="paragraph">
-<p><a href="#smc-flr-tile-diagram">Tile-request-driven FLR isolation</a> shows isolation propagation for a tile request.
+<p><a href="#smc-flr-tile-diagram">Figure 6</a> shows isolation propagation for a tile request.
 A tile such as the PCIe controller raises <code>cfg_flr_pf_active_i</code>. Its
 synchronised rising edge sets <code>ISOLATE_REQ_SMC</code>, which isolates the
 subsystems enabled in <code>ISOLATE_REQ_SMCEN_REG</code>, and starts the FLR
@@ -687,7 +693,7 @@ chiplet.</p>
 <div class="title">Figure 6. Tile-request-driven FLR isolation</div>
 </div>
 <div class="paragraph">
-<p><a href="#smc-flr-gpio-diagram">GPIO-driven FLR isolation</a> shows isolation propagation for a GPIO request, in two
+<p><a href="#smc-flr-gpio-diagram">Figure 7</a> shows isolation propagation for a GPIO request, in two
 numbered steps. First the board raises <code>ISOLATE_REQ</code>, which isolates the
 subsystems enabled in <code>ISOLATE_REQ_PINEN_REG</code>; then it asserts <code>BP_RESET_N</code>,
 which cold-resets both chiplets. <code>ISOLATE_REQ_PINEN_REG</code> is not reset by the

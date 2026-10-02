@@ -87,7 +87,13 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../index.html">Application Notes</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../sip-secure-boot.html">System-in-Package Secure Boot</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -198,7 +204,7 @@ individual noise generators and the combined stream.</p>
 <div class="title">Figure 1. Entropy source microarchitecture</div>
 </div>
 <div class="paragraph">
-<p><a href="#entropy-source-diagram">Entropy source microarchitecture</a> shows the entropy source and its conditioning pipeline.
+<p><a href="#entropy-source-diagram">Figure 1</a> shows the entropy source and its conditioning pipeline.
 The client controls the component via the AXI4-Lite bus
 interface which provides access to a set of memory mapped configuration
 and status registers (CSRs) described later in this document. The noise
@@ -209,7 +215,7 @@ the FIFO itself is drained through the <code>FIFO_RDATA</code> register.</p>
 </div>
 <div class="paragraph">
 <p>The main datapath in the figure runs left to right along the top row. The
-generator lane stands for all twelve lanes, and <a href="#entropy-rosc-diagram">Entropy source ring-oscillator complex</a> shows its
+generator lane stands for all twelve lanes, and <a href="#entropy-rosc-diagram">Figure 2</a> shows its
 noise source and sample clock in detail. The boot gate passes entropy only after
 the main state machine has seen a passing boot health-test window; it qualifies
 the whitener input, the uncompressed-byte path and the BIW observe FIFO, while
@@ -246,7 +252,7 @@ statistical requirements specified by the BSI agency.</p>
 <p>The oscillator output is sampled by a metastable D flip-flop (<code>prim_flop</code>) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (<code>rosc_sample_clk_i</code>) or by a shared internal ring oscillator (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR. Both selects are clock mux cells. Software changes a lane&#8217;s source or division only while that generator is disabled. A division value outside 0-5 selects divide-by-4.</p>
 </div>
 <div class="paragraph">
-<p><a href="#entropy-rosc-diagram">Entropy source ring-oscillator complex</a> shows the ring oscillators, sampling paths, and clock selection
+<p><a href="#entropy-rosc-diagram">Figure 2</a> shows the ring oscillators, sampling paths, and clock selection
 used to generate noise.</p>
 </div>
 <div id="entropy-rosc-diagram" class="imageblock">
@@ -256,7 +262,7 @@ used to generate noise.</p>
 <div class="title">Figure 2. Entropy source ring-oscillator complex</div>
 </div>
 <div class="paragraph">
-<p><a href="#entropy-rosc-diagram">Entropy source ring-oscillator complex</a> has three bands. The top band builds one sample clock
+<p><a href="#entropy-rosc-diagram">Figure 2</a> has three bands. The top band builds one sample clock
 per lane: <code>RING_OSC_CTRL.SAMPLE_CLK_SELECT</code> bit <em>i</em> chooses <code>rosc_sample_clk_i</code>
 (0) or the shared ring oscillator (1), and
 <code>GENERATOR_i_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE</code> picks one ripple-divider tap.
@@ -266,7 +272,7 @@ set the lane detune follows the auto-tune FSM, otherwise
 in each lane and, with 109 and 53 stages, as the shared sampling oscillator. Green
 lines carry asynchronous oscillator signals, brown lines are in the sample-clock
 domain and grey lines are in the <code>clk_i</code> domain or are controls.
-<a href="#entropy-rosc-lengths-table">Noise ring-oscillator lengths per lane</a> lists the lane ring lengths.</p>
+<a href="#entropy-rosc-lengths-table">Table 1</a> lists the lane ring lengths.</p>
 </div>
 <table id="entropy-rosc-lengths-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Noise ring-oscillator lengths per lane</caption>
@@ -341,7 +347,7 @@ domain and grey lines are in the <code>clk_i</code> domain or are controls.
 <h2 id="decorrelation-and-biw-mixing"><a class="anchor" href="#decorrelation-and-biw-mixing"></a><a class="link" href="#decorrelation-and-biw-mixing">2. Decorrelation and BIW Mixing</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Each sampled noise bit enters a serial decorrelator (<code>entropy_decorrelator</code>), which shifts bits through a 29-stage shift register with XOR feedback from the last stage, as <a href="#entropy-decorrelator-diagram">Entropy source decorrelator</a> shows. A downsample counter reloaded from <code>DECORRELATOR_CTRL.SAMPLE_CLK_DIV</code> latches the top 8 bits of the shift register as an entropy byte every <code>SAMPLE_CLK_DIV</code> + 1 <code>clk_i</code> cycles, 64 cycles at the reset value of 63, and pulses the byte-valid strobe for one cycle. The byte is ANDed with <code>DECORRELATOR_MASK.ENTROPY_BYTE_MASK</code>, so a cleared mask bit reads as zero; the mask and the divider are shared by all 12 lanes. Setting a lane&#8217;s bit in <code>DECORRELATOR_CTRL.BYPASS</code> forces the feedback to zero, so raw noise bits shift through the chain unmixed; the byte is still taken from the top 8 stages, downsampled and masked.</p>
+<p>Each sampled noise bit enters a serial decorrelator (<code>entropy_decorrelator</code>), which shifts bits through a 29-stage shift register with XOR feedback from the last stage, as <a href="#entropy-decorrelator-diagram">Figure 3</a> shows. A downsample counter reloaded from <code>DECORRELATOR_CTRL.SAMPLE_CLK_DIV</code> latches the top 8 bits of the shift register as an entropy byte every <code>SAMPLE_CLK_DIV</code> + 1 <code>clk_i</code> cycles, 64 cycles at the reset value of 63, and pulses the byte-valid strobe for one cycle. The byte is ANDed with <code>DECORRELATOR_MASK.ENTROPY_BYTE_MASK</code>, so a cleared mask bit reads as zero; the mask and the divider are shared by all 12 lanes. Setting a lane&#8217;s bit in <code>DECORRELATOR_CTRL.BYPASS</code> forces the feedback to zero, so raw noise bits shift through the chain unmixed; the byte is still taken from the top 8 stages, downsampled and masked.</p>
 </div>
 <div id="entropy-decorrelator-diagram" class="imageblock">
 <div class="content">
@@ -350,7 +356,7 @@ domain and grey lines are in the <code>clk_i</code> domain or are controls.
 <div class="title">Figure 3. Entropy source decorrelator</div>
 </div>
 <div class="paragraph">
-<p><a href="#entropy-decorrelator-diagram">Entropy source decorrelator</a> shows one lane&#8217;s decorrelator. The chain shifts on every <code>clk_i</code> cycle while <code>enable_i</code> is high, and the eight taps from <code>ff_stage[21]</code> to <code>ff_stage[28]</code> join into one byte-wide bundle. The output register loads when the counter reaches zero. While <code>enable_i</code> is low, the chain holds its contents and the counter reloads from <code>sample_clk_div_i</code>.</p>
+<p><a href="#entropy-decorrelator-diagram">Figure 3</a> shows one lane&#8217;s decorrelator. The chain shifts on every <code>clk_i</code> cycle while <code>enable_i</code> is high, and the eight taps from <code>ff_stage[21]</code> to <code>ff_stage[28]</code> join into one byte-wide bundle. The output register loads when the counter reaches zero. While <code>enable_i</code> is low, the chain holds its contents and the counter reloads from <code>sample_clk_div_i</code>.</p>
 </div>
 <div class="paragraph">
 <p>The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four <code>gf_muladd</code> instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.</p>
