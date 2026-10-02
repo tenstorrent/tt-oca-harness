@@ -140,6 +140,23 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Every bit of every mailbox FIFO entry, both directions, both ports: a walking
+# one and a walking zero over 64 bits through all eight mailboxes, plus
+# partial-strobe pushes that must pop with the strobed bytes in their own
+# lanes (mailbox.adoc). The peer port is the external SMN master with seeded AxID,
+# AxPROT, AxCACHE, AxQOS, AxREGION, AxUSER, WUSER and ARLOCK; one filter window
+# per inbound port and NS polarity admits every draw.
+name = "sep_mailbox_datapath_walk_test"
+module = "system.sep_mailbox_datapath_walk_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["mailbox", "axil_mailbox", "fifo", "fabric", "inbound", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Per-IP SW-reset domain isolation (the reference suite\'s sep_clock_uvm_sw_reset_per_ip_test ).
 # With entropy brought up, hold a LIVE golden-checked crypto RESULT in each of two engines --
 # HMAC SHA-256 DIGEST and AES ECB-256 DATA_OUT (the AES masking-PRNG reseed consumes the

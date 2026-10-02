@@ -59,6 +59,23 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# INCR bursts of 1 to 256 beats into SRAM from the SMN-inbound master, with
+# seeded AxID, AxPROT, AxCACHE, AxQOS, AxREGION, AxUSER, WUSER and ARLOCK. The
+# inbound filter decides on address, prot[1], user[3:0] and AxLEN only, so two
+# windows (one per NS polarity, any source ID, bursts allowed) admit every draw
+# and the data must not change. Partial-strobe overlays and CPU-LSU cross reads
+# grade the byte lanes and the addresses. no_cpu; +skip_fuse_sense.
+name = "sep_sram_inbound_burst_attr_test"
+module = "sram.sep_sram_inbound_burst_attr_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["sram", "memory", "fabric", "inbound", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 name = "sep_rom_sanity_test"
 module = "cpu.sep_rom_sanity_test"
 firmware = "rom_sanity_test"

@@ -98,6 +98,12 @@ class SepAxiItem(uvm_sequence_item):
         # the master index to it, and the demux keeps one outstanding counter
         # per ID, so an access that never leaves 0 exercises one ID slot.
         self.axi_id: int = 0
+        # AxPROT. None keeps the VIP default (data, non-secure, unprivileged).
+        # The inbound filter matches prot[1] against FILTER_CONFIG.allow_ns.
+        self.prot: int | None = None
+        # AxLOCK / AxCACHE / AxQOS / AxREGION, and WUSER on a write. An absent
+        # key keeps the VIP default (normal access, cache 0b0011, 0, 0, 0).
+        self.attrs: dict[str, int] = {}
         # Filled in by the driver. resp_ok defaults False (fail closed): only a
         # confirmed OKAY response sets it True. resp_code is the worst (max) AXI
         # response code observed (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or -1 if
@@ -111,6 +117,9 @@ class SepAxiItem(uvm_sequence_item):
         # HOW MANY beats carried an error -- a caller crediting a monitor per
         # beat needs the list.
         self.resp_list: tuple[int, ...] = ()
+        # BID / RID (the last read beat's) as sampled on the bus, or None when
+        # the bus carries no ID.
+        self.resp_id: int | None = None
         self.timed_out: bool = False
 
     def __str__(self) -> str:
@@ -178,12 +187,14 @@ class SepAxiDriver(uvm_driver):
             "size": item.size,
             "burst": item.burst,
             "id": item.axi_id,
-            "prot": None,
+            "prot": item.prot,
             "check_response": False,
             "timeout_ns": self.cfg.axi_timeout_ns,
             "allow_timeout": item.allow_timeout,
             "user": item.user,
         }
+        if item.attrs:
+            common["attrs"] = dict(item.attrs)
         if item.op is SepAxiOp.READ:
             exempt = item.allow_unknown_rdata and self.monitor is not None
             if item.allow_unknown_rdata and self.monitor is None:
@@ -238,6 +249,7 @@ class SepAxiDriver(uvm_driver):
         item.resp_ok = result.ok
         item.resp_code = result.resp
         item.resp_list = tuple(getattr(result, "resp_list", ()) or ())
+        item.resp_id = getattr(result, "observed_id", None)
         if result.timed_out:
             self.logger.info(
                 "AXI %s @ 0x%08x timed out (allowed by this sequence)",

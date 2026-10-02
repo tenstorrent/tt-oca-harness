@@ -525,6 +525,10 @@ never when it was written.
 |no_cpu + external SMN master, +skip_fuse_sense
 |ocah_axi_vip
 |The receive half the TX rep cannot reach. The external master fills the FIFO through the peer aperture, which closes the data round-trip readback and the read threshold, and grades the specified behaviour that a 4-byte `READ_DATA` at either half pops a whole entry. Also walks the inbound filter allow and deny over that live peer path, each the other's control.
+|`sep_mailbox_datapath_walk_test`
+|no_cpu + external SMN master, +skip_fuse_sense
+|ocah_axi_vip
+|The data path of all eight mailboxes in both directions: a walking one and a walking zero over all 64 bits, pushed on one port and popped on the other in FIFO-depth batches, plus partial-strobe pushes at unaligned addresses. Every peer access carries seeded inbound request attributes and is graded on its response code and response ID.
 |`sep_irq_simultaneous_fanin_no_alias_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -585,6 +589,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |A FIXED and a WRAP burst into SEP SRAM are refused with SRAM unchanged, or performed at the beat addresses AXI4 gives them (`hw/sys/sep/doc/fabric.adoc`: the SEP interconnect is an AXI4 fabric). The SRAM target refuses them with SLVERR (`fabric.adoc`, "SRAM").
+|`sep_sram_inbound_burst_attr_test`
+|no_cpu + external SMN master, +skip_fuse_sense
+|ocah_axi_vip
+|INCR bursts of 1 to 256 beats into SRAM from the inbound master, with seeded AxID, AxPROT, AxCACHE, AxQOS, AxREGION, AxUSER, WUSER and ARLOCK, read back exact through the inbound master and the CPU-LSU master, with partial-strobe overlays.
 |`sep_boot_rom_lsu_read_test`
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
@@ -798,7 +806,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_dma_basic_test`. A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 41; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source.
 
 |SRAM datapath
-|`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test` (`CHK-ADDR-LINES` reaches the upper 192 KiB), `sep_sram_burst_type_test` (FIXED / WRAP)
+|`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test` (`CHK-ADDR-LINES` reaches the upper 192 KiB), `sep_sram_burst_type_test` (FIXED / WRAP), `sep_sram_inbound_burst_attr_test` (inbound INCR bursts, seeded request attributes)
 
 |AES mode × key-size
 |`sep_aes_mode_keysize_rand_test` (9-cell). CTR x DECRYPT is not claimed, and is not deferred either: CTR is a stream mode and the engine runs the forward cipher whichever way `OPERATION` is programmed, so the cell has no DUT-observable cipher contract and a test there would pass with the field disconnected. `OPERATION`'s shadowed-register behaviour is mode-independent and belongs on a CSR vehicle.
@@ -952,6 +960,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Mailbox outbox FIFO, threshold interrupt and error flags
 |`sep_axil_mailbox_iface_rand_test`. The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt status gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. This aperture's interrupt leaves the block on `smc_mailbox_interrupt_o`, so only its status registers are graded here; `Mailbox -> PIC` grades delivery to the SEP CPU, which the inbound aperture drives, on `sep_mailbox_plic_test`. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side and are graded by <<sep_mailbox_peer_rx_rirqt_test>>.
+
+|Mailbox data path, all eight mailboxes, both directions
+|`sep_mailbox_datapath_walk_test`. Every bit of a 64-bit entry, walked one and zero, through each mailbox's host-to-peer and peer-to-host FIFO, in push order; FIFO depth on STATUS; strobed bytes in their own lanes; no push reaching another mailbox.
 
 |Interrupt aggregator packing under simultaneous fan-in
 |`sep_irq_simultaneous_fanin_no_alias_test`. Several cross-IP sources asserted at once must produce exactly their own bits in `sep_internal_interrupts[8:33]`, with every bit of that region resolved rather than floating. `PIC source map` grades the source-to-PIC-id map and CPU delivery on `sep_pic_irq_source_map_delivery_test`; this row is the aggregation itself — the place a one-hot map can smear onto a neighbour — and is a distinct contract from delivery.
@@ -4177,15 +4188,25 @@ immediate neighbour, and nothing records which indices a regression covered.
 
 *BFM / Model*: ocah_axi_vip
 
+*Randomization*: RANDCFG -- `SepMboxCfg.per_half` draws two write thresholds
+from the run seed, one from the low half (1 to `MAILBOX_DEPTH`/2 - 1) and one
+from the high half (`MAILBOX_DEPTH`/2 to `MAILBOX_DEPTH` - 1) of the legal
+range, in seeded order, with a seeded first fill length and seeded payloads for
+each. Both halves are programmed and graded on every seed; `reseed = 3`.
+
 *Objective*: 64-bit TX FIFO, status, threshold IRQ, empty/full errors, and flush on the outbound mailbox aperture.
 
-*Test Coverage*: Outbound mailbox TX FIFO, status, threshold IRQ, errors, and flush.
+*Test Coverage*: Outbound mailbox TX FIFO, status, threshold IRQ, errors, and flush, at one low-half and one high-half write threshold per run.
 
 *Test Procedure*:
 
 [arabic]
-. Confirm empty FIFOs in STATUS, then push native 64-bit WRITE_DATA beats.
-. Overfill and empty-read must SLVERR with the documented error flags; flush drains TX.
+. Run the steps below once per drawn threshold. The second run starts from the drained, error-free state the first run's flush leaves.
+. Program `WIRQT` and confirm empty FIFOs in STATUS.
+. Read `WRITE_DATA`: the documented constant with OKAY, and STATUS unchanged.
+. Read `ERROR_FLAGS` and `IRQS` and confirm `read_error` and `eirq` are clear, then read `READ_DATA` on the empty receive FIFO: SLVERR with the documented sentinel and error flag, then clear the flag and the interrupt.
+. Push native 64-bit WRITE_DATA beats across `WIRQT` and on to full, comparing STATUS and `IRQS.wtirq` against the golden after every push; grade the enable gating and the level-held re-assert.
+. Push once more into the full FIFO: SLVERR with the documented error flag and interrupt, both read clear before the push. Flush the transmit FIFO.
 
 *Checkers*:
 
@@ -4193,22 +4214,22 @@ immediate neighbour, and nothing records which indices a regression covered.
 |===
 |Checker |Contract
 |CHK-NONVAC
-|The empty transmit FIFO is reflected in STATUS, compared field-by-field against the mailbox golden. Receive-FIFO bits stay at their empty-reset values because this aperture never fills RX.
+|Step 2. The empty transmit FIFO is reflected in STATUS, compared field-by-field against the mailbox golden. Receive-FIFO bits stay at their empty-reset values because this aperture never fills RX.
 |CHK-64B
-|Native 64-bit writes each occupy exactly one FIFO entry, so `depth` pushes reach exactly full. Occupancy is compared against the golden after every push, which is what makes the one-entry-per-beat claim real — a 32-bit split would trip `full` early. The transmit FIFO is write-only on this aperture, so payload survival is not claimed.
+|Step 5. Native 64-bit writes each occupy exactly one FIFO entry, so `depth` pushes reach exactly full. Occupancy is compared against the golden after every push, which is what makes the one-entry-per-beat claim real — a 32-bit split would trip `full` early. The transmit FIFO is write-only on this aperture, so payload survival is not claimed.
 |CHK-WIRQT
-|The write-threshold interrupt state matches the golden prediction, the pending register is gated by the enable (IRQP drops when IRQEN is cleared, IRQS stays), and the interrupt re-asserts after write-one-to-clear while still above threshold.
+|Step 5. `STATUS.write_level_above` and the write-threshold interrupt state match the golden prediction after every push, in each half of the threshold range, the pending register is gated by the enable (IRQP drops when IRQEN is cleared, IRQS stays), and the interrupt re-asserts after write-one-to-clear while still above threshold.
 |CHK-ERR-RD
-|A read of the empty FIFO returns SLVERR, the `0xFEEDDEAD` sentinel, and a sticky read-error flag with read-clear semantics. Both the sentinel and the `read_error` flag are the documented contract (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`). The golden takes those values from `env/sep_spec_tables.py`. Deny is distinguished three ways.
+|Step 4. `read_error` reads clear before the access. A read of the empty FIFO returns SLVERR, the `0xFEEDDEAD` sentinel, and a sticky read-error flag with read-clear semantics. Both the sentinel and the `read_error` flag are the documented contract (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`). The golden takes those values from `env/sep_spec_tables.py`. Deny is distinguished three ways.
 |CHK-ERR-IRQ / CHK-ERR-WR / CHK-ERR-WR-IRQ
-|The error interrupt sets and clears on write-one-to-clear; a write to the full FIFO returns SLVERR and sets the write-error flag, with its own interrupt.
+|Steps 4 and 6. The error interrupt reads clear before each error access, sets after it, and clears on write-one-to-clear; a write to the full FIFO returns SLVERR and sets the write-error flag, with its own interrupt.
 |CHK-FLUSH
-|The control flush drains the transmit FIFO below the write threshold: not-full afterwards, and the threshold interrupt clears. Occupancy to empty is not observable on this aperture.
+|Step 6. The control flush drains the transmit FIFO below the write threshold: not-full afterwards, and the threshold interrupt clears. Occupancy to empty is not observable on this aperture.
 |CHK-WDATA-RD
-|The push register is write-only: a read of it returns the documented `0xFEEDC0DE` constant (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`) with an OKAY response — not a FIFO entry and not an error — and leaves the transmit occupancy unchanged, re-compared against the golden afterwards. The golden takes the sentinel from `env/sep_spec_tables.py`.
+|Step 3. The push register is write-only: a read of it returns the documented `0xFEEDC0DE` constant (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`) with an OKAY response — not a FIFO entry and not an error — and leaves the transmit occupancy unchanged, re-compared against the golden afterwards. The golden takes the sentinel from `env/sep_spec_tables.py`.
 |===
 
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+*Pass Criteria*: Every named checker PASSes in both runs of the steps, and each PASS line logs the register values it read. The test declares every checker as required evidence, so a run that omits one fails. UVM_ERROR == 0.
 
 *Not claimed*: the read half of the threshold pair. `RIRQT` and
 `STATUS.read_level_above` need the receive FIFO filled from the peer side,
@@ -4271,6 +4292,64 @@ claimed for the same reason. Both need the external inbound master — see
 *Evidence*: `CHK-RIRQT-CLEAR` (the cleared `rtirq` before the fill) and `CHK-RIRQT-AT` (flag and `rtirq` still clear at exactly the threshold) are PASS records within CHK-RIRQT; a failure of either reports as `CHK-RIRQT FAIL`.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_mailbox_datapath_walk_test]]
+===== `sep_mailbox_datapath_walk_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and mailbox
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, 3 seeds
+
+*Source Module*: `sep_mailbox_datapath_walk_test`
+
+*BFM / Model*: ocah_axi_vip (CPU-LSU and external master), `SepMboxWalkCfg` (`seq_lib/sep_mailbox_walk_seq.py`)
+
+*Randomization*: RANDCFG -- the mailbox order, the start bit of each walk, the
+strobe runs and their data, and every inbound request attribute (AxID 1 to 63,
+AxPROT, a non-reserved AxCACHE, AxQOS, AxREGION, AxUSER, WUSER, ARLOCK on
+reads) come from the run seed (`SepMboxWalkCfg`, `SepInboundAttrs`). Every
+mailbox, every bit position, both directions and every byte lane are walked on
+every seed; `reseed = 3`.
+
+*Objective*: `hw/sys/sep/doc/mailbox.adoc`: each of the eight mailboxes holds two FIFOs of eight 64-bit entries, and `WRITE_DATA` in one port pushes the FIFO that `READ_DATA` in the other port pops; a write pushes one entry. The inbound filter decides on the address, `prot[1]`, `user[3:0]` and `AxLEN` only (`hw/ip/axi_filter/doc/index.adoc`, "Match, Then Permit"), so the other request fields of an admitted access must not change the data.
+
+*Test Coverage*: The data path of every mailbox in both directions, on both ports, under seeded inbound request attributes.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` mode with fuse sense skipped. Program two inbound-filter entries per mailbox over exactly that mailbox's inbound register map, one with `allow_ns = 1` and one with `allow_ns = 0`, both read+write, `src_id = 0`, `allow_burst = 0`. The inbound and outbound ports interleave at 0x800, so a window over several inbound ports would also hold the outbound ports between them; one window per port avoids that.
+. Read STATUS of both ports of every mailbox.
+. For each mailbox in seeded order, and for each direction: push a walking one then a walking zero over all 64 bits, eight entries at a time, on the writing port; read STATUS on both ports; pop the eight entries on the other port and compare; read STATUS on the reading port. The host port is the CPU-LSU master; the peer port is the external master.
+. For each mailbox and direction, push eight partial-strobe entries, entry _j_ a contiguous byte run at an unaligned `WRITE_DATA` address that contains lane _j_, and pop them on the other port.
+. Read STATUS of both ports of every mailbox again.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-MBX-EMPTY
+|Before any push, STATUS.empty is set and STATUS.full is clear on both ports of every mailbox. It is the control for the compares and for CHK-MBX-NO-LEAK.
+|CHK-MBX-H2P-WALK / CHK-MBX-P2H-WALK
+|Each of the 1024 words per direction pops on the other port bit-exact and in push order. A stuck, swapped or crossed data bit on either port of any mailbox, a reordered FIFO, or a lost or duplicated entry fails a compare.
+|CHK-MBX-DEPTH
+|On the writing port STATUS.full is clear with seven entries queued and set after the eighth; on the reading port STATUS.empty is clear while entries are queued and set after exactly as many pops as pushes.
+|CHK-MBX-STROBE
+|A partial-strobe push at an unaligned `WRITE_DATA` address pushes one entry, and that entry pops with every strobed byte in its own lane.
+|CHK-MBX-RESP-ID
+|Every peer access answers OKAY (EXOKAY allowed on an exclusive read) and returns a BID / RID equal to the AWID / ARID it issued.
+|CHK-MBX-NO-LEAK
+|After the walk both FIFOs of every mailbox are empty again on both ports, so no push reached a mailbox other than its own.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Not claimed*: the zero fill of unstrobed bytes. The VIP drives the unstrobed `WDATA` lanes to zero, so a mailbox that passed those lanes through would pop the same entry. Exclusive-write semantics: AWLOCK stays 0, because an exclusive write a slave refuses leaves the target unchanged and the SEP documents do not state whether the mailbox supports exclusive access.
 
 '''''
 
@@ -4660,6 +4739,61 @@ claimed.
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0. The SRAM target refuses both bursts (`hw/sys/sep/doc/fabric.adoc`, "SRAM"): BRESP and every RRESP beat are SLVERR and the region keeps its background.
 
 *Not claimed*: the refusal code. `fabric.adoc` names SLVERR; the checker accepts any error response or AXI4 semantics.
+
+'''''
+
+[[sep_sram_inbound_burst_attr_test]]
+===== `sep_sram_inbound_burst_attr_test`
+
+*Phase*: 2
+
+*Bucket*: Memory, boot, reset, WDT, clock
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, 3 seeds
+
+*Source Module*: `sep_sram_inbound_burst_attr_test`
+
+*BFM / Model*: ocah_axi_vip (CPU-LSU and external master), `SepSramInboundCfg` and `SepSramByteModel` (`seq_lib/sep_sram_inbound_burst_seq.py`)
+
+*Randomization*: RANDCFG -- the 16 KiB window, the burst lengths, starts and
+data (walking one, walking zero or random), the overlay span and data, the
+CPU-LSU words, and every inbound request attribute (AxID 1 to 63, AxPROT, a
+non-reserved AxCACHE that is modifiable on bursts over 16 beats, AxQOS,
+AxREGION, AxUSER, WUSER, ARLOCK on exclusive-legal reads) come from the run seed
+(`SepSramInboundCfg`, `SepInboundAttrs`). Lengths 1 and 256 and two
+exclusive-shaped short bursts, one read with ARLOCK set, run on every seed;
+`reseed = 3`.
+
+*Objective*: `hw/sys/sep/doc/fabric.adoc`: the SRAM target serves INCR bursts of every length, and the System Interface is the crossbar initiator that may issue bursts. The inbound filter decides on the address, `prot[1]`, `user[3:0]` and `AxLEN` only (`hw/ip/axi_filter/doc/index.adoc`, "Match, Then Permit"), and the SEP documents give the other request fields no effect on an SRAM access, so none of them may change the data. AXI4 (IHI 0022, A3.4.3) gives the strobe rule: a byte whose strobe is low is not written.
+
+*Test Coverage*: Inbound INCR bursts into SRAM, write and read, under seeded request attributes; partial strobes; cross-master readback.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` mode with fuse sense skipped. Program two inbound-filter entries over the same 16 KiB SRAM window, `allow_ns = 1` and `allow_ns = 0`, both read+write, `src_id = 0`, `allow_burst = 1`.
+. For each case: issue the burst write from the external master; issue a short unaligned overlay write inside its span; write two words of the span from the CPU-LSU master; burst-read the whole span from the external master; read the first, last and two seeded beats from the CPU-LSU master. Sample every AW and AR handshake, and RLAST on every R beat of each burst read, on the `m_axi` port. A data mismatch is recorded against its checker and the remaining cases still run.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-SRAM-IN-STIM
+|Each AW / AR handshake on `m_axi` carries the drawn ID, address, AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE, AxPROT, AxQOS, AxREGION and AxUSER, so the verdicts are about the attributes the log names.
+|CHK-SRAM-IN-WRITE
+|Every inbound write answers OKAY with BID equal to AWID.
+|CHK-SRAM-IN-READ
+|Every beat of each burst read answers OKAY (EXOKAY allowed on an exclusive read), RLAST sampled on the `m_axi` R channel falls on the last beat and on no other, RID equals ARID, and every beat equals the byte model.
+|CHK-SRAM-IN-STRB
+|On the overlay's first and last beats, the strobed bytes hold the overlay and the unstrobed bytes keep the burst data.
+|CHK-SRAM-IN-XPATH
+|The CPU-LSU master reads the burst's beats back equal to the model, so the inbound writes landed at the addresses they named; and the inbound burst read returns the words the CPU-LSU master wrote, so the inbound read path returns SRAM content.
+|===
+
+*Pass Criteria*: Every named checker PASSes. After the last case the test fails once if any data compare missed, naming each of CHK-SRAM-IN-READ, CHK-SRAM-IN-STRB and CHK-SRAM-IN-XPATH that recorded a mismatch. `UVM_ERROR` is 0.
+
+*Not claimed*: per-beat RRESP. The VIP folds a burst's responses into one code, any non-OKAY beat winning, so a burst with one error beat fails but the beat is not named. Exclusive-write semantics: AWLOCK stays 0, because an exclusive write a slave refuses leaves memory unchanged and the SEP documents do not state whether SRAM supports exclusive access.
 
 '''''
 

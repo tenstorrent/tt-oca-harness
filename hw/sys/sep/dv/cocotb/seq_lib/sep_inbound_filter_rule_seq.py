@@ -226,11 +226,20 @@ class SepInboundFilterCfg:
         return INFILT_BASE + self.entry * FILTER_STRIDE + FILTER_END_ADDR
 
     def config_word(
-        self, *, read_allowed: bool, write_allowed: bool, allow_burst: bool = False
+        self,
+        *,
+        read_allowed: bool,
+        write_allowed: bool,
+        allow_burst: bool = False,
+        allow_ns: bool = True,
     ) -> int:
         """FILTER_CONFIG lo: entry_enabled + allow_ns + src_id + per-dir enables.
-        Never sets the locked (woset) bit, so the entry stays reprogrammable."""
-        v = F_ENTRY_ENABLED | F_ALLOW_NS | (self.src_id << F_SRC_ID_LSB)
+        Never sets the locked (woset) bit, so the entry stays reprogrammable.
+        ``allow_ns`` is an equality match on prot[1], not a grant: False makes
+        the entry match secure transactions only."""
+        v = F_ENTRY_ENABLED | (self.src_id << F_SRC_ID_LSB)
+        if allow_ns:
+            v |= F_ALLOW_NS
         if read_allowed:
             v |= F_READ_ALLOWED
         if write_allowed:
@@ -445,6 +454,7 @@ class SepInboundFilter(SepAxiRegDriver):
         allow_burst: bool = False,
         end_addr: int | None = None,
         expect_page_widen: bool = False,
+        allow_ns: bool = True,
     ) -> None:
         """Program the inbound filter entry.
 
@@ -482,7 +492,10 @@ class SepInboundFilter(SepAxiRegDriver):
         await self._wr(
             cfg.cfg_addr,
             cfg.config_word(
-                read_allowed=read_allowed, write_allowed=write_allowed, allow_burst=allow_burst
+                read_allowed=read_allowed,
+                write_allowed=write_allowed,
+                allow_burst=allow_burst,
+                allow_ns=allow_ns,
             ),
         )
 
