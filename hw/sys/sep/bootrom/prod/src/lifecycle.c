@@ -109,12 +109,6 @@ void lc_write_demotion_2(bool demote, bool lock) {
 // Full lifecycle policy ([S11])
 // ---------------------------------------------------------------------------
 
-// Error code for lifecycle validation failure.
-#define ROM_ERR_LIFECYCLE_INVALID 0x0000A002u
-
-// Forward declaration (defined in rom_main.c).
-__attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
-
 uint32_t rom_lifecycle_policy(void) {
     report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_LC_STATE);
 
@@ -191,9 +185,6 @@ uint32_t rom_lifecycle_policy(void) {
 // ---------------------------------------------------------------------------
 // Secure-boot chicken bit ([S18])
 // ---------------------------------------------------------------------------
-
-// Error code for a SBOOT_DIS reserved-bit fault.
-#define ROM_ERR_SBOOT_DIS_RSVD_SET 0x0000F008u
 
 // Latched by rom_sboot_dis_policy(). Zero-initialised, and zero reports "not
 // disabled", so a caller that runs before [S18] enforces secure boot.
