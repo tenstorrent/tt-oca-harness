@@ -5,7 +5,9 @@
 The XTRIG CSR AXI-Lite port (u_xtrig_master_if) is driven through the shared ``ocah_axi_vip``
 AXI-Lite master; its sequence API carries the protocol-control operations the
 XTRIG scenarios need (``write_skewed_result``, ``read_hold_result``,
-contiguous partial strobes).
+contiguous partial strobes). A passive shared AXI-Lite monitor on the same
+port publishes every completed transaction on ``item_ap`` for the
+cross-trigger reference models.
 """
 
 from __future__ import annotations
@@ -15,8 +17,8 @@ from dataclasses import dataclass
 
 import cocotb
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
-from ocah_axi_vip import OcahAxiLiteMasterAgent
-from pyuvm import ConfigDB, uvm_agent
+from ocah_axi_vip import OcahAxiLiteMasterAgent, OcahAxiLiteMonitor
+from pyuvm import ConfigDB, uvm_agent, uvm_analysis_port
 
 from .dtp_xtrig_types import (
     XTRIG_CTP_STATUS_ACK_IN,
@@ -346,9 +348,20 @@ class DtpXtrigAgent(uvm_agent):
         self.axil_agent = None
         self.axil = None
         self.bfm = None
+        self.item_ap = uvm_analysis_port("item_ap", self)
+        self.monitor: OcahAxiLiteMonitor | None = None
 
     async def run_phase(self) -> None:
         tb = self.tb_if
+        self.monitor = OcahAxiLiteMonitor(
+            tb.axi_bus("xtrig", passive=True),
+            tb.clk,
+            reset=tb.sys_rst_n,
+            reset_active_level=False,
+            name="dtp_xtrig_axil_monitor",
+        )
+        self.monitor.add_item_callback(self.item_ap.write)
+        await self.monitor.start()
         # Tests judge response codes themselves (the decode-backpressure
         # scenario expects DECERR), so the sequence must return non-OKAY
         # responses instead of raising.

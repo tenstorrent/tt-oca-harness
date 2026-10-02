@@ -7,8 +7,7 @@
 // strobes and the register's implemented-bit mask, and cleared on every
 // system or power-on reset. Each register is keyed by the CSR word that
 // holds it (dtp_xtrig_csr_word). Plain class held by dtp_xtrig_csr_ref_model;
-// no reporting. In the cocotb realization the scenarios record each CSR
-// readback against the written value as CHK-XTRIG-CSR evidence.
+// no reporting. The cocotb twin is env/dtp_xtrig_csr_model.py.
 
 class dtp_xtrig_csr_model;
 

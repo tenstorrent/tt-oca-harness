@@ -11,8 +11,8 @@
 // scans, scans under another instruction, scans under an unknown
 // instruction, and scans while the PTAP 3DCR select is set, when the STAP
 // chain follows the identification register, carry no contract.
-// No comparison, no reporting. The cocotb realization has no twin
-// (DTP_TB_ARCH).
+// No comparison, no reporting. The cocotb twin is
+// env/dtp_idcode_ref_model.py.
 //
 // expected_idcode defaults to the public DTP elaboration's value; a bench
 // that embeds DTP sets it from its own configuration before build_phase, so
