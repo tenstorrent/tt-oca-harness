@@ -253,25 +253,25 @@ per-core watchdog and BEU apertures.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PLIC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xC400_0000</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 MB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TileLink (cluster control bus)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CLINT</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xC800_0000</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TileLink (cluster control bus)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timers (N)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xC000_0000 + (N * 0x400)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KB x4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TileLink (cluster peripheral bus)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Units (N)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xC801_0000 + (N * 0x1000)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KB x4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TileLink (cluster control bus)</p></td>
 </tr>
 </tbody>
 </table>
@@ -966,7 +966,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <span id="CORE0_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE0_MEIP_CLAIM_COMPLETE" data-register-alias="CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -977,7 +977,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <span id="CORE1_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE1_MEIP_CLAIM_COMPLETE" data-register-alias="CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -988,7 +988,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <span id="CORE2_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE2_MEIP_CLAIM_COMPLETE" data-register-alias="CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -999,7 +999,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <span id="CORE3_MEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE3_MEIP_CLAIM_COMPLETE" data-register-alias="CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -1010,7 +1010,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <span id="CORE0_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE0_SEIP_CLAIM_COMPLETE" data-register-alias="CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -1021,7 +1021,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <span id="CORE1_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE1_SEIP_CLAIM_COMPLETE" data-register-alias="CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -1032,7 +1032,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <span id="CORE2_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE2_SEIP_CLAIM_COMPLETE" data-register-alias="CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -1043,7 +1043,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <span id="CORE3_SEIP_CLAIM_COMPLETE"></span><h3 id="plic-CORE3_SEIP_CLAIM_COMPLETE" data-register-alias="CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</h3>
 <table>

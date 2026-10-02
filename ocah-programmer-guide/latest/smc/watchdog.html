@@ -212,6 +212,14 @@ reset is triggered.</p>
 <p>Watchdog monitoring can be disabled during debugging to prevent false
 triggers, supporting uninterrupted development and troubleshooting.</p>
 </div>
+<div class="paragraph">
+<p>The watchdog interrupt is <code>CTRL.wdogip0</code>. Hardware sets it on every cycle the
+scaled count is at or above <code>CMP</code>, so it cannot be cleared while that holds.
+Feeding the watchdog resets the count but leaves <code>wdogip0</code> set. To clear the
+interrupt, feed the watchdog (or otherwise bring the scaled count below
+<code>CMP</code>), write <code>KEY</code> again, and write <code>CTRL</code> with <code>wdogip0</code> at zero and its
+other fields unchanged.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -252,7 +260,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:29</td><td>rsvd3</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt</td></tr>
+<tr><td>28</td><td>wdogip0</td><td>RW</td><td>0x0</td><td>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.<br>To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</td></tr>
 <tr><td>27:14</td><td>rsvd2</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>13</td><td>wdogcoreawake</td><td>RW</td><td>0x0</td><td>Enable WDT to only count when the core is not in reset</td></tr>
 <tr><td>12</td><td>wdogenalways</td><td>RW</td><td>0x0</td><td>Enable WDT to always count. This has priority over wdogcoreawake</td></tr>
@@ -277,7 +285,7 @@ The detailed map below defines each register and its fields.</p>
 <span id="FEED"></span><h3 id="wdt-FEED" data-register-alias="FEED">FEED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>wdogfeed</td><td>RW</td><td>0x0</td><td>Feed register. Writing 0xD09F00D will reset the counter value back to 0.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+<tr><td>31:0</td><td>wdogfeed</td><td>RW</td><td>0x0</td><td>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
 </table>
 <span id="KEY"></span><h3 id="wdt-KEY" data-register-alias="KEY">KEY</h3>
 <table>

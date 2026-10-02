@@ -339,14 +339,14 @@ configurability.</p>
 <th class="tableblock halign-left valign-top">Component</th>
 <th class="tableblock halign-left valign-top">Default Size</th>
 <th class="tableblock halign-left valign-top">Notes</th>
-<th class="tableblock halign-left valign-top">Configurability</th>
+<th class="tableblock halign-left valign-top">Macro configuration bus</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-Cache per core</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB (32 sets × 2 ways)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write-through, Parity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read-only, Parity</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">icache_tag/data_cfg</p></td>
 </tr>
 <tr>
@@ -371,13 +371,14 @@ configurability.</p>
 </table>
 </div>
 <div class="paragraph">
-<p>All memory components (SRAM, caches, ROM) are configurable via top-level
-parameters. The scratchpad SRAM allows deterministic accesses,
-independent of cache state, and supports per-bank sizing and power
-management.</p>
+<p>The sizes are fixed by the Chipyard generator configuration. The
+<code>*_cfg</code> buses are foundry memory configuration inputs, one per macro, passed
+unchanged to each SRAM or ROM macro; they do not change memory size. The
+scratchpad SRAM allows deterministic accesses, independent of cache state,
+and supports per-bank power management.</p>
 </div>
 <div class="paragraph">
-<p>Internally, the CPU cluster uses a TileLink bus to connect cores to the scratchpad, Boot ROM, PLIC, CLINT, and Bus Error Units.
+<p>Internally, the CPU cluster uses TileLink buses to connect the cores to the scratchpad and Boot ROM, to the PLIC, CLINT and Bus Error Units on the control bus, and to the watchdog timers on the peripheral bus.
 At the cluster boundary, TileLink is bridged to AXI4 for the MMIO manager port, and AXI4 is bridged to TileLink for the L2 frontend port. The only AXI4-Lite link is the one in <code>smc_cpu_wrapper</code> from the front-port demux to the <code>cpu_ctrl</code> registers. Both AXI4 ports connect to the SMC fabric (see
 <a href="fabric.html#fabric" class="xref page">Fabric</a>
 ).</p>
@@ -463,8 +464,8 @@ completion before proceeding with boot operations.</p>
 <div class="paragraph">
 <p>Memory repair integrates into the boot sequence as follows: after power-on reset
 deasserts and eFuse sensing begins, <code>smc_fuse_sense_done_o</code> assertion triggers
-repair operations. Repair data is read from eFuse shadow registers and applied
-to SRAM, with completion reported through DFT Control Status registers. MBIST
+repair operations. The external repair controller applies the repair data to
+SRAM, with completion reported through DFT Control Status registers. MBIST
 operations begin after repair completes (or is bypassed), and the CPU cluster
 reset releases after both repair and MBIST complete. The repair process must
 complete successfully before the CPU cluster can safely access SRAM arrays.</p>
@@ -693,24 +694,38 @@ for operation and the register reference.</p>
 <h2 id="advanced-bus-infrastructure-monitoring-and-error-management"><a class="anchor" href="#advanced-bus-infrastructure-monitoring-and-error-management"></a><a class="link" href="#advanced-bus-infrastructure-monitoring-and-error-management">Advanced Bus Infrastructure Monitoring and Error Management</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Per-core bus error monitors (at 0xC801_0000 + N * 0x1000) track AXI
-transactions, allowing the system to quickly detect and respond to
-infrastructure faults that could impact system management.</p>
+<p>Each core has a Bus Error Unit (BEU) at 0xC801_0000 + N * 0x1000. It reports
+errors seen by that core&#8217;s L1 caches:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>instruction-cache correctable errors,</p>
+</li>
+<li>
+<p>instruction-cache bus errors,</p>
+</li>
+<li>
+<p>data-cache correctable errors,</p>
+</li>
+<li>
+<p>data-cache uncorrectable errors, and</p>
+</li>
+<li>
+<p>data-cache bus errors.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<p>AXI error capture detects and logs decode, slave, and timeout errors so
-management software has clear insight into infrastructure health and can
-tailor its response.</p>
+<p>The BEU records a cause code for the first enabled error and, except for
+instruction-cache correctable errors, its physical address. It does not
+capture transaction data. An error response from the SMC fabric reaches the
+BEU only as a cache bus error; the BEU does not distinguish decode, slave or
+timeout errors.</p>
 </div>
 <div class="paragraph">
-<p>Classifying errors lets software address each type effectively: decode
-errors may need reconfiguration; timeout errors may require isolating
-faults and recovery procedures.</p>
-</div>
-<div class="paragraph">
-<p>Error address and transaction capture aid debugging, preserving context
-like addresses and data to support thorough fault analysis and recovery
-coordination.</p>
+<p>Delivery and clearing are described in
+<a href="interrupts.html#smc-interrupts-bus-error-unit-interrupts" class="xref page">Bus Error Units</a>.</p>
 </div>
 </div>
 </div>
@@ -1027,7 +1042,7 @@ The detailed map below defines each register and its fields.</p>
 <span id="MTIMECMP_4_"></span><h3 id="clint-MTIMECMP_4_" data-register-alias="MTIMECMP_4_">MTIMECMP[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count value to be used for comparison, triggers interrupt once count value matches this</td></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Timer compare value. The core&#x27;s machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.</td></tr>
 </table>
 <span id="MTIME"></span><h3 id="clint-MTIME" data-register-alias="MTIME">MTIME</h3>
 <table>

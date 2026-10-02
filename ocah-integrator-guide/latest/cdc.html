@@ -232,13 +232,13 @@ own flow and cell library.</p>
 </div>
 <div class="paragraph">
 <p>To give the different systems a unified view of how the constraints are defined,
-these constraints are collected with symlinks under <code>integration/constraint</code>
+these constraints are collected with symlinks under <code>integration/constraints</code>
 using a common hierarchy, described below. If the collateral inventory changes,
 run <code>scripts/update_integration_symlinks.py</code> to regenerate the index.</p>
 </div>
 <div class="paragraph">
 <p>The constraints for each system build on shared code, linked at
-<code>integration/constraint/shared</code>. This consists of four files:
+<code>integration/constraints/shared</code>. This consists of four files:
 <code>clock_periods.tcl</code> (which sets the target clock periods every block reads),
 <code>async_clock_groups.tcl</code> (which defines clock groups with default bounds),
 <code>cdc_max_delay_procs.tcl</code> (which defines procs for emitting CDC constraints)
@@ -247,7 +247,7 @@ under an instance prefix).</p>
 </div>
 <div class="paragraph">
 <p>The constraints for each system can use this shared code and are visible through
-symlinks at <code>integration/constraint/&lt;block&gt;/synth</code>. This directory contains the
+symlinks at <code>integration/constraints/&lt;block&gt;/synth</code>. This directory contains the
 following files:</p>
 </div>
 <div class="ulist">
