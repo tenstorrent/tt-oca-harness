@@ -740,6 +740,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |no_cpu, real fuse sense
 |ocah_axi_vip
 |The three ML-KEM lanes of the KV facade: the 16-dword seed lane carrying D then Z, the message lane, and the shared-key writeback the KM consumes back out with `CMD_ABR_SK_TRANSFER`. Each lane is compared against a direct-register run of the same words, preceded by a run on different words. Also the confidentiality rule: the shared key stops reading back once an input came from the vault.
+|`sep_km_sideload_share_walk_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, KM path / golden
+|Delivers two seeded keys to each of the eight Key Manager destinations and grades each at its consumer -- AES, HMAC and KMAC against independent goldens, OTBN through its own key-dump program, and the four ABR blocks against the same operation fed through the registers. Between the rounds one engine shred clears all eight, and each consumer then shows its documented invalid-key behaviour.
 |`sep_km_mailbox_protocol_rand_test`
 |no_cpu, +skip_fuse_sense, KM held
 |ocah_axi_vip
@@ -851,6 +855,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |KM to ABR seed
 |`sep_km_abr_seed_sideload_test`. Mailbox dest ABR ML-DSA seed plus KEYGEN public-key equality against a direct-seed KEYGEN. The command-set leaf hits the dest cell every seed; this leaf is the consume proof.
+
+|KM sideload re-key and shred, every destination
+|`sep_km_sideload_share_walk_test`. Two keys per destination, each graded at its consumer, and `CMD_ENGINE_SHRED` on all eight destinations graded by each consumer's documented invalid-key behaviour: HMAC software-key fallback, OTBN `KEY_INVALID`, ABR `KV_READ_FAIL`, KMAC error, AES no output.
 
 |KM mailbox protocol (FIFO status, over/underflow, flush)
 |`sep_km_mailbox_protocol_rand_test`. Empty-FIFO read and inbound overrun, both `SEP_CTRL` response modes, the 64-bit `SEP_CTRL` beat refused by the mailbox register block's own address decode (tb probe), STATUS depth/full/empty against a golden, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, and flush that empties the full inbound FIFO without clearing either sticky error in STATUS or `IRQ_STATUS` (outbound flush is a known limitation). KM is held so firmware cannot drain or fault the FIFOs. The command-set vehicle stays the transport and is not re-credited here. KM-peer events (`flushed_by_km`, inbound underflow, outbound overflow, separators) stay on the KM IP mailbox vehicles.
@@ -8215,6 +8222,132 @@ mismatch is a delivery failure and not the KM-versus-register dword ordering; D
 and Z are *different* palindromes, so a swap between them still fails. The
 shared-key consume carries its own refusal leg rather than resting on a single
 success.
+
+'''''
+
+[[sep_km_sideload_share_walk_test]]
+===== `sep_km_sideload_share_walk_test`
+
+*Run mode*: `no_cpu`, real fuse-sense, `+esrc_noise_force`,
+`+km_rom_hex=rom_main.rom.parhex`
+
+*Phase*: 2
+
+*Bucket*: Key Manager vault
+
+*Source Module*: `sep_km_sideload_share_walk_test`
+
+*BFM / Model*: ocah_axi_vip, `env/sep_aes_golden.py`, `env/sep_hmac_golden.py`,
+`env/sep_kmac_golden.py`
+
+*Objective*: every Key Manager delivery destination consumes the exact key the
+KM delivered, takes a second, different key after an engine shred, and shows
+the documented invalid-key behaviour while its `KEY_CTRL.KEY_VALID` is clear.
+
+*Test Coverage*: all eight `CMD_KEY_TRANSFER` destinations -- AES, HMAC, KMAC,
+OTBN and the four ABR blocks `MLDSA_SEED`, `MLKEM_SEED_D`, `MLKEM_SEED_Z`,
+`MLKEM_MSG` -- loaded twice each, and `CMD_ENGINE_SHRED` on all eight at once,
+twice. The invalid-key column of the key-delivery summary in `doc/crypto.adoc`
+for each accelerator.
+
+*Test Procedure*:
+
+[arabic]
+. Stage a valid PROD OTP image, bring entropy up, release the KM, wait for
+`RESP_KM_READY`. Release AES, HMAC, KMAC and OTBN and wait for each to be idle:
+each wrapper key block sits in its engine's software-reset domain.
+Precondition, not graded here.
+. Round 1. `CMD_KEY_LOAD` + `CMD_KEY_TRANSFER` one seeded key to each of the
+eight destinations. The firmware response (success, handle and destination
+echoed) is a precondition; the delivered value is graded in the next step.
+. AES ECB-256 encrypt with `CTRL_SHADOWED.sideload` (CHK-AES). HMAC-SHA256 with
+a different software key in the KEY CSRs (CHK-HMAC). Keyed KMAC256 with
+`CFG_SHADOWED.sideload` (CHK-KMAC). The OTBN key-dump program (CHK-OTBN). For
+ABR, `ZEROIZE`, set the KV read enable, wait for the KV status to settle, run
+the KV-fed KEYGEN or ENCAPS, then `ZEROIZE` and run the same operation on the
+same words written directly (CHK-MLDSA, CHK-MLKEM-SEED, CHK-MLKEM-MSG).
+. `CMD_ENGINE_SHRED` with all eight destination bits. The firmware response is
+a precondition; the hardware effect is graded in the next step.
+. HMAC with a software key (CHK-HMAC-CLR); OTBN key dump (CHK-OTBN-CLR); for
+each ABR KV lane, `ZEROIZE`, set the read enable, read the KV status and the
+engine status, `ZEROIZE` (CHK-ABR-CLR).
+. Round 2: the same steps with a new key whose every word differs from the
+round-1 word at the same index. Compare each ABR output with round 1
+(CHK-ROUND).
+. Keyed KMAC on the delivered key (CHK-KMAC-CLR), then AES with the delivered
+key selected (CHK-AES-CLR). These two leave their engines stopped, so they run
+last.
+
+*Randomization*: RANDCFG. `SepKmShareWalkCfg` is the single source of truth
+for both rounds of keys, the AES plaintext, the HMAC and KMAC messages, the
+HMAC software keys and the ML-DSA masking entropy; the goldens and the
+direct-register ABR references are built from the same object. ABR seeds are
+seeded dword palindromes.
+
+*Scope*: the share words are write-only and sit on the KM-private bus, so a
+delivered value is graded at its consumer, never by readback. The KV read error
+of a block whose `KEY_VALID` is clear is claimed here; the ML-KEM shared-key
+write lane stays on `sep_km_abr_mlkem_sideload_test`. ABR has no independent
+golden in this tree for a seed of the run's choosing, so each ABR compare is
+against the same engine fed through its registers. KMAC and AES recovery after
+the invalid-key refusal is not claimed. The ABR engine state after a failed KV
+read is logged, not graded.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-AES-1/2
+|The sideload ECB-256 ciphertext equals the AES-256 golden of the delivered key.
+|CHK-HMAC-1/2
+|The HMAC-SHA256 digest equals the golden of the delivered key while a different software key sits in the KEY CSRs (`doc/hmac.adoc`: the delivered key is used whenever `KEY_VALID` is set).
+|CHK-KMAC-1/2
+|The sideload KMAC256 digest equals the SP 800-185 golden of the delivered key.
+|CHK-OTBN-1/2
+|The key-dump program reads the delivered 384-bit key, share0 XOR share1 equals it, the pad is zero and `ERR_BITS` is 0.
+|CHK-MLDSA-1/2
+|The ML-DSA seed KV read completes (`VALID`, `ERROR` = `SUCCESS`) and the KEYGEN public key equals a direct-seed KEYGEN of the same words.
+|CHK-MLKEM-SEED-1/2
+|The 16-dword `D` then `Z` KV read completes and the encapsulation key equals a direct-seed KEYGEN of the same `D` and `Z`.
+|CHK-MLKEM-MSG-1/2
+|The message KV read completes and the ENCAPS ciphertext equals a direct-message ENCAPS of the same words.
+|CHK-ROUND
+|Every round-2 ABR output (ML-DSA public key, ML-KEM encapsulation key, ML-KEM ciphertext) differs from its round-1 output. The ABR compares are against the same engine, so this row fails an engine that ignores its seed or message. AES, HMAC, KMAC and OTBN have goldens per round and are not compared here.
+|CHK-HMAC-CLR-1/2
+|After the shred the HMAC digest equals the golden of the software key in the KEY CSRs: with `KEY_VALID` clear the engine falls back to its software key.
+|CHK-OTBN-CLR-1/2
+|After the shred the key-dump program stops with `ERR_BITS` = `KEY_INVALID` (`doc/otbn.adoc`).
+|CHK-ABR-CLR-1/2
+|After the shred each of the three ABR KV reads reports `ERROR` = `KV_READ_FAIL` (`doc/crypto.adoc`, `km-key-delivery-summary`: "Seed read does not complete"; the encoding is the `kv_error_e` enum of `kv_def.rdl`). The engine `STATUS` is logged and not graded: no SEP document states it.
+|CHK-KMAC-CLR
+|A keyed KMAC on the shredded delivered key raises `INTR_STATE.kmac_err` with a non-zero `ERR_CODE` (`doc/kmac.adoc`).
+|CHK-AES-CLR
+|With the delivered key selected and shredded, AES produces no output in a bounded window. `doc/aes.adoc` defers core behaviour to the OpenTitan AES documentation, which states that the unit only starts if the sideload key is valid ("System Key-Manager Interface").
+|===
+
+*Preconditions*: `rom_main` boots on real entropy and announces
+`RESP_KM_READY`; this is the bench build with the boot and unrecoverable-fault
+SRAM wipes compiled out (see Known Limitations, "KM application ROM wipe
+paths"). Every `CMD_KEY_TRANSFER` and `CMD_ENGINE_SHRED` returns success and
+echoes its arguments. These are firmware responses and are asserted, not
+graded. The shred clears `key_valid` and overwrites both shares
+(`hw/ip/key_manager/doc/firmware.adoc`, "Crypto Engine Drivers"); the
+cleared-state rows grade the `key_valid` half at each consumer.
+
+*Pass Criteria*: Every named checker PASSes, and the leaf declares every
+checker ID above as required evidence. UVM_ERROR == 0.
+
+*Anti-vacuity*: every key word is non-zero and differs from the other round's
+word at the same index, so a stale share word changes the consumer output. Each
+ABR KV leg runs before its direct-register reference and after a `ZEROIZE`:
+a lane that delivers nothing reads the zeroized register in round 1 and the
+round-1 reference in round 2, and fails the compare. The HMAC cleared-state
+check uses the same software key as the decoy of the valid-key check, so the
+same software key gives the delivered-key digest before the shred and the
+software-key digest after it. Each cleared-state check has its positive control
+in the same run: the same operation on the same engine succeeds with the
+delivered key in the round before.
 
 '''''
 

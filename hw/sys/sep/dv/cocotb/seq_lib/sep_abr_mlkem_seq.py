@@ -29,6 +29,7 @@ from env.sep_spec_tables import (
     kv_field_mask,
     window,
 )
+from sep_reg_meta import sym
 
 from seq_lib.sep_abr_keygen_seq import SepAbr
 
@@ -53,12 +54,15 @@ MLKEM_CIPHERTEXT = ABR_BASE + abr_off("MLKEM_CIPHERTEXT")
 # ports. read_en / write_en (kv_def.rdl) are hwclr, so each one arms a single
 # transfer and the engine clears it. abr_reg.rdl anchors this block at
 # kv_mlkem_seed_rd_ctrl and packs the other instances after it; abr_offsets()
-# resolves each by name. The selftest pins all three against the generated
-# decoder in abr_reg.sv, so a layout change fails at import rather than writing
-# a wrong address mid-simulation.
+# resolves each by name. The status words come from the generated SEP register
+# header (hw/sys/sep/regs/gen/py/sep_reg.py). The selftest checks every KV word
+# against both views, so a layout change fails at import rather than writing a
+# wrong address mid-simulation.
 MLKEM_KV_SEED_RD_CTRL = ABR_BASE + abr_off("kv_mlkem_seed_rd_ctrl")
 MLKEM_KV_MSG_RD_CTRL = ABR_BASE + abr_off("kv_mlkem_msg_rd_ctrl")
 MLKEM_KV_SK_WR_CTRL = ABR_BASE + abr_off("kv_mlkem_sharedkey_wr_ctrl")
+MLKEM_KV_SEED_RD_STATUS = sym("ABR_KV_MLKEM_SEED_RD_STATUS_REG_ADDR")
+MLKEM_KV_MSG_RD_STATUS = sym("ABR_KV_MLKEM_MSG_RD_STATUS_REG_ADDR")
 KV_READ_EN = kv_field_mask("kv_read_ctrl_reg", "read_en")
 KV_WRITE_EN = kv_field_mask("kv_write_ctrl_reg", "write_en")
 
@@ -89,9 +93,10 @@ class SepAbrMlkem(SepAbr):
 
 
 def _selftest() -> None:
-    # Pinned against the generated decoder in the vendored abr_reg.sv, so a bad
-    # RDL resolution fails at import rather than as a wrong-address access in
-    # the middle of a simulation.
+    # Pinned to the offsets of the generated SEP register header
+    # (hw/sys/sep/regs/gen/py/sep_reg.py), so a bad abr_reg.rdl resolution fails
+    # at import rather than as a wrong-address access in the middle of a
+    # simulation.
     assert ABR_BASE == 0x1094_0000
     assert MLKEM_NAME0 - ABR_BASE == 0x9000
     assert MLKEM_CTRL - ABR_BASE == 0x9010
@@ -105,10 +110,12 @@ def _selftest() -> None:
     assert MLKEM_CIPHERTEXT - ABR_BASE == 0xB800
     # The KV control block sits at its own anchor in abr_reg.rdl; ML-DSA's is
     # 0x8000 and ML-KEM's is 0xC000, with ctrl/status alternating from there.
-    # abr_reg.sv decoded_reg_strb: 16'hc000 / 16'hc008 / 16'hc010.
-    assert MLKEM_KV_SEED_RD_CTRL - ABR_BASE == 0xC000
-    assert MLKEM_KV_MSG_RD_CTRL - ABR_BASE == 0xC008
-    assert MLKEM_KV_SK_WR_CTRL - ABR_BASE == 0xC010
+    # Each KV word resolves the same in abr_reg.rdl and in the generated header.
+    assert MLKEM_KV_SEED_RD_CTRL == sym("ABR_KV_MLKEM_SEED_RD_CTRL_REG_ADDR")
+    assert MLKEM_KV_MSG_RD_CTRL == sym("ABR_KV_MLKEM_MSG_RD_CTRL_REG_ADDR")
+    assert MLKEM_KV_SK_WR_CTRL == sym("ABR_KV_MLKEM_SHAREDKEY_WR_CTRL_REG_ADDR")
+    assert MLKEM_KV_SEED_RD_STATUS == ABR_BASE + abr_off("kv_mlkem_seed_rd_status")
+    assert MLKEM_KV_MSG_RD_STATUS == ABR_BASE + abr_off("kv_mlkem_msg_rd_status")
     # The three large windows a command touches must not overlap each other.
     assert MLKEM_DECAPS_KEY + 4 * KEM_DK_WORDS <= MLKEM_ENCAPS_KEY
     assert MLKEM_ENCAPS_KEY + 4 * KEM_EK_WORDS <= MLKEM_CIPHERTEXT

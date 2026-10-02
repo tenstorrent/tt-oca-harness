@@ -237,6 +237,26 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
+# KM sideload walk over all eight destinations: two seeded keys per
+# destination, each graded at its consumer (AES / HMAC / KMAC goldens, the OTBN
+# key dump, ABR KV-vs-direct compares), and one CMD_ENGINE_SHRED per round
+# graded by each consumer's documented invalid-key behaviour. RANDCFG: every
+# key, message and software key comes from the run seed. REAL fuse-sense;
+# +esrc_noise_force. Sixteen transfers, four ML-DSA-87 keygens, four ML-KEM
+# keygens and four encaps set the wall budget.
+name = "sep_km_sideload_share_walk_test"
+module = "km.sep_km_sideload_share_walk_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 14400
+tags = ["km", "sideload", "abr", "aes", "hmac", "kmac", "otbn", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
 # KM mailbox as a SEP-side register surface. RANDCFG: the 16 inbound fill
 # words come from the run seed. KM stays in software reset so firmware
 # cannot drain or fault the FIFOs; the SEP-facing mailbox lives on cold

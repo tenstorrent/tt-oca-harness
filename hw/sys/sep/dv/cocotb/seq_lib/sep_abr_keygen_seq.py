@@ -22,6 +22,7 @@ from env.sep_spec_tables import (
     kv_field_mask,
     window,
 )
+from sep_reg_meta import sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -37,6 +38,7 @@ ABR_SEED = ABR_BASE + abr_off("MLDSA_SEED")
 ABR_PUBKEY = ABR_BASE + abr_off("MLDSA_PUBKEY")
 ABR_MLDSA_KV_RD_SEED_CTRL = ABR_BASE + abr_off("kv_mldsa_seed_rd_ctrl")
 ABR_KV_RD_SEED_READ_EN = kv_field_mask("kv_read_ctrl_reg", "read_en")
+ABR_MLDSA_KV_RD_SEED_STATUS = sym("ABR_KV_MLDSA_SEED_RD_STATUS_REG_ADDR")
 ABR_INTR = ABR_BASE + abr_off("intr_block_rf")
 ABR_GLOBAL_INTR_EN = ABR_INTR + abr_off("global_intr_en_r")
 ABR_ERROR_INTR_EN = ABR_INTR + abr_off("error_intr_en_r")
@@ -157,6 +159,10 @@ def _selftest() -> None:
     assert ABR_STATUS - ABR_BASE == 0x14
     assert ABR_ENTROPY - ABR_BASE == 0x18
     assert ABR_SEED - ABR_BASE == 0x58
+    # The KV seed-read words resolve the same in abr_reg.rdl and in the
+    # generated SEP register header (hw/sys/sep/regs/gen/py/sep_reg.py).
+    assert ABR_MLDSA_KV_RD_SEED_CTRL == sym("ABR_KV_MLDSA_SEED_RD_CTRL_REG_ADDR")
+    assert ABR_MLDSA_KV_RD_SEED_STATUS == ABR_BASE + abr_off("kv_mldsa_seed_rd_status")
     assert ABR_PUBKEY - ABR_BASE == 0x1000
     # Sign / verify windows, pinned so a bad RDL resolution fails at import
     # rather than as a mid-simulation wrong-address access.
