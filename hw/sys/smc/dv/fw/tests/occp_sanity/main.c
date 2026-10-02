@@ -2,30 +2,24 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Master Sanity Test - Simple Write and Readback
+ * OCCP Sanity Test - Version Query
  *
- * This test performs a basic OCCP write to a known address,
- * then reads back the data and checks for correctness.
- *
- * The goal is to verify basic OCCP communication and memory access.
+ * Verifies basic OCCP communication from the controller to the target ROM: a
+ * GET_VERSION command completes and returns protocol version 1.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"
-#include <string.h>
 
 static void run_test_suite(test_context_t *ctx) {
     simputs("=== Starting Simple OCCP Sanity Test ===\n");
 
     ctx->overall_result = true;
     int retval;
-    uint32_t status_data = 0;
 
-    // Run each status command once
     simputs("=== Status Commands Test ===\n");
 
-    // GET_VERSION
     int version;
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &version);
     if (retval == OCCP_SUCCESS) {
@@ -69,7 +63,6 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context
     test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     test_ctx.overall_result = true;
@@ -77,7 +70,6 @@ int main(void) {
     test_ctx.exp_occp_last_error = 0;
     test_ctx.sram_scoreboard_idx = 0;
 
-    // Run the test suite
     run_test_suite(&test_ctx);
 
     finalize_test_results(&test_ctx);
@@ -86,8 +78,6 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

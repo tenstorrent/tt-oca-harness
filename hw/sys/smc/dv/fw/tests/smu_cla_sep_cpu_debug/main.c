@@ -8,13 +8,12 @@
 #include "smu_cla_sep_cpu_debug_protocol.h"
 
 /*
- * smu_cla_sep_cpu_debug_control_test -- SMC (producer) firmware.
+ * SMU CLA to SEP CPU debug control: SMC producer firmware.
  *
- * Real SMC firmware fires CLA node0-EAP single custom actions toward the live
- * SEP CPU and posts an ARMED marker before each so the DV scoreboard can open
- * an observation window. action[2] is held long enough for the cocotb to apply
- * the shared 014 IC_RESET helper (CHK-INVERT-2); action[5] is held for the
- * second reset edge. Stackless: main() makes no function calls.
+ * Fires each CLA single custom action toward the running SEP CPU, reads it back
+ * and publishes it, so the DV can check the mapped SEP control input. The
+ * reset-run and unmapped actions are held until the DV has applied a core
+ * reset edge. Stackless: main() makes no function calls.
  */
 SMC_STACKLESS_ENTRY(smu_cla_sep_cpu_debug_entry)
 
@@ -97,8 +96,8 @@ int main(void) {
     SMC_FENCE();
     SMC_DELAY_ITERS(CLADBG_HOLD_ITERS);
 
-    /* action[2] RESET-RUN (mpc_reset_run_req is inverted). Long hold: net-level
-     * map plus CHK-INVERT-2 first IC_RESET edge (cla[2]=1). */
+    /* Reset-run maps inverted onto the SEP input. Hold it until the DV has
+     * applied the first core reset edge. */
     FIRE_ACTION(CLADBG_CLA_EAP0_ACT2);
     CHECK_PUBLISH(CLADBG_CLA_EAP0_ACT2);
     SMC_WR32(SC0, CLADBG_ACT2_ARMED);
@@ -107,8 +106,8 @@ int main(void) {
     WAIT_SC9(CLADBG_DV_INVERT2_A, ok);
     if (!ok) goto fail;
 
-    /* action[5] unmapped: restores mpc_reset_run_req=1. Wait for DV second
-     * IC_RESET edge (cla[2]=0) then resume. */
+    /* The unmapped action drops reset-run, so the SEP input returns to its
+     * default. Wait for the DV to apply the second core reset edge. */
     FIRE_ACTION(CLADBG_CLA_EAP0_ACT5);
     CHECK_PUBLISH(CLADBG_CLA_EAP0_ACT5);
     SMC_WR32(SC0, CLADBG_ACT5_ARMED);

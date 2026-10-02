@@ -21,10 +21,9 @@ endif
 ocah_format_c_submodules = $(shell git config --file $(OCAH_ROOT)/.gitmodules --get-regexp '\.path$$' 2>/dev/null | awk '{print $$2}')
 ocah_format_c_exclude_submodules = $(foreach p,$(ocah_format_c_submodules),-not -path '$(OCAH_ROOT)/$(p)/*')
 
-# .c/.h/.cpp files under FORMAT_C_PATH, excluding build output, vendored
-# third-party sources, and generated register headers (see hw/common/regs/).
-# 'build*' also covers the SEP boot ROM's variant dirs (build_ot/, build_ot_pio/,
-# build_release/), which hold generated sources.
+# .c/.h/.cpp files under FORMAT_C_PATH, excluding build output (build_*/ covers the
+# SEP boot ROM's build_pio/ and build_release/), vendored third-party sources and
+# generated register headers (see hw/common/regs/).
 ocah_format_c_files = $(shell find $(OCAH_ROOT)/$(FORMAT_C_PATH) \( -name '*.c' -o -name '*.h' -o -name '*.cpp' \) -not -path '*/build/*' -not -path '*/build_*/*' -not -path '*/vendor/*' -not -path '*/regs/gen/*' $(ocah_format_c_exclude_submodules) 2>/dev/null)
 
 ocah_format_c_check_files = @[ -n "$(strip $(ocah_format_c_files))" ] || { echo "error: no .c/.h/.cpp files under $(FORMAT_C_PATH)" >&2; exit 1; }

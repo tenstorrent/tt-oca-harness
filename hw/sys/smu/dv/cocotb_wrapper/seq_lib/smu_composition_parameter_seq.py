@@ -3,7 +3,7 @@
 """Sequence for smu_composition_parameter_test (SMU_102).
 
 Passive parameter and connection inspection of the elaborated wrapper: the
-SEP security-disable token as it reaches `smu` and the SEP eFuse controller,
+SEP security-disable token as it reaches the SEP eFuse controller,
 the SEP OTP pipeline depths on the DTP, the SEP-to-SMC security_disable wire,
 and the consumer-side parameters the SMU derives from its build configuration.
 
@@ -15,12 +15,12 @@ count; the SEP security-disable document states the token width. Or a
 plumbing compare: the same parameter read at the wrapper and at the instance
 that consumes it, which a mis-wired parameter fails.
 
-The bench binds SEP_SEC_DISABLE_TOKEN to the SHA-256 of the all-zero 32-byte
-token in place of the metal digest, and the token the wrapper carries is
-compared against that digest, computed here. No specification in this tree
-states the packed layout of the build configuration struct; the per-field
-`CFG` compares that go through `decode_cfg` are drift checks on the
-elaboration and carry no evidence token.
+The bench binds CFG.SEP_SEC_DISABLE_TOKEN to the SHA-256 of the all-zero
+32-byte token in place of the metal digest, and the token the SEP eFuse
+controller carries is compared against that digest, computed here. No
+specification in this tree states the packed layout of the build
+configuration struct; the per-field `CFG` compares that go through
+`decode_cfg` are drift checks on the elaboration and carry no evidence token.
 """
 
 from __future__ import annotations
@@ -77,36 +77,8 @@ class smu_composition_parameter_seq:
         await self.test.cfg.reset_done.wait()
         await ClockCycles(dut.clk_smu_i, 8)
 
-        sb.expect_eq("smu SEP parameter", sample(smu.SEP, "smu.SEP"), expected_sep)
-        sb.expect_eq("wrapper SEP parameter", sample(wrapper.SEP, "smu_wrapper.SEP"), expected_sep)
         sb.expect_eq(
             "sep_enabled_o build flag", sample(dut.sep_enabled_o, "sep_enabled_o"), expected_sep
-        )
-
-        # SMU-SEC-TOKEN.S2: the token is 256 bits at the wrapper and at smu and
-        # reaches smu unchanged. The bench binds the SHA-256 of the all-zero
-        # 32-byte token in place of the metal digest, so that is the value the
-        # wrapper carries.
-        tokens = {}
-        for scope, label in ((wrapper, "smu_wrapper"), (smu, "smu")):
-            tok = hier(scope, "SEP_SEC_DISABLE_TOKEN")
-            sb.expect_eq(
-                f"{label}.SEP_SEC_DISABLE_TOKEN width",
-                bit_width(tok, f"{label}.SEP_SEC_DISABLE_TOKEN"),
-                SEP_SEC_DISABLE_TOKEN_WIDTH,
-                evidence="CHK-SMU-SEC-TOKEN-S2",
-            )
-            tokens[label] = sample(tok, f"{label}.SEP_SEC_DISABLE_TOKEN")
-        sb.expect_eq(
-            "wrapper SEP_SEC_DISABLE_TOKEN reaches smu unchanged",
-            tokens["smu"],
-            tokens["smu_wrapper"],
-            evidence="CHK-SMU-SEC-TOKEN-S2",
-        )
-        sb.expect_eq(
-            "SEP_SEC_DISABLE_TOKEN is the bench-bound digest of the all-zero token",
-            tokens["smu_wrapper"],
-            BENCH_SEC_DISABLE_DIGEST,
         )
 
         # SMU-OTPAXI-SEP.S3: DTP SEP OTP depths are the fixed 2'h3.
@@ -135,6 +107,8 @@ class smu_composition_parameter_seq:
         fields = decode_cfg(cfg_raw)
         expected = dict(CFG_SPEC_DEFAULTS)
         expected["XTRIG_INT_CT_MODE"] = xtrig_mode
+        expected["SEP"] = expected_sep
+        expected["SEP_SEC_DISABLE_TOKEN"] = BENCH_SEC_DISABLE_DIGEST
         for name, want in expected.items():
             sb.expect_eq(f"CFG.{name} drift (SEP={expected_sep})", fields[name], want)
         self.log.info("CFG decoded (SEP=%d): %s", expected_sep, fields)
@@ -197,19 +171,20 @@ class smu_composition_parameter_seq:
         sec_dis = hier(smu, "sep_security_disable")
         smc_sec_dis = hier(smu, "u_smc.sep_security_disable_i")
         if expected_sep == 1:
-            # SMU-SEC-TOKEN.S1: the token reaches the SEP eFuse controller.
+            # SMU-SEC-TOKEN.S2: the token is 256 bits at the SEP eFuse
+            # controller and is the digest the bench binds in CFG.
             sep_tok = hier(smu, f"{SEP_EFUSE_CTRL_PATH}.SEP_SEC_DISABLE_TOKEN")
             sb.expect_eq(
                 "SEP eFuse controller token width",
                 bit_width(sep_tok, "sep efuse SEP_SEC_DISABLE_TOKEN"),
                 SEP_SEC_DISABLE_TOKEN_WIDTH,
-                evidence="CHK-SMU-SEC-TOKEN-S1",
+                evidence="CHK-SMU-SEC-TOKEN-S2",
             )
             sb.expect_eq(
-                "SEP eFuse controller token equals the SMU parameter",
+                "SEP eFuse controller token is the bench-bound digest of the all-zero token",
                 sample(sep_tok, "sep efuse SEP_SEC_DISABLE_TOKEN"),
-                tokens["smu"],
-                evidence="CHK-SMU-SEC-TOKEN-S1",
+                BENCH_SEC_DISABLE_DIGEST,
+                evidence="CHK-SMU-SEC-TOKEN-S2",
             )
             # SMU-LC-SECDIS.S1: the security_disable net, recorded while no token is written.
             sep_side = hier(smu, f"{SEP_EFUSE_CTRL_PATH}.security_disable_o")

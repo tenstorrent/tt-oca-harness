@@ -23,8 +23,8 @@ int main(void) {
 
     rom_data_first = read_reg_64(first_addr);
 
-    uint32_t top_half = (rom_data_first >> 32) & 0xFFFFFFFF; // Top 32 bits
-    uint32_t bottom_half = rom_data_first & 0xFFFFFFFF;      // Bottom 32 bits
+    uint32_t top_half = (rom_data_first >> 32) & 0xFFFFFFFF;
+    uint32_t bottom_half = rom_data_first & 0xFFFFFFFF;
 
     write_scratch(0, top_half);
     write_scratch(1, bottom_half);
@@ -37,8 +37,8 @@ int main(void) {
 
     rom_data_middle = read_reg_64(middle_addr);
 
-    top_half = (rom_data_middle >> 32) & 0xFFFFFFFF; // Top 32 bits
-    bottom_half = rom_data_middle & 0xFFFFFFFF;      // Bottom 32 bits
+    top_half = (rom_data_middle >> 32) & 0xFFFFFFFF;
+    bottom_half = rom_data_middle & 0xFFFFFFFF;
 
     write_scratch(2, top_half);
     write_scratch(3, bottom_half);
@@ -51,8 +51,8 @@ int main(void) {
 
     rom_data_last = read_reg_64(last_addr);
 
-    top_half = (rom_data_last >> 32) & 0xFFFFFFFF; // Top 32 bits
-    bottom_half = rom_data_last & 0xFFFFFFFF;      // Bottom 32 bits
+    top_half = (rom_data_last >> 32) & 0xFFFFFFFF;
+    bottom_half = rom_data_last & 0xFFFFFFFF;
 
     write_scratch(2, top_half);
     write_scratch(3, bottom_half);
@@ -62,12 +62,6 @@ int main(void) {
     }
 
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
 int secondary_main(void) {

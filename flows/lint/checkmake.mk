@@ -25,7 +25,7 @@ ocah_checkmake_root := $(if $(MAKEFILE_PATH),$(OCAH_ROOT)/$(MAKEFILE_PATH),$(OCA
 # output, and the local uv venv -- none of which are hand-authored here.
 ocah_checkmake_files = $(shell find $(ocah_checkmake_root) \( -name '*.mk' -o -name 'Makefile' \) \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
-	-not -path '*/build/*' -not -path '*/build_ot/*' -not -path '*/build_ot_pio/*' \
+	-not -path '*/build/*' -not -path '*/build_pio/*' \
 	-not -path '*/.venv/*' 2>/dev/null)
 
 ocah_checkmake_check_files = @[ -n "$(strip $(ocah_checkmake_files))" ] || { echo "error: no Makefile/*.mk files under $(if $(MAKEFILE_PATH),$(MAKEFILE_PATH),repo root)" >&2; exit 1; }

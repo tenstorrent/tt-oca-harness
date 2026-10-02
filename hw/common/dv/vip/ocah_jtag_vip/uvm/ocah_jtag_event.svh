@@ -10,6 +10,8 @@
 //     it. Published on the following TCK falling edge, when subscribers can
 //     safely sample any DUT-side observables that update on the rising edge.
 //   OCAH_JTAG_EV_TRST — asynchronous TRST assertion/release edge.
+//
+// The cocotb twin is OcahJtagEvent.
 
 typedef enum {
   OCAH_JTAG_EV_STEP,

@@ -3,7 +3,7 @@
 
 /*
  * Reads the SMC and SEP status ring buffers through OCCP status commands: drains the SMC
- * buffer, interleaves SMC/SEP reads, and polls repeatedly, checking each non-empty entry.
+ * buffer, interleaves SMC/SEP reads, and polls repeatedly, checking non-empty SMC entries.
  */
 
 #include "occp_test_common.h"
@@ -12,12 +12,8 @@
 #include <string.h>
 #include "smc_status.h"
 
-#define SMC_RING_BUFFER_SIZE 512
-
 typedef struct {
     test_context_t *occp_ctx;
-    uint32_t test_messages[SMC_RING_BUFFER_SIZE + 10];
-    uint32_t read_messages[SMC_RING_BUFFER_SIZE + 10];
     int total_tests;
     int passed_tests;
     bool overall_result;

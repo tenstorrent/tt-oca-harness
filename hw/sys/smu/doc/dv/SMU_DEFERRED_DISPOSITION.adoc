@@ -24,7 +24,7 @@ Buckets:
 
 * `SEP1-enrolled` — has a body and runs in the wrapper `all` group with real SEP instruction retirement (`sep_real_fw`, `sep_entropy`, or `fw_boot` for the SEP smoke). Not `hosted` credit, and no CI workflow schedules those groups.
 * `SEP1-blocked` — written against the wrapper bench, enrolled in no testlist: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction. Re-enrols in `all` the day the SMC SRAM path exists.
-* `not-runnable` — has a body in git history, enrolled in no testlist: the claim it checks is not met by the RTL as built, the bench cannot produce the condition it needs, or it needs the `smu #(.SEP(0))` elaboration, which this package does not build. The row names the condition.
+* `not-runnable` — has a body in git history, enrolled in no testlist: the claim it checks is not met by the RTL as built, the bench cannot produce the condition it needs, or it needs the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration, which this package does not build. The row names the condition.
 * `OUT-until-SEP1` — no body; a scenario driven by SEP firmware. The bench elaborates the real SEP and `smu_sep_smoke_test` retires its instructions, so a leaf written for one of these names runs SEP firmware, needs the RISC-V toolchain for its `c_build` stage, and joins the groups outside `hosted` (`fw_boot`, `sep_real_fw`) that no workflow schedules.
 * `child-TB-owned` — protocol or CPU depth belongs to the SMC, SEP, or DTP TB.
 * `waived` — superseded, toggle-as-pass, stimulus-pin gap, or leftover catalog name.
@@ -247,7 +247,7 @@ Enrolled names outside this catalog:
 |The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
 |smu_fabric_smc_dtp_cross_domain_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_fabric_id_remap_stress_test
 |waived
 |The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
@@ -340,10 +340,10 @@ Enrolled names outside this catalog:
 |No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_cpu_traffic_ext_axi_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smc_efuse_reg_sanity_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smc_efuse_secure_tm_force_test
 |OUT-until-SEP1
 |No product pin or frontdoor stimulus drives `secure_tm_i`; needs the SEP=1 lifecycle controller.
@@ -358,46 +358,46 @@ Enrolled names outside this catalog:
 |No product pin or frontdoor stimulus drives the full CTM matrix; needs the SEP=1 lifecycle controller.
 |smu_dtp_csr_access_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_dtp_dtm_local_axi_test
 |waived
 |Never enrolled. The DTM local-AXI path this name described is not the wrapper leaf `smu_dtp_sep_dm_dmi_test` (DTP TAP → SEP DMI `IR=5'h11` `dmstatus`). Do not re-enroll this name.
 |smu_dtp_feat_ctrl_gate_matrix_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_dtp_otp_debug_access_test
 |OUT-until-SEP1
 |No product pin or frontdoor stimulus walks the OTP lifecycle; needs the SEP=1 lifecycle controller.
 |smu_dtp_otp_sep0_err_slv_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_feat_ctrl_flip_mid_jtag2axi_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_feat_ctrl_partial_bit_corner_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_hier_ctn_vs_jtag2axi_concurrent_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_lifecycle_debug_policy_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_macro_axil_pll_pvt_route_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_octs_timer_count_csr_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_smc_dtp_jtag2axi_security_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_smc_global_base_remap_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smu_telemetry_atb_handshake_test
 |OUT-until-SEP1
-|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|Needs the SEP=1 lifecycle controller: `smu #(.CFG(smu_pkg::NoSepCfg))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
 |smc_wdt_ip0_isolate_clamp_test
 |waived
 |The clamp mux in `smc_4core_cpu` (`wdt_reset_raw` gated by `cluster_boundary_isolate`) has no product pre-clamp observe or inject pin, and frontdoor reset/WDT programming cannot contrast clamp against passthrough on WDOGIP0.
@@ -427,25 +427,25 @@ Enrolled names outside this catalog:
 |Enrolled in no testlist; the body is in git history. Holds every wrapper clock static and asserts `rst_cold_ni`, expecting the cold-stable and primary-reset outputs to fall without a clock edge (`port_table.adoc`: "Asynchronous assertion"); the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch shift register, so with the clocks stopped no output moves. Enrols when the specification or the RTL settles which is right; that decision needs a tracker issue naming `port_table.adoc` and `smc_reset_ctrl`.
 |smu_dtp_jtag2axi_abort_mid_op_test
 |not-runnable
-|Enrolled in no testlist; the body is in git history. Needs an OTP interface that holds SINGLE_OP in BUSY, which only the `smu #(.SEP(0))` elaboration with its eFuse shim responses tied off provides, and this package does not build it. On the wrapper the real SMC eFuse model answers a SINGLE_OP in tens of `clk_smu` against a 39-bit DR shift, so the BUSY window the abort needs never exists; a wrapper enrolment needs a stallable eFuse hook in `tb/tb_wrapper_top.sv`.
+|Enrolled in no testlist; the body is in git history. Needs an OTP interface that holds SINGLE_OP in BUSY, which only the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration with its eFuse shim responses tied off provides, and this package does not build it. On the wrapper the real SMC eFuse model answers a SINGLE_OP in tens of `clk_smu` against a 39-bit DR shift, so the BUSY window the abort needs never exists; a wrapper enrolment needs a stallable eFuse hook in `tb/tb_wrapper_top.sv`.
 |smu_axi_external_port_connectivity_test
 |not-runnable
-|Enrolled in no testlist; the body is in git history. Needs the `smu #(.SEP(0))` elaboration, which this package does not build: it proves the direct SMN-to-SMC ID-width converters that replace the crossbar, and the wrapper's single profile elaborates SEP=1.
+|Enrolled in no testlist; the body is in git history. Needs the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration, which this package does not build: it proves the direct SMN-to-SMC ID-width converters that replace the crossbar, and the wrapper's single profile elaborates SEP=1.
 |smu_axi_xbar_structure_test
 |not-runnable
-|Enrolled in no testlist; the body is in git history. Needs the `smu #(.SEP(0))` elaboration, which this package does not build: it proves `smu_axi_xbar` absent, and the wrapper's single profile elaborates SEP=1.
+|Enrolled in no testlist; the body is in git history. Needs the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration, which this package does not build: it proves `smu_axi_xbar` absent, and the wrapper's single profile elaborates SEP=1.
 |smu_dtp_ptap_otp_instr_scan_test
 |not-runnable
-|Enrolled in no testlist; the body is in git history. Needs the `smu #(.SEP(0))` elaboration, which this package does not build: it scans the PTAP OTP CAPS and SINGLE_OP instructions against the SEP=0 OTP error slave.
+|Enrolled in no testlist; the body is in git history. Needs the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration, which this package does not build: it scans the PTAP OTP CAPS and SINGLE_OP instructions against the SEP=0 OTP error slave.
 |smu_no_sep_configuration_test
 |not-runnable
-|Enrolled in no testlist; the body is in git history. Needs the `smu #(.SEP(0))` elaboration, which this package does not build: it proves `lc_state_o` carries the no-LCC word of `seq_lib/smu_lifecycle_table.py` and the SEP aperture is tied off.
+|Enrolled in no testlist; the body is in git history. Needs the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration, which this package does not build: it proves `lc_state_o` carries the no-LCC word of `seq_lib/smu_lifecycle_table.py` and the SEP aperture is tied off.
 |smu_smc_security_demote_pm_test
 |not-runnable
-|Enrolled in no testlist; the body is in git history. Needs the `smu #(.SEP(0))` elaboration, which this package does not build: it observes the SEP=0 `lcc_demote_state_1/2_o` tie-offs and the default `lc_state`.
+|Enrolled in no testlist; the body is in git history. Needs the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration, which this package does not build: it observes the SEP=0 `lcc_demote_state_1/2_o` tie-offs and the default `lc_state`.
 |smu_dtp_jtag_smoke_bare_test
 |not-runnable
-|Enrolled in no testlist; the body is in git history. Needs the `smu #(.SEP(0))` elaboration, which this package does not build; the same PTAP IDCODE / BYPASS / TRST scenario runs on the wrapper as `smu_dtp_jtag_smoke_test` (`smoke`, `hosted`).
+|Enrolled in no testlist; the body is in git history. Needs the `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration, which this package does not build; the same PTAP IDCODE / BYPASS / TRST scenario runs on the wrapper as `smu_dtp_jtag_smoke_test` (`smoke`, `hosted`).
 |smu_ext_axi_global_addr_smoke_test
 |not-runnable
 |Enrolled in no testlist; the body is in git history. The OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs.

@@ -8,7 +8,7 @@
 // single-chip-select sep_ot_spi_wrap. The error slave answers the beats of a burst that run
 // past the extent: DECERR with read data 0xBADCAB1E on a read, and SLVERR on a write, since
 // the AXI-Lite converter answers every write error with SLVERR.
-// NUM_COMPONENTS sizes the IO fabric. NUM_SLAVES is NUM_COMPONENTS + 1 for the error
+// NUM_COMPONENTS sizes the IO fabric. NumSlaves is NUM_COMPONENTS + 1 for the error
 // slave.
 // sep_io_spi_req_o / sep_io_spi_rsp_i carry the SPI pad request/response struct, which also
 // holds the SPI interrupt and DMA trigger.
@@ -18,7 +18,7 @@
 module sep_io #(
   parameter  int unsigned NUM_COMPONENTS = 1,  // Number of IO fabric components; the decode serves
                                                // only the SPI controller, so only 1 is supported.
-  localparam int unsigned NUM_SLAVES     = NUM_COMPONENTS + 1  // IO fabric slaves including the
+  localparam int unsigned NumSlaves     = NUM_COMPONENTS + 1   // IO fabric slaves including the
                                                                // error slave.
 ) (
   input  logic                      clk_i,    // System clock.
@@ -43,8 +43,8 @@ module sep_io #(
   sep_io_pkg::axil_req_t  axil_req;
   sep_io_pkg::axil_resp_t axil_resp;
 
-  sep_io_pkg::axil_req_t  [NUM_SLAVES-1:0] axil_reqs;
-  sep_io_pkg::axil_resp_t [NUM_SLAVES-1:0] axil_resps;
+  sep_io_pkg::axil_req_t  [NumSlaves-1:0] axil_reqs;
+  sep_io_pkg::axil_resp_t [NumSlaves-1:0] axil_resps;
 
 
   ////////////////////
@@ -57,7 +57,7 @@ module sep_io #(
   axi_dw_converter #(
     .AxiMaxReads         (16),
     .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),  // 64-bit (input from crossbar)
-    .AxiMstPortDataWidth (sep_io_pkg::DATA_WIDTH),             // 32-bit (output to AXI-Lite)
+    .AxiMstPortDataWidth (sep_io_pkg::DataWidth),             // 32-bit (output to AXI-Lite)
     .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
     .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
     .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
@@ -81,8 +81,8 @@ module sep_io #(
   );
 
   axi_to_axi_lite #(
-    .AxiAddrWidth    (sep_io_pkg::ADDR_WIDTH),
-    .AxiDataWidth    (sep_io_pkg::DATA_WIDTH),
+    .AxiAddrWidth    (sep_io_pkg::AddrWidth),
+    .AxiDataWidth    (sep_io_pkg::DataWidth),
     .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
     .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
     .AxiMaxWriteTxns (16),
@@ -108,7 +108,7 @@ module sep_io #(
     .mst_resp_i      (axil_resp)
   );
 
-  logic [$clog2(NUM_SLAVES)-1:0] axil_aw_select, axil_ar_select;
+  logic [$clog2(NumSlaves)-1:0] axil_aw_select, axil_ar_select;
 
   // Address decode: SPI or error slave
   always_comb begin
@@ -137,7 +137,7 @@ module sep_io #(
     .r_chan_t        (sep_io_pkg::axil_r_chan_t),
     .axi_req_t       (sep_io_pkg::axil_req_t),
     .axi_resp_t      (sep_io_pkg::axil_resp_t),
-    .NoMstPorts      (NUM_SLAVES),
+    .NoMstPorts      (NumSlaves),
     .MaxTrans        (1),
     .FallThrough     (1'b0),
     .SpillAw         (1'b1), // Pipeline AW to ease timing and area
@@ -188,19 +188,19 @@ module sep_io #(
   );
 
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (sep_io_pkg::ADDR_WIDTH),
-    .AXI_DATA_WIDTH (sep_io_pkg::DATA_WIDTH),
+    .AXI_ADDR_WIDTH (sep_io_pkg::AddrWidth),
+    .AXI_DATA_WIDTH (sep_io_pkg::DataWidth),
     .axil_req_t     (sep_io_pkg::axil_req_t),
     .axil_resp_t    (sep_io_pkg::axil_resp_t),
     .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (sep_io_pkg::DATA_WIDTH),
+    .RESP_WIDTH     (sep_io_pkg::DataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
   ) u_axil_err_slv (
     .clk_i,
     .rst_ni,
-    .axil_req_i  (axil_reqs [NUM_SLAVES-1]),
-    .axil_resp_o (axil_resps[NUM_SLAVES-1])
+    .axil_req_i  (axil_reqs [NumSlaves-1]),
+    .axil_resp_o (axil_resps[NumSlaves-1])
   );
 
 endmodule

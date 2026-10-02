@@ -4,12 +4,15 @@
 
 import pyuvm
 from dtp_base_test import dtp_base_test
+from env.dtp_types import DTP_FEATURE_BYPASS, DTP_FEATURE_IR_DECODE
 from seq_lib.dtp_jtag_bypass_test_seq import dtp_jtag_bypass_test_seq
 
 
 @pyuvm.test()
 class dtp_jtag_bypass_test(dtp_base_test):
     """Run the DTP VPLAN BYPASS scenario."""
+
+    required_features = (DTP_FEATURE_IR_DECODE, DTP_FEATURE_BYPASS)
 
     async def run_scenario(self) -> None:
         await self.start_looped_seq(

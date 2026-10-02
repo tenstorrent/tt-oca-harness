@@ -5,10 +5,12 @@
 
 Every scheduler interaction is one of the registry's argv templates rendered and run as a
 subprocess: ``submit_argv`` once per attempt or once per job array, ``query_argv`` for a batch
-of job ids on every poll, ``history_argv`` for ids absent from the live query, and
-``cancel_argv`` on interruption. The executor reads no scheduler output itself; the driver's
-:class:`SchedulerDialect` turns each command's output into normalized observations, so a site
-changes flags in the registry while a driver changes parsing in code.
+of job ids on every poll, ``history_argv`` for ids absent from the live query and for the exit
+code of a failed job whose live record carries none, and ``cancel_argv`` on interruption and
+for a job graded ``LOST`` while the scheduler may still run it. The executor reads no
+scheduler output itself; the driver's :class:`SchedulerDialect` turns each command's output
+into normalized observations, so a site changes flags in the registry while a driver changes
+parsing in code.
 
 With ``arrays`` on, the first attempts of a stage go out as job arrays of at most
 ``array_chunk_size`` elements, one array per coordinator turn. Every element is its own
@@ -22,7 +24,12 @@ record and ``result.json`` the worker wrote settle it first, then the scheduler'
 only ``artifact_grace_sec`` without either makes it ``LOST``. A terminal state the scheduler
 reports for a job that ran is likewise held until the leaf's ``result.json`` is visible or that
 grace has passed, which absorbs a shared filesystem's lag. The verdict comes from that file
-alone; scheduler state decides only whether an attempt is over.
+alone; scheduler state decides only whether an attempt is over. Submission removes whatever
+an earlier invocation left at the attempt's ``result.json``, completion record, graded mark, job
+log, ``results/*.xml`` and ``debug/*.xml`` paths, so those files can only come from this
+attempt. Collecting an
+attempt without a ``result.json`` leaves the graded mark, which stops a worker that is still
+running from writing a result for it.
 
 A query that fails as a whole leaves every asked handle in its previous state and lengthens
 the next wait; consecutive failures past a bound abort the run, as do consecutive submission
@@ -39,7 +46,7 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -59,7 +66,7 @@ from .base import (
     render_argv,
     result_from_fragment,
 )
-from .manifest import completion_path, jobs_dir
+from .manifest import clear_attempt_outputs, completion_path, graded_path, jobs_dir
 
 DEFAULT_WORKER_ARGV = [
     "{python}",
@@ -86,6 +93,24 @@ CANCEL_POLL_SEC = 1.0
 _RESULT_BEARING = frozenset({JobState.SUCCEEDED, JobState.FAILED})
 
 
+def _with_history_detail(seen: JobObservation, known: JobObservation | None) -> JobObservation:
+    """``seen`` with what a history record in the same state adds: a non-zero exit code, or
+    failing that its detail, such as the signal that ended the job.
+
+    Accounting can lag the controller, so a record in another state, such as one still
+    running, adds nothing.
+    """
+    if known is None or known.state is not seen.state:
+        return seen
+    if known.exit_code:
+        return replace(seen, exit_code=known.exit_code)
+    if known.reason and known.reason not in seen.reason:
+        return replace(
+            seen, reason=f"{known.reason}; {seen.reason}" if seen.reason else known.reason
+        )
+    return seen
+
+
 class ClusterError(RuntimeError):
     """The scheduler stopped answering in a way no single attempt can absorb."""
 
@@ -104,6 +129,11 @@ def script_path(run_dir: Path, task_id: str) -> Path:
 
 def job_log_path(run_dir: Path, task_id: str) -> Path:
     return logs_dir(run_dir) / f"{task_id}.log"
+
+
+def array_log_path(run_dir: Path, label: str, index: int) -> Path:
+    """The job log of element ``index`` of array ``label``, as the scheduler expands it."""
+    return logs_dir(run_dir) / f"{label}.{index}.log"
 
 
 def array_tasks_path(run_dir: Path, label: str) -> Path:
@@ -251,6 +281,10 @@ class _Tracked:
     missing_since: float | None = None
     terminal_since: float | None = None
     history: JobObservation | None = None
+    # The latest non-terminal state history reported while the live query missed the job.
+    history_alive: JobObservation | None = None
+    # The latest observation the live query returned for the job.
+    listed: JobObservation | None = None
     # The terminal observation ``poll`` reported; frozen from then on.
     settled: JobObservation | None = None
 
@@ -352,9 +386,11 @@ class ClusterExecutor(Executor):
     def submit(self, task: LeafTask) -> JobHandle:
         if task.manifest_path is None:
             raise ClusterError(f"{task.task_id}: no manifest was written for this attempt")
+        self._clear_earlier(task)
         script = self._write_script(task)
         joblog = job_log_path(self._run_dir, task.task_id)
         joblog.parent.mkdir(parents=True, exist_ok=True)
+        joblog.unlink(missing_ok=True)
         values = {
             **task.resources.placeholders(),
             "jobname": self._job_name(task),
@@ -437,6 +473,8 @@ class ClusterExecutor(Executor):
         for task in tasks:
             if task.manifest_path is None:
                 raise ClusterError(f"{task.task_id}: no manifest was written for this attempt")
+        for task in tasks:
+            self._clear_earlier(task)
         self._array_sequence += 1
         label = f"{tasks[0].stage}-arr{self._array_sequence:04d}"
         script = self._write_array_script(tasks, label)
@@ -444,6 +482,8 @@ class ClusterExecutor(Executor):
         token = self._dialect.array_log_token
         joblog_pattern = logs_dir(self._run_dir) / f"{label}.{token}.log"
         joblog_pattern.parent.mkdir(parents=True, exist_ok=True)
+        for index in range(1, len(tasks) + 1):
+            array_log_path(self._run_dir, label, index).unlink(missing_ok=True)
         values = {
             **tasks[0].resources.placeholders(),
             "jobname": self._dialect.array_jobname(
@@ -496,7 +536,7 @@ class ClusterExecutor(Executor):
             observed_at=stamp,
         )
         for index, task in enumerate(tasks, start=1):
-            joblog = logs_dir(self._run_dir) / f"{label}.{index}.log"
+            joblog = array_log_path(self._run_dir, label, index)
             handle = JobHandle(
                 executor=self.name,
                 driver=self.driver,
@@ -519,6 +559,11 @@ class ClusterExecutor(Executor):
             f"({tasks[0].task_id} .. {tasks[-1].task_id})"
         )
         return handles
+
+    def _clear_earlier(self, task: LeafTask) -> None:
+        """Remove what an earlier invocation left at the attempt's paths, graded mark included."""
+        clear_attempt_outputs(task)
+        graded_path(self._run_dir, task.task_id).unlink(missing_ok=True)
 
     def _write_array_script(self, tasks: Sequence[LeafTask], label: str) -> Path:
         tasks_file = array_tasks_path(self._run_dir, label)
@@ -606,6 +651,7 @@ class ClusterExecutor(Executor):
             return out
         answer = self._query(live, self._cfg["query_argv"], self._dialect.parse_query)
         reconciling: list[_Tracked] = []
+        lookups: list[tuple[_Tracked, JobObservation]] = []
         for tracked in live:
             task_id = tracked.task.task_id
             job_id = tracked.handle.native_job_id
@@ -613,14 +659,18 @@ class ClusterExecutor(Executor):
                 out[task_id] = tracked.last
                 continue
             seen = answer.observations.get(job_id)
+            if seen is not None:
+                tracked.listed = seen
             if seen is None or seen.state is JobState.RECONCILING:
                 reconciling.append(tracked)
                 continue
-            out[task_id] = self._settle(tracked, seen, now)
+            out[task_id] = self._settle(tracked, seen, now, lookups)
         if reconciling:
             self._consult_history(reconciling)
             for tracked in reconciling:
                 out[tracked.task.task_id] = self._reconcile(tracked, now, stamp)
+        for tracked, seen in self._with_history_exit_codes(lookups):
+            out[tracked.task.task_id] = self._expire(tracked, seen)
         if answer.failed:
             self._query_failures += 1
             self._event(
@@ -694,8 +744,19 @@ class ClusterExecutor(Executor):
 
         return "job_id" in names(template)
 
-    def _settle(self, tracked: _Tracked, seen: JobObservation, now: float) -> JobObservation:
-        """Apply one live observation; a terminal one waits for the leaf's result within grace."""
+    def _settle(
+        self,
+        tracked: _Tracked,
+        seen: JobObservation,
+        now: float,
+        lookups: list[tuple[_Tracked, JobObservation]] | None = None,
+    ) -> JobObservation:
+        """Apply one live observation; a terminal one waits for the leaf's result within grace.
+
+        With ``lookups``, an observation whose grace ends without an exit code is appended
+        there and the job's previous observation comes back; the caller finishes the job after
+        one history lookup for the whole list.
+        """
         if not seen.state.terminal:
             tracked.missing_since = None
             tracked.terminal_since = None
@@ -716,20 +777,10 @@ class ClusterExecutor(Executor):
                     )
             return self._finish(tracked, seen)
         if now - tracked.terminal_since >= self.artifact_grace_sec:
-            reason = (
-                f"{seen.state.value.lower()} reported but no result.json appeared within "
-                f"{self.artifact_grace_sec:g}s"
-            )
-            return self._finish(
-                tracked,
-                JobObservation(
-                    state=seen.state,
-                    exit_code=seen.exit_code,
-                    reason=f"{reason}; {seen.reason}" if seen.reason else reason,
-                    observed_at=seen.observed_at,
-                    raw=seen.raw,
-                ),
-            )
+            if lookups is not None and seen.exit_code is None and self._history_template:
+                lookups.append((tracked, seen))
+                return tracked.last
+            return self._expire(tracked, seen)
         waiting = JobObservation(
             state=JobState.RECONCILING,
             exit_code=seen.exit_code,
@@ -739,6 +790,51 @@ class ClusterExecutor(Executor):
         )
         tracked.last = waiting
         return waiting
+
+    def _expire(self, tracked: _Tracked, seen: JobObservation) -> JobObservation:
+        """Finish a job reported finished whose ``result.json`` did not appear within grace."""
+        code = "" if seen.exit_code is None else f" with exit code {seen.exit_code}"
+        reason = (
+            f"{seen.state.value.lower()} reported{code} but no result.json appeared within "
+            f"{self.artifact_grace_sec:g}s"
+        )
+        return self._finish(
+            tracked,
+            JobObservation(
+                state=seen.state,
+                exit_code=seen.exit_code,
+                reason=f"{reason}; {seen.reason}" if seen.reason else reason,
+                observed_at=seen.observed_at,
+                raw=seen.raw,
+            ),
+        )
+
+    def _with_history_exit_codes(
+        self, lookups: Sequence[tuple[_Tracked, JobObservation]]
+    ) -> list[tuple[_Tracked, JobObservation]]:
+        """Each observation with what history, asked once for every listed job, adds to it.
+
+        A live query that lists a finished job may carry no exit code (Slurm's ``squeue``),
+        and the job can stay listed past the grace.
+        """
+        if not lookups:
+            return []
+        answer = self._query(
+            [tracked for tracked, _ in lookups],
+            self._history_template,
+            self._parse_history,
+            purpose="history",
+        )
+        return [
+            (
+                tracked,
+                _with_history_detail(seen, answer.observations.get(tracked.handle.native_job_id)),
+            )
+            for tracked, seen in lookups
+        ]
+
+    def _parse_history(self, result: CommandResult, job_ids: Sequence[str]) -> QueryOutcome:
+        return self._dialect.parse_history(result, job_ids, self._history_parser)
 
     def _consult_history(self, reconciling: Sequence[_Tracked]) -> None:
         """Ask the scheduler's history once per poll for every vanished job it has not settled."""
@@ -751,15 +847,18 @@ class ClusterExecutor(Executor):
         ]
         if not pending:
             return
-
-        def parse(result: CommandResult, job_ids: Sequence[str]) -> QueryOutcome:
-            return self._dialect.parse_history(result, job_ids, self._history_parser)
-
-        answer = self._query(pending, self._history_template, parse, purpose="history")
+        answer = self._query(
+            pending, self._history_template, self._parse_history, purpose="history"
+        )
         for tracked in pending:
-            seen = answer.observations.get(tracked.handle.native_job_id)
+            job_id = tracked.handle.native_job_id
+            if job_id in answer.failed:
+                continue
+            seen = answer.observations.get(job_id)
             if seen is not None and seen.state.terminal:
                 tracked.history = seen
+            else:
+                tracked.history_alive = seen
 
     def _reconcile(self, tracked: _Tracked, now: float, stamp: str) -> JobObservation:
         """Settle a job the live query does not know: artifacts, then history, then the grace."""
@@ -771,6 +870,7 @@ class ClusterExecutor(Executor):
         if tracked.history is not None:
             return self._settle(tracked, tracked.history, now)
         if now - tracked.missing_since >= self.artifact_grace_sec:
+            self._cancel_unsettled(tracked)
             return self._finish(
                 tracked,
                 JobObservation(
@@ -787,6 +887,37 @@ class ClusterExecutor(Executor):
         )
         tracked.last = waiting
         return waiting
+
+    def _cancel_unsettled(self, tracked: _Tracked) -> None:
+        """Ask once, without waiting for confirmation, to stop a job the scheduler may still run.
+
+        That is a job the live query last listed in a state that settles nothing (LSF's
+        ``UNKWN`` and ``ZOMBI``), or one history last reported pending or running.
+        """
+        job_id = tracked.handle.native_job_id
+        if not job_id:
+            return
+        if tracked.listed is not None and tracked.listed.state is JobState.RECONCILING:
+            why = "the live query still lists it"
+        elif tracked.history_alive is not None:
+            why = f"history reports it {tracked.history_alive.state.value.lower()}"
+        else:
+            return
+        argv = render_argv(
+            self._cfg["cancel_argv"],
+            {"job_id": job_id, "job_ids_csv": job_id},
+            {"job_ids_argv": [job_id]},
+        )
+        result = self._run(argv, "cancel")
+        try:
+            reply = self._dialect.parse_cancel(result, [job_id]).get(job_id, CancelReply.UNKNOWN)
+        except (ValueError, KeyError, TypeError) as exc:
+            self._event(f"unparsable cancel output: {exc}")
+            reply = CancelReply.UNKNOWN
+        self._event(
+            f"{tracked.task.task_id} job {job_id}: cancel sent unconfirmed because {why}; "
+            f"reply {reply.value}"
+        )
 
     def _completion_observation(self, tracked: _Tracked, stamp: str) -> JobObservation | None:
         path = completion_path(self._run_dir, tracked.task.task_id)
@@ -965,8 +1096,11 @@ class ClusterExecutor(Executor):
                 result=result,
                 result_json=repo_rel(self._root, task.result_json),
             )
+        if handle.native_job_id:
+            self._mark_graded(task, seen)
         if seen.state is JobState.TIMED_OUT:
             ended = seen.observed_at or now_iso()
+            expired = f"scheduler wall time expired: {seen.reason or 'no detail'}"
             result = StageResult(
                 stage=task.stage,
                 item=task.item,
@@ -976,7 +1110,9 @@ class ClusterExecutor(Executor):
                 started_at=handle.submitted_at or ended,
                 ended_at=ended,
                 log=joblog,
-                reason=f"scheduler wall time expired: {seen.reason or 'no detail'}",
+                artifacts={"executor_log": joblog} if joblog else {},
+                failure_buckets=[{"kind": "timeout", "signature": expired[:120], "count": 1}],
+                reason=expired,
                 metadata={
                     "seed": task.seed,
                     "attempt": task.attempt,
@@ -991,6 +1127,16 @@ class ClusterExecutor(Executor):
             state=seen.state,
             error=seen.reason or seen.state.value.lower(),
         )
+
+    def _mark_graded(self, task: LeafTask, seen: JobObservation) -> None:
+        """Leave the mark that keeps a worker still running from writing this attempt's result."""
+        path = graded_path(self._run_dir, task.task_id)
+        try:
+            write_result(
+                path, {"task_id": task.task_id, "state": seen.state.value, "graded_at": now_iso()}
+            )
+        except OSError as exc:
+            self._event(f"{task.task_id}: cannot write {path}: {exc}")
 
     def _read_result(self, task: LeafTask) -> StageResult | None:
         path = task.result_json
@@ -1127,6 +1273,7 @@ __all__ = [
     "QueryOutcome",
     "SchedulerDialect",
     "SubmitOutcome",
+    "array_log_path",
     "array_tasks_path",
     "base_job_id",
     "job_log_path",

@@ -506,7 +506,7 @@ class sep_chiplet_pubkey_revoked_base(_chiplet_key_mixin, sep_backup_manifest_fa
         mm.verify_public_key(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-BOTH-SEALED: backup public_key_sel=0x%04x, and the backup "
-            "passes payload_hash, every TOC image digest, manifest_hash over the TBS "
+            "passes payload_hash, every TOC image digest, manifest_hash over the signed region "
             "and RSA verification of its RE-SIGNED signature against the dev0 "
             "modulus, whose SHA-256 is the CHIPLET_PUBK_HASH%d fuse value. Both "
             "manifests are genuinely bootable and one fuse bit refuses both",

@@ -2,28 +2,20 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP reset-controller + WDT sanity test (PyUVM).
 
-OSS port combining the reference suite ``sep_reset_ctrl_csr_test`` and ``wdt_sanity_test``.
-Boots the VeeR EL2 core and runs the reset_wdt_sanity firmware, which:
-  * verifies SW_RESET_N default 0x7E and that pulsing each crypto/TRNG/ABR reset bit
-    clears the corresponding probe CSRs, and that each probe is writable again after
-    the release;
-  * proves a write + a read to an unmapped fabric gap each raise a D-bus-error
-    NMI (count == 2);
-  * exercises the WDT bark -> NMI, pet, disable-freeze, and re-bark; then lets the
-    WDT run on to BITE.
+The reset_wdt_sanity firmware:
+  * checks SW_RESET_N default 0x7E, that pulsing each crypto/TRNG/ABR reset bit clears that
+    domain's probe CSRs, and that each probe is writable again after release;
+  * checks that a write and a read to an unmapped fabric gap each raise a D-bus-error NMI
+    (count == 2);
+  * exercises WDT bark -> NMI, pet, disable-freeze and re-bark, then lets the WDT run to BITE.
 
-Firmware-self-checking (start.S emits PASS/FAIL magic from main()'s return code).
-On top of that, this test observes the BITE reset request on the real ``sep``
-output ``wdt_timer_rst_req_o`` (brought out in tb_top): after the firmware PASSes
-(2nd bark), the still-enabled WDT advances to BITE_THOLD and asserts the reset
-request, which the cocotb side must see -- the WDT's headline safety function.
+start.S emits PASS/FAIL magic from main()'s return code. After PASS the test also observes the
+BITE reset request on the ``sep`` output ``wdt_timer_rst_req_o``.
 
-No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
-JTAG-holds OTBN/AES/HMAC/KMAC across ``rst_ni`` release and fuse sense so they
-never raise crypto ``edn_req`` while the fabric is opening, then drops the
-override. The hold must not outlast sense: the firmware probes each engine's
-reset wire, and a held engine's registers are unreachable, so the probe write
-traps instead of landing.
+No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``. OTBN/AES/HMAC/KMAC are
+JTAG-held across ``rst_ni`` release and fuse sense so they raise no crypto ``edn_req`` while the
+fabric opens. The hold must end with sense: a held engine's registers are unreachable, so the
+firmware's reset-wire probe write would trap.
 """
 
 from __future__ import annotations

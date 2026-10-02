@@ -6,7 +6,7 @@ Drives each IP's INTR_ENABLE/INTR_TEST/INTR_STATE over the SEP AXI agent to
 inject a real interrupt via the standard OpenTitan INTR_TEST register and W1C-clear
 it, mirroring reference sep_irq_ip_to_aggregator_test_seq. The aggregated
 sep_internal_interrupts bit is observed by the test through the tb_top
-sep_internal_interrupts_probe_o mirror (the OSS analog of the reference suite's sep_irq_probe_if).
+sep_internal_interrupts_probe_o mirror.
 
 Also issues one in-window unmapped 32-bit read through the Secure DMA adapter
 and one through each of the HMAC, KMAC and OTBN adapters. Those complete

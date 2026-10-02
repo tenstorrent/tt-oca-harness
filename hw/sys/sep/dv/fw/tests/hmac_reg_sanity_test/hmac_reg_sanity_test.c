@@ -68,9 +68,8 @@ int main(void) {
     WRITE_REG(SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, 0);
 
     printf("\nStep 6: DIGEST_0 default read (HW-driven, not SW RW)\n");
-    /* DIGEST registers are HW-driven (hw2reg path always active). SW writes are
-     * valid only for context restore before hash_continue, not for simple RW test.
-     * Verify the reset default (0x0) is readable. */
+    /* The digest is hardware-driven; software writes only restore context before
+     * hash_continue, so the test checks the reset value only. */
     if (!check_reg("DIGEST_0 default=0", READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(0)), 0x0)) pass = 0;
 
     printf("\n========================================\n");
@@ -86,5 +85,4 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-    return pass ? 0 : -1;
 }

@@ -51,7 +51,7 @@ Strap assignments in this range:
 All bits other than those listed below have no strap assigned. Those GPIOs
 still latch their pad value here, but no strap function consumes it.
 GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie
-outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).
+outside this register, which ends at GPIO 60 (smc_pkg::NumBondedGpio-1).
 Strap assignments in this range:
 * bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot
 * bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM

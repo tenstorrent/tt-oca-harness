@@ -118,8 +118,8 @@ module smc_cpu_ctrl_wrap #(
                                                                    // reset in timeout mode.
 );
 
-  localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS =
-      smc_4core_cpu_pkg::DEFAULT_RESET_SETTINGS;
+  localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DefaultResetSettings =
+      smc_4core_cpu_pkg::DefaultResetSettings;
 
   ///////////////////////
   // Reference Counter //
@@ -191,23 +191,23 @@ module smc_cpu_ctrl_wrap #(
   // RDC issue
 
   // requested by fw team, would like a chain of 8 pc values to be stored for debug
-  localparam int unsigned NUM_PC_REGS = 8;
-  logic [NUM_CPU_CORES-1:0][NUM_PC_REGS-1:0][58-1:0] wb_reg_pc_sr;
+  localparam int unsigned NumPcRegs = 8;
+  logic [NUM_CPU_CORES-1:0][NumPcRegs-1:0][58-1:0] wb_reg_pc_sr;
   always_ff @(posedge clk_smc_i) begin
     for (int c = 0; c < NUM_CPU_CORES; c = c + 1) begin
       if (~rst_primary_ni) begin
-        wb_reg_pc_sr[c] <= {(NUM_PC_REGS * 58) {1'b0}};
+        wb_reg_pc_sr[c] <= {(NumPcRegs * 58) {1'b0}};
       end else begin
         if ((wb_reg_pc_sr[c][0] != wb_reg_pc_i[c]) && wb_pc_valid_i[c]) begin
-          wb_reg_pc_sr[c] <= {wb_reg_pc_sr[c][NUM_PC_REGS-2:0], wb_reg_pc_i[c]};
+          wb_reg_pc_sr[c] <= {wb_reg_pc_sr[c][NumPcRegs-2:0], wb_reg_pc_i[c]};
         end
       end
     end
   end
 
-  logic [MaxCPUCores-1:0][NUM_PC_REGS-1:0][58-1:0] int_wb_reg_pc_sr;
+  logic [MaxCPUCores-1:0][NumPcRegs-1:0][58-1:0] int_wb_reg_pc_sr;
   always_comb begin
-    int_wb_reg_pc_sr[MaxCPUCores-1:0] = {(MaxCPUCores*NUM_PC_REGS*58){1'b0}};
+    int_wb_reg_pc_sr[MaxCPUCores-1:0] = {(MaxCPUCores*NumPcRegs*58){1'b0}};
     int_wb_reg_pc_sr[NUM_CPU_CORES-1:0] = wb_reg_pc_sr;
   end
 
@@ -341,22 +341,22 @@ module smc_cpu_ctrl_wrap #(
   assign hwif_in.REFERENCE_COUNTER.rc.next = ref_count_sync;
 
   // SMC_ATTRIBUTES.num_mailboxes is defined as 6 bits in the register header, so we need to cast to 6 bits for LHS = RHS
-  assign hwif_in.SMC_ATTRIBUTES.num_mailboxes.next = 6'(smc_pkg::NUM_MAILBOXES);
+  assign hwif_in.SMC_ATTRIBUTES.num_mailboxes.next = 6'(smc_pkg::NumMailboxes);
   // SMC_ATTRIBUTES.mailbox_depth is defined as 4 bits in the register header, so we need to cast to 4 bits for LHS = RHS
-  assign hwif_in.SMC_ATTRIBUTES.mailbox_depth.next = 4'(smc_pkg::MAILBOX_DEPTH);
+  assign hwif_in.SMC_ATTRIBUTES.mailbox_depth.next = 4'(smc_pkg::MailboxDepth);
   // SMC_ATTRIBUTES.num_cores is defined as 3 bits in the register header, so we need to cast to 3 bits for LHS = RHS
   assign hwif_in.SMC_ATTRIBUTES.num_cores.next     = 3'(NUM_CPU_CORES);
   // Report whether output remap is disabled
   assign hwif_in.SMC_ATTRIBUTES.no_output_remap.next = NO_ADDR_REMAP;
   // SMC_ATTRIBUTES.sram_size is defined as 6 bits in the register header, so we need to cast to 6 bits
-  assign hwif_in.SMC_ATTRIBUTES.sram_size.next = chipyard_4core_mem_pkg::SRAM_SIZE;
-  assign hwif_in.SMC_ATTRIBUTES.num_ext_interrupts.next = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS;
-  assign hwif_in.SMC_ATTRIBUTES.num_cpu_interrupts.next = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS;
+  assign hwif_in.SMC_ATTRIBUTES.sram_size.next = chipyard_4core_mem_pkg::SramSize;
+  assign hwif_in.SMC_ATTRIBUTES.num_ext_interrupts.next = smc_4core_cpu_pkg::NumExtInterrupts;
+  assign hwif_in.SMC_ATTRIBUTES.num_cpu_interrupts.next = smc_4core_cpu_pkg::NumCpuInterrupts;
   assign hwif_in.SMC_ATTRIBUTES.chiplet_is_primary.next = chiplet_is_primary_i;
 
   assign hwif_in.TEST_CTRL.data.next = test_ctrl;
 
-  for (genvar i = 0; i < NUM_PC_REGS; i++) begin : gen_wb_pc
+  for (genvar i = 0; i < NumPcRegs; i++) begin : gen_wb_pc
     assign hwif_in.WB_PC_CORE0[i].pc.next = int_wb_reg_pc_sr[0][i];
     assign hwif_in.WB_PC_CORE1[i].pc.next = int_wb_reg_pc_sr[1][i];
     assign hwif_in.WB_PC_CORE2[i].pc.next = int_wb_reg_pc_sr[2][i];
@@ -552,7 +552,7 @@ module smc_cpu_ctrl_wrap #(
   assign reg_uncore_reset_n  = reset_ctrl_reg_value_n0_scan.uncore_reset_n_n0_scan;
   assign debug_reset_n_o = reset_ctrl_reg_value_n0_scan.debug_reset_n_n0_scan;
 
-  assign reset_ctrl_reset_value = DEFAULT_RESET_SETTINGS;
+  assign reset_ctrl_reset_value = DefaultResetSettings;
   // never write the value for the pulse start bits
   assign reset_ctrl_wr_data = {((reset_ctrl_reg_value_n0_scan[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8] &
                     ~external_wr_bit_mask[$bits(cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t)-1:8]) |

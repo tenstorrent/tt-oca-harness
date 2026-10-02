@@ -24,12 +24,12 @@ module uart_log_engine_wrap
   parameter int unsigned LOG_ENGINE_FIFO_DEPTH = 32,  // Entries in the log engine's read-data FIFO
                                                       // between log fetch and UART write.
 
-  parameter bit [REG_ADDR_WIDTH-1:0] UART_REG_MAP_BASE_ADDR = 0,  // UART register-map base.
-  parameter bit [REG_ADDR_WIDTH-1:0] UART_REG_MAP_SIZE      = 0,  // UART register-map size.
-  parameter bit [REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,  // Log-engine register-map base.
-  parameter bit [REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,  // Log-engine register-map size.
-  parameter bit [REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,  // Log-engine CTRL base.
-  parameter bit [REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0  // Log-engine CTRL size.
+  parameter bit [RegAddrWidth-1:0] UART_REG_MAP_BASE_ADDR = 0,  // UART register-map base.
+  parameter bit [RegAddrWidth-1:0] UART_REG_MAP_SIZE      = 0,  // UART register-map size.
+  parameter bit [RegAddrWidth-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,  // Log-engine register-map base.
+  parameter bit [RegAddrWidth-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,  // Log-engine register-map size.
+  parameter bit [RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,  // Log-engine CTRL base.
+  parameter bit [RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0  // Log-engine CTRL size.
 ) (
   input  logic                                 clk_i,  // System clock, rising-edge triggered.
   input  logic                                 rst_ni,  // Active-low reset. Assert asynchronously;
@@ -98,8 +98,8 @@ module uart_log_engine_wrap
   csr_axil_req_t  csr_axil_req;
   csr_axil_resp_t csr_axil_resp;
 
-  csr_axil_req_t  [NUM_REG_MAPS-1:0] csr_axil_reqs;
-  csr_axil_resp_t [NUM_REG_MAPS-1:0] csr_axil_resps;
+  csr_axil_req_t  [NumRegMaps-1:0] csr_axil_reqs;
+  csr_axil_resp_t [NumRegMaps-1:0] csr_axil_resps;
 
   uart_16550_pkg::axil_req_t  uart_axil_req;
   uart_16550_pkg::axil_resp_t uart_axil_resp;
@@ -160,7 +160,7 @@ module uart_log_engine_wrap
     .r_chan_t        (csr_axil_r_chan_t),
     .axi_req_t       (csr_axil_req_t),
     .axi_resp_t      (csr_axil_resp_t),
-    .NoMstPorts      (NUM_REG_MAPS),
+    .NoMstPorts      (NumRegMaps),
     .MaxTrans        (1),
     .FallThrough     (1'b0),
     .SpillAw         (1'b1),
@@ -181,12 +181,12 @@ module uart_log_engine_wrap
   );
 
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (REG_ADDR_WIDTH),
-    .AXI_DATA_WIDTH (REG_DATA_WIDTH),
+    .AXI_ADDR_WIDTH (RegAddrWidth),
+    .AXI_DATA_WIDTH (RegDataWidth),
     .axil_req_t     (csr_axil_req_t),
     .axil_resp_t    (csr_axil_resp_t),
     .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (REG_DATA_WIDTH),
+    .RESP_WIDTH     (RegDataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
   ) u_csr_axi_lite_err_slv (

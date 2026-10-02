@@ -23,8 +23,6 @@ typedef struct {
 /* head == tail marks empty, so one slot always stays free. */
 #define SMC_RING_BUFFER_CAPACITY (SMC_RING_BUFFER_SIZE - 1)
 #define OCCP_ERROR_ACCESS_VIOLATION_CODE 0x02
-#define OCCP_ERROR_INTERFACE_ERROR_CODE 0x04
-#define INTERFACE_ERROR_THRESHOLD 5
 
 typedef struct {
     uint16_t value;
@@ -37,7 +35,6 @@ static uint32_t expected_tail;
 static uint32_t consecutive_failures;
 
 #define ROM_PROTECTED_SRAM_BASE 0xC0060000ULL
-#define OCCP_ACCESSIBLE_SRAM_BASE 0xC0066000ULL
 
 typedef enum {
     STATUS_OP_WRITE_UNALIGNED = 0,
@@ -226,9 +223,6 @@ static bool generate_status_entries(test_context_t *ctx, uint32_t desired_entrie
     const status_op_t pattern[] = {STATUS_OP_WRITE_UNALIGNED, STATUS_OP_WRITE_PROTECTED,
                                    STATUS_OP_READ_PROTECTED, STATUS_OP_VALIDATE_BOOT};
     uint32_t command_index = get_random_int() % 4;
-
-    const size_t pattern_len = sizeof(pattern) / sizeof(pattern[0]);
-    uint32_t start_tail = expected_tail;
 
     while (entries_generated < desired_entries) {
         status_op_t op = pattern[command_index];
@@ -436,12 +430,6 @@ int main(void) {
     } else {
         test_fail(0);
     }
-
-    while (1) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
 int other_main(int hartid) {

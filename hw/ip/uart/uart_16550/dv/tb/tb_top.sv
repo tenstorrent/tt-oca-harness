@@ -70,7 +70,7 @@ module uart_16550_tb_top #(
   uart_16550_pkg::axil_resp_t axil_resp;
 
   assign axil_req.aw_valid = axil_awvalid;
-  assign axil_req.aw.addr  = axil_awaddr[uart_16550_pkg::REG_ADDR_WIDTH-1:0];
+  assign axil_req.aw.addr  = axil_awaddr[uart_16550_pkg::RegAddrWidth-1:0];
   assign axil_req.aw.prot  = axil_awprot;
   assign axil_awready      = axil_resp.aw_ready;
 
@@ -84,7 +84,7 @@ module uart_16550_tb_top #(
   assign axil_bresp        = axil_resp.b.resp;
 
   assign axil_req.ar_valid = axil_arvalid;
-  assign axil_req.ar.addr  = axil_araddr[uart_16550_pkg::REG_ADDR_WIDTH-1:0];
+  assign axil_req.ar.addr  = axil_araddr[uart_16550_pkg::RegAddrWidth-1:0];
   assign axil_req.ar.prot  = axil_arprot;
   assign axil_arready      = axil_resp.ar_ready;
 

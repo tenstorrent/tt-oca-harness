@@ -53,21 +53,21 @@ module smc_peripherals_cdc #(
                                                                      // from i2c_wrap on the
                                                                      // peripheral clock.
 
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_smc_clk_o,  // Per-instance I2C
+  output logic [smc_config_pkg::NumI2c-1:0] i2c_enable_smc_clk_o,   // Per-instance I2C
                                                                     // enable synchronized to
                                                                     // clk_smc_i.
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_periph_clk_i,  // Per-instance I2C
+  input  logic [smc_config_pkg::NumI2c-1:0] i2c_enable_periph_clk_i,   // Per-instance I2C
                                                                        // enable from i2c_wrap
                                                                        // on the peripheral
                                                                        // clock.
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_irqs_smc_clk_o,  // Per-instance I2C
+  output logic [smc_config_pkg::NumI2c-1:0] i2c_irqs_smc_clk_o,   // Per-instance I2C
                                                                   // interrupt synchronized
                                                                   // to clk_smc_i.
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_irqs_periph_clk_i,  // Per-instance I2C
+  input  logic [smc_config_pkg::NumI2c-1:0] i2c_irqs_periph_clk_i,   // Per-instance I2C
                                                                      // interrupt on the
                                                                      // peripheral clock.
 
-  input  logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_periph_clk_i,  // I2C Debug Bus CDC
+  input  logic [smc_config_pkg::NumI2c-1:0][3:0] i2c_debug_periph_clk_i,   // I2C Debug Bus CDC
                                                                            // (Periph -> SMC).
                                                                            // Visibility-only path
                                                                            // consumed by the SMC
@@ -78,7 +78,7 @@ module smc_peripherals_cdc #(
                                                                            // bits is not required
                                                                            // for debug
                                                                            // observation.
-  output logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_smc_clk_o,  // I2C debug status
+  output logic [smc_config_pkg::NumI2c-1:0][3:0] i2c_debug_smc_clk_o,   // I2C debug status
                                                                         // synchronized bit by
                                                                         // bit to clk_smc_i, so
                                                                         // bits are not coherent
@@ -110,28 +110,28 @@ module smc_peripherals_cdc #(
                                                                             // uart_wrap on the
                                                                             // peripheral clock.
 
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_enable_smc_clk_o,  // Per-UART enable
+  output logic [smc_config_pkg::NumUart-1:0] uart_enable_smc_clk_o,   // Per-UART enable
                                                                       // synchronized to
                                                                       // clk_smc_i.
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_periph_clk_i,  // Per-UART enable from
+  input  logic [smc_config_pkg::NumUart-1:0] uart_enable_periph_clk_i,   // Per-UART enable from
                                                                          // uart_wrap on the
                                                                          // peripheral clock.
 
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_irq_combined_smc_clk_o,  // Per-UART OR of the
+  output logic [smc_config_pkg::NumUart-1:0] uart_irq_combined_smc_clk_o,   // Per-UART OR of the
                                                                             // UART interrupt, UART
                                                                             // error and log-engine
                                                                             // interrupt, flopped on
                                                                             // the peripheral clock
                                                                             // and synchronized to
                                                                             // the SMC clock.
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_err_periph_clk_i,  // UART error indication
+  input  logic [smc_config_pkg::NumUart-1:0] uart_err_periph_clk_i,   // UART error indication
                                                                       // from each UART, merged
                                                                       // into the combined
                                                                       // interrupt.
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_irq_periph_clk_i,  // UART interrupt from
+  input  logic [smc_config_pkg::NumUart-1:0] uart_irq_periph_clk_i,   // UART interrupt from
                                                                       // each UART, merged into
                                                                       // the combined interrupt.
-  input  logic [smc_config_pkg::NUM_UART-1:0] log_engine_irq_periph_clk_i,  // Log-engine interrupt
+  input  logic [smc_config_pkg::NumUart-1:0] log_engine_irq_periph_clk_i,   // Log-engine interrupt
                                                                             // from each UART, merged
                                                                             // into the combined
                                                                             // interrupt.
@@ -147,10 +147,10 @@ module smc_peripherals_cdc #(
                                                                      // from the I3C controllers
                                                                      // on the peripheral clock.
 
-  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_irqs_smc_clk_o,  // Per-instance I3C
+  output logic [smc_config_pkg::NumI3c-1:0] i3c_irqs_smc_clk_o,   // Per-instance I3C
                                                                   // interrupt synchronized
                                                                   // to clk_smc_i.
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_irqs_periph_clk_i,  // Per-instance I3C
+  input  logic [smc_config_pkg::NumI3c-1:0] i3c_irqs_periph_clk_i,   // Per-instance I3C
                                                                      // interrupt on the
                                                                      // peripheral clock.
 
@@ -184,11 +184,11 @@ module smc_peripherals_cdc #(
   output logic tel_cg_en_telemetry_clk_o,  // Telemetry clock-gate control synchronized
                                            // to clk_telemetry_i.
 
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,  // Asynchronous NDM reset
+  input  logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_request_i,    // Asynchronous NDM reset
                                                                             // request from each CPU
                                                                             // cluster, one bit per
                                                                             // cluster.
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_smc_clk_o,  // NDM reset requests
+  output logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_request_smc_clk_o,    // NDM reset requests
                                                                                     // after a three-stage
                                                                                     // synchronizer into
                                                                                     // clk_smc_i.
@@ -350,7 +350,7 @@ module smc_peripherals_cdc #(
 
   // NDM Request: async top-level input, each bit is an independent per-cluster request
   prim_sync3 #(
-    .WIDTH(smc_config_pkg::CPU_CLUSTER_COUNT)
+    .WIDTH(smc_config_pkg::CpuClusterCount)
   ) u_ndmreset_request_sync (
     .clk_i (clk_smc_i),
     .d_i   (ndmreset_request_i),
@@ -380,14 +380,14 @@ module smc_peripherals_cdc #(
 
   // For MTBF (mean time between failures) calculation to hold true, inputs to synchronizers should be void of combinational logic
   // This is motivated by NON_STATIC_COMBO_IN_CROSSING from CDC Violations report
-  logic [smc_config_pkg::NUM_I2C-1:0]  i2c_enable_periph_clk_flopped;
-  logic [smc_config_pkg::NUM_I2C-1:0]  i2c_irqs_periph_clk_flopped;
-  logic [smc_config_pkg::NUM_I3C-1:0]  i3c_irqs_periph_clk_flopped;
-  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_periph_clk_flopped;
+  logic [smc_config_pkg::NumI2c-1:0]  i2c_enable_periph_clk_flopped;
+  logic [smc_config_pkg::NumI2c-1:0]  i2c_irqs_periph_clk_flopped;
+  logic [smc_config_pkg::NumI3c-1:0]  i3c_irqs_periph_clk_flopped;
+  logic [smc_config_pkg::NumUart-1:0] uart_enable_periph_clk_flopped;
   // UART eventually combines: uart_irq_smc_clk | uart_err_smc_clk | log_engine_irq_smc_clk into one interrupt line.
-  logic [smc_config_pkg::NUM_UART-1:0] uart_irq_combined_periph_clk_flopped;
+  logic [smc_config_pkg::NumUart-1:0]  uart_irq_combined_periph_clk_flopped;
   logic                                avsbus_irq_periph_clk_flopped;
-  logic [smc_config_pkg::NUM_I2C-1:0][3:0]                          i2c_debug_periph_clk_flopped;
+  logic [smc_config_pkg::NumI2c-1:0][3:0]                          i2c_debug_periph_clk_flopped;
 
   always_ff @(posedge clk_periph_i) begin
     i2c_enable_periph_clk_flopped <= i2c_enable_periph_clk_i;
@@ -423,7 +423,7 @@ module smc_peripherals_cdc #(
 
     // I2C Enable
     prim_flop_2sync #(
-      .Width(smc_config_pkg::NUM_I2C)
+      .Width(smc_config_pkg::NumI2c)
     ) u_i2c_enable_sync (
       .clk_i (clk_smc_i),
       .rst_ni(1'b1),
@@ -432,7 +432,7 @@ module smc_peripherals_cdc #(
     );
     // I2C Interrupts
     prim_flop_2sync #(
-      .Width(smc_config_pkg::NUM_I2C)
+      .Width(smc_config_pkg::NumI2c)
     ) u_i2c_irq_sync (
       .clk_i (clk_smc_i),
       .rst_ni(1'b1),
@@ -442,7 +442,7 @@ module smc_peripherals_cdc #(
 
     // I2C Debug Bus (per-bit sync; visibility-only path)
     prim_flop_2sync #(
-      .Width(smc_config_pkg::NUM_I2C * 4)
+      .Width(smc_config_pkg::NumI2c * 4)
     ) u_i2c_debug_sync (
       .clk_i (clk_smc_i),
       .rst_ni(1'b1),
@@ -452,7 +452,7 @@ module smc_peripherals_cdc #(
 
     // UART Enable
     prim_flop_2sync #(
-      .Width(smc_config_pkg::NUM_UART)
+      .Width(smc_config_pkg::NumUart)
     ) u_uart_enable_sync (
       .clk_i (clk_smc_i),
       .rst_ni(1'b1),
@@ -462,7 +462,7 @@ module smc_peripherals_cdc #(
 
     // UART Combined Interrupts
     prim_flop_2sync #(
-      .Width(smc_config_pkg::NUM_UART)
+      .Width(smc_config_pkg::NumUart)
     ) u_uart_combined_irq_sync (
       .clk_i (clk_smc_i),
       .rst_ni(1'b1),
@@ -472,7 +472,7 @@ module smc_peripherals_cdc #(
 
     // I3C Interrupts
     prim_flop_2sync #(
-      .Width(smc_config_pkg::NUM_I3C)
+      .Width(smc_config_pkg::NumI3c)
     ) u_i3c_irq_sync (
       .clk_i (clk_smc_i),
       .rst_ni(1'b1),
@@ -546,7 +546,7 @@ module smc_peripherals_cdc #(
   end else begin : gen_sync3
     // I2C Enable
     prim_sync3 #(
-      .WIDTH(smc_config_pkg::NUM_I2C)
+      .WIDTH(smc_config_pkg::NumI2c)
     ) u_i2c_enable_sync (
       .clk_i (clk_smc_i),
       .d_i   (i2c_enable_periph_clk_flopped),
@@ -554,7 +554,7 @@ module smc_peripherals_cdc #(
     );
     // I2C Interrupts
     prim_sync3 #(
-      .WIDTH(smc_config_pkg::NUM_I2C)
+      .WIDTH(smc_config_pkg::NumI2c)
     ) u_i2c_irq_sync (
       .clk_i (clk_smc_i),
       .d_i   (i2c_irqs_periph_clk_flopped),
@@ -563,7 +563,7 @@ module smc_peripherals_cdc #(
 
     // I2C Debug Bus (per-bit sync; visibility-only path)
     prim_sync3 #(
-      .WIDTH(smc_config_pkg::NUM_I2C * 4)
+      .WIDTH(smc_config_pkg::NumI2c * 4)
     ) u_i2c_debug_sync (
       .clk_i (clk_smc_i),
       .d_i   (i2c_debug_periph_clk_flopped),
@@ -572,7 +572,7 @@ module smc_peripherals_cdc #(
 
     // UART Enable
     prim_sync3 #(
-      .WIDTH(smc_config_pkg::NUM_UART)
+      .WIDTH(smc_config_pkg::NumUart)
     ) u_uart_enable_sync (
       .clk_i (clk_smc_i),
       .d_i   (uart_enable_periph_clk_flopped),
@@ -581,7 +581,7 @@ module smc_peripherals_cdc #(
 
     // UART Combined Interrupts
     prim_sync3 #(
-      .WIDTH(smc_config_pkg::NUM_UART)
+      .WIDTH(smc_config_pkg::NumUart)
     ) u_uart_combined_irq_sync (
       .clk_i (clk_smc_i),
       .d_i   (uart_irq_combined_periph_clk_flopped),
@@ -590,7 +590,7 @@ module smc_peripherals_cdc #(
 
     // I3C Interrupts
     prim_sync3 #(
-      .WIDTH(smc_config_pkg::NUM_I3C)
+      .WIDTH(smc_config_pkg::NumI3c)
     ) u_i3c_irq_sync (
       .clk_i (clk_smc_i),
       .d_i   (i3c_irqs_periph_clk_flopped),

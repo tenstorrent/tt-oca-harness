@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> HMAC sideload consume-proof KAT (reference suite, sep_km_hmac_sideload_kat_test).
+"""KM -> HMAC sideload consume-proof KAT.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
