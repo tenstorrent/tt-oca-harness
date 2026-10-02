@@ -47,8 +47,10 @@ void __attribute__((interrupt("machine"))) token_fault_isr(void) {
 }
 
 static void present_sec_disable(void) {
-    const uint32_t token[8] = {1u, 0, 0, 0, 0, 0, 0, 0};
-    efuse_write_8_words(SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(0), token);
+    const uint32_t token[SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_NUM] = {1u};
+    for (uint32_t i = 0; i < SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_NUM; i++) {
+        WRITE_REG(SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(i), token[i]);
+    }
     WRITE_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR,
               EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bm);
 }
