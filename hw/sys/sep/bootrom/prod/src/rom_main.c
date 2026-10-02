@@ -162,24 +162,6 @@ static volatile uint32_t g_bss_zero;
 extern uint8_t __stack_bottom[];       // defined in linker script
 extern uint8_t __stack_top[];          // defined in linker script
 
-enum {
-    ROM_ERR_RUNTIME_INIT_FAILED = 0x0000B001u,
-    // Retained for the error-code space only; the MEM_REPAIR gate moved to
-    // vector.S and reports STATUS_ENCODE(ERROR, SEP_MSG_MBIST_FAIL) directly,
-    // since rom_err_fail() needs a C stack that does not exist that early.
-    ROM_ERR_DFT_GATE_BLOCKED = 0x0000D001u,
-    ROM_ERR_SMC_COORD_NOT_READY = 0x0000C001u,
-    ROM_ERR_SPI_INIT_FAILED = 0x0000E001u,
-    ROM_ERR_STACK_OVERFLOW = 0x0000F001u,
-    ROM_ERR_CRYPTO_SELFTEST_FAILED = 0x0000F002u,
-    ROM_ERR_FUSE_SECRETS_NOT_LOCKED = 0x0000F003u,
-    // 0x0000F004 is ROM_ERR_HANDOFF_SELFCHECK_FAILED in the spec's registry,
-    // reserved here for the pre-hand-off self-check that has not landed yet.
-    ROM_ERR_ROM_HASH_MISMATCH = 0x0000F005u,
-    ROM_ERR_MEASUREMENT_FAILED = 0x0000F006u,
-    ROM_ERR_BL0_STATE_OVERLAPS_STACK = 0x0000F007u,
-};
-
 // ── [S30] Unified error convergence ──
 // All ROM error paths converge here.  Records the error in:
 // - BL0 state (error_code field, for BL1/debugger)
@@ -188,7 +170,7 @@ enum {
 // Then hangs (wfi loop).
 __attribute__((noreturn)) static void rom_err_fail(uint32_t error_code);
 
-// Non-static wrapper for rom_err_fail(), callable from lifecycle.c.
+// Non-static wrapper for rom_err_fail(), for callers outside this file.
 __attribute__((noreturn)) void rom_err_fail_ext(uint32_t error_code) {
     rom_err_fail(error_code);
 }
@@ -202,14 +184,14 @@ __attribute__((noreturn)) static void rom_err_fail(uint32_t error_code) {
 
     // Record in cold_scratch[1] for debugger visibility (STATUS_ENCODE format).
     //
-    // Only for codes that ARE status values. A subsystem error carries its
-    // subsystem in the upper half (manifest errors are 0x0003xxxx), and
-    // truncating one to 16 bits lands it in the SEP_MSG_* numbering space where
-    // it decodes as an unrelated message: MANIFEST_ERR 0x00030012 came out as
-    // "SEP_MSG_BL1_SIZE_INVALID" on a payload-hash failure. Every such path has
-    // already reported its own specific ERROR status, so the truncated word adds
-    // nothing and actively misleads. The full 32-bit code still reaches the
-    // mailbox below, so DV loses no information.
+    // Only for codes whose upper half is zero (the ROM core's own). A subsystem
+    // error carries its subsystem in the upper half (manifest errors are
+    // 0x0003xxxx), and truncating one to 16 bits lands it in the SEP_MSG_*
+    // numbering space where it decodes as an unrelated message: MANIFEST_ERR
+    // 0x00030012 came out as "SEP_MSG_BL1_SIZE_INVALID" on a payload-hash
+    // failure. Every such path has already reported its own specific ERROR
+    // status, so the truncated word adds nothing and actively misleads. The full
+    // 32-bit code is kept in bl0_state.error_code above when it is initialized.
     if ((error_code & 0xFFFF0000u) == 0u) {
         STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_ERROR, error_code & 0xFFFF));
     }
@@ -247,7 +229,7 @@ static void rom_smc_mem_sanity_check(void) {
             simputshex32("SMC_MEM_EXP=", patterns[i]);
             simputshex32("SMC_MEM_GOT=", rb);
             simputs("SMC_MEM_FAIL\n");
-            rom_err_fail(0x0000A001u);
+            rom_err_fail(ROM_ERR_SMC_SANITY_FAILED);
         }
     }
     // Clean up

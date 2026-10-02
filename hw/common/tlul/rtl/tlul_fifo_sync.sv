@@ -5,7 +5,7 @@
 // Buffer a TL-UL link with synchronous request and response FIFOs.
 //
 // Instantiate separate request and response FIFOs to add elasticity on a TL-UL bus. The
-// response FIFO stores d_data as zero for any opcode other than AccessAckData.
+// response FIFO stores d_data as zero for any opcode other than ACCESS_ACK_DATA.
 // REQ_PASS and RSP_PASS allow fall-through when the corresponding FIFO is empty. SPARE_REQ_W
 // and SPARE_RSP_W carry optional sideband bits alongside each channel.
 
@@ -87,7 +87,7 @@ module tlul_fifo_sync #(
                      tl_d_i.d_size  ,
                      tl_d_i.d_source,
                      tl_d_i.d_sink  ,
-                     (tl_d_i.d_opcode == tlul_pkg::AccessAckData) ? tl_d_i.d_data :
+                     (tl_d_i.d_opcode == tlul_pkg::ACCESS_ACK_DATA) ? tl_d_i.d_data :
                                                                     {top_pkg::TL_DW{1'b0}} ,
                      tl_d_i.d_user  ,
                      tl_d_i.d_error ,

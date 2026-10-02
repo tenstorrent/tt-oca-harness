@@ -231,9 +231,6 @@ module smu_wrapper
   input  logic mbist_pass_i,
   input  logic mbist_abort_i,
 
-  // OpenTitan SPI request, surfaced for observation; the loop closes in smu.sv
-  output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
-
   output logic  secure_tm_o,
 
   // Ring-oscillator sample clock for SEP entropy_source (async to clk_smu_i)
@@ -496,7 +493,6 @@ module smu_wrapper
     .mbist_pass_i,
     .mbist_abort_i,
     .entropy_rosc_sample_clk_i,
-    .sep_io_spi_req_o,
     .sep_cpu_trace_o,
     .sep_lockstep_ctrl_i,
     .sep_lockstep_status_o,

@@ -3,9 +3,11 @@
 
 // Demux SEP IO register AXI onto SPI and an error slave.
 //
-// The 64-bit AXI4 slave is downsized to 32 bits and converted to AXI-Lite. Addresses inside
-// the SPI controller window go to a single-chip-select sep_ot_spi_wrap; all others receive
-// DECERR with read data 0xBADCAB1E.
+// The 64-bit AXI4 slave is downsized to 32 bits and converted to AXI-Lite. The local crossbar
+// sends only the SPI controller register extent here, and that extent goes to a
+// single-chip-select sep_ot_spi_wrap. The error slave answers the beats of a burst that run
+// past the extent: DECERR with read data 0xBADCAB1E on a read, and SLVERR on a write, since
+// the AXI-Lite converter answers every write error with SLVERR.
 // NUM_COMPONENTS sizes the IO fabric. NUM_SLAVES is NUM_COMPONENTS + 1 for the error
 // slave.
 // sep_io_spi_req_o / sep_io_spi_rsp_i carry the SPI pad request/response struct, which also

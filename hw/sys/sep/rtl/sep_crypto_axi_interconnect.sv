@@ -205,63 +205,71 @@ module sep_crypto_axi_interconnect (
             (sep_crypto_axi_req_i.ar.addr < sep_crypto_pkg::ABR_RULE.end_addr);
 
     if (aw_is_burst) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+          sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
     end else if (abr_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_ABR);
     end else if (trng_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiTrng);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_TRNG);
     end else if (entropy_src_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEntropySrc);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+          sep_crypto_pkg::SEP_CRYPTO_AXI_ENTROPY_SRC);
     end else if (edn_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEdn);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_EDN);
     end else if (csrng_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiCsrng);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_CSRNG);
     end else if (km_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiKm);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_KM);
     end else if (lifecycle_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiLifecycle);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+          sep_crypto_pkg::SEP_CRYPTO_AXI_LIFECYCLE);
     end else if (fuse_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiFuse);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_FUSE);
     end else if (kmac_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiKmac);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_KMAC);
     end else if (aes_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAes);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_AES);
     end else if (hmac_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiHmac);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_HMAC);
     end else if (otbn_write) begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiOtbn);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN);
     end else begin
-      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
+      aw_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+          sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
     end
 
     if (ar_is_burst) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+          sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
     end else if (abr_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAbr);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_ABR);
     end else if (trng_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiTrng);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_TRNG);
     end else if (entropy_src_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEntropySrc);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+          sep_crypto_pkg::SEP_CRYPTO_AXI_ENTROPY_SRC);
     end else if (edn_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiEdn);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_EDN);
     end else if (csrng_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiCsrng);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_CSRNG);
     end else if (km_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiKm);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_KM);
     end else if (lifecycle_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiLifecycle);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+          sep_crypto_pkg::SEP_CRYPTO_AXI_LIFECYCLE);
     end else if (fuse_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiFuse);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_FUSE);
     end else if (kmac_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiKmac);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_KMAC);
     end else if (aes_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiAes);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_AES);
     end else if (hmac_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiHmac);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_HMAC);
     end else if (otbn_read) begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiOtbn);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN);
     end else begin
-      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(sep_crypto_pkg::SepCryptoAxiErrSlv);
+      ar_select = sep_crypto_pkg::SEP_CRYPTO_NUM_AXI_MST_SEL'(
+          sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV);
     end
   end
 
@@ -310,8 +318,8 @@ module sep_crypto_axi_interconnect (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (test_en_i),
-    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiErrSlv]),
-    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiErrSlv])
+    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV]),
+    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_ERR_SLV])
   );
 
   /////////////////////////////////////////
@@ -333,11 +341,13 @@ module sep_crypto_axi_interconnect (
   sep_pkg::sep_32_64_6_12_axi_req_t otbn_axi_req_cache_forced;
 
   always_comb begin
-    otbn_axi_req_cache_forced = sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiOtbn];
+    otbn_axi_req_cache_forced = sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN];
     otbn_axi_req_cache_forced.aw.cache =
-            sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiOtbn].aw.cache | axi_pkg::CACHE_MODIFIABLE;
+            sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN].aw.cache |
+            axi_pkg::CACHE_MODIFIABLE;
     otbn_axi_req_cache_forced.ar.cache =
-            sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiOtbn].ar.cache | axi_pkg::CACHE_MODIFIABLE;
+            sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN].ar.cache |
+            axi_pkg::CACHE_MODIFIABLE;
   end
 
   sep_pkg::sep_32_32_6_12_axi_req_t  otbn_axi32_req;
@@ -364,7 +374,7 @@ module sep_crypto_axi_interconnect (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
     .slv_req_i (otbn_axi_req_cache_forced),
-    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiOtbn]),
+    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_OTBN]),
     .mst_req_o (otbn_axi32_req),
     .mst_resp_i(otbn_axi32_resp)
   );
@@ -434,8 +444,8 @@ module sep_crypto_axi_interconnect (
   ) u_hmac_axi_dw_converter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiHmac]),
-    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiHmac]),
+    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_HMAC]),
+    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_HMAC]),
     .mst_req_o (hmac_axi32_req),
     .mst_resp_i(hmac_axi32_resp)
   );
@@ -505,8 +515,8 @@ module sep_crypto_axi_interconnect (
   ) u_aes_axi_dw_converter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAes]),
-    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAes]),
+    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_AES]),
+    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_AES]),
     .mst_req_o (aes_axi32_req),
     .mst_resp_i(aes_axi32_resp)
   );
@@ -576,8 +586,8 @@ module sep_crypto_axi_interconnect (
   ) u_kmac_axi_dw_converter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiKmac]),
-    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiKmac]),
+    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_KMAC]),
+    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_KMAC]),
     .mst_req_o (kmac_axi32_req),
     .mst_resp_i(kmac_axi32_resp)
   );
@@ -783,8 +793,8 @@ module sep_crypto_axi_interconnect (
   ) u_km_axi_dw_converter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiKm]),
-    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiKm]),
+    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_KM]),
+    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_KM]),
     .mst_req_o (km_axi32_req),
     .mst_resp_i(km_axi32_resp)
   );
@@ -842,8 +852,8 @@ module sep_crypto_axi_interconnect (
   ) u_esrc_axi_dw_converter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiEntropySrc]),
-    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEntropySrc]),
+    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_ENTROPY_SRC]),
+    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_ENTROPY_SRC]),
     .mst_req_o (esrc_axi32_req),
     .mst_resp_i(esrc_axi32_resp)
   );
@@ -911,8 +921,8 @@ module sep_crypto_axi_interconnect (
     .clk_i,
     .rst_ni,
     .test_i     (test_en_i),
-    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiCsrng]),
-    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiCsrng]),
+    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_CSRNG]),
+    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_CSRNG]),
     .mst_req_o  (csrng_conv_axil_req),
     .mst_resp_i (csrng_conv_axil_resp)
   );
@@ -956,8 +966,8 @@ module sep_crypto_axi_interconnect (
     .clk_i,
     .rst_ni,
     .test_i     (test_en_i),
-    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiEdn]),
-    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiEdn]),
+    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_EDN]),
+    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_EDN]),
     .mst_req_o  (edn_conv_axil_req),
     .mst_resp_i (edn_conv_axil_resp)
   );
@@ -982,7 +992,7 @@ module sep_crypto_axi_interconnect (
   );
 
   //=========================================================================
-  // TRNG AXI-Lite passthrough — demux port [sep_crypto_pkg::SepCryptoAxiTrng]
+  // TRNG AXI-Lite passthrough — demux port [sep_crypto_pkg::SEP_CRYPTO_AXI_TRNG]
   //=========================================================================
   // 64b AXI → 32b AXI → 32b AXI-Lite → cut → ext_trng_axil_*
 
@@ -1012,8 +1022,8 @@ module sep_crypto_axi_interconnect (
   ) u_trng_axi_dw_converter (
     .clk_i     (clk_i),
     .rst_ni    (rst_ni),
-    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiTrng]),
-    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiTrng]),
+    .slv_req_i (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_TRNG]),
+    .slv_resp_o(sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_TRNG]),
     .mst_req_o (trng_axi32_req),
     .mst_resp_i(trng_axi32_resp)
   );
@@ -1061,11 +1071,11 @@ module sep_crypto_axi_interconnect (
   // Full AXI4 paths      //
   //////////////////////////
 
-  assign fuse_axi_req_o = sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiFuse];
-  assign sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiFuse] = fuse_axi_resp_i;
+  assign fuse_axi_req_o = sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_FUSE];
+  assign sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_FUSE] = fuse_axi_resp_i;
 
-  assign lifecycle_axi_req_o = sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiLifecycle];
-  assign sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiLifecycle] = lifecycle_axi_resp_i;
+  assign lifecycle_axi_req_o = sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_LIFECYCLE];
+  assign sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_LIFECYCLE] = lifecycle_axi_resp_i;
 
   axi_isolate #(
     .NumPending           (ISOLATE_NUM_PENDING),
@@ -1080,8 +1090,8 @@ module sep_crypto_axi_interconnect (
   ) u_abr_host_isolate (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SepCryptoAxiAbr]),
-    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SepCryptoAxiAbr]),
+    .slv_req_i  (sep_crypto_axi_reqs[sep_crypto_pkg::SEP_CRYPTO_AXI_ABR]),
+    .slv_resp_o (sep_crypto_axi_resps[sep_crypto_pkg::SEP_CRYPTO_AXI_ABR]),
     .mst_req_o  (abr_axi_isolated_req_o),
     .mst_resp_i (abr_axi_isolated_resp_i),
     .isolate_i  (isolate_req_i.host_abr),

@@ -1789,7 +1789,7 @@ module spi_host_reg_top
 
   if (EnableRacl) begin : gen_racl_log
     assign racl_error_o.ctn_uid     = top_racl_pkg::tlul_extract_ctn_uid_bits(tl_i.a_user.rsvd);
-    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::Get;
+    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::GET;
   end else begin : gen_no_racl_log
     assign racl_error_o.ctn_uid     = '0;
     assign racl_error_o.read_access = 1'b0;

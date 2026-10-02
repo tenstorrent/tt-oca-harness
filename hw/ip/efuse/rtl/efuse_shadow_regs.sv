@@ -402,7 +402,7 @@ module efuse_shadow_regs
 
   // Read execution state machine
   typedef enum {
-    StIdle, StRead, StWait, StFinished
+    ST_IDLE, ST_READ, ST_WAIT, ST_FINISHED
   } efuse_sense_state_e;
 
   efuse_sense_state_e efuse_sense_state_d, efuse_sense_state_q;
@@ -415,17 +415,17 @@ module efuse_shadow_regs
         fuse_command_req_d = fuse_command_req_o;
 
         unique case (efuse_sense_state_q)
-            StIdle: begin
+            ST_IDLE: begin
                 // Fuse sensing begins when reset is deasserted
                 if (rst_ni) begin
-                    efuse_sense_state_d = StRead;
+                    efuse_sense_state_d = ST_READ;
                     words_received_d = '0;
                     current_word_num_d = '0;
                 end
             end
 
-            // StRead: Send the fuse command to read entire OTP
-            StRead: begin
+            // ST_READ: Send the fuse command to read entire OTP
+            ST_READ: begin
                 // width-match the 9b word counter to the 13b bit-address field (clears W164b lint).
                 // NOTE: value is 0 here; .address is a BIT address, so a nonzero word count would be wrong (see commit note re: word-vs-bit).
                 fuse_command_req_d.address = efuse_addr_t'(current_word_num_q);
@@ -435,17 +435,17 @@ module efuse_shadow_regs
                 fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
 
                 // Move to wait acknowledgment state
-                efuse_sense_state_d = StWait;
+                efuse_sense_state_d = ST_WAIT;
                 words_received_d = '0;
             end
 
-            // StWait: Wait for remaining streaming responses and store data
-            StWait: begin
+            // ST_WAIT: Wait for remaining streaming responses and store data
+            ST_WAIT: begin
 
                 if (fuse_command_resp_i.valid) begin
                     // Check if we've received all expected words
                     if (words_received_q >= efuse_word_counter_t'(NumShadowWords - 1)) begin
-                        efuse_sense_state_d = StFinished;
+                        efuse_sense_state_d = ST_FINISHED;
                     end else begin
                         words_received_d = words_received_q + efuse_word_counter_t'(1);
                         current_word_num_d = current_word_num_q + efuse_word_counter_t'(1);
@@ -456,15 +456,15 @@ module efuse_shadow_regs
                 // Continue waiting for more responses
             end
 
-            // StFinished: OTP sensing complete
-            StFinished: begin
+            // ST_FINISHED: OTP sensing complete
+            ST_FINISHED: begin
                 // Stay in finished state
-                efuse_sense_state_d = StFinished;
+                efuse_sense_state_d = ST_FINISHED;
             end
 
             // Default case to catch parasitic states
             default: begin
-                efuse_sense_state_d = fuse_sense_done ? StFinished : StIdle;
+                efuse_sense_state_d = fuse_sense_done ? ST_FINISHED : ST_IDLE;
             end
         endcase
     end
@@ -472,7 +472,7 @@ module efuse_shadow_regs
     // Register the state
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
-            efuse_sense_state_q <= StIdle;
+            efuse_sense_state_q <= ST_IDLE;
             current_word_num_q <= '0;
             words_received_q <= efuse_word_counter_t'(0);
             fuse_command_req_o <= FUSE_COMMAND_REQ_DEFAULT;
@@ -490,7 +490,7 @@ module efuse_shadow_regs
       fuse_sense_done <= 1'b0;
     end else if (sim_skip_fuse_sense) begin
       fuse_sense_done <= 1'b1;
-    end else if ((efuse_sense_state_q == StFinished) && !fuse_sense_done) begin
+    end else if ((efuse_sense_state_q == ST_FINISHED) && !fuse_sense_done) begin
       fuse_sense_done <= 1'b1;
 `ifndef SIMULATION
       $display("[INFO] Fuse sense done");

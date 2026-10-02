@@ -268,25 +268,25 @@ module avsbus_controller #(
 
   // AVS_Mdata (master subframe) field enums for waving, debug:
   typedef enum logic [1:0] {
-    CommitWrite = 2'b00,
-    HoldWrite   = 2'b01,
-    Read        = 2'b11
+    COMMIT_WRITE = 2'b00,
+    HOLD_WRITE   = 2'b01,
+    READ         = 2'b11
   } cmd_type_t;
 
   typedef enum logic {
-    AvsBus = 1'b0,
-    ManufacturerSpec = 1'b1
+    AVS_BUS = 1'b0,
+    MANUFACTURER_SPEC = 1'b1
   } cmd_group_t;
 
   typedef enum logic [3:0] {
-    Voltage     = 4'b0000,
-    Transition  = 4'b0001,
-    Current     = 4'b0010,
-    Temperature = 4'b0011,
-    ResetVolt   = 4'b0100,
-    PowerMode   = 4'b0101,
-    Status      = 4'b1110,
-    Version     = 4'b1111
+    VOLTAGE     = 4'b0000,
+    TRANSITION  = 4'b0001,
+    CURRENT     = 4'b0010,
+    TEMPERATURE = 4'b0011,
+    RESET_VOLT  = 4'b0100,
+    POWER_MODE  = 4'b0101,
+    STATUS      = 4'b1110,
+    VERSION     = 4'b1111
   } cmd_data_type_t;
 
   logic [1:0] CmdPreamble;
@@ -308,10 +308,10 @@ module avsbus_controller #(
 
   // AVS_Sdata (slave subframe) field enums:
   typedef enum logic [1:0] {
-    SlaveAckActionPerformed     = 2'b00,
-    SlaveAckResourceUnavailable = 2'b01,
-    SlaveAckBadCRC              = 2'b10,
-    SlaveAckBadDataOrSelector   = 2'b11
+    SLAVE_ACK_ACTION_PERFORMED     = 2'b00,
+    SLAVE_ACK_RESOURCE_UNAVAILABLE = 2'b01,
+    SLAVE_ACK_BAD_CRC              = 2'b10,
+    SLAVE_ACK_BAD_DATA_OR_SELECTOR = 2'b11
   } slave_ack_t;
   slave_ack_t slave_ack;
   assign slave_ack = slave_ack_t'(avs_sdata_capture[31:30]);
@@ -1660,8 +1660,8 @@ module avsbus_controller #(
         cur_state == AVS_PROCESS_PREVIOUS_SDATA )
     begin
       avs_retry_condition_detected = ~crc_check_good ||
-                                      slave_ack == SlaveAckResourceUnavailable ||
-                                      slave_ack == SlaveAckBadCRC ||
+                                      slave_ack == SLAVE_ACK_RESOURCE_UNAVAILABLE ||
+                                      slave_ack == SLAVE_ACK_BAD_CRC ||
                                       avs_sdata_capture[SdataValidFrameBit] == 1'b1 ;
     end else begin
       avs_retry_condition_detected = 1'b0;

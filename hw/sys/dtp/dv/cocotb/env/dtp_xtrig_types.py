@@ -79,6 +79,9 @@ XTRIG_CTP_BASE = _ctn_reg.CTP_0__REG_MAP_BASE_ADDR
 XTRIG_CTP_STRIDE = _ctn_reg.CTP_1__REG_MAP_BASE_ADDR - _ctn_reg.CTP_0__REG_MAP_BASE_ADDR
 XTRIG_CSR_END = XTRIG_CTP_BASE + (XTRIG_NUM_CTP * XTRIG_CTP_STRIDE)
 XTRIG_UNMAPPED_BASE = XTRIG_CSR_END
+# Bytes the registers of one CT_SRC slot and of one port window back.
+XTRIG_CT_SRC_SIZE = _ctn_reg.CTM_CT_SRC_0__REG_FILE_SIZE
+XTRIG_CTP_REG_SIZE = _ctn_reg.CTP_0__REG_MAP_SIZE
 
 XTRIG_CTP_CONFIG_OFFSET = _ctp_reg.CONFIG_REG_OFFSET
 XTRIG_CTP_STATUS_OFFSET = _ctp_reg.STATUS_REG_OFFSET
@@ -135,6 +138,17 @@ def ctp_status_addr(ctp_idx: int) -> int:
 
 def ctp_stretch_addr(ctp_idx: int) -> int:
     return ctp_base_addr(ctp_idx) + XTRIG_CTP_STRETCH_MULT_OFFSET
+
+
+def ctm_hole_addr(output_port: int) -> int:
+    """First hole word of ``CT_SRC[output_port]``'s slot: the word past its register."""
+    check_ctm_port(output_port, "CTM output port")
+    return getattr(_ctn_reg, f"CTM_CT_SRC_{output_port}__REG_FILE_BASE_ADDR") + XTRIG_CT_SRC_SIZE
+
+
+def ctp_hole_addr(ctp_idx: int) -> int:
+    """First hole word of an external CTP's window: the word past its registers."""
+    return ctp_base_addr(ctp_idx) + XTRIG_CTP_REG_SIZE
 
 
 def check_ctp_idx(ctp_idx: int) -> None:

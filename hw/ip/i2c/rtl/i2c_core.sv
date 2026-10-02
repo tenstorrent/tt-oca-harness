@@ -374,9 +374,9 @@ module i2c_core
 
   assign bus_active_timeout           = reg_out_i.TIMEOUT_CTRL.VAL.value;
   assign stretch_timeout_enable       = reg_out_i.TIMEOUT_CTRL.EN.value &&
-                                          reg_out_i.TIMEOUT_CTRL.MODE.value == StretchTimeoutMode;
+                                          reg_out_i.TIMEOUT_CTRL.MODE.value == STRETCH_TIMEOUT_MODE;
   assign bus_timeout_enable           = reg_out_i.TIMEOUT_CTRL.EN.value &&
-                                          reg_out_i.TIMEOUT_CTRL.MODE.value == BusTimeoutMode;
+                                          reg_out_i.TIMEOUT_CTRL.MODE.value == BUS_TIMEOUT_MODE;
   assign host_timeout                 = reg_out_i.HOST_TIMEOUT_CTRL.VAL.value;
   assign nack_timeout                 = reg_out_i.TARGET_TIMEOUT_CTRL.VAL.value;
   assign nack_timeout_en              = reg_out_i.TARGET_TIMEOUT_CTRL.EN.value;
@@ -581,7 +581,7 @@ module i2c_core
 
   assign acq_type = i2c_acq_byte_id_e'(acq_fifo_rdata[TARGET_RX_FIFO_WIDTH-1:8]);
 
-  assign valid_target_lb_wr = target_enable && acq_type == AcqData;
+  assign valid_target_lb_wr = target_enable && acq_type == ACQ_DATA;
 
   // only write into tx fifo if it's payload
   assign reg_in_o.TXDATA.wr_ack = reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr;
@@ -597,7 +597,7 @@ module i2c_core
   // is not data payload.
   assign reg_in_o.ACQDATA.rd_ack = reg_out_i.ACQDATA.req && !reg_out_i.ACQDATA.req_is_wr;
   assign acq_fifo_rready         = reg_out_i.ACQDATA.req && !reg_out_i.ACQDATA.req_is_wr ||
-                                     target_loopback && (tx_fifo_wready || acq_type != AcqData);
+                                     target_loopback && (tx_fifo_wready || acq_type != ACQ_DATA);
 
   // sync the incoming SCL and SDA signals
   prim_flop_2sync #(

@@ -111,6 +111,7 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
     const uint32_t smc_sram = sep_get_smc_sram_base();
     if (!contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, dest, n) &&
         !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, dest, n) && !dest_is_iccm(dest, n)) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
         return SEP_DMA_ERR_OUT_OF_RANGE;
     }
 
@@ -120,6 +121,7 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
     if (!contains_range_u32(SEP_SPI_BASE, SEP_SPI_MAX_SIZE, src, src_span) &&
         !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, src, src_span) &&
         !contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, src, src_span)) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
         return SEP_DMA_ERR_OUT_OF_RANGE;
     }
 
@@ -186,6 +188,7 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
             break;
         }
         if (status & DMA_STATUS_ERROR) {
+            report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_ERROR);
             uint32_t ecode = dma_read(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
             simputshex32("DMA_STS=", status);
             simputshex32("DMA_EC=", ecode);

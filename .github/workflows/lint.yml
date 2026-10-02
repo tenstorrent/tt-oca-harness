@@ -275,6 +275,23 @@ jobs:
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: lint_sv_comments.log, efm: '%f:%l: %m', level: error, name: lint-sv-comments }
 
+  lint-sv-enum-members:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Check SystemVerilog enum members
+        run: make ocah-lint-sv-enum-members 2>&1 | tee lint_sv_enum_members.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_sv_enum_members.log, efm: '%f:%l: %m', level: error, name: lint-sv-enum-members }
+
   # Vale is a Go binary with no PyPI wheel; fetched here from a pinned
   # release the same way lint-make (checkmake) does (see flows/lint/vale.mk).
   lint-vale:

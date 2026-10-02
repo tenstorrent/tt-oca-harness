@@ -340,7 +340,7 @@ module sep_dma_wrap #(
 
   assign ctn_tl_d2h.a_ready = 1'b1;
   assign ctn_tl_d2h.d_valid = 1'b0;
-  assign ctn_tl_d2h.d_opcode = tlul_pkg::AccessAck;
+  assign ctn_tl_d2h.d_opcode = tlul_pkg::ACCESS_ACK;
   assign ctn_tl_d2h.d_param = '0;
   assign ctn_tl_d2h.d_size = '0;
   assign ctn_tl_d2h.d_source = '0;
