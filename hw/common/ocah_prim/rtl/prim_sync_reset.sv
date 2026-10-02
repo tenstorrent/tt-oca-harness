@@ -37,18 +37,16 @@ module prim_sync_reset #(
     .q_o (sync_reg[0])
   );
 
-  generate
-    for (genvar stage = 1; stage < WIDTH; stage = stage + 1) begin : gen_rst_sync_stage
+  for (genvar stage = 1; stage < WIDTH; stage = stage + 1) begin : gen_rst_sync_stage
 
-      prim_metastab_hardened_dffr u_sync_dffr (
-        .clk_i(clk_i),
-        .rst_ni(rst_ni),              // Asynch Reset
-        .d_i (sync_reg[stage-1]),
-        .q_o (sync_reg[stage])
-      );
+    prim_metastab_hardened_dffr u_sync_dffr (
+      .clk_i(clk_i),
+      .rst_ni(rst_ni),              // Asynch Reset
+      .d_i (sync_reg[stage-1]),
+      .q_o (sync_reg[stage])
+    );
 
-    end
-  endgenerate
+  end
 
 
 endmodule

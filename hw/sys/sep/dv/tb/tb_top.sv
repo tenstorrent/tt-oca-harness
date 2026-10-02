@@ -2677,6 +2677,7 @@ module sep_uvm_top
         .lsu_ar_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.addr),
         .lsu_ar_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar_valid),
         .lsu_ar_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready),
+        .lsu_ar_size_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.size),
         .lsu_r_data_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.data),
         .lsu_r_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.resp),
         .lsu_r_last_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.last),
@@ -2700,9 +2701,14 @@ module sep_uvm_top
         .hmac_gated_rst_n_i    (hmac_gated_rst_n_probe_o),
         .hmac_host_isolated_i  (hmac_host_isolated_probe_o),
         .hmac_km_isolated_i    (hmac_km_isolated_probe_o),
+        .hmac_host_isolate_req_i (hmac_host_isolate_req_probe_o),
         .abr_gated_rst_n_i     (abr_gated_rst_n_probe_o),
         .abr_host_isolated_i   (abr_host_isolated_probe_o),
         .abr_km_isolated_i     (abr_km_isolated_probe_o),
+        .abr_host_isolate_req_i  (abr_host_isolate_req_probe_o),
+        // sep.sv wires the WDT bark to the CPU NMI input; read-only, like the
+        // LSU request bus above.
+        .wdt_bark_irq_i        (`SEP_CORE.intr_wdog_timer_bark),
 
         .cpu_trace_valid_i     (cpu_trace_valid_o),
         .cpu_trace_addr_i      (cpu_trace_addr_o),
@@ -2740,8 +2746,10 @@ module sep_uvm_top
         .demote_1_i            (lcc_demote_state_1_probe_o),
         .demote_2_i            (lcc_demote_state_2_probe_o),
         .cpu_reset_n_i         (sep_cpu_reset_n_o),
+        .sep_reset_n_i         (dbg_sep_reset_n_o),
         .spi_cs_n_i            (spi_cs_n_o),
         .spi_sck_i             (spi_sck_o),
+        .spi_mosi_i            (spi_mosi_o),
         // Values SEP receives, after the pin-or-TDR mux.
         .jtag_sep_reset_n_ovrd_i (jtag_sep_reset_ctrl_drive.ovrd.sep_reset_n_ovrd),
         .jtag_sep_reset_n_val_i  (jtag_sep_reset_ctrl_drive.val.sep_reset_n_val)
