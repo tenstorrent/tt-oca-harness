@@ -13,8 +13,9 @@ firmware, no flash BFM) -- this is the host CONTROL plane, DISTINCT from SPI fla
 (flash command datapath) and `sep_spi_ot_dma_rx_test` (flash READ + DMA).
 
 Randomization (SINGLE source of randomness): SepSpiHostCfg seeds
-legal field values for the register R/W walk + the watermark threshold from the
-runner seed. The golden is the documented reset values + RW/W1C/RO field semantics
+legal field values for the register R/W walk + two watermark thresholds from the
+runner seed, one from 2-4 and one from 5-8, in seeded order, each with its own
+fill depth. CHK-WATERMARK grades both on every seed. The golden is the documented reset values + RW/W1C/RO field semantics
 (seq_lib/sep_spi_host_csr_seq.py, taken from the generated spi_controller reg
 block, which reggen derives from upstream spi_host.hjson).
 
@@ -38,7 +39,8 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   with no bytes enabled, which neither this AXI master nor the
                   wrapper's bridge can present to the core.
   CHK-WATERMARK : STATUS.TXWM moves as the TX FIFO occupancy crosses TX_WATERMARK
-                  (occupancy proven by STATUS.TXQD).
+                  (occupancy proven by STATUS.TXQD), for one threshold from
+                  each half of the draw range.
   CHK-ENABLE    : SPIEN=0 holds a queued TX command off (FIFO not drained);
                   SPIEN=1 lets it execute (FIFO drains).
   CHK-NONVAC    : every walked reg reads back different from its observed pre-write
@@ -123,6 +125,17 @@ _SPI_AGG = agg_from_pic("SPI IRQ")
 class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     """Walk the OT SPI host control plane (CSR/IRQ/error/watermark/enable)."""
 
+    required_evidence = (
+        "CHK-RESET",
+        "CHK-REG-RW",
+        "CHK-NONVAC",
+        "CHK-ZERO-STRB",
+        "CHK-INTR",
+        "CHK-ERR-W1C",
+        "CHK-WATERMARK",
+        "CHK-ENABLE",
+    )
+
     async def run_scenario(self) -> None:
         self.scfg = SepSpiHostCfg(self.random_seed())
         self.spi = SepSpiHost(self)
@@ -135,7 +148,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._chk_zero_strb()
         await self._chk_intr()
         await self._chk_err_w1c()
-        await self._chk_watermark()
+        for half, wm, fill in self.scfg.tx_wm_reps:
+            await self._chk_watermark(half, wm, fill)
         await self._chk_enable()
         self.logger.info("SPI host CSR/IRQ breadth ALL CHECKS PASS")
 
@@ -439,10 +453,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
 
     # ---- CHK-WATERMARK ----------------------------------------------------
-    async def _chk_watermark(self) -> None:
+    async def _chk_watermark(self, half: str, wm: int, fill: int) -> None:
         await self._sw_rst_pulse()
         # Program TX_WATERMARK; keep core disabled so the FIFO does not drain.
-        ctrl = CTRL_RESET | (self.scfg.tx_watermark << CTRL_TX_WM_LSB)
+        ctrl = CTRL_RESET | (wm << CTRL_TX_WM_LSB)
         await self.spi.wr(CONTROL, ctrl)
         st_empty = await self.spi.rd(STATUS)
         assert (st_empty & ST_TXQD) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
@@ -453,37 +467,47 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         assert st_empty & ST_TXWM, (
             f"CHK-WATERMARK STATUS.TXWM clear while TXQD=0 < wm (0x{st_empty:08x})"
         )
-        wm = self.scfg.tx_watermark
         for _ in range(wm - 1):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_below = await self.spi.rd(STATUS)
+        assert (st_below & ST_TXQD) == wm - 1, (
+            f"CHK-WATERMARK TXQD={st_below & ST_TXQD} != {wm - 1} below wm={wm} (0x{st_below:08x})"
+        )
         assert st_below & ST_TXWM, (
             f"CHK-WATERMARK STATUS.TXWM clear at TXQD={st_below & ST_TXQD} < wm={wm} "
             f"(0x{st_below:08x})"
         )
         await self.spi.wr(TXDATA, 0xA5A5_A5A5)  # the word that reaches the threshold
         st_at = await self.spi.rd(STATUS)
+        assert (st_at & ST_TXQD) == wm, (
+            f"CHK-WATERMARK TXQD={st_at & ST_TXQD} != {wm} at wm={wm} (0x{st_at:08x})"
+        )
         assert not (st_at & ST_TXWM), (
             f"CHK-WATERMARK STATUS.TXWM still set at TXQD={st_at & ST_TXQD} == wm={wm} "
             f"(0x{st_at:08x})"
         )
-        extra = self.scfg.tx_fill_words - wm
+        extra = fill - wm
         for _ in range(extra):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_full = await self.spi.rd(STATUS)
         txqd = st_full & ST_TXQD
-        assert txqd == self.scfg.tx_fill_words, (
-            f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {self.scfg.tx_fill_words}"
-        )
+        assert txqd == fill, f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {fill} (wm={wm})"
         assert not (st_full & ST_TXWM), (
             f"CHK-WATERMARK STATUS.TXWM set after filling past wm={wm} (0x{st_full:08x})"
         )
         self.logger.info(
-            "CHK-WATERMARK PASS: TXWM 1->0 at exact wm=%d (TXQD %d->%d->%d, tx_wm = qd < wm)",
+            "CHK-WATERMARK PASS: %s half wm=%d, observed TXQD/TXWM %d/%d -> %d/%d -> %d/%d "
+            "-> %d/%d (tx_wm = qd < wm)",
+            half,
             wm,
-            wm - 1,
-            wm,
+            st_empty & ST_TXQD,
+            int(bool(st_empty & ST_TXWM)),
+            st_below & ST_TXQD,
+            int(bool(st_below & ST_TXWM)),
+            st_at & ST_TXQD,
+            int(bool(st_at & ST_TXWM)),
             txqd,
+            int(bool(st_full & ST_TXWM)),
         )
         await self._sw_rst_pulse()
 

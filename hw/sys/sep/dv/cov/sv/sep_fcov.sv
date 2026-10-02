@@ -2370,7 +2370,7 @@ module sep_fcov (
   // its seed, so a single regression can leave a cell empty. The names end
   // in _rand_cg so the report separates them from the deterministic groups.
   // ------------------------------------------------------------------
-  // CONTROL.TX_WATERMARK, drawn from 2..8 by sep_spi_host_csr_seq.
+  // CONTROL.TX_WATERMARK. SepSpiHostCfg draws one value per bin on every seed.
   covergroup sep_spi_host_rand_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_spi_host_rand_cg";

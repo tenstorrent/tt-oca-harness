@@ -1023,14 +1023,14 @@ fills it. Their names end in `_rand_cg`, so the report separates them from the
 deterministic groups. A deterministic group must be full in one VCS `all
 --cov`; a `_rand_cg` group is graded on a merge of regressions. Each
 group has two bins, so one regression (three seeds of the owner) leaves a bin
-empty with a probability of about 4 %. `sep_mbox_rand_cg` is the exception:
-its owner programs one threshold from each bin on every seed, so one run fills
-both.
+empty with a probability of about 4 %. `sep_mbox_rand_cg` and
+`sep_spi_host_rand_cg` are the exceptions: each owner programs one value from
+each bin on every seed, so one run fills both.
 
 [cols="1,1,2",options="header"]
 |===
 |Covergroup |Owner |Coverpoint and bins
-|`sep_spi_host_rand_cg` |`sep_spi_ot_host_csr_irq_rand_test` |`cp_tx_wm`: `CONTROL.TX_WATERMARK` as written, `low` 2-4 and `high` 5-8 (`sep_spi_host_csr_seq` draws 2-8). `sep_spi_ot_dma_tx_test` writes a fixed watermark in `low`
+|`sep_spi_host_rand_cg` |`sep_spi_ot_host_csr_irq_rand_test` |`cp_tx_wm`: `CONTROL.TX_WATERMARK` as written, `low` 2-4 and `high` 5-8. `SepSpiHostCfg` draws one watermark from each half on every seed, so one run fills both bins. `sep_spi_ot_dma_tx_test` writes a fixed watermark in `low`
 |`sep_mbox_rand_cg` |`sep_axil_mailbox_iface_rand_test` |`cp_wirqt`: a `WIRQT` value, scored at the next `WRITE_DATA` push to the same mailbox, `low` 1-3 and `high` 4-7. `SepMboxCfg.per_half` draws one threshold from each half on every seed, so one run fills both bins. A register walk that writes `WIRQT` and never pushes after it does not score
 |`sep_dma_rand_cg` |`sep_dma_basic_test` |`cp_len`: `TOTAL_DATA_SIZE`, scored at the COPY `CONTROL.GO` that uses it, 16 and 32 (the copy length the test draws). A register walk writes the size but never issues GO. `sep_spi_ot_dma_tx_test` also copies 32 bytes
 |===
@@ -1048,7 +1048,7 @@ count values, not behaviour.
 |`sep_km_command_set_rand_test` |Extra transfer destination |`sep_km_command_sideload_cg.cp_dest`
 |`sep_km_command_set_rand_test` |Generated key size 8 or 12 words |None yet: it is a payload word of the generate command, and the frame tracker does not decode command payload fields. Planned with `sep_km_command_cg` (Phase 2)
 |`sep_km_command_set_rand_test` |Refused destination, two undefined command IDs |None: refusals are error paths (Phase 2 `sep_km_cmd_reject_cg`)
-|`sep_spi_ot_host_csr_irq_rand_test` |TX watermark 2-8 |`sep_spi_host_rand_cg.cp_tx_wm`
+|`sep_spi_ot_host_csr_irq_rand_test` |One TX watermark in 2-4 and one in 5-8, their order, fill depths |`sep_spi_host_rand_cg.cp_tx_wm`, both bins on every seed; the fill depth only has to pass the watermark, which the checker grades
 |`sep_axil_mailbox_iface_rand_test` |One WIRQT in 1-3 and one in 4-7, their order, first fill lengths |`sep_mbox_rand_cg.cp_wirqt`, both bins on every seed; the fill length only has to cross WIRQT, which the checker grades
 |`sep_dma_basic_test` |Copy length 16 or 32 |`sep_dma_rand_cg.cp_len`
 |`sep_esrc_ht_watermark_arming_test` |Unsupported selector 5-15 |`sep_esrc_edn_flow_cg.cp_ht_sel.unsupported` records that one was written. One draw per regression, so a bin per value would stay mostly empty

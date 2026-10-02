@@ -4632,7 +4632,7 @@ feature-scorecard hole.
 . Drive a 64-bit CONTROL write that enables only four payload bytes, so the neighbour STATUS half arrives with no strobe.
 . Drive each interrupt source: Event latch and Status force first with the enable clear, then raise `INTR_ENABLE` and sample aggregator bit 13.
 . Induce each of the five claimed error conditions in turn and write-one-to-clear it.
-. Fill the transmit FIFO across the programmed watermark.
+. For one transmit watermark from 2-4 and one from 5-8, in seeded order, fill the transmit FIFO across the programmed watermark.
 . Measure the enabled command drain, then hold the same command off with the core disabled for a multiple of that measurement.
 
 *Checkers*:
@@ -4651,7 +4651,7 @@ feature-scorecard hole.
 |CHK-ERR-W1C
 |Five error conditions (UNDERFLOW, CMDINVAL, CSIDINVAL, OVERFLOW, CMDBUSY) are each induced by their own trigger, observed set, and cleared by write-one-to-clear, with a clean precondition asserted first. Each trigger must set its OWN bit and no other: the clean precondition makes exclusivity checkable, and without it a device that raised every error bit on any stimulus would satisfy all five legs. The OVERFLOW and CMDBUSY triggers find the boundary from the DUT's own `STATUS.TXFULL` / `STATUS.READY` report and then write one beat past it, so no FIFO depth is imported as a golden. The sixth bit the register block defines, ACCESSINVAL, is *not claimed*: its documented trigger is a TXDATA write with no bytes enabled, which neither this AXI master nor the wrapper's zero-strobe ack presents to the core.
 |CHK-WATERMARK
-|`STATUS.TXWM` follows the documented polarity (upstream `spi_host` `STATUS.TXWM`: set while TXQD is below `CONTROL.TX_WATERMARK`): set while empty and at occupancy `wm-1`, clear at the exact watermark and after filling past it.
+|`STATUS.TXWM` follows the documented polarity (upstream `spi_host` `STATUS.TXWM`: set while TXQD is below `CONTROL.TX_WATERMARK`): set while empty and at occupancy `wm-1`, clear at the exact watermark and after filling past it, with `TXQD` read at each step. Graded for one watermark from each half of the 2-8 draw range on every seed.
 |CHK-ENABLE
 |Clearing the enable holds the queued command off; setting it drains the transmit FIFO. The negative window is not a constant: the test first measures how many polls the same one-word command takes to drain with the core ENABLED, then requires the disabled command to survive a fixed multiple of that measurement, with `TXQD` still 1 and `TXEMPTY` clear at the end of it. A device that ignored the enable but merely executed slowly would pass a hand-picked window; it cannot pass a calibrated one.
 |CHK-ZERO-STRB
