@@ -75,6 +75,10 @@ parameters of a bridge set its bus type, address width and data width. Its read
 and write pipeline-depth parameters set how many transactions it queues, where
 0 allows a single outstanding transaction. The table lists the DTP defaults.
 Each bridge reports its configuration in its `*_JTAG2AXI_CAPS` register.
+Every output of a bridge's manager port depends only on the bridge's
+internal state, so no combinational path runs from the port's inputs to its
+outputs. A bridge accepts a response from the cycle after its request
+handshake completes.
 
 [[dtp-jtag2axi-bridges-table]]
 [cols="<11%,<15%,<11%,<12%,<24%,<27%",options="header"]
