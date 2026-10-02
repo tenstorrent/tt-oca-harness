@@ -30,7 +30,8 @@ writes, and each class below states that fact and what would retire it:
   through untouched.
 * RTL-CONSTANT, UNION-ALIAS, SEP-OWNED: the facts
   `smu_wrapper_toggle_exclusions.el` states for the wrapper's ports, where
-  the same nets recur as ports of `smu`.
+  the same nets recur as ports of `smu`. RTL-CONSTANT also takes the SEP SPI
+  pad fields `sep_io_pkg::ot_spi_pad_map` assigns a constant.
 * LC-SIGINT-ENCODED: the lifecycle integrity error, which the SEP eFuse shadow
   registers make unreachable by re-encoding the word they export; its
   condition rows in `smu.sv` go with it.
@@ -325,6 +326,35 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "the SPI enable becoming programmable",
         None,
         None,
+    ),
+    (
+        "RTL-CONSTANT",
+        re.compile(
+            r"^(sep_spi_|gen_sep\.sep_spi_pads\.)"
+            r"(enable|dqs_ie_n|dqs_oe_n|mem_rebar_oepad|mem_rebar_opad|mem_rebar_iepad)$"
+        ),
+        "the SEP SPI pad fields sep_io_pkg::ot_spi_pad_map (sep_io_pkg.sv 79-96) "
+        "assigns a constant: enable 1, txd[7:4] 0, dqs_oe_n and dqs_ie_n 1, dq_oe_n[7:4] "
+        "and dq_ie_n[7:4] 1, and the three mem_rebar pads 0. smu.sv (1192-1208) "
+        "computes sep_spi_pads from that function and assigns each field to its "
+        "sep_spi_* net; -cm_noconst does not see through the function call, so the "
+        "nets stay in the toggle population.",
+        "ot_spi_pad_map driving one of these fields from a register or a port",
+        ("smu",),
+        None,
+    ),
+    (
+        "RTL-CONSTANT",
+        re.compile(r"^(sep_spi_|gen_sep\.sep_spi_pads\.)(txd|dq_ie_n|dq_oe_n)$"),
+        "the SEP SPI pad fields sep_io_pkg::ot_spi_pad_map (sep_io_pkg.sv 79-96) "
+        "assigns a constant: enable 1, txd[7:4] 0, dqs_oe_n and dqs_ie_n 1, dq_oe_n[7:4] "
+        "and dq_ie_n[7:4] 1, and the three mem_rebar pads 0. smu.sv (1192-1208) "
+        "computes sep_spi_pads from that function and assigns each field to its "
+        "sep_spi_* net; -cm_noconst does not see through the function call, so the "
+        "nets stay in the toggle population.",
+        "ot_spi_pad_map driving one of these fields from a register or a port",
+        ("smu",),
+        ((4, 7),),
     ),
     (
         "UNION-ALIAS",
