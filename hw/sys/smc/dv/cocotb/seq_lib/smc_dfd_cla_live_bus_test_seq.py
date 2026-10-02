@@ -56,7 +56,8 @@ The actions are then driven with an activating pair:
   enable;
 * the action field is swept again with the lowest bit of
   ``DEBUG_CTRL.xtrig_clk_halt_mask`` set, which its description makes the
-  enable for that position, and the mask is then cleared;
+  enable for every cross-trigger lane and the halt-clock request, and the
+  mask is then cleared;
 * the pair's two custom-action enables are each set on its own;
 * ``CDbgClaTimestampConfig.Resync`` is set with no cross trigger arriving.
 
@@ -104,8 +105,8 @@ _MATCH0_EVENT = 0x2
 _MATCH1_EVENT = 0x4
 # Bus switches under each relation value of the match-event pair.
 _LOGIC_SWITCHES = 4
-# dfx_ctrl_status.rdl DEBUG_CTRL.xtrig_clk_halt_mask: a set bit enables the
-# halt for that position; the lowest position.
+# dfx_ctrl_status.rdl DEBUG_CTRL.xtrig_clk_halt_mask: bit 0 enables every
+# cross-trigger lane and the halt-clock request; the other bits have no effect.
 _HALT_MASK_LOWEST = 0x1
 _LOW_BYTE = 0xFF
 _WORD = (1 << 64) - 1

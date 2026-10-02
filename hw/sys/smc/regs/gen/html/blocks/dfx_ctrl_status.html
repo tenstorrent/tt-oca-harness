@@ -7,7 +7,7 @@
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2 id="regmap-dfx_ctrl_status">DFX Control and Status Address Map</h2>
-<p>Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.</p>
+<p>Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -34,14 +34,14 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>30:23</td><td>debug_marker</td><td>RW</td><td>0x0</td><td>Debug marker</td></tr>
-<tr><td>22:7</td><td>xtrig_clk_halt_mask</td><td>RW</td><td>0x0</td><td>Mask==0 (default) -&gt; disabled; Mask==1 -&gt; enabled</td></tr>
-<tr><td>6</td><td>dtb_ew_en</td><td>RW</td><td>0x0</td><td>DTB E/W enable</td></tr>
-<tr><td>5</td><td>dtb_ns_en</td><td>RW</td><td>0x0</td><td>DTB NS enable</td></tr>
-<tr><td>4</td><td>force_clk_en</td><td>RW</td><td>0x0</td><td>Force clk en</td></tr>
-<tr><td>3</td><td>cg_en</td><td>RW</td><td>0x0</td><td>Clock gating en</td></tr>
-<tr><td>2</td><td>gpio_en</td><td>RW</td><td>0x0</td><td>GPIO en</td></tr>
-<tr><td>1:0</td><td>chiplet_enable</td><td>RW</td><td>0x0</td><td>Chiplet Enable Used for Triggering</td></tr>
+<tr><td>30:23</td><td>debug_marker</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC;<br>the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).</td></tr>
+<tr><td>22:7</td><td>xtrig_clk_halt_mask</td><td>RW</td><td>0x0</td><td>CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every<br>CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds<br>them all inactive. Bits 15:1 hold the written value for software to read back<br>and have no effect.</td></tr>
+<tr><td>6</td><td>dtb_ew_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>5</td><td>dtb_ns_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>4</td><td>force_clk_en</td><td>RW</td><td>0x0</td><td>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the<br>value of cg_en.</td></tr>
+<tr><td>3</td><td>cg_en</td><td>RW</td><td>0x0</td><td>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless<br>force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in<br>reset.</td></tr>
+<tr><td>2</td><td>gpio_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>1:0</td><td>chiplet_enable</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
 </table>
 <h3 id="DEBUG_BUS_MUX">DEBUG_BUS_MUX</h3>
 <table>

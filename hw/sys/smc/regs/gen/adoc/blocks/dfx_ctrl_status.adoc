@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-dfx_ctrl_status]
 == DFX Control and Status Address Map
 
-Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.
+Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -47,14 +47,21 @@ This register is sticky 1 and will hold the value until reset
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `Reserved` | - | - a| Reserved
-| 30:23 | `debug_marker` | RW | 0x0 a| Debug marker
-| 22:7 | `xtrig_clk_halt_mask` | RW | 0x0 a| Mask==0 (default) -> disabled; Mask==1 -> enabled
-| 6 | `dtb_ew_en` | RW | 0x0 a| DTB E/W enable
-| 5 | `dtb_ns_en` | RW | 0x0 a| DTB NS enable
-| 4 | `force_clk_en` | RW | 0x0 a| Force clk en
-| 3 | `cg_en` | RW | 0x0 a| Clock gating en
-| 2 | `gpio_en` | RW | 0x0 a| GPIO en
-| 1:0 | `chiplet_enable` | RW | 0x0 a| Chiplet Enable Used for Triggering
+| 30:23 | `debug_marker` | RW | 0x0 a| Holds the written value for software to read back. It has no effect in the SMC;
+the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).
+| 22:7 | `xtrig_clk_halt_mask` | RW | 0x0 a| CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every
+CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds
+them all inactive. Bits 15:1 hold the written value for software to read back
+and have no effect.
+| 6 | `dtb_ew_en` | RW | 0x0 a| Holds the written value for software to read back. It has no effect in the SMC.
+| 5 | `dtb_ns_en` | RW | 0x0 a| Holds the written value for software to read back. It has no effect in the SMC.
+| 4 | `force_clk_en` | RW | 0x0 a| Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+value of cg_en.
+| 3 | `cg_en` | RW | 0x0 a| DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+reset.
+| 2 | `gpio_en` | RW | 0x0 a| Holds the written value for software to read back. It has no effect in the SMC.
+| 1:0 | `chiplet_enable` | RW | 0x0 a| Holds the written value for software to read back. It has no effect in the SMC.
 |===
 
 [#reg-{regmap-instance}-dfx_ctrl_status-DEBUG_BUS_MUX]
