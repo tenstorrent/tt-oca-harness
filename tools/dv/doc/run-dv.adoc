@@ -3220,7 +3220,7 @@ SEP, and SMU do not fit a hosted job.
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
 smoke matrix, so PR cost stays bounded by the smoke group. Every hosted row
-runs on `ubuntu-latest`. The container build defaults to
+runs on `ubuntu-latest`. The container jobs default to
 `ubuntu-latest-16-cores`; `LARGE_RUNNER` overrides that label and is not
 read here.
 

@@ -57,8 +57,9 @@ jobs:
   # content-hash tag. skopeo streams the nix-built archive straight to the
   # registry: no `docker load`, so nothing unpacks the multi-GB image onto the
   # runner's small root volume. This keeps the heavy build off the daemon.
-  # The job defaults to the 16-core runner. LARGE_RUNNER overrides that label
-  # and is read only here; sim.yml and regress.yml stay on ubuntu-latest.
+  # Both container jobs default to the 16-core runner. LARGE_RUNNER overrides
+  # that label and is read only here; sim.yml and regress.yml stay on
+  # ubuntu-latest.
   build-and-publish:
     name: Build and publish Nix image
     # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
@@ -188,7 +189,7 @@ jobs:
     # something they cannot fix; main republishes the image on merge.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     needs: build-and-publish
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LARGE_RUNNER || 'ubuntu-latest-16-cores' }}
     timeout-minutes: 60
     steps:
       - name: Checkout

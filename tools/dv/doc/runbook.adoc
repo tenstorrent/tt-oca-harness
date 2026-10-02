@@ -71,7 +71,7 @@ serialized and never cancel one another.
 === Capacity
 
 Every row runs on the GitHub-hosted `ubuntu-latest` image. The container
-build defaults to `ubuntu-latest-16-cores`; `LARGE_RUNNER` overrides that
+jobs default to `ubuntu-latest-16-cores`; `LARGE_RUNNER` overrides that
 label and is not read by these rows. Each row's duration is on its job in the Actions
 run; a row that approaches the cap is a pull request that names a smaller
 group. The coverage-instrumented
@@ -289,9 +289,9 @@ workflow owners: revert the publication commit, which touches `latest/`,
 directories are untouched. Never force-push the
 branch; the other publishers rebase onto it.
 
-=== A container build queues and never starts
+=== A container job queues and never starts
 
-The container build defaults to `ubuntu-latest-16-cores`. `LARGE_RUNNER`
+The container jobs default to `ubuntu-latest-16-cores`. `LARGE_RUNNER`
 overrides that label, and a name the organization has no runner for queues
 until GitHub gives it up, since the job's `timeout-minutes` budget applies
 only once a runner has started the job. Clear the variable to return to the
@@ -486,9 +486,9 @@ publishes, which is the recovery for a dispatched or missed weekly.
   `result.json` is the only record of the release that ran.
 * The `sep` rows depend on a repository secret for a private submodule; a
   public fork cannot run them.
-* Hosted DV rows run on `ubuntu-latest`. The container build defaults to
+* Hosted DV rows run on `ubuntu-latest`. The container jobs default to
   `ubuntu-latest-16-cores`. `LARGE_RUNNER` overrides that label; a wrong
-  label stalls that job until GitHub gives it up.
+  label stalls those jobs until GitHub gives them up.
 * Hosted CI runs Verilator only, collects no coverage, and runs no formal
   job (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
 * The branch keeps 90 history points and 90 archives per series and no
