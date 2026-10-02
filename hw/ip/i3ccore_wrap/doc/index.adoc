@@ -69,10 +69,12 @@ memory ports pass straight through to per-instance vectors on the
 left unconnected, `peripheral_reset_done_i` is tied low, and the interrupts
 reach peripheral interrupts 12 to 17.
 
-The register map below reproduces the upstream SystemRDL descriptions, which
-follow the MIPI I3C HCI specification. The fields listed here behave differently
-in this core, so for them the specified description is not a description of this
-implementation.
+The register map below reproduces the descriptions carried in the upstream
+SystemRDL. For the extended capabilities under `I3C_EC` those descriptions are
+the adopter's own, since the behavior is left to the implementer rather than
+specified; a mismatch there is an upstream documentation choice, not a
+departure from MIPI I3C HCI. The fields listed here do something other than
+what their description says.
 
 These are writable and read back the value written, but reach no logic:
 
