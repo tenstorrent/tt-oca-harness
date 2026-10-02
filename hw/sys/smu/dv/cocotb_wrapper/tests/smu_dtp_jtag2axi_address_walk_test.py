@@ -67,9 +67,8 @@ from smu_base_test import smu_base_test
 
 SCRATCH = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
 EXT_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
-EXT_SIZE = smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE")
-# Smallest power of two covering the window; masking with it gives the window offset.
-EXT_SPAN = 1 << (EXT_SIZE - 1).bit_length()
+# The window spans its whole slot in smc_top, up to ecam_region.
+EXT_SIZE = smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") - EXT_BASE
 DTP_BASE = smc_addr("SMC_TOP_DTP_CTRL_REG_BASE_ADDR")
 DTP_SIZE = smc_addr("SMC_TOP_DTP_CTRL_REG_SIZE")
 SEP_APERTURE_ADDR = 0x1000
@@ -230,7 +229,7 @@ class smu_dtp_jtag2axi_address_walk_test(smu_base_test):
             s2.append(await self._fab(jtag, True, addr, size=size, wstrb=wstrb))
             s2.append(await self._fab(jtag, False, addr, size=size))
             issued += [("w", bit), ("r", bit)]
-        arrived = [(ch, a & (EXT_SPAN - 1)) for ch, a in window]
+        arrived = [(ch, a & (EXT_SIZE - 1)) for ch, a in window]
         for tap in taps:
             tap.stop()
         self.logger.info(f"CHK-J2A-WALK-EXTERNAL arrived={arrived}")

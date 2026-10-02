@@ -143,8 +143,7 @@ module smc_local_xbar
                     + smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE)},
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_ECAM_REGION_BASE_ADDR)},
     '{idx: 4,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR

@@ -145,8 +145,7 @@ module smc_periph_axi_lite_xbar
     '{idx: 11,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
                     + EFUSE_SHIM_SIZE),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE)}
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_ECAM_REGION_BASE_ADDR)}
   };
 
   // ===========================================================================
