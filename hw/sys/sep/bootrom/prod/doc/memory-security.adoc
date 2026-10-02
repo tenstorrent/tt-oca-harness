@@ -107,8 +107,9 @@ KBKDF-HMAC-SHA256 and decrypt the payload in place with AES-CBC. Temporary key,
 salt, and derivation buffers are explicitly cleared.
 
 After decryption, the ROM validates the TOC and every image extent, requires a
-usable SEP BL1 entry, verifies each image SHA-256, and clears bytes in gaps
-between described images and after the final image.
+usable SEP BL1 entry, and verifies each image SHA-256. It does not clear the
+bytes in gaps between described images or after the final image; `rom.adoc`
+lists payload gap zeroing as an open gap.
 
 === Secret locking, demotion, and measurement
 
