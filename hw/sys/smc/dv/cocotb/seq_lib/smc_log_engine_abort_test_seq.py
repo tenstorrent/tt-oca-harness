@@ -3,10 +3,11 @@
 """A log-engine transfer halted part-way by clearing the engine enable.
 
 `smc_log_engine_transfer_test` runs transfers to completion. `log_engine.rdl`
-gives `CTRL.EN` the other half of the contract: "When set, enables the Log
-Engine. When unset, disables the Log Engine and resets all FSMs, flops, and
-FIFOs." So clearing it in the middle of a transfer has to stop the engine
-where it stands, and no leaf has asked it to.
+gives `CTRL.EN` the other half of the contract: "When cleared, the engine stops
+fetching and writing, discards buffered log data and resets transfer progress.
+Configuration and pending LOG_LEN values are retained." So clearing it in the
+middle of a transfer has to stop the engine where it stands, and no leaf has
+asked it to.
 
 Each wrapper gets one log filling its whole slot. The slot is deliberately
 large: `log_engine.rdl` sizes it as the region size over the sixteen LOG_CTRL
@@ -358,8 +359,7 @@ class smc_log_engine_abort_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-LOG-ENGINE-ABORT-LENGTH-KEPT: on %d wrapper(s) LOG_CTRL still read the "
             "%d bytes it was given while the engine was disabled, which is the RDL's "
-            "'disables the Log Engine and resets all FSMs, flops, and FIFOs' with the "
-            "registers preserved",
+            "'pending LOG_LEN values are retained'",
             self.aborts,
             _ABORT_BYTES,
         )
