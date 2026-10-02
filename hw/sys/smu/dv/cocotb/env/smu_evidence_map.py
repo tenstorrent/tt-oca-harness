@@ -427,9 +427,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "an 8-bit tail returns four SIB bits of 0, the masked lockup "
             "bit, the IDCODE and the tail 37 bits late, tb_stap_io_tdo "
             "carries the IDCODE LSB first then the tail on all 45 Shift-DR "
-            "TCKs, the enable covers exactly the 6 + 45 shift TCKs, host "
-            "TMS matches the primary TAP on every TCK, and the extra STAP "
-            "stays quiet",
+            "TCKs, the enable is high on every Shift-IR and Shift-DR TCK "
+            "and low on every other TCK, read against the PTAP state, and "
+            "covers exactly the 6 + 45 shift TCKs, host TMS matches the "
+            "primary TAP on every TCK, and the extra STAP stays quiet",
         ),
         (
             "CHK-SMU-STAP-EXTRA-SELECT",
@@ -442,8 +443,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "returns four SIB bits of 0, the IDCODE and the tail 36 bits "
             "late, tb_stap_extra0_tdo carries three SIB captures, the "
             "IDCODE LSB first and the tail on all 44 Shift-DR TCKs, the "
-            "enable covers exactly the 6 + 44 shift TCKs, host TMS matches "
-            "the primary TAP on every TCK, and the I/O STAP stays quiet",
+            "enable is high on every Shift-IR and Shift-DR TCK and low on "
+            "every other TCK, read against the PTAP state, and covers "
+            "exactly the 6 + 44 shift TCKs, host TMS matches the primary "
+            "TAP on every TCK, and the I/O STAP stays quiet",
         ),
     ],
     "smu_dtp_bsr_ijtag_scan_test": [

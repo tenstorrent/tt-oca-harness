@@ -143,7 +143,7 @@ DR_LEN = 12
 
 IDCODE_DR_WIDTH = 32
 STAP_OBSERVE_CYCLES = 2000
-SHIFT_DR = 0x0010  # jtag_tap_pkg::tap_state_e SHIFT_DR
+SHIFT_STATES = (int(OcahJtagState.SHIFT_IR), int(OcahJtagState.SHIFT_DR))
 
 # The STAP 3DCR TMS-Hold reset value (jtag_stap architecture page, "3DCR
 # Register"): the host TMS of an unselected STAP after Test-Logic-Reset.
@@ -268,7 +268,7 @@ class smu_dtp_scan_chain_boundary_seq:
                     for name in self.rise_pins:
                         self.samples[name].append(self._bit(name))
                 shift_pending = False
-            elif tck == 0 and prev_tck == 1 and self._state() == SHIFT_DR:
+            elif tck == 0 and prev_tck == 1 and self._state() == OcahJtagState.SHIFT_DR:
                 shift_pending = True
                 for name in self.fall_pins:
                     self.samples[name].append(self._bit(name))
@@ -586,6 +586,13 @@ class smu_dtp_scan_chain_boundary_seq:
             evidence=checker,
         )
         self.sb.expect_eq(
+            f"the selected {who} STAP's TDO enable is high on every Shift-IR and Shift-DR "
+            f"TCK and low on every other TCK of the window ({live['tck_n']} TCKs)",
+            live["oen_state_mismatch"],
+            0,
+            evidence=checker,
+        )
+        self.sb.expect_eq(
             f"the selected {who} STAP host TMS follows the primary TAP on every TCK",
             live["tms_mismatch"],
             0,
@@ -634,7 +641,7 @@ class smu_dtp_scan_chain_boundary_seq:
         """
         pins = (STAP_OEN_PIN["io"], STAP_OEN_PIN["extra0"])
         watcher = cocotb.start_soon(
-            self._watch_stap(2 * STAP_OBSERVE_CYCLES, pins, STAP_TMS_PIN[name])
+            self._watch_stap(2 * STAP_OBSERVE_CYCLES, pins, STAP_TMS_PIN[name], STAP_OEN_PIN[name])
         )
         await self.jtag.shift_ir(DTP_IR_IDCODE)
         captured = await self._checked_shift_dr(
@@ -646,11 +653,19 @@ class smu_dtp_scan_chain_boundary_seq:
         pad = list(self.samples[STAP_TDO_PIN[name]])
         return await watcher, captured, pad
 
-    async def _watch_stap(self, cycles: int, pins: tuple[str, ...], tms_pin: str) -> dict[str, int]:
+    async def _watch_stap(
+        self, cycles: int, pins: tuple[str, ...], tms_pin: str, oen_pin: str
+    ) -> dict[str, int]:
+        """Per-pin high counts on each TCK, host TMS against the PTAP's, and the
+        TCKs on which ``oen_pin`` disagrees with the PTAP being in Shift-IR or
+        Shift-DR. That pair is read after each falling edge: IEEE 1149.1
+        (Section 4.5.1) changes TDO and its enable on the falling edge, and the
+        state the TAP holds until the next rising edge is the one in force."""
         counts = {name: 0 for name in pins}
         counts["tck_n"] = 0
         counts["tms_mismatch"] = 0
         counts["tms_high"] = 0
+        counts["oen_state_mismatch"] = 0
         prev_tck = self._bit("jtag_tck")
         for _ in range(cycles):
             await RisingEdge(self.dut.clk_ref_i)
@@ -663,5 +678,8 @@ class smu_dtp_scan_chain_boundary_seq:
                 counts["tms_high"] += host_tms
                 if host_tms != self._bit("jtag_tms"):
                     counts["tms_mismatch"] += 1
+            elif tck == 0 and prev_tck == 1:
+                if self._bit(oen_pin) != (self._state() in SHIFT_STATES):
+                    counts["oen_state_mismatch"] += 1
             prev_tck = tck
         return counts
