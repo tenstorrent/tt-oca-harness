@@ -20,6 +20,7 @@ from runlib.config import load_test_catalog
 from runlib.duts import resolve_dut
 from runlib.models import ConfigError, Flow, TestCatalog, TestEntry
 from runlib.paths import dut_runs_root, dv_root, repo_path, repo_root
+from runlib.results import ITEM_STAGES
 from runlib.site import load_site_layer
 
 from dashboard.schema import STATUS_FAIL, STATUS_PASS, STATUS_UNKNOWN, make_result, write_json
@@ -220,8 +221,15 @@ def _native_timing(stages: list[dict[str, Any]]) -> dict[str, Any]:
 def _native_failure_buckets(
     result: dict[str, Any], regression: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:
+    """Run-level stage buckets plus the leaves' buckets, each leaf counted once.
+
+    A regression's `failure_buckets` already aggregate its final leaves, with their
+    affected list and examples, so their `result.json` stage entries add nothing.
+    """
     merged: dict[tuple[str, str], dict[str, Any]] = {}
     for stage in result.get("stages", []):
+        if regression and stage.get("item") and stage.get("name") in ITEM_STAGES:
+            continue
         for bucket in stage.get("failure_buckets") or []:
             key = (bucket.get("kind", ""), bucket.get("signature", ""))
             existing = merged.get(key)
@@ -341,7 +349,24 @@ def _guess_junit_from_log(
     if log_path is None:
         return ""
     leaf_dir = log_path.parent.parent if log_path.parent.name == "logs" else log_path.parent
+    # A job log under `stages/<stage>/logs/` sits outside every leaf directory.
+    if leaf_dir.parent.name == "stages":
+        return ""
     return _repo_rel(repo_root, leaf_dir / "results" / "results.xml")
+
+
+def _junit_beside_result(
+    repo_root: Path,
+    run_root: Path,
+    result_json: Any,
+    recorded_run_root: Path | None,
+) -> str:
+    """The attempt directory's `results/results.xml`, when it exists beside the leaf record."""
+    path = _artifact_path(repo_root, run_root, result_json, recorded_run_root)
+    if path is None:
+        return ""
+    xml_path = path.parent / "results" / "results.xml"
+    return _repo_rel(repo_root, xml_path) if xml_path.is_file() else ""
 
 
 def _read_leaf_result(
@@ -393,6 +418,12 @@ def _test_detail_from_record(
         _artifact_text(repo_root, run_root, value, recorded_run_root) for value in junit_values
     ]
     junit_paths = [path for path in junit_paths if path]
+    if not junit_paths:
+        beside = _junit_beside_result(
+            repo_root, run_root, merged.get("result_json"), recorded_run_root
+        )
+        if beside:
+            junit_paths.append(beside)
     if not junit_paths:
         guessed = _guess_junit_from_log(
             repo_root,

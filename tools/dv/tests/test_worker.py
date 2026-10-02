@@ -315,6 +315,7 @@ class WorkerMainTest(ManifestCase):
         self.assertEqual(leaf["status"], "ERROR")
         self.assertTrue(leaf["reason"].startswith("environment_error:"))
         self.assertIn(DIGEST_KEY, leaf["reason"])
+        self.assertEqual([b["kind"] for b in leaf["failure_buckets"]], ["environment_error"])
 
     def test_missing_run_tree_and_missing_manifest(self) -> None:
         task = self.task()
