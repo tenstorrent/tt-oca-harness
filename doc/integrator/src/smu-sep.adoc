@@ -124,12 +124,12 @@ When no external TRNG is connected, terminate `ext_trng_axil` with a DECERR
 slave.
 
 The TRNG path reaches `ext_trng_axil` through an AXI4-to-AXI-Lite conversion
-(64-to-32 downsizer and burst splitter). On that path an errored read returns
-the slave's response verbatim, but an errored write is reported as SLVERR
-regardless of the slave's response. A DECERR slave therefore answers errored
-reads with DECERR and errored writes with SLVERR; both still refuse the access.
-An adopter whose endpoint returns DECERR for an unowned offset sees the same
-asymmetry.
+(64-to-32 downsizer and burst splitter). An errored read returns the slave's
+response verbatim. A single-beat write does too, so a DECERR slave answers
+both an errored read and an errored write with DECERR. A write the splitter
+breaks into more than one beat is reported as SLVERR when an earlier fragment
+erred and the last fragment is OKAY. An adopter whose endpoint returns DECERR
+for an unowned offset sees that code on a single-beat access.
 
 == eFuse and Lifecycle
 

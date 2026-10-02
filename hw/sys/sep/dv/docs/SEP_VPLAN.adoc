@@ -8393,9 +8393,6 @@ constraint is not an open defect.
 |KM CPU bus error visibility
 |The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
 
-|Locked filter entry write response (hardware)
-|`hw/ip/axi_filter/regs/filter_ctrl.rdl` (`FILTER_CONFIG.locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry") say that a write to a locked entry's `FILTER_CONFIG`, `START_ADDR` or `END_ADDR` goes to the AXI error subordinate and completes DECERR. On SEP the write completes SLVERR, on the inbound and the outbound bank, and the word keeps its value. `CHK-WOSET` in `sep_fabric_remap_filter_csr_bank_test` and `CHK-CONFIG-LOCK` in `sep_fabric_inbound_filter_rule_matrix_test` grade DECERR and fail until the RTL or the specification changes. `CHK-CONFIG-LOCK` grades the response code after its 2-beat `allow_burst` read, so that read still runs on the current RTL.
-
 |KM mailbox outbound flush
 |`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.
 

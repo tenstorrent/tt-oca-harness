@@ -6434,7 +6434,7 @@ Drive `smc_gpio_ctrl_full_sweep_test_seq`. Each checker below is a named compare
 *Test Coverage*:
 
 * READ half -- an unprivileged read is refused with DECERR, the code the GPIO programming guide specifies for a blocked transaction, and the error-slave signature 0xBADCAB1E, while the privileged read returns the programmed word.
-* WRITE half -- an unprivileged write of the value that would DISARM the filter is refused, and a privileged read afterwards shows the register unchanged, so the refusal is proven to have taken no effect. The refusal code is asserted as "an error response" rather than an exact code: the GPIO programming guide (`hw/ip/gpio/doc/programming.adoc`, "Filter Configuration") specifies DECERR for a blocked transaction, which the read half requires exactly, while the write half is observed at the SEP_IN AXI port as SLVERR and no document this bench can cite fixes how the SMC fabric forwards a write-channel refusal.
+* WRITE half -- an unprivileged write of the value that would DISARM the filter is refused with DECERR, the code the GPIO programming guide (`hw/ip/gpio/doc/programming.adoc`, "Filter Configuration") specifies for a blocked transaction, and a privileged read afterwards shows the register unchanged.
 * SWEEP -- each of the eight AxPROT requirement values is programmed into GPIO0 in turn and every AxPROT value is driven against it on both halves; only the value equal to the requirement is admitted, every other one is refused, and a readback with the admitted value shows the refused writes left the register unchanged.
 
 *Test Procedure*:

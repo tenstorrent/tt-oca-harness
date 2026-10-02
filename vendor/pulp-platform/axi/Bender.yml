@@ -23,7 +23,8 @@ package:
 # delta is applied as the numbered, atomic patches in patches/ (0001 AXI5-Lite feature, 0002 TT
 # helper modules axi_hidestrb/axi_cdc_clearable/axi_spill_regs, 0003 in-place RTL edits, 0004
 # verif, 0005 axi_err_slv read data 0xBADCAB1EBADCAB1E so a 32-bit read of either half of a
-# 64-bit bus returns the same word). It is a mix of
+# 64-bit bus returns the same word, 0006 the burst splitter keeps a write beat's own error
+# response and reports SLVERR only when an earlier fragment of a split burst erred). It is a mix of
 # in-place edits (axi_pkg/axi_intf/typedef.svh/assign.svh/...) plus TT-authored modules that do
 # not exist upstream (axi5_lite_* family, axi_hidestrb, axi_cdc_clearable, axi_spill_regs, ...).
 # The TT Bender target gating (axi_rtl / axi_simulation) is reproduced from the fork because
