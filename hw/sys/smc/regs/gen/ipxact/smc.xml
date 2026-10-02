@@ -8270,7 +8270,10 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>DEBUG_BUS_MUX</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:description>Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug
+bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,
+and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux
+at a time.</ipxact:description>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -8287,7 +8290,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Dbmid</ipxact:name>
-              <ipxact:description>Unique DBM ID of the DBM instance</ipxact:description>
+              <ipxact:description>ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
+level-3 muxes.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8310,7 +8314,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg0</ipxact:name>
-              <ipxact:description>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</ipxact:description>
+              <ipxact:description>Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8322,7 +8328,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg1</ipxact:name>
-              <ipxact:description>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</ipxact:description>
+              <ipxact:description>Binary input-lane select for output lane 1 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8334,7 +8342,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg2</ipxact:name>
-              <ipxact:description>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</ipxact:description>
+              <ipxact:description>Binary input-lane select for output lane 2 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8346,7 +8356,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg3</ipxact:name>
-              <ipxact:description>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</ipxact:description>
+              <ipxact:description>Binary input-lane select for output lane 3 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
               <ipxact:bitOffset>34</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8358,6 +8370,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg4</ipxact:name>
+              <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitOffset>40</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8369,6 +8383,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg5</ipxact:name>
+              <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitOffset>46</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8380,6 +8396,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg6</ipxact:name>
+              <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8391,6 +8409,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg7</ipxact:name>
+              <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -43862,7 +43882,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask0Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h160</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43880,7 +43900,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch0Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h168</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43898,7 +43918,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask1Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h170</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43916,7 +43936,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch1Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h178</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44432,7 +44452,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>ClaChainLoopDelay</ipxact:name>
-                <ipxact:description>Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal</ipxact:description>
+                <ipxact:description>Self-filter delay, in CLA clock cycles, for the CLA's own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered.</ipxact:description>
                 <ipxact:bitOffset>7</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44493,6 +44513,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgMuxSelLo</ipxact:name>
+              <ipxact:description>Mode, ID, fine-grain time enable and lane selects for the CLA debug-bus mux, which builds the four 16-bit lanes of the CLA's 64-bit debug bus from 16 input segments. The mux ID is 0: the mode is taken while DbmId is 0, and the lane selects while DbmId is 0 and DbmMode is 1.</ipxact:description>
               <ipxact:addressOffset>'h198</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44544,7 +44565,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg0</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</ipxact:description>
+                <ipxact:description>Binary segment select for lane 0 of the CLA debug bus, bits [15:0]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg0; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects the fine-grain time counter, and k from 1 to 13 selects Seg(k+2).</ipxact:description>
                 <ipxact:bitOffset>16</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44556,7 +44577,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg1</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</ipxact:description>
+                <ipxact:description>Binary segment select for lane 1 of the CLA debug bus, bits [31:16]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg1; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg0, and k from 1 to 13 selects Seg(k+2).</ipxact:description>
                 <ipxact:bitOffset>22</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44568,7 +44589,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg2</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</ipxact:description>
+                <ipxact:description>Binary segment select for lane 2 of the CLA debug bus, bits [47:32]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg2; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg1, and k from 1 to 13 selects Seg(k+2).</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44580,7 +44601,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg3</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</ipxact:description>
+                <ipxact:description>Binary segment select for lane 3 of the CLA debug bus, bits [63:48]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg3; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg2, and k from 1 to 13 selects Seg(k+2).</ipxact:description>
                 <ipxact:bitOffset>34</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44592,6 +44613,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg4</ipxact:name>
+                <ipxact:description>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</ipxact:description>
                 <ipxact:bitOffset>40</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44603,6 +44625,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg5</ipxact:name>
+                <ipxact:description>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</ipxact:description>
                 <ipxact:bitOffset>46</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44614,6 +44637,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg6</ipxact:name>
+                <ipxact:description>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</ipxact:description>
                 <ipxact:bitOffset>52</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44625,6 +44649,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg7</ipxact:name>
+                <ipxact:description>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</ipxact:description>
                 <ipxact:bitOffset>58</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44829,7 +44854,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap1Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap1 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h1f8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44847,7 +44872,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap0Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap0 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h200</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44865,7 +44890,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap1Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap1 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap1 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h208</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44883,7 +44908,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap0Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap0 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h210</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44901,7 +44926,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap1Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap1 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h218</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44936,7 +44961,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask2Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h228</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44954,7 +44979,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch2Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h230</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44972,7 +44997,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask3Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h238</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44990,7 +45015,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch3Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h240</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46871,7 +46896,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>TsCapture</ipxact:name>
-                <ipxact:description>When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register</ipxact:description>
+                <ipxact:description>When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).</ipxact:description>
                 <ipxact:bitOffset>9</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -46897,12 +46922,12 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgClaTimestampOffset</ipxact:name>
-              <ipxact:description>Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.</ipxact:description>
+              <ipxact:description>Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).</ipxact:description>
               <ipxact:addressOffset>'h308</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
                 <ipxact:name>Offset</ipxact:name>
-                <ipxact:description>Timestamp offset value</ipxact:description>
+                <ipxact:description>Timestamp offset value. No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -46927,7 +46952,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask0Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h400</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46945,7 +46970,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch0Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h408</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46963,7 +46988,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask1Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h410</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46981,7 +47006,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch1Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h418</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46999,7 +47024,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask2Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h420</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47017,7 +47042,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch2Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h428</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47035,7 +47060,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask3Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h430</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47053,7 +47078,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch3Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h438</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47071,11 +47096,12 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgMuxSelHi</ipxact:name>
+              <ipxact:description>No effect in the SMC. The CLA debug-bus mux has four output lanes and takes its mode, ID, fine-grain time enable and lane selects from CDbgMuxSelLo.</ipxact:description>
               <ipxact:addressOffset>'h440</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
                 <ipxact:name>Dbmmode</ipxact:name>
-                <ipxact:description>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47087,7 +47113,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Dbmid</ipxact:name>
-                <ipxact:description>Unique DBM ID of the DBM instance</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47110,7 +47136,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg8</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>16</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47122,7 +47148,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg9</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>22</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47134,7 +47160,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg10</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47146,7 +47172,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg11</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>34</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47158,6 +47184,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg12</ipxact:name>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>40</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47169,6 +47196,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg13</ipxact:name>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>46</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47180,6 +47208,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg14</ipxact:name>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>52</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47191,6 +47220,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg15</ipxact:name>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>58</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47203,7 +47233,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgTransitionMaskHi</ipxact:name>
-              <ipxact:description>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask.</ipxact:description>
+              <ipxact:description>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h448</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47220,7 +47250,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgTransitionFromValueHi</ipxact:name>
-              <ipxact:description>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value A.</ipxact:description>
+              <ipxact:description>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value A. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h450</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47237,7 +47267,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgTransitionToValueHi</ipxact:name>
-              <ipxact:description>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value B.</ipxact:description>
+              <ipxact:description>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value B. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h458</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47254,7 +47284,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgOnesCountMaskHi</ipxact:name>
-              <ipxact:description>2 registers to configure &quot;ones count&quot; event. This register is to select the signals of interest using a mask.</ipxact:description>
+              <ipxact:description>2 registers to configure &quot;ones count&quot; event. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h460</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47271,7 +47301,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgAnyChangeHi</ipxact:name>
-              <ipxact:description>Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.</ipxact:description>
+              <ipxact:description>Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h468</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47288,7 +47318,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode0Eap0Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node0 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h470</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47306,7 +47336,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode0Eap1Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap1 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node0 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h478</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47324,7 +47354,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap0Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h480</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47342,7 +47372,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap1Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h488</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47360,7 +47390,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap0Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h490</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47378,7 +47408,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap1Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap1 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h498</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47396,7 +47426,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap0Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4a0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47414,7 +47444,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap1Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4a8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47432,7 +47462,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode0Eap2Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap2 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node0 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4b0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47450,7 +47480,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode0Eap3Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap3 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node0 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4b8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47468,7 +47498,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap2Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap2 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4c0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47486,7 +47516,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap3Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap3 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4c8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47504,7 +47534,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap2Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node2 Eap2 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4d0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47522,7 +47552,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap3Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node2 Eap3 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4d8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47540,7 +47570,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap2Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node3 Eap2 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4e0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47558,7 +47588,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap3Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node3 Eap3 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4e8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47637,7 +47667,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgTimestampCapture</ipxact:name>
-              <ipxact:description>Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.</ipxact:description>
+              <ipxact:description>Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register. Never captured in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).</ipxact:description>
               <ipxact:addressOffset>'h500</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47800,7 +47830,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare0Hi</ipxact:name>
-              <ipxact:description>Value for arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h548</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47818,7 +47848,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare0MaskHi</ipxact:name>
-              <ipxact:description>Value to mask the arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h550</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47836,7 +47866,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare1Hi</ipxact:name>
-              <ipxact:description>Value for arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h558</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47854,7 +47884,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare1MaskHi</ipxact:name>
-              <ipxact:description>Value to mask the arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h560</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47872,7 +47902,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare2Hi</ipxact:name>
-              <ipxact:description>Value for arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h568</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47890,7 +47920,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare2MaskHi</ipxact:name>
-              <ipxact:description>Value to mask the arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h570</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47908,7 +47938,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare3Hi</ipxact:name>
-              <ipxact:description>Value for arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h578</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47926,7 +47956,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare3MaskHi</ipxact:name>
-              <ipxact:description>Value to mask the arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h580</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>

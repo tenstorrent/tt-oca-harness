@@ -36,6 +36,16 @@ The wrapper gates `clk_smc_i` for the muxes and the IP under `dfd_cg_en`,
 and it counts `clk_ref_i` edges into the CLA time tick. The trace sink
 writes eight external trace RAMs of 256 × 64 bits, 16 KiB in total.
 
+Software programs the mux tree one mux at a time through the single
+`DEBUG_BUS_MUX` register. The level-3 muxes have IDs 7 to 14 and each takes
+eight consecutive debug-bus lanes; the level-2 muxes have IDs 3 to 6 and each
+drives four consecutive CLA input lanes. A mux takes `Dbmmode` while `Dbmid`
+equals its ID, and its lane selects while `Dbmid` equals its ID and its mode
+is 1. Each lane select is a binary index: 0 passes input lane _n_ to output
+lane _n_, and 1 to 4 select input lanes 4 to 7. The CLA's own stage,
+programmed through `CDbgMuxSelLo` with `DbmId` 0, decodes its selects the
+same way, so 1 to 12 select CLA input lanes 4 to 15.
+
 Bit 0 of `xtrig_clk_halt_mask` in the DFX CSRs masks the CLA cross-trigger
 and halt-clock outputs. The clocks-stopped output also requires
 `tdr_dbg_ctrl_clock_stop_en_i`, and it drives a CPU interrupt and a DTP
@@ -129,6 +139,14 @@ clock-derived `time_tick`. This local counter is distinct from the generic
 The integration does not provide the advertised global timestamp alignment
 through those inputs. In particular, the time-match event consumes the tied-off
 timestamp rather than the running CLA timestamp register.
+
+Because of timestamp scheme 0 and the 64-bit CLA debug bus, several CLA
+registers have no effect in SMC. `TsCapture`, `CDbgTimestampCapture` and
+`CDbgClaTimestampOffset` serve only the reference-timestamp scheme. The Hi
+halves of the match, compare, transition, ones-count, change and snapshot
+registers serve only a 128-bit debug bus. `CDbgMuxSelHi`, and `Muxselseg4`
+to `Muxselseg7` of `CDbgMuxSelLo`, select lanes beyond the four that the CLA
+mux drives.
 
 == Interrupts
 
