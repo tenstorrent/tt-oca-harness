@@ -1838,7 +1838,7 @@ module dtp_uvm_top
   // opposite its wire's pull; a pad in the group leaves its private wire.
   for (genvar ctp = 0; ctp < dtp_dv_cfg_pkg::NumCtp; ctp++) begin : gen_xtrig_ctp_wire
     ocah_open_drain_bus #(
-      .NumDrivers (2)
+      .NUM_DRIVERS (2)
     ) u_wire (
       .pull_i     (u_xtrig_if.xtrig_ctp_wire_pull[ctp]),
       .dout_i     ({~u_xtrig_if.xtrig_ctp_wire_pull[ctp], xtrig_ctp_req_out_dout[ctp]}),
@@ -1856,7 +1856,7 @@ module dtp_uvm_top
   end
 
   ocah_open_drain_bus #(
-    .NumDrivers (2 * dtp_dv_cfg_pkg::NumCtp)
+    .NUM_DRIVERS (2 * dtp_dv_cfg_pkg::NumCtp)
   ) u_xtrig_ctp_group_wire (
     .pull_i     (u_xtrig_if.xtrig_ctp_wire_group_pull),
     .dout_i     ({{dtp_dv_cfg_pkg::NumCtp{~u_xtrig_if.xtrig_ctp_wire_group_pull}},

@@ -7,9 +7,15 @@
  *   Run a minimal OpenTitan SPI command sequence in SMU SEP_RTL mode without
  *   requiring an external flash model, read the received word back out of the
  *   RX FIFO, then park the CPU in explicit pass/fail loops so the cocotb test
- *   can classify the result by SEP PC. The open DUT has no SPI pad mux, so
- *   this image does not program one. A companion wrapper mux belongs with
- *   that wrapper's firmware.
+ *   can classify the result by SEP PC. The OT SPI host reaches the pads only
+ *   on the SMC LSIO primary plane and no select steers it, so this image
+ *   programs no pad path.
+ *
+ *   The bench grades the pins: it counts the SCK edges and checks the chip
+ *   select and output enables at the pads, and it drives the receive data pad
+ *   with a seeded pattern and grades the RXDATA word this image pops. Keep the
+ *   segment lengths, CSAAT and TXDATA bytes in step with
+ *   hw/sys/smu/dv/cocotb_wrapper/seq_lib/smu_sep_spi_seq.py.
  */
 
 #include <stdint.h>
@@ -27,18 +33,15 @@
 #define SPI_ERR_WAIT_IDLE_RX 5
 #define SPI_ERR_STATUS 6
 #define SPI_ERR_RX_DEPTH 7
-#define SPI_ERR_RX_DATA 8
-#define SPI_ERR_RX_DRAIN 9
+#define SPI_ERR_RX_DRAIN 8
 
 /*
  * The RX segment requests four bytes, which the controller delivers as one
- * 32-bit RXDATA word. Nothing drives the SEP's SPI data pads in the SMU
- * wrapper bench: no flash model or loopback is attached, and an undriven pad
- * reads back as 0 through the pad shim, so the word is the bench's MISO level
- * rather than device content.
+ * 32-bit RXDATA word. The word is the bench's MISO pattern, not device
+ * content, and the bench grades it at the RX FIFO read port, so this image
+ * checks only that exactly one word lands and that the FIFO then drains.
  */
 #define SPI_RX_EXPECTED_WORDS 1u
-#define SPI_RX_EXPECTED_WORD 0x00000000u
 
 static void spi_controller_init(void) {
     spi_controller__CONTROL_t ctrl = {.w = SPI_CONTROLLER__CONTROL_reset};
@@ -101,13 +104,19 @@ static int run_spi_txrx_sequence(void) {
     spi_controller__COMMAND_t cmd = {.w = 0};
     spi_controller__STATUS_t status = {.w = 0};
     spi_error_status_t err = {.w = 0};
-    uint32_t rx_word;
 
     spi_controller_init();
 
+    /*
+     * The TX FIFO holds exactly the bytes each segment sends: TXDATA takes
+     * byte enables, so the 1-byte segment pushes one byte with a byte store,
+     * and the 4-byte segment pushes one word. The host sends the low byte of a
+     * word first (STATUS.BYTEORDER=1).
+     */
+
     /* Step 1: TX single-byte command (0x9F). */
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_CMD;
-    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x9F000000u);
+    *(volatile uint8_t *)(uintptr_t)SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0) = 0x9Fu;
     cmd.w = 0;
     cmd.f.LEN = 0; /* one byte */
     cmd.f.CSAAT = 0;
@@ -116,9 +125,9 @@ static int run_spi_txrx_sequence(void) {
     WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     if (wait_idle() != 0) return SPI_ERR_WAIT_IDLE_CMD;
 
-    /* Step 2: TX address phase (4 bytes) with CS held. */
+    /* Step 2: TX 0x03 and a 24-bit address, 0x001000, with CS held. */
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_ADDR;
-    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x03001000u);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x00100003u);
     cmd.w = 0;
     cmd.f.LEN = 3;   /* four bytes */
     cmd.f.CSAAT = 1; /* hold CS */
@@ -140,12 +149,11 @@ static int run_spi_txrx_sequence(void) {
     err.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (err.f.CMDINVAL || err.f.CSIDINVAL) return SPI_ERR_STATUS;
 
-    /* Step 4: the RX segment lands exactly one word; read it back and drain. */
+    /* Step 4: the RX segment lands exactly one word; pop it and drain. */
     if (wait_rx_word() != 0) return SPI_ERR_RX_DEPTH;
     status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     if (status.f.RXQD != SPI_RX_EXPECTED_WORDS) return SPI_ERR_RX_DEPTH;
-    rx_word = READ_REG(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
-    if (rx_word != SPI_RX_EXPECTED_WORD) return SPI_ERR_RX_DATA;
+    (void)READ_REG(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
     status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     if (status.f.RXQD != 0 || !status.f.RXEMPTY) return SPI_ERR_RX_DRAIN;
 
@@ -210,12 +218,6 @@ __attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_rx_depth_loop(vo
     }
 }
 
-__attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_rx_data_loop(void) {
-    while (1) {
-        __asm__ volatile("wfi");
-    }
-}
-
 __attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_rx_drain_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
@@ -239,7 +241,6 @@ int main(void) {
     if (rc == SPI_ERR_WAIT_IDLE_RX) smu_sep_spi_fail_wait_idle_rx_loop();
     if (rc == SPI_ERR_STATUS) smu_sep_spi_fail_error_status_loop();
     if (rc == SPI_ERR_RX_DEPTH) smu_sep_spi_fail_rx_depth_loop();
-    if (rc == SPI_ERR_RX_DATA) smu_sep_spi_fail_rx_data_loop();
     if (rc == SPI_ERR_RX_DRAIN) smu_sep_spi_fail_rx_drain_loop();
 
     smu_sep_spi_fail_loop();

@@ -644,7 +644,7 @@ module sep_fcov (
 
   // The PROGRAMMED range, not its 4 KB page. traffic_filter.sv compares
   // addr[.:12] only in the allow_burst arm; the other arm compares
-  // addr[.:DataBusWidthLog2]. A page compare is therefore a superset of the
+  // addr[.:DATA_BUS_WIDTH_LOG2]. A page compare is therefore a superset of the
   // real grant, and would score an OKAY that landed inside the page but
   // outside the window the test programmed. Comparing the range can only
   // MISS a page-widened grant, never invent one.

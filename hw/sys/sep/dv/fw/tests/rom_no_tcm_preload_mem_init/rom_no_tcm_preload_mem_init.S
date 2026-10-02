@@ -54,7 +54,7 @@ _start:
 
     /*
      * Open the outbound egress window over STDOUT before anything writes there.
-     * The SEP outbound filter is BlockByDefault=1, so an unopened window does
+     * The SEP outbound filter is BLOCK_BY_DEFAULT=1, so an unopened window does
      * not silently drop the store -- it isolates it and answers with an error,
      * which the EL2 takes as a store access fault. Both the PASS routine and
      * trap_fail report through STDOUT, so without this the image cannot report

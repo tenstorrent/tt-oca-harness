@@ -34,7 +34,7 @@ module smu_rst_fcov #(
   // ties sep_fuse_sense_done_o to 0 and the bench ties the two block
   // resets off, so the points that read them are dropped rather than
   // carried unhittable.
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_ref_i,
   input wire clk_smu_i,
@@ -202,7 +202,7 @@ module smu_rst_fcov #(
   // asserting. Only elaborated with SEP present -- both blocks live in
   // smu.sv's gen_sep branch and the pin is tied to 0 without it.
   // ------------------------------------------------------------------
-  if (SepPresent) begin : g_sep
+  if (SEP_PRESENT) begin : g_sep
     logic sep_rst_q, xbar_rst_q, sep_fuse_sense_q;
     always_ff @(posedge clk_smu_i) begin
       if (not_powered) begin

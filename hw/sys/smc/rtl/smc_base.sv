@@ -451,11 +451,11 @@ module smc_base #(
 
   smc_fabric #(
     .NO_ADDR_REMAP              (NO_ADDR_REMAP),
-    .NumInboundFilters          (smc_pkg::NumInboundFilters),
-    .NumOutboundFilters         (smc_pkg::NumOutboundFilters),
-    .MaxTrans                   (smc_pkg::FABRIC_MAX_TRANS),
-    .FilterReqPipelineEnable    (1'b1),
-    .FilterRspPipelineEnable    (1'b1)
+    .NUM_INBOUND_FILTERS        (smc_pkg::NumInboundFilters),
+    .NUM_OUTBOUND_FILTERS       (smc_pkg::NumOutboundFilters),
+    .MAX_TRANS                  (smc_pkg::FABRIC_MAX_TRANS),
+    .FILTER_REQ_PIPELINE_ENABLE (1'b1),
+    .FILTER_RSP_PIPELINE_ENABLE (1'b1)
   ) u_smc_fabric (
     .clk_i                                  (clk_smc_i),
     .rst_ni                                 (rst_primary_smc_clk_ni),
@@ -557,8 +557,8 @@ module smc_base #(
   ////////////////////////////
 
   smc_internal_regs #(
-    .NumOutboundFilters               (smc_pkg::NumOutboundFilters),
-    .NumInboundFilters                (smc_pkg::NumInboundFilters)
+    .NUM_OUTBOUND_FILTERS             (smc_pkg::NumOutboundFilters),
+    .NUM_INBOUND_FILTERS              (smc_pkg::NumInboundFilters)
   ) u_internal_regs (
     .clk_ref_i                        (clk_ref_i),
     .clk_smc_i                        (clk_smc_i),
@@ -729,7 +729,7 @@ module smc_base #(
   logic hang_irq_sys_axi, hang_irq_sep_axi, hang_irq_data_accel;
 
   axi_hang_detector #(
-    .OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX)
+    .OUTSTANDING_TX(smc_pkg::FABRIC_OUTSTANDING_TX)
   ) u_hang_det_sys_axi (
     .clk_i            (clk_smc_i),
     .rst_ni           (rst_primary_smc_clk_ni),
@@ -752,7 +752,7 @@ module smc_base #(
   );
 
   axi_hang_detector #(
-    .OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX)
+    .OUTSTANDING_TX(smc_pkg::FABRIC_OUTSTANDING_TX)
   ) u_hang_det_sep_axi (
     .clk_i            (clk_smc_i),
     .rst_ni           (rst_primary_smc_clk_ni),
@@ -775,7 +775,7 @@ module smc_base #(
   );
 
   axi_hang_detector #(
-    .OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX)
+    .OUTSTANDING_TX(smc_pkg::FABRIC_OUTSTANDING_TX)
   ) u_hang_det_data_accel (
     .clk_i            (clk_smc_i),
     .rst_ni           (rst_primary_smc_clk_ni),

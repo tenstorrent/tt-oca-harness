@@ -8,12 +8,13 @@ reports neither DONE nor ERROR within it is aborted, and the transfer returns th
 DMA error its callers handle.
 
 ``+sep_dma_host_stall`` holds the DMA host port's response channel idle, so the
-engine can never issue a request and stays busy. The boot takes the SMC-SRAM manifest
-path, whose first DMA transfer is the manifest read, and that path makes a single
-attempt. So the ROM must print ``DMA_TIMEOUT_STS=``, fail the slot with
-``OCA_BOOT_ERR_DMA``, report ``SEP_MSG_MANIFEST_LOAD_FAILED`` and halt with a FAIL
-verdict. A ROM whose completion poll is unbounded never reaches a verdict, and the
-run times out.
+engine can never issue a request and stays busy. The boot takes the SMC-SRAM
+manifest path, whose first DMA transfer is the manifest read, and that path makes a
+single attempt. So the ROM must report ``SEP_MSG_DMA_TIMEOUT``, print
+``DMA_TIMEOUT_STS=``, fail the slot with ``OCA_BOOT_ERR_DMA``, report
+``SEP_MSG_MANIFEST_LOAD_FAILED`` and halt with a FAIL verdict. The timeout status is
+what tells a stalled engine apart from one that reported an error. A ROM whose
+completion poll is unbounded never reaches a verdict, and the run times out.
 
 The terminal outcome is a halt, so ``SepBootScoreboard`` is not used, as in
 ``sep_firmware_sboot_dis_rsvd_terminal_test``.
@@ -40,6 +41,9 @@ _ALL_FAILED = "MANIFEST_ALL_FAILED"
 # ERROR + SEP_MSG_MANIFEST_LOAD_FAILED; SEP_STATUS_ID is 1 for BL0.
 SEP_MSG_MANIFEST_LOAD_FAILED = 0x213
 _STATUS_LOAD_FAILED = 0x0F01_0000 | SEP_MSG_MANIFEST_LOAD_FAILED
+# WARN + SEP_MSG_DMA_TIMEOUT.
+SEP_MSG_DMA_TIMEOUT = 0x229
+_STATUS_DMA_TIMEOUT = 0x0801_0000 | SEP_MSG_DMA_TIMEOUT
 _BOOT_PROGRESS_MARKERS = ("MANIFEST_OK", "PAYLOAD_OK", "BL1_COPIED", "PRE_JUMP", "BL1_JUMP=")
 
 # The manifest peek is 20 bytes, so its poll budget is close to DMA_POLLS_SETUP
@@ -153,6 +157,22 @@ class sep_rom_dma_stall_terminal_test(sep_base_test):
         )
         self.logger.info(
             "CHK-DMA-STALL-TIMEOUT PASS: %s then %s", _TIMEOUT_MARKER, _MANIFEST_ERR_DMA
+        )
+
+        # CHK-DMA-STALL-STATUS: the timeout is on the status channel, ahead of the
+        # terminal status, where a release build can see it.
+        assert _STATUS_DMA_TIMEOUT in status_seq, (
+            f"cold_scratch[1] never held 0x{_STATUS_DMA_TIMEOUT:08x} "
+            f"(WARN + SEP_MSG_DMA_TIMEOUT); observed {status_hex}"
+        )
+        assert _STATUS_LOAD_FAILED not in status_seq or status_seq.index(
+            _STATUS_DMA_TIMEOUT
+        ) < status_seq.index(_STATUS_LOAD_FAILED), (
+            f"SEP_MSG_DMA_TIMEOUT did not precede SEP_MSG_MANIFEST_LOAD_FAILED in {status_hex}"
+        )
+        self.logger.info(
+            "CHK-DMA-STALL-STATUS PASS: cold_scratch[1]=0x%08x before the terminal status",
+            _STATUS_DMA_TIMEOUT,
         )
 
         # CHK-DMA-STALL-TERMINAL: the boot failed and stopped.

@@ -197,9 +197,9 @@ module idma_wrapper #(
 
   axi_cg_snoop #(
     // Full AXI4 ctrl port: all IDs, both directions (see CTRL_OUTSTANDING_TX)
-    .OutstandingTx(CTRL_OUTSTANDING_TX),
-    .DenyDelay(1),
-    .HystWidth(CG_HYSTERESIS_W)
+    .OUTSTANDING_TX(CTRL_OUTSTANDING_TX),
+    .DENY_DELAY(1),
+    .HYST_WIDTH(CG_HYSTERESIS_W)
   ) u_frontend_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
@@ -261,8 +261,8 @@ module idma_wrapper #(
     .NUM_CTRL_STREAMS(NUM_CTRL_STREAMS),
     .F2M_FIFO_DEPTH(F2M_FIFO_DEPTH),
     .BYPASS_DMA_CTRL_FLOPS(BYPASS_DMA_CTRL_FLOPS),
-    .NumDim(NumDim),
-    .RepWidth(RepWidth),
+    .NUM_DIM(NumDim),
+    .REP_WIDTH(RepWidth),
     .idma_req_t(idma_req_t),
     .idma_resp_t(idma_resp_t),
     .idma_nd_req_t(idma_nd_req_t),
@@ -335,7 +335,7 @@ module idma_wrapper #(
     .BUFFER_DEPTH(BUFFER_DEPTH),
     .EN_R_AW_COUPLING(EN_R_AW_COUPLING),
     .BYPASS_DMA_MST_FLOPS(BYPASS_DMA_MST_FLOPS),
-    .TFLenWidth(TFLenWidth),
+    .TF_LEN_WIDTH(TFLenWidth),
     .idma_req_t(idma_req_t),
     .idma_resp_t(idma_resp_t),
     .dma_mst_req_t(dma_mst_req_t),

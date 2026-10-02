@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[smu-coverage-policy]]
-== SMU coverage targets and closure policy
+= SMU coverage targets and closure policy
 
 This chapter defines *what* the SMU release group is graded on and *how*
 a hole is waived. It does not install a CI fail-on-hole gate; that gate
@@ -73,7 +73,7 @@ boundary
 |===
 
 [[smu-cov-paths]]
-=== Public versus commercial evidence
+== Public versus commercial evidence
 
 [cols="2,3,3",options="header",]
 |===
@@ -119,7 +119,7 @@ in them states its fact and what would retire it. A Python `smu_fcov.py` sampler
 not the release metric and is not a gate.
 
 [[smu-cov-out]]
-=== Structural OUT versus a waiver hole
+== Structural OUT versus a waiver hole
 
 Three mechanisms. Do not mix them.
 
@@ -130,7 +130,7 @@ Three mechanisms. Do not mix them.
 |`coverage_off` file patterns (`hw/sys/smu/rtl`, SMC, DTP, SEP, `hw/ip`,
 `hw/common`, CPU cluster, TB, vendor trees the file pattern can reach)
 |Structural OUT, by elaboration |the point is not elaborated, so it never
-enters the database and no waiver names it |the `SepPresent` parameter and
+enters the database and no waiver names it |the `SEP_PRESENT` parameter and
 its `g_sep` generate blocks in `cov/sv/*_fcov.sv`; a point whose observable
 exists only with SEP elaborated is absent from a SEP=0 build; the wrapper's
 single target elaborates SEP, so every `g_sep` point exists there
@@ -145,7 +145,7 @@ A vendor site that `coverage_off` cannot name (hierarchy under `.u_smc`
 ConfigError on the first run.
 
 [[smu-cov-waiver]]
-=== Waiver fields
+== Waiver fields
 
 Every `[[holes]]` row must carry:
 

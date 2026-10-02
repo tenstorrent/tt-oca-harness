@@ -97,7 +97,7 @@ static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
            (((addr >> 0) & 0xFF) << 24);
 }
 
-// No pad-mux step: this DUT drives the OT SPI host onto the pads directly.
+// No select step: the OT SPI host drives the pads directly.
 
 static void spi_init(void) {
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,

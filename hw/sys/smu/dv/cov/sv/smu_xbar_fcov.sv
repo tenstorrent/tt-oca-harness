@@ -36,7 +36,7 @@ module smu_xbar_fcov #(
   // SEP CSR block, so smu.sv's gen_no_sep branch ties base and size to '0
   // and they can never move; the points that watch them move are dropped
   // rather than carried unhittable.
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_smu_i,
   input wire rst_cold_ni,
@@ -116,7 +116,7 @@ module smu_xbar_fcov #(
 
   // The SEP aperture, watched the same way. Only elaborated with SEP
   // present: base and size are tied to '0 without it and never move.
-  if (SepPresent) begin : g_sep
+  if (SEP_PRESENT) begin : g_sep
     logic [55:0] sep_base_q, sep_size_q;
     logic sep_base_prog_q, sep_size_prog_q, sep_size_reprog_q;
 

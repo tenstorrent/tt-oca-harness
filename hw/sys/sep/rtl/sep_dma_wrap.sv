@@ -21,18 +21,18 @@ module sep_dma_wrap #(
   parameter int unsigned REG_ADDR_WIDTH = 32,  // Width of SECURE_DMA_REG_MAP_BASE_ADDR only; unused
                                                // otherwise.
   parameter bit [REG_ADDR_WIDTH-1:0]                SECURE_DMA_REG_MAP_BASE_ADDR = 32'h20000000,  // Unused; the register path rebases with SEP_TOP_SECURE_DMA_BASE_ADDR instead.
-  parameter logic [secure_dma_reg_pkg::NumAlerts-1:0] AlertAsyncOn = {secure_dma_reg_pkg::NumAlerts{1'b1}},  // Per-alert async-on configuration of the secure_dma senders; the local receivers are synchronous.
-  parameter int unsigned                            AlertSkewCycles = 1,  // Alert skew cycle count.
-  parameter bit                                     EnableDataIntgGen = 1'b1,  // Generate TL-UL integrity in secure_dma, command and data integrity on the register
-                                                                               // bridge, and response and data integrity on the host bridge.
-  parameter bit                                     EnableRspDataIntgCheck = 1'b1,  // Check response data integrity in secure_dma and command integrity of its host requests
-                                                                                    // in the host bridge.
-  parameter logic [tlul_pkg::RsvdWidth-1:0]         TlUserRsvd = '0,  // Reserved TL user bits.
-  parameter top_racl_pkg::racl_role_t               SysRaclRole = '0,  // System RACL role.
-  parameter int unsigned                            OtAgentId = 0,  // OpenTitan agent ID.
-  parameter bit                                     EnableRacl = 1'b0,  // Enable RACL checks.
-  parameter bit                                     RaclErrorRsp = EnableRacl,  // Return error responses on RACL fail.
-  parameter top_racl_pkg::racl_policy_sel_t         RaclPolicySelVec[secure_dma_reg_pkg::NumRegs] = '{secure_dma_reg_pkg::NumRegs{0}}  // Per-register RACL policy select.
+  parameter logic [secure_dma_reg_pkg::NumAlerts-1:0] ALERT_ASYNC_ON = {secure_dma_reg_pkg::NumAlerts{1'b1}},  // Per-alert async-on configuration of the secure_dma senders; the local receivers are synchronous.
+  parameter int unsigned                            ALERT_SKEW_CYCLES = 1,  // Alert skew cycle count.
+  parameter bit                                     ENABLE_DATA_INTG_GEN = 1'b1,  // Generate TL-UL integrity in secure_dma, command and data integrity on the register
+                                                                                  // bridge, and response and data integrity on the host bridge.
+  parameter bit                                     ENABLE_RSP_DATA_INTG_CHECK = 1'b1,  // Check response data integrity in secure_dma and command integrity of its host requests
+                                                                                        // in the host bridge.
+  parameter logic [tlul_pkg::RSVD_WIDTH-1:0]        TL_USER_RSVD = '0,  // Reserved TL user bits.
+  parameter top_racl_pkg::racl_role_t               SYS_RACL_ROLE = '0,  // System RACL role.
+  parameter int unsigned                            OT_AGENT_ID = 0,  // OpenTitan agent ID.
+  parameter bit                                     ENABLE_RACL = 1'b0,  // Enable RACL checks.
+  parameter bit                                     RACL_ERROR_RSP = ENABLE_RACL,  // Return error responses on RACL fail.
+  parameter top_racl_pkg::racl_policy_sel_t         RACL_POLICY_SEL_VEC[secure_dma_reg_pkg::NumRegs] = '{secure_dma_reg_pkg::NumRegs{0}}  // Per-register RACL policy select.
 ) (
   input  logic                                      clk_i,  // System clock.
   input  logic                                      rst_ni,  // Active-low reset.
@@ -121,16 +121,16 @@ module sep_dma_wrap #(
   //////////////
 
   secure_dma #(
-    .AlertAsyncOn           (AlertAsyncOn),
-    .AlertSkewCycles        (AlertSkewCycles),
-    .EnableDataIntgGen      (EnableDataIntgGen),
-    .EnableRspDataIntgCheck (EnableRspDataIntgCheck),
-    .TlUserRsvd             (TlUserRsvd),
-    .SysRaclRole            (SysRaclRole),
-    .OtAgentId              (OtAgentId),
-    .EnableRacl             (EnableRacl),
-    .RaclErrorRsp           (RaclErrorRsp),
-    .RaclPolicySelVec       (RaclPolicySelVec)
+    .AlertAsyncOn           (ALERT_ASYNC_ON),
+    .AlertSkewCycles        (ALERT_SKEW_CYCLES),
+    .EnableDataIntgGen      (ENABLE_DATA_INTG_GEN),
+    .EnableRspDataIntgCheck (ENABLE_RSP_DATA_INTG_CHECK),
+    .TlUserRsvd             (TL_USER_RSVD),
+    .SysRaclRole            (SYS_RACL_ROLE),
+    .OtAgentId              (OT_AGENT_ID),
+    .EnableRacl             (ENABLE_RACL),
+    .RaclErrorRsp           (RACL_ERROR_RSP),
+    .RaclPolicySelVec       (RACL_POLICY_SEL_VEC)
   ) u_secure_dma (
     .clk_i                  (clk_i),
     .rst_ni                 (rst_ni),
@@ -225,14 +225,14 @@ module sep_dma_wrap #(
 
   // Convert AXI-Lite to TL-UL
   axi_lite_to_tlul #(
-    .AXI_ADDR_WIDTH     (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
-    .AXI_DATA_WIDTH     (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
-    .AXI_ID_WIDTH       (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
-    .AXI_USER_WIDTH     (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
-    .axi_lite_req_t     (sep_pkg::sep_32_32_axil_req_t),
-    .axi_lite_rsp_t     (sep_pkg::sep_32_32_axil_resp_t),
-    .EnableCmdIntgGen   (EnableDataIntgGen),      // Pass through wrapper parameter
-    .EnableDataIntgGen  (EnableDataIntgGen)       // Pass through wrapper parameter
+    .AXI_ADDR_WIDTH       (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AXI_DATA_WIDTH       (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .AXI_ID_WIDTH         (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
+    .AXI_USER_WIDTH       (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
+    .axi_lite_req_t       (sep_pkg::sep_32_32_axil_req_t),
+    .axi_lite_rsp_t       (sep_pkg::sep_32_32_axil_resp_t),
+    .ENABLE_CMD_INTG_GEN  (ENABLE_DATA_INTG_GEN),      // Pass through wrapper parameter
+    .ENABLE_DATA_INTG_GEN (ENABLE_DATA_INTG_GEN)       // Pass through wrapper parameter
   ) u_axi_lite_to_tlul_reg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
@@ -256,9 +256,9 @@ module sep_dma_wrap #(
     .AXI_USER_WIDTH             (sep_pkg::SEP_32_32_3_12_USER_WIDTH),
     .axi_lite_req_t             (sep_pkg::sep_32_32_axil_req_t),
     .axi_lite_rsp_t             (sep_pkg::sep_32_32_axil_resp_t),
-    .EnableRspIntgGen           (EnableDataIntgGen),        // Generate response integrity
-    .EnableDataIntgGen          (EnableDataIntgGen),        // Generate data integrity
-    .CmdIntgCheck               (EnableRspDataIntgCheck)    // Check incoming command integrity
+    .ENABLE_RSP_INTG_GEN        (ENABLE_DATA_INTG_GEN),         // Generate response integrity
+    .ENABLE_DATA_INTG_GEN       (ENABLE_DATA_INTG_GEN),         // Generate data integrity
+    .CMD_INTG_CHECK             (ENABLE_RSP_DATA_INTG_CHECK)    // Check incoming command integrity
   ) u_tlul_to_axi_lite_dma (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
@@ -340,7 +340,7 @@ module sep_dma_wrap #(
 
   assign ctn_tl_d2h.a_ready = 1'b1;
   assign ctn_tl_d2h.d_valid = 1'b0;
-  assign ctn_tl_d2h.d_opcode = tlul_pkg::AccessAck;
+  assign ctn_tl_d2h.d_opcode = tlul_pkg::ACCESS_ACK;
   assign ctn_tl_d2h.d_param = '0;
   assign ctn_tl_d2h.d_size = '0;
   assign ctn_tl_d2h.d_source = '0;

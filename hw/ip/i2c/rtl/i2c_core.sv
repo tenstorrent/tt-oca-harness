@@ -374,9 +374,9 @@ module i2c_core
 
   assign bus_active_timeout           = reg_out_i.TIMEOUT_CTRL.VAL.value;
   assign stretch_timeout_enable       = reg_out_i.TIMEOUT_CTRL.EN.value &&
-                                          reg_out_i.TIMEOUT_CTRL.MODE.value == StretchTimeoutMode;
+                                          reg_out_i.TIMEOUT_CTRL.MODE.value == STRETCH_TIMEOUT_MODE;
   assign bus_timeout_enable           = reg_out_i.TIMEOUT_CTRL.EN.value &&
-                                          reg_out_i.TIMEOUT_CTRL.MODE.value == BusTimeoutMode;
+                                          reg_out_i.TIMEOUT_CTRL.MODE.value == BUS_TIMEOUT_MODE;
   assign host_timeout                 = reg_out_i.HOST_TIMEOUT_CTRL.VAL.value;
   assign nack_timeout                 = reg_out_i.TARGET_TIMEOUT_CTRL.VAL.value;
   assign nack_timeout_en              = reg_out_i.TARGET_TIMEOUT_CTRL.EN.value;
@@ -441,12 +441,12 @@ module i2c_core
   assign unhandled_unexp_nak = reg_out_i.CONTROLLER_EVENTS.NACK.value;
 
   prim_fifo_sync_parity #(
-    .Width             (CONTROLLER_TX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (CONTROLLER_TX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (CONTROLLER_TX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (CONTROLLER_TX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_controller_tx_fifo (
     .clk_i,
     .rst_ni,
@@ -463,12 +463,12 @@ module i2c_core
   );
 
   prim_fifo_sync_parity #(
-    .Width             (CONTROLLER_RX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (CONTROLLER_RX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (CONTROLLER_RX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (CONTROLLER_RX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_controller_rx_fifo (
     .clk_i,
     .rst_ni,
@@ -485,12 +485,12 @@ module i2c_core
   );
 
   prim_fifo_sync_parity #(
-    .Width             (TARGET_TX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (TARGET_TX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (TARGET_TX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (TARGET_TX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_target_tx_fifo (
     .clk_i,
     .rst_ni,
@@ -507,12 +507,12 @@ module i2c_core
   );
 
   prim_fifo_sync_parity #(
-    .Width             (TARGET_RX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (TARGET_RX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (TARGET_RX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (TARGET_RX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_target_rx_fifo (
     .clk_i,
     .rst_ni,
@@ -581,7 +581,7 @@ module i2c_core
 
   assign acq_type = i2c_acq_byte_id_e'(acq_fifo_rdata[TARGET_RX_FIFO_WIDTH-1:8]);
 
-  assign valid_target_lb_wr = target_enable && acq_type == AcqData;
+  assign valid_target_lb_wr = target_enable && acq_type == ACQ_DATA;
 
   // only write into tx fifo if it's payload
   assign reg_in_o.TXDATA.wr_ack = reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr;
@@ -597,7 +597,7 @@ module i2c_core
   // is not data payload.
   assign reg_in_o.ACQDATA.rd_ack = reg_out_i.ACQDATA.req && !reg_out_i.ACQDATA.req_is_wr;
   assign acq_fifo_rready         = reg_out_i.ACQDATA.req && !reg_out_i.ACQDATA.req_is_wr ||
-                                     target_loopback && (tx_fifo_wready || acq_type != AcqData);
+                                     target_loopback && (tx_fifo_wready || acq_type != ACQ_DATA);
 
   // sync the incoming SCL and SDA signals
   prim_flop_2sync #(

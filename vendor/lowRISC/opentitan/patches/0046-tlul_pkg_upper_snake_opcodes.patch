@@ -1,0 +1,39 @@
+diff --git a/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv b/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv
+index 91f9ff9238..1b6c5ee60c 100644
+--- a/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv
++++ b/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv
+@@ -1161,7 +1161,7 @@ module aon_timer_reg_top
+ 
+   if (EnableRacl) begin : gen_racl_log
+     assign racl_error_o.ctn_uid     = top_racl_pkg::tlul_extract_ctn_uid_bits(tl_i.a_user.rsvd);
+-    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::Get;
++    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::GET;
+   end else begin : gen_no_racl_log
+     assign racl_error_o.ctn_uid     = '0;
+     assign racl_error_o.read_access = 1'b0;
+diff --git a/hw/ip/dma/rtl/secure_dma_reg_top.sv b/hw/ip/dma/rtl/secure_dma_reg_top.sv
+index 8b9332fc06..03730f09d2 100644
+--- a/hw/ip/dma/rtl/secure_dma_reg_top.sv
++++ b/hw/ip/dma/rtl/secure_dma_reg_top.sv
+@@ -3140,7 +3140,7 @@ module secure_dma_reg_top
+ 
+   if (EnableRacl) begin : gen_racl_log
+     assign racl_error_o.ctn_uid     = top_racl_pkg::tlul_extract_ctn_uid_bits(tl_i.a_user.rsvd);
+-    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::Get;
++    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::GET;
+   end else begin : gen_no_racl_log
+     assign racl_error_o.ctn_uid     = '0;
+     assign racl_error_o.read_access = 1'b0;
+diff --git a/hw/ip/spi_host/rtl/spi_host_reg_top.sv b/hw/ip/spi_host/rtl/spi_host_reg_top.sv
+index 1e2b2f2a4d..50f9e5d178 100644
+--- a/hw/ip/spi_host/rtl/spi_host_reg_top.sv
++++ b/hw/ip/spi_host/rtl/spi_host_reg_top.sv
+@@ -1789,7 +1789,7 @@ module spi_host_reg_top
+ 
+   if (EnableRacl) begin : gen_racl_log
+     assign racl_error_o.ctn_uid     = top_racl_pkg::tlul_extract_ctn_uid_bits(tl_i.a_user.rsvd);
+-    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::Get;
++    assign racl_error_o.read_access = tl_i.a_opcode == tlul_pkg::GET;
+   end else begin : gen_no_racl_log
+     assign racl_error_o.ctn_uid     = '0;
+     assign racl_error_o.read_access = 1'b0;

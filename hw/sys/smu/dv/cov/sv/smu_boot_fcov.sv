@@ -34,7 +34,7 @@ module smu_boot_fcov #(
   // 0 on an elaboration without SEP. The LCC demote pair is driven by the SEP
   // lifecycle controller, so smu.sv's gen_no_sep branch ties both to '0 and
   // the points that read them are dropped rather than carried unhittable.
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_ref_i,
   input wire clk_smu_i,
@@ -187,7 +187,7 @@ module smu_boot_fcov #(
   // lc_sigint_err rises only when the exported LC_STATE pair disagrees with
   // itself, which takes a fault injected inside the SEP; that point is Phase 2
   // (SMU_FCOV.adoc).
-  if (SepPresent) begin : g_sep
+  if (SEP_PRESENT) begin : g_sep
     localparam logic [1:0] DemoteOn = 2'b01;
     wire lcc_demote_1_e = (lcc_demote_state_1_i === DemoteOn);
     wire lcc_demote_2_e = (lcc_demote_state_2_i === DemoteOn);

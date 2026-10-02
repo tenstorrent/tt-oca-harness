@@ -23,7 +23,7 @@ from . import smc_addr_map as _addr
 from . import smc_cg_obs_utils as cg
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# hyst=0 so card within-1-cycle idle gate-off matches axi_cg_snoop (DenyDelay=1).
+# hyst=0 so card within-1-cycle idle gate-off matches axi_cg_snoop (DENY_DELAY=1).
 HYST = 0
 IDLE_OBSERVE = 16
 GATE_OFF_TIMEOUT_SMC = 256

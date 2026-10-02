@@ -21,7 +21,7 @@
 
 module smc_clk_fcov #(
   // Ref-clock cycles per measurement window for the domain-ratio points.
-  parameter int unsigned WindowCycles = 1024
+  parameter int unsigned WINDOW_CYCLES = 1024
 ) (
   input wire clk_ref_i,
   input wire clk_smc_i,
@@ -69,8 +69,8 @@ module smc_clk_fcov #(
   // so a read landing on an increment only shifts a ratio by one count.
   // ------------------------------------------------------------------
   localparam int unsigned CntWidth = 32;
-  localparam int unsigned WinWidth = $clog2(WindowCycles);
-  localparam logic [WinWidth-1:0] WindowLast = WinWidth'(WindowCycles - 1);
+  localparam int unsigned WinWidth = $clog2(WINDOW_CYCLES);
+  localparam logic [WinWidth-1:0] WindowLast = WinWidth'(WINDOW_CYCLES - 1);
 
   // Every register here carries a reset branch. Without one a 4-state
   // simulator holds the counters at X for the whole run, the window never
@@ -95,7 +95,7 @@ module smc_clk_fcov #(
   end
 
   // The deltas are registered at the closing edge against the base captured
-  // when the window opened, so they span WindowCycles ref edges. Reading
+  // when the window opened, so they span WINDOW_CYCLES ref edges. Reading
   // live counters against a base loaded on the same edge would measure a
   // single cycle instead.
   logic [WinWidth-1:0] win_cnt_q;
