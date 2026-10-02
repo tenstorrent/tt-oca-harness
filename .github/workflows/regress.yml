@@ -15,7 +15,7 @@ name: regress
 #            nightly is a triage signal, not a merge gate.
 #   weekly   the regression the dashboard publishes (dashboard.yml listens
 #            for `dv-run-<dut>-<tool>-weekly`); one random seed per test,
-#            promoted to a larger runner by the DV_LARGE_RUNNER variable.
+#            on the standard runner.
 #
 # Neither tier collects coverage: the coverage regression runs on the
 # licensed simulator flow outside hosted CI, and the coverage-instrumented
@@ -100,7 +100,7 @@ jobs:
             items: cpu_stub
             reseed: 1
             coverage: false
-            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            runner: ubuntu-latest
           - dut: smu
             # `hosted` is the enrolled toolchain-free release set: every leaf
             # uses `elaboration` firmware, whose only products are zero-filled
@@ -254,31 +254,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Runner-size promotion: the repository variable DV_LARGE_RUNNER names
-        # a 16-vCPU label that exists in the org's runner settings
-        # (see sim.yml for why a missing label must not be the default);
         # sim-jobs follows the runner core count (the action's `nproc`).
+        # Every row uses ubuntu-latest. LARGE_RUNNER is read only by
+        # container.yml.
         include:
           - dut: dtp
             items: all
             reseed: 1
             coverage: false
-            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            runner: ubuntu-latest
           - dut: sep
             items: cpu_stub
             reseed: 1
             coverage: false
-            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            runner: ubuntu-latest
           - dut: smu
             items: hosted
             reseed: 1
             coverage: false
-            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            runner: ubuntu-latest
           - dut: smc
             items: hosted
             reseed: 1
             coverage: false
-            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            runner: ubuntu-latest
           - dut: smc
             # The `rtl_issue` reproducers: every leaf carries `expect_fail`, so
             # the row is green while the filed defects stand and goes red the

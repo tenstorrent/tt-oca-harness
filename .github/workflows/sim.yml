@@ -79,24 +79,14 @@ jobs:
         # runs their full groups nightly.
         #
         # runner: the label this DUT's job runs on, and the only knob that sets
-        # build parallelism (--build-jobs "$(nproc)" follows it).
-        #
-        # SEP wants a 16-vCPU larger runner for its ~1.7 GB Verilator model, but
-        # a label with no matching runner does NOT fail fast -- the job queues
-        # until it times out, and everything with `needs:` on it stalls too. So
-        # the default stays the always-present 4-vCPU standard runner, and the
-        # repository variable DV_LARGE_RUNNER promotes it once the larger-runner
-        # label is confirmed in the org's runner settings:
-        #
-        #   gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
-        #
-        # No workflow edit needed to flip it, or to roll back. regress.yml
-        # promotes its regression rows with the same variable.
+        # build parallelism (--build-jobs "$(nproc)" follows it). Every row
+        # uses ubuntu-latest. The 16-core runner is LARGE_RUNNER in
+        # container.yml, and this workflow does not read it.
         include:
           - dut: dtp
             runner: ubuntu-latest
           - dut: sep
-            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            runner: ubuntu-latest
           # `smu` carries the SMU regression (smu_wrapper.sv, one compile
           # profile with the real SEP). It runs the default `smoke` group,
           # which is toolchain-free by construction (its firmware smokes are
