@@ -414,6 +414,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "covers exactly IR+DR TCKs, host TMS matches on every TCK, and the "
             "extra STAP stays quiet",
         ),
+        (
+            "CHK-SMU-STAP-EXTRA-SELECT",
+            "CHK-SMU-STAP-EXTRA-SELECT",
+            "an unselected extra STAP drives no TDO enable and its host TMS does "
+            "not follow the primary TAP; after a TAP_3DCR select without "
+            "Config-Hold the enable covers exactly IR+DR TCKs, host TMS matches "
+            "on every TCK, and the I/O STAP stays quiet",
+        ),
     ],
     "smu_dtp_bsr_ijtag_scan_test": [
         ("CHK-DTP-BSR-EXTEST-SELECT", "CHK-DTP-BSR-EXTEST-SELECT", "EXTEST selects BSR TCK"),

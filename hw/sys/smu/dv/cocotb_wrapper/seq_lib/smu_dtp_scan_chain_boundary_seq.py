@@ -50,6 +50,17 @@ S4  Secondary-TAP select. An unselected STAP drives no host TDO enable and
     stays quiet -- that is what puts ``jtag_stap_io_host_tdi_i`` in the live
     chain.
 
+S5  The extra STAP host, selected the same way (run before S4). The extra
+    STAP sits beside the I/O STAP in the SEP=1 chain and shares its select
+    rules: unselected it parks its host TMS at TMS-Hold and drives no TDO
+    enable; selected over TAP_3DCR its enable covers exactly the IR+DR TCKs
+    of a scan and its host TMS follows the primary TAP on every TCK, while
+    the I/O STAP stays quiet. The selection is written with Config-Hold clear
+    in both the PTAP and the STAP 3DCR, so the Test-Logic-Reset S4 starts
+    from returns the chain to its reset state (``jtag_stap`` page, "3DCR
+    Register", Config-Hold), which S4's own idle and "extra STAP stays
+    unselected" checks then read.
+
 Where the pages stop short -- the TDI-to-TDO direction of the SIB cascade,
 the ``jtag_scan_ctrl_t.select`` definition and the TAP states that assert
 ``host_tdo_oen_o`` -- the expectation is the DV-owned rule above and the
@@ -168,6 +179,7 @@ class smu_dtp_scan_chain_boundary_seq:
         await self._ijtag_gating()
         await self._ijtag_chain_payload()
         await self._ijtag_sib_round_trip()
+        await self._stap_select_extra()
         await self._stap_select()
 
     # ------------------------------------------------------------------
@@ -326,37 +338,88 @@ class smu_dtp_scan_chain_boundary_seq:
             evidence="CHK-SMU-STAP-IO-SELECT",
         )
 
-    async def _select_stap(self, name: str) -> None:
+    # ------------------------------------------------------------------
+    # S5: the extra STAP host, selected over TAP_3DCR without Config-Hold.
+    # ------------------------------------------------------------------
+    async def _stap_select_extra(self) -> None:
+        await self.jtag.reset_to_tlr()
+        await self.jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
+        for _ in range(8):
+            await self.jtag.step_tms(0)
+
+        idle = await self._observe_stap("tb_stap_extra0_tms")
+        self.sb.expect_eq(
+            "the extra STAP drives no TDO enable while it is unselected",
+            idle["tb_stap_extra0_tdo_oen"],
+            0,
+            evidence="CHK-SMU-STAP-EXTRA-SELECT",
+        )
+        self.sb.expect_eq(
+            "unselected extra STAP host TMS does not follow the primary TAP",
+            idle["tms_mismatch"] > 0,
+            True,
+            evidence="CHK-SMU-STAP-EXTRA-SELECT",
+        )
+
+        await self._select_stap("extra0", config_hold=0)
+        live = await self._observe_stap("tb_stap_extra0_tms")
+        self.sb.expect_eq(
+            "the selected extra STAP drives its TDO enable for the whole IR+DR scan",
+            live["tb_stap_extra0_tdo_oen"],
+            EXPECTED_STAP_OEN_TCKS,
+            evidence="CHK-SMU-STAP-EXTRA-SELECT",
+        )
+        self.sb.expect_eq(
+            "the selected extra STAP host TMS follows the primary TAP on every TCK",
+            live["tms_mismatch"],
+            0,
+            evidence="CHK-SMU-STAP-EXTRA-SELECT",
+        )
+        self.sb.expect_eq(
+            "the I/O STAP beside it stays unselected",
+            live["tb_stap_io_tdo_oen"],
+            0,
+            evidence="CHK-SMU-STAP-EXTRA-SELECT",
+        )
+
+    async def _select_stap(self, name: str, config_hold: int = 1) -> None:
         """TAP_3DCR select, IR loaded once.
 
         The STAP chain shifts on Shift-IR as well as Shift-DR, so a second
         IR load would Update-IR the SIB/3DCR chain and undo the selection.
+        ``config_hold`` is written to the PTAP and the STAP 3DCR alike.
         """
         await self.jtag.shift_ir(DTP_IR_TAP_3DCR)
         await self.jtag.shift_dr(
-            ptap_3dcr_value(config_hold=1, select=1),
+            ptap_3dcr_value(config_hold=config_hold, select=1),
             PTAP_3DCR_WIDTH,
             back_to_rti=True,
         )
         await self.jtag.step_tms(0)
         await self.jtag.step_tms(0)
-        sib_word, sib_width = ptap_prefixed(stap_sib_pattern(name, 1), len(SMU_SEP_STAP_ORDER))
+        sib_word, sib_width = ptap_prefixed(
+            stap_sib_pattern(name, 1), len(SMU_SEP_STAP_ORDER), config_hold=config_hold
+        )
         await self.jtag.shift_dr(sib_word, sib_width, back_to_rti=True)
         stap_word, stap_width = stap_3dcr_scan_word(
-            name, config_hold=1, stap_sel=1, tms_hold=1, sib_en=0
+            name, config_hold=config_hold, stap_sel=1, tms_hold=1, sib_en=0
         )
-        value, width = ptap_prefixed(stap_word, stap_width)
+        value, width = ptap_prefixed(stap_word, stap_width, config_hold=config_hold)
         await self.jtag.shift_dr(value, width, back_to_rti=True)
 
-    async def _observe_stap(self) -> dict[str, int]:
-        """One IDCODE IR+DR scan, watched at the two secondary-TAP hosts."""
+    async def _observe_stap(self, tms_pin: str = "tb_stap_io_tms") -> dict[str, int]:
+        """One IDCODE IR+DR scan, watched at the two secondary-TAP hosts.
+
+        ``tms_mismatch`` counts the TCKs on which ``tms_pin`` differs from the
+        primary TAP's TMS.
+        """
         pins = ("tb_stap_io_tdo_oen", "tb_stap_extra0_tdo_oen")
-        watcher = cocotb.start_soon(self._watch_stap(STAP_OBSERVE_CYCLES, pins))
+        watcher = cocotb.start_soon(self._watch_stap(STAP_OBSERVE_CYCLES, pins, tms_pin))
         await self.jtag.shift_ir(DTP_IR_IDCODE)
         await self.jtag.shift_dr(0, IDCODE_DR_WIDTH, back_to_rti=True)
         return await watcher
 
-    async def _watch_stap(self, cycles: int, pins: tuple[str, ...]) -> dict[str, int]:
+    async def _watch_stap(self, cycles: int, pins: tuple[str, ...], tms_pin: str) -> dict[str, int]:
         counts = {name: 0 for name in pins}
         counts["tck_n"] = 0
         counts["tms_mismatch"] = 0
@@ -368,7 +431,7 @@ class smu_dtp_scan_chain_boundary_seq:
                 counts["tck_n"] += 1
                 for name in pins:
                     counts[name] += self._bit(name)
-                if self._bit("tb_stap_io_tms") != self._bit("jtag_tms"):
+                if self._bit(tms_pin) != self._bit("jtag_tms"):
                     counts["tms_mismatch"] += 1
             prev_tck = tck
         return counts
