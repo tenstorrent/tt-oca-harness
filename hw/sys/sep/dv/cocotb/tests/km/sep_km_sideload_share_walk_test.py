@@ -63,8 +63,10 @@ Checkers (``r`` is the round, 1 or 2):
                 (D is clear). The engine STATUS is logged, not graded: no SEP
                 document states it
   CHK-KMAC-CLR  a keyed operation on the delivered key with KEY_VALID clear
-                raises kmac_err with a non-zero ERR_CODE (doc/kmac.adoc). Last
-                KMAC operation: the engine is left in its error state
+                raises kmac_err with a non-zero ERR_CODE (doc/kmac.adoc). Both
+                read clear just before CMD_START, so the error belongs to that
+                start. Last KMAC operation: the engine is left in its error
+                state
   CHK-AES-CLR   with sideload selected and the key shredded, AES produces no
                 output in a bounded window. doc/aes.adoc defers core behaviour
                 to the OpenTitan AES documentation, which states the unit only
@@ -151,7 +153,7 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_RC_SUCCESS,
     SepKmMailbox,
 )
-from seq_lib.sep_kmac_seq import KMAC_INTR_KMAC_ERR, SepKmac
+from seq_lib.sep_kmac_seq import KMAC_ERR_CODE, KMAC_INTR_KMAC_ERR, KMAC_INTR_STATE, SepKmac
 from seq_lib.sep_otbn_seq import SepOtbn
 
 ROUNDS = 2
@@ -728,6 +730,15 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         await self._shred_all(r)
 
     async def _cleared_final(self) -> None:
+        # Baseline: kmac_err and ERR_CODE clear before CMD_START, so an error
+        # read after the start comes from the start on the shredded key.
+        err0 = await self.kmac._rd(KMAC_ERR_CODE)
+        intr0 = await self.kmac._rd(KMAC_INTR_STATE)
+        assert err0 == 0 and (intr0 & KMAC_INTR_KMAC_ERR) == 0, (
+            f"CHK-KMAC-CLR FAIL: before CMD_START ERR_CODE 0x{err0:08x} and INTR_STATE "
+            f"0x{intr0:08x}; kmac_err or ERR_CODE is already set, so an error after the "
+            "start would not belong to the shredded key"
+        )
         intr, err = await self.kmac.start_sideload_keyed_err(_KMAC_ERR_POLLS)
         assert intr & KMAC_INTR_KMAC_ERR, (
             f"CHK-KMAC-CLR FAIL: a keyed KMAC on the shredded delivered key raised no "
@@ -737,7 +748,12 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             f"CHK-KMAC-CLR FAIL: kmac_err set but ERR_CODE is 0 (INTR_STATE 0x{intr:08x})"
         )
         self.logger.info(
-            "CHK-KMAC-CLR PASS: INTR_STATE 0x%08x (kmac_err), ERR_CODE 0x%08x", intr, err
+            "CHK-KMAC-CLR PASS: before CMD_START INTR_STATE 0x%08x ERR_CODE 0x%08x "
+            "(kmac_err clear); after it INTR_STATE 0x%08x (kmac_err), ERR_CODE 0x%08x",
+            intr0,
+            err0,
+            intr,
+            err,
         )
 
         await self.aes.configure_ecb_enc_256(sideload=True)
