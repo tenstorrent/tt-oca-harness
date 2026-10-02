@@ -225,7 +225,7 @@ regardless of the LC state and the SIP_DIS / SYS_DIS disables.</p>
 <p>SECURE_TM is not a term in the feature-control computation, so SEC_DIS neither
 qualifies nor overrides it. In particular, SEC_DIS does not open the secure scan
 chain to a dump: that chain admits only test commands, and only at
-<code>secure_tm = 1</code>, independently of the feature-control bits (see the Life Cycle
+<code>secure_tm = 1</code>, independently of the feature-control bits (see the Lifecycle
 Controller chapter, <em>`secure_tm` and the Secure Scan Chain</em>).</p>
 </div>
 </div>
@@ -239,10 +239,8 @@ into the SEP via the JTAG port, hashed, and redundantly compared against an
 embedded hash constant. On a match, i.e. hash(SEC_DIS_TOKEN_I) ==
 SEP_SEC_DISABLE_TOKEN_DIGEST, the life-cycle control is overridden to open
 debug access, and the feature-control output follows the SEC_DIS rules in the
-Life Cycle Controller chapter.</p>
-</div>
-<div class="paragraph">
-<p>A match does not release the SEP reset, which stays held until fuse sensing
+Lifecycle Controller chapter.
+A match does not release the SEP reset, which stays held until fuse sensing
 completes. To boot a part whose fuse sensing does not complete, override
 <code>sep_reset_n</code> through the SEP slice of the IC_RESET TDR (see
 <a href="../dtp/clk_rst.html#dtp-ic-reset-overrides" class="xref page">IC_RESET Overrides</a> in the DTP chapter). The override and the token
@@ -253,7 +251,60 @@ takes both.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="silicon-revision-scope"><a class="anchor" href="#silicon-revision-scope"></a><a class="link" href="#silicon-revision-scope">2. Silicon Revision Scope</a></h2>
+<h2 id="sec-dis-fuse-sensing-and-shadow-map"><a class="anchor" href="#sec-dis-fuse-sensing-and-shadow-map"></a><a class="link" href="#sec-dis-fuse-sensing-and-shadow-map">2. Fuse Sensing and the Shadow Map</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>While a SEC_DIS match holds:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Automatic fuse sensing does not start, and sensing already in progress stops.
+No further fuse words are loaded into the shadow registers, and fuse sensing
+does not complete.</p>
+</li>
+<li>
+<p>A read of the eFuse shadow map over the SEP bus completes with OKAY.</p>
+</li>
+<li>
+<p>The SMC eFuse controller receives the SEP security-disable status, so SMC
+fuse sensing stops and the SMC shadow map opens in the same way.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sec-dis-recovery-sequence"><a class="anchor" href="#sec-dis-recovery-sequence"></a><a class="link" href="#sec-dis-recovery-sequence">3. Recovery Sequence</a></h2>
+<div class="sectionbody">
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Present the SEC_DIS token over JTAG as described in the Token Processing
+chapter, <em>Token Match Sequence</em>, and poll <code>SEC_DISABLE_TOKEN_MATCH</code> until it
+reads the match code. The computed digest is now valid.</p>
+</li>
+<li>
+<p>Apply a cold reset. The token arrays, the computed digest and its valid bit
+survive reset, so the match holds from cold-reset release. Fuse sensing does
+not start, and every shadow register keeps its reset value instead of the
+partial contents of an interrupted sense. SEP samples the secure test-mode
+request one cycle after cold-reset release, instead of at fuse-sensing
+completion.</p>
+</li>
+<li>
+<p>Override <code>sep_reset_n</code> through the IC_RESET TDR to release the SEP reset.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Without the cold reset, the shadow registers hold whatever the failed sense
+loaded before the match, and the secure test-mode request is never sampled.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="silicon-revision-scope"><a class="anchor" href="#silicon-revision-scope"></a><a class="link" href="#silicon-revision-scope">4. Silicon Revision Scope</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>SEC_DIS is intended for A0 silicon only and is removed in later revisions
@@ -265,7 +316,7 @@ so the feature is killed without a re-spin.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="implementation-requirements"><a class="anchor" href="#implementation-requirements"></a><a class="link" href="#implementation-requirements">3. Implementation Requirements</a></h2>
+<h2 id="implementation-requirements"><a class="anchor" href="#implementation-requirements"></a><a class="link" href="#implementation-requirements">5. Implementation Requirements</a></h2>
 <div class="sectionbody">
 <div class="ulist">
 <ul>
