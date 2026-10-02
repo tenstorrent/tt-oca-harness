@@ -192,9 +192,13 @@ each peripheral's default values.
 |GPIO |`INPUT_BY_DEFAULT` (per instance, from
 `smc_padring_pkg::DefaultDirectionMap`) |input on all |input on 62 of 65
 GPIOs, output on the remaining 3
+
+|UART 16550 |`smc_config_pkg::UartTxFifoDepth` |16 |32
+
+|UART 16550 |`smc_config_pkg::UartRxFifoDepth` |16 |32
 |=======================================================================
 
 The System Timer OCTS takes no parameters. The eFuse overrides only bus
-widths and interface types. The UART 16550, Log Engine, AVSBus Controller,
-and Telemetry Receiver are configured explicitly through `smc_config_pkg`,
-but at values equal to their IP defaults.
+widths and interface types. The Log Engine, AVSBus Controller, and Telemetry
+Receiver are configured explicitly through `smc_config_pkg`, but at values
+equal to their IP defaults.

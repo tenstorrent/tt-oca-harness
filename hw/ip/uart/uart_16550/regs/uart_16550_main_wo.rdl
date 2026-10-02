@@ -7,7 +7,8 @@
 addrmap uart_16550_main_wo {
 
     name = "UART 16550 Main Write-Only Address Map";
-    desc = "Contains the write-only registers accessible only when `LCR.DLAB = 0`.";
+    desc = "Contains the write-only registers. THR is accessible only when `LCR.DLAB = 0`;
+            FCR is writable for either `LCR.DLAB` value.";
 
     //////////////////////////
     // Register Definitions //
@@ -62,7 +63,7 @@ addrmap uart_16550_main_wo {
             sw = w;
             hw = r;
             desc = "Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most
-                    significant 2 bits, use the `CTRL.RCVR_TRIGGER_MS2B` register field. The
+                    significant 2 bits, use the `ECR.RCVR_TRIGGER_MS2B` register field. The
                     configurations for the trigger levels are:
                      * `0x0` -    1 character
                      * `0x1` -    4 characters
