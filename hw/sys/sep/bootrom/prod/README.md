@@ -128,11 +128,13 @@ The default `build/` may also contain:
 
 | File | Purpose |
 |---|---|
-| `non_secure_boot.bin` | Unsigned manifest and BL1 flash image. |
-| `non_secure_boot.spi_preload` | Verilog-hex form of the unsigned image. |
-| `smc_mem.hex` | Unsigned image rebased to the SEP-visible SMC SRAM address. |
-| `secure_boot.bin` / `.spi_preload` | RSA-3072 signed test image. |
-| `encrypted_boot.bin` / `.spi_preload` | Signed, AES-CBC encrypted test image. |
+| `oca_<name>.bin` / `.spi_preload` | Flash image for each entry in `OCA_IMAGES`, with the bundle at both boot slots, as raw binary and Verilog hex. |
+| `oca_non_secure_boot.bin` / `.spi_preload` | Unsigned manifest and BL1. |
+| `oca_secure_boot.bin` / `.spi_preload` | RSA-3072 signed test image. |
+| `oca_encrypted_boot.bin` / `.spi_preload` | Signed, AES-CBC encrypted test image. |
+| `oca_smc_mem.hex` | `oca_non_secure_boot.bin` rebased to the SEP-visible SMC SRAM address. |
+| `oca_smc_bundle.bin` | Bare signed bundle the virtual platform stages in SMC SRAM. |
+| `invalid_class_key.bin` | Decryption negative image, from `decrypt_negative_images`. |
 
 The manifest configs and the signing keys in `tests/signing_keys/` are DV assets
 for `BUILD_TYPE=debug`. They do not define production key provisioning, and a
@@ -159,7 +161,7 @@ the host.
 A test selects an image with `firmware = { name = "boot_rom", mode = "boot_rom" }`
 and receives it through plusargs. `hw/sys/sep/dv/testlists/rom_fw.toml` passes
 `+sep_boot_rom_hex` and `+sep_smc_mem_hex` pointing at `build/boot_rom.vmem` and
-`build/smc_mem.hex`. Those outputs are gitignored, so a plain `run_dv.py`
+`build/oca_smc_mem.hex`. Those outputs are gitignored, so a plain `run_dv.py`
 invocation builds what it needs, with one exception: the manifest-packer
 submodule above, which a build step must not initialize because it would mutate
 git state.
