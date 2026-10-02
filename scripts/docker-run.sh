@@ -63,6 +63,9 @@ IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
 NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
 MANIFEST_SUBMODULE="hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
 REGISTRY_IMAGE="${OCAH_CONTAINER_REGISTRY_IMAGE:-}"
+# Flakes are required; max-jobs builds independent derivations on every CPU.
+NIX_CONFIG="experimental-features = nix-command flakes
+max-jobs = auto"
 
 # Private submodules, as "<path>:<repository name>". A flake input is fetched
 # with submodules=1, so nix resolves every one of these from .gitmodules -- over
@@ -324,8 +327,6 @@ run_image() {
 # hosts without nix installed, it will use NIXOS_IMAGE, which defaults to
 # docker.io/nixos/nix
 nixos_run() {
-  # Nix Flakes and Nix-Command are required for this - enable them
-  local NIX_CONFIG="experimental-features = nix-command flakes"
   local -a sub_env=()
   mapfile -t sub_env < <(submodule_git_config "$ROOT" || true)
   if command -v nix >/dev/null 2>&1; then
@@ -361,7 +362,6 @@ image_hash() {
 
 # Open a shell in the Nix Container - even on a nix-enabled host
 nixos_shell() {
-  local NIX_CONFIG="experimental-features = nix-command flakes"
   local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
         git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest &&"
   run_image $NIXOS_IMAGE -it sh -c "
