@@ -23,7 +23,7 @@ One DUT view lives in this DV root:
 the same module in its `UVM` shape under `--framework uvm`
 |===
 
-Logs carry `DUT_TAG=WRAPPER`. The SEP=0 composition (`smu #(.SEP(0))`) is
+Logs carry `DUT_TAG=WRAPPER`. The SEP=0 composition (`smu #(.CFG(smu_pkg::NoSepCfg))`) is
 not elaborated by this package; `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`
 holds the names that need it.
 

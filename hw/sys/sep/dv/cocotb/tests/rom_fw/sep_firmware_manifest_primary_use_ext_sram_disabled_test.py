@@ -12,15 +12,17 @@ import os
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw import sep_use_ext_sram_base as ues
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
@@ -28,16 +30,27 @@ _REQUIRED, _FORBIDDEN = ues.smc_markers()
 
 
 @pyuvm.test()
-class sep_firmware_manifest_primary_use_ext_sram_disabled_test(
-        sep_rom_ot_secure_boot_test):
+class sep_firmware_manifest_primary_use_ext_sram_disabled_test(sep_rom_ot_secure_boot_test):
     """use_ext_sram=0 on the primary: payload staged in the SMC SRAM window."""
 
     efuse_preload = _EFUSE_PRELOAD
-    required_markers = sep_rom_ot_secure_boot_test.required_markers + _REQUIRED + (
-        "MANIFEST_OK", "BL1_COPIED", "BL1_JUMP=",
+    required_markers = (
+        sep_rom_ot_secure_boot_test.required_markers
+        + _REQUIRED
+        + (
+            "MANIFEST_OK",
+            "BL1_COPIED",
+            "BL1_JUMP=",
+        )
     )
-    forbidden_markers = sep_rom_ot_secure_boot_test.forbidden_markers + _FORBIDDEN + (
-        _BACKUP_SRC, "MANIFEST_ERR=", "MANIFEST_ALL_FAILED",
+    forbidden_markers = (
+        sep_rom_ot_secure_boot_test.forbidden_markers
+        + _FORBIDDEN
+        + (
+            _BACKUP_SRC,
+            "MANIFEST_ERR=",
+            "MANIFEST_ALL_FAILED",
+        )
     )
 
     def build_efuse_image(self):

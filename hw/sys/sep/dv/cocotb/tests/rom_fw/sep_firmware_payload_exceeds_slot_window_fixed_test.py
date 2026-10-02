@@ -13,7 +13,7 @@ from rom_fw import sep_payload_size_base as psb
 
 _CAPACITY = psb.payload_staging_capacity()
 _PAYLOAD_BYTES = (_CAPACITY // 1024 + 1) * 1024
-_REQUIRED, _FORBIDDEN = psb.refused_markers(psb.shipped_payload_bytes("backup"))
+_REQUIRED, _FORBIDDEN = psb.refused_markers()
 
 
 @pyuvm.test()
