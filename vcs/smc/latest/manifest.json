@@ -8,31 +8,31 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/dashboard/vcs/smc/dashboard-data/history.json",
-    "history_points": 14,
+    "history_points": 15,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/dashboard/vcs/smc/dashboard-data/summary.json",
     "tests": {
-      "failing": 5,
+      "failing": 3,
       "incomplete_runs": 0,
-      "pass_rate": 98.33,
-      "passing": 294,
+      "pass_rate": 99.05,
+      "passing": 313,
       "skipped": 0,
-      "total": 299,
+      "total": 316,
       "unknown": 0
     }
   },
   "errors": [
-    "smc: runner rc=124",
-    "smc: native status=TIMEOUT",
+    "smc: runner rc=1",
+    "smc: native status=FAIL",
     "smc: normalized status=FAIL"
   ],
-  "generated_at": "2026-10-01T17:54:34.903014+00:00",
+  "generated_at": "2026-10-02T15:28:51.830980+00:00",
   "git": {
-    "commit": "53da347a724ae7130124a32afdae94e8a9461026",
-    "requested_ref": "53da347a724ae7130124a32afdae94e8a9461026"
+    "commit": "aef11fb5f86b53a96b60b3b3ff5961c1c7dc8968",
+    "requested_ref": "aef11fb5f86b53a96b60b3b3ff5961c1c7dc8968"
   },
   "jenkins": {
-    "build_number": "27",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smc/job/dashboard/27/",
+    "build_number": "28",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smc/job/dashboard/28/",
     "job_name": "tt-oca-harness/smc/dashboard",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smc/job/dashboard/"
   },
@@ -43,12 +43,12 @@
       "group": "all",
       "mode": "regression",
       "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/dashboard/vcs/smc/runs/result.json",
-      "native_status": "TIMEOUT",
+      "native_status": "FAIL",
       "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/dashboard/vcs/smc/dashboard-data/result.json",
       "normalized_status": "FAIL",
       "profile": "smc",
       "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/dashboard/vcs/smc/runs",
-      "runner_rc": 124,
+      "runner_rc": 1,
       "tool": "vcs"
     }
   ],
