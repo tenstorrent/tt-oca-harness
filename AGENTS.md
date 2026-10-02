@@ -494,6 +494,26 @@ field named for the size a region used to have, a constant named after a mode th
 replaced — dates as quickly as a breadcrumb, and it forces a comment to explain a concept the
 code no longer has. Name what exists.
 
+### Simplify once the behavior works
+
+When the change behaves correctly and you have checked it, simplify what it added before you
+stop. Do this without being asked. It applies to the software in the change — Python, C, shell,
+Tcl, Makefiles — where a second reading can see repetition the first writing could not. Leave a
+hardware description as it is unless the shorter form is the same behavior, written in the
+style the file already uses.
+
+The aim is a smaller diff that is still easy to read. A reduction that is harder to follow, or
+that only moves the complexity into a new name or a comment, is not an improvement.
+
+- Delete what the new control flow made redundant: a helper, a branch, a parameter, or a copy
+  that nothing reads anymore.
+- Use a function, pattern, or name the file or its neighbors already have. Add a new one only
+  when none of those can carry the behavior.
+- Keep the control flow readable in one pass. A reduction that needs a comment to explain
+  itself has failed the comments rule above.
+- Keep the behavior. A shorter form that changes results, interfaces, or tests is a separate
+  change.
+
 ## Commit Conventions
 
 Follow the existing history: a lowercase path-like scope (one to three
