@@ -28,8 +28,9 @@ S1  Instruction gating. The iJTAG network is selected only by SELECT_IJTAG
     or RUNBIST, and an IEEE 1687 SIB includes its host segment only while it
     is open. Under SELECT_IJTAG all three SIBs are opened, and a scan with
     them open has to assert every host select (the positive control) and
-    read the three enables back. IDCODE is then loaded, and over its whole
-    IR+DR scan none of the three selects may assert. Back under
+    read the three enables back. IDCODE is then loaded, and from the
+    Update-IR that loads it, over an IDCODE DR scan and the IR scan of a
+    second IDCODE load, none of the three selects may assert. Back under
     SELECT_IJTAG the SIBs still read back open, so they were open through the
     IDCODE scan, and that scan's Update-DR closes them for S2.
 
@@ -251,9 +252,13 @@ class smu_dtp_scan_chain_boundary_seq:
                 evidence="CHK-SMU-IJTAG-GATE",
             )
 
-        watcher = cocotb.start_soon(self._count_selected_tcks(STAP_OBSERVE_CYCLES, pins))
+        # Counted from Update-IR of IDCODE on: the TCKs of the IR scan before it
+        # still run under SELECT_IJTAG. A second IDCODE load puts an IR scan
+        # under IDCODE in the window too.
         await self.jtag.shift_ir(DTP_IR_IDCODE)
+        watcher = cocotb.start_soon(self._count_selected_tcks(2 * STAP_OBSERVE_CYCLES, pins))
         idcode = await self._checked_shift_dr(0, IDCODE_DR_WIDTH, "IDCODE with SIBs open")
+        await self.jtag.shift_ir(DTP_IR_IDCODE)
         counts = await watcher
         self.sb.expect_eq(
             "IDCODE reads the configured value with the iJTAG SIBs open",
