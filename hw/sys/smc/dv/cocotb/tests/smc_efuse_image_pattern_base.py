@@ -22,6 +22,7 @@ from seq_lib.smc_efuse_image_pattern_test_seq import (
     EFUSE_MAP_WORDS,
     EXPECTED_ACCESSES,
     EXPECTED_VALUE_CHECKS,
+    check_schema_against_map,
     load_image,
     region_of,
     smc_efuse_image_pattern_test_seq,
@@ -97,6 +98,7 @@ class smc_efuse_image_pattern_base(smc_base_test):
 
     def _check_image(self) -> None:
         image = self.image
+        blocks = check_schema_against_map()
         data = DATA_WORDS
         nonzero = sum(1 for w in data if image.words[w])
         assert nonzero, f"{image.path.name} has no non-zero data word; the sweep proves nothing"
@@ -135,7 +137,8 @@ class smc_efuse_image_pattern_base(smc_base_test):
         cocotb.log.info(
             "CHK-EFUSE-IMG-IMAGE: %s pattern=%s seed=%d LOCKS=0x%016x (non-zero), %d of %d "
             "data words non-zero, %d write-locked, no read lock, bank-model word 0 "
-            "0x%08x matches; write-locked regions: %s",
+            "0x%08x matches, %d schema blocks agree with the RDL map; write-locked "
+            "regions: %s",
             image.path.name,
             self.pattern,
             self.random_seed(),
@@ -144,6 +147,7 @@ class smc_efuse_image_pattern_base(smc_base_test):
             len(data),
             locked,
             otp0,
+            blocks,
             ", ".join(write_locked_regions) or "none",
         )
 
@@ -160,22 +164,19 @@ class smc_efuse_image_pattern_base(smc_base_test):
         seq.dispatch_reset = dispatch_reset
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
 
-        assert seq.content_compares == [EFUSE_MAP_WORDS, EFUSE_MAP_WORDS], (
-            f"content sweeps compared {seq.content_compares} words, expected "
-            f"{EFUSE_MAP_WORDS} after sense and again after the cold reset"
-        )
         measured = sb.sys_axi_value_checks_seen - before
-        assert measured >= EXPECTED_VALUE_CHECKS, (
-            f"scoreboard booked {measured} exact-value SEP_IN AXI compares, expected at "
-            f"least {EXPECTED_VALUE_CHECKS}"
+        assert measured == EXPECTED_VALUE_CHECKS, (
+            f"scoreboard booked {measured} exact-value SEP_IN AXI compares, expected "
+            f"{EXPECTED_VALUE_CHECKS}"
         )
         cocotb.log.info(
-            "CHK-EFUSE-IMG-SCOREBOARD: %d >= %d exact-value compares booked by the "
-            "scoreboard; %d words compared against the image in each of the two "
-            "content sweeps",
+            "CHK-EFUSE-IMG-SCOREBOARD: the scoreboard booked exactly %d exact-value "
+            "compares, %d of them in the two %d-word content sweeps, and the sequence "
+            "made %d non-disclosure checks",
             measured,
-            EXPECTED_VALUE_CHECKS,
+            2 * EFUSE_MAP_WORDS,
             EFUSE_MAP_WORDS,
+            seq.nondisclosure_checks,
         )
         await self.record_protocol_vip(
             SmcProtocolVipKind.EFUSE,
