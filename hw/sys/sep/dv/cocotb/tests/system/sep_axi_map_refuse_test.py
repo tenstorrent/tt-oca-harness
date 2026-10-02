@@ -71,8 +71,12 @@ class sep_axi_map_refuse_test(sep_base_test):
             "refused-read data compare cannot fail"
         )
 
-        # Every probe is a reserved address this test asserts. Unnamed-refuse
-        # spans are excluded when the set is built.
+        # Every probe is a reserved address this test asserts. The spans in
+        # _PROBE_EXCLUDE are dropped when the set is built, each with its reason:
+        # the CPU TCM aperture (not fabric-decoded with the core held off), the
+        # TB-terminated external apertures, the adopter-defined SEP External
+        # window, and the system-bus reserved span that
+        # sep_unmapped_access_policy_test grades.
         fails: list[str] = []
         for item in cfg.probes:
             tag = "anchor" if item.anchor else "rand"

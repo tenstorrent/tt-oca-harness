@@ -68,13 +68,9 @@ _PROBE_EXCLUDE: dict[tuple[int, int], str] = {
     # is the testbench, so a refusal there is a TB property.
     (0x0000_0000, 0x0FFF_FFFF): "external chiplet aperture, TB-terminated",
     (0x4000_0000, 0xBFFF_FFFF): "external SMU aperture, TB-terminated",
-    # Reserved in the map and excluded from this walk. The system-bus span is
-    # graded for refusal and for its sep.rdl code by
-    # sep_unmapped_access_policy_test.
-    (0x1091_4000, 0x1091_4FFF): "reserved crypto gap, excluded",
-    (0x1092_1000, 0x1092_FFFF): "reserved KM gap, excluded",
-    (0x1093_8000, 0x1093_FFFF): "reserved OTP gap, excluded",
-    (0x10A4_0000, 0x10A5_FFFF): "reserved SYS gap, excluded",
+    # The system-bus reserved span is graded for refusal and for its sep.rdl
+    # code by sep_unmapped_access_policy_test.
+    (0x10A4_0000, 0x10A5_FFFF): "reserved SYS gap, graded by sep_unmapped_access_policy_test",
     # SEP External: memory_map.adoc gives an adopter-defined response.
     (0x2000_0000, 0x3FFF_FFFF): "SEP External window, adopter-defined",
 }
@@ -105,10 +101,11 @@ SHORT_ROW_LIMIT = 5
 
 # Anchors that survive the exclude list. A drop here does not move
 # short_regions, so the count is held on its own.
-ANCHOR_KEPT = 8
+ANCHOR_KEPT = 10
 
 # Reserved gaps walked on every seed: one address just past the end of a live
-# block. Three sit in excluded spans and are dropped, so eight survive.
+# block. One sits in the excluded system-bus span and is dropped, so ten
+# survive.
 _ANCHORS: tuple[tuple[int, str], ...] = (
     (ROM_ONE_PAST, "r"),
     (0x1080_3008, "r"),  # first byte above the reset controller

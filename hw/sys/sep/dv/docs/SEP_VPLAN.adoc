@@ -6928,7 +6928,7 @@ reported as such rather than counted as a pass.
 
 [arabic]
 . Classify from the DV-owned table in `env/sep_axi_decode_map.py`; a reserved row, and any address in no row at all, allocates nothing. Inside the dual scratch bank (`0x1080_2000`-`0x1080_2FFF`), OTP (`0x1093_0000`-`0x1093_FFFF`) and system-bus (`0x10A0_0000`-`0x10A3_FFFF`) windows, each allocated row is one register block's decoded extent in `hw/sys/sep/regs/gen/py/sep_reg.py` (an RDL array spans all its elements at the array stride). Every span between those blocks is owned by no RDL block and is a reserved row. The OTP anchor is the first byte above the `EFUSE_MMR` block.
-. Drop the named excluded spans from the probe set.
+. Drop the named excluded spans from the probe set: the CPU TCM aperture, the external chiplet and SMU apertures (TB-terminated), the SEP External window (adopter-defined) and the system-bus reserved span (graded by `sep_unmapped_access_policy_test`). The crypto (`0x1091_4000`), Key Manager (`0x1092_1000`) and OTP reserved gaps are walked, each with a directed anchor.
 . Read and write the surviving anchors and the seed-selected reserved addresses, and report the per-row shortfall where a row yielded fewer probes than its quota.
 
 *Checkers*:
