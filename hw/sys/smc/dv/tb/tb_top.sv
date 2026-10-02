@@ -1361,11 +1361,12 @@ module smc_uvm_top
 
 `ifndef UVM
     // cocotb toggles the model oscillators through the clock inputs, with
-    // +pll_osc_bench keeping pll_wrap's own generators off: under Verilator,
-    // cocotb observes the pre-edge state only on a clock its own write toggles.
-    assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
-    assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smc_i;
-    assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
+    // +pll_osc_bench selecting these nets over pll_wrap's own generators:
+    // under Verilator, cocotb observes the pre-edge state only on a clock its
+    // own write toggles.
+    assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_ref_bench    = clk_ref_i;
+    assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_sys_bench    = clk_smc_i;
+    assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_periph_bench = clk_periph_i;
 `endif
 
     // Sense-done pin and the sensed eFuse shadow (XMR into the controller
@@ -1855,7 +1856,7 @@ module smc_uvm_top
     // does not carry these observables.
     // ------------------------------------------------------------------
     smc_reset_fcov #(
-        .CpuClusterCount ($bits(tb_ndmreset_request))
+        .CPU_CLUSTER_COUNT ($bits(tb_ndmreset_request))
     ) u_smc_reset_fcov (
         .clk_ref_i                   (clk_ref),
         .clk_smc_i                   (clk_smc),
@@ -1902,7 +1903,7 @@ module smc_uvm_top
     );
 
     smc_periph_fcov #(
-        .GpioWidth (smc_pkg::NUM_GPIO_WRAPS)
+        .GPIO_WIDTH (smc_pkg::NUM_GPIO_WRAPS)
     ) u_smc_periph_fcov (
         .clk_periph_i                (clk_periph),
         .clk_smc_i                   (clk_smc),
@@ -1966,9 +1967,9 @@ module smc_uvm_top
     );
 
     smc_int_fcov #(
-        .CpuInterruptCount (smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS),
-        .ExtInterruptCount (smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS),
-        .CpuClusterCount   ($bits(tb_ndmreset_request))
+        .CPU_INTERRUPT_COUNT (smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS),
+        .EXT_INTERRUPT_COUNT (smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS),
+        .CPU_CLUSTER_COUNT   ($bits(tb_ndmreset_request))
     ) u_smc_int_fcov (
         .clk_smc_i                 (clk_smc),
         .rst_cold_ni               (rst_cold_n_int),
@@ -2274,7 +2275,7 @@ module smc_uvm_top
     );
 
     smc_cpu_fcov #(
-        .CustomActionWidth (cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS)
+        .CUSTOM_ACTION_WIDTH (cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS)
     ) u_smc_cpu_fcov (
         .clk_smc_i               (clk_smc),
         .rst_cold_ni             (rst_cold_n_int),
@@ -2311,8 +2312,8 @@ module smc_uvm_top
     );
 
     smc_gpio_fcov #(
-        .GpioWidth       (smc_pkg::NUM_GPIO_WRAPS),
-        .DefaultInputMap (smc_padring_pkg::DefaultDirectionMap)
+        .GPIO_WIDTH        (smc_pkg::NUM_GPIO_WRAPS),
+        .DEFAULT_INPUT_MAP (smc_padring_pkg::DefaultDirectionMap)
     ) u_smc_gpio_fcov (
         .clk_smc_i               (clk_smc),
         .rst_cold_ni             (rst_cold_n_int),
@@ -2325,8 +2326,8 @@ module smc_uvm_top
     );
 
     smc_efuse_fcov #(
-        .ShadowWidth  ($bits(smc_efuse_pkg::efuse_map_t)),
-        .LcStateWidth ($bits(tb_lc_state))
+        .SHADOW_WIDTH   ($bits(smc_efuse_pkg::efuse_map_t)),
+        .LC_STATE_WIDTH ($bits(tb_lc_state))
     ) u_smc_efuse_fcov (
         .clk_smc_i          (clk_smc),
         .rst_cold_ni        (rst_cold_n_int),
@@ -2862,12 +2863,12 @@ module smc_uvm_top
 
     // Both instances' model oscillators follow the bench clock inputs (see the
     // single-instance half); the two run in lockstep, as one clock tree.
-    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
-    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smc_i;
-    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
-    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
-    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smc_i;
-    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
+    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref_bench    = clk_ref_i;
+    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys_bench    = clk_smc_i;
+    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph_bench = clk_periph_i;
+    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref_bench    = clk_ref_i;
+    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys_bench    = clk_smc_i;
+    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph_bench = clk_periph_i;
 
     // ------------------------------------------------------------------
     // Firmware observability (scratch 0/1 and retired PC per instance).

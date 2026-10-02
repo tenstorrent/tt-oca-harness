@@ -8,9 +8,11 @@
 // stream (event_export) through a dtp_jtag_ir_model, re-baselines on
 // power-on reset through dtp_tb_if, and publishes one dtp_expected_item
 // per scan item so the scoreboard pairs the two streams in lockstep: IR
-// scans, scans under another instruction, and scans under an unknown
-// instruction carry no contract. No comparison, no reporting. The cocotb
-// realization has no twin (DTP_TB_ARCH).
+// scans, scans under another instruction, scans under an unknown
+// instruction, and scans while the PTAP 3DCR select is set, when the STAP
+// chain follows the identification register, carry no contract.
+// No comparison, no reporting. The cocotb realization has no twin
+// (DTP_TB_ARCH).
 //
 // expected_idcode defaults to the public DTP elaboration's value; a bench
 // that embeds DTP sets it from its own configuration before build_phase, so
@@ -47,12 +49,16 @@ class dtp_idcode_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
     exp.timestamp = t.end_time;
     exp.compare   = 1'b0;
     if (t.is_ir) m_model.on_ir_scan(t);
-    else if (m_model.ir_known() && (t.bit_count != 0) && (m_model.ir() == IDCODE_INSTR)) begin
-      int unsigned width = (t.bit_count < 32) ? t.bit_count : 32;
-      exp.compare   = 1'b1;
-      exp.mask      = ocah_rng::bit_mask(width);
-      exp.expected  = expected_idcode & exp.mask;
-      exp.context_s = $sformatf("ir=0x%02h bits=%0d", m_model.ir(), t.bit_count);
+    else begin
+      m_model.on_dr_scan(t);
+      if (m_model.ir_known() && (t.bit_count != 0) && (m_model.ir() == IDCODE_INSTR) &&
+          m_model.ptap_select_clear()) begin
+        int unsigned width = (t.bit_count < 32) ? t.bit_count : 32;
+        exp.compare   = 1'b1;
+        exp.mask      = ocah_rng::bit_mask(width);
+        exp.expected  = expected_idcode & exp.mask;
+        exp.context_s = $sformatf("ir=0x%02h bits=%0d", m_model.ir(), t.bit_count);
+      end
     end
     expected_ap.write(exp);
   endfunction

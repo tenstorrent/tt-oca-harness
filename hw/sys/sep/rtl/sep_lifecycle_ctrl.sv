@@ -69,7 +69,7 @@ module sep_lifecycle_ctrl #(
 
   // Differential encode/decode for DEMOTE_1
   prim_diff_encode_multi #(
-    .Width(DEMOTE_WIDTH)
+    .WIDTH(DEMOTE_WIDTH)
   ) u_demote_1_diff_enc (
     .clk_i,
     .rst_ni  (rst_ni),
@@ -79,7 +79,7 @@ module sep_lifecycle_ctrl #(
 
   // Differential encode/decode for DEMOTE_2
   prim_diff_encode_multi #(
-    .Width(DEMOTE_WIDTH)
+    .WIDTH(DEMOTE_WIDTH)
   ) u_demote_2_diff_enc (
     .clk_i,
     .rst_ni  (rst_ni),
@@ -89,7 +89,7 @@ module sep_lifecycle_ctrl #(
 
   // Differential decode for LC_STATE
   prim_diff_decode_multi #(
-    .Width(LC_STATE_WIDTH)
+    .WIDTH(LC_STATE_WIDTH)
   ) u_lc_state_dec (
     .clk_i,
     .rst_ni  (rst_ni),

@@ -376,7 +376,7 @@ module smu_wrapper_uvm_top
   // opposite its wire's pull; a pad in the group leaves its private wire.
   for (genvar ctp = 0; ctp < dtp_pkg::DEFAULT_NUM_CTP; ctp++) begin : gen_xtrig_ctp_wire
     ocah_open_drain_bus #(
-      .NumDrivers(2)
+      .NUM_DRIVERS(2)
     ) u_wire (
       .pull_i     (tb_xtrig_ctp_wire_pull[ctp]),
       .dout_i     ({~tb_xtrig_ctp_wire_pull[ctp], ctp_req_out_dout_w[ctp]}),
@@ -394,7 +394,7 @@ module smu_wrapper_uvm_top
   end
 
   ocah_open_drain_bus #(
-    .NumDrivers(2 * dtp_pkg::DEFAULT_NUM_CTP)
+    .NUM_DRIVERS(2 * dtp_pkg::DEFAULT_NUM_CTP)
   ) u_xtrig_ctp_group_wire (
     .pull_i     (tb_xtrig_ctp_wire_group_pull),
     .dout_i     ({{dtp_pkg::DEFAULT_NUM_CTP{~tb_xtrig_ctp_wire_group_pull}},
@@ -1192,7 +1192,7 @@ module smu_wrapper_uvm_top
       256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
 
   smu_wrapper #(
-    .Cfg                   (SMU_CFG),
+    .CFG                   (SMU_CFG),
     .SEP                   (SEP_ENABLED[0]),
     .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
   ) u_dut (
@@ -1358,11 +1358,12 @@ module smu_wrapper_uvm_top
 
 `ifndef UVM
   // cocotb toggles the model oscillators through the clock inputs, with
-  // +pll_osc_bench keeping pll_wrap's own generators off: under Verilator,
-  // cocotb observes the pre-edge state only on a clock its own write toggles.
-  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
-  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smu_i;
-  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
+  // +pll_osc_bench selecting these nets over pll_wrap's own generators:
+  // under Verilator, cocotb observes the pre-edge state only on a clock its
+  // own write toggles.
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_ref_bench    = clk_ref_i;
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_sys_bench    = clk_smu_i;
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_periph_bench = clk_periph_i;
 `endif
 
   // ------------------------------------------------------------------
@@ -1391,7 +1392,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_boot_fcov #(
-    .SepPresent(SEP_PRESENT)
+    .SEP_PRESENT(SEP_PRESENT)
   ) u_smu_boot_fcov (
     .clk_ref_i                   (clk_ref),
     .clk_smu_i                   (clk_smu),
@@ -1423,7 +1424,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_xbar_fcov #(
-    .SepPresent(SEP_PRESENT)
+    .SEP_PRESENT(SEP_PRESENT)
   ) u_smu_xbar_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
@@ -1452,7 +1453,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_rst_fcov #(
-    .SepPresent(SEP_PRESENT)
+    .SEP_PRESENT(SEP_PRESENT)
   ) u_smu_rst_fcov (
     .clk_ref_i                   (clk_ref),
     .clk_smu_i                   (clk_smu),
@@ -1479,7 +1480,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_clk_fcov #(
-    .SepPresent(SEP_PRESENT)
+    .SEP_PRESENT(SEP_PRESENT)
   ) u_smu_clk_fcov (
     .clk_smu_i               (clk_smu),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_n_o),
@@ -1496,7 +1497,7 @@ module smu_wrapper_uvm_top
   );
 
   smu_lc_fcov #(
-    .SepPresent(SEP_PRESENT)
+    .SEP_PRESENT(SEP_PRESENT)
   ) u_smu_lc_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
@@ -1523,7 +1524,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_ext_fcov #(
-    .SepPresent(SEP_PRESENT)
+    .SEP_PRESENT(SEP_PRESENT)
   ) u_smu_ext_fcov (
     .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
@@ -1568,7 +1569,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_dbg_fcov #(
-    .SepPresent(SEP_PRESENT)
+    .SEP_PRESENT(SEP_PRESENT)
   ) u_smu_dbg_fcov (
     .clk_smu_i                   (clk_smu),
     .rst_primary_smc_clk_ni      (rst_primary_smc_clk_n_o),
@@ -1628,7 +1629,7 @@ module smu_wrapper_uvm_top
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_alias_fcov #(
-    .SepPresent(SEP_PRESENT)
+    .SEP_PRESENT(SEP_PRESENT)
   ) u_smu_alias_fcov (
     .clk_smu_i                 (clk_smu),
     .rst_primary_smc_clk_ni    (rst_primary_smc_clk_n_o),

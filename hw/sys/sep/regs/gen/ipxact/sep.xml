@@ -5474,12 +5474,12 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>DEBUG_CTRL</ipxact:name>
-            <ipxact:description>Controls the external debug observation pin. These fields remain writable after FIPS_LOCK.LOCK; system integration controls access to exposed pre-conditioning entropy.</ipxact:description>
+            <ipxact:description>Controls the external debug observation pin. FIPS_LOCK.LOCK prevents software changes to the signal selection and divider.</ipxact:description>
             <ipxact:addressOffset>'hc</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>SELECT_SIGNAL</ipxact:name>
-              <ipxact:description>Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low.</ipxact:description>
+              <ipxact:description>Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -5491,7 +5491,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>SELECT_FREQ_DIV</ipxact:name>
-              <ipxact:description>Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128.</ipxact:description>
+              <ipxact:description>Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7207,7 +7207,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>RAW_ENABLE</ipxact:name>
-              <ipxact:description>Enables capture after startup health testing completes. This copy-only control remains writable after FIPS_LOCK.LOCK.</ipxact:description>
+              <ipxact:description>Enables capture after startup health testing completes. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7290,7 +7290,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>RAW_ENABLE</ipxact:name>
-              <ipxact:description>Enables LSB-first packing of selected-lane samples into 32-bit observe words. This copy-only control remains writable after FIPS_LOCK.LOCK.</ipxact:description>
+              <ipxact:description>Enables LSB-first packing of selected-lane samples into 32-bit observe words. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

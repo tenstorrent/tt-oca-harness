@@ -133,7 +133,7 @@ module efuse_bank_reg (
   } field_storage_t;
   field_storage_t field_storage;
 
-  for (genvar i0 = 0; i0 < 1024; i0++) begin
+  for (genvar i0 = 0; i0 < 1024; i0++) begin : gen_efuse_bank_reg
     // Field: efuse_bank.EFUSE_BANK_REG[].dout
     always_comb begin
       automatic logic [31:0] next_c;

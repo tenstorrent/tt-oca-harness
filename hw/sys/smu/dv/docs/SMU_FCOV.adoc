@@ -120,10 +120,10 @@ build passing: a wrong scope changes nothing and warns about nothing.
 
 * The scope file applies `coverage_off` by source file, so a point never
   enters the database. Structural, by file.
-* `SepPresent` gates the `g_sep` and `g_nosep` generate blocks. A point whose
+* `SEP_PRESENT` gates the `g_sep` and `g_nosep` generate blocks. A point whose
   observable exists only with the SEP elaborated, or only without it, is not
   elaborated on the other build. `tb_wrapper_top.sv` passes
-  `SepPresent = 1'b1`, so every `g_sep` point exists and no `g_nosep` point
+  `SEP_PRESENT = 1'b1`, so every `g_sep` point exists and no `g_nosep` point
   does. Structural, by elaboration.
 * `SMU_FCOV_PHASE2` guards the Phase 2 points. Structural, by plan.
 
@@ -372,15 +372,6 @@ bins of `cg_lifecycle`, `cg_lc_at_release`, `cg_block_release`,
 `cg_alias_path`, and the state `cg_sep_window` leaves out, are values the
 design, the routing or the bench clocks cannot present, each stated beside
 its coverpoint in `cov/sv/`.
-
-WRAP and FIXED bursts into SEP SRAM are Phase 2 stimulus. No specification
-states how the SEP fabric or the SEP SRAM port answers a non-incrementing
-burst, and the SRAM port's AXI-to-memory adapter asserts that such bursts are
-not supported, while the fabric in front of it forwards them.
-`smu_axi_in_sep_aperture_test` sends them only to the SEP external aperture,
-where the fabric refuses them. They come back when the SEP fabric or SEP SRAM
-chapter states whether the fabric refuses non-incrementing bursts or the SRAM
-port serves them.
 
 The claim that inbound writes to the SEP TRNG window are refused with DECERR
 is Phase 2. `doc/integrator/src/smu.adoc` ("External TRNG") terminates an

@@ -122,7 +122,7 @@ module cross_trigger_network_tb_top
 
   for (genvar i = 0; i < DEFAULT_NUM_CTP; i++) begin : gen_private_wire
     ocah_open_drain_bus #(
-      .NumDrivers(2)
+      .NUM_DRIVERS(2)
     ) u_wire (
       .pull_i     (ctp_wire_pull[i]),
       .dout_i     ({~ctp_wire_pull[i], ctp_req_out_dout[i]}),
@@ -136,7 +136,7 @@ module cross_trigger_network_tb_top
   end
 
   ocah_open_drain_bus #(
-    .NumDrivers(2 * DEFAULT_NUM_CTP)
+    .NUM_DRIVERS(2 * DEFAULT_NUM_CTP)
   ) u_group_wire (
     .pull_i     (ctp_wire_group_pull),
     .dout_i     ({{DEFAULT_NUM_CTP{~ctp_wire_group_pull}}, ctp_req_out_dout}),

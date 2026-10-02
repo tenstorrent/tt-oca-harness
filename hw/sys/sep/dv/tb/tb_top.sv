@@ -241,8 +241,9 @@ module sep_uvm_top
     //
     // Scope is by subtree because these are generate-loop instances with no single
     // name to target, which also disables every other assertion under those three
-    // blocks. The contracts re-armed by name are the crypto EDN arbiter
-    // hold-until-grant assume, its lock assert, and FipsWindowFloor_A.
+    // blocks. The contracts re-armed by name are the EDN arbiter hold-until-grant
+    // assume and lock assert, the crypto EDN adapter's clear and per-endpoint
+    // cancel contracts, and FipsWindowFloor_A.
 `ifndef VERILATOR
     initial begin
         // Scope-level $assertoff: these instances have no clock or reset for
@@ -251,8 +252,10 @@ module sep_uvm_top
         $assertoff(0, `SEP_ESRC);
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan);
-        // req_chk_i gates these two. The adapter scope stays off because
-        // AxisEdnEndpointCount_A is an immediate assert with no reset.
+        // The adapter waives the arbiter's request checks only on the first
+        // cycle of an endpoint flush, so these two stay live for every other
+        // request. The adapter scope stays off because AxisEdnEndpointCount_A
+        // is an immediate assert with no reset.
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .u_arbiter.ReqStaysHighUntilGranted0_M);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
@@ -275,12 +278,48 @@ module sep_uvm_top
             .gen_ep[2].AxisEdnNoAckDuringClear_A);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .gen_ep[3].AxisEdnNoAckDuringClear_A);
-        // req_chk_i changed on this instance too, so its arbiter contracts
+        // Per-endpoint cancel contracts. A cancelled endpoint neither requests,
+        // takes a word, nor acknowledges, and an ungranted request only drops
+        // under a flush of that endpoint.
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+        // The pool adapter shares the same arbiter, so its arbiter contracts
         // must be live for the same reason.
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
             .u_arbiter.ReqStaysHighUntilGranted0_M);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
             .u_arbiter.LockArbDecision_A);
+        // A JTAG reset override skips isolation, so an engine can drop an
+        // ungranted EDN request with no cancel; no word is lost or misrouted.
+        if ($test$plusargs("sep_edn_jtag_reset_waive")) begin
+            $display("[tb] crypto EDN request-hold checks off (+sep_edn_jtag_reset_waive)");
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .u_arbiter.ReqStaysHighUntilGranted0_M);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .u_arbiter.LockArbDecision_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+        end
         // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
         // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
         // out-of-spec window must fail rather than be swept up by the line above.
@@ -1241,6 +1280,14 @@ module sep_uvm_top
     assign abr_host_isolate_req_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_abr;
 
+    // AES and OTBN per-IP gated resets. A software reset of either cancels its
+    // crypto EDN endpoints before this reset asserts; the isolation test times
+    // that cancel against these. Read-only XMR, same class as the KMAC probe.
+    assign aes_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.aes;
+    assign otbn_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.otbn;
+
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
     // programmed. These leaf fields sit outside the AXI ready/valid combinational
@@ -1836,7 +1883,7 @@ module sep_uvm_top
     assign tbadp_r_valid_o = tbadp_rsp.r_valid;
     assign tbadp_r_data_o  = tbadp_rsp.r.data;
     // The response CODES, not just the valids. An access the adapter rejects
-    // as unsupported answers SLVERR from StIdle without forwarding anything,
+    // as unsupported answers SLVERR from ST_IDLE without forwarding anything,
     // and retires just as promptly as a real one -- so a control that only
     // watched the valid could not tell a live forwarding path from a rejected
     // access.
@@ -2372,6 +2419,28 @@ module sep_uvm_top
     always @(negedge rst_ni) rst_assert_count <= rst_assert_count + 32'd1;
     assign u_tb_if.rst_assert_count = rst_assert_count;
 
+    // Observation probes the sequences read through sep_tb_if.
+    assign u_tb_if.sep_internal_interrupts   = sep_internal_interrupts_probe_o;
+    assign u_tb_if.efuse_shadow              = efuse_shadow_probe_o;
+    assign u_tb_if.otbn_imem_req_count       = otbn_imem_req_count_o;
+    assign u_tb_if.otbn_imem_write_count     = otbn_imem_write_count_o;
+    assign u_tb_if.otbn_dmem_req_count       = otbn_dmem_req_count_o;
+    assign u_tb_if.otbn_dmem_write_count     = otbn_dmem_write_count_o;
+    assign u_tb_if.km_rom_req_count          = km_rom_req_count_o;
+    assign u_tb_if.km_sram_probe             = km_sram_probe_o;
+    assign u_tb_if.km_sram_rd_accept_count   = km_sram_rd_accept_count_o;
+    assign u_tb_if.km_sram_rd_b2b_diff_count = km_sram_rd_b2b_diff_count_o;
+    assign u_tb_if.km_sram_rd_lat1_count     = km_sram_rd_lat1_count_o;
+    assign u_tb_if.km_sram_rd_lat_err_count  = km_sram_rd_lat_err_count_o;
+    assign u_tb_if.km_sram_req_count         = km_sram_req_count_o;
+    assign u_tb_if.km_sram_scr_rd_count      = km_sram_scr_rd_count_o;
+    assign u_tb_if.km_sram_scr_wr_addr       = km_sram_scr_wr_addr_o;
+    assign u_tb_if.km_sram_scr_wr_cell       = km_sram_scr_wr_cell_o;
+    assign u_tb_if.km_sram_scr_wr_count      = km_sram_scr_wr_count_o;
+    assign u_tb_if.km_sram_scr_wr_data       = km_sram_scr_wr_data_o;
+    assign u_tb_if.km_sram_word0             = km_sram_word0_o;
+    assign u_tb_if.km_sram_write_count       = km_sram_write_count_o;
+
     // CPU-LSU initiator: the shared ocah_axi_vip UVM master agent drives the
     // s_axi_* request side (the agent's driver procedurally drives the
     // request payloads and valids plus bready/rready on the master
@@ -2608,6 +2677,7 @@ module sep_uvm_top
         .lsu_ar_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.addr),
         .lsu_ar_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar_valid),
         .lsu_ar_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready),
+        .lsu_ar_size_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.size),
         .lsu_r_data_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.data),
         .lsu_r_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.resp),
         .lsu_r_last_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.last),
@@ -2631,9 +2701,14 @@ module sep_uvm_top
         .hmac_gated_rst_n_i    (hmac_gated_rst_n_probe_o),
         .hmac_host_isolated_i  (hmac_host_isolated_probe_o),
         .hmac_km_isolated_i    (hmac_km_isolated_probe_o),
+        .hmac_host_isolate_req_i (hmac_host_isolate_req_probe_o),
         .abr_gated_rst_n_i     (abr_gated_rst_n_probe_o),
         .abr_host_isolated_i   (abr_host_isolated_probe_o),
         .abr_km_isolated_i     (abr_km_isolated_probe_o),
+        .abr_host_isolate_req_i  (abr_host_isolate_req_probe_o),
+        // sep.sv wires the WDT bark to the CPU NMI input; read-only, like the
+        // LSU request bus above.
+        .wdt_bark_irq_i        (`SEP_CORE.intr_wdog_timer_bark),
 
         .cpu_trace_valid_i     (cpu_trace_valid_o),
         .cpu_trace_addr_i      (cpu_trace_addr_o),
@@ -2671,8 +2746,10 @@ module sep_uvm_top
         .demote_1_i            (lcc_demote_state_1_probe_o),
         .demote_2_i            (lcc_demote_state_2_probe_o),
         .cpu_reset_n_i         (sep_cpu_reset_n_o),
+        .sep_reset_n_i         (dbg_sep_reset_n_o),
         .spi_cs_n_i            (spi_cs_n_o),
         .spi_sck_i             (spi_sck_o),
+        .spi_mosi_i            (spi_mosi_o),
         // Values SEP receives, after the pin-or-TDR mux.
         .jtag_sep_reset_n_ovrd_i (jtag_sep_reset_ctrl_drive.ovrd.sep_reset_n_ovrd),
         .jtag_sep_reset_n_val_i  (jtag_sep_reset_ctrl_drive.val.sep_reset_n_val)

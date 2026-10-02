@@ -6,10 +6,10 @@
 // Three converter instances elaborate side by side so one build covers the
 // parameter sets:
 //
-//   u_dut_a  AHB_DATA_WIDTH = 64, AllowSubWordWrite = 0, AckZeroStrobeWrite = 1
+//   u_dut_a  AHB_DATA_WIDTH = 64, ALLOW_SUB_WORD_WRITE = 0, ACK_ZERO_STROBE_WRITE = 1
 //            (the SEP Adams Bridge control path)
-//   u_dut_b  AHB_DATA_WIDTH = 32, AllowSubWordWrite = 1, AckZeroStrobeWrite = 0
-//   u_dut_c  AHB_DATA_WIDTH = 64, AllowSubWordWrite = 1, AckZeroStrobeWrite = 0
+//   u_dut_b  AHB_DATA_WIDTH = 32, ALLOW_SUB_WORD_WRITE = 1, ACK_ZERO_STROBE_WRITE = 0
+//   u_dut_c  AHB_DATA_WIDTH = 64, ALLOW_SUB_WORD_WRITE = 1, ACK_ZERO_STROBE_WRITE = 0
 //            (sub-word writes on either half of the 64-bit bus)
 //
 // Every connection is an ANSI port: the <x>_axil_* ports carry the AXI4-Lite
@@ -164,13 +164,13 @@ module axi_lite_to_ahb_tb_top (
   assign a_axil_rvalid  = a_axil_rsp.r_valid;
 
   axi_lite_to_ahb #(
-    .AXI_ADDR_WIDTH     (32),
-    .AXI_DATA_WIDTH     (32),
-    .AHB_DATA_WIDTH     (64),
-    .axi_lite_req_t     (tb_axil_req_t),
-    .axi_lite_rsp_t     (tb_axil_rsp_t),
-    .AllowSubWordWrite  (1'b0),
-    .AckZeroStrobeWrite (1'b1)
+    .AXI_ADDR_WIDTH        (32),
+    .AXI_DATA_WIDTH        (32),
+    .AHB_DATA_WIDTH        (64),
+    .axi_lite_req_t        (tb_axil_req_t),
+    .axi_lite_rsp_t        (tb_axil_rsp_t),
+    .ALLOW_SUB_WORD_WRITE  (1'b0),
+    .ACK_ZERO_STROBE_WRITE (1'b1)
   ) u_dut_a (
     .clk_i           (clk),
     .rst_ni          (rst_n),
@@ -219,13 +219,13 @@ module axi_lite_to_ahb_tb_top (
   assign b_axil_rvalid  = b_axil_rsp.r_valid;
 
   axi_lite_to_ahb #(
-    .AXI_ADDR_WIDTH     (32),
-    .AXI_DATA_WIDTH     (32),
-    .AHB_DATA_WIDTH     (32),
-    .axi_lite_req_t     (tb_axil_req_t),
-    .axi_lite_rsp_t     (tb_axil_rsp_t),
-    .AllowSubWordWrite  (1'b1),
-    .AckZeroStrobeWrite (1'b0)
+    .AXI_ADDR_WIDTH        (32),
+    .AXI_DATA_WIDTH        (32),
+    .AHB_DATA_WIDTH        (32),
+    .axi_lite_req_t        (tb_axil_req_t),
+    .axi_lite_rsp_t        (tb_axil_rsp_t),
+    .ALLOW_SUB_WORD_WRITE  (1'b1),
+    .ACK_ZERO_STROBE_WRITE (1'b0)
   ) u_dut_b (
     .clk_i           (clk),
     .rst_ni          (rst_n),
@@ -274,13 +274,13 @@ module axi_lite_to_ahb_tb_top (
   assign c_axil_rvalid  = c_axil_rsp.r_valid;
 
   axi_lite_to_ahb #(
-    .AXI_ADDR_WIDTH     (32),
-    .AXI_DATA_WIDTH     (32),
-    .AHB_DATA_WIDTH     (64),
-    .axi_lite_req_t     (tb_axil_req_t),
-    .axi_lite_rsp_t     (tb_axil_rsp_t),
-    .AllowSubWordWrite  (1'b1),
-    .AckZeroStrobeWrite (1'b0)
+    .AXI_ADDR_WIDTH        (32),
+    .AXI_DATA_WIDTH        (32),
+    .AHB_DATA_WIDTH        (64),
+    .axi_lite_req_t        (tb_axil_req_t),
+    .axi_lite_rsp_t        (tb_axil_rsp_t),
+    .ALLOW_SUB_WORD_WRITE  (1'b1),
+    .ACK_ZERO_STROBE_WRITE (1'b0)
   ) u_dut_c (
     .clk_i           (clk),
     .rst_ni          (rst_n),

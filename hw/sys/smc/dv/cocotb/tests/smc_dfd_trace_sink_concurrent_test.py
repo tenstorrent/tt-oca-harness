@@ -62,20 +62,22 @@ from smc_base_test import smc_base_test
 #     8 x (an action write and 4 data-port reads)                            284
 #   software stop: long-frame write + readback, restart write + readback,
 #     16 action writes, short-frame write + readback, 16 action writes, the
-#     running read, the stop write + readback and one empty poll             42
+#     running read, four writes of the restarting action each followed by a
+#     write-pointer read, the stop write + readback, three write-pointer
+#     reads and one empty poll                                               53
 #   frame mode off: frame config write + readback, run write + readback, 8
 #     held action writes, stop write + readback, one empty poll              15
 #   stop on wrap: DST enable write + readback, 8 x (16 action writes and a
 #     write-pointer read), sink-disable write + readback, 4 action writes
 #     and the closing write-pointer read                                    145
-#   sync-mode walk: 2 timestamp sources x (impl write + readback, then
-#     4 x (control write + readback, 8 action writes and 24 writes of the
-#     held restarting action))                                               276
+#   sync-mode walk: a write-pointer read, then 2 timestamp sources x (impl
+#     write + readback, then 4 x (control write + readback, 8 action writes,
+#     24 writes of the held restarting action and a write-pointer read))     285
 #   restore: DST control, DST impl, frame config, EAP, CLA control, CLA
 #     mux, funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL                   10
 #                                                                         ------
-#                                                                          1748
-TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 1748
+#                                                                          1768
+TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 1768
 
 
 @pyuvm.test()

@@ -25,32 +25,30 @@ module entropy_ripple_divider #(
 
   // Generate the ripple divider chain
   // Each stage is a toggle flip-flop (D=QB) that divides by 2
-  generate
-    for (genvar i = 0; i < NUM_STAGES; i++) begin : gen_div_stage
-      if (i == 0) begin : gen_first_stage
-        // First stage: clocked by input clock
-        prim_flop u_div_ff (
-          .clk_i (clk_i),
-          .d_i  (div_qb[i]),
-          .rst_ni (rst_ni),
-          .q_o  (div_q[i])
-        );
-      end else begin : gen_ripple_stage
-        // Subsequent stages: clocked by previous stage's Q output
-        prim_flop u_div_ff (
-          .clk_i (div_q[i-1]),
-          .d_i  (div_qb[i]),
-          .rst_ni (rst_ni),
-          .q_o  (div_q[i])
-        );
-      end
-
-      prim_inv u_div_inv (
-        .in_i  (div_q[i]),
-        .out_o (div_qb[i])
+  for (genvar i = 0; i < NUM_STAGES; i++) begin : gen_div_stage
+    if (i == 0) begin : gen_first_stage
+      // First stage: clocked by input clock
+      prim_flop u_div_ff (
+        .clk_i (clk_i),
+        .d_i  (div_qb[i]),
+        .rst_ni (rst_ni),
+        .q_o  (div_q[i])
+      );
+    end else begin : gen_ripple_stage
+      // Subsequent stages: clocked by previous stage's Q output
+      prim_flop u_div_ff (
+        .clk_i (div_q[i-1]),
+        .d_i  (div_qb[i]),
+        .rst_ni (rst_ni),
+        .q_o  (div_q[i])
       );
     end
-  endgenerate
+
+    prim_inv u_div_inv (
+      .in_i  (div_q[i]),
+      .out_o (div_qb[i])
+    );
+  end
 
   // Output array: [0]=input clock, [1]=÷2, [2]=÷4, ..., [NUM_STAGES]=÷2^NUM_STAGES
   assign div_o = {div_q[NUM_STAGES-1:0], clk_i};

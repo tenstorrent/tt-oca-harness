@@ -179,10 +179,10 @@ BOOTCODE_DIR  := $(OCAH_ROOT)/hw/sys/sep/bootrom/prod
 # checked-in bootrom header is the table the boot ROM itself compiles against.
 # Changing this value triggers a clean reconfigure (see the config stamp below).
 STATUS_VALUES_PATH ?= $(BOOTCODE_DIR)/include/status_values.h
-# The SEP VP models the OpenTitan SPI host only: the Cadence xSPI controller is
-# closed-source IP, absent from the open SEP and not modeled. VP boot therefore
+# The SEP VP models the OpenTitan SPI host only: the open SEP fits no
+# memory-mapped (XIP) flash controller, so none is modeled. VP boot therefore
 # always builds the OpenTitan controller variant (the bootrom's
-# ot-toolchain-images target -> build_ot/), never the default Cadence build.
+# ot-toolchain-images target -> build_ot/), never the default XIP build.
 BOOT_OT_BUILD_DIR := build_ot
 BOOT_ELF          := $(BOOTCODE_DIR)/$(BOOT_OT_BUILD_DIR)/boot_rom.elf
 # Pass-through args: `make boot-run BOOT_ARGS="--boot primary --until SEP_MSG_PRIMARY_CHIPLET"`

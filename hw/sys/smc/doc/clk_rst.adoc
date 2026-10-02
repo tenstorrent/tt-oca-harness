@@ -22,36 +22,59 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 [[smc-clock-tree]]
-.SMC clock tree and clock domains
-image::smc-clock-distribution.svg[alt="SMC clock inputs, clock gates, the AVSBus clock chain and the logic each clock runs, by instance",width=100%,pdfwidth=100%]
+.SMC clock tree and clock domains in u_smc_base
+image::smc-clock-distribution.svg[alt="Clock gates in u_smc_base and the instances each gated clock reaches, by RTL instance name",width=100%,pdfwidth=100%]
 
-Each clock input enters on the left in its own colour. `clk_smc_i` and
-`clk_ref_i` run down trunks with one arrow into each of `u_smc_base`,
-`u_smc_cpu_wrapper` and `u_smc_peripherals`; an arrow into an instance
-means the clock reaches the logic inside it. Each logic block is tinted
-with the colour of the clock that runs it, and a block split into bands
-runs on several clocks. A clock gate is drawn as a CG tab coloured by the
-clock it gates, with the gate's instance name in italics beneath the logic
-it clocks. Dashed lines are gated or derived clocks.
+[[smc-clock-tree-cpu-periph]]
+.SMC clock tree and clock domains in u_smc_cpu_wrapper and u_smc_peripherals
+image::smc-clock-distribution-cpu-periph.svg[alt="Clock inputs of u_smc_cpu_wrapper and u_smc_peripherals, their clock gates and gated instances, the synchronisers of u_smc_peripherals_cdc and the AVSBus clock chain",width=100%,pdfwidth=100%]
+
+The two figures split the SMC clock tree at its subsystem instances. Each
+clock input enters on the left in its own colour, with one arrow into each
+of `u_smc_base`, `u_smc_cpu_wrapper` and `u_smc_peripherals` that it
+reaches; an arrow into an instance means the clock reaches the logic inside
+it. Each box is an RTL instance, tinted with the colour of the clock that
+runs it, and a box split into bands runs on several clocks. A clock gate is
+drawn as a CG tab coloured by the clock it gates, with the gate's instance
+name in italics. A dashed arrow runs from the gate to every instance its
+gated clock reaches, branching at a junction dot. A count such as ×16 is the
+number of instances a generate loop creates. A box that no gate arrow
+reaches runs on the ungated clock.
 
 Most gates in `u_smc_base` are activity-based: each watches the AXI or
 AXI-Lite port of the logic it clocks and stops the clock once the port has
-been idle for the programmed hysteresis. `u_fabric_cg` and the output
-demux and mux it clocks exist only when `NO_ADDR_REMAP` is 0, the default
-in `smc_config_pkg`. `u_debug_clock_gate` runs the debug module clock
-while the debugger holds `dmactive`. The I2C, UART, I3C, AVSBus and
-telemetry gates are controlled by `CLOCK_GATE_CONTROL` in `u_smc_base`;
-`u_smc_peripherals_cdc` synchronises each enable into the clock it gates.
+been idle for the programmed hysteresis. Each filter and remap register gate
+clocks the AXI-Lite demux in front of its register set as well as the
+registers, and each filter gate also clocks the error slave that answers
+writes to a locked filter. `u_fabric_cg` and the instances inside the dashed
+outline exist only when `NO_ADDR_REMAP` is 0, the default in
+`smc_config_pkg`. `u_dfd_clk_gate` clocks the debug bus muxes, `u_dfd_top`
+and `u_ref_cnt_sync`, which receives the Gray-coded count of the reference
+counter beside `u_ref_rst_sync` and forms the CLA time tick. `u_axi_clk_gater`
+clocks logic written directly in `u_zeroer` rather than an instance.
+
+`u_debug_clock_gate` runs the debug module clock, the `debug_clock` port of
+`u_digital_top`, while the debugger holds `dmactive`. The I2C, UART, I3C,
+AVSBus and telemetry gates are controlled by `CLOCK_GATE_CONTROL` in
+`u_smc_base`. `u_smc_peripherals_cdc` is drawn as one row per synchroniser or
+CDC instance, or per group of instances that cross the same way, with the
+source clock on the left half and the destination clock on the right half.
+The clock-gate enable synchronisers carry each enable into the ungated clock
+of the gate it controls. `u_ndmreset_request_sync` has no source clock:
+`ndmreset_request_i` is asynchronous.
 
 The AVSBus clock starts at `u_avs_clk_ref_gater` and
-`u_avs_clk_periph_gater`. Inside `u_avsbus_controller`, `u_refclk_clkgate`
-and `u_apbclk_clkgate` feed the glitch-free mux `u_refclk_apbclk_mux`,
-selected by `avs_clock_select[1]`; `u_test_clkmux2_0` substitutes
-`clk_periph_i` in test mode; the divider `u_clk_div`, used while
-`avs_clock_select[0]` is set, divides by a programmable value, 4 after
-reset; and `u_avs_bus_clkgate` stops the result on idle. The output,
-`avs_clock`, leaves through `u_smc_padring` on GPIO 49. `spi_clk_i`
-reaches only the SPI pad datapath in `u_smc_padring`.
+`u_avs_clk_periph_gater`, which drive the `clk_ref_i` and `clk_reg_i` ports of
+`u_avsbus_controller`. Inside it, `u_refclk_clkgate` and `u_apbclk_clkgate`
+feed the glitch-free mux `u_refclk_apbclk_mux`, selected by
+`avs_clock_select[1]`. The test mux `u_test_clkmux2_0` takes that output on
+`clk0_i` and the test clock input `clk_test_i` on `clk1_i`, and selects the
+test clock in test mode; `u_smc_peripherals` connects `clk_test_i` to
+`clk_periph_i`. The divider `u_clk_div`, used while `avs_clock_select[0]` is
+set, divides by a programmable value, 4 after reset, and `u_avs_bus_clkgate`
+stops the result on idle. The output, `avs_clock`, leaves through
+`u_smc_padring` on GPIO 49. `spi_clk_i` reaches only the SPI pad datapath in
+`u_smc_padring`.
 
 [cols="1,3",options="header"]
 .SMC clock-domain responsibilities
@@ -234,6 +257,13 @@ The separate telemetry input reset belongs to its integration domain.
 
 [[smc-function-level-reset]]
 == Function Level Reset and Isolation
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="function-level-reset-and-isolation"></span>
+++++
+endif::backend-html5[]
 
 ifdef::backend-html5[]
 ++++

@@ -95,11 +95,9 @@ run_modes = ["smoke"]
 # needs TB work before it can exist.
 
 [[tests]]
-# #1989: smc_efuse_pkg.sv sizes the fuse word counter as $clog2(256) = 8 bits,
-# so efuse_shadow_regs.sv's `efuse_word_counter_t'(NumShadowWords)` is 0, the
-# sense request asks for no words and the store guard admits none. Sense still
-# completes and every shadow word reads 0 with OKAY; the first row of this
-# leaf's map sweep, LOCKS word 0 against the preload image, is the measurement.
+# The default asset programs only LOCKS word 0, so every other content row of
+# this sweep compares zeros; the smc_efuse_image_*_test leaves below sense images
+# that fill every word.
 name = "smc_efuse_map_read_test"
 module = "smc_efuse_map_read_test"
 seed = 1
@@ -157,3 +155,30 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "efuse"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_image_alt55_test"
+module = "smc_efuse_image_alt55_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_image_alt55.hex"]
+
+[[tests]]
+name = "smc_efuse_image_altaa_test"
+module = "smc_efuse_image_altaa_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_image_altaa.hex"]
+
+[[tests]]
+name = "smc_efuse_image_random_test"
+module = "smc_efuse_image_random_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+args = ["+smc_efuse_hex=smc_efuse_image_random.hex"]

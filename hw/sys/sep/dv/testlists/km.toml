@@ -8,7 +8,7 @@ schema_version = 1
 
 [[tests]]
 name = "sep_km_mem_smoke_test"
-module = "km.sep_km_mem_smoke_test"
+module = { cocotb = "km.sep_km_mem_smoke_test", uvm = "sep_km_mem_smoke_test" }
 firmware = { name = "km_rom", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
@@ -16,6 +16,12 @@ tags = ["smoke", "km", "memory"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom.parhex"]
+
+[tests.overrides.uvm]
+# The VCS sim stage does not stage firmware outputs into its CWD, so the
+# SV-UVM run names the committed blob by path; this +km_rom_hex replaces the
+# relative one (last plusarg wins).
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom.parhex"]
 
 [[tests]]
 # Dual-CPU eFuse AXI-lite mux coexistence (reference suite

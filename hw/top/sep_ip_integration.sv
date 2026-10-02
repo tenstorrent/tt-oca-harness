@@ -127,10 +127,10 @@ module sep_ip_integration
   );
 
   efuse_bank_model #(
-    .NumFuseByteWidth (sep_efuse_pkg::NumFuseByteWidth),
-    .IsSmcInstance    (1'b0),
-    .efuse_apb_req_t  (sep_efuse_pkg::efuse_apb_req_t),
-    .efuse_apb_resp_t (sep_efuse_pkg::efuse_apb_resp_t)
+    .NUM_FUSE_BYTE_WIDTH (sep_efuse_pkg::NumFuseByteWidth),
+    .IS_SMC_INSTANCE     (1'b0),
+    .efuse_apb_req_t     (sep_efuse_pkg::efuse_apb_req_t),
+    .efuse_apb_resp_t    (sep_efuse_pkg::efuse_apb_resp_t)
   ) u_efuse_bank_model (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),

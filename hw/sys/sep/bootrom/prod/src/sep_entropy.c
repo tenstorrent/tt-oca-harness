@@ -105,10 +105,6 @@
     ((uint32_t)(ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bm | \
                 ENTROPY_SOURCE__CTRL__SHA256_WHITENING_ENABLE_bm))
 
-// Terminal-failure hook, defined in rom_main.c. Same idiom lifecycle.c uses for
-// an invalid life-cycle state: a device-level condition no retry can fix.
-__attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
-
 // A failed entropy bring-up STOPS secure boot. It is a device failure, not a bad
 // image: the backup manifest slot carries the same crypto requirement, so
 // rotating to it cannot help, and letting the failure surface as a signature
@@ -116,7 +112,7 @@ __attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
 // each crypto init that depends on it.
 __attribute__((noreturn)) static void entropy_fail(void) {
     report_status(STATUS_TYPE_ERROR, SEP_MSG_ENTROPY_INIT_FAILED);
-    rom_err_fail_ext(SEP_MSG_ENTROPY_INIT_FAILED);
+    rom_err_fail_ext(ROM_ERR_ENTROPY_INIT_FAILED);
 }
 
 // Apply a write-one-to-set lock and confirm it took.

@@ -154,12 +154,12 @@ module efuse_interface_shim
   ///////////////////////
 
   typedef enum {
-    StReadIdle,
-    StReadInit,
-    StReadSetup,
-    StReadAccess,
-    StReadWait,
-    StReadFinish
+    ST_READ_IDLE,
+    ST_READ_INIT,
+    ST_READ_SETUP,
+    ST_READ_ACCESS,
+    ST_READ_WAIT,
+    ST_READ_FINISH
   } efuse_read_state_e;
 
   efuse_read_state_e efuse_read_state_d, efuse_read_state_q;
@@ -177,29 +177,29 @@ module efuse_interface_shim
     apb_fuse_bank_req_read = EFUSE_APB_REQ_DEFAULT;
 
     unique case (efuse_read_state_q)
-      StReadIdle: begin
+      ST_READ_IDLE: begin
         if (fuse_command_req_i.valid && fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_READ) begin
           outstanding_accesses_read_d = fuse_command_req_i.access_length_words;
           fuse_bank_init_cycles_count_set_en_r = 1'b0;    // Allow counter to start counting
           fuse_bank_init_cycles_count_commit_en_r = 1'b1;
 
           fuse_bank_address_read_d = fuse_command_req_i.address >> 3; // >> 3 because we are reading by bytes for this model
-          efuse_read_state_d = StReadInit;
+          efuse_read_state_d = ST_READ_INIT;
         end
       end
-      StReadInit: begin
+      ST_READ_INIT: begin
 
         fuse_bank_init_cycles_count_set_en_r = 1'b0;
         fuse_bank_init_cycles_count_commit_en_r = 1'b1;
 
         if (fuse_bank_init_cycles_counter_is_zero_r) begin
-          efuse_read_state_d = StReadSetup;
+          efuse_read_state_d = ST_READ_SETUP;
 
           fuse_bank_init_cycles_count_set_en_r = 1'b1;    // Set counter back to the initial value
           fuse_bank_init_cycles_count_commit_en_r = 1'b1; // Commit the counter change
         end
       end
-      StReadSetup: begin
+      ST_READ_SETUP: begin
 
         // Generate bank read command, which is an APB request
         apb_fuse_bank_req_read.psel = 1'b1;
@@ -209,9 +209,9 @@ module efuse_interface_shim
         apb_fuse_bank_req_read.pwdata = '0;
         apb_fuse_bank_req_read.pstrb = '0;
 
-        efuse_read_state_d = StReadAccess;
+        efuse_read_state_d = ST_READ_ACCESS;
       end
-      StReadAccess: begin
+      ST_READ_ACCESS: begin
         apb_fuse_bank_req_read.psel = 1'b1;
         apb_fuse_bank_req_read.penable = 1'b1; // penable goes high after psel goes high
         apb_fuse_bank_req_read.pwrite = 1'b0;
@@ -220,9 +220,9 @@ module efuse_interface_shim
         apb_fuse_bank_req_read.pstrb = '0;
 
         outstanding_accesses_read_d = outstanding_accesses_read_q - efuse_word_counter_t'(1); // Decrement the number of outstanding accesses
-        efuse_read_state_d = StReadWait;
+        efuse_read_state_d = ST_READ_WAIT;
       end
-      StReadWait: begin
+      ST_READ_WAIT: begin
         // Wait for read to complete
         if (apb_fuse_bank_resp_r.pready) begin
 
@@ -235,10 +235,10 @@ module efuse_interface_shim
 
           // Check if there are more accesses to complete
           if (outstanding_accesses_read_q == efuse_word_counter_t'(0)) begin
-            efuse_read_state_d = StReadFinish;
+            efuse_read_state_d = ST_READ_FINISH;
           end else begin
             fuse_bank_address_read_d = fuse_bank_address_read_q + 32'h4;
-            efuse_read_state_d = StReadSetup;
+            efuse_read_state_d = ST_READ_SETUP;
           end
         end else begin
           // The values of PADDR, PSEL, PENABLE and PWRITE must remain unchanged while PREADY remains LOW.
@@ -250,17 +250,17 @@ module efuse_interface_shim
           apb_fuse_bank_req_read.pstrb = '0;
         end
       end
-      StReadFinish: begin
-        efuse_read_state_d = StReadIdle;
+      ST_READ_FINISH: begin
+        efuse_read_state_d = ST_READ_IDLE;
       end
-      default: efuse_read_state_d = StReadIdle;
+      default: efuse_read_state_d = ST_READ_IDLE;
     endcase
   end
 
   // Register the read state
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      efuse_read_state_q <= StReadIdle;
+      efuse_read_state_q <= ST_READ_IDLE;
       outstanding_accesses_read_q <= efuse_word_counter_t'(0);
       apb_fuse_bank_req_read_flopped <= EFUSE_APB_REQ_DEFAULT;
       fuse_bank_address_read_q <= '0;
@@ -331,15 +331,15 @@ module efuse_interface_shim
   ///////////////////////
 
   typedef enum {
-    StWriteIdle,
-    StWriteInit,
-    StWriteSetup,
-    StWriteAccess,
-    StWriteWait,
-    StWriteReadBackSetup,
-    StWriteReadBackAccess,
-    StWriteReadBackWait,
-    StWriteFinish
+    ST_WRITE_IDLE,
+    ST_WRITE_INIT,
+    ST_WRITE_SETUP,
+    ST_WRITE_ACCESS,
+    ST_WRITE_WAIT,
+    ST_WRITE_READ_BACK_SETUP,
+    ST_WRITE_READ_BACK_ACCESS,
+    ST_WRITE_READ_BACK_WAIT,
+    ST_WRITE_FINISH
   } efuse_write_state_e;
 
   efuse_write_state_e efuse_write_state_d, efuse_write_state_q;
@@ -357,25 +357,25 @@ module efuse_interface_shim
 
     unique case (efuse_write_state_q)
 
-      StWriteIdle: begin
+      ST_WRITE_IDLE: begin
         if (fuse_command_req_i.valid && (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM || fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK)) begin
           fuse_bank_init_cycles_count_set_en_w = 1'b0;    // Allow counter to start counting
           fuse_bank_init_cycles_count_commit_en_w = 1'b1;
-          efuse_write_state_d = StWriteInit;
+          efuse_write_state_d = ST_WRITE_INIT;
         end
       end
-      StWriteInit: begin
+      ST_WRITE_INIT: begin
         fuse_bank_init_cycles_count_set_en_w = 1'b0;
         fuse_bank_init_cycles_count_commit_en_w = 1'b1;
 
         if (fuse_bank_init_cycles_counter_is_zero_w) begin
-          efuse_write_state_d = StWriteSetup;
+          efuse_write_state_d = ST_WRITE_SETUP;
 
           fuse_bank_init_cycles_count_set_en_w = 1'b1;    // Set counter back to the initial value
           fuse_bank_init_cycles_count_commit_en_w = 1'b1; // Commit the counter change
         end
       end
-      StWriteSetup: begin
+      ST_WRITE_SETUP: begin
 
         // Generate bank write command, which is an APB request
         apb_fuse_bank_req_write.psel = 1'b1;
@@ -385,9 +385,9 @@ module efuse_interface_shim
         apb_fuse_bank_req_write.pwdata = efuse_write_word;
         apb_fuse_bank_req_write.pstrb = efuse_write_strob;
 
-        efuse_write_state_d = StWriteAccess;
+        efuse_write_state_d = ST_WRITE_ACCESS;
       end
-      StWriteAccess: begin
+      ST_WRITE_ACCESS: begin
         apb_fuse_bank_req_write.psel = 1'b1;
         apb_fuse_bank_req_write.penable = 1'b1; // penable goes high after psel goes high
         apb_fuse_bank_req_write.pwrite = 1'b1;
@@ -395,9 +395,9 @@ module efuse_interface_shim
         apb_fuse_bank_req_write.pwdata = efuse_write_word;
         apb_fuse_bank_req_write.pstrb = efuse_write_strob;
 
-        efuse_write_state_d = StWriteWait;
+        efuse_write_state_d = ST_WRITE_WAIT;
       end
-      StWriteWait: begin
+      ST_WRITE_WAIT: begin
         if (apb_fuse_bank_resp_w.pready) begin
 
           apb_fuse_bank_req_write.psel = 1'b0;
@@ -406,14 +406,14 @@ module efuse_interface_shim
           if (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK) begin
             // Enable the write readback phase
             write_readback_phase_en = 1'b1;
-            efuse_write_state_d = StWriteReadBackSetup;
+            efuse_write_state_d = ST_WRITE_READ_BACK_SETUP;
           end else begin
             fuse_command_resp_w.data = '0;
             fuse_command_resp_w.status = apb_fuse_bank_resp_w.pslverr;
             fuse_command_resp_w.valid = 1'b1;
             // Disable the write readback phase, back to write idle
             write_readback_phase_en = 1'b0;
-            efuse_write_state_d = StWriteFinish;
+            efuse_write_state_d = ST_WRITE_FINISH;
           end
 
         end else begin
@@ -426,7 +426,7 @@ module efuse_interface_shim
         end
       end
       // Commence a read sequence to read back the written data if command is write read back
-      StWriteReadBackSetup: begin
+      ST_WRITE_READ_BACK_SETUP: begin
 
         // Generate bank read command
         apb_fuse_bank_req_write_readback.psel = 1'b1;
@@ -436,9 +436,9 @@ module efuse_interface_shim
         apb_fuse_bank_req_write_readback.pwdata = '0;
         apb_fuse_bank_req_write_readback.pstrb = '0;
 
-        efuse_write_state_d = StWriteReadBackAccess;
+        efuse_write_state_d = ST_WRITE_READ_BACK_ACCESS;
       end
-      StWriteReadBackAccess: begin
+      ST_WRITE_READ_BACK_ACCESS: begin
         apb_fuse_bank_req_write_readback.psel = 1'b1;
         apb_fuse_bank_req_write_readback.penable = 1'b1; // penable goes high after psel goes high
         apb_fuse_bank_req_write_readback.pwrite = 1'b0;
@@ -446,9 +446,9 @@ module efuse_interface_shim
         apb_fuse_bank_req_write_readback.pwdata = '0;
         apb_fuse_bank_req_write_readback.pstrb = '0;
 
-        efuse_write_state_d = StWriteReadBackWait;
+        efuse_write_state_d = ST_WRITE_READ_BACK_WAIT;
       end
-      StWriteReadBackWait: begin
+      ST_WRITE_READ_BACK_WAIT: begin
         // Wait for read to complete
         if (apb_fuse_bank_resp_w_readback.pready) begin
 
@@ -466,7 +466,7 @@ module efuse_interface_shim
           apb_fuse_bank_req_write_readback.psel = 1'b0;
           apb_fuse_bank_req_write_readback.penable = 1'b0;
 
-          efuse_write_state_d = StWriteFinish;
+          efuse_write_state_d = ST_WRITE_FINISH;
 
         end else begin
           // The values of PADDR, PSEL, PENABLE and PWRITE must remain unchanged while PREADY remains LOW.
@@ -480,22 +480,22 @@ module efuse_interface_shim
       end
       // End of write readback sequence
 
-      StWriteFinish: begin
-        // Clear the write-readback phase set by StWriteWait's
+      ST_WRITE_FINISH: begin
+        // Clear the write-readback phase set by ST_WRITE_WAIT's
         // PROGRAM_READ_BACK, so the demux routes the next program's
         // write request to the write path.
         write_readback_phase_en = 1'b0;
-        efuse_write_state_d = StWriteIdle;
+        efuse_write_state_d = ST_WRITE_IDLE;
       end
 
-      default: efuse_write_state_d = StWriteIdle;
+      default: efuse_write_state_d = ST_WRITE_IDLE;
     endcase
   end
 
   // Register the write state
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      efuse_write_state_q <= StWriteIdle;
+      efuse_write_state_q <= ST_WRITE_IDLE;
       apb_fuse_bank_req_write_flopped <= EFUSE_APB_REQ_DEFAULT;
       apb_fuse_bank_req_write_readback_flopped <= EFUSE_APB_REQ_DEFAULT;
       write_readback_phase_en_flopped <= 1'b0;

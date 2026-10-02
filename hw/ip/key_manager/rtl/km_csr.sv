@@ -470,16 +470,16 @@ module km_csr
   end
 
   // ---- Dual-rail decoders (operate on the registered captures) ----
-  // Decoders for LC (Width=4) and demotion (Width=1) fields.
-  // Decoders for 256-bit fields (Width=256): chiplet_uid, sip_uid, sys_uid,
+  // Decoders for LC (WIDTH=4) and demotion (WIDTH=1) fields.
+  // Decoders for 256-bit fields (WIDTH=256): chiplet_uid, sip_uid, sys_uid,
   // class_key, sep_chiplet_id, sep_sip_id, sep_sys_id.
 
   logic [3:0]   lc_decoded;
   logic         lc_sigint;
 
   prim_diff_decode_multi #(
-    .Width(4),
-    .AsyncOn(1'b0)
+    .WIDTH(4),
+    .ASYNC_ON(1'b0)
   ) u_lc_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),
@@ -490,8 +490,8 @@ module km_csr
 
   logic dem1_decoded, dem1_sigint;
   prim_diff_decode_multi #(
-    .Width(1),
-    .AsyncOn(1'b0)
+    .WIDTH(1),
+    .ASYNC_ON(1'b0)
   ) u_dem1_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),
@@ -502,8 +502,8 @@ module km_csr
 
   logic dem2_decoded, dem2_sigint;
   prim_diff_decode_multi #(
-    .Width(1),
-    .AsyncOn(1'b0)
+    .WIDTH(1),
+    .ASYNC_ON(1'b0)
   ) u_dem2_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),
@@ -515,8 +515,8 @@ module km_csr
   logic [255:0] chiplet_decoded;
   logic         chiplet_sigint;
   prim_diff_decode_multi #(
-    .Width(256),
-    .AsyncOn(1'b0)
+    .WIDTH(256),
+    .ASYNC_ON(1'b0)
   ) u_chiplet_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),
@@ -528,8 +528,8 @@ module km_csr
   logic [255:0] sip_decoded;
   logic         sip_sigint;
   prim_diff_decode_multi #(
-    .Width(256),
-    .AsyncOn(1'b0)
+    .WIDTH(256),
+    .ASYNC_ON(1'b0)
   ) u_sip_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),
@@ -541,8 +541,8 @@ module km_csr
   logic [255:0] sys_decoded;
   logic         sys_sigint;
   prim_diff_decode_multi #(
-    .Width(256),
-    .AsyncOn(1'b0)
+    .WIDTH(256),
+    .ASYNC_ON(1'b0)
   ) u_sys_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),
@@ -554,8 +554,8 @@ module km_csr
   logic [255:0] class_key_decoded;
   logic         class_key_sigint;
   prim_diff_decode_multi #(
-    .Width(256),
-    .AsyncOn(1'b0)
+    .WIDTH(256),
+    .ASYNC_ON(1'b0)
   ) u_class_key_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),
@@ -567,8 +567,8 @@ module km_csr
   logic [255:0] chip_id_decoded;
   logic         chip_id_sigint;
   prim_diff_decode_multi #(
-    .Width(256),
-    .AsyncOn(1'b0)
+    .WIDTH(256),
+    .ASYNC_ON(1'b0)
   ) u_chip_id_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),
@@ -580,8 +580,8 @@ module km_csr
   logic [255:0] sip_id_decoded;
   logic         sip_id_sigint;
   prim_diff_decode_multi #(
-    .Width(256),
-    .AsyncOn(1'b0)
+    .WIDTH(256),
+    .ASYNC_ON(1'b0)
   ) u_sip_id_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),
@@ -593,8 +593,8 @@ module km_csr
   logic [255:0] sys_id_decoded;
   logic         sys_id_sigint;
   prim_diff_decode_multi #(
-    .Width(256),
-    .AsyncOn(1'b0)
+    .WIDTH(256),
+    .ASYNC_ON(1'b0)
   ) u_sys_id_dec (
     .clk_i,
     .rst_ni  (cold_rst_ni),

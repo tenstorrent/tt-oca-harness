@@ -145,6 +145,12 @@ them complete with SLVERR and read data `0x1501A7ED`.
 A key path isolates when either endpoint is reset, so neither end can enter
 reset mid-transfer.
 
+An OTBN, AES or KMAC software reset also cancels that engine's endpoints in the
+shared crypto EDN adapter, from the cycle its paths report isolated until its
+reset releases. EDN therefore keeps serving the engine while it drains. A word
+committed to the engine but not yet acknowledged is discarded rather than
+delivered to another client; other clients are unaffected.
+
 The Key Manager mailbox, eFuse wrapper, lifecycle controller, and external TRNG
 ports are not isolated. None of these targets has its own software reset
 domain; the mailbox's SEP-facing side is in the Key Manager's cold domain. No

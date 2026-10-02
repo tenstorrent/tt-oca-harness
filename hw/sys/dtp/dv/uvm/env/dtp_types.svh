@@ -892,6 +892,12 @@ localparam int unsigned DtpXtrigCtmStride =
 localparam bit [63:0] DtpXtrigCtpBase = 64'(CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
 localparam int unsigned DtpXtrigCtpStride = int'(CROSS_TRIGGER_NETWORK_CTP_STRIDE);
 localparam bit [63:0] DtpXtrigUnmappedBase = DtpXtrigCtpBase + DtpXtrigNumCtp * DtpXtrigCtpStride;
+// End of the matrix register extent, and the bytes the registers of one
+// CT_SRC slot and of one port window back. The matrix aperture runs on from
+// its extent to the first port window.
+localparam bit [63:0] DtpXtrigCtmEnd = DtpXtrigCtmBase + 64'(CROSS_TRIGGER_NETWORK_CTM_SIZE);
+localparam int unsigned DtpXtrigCtSrcSize = int'(CROSS_TRIGGER_NETWORK_CTM_CT_SRC_SIZE);
+localparam int unsigned DtpXtrigCtpRegSize = int'(CROSS_TRIGGER_NETWORK_CTP_SIZE);
 
 localparam int unsigned DtpCtpConfigOffset  =
     int'(cross_trigger_port_addrmap_pkg::CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR);
@@ -930,15 +936,20 @@ localparam bit [31:0] DtpCtpStatusAckIn = 32'(CROSS_TRIGGER_PORT_STATUS_ACK_IN_M
 localparam bit [31:0] DtpCtpStatusReqIn = 32'(CROSS_TRIGGER_PORT_STATUS_REQ_IN_MASK);
 localparam bit [31:0] DtpCtpStatusAckOut = 32'(CROSS_TRIGGER_PORT_STATUS_ACK_OUT_MASK);
 
+// What a CSR word holds: a register, a HOLE (a word inside the matrix
+// register extent or a port window that no register backs), or nothing any
+// block decodes (UNMAPPED).
 typedef enum int unsigned {
   DTP_XTRIG_CSR_UNMAPPED    = 0,
   DTP_XTRIG_CSR_CTM_SELECT  = 1,
   DTP_XTRIG_CSR_CTP_CONFIG  = 2,
   DTP_XTRIG_CSR_CTP_STATUS  = 3,
-  DTP_XTRIG_CSR_CTP_STRETCH = 4
+  DTP_XTRIG_CSR_CTP_STRETCH = 4,
+  DTP_XTRIG_CSR_HOLE        = 5
 } dtp_xtrig_csr_kind_e;
 
-// Reset value of the register a CSR kind names; UNMAPPED reads 0.
+// Reset value of the register a CSR kind names; 0 for a kind that names no
+// register.
 function automatic bit [31:0] dtp_xtrig_csr_default(dtp_xtrig_csr_kind_e kind);
   case (kind)
     DTP_XTRIG_CSR_CTM_SELECT:  return DtpCtmSelectDefault;
@@ -972,23 +983,47 @@ function automatic bit [63:0] dtp_xtrig_ctp_stretch_addr(int unsigned ctp_idx);
   return DtpXtrigCtpBase + ctp_idx * DtpXtrigCtpStride + DtpCtpStretchOffset;
 endfunction
 
-// Classify a CSR address and return the writable (readback) mask of the
-// register it names; UNMAPPED covers holes and the DECERR space.
+// The first hole word of a CT_SRC slot and of a port window: the word past
+// the registers the slot or window holds.
+function automatic bit [63:0] dtp_xtrig_ctm_hole_addr(int unsigned src_idx);
+  return 64'(CROSS_TRIGGER_NETWORK_CTM_CT_SRC_BASE_ADDR(src_idx)) + DtpXtrigCtSrcSize;
+endfunction
+
+function automatic bit [63:0] dtp_xtrig_ctp_hole_addr(int unsigned ctp_idx);
+  return DtpXtrigCtpBase + ctp_idx * DtpXtrigCtpStride + DtpXtrigCtpRegSize;
+endfunction
+
+// The CSR word an access addresses. Every AXI4-Lite access uses the full
+// width of the 32-bit data bus, and a transfer's aligned address is its
+// address rounded down to the transfer size (AMBA AXI protocol
+// specification: the AXI4-Lite definition and the transfer address
+// equations), so a byte address selects the word that contains it and WSTRB
+// the bytes within that word.
+function automatic bit [63:0] dtp_xtrig_csr_word(bit [63:0] addr);
+  return addr & ~64'h3;
+endfunction
+
+// Classify the word a CSR access addresses and return the writable
+// (readback) mask of the register it names. The classes follow the
+// cross-trigger network memory map (the generated table
+// hw/ip/cross_trigger/cross_trigger_network/regs/gen/adoc/memory_map.adoc
+// and the text after it in that block's doc/memmap.adoc): a HOLE completes
+// OKAY, reads 0, and ignores writes; the matrix aperture past its register
+// extent and every address past the last port window are UNMAPPED and
+// complete DECERR.
 function automatic dtp_xtrig_csr_kind_e dtp_xtrig_csr_decode(bit [63:0] addr,
                                                              output bit [31:0] mask);
+  bit [63:0] word = dtp_xtrig_csr_word(addr);
   bit [63:0] offset;
-  bit [63:0] ctm_first = dtp_xtrig_ctm_config_addr(0);
   mask = '0;
-  if (addr < DtpXtrigCtpBase) begin
-    offset = addr - ctm_first;
-    if (addr < ctm_first || (offset % DtpXtrigCtmStride) != 0 ||
-        (offset / DtpXtrigCtmStride) >= DtpXtrigNumCtmPorts)
-      return DTP_XTRIG_CSR_UNMAPPED;
+  if (word < DtpXtrigCtmEnd) begin
+    if (((word - DtpXtrigCtmBase) % DtpXtrigCtmStride) >= DtpXtrigCtSrcSize)
+      return DTP_XTRIG_CSR_HOLE;
     mask = DtpCtmSelectMask;
     return DTP_XTRIG_CSR_CTM_SELECT;
   end
-  if (addr >= DtpXtrigUnmappedBase) return DTP_XTRIG_CSR_UNMAPPED;
-  offset = (addr - DtpXtrigCtpBase) % DtpXtrigCtpStride;
+  if (word < DtpXtrigCtpBase || word >= DtpXtrigUnmappedBase) return DTP_XTRIG_CSR_UNMAPPED;
+  offset = (word - DtpXtrigCtpBase) % DtpXtrigCtpStride;
   case (offset)
     DtpCtpConfigOffset: begin
       mask = DtpCtpConfigMask;
@@ -1002,7 +1037,7 @@ function automatic dtp_xtrig_csr_kind_e dtp_xtrig_csr_decode(bit [63:0] addr,
       mask = DtpCtpStretchMask;
       return DTP_XTRIG_CSR_CTP_STRETCH;
     end
-    default:             return DTP_XTRIG_CSR_UNMAPPED;
+    default:             return DTP_XTRIG_CSR_HOLE;
   endcase
 endfunction
 

@@ -9,12 +9,12 @@
 // ports pass through unchanged.
 
 module prim_pad_shim #(
-  parameter bit InputOnly = 1'b0  // 1 instantiates InputStd; 0 instantiates BidirStd.
+  parameter bit INPUT_ONLY = 1'b0  // 1 instantiates InputStd; 0 instantiates BidirStd.
 ) (
   input  logic                            core2pad_i,          // Core data driven toward the pad;
-                                                               // unused when InputOnly.
+                                                               // unused when INPUT_ONLY.
   input  logic                            core2pad_en_i,       // Output enable toward the pad;
-                                                               // unused when InputOnly.
+                                                               // unused when INPUT_ONLY.
   output logic                            pad2core_o,          // Pad data returned to the core.
   input  logic                            pad2core_en_i,       // Pad input enable; pad2core_o reads
                                                                // 0 while low.
@@ -44,7 +44,7 @@ module prim_pad_shim #(
 
   assign gpio_nandtree_out_o = gpio_nandtree_in_i;
 
-  if (InputOnly) begin : gen_input
+  if (INPUT_ONLY) begin : gen_input
     prim_pad_wrapper #(
       .PadType(InputStd)
     ) u_pad (

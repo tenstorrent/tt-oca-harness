@@ -28,7 +28,7 @@
 // behavioral model the PLL is always considered locked, so sel is hardwired 1.
 //
 // prim_ag_clk_mux (anti-glitch mux): clk0 is ref (safe fallback on reset,
-// SelectOnReset=0) and clk1 is the post-mux2 PLL path.  sel=1 permanently
+// SELECT_ON_RESET=0) and clk1 is the post-mux2 PLL path.  sel=1 permanently
 // selects clk1 in the behavioral model.
 //
 // clk_ref passes straight through — it is the reference and needs no mux.
@@ -61,20 +61,28 @@ module pll_wrap
 
   logic osc_ref, osc_sys, osc_periph;
 
-  // With +pll_osc_bench the model leaves the oscillator nets to the bench,
-  // which toggles them at the same periods through hierarchical assigns, and
-  // the sys and periph outputs follow the oscillators directly: the clock the
-  // bench drives is then the clock the core runs on at every instant, reset
-  // included, which the bench's synchronous drivers depend on. The mux chains
-  // below are exercised when the model free-runs.
-  logic osc_bench;
-  initial osc_bench = $test$plusargs("pll_osc_bench");
+  // With +pll_osc_bench the oscillators follow the osc_*_bench nets, which the
+  // bench drives at the same periods through hierarchical assigns and nothing
+  // in this module drives, and the sys and periph outputs follow the
+  // oscillators directly: the clock the bench drives is then the clock the core
+  // runs on at every instant, reset included, which the bench's synchronous
+  // drivers depend on. Without it the generators below drive osc_*_gen and the
+  // mux chains are exercised. Each net has one driver, as VCS requires of a
+  // variable a continuous assign drives.
+  logic osc_bench = $test$plusargs("pll_osc_bench");
+
+  logic osc_ref_bench, osc_sys_bench, osc_periph_bench;
+  logic osc_ref_gen, osc_sys_gen, osc_periph_gen;
+
+  assign osc_ref    = osc_bench ? osc_ref_bench    : osc_ref_gen;
+  assign osc_sys    = osc_bench ? osc_sys_bench    : osc_sys_gen;
+  assign osc_periph = osc_bench ? osc_periph_bench : osc_periph_gen;
 
   // 100 MHz reference clock (10 ns = 10000 ps period, fixed).
   initial begin : gen_clk_ref
     if (!$test$plusargs("pll_osc_bench")) begin
-      osc_ref = 1'b0;
-      forever #5000ps osc_ref = ~osc_ref;
+      osc_ref_gen = 1'b0;
+      forever #5000ps osc_ref_gen = ~osc_ref_gen;
     end
   end
 
@@ -88,16 +96,16 @@ module pll_wrap
       $fatal(1, "pll_wrap +pll_sys_period_ns must be 1.25 or 10, got %g", period_ns);
     period_ps = period_ns * 1000.0;
     if (!$test$plusargs("pll_osc_bench")) begin
-      osc_sys = 1'b0;
-      forever #(period_ps * 0.5) osc_sys = ~osc_sys;
+      osc_sys_gen = 1'b0;
+      forever #(period_ps * 0.5) osc_sys_gen = ~osc_sys_gen;
     end
   end
 
   // 200 MHz peripheral clock (5 ns = 5000 ps period, fixed).
   initial begin : gen_clk_periph
     if (!$test$plusargs("pll_osc_bench")) begin
-      osc_periph = 1'b0;
-      forever #2500ps osc_periph = ~osc_periph;
+      osc_periph_gen = 1'b0;
+      forever #2500ps osc_periph_gen = ~osc_periph_gen;
     end
   end
 
@@ -122,7 +130,7 @@ module pll_wrap
   );
 
   prim_ag_clk_mux #(
-    .SelectOnReset(1'b0)
+    .SELECT_ON_RESET(1'b0)
   ) u_sys_ag_mux (
     .clk0_i     (osc_ref),
     .clk1_i     (clk_sys_mux2),
@@ -150,7 +158,7 @@ module pll_wrap
   );
 
   prim_ag_clk_mux #(
-    .SelectOnReset(1'b0)
+    .SELECT_ON_RESET(1'b0)
   ) u_periph_ag_mux (
     .clk0_i     (osc_ref),
     .clk1_i     (clk_periph_mux2),

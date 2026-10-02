@@ -9,7 +9,8 @@ UVM realization of the same testbench top selected by `--framework uvm` (VCS).
 (`hw/sys/sep/rtl/sep.sv`) plus its IP integration
 (`hw/top/sep_ip_integration.sv`: real memory macros and the generic eFuse model).
 The OpenTitan SPI host is inside the `sep` core (`sep_io` / `sep_ot_spi_wrap`);
-its pads come out of the wrapper. There is no SPI pad mux in this build.
+its pads come out of the wrapper. No select steers the OT SPI host, so no
+test programs one.
 **Stimulus** = a cocotbext-axi master on the CPU LSU splice (`s_axi_*`), a second
 master on the real SMN-inbound port (`m_axi_*`, inbound filter), and VeeR EL2
 firmware boot on the `cpu` / `rom_fw` paths.
@@ -245,7 +246,7 @@ What the resulting number is not:
   right thing" stays with the checkers in
   [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
 * **TT-owned SEP integration RTL, not the whole DUT.**
-  `cov/config/vcs/sep_cov_scope.hier` removes the testbench, CPU subtree,
+  `cov/config/vcs/sep_cov_scope.hier` removes the testbench, the VeeR core complex,
   library-class cells, DV models and complete third-party IP modules at compile
   time across code and assertion coverage (`-cm_hier` with
   `-cm_common_hier`). Quote that scope with the percentage; never call it bare

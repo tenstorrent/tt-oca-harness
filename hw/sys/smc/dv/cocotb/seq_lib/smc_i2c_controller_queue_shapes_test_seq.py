@@ -254,7 +254,7 @@ class smc_i2c_controller_queue_shapes_test_seq(smc_i2c_controller_exits_test_seq
         assert not events & EVENTS_UNHANDLED_NACK_TIMEOUT, (
             f"{label}: the handler timeout ran out before the disable (0x{events:08x})"
         )
-        # The NACK is flagged on the acknowledge pulse; the controller reaches Idle,
+        # The NACK is flagged on the acknowledge pulse; the controller reaches IDLE,
         # where the disable closes the transaction, only after the hold that follows.
         await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
         assert int(cocotb.top.tb_i2c0_scl.value) == 0, (

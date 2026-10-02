@@ -25,9 +25,9 @@ module sep_isolate_rst_seq (
 );
 
   typedef enum logic [1:0] {
-    StReset,  // domain in reset, paths isolated
-    StDrain,  // isolation requested, waiting for in-flight drain
-    StRun  // normal operation
+    ST_RESET,  // domain in reset, paths isolated
+    ST_DRAIN,  // isolation requested, waiting for in-flight drain
+    ST_RUN  // normal operation
   } isolate_state_e;
 
   isolate_state_e state_q, state_d;
@@ -37,31 +37,31 @@ module sep_isolate_rst_seq (
     state_d = state_q;
 
     unique case (state_q)
-      StRun: begin
+      ST_RUN: begin
         if (~sw_rst_req_ni) begin
-          state_d = StDrain;
+          state_d = ST_DRAIN;
         end
       end
-      StDrain: begin
+      ST_DRAIN: begin
         if (isolated_i) begin
-          state_d = StReset;
+          state_d = ST_RESET;
         end
       end
-      StReset: begin
+      ST_RESET: begin
         if (sw_rst_req_ni) begin
-          state_d = StRun;
+          state_d = ST_RUN;
         end
       end
-      default: state_d = StReset;
+      default: state_d = ST_RESET;
     endcase
   end
 
-  assign isolate_req_o = (state_q != StRun);  // Isolation requested when not in normal operation
-  assign gated_rst_d   = (state_d == StReset);  // Domain reset asserted when in reset state
+  assign isolate_req_o = (state_q != ST_RUN);  // Isolation requested when not in normal operation
+  assign gated_rst_d   = (state_d == ST_RESET);  // Domain reset asserted when in reset state
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
-      state_q <= StReset;
+      state_q <= ST_RESET;
     end else begin
       state_q <= state_d;
     end

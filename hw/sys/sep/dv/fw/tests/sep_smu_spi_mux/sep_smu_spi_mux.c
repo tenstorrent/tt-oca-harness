@@ -3,9 +3,10 @@
 
 /*
  * sep_smu_spi_mux — excluded from the OSS firmware compile
- * (`FW_TEST_EXCLUDE_NAMES`). The open DUT has no pad mux to program. A mux
- * that selects between the OCAH SPI host and a proprietary SPI is driven
- * from whichever repo holds that wrapper.
+ * (`FW_TEST_EXCLUDE_NAMES`). The image of this name programs EXT_SPI_CTRL,
+ * a register in a companion wrapper outside the OCAH hierarchy, so that image
+ * lives with the wrapper. No SPI select exists: the OT SPI host reaches the
+ * pads only on the SMC LSIO primary plane.
  */
 
 #include <stdint.h>

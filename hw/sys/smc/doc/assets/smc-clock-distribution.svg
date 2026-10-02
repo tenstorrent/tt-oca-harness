@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1400" viewBox="0 0 1040 1400" role="img" aria-labelledby="title desc">
-<title id="title">SMC clock distribution</title>
-<desc id="desc">Clock distribution inside the SMC. Six clocks enter on the left: clk_smc_i, clk_ref_i, clk_periph_i, clk_telemetry_i, smc_cpu_jtag_TCK_i and spi_clk_i. clk_smc_i and clk_ref_i run down trunks with one arrow into each of u_smc_base, u_smc_cpu_wrapper and u_smc_peripherals; clk_periph_i and clk_telemetry_i enter u_smc_peripherals, and smc_cpu_jtag_TCK_i enters u_smc_cpu_wrapper. Each logic block is tinted with the colour of the clock that runs it, and a block split into bands runs on several clocks. A clock gate is a tab coloured by the clock it gates, with its instance name in italics. In u_smc_base, u_internal_regs gates the mailbox, the outbound and inbound filter registers and the M-mode, Xvisor and alias remap registers with u_mailbox_cg, u_outbound_filter_reg_cg, u_inbound_filter_reg_cg, u_mmode_remap_cg, u_xvisor_remap_cg and u_alias_remap_cg; u_smc_dfd_wrap gates the DFD and debug bus muxes with u_dfd_clk_gate and generates the CLA time tick from clk_ref_i. u_smc_fabric gates the inbound filter with u_sys_in_filter_cg, the output demux and mux with u_fabric_cg when NO_ADDR_REMAP is 0, and the outbound filter with u_sys_out_filter_cg. u_dma_wrap gates its frontend with u_frontend_cg and its request manager and backend with u_request_maneger_cg; u_zeroer gates its clear FSM with u_axi_clk_gater and its registers with u_zeroer_cg. In u_smc_cpu_wrapper, u_refclk_counter counts clk_ref_i into clk_smc_i, u_debug_clock_gate gates the debug module clock and smc_cpu_jtag_TCK_i clocks the JTAG DTM. In u_smc_peripherals, u_smc_reset_unit and u_smc_peripherals_cdc span the SMC, reference, peripheral and telemetry clocks. u_i2c_clk_periph_gater, u_uart_clk_periph_gater and u_i3c_clk_periph_gater gate clk_periph_i for the I2C, UART and I3C wrappers, and the gated I3C clock also leaves the SMC as gated_clk_periph_i3c_o. u_tel_clk_smc_gater and u_tel_clk_telemetry_gater gate both clocks of the telemetry receiver. The AVSBus clock starts at u_avs_clk_ref_gater and u_avs_clk_periph_gater, passes u_refclk_clkgate or u_apbclk_clkgate, the glitch-free mux u_refclk_apbclk_mux, the test mux u_test_clkmux2_0, the divider u_clk_div and u_avs_bus_clkgate, and leaves through u_smc_padring as avs_clock. spi_clk_i passes through u_smc_padring to its pad.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1222" viewBox="0 0 1040 1222" role="img" aria-labelledby="title desc">
+<title id="title">SMC clock distribution: u_smc_base</title>
+<desc id="desc">Clock distribution inside u_smc_base. clk_smc_i and clk_ref_i enter u_smc_base on the left. Each box is an RTL instance tinted with the colour of the clock that runs it; a box split into bands runs on several clocks. A clock gate is a tab coloured by the clock it gates, with its instance name in italics above it, and a dashed arrow runs from the gate to every instance its gated clock reaches. In u_internal_regs, u_mailbox_cg clocks u_smc_axil_mailbox; u_outbound_filter_reg_cg clocks u_outbound_filter_axil_demux and, for each of the 16 outbound filters, u_outbound_filter_axi_lite_demux, u_outbound_filter_ctrl_reg and u_err_slv; u_inbound_filter_reg_cg clocks the same inbound set; u_mmode_remap_cg clocks u_mmode_remap_axil_demux and eight u_smc_mmode_remap_reg; u_xvisor_remap_cg clocks u_xvisor_remap_axil_demux and eight u_smc_xvisor_remap_reg; u_alias_remap_cg clocks u_axi_alias_remap_demux and eight u_smc_alias_remap_reg. u_smc_dfx_ctrl_status_wrap and u_smc_base_config_wrap run on the ungated SMC clock. In u_smc_dfd_wrap, u_dfd_clk_gate clocks eight u_debug_bus_mux_l3, four u_debug_bus_mux_l2, u_dfd_top and u_ref_cnt_sync, which receives the reference counter run by clk_ref_i next to u_ref_rst_sync. In u_smc_fabric, u_sys_in_filter_cg clocks u_smc_sys_inbound_filter, u_fabric_cg clocks u_output_axi_demux and u_output_mux when NO_ADDR_REMAP is 0, and u_sys_out_filter_cg clocks u_smc_sys_outbound_filter. In u_smc_data_accelerator_wrap, u_frontend_cg clocks u_idma_frontend_wrapper, u_request_maneger_cg clocks u_idma_request_manager_wrapper and u_idma_backend_wrapper, u_axi_clk_gater clocks the zeroer clear FSM and request counter, and u_zeroer_cg clocks u_zeroer_reg. The remaining instances run on the ungated SMC clock.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -86,321 +86,276 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .g-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-slate); }
 .gn-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; }
 .gn-per { fill: none; stroke: #937027; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.gn-smc { fill: none; stroke: #103525; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.gn-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.gn-tel { fill: none; stroke: #664488; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.mx { font-size: 12px; fill: #484848; }
+.encl { fill: none; stroke: #937027; stroke-width: 1.5; stroke-dasharray: 7 5; }
 
 </style>
 </defs>
-<rect width="1040" height="1400" fill="#ffffff"/>
-<rect class="smu" x="190" y="14" width="814" height="1284" rx="8"/>
-<text class="s" x="14" y="38" text-anchor="start">clk_smc_i</text>
-<path class="n-smu" d="M17,44 L248,44"/>
-<text class="s" x="14" y="62" text-anchor="start">clk_ref_i</text>
-<path class="n-ref" d="M17,68 L228,68"/>
-<rect class="core" x="270" y="90" width="720" height="522" rx="6"/>
-<text class="b" x="978" y="600" text-anchor="end">u_smc_base</text>
-<path class="a-smu" d="M248,110 L267,110"/>
-<circle cx="248" cy="110" r="4" fill="#103525"/>
-<path class="a-ref" d="M228,134 L267,134"/>
-<circle cx="228" cy="134" r="4" fill="#2f7f79"/>
-<rect class="core" x="282" y="100" width="224" height="492" rx="6"/>
-<text class="bt" x="292" y="120" text-anchor="start">u_internal_regs</text>
-<rect x="290" y="130" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="290" y="130" width="208" height="40" rx="4"/>
-<rect x="297" y="141" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="310" y="154" text-anchor="middle">CG</text>
-<text class="s" x="330" y="147" text-anchor="start">Mailbox</text>
-<text class="si" x="330" y="163" text-anchor="start">u_mailbox_cg</text>
-<rect x="290" y="176" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="290" y="176" width="208" height="40" rx="4"/>
-<rect x="297" y="187" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="310" y="200" text-anchor="middle">CG</text>
-<text class="s" x="330" y="193" text-anchor="start">Outbound filter registers</text>
-<text class="si" x="330" y="209" text-anchor="start">u_outbound_filter_reg_cg</text>
-<rect x="290" y="222" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="290" y="222" width="208" height="40" rx="4"/>
-<rect x="297" y="233" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="310" y="246" text-anchor="middle">CG</text>
-<text class="s" x="330" y="239" text-anchor="start">Inbound filter registers</text>
-<text class="si" x="330" y="255" text-anchor="start">u_inbound_filter_reg_cg</text>
-<rect x="290" y="268" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="290" y="268" width="208" height="40" rx="4"/>
-<rect x="297" y="279" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="310" y="292" text-anchor="middle">CG</text>
-<text class="s" x="330" y="285" text-anchor="start">M-mode remap registers</text>
-<text class="si" x="330" y="301" text-anchor="start">u_mmode_remap_cg</text>
-<rect x="290" y="314" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="290" y="314" width="208" height="40" rx="4"/>
-<rect x="297" y="325" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="310" y="338" text-anchor="middle">CG</text>
-<text class="s" x="330" y="331" text-anchor="start">Xvisor remap registers</text>
-<text class="si" x="330" y="347" text-anchor="start">u_xvisor_remap_cg</text>
-<rect x="290" y="360" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="290" y="360" width="208" height="40" rx="4"/>
-<rect x="297" y="371" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="310" y="384" text-anchor="middle">CG</text>
-<text class="s" x="330" y="377" text-anchor="start">Alias remap registers</text>
-<text class="si" x="330" y="393" text-anchor="start">u_alias_remap_cg</text>
-<rect x="290" y="406" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="290" y="406" width="208" height="40" rx="4"/>
-<text class="s" x="300" y="431" text-anchor="start">DFX and base config CSRs</text>
-<rect class="core" x="290" y="452" width="208" height="132" rx="6"/>
-<text class="bt" x="300" y="472" text-anchor="start">u_smc_dfd_wrap</text>
-<rect x="298" y="482" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="298" y="482" width="192" height="40" rx="4"/>
-<rect x="305" y="493" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="318" y="506" text-anchor="middle">CG</text>
-<text class="s" x="338" y="499" text-anchor="start">DFD, debug bus muxes</text>
-<text class="si" x="338" y="515" text-anchor="start">u_dfd_clk_gate</text>
-<rect x="299" y="529" width="95" height="38" rx="0" fill="#d2e8e5"/>
-<rect x="394" y="529" width="95" height="38" rx="0" fill="#e2efe6"/>
-<rect class="outl" x="298" y="528" width="192" height="40" rx="4"/>
-<text class="s" x="308" y="553" text-anchor="start">CLA time tick</text>
-<rect class="core" x="518" y="100" width="224" height="382" rx="6"/>
-<text class="bt" x="528" y="120" text-anchor="start">u_smc_fabric</text>
-<rect class="core" x="526" y="128" width="208" height="124" rx="6"/>
-<text class="bt" x="536" y="148" text-anchor="start">u_smc_input_fabric</text>
-<rect x="534" y="158" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="534" y="158" width="192" height="40" rx="4"/>
-<rect x="541" y="169" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="554" y="182" text-anchor="middle">CG</text>
-<text class="s" x="574" y="175" text-anchor="start">Inbound filter</text>
-<text class="si" x="574" y="191" text-anchor="start">u_sys_in_filter_cg</text>
-<rect x="534" y="204" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="534" y="204" width="192" height="40" rx="4"/>
-<text class="s" x="544" y="229" text-anchor="start">Muxes, demuxes, remap</text>
-<rect class="core" x="526" y="260" width="208" height="78" rx="6"/>
-<text class="bt" x="536" y="280" text-anchor="start">u_smc_local_fabric</text>
-<rect x="534" y="290" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="534" y="290" width="192" height="40" rx="4"/>
-<text class="s" x="544" y="315" text-anchor="start">smc_local_xbar</text>
-<rect class="core" x="526" y="346" width="208" height="124" rx="6"/>
-<text class="bt" x="536" y="366" text-anchor="start">u_smc_output_fabric</text>
-<rect x="534" y="376" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl opt" x="534" y="376" width="192" height="40" rx="4"/>
-<rect x="541" y="387" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="554" y="400" text-anchor="middle">CG</text>
-<text class="s" x="574" y="393" text-anchor="start">Output demux and mux</text>
-<text class="si" x="574" y="409" text-anchor="start">u_fabric_cg</text>
-<rect x="534" y="422" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="534" y="422" width="192" height="40" rx="4"/>
-<rect x="541" y="433" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="554" y="446" text-anchor="middle">CG</text>
-<text class="s" x="574" y="439" text-anchor="start">Outbound filter</text>
-<text class="si" x="574" y="455" text-anchor="start">u_sys_out_filter_cg</text>
-<rect class="core" x="754" y="100" width="224" height="382" rx="6"/>
-<text class="bt" x="764" y="120" text-anchor="start">u_smc_data_accelerator_wrap</text>
-<rect class="core" x="762" y="128" width="208" height="124" rx="6"/>
-<text class="bt" x="772" y="148" text-anchor="start">u_dma_wrap</text>
-<rect x="770" y="158" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="770" y="158" width="192" height="40" rx="4"/>
-<rect x="777" y="169" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="790" y="182" text-anchor="middle">CG</text>
-<text class="s" x="810" y="175" text-anchor="start">DMA frontend</text>
-<text class="si" x="810" y="191" text-anchor="start">u_frontend_cg</text>
-<rect x="770" y="204" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="770" y="204" width="192" height="40" rx="4"/>
-<rect x="777" y="215" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="790" y="228" text-anchor="middle">CG</text>
-<text class="s" x="810" y="221" text-anchor="start">Request mgr, backend</text>
-<text class="si" x="810" y="237" text-anchor="start">u_request_maneger_cg</text>
-<rect class="core" x="762" y="260" width="208" height="124" rx="6"/>
-<text class="bt" x="772" y="280" text-anchor="start">u_zeroer</text>
-<rect x="770" y="290" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="770" y="290" width="192" height="40" rx="4"/>
-<rect x="777" y="301" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="790" y="314" text-anchor="middle">CG</text>
-<text class="s" x="810" y="307" text-anchor="start">Clear FSM</text>
-<text class="si" x="810" y="323" text-anchor="start">u_axi_clk_gater</text>
-<rect x="770" y="336" width="192" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="770" y="336" width="192" height="40" rx="4"/>
-<rect x="777" y="347" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="790" y="360" text-anchor="middle">CG</text>
-<text class="s" x="810" y="353" text-anchor="start">Registers</text>
-<text class="si" x="810" y="369" text-anchor="start">u_zeroer_cg</text>
-<rect x="762" y="396" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="762" y="396" width="208" height="40" rx="4"/>
-<text class="s" x="772" y="421" text-anchor="start">u_axi_demux, u_axi_mux</text>
-<rect x="518" y="496" width="460" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="518" y="496" width="460" height="40" rx="4"/>
-<text class="s" x="528" y="521" text-anchor="start">u_hang_det_sys_axi, u_hang_det_sep_axi, u_hang_det_data_accel</text>
-<rect class="core" x="270" y="626" width="720" height="190" rx="6"/>
-<text class="b" x="282" y="804" text-anchor="start">u_smc_cpu_wrapper</text>
-<path class="a-smu" d="M248,646 L267,646"/>
-<circle cx="248" cy="646" r="4" fill="#103525"/>
-<path class="a-ref" d="M228,670 L267,670"/>
-<circle cx="228" cy="670" r="4" fill="#2f7f79"/>
-<text class="s" x="14" y="688" text-anchor="start">smc_cpu_jtag_TCK_i</text>
-<path class="a-jtag" d="M17,694 L223,694 M233,694 L243,694 M253,694 L267,694"/>
-<rect class="core" x="282" y="636" width="224" height="124" rx="6"/>
-<text class="bt" x="292" y="656" text-anchor="start">u_smc_cpu_ctrl_wrap</text>
-<rect x="290" y="666" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="290" y="666" width="208" height="40" rx="4"/>
-<text class="s" x="300" y="691" text-anchor="start">CSRs, watchdog, PC history</text>
-<rect x="291" y="713" width="103" height="38" rx="0" fill="#d2e8e5"/>
-<rect x="394" y="713" width="103" height="38" rx="0" fill="#e2efe6"/>
-<rect class="outl" x="290" y="712" width="208" height="40" rx="4"/>
-<text class="s" x="300" y="737" text-anchor="start">u_refclk_counter</text>
-<rect class="core" x="518" y="636" width="460" height="150" rx="6"/>
-<text class="bt" x="528" y="656" text-anchor="start">u_smc_cpu</text>
-<rect class="core" x="526" y="664" width="444" height="110" rx="6"/>
-<text class="bt" x="536" y="684" text-anchor="start">u_digital_top</text>
-<rect x="534" y="690" width="428" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="534" y="690" width="428" height="40" rx="4"/>
-<text class="s" x="544" y="715" text-anchor="start">Cores, caches, uncore</text>
-<rect x="534" y="730" width="208" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="534" y="730" width="208" height="40" rx="4"/>
-<rect x="541" y="741" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="554" y="754" text-anchor="middle">CG</text>
-<text class="s" x="574" y="747" text-anchor="start">Debug module</text>
-<text class="si" x="574" y="763" text-anchor="start">u_debug_clock_gate</text>
-<rect x="754" y="730" width="208" height="40" rx="4" fill="#e3eef8"/>
-<rect class="outl" x="754" y="730" width="208" height="40" rx="4"/>
-<text class="s" x="764" y="747" text-anchor="start">JTAG DTM</text>
-<text class="si" x="764" y="763" text-anchor="start">debug_systemjtag_jtag_TCK</text>
-<path class="a-smu" d="M248,850 L267,850"/>
-<circle cx="248" cy="850" r="4" fill="#103525"/>
-<path class="a-ref" d="M228,874 L267,874"/>
-<circle cx="228" cy="874" r="4" fill="#2f7f79"/>
-<text class="s" x="14" y="892" text-anchor="start">clk_periph_i</text>
-<path class="a-per" d="M17,898 L267,898"/>
-<path class="n-smu" d="M248,44 L248,129 M248,139 L248,665 M248,675 L248,850"/>
-<path class="n-ref" d="M228,68 L228,874"/>
-<rect class="core" x="270" y="830" width="720" height="428" rx="6"/>
-<rect x="283" y="841" width="74" height="76" rx="0" fill="#d2e8e5"/>
-<rect x="357" y="841" width="74" height="76" rx="0" fill="#e2efe6"/>
-<rect x="431" y="841" width="74" height="76" rx="0" fill="#f6eacd"/>
-<rect class="outl" x="282" y="840" width="224" height="78" rx="4"/>
-<text class="s" x="292" y="872" text-anchor="start">u_smc_reset_unit</text>
-<text class="si" x="292" y="890" text-anchor="start">reset synchronisers,</text>
-<text class="si" x="292" y="906" text-anchor="start">FLR counters (clk_ref_i)</text>
-<rect x="519" y="841" width="55.5" height="76" rx="0" fill="#e2efe6"/>
-<rect x="574.5" y="841" width="55.5" height="76" rx="0" fill="#f6eacd"/>
-<rect x="630" y="841" width="55.5" height="76" rx="0" fill="#d2e8e5"/>
-<rect x="685.5" y="841" width="55.5" height="76" rx="0" fill="#e8e0f1"/>
-<rect class="outl" x="518" y="840" width="224" height="78" rx="4"/>
-<text class="s" x="528" y="872" text-anchor="start">u_smc_peripherals_cdc</text>
-<text class="si" x="528" y="890" text-anchor="start">AXI-Lite CDC, enable</text>
-<text class="si" x="528" y="906" text-anchor="start">and interrupt synchronisers</text>
-<rect x="754" y="840" width="224" height="78" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="754" y="840" width="224" height="78" rx="4"/>
-<text class="s" x="764" y="860" text-anchor="start">u_smc_periph_axi_lite_xbar</text>
-<text class="s" x="764" y="877" text-anchor="start">u_system_timer_octs</text>
-<text class="s" x="764" y="894" text-anchor="start">u_smc_efuse_wrapper</text>
-<text class="s" x="764" y="911" text-anchor="start">u_smc_misc_wrap</text>
-<rect x="282" y="974" width="224" height="36" rx="4" fill="#d2e8e5"/>
-<rect class="outl" x="282" y="974" width="224" height="36" rx="4"/>
-<rect x="289" y="983" width="26" height="18" rx="3" fill="#2f7f79"/>
-<text class="tabt" x="302" y="996" text-anchor="middle">CG</text>
-<text class="si" x="322" y="997" text-anchor="start">u_avs_clk_ref_gater</text>
-<rect x="282" y="1024" width="224" height="36" rx="4" fill="#f6eacd"/>
-<rect class="outl" x="282" y="1024" width="224" height="36" rx="4"/>
-<rect x="289" y="1033" width="26" height="18" rx="3" fill="#937027"/>
-<text class="tabt" x="302" y="1046" text-anchor="middle">CG</text>
-<text class="si" x="322" y="1047" text-anchor="start">u_avs_clk_periph_gater</text>
-<rect class="core" x="518" y="932" width="460" height="162" rx="6"/>
-<text class="bt" x="528" y="952" text-anchor="start">u_avsbus_controller</text>
-<rect x="528" y="974" width="150" height="36" rx="4" fill="#d2e8e5"/>
-<rect class="outl" x="528" y="974" width="150" height="36" rx="4"/>
-<rect x="535" y="983" width="26" height="18" rx="3" fill="#2f7f79"/>
-<text class="tabt" x="548" y="996" text-anchor="middle">CG</text>
-<text class="si" x="568" y="997" text-anchor="start">u_refclk_clkgate</text>
-<rect x="528" y="1024" width="150" height="36" rx="4" fill="#f6eacd"/>
-<rect class="outl" x="528" y="1024" width="150" height="36" rx="4"/>
-<rect x="535" y="1033" width="26" height="18" rx="3" fill="#937027"/>
-<text class="tabt" x="548" y="1046" text-anchor="middle">CG</text>
-<text class="si" x="568" y="1047" text-anchor="start">u_apbclk_clkgate</text>
-<path class="g-ref" d="M506,992 L525,992"/>
-<path class="g-per" d="M506,1042 L525,1042"/>
-<path class="fabric" d="M704,976 L732,990 L732,1044 L704,1058 Z"/>
-<path class="g-ref" d="M678,992 L701,992"/>
-<path class="g-per" d="M678,1042 L701,1042"/>
-<path class="fabric" d="M768,1002 L796,1014 L796,1060 L768,1072 Z"/>
-<path class="g-slate" d="M732,1017 L765,1017"/>
-<path class="a-per" d="M750,1094 L750,1057 L765,1057"/>
-<text class="s" x="744" y="1086" text-anchor="end">clk_periph_i</text>
-<rect class="fabric" x="820" y="1019" width="44" height="36" rx="4"/>
-<text class="t" x="842" y="1042" text-anchor="middle">÷N</text>
-<path class="g-slate" d="M796,1037 L817,1037"/>
-<rect x="884" y="1028" width="26" height="18" rx="3" fill="#5b6670"/>
-<text class="tabt" x="897" y="1041" text-anchor="middle">CG</text>
-<path class="g-slate" d="M864,1037 L881,1037"/>
-<text class="si" x="718" y="968" text-anchor="middle">u_refclk_apbclk_mux</text>
-<text class="si" x="764" y="994" text-anchor="start">u_test_clkmux2_0</text>
-<text class="si" x="842" y="1072" text-anchor="middle">u_clk_div</text>
-<text class="si" x="897" y="1011" text-anchor="middle">u_avs_bus_clkgate</text>
-<path class="gn-slate" d="M910,1037 L962,1037 L962,1094"/>
-<text class="s" x="954" y="1060" text-anchor="end">avs_clock</text>
-<text class="s" x="14" y="1106" text-anchor="start">spi_clk_i</text>
-<path class="a-spi" d="M17,1112 L814,1112 L814,1125"/>
-<path class="g-slate" d="M962,1094 L962,1125"/>
-<rect x="282" y="1128" width="224" height="40" rx="4" fill="#f6eacd"/>
-<rect class="outl" x="282" y="1128" width="224" height="40" rx="4"/>
-<rect x="289" y="1139" width="26" height="18" rx="3" fill="#937027"/>
-<text class="tabt" x="302" y="1152" text-anchor="middle">CG</text>
-<text class="s" x="322" y="1145" text-anchor="start">u_i2c_wrap ×3</text>
-<text class="si" x="322" y="1161" text-anchor="start">u_i2c_clk_periph_gater</text>
-<rect x="518" y="1128" width="224" height="40" rx="4" fill="#f6eacd"/>
-<rect class="outl" x="518" y="1128" width="224" height="40" rx="4"/>
-<rect x="525" y="1139" width="26" height="18" rx="3" fill="#937027"/>
-<text class="tabt" x="538" y="1152" text-anchor="middle">CG</text>
-<text class="s" x="558" y="1145" text-anchor="start">u_uart_wrap ×4</text>
-<text class="si" x="558" y="1161" text-anchor="start">u_uart_clk_periph_gater</text>
-<rect x="754" y="1128" width="224" height="40" rx="4" fill="#e2efe6"/>
-<rect class="outl" x="754" y="1128" width="224" height="40" rx="4"/>
-<text class="s" x="764" y="1145" text-anchor="start">u_smc_padring</text>
-<text class="si" x="764" y="1161" text-anchor="start">pads for spi_clk_i, avs_clock</text>
-<rect x="283" y="1183" width="111" height="60" rx="0" fill="#e2efe6"/>
-<rect x="394" y="1183" width="111" height="60" rx="0" fill="#e8e0f1"/>
-<rect class="outl" x="282" y="1182" width="224" height="62" rx="4"/>
-<text class="s" x="292" y="1200" text-anchor="start">u_telemetry_receiver_wrap</text>
-<rect x="289" y="1207" width="26" height="18" rx="3" fill="#103525"/>
-<text class="tabt" x="302" y="1220" text-anchor="middle">CG</text>
-<text class="si" x="322" y="1220" text-anchor="start">u_tel_clk_smc_gater</text>
-<rect x="289" y="1225" width="26" height="18" rx="3" fill="#664488"/>
-<text class="tabt" x="302" y="1238" text-anchor="middle">CG</text>
-<text class="si" x="322" y="1238" text-anchor="start">u_tel_clk_telemetry_gater</text>
-<text class="s" x="14" y="1206" text-anchor="start">clk_telemetry_i</text>
-<path class="a-tel" d="M17,1212 L267,1212"/>
-<rect x="518" y="1182" width="224" height="40" rx="4" fill="#f6eacd"/>
-<rect class="outl" x="518" y="1182" width="224" height="40" rx="4"/>
-<rect x="525" y="1193" width="26" height="18" rx="3" fill="#937027"/>
-<text class="tabt" x="538" y="1206" text-anchor="middle">CG</text>
-<text class="s" x="558" y="1199" text-anchor="start">u_i3ccore_wrapper ×6</text>
-<text class="si" x="558" y="1215" text-anchor="start">u_i3c_clk_periph_gater</text>
-<path class="g-per" d="M742,1202 L1030,1202"/>
-<text class="s" x="764" y="1194" text-anchor="start">gated_clk_periph_i3c_o</text>
-<text class="b" x="978" y="1246" text-anchor="end">u_smc_peripherals</text>
-<text class="b" x="200" y="1286" text-anchor="start">smc</text>
-<path class="n-smu" d="M14,1324 L48,1324"/>
-<text class="s" x="56" y="1329" text-anchor="start">clk_smc_i</text>
-<path class="n-ref" d="M150,1324 L184,1324"/>
-<text class="s" x="192" y="1329" text-anchor="start">clk_ref_i</text>
-<path class="n-per" d="M276,1324 L310,1324"/>
-<text class="s" x="318" y="1329" text-anchor="start">clk_periph_i</text>
-<path class="n-tel" d="M416,1324 L450,1324"/>
-<text class="s" x="458" y="1329" text-anchor="start">clk_telemetry_i</text>
-<path class="n-jtag" d="M568,1324 L602,1324"/>
-<text class="s" x="610" y="1329" text-anchor="start">smc_cpu_jtag_TCK_i</text>
-<path class="n-spi" d="M752,1324 L786,1324"/>
-<text class="s" x="794" y="1329" text-anchor="start">spi_clk_i</text>
-<rect x="14" y="1343" width="18" height="18" fill="#e2efe6"/>
-<rect x="32" y="1343" width="18" height="18" fill="#d2e8e5"/>
-<rect x="50" y="1343" width="18" height="18" fill="#f6eacd"/>
-<rect x="68" y="1343" width="18" height="18" fill="#e8e0f1"/>
-<rect x="86" y="1343" width="18" height="18" fill="#e3eef8"/>
-<rect class="outl" x="14" y="1343" width="90" height="18" rx="3"/>
-<text class="s" x="112" y="1357" text-anchor="start">Logic tinted by its clock</text>
-<rect x="290" y="1343" width="26" height="18" rx="3" fill="#937027"/>
-<text class="tabt" x="303" y="1356" text-anchor="middle">CG</text>
-<text class="s" x="324" y="1357" text-anchor="start">Clock gate, coloured by the clock it gates</text>
-<path class="gn-slate" d="M620,1352 L656,1352"/>
-<text class="s" x="664" y="1357" text-anchor="start">Gated or derived clock</text>
-<rect class="outl opt" x="14" y="1369" width="40" height="18" rx="3"/>
-<text class="s" x="62" y="1383" text-anchor="start">Present when NO_ADDR_REMAP = 0 (default)</text>
-<path class="fabric" d="M340,1368 L356,1374 L356,1382 L340,1388 Z"/>
-<text class="s" x="364" y="1383" text-anchor="start">Clock mux</text>
-<path class="sigplain" d="M450,1378 L490,1378 M470,1366 L470,1373 M470,1383 L470,1390"/>
-<text class="s" x="500" y="1383" text-anchor="start">Crossing, not connected</text>
-<path class="sigplain" d="M680,1378 L720,1378 M700,1378 L700,1390"/>
-<circle cx="700" cy="1378" r="3.5" fill="#5b6670"/>
-<text class="s" x="730" y="1383" text-anchor="start">Fan-out</text>
+<rect width="1040" height="1222" fill="#ffffff"/>
+<rect class="smu" x="190" y="14" width="814" height="1132" rx="8"/>
+<rect class="core" x="270" y="30" width="720" height="1076" rx="6"/>
+<text class="s" x="14" y="44" text-anchor="start">clk_smc_i</text>
+<path class="a-smu" d="M17,50 L267,50"/>
+<text class="s" x="14" y="68" text-anchor="start">clk_ref_i</text>
+<path class="a-ref" d="M17,74 L267,74"/>
+<rect class="core" x="282" y="42" width="696" height="512" rx="6"/>
+<text class="si" x="292" y="86" text-anchor="start">u_mailbox_cg</text>
+<rect x="354" y="92" width="260" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="354" y="92" width="260" height="22" rx="4"/>
+<text class="s" x="362" y="107.5" text-anchor="start">u_smc_axil_mailbox</text>
+<rect x="292" y="94" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="305" y="107" text-anchor="middle">CG</text>
+<path class="g-smc" d="M318,103.0 L351,103.0"/>
+<text class="si" x="292" y="136" text-anchor="start">u_outbound_filter_reg_cg</text>
+<rect x="354" y="142" width="260" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="354" y="142" width="260" height="22" rx="4"/>
+<text class="s" x="362" y="157.5" text-anchor="start">u_outbound_filter_axil_demux</text>
+<rect x="354" y="168" width="260" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="354" y="168" width="260" height="22" rx="4"/>
+<text class="s" x="362" y="183.5" text-anchor="start">u_outbound_filter_axi_lite_demux ×16</text>
+<rect x="354" y="194" width="260" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="354" y="194" width="260" height="22" rx="4"/>
+<text class="s" x="362" y="209.5" text-anchor="start">u_outbound_filter_ctrl_reg ×16</text>
+<rect x="354" y="220" width="260" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="354" y="220" width="260" height="22" rx="4"/>
+<text class="s" x="362" y="235.5" text-anchor="start">u_err_slv ×16</text>
+<rect x="292" y="144" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="305" y="157" text-anchor="middle">CG</text>
+<path class="gn-smc" d="M318,153.0 L332,153.0 L332,231.0"/>
+<path class="g-smc" d="M332,153.0 L351,153.0"/>
+<path class="g-smc" d="M332,179.0 L351,179.0"/>
+<path class="g-smc" d="M332,205.0 L351,205.0"/>
+<path class="g-smc" d="M332,231.0 L351,231.0"/>
+<circle cx="332" cy="153" r="3.5" fill="#103525"/>
+<circle cx="332" cy="179" r="3.5" fill="#103525"/>
+<circle cx="332" cy="205" r="3.5" fill="#103525"/>
+<text class="si" x="292" y="264" text-anchor="start">u_inbound_filter_reg_cg</text>
+<rect x="354" y="270" width="260" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="354" y="270" width="260" height="22" rx="4"/>
+<text class="s" x="362" y="285.5" text-anchor="start">u_inbound_filter_axil_demux</text>
+<rect x="354" y="296" width="260" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="354" y="296" width="260" height="22" rx="4"/>
+<text class="s" x="362" y="311.5" text-anchor="start">u_inbound_filter_axi_lite_demux ×16</text>
+<rect x="354" y="322" width="260" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="354" y="322" width="260" height="22" rx="4"/>
+<text class="s" x="362" y="337.5" text-anchor="start">u_inbound_filter_ctrl_reg ×16</text>
+<rect x="354" y="348" width="260" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="354" y="348" width="260" height="22" rx="4"/>
+<text class="s" x="362" y="363.5" text-anchor="start">u_err_slv ×16</text>
+<rect x="292" y="272" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="305" y="285" text-anchor="middle">CG</text>
+<path class="gn-smc" d="M318,281.0 L332,281.0 L332,359.0"/>
+<path class="g-smc" d="M332,281.0 L351,281.0"/>
+<path class="g-smc" d="M332,307.0 L351,307.0"/>
+<path class="g-smc" d="M332,333.0 L351,333.0"/>
+<path class="g-smc" d="M332,359.0 L351,359.0"/>
+<circle cx="332" cy="281" r="3.5" fill="#103525"/>
+<circle cx="332" cy="307" r="3.5" fill="#103525"/>
+<circle cx="332" cy="333" r="3.5" fill="#103525"/>
+<text class="si" x="636" y="86" text-anchor="start">u_mmode_remap_cg</text>
+<rect x="698" y="92" width="270" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="698" y="92" width="270" height="22" rx="4"/>
+<text class="s" x="706" y="107.5" text-anchor="start">u_mmode_remap_axil_demux</text>
+<rect x="698" y="118" width="270" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="698" y="118" width="270" height="22" rx="4"/>
+<text class="s" x="706" y="133.5" text-anchor="start">u_smc_mmode_remap_reg ×8</text>
+<rect x="636" y="94" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="649" y="107" text-anchor="middle">CG</text>
+<path class="gn-smc" d="M662,103.0 L676,103.0 L676,129.0"/>
+<path class="g-smc" d="M676,103.0 L695,103.0"/>
+<path class="g-smc" d="M676,129.0 L695,129.0"/>
+<circle cx="676" cy="103" r="3.5" fill="#103525"/>
+<text class="si" x="636" y="162" text-anchor="start">u_xvisor_remap_cg</text>
+<rect x="698" y="168" width="270" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="698" y="168" width="270" height="22" rx="4"/>
+<text class="s" x="706" y="183.5" text-anchor="start">u_xvisor_remap_axil_demux</text>
+<rect x="698" y="194" width="270" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="698" y="194" width="270" height="22" rx="4"/>
+<text class="s" x="706" y="209.5" text-anchor="start">u_smc_xvisor_remap_reg ×8</text>
+<rect x="636" y="170" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="649" y="183" text-anchor="middle">CG</text>
+<path class="gn-smc" d="M662,179.0 L676,179.0 L676,205.0"/>
+<path class="g-smc" d="M676,179.0 L695,179.0"/>
+<path class="g-smc" d="M676,205.0 L695,205.0"/>
+<circle cx="676" cy="179" r="3.5" fill="#103525"/>
+<text class="si" x="636" y="238" text-anchor="start">u_alias_remap_cg</text>
+<rect x="698" y="244" width="270" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="698" y="244" width="270" height="22" rx="4"/>
+<text class="s" x="706" y="259.5" text-anchor="start">u_axi_alias_remap_demux</text>
+<rect x="698" y="270" width="270" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="698" y="270" width="270" height="22" rx="4"/>
+<text class="s" x="706" y="285.5" text-anchor="start">u_smc_alias_remap_reg ×8</text>
+<rect x="636" y="246" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="649" y="259" text-anchor="middle">CG</text>
+<path class="gn-smc" d="M662,255.0 L676,255.0 L676,281.0"/>
+<path class="g-smc" d="M676,255.0 L695,255.0"/>
+<path class="g-smc" d="M676,281.0 L695,281.0"/>
+<circle cx="676" cy="255" r="3.5" fill="#103525"/>
+<rect x="636" y="310" width="332" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="636" y="310" width="332" height="22" rx="4"/>
+<text class="s" x="644" y="325.5" text-anchor="start">u_smc_dfx_ctrl_status_wrap</text>
+<rect x="636" y="336" width="332" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="636" y="336" width="332" height="22" rx="4"/>
+<text class="s" x="644" y="351.5" text-anchor="start">u_smc_base_config_wrap</text>
+<rect class="core" x="292" y="384" width="676" height="160" rx="6"/>
+<text class="si" x="302" y="428" text-anchor="start">u_dfd_clk_gate</text>
+<rect x="364" y="434" width="238" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="364" y="434" width="238" height="22" rx="4"/>
+<text class="s" x="372" y="449.5" text-anchor="start">u_debug_bus_mux_l3 ×8</text>
+<rect x="364" y="460" width="238" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="364" y="460" width="238" height="22" rx="4"/>
+<text class="s" x="372" y="475.5" text-anchor="start">u_debug_bus_mux_l2 ×4</text>
+<rect x="364" y="486" width="238" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="364" y="486" width="238" height="22" rx="4"/>
+<text class="s" x="372" y="501.5" text-anchor="start">u_dfd_top</text>
+<rect x="364" y="512" width="238" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="364" y="512" width="238" height="22" rx="4"/>
+<text class="s" x="372" y="527.5" text-anchor="start">u_ref_cnt_sync</text>
+<rect x="302" y="436" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="315" y="449" text-anchor="middle">CG</text>
+<path class="gn-smc" d="M328,445.0 L342,445.0 L342,523.0"/>
+<path class="g-smc" d="M342,445.0 L361,445.0"/>
+<path class="g-smc" d="M342,471.0 L361,471.0"/>
+<path class="g-smc" d="M342,497.0 L361,497.0"/>
+<path class="g-smc" d="M342,523.0 L361,523.0"/>
+<circle cx="342" cy="445" r="3.5" fill="#103525"/>
+<circle cx="342" cy="471" r="3.5" fill="#103525"/>
+<circle cx="342" cy="497" r="3.5" fill="#103525"/>
+<rect x="664" y="512" width="290" height="22" rx="4" fill="#d2e8e5"/>
+<rect class="outl" x="664" y="512" width="290" height="22" rx="4"/>
+<text class="s" x="672" y="527.5" text-anchor="start">u_ref_rst_sync, reference counter</text>
+<path class="sigo" d="M664,523.0 L605,523.0"/>
+<text class="bt" x="302" y="404" text-anchor="start">u_smc_dfd_wrap</text>
+<text class="bt" x="292" y="62" text-anchor="start">u_internal_regs</text>
+<rect class="core" x="282" y="566" width="342" height="468" rx="6"/>
+<rect class="core" x="636" y="566" width="342" height="468" rx="6"/>
+<rect class="core" x="290" y="596" width="326" height="108" rx="6"/>
+<text class="si" x="298" y="638" text-anchor="start">u_sys_in_filter_cg</text>
+<rect x="360" y="644" width="248" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="360" y="644" width="248" height="22" rx="4"/>
+<text class="s" x="368" y="659.5" text-anchor="start">u_smc_sys_inbound_filter</text>
+<rect x="298" y="646" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="311" y="659" text-anchor="middle">CG</text>
+<path class="g-smc" d="M324,655.0 L357,655.0"/>
+<rect x="298" y="674" width="310" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="298" y="674" width="310" height="22" rx="4"/>
+<text class="s" x="306" y="689.5" text-anchor="start">Muxes, demuxes, remap, error slaves</text>
+<text class="bt" x="300" y="616" text-anchor="start">u_smc_input_fabric</text>
+<rect class="core" x="290" y="712" width="326" height="86" rx="6"/>
+<rect x="298" y="742" width="310" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="298" y="742" width="310" height="22" rx="4"/>
+<text class="s" x="306" y="757.5" text-anchor="start">u_smc_local_xbar</text>
+<rect x="298" y="768" width="310" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="298" y="768" width="310" height="22" rx="4"/>
+<text class="s" x="306" y="783.5" text-anchor="start">u_smc_internal_axi_lite_xbar</text>
+<text class="bt" x="300" y="732" text-anchor="start">u_smc_local_fabric</text>
+<rect class="core" x="290" y="806" width="326" height="220" rx="6"/>
+<text class="si" x="304" y="854" text-anchor="start">u_fabric_cg</text>
+<rect x="366" y="860" width="236" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="366" y="860" width="236" height="22" rx="4"/>
+<text class="s" x="374" y="875.5" text-anchor="start">u_output_axi_demux</text>
+<rect x="366" y="886" width="236" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="366" y="886" width="236" height="22" rx="4"/>
+<text class="s" x="374" y="901.5" text-anchor="start">u_output_mux</text>
+<rect x="304" y="862" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="317" y="875" text-anchor="middle">CG</text>
+<path class="gn-smc" d="M330,871.0 L344,871.0 L344,897.0"/>
+<path class="g-smc" d="M344,871.0 L363,871.0"/>
+<path class="g-smc" d="M344,897.0 L363,897.0"/>
+<circle cx="344" cy="871" r="3.5" fill="#103525"/>
+<rect x="304" y="914" width="298" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="304" y="914" width="298" height="22" rx="4"/>
+<text class="s" x="312" y="929.5" text-anchor="start">u_mmode_addr_remap</text>
+<rect x="304" y="940" width="298" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="304" y="940" width="298" height="22" rx="4"/>
+<text class="s" x="312" y="955.5" text-anchor="start">u_xvisor_addr_remap</text>
+<rect class="encl" x="296" y="836" width="314" height="134" rx="4"/>
+<text class="si" x="298" y="990" text-anchor="start">u_sys_out_filter_cg</text>
+<rect x="360" y="996" width="248" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="360" y="996" width="248" height="22" rx="4"/>
+<text class="s" x="368" y="1011.5" text-anchor="start">u_smc_sys_outbound_filter</text>
+<rect x="298" y="998" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="311" y="1011" text-anchor="middle">CG</text>
+<path class="g-smc" d="M324,1007.0 L357,1007.0"/>
+<text class="bt" x="300" y="826" text-anchor="start">u_smc_output_fabric</text>
+<rect class="core" x="644" y="596" width="326" height="154" rx="6"/>
+<text class="si" x="652" y="638" text-anchor="start">u_frontend_cg</text>
+<rect x="714" y="644" width="248" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="714" y="644" width="248" height="22" rx="4"/>
+<text class="s" x="722" y="659.5" text-anchor="start">u_idma_frontend_wrapper</text>
+<rect x="652" y="646" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="665" y="659" text-anchor="middle">CG</text>
+<path class="g-smc" d="M678,655.0 L711,655.0"/>
+<text class="si" x="652" y="688" text-anchor="start">u_request_maneger_cg</text>
+<rect x="714" y="694" width="248" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="714" y="694" width="248" height="22" rx="4"/>
+<text class="s" x="722" y="709.5" text-anchor="start">u_idma_request_manager_wrapper</text>
+<rect x="714" y="720" width="248" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="714" y="720" width="248" height="22" rx="4"/>
+<text class="s" x="722" y="735.5" text-anchor="start">u_idma_backend_wrapper</text>
+<rect x="652" y="696" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="665" y="709" text-anchor="middle">CG</text>
+<path class="gn-smc" d="M678,705.0 L692,705.0 L692,731.0"/>
+<path class="g-smc" d="M692,705.0 L711,705.0"/>
+<path class="g-smc" d="M692,731.0 L711,731.0"/>
+<circle cx="692" cy="705" r="3.5" fill="#103525"/>
+<text class="bt" x="654" y="616" text-anchor="start">u_dma_wrap</text>
+<rect class="core" x="644" y="758" width="326" height="158" rx="6"/>
+<text class="si" x="652" y="800" text-anchor="start">u_axi_clk_gater</text>
+<rect x="714" y="806" width="248" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="714" y="806" width="248" height="22" rx="4"/>
+<text class="si" x="722" y="821.5" text-anchor="start">clear FSM, request counter</text>
+<rect x="652" y="808" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="665" y="821" text-anchor="middle">CG</text>
+<path class="g-smc" d="M678,817.0 L711,817.0"/>
+<text class="si" x="652" y="850" text-anchor="start">u_zeroer_cg</text>
+<rect x="714" y="856" width="248" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="714" y="856" width="248" height="22" rx="4"/>
+<text class="s" x="722" y="871.5" text-anchor="start">u_zeroer_reg</text>
+<rect x="652" y="858" width="26" height="18" rx="3" fill="#103525"/>
+<text class="tabt" x="665" y="871" text-anchor="middle">CG</text>
+<path class="g-smc" d="M678,867.0 L711,867.0"/>
+<rect x="652" y="886" width="310" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="652" y="886" width="310" height="22" rx="4"/>
+<text class="s" x="660" y="901.5" text-anchor="start">u_ctrl_axi_to_axilite</text>
+<text class="bt" x="654" y="778" text-anchor="start">u_zeroer</text>
+<rect x="644" y="924" width="326" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="644" y="924" width="326" height="22" rx="4"/>
+<text class="s" x="652" y="939.5" text-anchor="start">u_axi_demux, u_axi_mux</text>
+<text class="bt" x="292" y="586" text-anchor="start">u_smc_fabric</text>
+<text class="bt" x="646" y="586" text-anchor="start">u_smc_data_accelerator_wrap</text>
+<rect x="282" y="1046" width="430" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="282" y="1046" width="430" height="22" rx="4"/>
+<text class="s" x="290" y="1061.5" text-anchor="start">u_ext_interrupts_sync3, u_ext_debug_bus_sync3</text>
+<rect x="282" y="1072" width="430" height="22" rx="4" fill="#e2efe6"/>
+<rect class="outl" x="282" y="1072" width="430" height="22" rx="4"/>
+<text class="s" x="290" y="1087.5" text-anchor="start">u_hang_det_sys_axi, u_hang_det_sep_axi, u_hang_det_data_accel</text>
+<text class="b" x="978" y="1094" text-anchor="end">u_smc_base</text>
+<text class="b" x="200" y="1134" text-anchor="start">smc</text>
+<path class="n-smu" d="M14,1172 L48,1172"/>
+<text class="s" x="56" y="1177" text-anchor="start">clk_smc_i</text>
+<path class="n-ref" d="M150,1172 L184,1172"/>
+<text class="s" x="192" y="1177" text-anchor="start">clk_ref_i</text>
+<rect class="encl" x="290" y="1163" width="40" height="18" rx="3"/>
+<text class="s" x="338" y="1177" text-anchor="start">Present when NO_ADDR_REMAP = 0 (default)</text>
+<path class="sigo" d="M640,1172 L680,1172"/>
+<text class="s" x="690" y="1177" text-anchor="start">Synchronised data</text>
+<rect x="14" y="1191" width="18" height="18" fill="#e2efe6"/>
+<rect x="32" y="1191" width="18" height="18" fill="#d2e8e5"/>
+<rect x="50" y="1191" width="18" height="18" fill="#f6eacd"/>
+<rect x="68" y="1191" width="18" height="18" fill="#e8e0f1"/>
+<rect x="86" y="1191" width="18" height="18" fill="#e3eef8"/>
+<rect class="outl" x="14" y="1191" width="90" height="18" rx="3"/>
+<text class="s" x="112" y="1205" text-anchor="start">Logic tinted by its clock</text>
+<rect x="290" y="1191" width="26" height="18" rx="3" fill="#937027"/>
+<text class="tabt" x="303" y="1204" text-anchor="middle">CG</text>
+<text class="s" x="324" y="1205" text-anchor="start">Clock gate, coloured by the clock it gates</text>
+<path class="g-slate" d="M620,1200 L656,1200"/>
+<text class="s" x="664" y="1205" text-anchor="start">Gated or derived clock</text>
+<path class="sigplain" d="M846,1200 L886,1200 M866,1200 L866,1212"/>
+<circle cx="866" cy="1200" r="3.5" fill="#5b6670"/>
+<text class="s" x="896" y="1205" text-anchor="start">Fan-out</text>
 </svg>

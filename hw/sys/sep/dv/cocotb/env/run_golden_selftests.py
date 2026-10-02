@@ -4,6 +4,8 @@
 
 Each ``env/sep_*_golden.py`` carries a standalone self-test (a KAT / NIST / FIPS /
 RFC vector check, or hand-computed reference vectors) in its ``__main__`` block.
+``env/sep_efuse_default_shadow.py`` follows the same pattern: its ``__main__``
+block fails when the committed expected-shadow file differs from a fresh copy.
 Those guard against transcription errors in the golden, but ``__main__`` blocks
 only run when the file is executed directly -- so without a driver they are never
 enforced in CI. This runner executes each golden as a subprocess and asserts a
@@ -36,6 +38,8 @@ _GOLDENS = (
     _HERE / "sep_entropy_golden.py",
     _HERE / "sep_lcc_golden.py",
     _HERE / "sep_crc_golden.py",
+    # Freshness of the committed expected shadow the SV-UVM sense test loads.
+    _HERE / "sep_efuse_default_shadow.py",
 )
 
 

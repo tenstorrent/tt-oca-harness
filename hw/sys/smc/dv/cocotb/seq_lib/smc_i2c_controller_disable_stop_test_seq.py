@@ -6,27 +6,27 @@ A controller that has started a transaction owns the bus until it gives a
 STOP. If software clears `CTRL.ENABLEHOST` with the transaction still open,
 `i2c_controller_fsm.sv` generates that STOP itself, from two states:
 
-* **Idle, parked.** When the format FIFO runs dry without a STOP, the
-  controller waits in `Idle` holding SCL low, with `STATUS.HOSTIDLE` clear.
+* **IDLE, parked.** When the format FIFO runs dry without a STOP, the
+  controller waits in `IDLE` holding SCL low, with `STATUS.HOSTIDLE` clear.
   Clearing the enable there makes the STOP.
-* **PopFmtFifo.** Between two entries the controller passes through
-  `PopFmtFifo` for exactly one cycle of its clock. The enable has to be seen
+* **POP_FMT_FIFO.** Between two entries the controller passes through
+  `POP_FMT_FIFO` for exactly one cycle of its clock. The enable has to be seen
   low on that cycle.
 
 Both arms test `trans_started && !host_enable_i`, and `trans_started` is a
-flop that clears on the cycle after the enable is seen low. In `Idle` the
+flop that clears on the cycle after the enable is seen low. In `IDLE` the
 controller stays put, so a parked controller always takes the arm. Anywhere
 else in a transfer the flop is already clear by the time the controller
 reaches either arm, and it returns to idle without a STOP. So in the
-`PopFmtFifo` leg a STOP on the pads is proof the enable fell on that one
+`POP_FMT_FIFO` leg a STOP on the pads is proof the enable fell on that one
 cycle; no other disable time produces one.
 
-The `PopFmtFifo` cycle is found on the bus. The transfer is a START and
+The `POP_FMT_FIFO` cycle is found on the bus. The transfer is a START and
 address, an offset byte and a data byte with a STOP, so the controller goes
-from the address acknowledge through `PopFmtFifo` into the offset byte.
+from the address acknowledge through `POP_FMT_FIFO` into the offset byte.
 Counting from the eighth SCL rise after the START, the disable is written a
 chosen number of SMC clock cycles later, and each try ends one of three ways:
-a STOP (the disable was seen in `PopFmtFifo`); SCL released after the
+a STOP (the disable was seen in `POP_FMT_FIFO`); SCL released after the
 acknowledge with no STOP (seen before it, so the address byte was the last);
 or the whole offset byte clocked out first (seen after it). Bisection on the offset between an
 early and a late try closes on the cycle between them. The write crosses from
@@ -88,7 +88,7 @@ INTR_CMD_COMPLETE = _i2c_u32("I2C__INTR_STATE__CMD_COMPLETE_bm")
 INTR_ALL = 0xFFFF_FFFF
 
 #: The SCL rise the disable offset counts from: the last address bit. The
-#: acknowledge follows, then `PopFmtFifo`.
+#: acknowledge follows, then `POP_FMT_FIFO`.
 ANCHOR_RISE = 8
 #: SCL rises after the anchor when the address byte was the last: the
 #: acknowledge, and the release when the controller returns to idle with no
@@ -140,7 +140,7 @@ class _PadWatch:
 
 
 class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
-    """Clear the enable with a transaction open, in `Idle` and in `PopFmtFifo`."""
+    """Clear the enable with a transaction open, in `IDLE` and in `POP_FMT_FIFO`."""
 
     def __init__(self, name: str = "smc_i2c_controller_disable_stop_test_seq") -> None:
         super().__init__(name)
@@ -226,7 +226,7 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
         assert self._pads() == (1, 1), f"{label}: the bus is not idle after the STOP"
 
     async def _idle_leg(self) -> None:
-        """Park the controller in `Idle` mid-transaction, then clear the enable."""
+        """Park the controller in `IDLE` mid-transaction, then clear the enable."""
         assert self.slave is not None
         label = "PARKED"
         await self._configure(label)
@@ -264,7 +264,7 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
         )
         await self._check_stop_witness(label, stops_before)
         cocotb.log.info(
-            "CHK-I2C-CTRL-DISABLE-STOP-IDLE: with the controller parked in Idle holding SCL "
+            "CHK-I2C-CTRL-DISABLE-STOP-IDLE: with the controller parked in IDLE holding SCL "
             "low and STATUS.HOSTIDLE clear, clearing CTRL.ENABLEHOST made one STOP on the "
             "pads, raised INTR_STATE.CMD_COMPLETE and returned the controller to idle"
         )
@@ -311,7 +311,7 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
             else:
                 raise AssertionError(
                     f"{label}: {after} SCL rises followed the anchor with no STOP; a disable "
-                    f"before PopFmtFifo leaves {EARLY_RISES}, one after it {LATE_RISES}"
+                    f"before POP_FMT_FIFO leaves {EARLY_RISES}, one after it {LATE_RISES}"
                 )
             await self._recover_bus(label)
         self.tries.append((offset, outcome))
@@ -319,18 +319,18 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
         return outcome
 
     async def _pop_leg(self) -> int:
-        """Find the `PopFmtFifo` cycle by bisection on the disable offset."""
+        """Find the `POP_FMT_FIFO` cycle by bisection on the disable offset."""
         lo, hi = 0, OFFSET_LATE
         first = await self._try(lo)
         if first == "stop":
             return lo
         assert first == "early", (
-            f"offset {lo}: the disable already landed after PopFmtFifo; the anchor is too late"
+            f"offset {lo}: the disable already landed after POP_FMT_FIFO; the anchor is too late"
         )
         last = await self._try(hi)
         if last == "stop":
             return hi
-        assert last == "late", f"offset {hi}: the disable still landed before PopFmtFifo"
+        assert last == "late", f"offset {hi}: the disable still landed before POP_FMT_FIFO"
         while hi - lo > 1:
             mid = (lo + hi) // 2
             got = await self._try(mid)
@@ -345,7 +345,7 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
                 if await self._try(offset) == "stop":
                     return offset
         raise AssertionError(
-            f"no disable offset produced a STOP: offset {lo} landed before PopFmtFifo and "
+            f"no disable offset produced a STOP: offset {lo} landed before POP_FMT_FIFO and "
             f"{hi} after it, and {DITHER_PASSES} passes over offsets {lo - DITHER_SPAN}.."
             f"{hi + DITHER_SPAN} never landed on it; tries: {self.tries}"
         )
@@ -365,7 +365,7 @@ class smc_i2c_controller_disable_stop_test_seq(SmcCsrSeq):
         early = sum(1 for _, o in self.tries if o == "early")
         late = sum(1 for _, o in self.tries if o == "late")
         assert early >= 1 and late >= 1, (
-            f"the search saw {early} early and {late} late tries; both sides of PopFmtFifo "
+            f"the search saw {early} early and {late} late tries; both sides of POP_FMT_FIFO "
             f"have to be seen for the STOP to single it out"
         )
         cocotb.log.info(

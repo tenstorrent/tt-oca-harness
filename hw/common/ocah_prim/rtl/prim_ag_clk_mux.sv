@@ -5,12 +5,12 @@
 //
 // Synchronize sel_i into each source domain, gate the deselected clock off before enabling
 // the other, and combine the gated clocks onto clk_o.
-// SelectOnReset chooses which clock is enabled while reset is asserted: 0 selects clk0_i
+// SELECT_ON_RESET chooses which clock is enabled while reset is asserted: 0 selects clk0_i
 // during reset, 1 selects clk1_i.
 // test_en_i forces both clock gates open, so clk_o is the OR of clk0_i and clk1_i.
 
 module prim_ag_clk_mux #(
-  parameter bit SelectOnReset = 1'b0  // 0 selects clk0_i during reset; 1 selects clk1_i.
+  parameter bit SELECT_ON_RESET = 1'b0  // 0 selects clk0_i during reset; 1 selects clk1_i.
 ) (
   input  logic clk0_i,  // First clock source.
   input  logic clk1_i,  // Second clock source.
@@ -28,78 +28,72 @@ module prim_ag_clk_mux #(
   logic gated_clk0, gated_clk1;
   logic sel_clk0, sel_clk1;
 
-  // Clock 0 synchronizer - resets to selected state based on SelectOnReset parameter
-  generate
-    if (SelectOnReset == 1'b0) begin : gen_sync_clk0_selected
-      prim_flop_4sync_s u_sync_clk0 (
-        .clk_i(clk0_i),
-        .d_i(~sel_i & !sel_clk1),
-        .set_ni(rst_clk0_ni),
-        .q_o(sel_sync_clk0)
-      );
-    end else begin : gen_sync_clk0_not_selected
-      prim_flop_4sync_r u_sync_clk0 (
-        .clk_i(clk0_i),
-        .d_i(~sel_i & !sel_clk1),
-        .rst_ni(rst_clk0_ni),
-        .q_o(sel_sync_clk0)
-      );
-    end
-  endgenerate
+  // Clock 0 synchronizer - resets to selected state based on SELECT_ON_RESET parameter
+  if (SELECT_ON_RESET == 1'b0) begin : gen_sync_clk0_selected
+    prim_flop_4sync_s u_sync_clk0 (
+      .clk_i(clk0_i),
+      .d_i(~sel_i & !sel_clk1),
+      .set_ni(rst_clk0_ni),
+      .q_o(sel_sync_clk0)
+    );
+  end else begin : gen_sync_clk0_not_selected
+    prim_flop_4sync_r u_sync_clk0 (
+      .clk_i(clk0_i),
+      .d_i(~sel_i & !sel_clk1),
+      .rst_ni(rst_clk0_ni),
+      .q_o(sel_sync_clk0)
+    );
+  end
 
-  // Clock 1 synchronizer - resets to selected state based on SelectOnReset parameter
-  generate
-    if (SelectOnReset == 1'b1) begin : gen_sync_clk1_selected
-      prim_flop_4sync_s u_sync_clk1 (
-        .clk_i(clk1_i),
-        .d_i(sel_i & !sel_clk0),
-        .set_ni(rst_clk1_ni),
-        .q_o(sel_sync_clk1)
-      );
-    end else begin : gen_sync_clk1_not_selected
-      prim_flop_4sync_r u_sync_clk1 (
-        .clk_i(clk1_i),
-        .d_i(sel_i & !sel_clk0),
-        .rst_ni(rst_clk1_ni),
-        .q_o(sel_sync_clk1)
-      );
-    end
-  endgenerate
+  // Clock 1 synchronizer - resets to selected state based on SELECT_ON_RESET parameter
+  if (SELECT_ON_RESET == 1'b1) begin : gen_sync_clk1_selected
+    prim_flop_4sync_s u_sync_clk1 (
+      .clk_i(clk1_i),
+      .d_i(sel_i & !sel_clk0),
+      .set_ni(rst_clk1_ni),
+      .q_o(sel_sync_clk1)
+    );
+  end else begin : gen_sync_clk1_not_selected
+    prim_flop_4sync_r u_sync_clk1 (
+      .clk_i(clk1_i),
+      .d_i(sel_i & !sel_clk0),
+      .rst_ni(rst_clk1_ni),
+      .q_o(sel_sync_clk1)
+    );
+  end
 
-  // Clock selection flops - reset behavior based on SelectOnReset parameter
-  generate
-    if (SelectOnReset == 1'b0) begin : gen_sel_clk0_selected
-      prim_flop #(
-        .ResetValue(1'b1)
-      ) u_clk0_sel (
-        .clk_i(clk0_i),
-        .rst_ni(rst_clk0_ni),
-        .d_i(sel_sync_clk0),
-        .q_o(sel_clk0)
-      );
-      prim_flop u_clk1_sel (
-        .clk_i(clk1_i),
-        .rst_ni(rst_clk1_ni),
-        .d_i(sel_sync_clk1),
-        .q_o(sel_clk1)
-      );
-    end else begin : gen_sel_clk1_selected
-      prim_flop u_clk0_sel (
-        .clk_i(clk0_i),
-        .rst_ni(rst_clk0_ni),
-        .d_i(sel_sync_clk0),
-        .q_o(sel_clk0)
-      );
-      prim_flop #(
-        .ResetValue(1'b1)
-      ) u_clk1_sel (
-        .clk_i(clk1_i),
-        .rst_ni(rst_clk1_ni),
-        .d_i(sel_sync_clk1),
-        .q_o(sel_clk1)
-      );
-    end
-  endgenerate
+  // Clock selection flops - reset behavior based on SELECT_ON_RESET parameter
+  if (SELECT_ON_RESET == 1'b0) begin : gen_sel_clk0_selected
+    prim_flop #(
+      .ResetValue(1'b1)
+    ) u_clk0_sel (
+      .clk_i(clk0_i),
+      .rst_ni(rst_clk0_ni),
+      .d_i(sel_sync_clk0),
+      .q_o(sel_clk0)
+    );
+    prim_flop u_clk1_sel (
+      .clk_i(clk1_i),
+      .rst_ni(rst_clk1_ni),
+      .d_i(sel_sync_clk1),
+      .q_o(sel_clk1)
+    );
+  end else begin : gen_sel_clk1_selected
+    prim_flop u_clk0_sel (
+      .clk_i(clk0_i),
+      .rst_ni(rst_clk0_ni),
+      .d_i(sel_sync_clk0),
+      .q_o(sel_clk0)
+    );
+    prim_flop #(
+      .ResetValue(1'b1)
+    ) u_clk1_sel (
+      .clk_i(clk1_i),
+      .rst_ni(rst_clk1_ni),
+      .d_i(sel_sync_clk1),
+      .q_o(sel_clk1)
+    );
+  end
 
   prim_clock_gating u_clk0_gate (
     .clk_i(clk0_i),

@@ -12,11 +12,13 @@
 //   ctp_csr_sweep    full-word CTP config and stretch patterns (all-ones and
 //                    inverted patterns drive the reserved bits, which read
 //                    back 0), every byte strobe over a nonzero base, a
-//                    STATUS write, and a preloaded neighbour that keeps its
-//                    words, on every CTP, then one routed stretched pulse
-//   ctm_csr_sweep    full-word CT_DST_SELECT patterns and every byte strobe
-//                    on every CTM source register, then two swept selects
-//                    routing a selected input and ignoring an unselected one
+//                    STATUS write, a write to the window's hole, and a
+//                    preloaded neighbour that keeps its words, on every CTP,
+//                    then one routed stretched pulse
+//   ctm_csr_sweep    full-word CT_DST_SELECT patterns, every byte strobe, and
+//                    a write to the slot's hole on every CTM source register,
+//                    then two swept selects routing a selected input and
+//                    ignoring an unselected one
 //   ctm_all_source_select  per-source select masks with neighbor
 //                    no-aliasing reads
 //   axi_channel_skew                       AW-first and W-first skewed
@@ -191,15 +193,16 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     return pool[$urandom_range(pool.size()-1)];
   endfunction
 
-  // Full-word patterns, every byte strobe, a STATUS write, then the final
-  // words, on one CTP.
+  // Full-word patterns, every byte strobe, a STATUS write, the final words,
+  // then a hole write, on one CTP.
   protected task sweep_ctp_words(int unsigned ctp_idx, bit [31:0] config_patterns[$],
                                  bit [31:0] stretch_patterns[$], bit [31:0] final_config,
                                  bit [31:0] final_stretch);
     bit [63:0] config_addr = ctp_config_addr(ctp_idx);
     bit [63:0] stretch_addr = ctp_stretch_addr(ctp_idx);
     bit [3:0] strobes[4] = '{4'h1, 4'h2, 4'h4, 4'h8};
-    bit [31:0] old_cfg, new_cfg, old_stretch, new_stretch, status_before;
+    bit [31:0] old_cfg, new_cfg, old_stretch, new_stretch, status_before, observed;
+    string ctx = $sformatf("ctp=%0d", ctp_idx);
     foreach (config_patterns[pat_idx])
       write_read_check(config_addr, config_patterns[pat_idx],
                        config_patterns[pat_idx] & CtpConfigMask, 4'hF, FullWord, $sformatf(
@@ -231,13 +234,23 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
                      "ctp%0d.cfg_final", ctp_idx));
     write_read_check(stretch_addr, final_stretch, final_stretch, 4'hF, CtpStretchMask, $sformatf(
                      "ctp%0d.stretch_final", ctp_idx));
+    // The word past STRETCH_MULT is a hole: it reads 0 after an all-ones
+    // write, and the write leaves the window's registers on the final words.
+    write_read_check(ctp_hole_addr(ctp_idx), FullWord, 32'h0, 4'hF, FullWord, $sformatf(
+                     "ctp%0d.hole", ctp_idx));
+    csr_read(config_addr, observed, $sformatf("ctp%0d.hole_after.config", ctp_idx));
+    check_evidence(ChkCsr, $sformatf("ctp%0d.hole_no_alias.config", ctp_idx),
+                   64'(observed & CtpConfigMask), 64'(final_config & CtpConfigMask), ctx);
+    csr_read(stretch_addr, observed, $sformatf("ctp%0d.hole_after.stretch", ctp_idx));
+    check_evidence(ChkCsr, $sformatf("ctp%0d.hole_no_alias.stretch", ctp_idx),
+                   64'(observed & CtpStretchMask), 64'(final_stretch & CtpStretchMask), ctx);
   endtask
 
   protected task run_ctm_csr_sweep();
     bit [31:0] patterns[$];
     bit [31:0] random_mask = $urandom_range(CtmSelectMask, 1);
     bit [3:0] strobes[4] = '{4'h1, 4'h2, 4'h4, 4'h8};
-    bit [31:0] old_mask, new_mask;
+    bit [31:0] old_mask, new_mask, held, observed;
     int unsigned outputs[$];
     `uvm_info(get_type_name(), "CTM deterministic CSR byte-strobe and mask sweep", UVM_LOW)
     // Seeded per-pass extra pattern and byte-strobe payloads on top of the
@@ -266,11 +279,18 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       foreach (strobes[s]) begin
         old_mask = $urandom() & CtmSelectMask;
         new_mask = $urandom();
+        held = apply_wstrb(old_mask, new_mask, strobes[s]) & CtmSelectMask;
         program_ctm_src(src_idx, old_mask);
-        write_read_check(ctm_config_addr(src_idx), new_mask, apply_wstrb(
-                         old_mask, new_mask, strobes[s]) & CtmSelectMask, strobes[s], FullWord,
-                         $sformatf("ctm%0d.wstrb%0h", src_idx, strobes[s]));
+        write_read_check(ctm_config_addr(src_idx), new_mask, held, strobes[s], FullWord, $sformatf(
+                         "ctm%0d.wstrb%0h", src_idx, strobes[s]));
       end
+      // The word past CT_SRC[src_idx] in its slot is a hole: it reads 0 after
+      // an all-ones write, and the write leaves the register on its last word.
+      write_read_check(ctm_hole_addr(src_idx), FullWord, 32'h0, 4'hF, FullWord, $sformatf(
+                       "ctm%0d.hole", src_idx));
+      csr_read(ctm_config_addr(src_idx), observed, $sformatf("ctm%0d.hole_after", src_idx));
+      check_evidence(ChkCsr, $sformatf("ctm%0d.hole_no_alias", src_idx), 64'(observed), 64'(held),
+                     $sformatf("src=%0d", src_idx));
     end
     `uvm_info(
         get_type_name(),
