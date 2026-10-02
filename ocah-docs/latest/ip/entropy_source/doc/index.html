@@ -929,6 +929,9 @@ domain and grey lines are in the <code>clk_i</code> domain or are controls.
 <div class="paragraph">
 <p>The <code>entropy_stream_data_o</code> and <code>entropy_stream_vld_o</code> top-level ports carry each word as it is written into the FIFO, not the FIFO read data, and there is no backpressure. In SEP they connect to the DRBG seed path, which distributes the generated random data to the entropy consumers.</p>
 </div>
+<div class="paragraph">
+<p>Because the FIFO holds the same words that seed the DRBG, <code>FIFO_CTRL.ENABLE</code> is covered by <code>FIPS_LOCK</code>. The field gates only the FIFO write, so the DRBG seed stream continues whatever its value. It resets to one, keeping the <code>FIFO_RDATA</code> read path live out of reset. To close that path on a locked part, software clears <code>FIFO_CTRL.ENABLE</code>, reads <code>FIFO_RDATA</code> until <code>FIFO_STATUS.LEVEL</code> is zero, and then sets <code>FIPS_LOCK.LOCK</code>. Reads remain available while writes are disabled, so words already in the FIFO stay readable until they are drained.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -1188,7 +1191,7 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>ENTROPY_CHURN_ENABLE</td><td>RW</td><td>0x0</td><td>XORs each incoming word with the FIFO entry 32 positions ahead of the write pointer. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>ENABLE</td><td>RW</td><td>0x1</td><td>Enables FIFO writes. Reads remain available while writes are disabled.</td></tr>
+<tr><td>0</td><td>ENABLE</td><td>RW</td><td>0x1</td><td>Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 </table>
 <span id="FIFO_STATUS"></span><h3 id="entropy_source-FIFO_STATUS" data-register-alias="FIFO_STATUS">FIFO_STATUS</h3>
 <table id="trm-table-11">
