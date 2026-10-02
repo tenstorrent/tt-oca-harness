@@ -3321,7 +3321,8 @@ observable at all — the port stays live while its contents are invalidated.
 `ClearDropsRequest_A` / `ClearScrubs*` / `ClearResetsStall_A` /
 `NoEntropyAcceptedDuringClear_A` / `ClearScrubsPendingRead_A` assertions in
 `sep_entropy_fifo.sv`, the two `AxisEdnNo*DuringClear_A` in
-`drbg_axis_edn_adapter.sv`, and `ResetOnlyWhenIsolated_A` /
+`drbg_axis_edn_adapter.sv` (re-armed by name in `tb/tb_top.sv` for both the
+crypto and the pool adapter, after the adapter-scope `$assertoff`), and `ResetOnlyWhenIsolated_A` /
 `IsolateHeldThroughReset_A` in `sep_isolate_rst_seq.sv` all expand to nothing
 under Verilator, because `prim_assert.sv` and `ocah_assert.svh` both gate on
 `ifndef VERILATOR`. Since a kept Verilator PASS is the sign-off gate, those ten

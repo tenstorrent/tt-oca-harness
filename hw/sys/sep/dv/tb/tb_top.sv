@@ -243,7 +243,8 @@ module sep_uvm_top
     // name to target, which also disables every other assertion under those three
     // blocks. The contracts re-armed by name are the EDN arbiter hold-until-grant
     // assume and lock assert, the crypto EDN adapter's clear and per-endpoint
-    // cancel contracts, and FipsWindowFloor_A.
+    // cancel contracts, the pool EDN adapter's clear contracts, and
+    // FipsWindowFloor_A.
 `ifndef VERILATOR
     initial begin
         // Scope-level $assertoff: these instances have no clock or reset for
@@ -278,6 +279,16 @@ module sep_uvm_top
             .gen_ep[2].AxisEdnNoAckDuringClear_A);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .gen_ep[3].AxisEdnNoAckDuringClear_A);
+        // The upstream side of the same clear: neither adapter takes an
+        // AXI-Stream beat while clear_i is high. The pool adapter's clear is
+        // the TRNG reset (trng_reset_active), so its single endpoint must not
+        // acknowledge during it either.
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .AxisEdnNoReadyDuringClear_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+            .AxisEdnNoReadyDuringClear_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+            .gen_ep[0].AxisEdnNoAckDuringClear_A);
         // Per-endpoint cancel contracts. A cancelled endpoint neither requests,
         // takes a word, nor acknowledges, and an ungranted request only drops
         // under a flush of that endpoint.
