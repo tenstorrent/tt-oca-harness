@@ -9,27 +9,27 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.12,
+      "coverage_total_percent": 89.03,
       "flow": "dtp",
       "framework": "cocotb",
       "pass_rate": 100.0,
-      "tests_total": 462,
+      "tests_total": 154,
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.05,
+      "coverage_total_percent": 88.93,
       "flow": "dtp",
       "framework": "uvm",
-      "pass_rate": 99.78,
-      "tests_total": 462,
+      "pass_rate": 100.0,
+      "tests_total": 154,
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.48,
+      "coverage_total_percent": 89.45,
       "flow": "dtp",
       "framework": "",
-      "pass_rate": 99.89,
-      "tests_total": 924,
+      "pass_rate": 100.0,
+      "tests_total": 308,
       "tool": "vcs"
     },
     {
@@ -57,7 +57,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-02T02:31:26+00:00",
+  "generated_at": "2026-10-02T11:33:06+00:00",
   "results": [
     {
       "coverage": {
@@ -78,12 +78,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 95.54,
-          "branch": 86.24,
-          "condition": 83.7,
-          "fsm_state": 70.87,
+          "branch": 86.19,
+          "condition": 83.36,
+          "fsm_state": 70.77,
           "functional": 100.0,
           "line": 94.03,
-          "toggle": 93.44,
+          "toggle": 93.28,
           "user": 96.4361
         }
       },
@@ -95,12 +95,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 94.86,
-          "branch": 86.9,
-          "condition": 84.27,
-          "fsm_state": 70.87,
+          "branch": 86.83,
+          "condition": 83.85,
+          "fsm_state": 70.67,
           "functional": 99.17,
           "line": 94.69,
-          "toggle": 92.6,
+          "toggle": 92.48,
           "user": 95.1782
         }
       },
@@ -113,11 +113,11 @@
         "effective_metrics": {
           "assertion": 95.54,
           "branch": 87.12,
-          "condition": 84.54,
+          "condition": 84.43,
           "fsm_state": 70.87,
           "functional": 100.0,
           "line": 94.82,
-          "toggle": 93.48,
+          "toggle": 93.38,
           "user": 96.4361
         }
       },
