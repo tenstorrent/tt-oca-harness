@@ -949,8 +949,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-PERIPH-EXT-UNMAPPED",
             "CHK-PERIPH-EXT-UNMAPPED",
-            "the first page above every allocation the sources record, still inside "
-            "the window, DECERRs (DV rule; see the VPLAN specification gap)",
+            "the first word past the straps pair, which no block claims, DECERRs "
+            "(DV rule; see the VPLAN specification gap)",
         ),
         (
             "CHK-PERIPH-EXT-APERTURE",

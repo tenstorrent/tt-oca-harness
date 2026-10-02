@@ -234,9 +234,9 @@ memory-technology SHIMs, and similar adopter-owned blocks are typical examples.
 The SMC decodes the aperture and forwards the transaction; what lives behind it
 is entirely adopter-defined.
 
-The window occupies `BASE + 0x040_0000` to `BASE + 0x07F_FFFF` (4 MiB; with
-`LOCAL_BASE`, `0xC040_0000` to `0xC07F_FFFF`). The SMC forwards every access
-in this range to `smc_external_req_o` except the eFuse SHIM range at its base
+The window starts at `BASE + 0x040_0000` (`0xC040_0000` with `LOCAL_BASE`),
+and its size is the extent of the adopter's `smc_external` register map. The
+SMC forwards every access in the window to `smc_external_req_o` except the eFuse SHIM range at its base
 (see <<smc-external-mandatory>>); the adopter decodes everything else.
 
 The window is split into two regions. Apart from the eFuse SHIM control block

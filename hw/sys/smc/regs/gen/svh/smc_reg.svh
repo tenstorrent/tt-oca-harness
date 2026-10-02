@@ -8996,7 +8996,7 @@ localparam int unsigned SMC_CLA_DST_0__SCRATCHHI_REG_ADDR                       
 
 
 localparam int unsigned SMC_EXTERNAL_REG_MAP_BASE_ADDR                                                            = 32'hC0400000;
-localparam int unsigned SMC_EXTERNAL_REG_MAP_SIZE                                                                 = 32'h00400000;
+localparam int unsigned SMC_EXTERNAL_REG_MAP_SIZE                                                                 = 32'h00006548;
 
 
 
@@ -9678,15 +9678,6 @@ localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_SIZE     
 
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_BASE_ADDR                                     = 32'hC0405C00;
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_SIZE                                          = 32'h00000948;
-
-
-
-//==============================================================================
-// Memory: reserved
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_RESERVED_MEM_BASE_ADDR                                                       = 32'hC0407000;
-localparam int unsigned SMC_EXTERNAL_RESERVED_MEM_SIZE                                                            = 32'h003F9000;
 
 
 
@@ -11275,7 +11266,6 @@ localparam longint unsigned STRAPS_STRAPS_HI_REG_DEFAULT                        
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT                                        = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
-localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_REG_DEFAULT                                     = 32'h00000000;
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_REG_DEFAULT                                                  = 64'h0000000000000000;
 localparam longint unsigned PLIC_PRIORITY_REG_DEFAULT                                                             = 32'h00000000;
 localparam longint unsigned PLIC_PENDING_REG_DEFAULT                                                              = 32'h00000000;
@@ -16173,9 +16163,6 @@ localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_SHIFT            
 
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_MASK                                             = 32'hFFFFFFFF;
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_SHIFT                                            = 0;
-
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_DATA_MASK                                           = 32'hFFFFFFFF;
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_DATA_SHIFT                                          = 0;
 
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_DATA_MASK                                                    = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned REMAPPED_REGION_MEM_WORD_DATA_SHIFT                                                   = 0;
@@ -21429,12 +21416,6 @@ typedef struct packed {
 typedef struct packed {
     logic [31:0]   data ;
 } ext_memory_num_entries_252_mem_word_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   data ;
-} ext_memory_num_entries_fe400_mem_word_reg_t;
 
 
 

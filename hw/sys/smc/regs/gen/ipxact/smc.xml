@@ -48380,7 +48380,7 @@ reaches termination value.</ipxact:description>
           <ipxact:displayName>SMC External Window Address Map</ipxact:displayName>
           <ipxact:description>Adopter-provided external register window, split into mandatory and supplementary regions.</ipxact:description>
           <ipxact:addressOffset>'hc0400000</ipxact:addressOffset>
-          <ipxact:range>'h400000</ipxact:range>
+          <ipxact:range>'h6548</ipxact:range>
           <ipxact:registerFile>
             <ipxact:name>mandatory</ipxact:name>
             <ipxact:displayName>SMC External Mandatory Region Address Map</ipxact:displayName>

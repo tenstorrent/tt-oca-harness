@@ -489,7 +489,7 @@ localparam longint unsigned SMC_TOP_SMC_CLA_DST_STRIDE = 64'h1000;
 localparam longint unsigned SMC_TOP_SMC_CLA_DST_TOTAL_SIZE = 64'h1000;
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_BASE_ADDR = 64'hC0400000;
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'h400000;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'h6548;
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR = 64'hC0400000;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_SIZE = 64'h3008;
@@ -525,9 +525,6 @@ localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_S
 
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_BASE_ADDR = 64'hC0405C00;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_SIZE = 64'h948;
-
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_RESERVED_BASE_ADDR = 64'hC0407000;
-localparam longint unsigned SMC_TOP_SMC_EXTERNAL_RESERVED_SIZE = 64'h3F9000;
 
 localparam longint unsigned SMC_TOP_ECAM_REGION_BASE_ADDR = 64'hC0800000;
 localparam longint unsigned SMC_TOP_ECAM_REGION_SIZE = 64'h800000;

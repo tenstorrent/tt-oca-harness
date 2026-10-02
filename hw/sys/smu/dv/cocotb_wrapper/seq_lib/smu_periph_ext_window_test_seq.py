@@ -13,8 +13,8 @@ records how far the allocated blocks reach.
 S1: EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME reads its RDL reset value, takes a
     new value, and takes the reset value back -- the shim port carries both a
     request and a response.
-S2: the straps pair answers, and the first page above every allocation those
-    sources record returns DECERR. The pair is what separates "the window is
+S2: the straps pair answers, and the first word past it, which no block claims,
+    returns DECERR. The pair is what separates "the window is
     decoded" from "nothing is behind it": a default slave returning zeros
     would answer the straps read too.
 S3: the SMC aperture decides whether any of that is reachable at all. Shrink
@@ -58,12 +58,8 @@ _EFUSE_SHIM_CTRL_C = _REPO_ROOT / "hw" / "ip" / "efuse" / "dv" / "models" / "reg
 # hw/sys/smc/doc/memmap.adoc, "AXI-Lite External Window": the window, its
 # mandatory region at the base and its supplementary region above it.
 EXTERNAL_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
-EXTERNAL_END = EXTERNAL_BASE + smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE")
 EXT_MANDATORY_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR")
 EXT_SUPPLEMENTARY_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
-# The supplementary region is the last allocated block; the rest of the window
-# up to EXTERNAL_END is reserved.
-EXT_ALLOCATED_END = EXT_SUPPLEMENTARY_BASE + smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SIZE")
 
 EFUSE_SHIM_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
 # The shim behind the eFuse bank-control port follows efuse_shim_ctrl.rdl; the
@@ -83,11 +79,11 @@ EFUSE_BANK_INIT_TIME_PROBE = 0x0000_0155
 # mandatory region.
 EXT_STRAPS_LO = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR")
 EXT_STRAPS_HI = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR")
-# The first 4 KiB page above every allocation the sources above record, still
-# inside the window. memmap.adoc passes what no block claims through to the
-# adopter external port, and hw/sys/smu/doc/port_table.adoc ties that port's
+# The first word past the straps pair: inside the mandatory region, below the
+# supplementary region, and claimed by no block. memmap.adoc passes what no block
+# claims through to the adopter external port, and hw/sys/smu/doc/port_table.adoc ties that port's
 # response to DECERR when nothing is attached.
-EXT_UNMAPPED = (max(EXT_ALLOCATED_END, EXT_STRAPS_HI + 4) + 0xFFF) & ~0xFFF
+EXT_UNMAPPED = EXT_STRAPS_HI + 4
 
 REGION_SIZE_ADDR = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 REGION_SIZE_RESET = smc_base_config_u32("SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset")
@@ -116,7 +112,7 @@ def _require_window_map() -> None:
             EXT_MANDATORY_BASE <= EXT_STRAPS_LO and EXT_STRAPS_HI + 4 <= EXT_SUPPLEMENTARY_BASE,
             "straps pair is outside the mandatory region",
         ),
-        (EXT_UNMAPPED < EXTERNAL_END, "unallocated probe is outside the window"),
+        (EXT_UNMAPPED < EXT_SUPPLEMENTARY_BASE, "unallocated probe is outside the mandatory region"),
         (
             (REGION_SIZE_SHRUNK & (REGION_SIZE_SHRUNK - 1)) == 0
             and LOCAL_BASE_RESET % REGION_SIZE_SHRUNK == 0,

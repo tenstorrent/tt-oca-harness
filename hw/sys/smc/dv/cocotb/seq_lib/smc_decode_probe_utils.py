@@ -42,7 +42,7 @@ AXI_RESP_DECERR = 3
 # The probed word inside the adopter external window: the port may carry the
 # full local address or the window offset, so both are compared on the window
 # bits above the byte lane.
-_EXTERNAL_WORD_MASK = (smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE") - 1) & ~0x3
+_EXTERNAL_WORD_MASK = ((1 << (smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE") - 1).bit_length()) - 1) & ~0x3
 
 # Cycles the external-window activity sampler keeps running after the access
 # completes, so a request that is still being drained is not missed.
