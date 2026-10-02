@@ -11,6 +11,12 @@ content:
       branches: HEAD
       start_path: doc/appnotes
       edit_url: false
+asciidoc:
+  attributes:
+    kroki-default-format: svg
+    kroki-fetch-diagram: true
+  extensions:
+    - asciidoctor-kroki
 runtime:
   log:
     # See antora-playbook.yml for why this is raised from the default.
