@@ -3148,9 +3148,9 @@ coordinator grades replaces one in its attempt's directory, and a
 suite carries a `producer` property with the value
 `run_dv.py junit-fallback`. Before an attempt runs, the runner removes every
 XML file that an earlier invocation into the same directory left under the
-attempt's `results/`, with or without that marker. From then on only a file
-carrying the marker is removed or replaced; a file without it is left alone
-even when it sits where the runner would write.
+attempt's `results/`, or a wave-debug rerun's `debug/`, with or without that
+marker. From then on only a file carrying the marker is removed or replaced; a
+file without it is left alone even when it sits where the runner would write.
 
 Two run-level files follow the same rule. A handled interruption writes
 `<run>/results/results.xml` with one errored testcase of type `interruption`
@@ -3500,9 +3500,9 @@ The following behaviors are not part of the runner contract:
   and in-process Verilator/Xcelium cocotb build stages are unbounded.
 * An explicit `--run-dir` is reused as supplied, is not made unique, and does
   not update `latest`. Before an attempt is submitted, the leaf `result.json`,
-  completion record, graded mark, job log, and `results/` JUnit files an
-  earlier run left at its paths are removed; everything else that run left
-  stays. Choose an empty directory unless performing the documented coverage
+  completion record, graded mark, job log, and XML files under `results/` and
+  a wave-debug rerun's `debug/` that an earlier run left at its paths are
+  removed; everything else that run left stays. Choose an empty directory unless performing the documented coverage
   replay.
 * `--max-failures 0` satisfies the stop condition immediately and therefore
   skips every scheduler leaf. The aggregate reports `PASS` and exits `0`

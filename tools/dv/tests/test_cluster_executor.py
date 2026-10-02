@@ -394,13 +394,15 @@ class ClusterExecutorTests(FakeSchedulerCase):
         tasks = [self.task(15), self.task(16, item="t_beta"), self.task(17, item="t_gamma")]
         stale: list[Path] = []
         for task in tasks:
-            xml = task.leaf_dir / "results" / "results.xml"
-            xml.parent.mkdir(parents=True)
-            xml.write_text("<testsuites/>\n", encoding="utf-8")
+            for name in ("results", "debug"):
+                xml = task.leaf_dir / name / "results.xml"
+                xml.parent.mkdir(parents=True)
+                xml.write_text("<testsuites/>\n", encoding="utf-8")
+                stale.append(xml)
             task.result_json.write_text(json.dumps({"status": "PASS"}), encoding="utf-8")
             done = completion_path(self.run_dir, task.task_id)
             done.write_text(json.dumps({"return_code": 0}), encoding="utf-8")
-            stale += [xml, task.result_json, done]
+            stale += [task.result_json, done]
         handles = [executor.submit(tasks[0]), *executor.submit_many(tasks[1:])]
         self.assertIsNotNone(handles[1].array_job_id, "the last two go out as one array")
         self.assertEqual([path for path in stale if path.exists()], [])
