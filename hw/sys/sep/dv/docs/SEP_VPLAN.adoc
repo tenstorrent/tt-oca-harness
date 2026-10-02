@@ -8706,6 +8706,7 @@ the wipe security contract.
 . Dedicated `km_rom_bus_err` on the KM CPU bus, not `rom_main`. The image makes each access, copies raw words to KM SRAM and grades nothing; the host holds every verdict (`seq_lib/sep_km_bus_err_seq.py` holds the word layout).
 . Before each access the image writes 1 to clear `AXI_SLVERR`, `AXI_DECERR` and `ROM_WRITE_ERR` and stores the readback. The host requires it clear, so a bit a row reports belongs to that row's access. After each access the image polls `IRQ_STATUS` a bounded number of times and stores the last value.
 . Control: a store to `KM_KPV_SIZE` past the KPV base, inside the 8 KB KPV window.
+. Control: a KM load from the Reserved ROM-growth row (ROM base + ROM size) of the `key_manager.rdl` memory-map summary.
 . The image loads a ROM word, stores its complement to it, polls, and loads the word again.
 . The host waits for the image's marker in KM SRAM word 0 and reads the dump words through `km_sram_probe_o`.
 
@@ -8718,12 +8719,14 @@ the wipe security contract.
 |Precondition, shared by the three `km_rom_bus_err` leaves (`seq_lib/sep_km_bus_err_seq.py`). KM SRAM word 0 holds the image's pre-load or post-load marker within a fixed cycle bound after release. The image stores the pre-load marker after every dump word except the data and `IRQ_STATUS` words of the virtual ROM load, so the image ran and the rows before that load are written. The checker has no PASS line: when the marker does not appear, the leaf stops with this FAIL and the KM ROM fetch count.
 |CHK-KM-SLVERR-LIVE
 |Control. A store past the KPV register map sets `IRQ_STATUS.AXI_SLVERR`, so the bit and the image's poll work.
+|CHK-KM-DECERR-LIVE
+|Control. A KM load from the Reserved ROM-growth row sets `IRQ_STATUS.AXI_DECERR`, so the bit and the image's poll work.
 |CHK-KM-ROM-UNCHANGED
 |The ROM word reads the image constant before the store and after a store of its complement.
 |CHK-KM-ROM-WRITE-ERR
 |The store sets `IRQ_STATUS.ROM_WRITE_ERR`.
 |CHK-KM-ROM-WRITE-NO-AXI-ERR
-|The store leaves `IRQ_STATUS.AXI_SLVERR` and `AXI_DECERR` clear: `key_manager.rdl` says a ROM write completes with no error response and is reported only as `ROM_WRITE_ERR`. `CHK-KM-SLVERR-LIVE` shows the `AXI_SLVERR` bit sets on an erroring store, so a clear bit here is evidence.
+|The store leaves `IRQ_STATUS.AXI_SLVERR` and `AXI_DECERR` clear: `key_manager.rdl` says a ROM write completes with no error response and is reported only as `ROM_WRITE_ERR`. `CHK-KM-SLVERR-LIVE` shows the `AXI_SLVERR` bit sets on an erroring store and `CHK-KM-DECERR-LIVE` shows the `AXI_DECERR` bit sets on an erroring load, in the same image run, so a clear bit here is evidence.
 |===
 
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
