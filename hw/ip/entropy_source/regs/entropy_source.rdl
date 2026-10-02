@@ -266,7 +266,8 @@ addrmap entropy_source {
         field {
             sw = rw;
             hw = r;
-            desc = "Enables FIFO writes. Reads remain available while writes are disabled.";
+            desc = "Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.";
+            swwel = true;  // Locked by FIPS_LOCK.LOCK: freezes the software read path to the DRBG seed stream, SW writes ignored while locked (cleared only by reset).
         } ENABLE[0:0] = 0x1;
         field {
             sw = rw;

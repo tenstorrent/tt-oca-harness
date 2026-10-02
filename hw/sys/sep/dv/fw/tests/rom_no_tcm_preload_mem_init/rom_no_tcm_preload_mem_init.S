@@ -29,7 +29,6 @@
 .equ SECURE_DMA_SRC_CONFIG_REG_ADDR,                  0x10800048
 .equ SECURE_DMA_DST_CONFIG_REG_ADDR,                  0x1080004C
 .equ SECURE_DMA_STATUS_REG_ADDR,                      0x10800050
-.equ SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR,           0x10A300D0
 
 /* SEP outbound egress filter, entry 0. Offsets and the open-window encoding
  * match drivers/sep_outbound_filter.h: CONFIG @0x0, START @0x8, END @0x10;
@@ -121,15 +120,6 @@ _start:
     li      t1, 1
     sw      t1, 0(t0)
 
-    /*
-     * Disable local-alias remap while DMA targets ICCM.  Otherwise the DMA path
-     * remaps 0xC000_0000 down to 0x0000_0000 before it reaches the TCM port.
-     */
-    li      t0, SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR
-    lw      s0, 0(t0)
-    sw      zero, 0(t0)
-    fence   ow, ow
-
     li      t0, SECURE_DMA_SRC_ADDR_LO_REG_ADDR
     li      t1, SRAM_CODE_ADDR
     sw      t1, 0(t0)
@@ -167,26 +157,17 @@ _start:
 dma_poll:
     lw      t1, 0(t0)
     andi    t2, t1, 0x8
-    bnez    t2, fail_restore_remap
+    bnez    t2, fail
     andi    t2, t1, 0x2
     bnez    t2, dma_done
     addi    t3, t3, -1
     bnez    t3, dma_poll
-    j       fail_restore_remap
+    j       fail
 
 dma_done:
-    li      t0, SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR
-    sw      s0, 0(t0)
-    fence   ow, ow
-
     fence.i
     li      t0, ICCM_PROG_ADDR
     jalr    zero, 0(t0)
-
-fail_restore_remap:
-    li      t0, SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR
-    sw      s0, 0(t0)
-    fence   ow, ow
 
 fail:
 trap_fail:

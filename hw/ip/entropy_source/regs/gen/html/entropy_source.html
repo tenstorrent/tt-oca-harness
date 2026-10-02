@@ -187,7 +187,7 @@
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>ENTROPY_CHURN_ENABLE</td><td>RW</td><td>0x0</td><td>XORs each incoming word with the FIFO entry 32 positions ahead of the write pointer. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>ENABLE</td><td>RW</td><td>0x1</td><td>Enables FIFO writes. Reads remain available while writes are disabled.</td></tr>
+<tr><td>0</td><td>ENABLE</td><td>RW</td><td>0x1</td><td>Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 </table>
 <h3 id="FIFO_STATUS">FIFO_STATUS</h3>
 <table>
