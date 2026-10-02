@@ -73,8 +73,8 @@ source -echo [file join $ocah_smu_sys_dir dtp cdc dtp.cdc_rdc.tcl]
 cdc_end_block
 
 # ---------------------------------------------------------------------------------
-# Inherit SEP (instance gen_sep.u_sep -- present only when the SEP parameter is set;
-# SMU_SEP=0 elaborates the gen_no_sep stub instead, so the whole section is guarded).
+# Inherit SEP (instance gen_sep.u_sep -- present only when CFG.SEP is set; the no-SEP
+# preset elaborates the gen_no_sep stub instead, so the whole section is guarded).
 # SEPCLK is SMU's SMUCLK, WDTCLK is SMU's SEP_WDT_CLK. Port resets map onto their
 # drivers: RST_NI <- rst_primary_smc_clk_no, DBG_RSTB_I <- powergood_stable,
 # WDT_RST_NI <- rst_wdt_n (SMC WDT_RESET_N_SMC_CLK), JTAG_TRST_N <- DTP SEP-STAP trst
@@ -88,7 +88,7 @@ if { [sizeof_collection [get_cells -quiet gen_sep.u_sep]] > 0 } {
     source -echo [file join $ocah_smu_sys_dir sep cdc sep.cdc_rdc.tcl]
     cdc_end_block
 } else {
-    puts "INFO: SMU [string toupper $::cdc_app]: gen_sep.u_sep not present (SMU_SEP=0) - SEP constraints skipped"
+    puts "INFO: SMU [string toupper $::cdc_app]: gen_sep.u_sep not present (CFG.SEP is 0) - SEP constraints skipped"
 }
 
 # ---------------------------------------------------------------------------------
