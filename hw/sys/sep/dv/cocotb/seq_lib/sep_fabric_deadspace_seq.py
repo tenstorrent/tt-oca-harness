@@ -41,6 +41,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import sep_map_row
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import (
     block_size,
@@ -152,6 +153,19 @@ def _ot_named(ip: str, base: int, alloc: int, names) -> frozenset[int]:
 
 _ABR = sym("ABR_REG_MAP_BASE_ADDR")
 
+# The crypto region, OTBN through ABR (hw/sys/sep/doc/memory_map.adoc,
+# "Single-Beat Register Access"). hw/sys/sep/doc/crypto.adoc,
+# "Single-Beat Access Only": the sep_crypto demux answers every access whose
+# AxLEN is non-zero with DECERR on every beat, and no beat reaches an
+# accelerator. A burst into any other register region is outside the
+# specification, so no burst contract exists there.
+CRYPTO_LO = sym("OTBN_REG_MAP_BASE_ADDR")
+CRYPTO_HI = sep_map_row(_ABR).end + 1
+
+
+def in_crypto_region(addr: int) -> bool:
+    return CRYPTO_LO <= addr < CRYPTO_HI
+
 
 def dead_windows() -> tuple[DeadWindow, ...]:
     """Source-derived windows. Allocated size is never the RTL truncate width."""
@@ -228,8 +242,9 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "km_mailbox",
             sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR"),
-            # Map window end; no neighbouring REG_MAP_BASE_ADDR (memory_map.adoc).
-            0x1092_1000,
+            # Aperture end from the generated SEP memory map; no neighbouring
+            # REG_MAP_BASE_ADDR follows this block.
+            sep_map_row(sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")).end + 1,
             block_size("KM_MAILBOX_SEP"),
             _sep_watch(
                 sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR"),
@@ -250,8 +265,9 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "spi_controller",
             sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
-            # Map window end; no neighbouring REG_MAP_BASE_ADDR (memory_map.adoc).
-            0x10C0_0000,
+            # Aperture end from the generated SEP memory map; no neighbouring
+            # REG_MAP_BASE_ADDR follows this block.
+            sep_map_row(sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR")).end + 1,
             block_size("SPI_CONTROLLER"),
             _sep_watch(
                 sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
@@ -409,7 +425,7 @@ class SepDeadspace:
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF, seq.timed_out
 
     async def burst_across_extent(
-        self, win
+        self, win, start: int | None = None
     ) -> tuple[int, list[int], bool, list[int], list[tuple[int, int]], list[int | None]]:
         """Read an INCR burst that starts inside the extent and ends past it.
 
@@ -419,6 +435,9 @@ class SepDeadspace:
         the last live words is routed wholly to this block, and its later beats
         land past ``REG_MAP_SIZE`` -- the span `memory_map.adoc` says is
         refused at the fabric and never reaches a unit.
+
+        ``start`` overrides the first address, for a window with no burst that
+        crosses its extent; the caller then grades the burst rule alone.
 
         Returns the start address, the responses the master reported, the
         timeout flag, the four beats, a single-beat read of each of the same
@@ -430,8 +449,9 @@ class SepDeadspace:
         monitor records every R beat separately and publishes the whole vector
         at RLAST, so the per-beat contract is read from there instead.
         """
-        beats = 4  # two live beats, then two past the extent
-        start = win.dead_lo - 4 * (beats // 2)
+        beats = 4  # by default two live beats, then two past the extent
+        if start is None:
+            start = win.dead_lo - 4 * (beats // 2)
         mon = self.test.env.axi_monitor
         mon.start_beat_capture()
         # The later beats land in dead space, so a correct fabric answers this
@@ -493,6 +513,36 @@ class SepDeadspace:
             singles.append((r, d))
         return (start, list(seq.resp_list), seq.timed_out, words, singles, mon_resps)
 
+    async def burst_write(
+        self, win, start: int, snap: dict[int, int]
+    ) -> tuple[int, bool, list[str]]:
+        """Write a four-beat INCR burst at ``start``; return BRESP, timeout and changes.
+
+        Every beat carries all ones, so a beat that reached a writable register
+        moves it. One BRESP covers the burst, and the change compare is what
+        shows whether any beat landed.
+        """
+        beats = 4
+        mon = self.test.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        seq = SepAxiAccessSeq(
+            f"dead_burst_wr_0x{start:08x}",
+            op=SepAxiOp.WRITE,
+            addr=start,
+            wdata=(1 << (32 * beats)) - 1,
+            length=4 * beats,
+            size=2,
+            expect_error=True,
+            allow_unverified_write_resp=True,
+        )
+        await self.test.start_seq(seq)
+        resp = -1 if seq.timed_out else seq.resp_code
+        if resp != RESP_DECERR:
+            mon.release_expected_decerr(1)
+        if seq.timed_out:
+            return resp, True, []
+        return resp, False, await self.changed_registers(win, snap, f"write burst 0x{start:08x}")
+
     async def snapshot(self, win) -> dict[int, int]:
         snap: dict[int, int] = {}
         volatile: set[int] = set()
@@ -537,6 +587,54 @@ class SepDeadspace:
             len(snap),
             skipped,
         )
+
+    async def changed_registers(self, win, snap: dict[int, int], label: str) -> list[str]:
+        """Re-read the armed registers of ``win`` and return a failure per change."""
+        fails: list[str] = []
+        after = {}
+        skipped = 0
+        unread: list[str] = []
+        for addr in snap:
+            if addr in win.hw_updating:
+                skipped += 1
+                continue
+            resp_a, val, to_a = await self._access(SepAxiOp.READ, addr)
+            if resp_a == RESP_OKAY and not to_a:
+                after[addr] = val
+            else:
+                unread.append(f"+0x{addr - win.base:x} resp={resp_a} timed_out={to_a}")
+        # An armed register that cannot be read back cannot show it did not
+        # move, so a failed re-read fails the probe instead of shrinking it.
+        if unread:
+            fails.append(
+                f"{win.name} {label} re-read of armed register(s) failed: {' '.join(unread)}"
+            )
+        # Report the size of the change compare, not just its verdict. An
+        # exclusion that silently grows -- a schema change widening the
+        # software-read-only set onto a control register -- would otherwise
+        # shrink the coverage with an identical-looking log.
+        self.test.logger.info(
+            "deadspace scope: %s %s compared %d of %d watched "
+            "register(s); %d skipped as hardware-updating",
+            win.name,
+            label,
+            len(after),
+            len(snap),
+            skipped,
+        )
+        changed = {
+            addr: (snap[addr], after[addr])
+            for addr in snap
+            if addr in after and after[addr] != snap[addr]
+        }
+        if changed:
+            detail = " ".join(
+                f"+0x{addr - win.base:x}:0x{old:08x}->0x{new:08x}"
+                for addr, (old, new) in sorted(changed.items())
+            )
+            fails.append(f"{win.name} {label} changed live register(s) {detail}")
+            await self.restore(win, snap)
+        return fails
 
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
         """Return failure strings. Empty means this probe matched the spec."""
@@ -613,51 +711,5 @@ class SepDeadspace:
         # takes, and reports that drift as a wrap. Every `sw = rw` register
         # stays armed, so an access that aliases onto a control register is
         # still caught -- at that control register, where it lands.
-        after = {}
-        skipped = 0
-        unread: list[str] = []
-        for addr in snap:
-            if addr in win.hw_updating:
-                skipped += 1
-                continue
-            resp_a, val, to_a = await self._access(SepAxiOp.READ, addr)
-            if resp_a == RESP_OKAY and not to_a:
-                after[addr] = val
-            else:
-                unread.append(f"+0x{addr - win.base:x} resp={resp_a} timed_out={to_a}")
-        # An armed register that cannot be read back cannot show it did not
-        # move, so a failed re-read fails the probe instead of shrinking it.
-        if unread:
-            fails.append(
-                f"{win.name} {item.op} 0x{item.addr:08x} re-read of armed register(s) "
-                f"failed: {' '.join(unread)}"
-            )
-        # Report the size of the change compare, not just its verdict. An
-        # exclusion that silently grows -- a schema change widening the
-        # software-read-only set onto a control register -- would otherwise
-        # shrink the coverage with an identical-looking log.
-        self.test.logger.info(
-            "deadspace scope: %s %s 0x%08x compared %d of %d watched "
-            "register(s); %d skipped as hardware-updating",
-            win.name,
-            item.op,
-            item.addr,
-            len(after),
-            len(snap),
-            skipped,
-        )
-        changed = {
-            addr: (snap[addr], after[addr])
-            for addr in snap
-            if addr in after and after[addr] != snap[addr]
-        }
-        if changed:
-            detail = " ".join(
-                f"+0x{addr - win.base:x}:0x{old:08x}->0x{new:08x}"
-                for addr, (old, new) in sorted(changed.items())
-            )
-            fails.append(
-                f"{win.name} {item.op} 0x{item.addr:08x} changed live register(s) {detail}"
-            )
-            await self.restore(win, snap)
+        fails.extend(await self.changed_registers(win, snap, f"{item.op} 0x{item.addr:08x}"))
         return fails
