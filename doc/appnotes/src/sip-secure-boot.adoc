@@ -221,9 +221,11 @@ SEP BL0 decides whether secure boot is enabled separately for each manifest:
 * If the bit is clear and the `SBOOT_DIS` fuse is burned, secure boot is
   disabled.
 * If the bit is clear and `SBOOT_DIS` is not burned, the lifecycle state
-  decides: in `PROD` and `PROD_END`, secure boot is enabled; in `TEST_DEV`, it
-  is enabled only when the fuses disable chiplet-scope debug; in the RMA states,
-  it is disabled.
+  decides: 
+** in `PROD` and `PROD_END`, secure boot is enabled
+** in `TEST_DEV`, `RMA_SIP` and `RMA_CHIPLET` it is not enabled 
+*** if chiplet-scope debug is disabled via fuses, secure boot
+is enabled for `TEST_DEV` and `RMA_SIP`. `RMA_CHIPLET` is not affected
 
 The fuses disable chiplet-scope debug when `CHIPLET_DBG` is set in `SIP_DIS` or
 `SYS_DIS`, or when either vector is read-locked.
