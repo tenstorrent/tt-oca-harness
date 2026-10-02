@@ -193,7 +193,7 @@ def _straps_block_size() -> int:
     raise AssertionError(f"{_STRAPS_H} declares no straps_t size")
 
 
-STRAPS_LO = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_BASE_ADDR")
+STRAPS_LO = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR")
 STRAPS_HI = STRAPS_LO + 4
 STRAPS_BEYOND = STRAPS_LO + _straps_block_size()
 

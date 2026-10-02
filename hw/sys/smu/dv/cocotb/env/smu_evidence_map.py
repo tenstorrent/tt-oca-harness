@@ -943,7 +943,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-PERIPH-EXT-STRAPS",
             "CHK-PERIPH-EXT-STRAPS",
-            "STRAPS_LO and STRAPS_HI at the boot-ROM documented supplementary-region "
+            "STRAPS_LO and STRAPS_HI at the boot-ROM documented mandatory-region "
             "address both answer SUCCESS",
         ),
         (

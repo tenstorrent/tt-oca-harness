@@ -6165,7 +6165,7 @@ SMC_CLA_DST_0__SCRATCHHI_REG_ADDR = 0xC0163FFC
 SMC_EXTERNAL_REG_MAP_BASE_ADDR = 0xC0400000
 SMC_EXTERNAL_REG_MAP_SIZE = 0x00400000
 SMC_EXTERNAL_MANDATORY_REG_MAP_BASE_ADDR = 0xC0400000
-SMC_EXTERNAL_MANDATORY_REG_MAP_SIZE = 0x00002EE8
+SMC_EXTERNAL_MANDATORY_REG_MAP_SIZE = 0x00003008
 SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR = 0xC0400000
 SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_REG_MAP_SIZE = 0x00000004
 SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_OFFSET = 0x00000000
@@ -6302,24 +6302,24 @@ SMC_EXTERNAL_MANDATORY_GPIO_CTRL_64__MEM_BASE_ADDR = 0xC0401800
 SMC_EXTERNAL_MANDATORY_GPIO_CTRL_64__MEM_SIZE = 0x00000004
 SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_MEM_BASE_ADDR = 0xC0402000
 SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_MEM_SIZE = 0x00000EE8
-SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_BASE_ADDR = 0xC0403000
-SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE = 0x00002948
-SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_BASE_ADDR = 0xC0403000
+SMC_EXTERNAL_MANDATORY_STRAPS_REG_MAP_BASE_ADDR = 0xC0403000
+SMC_EXTERNAL_MANDATORY_STRAPS_REG_MAP_SIZE = 0x00000008
+SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_REG_OFFSET = 0x00000000
+SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_REG_ADDR = 0xC0403000
+SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_OFFSET = 0x00000004
+SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_ADDR = 0xC0403004
+SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_BASE_ADDR = 0xC0404000
+SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE = 0x00002548
+SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_BASE_ADDR = 0xC0404000
 SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_SIZE = 0x00000390
-SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_BASE_ADDR = 0xC0404000
+SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_BASE_ADDR = 0xC0405000
 SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_SIZE = 0x0000000C
-SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_BASE_ADDR = 0xC040400C
+SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_BASE_ADDR = 0xC040500C
 SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_SIZE = 0x00000004
-SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_REG_MAP_BASE_ADDR = 0xC0404800
-SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_REG_MAP_SIZE = 0x00000008
-SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_OFFSET = 0x00000000
-SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_ADDR = 0xC0404800
-SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_OFFSET = 0x00000004
-SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_ADDR = 0xC0404804
-SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_BASE_ADDR = 0xC0405000
+SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_BASE_ADDR = 0xC0405C00
 SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_SIZE = 0x00000948
-SMC_EXTERNAL_RESERVED_MEM_BASE_ADDR = 0xC0406000
-SMC_EXTERNAL_RESERVED_MEM_SIZE = 0x003FA000
+SMC_EXTERNAL_RESERVED_MEM_BASE_ADDR = 0xC0407000
+SMC_EXTERNAL_RESERVED_MEM_SIZE = 0x003F9000
 ECAM_REGION_MEM_BASE_ADDR = 0xC0800000
 ECAM_REGION_MEM_SIZE = 0x00800000
 MMODE_REGION_MEM_BASE_ADDR = 0xC1000000
@@ -22695,62 +22695,6 @@ class EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT = 0x00000000
-class EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_reg_t(Structure):
-    _fields_ = [
-        ('data', c_uint32, 32),
-    ]
-
-EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT = 0x00000000
-
-class EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
-        self.val = EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT = 0x00000000
-class EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_reg_t(Structure):
-    _fields_ = [
-        ('data', c_uint32, 32),
-    ]
-
-EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT = 0x00000000
-
-class EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
-        self.val = EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
 STRAPS_STRAPS_LO_REG_DEFAULT = 0x00000000
 class STRAPS_STRAPS_LO_reg_t(Structure):
     _fields_ = [
@@ -22807,6 +22751,62 @@ class STRAPS_STRAPS_HI_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
+EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT = 0x00000000
+class EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_reg_t(Structure):
+    _fields_ = [
+        ('data', c_uint32, 32),
+    ]
+
+EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT = 0x00000000
+
+class EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
+        self.val = EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT = 0x00000000
+class EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_reg_t(Structure):
+    _fields_ = [
+        ('data', c_uint32, 32),
+    ]
+
+EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT = 0x00000000
+
+class EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
+        self.val = EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
 EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_REG_DEFAULT = 0x00000000
 class EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_reg_t(Structure):
     _fields_ = [
@@ -22835,23 +22835,23 @@ class EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_REG_DEFAULT = 0x00000000
-class EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_reg_t(Structure):
+EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_REG_DEFAULT = 0x00000000
+class EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_reg_t(Structure):
     _fields_ = [
         ('data', c_uint32, 32),
     ]
 
-EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_REG_DEFAULT = 0x00000000
+EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_REG_DEFAULT = 0x00000000
 
-class EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_reg_u(Union):
+class EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_reg_u(Union):
     _fields_ = [
         ('val', c_uint32),
-        ('f', EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_reg_t),
+        ('f', EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_reg_t),
     ]
 
     def __init__(self, *args, **kwargs):
-        super(EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
-        self.val = EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_REG_DEFAULT
+        super(EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
+        self.val = EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

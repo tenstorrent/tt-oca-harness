@@ -6,7 +6,7 @@
 
 === Straps and eFuses
 
-Early assembly reads strap registers at `0xC0404800` and `0xC0404804`.
+Early assembly reads strap registers at `0xC0403000` and `0xC0403004`.
 The C strap driver later caches the fields used for reporting or policy.
 Boot stall is controlled by the dedicated GPIO 57 hardware path before ROM
 execution and is not a captured strap.

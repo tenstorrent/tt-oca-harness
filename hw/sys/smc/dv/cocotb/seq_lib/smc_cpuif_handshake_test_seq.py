@@ -60,7 +60,7 @@ the wrong word or loses the write.
 
 Three blocks need their own handling, and the card records each:
 
-* `straps` sits in the supplementary region of the adopter external window,
+* `straps` sits in the mandatory region of the adopter external window,
   and `straps.rdl` makes it `sw = r`, so it is a read-only probe reached by
   address.
 * `uart_16550_dl` shares its address window with the main UART registers and
@@ -272,7 +272,7 @@ class smc_cpuif_handshake_test_seq(SmcCsrSeq):
     # -- the special blocks ----------------------------------------------
 
     async def _straps_legs(self) -> None:
-        addr = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_BASE_ADDR")
+        addr = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR")
         await self._legs("straps", addr, 4)
 
     async def _uart_dl_legs(self) -> None:

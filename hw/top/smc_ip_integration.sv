@@ -192,9 +192,9 @@ module smc_ip_integration (
     localparam int unsigned ExtPvtSize = 32'(
         smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_SIZE);
     localparam int unsigned ExtStrapsBase = 32'(
-        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_BASE_ADDR - ExtBase);
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR - ExtBase);
     localparam int unsigned ExtStrapsSize = 32'(
-        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_SIZE);
+        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE);
     localparam int unsigned ExtWindowSize = 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE);
 
     // Targets, in demux port order. Anything unclaimed lands on ExtUnmapped,

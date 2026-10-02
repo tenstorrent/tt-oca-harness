@@ -48384,9 +48384,9 @@ reaches termination value.</ipxact:description>
           <ipxact:registerFile>
             <ipxact:name>mandatory</ipxact:name>
             <ipxact:displayName>SMC External Mandatory Region Address Map</ipxact:displayName>
-            <ipxact:description>Mandatory adopter blocks in the external window: eFuse shim, per-pad GPIO control, and PLL.</ipxact:description>
+            <ipxact:description>Mandatory adopter blocks in the external window: eFuse shim, per-pad GPIO control, PLL, and captured GPIO straps.</ipxact:description>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:range>'h2ee8</ipxact:range>
+            <ipxact:range>'h3008</ipxact:range>
             <ipxact:registerFile>
               <ipxact:name>efuse_shim_ctrl</ipxact:name>
               <ipxact:displayName>eFuse SHIM Control Model Address Map</ipxact:displayName>
@@ -48412,18 +48412,11 @@ reaches termination value.</ipxact:description>
                 </ipxact:field>
               </ipxact:register>
             </ipxact:registerFile>
-          </ipxact:registerFile>
-          <ipxact:registerFile>
-            <ipxact:name>supplementary</ipxact:name>
-            <ipxact:displayName>SMC External Supplementary Region Address Map</ipxact:displayName>
-            <ipxact:description>Supplementary adopter blocks in the external window: extra controllers, captured GPIO straps, and extra GPIO registers.</ipxact:description>
-            <ipxact:addressOffset>'h3000</ipxact:addressOffset>
-            <ipxact:range>'h2948</ipxact:range>
             <ipxact:registerFile>
               <ipxact:name>straps</ipxact:name>
               <ipxact:displayName>Straps Address Map</ipxact:displayName>
               <ipxact:description>Captured GPIO strap values (adopter padring capture)</ipxact:description>
-              <ipxact:addressOffset>'h1800</ipxact:addressOffset>
+              <ipxact:addressOffset>'h3000</ipxact:addressOffset>
               <ipxact:range>'h8</ipxact:range>
               <ipxact:register>
                 <ipxact:name>STRAPS_LO</ipxact:name>
@@ -48485,6 +48478,13 @@ Strap assignments in this range:
                 </ipxact:field>
               </ipxact:register>
             </ipxact:registerFile>
+          </ipxact:registerFile>
+          <ipxact:registerFile>
+            <ipxact:name>supplementary</ipxact:name>
+            <ipxact:displayName>SMC External Supplementary Region Address Map</ipxact:displayName>
+            <ipxact:description>Supplementary adopter blocks in the external window: extra controllers, extra GPIO registers, and PVT.</ipxact:description>
+            <ipxact:addressOffset>'h4000</ipxact:addressOffset>
+            <ipxact:range>'h2548</ipxact:range>
           </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>

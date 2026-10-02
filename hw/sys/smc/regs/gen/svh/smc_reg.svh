@@ -9007,7 +9007,7 @@ localparam int unsigned SMC_EXTERNAL_REG_MAP_SIZE                               
 
 
 localparam int unsigned SMC_EXTERNAL_MANDATORY_REG_MAP_BASE_ADDR                                                  = 32'hC0400000;
-localparam int unsigned SMC_EXTERNAL_MANDATORY_REG_MAP_SIZE                                                       = 32'h00002EE8;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_REG_MAP_SIZE                                                       = 32'h00003008;
 
 
 
@@ -9620,12 +9620,27 @@ localparam int unsigned SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_MEM_SIZE            
 
 
 //==============================================================================
+// Addresses for Address Map: straps
+//==============================================================================
+
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_REG_MAP_BASE_ADDR                                           = 32'hC0403000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_REG_MAP_SIZE                                                = 32'h00000008;
+
+
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_REG_OFFSET                                        = 32'h00000000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_REG_ADDR                                          = 32'hC0403000;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_OFFSET                                        = 32'h00000004;
+localparam int unsigned SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_REG_ADDR                                          = 32'hC0403004;
+
+
+//==============================================================================
 // Addresses for Address Map: supplementary
 //==============================================================================
 
 
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_BASE_ADDR                                              = 32'hC0403000;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE                                                   = 32'h00002948;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_BASE_ADDR                                              = 32'hC0404000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE                                                   = 32'h00002548;
 
 
 
@@ -9634,7 +9649,7 @@ localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE                 
 // Memory: controller_wrap
 //==============================================================================
 
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_BASE_ADDR                                  = 32'hC0403000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_BASE_ADDR                                  = 32'hC0404000;
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_SIZE                                       = 32'h00000390;
 
 
@@ -9643,7 +9658,7 @@ localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_SIZE     
 // Memory: gpio_extra_intf
 //==============================================================================
 
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_BASE_ADDR                                  = 32'hC0404000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_BASE_ADDR                                  = 32'hC0405000;
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_SIZE                                       = 32'h0000000C;
 
 
@@ -9652,31 +9667,16 @@ localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_SIZE     
 // Memory: gpio_extra_ctrl
 //==============================================================================
 
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_BASE_ADDR                                  = 32'hC040400C;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_BASE_ADDR                                  = 32'hC040500C;
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_SIZE                                       = 32'h00000004;
 
-
-
-//==============================================================================
-// Addresses for Address Map: straps
-//==============================================================================
-
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_REG_MAP_BASE_ADDR                                       = 32'hC0404800;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_REG_MAP_SIZE                                            = 32'h00000008;
-
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_OFFSET                                    = 32'h00000000;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_ADDR                                      = 32'hC0404800;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_OFFSET                                    = 32'h00000004;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_ADDR                                      = 32'hC0404804;
 
 
 //==============================================================================
 // Memory: smc_pvt_wrap
 //==============================================================================
 
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_BASE_ADDR                                     = 32'hC0405000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_BASE_ADDR                                     = 32'hC0405C00;
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_SIZE                                          = 32'h00000948;
 
 
@@ -9685,8 +9685,8 @@ localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_MEM_SIZE        
 // Memory: reserved
 //==============================================================================
 
-localparam int unsigned SMC_EXTERNAL_RESERVED_MEM_BASE_ADDR                                                       = 32'hC0406000;
-localparam int unsigned SMC_EXTERNAL_RESERVED_MEM_SIZE                                                            = 32'h003FA000;
+localparam int unsigned SMC_EXTERNAL_RESERVED_MEM_BASE_ADDR                                                       = 32'hC0407000;
+localparam int unsigned SMC_EXTERNAL_RESERVED_MEM_SIZE                                                            = 32'h003F9000;
 
 
 
@@ -11270,12 +11270,12 @@ localparam longint unsigned DFD_DST_ScratchHi_REG_DEFAULT                       
 localparam longint unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT                                      = 32'h00000020;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_1_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
-localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT                                        = 32'h00000000;
-localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
 localparam longint unsigned STRAPS_STRAPS_LO_REG_DEFAULT                                                          = 32'h00000000;
 localparam longint unsigned STRAPS_STRAPS_HI_REG_DEFAULT                                                          = 32'h00000000;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT                                        = 32'h00000000;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
-localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_REG_DEFAULT                                     = 32'h00000000;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_REG_DEFAULT                                     = 32'h00000000;
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_REG_DEFAULT                                                  = 64'h0000000000000000;
 localparam longint unsigned PLIC_PRIORITY_REG_DEFAULT                                                             = 32'h00000000;
 localparam longint unsigned PLIC_PENDING_REG_DEFAULT                                                              = 32'h00000000;
@@ -16159,23 +16159,23 @@ localparam int unsigned EXT_MEMORY_NUM_ENTRIES_1_MEM_WORD_DATA_SHIFT            
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_DATA_MASK                                             = 32'hFFFFFFFF;
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_DATA_SHIFT                                            = 0;
 
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_DATA_MASK                                              = 32'hFFFFFFFF;
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_DATA_SHIFT                                             = 0;
-
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_MASK                                               = 32'hFFFFFFFF;
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_SHIFT                                              = 0;
-
 localparam int unsigned STRAPS_STRAPS_LO_STRAPS_MASK                                                              = 32'hFFFFFFFF;
 localparam int unsigned STRAPS_STRAPS_LO_STRAPS_SHIFT                                                             = 0;
 
 localparam int unsigned STRAPS_STRAPS_HI_STRAPS_MASK                                                              = 32'h1FFFFFFF;
 localparam int unsigned STRAPS_STRAPS_HI_STRAPS_SHIFT                                                             = 0;
 
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_DATA_MASK                                              = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_DATA_SHIFT                                             = 0;
+
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_MASK                                               = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_SHIFT                                              = 0;
+
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_MASK                                             = 32'hFFFFFFFF;
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_SHIFT                                            = 0;
 
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_DATA_MASK                                           = 32'hFFFFFFFF;
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_DATA_SHIFT                                          = 0;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_DATA_MASK                                           = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_FE400_MEM_WORD_DATA_SHIFT                                          = 0;
 
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_DATA_MASK                                                    = 64'hFFFFFFFFFFFFFFFF;
 localparam     int unsigned REMAPPED_REGION_MEM_WORD_DATA_SHIFT                                                   = 0;
@@ -21403,18 +21403,6 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   data ;
-} ext_memory_num_entries_e4_mem_word_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   data ;
-} ext_memory_num_entries_3_mem_word_reg_t;
-
-
-
-typedef struct packed {
     logic [31:0]   straps ;
 } straps_straps_lo_reg_t;
 
@@ -21428,13 +21416,25 @@ typedef struct packed {
 
 typedef struct packed {
     logic [31:0]   data ;
+} ext_memory_num_entries_e4_mem_word_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} ext_memory_num_entries_3_mem_word_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
 } ext_memory_num_entries_252_mem_word_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   data ;
-} ext_memory_num_entries_fe800_mem_word_reg_t;
+} ext_memory_num_entries_fe400_mem_word_reg_t;
 
 
 

@@ -4,10 +4,10 @@
 
 ``hw/sys/smc/doc/memmap.adoc`` ("AXI-Lite External Window") places the window
 at SMC BASE + 0x040_0000, splits it into a mandatory region at the window base
-and a supplementary region at +0x3000, and passes whatever no block claims
+and a supplementary region at +0x4000, and passes whatever no block claims
 through to the adopter external port. The register map generated from
 ``smc.rdl`` (``hw/sys/smc/regs/gen/c/smc_addr.h``) places EFUSE_SHIM_CTRL at
-the mandatory-region base, the straps pair in the supplementary region, and
+the mandatory-region base, the straps pair in the mandatory region, and
 records how far the allocated blocks reach.
 
 S1: EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME reads its RDL reset value, takes a
@@ -80,9 +80,9 @@ EFUSE_BANK_INIT_TIME_RESET = c_header_u32(
 EFUSE_BANK_INIT_TIME_PROBE = 0x0000_0155
 
 # The boot ROM reads the strap registers the SMC map places in the
-# supplementary region.
-EXT_STRAPS_LO = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_BASE_ADDR")
-EXT_STRAPS_HI = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_BASE_ADDR")
+# mandatory region.
+EXT_STRAPS_LO = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR")
+EXT_STRAPS_HI = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR")
 # The first 4 KiB page above every allocation the sources above record, still
 # inside the window. memmap.adoc passes what no block claims through to the
 # adopter external port, and hw/sys/smu/doc/port_table.adoc ties that port's
@@ -105,16 +105,16 @@ def _require_window_map() -> None:
     facts = (
         (EXT_MANDATORY_BASE == EXTERNAL_BASE, "mandatory region is not at the window base"),
         (
-            EXT_SUPPLEMENTARY_BASE == EXTERNAL_BASE + 0x3000,
-            "supplementary region is not at +0x3000",
+            EXT_SUPPLEMENTARY_BASE == EXTERNAL_BASE + 0x4000,
+            "supplementary region is not at +0x4000",
         ),
         (
             EXT_MANDATORY_BASE <= EFUSE_SHIM_BASE < EXT_SUPPLEMENTARY_BASE,
             "eFuse shim is outside the mandatory region",
         ),
         (
-            EXT_SUPPLEMENTARY_BASE <= EXT_STRAPS_LO and EXT_STRAPS_HI + 4 <= EXTERNAL_END,
-            "straps pair is outside the supplementary region",
+            EXT_MANDATORY_BASE <= EXT_STRAPS_LO and EXT_STRAPS_HI + 4 <= EXT_SUPPLEMENTARY_BASE,
+            "straps pair is outside the mandatory region",
         ),
         (EXT_UNMAPPED < EXTERNAL_END, "unallocated probe is outside the window"),
         (

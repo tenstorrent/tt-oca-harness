@@ -206,7 +206,7 @@ _REF_COUNTER_LOAD_POLLS = 16
 
 
 def _straps_base() -> int:
-    return smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_BASE_ADDR")
+    return smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR")
 
 
 def _assert_partition() -> None:

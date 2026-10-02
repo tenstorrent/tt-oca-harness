@@ -554,8 +554,8 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_lc_state_readback_matches_input, lc_state_readback_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
-  // AXI-Lite external window: mandatory blocks, per-pad control stride and
-  // the supplementary region with the captured straps. Offsets are the
+  // AXI-Lite external window: mandatory blocks with the captured straps,
+  // per-pad control stride and the supplementary region. Offsets are the
   // reference placement in smc_top_regs.h (SMC_TOP_SMC_EXTERNAL_MANDATORY_*).
   //
   // The window belongs to the adopter: SMC routes every access in it to the
@@ -655,9 +655,9 @@ module smc_map_fcov (
 
   // Captured straps, read-only.
   localparam logic [31:0] StrapsLoLo =
-      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_BASE_ADDR - LocalBase);
+      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR - LocalBase);
   localparam logic [31:0] StrapsHiLo =
-      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_BASE_ADDR - LocalBase);
+      32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_HI_BASE_ADDR - LocalBase);
   wire straps_lo_read_e = rd_okay && in_win(rd_addr_q, StrapsLoLo, StrapsLoLo + 32'd3);
   wire straps_hi_read_e = rd_okay && in_win(rd_addr_q, StrapsHiLo, StrapsHiLo + 32'd3);
   wire strap_write_done = wr_done && in_win(wr_addr_q, StrapsLoLo, StrapsHiLo + 32'd3);

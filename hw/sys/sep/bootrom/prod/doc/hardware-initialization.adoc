@@ -6,7 +6,7 @@
 
 === Captured straps
 
-The ROM reads the captured GPIO straps through the SMC supplementary window.
+The ROM reads the captured GPIO straps through the SMC mandatory window.
 `include/sep_smc_interface.h` defines the SEP-visible offsets and bit
 positions.
 

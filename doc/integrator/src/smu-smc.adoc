@@ -186,7 +186,7 @@ supporting instances of the OCAH `gpio` module) to support custom features.
 Configuration straps are captured separately from the GPIO table. Establish them
 before cold reset deassertion and keep them stable during capture. The
 `STRAPS_LO` and `STRAPS_HI` registers in the adopter peripheral window (see
-<<smc-external-supplementary>>) define the decoded bit assignments, including
+<<smc-external-mandatory>>) define the decoded bit assignments, including
 `BYPASS_SRAM_REPAIR` at `STRAPS_LO[13]` and `TEST_EN` at `STRAPS_LO[14]`.
 
 [[smc-peripheral-connections]]
@@ -223,7 +223,7 @@ hardware treats both identically -- the split is organizational only:
   for the SMC to be functional. OCAH specifications dictate their function,
   but their implementation, register layout and placement within the region
   are adopter-defined.
-* *Supplementary* (`BASE + 0x040_3000`): additional memory-mapped devices the
+* *Supplementary* (`BASE + 0x040_4000`): additional memory-mapped devices the
   adopter chooses to include. Blocks currently included are purely suggestions
   and examples, adopters are not required to implement.
 
@@ -239,6 +239,7 @@ the OTP macro needs to initialize before sensing
 value captured at reset deassertion, and the secondary hardware function
 override
 |PLL wrapper |Control and status of the adopter's clock-generation block
+|Captured straps |Pad values latched at cold reset, read by boot firmware.
 |=======================================================================
 
 The eFuse SHIM control CSRs must sit at the base of the mandatory region.
@@ -260,8 +261,6 @@ controller
 the per-pad GPIO array
 |Extra GPIO pad control |Drive strength, pull enable and select, and Schmitt
 select for that pad
-|Captured straps |Pad values latched at cold reset, read by
-boot firmware
 |PVT wrapper |Control and status of the adopter's process, voltage and
 temperature sensors
 |=======================================================================
