@@ -37,8 +37,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import fake_scheduler  # noqa: E402
+from dashboard.collect_results import collect_flow_result  # noqa: E402
 from runlib import cli  # noqa: E402
 from runlib.config import load_executors  # noqa: E402
+from runlib.duts import resolve_dut  # noqa: E402
 from runlib.executors import (  # noqa: E402
     CLUSTER_DEFAULT_LIMITS,
     DIALECTS,
@@ -1594,6 +1596,9 @@ class CoordinatorTest(unittest.TestCase):
         retried = next(leaf for leaf in self.leaves(summary) if leaf["item"] == self.items[1])
         self.assertEqual((retried["status"], retried["metadata"]["attempt"]), ("PASS", 1))
         self.assertFalse(self.junit_path(retried, 0).exists())
+        record = collect_flow_result(REPO_ROOT, resolve_dut(REPO_ROOT, self.dut), self.run_dir)
+        self.assertEqual(record["junit_xml"], {"total": 2, "missing": 0})
+        self.assertEqual(record.get("warnings", []), [])
 
     def test_a_wave_debug_rerun_is_its_own_job(self) -> None:
         self.scenario()
