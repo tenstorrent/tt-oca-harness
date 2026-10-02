@@ -10,11 +10,8 @@
 // Uses a CPU word loop rather than DMA because the DMA engine is a copy
 // engine (src→dst) and does not have a dedicated "fill" mode.
 //
-// Controlled by SRAM_SCRUB_BYTES (build knob, default 0 = disabled):
-//   make -C fw/sep/bootcode clean all SRAM_SCRUB_BYTES=0x40000
-// Default is disabled (0) because 256 KiB of CPU stores (~65K AXI writes)
-// is extremely slow in RTL simulation.  Manifest DMA will overwrite the
-// relevant region anyway, so skipping the scrub is safe for DV.
+// Controlled by SRAM_SCRUB_BYTES (build knob; 0x40000 clears all of SEP SRAM).
+// The Makefile sets the default.
 
 #include <stdint.h>
 
