@@ -293,7 +293,8 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_crc.parhex"]
 
 [[tests]]
 # KPV scrambler: the stored word and the address mapping are both transformed
-# while enabled, and the vault passes through while disabled. RANDCFG: two
+# while enabled. The raw stored words are read through the disabled path;
+# pass-through while disabled is not graded. RANDCFG: two
 # scrambler keys and three logical key-entry indices from the run seed.
 # Dedicated KM ROM (not rom_main, which locks the scrambler during boot); the
 # ROM reports raw observations and the host holds every verdict. no_cpu;

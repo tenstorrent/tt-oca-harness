@@ -755,7 +755,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_kpv_scrambler_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
-|KPV scrambler: stored word and address mapping both transform while enabled, and the vault passes through while disabled.
+|KPV scrambler: stored word and address mapping both transform while enabled. The test reads the raw stored words through the disabled path and does not grade pass-through.
 |`sep_km_rom_write_err_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
@@ -980,7 +980,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_crc_pcpi_kat_test`. All three modes against an independent golden, plus a hardware-only word-versus-byte chaining cross-check that holds if the golden is wrong.
 
 |KM KPV scrambler
-|`sep_km_kpv_scrambler_test`. Data transform, address tweak and keying, all frontdoor: the vault passes through while disabled, so the raw stored words are readable without a hierarchical peek.
+|`sep_km_kpv_scrambler_test`. Data transform, address tweak and keying, all frontdoor: the test reads the raw stored words through the disabled path, without a hierarchical peek. Pass-through while disabled is the observation aperture, not a graded contract.
 
 |Mailbox outbox FIFO, threshold interrupt and error flags
 |`sep_axil_mailbox_iface_rand_test`. The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt status gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. This aperture's interrupt leaves the block on `smc_mailbox_interrupt_o`, so only its status registers are graded here; `Mailbox -> PIC` grades delivery to the SEP CPU, which the inbound aperture drives, on `sep_mailbox_plic_test`. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side and are graded by <<sep_mailbox_peer_rx_rirqt_test>>.
