@@ -103,13 +103,13 @@ firmware = { name = "boot_rom", mode = "boot_rom" }
 
 [[tests]]
 name = "ot_test"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom_pio", mode = "boot_rom_pio" }
 """,
                 encoding="utf-8",
             )
             self.assertEqual(
                 load_firmware_modes(testlist),
-                {"default_test": "boot_rom", "ot_test": "boot_rom_ot"},
+                {"default_test": "boot_rom", "ot_test": "boot_rom_pio"},
             )
 
     def test_discovers_flat_single_test_leaf(self):
@@ -227,7 +227,7 @@ firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
             self._write_leaf(run_dir, "two", elf=b"elf-two")
             inputs, _ = discover_trace_inputs(
                 run_dir,
-                {"one": "boot_rom_ot", "two": "boot_rom_ot"},
+                {"one": "boot_rom_pio", "two": "boot_rom_pio"},
             )
 
             with self.assertRaisesRegex(CoverageError, "different ELF"):
@@ -279,11 +279,11 @@ class ReportGenerationTest(unittest.TestCase):
             self.assertIn((["npm", "ci"], {"cwd": coverview, "check": True}), commands)
 
     def test_rejects_missing_selected_firmware_variant(self):
-        with self.assertRaisesRegex(CoverageError, "boot_rom_ot"):
+        with self.assertRaisesRegex(CoverageError, "boot_rom_pio"):
             validate_variant_groups(
                 {"boot_rom": []},
                 {"items": ["default_test", "ot_test"]},
-                {"default_test": "boot_rom", "ot_test": "boot_rom_ot"},
+                {"default_test": "boot_rom", "ot_test": "boot_rom_pio"},
             )
 
     def test_rejects_incomplete_run_before_collecting_traces(self):
@@ -318,8 +318,8 @@ class ReportGenerationTest(unittest.TestCase):
             source = root / "rom_main.c"
             source.write_text("int main(void) {}", encoding="utf-8")
             entries = [
-                self._entry("a", "boot_rom_ot", trace_a, elf),
-                self._entry("b", "boot_rom_ot", trace_b, elf),
+                self._entry("a", "boot_rom_pio", trace_a, elf),
+                self._entry("b", "boot_rom_pio", trace_b, elf),
             ]
             commands = []
 
@@ -328,7 +328,7 @@ class ReportGenerationTest(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0)
 
             outputs = render_variant(
-                "boot_rom_ot",
+                "boot_rom_pio",
                 entries,
                 root / "reports",
                 [source],
@@ -351,7 +351,7 @@ class ReportGenerationTest(unittest.TestCase):
             self.assertEqual(commands[2][0], ["npm", "run", "build"])
             self.assertEqual(commands[2][1]["cwd"], coverview)
             self.assertEqual(commands[3][0][0], str(root / "venv/bin/python"))
-            self.assertEqual(outputs.html_dir, root / "reports/boot_rom_ot/html")
+            self.assertEqual(outputs.html_dir, root / "reports/boot_rom_pio/html")
             self.assertTrue((outputs.html_dir / "index.html").is_file())
 
     def test_index_links_each_generated_variant(self):
@@ -361,13 +361,13 @@ class ReportGenerationTest(unittest.TestCase):
                 output_dir,
                 {
                     "boot_rom": ("boot_rom/html/index.html", 2),
-                    "boot_rom_ot": ("boot_rom_ot/html/index.html", 7),
+                    "boot_rom_pio": ("boot_rom_pio/html/index.html", 7),
                 },
             )
             text = (output_dir / "index.html").read_text(encoding="utf-8")
             self.assertIn('href="boot_rom/html/index.html"', text)
             self.assertIn("2 passing trace(s)", text)
-            self.assertIn('href="boot_rom_ot/html/index.html"', text)
+            self.assertIn('href="boot_rom_pio/html/index.html"', text)
 
     @staticmethod
     def _entry(item: str, mode: str, trace: Path, elf: Path):

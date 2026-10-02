@@ -1,38 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OpenTitan-SPI flash command-breadth firmware test. Direct cpu-firmware port
-// of the reference spi_ot_flash_write_read_test + spi_ot_flash_sector_erase_test,
-// driving the OT SPI host (@ 0x10B0_0000) against the OcahSpiFlash BFM.
-// Firmware-mode (like every reference spi_ot flash test and sep_spi_ot_dma_rx) --
-// the OT spi_host multi-command flash sequence runs from the EL2 CPU, not the
-// no_cpu AXI splice.
+// SEP OpenTitan SPI host flash command test. Firmware drives the host against
+// the flash model through JEDEC ID, write enable and write disable, page
+// program, read and fast read, and a sector erase that must leave the adjacent
+// sector intact. It then checks that the erase consumed the write enable, issues
+// a page program with write enable clear, and reads status register 2. The host
+// must report no error across that sequence. Finally each host error class
+// (RX underflow, reserved speed, invalid chip select) is provoked alone and
+// recovered.
 //
-// Flow: JEDEC, then WREN -> RDSR (WEL set) -> WRDI -> RDSR (WEL clear), then
-// WREN -> PAGE PROGRAM -> READ + verify == pattern -> FAST_READ, then neighbour
-// PAGE PROGRAM, then WREN -> SECTOR ERASE -> READ == 0xFF with neighbour intact.
-// Then the write-protect and status-register-2 breadth: RDSR proves the erase
-// consumed WEL, a PAGE PROGRAM with WEL clear must NOT land, and RDSR2 (0x35)
-// must return SR2 rather than the SR1 value. ERROR_STATUS checked
-// == 0 across all of that. Finally the host error classes are provoked one at a
-// time (underflow, reserved CMD.SPEED, out-of-range CSID) and recovered.
+// The flash model starts erased and is always ready, so programs need no prior
+// erase and no check depends on a busy flash. Dual and quad lanes are not
+// modeled.
 //
-// The flash model is instant-ready, so WIP is never observed set. There is
-// no WIP checker: a "WIP clear" assertion could not fail. Dual and
-// quad lanes are not modeled, so no checker here covers them.
+// cocotb patches the scenario block (g_spi1_params, located by SPI1_PARAM_MAGIC)
+// per seed. The defaults are the directed scenario, so the image also runs
+// standalone.
 //
-// The BFM memory inits to 0xFF (erased), so PAGE PROGRAM (NOR-AND) writes the
-// pattern directly.
-//
-// RANDOMIZATION ([RAND-REP]): the scenario (flash address, word count, data) is
-// held in the g_spi1_params block below. The committed defaults are the directed
-// scenario, so the firmware runs standalone; the cocotb test (single source of
-// randomness, seeded by the run seed) overwrites the block in the staged DTCM
-// image per run by locating the SPI1_PARAM_MAGIC sentinel. The firmware just
-// consumes the block, so the same compiled image covers every seed.
-//
-// main returns the error count; crt0.s emits PASS (0xCAFEBABE) / FAIL
-// (0xDEADBEEF) magic on the 0x8000_0000 mailbox. Each checker logs a positive
+// main returns the error count; crt0.s reports PASS/FAIL. Each checker logs a
 // PASS line.
 
 #include <stdint.h>
@@ -59,27 +45,21 @@
 #define FLASH_SR_WEL (1u << 1)
 #define FLASH_JEDEC_RX 0x0018BA20u
 
-// COMMAND.SPEED == 3 is "RESERVED", and ERROR_STATUS.CMDINVAL flags "an invalid
-// value of COMMAND.SPEED", so the host must reject the segment rather than run it
-// (register specification:
-// vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson).
+// Reserved command speed encoding: the host must reject the segment with an
+// invalid-command error rather than run it.
 #define SPI_CMD_SPEED_RESERVED 3u
 
-// Non-ASCII sentinel that the cocotb test byte-searches for in the DTCM image to
-// locate this block (avoids needing the .map). Stored little-endian: DE C0 11 5A.
+// Sentinel the cocotb test searches for in the DTCM image to locate this block.
 #define SPI1_PARAM_MAGIC 0x5A11C0DEu
 
 // Scenario block. Layout: [0]=magic, [1]=flash addr, [2]=word count (1..MAX_WORDS),
-// [3 .. 3+count-1]=data words (LSB byte sent first). volatile so the compiler
-// cannot fold reads of the (run-time patched) values. Committed defaults are the
-// directed scenario.
+// [3 .. 3+count-1]=data words (LSB byte sent first). Volatile so the run-time
+// patched values are not folded.
 volatile uint32_t g_spi1_params[3 + MAX_WORDS] = {
     SPI1_PARAM_MAGIC, 0x000000u, 4u, 0xA5C31234u, 0xDEADBEEFu, 0x0BADF00Du, 0xCAFEBABEu,
 };
 
-// LEN encodes byte count - 1. Every field goes through the generated position
-// and mask: the register layout is owned by the OpenTitan spi_host block, and
-// hand-packed bit positions silently break when it changes.
+// The command length field encodes the byte count minus one.
 static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
     uint32_t v =
         ((direction << SPI_CONTROLLER__COMMAND__DIRECTION_bp) &
@@ -92,7 +72,7 @@ static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
 }
 
 static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
-    // byte0=opcode, byte1=addr[23:16], byte2=addr[15:8], byte3=addr[7:0]
+    // Opcode, then the 24-bit address most-significant byte first, in transmit order
     return (opcode & 0xFF) | (((addr >> 16) & 0xFF) << 8) | (((addr >> 8) & 0xFF) << 16) |
            (((addr >> 0) & 0xFF) << 24);
 }
@@ -137,7 +117,7 @@ static int flash_jedec(uint32_t *out) {
 static int flash_rdsr_checked(uint8_t *out) {
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // hold CS
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_RX, 1, 0)); // RX 1 byte, release CS
@@ -146,14 +126,12 @@ static int flash_rdsr_checked(uint8_t *out) {
     return 0;
 }
 
-// RDSR2 (0x35). A separate device register from RDSR (0x05): the flash model
-// answers 0x35 from status_reg2 and 0x05 from status_reg1 | WEL
-// (hw/common/dv/vip/ocah_spi_vip/cocotb/ocah_spi_flash.py). Returns 0 and stores
-// the byte, or -1 if the controller never responded.
+// Reads status register 2, a device register separate from status register 1.
+// Returns 0 and stores the byte, or -1 if the controller never responded.
 static int flash_rdsr2(uint8_t *out) {
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR2);
-    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // hold CS
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
     if (spi_wait_idle(TIMEOUT)) return -1;
@@ -162,19 +140,14 @@ static int flash_rdsr2(uint8_t *out) {
 }
 
 static int flash_page_program(uint32_t addr, const uint32_t *data, uint32_t nwords) {
-    // OT spi_host intended usage: pre-load the whole TX phase into the TX FIFO
-    // (cmd+addr word + every data word), then issue ONE TX segment covering all
-    // of it (CSAAT=0 releases CS at the end). Chaining a separate CMD per word
-    // exercises the segment-boundary FSM path that stalls the host (the FSM holds
-    // command_ready low under tx_stall mid-segment); the dma_rx path also
-    // uses a single TX segment.
+    // Preload the whole TX phase into the FIFO, then issue one TX segment for all
+    // of it: a separate command per word stalls the host at segment boundaries.
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
            pack_hdr(FLASH_CMD_PP, addr)); // opcode + 24-bit addr
     for (uint32_t i = 0; i < nwords; i++) {
         spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), data[i]); // data words, LSB-first
     }
-    // total TX bytes = 4 (cmd+addr) + nwords*4
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 4 + nwords * 4, 0));
     return spi_wait_idle(TIMEOUT);
 }
@@ -183,7 +156,7 @@ static int flash_sector_erase(uint32_t addr) {
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_ERASE, addr));
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_TX, 4, 0)); // cmd+addr, release CS
+           cmd_word(SPI_CMD_DIR_TX, 4, 0)); // command + address, release CS
     return spi_wait_idle(TIMEOUT);
 }
 
@@ -191,7 +164,7 @@ static int flash_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_READ, addr));
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_TX, 4, 1)); // cmd+addr, CSAAT held
+           cmd_word(SPI_CMD_DIR_TX, 4, 1)); // command + address, hold CS
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX data, release CS
@@ -216,18 +189,12 @@ static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
     return 0;
 }
 
-// ERROR_STATUS is rw1c, and a latched bit "must be cleared here before issuing
-// any further commands" (register specification:
-// vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson;
-// hw/sys/sep/doc/spi.adoc states the host is the unmodified OpenTitan SPI Host).
-// Recovery is CONTROL.SW_RST -- which flushes the command queue and both data FIFOs,
-// so the segment that provoked the error cannot run on the bus once the core is
-// re-enabled -- followed by the W1C of ERROR_STATUS. CONTROL.SW_RST in the
-// same specification says "software must confirm that both FIFO's empty before
-// releasing the IP from reset", so SW_RST stays set until STATUS.TXEMPTY and
-// STATUS.RXEMPTY both read 1. Returns 1 if the FIFOs never report empty within
-// the bound, else 0. *residual is what ERROR_STATUS still reads afterwards; 0
-// means the host is released.
+// Recovers from a latched host error, which blocks further commands until
+// cleared. Software reset flushes the command queue and both FIFOs, so the
+// segment that caused the error never runs; the host must not leave reset until
+// both FIFOs report empty. Then the error latch is cleared. Returns 1 if the
+// FIFOs never report empty, else 0. *residual is the error status left
+// afterwards; 0 means the host is released.
 static int spi_err_recover(uint32_t *residual) {
     int err = 0;
     const uint32_t empty = SPI_CONTROLLER__STATUS__TXEMPTY_bm | SPI_CONTROLLER__STATUS__RXEMPTY_bm;
@@ -251,11 +218,8 @@ static int spi_err_recover(uint32_t *residual) {
     return err;
 }
 
-// Shared tail for the three error injections: ERROR_STATUS must read EXACTLY the
-// one bit the provoked class owns (no bit missing, no other class collaterally
-// latched), and the SW_RST + W1C recovery must leave it clear. Both values are
-// read back from the host, and both are compared against literals that do not
-// come from the injection.
+// Shared tail for the error injections: the error status must hold exactly the
+// provoked class, and recovery must leave it clear.
 static int spi_err_expect(uint32_t expect_bm) {
     int err = 0;
     uint32_t es = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
@@ -324,8 +288,8 @@ int main(void) {
         sep_mbx_puts("CHK-JEDEC PASS: READ ID 0x9F -> 0x0018ba20\n");
     }
 
-    // WEL is 0 out of reset, so WRDI must run on a WEL that is KNOWN set -- otherwise
-    // the "cleared" check asserts 0 after 0 and passes on a no-op opcode.
+    // Write enable is clear out of reset, so set it first: otherwise the write
+    // disable check would pass on a no-op.
     uint8_t sr;
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN(rdsr) timeout\n");
@@ -481,10 +445,7 @@ int main(void) {
     }
 
     // --- CHK-WEL-AUTOCLR: SECTOR ERASE must consume the write-enable latch ---
-    // A WEL left set leaves the device armed for a program nobody asked for,
-    // which is exactly the state CHK-WP-PP below relies on being absent. WIP is
-    // not a checker here: the device model is instant-ready and
-    // never raises it, so a "WIP clear" assertion could not fail.
+    // CHK-WP-PP below relies on write enable being clear.
     uint8_t sr_post;
     if (flash_rdsr_checked(&sr_post)) {
         sep_mbx_puts("FAIL: CHK-WEL-AUTOCLR status read timed out after ERASE\n");
@@ -500,12 +461,10 @@ int main(void) {
     }
 
     // --- CHK-WP-PP: the controller completes a PAGE PROGRAM issued with WEL clear ---
-    // WEL is clear here (the erase above consumed it and CHK-WEL-AUTOCLR proved
-    // so). The part SEP can fail is the controller completing the command; the
-    // cocotb golden checks that the device saw it at the expected address. WEL is
-    // state of the flash device model, not of SEP, and the model drops any PAGE
-    // PROGRAM while WEL is clear, so the all-0xFF readback below is device-model
-    // behaviour and takes no SEP feature credit.
+    // The SEP-side check is that the controller completes the command; cocotb
+    // checks that the device saw it at the expected address. The flash model
+    // drops a program while write enable is clear, so the erased readback below
+    // is model behaviour, not a SEP feature.
     if (flash_page_program(addr, exp, nwords)) {
         sep_mbx_puts("FAIL: CHK-WP-PP unprotected PAGE PROGRAM timeout\n");
         return errors + 1;
@@ -532,12 +491,9 @@ int main(void) {
     }
 
     // --- CHK-RDSR2: opcode 0x35 reads status register 2, not status register 1 ---
-    // Run it with WEL KNOWN set, so SR1 reads 0x02: a 0x35 decoded as (or aliased
-    // onto) 0x05 returns 0x02 and fails. The device model is built with a
-    // non-zero SR2 (FLASH_SR2_SEEDED, matching status_reg2 in
-    // sep_spi_ot_flash_cmd_rand_test.py) so that an RX path that returns all-zero
-    // -- a stuck MISO, a byte count that never shifts -- fails here too. An SR2
-    // of 0x00 would let that dead path pass.
+    // With write enable set, status register 1 is non-zero, so a read aliased onto
+    // status register 1 fails. The seeded non-zero status register 2 also fails an
+    // RX path that returns all-zero.
     if (flash_wren()) {
         sep_mbx_puts("FAIL: WREN(rdsr2) timeout\n");
         return errors + 1;
@@ -575,14 +531,10 @@ int main(void) {
     }
 
     // --- Error paths: provoke each ERROR_STATUS class the host reports ---
-    // Everything above ran with ERROR_STATUS == 0, so these injections start from
-    // a clean latch. Each one must set EXACTLY its own bit and nothing else, and
-    // must be recoverable; the host keeps its core disabled until software clears
-    // the latch, so an unrecoverable error would strand every later transfer.
+    // The injections start from a clean error status. A latched error holds the
+    // host until software clears it, so each one must also recover.
 
-    // CHK-ERR-UNDERFLOW: reading RXDATA with the RX FIFO empty. The register
-    // specification gives ERROR_STATUS.UNDERFLOW as "firmware has attempted to
-    // read from RXDATA when the RX FIFO is empty".
+    // CHK-ERR-UNDERFLOW: a read with the RX FIFO empty.
     int rx_drain = TIMEOUT;
     while (rx_drain-- > 0 && (spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
                               SPI_CONTROLLER__STATUS__RXQD_bm) != 0) {
@@ -644,9 +596,7 @@ int main(void) {
     }
 
     // CHK-ERR-RECOVER: the host runs real bus traffic again after the three
-    // injections. A host left disabled by a stuck ERROR_STATUS returns nothing
-    // here, so this is the positive proof that the recovery above is real and
-    // that the flushed bogus segments never reached the device.
+    // injections; a host still held by an error returns nothing here.
     uint32_t jedec_post = 0;
     if (flash_jedec(&jedec_post)) {
         sep_mbx_puts("FAIL: CHK-ERR-RECOVER JEDEC timeout after error injection\n");

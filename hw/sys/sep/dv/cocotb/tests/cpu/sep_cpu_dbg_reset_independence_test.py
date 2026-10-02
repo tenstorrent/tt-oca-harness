@@ -2,29 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP CPU reset-observable baseline and liveness (PyUVM).
 
-CPU-complex reset-observable baseline and liveness. reference provenance:
-clock/sep_clock_uvm_reset_assertion_deassertion_test (dbg_rstb path) +
-clock/sep_clock_uvm_jtag_clock_independence_test.
+Proves both reset observables are released at rest and that the CPU observable is live under a
+real reset source. ``dbg_rstb_i`` isolation is not covered: in ``lsu_stub_all_live`` the pin (a
+``sep`` primary input that ``sep_base_test`` drives released) has no netlist path to either
+observable, so a pulse-and-check cannot fail. Adding one needs a cpu run-mode that reaches
+``sep_cpu`` and a specification statement to check against.
 
-Proves the two reset observables are released at rest and that the CPU
-observable is live under a real reset source. ``dbg_rstb_i`` isolation is not
-claimed: in ``lsu_stub_all_live`` the pin has no netlist path to either
-observable, so a pulse-and-check assert cannot fail.
-
-``dbg_rstb_i`` is a real ``sep`` primary input (sep.sv:21) brought out as a
-controllable top-level port; ``sep_base_test`` default-drives it released (1).
-
-Checks (each asserts an exact value; ``self.rd`` raises on X/Z, so no check
-passes on an undriven reset tree):
+Checks (exact values; ``self.rd`` raises on X/Z, so an undriven reset tree fails):
   CHK-BASELINE : with dbg_rstb_i high, sep_reset_n and sep_cpu_reset_n are released.
-  CHK-LIVE     : a real reset source (wdt_rst_ni_i low) drops sep_cpu_reset_n
-                 to 0, then restores it -- so the observable is live, not stuck-1.
+  CHK-LIVE     : wdt_rst_ni_i low drops sep_cpu_reset_n to 0, and release restores it.
 
-Closing the isolation claim needs a cpu run-mode so the pin reaches ``sep_cpu``
-and a specification statement to check it against. Do not add a pulse-and-check
-without both.
-
-no_cpu / +skip_fuse_sense (reset-observable only; no AXI traffic, no OTP read).
+no_cpu / +skip_fuse_sense (reset observables only; no AXI traffic, no OTP read).
 """
 
 from __future__ import annotations

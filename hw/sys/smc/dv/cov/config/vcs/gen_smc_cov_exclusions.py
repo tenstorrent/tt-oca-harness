@@ -1100,8 +1100,8 @@ P28 = (
     "cannot occur. The INTR_TEST path still sets the status bit, and its rows stay graded."
 )
 P29 = (
-    "SMC-P29-FIELD-MAP-LOCKS: smc_efuse_pkg's field map gives every field WRITE_UNLOCK and "
-    "READ_UNLOCK save the LOCKS meta-field, which is WRITE_SET_ONLY under the all-ones index the "
+    "SMC-P29-FIELD-MAP-LOCKS: smc_efuse_pkg's field map gives every field WriteUnlock and "
+    "ReadUnlock save the LOCKS meta-field, which is WriteSetOnly under the all-ones index the "
     "lock lookups never lock, and an unmapped address reads a lock of zero. No address carries "
     "the write-lock or read-lock code or lock bit 3, and a set-only address is never hardware "
     "write-locked."
@@ -1622,7 +1622,7 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "efuse_shadow_regs": [
         (
             P6,
-            re.compile(r"lc_state_cur|rma_(sip|chiplet)_token_match_i|SHADOW_IDX_TRANSIENT_RMA_EN"),
+            re.compile(r"lc_state_cur|rma_(sip|chiplet)_token_match_i|ShadowIdxTransientRmaEn"),
             None,
             None,
         ),

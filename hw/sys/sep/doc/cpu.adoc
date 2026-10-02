@@ -38,7 +38,7 @@ the core complex, but their RAM macros sit outside `sep_cpu` in
 cache is not configured. The DMA slave port is the local crossbar's `cpu_tcm`
 target, the backdoor through which the secure DMA preloads the ICCM and DCCM.
 The IFU, LSU and debug system-bus masters are AXI4 with 64-bit data and 3-bit
-IDs, and each carries `SEP_SOURCE_ID` in AxUSER. The debug master's 1-bit ID is
+IDs, and each carries `SepSourceId` in AxUSER. The debug master's 1-bit ID is
 zero-extended to 3 bits. Each master passes a local alias remap that rewrites the
 768 MiB window at `SEP_LOCAL_BASE_ADDR` to `0x1000_0000`. The IFU demux then
 sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the local

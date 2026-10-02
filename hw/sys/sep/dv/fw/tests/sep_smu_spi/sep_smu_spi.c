@@ -13,8 +13,8 @@
  *
  *   The bench grades the pins: it counts the SCK edges and checks the chip
  *   select and output enables at the pads, and it drives the receive data pad
- *   with a seeded pattern and grades the RXDATA word this image pops. Keep the
- *   segment lengths, CSAAT and TXDATA bytes in step with
+ *   with a seeded pattern and grades the received word this image pops. Keep
+ *   the segment lengths, chip-select holds and transmit bytes in step with
  *   hw/sys/smu/dv/cocotb_wrapper/seq_lib/smu_sep_spi_seq.py.
  */
 
@@ -37,9 +37,9 @@
 
 /*
  * The RX segment requests four bytes, which the controller delivers as one
- * 32-bit RXDATA word. The word is the bench's MISO pattern, not device
- * content, and the bench grades it at the RX FIFO read port, so this image
- * checks only that exactly one word lands and that the FIFO then drains.
+ * 32-bit word. The word is the bench's receive pattern, not device content,
+ * and the bench grades it at the RX FIFO read port, so this image checks only
+ * that exactly one word lands and that the FIFO then drains.
  */
 #define SPI_RX_EXPECTED_WORDS 1u
 
@@ -83,7 +83,7 @@ static int wait_idle(void) {
     return -1;
 }
 
-/* STATUS.RXQD may underestimate the queue while ACTIVE, so the word is polled for. */
+/* The RX queue depth can lag while a transfer is active, so poll for the word. */
 static int wait_rx_word(void) {
     spi_controller__STATUS_t status;
     int t = SPI_TIMEOUT;
@@ -111,10 +111,10 @@ static int run_spi_txrx_sequence(void) {
      * The TX FIFO holds exactly the bytes each segment sends: TXDATA takes
      * byte enables, so the 1-byte segment pushes one byte with a byte store,
      * and the 4-byte segment pushes one word. The host sends the low byte of a
-     * word first (STATUS.BYTEORDER=1).
+     * word first.
      */
 
-    /* Step 1: TX single-byte command (0x9F). */
+    /* Step 1: TX a single-byte command. */
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_CMD;
     *(volatile uint8_t *)(uintptr_t)SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0) = 0x9Fu;
     cmd.w = 0;
@@ -125,7 +125,7 @@ static int run_spi_txrx_sequence(void) {
     WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     if (wait_idle() != 0) return SPI_ERR_WAIT_IDLE_CMD;
 
-    /* Step 2: TX 0x03 and a 24-bit address, 0x001000, with CS held. */
+    /* Step 2: TX a read opcode and a 24-bit address, with CS held. */
     if (wait_ready() != 0) return SPI_ERR_WAIT_READY_ADDR;
     WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x00100003u);
     cmd.w = 0;
@@ -145,7 +145,7 @@ static int run_spi_txrx_sequence(void) {
     WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     if (wait_idle() != 0) return SPI_ERR_WAIT_IDLE_RX;
 
-    /* Hard failures: malformed command / invalid CSID. */
+    /* Fail on a malformed command or an invalid chip select. */
     err.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (err.f.CMDINVAL || err.f.CSIDINVAL) return SPI_ERR_STATUS;
 
@@ -161,8 +161,8 @@ static int run_spi_txrx_sequence(void) {
 }
 
 /*
- * Exported labels for cocotb PC-based pass/fail classification.
- * Do not rename without updating smu_sep_spi_test.py symbol lookup.
+ * The bench classifies the result by the PC of these named loops; keep the
+ * names in step with smu_sep_spi_seq.py.
  */
 __attribute__((used, noinline, noreturn)) void smu_sep_spi_pass_loop(void) {
     while (1) {
@@ -225,10 +225,6 @@ __attribute__((used, noinline, noreturn)) void smu_sep_spi_fail_rx_drain_loop(vo
 }
 
 int main(void) {
-    /*
-     * Keep outbound filter init aligned with other SMU SEP tests. This test
-     * does not rely on STDOUT for completion; cocotb keys off SEP PC symbols.
-     */
     sep_outbound_filter_init();
 
     int rc = run_spi_txrx_sequence();

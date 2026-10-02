@@ -167,7 +167,7 @@
 // The two wrapper error slaves are named by INSTANCE, not by module. `-module`
 // would also match TT-owned prim_axi_lite_err_slv instances elsewhere in SEP:
 // sep_efuse_wrapper.sv:277, sep_system_csr.sv:590, :709, :949, sep_io.sv:188,
-// sep_crypto.sv:653 and key_manager.sv:375. sep_axi_map_refuse_test, the
+// sep_crypto.sv:653 and key_manager.sv:373. sep_axi_map_refuse_test, the
 // dead-space decode tests and sep_km_otp_shim_unreachable_test grade those
 // refusals. The third-party axi_err_slv module is handled by
 // the ownership scope below.

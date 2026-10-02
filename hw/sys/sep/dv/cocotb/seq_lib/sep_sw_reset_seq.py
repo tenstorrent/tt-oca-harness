@@ -2,15 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP per-engine software reset control (SW_RESET_N).
 
-Active-low: a set bit releases the engine, a clear bit holds it in reset. This
-helper keeps a shadow of the register so a test can release / park individual
-engines without a read-modify-write race, the way the reference consume base sequence
-releases KM first and the target crypto engine later.
-
-The shadow is seeded with the generated HW reset default:
-km_sw_rst_n=0 (held), otbn/aes/hmac/kmac/trng/abr=1 (released) => 0x7E.
-A test that wants the crypto engines parked (e.g. to dedicate entropy to the KM)
-must park() them explicitly; the reset default leaves them released.
+Active-low: a set bit releases the engine, a clear bit holds it in reset. A shadow of the
+register lets a test release or park single engines without a read-modify-write race. The shadow
+starts at the generated reset default 0x7E (KM held, every crypto engine released), so a test
+that wants engines parked must call park().
 
 Bit map (hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl):
   km=0, otbn=1, aes=2, hmac=3, kmac=4, trng=5, abr=6

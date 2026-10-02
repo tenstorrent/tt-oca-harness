@@ -6,7 +6,7 @@
 
 bind jtag2axi dtp_jtag2axi_ctrl_props #(
   .FIFO_DEPTH (FIFO_DEPTH),
-  .SR_LEN     (SHARED_SR_LEN)
+  .SR_LEN     (SharedSrLen)
 ) u_dtp_jtag2axi_ctrl_props (
   .tck_i                  (tck_i),
   .trst_ni                (trst_ni),
@@ -29,8 +29,8 @@ bind jtag2axi dtp_jtag2axi_ctrl_props #(
   .next_status_i          (next_status_tclk_comb),
   .sticky_status_i        (sticky_axi_status_tclk),
   .sticky_full_i          (sticky_axi_status_full_tclk),
-  .ctrl_reset_bit_i       (update_register_q_tclk[AXISERIESCTRL_RESET_HIGH]),
-  .ctrl_op_i              (update_register_q_tclk[AXISERIESCTRL_OP_HIGH:AXISERIESCTRL_OP_LOW]),
+  .ctrl_reset_bit_i       (update_register_q_tclk[AxiSeriesCtrlResetHigh]),
+  .ctrl_op_i              (update_register_q_tclk[AxiSeriesCtrlOpHigh:AxiSeriesCtrlOpLow]),
   .current_op_i           (current_op_tclk),
   .single_tx_i            (current_tx_is_from_single_buffer_tclk),
   .single_valid_i         (single_tx_req_valid_tclk),

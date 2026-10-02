@@ -2,11 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_fuse_sense - firmware consumer of two fuse-sense CSRs.
+ * sep_smu_fuse_sense - firmware view of fuse-sense completion.
  *
- * First instruction stream after boot reads 0x10A30140 / 0x10930400 /
- * 0x10A30150 (capture the pre-completion window if the CPU is already live),
- * then polls until bit0=1 on all three, then publishes the first samples.
+ * Samples the SMC, eFuse interface and SEP fuse-sense status first thing after
+ * boot (catching the pre-completion window if the CPU is already running),
+ * polls until all three report done, then publishes the first samples.
  */
 
 #include <stdint.h>
@@ -88,5 +88,4 @@ int main(void) {
     WRITE_REG(FUSE_SENSE_SCRATCH6, FUSE_SENSE_PUBLISH);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
     sep_smu_fuse_sense_pass_loop();
-    return 0;
 }

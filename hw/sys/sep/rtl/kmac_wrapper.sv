@@ -72,15 +72,15 @@ module kmac_wrapper (
   // ============================================================================
 
   // OpenTitan KMAC has fixed BlockAw=12 (4KB internal address space)
-  localparam logic [31:0] KMAC_ADDR_MASK = 32'h0000_0FFF;  // 12 bits for AW=12
+  localparam logic [31:0] KmacAddrMask = 32'h0000_0FFF;  // 12 bits for AW=12
   // Extract lower 12 bits of system base address (from sep_top_reg.svh via sep_pkg)
-  localparam logic [31:0] KMAC_BASE_LOWER = sep_top_addrmap_pkg::SEP_TOP_KMAC_BASE_ADDR & KMAC_ADDR_MASK;
+  localparam logic [31:0] KmacBaseLower = sep_top_addrmap_pkg::SEP_TOP_KMAC_BASE_ADDR & KmacAddrMask;
 
   always_comb begin
     kmac_axil_req_masked = kmac_axil_req_i;
     // Subtract offset (0x000 for KMAC) then mask to 12 bits
-    kmac_axil_req_masked.aw.addr = (kmac_axil_req_i.aw.addr - KMAC_BASE_LOWER) & KMAC_ADDR_MASK;
-    kmac_axil_req_masked.ar.addr = (kmac_axil_req_i.ar.addr - KMAC_BASE_LOWER) & KMAC_ADDR_MASK;
+    kmac_axil_req_masked.aw.addr = (kmac_axil_req_i.aw.addr - KmacBaseLower) & KmacAddrMask;
+    kmac_axil_req_masked.ar.addr = (kmac_axil_req_i.ar.addr - KmacBaseLower) & KmacAddrMask;
   end
 
   // ============================================================================
@@ -131,7 +131,7 @@ module kmac_wrapper (
   end
 
   // Instantiate the PeakRDL-generated KMAC key CSR register block
-  localparam int unsigned KMAC_KEY_CSR_ADDR_WIDTH = kmac_wrapper_key_reg_pkg::KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
+  localparam int unsigned KmacKeyCsrAddrWidth = kmac_wrapper_key_reg_pkg::KMAC_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
 
   kmac_wrapper_key_reg u_kmac_wrapper_key_reg (
     .clk       (clk_i),
@@ -139,7 +139,7 @@ module kmac_wrapper (
 
     // AW channel
     .s_axil_awvalid (kmac_key_axil_req_i.aw_valid),
-    .s_axil_awaddr  (kmac_key_axil_req_i.aw.addr[KMAC_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_awaddr  (kmac_key_axil_req_i.aw.addr[KmacKeyCsrAddrWidth-1:0]),
     .s_axil_awprot  (kmac_key_axil_req_i.aw.prot),
     .s_axil_awready (kmac_key_axil_resp_o.aw_ready),
 
@@ -156,7 +156,7 @@ module kmac_wrapper (
 
     // AR channel
     .s_axil_arvalid (kmac_key_axil_req_i.ar_valid),
-    .s_axil_araddr  (kmac_key_axil_req_i.ar.addr[KMAC_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_araddr  (kmac_key_axil_req_i.ar.addr[KmacKeyCsrAddrWidth-1:0]),
     .s_axil_arprot  (kmac_key_axil_req_i.ar.prot),
     .s_axil_arready (kmac_key_axil_resp_o.ar_ready),
 

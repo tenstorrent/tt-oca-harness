@@ -20,14 +20,14 @@ package cross_trigger_port_pkg;
   } ctp_mode_e;
 
   // AXI-Lite Parameters
-  localparam int unsigned AXI_LITE_ADDR_WIDTH = 32;
-  localparam int unsigned AXI_LITE_DATA_WIDTH = 32;
-  localparam int unsigned AXI_LITE_STRB_WIDTH = AXI_LITE_DATA_WIDTH / 8;
+  localparam int unsigned AxiLiteAddrWidth = 32;
+  localparam int unsigned AxiLiteDataWidth = 32;
+  localparam int unsigned AxiLiteStrbWidth = AxiLiteDataWidth / 8;
 
   // AXI-Lite Type Definitions
-  typedef logic [AXI_LITE_ADDR_WIDTH-1:0] ctp_axil_addr_t;
-  typedef logic [AXI_LITE_DATA_WIDTH-1:0] ctp_axil_data_t;
-  typedef logic [AXI_LITE_STRB_WIDTH-1:0] ctp_axil_strb_t;
+  typedef logic [AxiLiteAddrWidth-1:0] ctp_axil_addr_t;
+  typedef logic [AxiLiteDataWidth-1:0] ctp_axil_data_t;
+  typedef logic [AxiLiteStrbWidth-1:0] ctp_axil_strb_t;
 
   // Define AXI-Lite request/response structures
   `AXI_LITE_TYPEDEF_ALL(ctp_axil, ctp_axil_addr_t, ctp_axil_data_t, ctp_axil_strb_t)

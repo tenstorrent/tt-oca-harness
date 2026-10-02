@@ -2,17 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 #include <stdint.h>
-#include <string.h>
-#include <time.h>
 
-#include "metal/uart.h"
 #include "smc_io.h"
 #include "smc_test.h"
-
-#include <string.h>
-
-#define BAUD_RATE 115200
-#define CLOCK_PERIOD_NS 10
 
 int main(void) {
 
@@ -21,7 +13,7 @@ int main(void) {
     uint32_t uart_tgts[] = {3, 2}; // indexes of UARTs used for targets
     uint32_t num_tgts = sizeof(uart_ctrlrs) / sizeof(uart_ctrlrs[0]);
     uint32_t num_uarts = num_ctrlrs + num_tgts;
-    uint32_t uart_spacing = 0x400; // each UART allocated 0x400 of space
+    uint32_t uart_spacing = 0x400; // address stride between UART instances
 
     uint32_t uart_base_addr = SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0);
     uint32_t uart_ctrl_base_addr =
@@ -29,21 +21,20 @@ int main(void) {
     uint32_t uart_engine_base_addr =
         SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0);
 
-    //----------------//
-    // Reset & Enable //
-    //----------------//
+    //--------//
+    // Enable //
+    //--------//
 
     uart_log_engine_ctrl__CTRL_t uart_enables;
     log_engine__CTRL_t uart_engine_enables;
+    // All UARTs share the same reset value, so UART0's value is the template.
     uart_enables.w =
-        read_reg(SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(
-            0)); // fine to use UART0 since all will be the same default val out of reset
+        read_reg(SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0));
     uart_engine_enables.w =
-        read_reg(SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(
-            0)); // fine to use UART0 since all will be the same default val out of reset
+        read_reg(SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR(0));
 
-    uart_enables.f.UART_EN = 0x1;   // enable uart device
-    uart_engine_enables.f.EN = 0x1; // enable uart engine
+    uart_enables.f.UART_EN = 0x1;
+    uart_engine_enables.f.EN = 0x1;
 
     for (int i = 0; i < num_uarts; i++) {
         write_reg(
@@ -59,12 +50,12 @@ int main(void) {
                   uart_engine_enables.w);
     }
 
-    int divisor = 1; // for 115200 --> (int) (1 / (CLOCK_PERIOD_NS * 1e-9)) / (16 * BAUD_RATE); //
-                     // DOUBLE CHECK FREQ
+    // The smallest divisor keeps simulation time short.
+    int divisor = 1;
 
-    //---------------------------//
-    // UART 16550 Controller Setup //
-    //---------------------------//
+    //------------------//
+    // UART 16550 Setup //
+    //------------------//
 
     uint32_t ip_addr_indexed;
 
@@ -77,55 +68,52 @@ int main(void) {
 
         read_reg(ip_addr_indexed +
                  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
-                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(
-                      0))); // transfer characteristics (DLS = 2'b11)
-        read_reg(
-            ip_addr_indexed +
-            (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
-             SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))); // enable interrupts
+                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+        read_reg(ip_addr_indexed +
+                 (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
+                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
         read_reg(ip_addr_indexed +
                  (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
-                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(
-                      0))); // set FIFO Mode 1 (FCR has same addr as IIR)
+                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
 
-        mcr.w = read_reg(
-            ip_addr_indexed +
-            (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
-             SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))); // read MCR default
+        mcr.w = read_reg(ip_addr_indexed +
+                         (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
+                          SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
         mcr.f.RTS = 0x1;
         write_reg(ip_addr_indexed +
                       (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
                        SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-                  mcr.w); // MCR setup
+                  mcr.w);
 
-        lcr.w = read_reg(
-            ip_addr_indexed +
-            (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
-             SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))); // read LCR default
+        // Divisor latch access is open only while programming the divisor.
+        lcr.w = read_reg(ip_addr_indexed +
+                         (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
+                          SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
         lcr.f.DLAB = 0x1;
         write_reg(ip_addr_indexed +
                       (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
                        SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-                  lcr.w); // enable divisor set
+                  lcr.w);
         write_reg(ip_addr_indexed +
                       (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
                        SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-                  divisor & 0xFF); // write lower bits of divisor to DLL (same addr as RBR)
+                  divisor & 0xFF);
         write_reg(ip_addr_indexed +
                       (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                        SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-                  (divisor >> 8) & 0xFF); // write upper bits of divisor to DLH (same addr as IER)
+                  (divisor >> 8) & 0xFF);
         lcr.f.DLAB = 0x0;
         write_reg(ip_addr_indexed +
                       (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
                        SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-                  lcr.w); // disable divisor set
+                  lcr.w);
 
+        // 8-bit words.
         lcr.f.WLS = 0x3;
         write_reg(ip_addr_indexed +
                       (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
                        SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-                  lcr.w); // transfer characteristics (DLS = 2'b11)
+                  lcr.w);
 
         ier.f.ERBFI = 0x1;
         ier.f.ETBEI = 0x1;
@@ -134,11 +122,12 @@ int main(void) {
         write_reg(ip_addr_indexed +
                       (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                        SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-                  ier.w); // enable interrupts
+                  ier.w);
+        // Enable the FIFOs.
         write_reg(ip_addr_indexed +
                       (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
                        SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-                  0x1); // set FIFO Mode 1 (FCR has same addr as IIR)
+                  0x1);
     }
 
     //------------------------//
@@ -156,7 +145,6 @@ int main(void) {
         this_uart = uart_ctrlrs[i];
         engine_addr_indexed = uart_engine_base_addr + (this_uart * uart_spacing);
 
-        // Configure SMC SRAM log regions
         write_reg(
             engine_addr_indexed +
                 (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR(
@@ -169,7 +157,7 @@ int main(void) {
                      0) -
                  SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0)) +
                 0x4,
-            ((sram_addr) >> 32) & 0xFFFFFFFF); // 64 bit reg
+            ((sram_addr) >> 32) & 0xFFFFFFFF);
         write_reg(
             engine_addr_indexed +
                 (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_SIZE_BASE_ADDR(
@@ -178,8 +166,10 @@ int main(void) {
             0x2000);
     }
 
-    write_scratch(4, 0x815); // signal to cocoTB that setup is complete
-    write_scratch(7, 0x0);   // scratch7 being initialized to a random big number, zero it out
+    // Tell the testbench setup is complete, and clear the byte-count channel,
+    // which does not start at zero.
+    write_scratch(4, 0x815);
+    write_scratch(7, 0x0);
 
     uint32_t num_logs;
     uint32_t max_bytes;
@@ -191,13 +181,15 @@ int main(void) {
     uint32_t this_ctrlr;
     uint32_t this_tgt;
 
-    do { // get number of logs per controller/target pair
+    // Receive the number of logs per controller/target pair, acknowledge it, and
+    // wait for the testbench to clear the channel.
+    do {
         num_logs = read_scratch(6);
     } while (num_logs == 0x0);
 
-    write_scratch(7, 0x2001); // ack that num_logs was received
+    write_scratch(7, 0x2001);
 
-    do { // wait for scratch6 channel to be reset
+    do {
         reset_flag = read_scratch(6);
     } while (reset_flag != 0x0);
 
@@ -205,17 +197,16 @@ int main(void) {
 
     for (int i = 0; i < num_ctrlrs; i++) {
         max_bytes = 0x0;
-        write_scratch(4, 0x999); // signal that FW is good to start moving UART data
+        write_scratch(4, 0x999);
         this_ctrlr = uart_ctrlrs[i];
         this_tgt = uart_tgts[i];
-        engine_addr_indexed = uart_engine_base_addr +
-                              (this_ctrlr * uart_spacing); // engine needed for controllers only
-        ip_addr_indexed =
-            uart_base_addr + (this_tgt * uart_spacing); // UART handle only needed for target --
-                                                        // uart engine triggers controller UART send
+        // The controller's log engine drives its UART, so firmware reads only the target UART.
+        engine_addr_indexed = uart_engine_base_addr + (this_ctrlr * uart_spacing);
+        ip_addr_indexed = uart_base_addr + (this_tgt * uart_spacing);
 
         for (int j = 0; j < num_logs; j++) {
 
+            // The testbench supplies the length of each log.
             do {
                 max_bytes = read_scratch(6);
             } while (max_bytes == 0x0);
@@ -223,9 +214,7 @@ int main(void) {
             IIR_status = 0x0000;
             bytes_read = 0;
 
-            unsigned char recvd_bytes[max_bytes];
-            // Trigger start of log transfer via LOG_CTRL[n] (upstream:
-            // LOG_ENGINE_LOG_CTRL_0__REG_OFFSET = 0x40). j*4 steps entries.
+            // Start the transfer of this log entry.
             write_reg(engine_addr_indexed +
                           (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(
                                0, 0) -
@@ -234,6 +223,7 @@ int main(void) {
                       max_bytes);
 
             while (bytes_read < max_bytes) {
+                // Wait for the target to report received data.
                 do {
                     IIR_status =
                         read_reg(ip_addr_indexed +
@@ -241,20 +231,17 @@ int main(void) {
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
                 } while ((IIR_status & 0xf) != 0x4);
 
-                unsigned char receive_data = read_reg(
-                    ip_addr_indexed +
-                    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
-                     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))); // read data
-                write_scratch(
-                    5,
-                    receive_data); // write received byte to scratch for cocoTB data validity check
-                recvd_bytes[bytes_read] = receive_data;
+                // Report each byte and the running count for the testbench to check.
+                unsigned char receive_data =
+                    read_reg(ip_addr_indexed +
+                             (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
+                              SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
+                write_scratch(5, receive_data);
                 bytes_read++;
-                write_scratch(7, bytes_read); // write counter of bytes received to scratch for
-                                              // cocoTB for data validity check
+                write_scratch(7, bytes_read);
             }
 
-            // wait for 0 from cocoTB side for synchronization
+            // Wait for the testbench to clear the channel before the next log.
             do {
                 end_flag = read_scratch(6);
             } while (end_flag != 0x0);
@@ -270,6 +257,4 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }

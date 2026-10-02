@@ -5,28 +5,22 @@
  * @file main.c
  * @brief OCTS P0 SEC Test - DUT as PRIMARY, BFM as SECONDARY
  *
- * PRIMARY/SECONDARY OCTS synchronization test.
+ * Configures the OCTS timer as PRIMARY, with its sync_load and credit stream
+ * driven onto the GPIO pads for a SECONDARY chiplet, and checks that the
+ * configuration reads back and that the timer count advances after start. The
+ * testbench checks that the SECONDARY tracks the stream; this firmware checks
+ * only the PRIMARY side.
  *
- * The OCTS SECONDARY datapath cannot be exercised with the DUT strapped SECONDARY in
- * this single-DUT-firmware testbench: the RTL SECONDARY trips ExpectedCountValid_A the
- * instant it sees a credit before being enabled by a sync_load, and that ordering cannot
- * be guaranteed across two independently-booting chiplets. This test therefore runs the
- * DUT as OCTS PRIMARY and the master-BFM chiplet as OCTS SECONDARY (booting the
- * st_octs_p1_credit_test ROM). The DUT PRIMARY generates the sync_load / credit stream on
- * GPIO[58:59]; the BFM SECONDARY receives and tracks it. The cocotb checker
- * (check_primary_secondary_sync) performs the cross-chiplet verification (sync_load/credit
- * alignment + timer_count tracking within a margin), and this firmware reports its own
- * PRIMARY verdict in scratch[0].
+ * The DUT does not run as SECONDARY here: a SECONDARY timer asserts when it
+ * sees a credit before a sync_load enables it, and two independently booting
+ * chiplets cannot guarantee that order.
  */
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "smc_defines.h"
 #include "smc_test.h"
 #include "virt_console.h"
-
-#define WAIT_CYCLES 50
 
 static void wait_cycles(uint32_t cycles) {
     for (volatile uint32_t i = 0; i < cycles; i++) {
@@ -45,7 +39,7 @@ static uint64_t timer_get_count(void) {
 
 static uint32_t timer_is_primary(void) {
     uint32_t status = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR);
-    return (status & 0x1) == 0; // Bit 0: 0=PRIMARY, 1=SECONDARY
+    return (status & 0x1) == 0;
 }
 
 static void timer_init(void) {
@@ -53,8 +47,7 @@ static void timer_init(void) {
 
     simputs("Initializing OCTS PRIMARY timer (octs_p0_sec)\n");
 
-    // CTRL: STEP<<16 | PULSE_WIDTH<<8 | CREDIT_VAL. CREDIT_VAL=0x10, PULSE_WIDTH=0x02,
-    // STEP=0x01 (matches the BFM SECONDARY ROM so the SECONDARY tracks cleanly).
+    // Credit settings match the SECONDARY chiplet's so it tracks cleanly
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR, 0x00010210);
 
     ctrl_val = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR);
@@ -67,8 +60,8 @@ static void timer_init(void) {
         }
     }
 
-    // Enable GPIO pad lsio interface so the PRIMARY sync_load / credit pulses are driven
-    // onto GPIO[58:59] (and to prevent X-prop on reset).
+    // Drive the PRIMARY sync_load and credit pulses onto the GPIO pads; this
+    // also keeps the pads out of X after reset
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR, 1);
     wait_cycles(10);
     uint32_t gpio_enable_val = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR);
@@ -137,8 +130,7 @@ int main(void) {
     timer_start(0x1000ULL);
     write_scratch(0, 0x01);
 
-    // Confirm the PRIMARY timer counter is advancing (i.e. it is running and driving the
-    // sync/credit stream to the SECONDARY).
+    // The PRIMARY count must advance while the timer runs
     wait_cycles(2000);
     uint64_t count1 = timer_get_count();
     simputshex64("PRIMARY count check 1: ", count1);
@@ -164,8 +156,6 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {
@@ -173,7 +163,6 @@ int other_main(int hartid) {
     while (1) {
         __asm__("wfi");
     }
-    return 0;
 }
 
 int secondary_main(void) {

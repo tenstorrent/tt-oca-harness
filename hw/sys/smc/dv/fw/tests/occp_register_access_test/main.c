@@ -3,7 +3,7 @@
 
 /*
  * Writes random data to selected external SMC registers over OCCP WRITE and checks the
- * OCCP READ readback. Runs in non-secure mode only.
+ * OCCP READ readback. Requires non-secure mode and fails in secure mode.
  */
 
 #include "occp_test_common.h"
@@ -170,8 +170,6 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

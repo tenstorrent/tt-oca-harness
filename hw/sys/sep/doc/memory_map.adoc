@@ -152,7 +152,7 @@ endif::backend-pdf[]
 
 The SEP external-window model supplies the eFuse SHIM control register below.
 The `efuse_shim_ctrl` instance at offset `0x0` fixes where that block sits.
-`EFUSE_SHIM_SIZE` bytes from that base (`SEP_EFUSE_SHIM_SIZE` at the SMU,
+`EFUSE_SHIM_SIZE` bytes from that base (`CFG.SEP_EFUSE_SHIM_SIZE` at the SMU,
 default `0x4`) are routed to the eFuse controller, which forwards them
 unchanged on `efuse_bank_ctrl` to the adopter's SHIM rather than out the
 external port. An adopter external map must keep an `efuse_shim_ctrl`

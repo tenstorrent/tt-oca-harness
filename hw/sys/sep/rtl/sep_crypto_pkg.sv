@@ -108,13 +108,13 @@ package sep_crypto_pkg;
   };
 
   // TRNG: OCH spec 0x1091_7000–0x1091_7FFF (4 kB) — passthrough to an external TRNG
-  localparam logic [31:0] TRNG_BASE_ADDR = 32'h1091_7000;
-  localparam logic [31:0] TRNG_END_ADDR = 32'h1091_8000;
+  localparam logic [31:0] TrngBaseAddr = 32'h1091_7000;
+  localparam logic [31:0] TrngEndAddr = 32'h1091_8000;
 
   parameter axi_pkg::xbar_rule_32_t TRNG_RULE = '{
       idx: 10,
-      start_addr: TRNG_BASE_ADDR,
-      end_addr: TRNG_END_ADDR
+      start_addr: TrngBaseAddr,
+      end_addr: TrngEndAddr
   };
 
   parameter axi_pkg::xbar_rule_32_t ABR_RULE = '{
@@ -124,7 +124,7 @@ package sep_crypto_pkg;
   };
 
   // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).
-  // Highest enum value must equal SEP_CRYPTO_NUM_AXI_MST - 1.
+  // Highest enum value must equal SepCryptoNumAxiMst - 1.
   typedef enum int unsigned {
     SEP_CRYPTO_AXI_ERR_SLV       = 0,
     SEP_CRYPTO_AXI_OTBN          = 1,
@@ -141,17 +141,17 @@ package sep_crypto_pkg;
     SEP_CRYPTO_AXI_ABR           = 12
   } sep_crypto_axi_port_e;
 
-  localparam int unsigned SEP_CRYPTO_NUM_AXI_MST = 13;
-  localparam int unsigned SEP_CRYPTO_NUM_AXI_MST_SEL = $clog2(SEP_CRYPTO_NUM_AXI_MST);
+  localparam int unsigned SepCryptoNumAxiMst = 13;
+  localparam int unsigned SepCryptoNumAxiMstSel = $clog2(SepCryptoNumAxiMst);
 
   // AXI-Stream endpoints on u_drbg_s3c_scan edn_axis_o, one per ext-TRNG mux leg:
   // [0]=Key Manager (mux0), [1]=crypto adapter (mux1), [2]=entropy-pool adapter (mux2)
-  localparam int unsigned SEP_CRYPTO_EDN_ENDPOINT_COUNT = 3;
+  localparam int unsigned SepCryptoEdnEndpointCount = 3;
   // Native EDN clients downstream of u_axis_edn_crypto_s3c_scan:
   // AES, KMAC, OTBN RND, OTBN URND
-  localparam int unsigned SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT = 4;
+  localparam int unsigned SepCryptoAxisEdnClientCount = 4;
   // Native EDN client downstream of u_axis_edn_pool_s3c_scan: the SEP entropy-pool FIFO
-  localparam int unsigned SEP_CRYPTO_POOL_EDN_CLIENT_COUNT = 1;
+  localparam int unsigned SepCryptoPoolEdnClientCount = 1;
 
   //////////
   // AXI4-Lite 32-bit typedefs for OTBN data width conversion
@@ -337,13 +337,13 @@ package sep_crypto_pkg;
   // External TRNG AXI-Stream interface (from outside sep → sep_crypto)
   //////////
 
-  localparam int unsigned EXT_TRNG_AXIS_DATA_WIDTH = 32;
-  localparam int unsigned EXT_TRNG_AXIS_STRB_WIDTH = EXT_TRNG_AXIS_DATA_WIDTH / 8;
+  localparam int unsigned ExtTrngAxisDataWidth = 32;
+  localparam int unsigned ExtTrngAxisStrbWidth = ExtTrngAxisDataWidth / 8;
 
   typedef struct packed {
     logic                                    tvalid;
-    logic [EXT_TRNG_AXIS_DATA_WIDTH-1:0]     tdata;
-    logic [EXT_TRNG_AXIS_STRB_WIDTH-1:0]     tstrb;
+    logic [ExtTrngAxisDataWidth-1:0]         tdata;
+    logic [ExtTrngAxisStrbWidth-1:0]         tstrb;
   } ext_trng_axis_req_t;
 
   typedef struct packed {logic tready;} ext_trng_axis_rsp_t;

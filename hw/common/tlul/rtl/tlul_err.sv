@@ -21,11 +21,11 @@ module tlul_err
 );
   `include "prim_assert.sv"
 
-  localparam int IW = $bits(tl_i.a_source);
-  localparam int SZW = $bits(tl_i.a_size);
-  localparam int DW = $bits(tl_i.a_data);
-  localparam int MW = $bits(tl_i.a_mask);
-  localparam int SubAW = $clog2(DW / 8);
+  localparam int Iw = $bits(tl_i.a_source);
+  localparam int Szw = $bits(tl_i.a_size);
+  localparam int Dw = $bits(tl_i.a_data);
+  localparam int Mw = $bits(tl_i.a_mask);
+  localparam int SubAW = $clog2(Dw / 8);
 
   logic opcode_allowed, a_config_allowed;
 
@@ -56,8 +56,8 @@ module tlul_err
   logic mask_chk;       // inactive lane a_mask check
   logic fulldata_chk;   // PUT_FULL_DATA should have size match to mask
 
-  localparam bit [MW-1:0] MaskOne = 1;
-  logic [MW-1:0] mask;
+  localparam bit [Mw-1:0] MaskOne = 1;
+  logic [Mw-1:0] mask;
 
   assign mask = MaskOne << tl_i.a_address[SubAW-1:0];
 
@@ -100,6 +100,6 @@ module tlul_err
   assign a_config_allowed = addr_sz_chk & mask_chk & (op_get | op_partial | fulldata_chk);
 
   // Only 32 bit data width for current tlul_err
-  `OCAH_OT_ASSERT_INIT(dataWidthOnly32_A, DW == 32)
+  `OCAH_OT_ASSERT_INIT(dataWidthOnly32_A, Dw == 32)
 
 endmodule

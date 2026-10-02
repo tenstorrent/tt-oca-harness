@@ -1,36 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""LCC sep_debug -> inbound-filter gating sequences for the SEP OSS flow.
+"""LCC sep_debug -> inbound-filter gating sequences.
 
-Stimulus for the inbound-filter-gating test (reference suite ``sep_lcc_uvm_inbound_filter
-_gating_test``). The contract comes from the specification:
+Contract:
 
-  * ``feat_ctrl_o = ~(SIP_DIS | SYS_DIS)`` is positive logic, and bit 0 is
-    ``SEP_DBG``: 1 = SEP-scope debug enabled, inbound traffic bypasses the
-    filter; 0 = disabled, inbound traffic is filtered
+  * ``feat_ctrl_o = ~(SIP_DIS | SYS_DIS)``; bit 0 is ``SEP_DBG``: 1 = inbound
+    traffic bypasses the filter, 0 = it is filtered
     (``hw/sys/sep/doc/lifecycle_controller.adoc``, feature-control-vector-definition).
-  * The inbound filter is bypassed in its entirety while SEP-scope debug is
-    enabled, and blocks traffic that matches no entry
-    (``hw/sys/sep/doc/fabric.adoc``, sep-traffic-filter-decode).
-  * A blocked transaction is not dropped: it is terminated with ``DECERR`` on
-    ``RRESP`` (``hw/ip/axi_filter/doc/index.adoc``, axi-traffic-filter-blocked).
+  * The filter blocks traffic that matches no entry
+    (``hw/sys/sep/doc/fabric.adoc``, sep-traffic-filter-decode) and terminates a
+    blocked read with ``DECERR`` on ``RRESP``
+    (``hw/ip/axi_filter/doc/index.adoc``, axi-traffic-filter-blocked).
 
-  So with FEAT_CTRL[0]=0 an external AXI read is refused with DECERR, and with
-  FEAT_CTRL[0]=1 it reaches the SEP-local fabric and returns OKAY.
-
-Two buses are exercised:
-  * CONTROL (CPU-LSU, ``s_axi``, no inbound filter): reads FEAT_CTRL and writes
-    DEMOTE_1 to flip PROD -> PROD_DBG_1. FEAT_CTRL reads carry an ``expected``
-    golden value so the scoreboard exact-value-checks the lc_state -> feat_ctrl
-    decode. FEAT_CTRL[0] is the frontdoor view of the SEP_DBG enable, in place of
-    the reference suite's backdoor ``uvm_hdl_read``.
-  * EXTERNAL (SMN-inbound, ``m_axi``): the filtered path. ``SepExtAxiProbeSeq``
-    issues a single read and exposes resp_ok / resp_code / timed_out. Timeout is
-    fatal by default; a blocked access is proven by the DECERR response the
-    specification requires.
-
-Register-map constants live here (co-located with the stimulus, never copied into
-the test). Offsets mirror ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl``.
+Buses:
+  * CONTROL (CPU-LSU, ``s_axi``, unfiltered): reads FEAT_CTRL with an exact
+    ``expected`` value and writes DEMOTE_1 to move PROD -> PROD_DBG_1.
+  * EXTERNAL (SMN-inbound, ``m_axi``, filtered): ``SepExtAxiProbeSeq`` issues one
+    read; a blocked access is proven by DECERR, and a timeout is fatal by default.
 """
 
 from __future__ import annotations
@@ -41,8 +27,7 @@ from env.sep_lcc_golden import LCC_DEMOTE_1, LCC_DEMOTE_2, LCC_FEAT_CTRL
 from pyuvm import uvm_sequence
 from sep_reg_meta import SEP_LIFECYCLE_CTRL, sym
 
-# SEP-local lifecycle-controller block. The LCC register map lives in
-# env.sep_lcc_golden (single source of truth).
+# DEMOTE field masks from the generated export; LCC offsets come from env.sep_lcc_golden.
 DEMOTE_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "demote")
 DEMOTE_LOCK_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "lock")
 DEMOTE_FIELD_MASK = DEMOTE_BIT | DEMOTE_LOCK_BIT

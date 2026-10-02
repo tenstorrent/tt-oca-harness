@@ -90,8 +90,8 @@
 `SMC_TB_OUT(logic, tb_cpu_jtag_tdo)
 
 // UART0 pad-level split-port for the P2 Phase A UART loopback:
-//   UART0_RX_PAD (external drive -> DUT input)
-//   UART0_TX_PAD (DUT output -> external observe)
+//   Uart0RxPad (external drive -> DUT input)
+//   Uart0TxPad (DUT output -> external observe)
 `SMC_TB_IN(logic, tb_uart0_rx_ext_drive)
 `SMC_TB_OUT(logic, tb_uart0_tx_from_dut)
 // UART0 transmit-FIFO ready as the wrap-0 log engine sees it (low while the
@@ -160,7 +160,7 @@
 `SMC_TB_OUT(logic, tb_boot_stall_combined_o)
 `SMC_TB_IN(logic, tb_boot_stall_jtag_ovrd_i)
 `SMC_TB_IN(logic, tb_boot_stall_jtag_val_i)
-// DUT-side BOOT_STALL_PAD sample via smc.pad2core_i (post pad-shim), not
+// DUT-side BootStallPad sample via smc.pad2core_i (post pad-shim), not
 // gpio_pad_io / tb_pad_drive_* echo. Do not XMR-drive pad2core_i — it is
 // already driven by smc_ip_integration; this is observe-only.
 `SMC_TB_OUT(logic, tb_gpio_pad57)
@@ -233,24 +233,24 @@
 `SMC_TB_IN(logic, tb_octs_sync_load_ext)
 `SMC_TB_IN(logic, tb_octs_cnt_credit_ext)
 `SMC_TB_IN(logic [7:0], tb_sep_mailbox_interrupts)
-`SMC_TB_IN(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_gpio_ext_drive_en)
-`SMC_TB_IN(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_gpio_ext_drive_value)
+`SMC_TB_IN(logic [smc_pkg::NumGpioWraps-1:0], tb_gpio_ext_drive_en)
+`SMC_TB_IN(logic [smc_pkg::NumGpioWraps-1:0], tb_gpio_ext_drive_value)
 
 `SMC_TB_OUT(logic, tb_gpio_core2pad_any)
 `SMC_TB_OUT(logic, tb_gpio_core2pad_en_any)
 `SMC_TB_OUT(logic, tb_gpio_pad2core_en_any)
 // Full pad buses from real smc RTL (smc_wrapper.u_smc). Cocotb cannot XMR
 // into u_dut.u_smc under smc_public_scope.vlt (TB-top public only).
-`SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_o)
-`SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_en_o)
+`SMC_TB_OUT(logic [smc_pkg::NumGpioWraps-1:0], tb_core2pad_o)
+`SMC_TB_OUT(logic [smc_pkg::NumGpioWraps-1:0], tb_core2pad_en_o)
 // Per-pad LSIO ownership: a pad an LSIO function selects takes that function's
 // direction instead of its INPUT_BY_DEFAULT.
-`SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_lsio_interface_select)
+`SMC_TB_OUT(logic [smc_pkg::NumGpioWraps-1:0], tb_lsio_interface_select)
 // Per-pad input-buffer enable. gpio.sv drives core2pad_en from the CSRs only
 // (its default branch is 1'b0 for every instance) and carries
 // INPUT_BY_DEFAULT on pad2core_en, so this is the bus on which the padring's
 // default direction map is visible.
-`SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_pad2core_en_o)
+`SMC_TB_OUT(logic [smc_pkg::NumGpioWraps-1:0], tb_pad2core_en_o)
 
 // Flat inbound AXI manager driven by cocotbext-axi (prefix s_axi).
 // Inbound AXI path for real CSR/fabric traffic.
@@ -425,9 +425,9 @@
 // The adopter external port's request addresses with their valids, so a probe
 // can tie the port activity it sees to the address it issued.
 `SMC_TB_OUT(logic, tb_axil_external_arvalid)
-`SMC_TB_OUT(logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0], tb_axil_external_araddr)
+`SMC_TB_OUT(logic [smc_pkg::SmcLocalAddrWidth-1:0], tb_axil_external_araddr)
 `SMC_TB_OUT(logic, tb_axil_external_awvalid)
-`SMC_TB_OUT(logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0], tb_axil_external_awaddr)
+`SMC_TB_OUT(logic [smc_pkg::SmcLocalAddrWidth-1:0], tb_axil_external_awaddr)
 `SMC_TB_OUT(logic, tb_axil_efuse_bank_active)
 `SMC_TB_OUT(logic, tb_axil_any_master_active)
 
@@ -462,7 +462,7 @@
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_read_count)
-`SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NUM_SRAM_BANKS*32-1:0], tb_cpu_scratch_bank_read_count)
+`SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NumSramBanks*32-1:0], tb_cpu_scratch_bank_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_write_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_fw_mailbox)
 `SMC_TB_OUT(logic, tb_cpu_fw_mailbox_valid)
@@ -586,7 +586,7 @@
 
 // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /
 // no TB encode helper — tests pack complementary or illegal encodings.
-`SMC_TB_IN(logic [2*smc_pkg::LC_STATE_WIDTH-1:0], tb_lc_state)
+`SMC_TB_IN(logic [2*smc_pkg::LcStateWidth-1:0], tb_lc_state)
 
 // JTAG-side eFuse AXI-Lite master (cocotbext-axi AxiLiteMaster, prefix ej_axi)
 // into smc.axil_smc_otp_jtag_req_i (SMC-OTP JTAG access-control path).
@@ -615,11 +615,11 @@
 // per source, and nothing published the vectors those indices live in: the
 // per-source scalars above are hand-picked slices. These are the whole buses.
 // ------------------------------------------------------------------
-`SMC_TB_OUT(logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0], tb_cpu_interrupts)
+`SMC_TB_OUT(logic [smc_4core_cpu_pkg::NumCpuInterrupts-1:0], tb_cpu_interrupts)
 `SMC_TB_OUT(logic [31:0], tb_peripheral_interrupts)
 `SMC_TB_OUT(logic [31:0], tb_mailbox_interrupts)
 `SMC_TB_OUT(logic [31:0], tb_ext_mailbox_interrupts)
-`SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_gpio_interrupt)
+`SMC_TB_OUT(logic [smc_pkg::NumGpioWraps-1:0], tb_gpio_interrupt)
 `SMC_TB_OUT(logic [3:0], tb_ndmreset_request_sync)
 // The three contributors the combined UART bit ORs together, before the OR.
 `SMC_TB_OUT(logic [3:0], tb_uart_irq_raw)

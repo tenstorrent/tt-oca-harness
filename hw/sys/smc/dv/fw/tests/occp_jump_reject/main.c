@@ -11,7 +11,6 @@
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"
-#include <string.h>
 
 static void validate_smc_status_buffer_for_jump_reject(test_context_t *ctx) {
     simputs("=== Validating SMC status buffer for JUMP rejection ===\n");
@@ -141,8 +140,6 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

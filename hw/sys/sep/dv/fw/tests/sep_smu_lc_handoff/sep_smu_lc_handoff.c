@@ -2,12 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_lc_handoff - PROD eFuse + DEMOTE_1 consumer setup.
+ * sep_smu_lc_handoff - PROD lifecycle state and DEMOTE_1 handoff.
  *
- * Frontdoor-brings the dedicated SMC PVT-arm image, waits for PVT_EN, parks
- * in a bounded blocked window, then writes LCC DEMOTE_1.demote=1
- * (no lock; W1S). Does not program SMC PVT CSRs: those
- * aliases trap on the SEP->SMC port.
+ * Brings up the SMC image that arms PVT and waits for it to report PVT enabled,
+ * holds a bounded window in PROD, then sets DEMOTE_1 without locking it, checks
+ * the readback and holds a second window. SEP does not program the SMC PVT
+ * registers: those aliases trap on the SEP-to-SMC port.
  */
 
 #include <stdint.h>
@@ -46,8 +46,6 @@ __attribute__((used, noinline, noreturn)) void sep_smu_lc_handoff_fail_loop(void
         __asm__ volatile("wfi");
     }
 }
-
-static void (*const keep_fail)(void) = sep_smu_lc_handoff_fail_loop;
 
 static int run_lc_handoff(void) {
     uint32_t lc;
@@ -97,6 +95,5 @@ int main(void) {
     if (run_lc_handoff() == 0) {
         sep_smu_lc_handoff_pass_loop();
     }
-    (void)keep_fail;
     sep_smu_lc_handoff_fail_loop();
 }

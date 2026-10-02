@@ -20,42 +20,31 @@
 #    3 are what close that.
 #
 #    The value is the LITTLE-ENDIAN serialisation of the digest, because
-#    read_fuse_key() (manifest_crypto.c) rebuilds the 32-byte key from
-#    eight mmio_read32() results, byte 0 first, and SepEfuseImage.set_int()
-#    (sep_efuse_image.py) fills word i from bits [32i+31:32i].
+#    fuse_read_bytes() (oca_platform.c) takes byte 0 from the LSB of word 0, and
+#    SepEfuseImage.set_int() (sep_efuse_image.py) fills word i from bits [32i+31:32i].
 #
 # 2. CHIPLET_PUBK_HASH1 holds a DECOY: the same digest with bit 0 of byte 0
 #    flipped. It is non-zero, so a ROM that addressed the WRONG chiplet fuse would
-#    pass read_fuse_key()'s non-zero test and fail check_pubkey_hash() with
-#    PUBK_HASH_MISMATCH instead of booting. That is a live regression guard, not a
-#    hypothetical: manifest_crypto.c records that this ROM once derived the
-#    digest addresses as CHIPLET_PUBK_REVOKE + 0x100/0x120 and read the wrong words.
+#    pass the PUBK_OTP_EMPTY test and fail with PUBK_UNAUTHORIZED instead of booting.
 #
-# 3. CHIPLET_PUBK_REVOKE bit 0 revokes ROM key slot 0. On the correct ROM this is
-#    INERT -- the manifest selects a fused key, so the ROM-key arm
-#    (manifest_crypto.c) is never entered and bit 0 is never tested. It is
-#    a counterfactual: a ROM that ignored public_key_sel.selection and took the
-#    ROM-key arm with index 0 would print KEY_REVOKED idx=0x00000000 and refuse the
-#    image, which every member of this family forbids. It is also the
-#    architecturally intended configuration for a fused-key part --
-#    sep_efuse_map.rdl:727 says "Before the chiplet owner transfers a part to the
-#    customer, the development-key bits shall be set (revoked)."
+# 3. CHIPLET_PUBK_REVOKE bit 0 revokes ROM key slot 0. It is inert on a correct ROM,
+#    because the manifest selects a fused key. A ROM that ignored the selector would
+#    resolve slot 0 and echo PUBK_SEL=0x00000000, which every member forbids. The
+#    CHIPLET_PUBK_REVOKE description in sep_efuse_map.rdl also requires the
+#    development-key bits to be set before a part is transferred.
 #
 # Bits 16 and 17 revoke CHIPLET_PUBK_HASH0 and HASH1 (sep_efuse_map.rdl:727). They
 # are disjoint from the ROM-slot bits [7:0]; nothing here is derived by counting
 # past ROM slot 5. The reference uses bits 6 and 7, which are unused ROM-slot
 # bits in THIS map -- do not copy them.
 #
-# BL1_VERSION and SBOOT_DIS stay 0: the rollback check runs before key selection
-# (manifest_crypto.c) and SBOOT_DIS would skip the crypto chain
-# altogether, so either one would preempt the path under test.
+# BL1_VERSION and SBOOT_DIS stay 0: a device version flag the manifest lacks would
+# refuse the image before the signature, and SBOOT_DIS would skip the crypto chain.
 #
-# THE REVOKING MEMBER. Bit 16 refuses CHIPLET fused key 0
-# (manifest_crypto.c) at manifest_crypto.c, which runs BEFORE
-# read_fuse_key() (:232) and before rsa_3072_verify() (:244). The image this
-# preload is paired with is re-signed and provably bootable, so revocation is the
-# sole cause of the rejection -- and because BOTH manifest slots select the same
-# fused key, one bit refuses both and the run is terminal.
+# THE REVOKING MEMBER. Bit 16 revokes CHIPLET fused key 0; the library checks it
+# after key authorization and before signature verification. The paired image is
+# re-signed and bootable, so revocation is the sole cause of the rejection, and both
+# manifest slots select this key, so the run is terminal.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

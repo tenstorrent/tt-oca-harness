@@ -624,9 +624,11 @@ summary counts graded leaves under `expected_failing`. The record keeps the
 first eight observed messages, each cut to 400 characters.
 A framework-written `results/results.xml` records the observed failure, and
 a synthesized one the graded result; `result.json` is the graded,
-authoritative result. Keep such tests in a group of their own (for example
-`rtl_issue`) so they never feed a coverage regression as passes, and so the
-flip is visible as that group going red.
+authoritative result. A test that unexpectedly passes also gets its graded
+failure in `results/graded.xml` beside the framework's file
+(<<runner-junit-ownership>>). Keep such tests in a group of their own (for
+example `rtl_issue`) so they never feed a coverage regression as passes, and
+so the flip is visible as that group going red.
 
 === Targets and run modes
 
@@ -1469,19 +1471,29 @@ driver's native states onto one lifecycle:
 |Live in the scheduler. `SUSPENDED` waits like `RUNNING`.
 
 |`RECONCILING`
-|Missing from the live query, or reported finished before its `result.json`
-is visible. The completion record and `result.json` settle it first, then
+|Missing from the live query, listed in a state that settles nothing (LSF's
+`UNKWN` and `ZOMBI`), or reported finished before its `result.json` is
+visible. The completion record and `result.json` settle it first, then
 `history_argv`, and `artifact_grace_sec` without either ends the wait: a
 finished job grades `ERROR` (`environment_error`), a missing one is `LOST`.
+A job graded `LOST` that the live query last listed in such a state, or that
+history last reported pending or running, is sent `cancel_argv` once; the
+command and its reply go to the executor log, and nothing waits for the
+cancellation to be confirmed.
 
 |`SUCCEEDED`, `FAILED`
 |The job ran to its end. The leaf's own `result.json` grades it, with the
 exit code recovered from the query or the completion record when the
 scheduler reports none; no `result.json` within the grace is `ERROR`
-(`environment_error`), with the exit code in the reason when the observation
-that ends the wait carries one. LSF's live query reports it; on Slurm a failed
-job's code arrives only once the job has left the live query and `sacct`
-answers, and a completed job reads as `0`.
+(`environment_error`), with the exit code in the reason when the scheduler
+reports one. LSF's live query carries it. Slurm's carries none, so the code of
+a failed job comes from `history_argv`: from the history that settles a job
+once it has left the live query, or from one lookup per poll for every job
+whose grace ends while `squeue` still lists it. That lookup counts only a
+record in the state the live query reports, since accounting can lag the
+controller. When no record names a code the reason names none, and it carries
+the record's detail instead, such as the signal that ended the job, when there
+is one. A completed job reads as `0`.
 
 |`TIMED_OUT`
 |The scheduler's wall time expired: `TIMEOUT`, with the job log as the
@@ -1492,7 +1504,10 @@ leaf's log.
 
 |`PREEMPTED`, `LOST`
 |Preempted, requeued, or gone without a record: `ERROR`
-(`environment_error`), which `--retry` reruns as a new attempt.
+(`environment_error`), which `--retry` reruns as a new attempt. The
+coordinator marks every attempt whose job it grades without a `result.json`,
+in this row or another, with `<run>/stages/regress/jobs/<task>.graded.json`,
+so a worker still running for it leaves no result (<<runner-leaf-manifests>>).
 |===
 
 A query that fails, or hangs past `command_timeout_sec`, leaves every asked
@@ -1526,6 +1541,7 @@ the hosted runner, submitting the selected tests as jobs of the runner itself
 farm outside hosted CI. The state maps and parsers live in
 `runlib/executors/lsf.py` and `runlib/executors/slurm.py`.
 
+[[runner-leaf-manifests]]
 ==== Leaf manifests and the worker
 
 A cluster driver runs each attempt through `run_dv.py --worker-manifest
@@ -1540,8 +1556,12 @@ exactly one stage, writes the leaf's `result.json` and a `<task>.done.json`
 completion record beside the manifest, and exits with the leaf's status code.
 When a manifest cannot be trusted or run, the worker leaves an `ERROR` result
 with an `environment_error` failure bucket and a reason that starts with
-`environment_error`, and exits `2`. Workers write nothing else: the
-coordinator is the single writer of every aggregate in the run tree.
+`environment_error`, and exits `2`. A worker that finds the attempt's
+`<task>.graded.json` mark, before the attempt starts or immediately before it
+would write `result.json` or the completion record, leaves neither, removing
+a `result.json` it has already written, says so on its console, and exits
+`2`. Workers write nothing else: the coordinator is the single writer of
+every aggregate in the run tree.
 
 [[runner-formal]]
 == Formal verification
@@ -2927,8 +2947,9 @@ status files, and JUnit reports, or the app's summary file, are
 
 A `sim` or `regress` leaf that ran to the end is graded by its parser policy
 from three inputs: the structured result files the policy names under
-`results/`, the leaf log, and the process return code. The rules apply in
-this order, and the first that decides ends the grading:
+`results/` (`debug/` for a `--waves-on-fail` rerun,
+<<runner-junit-ownership>>), the leaf log, and the process return code. The
+rules apply in this order, and the first that decides ends the grading:
 
 . A structured result with a `failure` or `error` node is `FAIL`
   (`status_source` `structured_result`, bucket `sim_failure`). A structured
@@ -3001,10 +3022,10 @@ The failure-bucket `kind` is the shared enum: `sim_failure`, `tool_error`,
 that could not run or left no result of its own,
 <<runner-executor-registry>>), and `dependency_blocked` (a leaf whose
 scheduler-managed target build failed, <<runner-cluster-dispatch>>); the
-first bucket's kind is the JUnit `type` of a failed or errored leaf. A
-stage that fails without a
-parser decision takes its stage's default kind (`flist` `config_error`,
-`hdl_compile` and `c_compile` `compile_error`, `elaborate`
+first bucket's kind is the JUnit `type` of a failed or errored leaf, in a
+synthesized `results.xml` and in a `graded.xml` alike. A stage that fails
+without a parser decision takes its stage's default kind (`flist`
+`config_error`, `hdl_compile` and `c_compile` `compile_error`, `elaborate`
 `elaboration_error`, `sim` and `regress` `sim_failure`, the coverage stages
 and `clean` `tool_error`, `formal` `formal_fail`), and a `ConfigError` is
 `config_error` whichever stage raised it.
@@ -3103,15 +3124,33 @@ grades without a result of its own: an attempt that ended without
 `result.json`, a scheduler `TIMEOUT`, and a `dependency_blocked` leaf. The
 file names the leaf's `result.json`, or the run's when the leaf has none, and
 an earlier attempt of a retried leaf that left no result gets no file. A leaf
-that ran records the path as `artifacts.results_xml` in its `result.json`.
+that ran records the path as `artifacts.results_xml` in its `result.json`. A
+`--waves-on-fail` rerun writes nothing under `results/`: its framework writes
+to `debug/` in the rerun's attempt directory, and the rerun's own grade reads
+it there.
 
-A synthesized file is a reporting artifact, written after grading, atomically,
-and never read back as evidence; before a leaf runs, the runner removes one
-that an earlier invocation into the same directory left, and a leaf the
-coordinator grades replaces one in its attempt's directory. Its suite carries
-a `producer` property with the value `run_dv.py junit-fallback`, and only a
-file carrying that marker is ever removed or replaced; a file without it is
-left alone even when it sits where the runner would write.
+A framework's file can read as a pass for a leaf the runner grades otherwise:
+a log pattern, the simulator's exit status, or a missing coverage artifact
+fails the leaf after cocotb recorded a passing test, or the attempt times out
+or ends without a result after cocotb wrote its file. When the graded status
+is `FAIL`, `ERROR`, `TIMEOUT`, or `UNKNOWN` and the framework's file records
+no failure or error node, or does not parse, the runner writes
+`<leaf>/results/graded.xml` beside it, the single-testcase file it would
+otherwise have synthesized, so a consumer that reads every `results/*.xml`
+sees the grade; `result.json` does not name it. A leaf that grades `PASS`
+gets no `graded.xml`, even an `expect_fail` leaf whose framework file records
+the failure it expected (<<runner-expected-failures>>).
+
+A synthesized file, `graded.xml` included, is a reporting artifact, written
+after grading, atomically, and never read back as evidence; a leaf the
+coordinator grades replaces one in its attempt's directory, and a
+`graded.xml` is removed once the grade agrees with the framework's file. Its
+suite carries a `producer` property with the value
+`run_dv.py junit-fallback`. Before an attempt runs, the runner removes every
+XML file that an earlier invocation into the same directory left under the
+attempt's `results/`, or a wave-debug rerun's `debug/`, with or without that
+marker. From then on only a file carrying the marker is removed or replaced; a
+file without it is left alone even when it sits where the runner would write.
 
 Two run-level files follow the same rule. A handled interruption writes
 `<run>/results/results.xml` with one errored testcase of type `interruption`
@@ -3460,8 +3499,11 @@ The following behaviors are not part of the runner contract:
   `--timeout` reaches many subprocess stages, but Bender filelist generation
   and in-process Verilator/Xcelium cocotb build stages are unbounded.
 * An explicit `--run-dir` is reused as supplied, is not made unique, and does
-  not update `latest`. Choose an empty directory unless performing the
-  documented coverage replay.
+  not update `latest`. Before an attempt is submitted, the leaf `result.json`,
+  completion record, graded mark, job log, and XML files under `results/` and
+  a wave-debug rerun's `debug/` that an earlier run left at its paths are
+  removed; everything else that run left stays. Choose an empty directory unless performing the documented coverage
+  replay.
 * `--max-failures 0` satisfies the stop condition immediately and therefore
   skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
   despite running no tests; the record says so (`tests.completed = false`,

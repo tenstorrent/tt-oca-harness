@@ -2,18 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA inline SHA-256 firmware-boot test (PyUVM).
 
-OSS port of the reference suite ``sep_dma_hash_test``. Boots the VeeR EL2 core and runs the
-dma_hash firmware, which programs the Secure DMA to copy a buffer with the
-inline SHA-256 engine, waits for the DMA-done interrupt through the VeeR PIC
-(WFI + ISR), and self-checks the hardware digest against a software SHA-256, the
-copied data, and the DMA error code. Proves DMA plus inline SHA-256, and
-DMA-done IRQ through the PIC to a CPU ISR.
-
-Like the reference test this is firmware-self-checking: the firmware returns its
-error count and start.S emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on
-the 0x8000_0000 mailbox, which the boot scoreboard gates on (so a digest/data
-mismatch inside the firmware surfaces as fw_pass=False). The scoreboard also
-checks the firmware banner and that the core actually executed out of ICCM.
+The dma_hash firmware programs the Secure DMA to copy a buffer through the inline SHA-256 engine,
+waits for the DMA-done interrupt through the VeeR PIC (WFI + ISR), and checks the hardware digest
+against a software SHA-256, the copied data and the DMA error code. It returns its error count and
+start.S emits PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) on the 0x8000_0000 mailbox, which the boot
+scoreboard gates on with the banner and ICCM-execution checks.
 """
 
 from __future__ import annotations

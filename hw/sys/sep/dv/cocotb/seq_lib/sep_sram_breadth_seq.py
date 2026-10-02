@@ -2,23 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SRAM datapath-breadth config + driver for ``sep_sram_datapath_breadth_test``.
 
-`[RANDCFG]` rep: ``SepSramBreadthCfg`` is the single source of truth for BOTH the
-DUT programming AND the golden/checker expectations. Required coverage cells are
-walked deterministically (so a single seed never skips one); only legal knobs
-(mask order, region offsets, write/init data, the sequential-window length) are
-seed-randomized, with masked values so they read back exactly.
+``SepSramBreadthCfg`` drives both the DUT programming and the golden expectations. Required
+coverage cells are walked deterministically; only legal knobs (mask order, region offsets,
+write/init data, sequential-window length) are seed-randomized, masked so they read back exactly.
 
-The SRAM port is 64-bit single-beat (AXI4-Lite-like; the reference suite "burst" tests are
-audit-only AWLEN=0/ARLEN=0 -- no multi-beat burst feature), so only single-beat
-accesses are issued. ``length`` selects the byte count: 8 = full 64-bit word,
-1..7 = a sub-word write/read whose WSTRB cocotbext-axi derives from addr+length.
-
-WSTRB coverage note: cocotbext-axi ``init_write`` has no explicit-strobe argument
--- it derives the strobe from address+length, so only CONTIGUOUS byte runs are
-expressible. This rep walks all 36 contiguous masks (all 8 one-hot lanes + every
-contiguous multi-byte run). Arbitrary NON-contiguous masks (e.g. 0x05) are NOT
-expressible without a lower-level explicit-strobe write.
-WSTRB=0x00 (all-zero strobe) is excluded (undefined per the SRAM spec).
+The SRAM port is 64-bit single-beat (AXI4-Lite-like; AWLEN=0/ARLEN=0 only). ``length`` selects
+the byte count: 8 = full word, 1..7 = a sub-word access whose WSTRB cocotbext-axi derives from
+addr+length. Only contiguous strobes are expressible: all 36 are walked, non-contiguous masks
+(e.g. 0x05) are not, and WSTRB=0x00 is excluded (undefined per the SRAM spec).
 """
 
 from __future__ import annotations

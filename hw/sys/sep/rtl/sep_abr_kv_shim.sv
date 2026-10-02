@@ -57,16 +57,16 @@ module sep_abr_kv_shim
 );
 
   // ML-KEM seed is D||Z: two SEED_DWORDS blocks streamed as one KV entry.
-  localparam int unsigned MLKEM_SEED_DWORDS = 2 * SEED_DWORDS;
+  localparam int unsigned MlkemSeedDwords = 2 * SEED_DWORDS;
 
-  localparam int unsigned SEED_IDX_W = (SEED_DWORDS > 1) ? $clog2(SEED_DWORDS) : 1;
-  localparam int unsigned MSG_IDX_W = (MSG_DWORDS > 1) ? $clog2(MSG_DWORDS) : 1;
-  localparam int unsigned MKSEED_IDX_W = (MLKEM_SEED_DWORDS > 1) ? $clog2(MLKEM_SEED_DWORDS) : 1;
+  localparam int unsigned SeedIdxW = (SEED_DWORDS > 1) ? $clog2(SEED_DWORDS) : 1;
+  localparam int unsigned MsgIdxW = (MSG_DWORDS > 1) ? $clog2(MSG_DWORDS) : 1;
+  localparam int unsigned MkSeedIdxW = (MlkemSeedDwords > 1) ? $clog2(MlkemSeedDwords) : 1;
 
   // kv_read[] lane assignment (abr_ctrl.sv kv_read_client instantiation order).
-  localparam int unsigned KV_RD_MLDSA_SEED = 0;
-  localparam int unsigned KV_RD_MLKEM_SEED = 1;
-  localparam int unsigned KV_RD_MLKEM_MSG = 2;
+  localparam int unsigned KvRdMldsaSeed = 0;
+  localparam int unsigned KvRdMlkemSeed = 1;
+  localparam int unsigned KvRdMlkemMsg = 2;
 
   // =========================================================================
   // Recover the plaintext dwords from the two XOR shares for each seed block.
@@ -103,29 +103,29 @@ module sep_abr_kv_shim
   // =========================================================================
 
   // kv_read[0] : ML-DSA seed (8 dwords).
-  wire [SEED_IDX_W-1:0] mldsa_off = kv_read_i[KV_RD_MLDSA_SEED].read_offset[SEED_IDX_W-1:0];
-  assign kv_rd_resp_o[KV_RD_MLDSA_SEED].read_data = mldsa_seed[mldsa_off];
-  assign kv_rd_resp_o[KV_RD_MLDSA_SEED].last      =
-        (kv_read_i[KV_RD_MLDSA_SEED].read_offset == KV_ENTRY_SIZE_W'(SEED_DWORDS - 1));
-  assign kv_rd_resp_o[KV_RD_MLDSA_SEED].error     = ~mldsa_seed_valid;
+  wire [SeedIdxW-1:0] mldsa_off = kv_read_i[KvRdMldsaSeed].read_offset[SeedIdxW-1:0];
+  assign kv_rd_resp_o[KvRdMldsaSeed].read_data = mldsa_seed[mldsa_off];
+  assign kv_rd_resp_o[KvRdMldsaSeed].last      =
+        (kv_read_i[KvRdMldsaSeed].read_offset == KV_ENTRY_SIZE_W'(SEED_DWORDS - 1));
+  assign kv_rd_resp_o[KvRdMldsaSeed].error     = ~mldsa_seed_valid;
 
   // kv_read[1] : ML-KEM seed (16 dwords = D[0..7] then Z[0..7]). offset[3]
   // selects the Z half; the low bits index within the selected 8-dword block.
-  wire [MKSEED_IDX_W-1:0] mlkem_seed_off  = kv_read_i[KV_RD_MLKEM_SEED].read_offset[MKSEED_IDX_W-1:0];
-  wire                    mlkem_seed_is_z = mlkem_seed_off[SEED_IDX_W];
-  wire [SEED_IDX_W-1:0]   mlkem_seed_sub  = mlkem_seed_off[SEED_IDX_W-1:0];
-  assign kv_rd_resp_o[KV_RD_MLKEM_SEED].read_data =
+  wire [MkSeedIdxW-1:0]   mlkem_seed_off  = kv_read_i[KvRdMlkemSeed].read_offset[MkSeedIdxW-1:0];
+  wire                    mlkem_seed_is_z = mlkem_seed_off[SeedIdxW];
+  wire [SeedIdxW-1:0]     mlkem_seed_sub  = mlkem_seed_off[SeedIdxW-1:0];
+  assign kv_rd_resp_o[KvRdMlkemSeed].read_data =
         mlkem_seed_is_z ? mlkem_seed_z[mlkem_seed_sub] : mlkem_seed_d[mlkem_seed_sub];
-  assign kv_rd_resp_o[KV_RD_MLKEM_SEED].last      =
-        (kv_read_i[KV_RD_MLKEM_SEED].read_offset == KV_ENTRY_SIZE_W'(MLKEM_SEED_DWORDS - 1));
-  assign kv_rd_resp_o[KV_RD_MLKEM_SEED].error     = ~(mlkem_seed_d_valid & mlkem_seed_z_valid);
+  assign kv_rd_resp_o[KvRdMlkemSeed].last      =
+        (kv_read_i[KvRdMlkemSeed].read_offset == KV_ENTRY_SIZE_W'(MlkemSeedDwords - 1));
+  assign kv_rd_resp_o[KvRdMlkemSeed].error     = ~(mlkem_seed_d_valid & mlkem_seed_z_valid);
 
   // kv_read[2] : ML-KEM message (8 dwords).
-  wire [MSG_IDX_W-1:0] mlkem_msg_off = kv_read_i[KV_RD_MLKEM_MSG].read_offset[MSG_IDX_W-1:0];
-  assign kv_rd_resp_o[KV_RD_MLKEM_MSG].read_data = mlkem_msg[mlkem_msg_off];
-  assign kv_rd_resp_o[KV_RD_MLKEM_MSG].last      =
-        (kv_read_i[KV_RD_MLKEM_MSG].read_offset == KV_ENTRY_SIZE_W'(MSG_DWORDS - 1));
-  assign kv_rd_resp_o[KV_RD_MLKEM_MSG].error     = ~mlkem_msg_valid;
+  wire [MsgIdxW-1:0] mlkem_msg_off = kv_read_i[KvRdMlkemMsg].read_offset[MsgIdxW-1:0];
+  assign kv_rd_resp_o[KvRdMlkemMsg].read_data = mlkem_msg[mlkem_msg_off];
+  assign kv_rd_resp_o[KvRdMlkemMsg].last      =
+        (kv_read_i[KvRdMlkemMsg].read_offset == KV_ENTRY_SIZE_W'(MSG_DWORDS - 1));
+  assign kv_rd_resp_o[KvRdMlkemMsg].error     = ~mlkem_msg_valid;
 
   // =========================================================================
   // KV write : ML-KEM shared-key writeback into MLKEM_SHARED_KEY.
@@ -138,9 +138,9 @@ module sep_abr_kv_shim
   // IRQ_STATUS.key_valid.hwset (raises the interrupt the wrapper gates with
   // IRQ_ENABLE). Signatures are public, so ML-DSA never drives kv_write.
   // =========================================================================
-  localparam int unsigned SK_IDX_W = (SHARED_KEY_DWORDS > 1) ? $clog2(SHARED_KEY_DWORDS) : 1;
+  localparam int unsigned SkIdxW = (SHARED_KEY_DWORDS > 1) ? $clog2(SHARED_KEY_DWORDS) : 1;
 
-  wire [SK_IDX_W-1:0] sk_off = kv_write_i.write_offset[SK_IDX_W-1:0];
+  wire [SkIdxW-1:0] sk_off = kv_write_i.write_offset[SkIdxW-1:0];
 
   always_comb begin
     hwif_o = '{default: '0};

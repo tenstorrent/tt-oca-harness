@@ -104,6 +104,8 @@ def _load_oca():
 
 K, MF, PF = _load_oca()
 
+BUILD_DIR = _SEP_ROOT / "bootrom" / "prod" / "build"
+
 # Slot offsets in the packed image, matching the ROM's compiled-in
 # PRIMARY_MANIFEST_OFFSET / BACKUP_MANIFEST_OFFSET, and asserted against the
 # shipped image by verify_layout().
@@ -217,14 +219,10 @@ def rom_key_image(index: int) -> Path:
     """
     if not 0 <= index < PUBK_SEL_NUM_ROM_KEYS:
         raise ValueError(f"ROM key slot {index} is outside 0..{PUBK_SEL_NUM_ROM_KEYS - 1}")
-    build = _SEP_ROOT / "bootrom" / "prod" / "build"
     name = "oca_secure_boot.bin" if index == 0 else f"oca_rom_key{index}_boot.bin"
-    p = build / name
+    p = BUILD_DIR / name
     if not p.is_file():
-        raise AssertionError(
-            f"{p} not found; run `make oca-images` in bootrom/prod. It is declared in "
-            f"[c_build.boot_rom_ot].outputs, so --stage sim should have failed first"
-        )
+        raise AssertionError(f"{p} not found; run `make oca-images` in bootrom/prod")
     return p
 
 
@@ -480,9 +478,101 @@ def rom_boot_err(name: str) -> int:
 # ---------------------------------------------------------------------------
 # Structural and anti-rollback fields
 # ---------------------------------------------------------------------------
-OFF_MAGIC = 0
+OFF_MAGIC = K.OFF_BOOT_MANIFEST_MAGIC
+OFF_VERSION_MAJOR = K.OFF_MANIFEST_VERSION_MAJOR
+OFF_VERSION_MINOR = K.OFF_MANIFEST_VERSION_MINOR
+OFF_MANIFEST_LENGTH = K.OFF_MANIFEST_LENGTH
 OFF_SECURITY_VERSION = K.OFF_MANIFEST_SECURITY_VERSION
 SECURITY_VERSION_LEN = 16
+
+# manifest_length must equal the variant's body size at every minor version.
+MANIFEST_SIZE = BODY_SIZE
+MANIFEST_MAJOR_VERSION = 1
+# The consumer's own copy of the body size, which is what the ROM enforces.
+CONSUMER_BODY_SIZE = _c_define(
+    _OCA_VALIDATOR_H.with_name("oca_layout_classic.h"), "OCA_CLASSIC_BODY_SIZE"
+)
+
+
+def manifest_version(buf: bytes, slot: str) -> tuple[int, int]:
+    """Return the OCA CLASSIC ``(major, minor)`` format version."""
+    require_classic(buf, slot)
+    base = slot_base(slot)
+    return (
+        int.from_bytes(
+            bytes(buf[base + OFF_VERSION_MAJOR : base + OFF_VERSION_MAJOR + 2]), "little"
+        ),
+        int.from_bytes(
+            bytes(buf[base + OFF_VERSION_MINOR : base + OFF_VERSION_MINOR + 2]), "little"
+        ),
+    )
+
+
+def set_manifest_version(
+    buf: bytearray,
+    slot: str,
+    *,
+    major: int | None = None,
+    minor: int | None = None,
+) -> tuple[int, int]:
+    """Set the OCA CLASSIC format version and refresh ``manifest_hash``."""
+    current_major, current_minor = manifest_version(buf, slot)
+    new_major = current_major if major is None else major
+    new_minor = current_minor if minor is None else minor
+    if not 0 <= new_major <= 0xFFFF or not 0 <= new_minor <= 0xFFFF:
+        raise ValueError("manifest version components are 16 bits")
+    base = slot_base(slot)
+    buf[base + OFF_VERSION_MAJOR : base + OFF_VERSION_MAJOR + 2] = new_major.to_bytes(2, "little")
+    buf[base + OFF_VERSION_MINOR : base + OFF_VERSION_MINOR + 2] = new_minor.to_bytes(2, "little")
+    rehash(buf, slot)
+    return new_major, new_minor
+
+
+def manifest_length(buf: bytes, slot: str) -> int:
+    """Return the declared OCA manifest body length."""
+    require_classic(buf, slot)
+    base = slot_base(slot) + OFF_MANIFEST_LENGTH
+    return int.from_bytes(bytes(buf[base : base + 4]), "little")
+
+
+def set_manifest_length(buf: bytearray, slot: str, value: int) -> int:
+    """Set the declared OCA body length and refresh ``manifest_hash``."""
+    require_classic(buf, slot)
+    if not 0 <= value <= 0xFFFF_FFFF:
+        raise ValueError("manifest_length is 32 bits")
+    base = slot_base(slot) + OFF_MANIFEST_LENGTH
+    buf[base : base + 4] = value.to_bytes(4, "little")
+    rehash(buf, slot)
+    return value
+
+
+def manifest_hash(buf: bytes, slot: str) -> bytes:
+    """Return the SHA-256 portion of the padded OCA ``manifest_hash`` field."""
+    base = slot_base(slot) + OFF_MANIFEST_HASH
+    return bytes(buf[base : base + DIGEST_LEN])
+
+
+def signed_region_hash(buf: bytes, slot: str) -> bytes:
+    """Return SHA-256 over the OCA variant's signed region."""
+    base = slot_base(slot)
+    variant = variant_at(buf, base)
+    return hashlib.sha256(bytes(buf[base : base + variant.signed_region_end])).digest()
+
+
+def corrupt_manifest_hash(
+    buf: bytearray,
+    slot: str,
+    *,
+    byte_index: int = 0,
+    xor_mask: int = 0xFF,
+) -> None:
+    """Corrupt the stored digest without changing the signed region."""
+    require_classic(buf, slot)
+    if not 0 <= byte_index < DIGEST_LEN:
+        raise ValueError(f"manifest_hash digest is {DIGEST_LEN} bytes")
+    if not 0 < xor_mask <= 0xFF:
+        raise ValueError("xor_mask must be a non-zero byte")
+    buf[slot_base(slot) + OFF_MANIFEST_HASH + byte_index] ^= xor_mask
 
 
 def break_magic(buf: bytearray, slot: str, value: bytes = b"\x99\x99\x99\x99") -> bytes:
@@ -567,6 +657,20 @@ OFF_SELECTOR_BITS = K.OFF_SELECTOR_BITS
 SELECTOR_BITS_LEN = 16
 SELECTOR_BITS_USED_LIMIT = K.SELECTOR_BITS_USED_LIMIT
 
+# Selector bit base+i enables byte i of a 32-byte identity field; constants.py lacks the bases.
+OFF_IDENTITY = {
+    "chiplet": K.OFF_CHIPLET_ID,
+    "package": K.OFF_PACKAGE_ID,
+    "system": K.OFF_SYSTEM_ID,
+}
+IDENTITY_LEN = K.CHIPLET_ID_SIZE
+SELECTOR_BIT_IDENTITY_BASE = {"chiplet": 0, "package": 32, "system": 64}
+if {K.CHIPLET_ID_SIZE, K.PACKAGE_ID_SIZE, K.SYSTEM_ID_SIZE} != {32}:
+    raise ImportError(
+        "an identity field is no longer 32 bytes, so a 32-bit per-byte selector mask "
+        "no longer covers it; re-derive SELECTOR_BIT_IDENTITY_BASE from selector.c"
+    )
+
 # A lifecycle constraint is per identity scope: three fields, each with its own
 # selector bit.
 OFF_LIFECYCLE_STATES = {
@@ -581,6 +685,8 @@ SELECTOR_BIT_LIFECYCLE = {
 }
 LIFECYCLE_STATE_BITS = dict(K.LIFECYCLE_STATE_NAMES)
 LIFECYCLE_STATES_VALID_MASK = K.LIFECYCLE_STATES_VALID_MASK
+SHIPPED_SELECTOR_BITS = 0
+SHIPPED_IDENTITY_BYTE = K.MANIFEST_UNUSED_BYTE
 
 # Demotion is a standalone u16 here, not a selector bit plus a flags bit. Its
 # four bits match oca_boot.h's OCA_DEMOTE_* exactly.
@@ -589,6 +695,8 @@ DEMOTION_BITS = dict(K.DEMOTION_CONTROL_FLAG_NAMES)
 DEMOTION_CONTROL_VALID_MASK = K.DEMOTION_CONTROL_VALID_MASK
 
 OFF_SECURE_BOOT_CONTROL = K.OFF_SECURE_BOOT_CONTROL
+OFF_ENCRYPTION_IV = K.OFF_ENCRYPTION_IV
+OFF_ENCRYPTION_KDF_INPUT = K.OFF_ENCRYPTION_KDF_INPUT
 _OCA_LAYOUT_H = _OCA_SRC.parent.parent / "validators" / "oca" / "lib" / "oca_layout.h"
 
 
@@ -602,6 +710,11 @@ def selector_bits(buf: bytes, slot: str) -> int:
     return int.from_bytes(bytes(buf[base : base + SELECTOR_BITS_LEN]), "little")
 
 
+def _put_selector_bits(buf: bytearray, slot: str, bits: int) -> None:
+    base = slot_base(slot) + OFF_SELECTOR_BITS
+    buf[base : base + SELECTOR_BITS_LEN] = bits.to_bytes(SELECTOR_BITS_LEN, "little")
+
+
 def set_selector_bit(buf: bytearray, slot: str, bit: int, value: bool) -> int:
     """Set or clear one selector bit. Returns the resulting bitmap."""
     require_classic(buf, slot)
@@ -609,10 +722,91 @@ def set_selector_bit(buf: bytearray, slot: str, bit: int, value: bool) -> int:
         raise ValueError(f"selector bit {bit} is outside the 128-bit field")
     bits = selector_bits(buf, slot)
     bits = (bits | (1 << bit)) if value else (bits & ~(1 << bit))
-    base = slot_base(slot) + OFF_SELECTOR_BITS
-    buf[base : base + SELECTOR_BITS_LEN] = bits.to_bytes(SELECTOR_BITS_LEN, "little")
+    _put_selector_bits(buf, slot, bits)
     rehash(buf, slot)
     return bits
+
+
+def _reseal(buf: bytearray, slot: str) -> None:
+    # Deferred import: sep_payload_mutate imports this module.
+    from env import sep_payload_mutate as pm
+
+    pm.reseal(buf, slot, check_toc=not pm.is_encrypted(buf, slot))
+
+
+def _identity_field_mask(kind: str) -> int:
+    if kind not in OFF_IDENTITY:
+        raise ValueError(f"kind must be one of {sorted(OFF_IDENTITY)}, got {kind!r}")
+    return ((1 << IDENTITY_LEN) - 1) << SELECTOR_BIT_IDENTITY_BASE[kind]
+
+
+def selector_mask(kind: str, byte_index: int) -> int:
+    _identity_field_mask(kind)
+    if not 0 <= byte_index < IDENTITY_LEN:
+        raise ValueError(f"{kind} identity has {IDENTITY_LEN} bytes, not index {byte_index}")
+    return 1 << (SELECTOR_BIT_IDENTITY_BASE[kind] + byte_index)
+
+
+def identity(buf: bytes, slot: str, kind: str) -> bytes:
+    require_classic(buf, slot)
+    _identity_field_mask(kind)
+    base = slot_base(slot) + OFF_IDENTITY[kind]
+    return bytes(buf[base : base + IDENTITY_LEN])
+
+
+def verify_identity_layout(buf: bytes, slot: str) -> None:
+    bits = selector_bits(buf, slot)
+    for kind in OFF_IDENTITY:
+        field = identity(buf, slot, kind)
+        stray = [
+            i
+            for i in range(IDENTITY_LEN)
+            if not bits & selector_mask(kind, i) and field[i] != SHIPPED_IDENTITY_BYTE
+        ]
+        if stray:
+            raise AssertionError(
+                f"{slot} {kind} identity has non-0x{SHIPPED_IDENTITY_BYTE:02x} bytes at "
+                f"unselected positions {stray} ({field.hex()}); OFF_IDENTITY looks wrong"
+            )
+
+
+def set_identity(buf: bytearray, slot: str, kind: str, value: bytes, mask: int) -> None:
+    require_classic(buf, slot)
+    field_mask = _identity_field_mask(kind)
+    if len(value) != IDENTITY_LEN:
+        raise ValueError(f"{kind} identity is {IDENTITY_LEN} bytes, got {len(value)}")
+    if mask == 0 or mask & ~field_mask:
+        raise ValueError(
+            f"mask 0x{mask:x} must select at least one {kind} byte and nothing outside "
+            f"0x{field_mask:x}; an empty selection leaves the constraint unchecked"
+        )
+    filled = bytes(
+        value[i] if mask & selector_mask(kind, i) else SHIPPED_IDENTITY_BYTE
+        for i in range(IDENTITY_LEN)
+    )
+    base = slot_base(slot) + OFF_IDENTITY[kind]
+    buf[base : base + IDENTITY_LEN] = filled
+    _put_selector_bits(buf, slot, (selector_bits(buf, slot) & ~field_mask) | mask)
+    verify_identity_layout(buf, slot)
+    _reseal(buf, slot)
+
+
+def set_lifecycle_constraint(
+    buf: bytearray, slot: str, allowed: int, level: str = "chiplet"
+) -> None:
+    # The SEP reports only a chiplet lifecycle; the ROM refuses package/system constraints.
+    require_classic(buf, slot)
+    if level not in OFF_LIFECYCLE_STATES:
+        raise ValueError(f"level must be one of {sorted(OFF_LIFECYCLE_STATES)}, got {level!r}")
+    if not 0 <= allowed <= LIFECYCLE_STATES_VALID_MASK:
+        raise ValueError(
+            f"allowed 0x{allowed:x} sets bits outside 0x{LIFECYCLE_STATES_VALID_MASK:x}"
+        )
+    verify_usage_constraints_layout(buf, slot)
+    base = slot_base(slot) + OFF_LIFECYCLE_STATES[level]
+    buf[base : base + 4] = allowed.to_bytes(4, "little")
+    _put_selector_bits(buf, slot, selector_bits(buf, slot) | (1 << SELECTOR_BIT_LIFECYCLE[level]))
+    _reseal(buf, slot)
 
 
 def lifecycle_states(buf: bytes, slot: str, scope: str = "chiplet") -> int:
@@ -815,7 +1009,7 @@ _BOOTROM_PROD = _SEP_ROOT / "bootrom" / "prod"
 # key_digests.c is generated into the ROM's build directory, so read it from
 # whichever variant this run built. BUILD_DIR selects the SPI transport, not the
 # anchors, so all three carry the same key set and the first present one answers.
-_KEY_DIGESTS_BUILD_DIRS = ("build", "build_ot", "build_ot_pio")
+_KEY_DIGESTS_BUILD_DIRS = ("build", "build_pio")
 _OCA_PLATFORM_C = _BOOTROM_PROD / "src" / "oca_platform.c"
 
 
@@ -1100,10 +1294,9 @@ def forge_pkcs1_signature(buf: bytearray, slot: str) -> bytes:
 
 def _selftest() -> int:
     """Check the layout assumptions against every packed image on disk."""
-    build = _SEP_ROOT / "bootrom" / "prod" / "build"
-    images = sorted(build.glob("oca_*_boot.bin"))
+    images = sorted(BUILD_DIR.glob("oca_*_boot.bin"))
     if not images:
-        print(f"no packed images in {build}; run `make oca-images` first")
+        print(f"no packed images in {BUILD_DIR}; run `make oca-images` first")
         return 1
     print(f"layout from {_OCA_SRC} ({', '.join(_OCA_MODULES)})")
     print(f"  magic={MANIFEST_MAGIC!r} body={BODY_SIZE} signed=[0,{SIGNED_REGION_END})")
@@ -1285,6 +1478,90 @@ def _selftest() -> int:
             bad += 1
         else:
             print(f"  ok   {name} -> generic SEP_MSG_MANIFEST_LOAD_FAILED")
+
+    cocotb_dir = Path(__file__).resolve().parents[1]
+    for p in (cocotb_dir, cocotb_dir / "tests"):
+        if str(p) not in sys.path:
+            sys.path.insert(0, str(p))
+    from env import sep_payload_mutate as pm
+
+    buf = bytearray(Path(BUILD_DIR / "oca_secure_boot.bin").read_bytes())
+    assert selector_mask("package", 0) == 1 << 32 and selector_mask("chiplet", 3) == 1 << 3
+    set_identity(buf, "primary", "package", bytes(32), selector_mask("package", 5))
+    pm.verify_sealed(buf, "primary")
+    set_lifecycle_constraint(buf, "primary", allowed=1 << 2)
+    pm.verify_sealed(buf, "primary")
+    from rom_fw import sep_manifest_field_defect as fd
+
+    assert fd.assert_consumer_body_size(buf) == 4096
+    lc_bit = 1 << SELECTOR_BIT_LIFECYCLE["chiplet"]
+    assert (
+        selector_bits(buf, "primary") == selector_mask("package", 5) | lc_bit == 1 << 37 | 1 << 96
+    )
+    want_package = bytes(0 if i == 5 else SHIPPED_IDENTITY_BYTE for i in range(IDENTITY_LEN))
+    assert identity(buf, "primary", "package") == want_package
+    assert lifecycle_states(buf, "primary", "chiplet") == 1 << 2
+    assert selector_mask("system", 31) == 1 << 95
+    for bad_args in (("package", 32), ("series", 0)):
+        try:
+            selector_mask(*bad_args)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"selector_mask{bad_args} was accepted")
+    try:
+        set_identity(buf, "primary", "chiplet", bytes(32), selector_mask("package", 0))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("set_identity accepted a mask outside its own field")
+    for level, off in (("package", 140), ("system", 144)):
+        u = bytearray(Path(BUILD_DIR / "oca_secure_boot.bin").read_bytes())
+        set_lifecycle_constraint(u, "primary", allowed=0x7F, level=level)
+        pm.verify_sealed(u, "primary")
+        assert selector_bits(u, "primary") == 1 << SELECTOR_BIT_LIFECYCLE[level]
+        at = slot_base("primary") + off
+        assert int.from_bytes(u[at : at + 4], "little") == 0x7F
+    print(
+        f"\nidentity/lifecycle setters: ok (package lifecycle bit {SELECTOR_BIT_LIFECYCLE['package']})"
+    )
+
+    img = (BUILD_DIR / "oca_identity_boot.bin").read_bytes()
+    want = selector_mask("chiplet", 0) | selector_mask("chiplet", 1)
+    assert selector_bits(img, "primary") == want, hex(selector_bits(img, "primary"))
+    assert identity(img, "primary", "chiplet")[:2] == b"\xde\xad"
+    verify_identity_layout(img, "primary")
+    print(f"oca_identity_boot.bin selector 0x{want:x}: per-byte model agrees with the packer")
+
+    enc = bytearray((BUILD_DIR / "oca_encrypted_boot.bin").read_bytes())
+    set_identity(enc, "backup", "system", bytes(range(32)), selector_mask("system", 0))
+    pm.verify_sealed(enc, "backup")
+    print("encrypted slot: set_identity re-seals and the decrypted TOC still verifies")
+
+    # A second field's set_identity must not flag the first field's bytes as strays.
+    two = bytearray(Path(BUILD_DIR / "oca_secure_boot.bin").read_bytes())
+    set_identity(two, "primary", "chiplet", bytes(32), selector_mask("chiplet", 0))
+    pm.verify_sealed(two, "primary")
+    set_identity(two, "primary", "package", bytes(32), selector_mask("package", 1))
+    pm.verify_sealed(two, "primary")
+    assert identity(two, "primary", "chiplet") == bytes(
+        0 if i == 0 else SHIPPED_IDENTITY_BYTE for i in range(IDENTITY_LEN)
+    )
+    assert identity(two, "primary", "package") == bytes(
+        0 if i == 1 else SHIPPED_IDENTITY_BYTE for i in range(IDENTITY_LEN)
+    )
+    verify_identity_layout(two, "primary")
+    print("two successive set_identity calls: both verify_sealed, unselected bytes stay 0xA5")
+
+    m = bytearray(buf)
+    set_manifest_length(m, "primary", BODY_SIZE + 4)
+    try:
+        fd.assert_consumer_body_size(m)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("assert_consumer_body_size accepted a mutated manifest_length")
+    print(f"consumer body size: {fd.assert_consumer_body_size()}")
 
     return 1 if bad else 0
 
