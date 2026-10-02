@@ -39,8 +39,8 @@ AMBER = "#f6c343"
 RED = "#C55050"
 GREY = "#9f9f9f"
 
-PASS_AT = 95.0
-WARN_AT = 70.0
+PASS_AT = 98.0
+WARN_AT = 85.0
 
 # Statuses reporting no verdict, banded grey rather than as a failure.
 UNMEASURED = {"", "SKIP", "NOTRUN"}
