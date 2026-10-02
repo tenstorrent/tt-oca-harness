@@ -64,9 +64,9 @@ DCCM_BASE ?= 0xC0040000
 # and spilled registers, so this scrub is what keeps key material off the stack.
 DCCM_SCRUB_BYTES ?= 0x20000
 
-# Off, and not for speed: rom_clear_ext_sram() runs before the manifest load and
-# would wipe the warm handler sep_scratch_7_test preloads at SRAM_BASE + 0x100.
-# Stays off until that preload can be staged after the cold-boot scrub.
+# Off by default: rom_clear_ext_sram() runs before the manifest load, and the
+# testbench can preload SEP SRAM (+sep_sram_hex). 0x40000 clears all of it, which
+# SEP-ROM-CPU-100 requires; rom.adoc tracks the default as a gap.
 SRAM_SCRUB_BYTES ?= 0
 
 # BL1 execution from SEP SRAM. ICCM is the secure execution space and is always

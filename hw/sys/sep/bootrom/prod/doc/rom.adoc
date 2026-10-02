@@ -256,8 +256,9 @@ boot flow. Addresses are as seen by the SEP CPU.
 |===
 |*Region* |*Base* |*Size* |*Boot-flow role*
 |SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 may also
-execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Cleared by the ROM
-before use ([S15]). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
+execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Zeroed at [S15]
+only when `SRAM_SCRUB_BYTES` is nonzero (default 0); the manifest loader zeroes it between SPI
+slot attempts (<<sec:retry>>). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
 the engine re-reads for every beat, and the CPU rewrites that word immediately before each
 fill, so the manifest body, the payload and BL1's permitted load span all stop short of it
 (`SEP_SRAM_USABLE_SIZE`). SEP has no zeroing engine and the secure DMA has no fill opcode, so
@@ -291,8 +292,8 @@ boot decisions.
 (XIP path); DMA source for manifest/payload loads.
 |SMC window |`0x40000000` |— |SEP view of the SMC (`SEP_SMC_GLOBAL_BASE`); the crossbar routes
 `[0x4000_0000, 0xC000_0000)` outbound. See <<tbl:smc_window>>.
-|ICCM |`0xC0000000` |256 KiB |ECC established by the ROM before BL1 runs: at hand-off by
-default, or at [S16]. The secure BL1 execution region, always permitted (<<sec:manifest>>).
+|ICCM |`0xC0000000` |256 KiB |ECC established by the ROM before BL1 runs: over an
+ICCM-resident BL1 and a pad past it at hand-off by default, or over all of ICCM at [S16]. The secure BL1 execution region, always permitted (<<sec:manifest>>).
 |DCCM |`0xC0040000` |128 KiB |BL0 runtime data: `.data`, `.bss`, stack, and the `bl0_state`
 hand-off block at the top (<<sec:handoff>>).
 |PIC |`0xC0080000` |— |Interrupts stay disabled in BL0.
@@ -539,8 +540,8 @@ read in the flow |<<sec:fuses>>
 |[S14] |Crypto init |SHA-256 self-test against NIST vector |<<sec:cpu_init>>
 |[S15] |SEP SRAM clear |The first `SRAM_SCRUB_BYTES` of SRAM zeroed (default 0: skipped)
 |<<sec:cpu_init>>
-|[S16] |ICCM clear |ICCM ECC established: over BL1 and a pad at hand-off by default, or the
-whole region zeroed here |<<sec:cpu_init>>
+|[S16] |ICCM clear |ICCM ECC established: over an ICCM-resident BL1 and a pad at hand-off by
+default, or the whole region zeroed here |<<sec:cpu_init>>
 |[S17] |Measurement slot 0 |Verified ROM self-hash enrolled — soft PCR + raw record in
 `bl0_state` |<<sec:boot_measurement>>
 |[S18] |Secure-boot posture fuses |`SBOOT_DIS` chicken bit read into `bl0_state`; chiplet
@@ -563,8 +564,8 @@ anti-rollback, decrypt |<<sec:secure_boot>>
 in `bl0_state` |<<sec:boot_measurement>>
 |[S28] |Stack canary check |Canary re-verified, before the hand-off that does not return
 |<<sec:handoff>>
-|[S29] |BL1 hand-off |Pre-hand-off self-check, ICCM ECC pad past BL1 (default build), PMP
-release, jump to BL1 |<<sec:handoff>>
+|[S29] |BL1 hand-off |Pre-hand-off self-check, ICCM ECC pad past an ICCM-resident BL1
+(default build), PMP release, jump to BL1 |<<sec:handoff>>
 |[S30] |Error convergence |All failures funnel into `rom_err_fail()` |<<sec:status>>,
 <<sec:retry>>
 |===
@@ -748,12 +749,13 @@ clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock
 |[S14] crypto self-test |SHA-256 of `"abc"` computed on the HMAC block and compared against
 the NIST reference digest. See requirement below.
 |[S15] SRAM clear |The first `SRAM_SCRUB_BYTES` of SEP SRAM (`0x10000000`, 256 KiB) zeroed.
-The default is 0, so nothing is cleared here; the manifest loader zeroes SRAM between slot
-attempts (<<sec:retry>>).
-|[S16] ICCM clear |By default nothing is cleared here: the BL1 copy writes BL1's words with
-valid ECC, and the ROM zeroes a pad past its end at hand-off. `ROM_ICCM_CLEAR_FULL=1` zeroes
-all of ICCM here instead, clearing power-up residue too; `ROM_ICCM_CLEAR_ENABLE=0` skips both.
-Base and size are build-time parameters.
+The default is 0, so nothing is cleared here; the manifest loader zeroes SRAM between SPI
+slot attempts (<<sec:retry>>).
+|[S16] ICCM clear |By default nothing is cleared here. For a BL1 that lands in ICCM, the BL1
+copy writes its words with valid ECC and the ROM zeroes a pad past its end at hand-off; a BL1
+in SRAM leaves ICCM untouched. `ROM_ICCM_CLEAR_FULL=1` zeroes all of ICCM here instead
+(base and size are build-time parameters), clearing power-up residue too;
+`ROM_ICCM_CLEAR_ENABLE=0` skips both.
 |[S17] ROM self-hash |Embedded hash verified by recompute over the ROM region, then
 enrolled in soft measurement slot 0 (<<sec:boot_measurement>>). Fatal on mismatch (`0xF005`).
 Placed at the earliest point where both of its prerequisites hold: the SHA-256 engine has
@@ -775,11 +777,12 @@ validated-boot environment.
 
 [WARNING]
 ====
-*IMPLEMENTATION GAP* — the default build does not meet this requirement. `SRAM_SCRUB_BYTES`
-defaults to 0, so [S15] clears no SRAM. With the default `ROM_ICCM_CLEAR_FULL=0`, ICCM is
-written only over BL1's image and a pad past its end at hand-off, so power-up residue elsewhere
-in ICCM survives. `SRAM_SCRUB_BYTES=0x40000` and `ROM_ICCM_CLEAR_FULL=1` select the full
-clears.
+*IMPLEMENTATION GAP* — the default build does not meet this requirement (tracked in
+<<sec:impl_matrix>>). `SRAM_SCRUB_BYTES` defaults to 0, so [S15] clears no SRAM. With the
+default `ROM_ICCM_CLEAR_FULL=0`, ICCM is written only over an ICCM-resident BL1 and a pad past
+its end at hand-off, so power-up residue elsewhere in ICCM survives. `SRAM_SCRUB_BYTES=0x40000`
+and `ROM_ICCM_CLEAR_FULL=1` select the full clears; the SRAM scrub also clears anything the
+testbench preloads into SEP SRAM.
 ====
 
 [WARNING]

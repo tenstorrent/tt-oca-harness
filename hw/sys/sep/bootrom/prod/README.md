@@ -183,8 +183,8 @@ Common build variables include:
 | `BUILD_TYPE` | `debug` | `debug` or `release`; see [Build types](#build-types). |
 | `SEP_ROM_RELEASE_SIGNING_KEYS_DIR` | `release_signing_keys` | Where a release build reads its public ROM keys. |
 
-The default build is debug-oriented. Its zero-length SEP SRAM scrub reduces RTL
-simulation cost. ICCM ECC establishment is enabled, while the full-region clear
+The default build is debug-oriented. Its zero-length SEP SRAM scrub leaves in place
+anything the testbench preloads into SEP SRAM. ICCM ECC establishment is enabled, while the full-region clear
 is disabled; an adopter requiring full ICCM residue clearing sets
 `ROM_ICCM_CLEAR_FULL=1`. PMP rules are locked and bound to machine mode whenever
 `PMP_ENABLE=1`. A release image must also apply the adopter's final
