@@ -135,7 +135,7 @@ role = "unreachable"
 path = "smc_unreachable.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
-sha256 = "7c5432772b5cc61e28ebfd978d5b586e85dfd0eb36855f154a27b73fd467aafb"
+sha256 = "d9f63fedf8bbe2f3ada6d8bfe9a16ce9927061cb9c49717b934656059b675c9c"
 
 # urg reports the cov/sv cover properties under `user`; the runner grades the
 # family by the tool's own figure. This file carries no `[[holes]]` row for
