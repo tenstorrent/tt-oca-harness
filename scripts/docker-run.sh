@@ -25,6 +25,9 @@
 #                               (default: docker.io/nixos/nix:latest)
 #      OCAH_IMAGE_WITH_UV      bundle uv-installed dependencies into nix-built
 #                               image (true/false, default: false)
+#      OCAH_NIX_MAX_JOBS       derivations nix builds in parallel; NIX_CONFIG
+#                               overrides nix.conf, so lower it here on a
+#                               shared host (default: auto, one per CPU)
 #      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the nix
 #                               container image; unset disables the cache
 #                               (site CI sets this, e.g. in its env setup)
@@ -63,9 +66,8 @@ IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
 NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
 MANIFEST_SUBMODULE="hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
 REGISTRY_IMAGE="${OCAH_CONTAINER_REGISTRY_IMAGE:-}"
-# Flakes are required; max-jobs builds independent derivations on every CPU.
 NIX_CONFIG="experimental-features = nix-command flakes
-max-jobs = auto"
+max-jobs = ${OCAH_NIX_MAX_JOBS:-auto}"
 
 # Private submodules, as "<path>:<repository name>". A flake input is fetched
 # with submodules=1, so nix resolves every one of these from .gitmodules -- over
