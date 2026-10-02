@@ -369,6 +369,28 @@ class CoordinatorGradedLeaf(unittest.TestCase):
         self.assertEqual((bucket["kind"], bucket["count"]), ("environment_error", 1))
         self.assertEqual(bucket["examples"], [self.rel(self.JOB_LOGS[1])])
 
+    def test_a_leaf_file_written_after_the_grade_fills_only_what_the_record_lacks(self):
+        regression_path = self.run_root / "stages" / "regress" / "regression.json"
+        regression = json.loads(regression_path.read_text())
+        reason = f"environment_error: attempt sim-000000-a1 {self.SIGNATURE}"
+        regression["jobs"][1]["reason"] = reason
+        regression_path.write_text(json.dumps(regression))
+        late = {
+            "item": "t_alpha",
+            "seed": 3,
+            "attempt": 1,
+            "status": "PASS",
+            "reason": "",
+            "duration_sec": 12.5,
+            "artifacts": {"results_xml": self.rel(f"{self.LEAF}/attempt_1/results/results.xml")},
+        }
+        (self.run_root / self.LEAF / "attempt_1" / "result.json").write_text(json.dumps(late))
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        (detail,) = record["tests_detail"]
+        self.assertEqual((detail["status"], detail["reason"]), ("ERROR", reason))
+        self.assertEqual(detail["duration_sec"], 12.5)
+        self.assertEqual(record["junit_xml"], {"total": 1, "missing": 0})
+
     def test_a_formal_regression_leaf_bucket_counts_once(self):
         formal = {"kind": "formal_fail", "signature": "assert_p", "count": 1}
         result_path = self.run_root / "result.json"

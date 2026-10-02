@@ -543,7 +543,9 @@ Collection performs these steps:
 . Load the native run-level result.
 . Load `stages/regress/regression.json` when present.
 . Rebase recorded run-tree paths onto the selected run root.
-. Load leaf fragments and test metadata to build `tests_detail`.
+. Build `tests_detail` from each leaf's run or regression record and the
+  test metadata. The record decides the status and reason; the leaf fragment
+  supplies only the fields the record lacks.
 . Prefer each leaf's `artifacts.results_xml`, then parser evidence, then the
   `results/results.xml` beside the leaf's recorded `result.json`, then
   log-layout inference from a leaf log, when locating JUnit/xUnit files.
