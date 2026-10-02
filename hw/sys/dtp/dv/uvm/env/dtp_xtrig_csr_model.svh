@@ -5,7 +5,8 @@
 // readback contract (CTM selects, CTP CONFIG and STRETCH_MULT), rebuilt
 // from the writes observed on the XTRIG AXI-Lite port under their byte
 // strobes and the register's implemented-bit mask, and cleared on every
-// system or power-on reset. Plain class held by dtp_xtrig_csr_ref_model;
+// system or power-on reset. Each register is keyed by the CSR word that
+// holds it (dtp_xtrig_csr_word). Plain class held by dtp_xtrig_csr_ref_model;
 // no reporting. In the cocotb realization the scenarios record each CSR
 // readback against the written value as CHK-XTRIG-CSR evidence.
 
@@ -24,12 +25,13 @@ class dtp_xtrig_csr_model;
   function void write(bit [63:0] addr, bit [31:0] data, bit [3:0] wstrb, bit [31:0] mask,
                       bit [31:0] reset_value);
     bit [31:0] current = read(addr, mask, reset_value);
-    m_shadow[addr] = dtp_xtrig_apply_wstrb(current, data, wstrb) & mask;
+    m_shadow[dtp_xtrig_csr_word(addr)] = dtp_xtrig_apply_wstrb(current, data, wstrb) & mask;
   endfunction
 
   // Expected readback: the shadow, or the register's reset value.
   function bit [31:0] read(bit [63:0] addr, bit [31:0] mask, bit [31:0] reset_value);
-    return (m_shadow.exists(addr) ? m_shadow[addr] : reset_value) & mask;
+    bit [63:0] word = dtp_xtrig_csr_word(addr);
+    return (m_shadow.exists(word) ? m_shadow[word] : reset_value) & mask;
   endfunction
 
 endclass : dtp_xtrig_csr_model

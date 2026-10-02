@@ -301,8 +301,9 @@ capture events.
 |===
 
 The mode and inversion bins sample the CONFIG writes that strobe byte 0 and the
-stretch bins the STRETCH_MULT writes that strobe both field bytes. The P2P state
-bins follow the request and acknowledge pads of the point-to-point ports at the
+stretch bins the STRETCH_MULT writes that strobe both field bytes, a write
+counting toward the register whose word holds its address. The P2P state bins
+follow the request and acknowledge pads of the point-to-point ports at the
 `CONFIG.INVERT` polarity each port's pads apply; the acknowledge phase is a
 request and its acknowledge asserted on the same port, and reset recovery is a
 request rising after a `CONFIG.RESET` write.
@@ -338,14 +339,14 @@ mode delivering a trigger from its shared wire.
 *Description*: Covers the routes the matrix carried. A destination rise is
 credited to the one source that rose within the preceding 32 system clocks and
 that the destination's `CT_SRC` `CONFIG_0` `CT_DST_SELECT` mask, shadowed from
-the CSR writes under their byte strobes, selects; a rise with two such sources
-credits no route. A source event is a CTP delivering a trigger into the matrix
-(`ct_dst`, either mode) or a CLA request; a destination event is a CTP starting
-to assert `CT_Req_out` or the matrix requesting a CLA. A CTP asserts by driving
-its wire in wire-OR mode and by driving the request level, high unless
-`CONFIG.INVERT` is set, in point-to-point mode. The CLA-to-CTP and CTP-to-CLA
-random mixes drive every route of their class alone within one test, so each of
-their seeds closes its cross.
+the CSR writes to its word under their byte strobes, selects; a rise with two
+such sources credits no route. A source event is a CTP delivering a trigger into
+the matrix (`ct_dst`, either mode) or a CLA request; a destination event is a
+CTP starting to assert `CT_Req_out` or the matrix requesting a CLA. A CTP
+asserts by driving its wire in wire-OR mode and by driving the request level,
+high unless `CONFIG.INVERT` is set, in point-to-point mode. The CLA-to-CTP and
+CTP-to-CLA random mixes drive every route of their class alone within one test,
+so each of their seeds closes its cross.
 
 [cols=",",options="header",]
 |===
