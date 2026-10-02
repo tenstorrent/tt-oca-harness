@@ -547,7 +547,11 @@ Collection performs these steps:
 . Prefer each leaf's `artifacts.results_xml`, then parser evidence, then the
   `results/results.xml` beside the leaf's recorded `result.json`, then
   log-layout inference from a leaf log, when locating JUnit/xUnit files.
-. Count the resolved JUnit/xUnit files and how many are missing.
+. Count the resolved JUnit/xUnit files, with any runner `graded.xml` beside
+  them, and how many are missing.
+. Warn, naming the test, seed, and attempt, for each resolved file that is
+  missing and for each graded attempt that names none. An earlier attempt of a
+  retried leaf that left no result is not a warning.
 . Convert the native result to dashboard schema version `"0.2"`.
 . Copy selected coverage output beside the normalized result.
 . Write the normalized result.

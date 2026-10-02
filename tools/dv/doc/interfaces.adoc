@@ -34,7 +34,7 @@ tools/dv/run_dv.py
   plans  flist -> hdl_compile -> sim leaves -> cov_merge -> cov_report
   writes <run>/result.json                    (integer schema_version 1)
          <run>/stages/regress/regression.json
-         <run>/<test>/.../result.json, results/results.xml
+         <run>/<test>/.../result.json, results/{results,graded}.xml
          <run>/cov/report/{summary,coverage-details,policy-application}.json
   |
   v
@@ -173,7 +173,7 @@ stages leave a replayable script under `scripts/`. Checked by the smoke job
 on every pull request and by the result and stage tests.
 
 |Native run result: run-level `result.json`, `stages/regress/regression.json`,
-per-leaf `result.json`, and `results/results.xml`
+per-leaf `result.json`, `results/results.xml`, and `results/graded.xml`
 |`tools/dv/runlib/results.py`
 |The composite action's gate, `collect`, `--waive`, JUnit consumers
 |Integer `schema_version` `1`. The file is written atomically, starting with

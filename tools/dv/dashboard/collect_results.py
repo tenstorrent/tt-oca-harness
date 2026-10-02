@@ -369,6 +369,17 @@ def _junit_beside_result(
     return _repo_rel(repo_root, xml_path) if xml_path.is_file() else ""
 
 
+def _graded_beside(repo_root: Path, junit_path: str) -> str:
+    """The runner's `graded.xml` beside a located `results.xml`, when it exists."""
+    path = Path(junit_path)
+    if not path.is_absolute():
+        path = repo_root / path
+    graded = path.parent / "graded.xml"
+    if path.name != "results.xml" or not graded.is_file():
+        return ""
+    return _repo_rel(repo_root, graded)
+
+
 def _read_leaf_result(
     repo_root: Path,
     run_root: Path,
@@ -433,6 +444,8 @@ def _test_detail_from_record(
         )
         if guessed:
             junit_paths.append(guessed)
+    graded = [_graded_beside(repo_root, path) for path in junit_paths]
+    junit_paths.extend(path for path in graded if path)
 
     detail = {
         "name": meta["name"],
@@ -459,13 +472,38 @@ def _test_detail_from_record(
         for path in dict.fromkeys(junit_paths)
     ]
     warnings = [
-        f"JUnit XML missing for {item}: {entry['path']}"
+        f"JUnit XML missing for {_attempt_label(item, detail)}: {entry['path']}"
         for entry in junit_entries
         if not entry["exists"]
     ]
-    if not junit_entries and detail["status"] not in {"SKIP"}:
-        warnings.append(f"JUnit XML not recorded for {item}")
     return detail, junit_entries, warnings
+
+
+def _attempt_label(item: str, detail: dict[str, Any]) -> str:
+    parts = [item]
+    for key in ("seed", "attempt"):
+        if detail.get(key) is not None:
+            parts.append(f"{key} {detail[key]}")
+    return " ".join(parts)
+
+
+def _unrecorded_junit_warnings(
+    details: list[dict[str, Any]], junit_entries: list[dict[str, Any]]
+) -> list[str]:
+    """A warning for each test and seed whose graded attempt, its highest, names no JUnit file.
+
+    A skipped leaf has none, and neither has an earlier attempt of a retried leaf that left no
+    result.
+    """
+    named = {
+        (entry.get("item"), entry.get("seed"), entry.get("attempt")) for entry in junit_entries
+    }
+    return [
+        f"JUnit XML not recorded for {_attempt_label(detail['name'], detail)}"
+        for detail in _final_attempts(details)
+        if detail.get("status") != "SKIP"
+        and (detail["name"], detail.get("seed"), detail.get("attempt")) not in named
+    ]
 
 
 def _test_details_from_layout(
@@ -582,6 +620,7 @@ def _collect_test_details(
         details.extend(layout_details)
         junit_entries.extend(layout_junit)
         warnings.extend(layout_warnings)
+    warnings.extend(_unrecorded_junit_warnings(details, junit_entries))
 
     if not all_attempts:
         details = _final_attempts(details)
