@@ -51,7 +51,7 @@ boundary-scan (EXTEST/SAMPLE) are out of scope.
 
 from .ocah_jtag_checker import OcahJtagChecker, OcahJtagCheckerError
 from .ocah_jtag_device import OcahJtagDevice, OcahJtagRegister
-from .ocah_jtag_item import OcahJtagScanItem, OcahJtagStateItem
+from .ocah_jtag_item import OcahJtagEvent, OcahJtagScanItem, OcahJtagStateItem
 from .ocah_jtag_master_config import OcahJtagMasterConfig
 from .ocah_jtag_ref_model import TLR_TMS_ONES, OcahJtagTapRefModel
 from .ocah_jtag_slave_config import OcahJtagSlaveConfig
@@ -114,6 +114,7 @@ __all__ = [
     "OcahJtagCheckerError",
     "OcahJtagDevice",
     "OcahJtagRegister",
+    "OcahJtagEvent",
     "OcahJtagScanItem",
     "OcahJtagMasterSequence",
     "OcahJtagSlaveAgent",

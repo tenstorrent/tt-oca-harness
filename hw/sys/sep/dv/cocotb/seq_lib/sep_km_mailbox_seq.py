@@ -2,10 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Host-side Key Manager (KM) mailbox command driver.
 
-Reproduces the SEP<->KM mailbox wire protocol that the real KM ROM firmware
-(`hw/ip/key_manager/approm/prod`, `rom_main`) implements, so an OSS cocotb test
-can drive the KM the same way the reference suite `sep_subsystem_km_consume_base_seq` does:
-send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse the responses.
+Implements the SEP<->KM mailbox wire protocol of the KM ROM firmware
+(`hw/ip/key_manager/approm/prod`, `rom_main`): sends framed commands and parses
+the responses.
 
 Frame format (32-bit words, little-endian on the wire):
   header = {crc8[31:24], payload_len[23:16], cmd_id[15:8], seq_num[7:0]}
@@ -15,8 +14,6 @@ Frame format (32-bit words, little-endian on the wire):
 The separator bit is applied to the LAST written word (write WRITE_SEPARATOR=1
 immediately before writing that word). A response is read word-by-word until the
 STATUS OUTBOUND_SEPARATOR bit marks the final word.
-
-All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 """
 
 from __future__ import annotations
@@ -224,9 +221,8 @@ class SepKmMailbox:
     """Drives the KM mailbox over the SEP AXI agent.
 
     The test owns one instance (``self.km = SepKmMailbox(self)``) and calls the
-    high-level command methods. ``seq_num`` is tracked here exactly like the reference suite
-    base sequence (incremented per command, must match the firmware's expected
-    sequence counter).
+    high-level command methods. ``seq_num`` is tracked here: incremented per
+    command, and it must match the firmware's expected sequence counter.
     """
 
     def __init__(self, test, *, base: int = KM_MBOX_BASE, logger=None) -> None:

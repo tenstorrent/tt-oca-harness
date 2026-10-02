@@ -3,14 +3,10 @@
 
 #include <stdint.h>
 
-#include "metal/uart.h"
 #include "smc_io.h"
 #include "smc_test.h"
 
-// UART interrupt ID mapping (IIR.interrupt_id).
-// Corresponds to the RTL `IntrID` enum and the specification's priority:
-// FIFO_ERROR(0x7) > RECEIVER_LINE_STATUS(0x3) > RECEPTION_TIMEOUT(0x6) >
-// RECEIVED_DATA_READY(0x2) > THR_EMPTY(0x1) > MODEM_STATUS(0x0)
+// UART interrupt identifiers, highest priority first.
 #define UART_INTR_ID_FIFO_ERROR (0x7u)
 #define UART_INTR_ID_RECEIVER_LINE_STATUS (0x3u)
 #define UART_INTR_ID_RECEPTION_TIMEOUT (0x6u)
@@ -18,7 +14,6 @@
 #define UART_INTR_ID_TRANSMITTER_HOLDING_REGISTER_EMPTY (0x1u)
 #define UART_INTR_ID_MODEM_STATUS (0x0u)
 
-// Get UART register map base (same style as other UART tests).
 static inline uint32_t get_uart_reg_base(uint32_t idx) {
     if (idx == 0) return SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0);
     if (idx == 1) return SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(1);
@@ -46,7 +41,7 @@ static void uart_enable_single(uint32_t idx) {
     write_reg(ctrl_addr, uart_enables.w);
 }
 
-// Clear IER/ITR/IIR/LSR/MSR to a known state to avoid residue from previous subtests.
+// Disable and stop forcing every source, then clear status left by a previous subtest.
 static void uart_clear_all_status(uint32_t uart_base) {
     uart_16550_main__IER_t ier;
     uart_16550_main__ITR_t itr;
@@ -62,13 +57,13 @@ static void uart_clear_all_status(uint32_t uart_base) {
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               itr.w);
 
-    // Read IIR/LSR/MSR to clear any existing status (if present).
+    // Reading the line and modem status clears them.
     (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                                 SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
     (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR(0) -
                                 SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
 
-    // Read IIR until there is no pending interrupt or until the loop limit is reached.
+    // Read the identification register until no interrupt is pending, with a bounded loop.
     for (int i = 0; i < 8; i++) {
         iir.w =
             read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
@@ -79,7 +74,7 @@ static void uart_clear_all_status(uint32_t uart_base) {
     }
 }
 
-// Simply poll IIR, wait for a pending interrupt, and return the last-read IIR.
+// Poll until an interrupt is pending; return the last identification read, pending or not.
 static uart_16550_main__IIR_t uart_poll_iir(uint32_t uart_base, int max_iters) {
     uart_16550_main__IIR_t iir;
 
@@ -95,18 +90,15 @@ static uart_16550_main__IIR_t uart_poll_iir(uint32_t uart_base, int max_iters) {
     return iir;
 }
 
-// Subtest A: IER gating and single interrupt-source mapping.
+// Subtest A: each forced source is masked by its enable and reports its own identifier.
 static int uart_test_ier_gating_and_mapping(uint32_t uart_base) {
     uart_16550_main__IER_t ier;
     uart_16550_main__ITR_t itr;
     uart_16550_main__IIR_t iir;
     uart_clear_all_status(uart_base);
 
-    ier.w = 0;
-    itr.w = 0;
-
     // Modem Status
-    // 1. Gating: when IER is disabled, this ID should not be seen.
+    // 1. Gating: with the source disabled, its identifier is not reported.
     ier.w = 0;
     itr.w = 0;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
@@ -123,7 +115,7 @@ static int uart_test_ier_gating_and_mapping(uint32_t uart_base) {
     if ((iir.f.INTERRUPT_PENDING == 0u) && (iir.f.INTERRUPT_ID == UART_INTR_ID_MODEM_STATUS)) {
         return -10;
     }
-    // 2. Mapping: when IER is enabled, the IIR ID should match the expected value.
+    // 2. Mapping: with the source enabled, its identifier is reported.
     itr.w = 0;
     ier.w = 0;
     ier.f.EDSSI = 1;
@@ -141,7 +133,7 @@ static int uart_test_ier_gating_and_mapping(uint32_t uart_base) {
     if (iir.f.INTERRUPT_ID != UART_INTR_ID_MODEM_STATUS) {
         return -(10 + 2);
     }
-    // 3. Clear ITR so it does not affect the next test.
+    // 3. Stop forcing the source so it does not affect the next source.
     itr.w = 0;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
@@ -227,8 +219,7 @@ static int uart_test_ier_gating_and_mapping(uint32_t uart_base) {
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               itr.w);
 
-    // RX Timeout (only verify mapping; IER gating is not tested because the RTL design bypasses IER
-    // for this).
+    // RX Timeout: only the identifier is checked, because this source is not masked by an enable.
     itr.w = 0;
     ier.w = 0;
     ier.f.ERBFI = 1;
@@ -345,7 +336,7 @@ static int uart_test_ier_gating_and_mapping(uint32_t uart_base) {
     return 0;
 }
 
-// Fail if IIR still reports the given ID as pending (interrupt_pending is active-low).
+// Fail if the given identifier is still reported as pending.
 static int uart_fail_if_id_still_pending(uint32_t uart_base, uint32_t expect_id, int err) {
     uart_16550_main__IIR_t iir;
     iir.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
@@ -356,9 +347,7 @@ static int uart_fail_if_id_still_pending(uint32_t uart_base, uint32_t expect_id,
     return 0;
 }
 
-// Subtest B: architectural clear with *natural* producers (ITR held 0).
-// ITR OR-tree would make clear-then-ITR=0 vacuous — so prove RBR/THR/MSR clears
-// against loopback-generated pending bits only. LSR/timeout/FIFO encode stay in A/C.
+// Configure 8N1 internal loopback with FIFOs enabled and no forced sources.
 static void uart_init_loopback_for_clear(uint32_t uart_base) {
     uart_16550_main__LCR_t lcr;
     uart_16550_main__MCR_t mcr;
@@ -399,12 +388,16 @@ static void uart_init_loopback_for_clear(uint32_t uart_base) {
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               mcr.w);
 
-    // Enable FIFOs (FCR shares IIR address).
+    // Enable the FIFOs; the FIFO control register shares the identification register's address.
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               0x01u);
 }
 
+// Subtest B: each source clears through its architectural service action. A forced source would
+// stay pending regardless of the clear, so the sources are produced naturally through loopback.
+// The clear of line status, timeout and FIFO error is not checked; subtests A and C cover their
+// identifiers.
 static int uart_test_clear_behaviour(uint32_t uart_base) {
     uart_16550_main__IER_t ier;
     uart_16550_main__ITR_t itr;
@@ -417,13 +410,13 @@ static int uart_test_clear_behaviour(uint32_t uart_base) {
     uart_clear_all_status(uart_base);
     uart_init_loopback_for_clear(uart_base);
 
-    // Keep ITR=0 for the entire subtest.
+    // No source is forced during this subtest.
     itr.w = 0;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ITR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               itr.w);
 
-    // --- RDR: natural RX via loopback TX; clear by reading RBR ---
+    // Received data: a looped-back byte raises it; reading the byte clears it.
     ier.w = 0;
     ier.f.ERBFI = 1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
@@ -444,7 +437,7 @@ static int uart_test_clear_behaviour(uint32_t uart_base) {
         return rc;
     }
 
-    // Drain any residual RX before THRE phase.
+    // Drain any remaining received data before the transmitter-empty check.
     for (wait = 0; wait < 8; wait++) {
         lsr.w =
             read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
@@ -457,9 +450,9 @@ static int uart_test_clear_behaviour(uint32_t uart_base) {
                         SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
     }
 
-    // --- THRE: natural empty with etbei; clear by IIR read (16550/RTL latch) ---
-    // Keep etbei=1 through the post-clear sample: with IER zeroed the pending
-    // check is vacuous. uart_poll_iir's IIR read is the architectural clear.
+    // Transmitter empty: the idle transmitter raises it; the identification read that reports it
+    // clears it. The source stays enabled for the post-clear check, which would otherwise pass
+    // trivially.
     ier.w = 0;
     ier.f.ETBEI = 1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
@@ -470,19 +463,19 @@ static int uart_test_clear_behaviour(uint32_t uart_base) {
         (iir.f.INTERRUPT_ID != UART_INTR_ID_TRANSMITTER_HOLDING_REGISTER_EMPTY)) {
         return -120;
     }
-    // etbei still 1: THRE must not remain pending after the IIR-read clear.
+    // The source is still enabled, so it must not remain pending after the clear.
     rc = uart_fail_if_id_still_pending(uart_base, UART_INTR_ID_TRANSMITTER_HOLDING_REGISTER_EMPTY,
                                        -121);
     if (rc != 0) {
         return rc;
     }
-    // Drop etbei before MSR so THRE cannot mask modem status.
+    // Disable transmitter empty so it cannot hide the lower-priority modem status.
     ier.w = 0;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               ier.w);
 
-    // --- MSR: toggle MCR in loopback to create delta; clear by reading MSR ---
+    // Modem status: toggling the loopback modem outputs raises it; reading modem status clears it.
     ier.w = 0;
     ier.f.EDSSI = 1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
@@ -520,7 +513,7 @@ static int uart_test_priority(uint32_t uart_base) {
 
     uart_clear_all_status(uart_base);
 
-    // LSR(0x3) vs RDR(0x2) -> expected 0x3.
+    // Line status outranks received data.
     ier.w = 0;
     itr.w = 0;
     ier.f.ELSI = 1;
@@ -546,7 +539,7 @@ static int uart_test_priority(uint32_t uart_base) {
               itr.w);
     uart_clear_all_status(uart_base);
 
-    // RDR(0x2) vs THRE(0x1) -> expected 0x2.
+    // Received data outranks transmitter empty.
     ier.w = 0;
     itr.w = 0;
     ier.f.ERBFI = 1;
@@ -572,7 +565,7 @@ static int uart_test_priority(uint32_t uart_base) {
               itr.w);
     uart_clear_all_status(uart_base);
 
-    // THRE(0x1) vs Modem(0x0) -> expected 0x1.
+    // Transmitter empty outranks modem status.
     ier.w = 0;
     itr.w = 0;
     ier.f.ETBEI = 1;
@@ -598,7 +591,7 @@ static int uart_test_priority(uint32_t uart_base) {
               itr.w);
     uart_clear_all_status(uart_base);
 
-    // Timeout(0x6) vs RDR(0x2) -> expected 0x6.
+    // Reception timeout outranks received data.
     ier.w = 0;
     itr.w = 0;
     ier.f.ERBFI = 1;
@@ -623,7 +616,7 @@ static int uart_test_priority(uint32_t uart_base) {
               itr.w);
     uart_clear_all_status(uart_base);
 
-    // FIFO Error(0x7) vs Line Status(0x3) -> expected 0x7.
+    // FIFO error outranks line status.
     ier.w = 0;
     itr.w = 0;
     ier.f.ELSI = 1;
@@ -653,13 +646,10 @@ static int uart_test_priority(uint32_t uart_base) {
 }
 
 int main(void) {
-    // To control simulation time, this test only verifies interrupt sources and priority for a
-    // single UART instance (index 0).
     uint32_t uart_idx = 0;
     uint32_t uart_base = get_uart_reg_base(uart_idx);
     int ret;
 
-    // Enable the UART under test.
     uart_enable_single(uart_idx);
 
     simputs("\n");
@@ -673,7 +663,6 @@ int main(void) {
     simputshex32("  uart_base = 0x", uart_base);
     simputs("\n");
 
-    // Subtest A: IER gating + single-source mapping.
     simputs("Subtest A: IER gating & single-source mapping ...\n");
     ret = uart_test_ier_gating_and_mapping(uart_base);
     if (ret != 0) {
@@ -685,7 +674,6 @@ int main(void) {
     }
     simputs("Subtest A PASSED\n");
 
-    // Subtest B: clear behavior for each interrupt source.
     simputs("Subtest B: clear behaviour for each source ...\n");
     ret = uart_test_clear_behaviour(uart_base);
     if (ret != 0) {
@@ -697,7 +685,6 @@ int main(void) {
     }
     simputs("Subtest B PASSED\n");
 
-    // Subtest C: priority with multiple pending sources.
     simputs("Subtest C: multi-source priority ...\n");
     ret = uart_test_priority(uart_base);
     if (ret != 0) {
@@ -712,10 +699,4 @@ int main(void) {
     simputs("\nUART IRQ test: ALL SUBTESTS PASSED\n");
 
     test_pass(0);
-
-    while (1) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

@@ -79,11 +79,11 @@ bare cores still have the three clock inputs.
 Connect `clk_smu_i` to the primary system clock and `clk_ref_i` to a stable
 reference source. The DTP operates on TCK for JTAG logic and on the system clock
 for cross-trigger and AXI bridges. Reset sequencing follows the SMC flow; the
-DTP JTAG state machine uses `pwr_on_rst_ni`, which the SMU connects to
-the SMC `powergood_stable` output. The SMU internally connects DTP debug paths to the SMC and
-optionally instantiates the SEP when the `SEP` parameter is set to 1. The full
-interconnection details are described in <<smc-dtp-interconnection>> and
-<<sep-conditional-wiring>> below.
+DTP JTAG state machine uses `pwr_on_rst_ni`, which the SMU connects to the SMC
+`powergood_stable_o` output. The SMU internally connects DTP debug paths to the
+SMC and optionally instantiates the SEP when the `SEP` parameter is set to 1.
+The full interconnection details are described in <<smc-dtp-interconnection>>
+and <<sep-conditional-wiring>> below.
 
 [[smu-axi-xbar-address-map]]
 == SMU AXI Crossbar Address Map
@@ -98,7 +98,7 @@ SMC inbound subordinates, and the external SMU AXI output
 ifdef::backend-html5[]
 Connectivity is described in
 xref:ocah-docs:ROOT:architecture.adoc#smu-axi-crossbar[SMU AXI Crossbar];
-the split between hardware-fixed behaviour and firmware-programmable apertures
+the split between hardware-fixed behavior and firmware-programmable apertures
 is documented in
 xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
 endif::backend-html5[]
@@ -114,8 +114,9 @@ rule. The apertures are driven as follows:
 
 * `sep_global_base_addr_i` / `sep_region_size_i` come from the
   `sep_cpu_ctrl` CSRs `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`,
-  exposed at both the `sep.sv` and `smu.sv` boundaries as
-  `sep_global_base_addr_o` / `sep_region_size_o` (both 56-bit).
+  exposed at the `sep.sv` boundary as `sep_global_base_addr_o` /
+  `sep_region_size_o`, and at the `smu.sv` boundary as
+  `sep_global_base_o` / `sep_region_size_o` (both 56-bit).
   `SEP_REGION_SIZE` is a 32-bit CSR field, zero-extended to 56-bit at
   the SEP system CSR; the xbar input takes only the lower 32 bits.
   `SEP_REGION_SIZE` defines the SEP global/chiplet aperture for SMU
@@ -123,11 +124,10 @@ rule. The apertures are driven as follows:
   SEP CPU's architectural local-alias span. `SEP_REGION_SIZE` currently
   resets to `0x0100_0000` (16 MiB). Tied to `'0` at the `smu.sv`
   boundary when the `SEP` parameter is `0`.
-* `smc_global_base_addr_i` / `smc_region_size_i` come from the SMC CPU
-  control CSRs `GLOBAL_BASE` / `REGION_SIZE`, exposed at both the
-  `smc.sv` and `smu.sv` boundaries as `smc_global_base_o` (56-bit) /
-  `smc_region_size_o` (32-bit). `REGION_SIZE` resets to `0x0100_0000`
-  (16 MiB).
+* `smc_global_base_addr_i` / `smc_region_size_i` come from the `smc_base_config`
+  CSRs `GLOBAL_BASE` / `REGION_SIZE`, exposed at both the `smc.sv` and `smu.sv`
+  boundaries as `smc_global_base_o` (56-bit) / `smc_region_size_o` (32-bit).
+  `REGION_SIZE` resets to `0x0100_0000` (16 MiB).
 
 SEP, SMC, and `smu_axi_xbar` all run on `clk_smu_i`, so these
 quasi-static CSR fields need no clock-domain crossing. The crossbar's
@@ -462,15 +462,18 @@ wired internally within the SMU.
 |`jtag_dfd_host_scan_out_o` |output |1 |SMU external port
 |===
 
-=== DFT iJTAG Interface
+=== DFT iJTAG Interfaces
 
 [cols="<30%,<10%,<15%,<45%",options="header"]
 |===
 |Port |Direction |Width |SMU Connection
 
-|`jtag_dft_host_scan_ctrl_o` |output |`jtag_scan_ctrl_t` |SMU external port
-|`jtag_dft_host_scan_in_i` |input |1 |SMU external port
-|`jtag_dft_host_scan_out_o` |output |1 |SMU external port
+|`jtag_dft_secure_host_scan_ctrl_o` |output |`jtag_scan_ctrl_t` | Secure DFT iJTAG SMU external port
+|`jtag_dft_secure_host_scan_in_i` |input |1 | Secure DFT iJTAG SMU external port
+|`jtag_dft_secure_host_scan_out_o` |output |1 | Secure DFT iJTAG SMU external port
+|`jtag_dft_host_scan_ctrl_o` |output |`jtag_scan_ctrl_t` | Non-secure DFT iJTAG SMU external port
+|`jtag_dft_host_scan_in_i` |input |1 | Non-secure DFT iJTAG SMU external port
+|`jtag_dft_host_scan_out_o` |output |1 | Non-secure DFT iJTAG SMU external port
 |===
 
 === SMC Fabric Debug AXI Interface
@@ -836,7 +839,7 @@ the SEP-to-SMC dedicated AXI connection.
 |Port |Direction |Width |SMU Connection
 
 |`lc_state_o` |output |[2*LC_STATE_WIDTH-1:0] |SEP lifecycle state when `SEP=1`, else `8'hf0`; ported through SMU
-|`lc_sigint_err_o` |output |1 |SEP lifecycle integrity error when `SEP=1`, else SMC `efuse_lc_sigint_err`
+|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when SEP=1) or the SMC efuse interface.
 |===
 
 === Mailbox Interrupts

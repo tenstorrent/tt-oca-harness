@@ -2,11 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_otp_status - firmware reference read of eFuse STATUS.
+ * sep_smu_otp_status - firmware reference read of the eFuse status.
  *
- * After fuse-sense, read 0x10930400, require bit0 (sense-done)=1, publish the
- * full 32-bit value on cold scratch7 and OTP_STATUS_PUBLISH on scratch6. Cocotb
- * uses that value as otp_status_ref for the JTAG2AXI allow/block compare.
+ * After fuse sense completes, publish the full status word and a publish code
+ * in cold scratch registers. Cocotb uses that word as the reference for its
+ * JTAG2AXI allow/block compare.
  */
 
 #include <stdint.h>
@@ -57,5 +57,4 @@ int main(void) {
     WRITE_REG(OTP_STATUS_SCRATCH6, OTP_STATUS_PUBLISH);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
     sep_smu_otp_status_pass_loop();
-    return 0;
 }

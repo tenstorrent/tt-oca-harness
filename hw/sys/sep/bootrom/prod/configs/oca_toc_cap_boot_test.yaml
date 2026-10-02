@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# OCA-classic RSA-3072 signed boot image whose one BL1 sits far enough past the TOC
+# for the image-count cap to be reached without the TOC leaving the payload.
+# Paths are relative to hw/sys/sep/bootrom/prod, with no $VAR expansion on the OCA path.
+manifest_format: oca-classic
+manifest_identifier: "OCAHTOC"
+description: "OCAH SEP boot ROM TOC-cap test image, one BL1 at payload offset 69120"
+secure_boot: 1
+
+signature_type: 0x01                 # RSA-3072 PKCS#1 v1.5 / SHA-256
+signing_authority: local
+signing_key_name: "test_rom_key_0"
+# key_digests.c slot 0 pins this modulus; regenerate it with tools/generate_key_digests.py.
+signing_key_file: "tests/signing_keys/rsa_private_key.rom_key0.pem"
+public_key_select_classic: 0x01      # must be non-zero when secure_boot is 1
+# The ROM verifies RAW encodings only.
+public_key_encoding: 0x02            # RAW (388 B: 384-byte modulus + 4-byte exponent)
+signature_encoding: 0x02             # RAW (384 B, big-endian)
+
+timestamp: 1764633600
+manifest_content_version:
+  major: 1
+  minor: 0
+  patch: 0
+payload_images:
+  - type: "OCAHSEP BLSTAGE1"
+    path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
+    # bl1_pass_test runs only from ICCM, which the ROM must fill by DMA: the LSU cannot store there.
+    load_addr: 0xC0000000
+    # A 257-entry TOC (70964 B) stays in the payload while BL1 >= 1844 B, so only the cap trips.
+    offset: 69120

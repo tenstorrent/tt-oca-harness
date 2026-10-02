@@ -512,6 +512,16 @@
 `SEP_TB_OUT(logic, sys_csr_axil_awvalid_o)
 `SEP_TB_OUT(logic, sys_csr_axil_awready_o)
 `SEP_TB_OUT(logic [31:0], sys_csr_axil_awaddr_o)
+// AR/AW handshakes at the local crossbar's `ext` initiator: the requests
+// sep_system_peripherals forwards into the local crossbar (SMN inbound traffic,
+// and local-master traffic that the peripheral crossbar does not decode).
+// Observation-only, outside the tb s_axi / m_axi ready/valid cones.
+`SEP_TB_OUT(logic, xbar_ext_in_arvalid_o)
+`SEP_TB_OUT(logic, xbar_ext_in_arready_o)
+`SEP_TB_OUT(logic [31:0], xbar_ext_in_araddr_o)
+`SEP_TB_OUT(logic, xbar_ext_in_awvalid_o)
+`SEP_TB_OUT(logic, xbar_ext_in_awready_o)
+`SEP_TB_OUT(logic [31:0], xbar_ext_in_awaddr_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -565,6 +575,8 @@
 `SEP_TB_OUT(logic [1:0], lcc_demote_state_2_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_1_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_2_probe_o)
+// The packed 64-bit sep_efuse_map_lc_disable_reg_t feature-control vector, read-only XMR.
+`SEP_TB_OUT(logic [63:0], lcc_feat_ctrl_probe_o)
 // Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
 // read these by name so a packed-struct reorder cannot swap two same-case
 // bits past the golden. The flattened vector stays for a width self-test.

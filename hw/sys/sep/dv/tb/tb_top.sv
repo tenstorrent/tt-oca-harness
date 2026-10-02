@@ -1296,6 +1296,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
     assign lcc_demote_lock_2_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_2.lock;
+    // XMR, not AXI: the AXI read is inbound-filtered at PROD_END once sep_debug is 0.
+    assign lcc_feat_ctrl_probe_o = `SEP_CORE.feat_ctrl;
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
     // req is a wrapper-internal net (u_sep -> ip_integration).
@@ -1340,6 +1342,14 @@ module sep_uvm_top
         `SEP_CORE.u_sep_system_peripherals.system_csr_axil_resp.aw_ready;
     assign sys_csr_axil_awaddr_o =
         `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
+
+    // Local crossbar `ext` initiator (sep.sv smn_inbound_to_sep_axi_*). See port comment.
+    assign xbar_ext_in_arvalid_o = `SEP_CORE.smn_inbound_to_sep_axi_req.ar_valid;
+    assign xbar_ext_in_arready_o = `SEP_CORE.smn_inbound_to_sep_axi_resp.ar_ready;
+    assign xbar_ext_in_araddr_o  = `SEP_CORE.smn_inbound_to_sep_axi_req.ar.addr[31:0];
+    assign xbar_ext_in_awvalid_o = `SEP_CORE.smn_inbound_to_sep_axi_req.aw_valid;
+    assign xbar_ext_in_awready_o = `SEP_CORE.smn_inbound_to_sep_axi_resp.aw_ready;
+    assign xbar_ext_in_awaddr_o  = `SEP_CORE.smn_inbound_to_sep_axi_req.aw.addr[31:0];
 
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
     // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during

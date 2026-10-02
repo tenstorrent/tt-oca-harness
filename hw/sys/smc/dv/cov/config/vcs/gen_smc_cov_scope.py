@@ -13,8 +13,9 @@ it leaves.
     python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_scope.py [--check]
 
 Reads the filelists a `run_dv.py --dut smc` build leaves under
-hw/sys/smc/dv/build, so run a build (any tool) first; `--check` exits 1 when
-the committed file is out of date instead of rewriting it.
+hw/sys/smc/dv/build, so run a build (any tool) first, or name another
+checkout's build directory with `--build-dir`; `--check` exits 1 when the
+committed file is out of date instead of rewriting it.
 """
 
 from __future__ import annotations
@@ -26,10 +27,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[6]
-FILELISTS = (
-    ROOT / "hw/sys/smc/dv/build/smc_dut_compile.f",
-    ROOT / "hw/sys/smc/dv/build/smc_bender.f",
-)
+BUILD = ROOT / "hw/sys/smc/dv/build"
+FILELISTS = ("smc_dut_compile.f", "smc_bender.f")
 OUT = HERE / "smc_cov_scope.hier"
 
 # The same trees ../verilator/smc_cov_scope.vlt names with coverage_off.
@@ -39,7 +38,7 @@ OUT = HERE / "smc_cov_scope.hier"
 # libraries); interconnect cells are the vendored AXI/APB mux, demux, crossbar
 # and converter children, whose SMC-side wrappers stay graded.
 DROPPED: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("bench", re.compile(r"/hw/sys/smc/dv/(tb|models)/|/hw/ip/[^/]+/dv/")),
+    ("bench", re.compile(r"/hw/sys/smc/dv/(tb|models)/|/hw/ip/[^/]+/dv/|/hw/common/dv/")),
     ("cpu subtree", re.compile(r"chipyard_generated_files/")),
     ("library cells", re.compile(r"/vendor/pulp-platform/common_cells/")),
     ("library cells", re.compile(r"/vendor/lowRISC/opentitan/.*/prim[^/]*/")),
@@ -92,9 +91,9 @@ HEADER = """\
 """
 
 
-def compiled_sources() -> list[Path]:
+def compiled_sources(build: Path) -> list[Path]:
     out: list[Path] = []
-    for fl in FILELISTS:
+    for fl in (build / name for name in FILELISTS):
         if not fl.is_file():
             raise SystemExit(f"{fl} not found: run a --dut smc build first")
         for line in fl.read_text().splitlines():
@@ -153,8 +152,11 @@ def render(units: dict[str, list[str]], code_only: dict[str, list[str]]) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n", maxsplit=1)[0])
     ap.add_argument("--check", action="store_true", help="fail if the file is out of date")
+    ap.add_argument(
+        "--build-dir", type=Path, default=BUILD, help="directory holding the build filelists"
+    )
     args = ap.parse_args(argv)
-    sources = compiled_sources()
+    sources = compiled_sources(args.build_dir)
     text = render(excluded_units(sources), code_only_units(sources))
     if args.check:
         if OUT.read_text() != text:

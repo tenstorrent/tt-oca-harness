@@ -10,6 +10,14 @@ every chiplet needs -- security, boot, system management, debug, test, and
 die-to-die integration -- so adopters can focus their effort on their own
 value-differentiating application logic.
 
+[.home-guides]
+.Guides
+* xref:ocah-starting::index.adoc[Starting with OCAH]
+* xref:ocah-docs::index.adoc[Technical Reference Manual]
+* xref:ocah-integrator-guide::index.adoc[Integrator Guide]
+* xref:ocah-programmer-guide::index.adoc[Programmer's Guide]
+* xref:ocah-appnotes::index.adoc[Application Notes]
+
 image::oca-banner.png[OCA banner,width=600]
 
 [NOTE]
@@ -166,16 +174,3 @@ the repository under
 * xref:motivation.adoc[Motivation] -- why OCA Harness exists
 * xref:use-cases.adoc[Use Cases] -- how adopters use OCA Harness in practice
 * xref:license.adoc[License] -- OCA Harness's open-source license
-
-== Explore the documentation
-
-xref:ocah-starting::index.adoc[Starting with OCA Harness]:: How to get started
-with and contribute to the project
-xref:ocah-docs::index.adoc[Technical Reference Manual]:: Architecture and
-register-level detail for every OCA Harness subsystem
-xref:ocah-integrator-guide::index.adoc[Integrator Guide]:: Bringing OCA Harness
-into your own SoC
-xref:ocah-programmer-guide::index.adoc[Programmer's Guide]:: Software and
-firmware interfaces
-xref:ocah-appnotes::index.adoc[Application Notes]:: Worked examples and
-integration patterns

@@ -24,6 +24,30 @@ from enum import Enum, IntEnum
 # `hw/ip/jtag/jtag_ptap/doc/interface.adoc`, both "Instruction Encodings").
 DTP_IR_WIDTH = 6
 
+# The value Capture-IR loads into the instruction shift register: 01 in the
+# two LSBs and zeros above (IEEE 1149.1 7.1.1, `jtag_inst_reg`), which is the
+# IDCODE opcode.
+DTP_IR_CAPTURE_PATTERN = 0b01
+
+# Scoreboard feature names: one Dtp<Feature>RefModel each (a test names the
+# ones it must exercise in required_features).
+DTP_FEATURE_IR_DECODE = "ir_decode"
+DTP_FEATURE_IDCODE = "idcode"
+DTP_FEATURE_BYPASS = "bypass"
+DTP_FEATURE_XTRIG_CSR = "xtrig_csr"
+DTP_FEATURE_XTRIG_DECODE = "xtrig_decode"
+DTP_FEATURE_JTAG2AXI_REQ = "jtag2axi_req"
+DTP_FEATURE_JTAG2AXI_STATUS = "jtag2axi_status"
+
+# TCK cycles from the AXI-side response handshake to the first scan whose
+# Capture-DR shows it: the B/R beat crosses the bridge's clearable CDC (three
+# synchronizer stages on the gray pointer, then the FIFO pop), the bridge steps
+# from its response wait through its status update into the status register,
+# and the first crossing edge adds up to one TCK of phase; measured from the
+# scan's start. A status capture whose scan starts inside this window after a
+# completion is not checkable.
+DTP_J2A_STATUS_SETTLE_TCK = 8
+
 
 class DtpJtagInstr(IntEnum):
     """DTP primary TAP (PTAP) instruction opcodes, one member per 6-bit encoding.

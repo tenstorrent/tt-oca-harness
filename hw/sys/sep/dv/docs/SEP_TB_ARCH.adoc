@@ -138,7 +138,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`), KM SRAM read-latency probes (`km_sram_rd_*`), KM SRAM scrambled-write probes (`km_sram_scr_wr_*`), entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o`, crypto reset-sequencer probes (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`, `*_host_isolate_req_probe_o`, `trng_reset_active_probe_o`), EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`, `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`), RMA-SIP token-digest latch probes (`token_digest_*`), KM OTP ID probes (`km_otp_sep_*_id_o`), SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`), DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`), the covergroup sampler's direct reads of the WDT bark interrupt (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read `ARSIZE` (owner `sep_axi_partial_lane_read_test`) — observation-only unless listed as an inject exception
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`), KM SRAM read-latency probes (`km_sram_rd_*`), KM SRAM scrambled-write probes (`km_sram_scr_wr_*`), entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, local-crossbar `ext`-initiator handshakes (`xbar_ext_in_*`, owner `sep_unmapped_access_policy_test`), DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o`, crypto reset-sequencer probes (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`, `*_host_isolate_req_probe_o`, `trng_reset_active_probe_o`), EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`, `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`), RMA-SIP token-digest latch probes (`token_digest_*`), KM OTP ID probes (`km_otp_sep_*_id_o`), SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`), DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`), the covergroup sampler's direct reads of the WDT bark interrupt (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read `ARSIZE` (owner `sep_axi_partial_lane_read_test`) — observation-only unless listed as an inject exception
 |===
 
 Exceptions (a closed set):
@@ -530,15 +530,17 @@ grades ROM *hardware* access only (`sep_boot_rom_smoke_test`,
 
 A named ROM run needs the Boot ROM + manifest + BL1 image. Each test declares
 both keys of a `firmware = { name = ..., mode = ... }` pair (`mode` alone does not
-select a `[c_build.*]` block), and the three profiles select three different
-blocks in `sep_sim_cfg.toml`, all driving `hw/sys/sep/bootrom/prod/Makefile`:
+select a `[c_build.*]` block), and the two profiles select two different blocks
+in `sep_sim_cfg.toml`, both driving `hw/sys/sep/bootrom/prod/Makefile`:
 
-`boot_rom`:: `sep_rom_non_secure_boot_test` — `[c_build.boot_rom]`, the SMC-SRAM
-  manifest path.
-`boot_rom_ot`:: `sep_rom_ot_dma_boot_test` and `sep_rom_ot_secure_boot_test` —
-  `[c_build.boot_rom_ot]`, the OpenTitan SPI host with the SECURE_DMA drain.
-`boot_rom_ot_pio`:: `sep_rom_ot_pio_boot_test` — `[c_build.boot_rom_ot_pio]`, the
-  same transport with the CPU-PIO drain.
+`boot_rom`:: `[c_build.boot_rom]`, built into `build/`, drains the SPI RX FIFO
+  with the secure DMA. `sep_rom_non_secure_boot_test` boots this image down the
+  SMC-SRAM manifest path and `sep_rom_ot_dma_boot_test` /
+  `sep_rom_ot_secure_boot_test` boot it over the SPI host: which path runs is a
+  strap set at run time, not a build difference.
+`boot_rom_pio`:: `[c_build.boot_rom_pio]`, built into `build_pio/`, drains the
+  RX FIFO by CPU programmed I/O instead. `sep_rom_ot_pio_boot_test` is its only
+  user.
 
 The one prerequisite a build step must not mutate git for is the manifest packer
 submodule; without it the pack half dies with `No module named tt_boot_manifest`:

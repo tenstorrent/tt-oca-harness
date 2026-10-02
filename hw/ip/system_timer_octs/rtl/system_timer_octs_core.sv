@@ -109,10 +109,10 @@ module system_timer_octs_core
         PULSE_IDLE = 2'b00,
         PULSE_SYNC_LOAD = 2'b01,
         PULSE_CREDIT = 2'b10
-    } pulse_state_t;
+    } pulse_state_e;
 
     logic [7:0]                 pulse_counter;
-    pulse_state_t               pulse_active;
+    pulse_state_e               pulse_active;
 
     /////////////////////////////////////////
     // CDC Synchronization and Pulse Logic //

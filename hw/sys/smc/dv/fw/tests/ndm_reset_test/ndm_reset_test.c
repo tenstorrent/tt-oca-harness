@@ -10,11 +10,10 @@
 #include "smc_test.h"
 #include "virt_console.h"
 
-// NDM reset interrupt: peripheral_interrupts[11] = cpu_interrupts_o[267] (4-core,
-// NUM_EXT_INTERRUPTS=256) PLIC interrupt IDs are offset by 1 (ID 0 means "no interrupt")
+// PLIC source ID of the NDM reset interrupt in the four-core configuration.
 #define NDM_RESET_PLIC_ID (268)
 
-// Flag to indicate interrupt was received
+// Set once the handler has completed the NDM handshake.
 volatile int ndm_interrupt_received = 0;
 
 void ndm_interrupt_handler(int id, void *priv) {
@@ -23,7 +22,7 @@ void ndm_interrupt_handler(int id, void *priv) {
     uint32_t ndmreset_request =
         read_reg(SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR);
 
-    uint32_t timeout = 1000; // Timeout after 1000 iterations
+    uint32_t timeout = 1000;
     while (ndmreset_request != 0 && timeout > 0) {
         info_msg_hex32_s(0, "Writing most up-to-date ndmreset_request value to ndmreset_process: ",
                          ndmreset_request);
@@ -33,14 +32,12 @@ void ndm_interrupt_handler(int id, void *priv) {
     }
 
     if (timeout == 0) {
-        // Do not set ndm_interrupt_received — handshake incomplete must not reach test_pass.
         raise_fatal_s(0, "NDM reset handshake timeout in handler");
     }
 
     write_reg(SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR, 0);
     info_msg_s(0, "Cleared ndmreset_process");
 
-    // Signal that interrupt was received and handshake completed
     ndm_interrupt_received = 1;
 }
 
@@ -62,7 +59,7 @@ static void reset_plic_enable_registers() {
 }
 
 int main(void) {
-    // reset scratch registers
+    // Clear the result and setup-done scratch registers.
     write_scratch(0, 0x0);
     write_scratch(4, 0x0);
 
@@ -74,13 +71,11 @@ int main(void) {
 
     info_msg_s(hartid, "Starting NDM reset test");
 
-    // Get PLIC interrupt controller
     plic_controller = metal_interrupt_get_controller(METAL_PLIC_CONTROLLER, hartid);
 
     cpu = metal_cpu_get(0);
     cpu_controller = metal_cpu_interrupt_controller(cpu);
 
-    // Enable interrupts in the CPU
     metal_interrupt_init(cpu_controller);
     metal_interrupt_enable(cpu_controller, METAL_INTERRUPT_ID_BASE);
     metal_interrupt_register_handler(cpu_controller, METAL_INTERRUPT_ID_EXT, ndm_interrupt_handler,
@@ -88,21 +83,16 @@ int main(void) {
 
     info_msg_s(hartid, "Enabled CPU interrupt controller");
 
-    // Init the PLIC and register interrupt handler
     metal_interrupt_init(plic_controller);
     info_msg_s(hartid, "initialized PLIC controller");
 
-    // Reset PLIC registers
     reset_plic_enable_registers();
     info_msg_s(hartid, "Reset PLIC registers");
 
-    // Register and enable NDM reset interrupt
     metal_interrupt_set_priority(plic_controller, NDM_RESET_PLIC_ID, 1);
     if (metal_interrupt_register_handler(plic_controller, NDM_RESET_PLIC_ID, ndm_interrupt_handler,
                                          (void *)plic_controller) != 0) {
         raise_fatal_s(hartid, "Failed to register NDM interrupt handler");
-        test_fail(hartid);
-        return 0;
     }
     info_msg_s(hartid, "Set NDM interrupt handler");
     metal_interrupt_enable(plic_controller, NDM_RESET_PLIC_ID);
@@ -110,10 +100,9 @@ int main(void) {
 
     info_msg_s(hartid, "NDM interrupt registered and enabled");
 
-    // Enable global interrupts
     __metal_interrupt_global_enable();
 
-    // Signal to testbench that interrupt setup is complete
+    // Tell the testbench that interrupt setup is complete.
     info_msg_s(hartid, "Writing 0xDEADBEEF to scratch 4 - interrupt setup done");
     write_scratch(4, 0xDEADBEEF);
 
@@ -121,17 +110,13 @@ int main(void) {
         read_reg(SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR) & 0xFF;
     info_msg_hex32_s(0, "Number of CPU Clusters are: ", num_cpu_clusters);
 
-    // Wait for interrupt
     info_msg_s(hartid, "Waiting for NDM reset interrupt...");
     while (ndm_interrupt_received == 0) {
         __asm__ volatile("wfi");
     }
 
-    // Test passed
     info_msg_s(hartid, "NDM reset test completed successfully");
     test_pass(hartid);
-
-    return 0;
 }
 
 int other_main(int hartid) {

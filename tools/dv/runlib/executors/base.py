@@ -260,8 +260,17 @@ def now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def error_result(task: LeafTask, reason: str, *, started_at: str | None = None) -> StageResult:
-    """The ``ERROR`` a leaf grades to when its attempt produced no result of its own."""
+def error_result(
+    task: LeafTask,
+    reason: str,
+    *,
+    started_at: str | None = None,
+    signature: str | None = None,
+) -> StageResult:
+    """The ``ERROR`` a leaf grades to when its attempt produced no result of its own.
+
+    `signature` keys the ``environment_error`` bucket; without one the reason does.
+    """
     stamp = now_iso()
     return StageResult(
         stage=task.stage,
@@ -272,6 +281,9 @@ def error_result(task: LeafTask, reason: str, *, started_at: str | None = None) 
         started_at=started_at or stamp,
         ended_at=stamp,
         reason=reason,
+        failure_buckets=[
+            {"kind": "environment_error", "signature": (signature or reason)[:120], "count": 1}
+        ],
         metadata={"seed": task.seed, "attempt": task.attempt, "debug_only": task.debug_only},
         target=task.target,
     )

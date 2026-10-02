@@ -24,8 +24,7 @@
 // ptap_select_clear() holds.
 //
 // Plain class held by the JTAG reference models (ir_decode, idcode, bypass,
-// jtag2axi); no reporting. The cocotb twin is the TAP tracking in
-// env/dtp_tap_device.py.
+// jtag2axi); no reporting. The cocotb twin is env/dtp_jtag_ir_model.py.
 
 class dtp_jtag_ir_model;
 

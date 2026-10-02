@@ -23,7 +23,11 @@ scope_epoch = "smc-vcs-cov-v1"
 # write from the same agent and keeps those rows graded.
 # B7 DFX-INPUTS-TIED is the bench's too: it ties the four DFX status inputs the
 # boot sequencer waits on high, so their input-low arms have no stimulus.
-# The file header and the generator's docstring state them.
+# The file header and the generator's docstring state them. A12 holds the
+# register-block points design engineering reviewed, report-gated per bit and
+# direction, and A13 the line and condition points of a register block inside a
+# unit graded on its ports, report-gated; both come from
+# smc_reviewed_exclusions.toml, and A13's toggle points are in the toggle files.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -50,7 +54,9 @@ args = ["-elfile", "{path}"]
 # UNAIMED-OVERRIDE is the bench's own: the rest of those override edges wait on
 # a bus event or write landing in a chosen sub-bit state, which the bench cannot
 # place. F9 is the extraction's: a combinational loop index is not a state. B4
-# is the bench's: it ties the CPU SRAM auto-init bypass high.
+# is the bench's: it ties the CPU SRAM auto-init bypass high. F10 and F11 hold
+# the FSM points design engineering reviewed, and those inside a unit graded on
+# its ports, from smc_reviewed_exclusions.toml, report-gated.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -99,16 +105,39 @@ path = "smc_disabled_feature_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
-# Toggle inside units of OpenTitan origin (T1 OPENTITAN-PORTS-ONLY). A unit
-# that comes from OpenTitan is graded on its ports, its internals being verified
-# upstream, while every other unit the scope keeps is graded on all of its nets. `-cm_tgl portsonly` is a whole-run option and
-# cannot say that per unit, so the nets are excluded at report time instead.
-# gen_smc_opentitan_toggle_exclusions.py writes the file and checks each unit's
-# copyright line; README.md lists the ten units.
+# Toggle rows of the classes whose fact names a whole signal or a bit window,
+# split by scope: smc_toggle_module_exclusions.el holds the rows true of every
+# instance of a module, smc_toggle_instance_exclusions.el those true of one
+# instance. T1 OPENTITAN-PORTS-ONLY and T2 to T12 grade a unit on its ports;
+# UNION-ALIAS, EFUSE-IMAGE-COPY, EFUSE-FIELD-MAP-CONST, VERSION-ID-CONST and
+# ERR-SLV-CONST are design facts; ATOP-ZERO and EXT-IRQ-TIED are the bench's, and
+# PARTIAL-VECTOR, the uncovered rest of a payload vector that toggles, is the
+# bench's stimulus-value gap. Only the
+# bit-directions the graded run leaves uncovered are written, so
+# gen_smc_toggle_exclusions.py regenerates both files from each graded run;
+# README.md gives each class's fact and granularity.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
-path = "smc_opentitan_toggle_exclusions.el"
+path = "smc_toggle_module_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_toggle_instance_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# The line blocks and condition rows inside the ports-only units T2 to T12,
+# which smc_reviewed_exclusions.toml records, while the run leaves them
+# uncovered; their toggle points are in the two files above.
+# gen_smc_ports_only_exclusions.py writes the file from each graded run.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_ports_only_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
@@ -120,6 +149,18 @@ args = ["-elfile", "{path}"]
 tool = "vcs"
 role = "exclude"
 path = "smc_group_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Fields design engineering reviewed as not exercised by this bench (R1 to R9,
+# by family), recorded in smc_reviewed_exclusions.toml. Report-gated per bit
+# and direction: only the points the graded run leaves uncovered, and that no
+# toggle-file class takes, are written, so gen_smc_cov_exclusions.py
+# regenerates the file from each graded run; README.md states the classes.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_reviewed_field_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 

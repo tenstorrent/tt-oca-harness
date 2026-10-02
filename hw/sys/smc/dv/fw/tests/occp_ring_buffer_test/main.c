@@ -10,17 +10,10 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 #include <string.h>
-#include "smc_status.h"
-
-#define SMC_RING_BUFFER_SIZE 512
-
-#define SMC_SCRATCH_STATUS_BUFFER_ADDR 11
-#define SMC_SEP_STATUS_BUFFER_READY (1U << 2)
 
 typedef struct {
     test_context_t *occp_ctx;
     uint32_t test_messages[20];
-    uint32_t read_messages[20];
     int test_count;
     bool overall_result;
 } ring_buffer_test_context_t;
@@ -178,7 +171,6 @@ static bool test_occp_command_variations(ring_buffer_test_context_t *ctx) {
         if (status != 0) {
             uint32_t fw_id = (status >> 28) & 0xF;
             uint32_t msg_type = (status >> 24) & 0xF;
-            (void)(status & 0xFFFFFF);
 
             if (fw_id != 0x2) {
                 simputshex32("FAIL: Expected FW_ID 0x2, got 0x", fw_id);

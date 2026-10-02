@@ -2,13 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Latches the ROM onto one I2C interface, sends invalid commands until it unlatches, and
+ * Latches the ROM onto one I2C interface, sends five invalid commands to unlatch it, and
  * checks the other interface is then accepted; then repeats in the other direction.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
-/* smc_top_regs.h must not be included: its types collide with the dv_rom I3C shims. */
+/* Do not include smc_top_regs.h: its I3C types collide with headers this firmware includes. */
 #include "smc_strap.h"
 
 typedef enum { IFACE_I2C0 = 0, IFACE_I2C1 = 1 } iface_id_t;
@@ -57,29 +57,9 @@ static iface_id_t pick_distinct_iface(iface_id_t exclude) {
     }
 }
 
-static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected_cmd_count) {
-    uint32_t status_data = 0;
-    int retval = occp_send_get_occp_command_count_command(ctx, ctx->slave_addr, &status_data);
-    if (retval != OCCP_SUCCESS) {
-        simputs("FAIL: GET_OCCP_COMMAND_COUNT failed\n");
-        ctx->overall_result = false;
-        return false;
-    }
-    uint8_t actual_cmd_count = status_data & 0xFF;
-    if (actual_cmd_count != expected_cmd_count) {
-        simputshex16("FAIL: cmd_count mismatch after status, expected ", expected_cmd_count);
-        simputshex16(", actual ", actual_cmd_count);
-        simputs("\n");
-        ctx->overall_result = false;
-        return false;
-    }
-    return true;
-}
-
 static int send_random_invalid_for_unlatch(test_context_t *ctx) {
     int which = (int)(get_random_int() % 13);
     int rc = OCCP_ERR;
-    uint32_t tmp32 = 0;
 
     ctx->header_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
     ctx->body_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
@@ -294,18 +274,13 @@ int main(void) {
     if (!init_ctx_for_iface(&ctxA, ifaceA)) {
         simputs("FAIL: init ifaceA\n");
         test_fail(0);
-        while (1) {
-            __asm__("wfi");
-        }
     }
     if (!init_ctx_for_iface(&ctxB, ifaceB)) {
         simputs("FAIL: init ifaceB\n");
         test_fail(0);
-        while (1) {
-            __asm__("wfi");
-        }
     }
 
+    // The draw is unused but advances the random sequence that later steps consume.
     int num_initial_commands = (get_random_int() % 2) ? (1) : ((get_random_int() % 5) + 1);
     simputs("Step 1: Send valid commands on ifaceA to trigger latch\n");
     execute_random_commands(&ctxA, 1);
@@ -345,10 +320,4 @@ int main(void) {
         simputs("\nOCCP INTERFACE UNLATCH TEST FAILED!\n");
         test_fail(0);
     }
-
-    simputs("Done\n");
-    while (1) {
-        __asm__("wfi");
-    }
-    return 0;
 }

@@ -1,35 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP PIC interrupt-source MAP + multi-source delivery firmware. The EL2 CPU
-// registers PIC ISRs for a MUST set (mailbox, OTBN done, HMAC done) plus a
-// seeded INTR_TEST subset patched into g_pic_params, drives each source, and
-// proves the source -> PIC source-id map and ISR delivery:
+// SEP PIC interrupt-source map and multi-source delivery test. The CPU registers
+// PIC handlers for the mailbox, OTBN done and HMAC done sources plus the extra
+// sources the testbench patches into g_pic_params, raises each source in turn
+// (a real mailbox push, an interrupt-test write for the others), and checks that
+// each one reaches the handler registered for its PIC source id.
 //
-//   mailbox[0]  sep_internal_interrupts[0]  -> PIC source 1   (real FIFO push)
-//   OTBN done   sep_internal_interrupts[29] -> PIC source 30  (INTR_TEST)
-//   HMAC done   sep_internal_interrupts[17] -> PIC source 18  (INTR_TEST)
-//   extras      INTR_TEST pool (DMA done/chunk/error / HMAC-err / KMAC / CSRNG / EDN / KMAC-err)
+// The PIC source id is the internal interrupt index plus one; source 0 is the
+// tied no-interrupt source.
 //
-// PIC source id = sep_internal_interrupts index + 1 (VeeR EL2 extintsrc_req is
-// 1-based; source 0 is the tied no-interrupt source). Each ISR reads the claim
-// id from meihap ([9:2]) and the handler at index N running is the PIC claim.
-//
-// Distinct from sep_mailbox_plic_test (ONE source) and from
-// sep_irq_ip_to_aggregator_test (no_cpu, aggregate vector, no ISR).
-//
-// Checks (each failure increments errors; main() returns it and fw/startup/crt0.s turns
-// 0 -> PASS magic / non-zero -> FAIL magic on the 0x8000_0000 mailbox):
-//   CHK-NONVAC      : before any trigger, no ISR fires (quiet window).
-//   CHK-DELIVER     : each selected source wakes its CPU ISR (WFI, no poll).
-//                     OTBN also carries the source->PIC-id map.
-//   CHK-IP-RW1C     : Event-type INTR_STATE / mailbox IRQS clear via W1C;
-//                     DMA Status-type INTR_STATE reads back 0 after INTR_TEST=0.
-//   CHK-PIC-COMPLETE: after the ISR clears the source the line de-asserts.
-//   CHK-ONEHOT      : only the asserted source's ISR fires among the selected
-//                     PIC-enabled sources.
-//   CHK-RANDCFG     : graded host-side -- the cocotb test greps the SCENARIO
-//                     line below for the patched source list and count.
+// Checks (each failure increments the error count that main() returns):
+//   CHK-NONVAC      : no handler runs before any source is raised.
+//   CHK-DELIVER     : each selected source wakes its handler from WFI.
+//   CHK-IP-RW1C     : the source reads set in its handler and clear after the
+//                     handler clears it.
+//   CHK-ONEHOT      : only the raised source's handler runs.
+//   CHK-PIC-COMPLETE: no source fires again after its handler cleared it.
+//   CHK-DUMMY       : no unregistered source is served.
+//   CHK-RANDCFG     : graded by the testbench from the SCENARIO line.
 
 #include <stdint.h>
 
@@ -45,9 +34,9 @@
 #define PIC_SRC_MAX 5
 #define PIC_KIND_MBOX 0
 #define PIC_KIND_INTR 1
-// Secure DMA uses prim_intr_hw IntrT=="Status": INTR_STATE is RO, and INTR_TEST
-// latches in test_q until software writes INTR_TEST=0. Event-type IPs (HMAC,
-// OTBN, CSRNG, EDN, KMAC) clear with a W1C of INTR_STATE.
+// Secure DMA interrupts are status-type: the state is read-only and an
+// interrupt-test write stays latched until software writes it back to 0.
+// Event-type sources (HMAC, OTBN, CSRNG, EDN, KMAC) clear with a W1C of the state.
 #define PIC_KIND_INTR_STATUS 2
 
 #define MBOX_TRIGGER_WORD 0x4700CAFEu
