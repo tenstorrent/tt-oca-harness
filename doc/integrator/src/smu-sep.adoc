@@ -214,7 +214,7 @@ OTP access. Leave them open if no such path is inserted. They are SMU
 outputs.
 
 OTP debug AXI-Lite (`axil_sep_otp_jtag`) is connected to the DTP inside
-the SMU; when `SEP=0` the SMU instantiates an AXI-Lite error slave on
+the SMU; when `CFG.SEP=0` the SMU instantiates an AXI-Lite error slave on
 that path.
 
 == SPI Host Interface

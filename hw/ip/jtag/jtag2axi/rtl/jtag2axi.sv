@@ -805,26 +805,21 @@ module jtag2axi #(
   // All requests outstanding when a clear starts belong to the old JTAG
   // session.  Consume their ordered responses locally instead of allowing a
   // stale B or R beat to satisfy the first request of the new session.
-  // A slave may return a response in the same cycle as the final request
-  // handshake.  Include that just-completed request here rather than
-  // inserting a response-channel bubble.
-  assign bready_o = ((write_outstanding_q != '0) || write_complete) &&
+  // BREADY and RREADY are functions of state only, so no combinational path
+  // runs from AWREADY, WREADY or ARREADY to them.
+  assign bready_o = (write_outstanding_q != '0) &&
                       ((orphan_b_count_q != '0) ||
-                       (write_complete && write_completion_is_orphan) ||
                        (!dst_clear_pending && dst_req.b_ready));
-  assign rready_o = ((read_outstanding_q != '0) || ar_handshake) &&
+  assign rready_o = (read_outstanding_q != '0) &&
                       ((orphan_r_count_q != '0) ||
-                       (ar_handshake && read_completion_is_orphan) ||
                        (!dst_clear_pending && dst_req.r_ready));
 
-  assign dst_resp.b_valid = bvalid_i &&
-                              ((write_outstanding_q != '0) || write_complete) &&
+  assign dst_resp.b_valid = bvalid_i && (write_outstanding_q != '0) &&
                               (orphan_b_count_q == '0) && !dst_clear_pending;
   assign dst_resp.b.id     = bid_i;
   assign dst_resp.b.resp   = bresp_i;
   assign dst_resp.b.user   = buser_i;
-  assign dst_resp.r_valid  = rvalid_i &&
-                               ((read_outstanding_q != '0) || ar_handshake) &&
+  assign dst_resp.r_valid  = rvalid_i && (read_outstanding_q != '0) &&
                                (orphan_r_count_q == '0) && !dst_clear_pending;
   assign dst_resp.r.id     = rid_i;
   assign dst_resp.r.data   = rdata_i;

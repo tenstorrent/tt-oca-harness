@@ -161,6 +161,12 @@ CFG_LAYOUT: tuple[tuple[str, int], ...] = (
     ("SMC_OTP_WR_PL_DEPTH", 2),
     ("SMC_RD_PL_DEPTH", 2),
     ("SMC_WR_PL_DEPTH", 2),
+    ("MAX_TRANS", 32),
+    ("SMC_EFUSE_SHIM_SIZE", 32),
+    ("SEP", 1),
+    ("SEP_EFUSE_SHIM_SIZE", 32),
+    ("SEP_SEC_DISABLE_TOKEN", SEP_SEC_DISABLE_TOKEN_WIDTH),
+    ("EXT_TRNG_NUM_AXIS", 32),
     ("SEP_KM_LATCHED_MEM_RDATA", 1),
     ("SEP_ABR_MASKING_EN", 1),
     ("SEP_ABR_SRAM_LATENCY", 32),
@@ -168,10 +174,14 @@ CFG_LAYOUT: tuple[tuple[str, int], ...] = (
 CFG_TOTAL_BITS = sum(width for _, width in CFG_LAYOUT)
 
 # doc/integrator/src/smu.adoc "SMU Default Parameters", field for field, with
-# NUM_INT_TO_SMC from the SMC port it sizes. XTRIG_INT_CT_MODE is absent
-# because the wrapper testbench elaborates it from +xtrig_int_ct_mode and the
-# leaf supplies that expectation; SEP_KM_LATCHED_MEM_RDATA is absent because
-# no specification states its default, so it is decoded and logged, not
+# NUM_INT_TO_SMC from the SMC port it sizes, MAX_TRANS from the GPIO row of
+# hw/sys/smc/doc/periphs.adoc "SMC Peripheral Parameter Overrides", and the two
+# eFuse shim sizes from doc/integrator/src/smu-smc.adoc "SHIM control address
+# window". XTRIG_INT_CT_MODE, SEP and SEP_SEC_DISABLE_TOKEN are absent because
+# the wrapper testbench elaborates them and the leaf supplies those
+# expectations, from +xtrig_int_ct_mode, +expected_sep and the digest the bench
+# binds; SEP_KM_LATCHED_MEM_RDATA and EXT_TRNG_NUM_AXIS are absent because no
+# specification states their defaults, so they are decoded and logged, not
 # compared.
 CFG_SPEC_DEFAULTS: dict[str, int] = {
     "NUM_INT_TO_SMC": NUM_INT_TO_SMC,
@@ -198,6 +208,9 @@ CFG_SPEC_DEFAULTS: dict[str, int] = {
     "SMC_OTP_WR_PL_DEPTH": SMC_OTP_PL_DEPTH,
     "SMC_RD_PL_DEPTH": 3,
     "SMC_WR_PL_DEPTH": 3,
+    "MAX_TRANS": 2,
+    "SMC_EFUSE_SHIM_SIZE": 0x4,
+    "SEP_EFUSE_SHIM_SIZE": 0x4,
     "SEP_ABR_MASKING_EN": 1,
     "SEP_ABR_SRAM_LATENCY": 1,
 }

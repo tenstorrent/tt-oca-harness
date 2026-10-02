@@ -612,7 +612,7 @@ flags = [
 ]
 
 [targets.compile_smu_chiplet]
-description = "OSS smu_wrapper with DefaultCfg, SEP=1, and the real EL2 CPU"
+description = "OSS smu_wrapper with DefaultCfg (SEP=1) and the real EL2 CPU"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
 ]
@@ -730,5 +730,5 @@ description = "SMU SV-UVM default target"
 build_dir = "hw/sys/smu/dv/build/uvm"
 
 [frameworks.uvm.targets.compile_smu_chiplet]
-description = "SMU SV-UVM view of the OSS smu_wrapper (DefaultCfg, SEP=1, real EL2 CPU)"
+description = "SMU SV-UVM view of the OSS smu_wrapper (DefaultCfg (SEP=1), real EL2 CPU)"
 build_dir = "hw/sys/smu/dv/build/uvm"

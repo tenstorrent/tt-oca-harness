@@ -154,7 +154,7 @@ particularly across open source tools
 OCAH will _mostly_ follow the OpenTitan SystemVerilog coding rules
 defined by lowRISC group in
 https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md[Verilog
-Coding Style]. That document is locally copied for convenience.
+Coding Style].
 
 This section highlights a few of the most important aspects as well as a
 few deviations from the OpenTitan rules. If there is a conflict between
