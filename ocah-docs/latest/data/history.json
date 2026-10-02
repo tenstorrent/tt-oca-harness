@@ -2824,6 +2824,29 @@
         }
       ],
       "test_pass_rate": 97.41
+    },
+    {
+      "failed_tests": 1,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-10-02T12:30:40+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 85.08,
+            "condition": 82.15,
+            "fsm_state": 32.39,
+            "functional": 55.41,
+            "line": 88.78,
+            "toggle": 72.99
+          },
+          "flow": "aou",
+          "framework": "uvm",
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 98.57
     }
   ]
 }
