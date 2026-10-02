@@ -33130,8 +33130,8 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core0_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override the pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33143,8 +33143,8 @@ This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core1_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[1] so a 0 in core_reset_n[1] will override the pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33156,8 +33156,8 @@ This pulse is ANDed with core_reset_n[1] so a 0 in core_reset_n[1] will override
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core2_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[2] so a 0 in core_reset_n[2] will override the pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33169,8 +33169,8 @@ This pulse is ANDed with core_reset_n[2] so a 0 in core_reset_n[2] will override
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core3_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[3] so a 0 in core_reset_n[3] will override the pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33212,7 +33212,7 @@ WARNING: using this can cause any outstanding axi requests to and from the clust
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>pre_reset_count</ipxact:name>
-              <ipxact:description>Core reset pulse count pre-reset. The duration of the pulse is the set value + 1.</ipxact:description>
+              <ipxact:description>Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33224,7 +33224,7 @@ WARNING: using this can cause any outstanding axi requests to and from the clust
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>post_reset_count</ipxact:name>
-              <ipxact:description>Core reset pulse count post-reset. The duration of the pulse is the set value + 1.</ipxact:description>
+              <ipxact:description>Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

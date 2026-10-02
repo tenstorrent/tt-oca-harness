@@ -310,7 +310,7 @@ feature rows.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
 |`smc_cool_reset_zero_delay_test` |FLR cool reset with the pre-reset delay at 0: no cool while the hold counter is 0, cool inside the synchroniser allowance once it is not.
 |`smc_cool_reset_x_cold_reset_test` |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
-|`smc_cpu_reset_pulse_test` |A SEP_IN core-reset pulse on core 1, and a withheld level reset whose timeout fires in give-up mode.
+|`smc_cpu_reset_pulse_test` |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode.
 |`smc_cpu_reset_source_test` |SW core0 level reset; no Force drain / no FLR isolate_req_o.
 |`smc_flr_sanity_test` |Run the SMC OSS FLR post-release sanity scenario.
 |`smc_gpio_boot_stall_test` |Pad-57 boot stall hold/release/sticky lockout.
@@ -11997,12 +11997,14 @@ Drive `smc_regblock_partial_write_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI, SEP_IN)
 
-*Objective*: A SEP_IN core-reset pulse on core 1, and a withheld level reset whose timeout fires in give-up mode.
+*Objective*: A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode.
 
 *Test Coverage*:
 
 * **Pulse.** `cpu_ctrl.rdl` gives each core a `RESET_CTRL.coreN_reset_pulse_start` field: a one there starts a reset pulse whose length comes from `CORE_RESET_PULSE_COUNT`, and `core_resets_done` reads low for the core while its pulse runs. The firmware boot contract had been the only writer. From SEP_IN, core 1 is pulsed with every level-reset field high, so the pending pulse and then the running pulse are each the only reset request. Core 1's `core_resets_done` bit must fall and come back, and the other cores' bits must stay high. `RESET_TIMEOUT` is set to force mode for this leg, as the boot contract does, so the pulse is applied whether or not the cluster drains.
-* **Give-up timeout.** Core 1's level reset is requested with `RESET_TIMEOUT` at `timeout_value` 1 and `timeout_mode` 0, and must read `reset_timeout` 1. It is then released, and both status bits must clear. `RESET_TIMEOUT` is restored and read back.
+* **Pulse width.** `CORE_RESET_PULSE_COUNT` is set to `pre_reset_count` 2 and `post_reset_count` 3, and core 1 is pulsed with every level-reset field high. `post_reset_count` gives the cycles, minus one, that the pulse holds the core in reset, so core 1's bit of `tb_cpu_core_resets_n`, sampled at every `clk_smc_i` edge, must read low for exactly one run of 4 cycles.
+* **Pulse with the level reset held.** `core1_reset_n_n0_scan` is written 0 and core 1's cluster reset must assert. Core 1 is then pulsed. A 0 in `core1_reset_n_n0_scan` holds the core in reset for the whole pulse, so core 1's bit of `tb_cpu_core_resets_n` must read 0 at every `clk_smc_i` sample from the pulse write until `core_resets_done` returns, including the cycle where the pulse hands back to the level reset. The level is then released and core 1's reset must deassert.
+* **Give-up timeout.** Core 1's level reset is requested with `RESET_TIMEOUT` at `timeout_value` 1 and `timeout_mode` 0, and must read `reset_timeout` 1. It is then released, and both status bits must clear. `RESET_TIMEOUT` and `CORE_RESET_PULSE_COUNT` are restored and read back.
 * **Design observation: mode 0 applies the reset after the timeout.** `cpu_ctrl.rdl` describes `timeout_mode` 0 as "give up and report error (stay withheld, do not apply)". The run read `RESET_TIMEOUT` `0x1100000001` 16 cycles after the request: `reset_timeout` 1 and `reset_applied` 1. `smc_cpu_ctrl_wrap.sv` computes `withhold = pending & ~force_apply` with `pending = sw_reset_req & ~drained_i`, so once the drain completes the request is applied in either mode. Mode 0 withholds only until the drain; it does not "stay withheld". The leaf reports `reset_applied` and does not grade it until the intended behaviour is settled.
 
 *Test Procedure*:
@@ -12016,9 +12018,11 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 |Checker |Description
 |`CHK-CPU-RST-GIVEUP` |Core 1's level reset under `timeout_mode` 0 and `timeout_value` 1 read `reset_timeout` 1, and both status bits cleared after the release
 |`CHK-CPU-RST-PULSE` |Core 1's `core_resets_done` bit fell and returned after the pulse write, with the other cores' bits high throughout
+|`CHK-CPU-RST-PULSE-HELD` |Core 1's cluster reset read 0 at every `clk_smc_i` sample of a pulse run with `core1_reset_n_n0_scan` held 0
+|`CHK-CPU-RST-PULSE-WIDTH` |With `post_reset_count` 3, core 1's cluster reset read low for one run of exactly 4 `clk_smc_i` cycles
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
 
 '''''
 

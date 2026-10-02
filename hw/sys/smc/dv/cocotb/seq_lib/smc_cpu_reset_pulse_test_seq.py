@@ -12,13 +12,13 @@ bit must fall and come back, and the other cores' bits must stay high. The
 request is gated on the cluster draining; `RESET_TIMEOUT` is set to force mode
 for this leg, as the boot contract does, so the pulse is applied either way.
 
-The pulse is then timed at the cluster boundary. `post_reset_count` is "the
-cycles, minus one, that the pulse holds the core in reset", so with
-`pre_reset_count` 2 and `post_reset_count` 3, core 1's reset on
+The pulse is then timed at the cluster boundary. `post_reset_count` gives the
+"Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset",
+so with `pre_reset_count` 2 and `post_reset_count` 3, core 1's reset on
 `tb_cpu_core_resets_n` must read low for one run of exactly 4 `clk_smc_i`
-cycles. Next, core 1's level reset is held and core 1 is pulsed again. A 0 in
-`core1_reset_n` keeps the core in reset for the whole pulse, so core 1's reset
-must read low at every sample from before the pulse write until after
+cycles. Next, core 1's level reset is held and core 1 is pulsed again. "A 0 in
+core1_reset_n_n0_scan holds the core in reset for the whole pulse", so core 1's
+reset must read low at every sample from the pulse write until
 `core_resets_done` returns.
 
 `RESET_TIMEOUT.timeout_mode = 0` means "give up and report error (stay
