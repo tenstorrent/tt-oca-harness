@@ -10,6 +10,7 @@ from typing import Any, Literal
 from .ocah_jtag_state import OcahJtagState
 
 OcahJtagScanKind = Literal["IR", "DR"]
+OcahJtagEventKind = Literal["STEP", "TRST"]
 
 
 @dataclass(frozen=True)
@@ -74,5 +75,27 @@ class OcahJtagStateItem:
     next_state: OcahJtagState
     tdi: int = 0
     tdo: int = 0
+    time_ns: float | None = None
+    source: str = ""
+
+
+@dataclass(frozen=True)
+class OcahJtagEvent:
+    """Passive monitor observation of one TCK cycle or one TRST edge.
+
+    ``STEP`` is one completed TCK cycle: ``tms`` and ``tdi`` are the values
+    the DUT captured on the rising edge, ``tdo`` the value stable before it,
+    and ``trst_n`` the TRST level during the cycle (0 holds the TAP in
+    reset). ``TRST`` is an asynchronous TRST edge; ``trst_asserted`` is 1 on
+    assertion and 0 on release. The SV-UVM twin is ``ocah_jtag_event``.
+    """
+
+    kind: OcahJtagEventKind
+    tms: int = 0
+    tdi: int = 0
+    tdo: int = 0
+    trst_n: int = 1
+    trst_asserted: int = 0
+    index: int = 0
     time_ns: float | None = None
     source: str = ""
