@@ -111,6 +111,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
         # closed form; what the standard does fix is that it is bounded by the
         # 1024-sample window and falls as the assessed min-entropy rises.
         prev_apt = None
+        first_apt = None
         for h in cfg.rec_thresh_h:
             await esrc.write_min_entropy_h(h)
             rct, apt = await esrc.read_recommended_thresholds()
@@ -128,6 +129,8 @@ class sep_esrc_fips_lock_test(sep_base_test):
                     f"CHK-REC-THRESH FAIL: APT_LIMIT rose to {apt} at "
                     f"MIN_ENTROPY_H=0x{h:02x}; the cutoff must fall as H rises"
                 )
+            if first_apt is None:
+                first_apt = apt
             prev_apt = apt
             self.logger.info(
                 "CHK-REC-THRESH PASS: MIN_ENTROPY_H=0x%02x -> RCT_LIMIT=%d (golden %d) "
@@ -137,6 +140,20 @@ class sep_esrc_fips_lock_test(sep_base_test):
                 want,
                 apt,
             )
+        # The sweep runs from H=0x00 to the Q4.4 maximum, so across it the cutoff
+        # must actually drop: a constant APT_LIMIT is never-rising but not falling.
+        assert prev_apt < first_apt, (
+            f"CHK-REC-THRESH FAIL: APT_LIMIT={prev_apt} at MIN_ENTROPY_H="
+            f"0x{cfg.rec_thresh_h[-1]:02x} is not below {first_apt} at "
+            f"0x{cfg.rec_thresh_h[0]:02x}; the cutoff must fall as H rises"
+        )
+        self.logger.info(
+            "CHK-REC-THRESH PASS: APT_LIMIT fell %d -> %d across MIN_ENTROPY_H 0x%02x..0x%02x",
+            first_apt,
+            prev_apt,
+            cfg.rec_thresh_h[0],
+            cfg.rec_thresh_h[-1],
+        )
         # Restore the locked value the walk established, so CHK-POST-LOCK still
         # compares against what CHK-PRE-LOCK proved.
         h_target = next(t for t in cfg.targets if t.name == "MIN_ENTROPY_H")
