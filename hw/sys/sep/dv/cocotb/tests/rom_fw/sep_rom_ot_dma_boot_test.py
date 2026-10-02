@@ -17,9 +17,8 @@ The PIO variant is ``sep_rom_ot_pio_boot_test`` (built by
 
 What differs from the SMC-SRAM sibling:
 
-  * The ROM is built with ``BOOT_SPI_CONTROLLER_OT=1`` (``build/``), so
-    ``boot_flash.h`` links the OpenTitan driver (``ot_spi_flash_read_dma``) rather
-    than the weak ``sep_spi.c`` stub that returns "SPI unavailable".
+  * The ROM is the default ``build/`` image, whose ``boot_flash.h`` drains the
+    OpenTitan RX FIFO through ``ot_spi_flash_read_dma``.
   * ``+sep_boot_from_spi`` makes the testbench seed ``STRAPS_LO[25]``
     (primary_chiplet) in the SMC responder, so ``boot_from_spi()`` is true and the
     ROM takes its SPI branch. Without it the ROM falls back to SMC-SRAM and this

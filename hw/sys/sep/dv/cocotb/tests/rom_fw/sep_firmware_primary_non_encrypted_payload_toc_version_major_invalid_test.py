@@ -1,14 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary's PLAINTEXT payload declares a bad TOC major version; the backup boots.
+"""Primary's PLAINTEXT TOC declares major_version 2; the backup boots.
 
-The ROM must refuse TOC ``major_version`` 2 with ``MANIFEST_ERR_BAD_TOC_VERSION``
-after the primary's signature verifies, then fail over to the backup.
+Expects ``OCA_FAIL_PAYLOAD_TOC`` for a TOC major version above 1, but no check compares the
+field, so the DUT accepts the slot. Needs ``+esrc_noise_force``: two RSA-3072 modexps.
 """
 
 from __future__ import annotations
 
 import pyuvm
+from rom_fw import sep_toc_defect as td
 from rom_fw.sep_primary_toc_fail_base import sep_primary_toc_fail_base
 
 
@@ -18,5 +19,5 @@ class sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test(
 ):
     """Plaintext primary TOC major_version is 2 -> refused -> the backup boots."""
 
-    toc_field = "version_major"
+    toc_field = td.VERSION_MAJOR
     encrypted = False

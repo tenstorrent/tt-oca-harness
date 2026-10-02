@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary declares v1.1 with a length above ``MANIFEST_MAX_SIZE``; backup boots.
+"""Primary declares v1.1 with the PQC body size as manifest_length; the backup boots.
 
-Needs ``+sep_crypto_edn_force``: the backup runs a full RSA-3072 modexp on OTBN.
+The length is legal for the other variant only: the rule compares against the body
+size the magic selects, not against any known body size.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from rom_fw.sep_primary_manifest_length_fail_base import (
 class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_large_test(
     sep_primary_manifest_length_fail_base
 ):
-    """Primary is v1.1 with length 2052 -> refused -> the backup boots."""
+    """Primary is OCAC v1.1 with length 36864 -> OCA_FAIL_MANIFEST_LENGTH -> the backup boots."""
 
     primary_minor = 1
-    primary_length = mm.MANIFEST_MAX_SIZE + 4
+    primary_length = mm.K.OCA_PQC_BODY_SIZE

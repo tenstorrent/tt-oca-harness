@@ -3,7 +3,7 @@
 """PROD with secure boot ENFORCED, no demotion input at all -> locked, not demoted.
 
 The primary stays signed, so the decision follows a full RSA-3072 chain. Needs
-``+sep_crypto_edn_force``: a real RSA-3072 modexp runs on OTBN.
+``+esrc_noise_force``: a real RSA-3072 modexp runs on OTBN.
 """
 
 from __future__ import annotations
@@ -12,6 +12,8 @@ import pyuvm
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
+    SIGNED_PATH_FORBIDDEN,
+    SIGNED_PATH_REQUIRED,
     narrow_life_cycle_states,
     sep_demotion_decision_base,
 )
@@ -30,13 +32,6 @@ _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
 PROD_PRELOAD = EFUSE_DIR / "sep_efuse_lc_prod.toml"
-
-# outcome_for() does not cross-check these measurement values.
-_MEAS_LOCKED_BL2_ABSENT = "MEAS_DEMOTE=0x00000002"
-_MEAS_DEFERRED_UNLOCKED = "MEAS_DEMOTE=0x00000005"
-_MEAS_LOCKED_BL2_COUNTED = "MEAS_DEMOTE=0x00000006"
-
-_MEAS_SBOOT_ON = "MEAS_SBOOT=0x00000001"
 
 
 @pyuvm.test()
@@ -66,41 +61,15 @@ class sep_firmware_demotion_decision_no_flag_prod_test(
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
         _LC_PROD,
         _PRIMARY_SRC,
-        "RSA_VERIFY_START",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
-        "PLD_HASH_OK",
-        "MANIFEST_HASH_OK",
-        _MEAS_LOCKED_BL2_ABSENT,
-        _MEAS_SBOOT_ON,
+        *SIGNED_PATH_REQUIRED,
         "BL1_COPIED",
         "BL1_JUMP=",
     )
     # "LC=PROD" is a prefix of "LC=PROD_END", so only the longer string is forbidden.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _LC_PROD_END,
-        "LC_USAGE_CONSTRAINT_FAIL",
-        "SBOOT_OFF",
-        "FUSE: SBOOT_DIS: 1",
         _BACKUP_SRC,
-        "MANIFEST_ERR=",
-        "MANIFEST_ALL_FAILED",
-        "CRYPTO_FAIL=",
-        "RSA_VERIFY_FAIL",
-        "VERSION_ROLLBACK",
-        "KEY_REVOKED",
-        "BAD_SIG_TYPE=",
-        "BAD_KEY_SEL",
-        "BAD_KEY_IDX",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "PLD_HASH_MISMATCH",
-        "PLD_HASH_FAIL=",
-        "MANIFEST_HASH_MISMATCH",
-        "ENC_WITHOUT_SBOOT",
-        _MEAS_DEFERRED_UNLOCKED,
-        _MEAS_LOCKED_BL2_COUNTED,
+        *SIGNED_PATH_FORBIDDEN,
     )
 
     def mutate_manifest(self, buf: bytearray) -> None:

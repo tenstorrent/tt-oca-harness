@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary manifest is a valid v1.0 of exactly ``sizeof(manifest_t)``; it boots.
+"""Primary manifest is a valid v1.0 whose manifest_length is the body size; it boots.
 
-The shipped primary is asserted, not mutated, and the ROM must not fetch an extension.
-Needs ``+sep_crypto_edn_force``: the accepted primary runs a full RSA-3072 modexp on OTBN.
+The ROM must read exactly the declared body and payload, and nothing else.
+Needs ``+esrc_noise_force``: the accepted primary runs a full RSA-3072 modexp on OTBN.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pyuvm
 from env import sep_manifest_mutate as mm
+from env import sep_oca_console as oc
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw import sep_manifest_field_defect as fd
@@ -29,46 +30,36 @@ _EFUSE_PRELOAD = (
 
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _VERSION_LENGTH_OFF = mm.OFF_VERSION_MAJOR
-# Match the read start, not its span: the flash model records one byte past each read.
-_EXTRA_ADDR = mm.PRIMARY_MANIFEST_OFFSET + mm.MANIFEST_SIZE
+_ORDERED = (
+    "OCA_BODY=",
+    "MFST_VER=",
+    "PUBK_AUTHORIZED",
+    "RSA_EXEC",
+    "RSA_VERIFY_OK",
+    "MANIFEST_OK",
+    "PAYLOAD_OK",
+    "BL1_COPIED",
+    "BL1_JUMP=",
+)
 
 
 @pyuvm.test()
 class sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test(
     sep_rom_ot_secure_boot_test
 ):
-    """v1.0 with manifest_length 1184 is accepted, and the primary boots."""
+    """v1.0 with manifest_length equal to the body size is accepted, and the primary boots."""
 
     efuse_preload = _EFUSE_PRELOAD
-    required_markers = sep_rom_ot_secure_boot_test.required_markers + (
-        "LC=PROD",
-        "MANIFEST_HASH_OK",
-        "PLD_HASH_OK",
-        "BL1_COPIED",
-        "BL1_JUMP=",
-    )
-    # A bare "MANIFEST_ERR=" forbids every structural and cryptographic verdict.
+    required_markers = sep_rom_ot_secure_boot_test.required_markers + ("LC=PROD",) + _ORDERED
     forbidden_markers = sep_rom_ot_secure_boot_test.forbidden_markers + (
         _BACKUP_SRC,
         "MANIFEST_ERR=",
         "MANIFEST_ALL_FAILED",
-        "CRYPTO_FAIL=",
-        "MANIFEST_HASH_MISMATCH",
-        "RSA_VERIFY_FAIL",
-        "PLD_HASH_MISMATCH",
-        "IMAGE_HASH_MISMATCH",
+        "RSA_PKCS1_FAIL",
+        "PAYLOAD_LOC_FAIL",
+        "PAYLOAD_TOO_LARGE",
+        "FLASH_READ_OOB",
         "NO_BL1_IMAGE",
-        "PAYLOAD_OFF_ALIGN",
-        "PAYLOAD_OFF_RANGE",
-        "PAYLOAD_HASHED_LEN_BAD=",
-        "PAYLOAD_LEN_RANGE",
-        "PAYLOAD_OVERLAPS_MANIFEST",
-        "TOC_PLEN_MISMATCH=",
-        "PAYLOAD_LOC_OVERFLOW",
-        "ENC_HASHED_LEN_PARTIAL",
-        fd.LC_MARKER,
-        fd.CHIPLET_MARKER,
-        fd.PACKAGE_MARKER,
     )
 
     def build_efuse_image(self):
@@ -99,8 +90,7 @@ class sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_t
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         # sep_manifest_mutate refuses no-op writes, so the shipped values are asserted.
-        # The manifest bounds mirror a ROM #define by hand; check they still agree.
-        fd.assert_rom_manifest_bounds()
+        fd.assert_consumer_body_size()
         major, minor = mm.manifest_version(buf, "primary")
         length = mm.manifest_length(buf, "primary")
         assert major == mm.MANIFEST_MAJOR_VERSION, (
@@ -110,24 +100,21 @@ class sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_t
         )
         assert minor == 0, (
             f"primary manifest_version_minor is {minor}, expected 0: this testcase "
-            f"is the minor-0 arm, and a non-zero minor would send the length down "
-            f"the range rule instead of the exact-match one"
+            f"grades a v1.0 manifest"
         )
-        assert length == mm.MANIFEST_SIZE, (
-            f"primary manifest_length is {length}, expected exactly "
-            f"{mm.MANIFEST_SIZE} (sizeof(manifest_t)): the minor-0 arm demands "
-            f"equality, so any other value would be refused as BAD_LENGTH"
+        assert length == mm.BODY_SIZE, (
+            f"primary manifest_length is {length}, expected exactly the {mm.BODY_SIZE}-byte "
+            f"body: oca_check_manifest_length refuses any other value"
         )
         assert (
             bytes(buf[mm.PRIMARY_MANIFEST_OFFSET : mm.PRIMARY_MANIFEST_OFFSET + 4])
             == mm.MANIFEST_MAGIC
-        ), "primary manifest_identifier is not OCAC"
+        ), "primary manifest magic is not OCAC"
         pm.verify_sealed(buf, "primary")
         mm.verify_public_key(buf, "primary")
         self.logger.info(
             "CHK-STIMULUS-PRIMARY-VERSION: primary declares %d.%d with "
-            "manifest_length %d == sizeof(manifest_t) -- the minor-0 arm's "
-            "satisfied case. It passes payload_hash, every TOC image digest, "
+            "manifest_length %d == the body size. It passes payload_hash, every TOC image digest, "
             "manifest_hash over the signed region and RSA verification against the dev0 "
             "modulus, and the modulus it carries hashes to the ROM's compiled-in "
             "slot-0 digest",
@@ -136,6 +123,10 @@ class sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_t
             length,
         )
         self.logger.info("CHK-STIMULUS-PRIMARY: %s", mm.describe(buf, "primary"))
+        self._payload = (
+            pm.payload_base(buf, "primary"),
+            pm.manifest_payload_length(buf, "primary"),
+        )
         return buf
 
     def log_transport(self, flash) -> None:
@@ -149,47 +140,56 @@ class sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_t
             flash,
             "primary",
             _VERSION_LENGTH_OFF,
-            struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, 0, mm.MANIFEST_SIZE),
+            struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, 0, mm.BODY_SIZE),
             "primary manifest_version_major/minor + manifest_length",
         )
 
-        n_ok = fd.count(console, "MANIFEST_HASH_OK")
-        assert n_ok == 1, (
-            f"MANIFEST_HASH_OK appeared {n_ok} times, expected exactly 1 (the "
-            f"primary's). Console: {console}"
+        attempts = oc.split_attempts(console)
+        assert [a.src for a in attempts] == [mm.PRIMARY_MANIFEST_OFFSET], (
+            f"slot attempts read {[hex(a.src) for a in attempts]}, expected the primary "
+            f"only: the length-correct primary must be accepted on its first read"
         )
-        i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
-        i_hash = fd.first_index(console, "MANIFEST_HASH_OK")
-        assert 0 <= i_psrc < i_hash, (
-            f"MANIFEST_HASH_OK@{i_hash} did not follow the primary read@{i_psrc}: "
-            f"the hash that verified is not the primary's. Console: {console}"
-        )
+        att = attempts[0]
+        oc.assert_attempt(att, error=None, stage="accepted", ordered=_ORDERED)
 
-        fd.assert_no_read_starting_at(
-            self.logger,
-            flash,
-            _EXTRA_ADDR,
-            f"manifest_length is exactly sizeof(manifest_t) ({mm.MANIFEST_SIZE}), so "
-            f"load_manifest_extra() returns without reading and a fetch beginning "
-            f"there would mean the ROM did not act on the declared length",
-        )
-
+        body = (mm.PRIMARY_MANIFEST_OFFSET, mm.PRIMARY_MANIFEST_OFFSET + mm.BODY_SIZE)
+        p_start, p_len = self._payload
+        payload = (p_start, p_start + p_len)
         rds = ev.reads(flash.get_transactions())
-        b_hit = ev.covering_read(rds, mm.BACKUP_MANIFEST_OFFSET)
-        assert b_hit is None, (
-            f"read[{b_hit[0] if b_hit else '?'}] covered the backup manifest "
-            f"address 0x{mm.BACKUP_MANIFEST_OFFSET:x}: the ROM fell over to the "
-            f"backup, so the primary was not accepted. Transactions: "
-            f"{ev.summarize(flash.get_transactions(), self._image_len)}"
+        spans = [ev.read_span(t) for t in rds]
+        stray = [
+            (s, e)
+            for s, e in spans
+            if not (body[0] <= s and e <= body[1]) and not (payload[0] <= s and e <= payload[1])
+        ]
+        assert not stray, (
+            f"read(s) {[f'0x{s:x}..0x{e:x}' for s, e in stray]} fall outside the declared "
+            f"body 0x{body[0]:x}..0x{body[1]:x} and payload 0x{payload[0]:x}..0x{payload[1]:x}: "
+            f"the ROM fetched bytes manifest_length and payload_length do not describe"
+        )
+        assert body in spans, (
+            f"no single read fetched exactly the {mm.BODY_SIZE}-byte body "
+            f"0x{body[0]:x}..0x{body[1]:x}: the ROM did not size the body read from the "
+            f"manifest it peeked. Read spans: {[f'0x{s:x}..0x{e:x}' for s, e in spans]}"
         )
         self.logger.info(
-            "CHK-LENGTH-RULE: primary@%d declared v%d.0 with manifest_length %d, was "
-            "accepted with the only MANIFEST_HASH_OK@%d and booted; no read began at "
-            "0x%06x and none covered the backup slot, so the minor-0 exact-match arm "
-            "was satisfied and no failover occurred",
-            i_psrc,
+            "CHK-LENGTH-RULE PASS: primary@%d-%d declared v%d.0 with manifest_length %d and was "
+            "accepted after %s; every read fell inside the body 0x%x..0x%x or the payload "
+            "0x%x..0x%x, and none covered the backup slot",
+            att.first,
+            att.last,
             mm.MANIFEST_MAJOR_VERSION,
-            mm.MANIFEST_SIZE,
-            i_hash,
-            _EXTRA_ADDR,
+            mm.BODY_SIZE,
+            " -> ".join(_ORDERED),
+            body[0],
+            body[1],
+            payload[0],
+            payload[1],
         )
+
+
+oc.assert_known(
+    sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test.required_markers
+    + sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test.forbidden_markers,
+    "sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test",
+)

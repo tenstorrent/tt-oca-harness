@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary names ROM key slot 1 and boots -> proves a non-zero slot can verify.
 
-The manifest carries slot 1's modulus and is re-signed with slot 1's test key. That key
-exists only under ``TEST_BUILD``; a release ROM refuses slot 1 with ``ROM_KEY_EMPTY``.
+The manifest carries slot 1's modulus and is re-signed with slot 1's test key, whose
+digest the ROM's key table provisions for slot 1.
 """
 
 from __future__ import annotations
@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pyuvm
 from env import sep_manifest_mutate as mm
+from env import sep_oca_console as oc
+from env import sep_payload_mutate as pm
 from env import sep_rom_key_slots as ks
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import (
@@ -32,11 +34,22 @@ _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"
 _LC_PROD = "LC=PROD"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_RSA_START = "RSA_VERIFY_START"
-_SIG_VALID = "SIG_VALID"
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
+_KEY_OK = "PUBK_AUTHORIZED"
+_RSA_EXEC = "RSA_EXEC"
+_RSA_OK = "RSA_VERIFY_OK"
 _BL1_COPIED = "BL1_COPIED"
 _BL1_JUMP = "BL1_JUMP="
+_ORDERED = (
+    _PUBK_SEL_ECHO,
+    _KEY_OK,
+    _REVOKE_ECHO,
+    _RSA_EXEC,
+    _RSA_OK,
+    "MANIFEST_OK",
+    "PAYLOAD_OK",
+    _BL1_COPIED,
+    _BL1_JUMP,
+)
 
 _SBOOT_OFF = "SBOOT_OFF"
 _ANY_MANIFEST_ERR = "MANIFEST_ERR="
@@ -49,16 +62,13 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
     """Primary names ROM slot 1, carries its key, and boots without failover."""
 
     flash_image = SECURE_FLASH_IMAGE
-    required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD,
-        _PRIMARY_SRC,
-        _PUBK_SEL_ECHO,
-        _REVOKE_ECHO,
-        _RSA_START,
-        _SIG_VALID,
-        _CRYPTO_OK,
-        _BL1_COPIED,
-        _BL1_JUMP,
+    required_markers = (
+        sep_rom_ot_dma_boot_test.required_markers
+        + (
+            _LC_PROD,
+            _PRIMARY_SRC,
+        )
+        + _ORDERED
     )
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _SBOOT_OFF,
@@ -66,16 +76,13 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
         _BACKUP_SRC,
         _ANY_MANIFEST_ERR,
         _ALL_FAILED,
-        "BAD_SIG_TYPE=",
-        "BAD_KEY_IDX",
-        "BAD_KEY_SEL",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "KEY_REVOKED",
-        "VERSION_ROLLBACK",
-        "RSA_VERIFY_FAIL",
-        "CRYPTO_FAIL=",
+        "PUBK_ALGO_UNSUPPORTED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_SEL_EMPTY",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_UNAUTHORIZED",
+        "RSA_PKCS1_FAIL",
     )
 
     def build_efuse_image(self):
@@ -118,6 +125,8 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
             f"selecting slot {_VALID_SLOT} left the signed region unchanged; the shipped "
             "primary already selects it"
         )
+        assert pm.verify_signing_key(buf, "primary") == _VALID_SLOT
+        pm.verify_sealed(buf, "primary")
         self.logger.info(
             "CHK-STIMULUS-SLOT1: public_key_sel=0x%04x, modulus digest=%s, re-signed with %s",
             info["selector"],
@@ -132,45 +141,25 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
         )
 
     def check_transport(self, console: list[str], flash) -> None:
-        def index_of(marker: str) -> int:
-            for i, line in enumerate(console):
-                if marker in line:
-                    return i
-            return -1
-
-        i_psrc = index_of(_PRIMARY_SRC)
-        i_sel = index_of(_PUBK_SEL_ECHO)
-        i_revoke = index_of(_REVOKE_ECHO)
-        i_rsa = index_of(_RSA_START)
-        i_sig = index_of(_SIG_VALID)
-        i_ok = index_of(_CRYPTO_OK)
-
-        assert 0 <= i_psrc < i_sel < i_revoke < i_rsa < i_sig < i_ok, (
-            f"key selection did not run on the primary in the architected order: "
-            f"primary@{i_psrc} -> {_PUBK_SEL_ECHO}@{i_sel} -> {_REVOKE_ECHO}"
-            f"@{i_revoke} -> {_RSA_START}@{i_rsa} -> {_SIG_VALID}@{i_sig} -> "
-            f"{_CRYPTO_OK}@{i_ok}. Console: {console}"
+        attempts = oc.split_attempts(console)
+        assert [a.src for a in attempts] == [mm.PRIMARY_MANIFEST_OFFSET], (
+            f"slot attempts read {[hex(a.src) for a in attempts]}, expected the primary "
+            f"only. Console: {console}"
         )
-        for marker in (_PUBK_SEL_ECHO, _REVOKE_ECHO, _RSA_START, _SIG_VALID):
-            n = sum(1 for line in console if marker in line)
+        att = attempts[0]
+        oc.assert_attempt(att, error=None, stage="accepted", ordered=_ORDERED)
+        for marker in (_PUBK_SEL_ECHO, _REVOKE_ECHO, _RSA_EXEC, _RSA_OK):
+            n = oc.count(console, marker)
             assert n == 1, (
                 f"{marker} appeared {n} times, expected exactly 1 (the primary's). "
                 f"Console: {console}"
             )
         self.logger.info(
-            "CHK-KEYSEL-RAN: primary@%d -> %s@%d -> %s@%d -> %s@%d -> %s@%d -> "
-            "%s@%d, each exactly once; the ROM-key path permitted slot %d",
-            i_psrc,
-            _PUBK_SEL_ECHO,
-            i_sel,
-            _REVOKE_ECHO,
-            i_revoke,
-            _RSA_START,
-            i_rsa,
-            _SIG_VALID,
-            i_sig,
-            _CRYPTO_OK,
-            i_ok,
+            "CHK-KEYSEL-RAN PASS: primary@%d-%d accepted after %s, each key-selection and "
+            "verifier marker exactly once; the ROM-key path permitted slot %d",
+            att.first,
+            att.last,
+            " -> ".join(_ORDERED),
             _VALID_SLOT,
         )
 
@@ -209,3 +198,10 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
             magic,
             len(rds),
         )
+
+
+oc.assert_known(
+    sep_firmware_primary_rom_key_slot1_valid_test.required_markers
+    + sep_firmware_primary_rom_key_slot1_valid_test.forbidden_markers,
+    sep_firmware_primary_rom_key_slot1_valid_test.__name__,
+)

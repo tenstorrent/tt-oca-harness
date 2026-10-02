@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """An OCA payload one KiB past fixed SEP-SRAM staging is refused; the backup boots.
 
-The size is derived from the generated SEP SRAM map and the OCA body size. The ROM
-must report ``OCA_BOOT_ERR_STAGE_OVERFLOW`` before fetching the primary payload.
+The size is derived from the generated SEP SRAM map and the OCA body size. That
+payload also ends past the slot window, so the ROM must report
+``OCA_FAIL_PAYLOAD_LOCATION`` before fetching the primary payload.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ _REQUIRED, _FORBIDDEN = psb.refused_markers(psb.shipped_payload_bytes("backup"))
 
 
 @pyuvm.test()
-class sep_firmware_payload_exceeds_sep_sram_fixed_test(psb.PayloadSizeRefusedTest):
+class sep_firmware_payload_exceeds_slot_window_fixed_test(psb.PayloadSizeRefusedTest):
     """One-KiB-over OCA staging payload: primary refused, backup boots."""
 
     payload_bytes = _PAYLOAD_BYTES

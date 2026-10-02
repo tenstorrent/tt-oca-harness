@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A randomly oversized OCA payload is refused; the backup boots.
 
-The seed draws 1 to 100 KiB past fixed SEP-SRAM staging capacity, and every draw
-must report ``OCA_BOOT_ERR_STAGE_OVERFLOW`` before the primary payload fetch.
+The seed draws 1 to 100 KiB past fixed SEP-SRAM staging capacity. Every draw also
+ends past the slot window, so the ROM must report ``OCA_FAIL_PAYLOAD_LOCATION``
+before the primary payload fetch.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ _REQUIRED, _FORBIDDEN = psb.refused_markers(psb.shipped_payload_bytes("backup"))
 
 
 @pyuvm.test()
-class sep_firmware_payload_exceeds_sep_sram_random_test(psb.PayloadSizeRefusedTest):
+class sep_firmware_payload_exceeds_slot_window_random_test(psb.PayloadSizeRefusedTest):
     """Randomly over-capacity OCA payload: primary refused, backup boots."""
 
     stage_in_smc = False

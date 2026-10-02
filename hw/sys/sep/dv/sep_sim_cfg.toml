@@ -322,6 +322,10 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build/oca_non_secure_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_secure_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_encrypted_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_multi_image_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_encrypted_multi_image_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_toc_cap_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_encrypted_toc_cap_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_otp_key_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_rom_key1_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_rom_key2_boot.bin",
@@ -330,8 +334,6 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build/oca_rom_key5_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
   "hw/sys/sep/bootrom/prod/build/invalid_class_key.bin",
-  "hw/sys/sep/bootrom/prod/build/invalid_encryption_iv.bin",
-  "hw/sys/sep/bootrom/prod/build/invalid_kdf_input.bin",
 ]
 
 [c_build.boot_rom_pio]

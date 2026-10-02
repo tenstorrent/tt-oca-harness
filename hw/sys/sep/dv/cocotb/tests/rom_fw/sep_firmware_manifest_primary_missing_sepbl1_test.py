@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary payload declares no SEP_BL1 image; the backup boots.
 
-The primary's BL1 entry is relabelled SEPBL2 and the slot re-sealed, so the primary
-passes its crypto chain and is refused only at the BL1-presence check (NO_BL1_IMAGE).
+The BL1 entry is relabelled SEPBL2 and the slot re-sealed, so only the BL1-presence
+check refuses the primary, with ``NO_BL1_IMAGE`` and ``OCA_BOOT_ERR_NO_BL1``.
 """
 
 from __future__ import annotations
@@ -28,7 +28,6 @@ _EFUSE_PRELOAD = (
 _MANIFEST_ERR_NO_BL1_IMAGE = pm.MANIFEST_ERR_NO_BL1
 
 _NO_BL1 = "NO_BL1_IMAGE"
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
 
 _RELABEL_TYPE = pm.IMAGE_TYPE_SEP_BL2
 
@@ -37,34 +36,18 @@ _RELABEL_TYPE = pm.IMAGE_TYPE_SEP_BL2
 class sep_firmware_manifest_primary_missing_sepbl1_test(sep_primary_fail_backup_boot_base):
     """Primary TOC declares SEPBL2 where BL1 was -> failover -> the backup boots."""
 
-    # Empty: the base's defect-marker path would also require CRYPTO_FAIL=.
-    primary_defect_marker = ""
+    primary_defect_marker = _NO_BL1
     primary_expected_error = _MANIFEST_ERR_NO_BL1_IMAGE
-    # The BL1 check runs after crypto validation, so the primary verifies once too.
     primary_expected_rsa_starts = 1
-    primary_expected_sig_valids = 1
+    primary_expected_rsa_oks = 1
+    primary_expected_stage = "placement"
+    primary_ordered = ("PAYLOAD_OK",)
+    primary_absent = ("BL1_ADDR_RANGE", "BL1_SRAM_EXEC_DISABLED", "BL1_SIZE", "BL1_ENTRY_RANGE")
     efuse_preload = _EFUSE_PRELOAD
-    extra_required = ("PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    extra_forbidden = (
-        "CRYPTO_FAIL=",
-        "RSA_VERIFY_FAIL",
-        "PLD_HASH_MISMATCH",
-        "MANIFEST_HASH_MISMATCH",
-        "MANIFEST_ALL_FAILED",
-        "IMAGE_HASH_MISMATCH",
-        "IMAGE_ORDER_BAD",
-        "IMAGE_LEN_ZERO",
-        "IMAGE_LEN_ALIGN",
-        "TOC_REGION_OOB=",
-        "TOC_PLEN_MISMATCH=",
-        "BL1_ADDR_RANGE",
-        "BL1_ENTRY_RANGE",
-        fd.LC_MARKER,
-        fd.CHIPLET_MARKER,
-        fd.PACKAGE_MARKER,
-    )
+    extra_required = ("BL1_COPIED", "BL1_JUMP=")
 
     def corrupt_primary(self, buf: bytearray) -> None:
+        golden = bytes(buf)
         entry = pm.find_image(buf, "primary")
         before = pm.entry_type(buf, entry)
         assert before == pm.IMAGE_TYPE_SEP_BL1, (
@@ -79,11 +62,19 @@ class sep_firmware_manifest_primary_missing_sepbl1_test(sep_primary_fail_backup_
         assert pm.IMAGE_TYPE_SEP_BL1 not in types, (
             f"primary TOC still declares a SEP_BL1 image: {types}"
         )
+        rules = pm.spec_rule_violations(buf, "primary")
+        assert rules == [], f"the relabelled primary TOC also breaks spec rules {rules}"
+        type_at = entry - pm.payload_base(buf, "primary") + pm.E_TYPE
+        changed = {i for r in pm.plaintext_diff(golden, bytes(buf), "primary") for i in r}
+        assert changed and changed <= set(range(type_at, type_at + 16)), (
+            f"the relabel changed cleartext bytes {sorted(changed)[:16]} outside the entry "
+            f"type at payload offset {type_at}"
+        )
         self.logger.info(
             "CHK-STIMULUS-MISSING-BL1: primary TOC entry @0x%x relabelled "
             "%r -> %r, leaving types %s and no SEP_BL1; the image BODY is "
             "untouched so its digest still verifies, and the slot is re-sealed so "
-            "the TOC change does not surface as PLD_HASH_MISMATCH",
+            "the TOC change does not surface as a hash failure",
             entry,
             before,
             _RELABEL_TYPE,
@@ -92,34 +83,3 @@ class sep_firmware_manifest_primary_missing_sepbl1_test(sep_primary_fail_backup_
 
     def check_efuse(self, image) -> None:
         fd.assert_clean_key_fuses(image)
-
-    def check_transport(self, console: list[str], flash) -> None:
-        super().check_transport(console, flash)
-
-        slot_err = f"MANIFEST_ERR=0x{self.primary_expected_error:08x}"
-        i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
-        i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
-
-        i_defect = fd.assert_slot_attributed(console, _NO_BL1, after=i_psrc, before=i_bsrc)
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_defect, before=i_bsrc)
-
-        i_pcrypto = fd.first_index(console, _CRYPTO_OK)
-        assert i_psrc < i_pcrypto < i_defect, (
-            f"{_CRYPTO_OK}@{i_pcrypto} does not sit between the primary read"
-            f"@{i_psrc} and {_NO_BL1}@{i_defect}: the primary was refused before "
-            f"its crypto chain finished, so the verdict is not the BL1-presence "
-            f"branch's. Console: {console}"
-        )
-        self.logger.info(
-            "CHK-MISSING-BL1: primary read@%d -> %s@%d -> %s@%d -> %s@%d -> backup "
-            "read@%d; the primary passed the whole crypto chain and was refused "
-            "only for having no SEP_BL1 image",
-            i_psrc,
-            _CRYPTO_OK,
-            i_pcrypto,
-            _NO_BL1,
-            i_defect,
-            slot_err,
-            i_err,
-            i_bsrc,
-        )

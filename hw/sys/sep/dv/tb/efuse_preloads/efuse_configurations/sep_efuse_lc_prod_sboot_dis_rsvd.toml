@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle with SBOOT_DIS = 0x2: reserved bit 1 set, disable_secure_boot (bit 0) clear.
+# Secure boot stays enforced, so the ROM must refuse an unsigned manifest.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[SBOOT_DIS]
+  [SBOOT_DIS.fields.rsvd]
+  value = 0x1

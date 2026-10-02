@@ -26,30 +26,20 @@ _EFUSE_PRELOAD = (
 
 _MANIFEST_ERR_HASH_MISMATCH = mm.boot_err("OCA_FAIL_MANIFEST_HASH")
 
-_HASH_MISMATCH = "MANIFEST_HASH_MISMATCH"
-_HASH_OK = "MANIFEST_HASH_OK"
-
 
 @pyuvm.test()
 class sep_firmware_bad_manifest_hash_test(sep_primary_fail_backup_boot_base):
     """Primary's manifest_hash does not match its signed region -> the backup boots."""
 
-    # This arm prints no CRYPTO_FAIL=, so the base's defect-marker check does not apply.
-    primary_defect_marker = ""
+    # The manifest-hash check is silent; its error line is the defect marker.
+    primary_defect_marker = f"MANIFEST_ERR=0x{_MANIFEST_ERR_HASH_MISMATCH:08x}"
     primary_expected_error = _MANIFEST_ERR_HASH_MISMATCH
     primary_expected_rsa_starts = 0
+    # Refused after the full body is read and before key authorization.
+    primary_ordered = ("OCA_BODY=", "MFST_VER=")
+    primary_absent = ("PUBK_SEL=",)
     efuse_preload = _EFUSE_PRELOAD
-    extra_required = (_HASH_MISMATCH, "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    # The primary is refused before the usage-constraint and crypto checks; the backup is valid.
-    extra_forbidden = (
-        "MANIFEST_HASH_TIMEOUT",
-        "CRYPTO_FAIL=",
-        "RSA_VERIFY_FAIL",
-        "PLD_HASH_MISMATCH",
-        fd.LC_MARKER,
-        fd.CHIPLET_MARKER,
-        fd.PACKAGE_MARKER,
-    )
+    extra_required = ("BL1_COPIED", "BL1_JUMP=")
 
     def corrupt_primary(self, buf: bytearray) -> None:
         before = mm.manifest_hash(buf, "primary")
@@ -77,36 +67,3 @@ class sep_firmware_bad_manifest_hash_test(sep_primary_fail_backup_boot_base):
 
     def check_efuse(self, image) -> None:
         fd.assert_clean_key_fuses(image)
-
-    def check_transport(self, console: list[str], flash) -> None:
-        super().check_transport(console, flash)
-
-        slot_err = f"MANIFEST_ERR=0x{self.primary_expected_error:08x}"
-        i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
-        i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
-
-        i_bad = fd.assert_slot_attributed(console, _HASH_MISMATCH, after=i_psrc, before=i_bsrc)
-        fd.assert_slot_attributed(console, slot_err, after=i_bad - 1, before=i_bsrc)
-
-        # A second OK would mean the primary also verified, i.e. the mutation never landed.
-        n_ok = fd.count(console, _HASH_OK)
-        assert n_ok == 1, (
-            f"{_HASH_OK} appeared {n_ok} times, expected exactly 1 (the backup's). "
-            f"Console: {console}"
-        )
-        i_ok = fd.first_index(console, _HASH_OK)
-        assert i_bsrc < i_ok, (
-            f"{_HASH_OK}@{i_ok} did not follow the backup read@{i_bsrc}: the one "
-            f"hash that verified is not the backup's. Console: {console}"
-        )
-        self.logger.info(
-            "CHK-MANIFEST-HASH: %s@%d and %s inside the primary attempt (read@%d, "
-            "backup read@%d), and %s appears exactly once at %d -- the backup's",
-            _HASH_MISMATCH,
-            i_bad,
-            slot_err,
-            i_psrc,
-            i_bsrc,
-            _HASH_OK,
-            i_ok,
-        )

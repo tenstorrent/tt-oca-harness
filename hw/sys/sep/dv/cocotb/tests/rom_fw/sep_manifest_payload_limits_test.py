@@ -1,155 +1,192 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Both slots declare payload fields at the 32-bit limits; the ROM halts.
+"""Both slots declare a payload field past the 32-bit boundary; the ROM halts.
 
-The primary's payload_length makes the 32-bit bounds sum wrap and is refused silently
-by the wrap guard; the backup's payload_offset is refused by the offset-range guard.
+The ROM reads the payload with a 32-bit address and span, so a field k * 2^32 from the sealed
+value reads a valid payload unless ``oca_locate_payload()``'s int64 range checks refuse it.
 """
 
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
+from env import sep_oca_console as oc
 from env import sep_payload_mutate as pm
 from env.sep_seeded_rng import SepSeededRng
 from rom_fw import sep_manifest_field_defect as fd
-from rom_fw.sep_backup_manifest_structural_fail_base import (
-    sep_backup_manifest_structural_fail_base,
-)
-from rom_fw.sep_usage_constraint_base import EFUSE_PRELOAD
+from rom_fw import sep_toc_defect as td
+from rom_fw.sep_backup_payload_fail_base import err_marker, sep_backup_payload_fail_base
 
-# The wrap arm's code, shared with the length-range and capacity arms.
-ERR_PAYLOAD_TOO_LARGE = 0x0003_0007
-# The offset-range arm's code, shared with every other length verdict in the function.
-ERR_BAD_LENGTH = 0x0003_0004
+_ERR_PAYLOAD_LOCATION = mm.boot_err("OCA_FAIL_PAYLOAD_LOCATION")
+_LOC_FAIL = "PAYLOAD_LOC_FAIL"
 
-_OFF_RANGE_TOKEN = "PAYLOAD_OFF_RANGE"
-_LEN_RANGE_TOKEN = "PAYLOAD_LEN_RANGE"
+_INT64_MAX = (1 << 63) - 1
+_INT64_MIN = -(1 << 63)
+_WORD = 1 << 32
+_LOW32 = _WORD - 1
+_SLOT_STRIDE = mm.BACKUP_MANIFEST_OFFSET - mm.PRIMARY_MANIFEST_OFFSET
+_WINDOW_SPAN = _SLOT_STRIDE - mm.PRIMARY_MANIFEST_OFFSET
+# Multiples of 2^32 that keep the field inside int64, so the region bound is what refuses it.
+_PRIMARY_WRAPS = (1, 0x7FFF_FFFF)
+_BACKUP_WRAPS = (1, -1, 0x7FFF_FFFF, -0x8000_0000)
+
+
+def locate_arm(buf, slot: str) -> str:
+    assert not pm.is_encrypted(buf, slot), f"{slot} is encrypted; the span model is cleartext"
+    span = pm.manifest_payload_length(buf, slot)
+    at = mm.slot_base(slot) + pm.OFF_PAYLOAD_OFFSET
+    offset = int.from_bytes(bytes(buf[at : at + 8]), "little", signed=True)
+    base = mm.slot_base(slot)
+    if span == 0:
+        return "no_payload"
+    if span > _INT64_MAX:
+        return "span_exceeds_int64"
+    if offset > 0 and base > _INT64_MAX - offset:
+        return "addr_overflow"
+    if offset < 0 and base < _INT64_MIN - offset:
+        return "addr_underflow"
+    if base + offset > _INT64_MAX - span:
+        return "end_overflow"
+    if base + offset < base or base + offset + span > base + _WINDOW_SPAN:
+        return "region"
+    return "none"
 
 
 @pyuvm.test()
-class sep_manifest_payload_limits_test(sep_backup_manifest_structural_fail_base):
-    """Primary wraps its payload bound, backup over-ranges its offset, ROM halts."""
+class sep_manifest_payload_limits_test(sep_backup_payload_fail_base):
+    """Seeded 32-bit wrap or int64 overflow in each slot -> both PAYLOAD_LOC_FAIL -> halt."""
 
-    efuse_preload = EFUSE_PRELOAD
-    primary_expected_error = ERR_PAYLOAD_TOO_LARGE
-    expected_error = ERR_BAD_LENGTH
-    backup_defect_marker = _OFF_RANGE_TOKEN
-
-    # PAYLOAD_LEN_RANGE must stay absent: the primary sits on that arm's accept-side boundary.
-    extra_forbidden = (
-        _LEN_RANGE_TOKEN, "PAYLOAD_OFF_ALIGN", "PAYLOAD_HASHED_LEN_BAD=",
-        "ENC_HASHED_LEN_PARTIAL", "PAYLOAD_OVERLAPS_MANIFEST",
-        "TOC_REGION_OOB=", "TOC_PLEN_MISMATCH=", "PAYLOAD_NO_ROOM=",
-        "PAYLOAD_LOC_OVERFLOW", "PAYLOAD_LOC_OT_OOB", "PAYLOAD_DST=",
-        "USING_SEP_SRAM", "USING_SMC_SRAM", "EXT_SRAM_INIT_WAIT",
-        "MANIFEST_HASH_MISMATCH", "MANIFEST_HASH_OK", "CRYPTO_FAIL=",
-        fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER,
-    )
-
-    def corrupt_primary(self, buf: bytearray) -> None:
-        geom = pm.declare_wrapping_payload_length(buf, "primary")
-        self._wrap = geom
-        self._primary_served = geom["payload_length"].to_bytes(8, "little")
-        stored = bytes(buf[mm.slot_base("primary") + pm.OFF_PAYLOAD_LENGTH:
-                           mm.slot_base("primary") + pm.OFF_PAYLOAD_LENGTH + 8])
-        assert stored == self._primary_served, (
-            f"primary payload_length reads {stored.hex()} after the write, expected "
-            f"{self._primary_served.hex()}; the mutation did not land"
-        )
-        self._primary_src = mm.slot_base("primary") + geom["payload_offset"]
-        self.logger.info(
-            "CHK-STIMULUS-WRAP: primary payload_length 0x%x -> 0x%x at "
-            "payload_offset 0x%x. (0x%x + 0x%x) & 0xFFFFFFFF = 0x%x, which is BELOW "
-            "the offset (so `total < p_off` fires) and below the 0x%x SRAM (so the "
-            "capacity arm cannot fire). 0x%x is the largest value the length-range "
-            "arm accepts, so %s must be ABSENT. Re-signed: the declared length is "
-            "the slot's only defect",
-            geom["payload_length_before"], geom["payload_length"],
-            geom["payload_offset"], geom["payload_offset"], geom["payload_length"],
-            geom["wrapped_sum"], geom["sram_size"], geom["len_range_limit"],
-            _LEN_RANGE_TOKEN,
-        )
-
-    def corrupt_backup(self, buf: bytearray) -> None:
-        seed = self.random_seed()
-        value = SepSeededRng(seed).choice(pm.OFF_RANGE_VALUES)
-        was = pm.set_out_of_range_payload_offset(buf, "backup", value)
-        self._off_value = value
-        self._backup_served = value.to_bytes(8, "little")
-        stored = int.from_bytes(
-            bytes(buf[mm.slot_base("backup") + pm.OFF_BOOT_PAYLOAD_OFFSET:
-                      mm.slot_base("backup") + pm.OFF_BOOT_PAYLOAD_OFFSET + 8]),
-            "little", signed=True,
-        )
-        # A sign-extended write would hit the silent `p_off <= 0` arm with the same code.
-        assert stored > pm.PAYLOAD_OFF_RANGE_LIMIT, (
-            f"backup payload_offset reads {stored} as int64 for draw 0x{value:x}; "
-            f"the offset-range arm needs a value above "
-            f"+0x{pm.PAYLOAD_OFF_RANGE_LIMIT:x}, and a smaller or negative one is "
-            f"claimed by a different arm that returns the same code silently"
-        )
-        self.logger.info(
-            "CHK-STIMULUS-OFF-RANGE: seed %d drew payload_offset 0x%x from the "
-            "procedure's %s; the backup's field goes %d -> %d as int64, above "
-            "+0x%x, so validate_manifest_header must refuse it as %s before the "
-            "cast to int32. NOT re-signed -- boot_arguments sits outside the TBS -- "
-            "and the payload is not moved, because the refusal precedes the fetch",
-            seed, value, [hex(v) for v in pm.OFF_RANGE_VALUES], was, stored,
-            pm.PAYLOAD_OFF_RANGE_LIMIT, _OFF_RANGE_TOKEN,
-        )
+    efuse_preload = td.PLAINTEXT_EFUSE
+    primary_expected_error = _ERR_PAYLOAD_LOCATION
+    primary_expected_rsa_starts = 1
+    primary_expected_rsa_oks = 1
+    primary_expected_stage = "payload"
+    primary_ordered = (_LOC_FAIL,)
+    primary_absent = ("PAYLOAD_TOO_LARGE", "FLASH_READ_OOB")
+    backup_defect_marker = _LOC_FAIL
+    expected_error = _ERR_PAYLOAD_LOCATION
+    backup_expected_stage = "payload"
 
     def check_efuse(self, image) -> None:
         fd.assert_clean_key_fuses(image)
 
+    def corrupt_primary(self, buf: bytearray) -> None:
+        assert locate_arm(buf, "primary") == "none", "the shipped primary is refused by locate"
+        seed = self.random_seed()
+        self._rng = SepSeededRng(seed)
+        self._payload_src = {"primary": pm.payload_base(buf, "primary")}
+        sealed = pm.manifest_payload_length(buf, "primary")
+        pool = tuple(sealed + k * _WORD for k in _PRIMARY_WRAPS) + (1 << 63,)
+        length = self._rng.choice(pool)
+        self._primary_wraps = length <= _INT64_MAX
+        want = "region" if self._primary_wraps else "span_exceeds_int64"
+        pm.declare_payload_length(buf, "primary", length)
+        arm = locate_arm(buf, "primary")
+        assert arm == want, f"primary payload_length 0x{length:x} reaches the {arm} arm, not {want}"
+        if self._primary_wraps:
+            assert length & _LOW32 == sealed, (
+                f"payload_length 0x{length:x} does not truncate to the sealed {sealed}"
+            )
+        mm.verify_layout(buf, "primary")
+        assert mm.manifest_hash(buf, "primary") == mm.signed_region_hash(buf, "primary")
+        pm.verify_signing_key(buf, "primary")
+        mm.verify_public_key(buf, "primary")
+        self._primary_served = length.to_bytes(8, "little")
+        self.logger.info(
+            "CHK-STIMULUS-SPAN: seed %d drew primary payload_length 0x%x from %s (sealed "
+            "0x%x), re-signed; (uint32_t) of it is 0x%x, and oca_locate_payload() must "
+            "refuse it on arm %s",
+            seed,
+            length,
+            [hex(v) for v in pool],
+            sealed,
+            length & _LOW32,
+            arm,
+        )
+
+    def corrupt_backup(self, buf: bytearray) -> None:
+        assert locate_arm(buf, "backup") == "none", "the shipped backup is refused by locate"
+        assert pm.OFF_PAYLOAD_OFFSET >= mm.SIGNED_REGION_END, (
+            "payload_offset is inside the signed region; the backup would need re-signing"
+        )
+        pm.verify_signing_key(buf, "backup")
+        base = mm.slot_base("backup")
+        src = pm.payload_base(buf, "backup")
+        self._payload_src["backup"] = src
+        at = base + pm.OFF_PAYLOAD_OFFSET
+        sealed = int.from_bytes(bytes(buf[at : at + 8]), "little", signed=True)
+        pool = tuple(sealed + k * _WORD for k in _BACKUP_WRAPS)
+        # At least one slot carries the 32-bit wrap this row exists for.
+        if self._primary_wraps:
+            pool += (_INT64_MAX,)
+        offset = self._rng.choice(pool)
+        wraps = offset != _INT64_MAX
+        want = "region" if wraps else "addr_overflow"
+        self._backup_served = offset.to_bytes(8, "little", signed=True)
+        buf[at : at + 8] = self._backup_served
+        arm = locate_arm(buf, "backup")
+        assert arm == want, f"backup payload_offset {offset:#x} reaches the {arm} arm, not {want}"
+        if wraps:
+            assert (base + offset) & _LOW32 == src, (
+                f"payload address {base + offset:#x} does not truncate to the sealed 0x{src:x}"
+            )
+        assert mm.manifest_hash(buf, "backup") == mm.signed_region_hash(buf, "backup")
+        pm.verify_signing_key(buf, "backup")
+        mm.verify_public_key(buf, "backup")
+        self.logger.info(
+            "CHK-STIMULUS-OFFSET: drew backup payload_offset %d from %s (sealed %d) in the "
+            "unsigned tail, signature still valid; the payload address is %#x, (uint32_t) "
+            "%#x, and oca_locate_payload() must refuse it on arm %s",
+            offset,
+            list(pool),
+            sealed,
+            base + offset,
+            (base + offset) & _LOW32,
+            arm,
+        )
+
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
 
-        i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
-        i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
-
-        # The wrap arm prints no token, so no announcing arm may appear in the primary's attempt.
-        for token in (_OFF_RANGE_TOKEN, _LEN_RANGE_TOKEN):
-            n_before_backup = sum(
-                1 for i, line in enumerate(console)
-                if i_psrc < i < i_bsrc and token in line
-            )
-            assert n_before_backup == 0, (
-                f"{token} appeared inside the primary's attempt (lines "
-                f"{i_psrc}..{i_bsrc}): the primary declared an in-range, aligned "
-                f"payload_offset and a length the range arm accepts, so an "
-                f"announcing arm must not be what refused it. Console: {console}"
-            )
-
-        # Exactly one occurrence rules out both slots producing the token.
-        n_off = fd.count(console, _OFF_RANGE_TOKEN)
-        assert n_off == 1, (
-            f"{_OFF_RANGE_TOKEN} appeared {n_off} times, expected exactly 1 (the "
-            f"backup's): only the backup declares an out-of-range offset, and a "
-            f"second occurrence would mean the two slots carry one defect and "
-            f"nothing attributes the terminal verdict. Console: {console}"
+        primary = oc.split_attempts(console)[0]
+        tail = [line for _, line in primary.markers][-2:]
+        assert (
+            len(tail) == 2
+            and oc.count(tail[:1], _LOC_FAIL) == 1
+            and oc.count(tail[1:], err_marker(_ERR_PAYLOAD_LOCATION)) == 1
+        ), (
+            f"the primary does not end {_LOC_FAIL} -> {err_marker(_ERR_PAYLOAD_LOCATION)} "
+            f"(attempt ends {tail}): a later check refused it, not the location bound"
         )
         self.logger.info(
-            "CHK-ARM-SPLIT: primary@%d refused silently with "
-            "MANIFEST_ERR=0x%08x (the wrap arm), backup@%d refused with %s and "
-            "MANIFEST_ERR=0x%08x (the offset-range arm) -- two different arms, two "
-            "different codes, one terminal verdict",
-            i_psrc, ERR_PAYLOAD_TOO_LARGE, i_bsrc, _OFF_RANGE_TOKEN,
-            ERR_BAD_LENGTH,
+            "CHK-LOCATE-BOTH PASS: primary@%d-%d and the backup both end %s -> %s",
+            primary.first,
+            primary.last,
+            _LOC_FAIL,
+            err_marker(_ERR_PAYLOAD_LOCATION),
         )
 
-        fd.assert_no_read_starting_at(
-            self.logger, self._flash, self._primary_src,
-            f"the primary declared payload_length 0x{self._wrap['payload_length']:x}, "
-            f"whose 32-bit sum with payload_offset wraps, so "
-            f"validate_manifest_header must refuse the slot before the payload "
-            f"fetch is issued",
+        for slot in ("primary", "backup"):
+            fd.assert_no_read_starting_at(
+                self.logger,
+                self._flash,
+                self._payload_src[slot],
+                f"the {slot} payload was refused by oca_locate_payload(), so no read "
+                f"is issued at the address its field truncates to",
+            )
+        fd.assert_served_field(
+            self.logger,
+            self._flash,
+            "primary",
+            pm.OFF_PAYLOAD_LENGTH,
+            self._primary_served,
+            "primary payload_length",
         )
-
-        fd.assert_served_field(self.logger, self._flash, "primary",
-                               pm.OFF_PAYLOAD_LENGTH, self._primary_served,
-                               "primary payload_length")
-        fd.assert_served_field(self.logger, self._flash, "backup",
-                               pm.OFF_BOOT_PAYLOAD_OFFSET, self._backup_served,
-                               "backup boot_arguments.payload_offset")
+        fd.assert_served_field(
+            self.logger,
+            self._flash,
+            "backup",
+            pm.OFF_PAYLOAD_OFFSET,
+            self._backup_served,
+            "backup payload_offset",
+        )

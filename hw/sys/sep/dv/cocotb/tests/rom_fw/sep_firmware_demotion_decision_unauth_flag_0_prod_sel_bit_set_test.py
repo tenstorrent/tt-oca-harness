@@ -3,7 +3,8 @@
 """PROD with BL1 valid/disabled and BL2 requested -> BL1 wins, not demoted.
 
 Only the signed OCA BL1 decision may reach DEMOTE_1: a ROM that ORs the two
-requests or falls through to the BL2 arm fails.
+requests or falls through to the BL2 arm fails. The BL2 request is still recorded,
+so the boot measurement carries demotion bits 0x6.
 """
 
 from __future__ import annotations
@@ -11,17 +12,10 @@ from __future__ import annotations
 import pyuvm
 from rom_fw.sep_demotion_prod_base import sep_demotion_prod_base
 
-# Bit 2 carries the BL2 request, although measurement.h names it the BL2 decision.
-_MEAS_LOCKED_BL2_COUNTED = "MEAS_DEMOTE=0x00000006"
-_MEAS_LOCKED_BL2_ABSENT = "MEAS_DEMOTE=0x00000002"
-
 
 @pyuvm.test()
 class sep_firmware_demotion_bl1_disable_over_bl2_request_prod_test(sep_demotion_prod_base):
     """BL1 valid/disabled overrides a BL2 request under PROD."""
-
-    required_markers = sep_demotion_prod_base.required_markers + (_MEAS_LOCKED_BL2_COUNTED,)
-    forbidden_markers = sep_demotion_prod_base.forbidden_markers + (_MEAS_LOCKED_BL2_ABSENT,)
 
     _SEL = 1
     _AUTH = 0

@@ -3,7 +3,7 @@
 """Shared stimulus and checks for the payload-size rom_fw testcases.
 
 Accepted members repack the primary to a legal size and must boot it; the refused
-member over-declares it and must fail over to the backup.
+member over-declares it past the slot window and must fail over to the backup.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 from env import sep_manifest_mutate as mm
+from env import sep_oca_console as oc
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw import sep_manifest_field_defect as fd
@@ -34,36 +35,28 @@ SEP_SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 
 _SEP_ADDR_H = Path(__file__).resolve().parents[4] / "regs" / "gen" / "c" / "sep_addr.h"
 
-# The current ROM stages the OCA body and payload contiguously in SEP SRAM.
+# The ROM stages the OCA body and payload contiguously in SEP SRAM.
 OCA_BODY_BYTES = (mm.BODY_SIZE + 7) & ~7
-ERR_PAYLOAD_TOO_LARGE = mm.rom_boot_err("OCA_BOOT_ERR_STAGE_OVERFLOW")
+ERR_PAYLOAD_LOCATION = mm.boot_err("OCA_FAIL_PAYLOAD_LOCATION")
+_SLOT_STRIDE = mm.BACKUP_MANIFEST_OFFSET - mm.PRIMARY_MANIFEST_OFFSET
+_SLOT_WINDOW_SPAN = _SLOT_STRIDE - mm.PRIMARY_MANIFEST_OFFSET
 
-_OTHER_LENGTH_REFUSALS = (
-    "PAYLOAD_LEN_RANGE",
-    "PAYLOAD_OFF_RANGE",
-    "PAYLOAD_OFF_ALIGN",
-    "PAYLOAD_HASHED_LEN_BAD=",
-    "ENC_HASHED_LEN_PARTIAL",
-    "TOC_REGION_OOB=",
-    "TOC_PLEN_MISMATCH=",
-    "PAYLOAD_OVERLAPS_MANIFEST",
-)
-_STRUCTURAL_REFUSALS = (
-    "IMAGE_OFF_ALIGN idx=",
-    "IMAGE_END_OVERFLOW idx=",
-    "IMAGE_OOB_BOUND idx=",
-    "IMAGE_ORDER_BAD idx=",
-    "IMAGE_LEN_ZERO idx=",
-    "IMAGE_LEN_ALIGN idx=",
-    "IMAGE_HASH_MISMATCH idx=",
-    "IMAGE_HASH_TIMEOUT",
+_LOC_FAIL = "PAYLOAD_LOC_FAIL"
+_TRANSPORT_REFUSALS = ("FLASH_READ_OOB", "DMA_STS=")
+_OTHER_PAYLOAD_REFUSALS = (_LOC_FAIL,) + _TRANSPORT_REFUSALS
+_PLACEMENT_REFUSALS = (
     "NO_BL1_IMAGE",
+    "BL1_SRAM_EXEC_DISABLED",
     "BL1_ADDR_RANGE",
+    "BL1_SIZE",
     "BL1_ENTRY_RANGE",
-    "PLD_HASH_FAIL=",
-    "CRYPTO_FAIL=",
     "MANIFEST_ALL_FAILED",
 )
+_KEY_OK = "PUBK_AUTHORIZED"
+_RSA_EXEC = "RSA_EXEC"
+_RSA_OK = "RSA_VERIFY_OK"
+_SIGNED_ACCEPT = (_KEY_OK, _RSA_EXEC, _RSA_OK, "MANIFEST_OK")
+_BOOTED = ("PAYLOAD_OK", "BL1_COPIED", "BL1_JUMP=")
 _PRIMARY_SRC = fd.PRIMARY_SRC
 _BACKUP_SRC = fd.BACKUP_SRC
 
@@ -107,7 +100,7 @@ def payload_staging_capacity() -> int:
 
 
 def accepted_markers(payload_bytes: int, *, smc: bool) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    assert not smc, "the OCA ROM no longer supports manifest-selected SMC staging"
+    assert not smc, "the OCA ROM does not support manifest-selected SMC staging"
     return (
         (
             "MANIFEST_PRIMARY",
@@ -118,15 +111,12 @@ def accepted_markers(payload_bytes: int, *, smc: bool) -> tuple[tuple[str, ...],
             "BL1_COPIED",
             "BL1_JUMP=",
         ),
-        _OTHER_LENGTH_REFUSALS
-        + _STRUCTURAL_REFUSALS
+        _OTHER_PAYLOAD_REFUSALS
+        + _PLACEMENT_REFUSALS
         + (
             "MANIFEST_BACKUP",
             _BACKUP_SRC,
             "MANIFEST_ERR=",
-            "PAYLOAD_LOC_OT_OOB",
-            "PAYLOAD_LOC_SMC_OOB",
-            "PAYLOAD_LOC_OVERFLOW",
             "PAYLOAD_TOO_LARGE",
         ),
     )
@@ -137,8 +127,8 @@ def refused_markers(backup_payload_bytes: int) -> tuple[tuple[str, ...], tuple[s
         (
             "MANIFEST_PRIMARY",
             _PRIMARY_SRC,
-            "PAYLOAD_TOO_LARGE",
-            f"MANIFEST_ERR=0x{ERR_PAYLOAD_TOO_LARGE:08x}",
+            _LOC_FAIL,
+            f"MANIFEST_ERR=0x{ERR_PAYLOAD_LOCATION:08x}",
             "MANIFEST_BACKUP",
             _BACKUP_SRC,
             "MANIFEST_OK",
@@ -147,16 +137,7 @@ def refused_markers(backup_payload_bytes: int) -> tuple[tuple[str, ...], tuple[s
             "BL1_COPIED",
             "BL1_JUMP=",
         ),
-        _OTHER_LENGTH_REFUSALS
-        + _STRUCTURAL_REFUSALS
-        + (
-            "PAYLOAD_NO_ROOM=",
-            "PAYLOAD_LOC_OT_OOB",
-            "PAYLOAD_LOC_SMC_OOB",
-            "PAYLOAD_LOC_OVERFLOW",
-            "STAGED_WIPE=",
-            "FLASH_REINIT_FAIL=",
-        ),
+        _TRANSPORT_REFUSALS + _PLACEMENT_REFUSALS + ("PAYLOAD_TOO_LARGE",),
     )
 
 
@@ -202,8 +183,12 @@ class _PayloadSizeTest(sep_rom_ot_secure_boot_test):
     efuse_preload = EFUSE_PRELOAD
     # Bytes the primary manifest declares; every member must set it.
     payload_bytes: int = 0
-    # Kept only so removed SMC-era modules fail clearly if run directly.
+    # SMC staging is not supported; a member that sets this fails before the run.
     stage_in_smc = False
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        oc.assert_known(tuple(cls.required_markers) + tuple(cls.forbidden_markers), cls.__name__)
 
     def build_efuse_image(self):
         assert self.efuse_preload and os.path.isfile(self.efuse_preload), (
@@ -223,7 +208,7 @@ class _PayloadSizeTest(sep_rom_ot_secure_boot_test):
 
     def _select_destination(self, buf: bytearray) -> None:
         assert not self.stage_in_smc, (
-            "manifest-selected SMC staging was removed from the OCA ROM; this "
+            "the OCA ROM does not support manifest-selected SMC staging; this "
             "module must not be registered"
         )
         mm.verify_layout(buf, "primary")
@@ -262,14 +247,22 @@ class PayloadSizeAcceptedTest(_PayloadSizeTest):
         return buf
 
     def check_transport(self, console: list[str], flash) -> None:
-        assert fd.count(console, "MANIFEST_PRIMARY") == 1, (
-            f"MANIFEST_PRIMARY appeared "
-            f"{fd.count(console, 'MANIFEST_PRIMARY')} times, expected 1. "
-            f"Console: {console}"
+        attempts = oc.split_attempts(console)
+        assert [a.src for a in attempts] == [mm.PRIMARY_MANIFEST_OFFSET], (
+            f"slot attempts read {[hex(a.src) for a in attempts]}, expected the primary "
+            f"only: the repacked primary must be accepted on its first read"
+        )
+        oc.assert_attempt(
+            attempts[0],
+            error=None,
+            stage="accepted",
+            ordered=_SIGNED_ACCEPT + _BOOTED,
+            absent=_OTHER_PAYLOAD_REFUSALS + _PLACEMENT_REFUSALS + ("PAYLOAD_TOO_LARGE",),
         )
         self.logger.info(
-            "CHK-SIZE-ACCEPTED: the ROM validated the payload and reached BL1, so "
-            "%d bytes is inside its fixed SEP-SRAM staging bound",
+            "CHK-SIZE-ACCEPTED PASS: the primary was accepted after %s, so %d bytes is inside "
+            "the fixed SEP-SRAM staging bound",
+            " -> ".join(_SIGNED_ACCEPT + _BOOTED),
             self.payload_bytes,
         )
         assert_payload_served(
@@ -287,70 +280,105 @@ class PayloadSizeRefusedTest(_PayloadSizeTest):
             f"staging capacity, so the ROM would "
             f"ACCEPT it and this member would prove the opposite of its name"
         )
-        # The 32-bit overflow arm returns the same code with no token, so keep the sum below 2^32.
+        assert payload_offset + self.payload_bytes > _SLOT_WINDOW_SPAN, (
+            f"payload_offset 0x{payload_offset:x} + {self.payload_bytes} bytes ends inside "
+            f"the 0x{_SLOT_WINDOW_SPAN:x}-byte primary slot window, so the location check "
+            f"would pass and the slot could boot"
+        )
+        # The ROM issues the payload read with 32-bit flash addresses.
         assert self.payload_bytes <= 0xFFFF_FFFF - payload_offset, (
             f"payload_offset 0x{payload_offset:x} + {self.payload_bytes} bytes "
-            f"overflows 32 bits, which validate_manifest_header refuses through a "
-            f"silent arm returning the same error code as the capacity check; the "
-            f"refusal would no longer be attributable to the size decision"
+            f"overflows 32 bits, so the refusal would no longer be attributable to "
+            f"the slot window alone"
+        )
+        assert pm.spec_rule_violations(buf, "primary") == [], (
+            "the shipped primary breaks a TOC rule"
         )
         was = pm.declare_payload_length(buf, "primary", self.payload_bytes)
         self._select_destination(buf)
+        rules = pm.spec_rule_violations(buf, "primary")
+        assert rules == ["toc_plen_mismatch"], (
+            f"the over-declared primary breaks TOC rules {rules}; only the TOC length "
+            f"mismatch, which the ROM checks after the location, may follow from the new length"
+        )
+        assert mm.manifest_hash(buf, "primary") == mm.signed_region_hash(buf, "primary")
+        pm.verify_signing_key(buf, "primary")
         mm.verify_public_key(buf, "primary")
         self._backup_payload_bytes = pm.manifest_payload_length(buf, "backup")
         self._src = self._payload_src(buf)
         self.logger.info(
             "CHK-STIMULUS-PAYLOAD-SIZE: primary payload_length %d -> %d (0x%x), "
-            "which is %d bytes past the %d-byte fixed OCA staging capacity; "
-            "flash payload_offset remains 0x%x and the backup keeps %d",
+            "which is %d bytes past the %d-byte fixed OCA staging capacity and ends "
+            "%d bytes past the 0x%x-byte slot window; flash payload_offset remains 0x%x, "
+            "the slot is re-signed and the backup keeps %d",
             was,
             self.payload_bytes,
             self.payload_bytes,
             self.payload_bytes - capacity,
             capacity,
+            payload_offset + self.payload_bytes - _SLOT_WINDOW_SPAN,
+            _SLOT_WINDOW_SPAN,
             payload_offset,
             self._backup_payload_bytes,
         )
         return buf
 
     def check_transport(self, console: list[str], flash) -> None:
-        err = f"MANIFEST_ERR=0x{ERR_PAYLOAD_TOO_LARGE:08x}"
-        i_primary = fd.first_index(console, "MANIFEST_PRIMARY")
-        i_err = fd.first_index(console, err)
-        i_backup = fd.first_index(console, "MANIFEST_BACKUP")
-        i_ok = fd.first_index(console, "MANIFEST_OK")
-        assert 0 <= i_primary < i_err < i_backup < i_ok, (
-            f"the refusal is not attributable to the primary: MANIFEST_PRIMARY@"
-            f"{i_primary}, {err}@{i_err}, MANIFEST_BACKUP@{i_backup}, "
-            f"MANIFEST_OK@{i_ok}. Console: {console}"
+        err = f"MANIFEST_ERR=0x{ERR_PAYLOAD_LOCATION:08x}"
+        attempts = oc.split_attempts(console)
+        srcs = [a.src for a in attempts]
+        assert srcs == [mm.PRIMARY_MANIFEST_OFFSET, mm.BACKUP_MANIFEST_OFFSET], (
+            f"slot attempts read {[hex(a) for a in srcs]}, expected the primary then the "
+            f"backup. Console: {console}"
         )
-        assert fd.count(console, "MANIFEST_ERR=") == 1, (
-            f"MANIFEST_ERR= appeared {fd.count(console, 'MANIFEST_ERR=')} times; "
-            f"only the primary may fail here, so a second slot error means the "
-            f"backup was refused for a reason this member does not model. "
-            f"Console: {console}"
+        primary, backup = attempts
+        # The payload must lie within its slot window (rom.adoc Flash Layout).
+        p_ordered = _SIGNED_ACCEPT + (_LOC_FAIL, err)
+        oc.assert_attempt(
+            primary,
+            error=ERR_PAYLOAD_LOCATION,
+            stage="payload",
+            ordered=p_ordered,
+            absent=_TRANSPORT_REFUSALS + _PLACEMENT_REFUSALS + ("PAYLOAD_OK", "PAYLOAD_TOO_LARGE"),
         )
-        i_payload_ok = fd.first_index(console, "PAYLOAD_OK")
-        assert i_backup < i_payload_ok, (
-            f"PAYLOAD_OK@{i_payload_ok} precedes MANIFEST_BACKUP@{i_backup}: the "
-            f"over-capacity primary was accepted instead of the healthy backup"
+        tail = [line for _, line in primary.markers][-2:]
+        assert oc.count(tail[:1], _LOC_FAIL) == 1, (
+            f"{_LOC_FAIL} is not the line before the primary's error (attempt ends "
+            f"{tail}): a later check refused the slot, not the slot window"
         )
+        b_ordered = _SIGNED_ACCEPT + _BOOTED
+        oc.assert_attempt(
+            backup,
+            error=None,
+            stage="accepted",
+            ordered=b_ordered,
+            absent=_OTHER_PAYLOAD_REFUSALS + _PLACEMENT_REFUSALS + ("PAYLOAD_TOO_LARGE",),
+        )
+        i_ph = fd.first_index(console, "MANIFEST_PRIMARY")
+        i_bh = fd.first_index(console, "MANIFEST_BACKUP")
+        assert 0 <= i_ph < primary.first and primary.last < i_bh < backup.first, (
+            f"slot headers MANIFEST_PRIMARY@{i_ph} / MANIFEST_BACKUP@{i_bh} do not bracket "
+            f"the attempts {primary.first}-{primary.last} / {backup.first}"
+        )
+        for marker, want in ((_RSA_EXEC, 2), (_RSA_OK, 2), ("MANIFEST_ERR=", 1)):
+            n = oc.count(console, marker)
+            assert n == want, f"{marker} appeared {n} times, expected {want}. Console: {console}"
         self.logger.info(
-            "CHK-SIZE-REFUSED: MANIFEST_PRIMARY@%d -> %s@%d -> MANIFEST_BACKUP@%d "
-            "-> PAYLOAD_OK@%d -> MANIFEST_OK@%d -- the over-capacity primary was refused "
-            "before staging and the backup booted",
-            i_primary,
+            "CHK-SIZE-REFUSED PASS: primary@%d-%d refused %s after %s; backup@%d-%d accepted "
+            "after %s -- the primary payload past its slot window was refused before "
+            "staging and the backup booted",
+            primary.first,
+            primary.last,
             err,
-            i_err,
-            i_backup,
-            i_payload_ok,
-            i_ok,
+            " -> ".join(p_ordered),
+            backup.first,
+            backup.last,
+            " -> ".join(b_ordered),
         )
         fd.assert_no_read_starting_at(
             self.logger,
             flash,
             self._src,
-            "the primary declared a payload larger than SEP SRAM, so "
-            "validate_manifest_header must refuse the slot before the payload "
-            "fetch is ever issued",
+            "the primary declared a payload that ends past its slot window, so the "
+            "location check must refuse the slot before the payload fetch is ever issued",
         )

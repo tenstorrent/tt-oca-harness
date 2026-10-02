@@ -18,9 +18,11 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from env import sep_key_revocation_draw as kr
 from env import sep_manifest_mutate as mm
+from env import sep_oca_console as oc
 from env import sep_rom_key_slots as ks
 from env import sep_spi_slot_evidence as ev
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_esrc_noise import esrc_noise_task
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict
 from ocah_spi_vip import OcahSpiFlash
@@ -31,42 +33,46 @@ from sep_reg_meta import sym
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 MANIFEST_ERR_KEY_REVOKED = mm.boot_err("OCA_FAIL_ROOT_KEY_REVOKED")
-# Every near-miss arm of validate_signature returns this code, so forbidding it forbids them all.
-MANIFEST_ERR_SIG_FAILED = mm.boot_err("OCA_FAIL_SIGNATURE")
 
-_PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
-_BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _LC_PROD = "LC=PROD"
 _BOOT_SPI = "BOOT_SPI"
-_RSA_START = "RSA_VERIFY_START"
-_SIG_VALID = "SIG_VALID"
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
-_MANIFEST_OK = "MANIFEST_OK"
-_BL1_COPIED = "BL1_COPIED"
-_BL1_JUMP = "BL1_JUMP="
-_PRE_JUMP = "PRE_JUMP"
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _REVOKED_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_REVOKED:08x}"
-_REVOKED_CRYPTO_FAIL = f"CRYPTO_FAIL=0x{MANIFEST_ERR_KEY_REVOKED:08x}"
+_VERIFIED = (
+    "FUSE_VER=",
+    "RSA_EXEC",
+    "RSA_CMP1",
+    "RSA_CMP2",
+    "RSA_VERIFY_OK",
+    "FUSE_VER=",
+    "MANIFEST_OK",
+    "PAYLOAD_OK",
+)
+_BOOTED = ("BL1_COPIED", "BL1_JUMP=", "PRE_JUMP")
 
-# Each of these means something other than the revocation check decided the outcome.
 _ALWAYS_FORBIDDEN = (
     "SBOOT_OFF",
     "FUSE: SBOOT_DIS: 1",
     "WAIT_SMC_MANIFEST",
-    f"MANIFEST_ERR=0x{MANIFEST_ERR_SIG_FAILED:08x}",
-    f"CRYPTO_FAIL=0x{MANIFEST_ERR_SIG_FAILED:08x}",
-    "ROM_KEY_EMPTY",
-    "FUSE_KEY_EMPTY",
-    "PUBK_HASH_MISMATCH",
+    "PUBK_SEL_AMBIGUOUS",
+    "PUBK_SEL_EMPTY",
+    "PUBK_SLOT_RESERVED",
+    "PUBK_SLOT_UNPROVISIONED",
+    "PUBK_UNAUTHORIZED",
     "PUBK_HASH_TIMEOUT",
-    "BAD_KEY_IDX",
-    "BAD_KEY_SEL",
-    "BAD_SIG_TYPE=",
-    "RSA_VERIFY_FAIL",
-    "VERSION_ROLLBACK",
-    "PLD_HASH_FAIL=",
-    "FLASH_REINIT_FAIL=",
+    "RSA_EXEC_FAIL",
+    "RSA_PKCS1_FAIL",
+) + tuple(
+    f"MANIFEST_ERR=0x{mm.boot_err(n):08x}"
+    for n in (
+        "OCA_FAIL_SIGNATURE",
+        "OCA_FAIL_ROOT_KEY_UNAUTHORIZED",
+        "OCA_FAIL_SECURITY_VERSION",
+    )
+)
+oc.assert_known(
+    _ALWAYS_FORBIDDEN + _VERIFIED + _BOOTED + (_LC_PROD, _BOOT_SPI, _ALL_FAILED, _REVOKED_ERR),
+    __name__,
 )
 
 _MAX_RUN_CYCLES = 24_000_000
@@ -143,14 +149,12 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         self.logger.info(
             "CHK-STIMULUS-EFUSE: golden reproduces the pre-staged %s word for word; "
             "LC raw=0x%x (PROD), SBOOT_DIS=%d, BL1_VERSION=0x%x, "
-            "CHIPLET_PUBK_REVOKE=0x%02x, SEP_SPI_CTRL_FIELD_EN=0x%08x (unpinned, "
-            "read only at pll_init.c:49 which the bl0_pll_clk strap gates off)",
+            "CHIPLET_PUBK_REVOKE=0x%02x",
             staged_path,
             lc,
             sboot_dis,
             bl1_ver,
             bitmap,
-            image.field_int("SEP_SPI_CTRL_FIELD_EN"),
         )
         self.write_efuse_image(image)
         return image
@@ -189,13 +193,17 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         slots = {}
         for slot in ("primary", "backup"):
             sel = mm.get_public_key_sel(staged_flash, slot)
-            selection = (sel >> 4) & 0x7
-            assert selection == kr.PUBK_SEL_ROM_KEY, (
-                f"{slot} public_key_sel 0x{sel:04x} selects key source "
-                f"{selection}, not PUBK_SEL_ROM_KEY: this row's outcome table is "
-                f"only defined on the ROM-key arm"
+            assert sel < kr.PUBK_SEL_NUM_ROM_KEYS, (
+                f"{slot} public_key_select names slot {sel}, not a ROM key slot: this "
+                f"row's outcome table is only defined on the ROM-key arm"
             )
-            slots[slot] = sel & 0xF
+            at = mm.slot_base(slot) + mm.K.OFF_PUBLIC_KEY_CLASSIC_REVOKE
+            own = bytes(staged_flash[at : at + 16])
+            assert not any(own), (
+                f"{slot} public_key_classic_revoke is {own.hex()}: the validator ORs it "
+                f"into the fuse bitmap, so the outcome would not follow from the draw"
+            )
+            slots[slot] = sel
         measured = kr.classify(bitmap, slots["primary"], slots["backup"])
         assert measured == drawn.expected_class, (
             f"the stimulus did not land: seed drew {drawn.describe()}, but the "
@@ -218,6 +226,8 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
+        # An undriven entropy input trips the repetition health test (ESRC_HEALTH_FAIL).
+        cocotb.start_soon(esrc_noise_task(dut, logger=self.logger))
         seed = self.random_seed()
         drawn = kr.draw(seed)
         self.logger.info("CHK-DRAW: seed=%d -> %s", seed, drawn.describe())
@@ -336,430 +346,143 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         log.info("cold_scratch[1] sequence: %s", [hex(v) for v in status_seq])
         log.info("ROM console: %s", console)
 
-        # A dark console or an idle core would make every marker check below vacuous.
         assert retired, "core retired no instructions; the ROM never ran"
         assert console, (
             "ROM console is empty, so no marker check below means anything (the "
             "virt console is DEBUG-build only -- check the ROM build)"
         )
-
-        def idx(marker: str, after: int = -1) -> int:
-            for i, line in enumerate(console):
-                if i > after and marker in line:
-                    return i
-            return -1
-
-        def hits(marker: str) -> list[int]:
-            return [i for i, line in enumerate(console) if marker in line]
-
         for marker in _ALWAYS_FORBIDDEN:
-            assert not hits(marker), (
+            assert oc.count(console, marker) == 0, (
                 f"ROM printed {marker}, which means the run did not end on the "
                 f"revocation check this row draws for. Console: {console}"
             )
-        for marker in (_LC_PROD, _BOOT_SPI, _PRIMARY_SRC):
-            assert hits(marker), f"ROM never printed {marker}. Console: {console}"
+        for marker in (_LC_PROD, _BOOT_SPI):
+            assert oc.count(console, marker), f"ROM never printed {marker}. Console: {console}"
 
         outcome = kr.outcome_of(cls)
-        sel_p = f"PUBK_SEL=0x{p_slot:08x}"
-        sel_b = f"PUBK_SEL=0x{b_slot:08x}"
         revoke_echo = f"PUBK_REVOKE=0x{bitmap:08x}"
-        revoked_p = f"KEY_REVOKED idx=0x{p_slot:08x}"
-        revoked_b = f"KEY_REVOKED idx=0x{b_slot:08x}"
-
-        # The selector and fuse word are echoed once per key-selection attempt.
-        attempts = 1 if outcome == kr.OUTCOME_PROCEED else 2
-        n_sel = len(hits("PUBK_SEL="))
-        n_revoke_any = len(hits("PUBK_REVOKE="))
-        assert n_sel == attempts and n_revoke_any == attempts, (
-            f"key selection ran {n_sel} times and the fuse word was read "
-            f"{n_revoke_any} times, expected {attempts} of each for a {outcome} "
-            f"outcome. Console: {console}"
-        )
-        # The fuse word is echoed on every attempt, so each echo must show this run's bitmap.
-        assert len(hits(revoke_echo)) == attempts, (
-            f"{revoke_echo} appeared {len(hits(revoke_echo))} times, expected "
-            f"{attempts}: the ROM did not read this run's bitmap on every attempt. "
-            f"Console: {console}"
-        )
-        i_psrc = idx(_PRIMARY_SRC)
-        i_sel_p = idx(sel_p)
-        revokes = hits(revoke_echo)
-        assert 0 <= i_psrc < i_sel_p < revokes[0], (
-            f"key selection is not attributable to the primary: {_PRIMARY_SRC}"
-            f"@{i_psrc} -> {sel_p}@{i_sel_p} -> {revoke_echo}@{revokes}. "
-            f"Console: {console}"
+        plan = [("primary", mm.PRIMARY_MANIFEST_OFFSET, p_slot)]
+        if outcome != kr.OUTCOME_PROCEED:
+            plan.append(("backup", mm.BACKUP_MANIFEST_OFFSET, b_slot))
+        attempts = oc.split_attempts(console)
+        assert [a.src for a in attempts] == [src for _, src, _ in plan], (
+            f"slot attempts read {[hex(a.src) for a in attempts]}, expected "
+            f"{[hex(src) for _, src, _ in plan]} for a {outcome} outcome. Console: {console}"
         )
 
-        if outcome == kr.OUTCOME_PROCEED:
-            self._check_proceed(
-                console,
-                idx,
-                hits,
-                fw_done,
-                fw_pass,
-                flash,
-                sel_p=sel_p,
-                revoke_echo=revoke_echo,
-                i_psrc=i_psrc,
-                i_sel_p=i_sel_p,
-                i_revoke=revokes[0],
-                bitmap=bitmap,
-                p_slot=p_slot,
-                cls=cls,
-            )
-        elif outcome == kr.OUTCOME_FAILOVER:
-            self._check_failover(
-                console,
-                idx,
-                hits,
-                fw_done,
-                fw_pass,
-                flash,
-                sel_p=sel_p,
-                sel_b=sel_b,
-                revokes=revokes,
-                revoked_p=revoked_p,
-                revoked_b=revoked_b,
-                i_sel_p=i_sel_p,
-                p_slot=p_slot,
-                b_slot=b_slot,
+        def header_at(token: str) -> list[int]:
+            return [i for i, line in enumerate(console) if line.strip() == token]
+
+        i_ph = header_at("MANIFEST_PRIMARY")
+        assert len(i_ph) == 1 and i_ph[0] < attempts[0].first, (
+            f"MANIFEST_PRIMARY@{i_ph} is not once before the primary attempt@{attempts[0].first}"
+        )
+        i_bh = header_at("MANIFEST_BACKUP")
+        if len(attempts) == 2:
+            assert len(i_bh) == 1 and attempts[0].last < i_bh[0] < attempts[1].first, (
+                f"MANIFEST_BACKUP@{i_bh} is not once between the two attempts"
             )
         else:
-            self._check_terminal(
-                console,
-                idx,
-                hits,
-                status_seq,
-                fw_done,
-                fw_pass,
-                flash,
-                sel_p=sel_p,
-                sel_b=sel_b,
-                revokes=revokes,
-                revoked_p=revoked_p,
-                revoked_b=revoked_b,
-                i_psrc=i_psrc,
-                i_sel_p=i_sel_p,
-                p_slot=p_slot,
-                b_slot=b_slot,
+            assert not i_bh, f"MANIFEST_BACKUP@{i_bh} printed on a primary-only boot"
+
+        verdicts = []
+        for n, (att, (slot, _src, key)) in enumerate(zip(attempts, plan)):
+            revoked = kr.bit_set(bitmap, key)
+            last = n == len(plan) - 1
+            head = ("OCA_BODY=", "MFST_VER=", f"PUBK_SEL=0x{key:08x}", "PUBK_AUTHORIZED")
+            if revoked:
+                ordered = head + (revoke_echo, _REVOKED_ERR)
+                oc.assert_attempt(
+                    att,
+                    error=MANIFEST_ERR_KEY_REVOKED,
+                    stage="manifest",
+                    ordered=ordered,
+                    absent=("FUSE_VER=", "RSA_EXEC", "MANIFEST_OK"),
+                )
+                tail = [line for _, line in att.markers][-2:]
+                assert oc.count(tail[:1], revoke_echo) == 1, (
+                    f"{slot}: the line before {_REVOKED_ERR} is not {revoke_echo} "
+                    f"(attempt ends {tail}): the refusal is not the revocation check's"
+                )
+            else:
+                assert last, f"{slot} slot {key} is not revoked but the run went on past it"
+                ordered = head + (revoke_echo,) + _VERIFIED + _BOOTED
+                oc.assert_attempt(
+                    att, error=None, stage="accepted", ordered=ordered, absent=("MANIFEST_ERR=",)
+                )
+            verdicts.append(
+                f"{slot}@{att.first}-{att.last} slot {key} "
+                f"{'revoked' if revoked else 'permitted'}: {' -> '.join(ordered)}"
             )
 
-    def _check_proceed(
-        self,
-        console,
-        idx,
-        hits,
-        fw_done,
-        fw_pass,
-        flash,
-        *,
-        sel_p,
-        revoke_echo,
-        i_psrc,
-        i_sel_p,
-        i_revoke,
-        bitmap,
-        p_slot,
-        cls,
-    ) -> None:
-        for marker in (
-            "KEY_REVOKED idx=",
-            _REVOKED_ERR,
-            _REVOKED_CRYPTO_FAIL,
-            _BACKUP_SRC,
-            _ALL_FAILED,
-            "MANIFEST_ERR=",
+        permitted = sum(1 for _, _, key in plan if not kr.bit_set(bitmap, key))
+        for marker, want in (
+            ("PUBK_SEL=", len(plan)),
+            ("PUBK_REVOKE=", len(plan)),
+            (revoke_echo, len(plan)),
+            ("RSA_EXEC", permitted),
+            ("RSA_VERIFY_OK", permitted),
+            ("MANIFEST_OK", permitted),
+            (_REVOKED_ERR, len(plan) - permitted),
         ):
-            assert not hits(marker), (
-                f"ROM printed {marker}: the primary's slot {p_slot} is not revoked "
-                f"under bitmap 0x{bitmap:02x}, so nothing may be refused. "
+            got = oc.count(console, marker)
+            assert got == want, (
+                f"{marker} appeared {got} times, expected {want} for a {cls} run "
+                f"(bitmap=0x{bitmap:02x}, primary slot {p_slot}, backup slot {b_slot}). "
                 f"Console: {console}"
             )
-        i_rsa = idx(_RSA_START)
-        i_sig = idx(_SIG_VALID)
-        i_ok = idx(_CRYPTO_OK)
-        i_mok = idx(_MANIFEST_OK)
-        i_jump = idx(_BL1_JUMP)
-        assert i_revoke < i_rsa < i_sig < i_ok < i_mok < i_jump, (
-            f"the boot did not run key selection then the verifier in the "
-            f"architected order: {revoke_echo}@{i_revoke} -> {_RSA_START}@{i_rsa} "
-            f"-> {_SIG_VALID}@{i_sig} -> {_CRYPTO_OK}@{i_ok} -> "
-            f"{_MANIFEST_OK}@{i_mok} -> {_BL1_JUMP}@{i_jump}. Console: {console}"
-        )
-        for marker in (_RSA_START, _SIG_VALID, _CRYPTO_OK, _BL1_COPIED, _PRE_JUMP):
-            assert len(hits(marker)) == 1, (
-                f"{marker} appeared {len(hits(marker))} times, expected exactly 1 "
-                f"(the primary's). Console: {console}"
+
+        if outcome == kr.OUTCOME_TERMINAL:
+            i_all = [i for i, line in enumerate(console) if oc.count([line], _ALL_FAILED)]
+            assert len(i_all) == 1 and attempts[-1].last < i_all[0], (
+                f"{_ALL_FAILED}@{i_all} is not once after the backup's refusal: the "
+                f"retry loop did not exhaust. Console: {console}"
             )
-        assert fw_done and fw_pass, (
-            f"a {cls} seed must complete the boot: fw_done={fw_done} fw_pass={fw_pass}"
-        )
-        # A silent failover also reaches MANIFEST_OK; only the flash transaction log rules it out.
+            status_msg = mm.rom_status_for_result(MANIFEST_ERR_KEY_REVOKED)
+            expected_status = 0x0F01_0000 | status_msg
+            assert expected_status in status_seq, (
+                f"cold_scratch[1] never held 0x{expected_status:08x} "
+                f"(STATUS_ENCODE(ERROR, 0x{status_msg:04x})); "
+                f"observed {[hex(v) for v in status_seq]}"
+            )
+            assert fw_done, (
+                f"ROM never signalled completion within {_MAX_RUN_CYCLES} cycles; a "
+                f"terminal run must converge on a FAIL verdict"
+            )
+            assert not fw_pass, "ROM signalled PASS: it booted an image it had refused"
+        else:
+            assert oc.count(console, _ALL_FAILED) == 0, (
+                f"ROM printed {_ALL_FAILED} on a {outcome} run. Console: {console}"
+            )
+            assert fw_done and fw_pass, (
+                f"a {cls} seed must complete the boot: fw_done={fw_done} fw_pass={fw_pass}"
+            )
+
+        # A silent failover also reaches MANIFEST_OK; only the flash record rules it out.
         rds = ev.reads(flash.get_transactions())
-        hit = ev.covering_read(rds, mm.PRIMARY_MANIFEST_OFFSET)
-        assert hit is not None, (
+        p_hit = ev.covering_read(rds, mm.PRIMARY_MANIFEST_OFFSET)
+        assert p_hit is not None, (
             f"no SPI read covered the primary manifest address "
-            f"0x{mm.PRIMARY_MANIFEST_OFFSET:x}: the boot did not come from the "
-            f"primary"
+            f"0x{mm.PRIMARY_MANIFEST_OFFSET:x}: the primary was never fetched"
         )
         backup_hits = ev.slot_read_indices(rds, "backup", self._image_len)
-        assert not backup_hits, (
-            f"device served {len(backup_hits)} read(s) inside the backup slot span "
-            f"(read indices {backup_hits}): this is a failover, not a primary boot"
-        )
-        self.logger.info(
-            "CHK-REVOKE-PROCEED: %s primary@%d -> %s@%d -> %s@%d (bit %d clear) -> "
-            "%s@%d -> %s@%d -> %s@%d -> %s@%d, no KEY_REVOKED anywhere, and no read "
-            "inside the backup span across %d reads",
+        if outcome == kr.OUTCOME_PROCEED:
+            assert not backup_hits, (
+                f"device served {len(backup_hits)} read(s) inside the backup slot span "
+                f"(read indices {backup_hits}): this is a failover, not a primary boot"
+            )
+        else:
+            b_hit = ev.covering_read(rds, mm.BACKUP_MANIFEST_OFFSET)
+            assert b_hit is not None and p_hit[0] < b_hit[0], (
+                f"the device did not serve the primary address before the backup: "
+                f"primary={p_hit} backup={b_hit}; the transaction order is not a failover"
+            )
+        log.info(
+            "CHK-REVOKE-%s PASS: %s bitmap=0x%02x; %s",
+            outcome.upper(),
             cls,
-            i_psrc,
-            sel_p,
-            i_sel_p,
-            revoke_echo,
-            i_revoke,
-            p_slot,
-            _RSA_START,
-            idx(_RSA_START),
-            _SIG_VALID,
-            idx(_SIG_VALID),
-            _CRYPTO_OK,
-            idx(_CRYPTO_OK),
-            _BL1_JUMP,
-            idx(_BL1_JUMP),
-            len(rds),
-        )
-
-    def _check_failover(
-        self,
-        console,
-        idx,
-        hits,
-        fw_done,
-        fw_pass,
-        flash,
-        *,
-        sel_p,
-        sel_b,
-        revokes,
-        revoked_p,
-        revoked_b,
-        i_sel_p,
-        p_slot,
-        b_slot,
-    ) -> None:
-        i_revoked_p = idx(revoked_p)
-        i_crypto = idx(_REVOKED_CRYPTO_FAIL)
-        i_err = idx(_REVOKED_ERR)
-        i_bsrc = idx(_BACKUP_SRC)
-        i_sel_b = idx(sel_b, after=i_bsrc)
-        i_rsa = idx(_RSA_START)
-        i_sig = idx(_SIG_VALID)
-        i_ok = idx(_CRYPTO_OK)
-        i_mok = idx(_MANIFEST_OK)
-        i_jump = idx(_BL1_JUMP)
-
-        assert i_sel_p < revokes[0] < i_revoked_p < i_crypto < i_err < i_bsrc, (
-            f"the revocation verdict is not attributable to the primary's slot "
-            f"{p_slot}: {sel_p}@{i_sel_p} -> PUBK_REVOKE@{revokes[0]} -> "
-            f"{revoked_p}@{i_revoked_p} -> {_REVOKED_CRYPTO_FAIL}@{i_crypto} -> "
-            f"{_REVOKED_ERR}@{i_err} -> backup@{i_bsrc}. Console: {console}"
-        )
-        assert len(hits("KEY_REVOKED idx=")) == 1, (
-            f"KEY_REVOKED appeared {len(hits('KEY_REVOKED idx='))} times, expected "
-            f"exactly 1 (the primary's, slot {p_slot}). Console: {console}"
-        )
-        assert not hits(revoked_b), (
-            f"{revoked_b} appeared: the backup's slot {b_slot} is NOT revoked "
-            f"under this bitmap, so a failover cannot refuse it. Console: {console}"
-        )
-        # The second fuse echo shows the booting slot was checked, not skipped.
-        assert revokes[0] < i_bsrc < revokes[1], (
-            f"the fuse echoes {revokes} do not straddle the backup read@{i_bsrc}: "
-            f"the booting slot did not consult the revocation bitmap. "
-            f"Console: {console}"
-        )
-        assert i_bsrc < i_sel_b < revokes[1] < i_rsa < i_sig < i_ok < i_mok < i_jump, (
-            f"the booting slot's key selection is unattributed or out of order: "
-            f"backup@{i_bsrc} -> {sel_b}@{i_sel_b} -> PUBK_REVOKE@{revokes[1]} -> "
-            f"{_RSA_START}@{i_rsa} -> {_SIG_VALID}@{i_sig} -> {_CRYPTO_OK}@{i_ok} "
-            f"-> {_MANIFEST_OK}@{i_mok} -> {_BL1_JUMP}@{i_jump}. Console: {console}"
-        )
-        # Revocation precedes rsa_3072_verify, so only the backup may reach the verifier.
-        for marker in (_RSA_START, _SIG_VALID, _CRYPTO_OK, _MANIFEST_OK):
-            assert len(hits(marker)) == 1, (
-                f"{marker} appeared {len(hits(marker))} times, expected exactly 1 "
-                f"(the backup's); the refused primary must not reach the verifier. "
-                f"Console: {console}"
-            )
-        assert i_rsa > i_bsrc, (
-            f"{_RSA_START}@{i_rsa} came before the backup read@{i_bsrc}: the "
-            f"refused primary reached the RSA verifier. Console: {console}"
-        )
-        assert not hits(_ALL_FAILED), (
-            f"ROM printed {_ALL_FAILED}: the retry loop exhausted instead of "
-            f"booting from the unrevoked backup slot {b_slot}. Console: {console}"
-        )
-        assert fw_done and fw_pass, (
-            f"a failover seed must complete the boot from the backup: "
-            f"fw_done={fw_done} fw_pass={fw_pass}"
-        )
-        rds = ev.reads(flash.get_transactions())
-        p_hit = ev.covering_read(rds, mm.PRIMARY_MANIFEST_OFFSET)
-        b_hit = ev.covering_read(rds, mm.BACKUP_MANIFEST_OFFSET)
-        assert p_hit is not None and b_hit is not None and p_hit[0] < b_hit[0], (
-            f"the device did not serve the primary address before the backup: "
-            f"primary={p_hit} backup={b_hit}; the transaction order is not a "
-            f"failover"
-        )
-        self.logger.info(
-            "CHK-REVOKE-FAILOVER: primary slot %d %s@%d -> PUBK_REVOKE@%d -> %s@%d "
-            "-> %s@%d -> backup@%d -> backup slot %d %s@%d -> PUBK_REVOKE@%d "
-            "(permitted) -> %s@%d -> %s@%d; device served read[%d] then read[%d]",
-            p_slot,
-            sel_p,
-            i_sel_p,
-            revokes[0],
-            revoked_p,
-            i_revoked_p,
-            _REVOKED_ERR,
-            i_err,
-            i_bsrc,
-            b_slot,
-            sel_b,
-            i_sel_b,
-            revokes[1],
-            _SIG_VALID,
-            i_sig,
-            _BL1_JUMP,
-            i_jump,
-            p_hit[0],
-            b_hit[0],
-        )
-
-    def _check_terminal(
-        self,
-        console,
-        idx,
-        hits,
-        status_seq,
-        fw_done,
-        fw_pass,
-        flash,
-        *,
-        sel_p,
-        sel_b,
-        revokes,
-        revoked_p,
-        revoked_b,
-        i_psrc,
-        i_sel_p,
-        p_slot,
-        b_slot,
-    ) -> None:
-        i_bsrc = idx(_BACKUP_SRC)
-        assert i_bsrc > i_psrc >= 0, (
-            f"the backup slot was not read after the primary: primary@{i_psrc}, "
-            f"backup@{i_bsrc}. Console: {console}"
-        )
-        # Both manifests are otherwise valid, so a no-op revocation check would boot here.
-        for marker in (
-            _RSA_START,
-            _SIG_VALID,
-            _CRYPTO_OK,
-            _MANIFEST_OK,
-            _PRE_JUMP,
-            _BL1_COPIED,
-            _BL1_JUMP,
-        ):
-            assert not hits(marker), (
-                f"ROM printed {marker}: a slot got past a revocation refusal, so "
-                f"both selected keys were not refused. Console: {console}"
-            )
-        # One refusal per slot; when p == b the same KEY_REVOKED marker appears twice.
-        revoked_hits = hits("KEY_REVOKED idx=")
-        assert len(revoked_hits) == 2, (
-            f"KEY_REVOKED appeared {len(revoked_hits)} times at {revoked_hits}, "
-            f"expected exactly 2 -- one per manifest slot. One occurrence would "
-            f"mean only one slot reached key selection. Console: {console}"
-        )
-        assert revoked_hits[0] < i_bsrc < revoked_hits[1], (
-            f"the two KEY_REVOKED occurrences {revoked_hits} do not straddle the "
-            f"backup read@{i_bsrc}: the refusals are not one per slot. "
-            f"Console: {console}"
-        )
-        assert hits(revoked_p)[0] == revoked_hits[0], (
-            f"the first refusal is not the primary's slot {p_slot} ({revoked_p}). "
-            f"Console: {console}"
-        )
-        assert hits(revoked_b)[-1] == revoked_hits[1], (
-            f"the second refusal is not the backup's slot {b_slot} ({revoked_b}). "
-            f"Console: {console}"
-        )
-        i_sel_b = idx(sel_b, after=i_bsrc)
-        assert (
-            i_sel_p < revokes[0] < revoked_hits[0] < i_bsrc < i_sel_b < revokes[1] < revoked_hits[1]
-        ), (
-            f"the two refusals are not each attributable to their own slot: "
-            f"{sel_p}@{i_sel_p} -> PUBK_REVOKE@{revokes[0]} -> "
-            f"KEY_REVOKED@{revoked_hits[0]} -> backup@{i_bsrc} -> {sel_b}"
-            f"@{i_sel_b} -> PUBK_REVOKE@{revokes[1]} -> "
-            f"KEY_REVOKED@{revoked_hits[1]}. Console: {console}"
-        )
-        for marker in (_REVOKED_CRYPTO_FAIL, _REVOKED_ERR):
-            marker_hits = hits(marker)
-            assert len(marker_hits) == 2 and marker_hits[0] < i_bsrc < marker_hits[1], (
-                f"{marker} appeared at {marker_hits}, expected exactly 2 "
-                f"straddling the backup read@{i_bsrc} -- one per refused slot. "
-                f"Console: {console}"
-            )
-        assert hits(_ALL_FAILED), (
-            f"ROM never printed {_ALL_FAILED}: the retry loop did not exhaust, so "
-            f"this is not the both-slots-refused outcome. Console: {console}"
-        )
-        status_msg = mm.rom_status_for_result(MANIFEST_ERR_KEY_REVOKED)
-        expected_status = 0x0F01_0000 | status_msg
-        assert expected_status in status_seq, (
-            f"cold_scratch[1] never held 0x{expected_status:08x} "
-            f"(STATUS_ENCODE(ERROR, 0x{status_msg:04x})); "
-            f"observed {[hex(v) for v in status_seq]}"
-        )
-        assert fw_done, (
-            f"ROM never signalled completion within {_MAX_RUN_CYCLES} cycles; a "
-            f"terminal run must converge on a FAIL verdict. cold_scratch[1]: "
-            f"{[hex(v) for v in status_seq]}"
-        )
-        assert not fw_pass, "ROM signalled PASS: it booted an image it had refused"
-        rds = ev.reads(flash.get_transactions())
-        p_hit = ev.covering_read(rds, mm.PRIMARY_MANIFEST_OFFSET)
-        b_hit = ev.covering_read(rds, mm.BACKUP_MANIFEST_OFFSET)
-        assert p_hit is not None and b_hit is not None and p_hit[0] < b_hit[0], (
-            f"the device did not serve both manifest addresses in order: "
-            f"primary={p_hit} backup={b_hit}. Both slots must really be fetched "
-            f"for 'both were refused' to mean anything"
-        )
-        self.logger.info(
-            "CHK-REVOKE-TERMINAL: primary slot %d %s@%d -> PUBK_REVOKE@%d -> %s@%d "
-            "-> backup@%d -> backup slot %d %s@%d -> PUBK_REVOKE@%d -> %s@%d -> "
-            "%s, cold_scratch[1]=0x%08x, FAIL verdict; device served read[%d] then "
-            "read[%d] and neither slot reached the verifier",
-            p_slot,
-            sel_p,
-            i_sel_p,
-            revokes[0],
-            revoked_p,
-            revoked_hits[0],
-            i_bsrc,
-            b_slot,
-            sel_b,
-            i_sel_b,
-            revokes[1],
-            revoked_b,
-            revoked_hits[1],
-            _ALL_FAILED,
-            expected_status,
-            p_hit[0],
-            b_hit[0],
+            bitmap,
+            "; ".join(verdicts),
         )
 
     def _check_quiesced(self, post_status_moved, post_console, terminal_status) -> None:

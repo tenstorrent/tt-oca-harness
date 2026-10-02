@@ -82,8 +82,7 @@ from typing import Dict, NamedTuple, Tuple
 # python_paths) and is inserted explicitly by the prestage hook.
 from sep_seeded_rng import SepSeededRng
 
-# manifest.h. public_key_sel is {index:4, selection:3}; a ROM-slot selector is
-# therefore just the index, and this draw never leaves the ROM-key arm.
+# public_key_select for ROM key N is N, the key's revocation bitmap slot.
 PUBK_SEL_ROM_KEY = 0
 PUBK_SEL_NUM_ROM_KEYS = 6
 

@@ -1,42 +1,27 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Backup enables package_id constraints it does not satisfy; the ROM halts.
+"""Backup selects package_id bytes that differ from SEP_SIP_ID; the ROM halts.
 
-A BAD_MAGIC identifier refuses the primary first, so both slots fail and the ROM
-reports ERROR: INVALID_PACKAGE_ID.
+The primary is refused as ``OCA_FAIL_MAGIC``, so the terminal ``OCA_FAIL_PACKAGE_ID``
+identifies the backup.
 """
 
 from __future__ import annotations
 
 import pyuvm
-from rom_fw import sep_manifest_field_defect as fd
-from rom_fw.sep_usage_constraint_base import sep_backup_usage_constraint_base
-
-_SELECTOR_MASK = 0x14
-_REJECT_INDEX = 2
+from rom_fw.sep_backup_manifest_structural_fail_base import err_marker
+from rom_fw.sep_usage_constraint_base import (
+    MANIFEST_ERR_PACKAGE_ID,
+    sep_backup_usage_constraint_base,
+)
 
 
 @pyuvm.test()
 class sep_firmware_manifest_backup_invalid_package_id_test(sep_backup_usage_constraint_base):
-    """Backup enables package_id words 2 and 4 -> both slots refused -> halt."""
+    """Backup package_id bytes 2 and 4 mismatch the fuse -> refused."""
 
-    defect_marker = fd.PACKAGE_MARKER
-    defect_evidence = fd.device_id_required_markers("package_id", _REJECT_INDEX)
+    expected_error = MANIFEST_ERR_PACKAGE_ID
+    backup_defect_marker = err_marker(MANIFEST_ERR_PACKAGE_ID)
 
     def plant(self, buf: bytearray, slot: str) -> None:
-        index = fd.plant_device_id_defect(buf, slot, "package_id", _SELECTOR_MASK)
-        assert index == _REJECT_INDEX, (
-            f"selector mask 0x{_SELECTOR_MASK:02x} makes word {index} the lowest "
-            f"enabled one, but this testcase asserts {_REJECT_INDEX}"
-        )
-        self.logger.info(
-            "CHK-STIMULUS-PACKAGE-ID: %s selector_bits[8..15] = 0x%02x, so the ROM "
-            "must read package_id words %s and refuse on word %d",
-            slot,
-            _SELECTOR_MASK,
-            [i for i in range(8) if _SELECTOR_MASK & (1 << i)],
-            index,
-        )
-
-    def check_constraint_evidence(self, console: list[str]) -> None:
-        fd.assert_device_id_mismatch(self.logger, console, "package_id", _REJECT_INDEX)
+        self.plant_identity(buf, slot, "package", mismatch=(2, 4))

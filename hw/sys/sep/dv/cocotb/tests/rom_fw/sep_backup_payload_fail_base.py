@@ -1,62 +1,191 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared base for testcases where the backup passes its signature check but fails its payload.
+"""Shared scenario: the primary is refused, the backup verifies and is refused after MANIFEST_OK.
 
-The backup's crypto chain must run exactly once, CRYPTO_FAIL= and MANIFEST_OK must not appear, and
-the run must end on MANIFEST_ALL_FAILED with the backup's own error code. The ROM must then halt.
+Each ``MANIFEST_SRC=`` attempt is checked on its own; the run then prints
+``MANIFEST_ALL_FAILED`` once and halts on a FAIL verdict.
 """
 
 from __future__ import annotations
 
 from env import sep_manifest_mutate as mm
-from rom_fw import sep_manifest_field_defect as fd
-from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
+from env import sep_oca_console as oc
+from rom_fw.sep_backup_manifest_fail_base import (
+    MANIFEST_ERR_BAD_MAGIC,
+    sep_backup_manifest_fail_base,
+)
 
-_ALL_FAILED = "MANIFEST_ALL_FAILED"
+_KEY_OK = "PUBK_AUTHORIZED"
+_RSA_EXEC = "RSA_EXEC"
+_RSA_OK = "RSA_VERIFY_OK"
 _MANIFEST_OK = "MANIFEST_OK"
-_HASH_OK = "MANIFEST_HASH_OK"
-_CRYPTO_FAIL = "CRYPTO_FAIL="
+_PAYLOAD_OK = "PAYLOAD_OK"
+_ALL_FAILED = "MANIFEST_ALL_FAILED"
+_ERR = "MANIFEST_ERR="
 _SBOOT_OFF = "SBOOT_OFF"
 _BOOT_PROGRESS_MARKERS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=")
 
-# Printed only on the signed path, in this order.
-_CRYPTO_CHAIN = ("RSA_VERIFY_START", "SIG_VALID", "PLD_HASH_OK", "CRYPTO_VALIDATE_OK")
+# Payload-stage arms that print their own marker before the library grades the payload.
+PAYLOAD_STAGE_MARKERS = ("PAYLOAD_LOC_FAIL", "PAYLOAD_TOO_LARGE", "FLASH_READ_OOB", "DMA_STS=")
+# Outcomes of plat_decrypt_payload() other than DECRYPT_OK.
+DECRYPT_FAILURE_MARKERS = (
+    "DECRYPT_NO_SECRET",
+    "DECRYPT_CLASS_KEY_EMPTY",
+    "AES_RST_FAIL",
+    "AES_INIT_BUSY",
+    "AES_IDLE_TIMEOUT=",
+    "KDF_HMAC_FAIL",
+    "KDF_FAIL",
+    "AES_CTRL_REJECTED",
+    "AES_ALERT_STATUS=",
+    "AES_ALERT_AFTER_DEC",
+    "AES_DEC_FAIL",
+    "AES_PAD_BAD",
+)
+# BL1 placement arms, which run only after PAYLOAD_OK.
+PLACEMENT_MARKERS = (
+    "NO_BL1_IMAGE",
+    "BL1_SRAM_EXEC_DISABLED",
+    "BL1_ADDR_RANGE",
+    "BL1_SIZE",
+    "BL1_ENTRY_RANGE",
+)
+_BACKUP_STAGES = ("payload", "placement")
+_PRIMARY_STAGES = ("manifest", "payload", "placement")
+_RETIRED_FIELDS = (
+    "requires_defect_marker",
+    "backup_sealed_check_toc",
+    "primary_expected_sig_valids",
+)
+
+
+def err_marker(code: int) -> str:
+    return f"{_ERR}0x{code:08x}"
 
 
 class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
+    # --- subclass contract -------------------------------------------------
+    # Printed once, on or just before the backup's error line; a silent arm uses err_marker().
     backup_defect_marker: str = ""
+    # ROM error code the backup, and so the run, must end with.
     expected_error: int = 0
-    primary_expected_error: int = 0
+    # Attempt stage the backup stops at: "payload" or "placement".
+    backup_expected_stage: str = "payload"
+    # Markers the backup prints after MANIFEST_OK and before its defect marker, in ROM order.
+    backup_ordered: tuple[str, ...] = ()
+    # Markers that must not appear inside the backup attempt.
+    backup_absent: tuple[str, ...] = ()
+    # The primary's refusal; the default is corrupt_primary()'s broken magic word.
+    primary_expected_error: int = MANIFEST_ERR_BAD_MAGIC
+    # 0: the primary is refused before RSA_EXEC. 1: the primary drives the verifier.
+    primary_expected_rsa_starts: int = 0
+    # 1: the primary's signature verifies and its refusal is downstream of it.
+    primary_expected_rsa_oks: int = 0
+    # Must be "manifest" when primary_expected_rsa_oks is 0.
+    primary_expected_stage: str = "manifest"
+    # Markers the primary prints after its RSA/MANIFEST_OK prefix, in ROM order.
+    primary_ordered: tuple[str, ...] = ()
+    # A broken magic is refused by the peek, before the ROM sizes the body.
+    primary_absent: tuple[str, ...] = ("OCA_BODY=",)
 
+    # --- contract checks -----------------------------------------------------
+    @staticmethod
+    def _check_contract(obj) -> None:
+        # obj is a class at import time and the instance at run time.
+        concrete = not isinstance(obj, type)
+        name = type(obj).__name__ if concrete else obj.__name__
+        oc.assert_known(
+            tuple(obj.extra_forbidden)
+            + tuple(obj.backup_ordered)
+            + tuple(obj.backup_absent)
+            + tuple(obj.primary_ordered)
+            + tuple(obj.primary_absent)
+            + ((obj.backup_defect_marker,) if obj.backup_defect_marker else ()),
+            name,
+        )
+        stale = [f for f in _RETIRED_FIELDS if hasattr(obj, f)]
+        assert not stale, f"{name}: {stale} are not read by this base; remove them"
+        assert obj.backup_expected_stage in _BACKUP_STAGES, (
+            f"{name}: backup_expected_stage={obj.backup_expected_stage!r} is not one of "
+            f"{_BACKUP_STAGES}; a manifest-stage refusal belongs to sep_backup_manifest_fail_base"
+        )
+        starts, oks, stage = (
+            obj.primary_expected_rsa_starts,
+            obj.primary_expected_rsa_oks,
+            obj.primary_expected_stage,
+        )
+        assert starts in (0, 1) and oks in (0, 1) and oks <= starts, (
+            f"{name}: primary_expected_rsa_starts={starts}, primary_expected_rsa_oks={oks}; "
+            f"each slot drives the verifier at most once and can only verify if it ran"
+        )
+        assert stage in _PRIMARY_STAGES and (oks or stage == "manifest"), (
+            f"{name}: primary_expected_stage={stage!r} with primary_expected_rsa_oks={oks}; "
+            f"the stage is one of {_PRIMARY_STAGES} and is 'manifest' for an unverified primary"
+        )
+        marker = obj.backup_defect_marker
+        if marker.startswith(_ERR) and obj.expected_error:
+            assert marker == err_marker(obj.expected_error), (
+                f"{name}: backup_defect_marker {marker} is an error line other than the "
+                f"expected {err_marker(obj.expected_error)}"
+            )
+        if concrete:
+            assert obj.expected_error and obj.primary_expected_error, (
+                f"{name}: set expected_error and primary_expected_error"
+            )
+            assert marker, (
+                f"{name}: set backup_defect_marker to the arm's own marker, or to "
+                f"err_marker(expected_error) when the arm prints none"
+            )
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        cls._check_contract(cls)
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._check_contract(self)
+
+    # --- per-attempt expectations -------------------------------------------
+    def primary_attempt_ordered(self) -> tuple[str, ...]:
+        seq: tuple[str, ...] = ()
+        if self.primary_expected_rsa_starts:
+            seq += (_KEY_OK, _RSA_EXEC)
+        if self.primary_expected_rsa_oks:
+            seq += (_RSA_OK,)
+        if self.primary_expected_stage != "manifest":
+            seq += (_MANIFEST_OK,)
+        return seq + tuple(self.primary_ordered)
+
+    def primary_attempt_absent(self) -> tuple[str, ...]:
+        absent = tuple(self.primary_absent)
+        if not self.primary_expected_rsa_starts:
+            absent += (_RSA_EXEC,)
+        if not self.primary_expected_rsa_oks:
+            absent += (_RSA_OK,)
+        return absent
+
+    def backup_attempt_ordered(self) -> tuple[str, ...]:
+        return (
+            (_KEY_OK, _RSA_EXEC, _RSA_OK, _MANIFEST_OK)
+            + tuple(self.backup_ordered)
+            + (self.backup_defect_marker,)
+        )
+
+    def backup_attempt_absent(self) -> tuple[str, ...]:
+        mine = set(self.backup_attempt_ordered())
+        absent = [m for m in PAYLOAD_STAGE_MARKERS if m not in mine]
+        if self.backup_expected_stage == "payload":
+            absent += [_PAYLOAD_OK, *PLACEMENT_MARKERS]
+        else:
+            absent += [m for m in PLACEMENT_MARKERS if m not in mine]
+        return tuple(absent) + tuple(self.backup_absent)
+
+    # --- checks ------------------------------------------------------------
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         log = self.logger
         status_hex = [hex(v) for v in status_seq]
         log.info("cold_scratch[1] sequence: %s", status_hex)
         log.info("ROM console: %s", console)
-
-        assert self.expected_error and self.primary_expected_error, (
-            "subclass must declare both primary_expected_error and expected_error"
-        )
-        assert self.expected_error != self.primary_expected_error, (
-            f"primary_expected_error and expected_error are both "
-            f"0x{self.expected_error:08x}: the two slots' rejections would be "
-            f"indistinguishable on the console, so nothing would attribute the "
-            f"terminal verdict to the backup"
-        )
-        if not self.backup_defect_marker:
-            assert type(self)._check is not sep_backup_payload_fail_base._check, (
-                f"{type(self).__name__} declares no backup_defect_marker and adds "
-                f"no checks of its own. The silent payload arms leave only the "
-                f"error code, which several arms could produce; a member here must "
-                f"override _check to forbid the codes it could be confused with "
-                f"and to assert what the flash device served"
-            )
-            neighbours = [m for m in self.extra_forbidden if m.startswith("MANIFEST_ERR=")]
-            assert neighbours, (
-                f"{type(self).__name__} declares no backup_defect_marker and "
-                f"forbids no neighbouring MANIFEST_ERR= code, so a rejection by a "
-                f"different payload arm would satisfy this run"
-            )
 
         assert retired, "core retired no instructions; the ROM never ran"
         assert console, (
@@ -64,98 +193,95 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
             "virt console is DEBUG-build only -- check the ROM build)"
         )
 
-        primary_err = f"MANIFEST_ERR=0x{self.primary_expected_error:08x}"
-        backup_err = f"MANIFEST_ERR=0x{self.expected_error:08x}"
-        i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
-        i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
-        i_all = fd.first_index(console, _ALL_FAILED)
+        attempts = oc.split_attempts(console)
+        srcs = [f"0x{a.src:08x}" for a in attempts]
+        want = [f"0x{mm.PRIMARY_MANIFEST_OFFSET:08x}", f"0x{mm.BACKUP_MANIFEST_OFFSET:08x}"]
+        assert srcs == want, (
+            f"slot attempts read {srcs}, expected {want}: the primary then the backup, "
+            f"once each. Console: {console}"
+        )
+        primary, backup = attempts
 
-        assert i_psrc >= 0, (
-            f"ROM never read the primary slot ({fd.PRIMARY_SRC}). Console: {console}"
+        # The slot headers precede MANIFEST_SRC=, so they sit outside both attempts.
+        def lines_with(token: str) -> list[int]:
+            return [i for i, line in enumerate(console) if oc.count([line], token)]
+
+        i_ph, i_bh, i_all = (
+            lines_with("MANIFEST_PRIMARY"),
+            lines_with("MANIFEST_BACKUP"),
+            lines_with(_ALL_FAILED),
         )
-        assert i_psrc < i_bsrc, (
-            f"backup slot ({fd.BACKUP_SRC}@{i_bsrc}) was not read after the "
-            f"primary@{i_psrc}: this is not a failover. Console: {console}"
+        assert len(i_ph) == 1 and i_ph[0] < primary.first, (
+            f"MANIFEST_PRIMARY@{i_ph} is not once before the primary attempt@{primary.first}"
         )
-        assert i_bsrc < i_all, (
-            f"{_ALL_FAILED}@{i_all} did not follow the backup read@{i_bsrc}: the "
-            f"ROM gave up before evaluating the backup. Console: {console}"
+        assert len(i_bh) == 1 and primary.last < i_bh[0] < backup.first, (
+            f"MANIFEST_BACKUP@{i_bh} is not once between the primary error@{primary.last} "
+            f"and the backup attempt@{backup.first}"
+        )
+        # The outcome leads the message: the runner keeps only its first 400 characters.
+        assert len(i_all) == 1 and backup.last < i_all[0], (
+            f"{_ALL_FAILED}@{i_all} is not once after the backup error@{backup.last}: "
+            f"the ROM did not give up after evaluating the backup (backup attempt "
+            f"{backup.stage}, BL1_JUMP= printed {oc.count(console, 'BL1_JUMP=')}x). "
+            f"Console: {console}"
         )
 
-        fd.assert_slot_attributed(console, primary_err, after=i_psrc, before=i_bsrc)
+        p_ordered = self.primary_attempt_ordered()
+        oc.assert_attempt(
+            primary,
+            error=self.primary_expected_error,
+            stage=self.primary_expected_stage,
+            ordered=p_ordered,
+            absent=self.primary_attempt_absent(),
+        )
         log.info(
-            "CHK-FAILOVER-PRIMARY: primary@%d rejected with %s before the backup read@%d",
-            i_psrc,
-            primary_err,
-            i_bsrc,
+            "CHK-FAILOVER-PRIMARY PASS: primary@%d-%d 0x%08x at %s after %s",
+            primary.first,
+            primary.last,
+            self.primary_expected_error,
+            self.primary_expected_stage,
+            " -> ".join(p_ordered) or "no marker",
         )
 
-        previous = i_bsrc
-        positions = []
-        for marker in _CRYPTO_CHAIN:
-            n = fd.count(console, marker)
-            assert n == 1, (
-                f"{marker} appeared {n} times, expected exactly 1 (the backup's). "
-                f"A second occurrence would mean the primary also reached the "
-                f"crypto chain, which this family does not plant. Console: {console}"
+        b_ordered = self.backup_attempt_ordered()
+        b_absent = self.backup_attempt_absent()
+        oc.assert_attempt(
+            backup,
+            error=self.expected_error,
+            stage=self.backup_expected_stage,
+            ordered=b_ordered,
+            absent=b_absent,
+        )
+        tail = [line for _, line in backup.markers][-2:]
+        assert oc.count(tail, self.backup_defect_marker) == 1, (
+            f"{self.backup_defect_marker} is not the backup's error line or the line just "
+            f"before it (attempt ends {tail}): a later check also refused the slot"
+        )
+
+        primary_err = err_marker(self.primary_expected_error)
+        counts = [
+            (_RSA_EXEC, 1 + self.primary_expected_rsa_starts),
+            (_RSA_OK, 1 + self.primary_expected_rsa_oks),
+            (_ERR, 2),
+        ]
+        for m in b_ordered:
+            if m not in (_RSA_EXEC, _RSA_OK):
+                counts.append((m, 1 + int(m in p_ordered or m == primary_err)))
+        for marker, want_n in counts:
+            n = oc.count(console, marker)
+            assert n == want_n, (
+                f"{marker} appeared {n} times, expected exactly {want_n}. Console: {console}"
             )
-            i = fd.first_index(console, marker)
-            assert previous < i < i_all, (
-                f"{marker}@{i} does not sit between the previous stage@{previous} "
-                f"and {_ALL_FAILED}@{i_all}: the backup's crypto chain is out of "
-                f"order or outside its own attempt. Chain so far: "
-                f"{list(zip(_CRYPTO_CHAIN, positions))}. Console: {console}"
-            )
-            positions.append(i)
-            previous = i
-        i_hash_ok = fd.first_index(console, _HASH_OK, after=i_bsrc)
-        assert i_bsrc < i_hash_ok < positions[0], (
-            f"{_HASH_OK}@{i_hash_ok} does not sit between the backup read@{i_bsrc} "
-            f"and its {_CRYPTO_CHAIN[0]}@{positions[0]}: the backup's integrity "
-            f"check is not part of its own attempt. Console: {console}"
-        )
         log.info(
-            "CHK-BACKUP-CRYPTO: backup read@%d -> %s@%d -> %s -- signature "
-            "verified before the payload was refused",
-            i_bsrc,
-            _HASH_OK,
-            i_hash_ok,
-            ", ".join(f"{m}@{p}" for m, p in zip(_CRYPTO_CHAIN, positions)),
-        )
-
-        after = positions[-1]
-        if self.backup_defect_marker:
-            after = fd.assert_slot_attributed(
-                console, self.backup_defect_marker, after=positions[-1], before=i_all
-            )
-        fd.assert_slot_attributed(console, backup_err, after=after, before=i_all)
-        log.info(
-            "CHK-BACKUP-DEFECT: %s then %s, both after CRYPTO_VALIDATE_OK@%d "
-            "and inside the backup attempt (..%d)",
-            self.backup_defect_marker or "(this arm prints no token)",
-            backup_err,
-            positions[-1],
-            i_all,
-        )
-
-        assert not any(_CRYPTO_FAIL in line for line in console), (
-            f"ROM printed {_CRYPTO_FAIL}: a slot was refused inside "
-            f"oca_validate_manifest(), so the payload rejection under test is not "
-            f"what ended this run. Console: {console}"
-        )
-        assert not any(_MANIFEST_OK in line for line in console), (
-            f"ROM printed {_MANIFEST_OK}: a slot passed in full, so neither slot "
-            f"was refused. Console: {console}"
-        )
-        assert not any(_SBOOT_OFF in line for line in console), (
-            f"ROM printed {_SBOOT_OFF}: a slot took the secure-boot-disabled path, "
-            f"so the backup's signature was never verified. Console: {console}"
-        )
-        log.info(
-            "CHK-NOT-A-CRYPTO-FAILURE: neither %s, %s nor %s appeared",
-            _CRYPTO_FAIL,
-            _MANIFEST_OK,
-            _SBOOT_OFF,
+            "CHK-BACKUP-PAYLOAD PASS: backup@%d-%d 0x%08x at %s after %s; none of %s; %s@%d",
+            backup.first,
+            backup.last,
+            self.expected_error,
+            self.backup_expected_stage,
+            " -> ".join(b_ordered),
+            ", ".join(b_absent),
+            _ALL_FAILED,
+            i_all[0],
         )
 
         status_msg = mm.rom_status_for_result(self.expected_error)
@@ -171,19 +297,16 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
         )
         assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
         log.info(
-            "CHK-TERMINAL: %s, %s, cold_scratch[1]=0x%08x, verdict FAIL",
-            backup_err,
+            "CHK-TERMINAL PASS: %s, %s, cold_scratch[1]=0x%08x, verdict FAIL",
+            err_marker(self.expected_error),
             _ALL_FAILED,
             expected_status,
         )
 
-        for marker in _BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden):
-            assert not any(marker in line for line in console), (
-                f"ROM printed {marker}, which sits past the rejection: it "
-                f"continued booting a manifest it had already failed. "
-                f"Console: {console}"
+        never = (_SBOOT_OFF,) + _BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden)
+        for marker in never:
+            assert oc.count(console, marker) == 0, (
+                f"ROM printed {marker}: secure boot was skipped, or the ROM continued "
+                f"past a rejection it had already made. Console: {console}"
             )
-        log.info(
-            "CHK-NO-BOOT: none of %s reached",
-            ", ".join(_BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden)),
-        )
+        log.info("CHK-NO-BOOT: none of %s reached", ", ".join(never))

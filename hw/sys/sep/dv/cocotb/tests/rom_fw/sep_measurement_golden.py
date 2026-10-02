@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Independent reference model for the BL0 boot-state soft PCR.
 
-Rebuilds ``boot_state_record`` and applies the enrollment operation from
-``measurement.c``, then compares it with the soft-PCR value BL1 reads from
-``bl0_state``.
+Rebuilds ``boot_state_record``, enrolls it as ``measurement.c`` does, and compares the result
+with the soft PCR that BL1 reads from ``bl0_state``.
 """
 
 from __future__ import annotations
@@ -95,3 +94,34 @@ def assert_boot_pcr(
         sboot_dis,
     )
     return got
+
+
+# KAT captured from BL1's BL0S_BOOT_PCR= in a sep_rom_ot_secure_boot_test run.
+_KAT_MANIFEST_HASH = bytes.fromhex(
+    "975638FD2835ECDCD3DAD738EF26B2C1497982F54535F86076325326A63914C4"
+)
+_KAT_PCR = bytes.fromhex("7D9897C3FB08563C3A601D9CF39B29AD5DD4906BC0AFA798F60A537CFC6DF789")
+_KAT_INPUTS = {"lc_state": 0x0, "demotion_decision": 0x2, "secure_boot": 1, "sboot_dis": 0}
+
+
+def _selftest() -> int:
+    got = calculate_boot_pcr(_KAT_MANIFEST_HASH, **_KAT_INPUTS)
+    assert got == _KAT_PCR, f"boot PCR KAT: got {got.hex().upper()}, want {_KAT_PCR.hex().upper()}"
+    # Each record field must reach the digest, or a wrong demotion or lifecycle input passes.
+    for field, flip in (
+        ("lc_state", 0x1),
+        ("demotion_decision", 0x4),
+        ("secure_boot", 0x1),
+        ("sboot_dis", 0x1),
+    ):
+        changed = dict(_KAT_INPUTS, **{field: _KAT_INPUTS[field] ^ flip})
+        assert calculate_boot_pcr(_KAT_MANIFEST_HASH, **changed) != _KAT_PCR, (
+            f"boot PCR ignores {field}"
+        )
+    assert read_boot_pcr([f"ROM> BL0S_BOOT_PCR={_KAT_PCR.hex().upper()}"]) == _KAT_PCR
+    print("sep_measurement_golden: boot PCR KAT and field sensitivity OK")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_selftest())

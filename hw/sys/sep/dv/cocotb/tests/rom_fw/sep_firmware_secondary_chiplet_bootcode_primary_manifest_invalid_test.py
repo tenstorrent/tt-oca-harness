@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Secondary chiplet, published manifest invalid: one attempt, then terminal.
 
-The SMC publishes offset 0x5000, which holds zero bytes, so the ROM returns ``BAD_MAGIC``.
+The SMC publishes offset 0x5000, which holds no manifest, so the ROM returns ``BAD_MAGIC``.
 The SMC path has one manifest slot and no retry, so this rejection ends the boot.
 """
 
@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import pyuvm
 from env import sep_manifest_mutate as mm
+from env import sep_oca_console as oc
 from rom_fw.sep_secondary_chiplet_base import (
     ALL_FAILED,
     ERR_BAD_MAGIC,
     MANIFEST_OK,
+    SMC_SRAM_BASE,
     sep_secondary_chiplet_base,
 )
 
@@ -22,24 +24,19 @@ _INVALID_OFFSET = 0x5000
 _SLOT_ERR = f"MANIFEST_ERR=0x{ERR_BAD_MAGIC:08x}"
 _BOOT_FAIL = f"MANIFEST_BOOT_FAIL=0x{ERR_BAD_MAGIC:08x}"
 
-# Format-version and manifest-length verdicts from neighboring structural arms.
 _OTHER_HEADER_ERRORS = (
     mm.boot_err("OCA_FAIL_FORMAT_VERSION_MISMATCH"),
     mm.boot_err("OCA_FAIL_MANIFEST_LENGTH"),
 )
 _DOWNSTREAM_TOKENS = (
-    "MANIFEST_HASH_OK",
-    "MANIFEST_HASH_MISMATCH",
-    "LC_USAGE_CONSTRAINT_FAIL",
-    "CHIPLET_ID_MISMATCH",
-    "PACKAGE_ID_MISMATCH",
-    "RSA_VERIFY_START",
-    "SIG_VALID",
-    "CRYPTO_VALIDATE_OK",
-    "CRYPTO_FAIL=",
+    "OCA_BODY=",
+    "MFST_VER=",
+    "PUBK_SEL=",
+    "PUBK_AUTHORIZED",
+    "RSA_EXEC",
     "SBOOT_OFF",
-    "PLD_HASH_OK",
-    "DECRYPT_START",
+    "PAYLOAD_LOC_FAIL",
+    "PAYLOAD_OK",
     MANIFEST_OK,
 )
 _BOOT_PROGRESS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=", "FUSE_SECRETS_LOCKED")
@@ -69,6 +66,19 @@ class sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test(
         i_all = self._index_of(console, ALL_FAILED)
         i_fail = self._index_of(console, _BOOT_FAIL)
 
+        attempts = oc.split_attempts(console)
+        assert [a.src for a in attempts] == [SMC_SRAM_BASE + self.manifest_offset], (
+            f"slot attempts read {[hex(a.src) for a in attempts]}, expected one at the "
+            f"published address: the SMC path has one slot, so one rejection ends the "
+            f"run. Console: {console}"
+        )
+        oc.assert_attempt(
+            attempts[0],
+            error=self.expected_error,
+            stage="manifest",
+            ordered=(_SLOT_ERR,),
+            absent=_DOWNSTREAM_TOKENS,
+        )
         n_err = self._count(console, "MANIFEST_ERR=")
         assert n_err == 1, (
             f"MANIFEST_ERR= appeared {n_err} times, expected exactly 1: the SMC "
@@ -99,7 +109,7 @@ class sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test(
         )
         assert not fw_pass, "ROM signalled PASS: it booted from an offset that holds no manifest"
         self.logger.info(
-            "CHK-INVALID-PUBLISHED-MANIFEST: one attempt at %s, refused "
+            "CHK-INVALID-PUBLISHED-MANIFEST PASS: one attempt at %s, refused "
             "%s@%d, %s@%d, %s@%d, cold_scratch[1]=0x%08x, verdict FAIL",
             src,
             _SLOT_ERR,

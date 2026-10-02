@@ -13,6 +13,7 @@ import os
 import cocotb
 from cocotb.triggers import RisingEdge
 from env import sep_manifest_mutate as mm
+from env import sep_oca_console as oc
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict
@@ -21,7 +22,6 @@ from sep_reg_meta import sym
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 SMC_SRAM_BASE = 0x4006_0000
-# The testbench default, and where the packed SMC image carries "legacy manifest".
 DEFAULT_MANIFEST_OFFSET = 0x1000
 MANIFEST_MAGIC = b"OCAC"
 ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
@@ -30,7 +30,7 @@ SECONDARY_MARKER = "BOOT_SECONDARY"
 SPI_MARKER = "BOOT_SPI"
 RECOVERY_MARKER = "BOOT_RECOVERY"
 STRAP_PRIMARY_CLEAR = "STRAP primary=0"
-STRAP_RECOVERY_CLEAR = " recovery=0"
+STRAP_RECOVERY_CLEAR = "recovery=0"
 STRAPS_LO_ECHO = "STRAPS_LO=0x00000000"
 SMC_COORD_NOT_READY = "SMC_COORD_NOT_READY"
 SMC_MANIFEST_OFF_INVALID = "SMC_MANIFEST_OFF_INVALID"
@@ -53,10 +53,8 @@ _QUIESCE_CYCLES = 20_000
 
 class sep_secondary_chiplet_base(sep_base_test):
     build_env = False
-    # Gate on the cold_scratch[0] verdict word, not the outbound mailbox.
     verdict_source = "scratch0"
 
-    # --- subclass contract -------------------------------------------------
     # Must match +sep_smc_scratch8; the default offset needs no plusarg.
     manifest_offset: int = DEFAULT_MANIFEST_OFFSET
     expect_boot: bool = True
@@ -64,7 +62,18 @@ class sep_secondary_chiplet_base(sep_base_test):
     extra_required: tuple[str, ...] = ()
     extra_forbidden: tuple[str, ...] = ()
 
-    # --- shared marker sets ------------------------------------------------
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        oc.assert_known(
+            (STRAPS_LO_ECHO, STRAP_PRIMARY_CLEAR, STRAP_RECOVERY_CLEAR, SECONDARY_MARKER)
+            + (SPI_MARKER, RECOVERY_MARKER, SMC_COORD_NOT_READY, SMC_MANIFEST_OFF_INVALID)
+            + (WAIT_SMC, MANIFEST_PRIMARY, MANIFEST_BACKUP)
+            + SPI_INIT_MARKERS
+            + tuple(cls.extra_required)
+            + tuple(cls.extra_forbidden),
+            cls.__name__,
+        )
+
     @property
     def _required(self) -> tuple[str, ...]:
         return (
@@ -106,7 +115,6 @@ class sep_secondary_chiplet_base(sep_base_test):
     def src_echo(self) -> str:
         return f"MANIFEST_SRC=0x{SMC_SRAM_BASE + self.manifest_offset:08x}"
 
-    # --- image-side evidence ------------------------------------------------
     def check_smc_image(self) -> None:
         path = cocotb.plusargs.get("sep_smc_mem_hex")
         assert isinstance(path, str) and os.path.isfile(path), (
@@ -203,7 +211,6 @@ class sep_secondary_chiplet_base(sep_base_test):
         image.set_lc_state(LC_TEST_DEV)
         return image
 
-    # --- scenario -----------------------------------------------------------
     async def run_scenario(self) -> None:
         dut = cocotb.top
 
@@ -288,7 +295,6 @@ class sep_secondary_chiplet_base(sep_base_test):
         if fw_done and not self.expect_boot:
             self._check_quiesced(post_status_moved, post_console, last_status)
 
-    # --- checks -------------------------------------------------------------
     def _check_quiesced(self, post_status_moved, post_console, terminal_status) -> None:
         assert not post_status_moved, (
             f"cold_scratch[1] moved on from 0x{terminal_status:08x} within "
@@ -341,12 +347,12 @@ class sep_secondary_chiplet_base(sep_base_test):
             assert any(marker in line for line in console), (
                 f"ROM never printed {marker}. Console: {console}"
             )
-        log.info("CHK-SECONDARY-MARKERS: all of %s observed", ", ".join(required))
+        log.info("CHK-SECONDARY-MARKERS PASS: all of %s observed", ", ".join(required))
         for marker in forbidden:
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}, which this member forbids. Console: {console}"
             )
-        log.info("CHK-SECONDARY-FORBIDDEN: none of %s appeared", ", ".join(forbidden))
+        log.info("CHK-SECONDARY-FORBIDDEN PASS: none of %s appeared", ", ".join(forbidden))
 
         src = self.src_echo
         i_straps = self._index_of(console, STRAPS_LO_ECHO)
@@ -363,7 +369,7 @@ class sep_secondary_chiplet_base(sep_base_test):
             f"{MANIFEST_PRIMARY}@{i_first} -> {src}@{i_src}. Console: {console}"
         )
         log.info(
-            "CHK-SECONDARY-ORDER: STRAPS_LO@%d -> BOOT_SECONDARY@%d -> %s@%d -> "
+            "CHK-SECONDARY-ORDER PASS: STRAPS_LO@%d -> BOOT_SECONDARY@%d -> %s@%d -> "
             "%s@%d -> WAIT_SMC_MANIFEST@%d -> MANIFEST_PRIMARY@%d -> %s@%d",
             i_straps,
             i_branch,
@@ -387,7 +393,10 @@ class sep_secondary_chiplet_base(sep_base_test):
             f"Console: {console}"
         )
         log.info(
-            "CHK-SINGLE-ATTEMPT: one %s and one %s, no %s", MANIFEST_PRIMARY, src, MANIFEST_BACKUP
+            "CHK-SINGLE-ATTEMPT PASS: one %s and one %s, no %s",
+            MANIFEST_PRIMARY,
+            src,
+            MANIFEST_BACKUP,
         )
 
         self.check_outcome(console, status_seq, fw_done, fw_pass)

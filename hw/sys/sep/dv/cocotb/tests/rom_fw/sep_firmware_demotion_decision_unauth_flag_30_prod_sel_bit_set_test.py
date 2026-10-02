@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""O3a under PROD with signed OCA secure boot enforced.
+"""PROD with signed OCA secure boot enforced and BL1 valid/disabled -> locked, not demoted.
 
 The primary sets BL1_DEMOTION_VALID and clears BL1_DEMOTION_ENABLE with no BL2
 request. The fully verified slot must leave DEMOTE_1 clear and lock it.
@@ -12,6 +12,8 @@ import pyuvm
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
+    SIGNED_PATH_FORBIDDEN,
+    SIGNED_PATH_REQUIRED,
     narrow_life_cycle_states,
     sep_demotion_decision_base,
 )
@@ -29,16 +31,12 @@ _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
 PROD_PRELOAD = EFUSE_DIR / "sep_efuse_lc_prod.toml"
 
-_MEAS_LOCKED_BL2_ABSENT = "MEAS_DEMOTE=0x00000002"
-_MEAS_LOCKED_BL2_COUNTED = "MEAS_DEMOTE=0x00000006"
-_MEAS_SBOOT_ON = "MEAS_SBOOT=0x00000001"
-
 
 @pyuvm.test()
 class sep_firmware_demotion_bl1_disable_secure_prod_test(
     _demotion_prod_mixin, sep_demotion_decision_base
 ):
-    """Signed OCA O3a: BL1 valid/disabled under PROD locks without demoting."""
+    """Signed OCA BL1 valid/disabled under PROD locks without demoting."""
 
     _SEL = 1
     _AUTH = 0
@@ -58,39 +56,15 @@ class sep_firmware_demotion_bl1_disable_secure_prod_test(
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
         _LC_PROD,
         _PRIMARY_SRC,
-        "RSA_VERIFY_START",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
-        "PLD_HASH_OK",
-        "MANIFEST_HASH_OK",
-        _MEAS_LOCKED_BL2_ABSENT,
-        _MEAS_SBOOT_ON,
+        *SIGNED_PATH_REQUIRED,
         "BL1_COPIED",
         "BL1_JUMP=",
     )
     # "LC=PROD" is a prefix of "LC=PROD_END", so the longer token must be forbidden.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _LC_PROD_END,
-        "LC_USAGE_CONSTRAINT_FAIL",
-        "SBOOT_OFF",
-        "FUSE: SBOOT_DIS: 1",
         _BACKUP_SRC,
-        "MANIFEST_ERR=",
-        "MANIFEST_ALL_FAILED",
-        "CRYPTO_FAIL=",
-        "RSA_VERIFY_FAIL",
-        "VERSION_ROLLBACK",
-        "KEY_REVOKED",
-        "BAD_SIG_TYPE=",
-        "BAD_KEY_SEL",
-        "BAD_KEY_IDX",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "PLD_HASH_MISMATCH",
-        "PLD_HASH_FAIL=",
-        "MANIFEST_HASH_MISMATCH",
-        _MEAS_LOCKED_BL2_COUNTED,
+        *SIGNED_PATH_FORBIDDEN,
     )
 
     def mutate_manifest(self, buf: bytearray) -> None:
@@ -103,7 +77,7 @@ class sep_firmware_demotion_bl1_disable_secure_prod_test(
         mm.set_demotion(
             buf, "primary", bl1_valid=True, bl1_enable=False, bl2_valid=False, bl2_enable=False
         )
-        # This final signed-region mutation re-seals both slots.
+        # Last signed-region write: it re-seals both slots.
         narrow_life_cycle_states(self, buf, LC_STATES_PROD_ONLY, reseal_slots=("primary", "backup"))
 
     def check_manifest_stimulus(self, buf: bytearray) -> None:

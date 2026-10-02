@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared scenario for the four fuse-lock rows: a 2x2 of lifecycle x device control.
 
-Each row boots the plaintext signed image under one OTP preload and checks that the ROM
-sets all six secret read-lock bits before the BL1 handoff, on both secure-boot arms.
+Each row checks that the ROM sets all six secret read-lock bits before the BL1 handoff.
+The non-secure cells boot the unsigned image: a signed manifest's enforced bit outranks SBOOT_DIS.
 """
 
 from __future__ import annotations
@@ -13,11 +13,13 @@ from pathlib import Path
 
 import cocotb
 from env import sep_manifest_mutate as mm
+from env import sep_oca_console as oc
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
+UNSIGNED_FLASH_IMAGE = sep_rom_ot_dma_boot_test.flash_image
 
 LC_RAW_TEST_DEV = 0x0
 LC_RAW_PROD = 0x1
@@ -25,6 +27,7 @@ LC_MARKERS = {
     LC_RAW_TEST_DEV: "LC=TEST_DEV",
     LC_RAW_PROD: "LC=PROD",
 }
+LC_TOKENS = {LC_RAW_TEST_DEV: 0, LC_RAW_PROD: 1}
 # Forbidding every other decode catches a preload that failed to stage.
 ALL_LC_MARKERS = ("LC=TEST_DEV", "LC=PROD", "LC=PROD_END", "LC=RMA_SIP", "LC=RMA_CHIPLET")
 
@@ -33,18 +36,16 @@ def lc_raw_echo(raw: int) -> str:
     return f"LC_STATE=0x{raw:08x}"
 
 
-# SEP_MSG_LIFECYCLE_INVALID is a status code only and never reaches the console.
 LC_STATE_INVALID = "LC_STATE_INVALID="
 
 SBOOT_DIS_MARKERS = {0: "FUSE: SBOOT_DIS: 0", 1: "FUSE: SBOOT_DIS: 1"}
 
-CRYPTO_MARKERS = ("RSA_VERIFY_START", "SIG_VALID", "CRYPTO_VALIDATE_OK")
+# Printed only when secure boot is engaged, in ROM order.
+CRYPTO_MARKERS = ("PUBK_AUTHORIZED", "RSA_EXEC", "RSA_VERIFY_OK")
+SECURE_ONLY_MARKERS = CRYPTO_MARKERS + ("PUBK_SEL=", "PUBK_REVOKE=", "FUSE_VER=", "ENTROPY_OK")
 SBOOT_OFF = "SBOOT_OFF"
-SHA_DISABLED = "SHA256_CHECKS_DISABLED"
-MANIFEST_HASH_OK = "MANIFEST_HASH_OK"
-# verify_payload_hash() returns silently when payload_hashed_length is 0, so require it.
-PLD_HASH_OK = "PLD_HASH_OK"
 MANIFEST_OK = "MANIFEST_OK"
+PAYLOAD_OK = "PAYLOAD_OK"
 
 FUSE_SECRETS_LOCKED = "FUSE_SECRETS_LOCKED"
 FUSE_SECRETS_NOT_LOCKED = "FUSE_SECRETS_NOT_LOCKED"
@@ -67,16 +68,7 @@ BOOT_FAILURE_TOKENS = (
     "MANIFEST_ERR=",
     "MANIFEST_ALL_FAILED",
     "MANIFEST_BOOT_FAIL=",
-    "CRYPTO_FAIL=",
-    "LC_USAGE_CONSTRAINT_FAIL",
-    "LC_ALLOWED=",
-    "LC_BIT=",
-    "CHIPLET_ID_MISMATCH",
-    "PACKAGE_ID_MISMATCH",
-    "MANIFEST_HASH_MISMATCH",
-    "PLD_HASH_FAIL=",
     LC_STATE_INVALID,
-    "VERSION_ROLLBACK",
 )
 
 KEY_AND_UID_LOCK_BITS = {
@@ -110,20 +102,28 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
     expected_lc_raw: int = LC_RAW_TEST_DEV
     expected_sboot_dis: int = 0
 
+    def __init_subclass__(cls, **kwargs) -> None:
+        cls.flash_image = SECURE_FLASH_IMAGE if cls._secure_expected() else UNSIGNED_FLASH_IMAGE
+        super().__init_subclass__(**kwargs)
+        oc.assert_known(
+            cls._required() + cls._forbidden() + cls._attempt_ordered() + cls._attempt_absent(),
+            cls.__name__,
+        )
+
     @classmethod
     def _secure_expected(cls) -> bool:
-        # SBOOT_DIS wins; otherwise the manifest's secure_boot flag applies in every lifecycle.
+        # Only the secure cells' manifests carry the enforced bit, so SBOOT_DIS selects the arm.
         return cls.expected_sboot_dis == 0
 
-    @property
-    def required_markers(self) -> tuple[str, ...]:  # type: ignore[override]
-        lc = LC_MARKERS[self.expected_lc_raw]
-        raw = lc_raw_echo(self.expected_lc_raw)
-        sboot = SBOOT_DIS_MARKERS[self.expected_sboot_dis]
-        outcome = CRYPTO_MARKERS if self._secure_expected() else (SBOOT_OFF,)
+    @classmethod
+    def _required(cls) -> tuple[str, ...]:
+        lc = LC_MARKERS[cls.expected_lc_raw]
+        raw = lc_raw_echo(cls.expected_lc_raw)
+        sboot = SBOOT_DIS_MARKERS[cls.expected_sboot_dis]
+        outcome = CRYPTO_MARKERS if cls._secure_expected() else (SBOOT_OFF,)
         return (
             sep_rom_ot_dma_boot_test.required_markers
-            + (raw, lc, sboot, MANIFEST_HASH_OK, PLD_HASH_OK)
+            + (raw, lc, sboot)
             + outcome
             + (
                 MANIFEST_OK,
@@ -137,25 +137,45 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
             )
         )
 
-    @property
-    def forbidden_markers(self) -> tuple[str, ...]:  # type: ignore[override]
-        lc = LC_MARKERS[self.expected_lc_raw]
+    @classmethod
+    def _forbidden(cls) -> tuple[str, ...]:
+        lc = LC_MARKERS[cls.expected_lc_raw]
         other_lc = tuple(m for m in ALL_LC_MARKERS if m != lc)
         other_raw = tuple(
-            lc_raw_echo(r) for r in (LC_RAW_TEST_DEV, LC_RAW_PROD) if r != self.expected_lc_raw
+            lc_raw_echo(r) for r in (LC_RAW_TEST_DEV, LC_RAW_PROD) if r != cls.expected_lc_raw
         )
-        other_sboot = (SBOOT_DIS_MARKERS[1 - self.expected_sboot_dis],)
-        outcome = (SBOOT_OFF,) if self._secure_expected() else CRYPTO_MARKERS
+        other_sboot = (SBOOT_DIS_MARKERS[1 - cls.expected_sboot_dis],)
+        outcome = (SBOOT_OFF,) if cls._secure_expected() else SECURE_ONLY_MARKERS
         return (
             sep_rom_ot_dma_boot_test.forbidden_markers
             + other_lc
             + other_raw
             + other_sboot
             + outcome
-            + (FUSE_SECRETS_NOT_LOCKED, SHA_DISABLED)
+            + (FUSE_SECRETS_NOT_LOCKED,)
             + BL1_LOCK_FAILURES
             + BOOT_FAILURE_TOKENS
         )
+
+    @classmethod
+    def _attempt_ordered(cls) -> tuple[str, ...]:
+        seq: tuple[str, ...] = ("OCA_BODY=", "MFST_VER=")
+        seq += CRYPTO_MARKERS if cls._secure_expected() else ()
+        seq += (MANIFEST_OK, PAYLOAD_OK)
+        seq += () if cls._secure_expected() else (SBOOT_OFF,)
+        return seq + (FUSE_SECRETS_LOCKED, BL1_COPIED, BL1_JUMP, BL1_MARKER)
+
+    @classmethod
+    def _attempt_absent(cls) -> tuple[str, ...]:
+        return (SBOOT_OFF,) if cls._secure_expected() else SECURE_ONLY_MARKERS
+
+    @property
+    def required_markers(self) -> tuple[str, ...]:  # type: ignore[override]
+        return self._required()
+
+    @property
+    def forbidden_markers(self) -> tuple[str, ...]:  # type: ignore[override]
+        return self._forbidden()
 
     def build_efuse_image(self):
         assert self.efuse_preload is not None and os.path.isfile(self.efuse_preload), (
@@ -179,7 +199,6 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
             f"SBOOT_DIS is {sboot_dis}, expected {self.expected_sboot_dis}: the "
             f"device-control axis of this cell did not stage"
         )
-        # A preload that arrived locked would pass the post-boot read without the ROM's work.
         for field in ("LOCKS", "LOCKS_SPARE"):
             got = image.field_int(field)
             assert got == 0, (
@@ -199,49 +218,67 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
         )
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
-        self.assert_manifest_preconditions(buf)
+        allowed = 1 << LC_TOKENS[self.expected_lc_raw]
+        for slot in ("primary", "backup"):
+            self.assert_manifest_preconditions(buf, slot)
+            self.permit_live_lifecycle(buf, slot, allowed)
         return buf
 
-    def assert_manifest_preconditions(self, buf: bytearray) -> None:
-        for slot in ("primary", "backup"):
-            mm.verify_layout(buf, slot)
-            mm.verify_usage_constraints_layout(buf, slot)
-            sel = mm.selector_bits(buf, slot)
-            assert sel & (1 << mm.SELECTOR_BIT_LIFE_CYCLE_STATES), (
-                f"{slot} selector_bits is 0x{sel:x} and leaves bit "
-                f"{mm.SELECTOR_BIT_LIFE_CYCLE_STATES} clear, so the ROM skips the "
-                f"lifecycle usage constraint entirely and forbidding "
-                f"LC_USAGE_CONSTRAINT_FAIL says nothing"
-            )
-            allowed = mm.lifecycle_states(buf, slot)
-            live_bit = 0 if self.expected_lc_raw == LC_RAW_TEST_DEV else 1
-            assert allowed & (1 << live_bit), (
-                f"{slot} life_cycle_states is 0x{allowed:x} and does not permit "
-                f"bit {live_bit} (the lifecycle this cell senses), so the slot "
-                f"would be refused by the usage constraint instead of booting"
-            )
-            secure_boot = mm.secure_boot_control(buf, slot)
-            assert (secure_boot >> mm.SECURE_BOOT_ENFORCED_BIT) & 1, (
-                f"{slot} secure_boot_control is 0x{secure_boot:08x} and asks for "
-                f"non-secure boot; "
-                f"the two secure cells would then be indistinguishable from the "
-                f"non-secure ones in TEST_DEV"
-            )
-            assert not pm.is_encrypted(buf, slot), (
-                f"{slot} payload carries encrypted_payload = 1; oca_boot.c "
-                f"refuses an encrypted payload outright when secure boot is off, "
-                f"so the two non-secure cells could not boot"
-            )
-            self.logger.info(
-                "CHK-MANIFEST-PRECONDITION: %s selector_bits=0x%x "
-                "life_cycle_states=0x%x secure_boot_control=0x%08x, plaintext payload, "
-                "unmutated -- %s",
-                slot,
-                sel,
-                allowed,
-                secure_boot,
-                mm.describe(buf, slot),
-            )
+    def permit_live_lifecycle(self, buf: bytearray, slot: str, allowed: int) -> None:
+        bit = mm.SELECTOR_BIT_LIFECYCLE["chiplet"]
+        if self._secure_expected():
+            mm.set_lifecycle_constraint(buf, slot, allowed)
+            pm.verify_sealed(buf, slot)
+            mm.verify_public_key(buf, slot)
+        else:
+            # The unsigned image carries no signature to renew, only manifest_hash.
+            mm.set_lifecycle_states(buf, slot, allowed)
+            mm.set_selector_bit(buf, slot, bit, True)
+        sel = mm.selector_bits(buf, slot)
+        got = mm.lifecycle_states(buf, slot)
+        assert sel == 1 << bit and got == allowed, (
+            f"{slot} selector_bits 0x{sel:x} lifecycle_states 0x{got:x}, expected only "
+            f"bit {bit} and 0x{allowed:x}: the constraint that names this cell's "
+            f"lifecycle did not land"
+        )
+        assert mm.manifest_hash(buf, slot) == mm.signed_region_hash(buf, slot), (
+            f"{slot} manifest_hash does not cover the planted constraint"
+        )
+        self.logger.info(
+            "CHK-MANIFEST-LIFECYCLE: %s lifecycle_states=0x%x permits only %s, so a "
+            "ROM that sensed any other state refuses the slot -- %s",
+            slot,
+            allowed,
+            LC_MARKERS[self.expected_lc_raw],
+            mm.describe(buf, slot),
+        )
+
+    def assert_manifest_preconditions(self, buf: bytearray, slot: str) -> None:
+        mm.verify_layout(buf, slot)
+        mm.verify_usage_constraints_layout(buf, slot)
+        sel = mm.selector_bits(buf, slot)
+        assert sel == 0, (
+            f"{slot} selector_bits is 0x{sel:x} before the write, expected 0: another "
+            f"constraint would share the slot and could refuse it"
+        )
+        secure_boot = mm.secure_boot_control(buf, slot)
+        enforced = (secure_boot >> mm.SECURE_BOOT_ENFORCED_BIT) & 1
+        assert enforced == int(self._secure_expected()), (
+            f"{slot} secure_boot_control is 0x{secure_boot:02x}: the secure cells need "
+            f"the enforced bit so TEST_DEV verifies, and the non-secure cells need it "
+            f"clear because it outranks SBOOT_DIS (secure_boot.c)"
+        )
+        assert not pm.is_encrypted(buf, slot), (
+            f"{slot} payload carries encrypted_payload = 1; an encrypted payload is "
+            f"refused when secure boot is off, so the two non-secure cells could not boot"
+        )
+        self.logger.info(
+            "CHK-MANIFEST-PRECONDITION: %s secure_boot_control=0x%02x, plaintext payload, "
+            "no usage constraint -- %s",
+            slot,
+            secure_boot,
+            mm.describe(buf, slot),
+        )
 
     def check_transport(self, console: list[str], flash) -> None:
         super().check_transport(console, flash)
@@ -249,62 +286,42 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
         self._check_locks_register()
 
     def _check_decision_order(self, console: list[str]) -> None:
-        def index_of(marker: str) -> int:
-            for i, line in enumerate(console):
-                if marker in line:
-                    return i
-            return -1
+        attempts = oc.split_attempts(console)
+        assert [a.src for a in attempts] == [mm.PRIMARY_MANIFEST_OFFSET], (
+            f"slot attempts read {[hex(a.src) for a in attempts]}, expected the primary "
+            f"only: the unmodified primary must be accepted on its first read"
+        )
+        att = attempts[0]
+        ordered = self._attempt_ordered()
+        oc.assert_attempt(
+            att, error=None, stage="accepted", ordered=ordered, absent=self._attempt_absent()
+        )
 
         lc = LC_MARKERS[self.expected_lc_raw]
         raw = lc_raw_echo(self.expected_lc_raw)
         sboot = SBOOT_DIS_MARKERS[self.expected_sboot_dis]
-        i_raw = index_of(raw)
-        i_lc = index_of(lc)
-        i_sboot = index_of(sboot)
-        decision = CRYPTO_MARKERS[0] if self._secure_expected() else SBOOT_OFF
-        i_decision = index_of(decision)
-        i_ok = index_of(MANIFEST_OK)
-        i_lock = index_of(FUSE_SECRETS_LOCKED)
-        i_jump = index_of(BL1_JUMP)
-        i_bl1 = index_of(BL1_MARKER)
 
-        # The fuse echoes must precede the verdict, or a ROM that decided first would pass.
-        assert 0 <= i_raw < i_lc, (
-            f"{raw}@{i_raw} does not precede {lc}@{i_lc}: lifecycle.c echoes the "
-            f"raw sensed nibble before it decodes it, so this pair being out of "
-            f"order means one of them did not come from that decode. "
-            f"Console: {console}"
-        )
-        assert 0 <= i_lc < i_decision and 0 <= i_sboot < i_decision, (
-            f"{lc}@{i_lc} and {sboot}@{i_sboot} do not both precede "
-            f"{decision}@{i_decision}: the secure-boot verdict is not downstream "
+        def first(marker: str) -> int:
+            return next((i for i, line in enumerate(console) if oc.count([line], marker)), -1)
+
+        i_raw, i_lc, i_sboot = first(raw), first(lc), first(sboot)
+        assert 0 <= i_raw < i_lc < att.first and 0 <= i_sboot < att.first, (
+            f"{raw}@{i_raw} -> {lc}@{i_lc} and {sboot}@{i_sboot} do not all precede "
+            f"the slot attempt@{att.first}: the secure-boot verdict is not downstream "
             f"of the fuses this cell stages. Console: {console}"
         )
-        # The lock must fall between manifest accept and the handoff to close the read window.
-        assert 0 <= i_ok < i_lock < i_jump < i_bl1, (
-            f"lock sequence is out of order: {MANIFEST_OK}@{i_ok} -> "
-            f"{FUSE_SECRETS_LOCKED}@{i_lock} -> {BL1_JUMP}@{i_jump} -> "
-            f"{BL1_MARKER}@{i_bl1}. Console: {console}"
-        )
         self.logger.info(
-            "CHK-DECISION-ORDER: %s@%d -> %s@%d, and %s@%d -> %s@%d; %s@%d -> "
-            "%s@%d -> %s@%d -> %s@%d",
+            "CHK-DECISION-ORDER PASS: %s@%d -> %s@%d, %s@%d, then the primary@%d-%d "
+            "accepted after %s",
             raw,
             i_raw,
             lc,
             i_lc,
             sboot,
             i_sboot,
-            decision,
-            i_decision,
-            MANIFEST_OK,
-            i_ok,
-            FUSE_SECRETS_LOCKED,
-            i_lock,
-            BL1_JUMP,
-            i_jump,
-            BL1_MARKER,
-            i_bl1,
+            att.first,
+            att.last,
+            " -> ".join(ordered),
         )
 
     def _check_locks_register(self) -> None:

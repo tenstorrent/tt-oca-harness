@@ -1132,6 +1132,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
     assign lcc_demote_lock_2_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_2.lock;
+    // XMR, not AXI: the AXI read is inbound-filtered at PROD_END once sep_debug is 0.
+    assign lcc_feat_ctrl_probe_o = `SEP_CORE.feat_ctrl;
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
     // req is a wrapper-internal net (u_sep -> ip_integration).

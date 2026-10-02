@@ -9,14 +9,18 @@ manifest the SMC publishes at 0x1000 in one attempt, and hand off to BL1.
 from __future__ import annotations
 
 import pyuvm
+from env import sep_oca_console as oc
 from rom_fw.sep_secondary_chiplet_base import (
     ALL_FAILED,
     DEFAULT_MANIFEST_OFFSET,
     MANIFEST_OK,
+    SMC_SRAM_BASE,
     sep_secondary_chiplet_base,
 )
 
-_HASH_MARKERS = ("MANIFEST_HASH_OK", "PLD_HASH_OK")
+# The SMC image is unsigned and the part is TEST_DEV, so secure boot is off.
+_ACCEPT_MARKERS = ("OCA_BODY=", "MFST_VER=", MANIFEST_OK, "PAYLOAD_OK", "SBOOT_OFF")
+_SECURE_ONLY = ("PUBK_SEL=", "PUBK_AUTHORIZED", "PUBK_REVOKE=", "RSA_EXEC")
 _HANDOFF_MARKERS = ("BL1_COPIED", "BL1_JUMP=")
 # Printed by BL1 after the handoff and by nothing in the ROM.
 _BL1_MARKER = "FUSE_CHK"
@@ -29,10 +33,22 @@ class sep_firmware_secondary_chiplet_bootcode_test(sep_secondary_chiplet_base):
 
     manifest_offset = DEFAULT_MANIFEST_OFFSET
     expect_boot = True
-    extra_required = _HASH_MARKERS + (MANIFEST_OK,) + _HANDOFF_MARKERS + (_BL1_MARKER,)
-    extra_forbidden = (_MANIFEST_ERR, ALL_FAILED)
+    extra_required = _ACCEPT_MARKERS + _HANDOFF_MARKERS + (_BL1_MARKER,)
+    extra_forbidden = (_MANIFEST_ERR, ALL_FAILED) + _SECURE_ONLY
 
     def check_outcome(self, console, status_seq, fw_done, fw_pass) -> None:
+        attempts = oc.split_attempts(console)
+        assert [a.src for a in attempts] == [SMC_SRAM_BASE + self.manifest_offset], (
+            f"slot attempts read {[hex(a.src) for a in attempts]}, expected one at the "
+            f"published address. Console: {console}"
+        )
+        oc.assert_attempt(
+            attempts[0],
+            error=None,
+            stage="accepted",
+            ordered=_ACCEPT_MARKERS + _HANDOFF_MARKERS + (_BL1_MARKER,),
+            absent=_SECURE_ONLY,
+        )
         i_src = self._index_of(console, self.src_echo)
         i_ok = self._index_of(console, MANIFEST_OK)
         i_copy = self._index_of(console, "BL1_COPIED")
@@ -54,7 +70,7 @@ class sep_firmware_secondary_chiplet_bootcode_test(sep_secondary_chiplet_base):
             "secondary-chiplet boot did not complete"
         )
         self.logger.info(
-            "CHK-SECONDARY-BOOT: %s@%d, handoff at BL1_JUMP=@%d, BL1 spoke at "
+            "CHK-SECONDARY-BOOT PASS: %s@%d, handoff at BL1_JUMP=@%d, BL1 spoke at "
             "%s@%d, cold_scratch[0] verdict PASS",
             MANIFEST_OK,
             i_ok,

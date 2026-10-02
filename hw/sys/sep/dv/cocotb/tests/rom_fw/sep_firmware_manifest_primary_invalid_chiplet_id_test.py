@@ -1,44 +1,27 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary enables chiplet_id constraints it does not satisfy; the backup boots.
+"""Primary selects chiplet_id bytes that differ from SEP_CHIPLET_ID; the backup boots.
 
-Mask 0x28 makes word 3 the first mismatch, so the ROM's CID_IDX= echo is checked at a
-non-zero index. The fuse-map value is a testbench-model property and is not asserted.
+``oca_check_identity`` refuses the primary with ``OCA_FAIL_CHIPLET_ID`` before key
+selection. The check prints nothing of its own, so the code is the evidence.
 """
 
 from __future__ import annotations
 
 import pyuvm
-from rom_fw import sep_manifest_field_defect as fd
-from rom_fw.sep_usage_constraint_base import sep_primary_usage_constraint_base
-
-_SELECTOR_MASK = 0x28
-_REJECT_INDEX = 3
+from rom_fw.sep_backup_manifest_structural_fail_base import err_marker
+from rom_fw.sep_usage_constraint_base import (
+    MANIFEST_ERR_CHIPLET_ID,
+    sep_primary_usage_constraint_base,
+)
 
 
 @pyuvm.test()
 class sep_firmware_manifest_primary_invalid_chiplet_id_test(sep_primary_usage_constraint_base):
-    """Primary enables chiplet_id words 3 and 5 -> refused -> the backup boots."""
+    """Primary chiplet_id bytes 3 and 5 mismatch the fuse -> refused."""
 
-    defect_marker = fd.CHIPLET_MARKER
-    defect_evidence = fd.device_id_required_markers("chiplet_id", _REJECT_INDEX)
+    primary_expected_error = MANIFEST_ERR_CHIPLET_ID
+    primary_defect_marker = err_marker(MANIFEST_ERR_CHIPLET_ID)
 
     def plant(self, buf: bytearray, slot: str) -> None:
-        index = fd.plant_device_id_defect(buf, slot, "chiplet_id", _SELECTOR_MASK)
-        assert index == _REJECT_INDEX, (
-            f"selector mask 0x{_SELECTOR_MASK:02x} makes word {index} the lowest "
-            f"enabled one, but this testcase asserts {_REJECT_INDEX}"
-        )
-        self.logger.info(
-            "CHK-STIMULUS-CHIPLET-ID: %s selector_bits[0..7] = 0x%02x, so the ROM "
-            "must read chiplet_id words %s and refuse on word %d; every enabled "
-            "word carries the shipped 0x%08x",
-            slot,
-            _SELECTOR_MASK,
-            [i for i in range(8) if _SELECTOR_MASK & (1 << i)],
-            index,
-            0xA5A5A5A5,
-        )
-
-    def check_constraint_evidence(self, console: list[str]) -> None:
-        fd.assert_device_id_mismatch(self.logger, console, "chiplet_id", _REJECT_INDEX)
+        self.plant_identity(buf, slot, "chiplet", mismatch=(3, 5))

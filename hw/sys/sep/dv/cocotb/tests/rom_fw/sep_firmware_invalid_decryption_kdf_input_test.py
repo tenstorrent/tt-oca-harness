@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The primary manifest carries a 64-byte OCA KDF context that derives the wrong AES-256 key.
 
-The packer warning "KDF derived key does not match manifest test key" for this
-image is the injected fault. The resulting bad PKCS#7 plaintext is reported as
-an OCA decryption failure before the encrypted backup boots.
+The wrong key leaves an invalid PKCS#7 pad, which the ROM reports as
+``AES_PAD_BAD`` and an OCA decryption failure before the encrypted backup boots.
 """
 
 from __future__ import annotations

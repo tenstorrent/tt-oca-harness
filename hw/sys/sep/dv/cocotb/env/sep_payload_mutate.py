@@ -55,6 +55,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+from collections import namedtuple
+from collections.abc import Sequence
 from pathlib import Path
 
 if __package__ in (None, ""):  # run directly, not imported as env.sep_payload_mutate
@@ -117,16 +119,13 @@ IMAGE_TYPE_SEP_BL1 = b"OCAHSEP BLSTAGE1"
 MANIFEST_ERR_NO_BL1 = mm.rom_boot_err("OCA_BOOT_ERR_NO_BL1")
 MANIFEST_ERR_BL1_BAD_ADDR = mm.rom_boot_err("OCA_BOOT_ERR_BL1_BAD_ADDR")
 MANIFEST_ERR_BL1_TOO_LARGE = mm.rom_boot_err("OCA_BOOT_ERR_BL1_TOO_LARGE")
-# The library's TOC rejection. Derived, but which result a garbage TOC lands on
-# is not yet confirmed against a run -- the decryption-failure test is what will
-# settle it.
-MANIFEST_ERR_BAD_TOC_ID = mm.boot_err("OCA_FAIL_PAYLOAD_TOC")
 
 # ---------------------------------------------------------------------------
 # Signing keys
 # ---------------------------------------------------------------------------
 RSA_KEY_BYTES = 384  # RSA-3072
 SIGNING_KEY_DIR = mm._SEP_ROOT / "bootrom" / "prod" / "tests" / "signing_keys"
+BUILD_DIR = mm._SEP_ROOT / "bootrom" / "prod" / "build"
 NUM_ROM_SIGNING_KEYS = mm.PUBK_SEL_NUM_ROM_KEYS
 
 
@@ -335,18 +334,6 @@ def _packer_payload_hashes(buf, slot: str) -> tuple[bytes, bytes]:
 
 
 def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
-    """Reproduce the ROM's structural and cryptographic checks over ``slot``.
-
-    Called before every mutation and again after re-sealing. Before, it proves the
-    offsets in this module address the fields they claim, so a mutation lands
-    where intended. After, it proves the re-seal is complete -- an image that
-    still carried a stale digest or signature would be rejected for that stale
-    field, and the testcase would observe a terminal error that has nothing to do
-    with the defect it planted.
-
-    ``check_toc`` is cleared for an encrypted payload, whose TOC is ciphertext
-    until the ROM decrypts it; the manifest-side checks still apply.
-    """
     base = mm.slot_base(slot)
     mm.verify_layout(buf, slot)  # magic + manifest_hash over the signed region
 
@@ -368,43 +355,74 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
         )
 
     if check_toc:
-        ident = bytes(buf[p : p + 4])
-        if ident != TOC_MAGIC:
-            raise AssertionError(
-                f"{slot} payload does not start with {TOC_MAGIC!r} (got {ident!r}); "
-                f"payload_offset or the TOC layout is not what this module assumes"
-            )
-        toc_plen = _u64(buf, p + TOC_OFF_PAYLOAD_LENGTH)
-        if toc_plen != p_len:
-            raise AssertionError(
-                f"{slot} TOC payload_length ({toc_plen}) != manifest payload_length "
-                f"({p_len}); the ROM rejects the pair as inconsistent"
-            )
-        for i, e in enumerate(toc_entries(buf, slot)):
-            off, ln = _u64(buf, e + E_OFFSET), _u64(buf, e + E_LENGTH)
-            want = bytes(buf[e + E_HASH : e + E_HASH + mm.DIGEST_LEN])
-            got = hashlib.sha256(read_bytes(buf, p + off, ln)).digest()
-            if want != got:
+        if is_encrypted(buf, slot):
+            ok, padded = rom_view_decrypt(buf, slot, class_key=OCA_TEST_CLASS_KEY)
+            if not ok:
                 raise AssertionError(
-                    f"{slot} image {i} ({entry_type(buf, e)!r}) digest mismatch "
-                    f"(stored {want.hex()}, computed {got.hex()} over "
-                    f"payload[{off}:{off + ln}]); the ROM would reject this as an "
-                    f"entry-hash failure, not the planted defect"
+                    f"{slot} ciphertext does not decrypt to valid PKCS#7 under the golden "
+                    f"CLASS_KEY and the slot's own IV/KDF input; the ROM would fail the decrypt"
                 )
-
-        want_hash, want_chain = _packer_payload_hashes(buf, slot)
-        got_chain = bytes(
-            buf[base + OFF_PAYLOAD_HASH_CHAIN : base + OFF_PAYLOAD_HASH_CHAIN + mm.DIGEST_LEN]
-        )
-        if got_chain != want_chain[: mm.DIGEST_LEN]:
-            raise AssertionError(
-                f"{slot} payload_hash_chain does not match the packer's chain over "
-                f"the TOC and its images (stored {got_chain.hex()}, computed "
-                f"{want_chain[: mm.DIGEST_LEN].hex()}); the ROM confirms this after "
-                f"hashing every image, so a stale chain rejects the slot"
+            plain = padded[: -padded[-1]]
+            _verify_plain_toc(buf, slot, plain, len(plain))
+        else:
+            # An entry digest may cover flash past payload_length.
+            _verify_plain_toc(
+                buf,
+                slot,
+                read_bytes(buf, p, p_len),
+                p_len,
+                lambda off, ln: read_bytes(buf, p + off, ln),
             )
 
     verify_signing_key(buf, slot)
+
+
+def _verify_plain_toc(buf, slot: str, plain: bytes, plain_len: int, read_image=None) -> None:
+    if read_image is None:
+        read_image = lambda off, ln: bytes(plain[off : off + ln])  # noqa: E731
+    base = mm.slot_base(slot)
+    ident = bytes(plain[:4])
+    if ident != TOC_MAGIC:
+        raise AssertionError(
+            f"{slot} payload does not start with {TOC_MAGIC!r} (got {ident!r}); "
+            f"payload_offset or the TOC layout is not what this module assumes"
+        )
+    toc_plen = _u64(plain, TOC_OFF_PAYLOAD_LENGTH)
+    if toc_plen != plain_len:
+        if is_encrypted(buf, slot):
+            raise AssertionError(
+                f"{slot} TOC payload_length ({toc_plen}) != decrypted plaintext length "
+                f"({plain_len}); the packer only seals a pair whose sealed geometry matches exactly"
+            )
+        raise AssertionError(
+            f"{slot} TOC payload_length ({toc_plen}) != cleartext payload length "
+            f"({plain_len}); the ROM rejects the pair as inconsistent"
+        )
+    ranges = _toc_ranges(plain)
+    for i, (off, ln) in enumerate(ranges):
+        e = toc_entry_at(i)
+        want = bytes(plain[e + E_HASH : e + E_HASH + mm.DIGEST_LEN])
+        got = hashlib.sha256(read_image(off, ln)).digest()
+        if want != got:
+            raise AssertionError(
+                f"{slot} image {i} ({bytes(plain[e + E_TYPE : e + E_TYPE + 16])!r}) digest "
+                f"mismatch (stored {want.hex()}, computed {got.hex()} over "
+                f"payload[{off}:{off + ln}]); the ROM would reject this as an "
+                f"entry-hash failure, not the planted defect"
+            )
+
+    toc_bytes = TOC_HDR_SIZE + len(ranges) * TOC_ENTRY_SIZE
+    _unused_hash, want_chain = mm.PF.compute_payload_hashes(bytes(plain), toc_bytes, ranges)
+    got_chain = bytes(
+        buf[base + OFF_PAYLOAD_HASH_CHAIN : base + OFF_PAYLOAD_HASH_CHAIN + mm.DIGEST_LEN]
+    )
+    if got_chain != want_chain[: mm.DIGEST_LEN]:
+        raise AssertionError(
+            f"{slot} payload_hash_chain does not match the packer's chain over "
+            f"the TOC and its images (stored {got_chain.hex()}, computed "
+            f"{want_chain[: mm.DIGEST_LEN].hex()}); the ROM confirms this after "
+            f"hashing every image, so a stale chain rejects the slot"
+        )
 
 
 def slot_signing_key(buf, slot: str) -> tuple[int, int, int]:
@@ -571,18 +589,12 @@ def set_bl1_load_addr(buf: bytearray, slot: str, value: int) -> int:
 
 
 def corrupt_ciphertext(buf: bytearray, slot: str, *, offset: int = 0) -> int:
-    """Flip a byte of an encrypted payload. Returns the flash offset touched.
-
-    The TOC is ciphertext until the ROM decrypts it, so its entry hashes cannot be
-    recomputed here -- ``check_toc`` is cleared throughout. What is re-sealed is
-    the manifest's view: payload_hash covers the ciphertext, so the ROM reaches
-    decryption and fails there rather than on a stale digest.
-    """
     if not is_encrypted(buf, slot):
         raise AssertionError(f"{slot} payload is not encrypted; there is no ciphertext to flip")
     verify_sealed(buf, slot, check_toc=False)
     at = payload_base(buf, slot) + offset
     buf[at] ^= 0xFF
+    # The flipped ciphertext no longer yields a valid TOC; re-seal the manifest side only.
     reseal(buf, slot, check_toc=False)
     return at
 
@@ -600,9 +612,9 @@ SEP_SRAM_BASE = 0x1000_0000
 SEP_SRAM_SIZE = 0x0004_0000
 
 
-def _oca_aes256_key(class_key: bytes, kdf_input: bytes) -> bytes:
+def oca_aes256_key(class_key: bytes, kdf_input: bytes) -> bytes:
     """Mirror ``oca_derive_payload_key`` for the packer's AES-256 test profile."""
-    if len(class_key) != 32 or len(kdf_input) != OCA_KDF_INPUT_BYTES:
+    if len(class_key) != OCA_AES_KEY_BYTES or len(kdf_input) != OCA_KDF_INPUT_BYTES:
         raise ValueError("OCA AES-256 needs a 32-byte CLASS_KEY and 64-byte KDF context")
     block = bytearray(192)
     block[:13] = bytes((1, 0, 1, 0, 0, 1, 0x18, 0, 0, 0, 0, 1, 1))
@@ -612,41 +624,116 @@ def _oca_aes256_key(class_key: bytes, kdf_input: bytes) -> bytes:
     return hmac.new(class_key, message, hashlib.sha256).digest()
 
 
+def golden_iv(buf, slot: str) -> bytes:
+    at = mm.slot_base(slot) + mm.OFF_ENCRYPTION_IV
+    return bytes(buf[at : at + K.ENCRYPTION_IV_SIZE])
+
+
+def manifest_kdf_input(buf, slot: str) -> bytes:
+    at = mm.slot_base(slot) + mm.OFF_ENCRYPTION_KDF_INPUT
+    return bytes(buf[at : at + OCA_KDF_INPUT_BYTES])
+
+
+def cipher_bytes(buf, slot: str) -> bytes:
+    return read_bytes(buf, payload_base(buf, slot), payload_hashed_length(buf, slot))
+
+
+def encryption_type(buf, slot: str) -> int:
+    return buf[mm.slot_base(slot) + K.OFF_ENCRYPTION_TYPE]
+
+
 def _encrypted_payload_inputs(buf: bytes | bytearray, slot: str) -> tuple[bytes, bytes]:
-    base = mm.slot_base(slot)
-    iv = bytes(buf[base + mm.OFF_ENCRYPTION_IV : base + mm.OFF_ENCRYPTION_IV + 16])
-    kdf_input = bytes(
-        buf[
-            base + mm.OFF_ENCRYPTION_KDF_INPUT : base
-            + mm.OFF_ENCRYPTION_KDF_INPUT
-            + OCA_KDF_INPUT_BYTES
-        ]
-    )
-    return _oca_aes256_key(OCA_TEST_CLASS_KEY, kdf_input), iv
+    return oca_aes256_key(OCA_TEST_CLASS_KEY, manifest_kdf_input(buf, slot)), golden_iv(buf, slot)
+
+
+def _pkcs7_ok(padded: bytes) -> bool:
+    pad = padded[-1] if padded else 0
+    return 1 <= pad <= OCA_AES_BLOCK_BYTES and padded[-pad:] == bytes([pad]) * pad
+
+
+def rom_view_decrypt(
+    buf,
+    slot: str,
+    *,
+    class_key: bytes = OCA_TEST_CLASS_KEY,
+    iv: bytes | None = None,
+    kdf_input: bytes | None = None,
+) -> tuple[bool, bytes]:
+    if not is_encrypted(buf, slot):
+        raise AssertionError(f"{slot} payload is not encrypted; there is nothing to decrypt")
+    if encryption_type(buf, slot) != K.OcaEncryptionType.AES_256_CBC.value:
+        raise AssertionError(
+            f"{slot} encryption_type is 0x{encryption_type(buf, slot):02x}; only the "
+            f"AES-256-CBC profile is mirrored here"
+        )
+    stored = read_bytes(buf, payload_base(buf, slot), manifest_payload_length(buf, slot))
+    if not stored or len(stored) % OCA_AES_BLOCK_BYTES:
+        raise AssertionError(f"{slot} ciphertext length {len(stored)} is not AES aligned")
+    if iv is None:
+        iv = golden_iv(buf, slot)
+    if kdf_input is None:
+        kdf_input = manifest_kdf_input(buf, slot)
+    padded = aes.aes_cbc_decrypt(oca_aes256_key(class_key, kdf_input), iv, stored)
+    return _pkcs7_ok(padded), bytes(padded)
+
+
+def _rom_plaintext(buf, slot: str) -> bytes:
+    if not is_encrypted(buf, slot):
+        return read_bytes(buf, payload_base(buf, slot), manifest_payload_length(buf, slot))
+    ok, padded = rom_view_decrypt(buf, slot)
+    if not ok:
+        raise AssertionError(f"{slot} encrypted payload has invalid PKCS#7 padding")
+    return padded[: -padded[-1]]
 
 
 def _payload_plaintext(buf: bytes | bytearray, slot: str) -> tuple[int, bytearray]:
     """Return the OCA plaintext payload, decrypting the packer test image when needed."""
     p = payload_base(buf, slot)
-    stored = read_bytes(buf, p, manifest_payload_length(buf, slot))
+    plain = _rom_plaintext(buf, slot)
     if not is_encrypted(buf, slot):
-        return p, bytearray(stored)
-    if len(stored) % OCA_AES_BLOCK_BYTES:
-        raise AssertionError(f"{slot} ciphertext length {len(stored)} is not AES aligned")
-    key, iv = _encrypted_payload_inputs(buf, slot)
-    padded = aes.aes_cbc_decrypt(key, iv, stored)
-    pad = padded[-1]
-    if not 1 <= pad <= OCA_AES_BLOCK_BYTES or padded[-pad:] != bytes([pad]) * pad:
-        raise AssertionError(f"{slot} encrypted payload has invalid PKCS#7 padding")
-    plain = padded[:-pad]
+        return p, bytearray(plain)
     if not plain.startswith(TOC_MAGIC):
         raise AssertionError(
             f"{slot} AES-256 plaintext starts {plain[:4]!r}, expected {TOC_MAGIC!r}; "
             f"the OCA test CLASS_KEY/KDF/IV contract does not match this image"
         )
-    if aes.aes_cbc_encrypt(key, iv, padded) != stored:
+    key, iv = _encrypted_payload_inputs(buf, slot)
+    pad = OCA_AES_BLOCK_BYTES - (len(plain) % OCA_AES_BLOCK_BYTES)
+    stored = read_bytes(buf, p, manifest_payload_length(buf, slot))
+    if aes.aes_cbc_encrypt(key, iv, plain + bytes([pad]) * pad) != stored:
         raise AssertionError(f"{slot} AES-256 decrypt/encrypt round trip changed ciphertext")
     return p, bytearray(plain)
+
+
+def _set_signed_encryption_field(
+    buf: bytearray, slot: str, off: int, width: int, value: bytes
+) -> bytes:
+    if not is_encrypted(buf, slot):
+        raise AssertionError(f"{slot} payload is not encrypted; its encryption fields are unused")
+    if len(value) != width:
+        raise ValueError(f"field at manifest offset {off} is {width} bytes, got {len(value)}")
+    verify_sealed(buf, slot, check_toc=False)
+    at = mm.slot_base(slot) + off
+    before = bytes(buf[at : at + width])
+    if value == before:
+        raise ValueError(f"{slot} field at manifest offset {off} already holds {value.hex()}")
+    buf[at : at + width] = value
+    _refresh_outer_seals(buf, slot)
+    verify_sealed(buf, slot, check_toc=False)
+    return before
+
+
+def set_encryption_iv(buf: bytearray, slot: str, iv: bytes) -> bytes:
+    # The IV occupies the low 16 bytes of the 32-byte field.
+    return _set_signed_encryption_field(
+        buf, slot, mm.OFF_ENCRYPTION_IV, K.ENCRYPTION_IV_SIZE, bytes(iv)
+    )
+
+
+def set_encryption_kdf_input(buf: bytearray, slot: str, kdf_input: bytes) -> bytes:
+    return _set_signed_encryption_field(
+        buf, slot, mm.OFF_ENCRYPTION_KDF_INPUT, OCA_KDF_INPUT_BYTES, bytes(kdf_input)
+    )
 
 
 def _write_payload_plaintext(buf: bytearray, slot: str, plain: bytes | bytearray) -> bytes:
@@ -746,7 +833,7 @@ def set_payload_hashed_length(buf: bytearray, slot: str, value: int) -> int:
 
 def _mutate_clear_toc(buf: bytearray, slot: str, mutate) -> None:
     """Apply ``mutate(payload)`` to plaintext, then repack and re-seal the slot."""
-    verify_sealed(buf, slot, check_toc=not is_encrypted(buf, slot))
+    verify_sealed(buf, slot)
     _p, plain = _clear_toc(buf, slot)
     mutate(plain)
     _seal_plaintext_toc(buf, slot, plain)
@@ -767,18 +854,31 @@ def set_toc_version_major(buf: bytearray, slot: str, value: int) -> int:
     return before
 
 
-def set_toc_image_count(buf: bytearray, slot: str, value: int) -> int:
-    verify_sealed(buf, slot, check_toc=not is_encrypted(buf, slot))
+def set_toc_image_count(
+    buf: bytearray,
+    slot: str,
+    value: int,
+    *,
+    reseal_entries: bool = True,
+    hashed_to_span: bool = False,
+) -> int:
+    verify_sealed(buf, slot)
+    if hashed_to_span:
+        span = TOC_HDR_SIZE + value * TOC_ENTRY_SIZE
+        if is_encrypted(buf, slot) or span > manifest_payload_length(buf, slot):
+            raise AssertionError(
+                f"{slot} payload_hashed_length cannot follow a {span}-byte TOC span: it "
+                f"covers the whole ciphertext when encrypted and cannot exceed payload_length"
+            )
+        _put_u64(buf, mm.slot_base(slot) + OFF_PAYLOAD_HASHED_LENGTH, span)
     _p, plain = _payload_plaintext(buf, slot)
     before = int.from_bytes(plain[TOC_OFF_IMAGE_COUNT : TOC_OFF_IMAGE_COUNT + 8], "little")
     encoded = (value & 0xFFFF_FFFF_FFFF_FFFF).to_bytes(8, "little")
-    if 0 < value <= TOC_MAX_IMAGE_COUNT:
+    if reseal_entries and 0 < value <= TOC_MAX_IMAGE_COUNT:
         plain[TOC_OFF_IMAGE_COUNT : TOC_OFF_IMAGE_COUNT + 8] = encoded
         _seal_plaintext_toc(buf, slot, plain)
     else:
-        # The producer cannot compute a range list for an invalid count. Keep the
-        # valid entry hashes and chain, write the structural defect last, then
-        # authenticate the stored payload so validation reaches the count check.
+        # No range list exists for this count; keep stored entry hashes to reach the count check.
         plain[TOC_OFF_IMAGE_COUNT : TOC_OFF_IMAGE_COUNT + 8] = encoded
         _write_payload_plaintext(buf, slot, plain)
         _refresh_outer_seals(buf, slot)
@@ -857,7 +957,7 @@ def corrupt_toc_entry_hash(
         raise ValueError("invalid digest byte or XOR mask")
     if value is not None and len(value) != mm.DIGEST_LEN:
         raise ValueError(f"entry digest value must be {mm.DIGEST_LEN} bytes")
-    verify_sealed(buf, slot, check_toc=not is_encrypted(buf, slot))
+    verify_sealed(buf, slot)
     _p, plain = _payload_plaintext(buf, slot)
     at = toc_entry_at(index) + E_HASH
     if value is None:
@@ -898,46 +998,116 @@ def retype_bl1_image(
     return before
 
 
-def make_images_out_of_order(
-    buf: bytearray,
-    slot: str,
-    *,
-    second_offset: int,
-    second_length: int,
-    second_type: bytes = IMAGE_TYPE_SEP_BL2,
-) -> dict[str, int]:
-    """Add entry 1 below entry 0's end while keeping all surrounding seals valid."""
-    if len(second_type) != 16:
-        raise ValueError("OCA TOC image types are 16 bytes")
-    verify_sealed(buf, slot, check_toc=not is_encrypted(buf, slot))
+TocEntry = namedtuple("TocEntry", "type offset length")
+
+
+def toc_entry(buf, slot: str, index: int) -> TocEntry:
+    plain = _rom_plaintext(buf, slot)
+    count = _u64(plain, TOC_OFF_IMAGE_COUNT)
+    if not 0 <= index < count:
+        raise ValueError(f"entry {index} is outside image_count {count}")
+    e = toc_entry_at(index)
+    return TocEntry(
+        bytes(plain[e + E_TYPE : e + E_TYPE + 16]),
+        _u64(plain, e + E_OFFSET),
+        _u64(plain, e + E_LENGTH),
+    )
+
+
+def permute_toc_entries(buf: bytearray, slot: str, order: Sequence[int]) -> list[int]:
+    verify_sealed(buf, slot)
     _p, plain = _payload_plaintext(buf, slot)
     count = _u64(plain, TOC_OFF_IMAGE_COUNT)
-    if count != 1:
-        raise AssertionError(f"{slot} needs one source image, found {count}")
-    first = toc_entry_at(0)
-    second = toc_entry_at(1)
-    first_offset = _u64(plain, first + E_OFFSET)
-    first_length = _u64(plain, first + E_LENGTH)
-    if second + TOC_ENTRY_SIZE > first_offset:
-        raise AssertionError("adding entry 1 would overlap the first image bytes")
-    plain[second : second + TOC_ENTRY_SIZE] = plain[first : first + TOC_ENTRY_SIZE]
-    plain[second + E_TYPE : second + E_TYPE + 16] = second_type
-    _put_u64(plain, second + E_OFFSET, second_offset)
-    _put_u64(plain, second + E_LENGTH, second_length)
-    _put_u64(plain, TOC_OFF_IMAGE_COUNT, 2)
-
-    toc_bytes = TOC_HDR_SIZE + 2 * TOC_ENTRY_SIZE
-    base = mm.slot_base(slot)
-    if not is_encrypted(buf, slot):
-        _put_u64(buf, base + OFF_PAYLOAD_HASHED_LENGTH, toc_bytes)
+    order = list(order)
+    if sorted(order) != list(range(count)):
+        raise ValueError(f"order {order} is not a permutation of the {count} TOC entries")
+    if order == list(range(count)):
+        raise ValueError("the identity order leaves the TOC unchanged")
+    entries = [
+        bytes(plain[toc_entry_at(i) : toc_entry_at(i) + TOC_ENTRY_SIZE]) for i in range(count)
+    ]
+    for new, old in enumerate(order):
+        plain[toc_entry_at(new) : toc_entry_at(new) + TOC_ENTRY_SIZE] = entries[old]
     _seal_plaintext_toc(buf, slot, plain)
-    return {
-        "first_offset": first_offset,
-        "first_length": first_length,
-        "second_offset": second_offset,
-        "second_length": second_length,
-        "payload_hashed_length": payload_hashed_length(buf, slot),
-    }
+    return [_u64(entries[old], E_OFFSET) for old in order]
+
+
+def plaintext_diff(golden: bytes, buf: bytes, slot: str) -> list[range]:
+    a, b = _rom_plaintext(golden, slot), _rom_plaintext(buf, slot)
+    if len(a) != len(b):
+        raise AssertionError(f"{slot} cleartext payload length changed {len(a)} -> {len(b)}")
+    out: list[range] = []
+    start = None
+    for i, (x, y) in enumerate(zip(a, b)):
+        if x != y and start is None:
+            start = i
+        elif x == y and start is not None:
+            out.append(range(start, i))
+            start = None
+    if start is not None:
+        out.append(range(start, len(a)))
+    return out
+
+
+# TOC structural rules follow boot-manifest.adoc, not payload.c, to stay an independent oracle.
+_U64_MAX = 0xFFFF_FFFF_FFFF_FFFF
+
+
+def spec_rule_violations(buf, slot: str) -> list[str]:
+    plain = _rom_plaintext(buf, slot)
+    manifest_plen = manifest_payload_length(buf, slot)
+    toc_plen = _u64(plain, TOC_OFF_PAYLOAD_LENGTH)
+    count = _u64(plain, TOC_OFF_IMAGE_COUNT)
+    major = int.from_bytes(plain[TOC_OFF_MAJOR_VERSION : TOC_OFF_MAJOR_VERSION + 2], "little")
+    bad: list[str] = ["version_major"] if major > TOC_MAJOR_VERSION else []
+
+    if count == 0:
+        bad.append("count_zero")
+    if TOC_HDR_SIZE + count * TOC_ENTRY_SIZE > manifest_plen:
+        bad.append("span_exceeds_payload")
+    hashed_rule = _hashed_length_rule(buf, slot, count, manifest_plen)
+    if bad and bad != ["version_major"]:
+        return bad + hashed_rule + _toc_plen_rule(buf, slot, toc_plen, manifest_plen)
+    bad += hashed_rule
+
+    extents = [
+        (_u64(plain, toc_entry_at(i) + E_OFFSET), _u64(plain, toc_entry_at(i) + E_LENGTH))
+        for i in range(count)
+    ]
+    if any(off % 8 for off, _ln in extents):
+        bad.append("offset_align")
+    if any(ln == 0 for _off, ln in extents):
+        bad.append("length_zero")
+    # Bound by the TOC's own payload_length, not the manifest's.
+    if any(off + ln > _U64_MAX or off + ln > toc_plen for off, ln in extents):
+        bad.append("out_of_bounds")
+    if any(
+        a0 < b0 + bl and b0 < a0 + al
+        for i, (a0, al) in enumerate(extents)
+        for b0, bl in extents[i + 1 :]
+    ):
+        bad.append("overlap")
+    return bad + _toc_plen_rule(buf, slot, toc_plen, manifest_plen)
+
+
+def _hashed_length_rule(buf, slot: str, count: int, manifest_plen: int) -> list[str]:
+    hashed = payload_hashed_length(buf, slot)
+    if is_encrypted(buf, slot):
+        ok = TOC_HDR_SIZE + TOC_ENTRY_SIZE <= hashed == manifest_plen
+    else:
+        ok = hashed <= manifest_plen and hashed == TOC_HDR_SIZE + count * TOC_ENTRY_SIZE
+    return [] if ok else ["hashed_length"]
+
+
+def _toc_plen_rule(buf, slot: str, toc_plen: int, manifest_plen: int) -> list[str]:
+    if is_encrypted(buf, slot):
+        ok = (
+            manifest_plen % OCA_AES_BLOCK_BYTES == 0
+            and toc_plen < manifest_plen <= toc_plen + OCA_AES_BLOCK_BYTES
+        )
+    else:
+        ok = toc_plen == manifest_plen
+    return [] if ok else ["toc_plen_mismatch"]
 
 
 def declare_payload_length(buf: bytearray, slot: str, payload_length: int) -> int:
@@ -1028,70 +1198,85 @@ def repack_payload(
     }
 
 
-def insert_leading_image(
-    buf: bytearray,
-    slot: str,
-    lead_type: bytes = IMAGE_TYPE_SEP_BL2,
-) -> dict[str, int | bytes]:
-    """Insert a valid non-BL1 TOC entry before the existing BL1 entry."""
-    verify_sealed(buf, slot)
-    if is_encrypted(buf, slot):
-        raise AssertionError("insert_leading_image requires a cleartext OCA payload")
-    if len(lead_type) != 16 or lead_type == IMAGE_TYPE_SEP_BL1:
-        raise ValueError("lead_type must be a 16-byte non-BL1 OCA image type")
-    entries = toc_entries(buf, slot)
-    if len(entries) != 1 or entry_type(buf, entries[0]) != IMAGE_TYPE_SEP_BL1:
-        raise AssertionError("insert_leading_image requires one SEP BL1 TOC entry")
-    p = payload_base(buf, slot)
-    p_len = manifest_payload_length(buf, slot)
-    old_entry = entries[0]
-    old_offset = _u64(buf, old_entry + E_OFFSET)
-    bl1_length = _u64(buf, old_entry + E_LENGTH)
-    bl1_body = read_bytes(buf, p + old_offset, bl1_length)
-    lead_length = min(256, bl1_length)
-    region = TOC_HDR_SIZE + 2 * TOC_ENTRY_SIZE
-    lead_offset = (region + 7) & ~7
-    new_bl1_offset = (lead_offset + lead_length + 7) & ~7
-    if new_bl1_offset + bl1_length > p_len:
-        raise AssertionError("the existing payload has no room for a leading OCA image")
+def _selftest_stimulus() -> None:
+    # Independent KAT for the C implementation's AES-256 KBKDF profile.
+    kat_kdf = bytes.fromhex("a5" * 16 + "b6" * 16 + "c7" * 16 + "d8" * 16)
+    kat_key = bytes.fromhex("da4e1f270faaf863b1ebb284b30e2cc935a10d9e25c5c7e6adc25158b9137292")
+    assert oca_aes256_key(OCA_TEST_CLASS_KEY, kat_kdf) == kat_key, (
+        "KBKDF does not reproduce the AES-256 KAT; the ROM's payload key cannot be predicted"
+    )
 
-    payload = bytearray(read_bytes(buf, p, p_len))
-    header = bytes(payload[:TOC_HDR_SIZE])
-    bl1_meta = bytearray(read_bytes(buf, old_entry, TOC_ENTRY_SIZE))
-    lead_meta = bytearray(bl1_meta)
-    lead_meta[E_TYPE : E_TYPE + 16] = lead_type
-    _put_u64(lead_meta, E_OFFSET, lead_offset)
-    _put_u64(lead_meta, E_LENGTH, lead_length)
-    lead_body = bl1_body[:lead_length]
-    lead_meta[E_HASH : E_HASH + mm.DIGEST_LEN] = hashlib.sha256(lead_body).digest()
-    _put_u64(bl1_meta, E_OFFSET, new_bl1_offset)
-    bl1_meta[E_HASH : E_HASH + mm.DIGEST_LEN] = hashlib.sha256(bl1_body).digest()
+    golden = bytes(Path(BUILD_DIR / "oca_encrypted_boot.bin").read_bytes())
+    buf = bytearray(golden)
+    verify_sealed(buf, "primary")
+    old_iv = set_encryption_iv(buf, "primary", bytes(b ^ 0xAA for b in golden_iv(buf, "primary")))
+    assert rom_view_decrypt(buf, "primary")[0] is True
+    assert rom_view_decrypt(buf, "primary", iv=old_iv)[1][:4] == b"PTOC"
+    assert cipher_bytes(buf, "primary") == cipher_bytes(golden, "primary")
+    assert plaintext_diff(golden, buf, "primary") == [range(0, OCA_AES_BLOCK_BYTES)]
+    buf = bytearray(golden)
+    set_encryption_kdf_input(buf, "primary", bytes.fromhex("deadbeefcafebabe0123456789abcdef" * 4))
+    assert rom_view_decrypt(buf, "primary")[0] is False
+    assert cipher_bytes(buf, "primary") == cipher_bytes(golden, "primary")
 
-    payload[:] = bytes(len(payload))
-    payload[:TOC_HDR_SIZE] = header
-    _put_u64(payload, TOC_OFF_IMAGE_COUNT, 2)
-    payload[TOC_HDR_SIZE : TOC_HDR_SIZE + TOC_ENTRY_SIZE] = lead_meta
-    payload[TOC_HDR_SIZE + TOC_ENTRY_SIZE : region] = bl1_meta
-    payload[lead_offset : lead_offset + lead_length] = lead_body
-    payload[new_bl1_offset : new_bl1_offset + bl1_length] = bl1_body
-    buf[p : p + p_len] = payload
-    _put_u64(buf, mm.slot_base(slot) + OFF_PAYLOAD_HASHED_LENGTH, region)
-    reseal(buf, slot)
-    return {
-        "toc_region": region,
-        "lead_offset": lead_offset,
-        "lead_length": lead_length,
-        "lead_type": int.from_bytes(lead_type[:8], "little"),
-        "bl1_offset_before": old_offset,
-        "bl1_offset_after": new_bl1_offset,
-        "bl1_length": bl1_length,
-        "payload_hashed_length": region,
-    }
+    enc_buf = bytearray(Path(BUILD_DIR / "oca_encrypted_boot.bin").read_bytes())
+    enc_toc_plen = _u64(_rom_plaintext(enc_buf, "primary"), TOC_OFF_PAYLOAD_LENGTH)
+    set_toc_payload_length(enc_buf, "primary", enc_toc_plen - 8)
+    assert spec_rule_violations(enc_buf, "primary") == ["out_of_bounds"]
+
+    multi_golden = Path(BUILD_DIR / "oca_multi_image_boot.bin").read_bytes()
+    clear_toc_plen = _u64(
+        _rom_plaintext(bytearray(multi_golden), "primary"), TOC_OFF_PAYLOAD_LENGTH
+    )
+    clear_buf = bytearray(multi_golden)
+    set_toc_payload_length(clear_buf, "primary", clear_toc_plen - 8)
+    assert spec_rule_violations(clear_buf, "primary") == ["out_of_bounds", "toc_plen_mismatch"]
+
+    multi = bytearray(multi_golden)
+    assert spec_rule_violations(multi, "primary") == []
+    permute_toc_entries(multi, "primary", [2, 1, 0])
+    verify_sealed(multi, "primary")
+    assert spec_rule_violations(multi, "primary") == []
+    permuted = bytes(multi)
+    set_toc_entry_offset(multi, "primary", 1, toc_entry(multi, "primary", 2).offset + 8)
+    verify_sealed(multi, "primary")
+    assert spec_rule_violations(multi, "primary") == ["overlap"]
+    e1 = toc_entry_at(1)
+    allowed = set(range(e1 + E_OFFSET, e1 + E_OFFSET + 8)) | set(
+        range(e1 + E_HASH, e1 + E_HASH + mm.DIGEST_LEN)
+    )
+    changed = {i for r in plaintext_diff(permuted, multi, "primary") for i in r}
+    assert changed and changed <= allowed, f"overlap stimulus touched {sorted(changed - allowed)}"
+    multi = bytearray(permuted)
+    set_toc_entry_offset(multi, "primary", 1, toc_entry(multi, "primary", 0).offset + 8)
+    assert spec_rule_violations(multi, "primary") == ["out_of_bounds", "overlap"]
+
+    cap_golden = Path(BUILD_DIR / "oca_toc_cap_boot.bin").read_bytes()
+    cap = bytearray(cap_golden)
+    assert spec_rule_violations(cap, "primary") == []
+    set_toc_image_count(cap, "primary", 2, reseal_entries=False)
+    assert spec_rule_violations(cap, "primary") == ["hashed_length", "length_zero"]
+    cap = bytearray(cap_golden)
+    set_toc_image_count(cap, "primary", 2, reseal_entries=False, hashed_to_span=True)
+    assert payload_hashed_length(cap, "primary") == TOC_HDR_SIZE + 2 * TOC_ENTRY_SIZE
+    assert spec_rule_violations(cap, "primary") == ["length_zero"]
+    short = bytearray(Path(BUILD_DIR / "oca_encrypted_boot.bin").read_bytes())
+    at = mm.slot_base("primary") + OFF_PAYLOAD_HASHED_LENGTH
+    _put_u64(short, at, manifest_payload_length(short, "primary") - OCA_AES_BLOCK_BYTES)
+    assert spec_rule_violations(short, "primary") == ["hashed_length"]
+    for name in ("oca_secure_boot.bin", "oca_encrypted_boot.bin"):
+        vbuf = bytearray(Path(BUILD_DIR / name).read_bytes())
+        set_toc_version_major(vbuf, "primary", TOC_MAJOR_VERSION)
+        assert spec_rule_violations(vbuf, "primary") == [], name
+        set_toc_version_major(vbuf, "primary", TOC_MAJOR_VERSION + 1)
+        assert spec_rule_violations(vbuf, "primary") == ["version_major"], name
+    print("stimulus helpers: KAT, IV, KDF, permute, overlap, hashed_length, version_major ok")
 
 
 def _selftest() -> int:
     """Check every packed image against all three seals."""
-    build = mm._SEP_ROOT / "bootrom" / "prod" / "build"
+    _selftest_stimulus()
+    build = BUILD_DIR
     images = sorted(build.glob("oca_*_boot.bin"))
     if not images:
         print(f"no packed images in {build}; run `make oca-images` first")
@@ -1120,7 +1305,10 @@ def _selftest() -> int:
                 skipped += 1
                 continue
             enc = is_encrypted(buf, "primary")
-            verify_sealed(buf, "primary", check_toc=not enc)
+            aes256 = (
+                enc and encryption_type(buf, "primary") == K.OcaEncryptionType.AES_256_CBC.value
+            )
+            verify_sealed(buf, "primary", check_toc=aes256 or not enc)
             has_bl1 = True
             if not enc:
                 try:
@@ -1146,8 +1334,10 @@ def _selftest() -> int:
                 reseal(buf, "primary")
                 verify_sealed(buf, "primary")
             sealed += 1
-            if enc:
-                note = "encrypted, manifest seals only"
+            if aes256:
+                note = "encrypted, TOC and chain checked on the decrypted plaintext"
+            elif enc:
+                note = "encrypted, not AES-256-CBC: manifest seals only"
             elif not has_bl1:
                 note = "no BLSTAGE1 image, by construction"
             else:

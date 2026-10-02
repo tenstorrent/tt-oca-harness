@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pyuvm
 from env import sep_manifest_mutate as mm
+from env import sep_oca_console as oc
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw import sep_measurement_golden as mg
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
@@ -98,3 +99,10 @@ class sep_boot_measurement_golden_test(sep_rom_ot_secure_boot_test):
             sboot_dis=self._sboot_dis,
             demotion_decision=_DEMOTE_PROD_NO_FLAG,
         )
+
+
+oc.assert_known(
+    sep_boot_measurement_golden_test.required_markers
+    + sep_boot_measurement_golden_test.forbidden_markers,
+    sep_boot_measurement_golden_test.__name__,
+)
