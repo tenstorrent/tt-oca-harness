@@ -84,17 +84,17 @@ module tlul_sram_byte
   //
   localparam int StateWidth = 8;
   typedef enum logic [StateWidth-1:0] {
-    StPassThru              = 8'b01111110,
-    StWaitRd                = 8'b00000010,
-    StWriteCmd              = 8'b11110001,
-    StWrReadBackInit        = 8'b10011001,
-    StWrReadBack            = 8'b00001111,
-    StWrReadBackDWait       = 8'b00110000,
-    StRdReadBack            = 8'b10101100,
-    StRdReadBackDWait       = 8'b11000000,
-    StByteWrReadBackInit    = 8'b01010111,
-    StByteWrReadBack        = 8'b11100111,
-    StByteWrReadBackDWait   = 8'b11111111
+    ST_PASS_THRU                  = 8'b01111110,
+    ST_WAIT_RD                    = 8'b00000010,
+    ST_WRITE_CMD                  = 8'b11110001,
+    ST_WR_READ_BACK_INIT          = 8'b10011001,
+    ST_WR_READ_BACK               = 8'b00001111,
+    ST_WR_READ_BACK_D_WAIT        = 8'b00110000,
+    ST_RD_READ_BACK               = 8'b10101100,
+    ST_RD_READ_BACK_D_WAIT        = 8'b11000000,
+    ST_BYTE_WR_READ_BACK_INIT     = 8'b01010111,
+    ST_BYTE_WR_READ_BACK          = 8'b11100111,
+    ST_BYTE_WR_READ_BACK_D_WAIT   = 8'b11111111
   } state_e;
 
   if (ENABLE_INTG) begin : gen_integ_handling
@@ -111,7 +111,7 @@ module tlul_sram_byte
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
-        state_q <= StPassThru;
+        state_q <= ST_PASS_THRU;
       end else begin
         state_q <= state_d;
       end
@@ -147,7 +147,7 @@ module tlul_sram_byte
     assign d_ack = tl_o.d_valid & tl_i.d_ready;
     assign sram_a_ack = tl_sram_o.a_valid & tl_sram_i.a_ready;
     assign sram_d_ack = tl_sram_i.d_valid & tl_sram_o.d_ready;
-    assign wr_txn = (tl_i.a_opcode == PutFullData) | (tl_i.a_opcode == PutPartialData);
+    assign wr_txn = (tl_i.a_opcode == PUT_FULL_DATA) | (tl_i.a_opcode == PUT_PARTIAL_DATA);
 
     assign byte_req_ack = byte_wr_txn & a_ack & ~error_i;
     assign byte_wr_txn = tl_i.a_valid & ~&tl_i.a_mask & wr_txn;
@@ -264,7 +264,7 @@ module tlul_sram_byte
       rdback_data_exp_intg_d  = rdback_data_exp_intg_q;
 
       unique case (state_q)
-        StPassThru: begin
+        ST_PASS_THRU: begin
           if (mubi4_test_true_loose(rdback_en_q) && mubi4_test_true_loose(rdback_check_q)) begin
             // When we're expecting a readback check that means we'll see a data response from the
             // SRAM this cycle which we need to check against the readback registers. During this
@@ -282,14 +282,14 @@ module tlul_sram_byte
           if (byte_wr_txn) begin
             rd_phase = 1'b1;
             if (byte_req_ack) begin
-              state_d = StWaitRd;
+              state_d = ST_WAIT_RD;
             end
           end else if (a_ack && mubi4_test_true_loose(rdback_en_q) && !error_i) begin
             // For reads and full word writes we'll first do the transaction and then do a readback
             // check. Setting `hold_tx_data` here will preserve the transaction information in
             // u_sync_fifo for doing the readback transaction.
             hold_tx_data = 1'b1;
-            state_d      = wr_txn ? StWrReadBackInit : StRdReadBack;
+            state_d      = wr_txn ? ST_WR_READ_BACK_INIT : ST_RD_READ_BACK;
           end
 
           if (!tl_sram_o.a_valid && !tl_o.d_valid && mubi4_test_false_strict(rdback_check_q)) begin
@@ -301,30 +301,30 @@ module tlul_sram_byte
         // Due to the way things are serialized, there is no way for the logic to tell which read
         // belongs to the partial read unless it flushes all prior transactions. Hence, we wait
         // here until exactly one outstanding transaction remains (that one is the partial read).
-        StWaitRd: begin
+        ST_WAIT_RD: begin
           rd_phase = 1'b1;
           stall_host = 1'b1;
           if (pending_txn_cnt == PendingTxnCntW'(1)) begin
             rd_wait = 1'b1;
             if (sram_d_ack) begin
-              state_d = StWriteCmd;
+              state_d = ST_WRITE_CMD;
             end
           end
         end
 
-        StWriteCmd: begin
+        ST_WRITE_CMD: begin
           stall_host = 1'b1;
           wr_phase = 1'b1;
 
           if (sram_a_ack) begin
-            state_d = mubi4_test_true_loose(rdback_en_q) ? StByteWrReadBackInit : StPassThru;
+            state_d = mubi4_test_true_loose(rdback_en_q) ? ST_BYTE_WR_READ_BACK_INIT : ST_PASS_THRU;
             rdback_check_d         = mubi4_test_true_loose(rdback_en_q) ? MuBi4True : MuBi4False;
             rdback_data_exp_d      = tl_sram_o.a_data;
             rdback_data_exp_intg_d = tl_sram_o.a_user.data_intg;
           end
         end
 
-        StWrReadBackInit: begin
+        ST_WR_READ_BACK_INIT: begin
           // Perform readback after full write. To avoid that we read the holding register
           // in the readback, wait until the write was processed by the memory module.
           if (ENABLE_READBACK == 0) begin : gen_inv_state_StWrReadBackInit
@@ -347,16 +347,16 @@ module tlul_sram_byte
             if (d_ack) begin
               // Got an immediate TL-UL write response. Wait for one cycle until the holding
               // register is flushed and then perform the readback.
-              state_d = StWrReadBack;
+              state_d = ST_WR_READ_BACK;
             end else begin
               // No response yet to the initial write.
-              state_d = StWrReadBackDWait;
+              state_d = ST_WR_READ_BACK_D_WAIT;
             end
           end
         end
 
-        StWrReadBack: begin
-          // Perform readback and check response in StPassThru.
+        ST_WR_READ_BACK: begin
+          // Perform readback and check response in ST_PASS_THRU.
           if (ENABLE_READBACK == 0) begin : gen_inv_state_StWrReadBack
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
@@ -366,10 +366,10 @@ module tlul_sram_byte
 
           rdback_phase = 1'b1;
 
-          state_d = StPassThru;
+          state_d = ST_PASS_THRU;
         end
 
-        StWrReadBackDWait: begin
+        ST_WR_READ_BACK_D_WAIT: begin
           // We have not received the d_valid response of the initial write. Wait
           // for the valid signal.
           if (ENABLE_READBACK == 0) begin : gen_inv_state_StWrReadBackDWait
@@ -385,11 +385,11 @@ module tlul_sram_byte
           if (d_ack) begin
             // Got the TL-UL write response. Wait for one cycle until the holding
             // register is flushed and then perform the readback.
-            state_d = StWrReadBack;
+            state_d = ST_WR_READ_BACK;
           end
         end
 
-        StByteWrReadBackInit: begin
+        ST_BYTE_WR_READ_BACK_INIT: begin
           // Perform readback after partial write. To avoid that we read the holding register
           // in the readback, do the actual readback check in the next FSM state.
           if (ENABLE_READBACK == 0) begin : gen_inv_state_StByteWrReadBackInit
@@ -408,19 +408,19 @@ module tlul_sram_byte
           if (d_ack) begin
             // Got an immediate TL-UL write response. Wait for one cycle until the holding
             // register is flushed and then perform the readback.
-            state_d = StByteWrReadBack;
+            state_d = ST_BYTE_WR_READ_BACK;
           end else begin
             // No response received for initial write. We already can send the
             // request for the readback in the next cycle but we need to wait
             // for the response for the initial write before doing the readback
             // check.
-            state_d = StByteWrReadBackDWait;
+            state_d = ST_BYTE_WR_READ_BACK_D_WAIT;
           end
         end
 
-        StByteWrReadBack: begin
+        ST_BYTE_WR_READ_BACK: begin
           // Wait until the memory module has completed the partial write.
-          // Perform readback and check response in StPassThru.
+          // Perform readback and check response in ST_PASS_THRU.
           if (ENABLE_READBACK == 0) begin : gen_inv_state_StByteWrReadBack
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
@@ -430,10 +430,10 @@ module tlul_sram_byte
 
           rdback_phase_wrreadback = 1'b1;
 
-          state_d = StPassThru;
+          state_d = ST_PASS_THRU;
         end
 
-        StByteWrReadBackDWait: begin
+        ST_BYTE_WR_READ_BACK_D_WAIT: begin
           if (ENABLE_READBACK == 0) begin : gen_inv_state_StByteWrReadBackDWait
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
@@ -447,11 +447,11 @@ module tlul_sram_byte
           if (d_ack) begin
             // Got the TL-UL write response. Wait for one cycle until the holding
             // register is flushed and then perform the readback.
-            state_d = StByteWrReadBack;
+            state_d = ST_BYTE_WR_READ_BACK;
           end
         end
 
-        StRdReadBack: begin
+        ST_RD_READ_BACK: begin
           if (ENABLE_READBACK == 0) begin : gen_inv_state_StRdReadBack
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
@@ -467,19 +467,19 @@ module tlul_sram_byte
             rdback_phase = 1'b1;
 
             if (d_ack) begin
-              state_d                = StPassThru;
+              state_d                = ST_PASS_THRU;
               // Data for the readback check comes from the first read.
               rdback_check_d         = mubi4_test_true_loose(rdback_en_q) ? MuBi4True : MuBi4False;
               rdback_data_exp_d      = tl_o.d_data;
               rdback_data_exp_intg_d = tl_o.d_user.data_intg;
             end else begin
               // No response yet to the initial read, so go wait for it.
-              state_d = StRdReadBackDWait;
+              state_d = ST_RD_READ_BACK_D_WAIT;
             end
           end
         end
 
-        StRdReadBackDWait: begin
+        ST_RD_READ_BACK_D_WAIT: begin
           if (ENABLE_READBACK == 0) begin : gen_inv_state_StRdReadBackDWait
             // If readback is disabled, we shouldn't be in this state.
             alert_o = 1'b1;
@@ -489,8 +489,8 @@ module tlul_sram_byte
 
           if (d_ack) begin
             // Response received for first read. Now need to await data for the readback check
-            // which is done in the `StPassThru` state.
-            state_d                = StPassThru;
+            // which is done in the `ST_PASS_THRU` state.
+            state_d                = ST_PASS_THRU;
             // Data for the readback check comes from the first read.
             rdback_check_d         = mubi4_test_true_loose(rdback_en_q) ? MuBi4True : MuBi4False;
             rdback_data_exp_d      = tl_o.d_data;
@@ -596,7 +596,7 @@ module tlul_sram_byte
       if (wr_phase | rdback_phase | rdback_phase_wrreadback) begin
         tl_sram_o.a_valid   = 1'b1;
         // During a read-modify write, always access the entire word.
-        tl_sram_o.a_opcode  = wr_phase ? PutFullData : Get;
+        tl_sram_o.a_opcode  = wr_phase ? PUT_FULL_DATA : GET;
         // In either read-modify write or SRAM readback mode, use the mask, size and address
         // of the original request.
         tl_sram_o.a_size =
@@ -624,7 +624,7 @@ module tlul_sram_byte
           tl_sram_o.a_mask    = '{default: '1};
           // use incoming valid as long as we are not stalling the host
           tl_sram_o.a_valid   = tl_i.a_valid & ~stall_host;
-          tl_sram_o.a_opcode  = Get;
+          tl_sram_o.a_opcode  = GET;
         end
       end else if (wait_phase) begin
         // Delay the readback request to avoid that we are reading the holding
@@ -684,11 +684,11 @@ module tlul_sram_byte
 
     // when byte access detected, go to wait read
     `OCAH_OT_ASSERT(ByteAccessStateChange_A,
-                    a_ack & wr_txn & ~&tl_i.a_mask & ~error_i |=> state_q inside {StWaitRd})
+                    a_ack & wr_txn & ~&tl_i.a_mask & ~error_i |=> state_q inside {ST_WAIT_RD})
     // when in wait for read, a successful response should move to write phase
     `OCAH_OT_ASSERT(
         ReadCompleteStateChange_A,
-        (state_q == StWaitRd) && (pending_txn_cnt == 1) && sram_d_ack |=> state_q == StWriteCmd)
+        (state_q == ST_WAIT_RD) && (pending_txn_cnt == 1) && sram_d_ack |=> state_q == ST_WRITE_CMD)
     // The readback logic assumes that any request on the readback channel will be instantly granted
     // (i.e. after the initial SRAM read or write request from the external requester has been
     // granted). This helps simplify the logic. It is guaranteed when connected to an SRAM as it
@@ -701,17 +701,18 @@ module tlul_sram_byte
     // The readback logic assumes the result of a read transaction issues for the readback will get
     // an immediate response. This can be guaranteed when connected to a SRAM, see above comment.
     `OCAH_OT_ASSERT(ReadbackDataImmediatelyAvailable_A,
-                    (state_q == StPassThru) && mubi4_test_true_loose(
+                    (state_q == ST_PASS_THRU) && mubi4_test_true_loose(
                         rdback_en_q
                     ) && mubi4_test_true_loose(
                         rdback_check_q
                     ) && !error_i |-> tl_sram_i.d_valid)
 
-    // When in the StByteWrReadbackInit state, pending_txn_cnt (the depth of a FIFO)
-    // will always be 1. We will have seen StWaitRd -> StWriteCmd -> StByteWrReadBackInit
+    // When in the ST_BYTE_WR_READ_BACK_INIT state, pending_txn_cnt (the depth of a FIFO)
+    // will always be 1. We will have seen ST_WAIT_RD -> ST_WRITE_CMD -> ST_BYTE_WR_READ_BACK_INIT
     // to get to this FSM state and the FIFO cannot be pushed or popped along that path.
-    `OCAH_OT_ASSERT(WrReadBackInitPendingTxn_A,
-                    (state_q == StByteWrReadBackInit) |-> pending_txn_cnt == PendingTxnCntW'(1))
+    `OCAH_OT_ASSERT(
+        WrReadBackInitPendingTxn_A,
+        (state_q == ST_BYTE_WR_READ_BACK_INIT) |-> pending_txn_cnt == PendingTxnCntW'(1))
 
     assign compound_txn_in_progress_o = wr_phase | rdback_phase | rdback_phase_wrreadback;
   end else begin : gen_no_integ_handling

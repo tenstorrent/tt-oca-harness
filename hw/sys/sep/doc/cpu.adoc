@@ -38,7 +38,7 @@ the core complex, but their RAM macros sit outside `sep_cpu` in
 cache is not configured. The DMA slave port is the local crossbar's `cpu_tcm`
 target, the backdoor through which the secure DMA preloads the ICCM and DCCM.
 The IFU, LSU and debug system-bus masters are AXI4 with 64-bit data and 3-bit
-IDs, and each carries `SEP_SOURCE_ID` in AxUSER. The debug master's 1-bit ID is
+IDs, and each carries `SepSourceId` in AxUSER. The debug master's 1-bit ID is
 zero-extended to 3 bits. Each master passes a local alias remap that rewrites the
 768 MiB window at `SEP_LOCAL_BASE_ADDR` to `0x1000_0000`. The IFU demux then
 sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the local
@@ -156,15 +156,10 @@ endif::backend-html5[]
 === Configuration Straps
 
 The platform boot-interface requirement is at least eight static configuration
-straps, preferably sixteen, associated with GPIO pins in the SMC complex.
-Board pull-up/pull-down resistors or a board controller provide the levels.
-This is a platform requirement, not a count of strap inputs on the CPU core.
-
-For a GPIO configured as an input by default, its strap latch follows the pad
-while cold reset is asserted and holds the level when cold reset is released.
-Firmware reads the captured level through the GPIO control registers after
-reset release. `strap_valid` indicates capture support for that pin, not
-completion of reset. The GPIO chapter defines capture and register behavior.
+straps, preferably sixteen. This is a platform requirement, not a count of strap
+inputs on the CPU core. How the straps are sourced and captured is up to the
+adopter; firmware reads their values from the SMC strap registers
+(`STRAPS_LO` and `STRAPS_HI`).
 
 BL0 uses platform configuration to select startup options, such as primary or
 secondary chiplet operation and normal or recovery boot. The board and boot

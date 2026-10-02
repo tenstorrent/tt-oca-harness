@@ -14,8 +14,7 @@
 //   - mandatory     (low  @0x0000): blocks an adopter MUST implement
 //                                   (efuse shim, per-pad GPIO ctrl, PLL, straps)
 //   - supplementary (high @0x4000): blocks an adopter MAY omit
-//                                   (I3C, PLL/PVT clk-obs, poc_pbias,
-//                                    refclk, PVT)
+//                                   (peripheral controllers, extra GPIO, PVT)
 addrmap smc_external {
     name = "SMC External Window Address Map";
     desc = "Adopter-provided external register window, split into mandatory and supplementary regions.";

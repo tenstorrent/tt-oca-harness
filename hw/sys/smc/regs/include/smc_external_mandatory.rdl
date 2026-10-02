@@ -17,7 +17,7 @@
 //
 addrmap smc_external_mandatory {
     name = "SMC External Mandatory Region Address Map";
-    desc = "Mandatory adopter blocks in the external window: eFuse shim, per-pad GPIO control, PLL, and captured GPIO straps.";
+    desc = "Mandatory adopter blocks in the external window: eFuse shim, per-pad GPIO control, PLL, and configuration straps.";
 
     /////////////////
     // Address Map //

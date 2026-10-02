@@ -93,10 +93,10 @@ module i2c_core
   `include "prim_assert.sv"
 
   // Number of bits required to represent the FIFO level/depth.
-  localparam int unsigned CONTROLLER_TX_FIFO_DEPTH_W = $clog2(CONTROLLER_TX_FIFO_DEPTH + 1);
-  localparam int unsigned CONTROLLER_RX_FIFO_DEPTH_W = $clog2(CONTROLLER_RX_FIFO_DEPTH + 1);
-  localparam int unsigned TARGET_TX_FIFO_DEPTH_W = $clog2(TARGET_TX_FIFO_DEPTH + 1);
-  localparam int unsigned TARGET_RX_FIFO_DEPTH_W = $clog2(TARGET_RX_FIFO_DEPTH + 1);
+  localparam int unsigned ControllerTxFifoDepthW = $clog2(CONTROLLER_TX_FIFO_DEPTH + 1);
+  localparam int unsigned ControllerRxFifoDepthW = $clog2(CONTROLLER_RX_FIFO_DEPTH + 1);
+  localparam int unsigned TargetTxFifoDepthW = $clog2(TARGET_TX_FIFO_DEPTH + 1);
+  localparam int unsigned TargetRxFifoDepthW = $clog2(TARGET_RX_FIFO_DEPTH + 1);
 
   // Maximum number of bits required to represent the level/depth of any FIFO.
   localparam int unsigned MaxFifoDepthW = 12;
@@ -194,7 +194,7 @@ module i2c_core
   logic                                  fmt_fifo_wvalid;
   logic                                  fmt_fifo_wready;
   logic [CONTROLLER_TX_FIFO_WIDTH-1:0]   fmt_fifo_wdata;
-  logic [CONTROLLER_TX_FIFO_DEPTH_W-1:0] fmt_fifo_depth;
+  logic [ControllerTxFifoDepthW-1:0]     fmt_fifo_depth;
   logic                                  fmt_fifo_rvalid;
   logic                                  fmt_fifo_rready;
   logic [CONTROLLER_TX_FIFO_WIDTH-1:0]   fmt_fifo_rdata;
@@ -213,7 +213,7 @@ module i2c_core
   logic                                  rx_fifo_wvalid;
   logic                                  rx_fifo_wready;
   logic [CONTROLLER_RX_FIFO_WIDTH-1:0]   rx_fifo_wdata;
-  logic [CONTROLLER_RX_FIFO_DEPTH_W-1:0] rx_fifo_depth;
+  logic [ControllerRxFifoDepthW-1:0]     rx_fifo_depth;
   logic                                  rx_fifo_rvalid;
   logic                                  rx_fifo_rready;
   logic [CONTROLLER_RX_FIFO_WIDTH-1:0]   rx_fifo_rdata;
@@ -226,14 +226,14 @@ module i2c_core
   logic                                  tx_fifo_wvalid;
   logic                                  tx_fifo_wready;
   logic [TARGET_TX_FIFO_WIDTH-1:0]       tx_fifo_wdata;
-  logic [TARGET_TX_FIFO_DEPTH_W-1:0]     tx_fifo_depth;
+  logic [TargetTxFifoDepthW-1:0]         tx_fifo_depth;
   logic                                  tx_fifo_rvalid;
   logic                                  tx_fifo_rready;
   logic [TARGET_TX_FIFO_WIDTH-1:0]       tx_fifo_rdata;
 
   logic                                  acq_fifo_wvalid;
   logic [TARGET_RX_FIFO_WIDTH-1:0]       acq_fifo_wdata;
-  logic [TARGET_RX_FIFO_DEPTH_W-1:0]     acq_fifo_depth;
+  logic [TargetRxFifoDepthW-1:0]         acq_fifo_depth;
   logic                                  acq_fifo_full;
   logic                                  acq_fifo_rvalid;
   logic                                  acq_fifo_rready;
@@ -374,9 +374,9 @@ module i2c_core
 
   assign bus_active_timeout           = reg_out_i.TIMEOUT_CTRL.VAL.value;
   assign stretch_timeout_enable       = reg_out_i.TIMEOUT_CTRL.EN.value &&
-                                          reg_out_i.TIMEOUT_CTRL.MODE.value == StretchTimeoutMode;
+                                          reg_out_i.TIMEOUT_CTRL.MODE.value == STRETCH_TIMEOUT_MODE;
   assign bus_timeout_enable           = reg_out_i.TIMEOUT_CTRL.EN.value &&
-                                          reg_out_i.TIMEOUT_CTRL.MODE.value == BusTimeoutMode;
+                                          reg_out_i.TIMEOUT_CTRL.MODE.value == BUS_TIMEOUT_MODE;
   assign host_timeout                 = reg_out_i.HOST_TIMEOUT_CTRL.VAL.value;
   assign nack_timeout                 = reg_out_i.TARGET_TIMEOUT_CTRL.VAL.value;
   assign nack_timeout_en              = reg_out_i.TARGET_TIMEOUT_CTRL.EN.value;
@@ -581,7 +581,7 @@ module i2c_core
 
   assign acq_type = i2c_acq_byte_id_e'(acq_fifo_rdata[TARGET_RX_FIFO_WIDTH-1:8]);
 
-  assign valid_target_lb_wr = target_enable && acq_type == AcqData;
+  assign valid_target_lb_wr = target_enable && acq_type == ACQ_DATA;
 
   // only write into tx fifo if it's payload
   assign reg_in_o.TXDATA.wr_ack = reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr;
@@ -597,7 +597,7 @@ module i2c_core
   // is not data payload.
   assign reg_in_o.ACQDATA.rd_ack = reg_out_i.ACQDATA.req && !reg_out_i.ACQDATA.req_is_wr;
   assign acq_fifo_rready         = reg_out_i.ACQDATA.req && !reg_out_i.ACQDATA.req_is_wr ||
-                                     target_loopback && (tx_fifo_wready || acq_type != AcqData);
+                                     target_loopback && (tx_fifo_wready || acq_type != ACQ_DATA);
 
   // sync the incoming SCL and SDA signals
   prim_flop_2sync #(
@@ -830,7 +830,7 @@ module i2c_core
 
     unique case (controller_dma_tx_fsm_state)
       ST_CONTROLLER_DMA_TX_IDLE: begin
-        if (fmt_fifo_depth == CONTROLLER_TX_FIFO_DEPTH_W'(CONTROLLER_TX_FIFO_DEPTH)) begin
+        if (fmt_fifo_depth == ControllerTxFifoDepthW'(CONTROLLER_TX_FIFO_DEPTH)) begin
           controller_tx_ready_o = 1'b0;
           controller_dma_tx_fsm_state_next = ST_CONTROLLER_DMA_TX_NOT_READY;
         end else begin
@@ -884,7 +884,7 @@ module i2c_core
         end
       end
       ST_CONTROLLER_DMA_RX_READY: begin
-        if (rx_fifo_depth == CONTROLLER_RX_FIFO_DEPTH_W'(0)) begin
+        if (rx_fifo_depth == ControllerRxFifoDepthW'(0)) begin
           controller_rx_ready_o = 1'b0;
           controller_dma_rx_fsm_state_next = ST_CONTROLLER_DMA_RX_IDLE;
         end else begin
@@ -920,7 +920,7 @@ module i2c_core
 
     unique case (target_dma_tx_fsm_state)
       ST_TARGET_DMA_TX_IDLE: begin
-        if (tx_fifo_depth == TARGET_TX_FIFO_DEPTH_W'(TARGET_TX_FIFO_DEPTH)) begin
+        if (tx_fifo_depth == TargetTxFifoDepthW'(TARGET_TX_FIFO_DEPTH)) begin
           target_tx_ready_o = 1'b0;
           target_dma_tx_fsm_state_next = ST_TARGET_DMA_TX_NOT_READY;
         end else begin
@@ -974,7 +974,7 @@ module i2c_core
         end
       end
       ST_TARGET_DMA_RX_READY: begin
-        if (acq_fifo_depth == TARGET_RX_FIFO_DEPTH_W'(0)) begin
+        if (acq_fifo_depth == TargetRxFifoDepthW'(0)) begin
           target_rx_ready_o = 1'b0;
           target_dma_rx_fsm_state_next = ST_TARGET_DMA_RX_IDLE;
         end else begin
@@ -1175,13 +1175,13 @@ module i2c_core
   ////////////////
 
   `OCAH_OT_ASSERT_INIT(ControllerTxFifoDepthValid_A,
-                       CONTROLLER_TX_FIFO_DEPTH > 0 && CONTROLLER_TX_FIFO_DEPTH_W <= MaxFifoDepthW)
+                       CONTROLLER_TX_FIFO_DEPTH > 0 && ControllerTxFifoDepthW <= MaxFifoDepthW)
   `OCAH_OT_ASSERT_INIT(ControllerRxFifoDepthValid_A,
-                       CONTROLLER_RX_FIFO_DEPTH > 0 && CONTROLLER_RX_FIFO_DEPTH_W <= MaxFifoDepthW)
+                       CONTROLLER_RX_FIFO_DEPTH > 0 && ControllerRxFifoDepthW <= MaxFifoDepthW)
   `OCAH_OT_ASSERT_INIT(TargetTxFifoDepthValid_A,
-                       TARGET_TX_FIFO_DEPTH > 0 && TARGET_TX_FIFO_DEPTH_W <= MaxFifoDepthW)
+                       TARGET_TX_FIFO_DEPTH > 0 && TargetTxFifoDepthW <= MaxFifoDepthW)
   `OCAH_OT_ASSERT_INIT(TargetRxFifoDepthValid_A,
-                       TARGET_RX_FIFO_DEPTH > 0 && TARGET_RX_FIFO_DEPTH_W <= MaxFifoDepthW)
+                       TARGET_RX_FIFO_DEPTH > 0 && TargetRxFifoDepthW <= MaxFifoDepthW)
   `OCAH_OT_ASSERT_INIT(HostTimeoutWidthValid_A, $bits(host_timeout) == $bits
                        (reg_out_i.HOST_TIMEOUT_CTRL.VAL.value))
 

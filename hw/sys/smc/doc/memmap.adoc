@@ -65,6 +65,11 @@ An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers `DECERR`.
 
+The inbound port reaches a unit only while its whole aperture lies below
+`BASE + REGION_SIZE`. At the reset value the PLIC, CLINT and bus-error units lie
+beyond it and answer `DECERR`. The SMC harts reach the PLIC and CLINT inside the
+CPU cluster regardless of `REGION_SIZE`.
+
 === AXI-Lite External Window
 
 The `smc_external` window at `BASE + 0x040_0000` is the adopter extension
@@ -77,16 +82,16 @@ the split is purely organizational:
 * *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
   Their function is dictated by the OCAH specifications, but their
   implementation is inherently technology- and vendor-specific — the eFuse
-  SHIM, the per-pad GPIO controls, the PLL wrapper and the captured strap
-  registers at `BASE + 0x040_3000`.
+  SHIM, the per-pad GPIO controls, the PLL wrapper and the strap registers at
+  `BASE + 0x040_3000`.
 * *Supplementary* (`BASE + 0x040_4000`): any additional memory-mapped devices
   the adopter wants to expose, such as peripheral controllers, extra pad
   controls and the PVT wrapper.
 
 The generated SMC map reports this as one opaque adopter-owned aperture.
 Concrete placements inside it are integration-specific and are documented by
-the adopter. Captured straps are read-only values latched from bonded pads at
-cold reset and consumed by boot firmware. Both boot ROMs read them at
+the adopter. The strap registers are read-only values consumed by boot firmware;
+how the adopter captures them is implementation-defined. Both boot ROMs read them at
 `BASE + 0x040_3000`, so an integration places them there.
 
 The eFuse SHIM control block is the exception. Its placement is fixed at the

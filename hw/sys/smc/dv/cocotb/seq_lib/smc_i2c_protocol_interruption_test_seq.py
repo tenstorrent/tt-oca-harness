@@ -5,7 +5,7 @@
 Most of what an I2C target state machine can be asked to do is leave the
 transaction it is in. A STOP or a repeated START can arrive in any state, and
 software can clear the target enable at any moment, so nearly every state has
-an edge back to `Idle`, to `WaitForStop` and to `AcquireStart`. Reaching those
+an edge back to `IDLE`, to `WAIT_FOR_STOP` and to `ACQUIRE_START`. Reaching those
 edges needs the interruption to land in a chosen state, which means driving it
 at a chosen bit slot -- something only the bench controller can do, since a DUT
 controller has no way to be told "stop in the middle of this byte".

@@ -186,7 +186,7 @@ _MUTEX_HELD = 0
 _REF_COUNTER_SETTLE = 64
 
 # The straps block belongs to the open integration, not to smc.sv; the SMC map
-# places it in the supplementary region of the adopter external window, and
+# places it in the mandatory region of the adopter external window, and
 # straps.rdl makes both `sw = r; hw = w`: STRAPS_LO @0x0 straps[31:0],
 # STRAPS_HI @0x4 straps[28:0]. What they hold is whatever the integration
 # latched from the bonded pads at cold reset, so the value is read once and

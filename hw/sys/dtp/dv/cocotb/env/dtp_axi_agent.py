@@ -4,7 +4,10 @@
 
 Wraps the unified OCAH AXI RAM BFM as the memory responder on the JTAG2AXI
 bridge's AXI4 manager port (u_smc_axi_slave_if in tb_top), and exposes
-backdoor access for the scoreboard / sequences.
+backdoor access for the scoreboard / sequences. One passive shared monitor per
+bridge port runs in every test and publishes each completed transaction on
+``port_aps[<bridge>]`` for the JTAG2AXI reference models; a test that enables
+the shared AXI scoreboard also gets its watchers and port histories.
 """
 
 from __future__ import annotations
@@ -18,9 +21,16 @@ from ocah_axi_vip import (
     OcahAxiSlaveAgent,
     OcahAxiSlaveSequence,
 )
-from pyuvm import ConfigDB, uvm_agent
+from pyuvm import ConfigDB, uvm_agent, uvm_analysis_port
 
 from .dtp_axi_port_history import DtpAxiPortHistory
+
+# The monitor on each bridge port; its name is the `source` of every item it publishes.
+PORT_MONITOR_NAMES: dict[str, str] = {
+    "smc_axi": "dtp_smc_axi_monitor",
+    "smc_otp": "dtp_smc_otp_monitor",
+    "sep_otp": "dtp_sep_otp_monitor",
+}
 
 
 class DtpAxiAgent(uvm_agent):
@@ -30,6 +40,10 @@ class DtpAxiAgent(uvm_agent):
         self.axi_ram: OcahAxiSlaveSequence | None = None
         self.smc_otp_axil_ram = None
         self.sep_otp_axil_ram = None
+        self.port_aps = {
+            target: uvm_analysis_port(f"{target}_ap", self) for target in PORT_MONITOR_NAMES
+        }
+        self.port_monitors: dict[str, OcahAxiMonitor | OcahAxiLiteMonitor] = {}
 
     async def run_phase(self) -> None:
         tb = self.tb_if
@@ -72,38 +86,44 @@ class DtpAxiAgent(uvm_agent):
             "OTP AXI-Lite RAM responders ready (%d bytes each)",
             self.cfg.otp_axil_mem_size,
         )
-        if getattr(self.cfg, "axi_scoreboard_enabled", False):
-            await self.cfg.reset_done.wait()
-            await self._start_shared_monitors()
+        await self.cfg.reset_done.wait()
+        await self._start_port_monitors()
 
-    async def _start_shared_monitors(self) -> None:
-        """Attach shared-VIP monitors/watchers to the scoreboard."""
+    async def _start_port_monitors(self) -> None:
+        """Start the bridge-port monitors; attach the shared AXI scoreboard when enabled."""
         tb = self.tb_if
-        scoreboard = self.cfg.axi_scoreboard
-        assert scoreboard is not None, "DtpAxiScoreboard did not publish a scoreboard"
         monitors = {
             "smc_axi": OcahAxiMonitor(
                 tb.axi_bus("smc_axi", passive=True),
                 tb.clk,
                 reset=tb.sys_rst_n,
                 reset_active_level=False,
-                name="dtp_smc_axi_monitor",
+                name=PORT_MONITOR_NAMES["smc_axi"],
             ),
             "smc_otp": OcahAxiLiteMonitor(
                 tb.axi_bus("smc_otp", passive=True),
                 tb.clk,
                 reset=tb.sys_rst_n,
                 reset_active_level=False,
-                name="dtp_smc_otp_monitor",
+                name=PORT_MONITOR_NAMES["smc_otp"],
             ),
             "sep_otp": OcahAxiLiteMonitor(
                 tb.axi_bus("sep_otp", passive=True),
                 tb.clk,
                 reset=tb.sys_rst_n,
                 reset_active_level=False,
-                name="dtp_sep_otp_monitor",
+                name=PORT_MONITOR_NAMES["sep_otp"],
             ),
         }
+        for target, monitor in monitors.items():
+            monitor.add_item_callback(self.port_aps[target].write)
+        self.port_monitors = monitors
+        if not getattr(self.cfg, "axi_scoreboard_enabled", False):
+            for monitor in monitors.values():
+                await monitor.start()
+            return
+        scoreboard = self.cfg.axi_scoreboard
+        assert scoreboard is not None, "DtpAxiScoreboard did not publish a scoreboard"
         watchers = {
             "smc_axi": OcahAxiProtocolWatcher(
                 tb.axi_bus("smc_axi", passive=True),

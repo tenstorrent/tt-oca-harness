@@ -29,14 +29,14 @@ module km_crc_engine (
   `include "prim_assert.sv"
   `include "ocah_assert.svh"
 
-  localparam logic [1:0] CRC_MODE_32C_WORD = 2'b00;
-  localparam logic [1:0] CRC_MODE_32C_BYTE = 2'b01;
-  localparam logic [1:0] CRC_MODE_8_ROHC = 2'b10;
+  localparam logic [1:0] CrcMode32cWord = 2'b00;
+  localparam logic [1:0] CrcMode32cByte = 2'b01;
+  localparam logic [1:0] CrcMode8Rohc = 2'b10;
 
-  localparam logic [31:0] CRC32C_POLY = 32'h82F6_3B78;
-  localparam logic [31:0] CRC32C_STATE_MASK = 32'hFFFF_FFFF;
-  localparam logic [31:0] CRC8_ROHC_POLY = 32'h0000_00E0;
-  localparam logic [31:0] CRC8_STATE_MASK = 32'h0000_00FF;
+  localparam logic [31:0] Crc32cPoly = 32'h82F6_3B78;
+  localparam logic [31:0] Crc32cStateMask = 32'hFFFF_FFFF;
+  localparam logic [31:0] Crc8RohcPoly = 32'h0000_00E0;
+  localparam logic [31:0] Crc8StateMask = 32'h0000_00FF;
 
   logic [1:0]  mode_q;
   logic [2:0]  bytes_remaining_q;
@@ -49,37 +49,37 @@ module km_crc_engine (
 
   function automatic logic mode_legal(input logic [1:0] mode);
     unique case (mode)
-      CRC_MODE_32C_WORD,
-            CRC_MODE_32C_BYTE,
-            CRC_MODE_8_ROHC: mode_legal = 1'b1;
+      CrcMode32cWord,
+            CrcMode32cByte,
+            CrcMode8Rohc: mode_legal = 1'b1;
       default:         mode_legal = 1'b0;
     endcase
   endfunction
 
   function automatic logic [2:0] mode_byte_count(input logic [1:0] mode);
     unique case (mode)
-      CRC_MODE_32C_WORD: mode_byte_count = 3'd4;
-      CRC_MODE_32C_BYTE,
-            CRC_MODE_8_ROHC:   mode_byte_count = 3'd1;
+      CrcMode32cWord: mode_byte_count = 3'd4;
+      CrcMode32cByte,
+            CrcMode8Rohc:   mode_byte_count = 3'd1;
       default:           mode_byte_count = 3'd0;
     endcase
   endfunction
 
   function automatic logic [31:0] mode_poly(input logic [1:0] mode);
     unique case (mode)
-      CRC_MODE_32C_WORD,
-            CRC_MODE_32C_BYTE: mode_poly = CRC32C_POLY;
-      CRC_MODE_8_ROHC:   mode_poly = CRC8_ROHC_POLY;
-      default:           mode_poly = CRC32C_POLY;
+      CrcMode32cWord,
+            CrcMode32cByte: mode_poly = Crc32cPoly;
+      CrcMode8Rohc:      mode_poly = Crc8RohcPoly;
+      default:           mode_poly = Crc32cPoly;
     endcase
   endfunction
 
   function automatic logic [31:0] mode_mask(input logic [1:0] mode);
     unique case (mode)
-      CRC_MODE_32C_WORD,
-            CRC_MODE_32C_BYTE: mode_mask = CRC32C_STATE_MASK;
-      CRC_MODE_8_ROHC:   mode_mask = CRC8_STATE_MASK;
-      default:           mode_mask = CRC32C_STATE_MASK;
+      CrcMode32cWord,
+            CrcMode32cByte: mode_mask = Crc32cStateMask;
+      CrcMode8Rohc:      mode_mask = Crc8StateMask;
+      default:           mode_mask = Crc32cStateMask;
     endcase
   endfunction
 
@@ -111,7 +111,7 @@ module km_crc_engine (
       busy_o            <= 1'b0;
       done_o            <= 1'b0;
       result_o          <= '0;
-      mode_q            <= CRC_MODE_32C_WORD;
+      mode_q            <= CrcMode32cWord;
       bytes_remaining_q <= '0;
       state_q           <= '0;
       data_q            <= '0;
@@ -142,14 +142,14 @@ module km_crc_engine (
   `OCAH_ASSERT(LegalModeOnStart_A, start_i |-> mode_legal(mode_i), clk_i, !rst_ni)
   `OCAH_ASSERT(
       StartWordToDone_A,
-      start_i && !busy_o && mode_i == CRC_MODE_32C_WORD |=> busy_o ##1 busy_o ##1 busy_o ##1 busy_o ##1 done_o,
+      start_i && !busy_o && mode_i == CrcMode32cWord |=> busy_o ##1 busy_o ##1 busy_o ##1 busy_o ##1 done_o,
       clk_i, !rst_ni)
   `OCAH_ASSERT(
       StartByteToDone_A,
-      start_i && !busy_o && (mode_i == CRC_MODE_32C_BYTE || mode_i == CRC_MODE_8_ROHC) |=> busy_o ##1 done_o,
+      start_i && !busy_o && (mode_i == CrcMode32cByte || mode_i == CrcMode8Rohc) |=> busy_o ##1 done_o,
       clk_i, !rst_ni)
   `OCAH_ASSERT(NoRestartWhileBusy_A, busy_o |-> !start_i, clk_i, !rst_ni)
-  `OCAH_ASSERT(Crc8ZeroExtended_A, done_o && mode_q == CRC_MODE_8_ROHC |-> result_o[31:8] == '0,
+  `OCAH_ASSERT(Crc8ZeroExtended_A, done_o && mode_q == CrcMode8Rohc |-> result_o[31:8] == '0,
                clk_i, !rst_ni)
 
   `OCAH_ASSERT_PULSE(DonePulse_A, done_o, clk_i, !rst_ni)

@@ -4,20 +4,20 @@
 
 // Adapt TL-UL device traffic onto a register read/write interface.
 //
-// Act as a TL-UL device. Accept Get, PutPartialData, and PutFullData on the A channel and
+// Act as a TL-UL device. Accept GET, PUT_PARTIAL_DATA, and PUT_FULL_DATA on the A channel and
 // pass each read or write to the register interface in the same cycle. Return the register
 // response on the D channel in the next cycle, whatever ACCESS_LATENCY is. One request is
 // outstanding at a time: A_READY stays low until the response is accepted.
 //
 // Forward a request only when every check passes:
 //
-// - A_OPCODE is Get, PutPartialData, or PutFullData.
+// - A_OPCODE is GET, PUT_PARTIAL_DATA, or PUT_FULL_DATA.
 // - A_SIZE is 0, 1, or 2 (a 1-, 2-, or 4-byte operation).
 // - A_ADDRESS is naturally aligned for the A_SIZE byte width, and word aligned for writes.
 // - A_MASK is true only for active byte lanes. The first active lane is the address modulo
 //   the TL-UL data-bus width.
 // - A_USER.INSTR_TYPE is a valid MuBi4 encoding.
-// - A_OPCODE is Get when A_USER.INSTR_TYPE is MuBi4True.
+// - A_OPCODE is GET when A_USER.INSTR_TYPE is MuBi4True.
 // - A_USER.INSTR_TYPE is not MuBi4True, or en_ifetch_i is MuBi4True.
 // - The command and A-channel data integrity checks pass, when CMD_INTG_CHECK is set.
 //
@@ -72,8 +72,8 @@ module tlul_adapter_reg
 );
   `OCAH_OT_ASSERT_INIT(AllowedLatency_A, ACCESS_LATENCY inside {0, 1})
 
-  localparam int IW  = $bits(tl_i.a_source);
-  localparam int SZW = $bits(tl_i.a_size);
+  localparam int Iw  = $bits(tl_i.a_source);
+  localparam int Szw = $bits(tl_i.a_size);
 
   logic outstanding_q;    // Indicates current request is pending
   logic a_ack, d_ack;
@@ -84,8 +84,8 @@ module tlul_adapter_reg
   logic addr_align_err;     // Size and alignment
   logic tl_err;             // Common TL-UL error checker
 
-  logic [IW-1:0]  reqid_q;
-  logic [SZW-1:0] reqsz_q;
+  logic [Iw-1:0]  reqid_q;
+  logic [Szw-1:0] reqsz_q;
   tl_d_op_e       rspop_q;
 
   logic rd_req, wr_req;
@@ -93,8 +93,8 @@ module tlul_adapter_reg
   assign a_ack   = tl_i.a_valid & tl_o.a_ready;
   assign d_ack   = tl_o.d_valid & tl_i.d_ready;
   // Request signal
-  assign wr_req  = a_ack & ((tl_i.a_opcode == PutFullData) | (tl_i.a_opcode == PutPartialData));
-  assign rd_req  = a_ack & (tl_i.a_opcode == Get);
+  assign wr_req  = a_ack & ((tl_i.a_opcode == PUT_FULL_DATA) | (tl_i.a_opcode == PUT_PARTIAL_DATA));
+  assign rd_req  = a_ack & (tl_i.a_opcode == GET);
 
   assign we_o    = wr_req & ~err_internal;
   assign re_o    = rd_req & ~err_internal;
@@ -117,12 +117,12 @@ module tlul_adapter_reg
     if (!rst_ni) begin
       reqid_q <= '0;
       reqsz_q <= '0;
-      rspop_q <= AccessAck;
+      rspop_q <= ACCESS_ACK;
     end else if (a_ack) begin
       reqid_q <= tl_i.a_source;
       reqsz_q <= tl_i.a_size;
-      // Return AccessAckData regardless of error
-      rspop_q <= (rd_req) ? AccessAckData : AccessAck ;
+      // Return ACCESS_ACK_DATA regardless of error
+      rspop_q <= (rd_req) ? ACCESS_ACK_DATA : ACCESS_ACK ;
     end
   end
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> KMAC sideload consume-proof KAT (reference suite, sep_km_kmac_sideload_kat_test).
+"""KM -> KMAC sideload consume-proof KAT.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -8,16 +8,12 @@ then CMD_KEY_TRANSFERs it to the OpenTitan KMAC engine. KMAC computes a keyed
 KMAC-256 (cSHAKE, PREFIX="KMAC") over a fixed message; the test proves KMAC
 consumed exactly the sideloaded key.
 
-KMAC DOES have a CFG.sideload bit, so (like AES, unlike HMAC) the consume-proof is
-a sideload-vs-SW cross-check rather than a comparison against a known answer
-(env/sep_kmac_golden.py holds a bit-exact KMAC model; sep_kmac_mode_strength_rand_test
-compares it against this engine). The OSS port is a FRONTDOOR
-known-key variant: it loads a KNOWN distinct-word key, so the cross-check ties the
-sideload output to that specific key via the SW path, and the dummy-key negative
-reference proves the key actually drives the output. Consume-proof is
-sideload-vs-SW plus decoy difference, not a KMAC golden.
+KMAC has a CFG.sideload bit, so (like AES, unlike HMAC) the consume-proof is a
+sideload-vs-SW cross-check with a KNOWN distinct-word key, plus a dummy-key
+negative reference that proves the key drives the output. The SW-key digest is
+also compared against the bit-exact KMAC golden (env/sep_kmac_golden.py).
 
-VPLAN-parity checkers:
+Checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
   CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-NEG   negative ref: keyed MAC with a DUMMY SW key -> c_dummy (a real op)
@@ -34,7 +30,7 @@ VPLAN-parity checkers:
             the right_encode(L) tail the sequence drives are the spec encoding
   CHK-ENT   KMAC consumed real DRBG/EDN masking entropy during the keyed ops --
             proven by the CHK5_kmac sink (>=1 post-adapter crypto-EDN beat to KMAC),
-            the OSS frontdoor analog of the reference suite's backdoor kmac EDN ack-count delta
+            measured frontdoor rather than by counting EDN acks internally
   CHK-ERR   KMAC ERR_CODE == 0
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (KM boot/load consumer)
 
@@ -119,11 +115,9 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         # across rst_ni release, then parked in SW_RESET_N. KMAC is released only
         # before the transfer so its keyed ops pull EDN masking entropy.
 
-        # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
-        # (KM boot/load consumer). score_sinks kmac="observe": prove KMAC pulls real
-        # post-adapter crypto-EDN masking beats during its keyed ops -- the frontdoor
-        # analog of the reference suite's backdoor kmac EDN ack-count (CHK-ENT). The drain keeps the
-        # ESRC FIFO from overflowing during the long entropy phase.
+        # Strict bring-up: CHK1..CHK4 golden; CHK5_km observed. CHK5_kmac (CHK-ENT)
+        # proves KMAC pulls real crypto-EDN masking beats during its keyed ops. The
+        # drain keeps the ESRC FIFO from overflowing during the long entropy phase.
         await self.bring_up_entropy(
             strict=True, score_km="observe", score_sinks={"kmac": "observe"}
         )

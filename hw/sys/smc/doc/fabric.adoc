@@ -125,10 +125,10 @@ than module parameters (<<smc-fabric-configuration-parameters-table>>).
 |Constant |Value |Description
 |*AXI4 Network* | |
 
-|`smc_pkg::FABRIC_MAX_TRANS` |32 |Maximum outstanding transactions per
+|`smc_pkg::FabricMaxTrans` |32 |Maximum outstanding transactions per
 AXI ID bucket in the fabric demultiplexers and traffic filters
 
-|`smc_pkg::ERR_SLV_MAX_TRANS` |32 |Maximum outstanding transactions for
+|`smc_pkg::ErrSlvMaxTrans` |32 |Maximum outstanding transactions for
 each error subordinate, across all IDs
 
 |*AXI4-Lite Network* | |

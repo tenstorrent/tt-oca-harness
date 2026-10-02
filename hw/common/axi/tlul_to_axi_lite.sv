@@ -40,7 +40,7 @@ module tlul_to_axi_lite
 	// --------------------------------------------------
 	// Local Parameters
 	// --------------------------------------------------
-	localparam logic [1:0] AXI_RESP_OKAY = 2'b00;
+	localparam logic [1:0] AxiRespOkay = 2'b00;
 	// Size req_size to the actual TL-UL a_size port width, not a global pkg constant, so it tracks the connected bus
 	localparam int unsigned ReqSizeW = $bits(tl_i.a_size);
 
@@ -83,16 +83,14 @@ module tlul_to_axi_lite
 	// TL-UL Incoming Command Integrity Checking
 	// --------------------------------------------------
 	logic intg_err;
-	generate
-		if (CMD_INTG_CHECK) begin : gen_cmd_intg_check
-			tlul_cmd_intg_chk u_cmd_intg_chk (
-				.tl_i(tl_i),
-				.err_o(intg_err)
-			);
-		end else begin : gen_no_intg_check
-			assign intg_err = 1'b0;
-		end
-	endgenerate
+	if (CMD_INTG_CHECK) begin : gen_cmd_intg_check
+		tlul_cmd_intg_chk u_cmd_intg_chk (
+			.tl_i(tl_i),
+			.err_o(intg_err)
+		);
+	end else begin : gen_no_intg_check
+		assign intg_err = 1'b0;
+	end
 
 	// --------------------------------------------------
 	// FSM Sequential Logic
@@ -103,7 +101,7 @@ module tlul_to_axi_lite
 			req_addr_q   <= '0;
 			req_data_q   <= '0;
 			req_mask_q   <= '0;
-			req_opcode_q <= tlul_pkg::Get;
+			req_opcode_q <= tlul_pkg::GET;
 			req_source_q <= '0;
 			req_size_q   <= '0;
 			aw_done_q    <= 1'b0;
@@ -158,8 +156,8 @@ module tlul_to_axi_lite
 		axi_lite_req_o = '0;
 
 		// Capture Sticky Error from AXI response
-		if ((axi_lite_rsp_i.b_valid && axi_lite_rsp_i.b.resp != AXI_RESP_OKAY) ||
-				(axi_lite_rsp_i.r_valid && axi_lite_rsp_i.r.resp != AXI_RESP_OKAY)) begin
+		if ((axi_lite_rsp_i.b_valid && axi_lite_rsp_i.b.resp != AxiRespOkay) ||
+				(axi_lite_rsp_i.r_valid && axi_lite_rsp_i.r.resp != AxiRespOkay)) begin
 			sticky_err_d = 1'b1;
 		end
 
@@ -183,7 +181,7 @@ module tlul_to_axi_lite
 					aw_done_d    = 1'b0;
 					w_done_d     = 1'b0;
 
-					if (tl_i.a_opcode == tlul_pkg::Get) begin
+					if (tl_i.a_opcode == tlul_pkg::GET) begin
 						state_d = AXI_AR_REQ;
 					end else begin
 						state_d = AXI_AW_W_REQ;
@@ -208,7 +206,7 @@ module tlul_to_axi_lite
 
 				if (axi_lite_rsp_i.r_valid) begin
 					resp_data_d  = axi_lite_rsp_i.r.data;
-					resp_error_d = (axi_lite_rsp_i.r.resp != AXI_RESP_OKAY);
+					resp_error_d = (axi_lite_rsp_i.r.resp != AxiRespOkay);
 					state_d      = TL_D_RESP;
 				end
 			end
@@ -245,7 +243,7 @@ module tlul_to_axi_lite
 				axi_lite_req_o.b_ready = 1'b1;
 
 				if (axi_lite_rsp_i.b_valid) begin
-					resp_error_d = (axi_lite_rsp_i.b.resp != AXI_RESP_OKAY);
+					resp_error_d = (axi_lite_rsp_i.b.resp != AxiRespOkay);
 					state_d      = TL_D_RESP;
 				end
 			end
@@ -260,10 +258,10 @@ module tlul_to_axi_lite
 				tl_o.d_error  = resp_error_q;
 				tl_o.d_data   = resp_data_q;
 
-				if (req_opcode_q == tlul_pkg::Get) begin
-					tl_o.d_opcode = tlul_pkg::AccessAckData;
+				if (req_opcode_q == tlul_pkg::GET) begin
+					tl_o.d_opcode = tlul_pkg::ACCESS_ACK_DATA;
 				end else begin
-					tl_o.d_opcode = tlul_pkg::AccessAck;
+					tl_o.d_opcode = tlul_pkg::ACCESS_ACK;
 				end
 
 				if (tl_i.d_ready) begin

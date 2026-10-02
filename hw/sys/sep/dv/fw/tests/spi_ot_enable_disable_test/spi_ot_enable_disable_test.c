@@ -4,15 +4,10 @@
 /*
  * SPI OT Enable/Disable Test
  *
- * Verifies SPI controller enable/disable via SPIEN bit, OUTPUT_EN,
- * and software reset (SW_RST) behavior.
- *
- * Test Flow:
- * 1. Enable controller
- * 2. Read STATUS when SPIEN=0, verify READY behavior
- * 3. Enable controller (SPIEN=1), verify STATUS
- * 4. Software reset: hold SW_RST, verify state clears, release
- * 5. Disable controller (SPIEN=0)
+ * Verifies that the SPI host control resets to zero, that the enable and
+ * output-enable bits read back as written, and that software reset reads back
+ * while held, drains the FIFOs and reads back clear after release. Status
+ * after reset and after enable is logged, not checked.
  */
 
 #include <stdint.h>
@@ -41,20 +36,17 @@ int main(void) {
     spi_controller__CONTROL_t ctrl;
     spi_controller__STATUS_t status;
 
-    /* Step 1: Read CTRL default */
     printf("Step 1: CTRL default check\n");
     ctrl.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("CTRL default", ctrl.w, 0u)) pass = 0;
     if (!check_reg("SPIEN default", ctrl.f.SPIEN, 0)) pass = 0;
     if (!check_reg("OUTPUT_EN default", ctrl.f.OUTPUT_EN, 0)) pass = 0;
 
-    /* Step 2: Read STATUS when disabled */
     printf("\nStep 2: STATUS when SPIEN=0\n");
     status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  STATUS=0x%08x (READY=%u, ACTIVE=%u, TXEMPTY=%u)\n", status.w, status.f.READY,
            status.f.ACTIVE, status.f.TXEMPTY);
 
-    /* Step 3: Enable controller */
     printf("\nStep 3: Enable SPI controller (SPIEN=1)\n");
     ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
@@ -69,10 +61,8 @@ int main(void) {
     printf("  STATUS after enable: 0x%08x (READY=%u, TXEMPTY=%u)\n", status.w, status.f.READY,
            status.f.TXEMPTY);
 
-    /* Step 4: Software reset. SW_RST is a level: it reads back as written and
-     * the core stays in reset until software clears it, so the drain is
-     * observed while it is held and the release is what makes the controller
-     * usable again. */
+    /* Software reset is a level: the core stays in reset until software clears
+     * it, so the drain is observed while it is held. */
     printf("\nStep 4: Software reset (SW_RST)\n");
     ctrl.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
@@ -99,7 +89,6 @@ int main(void) {
     ctrl.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("SW_RST reads 0 after release", ctrl.f.SW_RST, 0)) pass = 0;
 
-    /* Step 5: Disable controller */
     printf("\nStep 5: Disable SPI controller (SPIEN=0)\n");
     ctrl.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SPIEN = 0;
@@ -123,5 +112,4 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-    return pass ? 0 : -1;
 }

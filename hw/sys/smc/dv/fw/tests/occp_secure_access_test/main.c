@@ -29,7 +29,6 @@ static void validate_smc_status_buffer_for_secure_access(test_context_t *ctx,
     int retval;
     uint32_t total_read_access_denied = 0;
     uint32_t total_write_access_denied = 0;
-    uint32_t total_validate_security_errors = 0;
     uint32_t unexpected_errors = 0;
 
     while (true) {
@@ -54,6 +53,7 @@ static void validate_smc_status_buffer_for_secure_access(test_context_t *ctx,
         } else if (occp_status_matches_expected(smc_status, OCCP_FW_ID_SMC_BL0,
                                                 OCCP_STATUS_MSG_ERROR,
                                                 (uint16_t)OCCP_SPEC_ERROR_CMD_FAILED, false)) {
+            // Command-failed records are tolerated and not counted.
         } else if (occp_is_smc_error_code(smc_status)) {
             uint16_t msg_value = OCCP_STATUS_EXTRACT_VALUE(smc_status);
             if (msg_value != 0) {
@@ -174,7 +174,7 @@ static void execute_random_invalid_operations(test_context_t *ctx, int num_opera
     }
 }
 
-static bool test_boundary_cases(test_context_t *ctx) {
+static void test_boundary_cases(test_context_t *ctx) {
 
     simputs("\n=== Testing Boundary Cases ===\n");
 
@@ -354,8 +354,6 @@ static bool test_boundary_cases(test_context_t *ctx) {
             ctx->overall_result = false;
         }
     }
-
-    return true;
 }
 
 static void run_security_access_test_suite(test_context_t *ctx) {
@@ -397,20 +395,13 @@ static void run_security_access_test_suite(test_context_t *ctx) {
 }
 
 static void finalize_test_results(test_context_t *ctx) {
-    uint32_t result_code;
-
     if (ctx->overall_result) {
         simputs("\nALL SECURITY ACCESS TESTS PASSED!\n");
-        result_code = SMC_SCRATCHPAD_SIM_PASS_CODE;
         test_pass(0);
     } else {
         simputs("\nSOME SECURITY ACCESS TESTS FAILED!\n");
-        result_code = SMC_SCRATCHPAD_SIM_FAIL_CODE;
         test_fail(0);
     }
-
-    occp_send_write_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                            (uint8_t *)&result_code, sizeof(result_code));
 }
 
 int main(void) {
@@ -432,6 +423,4 @@ int main(void) {
     run_security_access_test_suite(&test_ctx);
 
     finalize_test_results(&test_ctx);
-
-    return test_ctx.overall_result ? 0 : -1;
 }

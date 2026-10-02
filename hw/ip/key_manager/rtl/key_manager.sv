@@ -30,7 +30,7 @@
 // OTP_EFUSE_REMAP_BASE is the absolute address of the eFuse controller as seen on
 // efuse_req_o. Transactions from the internal OTP crossbar port (xbar port 8, the KM-local
 // OTP page) that fall in the MAP, CTRL or MMR register map keep their page offset, the low
-// km_intf_pkg::OTP_REMAP_ADDR_WIDTH bits, and take their upper bits from
+// km_intf_pkg::OtpRemapAddrWidth bits, and take their upper bits from
 // OTP_EFUSE_REMAP_BASE before being driven onto efuse_req_o. Every other offset in the page
 // completes locally with SLVERR and never reaches efuse_req_o. The integrator sets
 // OTP_EFUSE_REMAP_BASE to the page-aligned system-level address of the eFuse controller and
@@ -147,20 +147,18 @@ module key_manager
   // Pinned against the address map rather than a literal: the memory sizes and
   // the decode ranges have to agree, and the map is the one that also feeds the
   // write-lock and exec region indices.
-  `OCAH_OT_ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == km_intf_pkg::ROM_SIZE_BYTES)
-  `OCAH_OT_ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == km_intf_pkg::SRAM_SIZE_BYTES)
+  `OCAH_OT_ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == km_intf_pkg::RomSizeBytes)
+  `OCAH_OT_ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == km_intf_pkg::SramSizeBytes)
   `OCAH_OT_ASSERT_INIT(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
   `OCAH_OT_ASSERT_INIT(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
 
   // The remap keeps only the page offset, so every OTP register map has to sit inside the
   // page the crossbar routes to the OTP port.
-  `OCAH_OT_ASSERT_INIT(OtpRemapBaseAligned_A, (OTP_EFUSE_REMAP_BASE & OTP_PAGE_MASK) == '0)
-  `OCAH_OT_ASSERT_INIT(OtpMapInPage_A,
-                       OTP_MAP_BASE_ADDR >= OTP_BASE_ADDR && OTP_MAP_END_ADDR <= OTP_END_ADDR)
+  `OCAH_OT_ASSERT_INIT(OtpRemapBaseAligned_A, (OTP_EFUSE_REMAP_BASE & OtpPageMask) == '0)
+  `OCAH_OT_ASSERT_INIT(OtpMapInPage_A, OtpMapBaseAddr >= OtpBaseAddr && OtpMapEndAddr <= OtpEndAddr)
   `OCAH_OT_ASSERT_INIT(OtpCtrlInPage_A,
-                       OTP_CTRL_BASE_ADDR >= OTP_BASE_ADDR && OTP_CTRL_END_ADDR <= OTP_END_ADDR)
-  `OCAH_OT_ASSERT_INIT(OtpMmrInPage_A,
-                       OTP_MMR_BASE_ADDR >= OTP_BASE_ADDR && OTP_MMR_END_ADDR <= OTP_END_ADDR)
+                       OtpCtrlBaseAddr >= OtpBaseAddr && OtpCtrlEndAddr <= OtpEndAddr)
+  `OCAH_OT_ASSERT_INIT(OtpMmrInPage_A, OtpMmrBaseAddr >= OtpBaseAddr && OtpMmrEndAddr <= OtpEndAddr)
 
   //=========================================================================
   // Internal Signals
@@ -373,13 +371,13 @@ module key_manager
   );
 
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (KM_AXI_ADDR_WIDTH),
-    .AXI_DATA_WIDTH (KM_AXI_DATA_WIDTH),
+    .AXI_ADDR_WIDTH (KmAxiAddrWidth),
+    .AXI_DATA_WIDTH (KmAxiDataWidth),
     .axil_req_t     (km_axil_req_t),
     .axil_resp_t    (km_axil_resp_t),
     .RESP           (axi_pkg::RESP_SLVERR),
-    .RESP_WIDTH     (KM_AXI_DATA_WIDTH),
-    .RESP_DATA      (KM_AXI_DATA_WIDTH'('hBADCAB1E)),
+    .RESP_WIDTH     (KmAxiDataWidth),
+    .RESP_DATA      (KmAxiDataWidth'('hBADCAB1E)),
     .MAX_TRANS      (1)
   ) u_otp_err_slv (
     .clk_i       (clk_i),
@@ -392,10 +390,10 @@ module key_manager
   // upper bits from the integrator-supplied base.
   always_comb begin
     efuse_req_o         = otp_port_req[OtpForwarded];
-    efuse_req_o.aw.addr = (OTP_EFUSE_REMAP_BASE & ~OTP_PAGE_MASK) |
-                          (otp_port_req[OtpForwarded].aw.addr & OTP_PAGE_MASK);
-    efuse_req_o.ar.addr = (OTP_EFUSE_REMAP_BASE & ~OTP_PAGE_MASK) |
-                          (otp_port_req[OtpForwarded].ar.addr & OTP_PAGE_MASK);
+    efuse_req_o.aw.addr = (OTP_EFUSE_REMAP_BASE & ~OtpPageMask) |
+                          (otp_port_req[OtpForwarded].aw.addr & OtpPageMask);
+    efuse_req_o.ar.addr = (OTP_EFUSE_REMAP_BASE & ~OtpPageMask) |
+                          (otp_port_req[OtpForwarded].ar.addr & OtpPageMask);
   end
   assign otp_port_resp[OtpForwarded] = efuse_resp_i;
 

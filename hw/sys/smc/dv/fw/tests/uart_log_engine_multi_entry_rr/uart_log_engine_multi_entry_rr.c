@@ -1,19 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// smc_uart_log_engine_multi_entry_rr_test
-//
-// Round-robin arbitration test. Pre-loads every slot listed in ACTIVE with
-// tagged byte patterns, triggers all of them back-to-back and reads the
-// resulting UART byte stream via system loopback. Verifies:
-//   * Each byte tags back to a known slot (set membership)
-//   * Total byte count matches sum of triggered lengths
-//   * Every active LOG_CTRL[i] eventually hwclrs to 0
-//   * INTR_STATUS = 0
-//
-// The byte interleaving granularity across concurrently triggered entries is
-// not specified, so this test does not pin an interleave pattern: it asserts
-// set membership, total count and completion.
+/**
+ * @brief UART Log Engine Multi-Entry - Concurrent Entries Complete
+ *
+ * Verifies that when all 16 log entries are triggered back to back, the
+ * expected number of bytes looped back from UART 0 are exactly the bytes of
+ * every entry, each received once, and every entry completes without an error.
+ * The interleave of bytes across entries is not specified, so the test does not
+ * check the order or the fairness of arbitration.
+ */
 
 #include <stdint.h>
 
@@ -68,9 +64,8 @@
 #define NUM_ENTRIES 16u
 #define SLOT_SIZE (LOG_REGION_SIZE / NUM_ENTRIES)
 
-// All 16 slots are active so every LOG_CTRL[i] hwclr/hwif path and every
-// arbiter_tree req_i bit toggles. The per-slot byte pattern (i<<4)|j spans
-// 0x00..0xFF, so every AXI-Lite r.data bit toggles through the fetch path.
+// Every entry is active, and the slot tags make the payload cover every byte
+// value.
 #define NUM_ACTIVE 16u
 static const uint32_t ACTIVE[NUM_ACTIVE] = {0u, 1u, 2u,  3u,  4u,  5u,  6u,  7u,
                                             8u, 9u, 10u, 11u, 12u, 13u, 14u, 15u};
@@ -85,15 +80,12 @@ static int read_byte_with_timeout(uint8_t *out) {
     return -1;
 }
 
-// For each active slot, tag bytes so we can identify which slot they came
-// from regardless of interleave: slot i, byte j = (i << 4) | j
-// Decode by extracting (b >> 4) to get slot index.
-
 int main(void) {
     info_msg_s(0, "smc_uart_log_engine_multi_entry_rr_test start");
 
     //--------------------------------------------------------------------------
-    // Pre-load the active slots
+    // Each byte encodes its slot and offset, so the receiver can attribute it
+    // to an entry whatever the interleave
     //--------------------------------------------------------------------------
     volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
     for (uint32_t k = 0; k < NUM_ACTIVE; k++) {
@@ -104,7 +96,8 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // UART loopback + engine setup
+    // UART at the fastest rate with 8-bit words, FIFOs and internal loopback,
+    // so every byte the engine writes comes back on the receive side
     //--------------------------------------------------------------------------
     write_reg(WRAP0_CTRL_REG, 1u);
     write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u);
@@ -132,9 +125,7 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // Read all SLOT_SIZE * NUM_ACTIVE bytes; for each byte, decode slot tag
-    // and check that (a) it is one of ACTIVE, (b) within-slot byte index j is
-    // unique per slot (we only ever expect to see each (i,j) exactly once).
+    // Every received byte must belong to an active slot and arrive only once
     //--------------------------------------------------------------------------
     uint32_t total = SLOT_SIZE * NUM_ACTIVE;
     uint8_t seen_count[NUM_ENTRIES][SLOT_SIZE];
@@ -151,7 +142,6 @@ int main(void) {
         uint32_t slot = (uint32_t)(b >> 4) & 0xFu;
         uint32_t j = (uint32_t)(b & 0xFu);
 
-        // Set membership: slot must be in ACTIVE
         int active = 0;
         for (uint32_t k = 0; k < NUM_ACTIVE; k++) {
             if (ACTIVE[k] == slot) {
@@ -174,7 +164,7 @@ int main(void) {
         seen_count[slot][j] = 1u;
     }
 
-    // Confirm we saw every (slot, j) in ACTIVE
+    // No byte of an active slot may be missing
     for (uint32_t k = 0; k < NUM_ACTIVE; k++) {
         uint32_t i = ACTIVE[k];
         for (uint32_t j = 0; j < SLOT_SIZE; j++) {
@@ -188,7 +178,7 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // Every active LOG_CTRL[i] must hwclr to 0
+    // Hardware clears each entry's length when its transfer completes
     //--------------------------------------------------------------------------
     for (uint32_t k = 0; k < NUM_ACTIVE; k++) {
         uint32_t i = ACTIVE[k];
@@ -217,7 +207,4 @@ int main(void) {
 
     info_msg_s(0, "smc_uart_log_engine_multi_entry_rr_test done");
     test_pass(0);
-
-    while (1) __asm__("wfi");
-    return 0;
 }

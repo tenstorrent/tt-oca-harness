@@ -14,7 +14,8 @@ This module builds the address sets that sit next to live registers but own
 none, and that no other leaf probes:
 
 * system-CSR holes: the gaps between the remap, filter and SEP CPU control
-  blocks, and the space past the SEP CPU control extent;
+  blocks, the space past the SEP CPU control extent, and the gaps around the
+  cold and warm scratch banks;
 * the reserved row above SEP CPU control, walked one 64 KiB page at a time;
 * the upper half of the mailbox page, past the mailbox extent;
 * the space past each eFuse sibling block (interface control, token MMR);
@@ -63,7 +64,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
-from env.sep_decode_resp import Expected, expected_unbacked, sep_map_row
+from env.sep_decode_resp import Expected, expected_unbacked, logical_region, sep_map_row
 from env.sep_spec_tables import mailbox_depth
 from sep_reg_meta import (
     EFUSE_INTERFACE_CTRL,
@@ -127,6 +128,17 @@ def _slot_size(prefix: str, i: int) -> int:
     return block_size(f"{prefix}_{i}_")
 
 
+def _scratch_count(bank: str) -> int:
+    """How many SCRATCH_<n> registers the export gives ``bank``, from 0 up."""
+    n = 0
+    while True:
+        try:
+            sym(f"{bank}_SCRATCH_{n}__REG_ADDR")
+        except KeyError:
+            return n
+        n += 1
+
+
 @dataclass(frozen=True)
 class LiveWord:
     """A live 32-bit word. ``value`` None means snapshot-only (read-only)."""
@@ -175,8 +187,17 @@ REFUSE_GROUPS = (
     GROUP_SPI,
 )
 # Groups whose probes reach the system-CSR AXI-Lite port when the system CSR is
-# the point that refuses. The Lite handshake is logged for these.
+# the point that refuses. The Lite handshake is logged for these. The local
+# crossbar's ext initiator is watched for the same probes: an access that
+# sep_system_peripherals does not decode returns to the local crossbar there.
 LITE_WATCHED = (GROUP_SYSCSR, GROUP_RESERVED)
+
+# First word of the External row of the SEP CPU logical map. The local crossbar
+# sends it to sep_system_peripherals, whose peripheral crossbar forwards an
+# address outside the mailbox and system CSR windows to the local crossbar's
+# ext initiator (hw/sys/sep/doc/fabric.adoc). It is the ext-initiator watcher's
+# control.
+EXT_LOOPBACK_CTRL = logical_region("logical:external_region")[0]
 
 # TOKEN_MATCH_FAULT, the last RDL register of the eFuse token MMR.
 TOKEN_MATCH_FAULT = EFUSE_MMR.addr("TOKEN_MATCH_FAULT")
@@ -335,13 +356,44 @@ class SepUnmappedCfg:
             ),
         ):
             self.live.append(LiveWord(label, base + REMAP_ATTRS, value & REMAP_OFFSET_LO_MASK))
-        self.live.append(
-            LiveWord(
-                "sep_cpu_ctrl.SEP_NMI_VEC",
-                cpu_base + nmi_off,
-                0x1357_9BDE & SEP_CPU_CTRL.mask32("SEP_NMI_VEC"),
-            )
+        # SEP_NMI_VEC is also the Lite-port watcher's control word.
+        self.lite_ctrl = LiveWord(
+            "sep_cpu_ctrl.SEP_NMI_VEC",
+            cpu_base + nmi_off,
+            0x1357_9BDE & SEP_CPU_CTRL.mask32("SEP_NMI_VEC"),
         )
+        self.live.append(self.lite_ctrl)
+
+        # Scratch banks: the first and last SCRATCH word of each bank. A bank's
+        # extent is its RDL size, so the word one extent up from SCRATCH_0 is
+        # the first word past that bank.
+        cold = RegBlock("SEP_SCRATCH_COLD")
+        warm = RegBlock("SEP_SCRATCH_WARM")
+        cold_base = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+        warm_base = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")
+        cold_end = cold_base + block_size("SEP_SCRATCH_COLD")
+        warm_end = warm_base + block_size("SEP_SCRATCH_WARM")
+        scratch_img = cold_base + _pow2_ceil(warm_end - cold_base)
+        scratch_last = _scratch_count("SEP_SCRATCH_COLD") - 1
+        if _scratch_count("SEP_SCRATCH_WARM") - 1 != scratch_last:
+            raise RuntimeError("cold and warm scratch banks differ in SCRATCH count")
+        for label, blk, reg, value in (
+            ("sep_scratch_cold.SCRATCH_0", cold, "SCRATCH_0_", 0x5C01_D000),
+            (
+                f"sep_scratch_cold.SCRATCH_{scratch_last}",
+                cold,
+                f"SCRATCH_{scratch_last}_",
+                0x5C01_D0F7,
+            ),
+            ("sep_scratch_warm.SCRATCH_0", warm, "SCRATCH_0_", 0x5CA2_3000),
+            (
+                f"sep_scratch_warm.SCRATCH_{scratch_last}",
+                warm,
+                f"SCRATCH_{scratch_last}_",
+                0x5CA2_30F7,
+            ),
+        ):
+            self.live.append(LiveWord(label, blk.addr(reg), value & blk.mask32(reg)))
 
         for addr, note in (
             (ap_end, "first word past the AP output-remap array"),
@@ -355,6 +407,10 @@ class SepUnmappedCfg:
             (cpu_base - 4, "last word before SEP CPU control"),
             (cpu_base + cpu_size, "first word past the SEP CPU control extent"),
             (self.cpu_img + nmi_off, "SEP_NMI_VEC, one SEP CPU control image up"),
+            (cold_end, "cold scratch SCRATCH_0, one bank extent up"),
+            (warm_base - 4, "last word before the warm scratch bank"),
+            (warm_end, "warm scratch SCRATCH_0, one bank extent up"),
+            (scratch_img - 4, "last word below one scratch-pair image up"),
         ):
             for op in ("r", "w"):
                 self.probes.append(Probe(g, addr, op, note))
@@ -606,6 +662,7 @@ class ProbeResult:
     rdata: int
     timed_out: bool
     lite_reached: bool | None = None
+    ext_reached: bool | None = None
     alias: str | None = None
     changed: tuple[str, ...] = ()
 
@@ -672,6 +729,58 @@ class SepUnmappedAccess:
             else:
                 self.decerr_reported += 1
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF, seq.timed_out
+
+    async def lite_control(self) -> list[str]:
+        """Watch one write and one read of a programmed system-CSR word.
+
+        Each must show its handshake at the system-CSR AXI-Lite port, so a
+        watcher that sees nothing cannot pass CHK-SYSCSR-HOLE-DECODE. The write
+        carries the word's programmed value, so the snapshot holds.
+        """
+        w = self.cfg.lite_ctrl
+        fails: list[str] = []
+        for op in ("w", "r"):
+            task, lite = self.test.watch_sys_csr_lite(write=op == "w")
+            try:
+                resp, _d, to = await self.access(op, w.addr, wdata=w.value, may_refuse=False)
+            finally:
+                task.kill()
+            where = f"control {op} {w.name} 0x{w.addr:08x}"
+            if to or resp != RESP_OKAY:
+                fails.append(f"{where} resp={resp} timed_out={to}")
+            elif not any((a & ~0x7) == (w.addr & ~0x7) for a in lite):
+                fails.append(f"{where} was not seen at the system-CSR AXI-Lite port")
+        return fails
+
+    async def ext_control(self) -> list[str]:
+        """Watch one write and one read of ``EXT_LOOPBACK_CTRL``.
+
+        Each must show its handshake at the local crossbar's ext initiator, so a
+        watcher that sees nothing cannot pass CHK-SYS-RESERVED-NO-LOOPBACK. The
+        response is not graded: the contract here is the route only.
+        """
+        fails: list[str] = []
+        for op in ("w", "r"):
+            task, ext = self.test.watch_xbar_ext_in(write=op == "w")
+            try:
+                resp, _d, to = await self.access(
+                    op, EXT_LOOPBACK_CTRL, wdata=PROBE_WDATA, may_refuse=True
+                )
+            finally:
+                task.kill()
+            where = f"control {op} 0x{EXT_LOOPBACK_CTRL:08x}"
+            self.log.info(
+                "UNMAPPED-EXT-CONTROL: %s resp=%s timed_out=%s; %d handshake(s) at the ext initiator",
+                where,
+                RESP_NAME.get(resp, resp),
+                to,
+                len(ext),
+            )
+            if to:
+                fails.append(f"{where} timed out")
+            elif not any((a & ~0x7) == (EXT_LOOPBACK_CTRL & ~0x7) for a in ext):
+                fails.append(f"{where} was not seen at the local crossbar's ext initiator")
+        return fails
 
     async def program_live(self) -> list[str]:
         """Write every programmed word, then snapshot every live word.
@@ -744,14 +853,17 @@ class SepUnmappedAccess:
         watch = p.group in LITE_WATCHED
         if watch:
             task, lite = self.test.watch_sys_csr_lite(write=p.op == "w")
+            ext_task, ext = self.test.watch_xbar_ext_in(write=p.op == "w")
         try:
             resp, rdata, to = await self.access(p.op, p.addr, wdata=PROBE_WDATA, may_refuse=True)
         finally:
             if watch:
                 task.kill()
+                ext_task.kill()
         res = ProbeResult(p, resp, rdata, to)
         if watch:
             res.lite_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in lite)
+            res.ext_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in ext)
         if p.op == "r" and not to:
             res.alias = self.read_alias(rdata)
         if p.op == "w":

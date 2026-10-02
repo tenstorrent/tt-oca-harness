@@ -129,7 +129,7 @@ endif::backend-pdf[]
 === FIPS Provenance
 
 The internal seed adapter attaches the provisional constant
-`DRBG_CSRNG_SEED_FIPS_PROVISIONAL = 1`. CSRNG/EDN output provenance is retained
+`DrbgCsrngSeedFipsProvisional = 1`. CSRNG/EDN output provenance is retained
 in each endpoint FIFO and forwarded through `tuser` into the native client's
 `edn_fips`. OTBN RND checks the returned tag and can report `rnd_fips_chk_fail`.
 The external mux also attaches 1 unconditionally. Neither constant measures

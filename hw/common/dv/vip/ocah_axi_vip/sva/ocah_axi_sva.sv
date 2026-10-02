@@ -217,264 +217,259 @@ module ocah_axi_sva #(
   `OCAH_COVER(OCAH_AXI_C_R_ERR_RESP, en_i && rvalid && rready && rresp inside {2'b10, 2'b11}, aclk,
               !aresetn)
 
-  generate
-    if (!IS_LITE) begin : gen_axi4_rules
+  if (!IS_LITE) begin : gen_axi4_rules
 
-      // --------------------------------------------------------------
-      // Address-channel burst legality, checked at the AW/AR handshake.
-      // --------------------------------------------------------------
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_BURST_LEGAL,
-                     (en_i && awvalid && awready) |-> (awburst != 2'b11), aclk, !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_SIZE_LEGAL,
-                     (en_i && awvalid && awready) |-> ((32'd8 << awsize) <= DATA_WIDTH), aclk,
-                     !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_LEN_FIXED_MAX16,
-                     (en_i && awvalid && awready && (awburst == BurstFixed)) |-> (awlen <= 8'd15),
-                     aclk, !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_LEN_WRAP_LEGAL,
-                     (en_i && awvalid && awready && (awburst == BurstWrap)) |->
-                (awlen inside {8'd1, 8'd3, 8'd7, 8'd15}),
-                     aclk, !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_WRAP_ALIGNED,
-                     (en_i && awvalid && awready && (awburst == BurstWrap)) |->
-                ((awaddr & ((ADDR_WIDTH'(1) << awsize) - 1)) == '0),
-                     aclk, !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_4KB_BOUNDARY,
-                     (en_i && awvalid && awready && (awburst == BurstIncr)) |->
-                ((((13'(awaddr[11:0]) >> awsize) << awsize)
-                  + ((13'(awlen) + 13'd1) << awsize)) <= 13'h1000),
-                     aclk, !aresetn)
+    // --------------------------------------------------------------
+    // Address-channel burst legality, checked at the AW/AR handshake.
+    // --------------------------------------------------------------
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_BURST_LEGAL,
+                   (en_i && awvalid && awready) |-> (awburst != 2'b11), aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_SIZE_LEGAL,
+                   (en_i && awvalid && awready) |-> ((32'd8 << awsize) <= DATA_WIDTH), aclk,
+                   !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_LEN_FIXED_MAX16,
+                   (en_i && awvalid && awready && (awburst == BurstFixed)) |-> (awlen <= 8'd15),
+                   aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_LEN_WRAP_LEGAL,
+                   (en_i && awvalid && awready && (awburst == BurstWrap)) |->
+              (awlen inside {8'd1, 8'd3, 8'd7, 8'd15}),
+                   aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_WRAP_ALIGNED,
+                   (en_i && awvalid && awready && (awburst == BurstWrap)) |->
+              ((awaddr & ((ADDR_WIDTH'(1) << awsize) - 1)) == '0),
+                   aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_4KB_BOUNDARY,
+                   (en_i && awvalid && awready && (awburst == BurstIncr)) |->
+              ((((13'(awaddr[11:0]) >> awsize) << awsize)
+                + ((13'(awlen) + 13'd1) << awsize)) <= 13'h1000),
+                   aclk, !aresetn)
 
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_BURST_LEGAL,
-                     (en_i && arvalid && arready) |-> (arburst != 2'b11), aclk, !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_SIZE_LEGAL,
-                     (en_i && arvalid && arready) |-> ((32'd8 << arsize) <= DATA_WIDTH), aclk,
-                     !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_LEN_FIXED_MAX16,
-                     (en_i && arvalid && arready && (arburst == BurstFixed)) |-> (arlen <= 8'd15),
-                     aclk, !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_LEN_WRAP_LEGAL,
-                     (en_i && arvalid && arready && (arburst == BurstWrap)) |->
-                (arlen inside {8'd1, 8'd3, 8'd7, 8'd15}),
-                     aclk, !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_WRAP_ALIGNED,
-                     (en_i && arvalid && arready && (arburst == BurstWrap)) |->
-                ((araddr & ((ADDR_WIDTH'(1) << arsize) - 1)) == '0),
-                     aclk, !aresetn)
-      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_4KB_BOUNDARY,
-                     (en_i && arvalid && arready && (arburst == BurstIncr)) |->
-                ((((13'(araddr[11:0]) >> arsize) << arsize)
-                  + ((13'(arlen) + 13'd1) << arsize)) <= 13'h1000),
-                     aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_BURST_LEGAL,
+                   (en_i && arvalid && arready) |-> (arburst != 2'b11), aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_SIZE_LEGAL,
+                   (en_i && arvalid && arready) |-> ((32'd8 << arsize) <= DATA_WIDTH), aclk,
+                   !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_LEN_FIXED_MAX16,
+                   (en_i && arvalid && arready && (arburst == BurstFixed)) |-> (arlen <= 8'd15),
+                   aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_LEN_WRAP_LEGAL,
+                   (en_i && arvalid && arready && (arburst == BurstWrap)) |->
+              (arlen inside {8'd1, 8'd3, 8'd7, 8'd15}),
+                   aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_WRAP_ALIGNED,
+                   (en_i && arvalid && arready && (arburst == BurstWrap)) |->
+              ((araddr & ((ADDR_WIDTH'(1) << arsize) - 1)) == '0),
+                   aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_4KB_BOUNDARY,
+                   (en_i && arvalid && arready && (arburst == BurstIncr)) |->
+              ((((13'(araddr[11:0]) >> arsize) << arsize)
+                + ((13'(arlen) + 13'd1) << arsize)) <= 13'h1000),
+                   aclk, !aresetn)
 
-      `OCAH_COVER(OCAH_AXI_C_AW_MULTI_BEAT, en_i && awvalid && awready && (awlen > 0), aclk,
-                  !aresetn)
-      `OCAH_COVER(OCAH_AXI_C_AR_MULTI_BEAT, en_i && arvalid && arready && (arlen > 0), aclk,
-                  !aresetn)
+    `OCAH_COVER(OCAH_AXI_C_AW_MULTI_BEAT, en_i && awvalid && awready && (awlen > 0), aclk, !aresetn)
+    `OCAH_COVER(OCAH_AXI_C_AR_MULTI_BEAT, en_i && arvalid && arready && (arlen > 0), aclk, !aresetn)
 
 `ifdef SIMULATION
-      // --------------------------------------------------------------
-      // Stateful burst/ID tracking (simulation-only). Ordering within the
-      // procedural block is load-bearing: W is processed before B and AR
-      // before R, so a same-cycle completion is visible to the dependent
-      // check. All state flushes on reset.
-      // --------------------------------------------------------------
-      typedef struct {
-        logic [ID_WIDTH-1:0]   id;
-        logic [ADDR_WIDTH-1:0] addr;
-        logic [7:0]            len;
-        logic [2:0]            size;
-        logic [1:0]            burst;
-        logic                  lock;
-      } aw_info_t;
+    // --------------------------------------------------------------
+    // Stateful burst/ID tracking (simulation-only). Ordering within the
+    // procedural block is load-bearing: W is processed before B and AR
+    // before R, so a same-cycle completion is visible to the dependent
+    // check. All state flushes on reset.
+    // --------------------------------------------------------------
+    typedef struct {
+      logic [ID_WIDTH-1:0]   id;
+      logic [ADDR_WIDTH-1:0] addr;
+      logic [7:0]            len;
+      logic [2:0]            size;
+      logic [1:0]            burst;
+      logic                  lock;
+    } aw_info_t;
 
-      typedef struct {
-        logic [ID_WIDTH-1:0] id;
-        logic                lock;
-      } wr_done_t;
+    typedef struct {
+      logic [ID_WIDTH-1:0] id;
+      logic                lock;
+    } wr_done_t;
 
-      aw_info_t   aw_q[$];          // accepted AWs awaiting write data
-      wr_done_t   wr_done_q[$];     // data-complete writes awaiting B
-      int unsigned early_wburst_len_q[$];  // W bursts completed before their AW
-      int unsigned w_beat_idx = 0;
-      bit          w_burst_checkable = 1'b0;
-      // Working variables for the procedural checks below (declared at
-      // generate scope; in-block declarations with initializers would be
-      // static-initialized once, retaining stale values across cycles).
-      int          wr_match_idx;
-      bit          rd_id_known;
-      int unsigned early_wlen;
+    aw_info_t   aw_q[$];          // accepted AWs awaiting write data
+    wr_done_t   wr_done_q[$];     // data-complete writes awaiting B
+    int unsigned early_wburst_len_q[$];  // W bursts completed before their AW
+    int unsigned w_beat_idx = 0;
+    bit          w_burst_checkable = 1'b0;
+    // Working variables for the procedural checks below (declared at
+    // generate scope; in-block declarations with initializers would be
+    // static-initialized once, retaining stale values across cycles).
+    int          wr_match_idx;
+    bit          rd_id_known;
+    int unsigned early_wlen;
 
-      typedef struct {
-        logic [7:0] len;
-        logic       lock;
-      } ar_info_t;
+    typedef struct {
+      logic [7:0] len;
+      logic       lock;
+    } ar_info_t;
 
-      ar_info_t    rd_q[logic [ID_WIDTH-1:0]][$];  // per-ID accepted ARs
-      int unsigned r_beat_idx[logic [ID_WIDTH-1:0]];
+    ar_info_t    rd_q[logic [ID_WIDTH-1:0]][$];  // per-ID accepted ARs
+    int unsigned r_beat_idx[logic [ID_WIDTH-1:0]];
 
-      // Active byte lanes for one write beat (IHI 0022 A3.4.3). WRAP lane
-      // windows are not modeled; WRAP beats return the all-lanes mask.
-      function automatic logic [StrbWidth-1:0] active_lanes(
-          input logic [ADDR_WIDTH-1:0] addr, input logic [2:0] size, input logic [1:0] burst,
-          input int unsigned beat_idx);
-        logic [ADDR_WIDTH-1:0] aligned;
-        logic [ADDR_WIDTH-1:0] beat_addr;
-        int unsigned           num_bytes;
-        int unsigned           lane_lo;
-        int unsigned           lane_base;
-        logic [StrbWidth-1:0]  mask;
-        num_bytes = 1 << size;
-        aligned   = (addr >> size) << size;
-        if (burst == BurstWrap) return '1;
-        if (burst == BurstFixed || beat_idx == 0) beat_addr = addr;
-        else beat_addr = aligned + ADDR_WIDTH'(beat_idx * num_bytes);
-        lane_lo   = int'(beat_addr % StrbWidth);
-        lane_base = int'(((beat_addr >> size) << size) % StrbWidth);
-        mask = '0;
-        for (int unsigned lane = 0; lane < StrbWidth; lane++) begin
-          if (lane >= lane_lo && lane < lane_base + num_bytes) mask[lane] = 1'b1;
-        end
-        return mask;
-      endfunction
+    // Active byte lanes for one write beat (IHI 0022 A3.4.3). WRAP lane
+    // windows are not modeled; WRAP beats return the all-lanes mask.
+    function automatic logic [StrbWidth-1:0] active_lanes(
+        input logic [ADDR_WIDTH-1:0] addr, input logic [2:0] size, input logic [1:0] burst,
+        input int unsigned beat_idx);
+      logic [ADDR_WIDTH-1:0] aligned;
+      logic [ADDR_WIDTH-1:0] beat_addr;
+      int unsigned           num_bytes;
+      int unsigned           lane_lo;
+      int unsigned           lane_base;
+      logic [StrbWidth-1:0]  mask;
+      num_bytes = 1 << size;
+      aligned   = (addr >> size) << size;
+      if (burst == BurstWrap) return '1;
+      if (burst == BurstFixed || beat_idx == 0) beat_addr = addr;
+      else beat_addr = aligned + ADDR_WIDTH'(beat_idx * num_bytes);
+      lane_lo   = int'(beat_addr % StrbWidth);
+      lane_base = int'(((beat_addr >> size) << size) % StrbWidth);
+      mask = '0;
+      for (int unsigned lane = 0; lane < StrbWidth; lane++) begin
+        if (lane >= lane_lo && lane < lane_base + num_bytes) mask[lane] = 1'b1;
+      end
+      return mask;
+    endfunction
 
-      always @(posedge aclk) begin
-        if (aresetn !== 1'b1) begin
-          aw_q.delete();
-          wr_done_q.delete();
-          early_wburst_len_q.delete();
-          w_beat_idx = 0;
-          w_burst_checkable = 1'b0;
-          rd_q.delete();
-          r_beat_idx.delete();
-        end else if (en_i === 1'b1) begin
-          // -- Write address acceptance -------------------------------
-          if (awvalid === 1'b1 && awready === 1'b1) begin
-            if (early_wburst_len_q.size() > 0) begin
-              // A W burst completed before this AW (legal: A3.3).
-              // Check its length retroactively and move it straight
-              // to the response-pending queue with the AW's id/lock.
-              early_wlen = early_wburst_len_q.pop_front();
-              `OCAH_SVA_ASSERT_I(OCAH_AXI_W_LAST_POSITION_EARLY, (early_wlen == int'(awlen) + 1))
-              wr_done_q.push_back('{id: awid, lock: awlock});
-            end else begin
-              aw_q.push_back('{id: awid, addr: awaddr, len: awlen, size: awsize,
-                             burst: awburst, lock: awlock});
-            end
+    always @(posedge aclk) begin
+      if (aresetn !== 1'b1) begin
+        aw_q.delete();
+        wr_done_q.delete();
+        early_wburst_len_q.delete();
+        w_beat_idx = 0;
+        w_burst_checkable = 1'b0;
+        rd_q.delete();
+        r_beat_idx.delete();
+      end else if (en_i === 1'b1) begin
+        // -- Write address acceptance -------------------------------
+        if (awvalid === 1'b1 && awready === 1'b1) begin
+          if (early_wburst_len_q.size() > 0) begin
+            // A W burst completed before this AW (legal: A3.3).
+            // Check its length retroactively and move it straight
+            // to the response-pending queue with the AW's id/lock.
+            early_wlen = early_wburst_len_q.pop_front();
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_W_LAST_POSITION_EARLY, (early_wlen == int'(awlen) + 1))
+            wr_done_q.push_back('{id: awid, lock: awlock});
+          end else begin
+            aw_q.push_back('{id: awid, addr: awaddr, len: awlen, size: awsize, burst: awburst,
+                           lock: awlock});
           end
+        end
 
-          // -- Write data beats --------------------------------------
-          if (wvalid === 1'b1 && wready === 1'b1) begin
-            if (w_beat_idx == 0) w_burst_checkable = (aw_q.size() > 0);
+        // -- Write data beats --------------------------------------
+        if (wvalid === 1'b1 && wready === 1'b1) begin
+          if (w_beat_idx == 0) w_burst_checkable = (aw_q.size() > 0);
+          if (w_burst_checkable) begin
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_W_LAST_POSITION,
+                               (wlast === (w_beat_idx == int'(aw_q[0].len))))
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_W_STRB_IN_LANES, ((wstrb & ~active_lanes(
+                               aw_q[0].addr, aw_q[0].size, aw_q[0].burst, w_beat_idx)) == '0))
+          end
+          if (wlast === 1'b1) begin
             if (w_burst_checkable) begin
-              `OCAH_SVA_ASSERT_I(OCAH_AXI_W_LAST_POSITION,
-                                 (wlast === (w_beat_idx == int'(aw_q[0].len))))
-              `OCAH_SVA_ASSERT_I(OCAH_AXI_W_STRB_IN_LANES, ((wstrb & ~active_lanes(
-                                 aw_q[0].addr, aw_q[0].size, aw_q[0].burst, w_beat_idx)) == '0))
-            end
-            if (wlast === 1'b1) begin
-              if (w_burst_checkable) begin
-                wr_done_q.push_back('{id: aw_q[0].id, lock: aw_q[0].lock});
-                void'(aw_q.pop_front());
-              end else begin
-                // No AW yet: retro-checked at AW acceptance.
-                early_wburst_len_q.push_back(w_beat_idx + 1);
-              end
-              w_beat_idx = 0;
-              w_burst_checkable = 1'b0;
+              wr_done_q.push_back('{id: aw_q[0].id, lock: aw_q[0].lock});
+              void'(aw_q.pop_front());
             end else begin
-              w_beat_idx++;
+              // No AW yet: retro-checked at AW acceptance.
+              early_wburst_len_q.push_back(w_beat_idx + 1);
             end
+            w_beat_idx = 0;
+            w_burst_checkable = 1'b0;
+          end else begin
+            w_beat_idx++;
           end
-
-          // -- Write response ----------------------------------------
-          if (bvalid === 1'b1 && bready === 1'b1) begin
-            wr_match_idx = -1;
-            `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW, (wr_done_q.size() > 0))
-            foreach (wr_done_q[i]) begin
-              if (wr_match_idx == -1 && wr_done_q[i].id === bid) wr_match_idx = i;
-            end
-            `OCAH_SVA_ASSERT_I(OCAH_AXI_B_ID_OUTSTANDING, (wr_match_idx != -1))
-            if (wr_match_idx != -1) begin
-              `OCAH_SVA_ASSERT_I(
-                  OCAH_AXI_B_RESP_EXOKAY_EXCL,
-                  ((bresp !== RespExokay) || (wr_done_q[wr_match_idx].lock === 1'b1)))
-              wr_done_q.delete(wr_match_idx);
-            end
-          end
-
-          // -- Read address acceptance -------------------------------
-          if (arvalid === 1'b1 && arready === 1'b1) begin
-            rd_q[arid].push_back('{len: arlen, lock: arlock});
-            if (!r_beat_idx.exists(arid)) r_beat_idx[arid] = 0;
-          end
-
-          // -- Read data beats ---------------------------------------
-          if (rvalid === 1'b1 && rready === 1'b1) begin
-            rd_id_known = rd_q.exists(rid) && (rd_q[rid].size() > 0);
-            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_ID_OUTSTANDING, rd_id_known)
-            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, rd_id_known)
-            if (rd_id_known) begin
-              `OCAH_SVA_ASSERT_I(OCAH_AXI_R_LAST_POSITION,
-                                 (rlast === (r_beat_idx[rid] == int'(rd_q[rid][0].len))))
-              `OCAH_SVA_ASSERT_I(OCAH_AXI_R_RESP_EXOKAY_EXCL,
-                                 ((rresp !== RespExokay) || (rd_q[rid][0].lock === 1'b1)))
-              if (rlast === 1'b1) begin
-                void'(rd_q[rid].pop_front());
-                r_beat_idx[rid] = 0;
-              end else begin
-                r_beat_idx[rid]++;
-              end
-            end
-          end
-
-          // -- Outstanding-depth sanity (checker capacity, not AXI) --
-          `OCAH_SVA_ASSERT_I(OCAH_AXI_AW_OUTSTANDING_DEPTH,
-                             (aw_q.size() + wr_done_q.size() <= 2 * MAX_OUTSTANDING))
         end
+
+        // -- Write response ----------------------------------------
+        if (bvalid === 1'b1 && bready === 1'b1) begin
+          wr_match_idx = -1;
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW, (wr_done_q.size() > 0))
+          foreach (wr_done_q[i]) begin
+            if (wr_match_idx == -1 && wr_done_q[i].id === bid) wr_match_idx = i;
+          end
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_B_ID_OUTSTANDING, (wr_match_idx != -1))
+          if (wr_match_idx != -1) begin
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_B_RESP_EXOKAY_EXCL,
+                               ((bresp !== RespExokay) || (wr_done_q[wr_match_idx].lock === 1'b1)))
+            wr_done_q.delete(wr_match_idx);
+          end
+        end
+
+        // -- Read address acceptance -------------------------------
+        if (arvalid === 1'b1 && arready === 1'b1) begin
+          rd_q[arid].push_back('{len: arlen, lock: arlock});
+          if (!r_beat_idx.exists(arid)) r_beat_idx[arid] = 0;
+        end
+
+        // -- Read data beats ---------------------------------------
+        if (rvalid === 1'b1 && rready === 1'b1) begin
+          rd_id_known = rd_q.exists(rid) && (rd_q[rid].size() > 0);
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_ID_OUTSTANDING, rd_id_known)
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, rd_id_known)
+          if (rd_id_known) begin
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_LAST_POSITION,
+                               (rlast === (r_beat_idx[rid] == int'(rd_q[rid][0].len))))
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_RESP_EXOKAY_EXCL,
+                               ((rresp !== RespExokay) || (rd_q[rid][0].lock === 1'b1)))
+            if (rlast === 1'b1) begin
+              void'(rd_q[rid].pop_front());
+              r_beat_idx[rid] = 0;
+            end else begin
+              r_beat_idx[rid]++;
+            end
+          end
+        end
+
+        // -- Outstanding-depth sanity (checker capacity, not AXI) --
+        `OCAH_SVA_ASSERT_I(OCAH_AXI_AW_OUTSTANDING_DEPTH,
+                           (aw_q.size() + wr_done_q.size() <= 2 * MAX_OUTSTANDING))
       end
+    end
 `endif  // SIMULATION
 
-    end else begin : gen_lite_rules
+  end else begin : gen_lite_rules
 
-      // --------------------------------------------------------------
-      // AXI4-Lite response legality (IHI 0022 B1.1.1: EXOKAY undefined).
-      // --------------------------------------------------------------
-      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXIL_B_RESP_LEGAL,
-                     (en_i && bvalid && bready) |-> (bresp != RespExokay), aclk, !aresetn)
-      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXIL_R_RESP_LEGAL,
-                     (en_i && rvalid && rready) |-> (rresp != RespExokay), aclk, !aresetn)
+    // --------------------------------------------------------------
+    // AXI4-Lite response legality (IHI 0022 B1.1.1: EXOKAY undefined).
+    // --------------------------------------------------------------
+    `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXIL_B_RESP_LEGAL,
+                   (en_i && bvalid && bready) |-> (bresp != RespExokay), aclk, !aresetn)
+    `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXIL_R_RESP_LEGAL,
+                   (en_i && rvalid && rready) |-> (rresp != RespExokay), aclk, !aresetn)
 
 `ifdef SIMULATION
-      // Response-ordering counters (same same-cycle ordering note as AXI4).
-      int unsigned lite_wr_addr_cnt = 0;
-      int unsigned lite_wr_data_cnt = 0;
-      int unsigned lite_rd_cnt      = 0;
+    // Response-ordering counters (same same-cycle ordering note as AXI4).
+    int unsigned lite_wr_addr_cnt = 0;
+    int unsigned lite_wr_data_cnt = 0;
+    int unsigned lite_rd_cnt      = 0;
 
-      always @(posedge aclk) begin
-        if (aresetn !== 1'b1) begin
-          lite_wr_addr_cnt = 0;
-          lite_wr_data_cnt = 0;
-          lite_rd_cnt      = 0;
-        end else if (en_i === 1'b1) begin
-          if (awvalid === 1'b1 && awready === 1'b1) lite_wr_addr_cnt++;
-          if (wvalid === 1'b1 && wready === 1'b1) lite_wr_data_cnt++;
-          if (arvalid === 1'b1 && arready === 1'b1) lite_rd_cnt++;
-          if (bvalid === 1'b1 && bready === 1'b1) begin
-            `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW,
-                               (lite_wr_addr_cnt > 0 && lite_wr_data_cnt > 0))
-            if (lite_wr_addr_cnt > 0) lite_wr_addr_cnt--;
-            if (lite_wr_data_cnt > 0) lite_wr_data_cnt--;
-          end
-          if (rvalid === 1'b1 && rready === 1'b1) begin
-            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, (lite_rd_cnt > 0))
-            if (lite_rd_cnt > 0) lite_rd_cnt--;
-          end
+    always @(posedge aclk) begin
+      if (aresetn !== 1'b1) begin
+        lite_wr_addr_cnt = 0;
+        lite_wr_data_cnt = 0;
+        lite_rd_cnt      = 0;
+      end else if (en_i === 1'b1) begin
+        if (awvalid === 1'b1 && awready === 1'b1) lite_wr_addr_cnt++;
+        if (wvalid === 1'b1 && wready === 1'b1) lite_wr_data_cnt++;
+        if (arvalid === 1'b1 && arready === 1'b1) lite_rd_cnt++;
+        if (bvalid === 1'b1 && bready === 1'b1) begin
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW,
+                             (lite_wr_addr_cnt > 0 && lite_wr_data_cnt > 0))
+          if (lite_wr_addr_cnt > 0) lite_wr_addr_cnt--;
+          if (lite_wr_data_cnt > 0) lite_wr_data_cnt--;
+        end
+        if (rvalid === 1'b1 && rready === 1'b1) begin
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, (lite_rd_cnt > 0))
+          if (lite_rd_cnt > 0) lite_rd_cnt--;
         end
       end
+    end
 `endif  // SIMULATION
 
-    end
-  endgenerate
+  end
 
 endmodule : ocah_axi_sva

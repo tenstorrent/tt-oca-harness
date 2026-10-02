@@ -268,39 +268,39 @@ module avsbus_controller #(
 
   // AVS_Mdata (master subframe) field enums for waving, debug:
   typedef enum logic [1:0] {
-    CommitWrite = 2'b00,
-    HoldWrite   = 2'b01,
-    Read        = 2'b11
-  } cmd_type_t;
+    COMMIT_WRITE = 2'b00,
+    HOLD_WRITE   = 2'b01,
+    READ         = 2'b11
+  } cmd_type_e;
 
   typedef enum logic {
-    AvsBus = 1'b0,
-    ManufacturerSpec = 1'b1
-  } cmd_group_t;
+    AVS_BUS = 1'b0,
+    MANUFACTURER_SPEC = 1'b1
+  } cmd_group_e;
 
   typedef enum logic [3:0] {
-    Voltage     = 4'b0000,
-    Transition  = 4'b0001,
-    Current     = 4'b0010,
-    Temperature = 4'b0011,
-    ResetVolt   = 4'b0100,
-    PowerMode   = 4'b0101,
-    Status      = 4'b1110,
-    Version     = 4'b1111
-  } cmd_data_type_t;
+    VOLTAGE     = 4'b0000,
+    TRANSITION  = 4'b0001,
+    CURRENT     = 4'b0010,
+    TEMPERATURE = 4'b0011,
+    RESET_VOLT  = 4'b0100,
+    POWER_MODE  = 4'b0101,
+    STATUS      = 4'b1110,
+    VERSION     = 4'b1111
+  } cmd_data_type_e;
 
   logic [1:0] CmdPreamble;
-  cmd_type_t CmdType;
-  cmd_group_t CmdGroup;
-  cmd_data_type_t CmdDataType;
+  cmd_type_e CmdType;
+  cmd_group_e CmdGroup;
+  cmd_data_type_e CmdDataType;
   logic [3:0] CmdSelect;
   logic [15:0] CmdData;
   logic [2:0] CmdCRC;
 
   assign CmdPreamble = avs_mdata_transmit_frame[31:30];
-  assign CmdType = cmd_type_t'(avs_mdata_transmit_frame[29:28]);
-  assign CmdGroup = cmd_group_t'(avs_mdata_transmit_frame[27]);
-  assign CmdDataType = cmd_data_type_t'(avs_mdata_transmit_frame[26:23]);
+  assign CmdType = cmd_type_e'(avs_mdata_transmit_frame[29:28]);
+  assign CmdGroup = cmd_group_e'(avs_mdata_transmit_frame[27]);
+  assign CmdDataType = cmd_data_type_e'(avs_mdata_transmit_frame[26:23]);
   assign CmdSelect = avs_mdata_transmit_frame[22:19];
   assign CmdData = avs_mdata_transmit_frame[18:3];
   assign CmdCRC = avs_mdata_transmit_frame[2:0];
@@ -308,13 +308,13 @@ module avsbus_controller #(
 
   // AVS_Sdata (slave subframe) field enums:
   typedef enum logic [1:0] {
-    SlaveAckActionPerformed     = 2'b00,
-    SlaveAckResourceUnavailable = 2'b01,
-    SlaveAckBadCRC              = 2'b10,
-    SlaveAckBadDataOrSelector   = 2'b11
-  } slave_ack_t;
-  slave_ack_t slave_ack;
-  assign slave_ack = slave_ack_t'(avs_sdata_capture[31:30]);
+    SLAVE_ACK_ACTION_PERFORMED     = 2'b00,
+    SLAVE_ACK_RESOURCE_UNAVAILABLE = 2'b01,
+    SLAVE_ACK_BAD_CRC              = 2'b10,
+    SLAVE_ACK_BAD_DATA_OR_SELECTOR = 2'b11
+  } slave_ack_e;
+  slave_ack_e slave_ack;
+  assign slave_ack = slave_ack_e'(avs_sdata_capture[31:30]);
 
 
   // AVS FSM states:
@@ -336,10 +336,10 @@ module avsbus_controller #(
     AVS_RETRY_SHIFT_RECV_SUBFRAME          = 17'b00100000000000000,
     AVS_RETRY_END_RECV_SUBFRAME            = 17'b01000000000000000,
     AVS_PROCESS_PREVIOUS_SDATA             = 17'b10000000000000000
-  } state_t;
+  } state_e;
 
-  state_t cur_state, next_state, cur_state_RS_apb_clk;
-  logic [$bits(state_t)-1:0] cur_state_RS_apb_clk_logic;
+  state_e cur_state, next_state, cur_state_RS_apb_clk;
+  logic [$bits(state_e)-1:0] cur_state_RS_apb_clk_logic;
 
   assign cur_state_debug_o = cur_state_RS_apb_clk_logic;
 
@@ -354,8 +354,8 @@ module avsbus_controller #(
   avsbus_controller_pkg::rule_t [0:0] addr_map;
   assign addr_map[0] = '{
           idx: 0,
-          start_addr: avsbus_controller_pkg::ADDR_WIDTH'(32'h0000_0000),
-          end_addr: avsbus_controller_pkg::ADDR_WIDTH'(32'hFFFF_FFFF)
+          start_addr: avsbus_controller_pkg::AddrWidth'(32'h0000_0000),
+          end_addr: avsbus_controller_pkg::AddrWidth'(32'hFFFF_FFFF)
       };
 
 
@@ -366,8 +366,8 @@ module avsbus_controller #(
   axi_lite_to_apb #(
     .NoApbSlaves(1),
     .NoRules(1),
-    .AddrWidth(avsbus_controller_pkg::ADDR_WIDTH),
-    .DataWidth(avsbus_controller_pkg::DATA_WIDTH),
+    .AddrWidth(avsbus_controller_pkg::AddrWidth),
+    .DataWidth(avsbus_controller_pkg::DataWidth),
     .PipelineRequest(1'b0),
     .PipelineResponse(1'b0),
     .axi_lite_req_t(avsbus_controller_pkg::avsbus_axil_req_t),
@@ -668,7 +668,7 @@ module avsbus_controller #(
     .rst_dst_ni(reset_n_apb_clk_syncd),
     .data_o(cur_state_RS_apb_clk_logic)
   );
-  assign cur_state_RS_apb_clk = state_t'(cur_state_RS_apb_clk_logic);
+  assign cur_state_RS_apb_clk = state_e'(cur_state_RS_apb_clk_logic);
 
   prim_sync_data_autohs #(
     .WIDTH($size(R_avs_cfg_1_F_clk_divider_value)),
@@ -1660,8 +1660,8 @@ module avsbus_controller #(
         cur_state == AVS_PROCESS_PREVIOUS_SDATA )
     begin
       avs_retry_condition_detected = ~crc_check_good ||
-                                      slave_ack == SlaveAckResourceUnavailable ||
-                                      slave_ack == SlaveAckBadCRC ||
+                                      slave_ack == SLAVE_ACK_RESOURCE_UNAVAILABLE ||
+                                      slave_ack == SLAVE_ACK_BAD_CRC ||
                                       avs_sdata_capture[SdataValidFrameBit] == 1'b1 ;
     end else begin
       avs_retry_condition_detected = 1'b0;

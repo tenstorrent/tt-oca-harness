@@ -58,15 +58,14 @@ scratch-register access. It then configures the outbound filter window used by
 later firmware status traffic and programs PMP regions for the Boot ROM, DCCM,
 status mailbox, SEP SRAM, SEP peripherals, and ICCM.
 
-The current `vector.S` labels PMP entry 6 as SMC MMIO, but programs
-`0xC000_0000` through `0xCFFF_FFFF`. SEP actually accesses SMC through
-`0x4000_0000`, so this entry does not protect the SEP-visible SMC aperture. The
-PMP table must be corrected before it can be treated as the final SMC access
-policy.
+The cold policy grants the SEP-visible SMC boot aperture at `0x4000_0000`
+through `0x407F_FFFF`. This covers every SMC register and SRAM location the ROM
+uses without granting the separate SMU aperture.
 
-`PMP_ENABLE` controls whether these entries are programmed. `PMP_LOCK` controls
-their lock bits. The production Makefile defaults to PMP enabled and unlocked;
-an integrator must select the final lock policy for the immutable image.
+`PMP_ENABLE` controls whether these entries are programmed. Enabled entries are
+locked, bound to machine mode with Smepmp `MMWP`, and remain non-executable
+except for the Boot ROM until the selected BL1 destination is released at
+hand-off.
 
 === Memory-health gate
 
@@ -95,12 +94,14 @@ region, but this simulation choice does not define a production sanitization
 policy.
 
 ICCM is initialized through the secure DMA because the CPU load/store path
-cannot write it. `ROM_ICCM_CLEAR_ENABLE` defaults to zero to control simulation
-cost. A release configuration should enable it so all ICCM fetch words have
-valid ECC, including words adjacent to the end of BL1, but the current Makefile
-does not define or enforce a release mode. `ROM_ICCM_CLEAR_ENABLE` is also
-absent from its build-flags stamp, so changing the variable requires a clean
-build to ensure `rom_main.c` is recompiled.
+cannot write it. `ROM_ICCM_CLEAR_ENABLE` defaults to one. With
+`ROM_ICCM_CLEAR_FULL=0`, the BL1 copy establishes ECC for the image and the
+handoff clears a bounded pad beyond it so adjacent instruction fetches are
+valid. Setting `ROM_ICCM_CLEAR_FULL=1` clears the entire ICCM before handoff.
+`BUILD_TYPE=release` selects release keys and output paths but does not change
+these two defaults; a release policy that requires clearing all ICCM residue
+must set `ROM_ICCM_CLEAR_FULL=1`. Both variables are part of the build-flags
+stamp, so changing either rebuilds the affected objects.
 
 === C initialization
 

@@ -2,19 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP NMI sanity test (PyUVM).
 
-OSS port of the reference suite ``sep_nmi_sanity_test``. Boots the VeeR EL2 core and runs
-the nmi_sanity firmware, which verifies the NMI mechanism on bare ``sep``:
-the NMI trampoline alignment, SEP_NMI_VEC reset default / writeback / sticky
-lock, and that a WDT bark actually fires the NMI and reaches the registered
-handler. The whole path is internal to bare ``sep`` (sep.sv:
-``nmi_int = intr_wdog_timer_bark``, ``nmi_vec`` driven by the SEP_NMI_VEC CSR) --
-no testbench injection.
-
-Firmware-self-checking like the other FW-boot tests: the firmware returns its
-error count and start.S emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on
-the 0x8000_0000 mailbox, which the boot scoreboard gates on. A wedged NMI path
-either makes the firmware report FAIL or stalls the boot (the scoreboard times
-out) -- it cannot pass vacuously.
+The nmi_sanity firmware checks the NMI mechanism on bare ``sep``: trampoline alignment,
+SEP_NMI_VEC reset default / writeback / sticky lock, and that a WDT bark fires the NMI into the
+registered handler (sep.sv: ``nmi_int = intr_wdog_timer_bark``, ``nmi_vec`` from SEP_NMI_VEC),
+with no testbench injection. start.S emits PASS/FAIL magic from the error count, which the boot
+scoreboard gates on; a wedged NMI path reports FAIL or stalls into the scoreboard timeout.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
 """

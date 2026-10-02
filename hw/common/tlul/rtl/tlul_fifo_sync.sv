@@ -5,7 +5,7 @@
 // Buffer a TL-UL link with synchronous request and response FIFOs.
 //
 // Instantiate separate request and response FIFOs to add elasticity on a TL-UL bus. The
-// response FIFO stores d_data as zero for any opcode other than AccessAckData.
+// response FIFO stores d_data as zero for any opcode other than ACCESS_ACK_DATA.
 // REQ_PASS and RSP_PASS allow fall-through when the corresponding FIFO is empty. SPARE_REQ_W
 // and SPARE_RSP_W carry optional sideband bits alongside each channel.
 
@@ -31,10 +31,10 @@ module tlul_fifo_sync #(
   output [SPARE_RSP_W-1:0]  spare_rsp_o   // Spare response bits leaving with tl_h_o.
 );
   // Put everything on the request side into one FIFO
-  localparam int unsigned REQFIFO_WIDTH = $bits(tlul_pkg::tl_h2d_t) - 2 + SPARE_REQ_W;
+  localparam int unsigned ReqFifoWidth = $bits(tlul_pkg::tl_h2d_t) - 2 + SPARE_REQ_W;
 
   prim_fifo_sync #(
-    .Width(REQFIFO_WIDTH),
+    .Width(ReqFifoWidth),
     .Pass(REQ_PASS),
     .Depth(REQ_DEPTH)
   ) u_reqfifo (
@@ -70,10 +70,10 @@ module tlul_fifo_sync #(
 
   // Put everything on the response side into the other FIFO
 
-  localparam int unsigned RSPFIFO_WIDTH = $bits(tlul_pkg::tl_d2h_t) - 2 + SPARE_RSP_W;
+  localparam int unsigned RspFifoWidth = $bits(tlul_pkg::tl_d2h_t) - 2 + SPARE_RSP_W;
 
   prim_fifo_sync #(
-    .Width(RSPFIFO_WIDTH),
+    .Width(RspFifoWidth),
     .Pass(RSP_PASS),
     .Depth(RSP_DEPTH)
   ) u_rspfifo (
@@ -87,7 +87,7 @@ module tlul_fifo_sync #(
                      tl_d_i.d_size  ,
                      tl_d_i.d_source,
                      tl_d_i.d_sink  ,
-                     (tl_d_i.d_opcode == tlul_pkg::AccessAckData) ? tl_d_i.d_data :
+                     (tl_d_i.d_opcode == tlul_pkg::ACCESS_ACK_DATA) ? tl_d_i.d_data :
                                                                     {top_pkg::TL_DW{1'b0}} ,
                      tl_d_i.d_user  ,
                      tl_d_i.d_error ,

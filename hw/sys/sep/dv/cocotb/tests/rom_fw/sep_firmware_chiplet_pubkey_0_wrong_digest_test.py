@@ -193,7 +193,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
         mm.verify_public_key(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-BOTH-SEALED: backup public_key_sel=0x%04x and the backup "
-            "passes payload_hash, every TOC image digest, manifest_hash over the TBS "
+            "passes payload_hash, every TOC image digest, manifest_hash over the signed region "
             "and RSA verification of its re-signed signature against the dev0 "
             "modulus. Neither slot carries a defect -- the fuse does",
             got,

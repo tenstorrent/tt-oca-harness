@@ -3,10 +3,10 @@
 """JTAG allow leg for the eFuse windows PROD denies.
 
 ``sep_efuse_jtag_axil_el2_cpu_mux_test`` senses PROD, where the JTAG port
-may reach the MMR token block and must DECERR on the shadow map and on
-``EFUSE_PROGRAM_CTRL``. This leaf senses TEST_DEV, which is not a
-restricted lifecycle state, and reads those same two windows. OKAY here
-and DECERR there is the per-window gate.
+may reach the MMR token block and must be refused (SLVERR or DECERR) on
+the shadow map and on ``EFUSE_PROGRAM_CTRL``. This leaf senses TEST_DEV,
+which is not a restricted lifecycle state, and reads those same two
+windows. OKAY here and a refusal there is the per-window gate.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ class sep_efuse_jtag_window_allow_test(sep_base_test):
         image = self.select_efuse_image(lc_raw=LC_TEST_DEV)
         assert image.lc_raw() == LC_TEST_DEV, (
             f"test bug: image LC_STATE is not TEST_DEV (0x{image.lc_raw():x}); "
-            "a restricted image would DECERR these windows"
+            "a restricted image would refuse these windows"
         )
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)

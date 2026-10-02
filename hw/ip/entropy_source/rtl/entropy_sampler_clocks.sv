@@ -42,8 +42,8 @@ module entropy_sampler_clocks #(
 
   // Shared RO: ~10× longer than noise-generating ROs to achieve the target
   // frequency ratio; detuned length chosen to preserve that ratio
-  localparam int unsigned SHARED_TOTAL_LENGTH = 109;
-  localparam int unsigned SHARED_TAPPED_LENGTH = 53;
+  localparam int unsigned SharedTotalLength = 109;
+  localparam int unsigned SharedTappedLength = 53;
 
   /////////////
   // Signals
@@ -69,8 +69,8 @@ module entropy_sampler_clocks #(
   /////////////////
 
   entropy_ring_oscillator #(
-    .TOTAL_LENGTH  (SHARED_TOTAL_LENGTH),
-    .TAPPED_LENGTH (SHARED_TAPPED_LENGTH)
+    .TOTAL_LENGTH  (SharedTotalLength),
+    .TAPPED_LENGTH (SharedTappedLength)
   ) u_shared_ro (
     .enable_i (|enable_i),
     .detune_i (shared_detune_enable),

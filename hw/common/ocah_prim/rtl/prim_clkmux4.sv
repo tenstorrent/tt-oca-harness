@@ -14,18 +14,14 @@ module prim_clkmux4 (
 
   wire [1:0] clk_mux_0;
 
-  genvar i;
-
-  generate
-    for (i = 0; i < 2; i = i + 1) begin : gen_clk_mux_0
-      prim_clock_mux2 u_clkmux_0 (
-        .clk0_i (clk_i[2*i]),
-        .clk1_i (clk_i[2*i+1]),
-        .sel_i(clksel_i[0]),
-        .clk_o  (clk_mux_0[i])
-      );
-    end
-  endgenerate
+  for (genvar i = 0; i < 2; i = i + 1) begin : gen_clk_mux_0
+    prim_clock_mux2 u_clkmux_0 (
+      .clk0_i (clk_i[2*i]),
+      .clk1_i (clk_i[2*i+1]),
+      .sel_i(clksel_i[0]),
+      .clk_o  (clk_mux_0[i])
+    );
+  end
 
   prim_clock_mux2 u_clkmux_1 (
     .clk0_i (clk_mux_0[0]),

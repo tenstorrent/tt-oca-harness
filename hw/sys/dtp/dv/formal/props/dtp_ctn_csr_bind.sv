@@ -7,7 +7,7 @@
 
 bind cross_trigger_network dtp_ctn_csr_props #(
   .NUM_CTP (NUM_CTP),
-  .NUM_MST (NUM_XBAR_MST_PORTS)
+  .NUM_MST (NumXbarMstPorts)
 ) u_dtp_ctn_csr_props (
   .clk_i            (clk_i),
   .rst_ni           (rst_ni),

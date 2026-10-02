@@ -17,24 +17,24 @@ module prim_carry_select_adder #(
   output logic                  c_o  // Carry out.
 );
 
-  localparam int unsigned CHUNK_WIDTH = DATA_WIDTH / NUM_CHUNKS;
+  localparam int unsigned ChunkWidth = DATA_WIDTH / NUM_CHUNKS;
 
-  logic [NUM_CHUNKS-1:0][CHUNK_WIDTH-1:0] sum_chunk;
-  logic [NUM_CHUNKS-1:1][CHUNK_WIDTH:0] sum_chunk_c0, sum_chunk_c1;
+  logic [NUM_CHUNKS-1:0][ChunkWidth-1:0] sum_chunk;
+  logic [NUM_CHUNKS-1:1][ChunkWidth:0] sum_chunk_c0, sum_chunk_c1;
   logic [NUM_CHUNKS-1:0]                  carry;
   logic carry_prev;
 
   always_comb begin
 
     // Sum 1st chunk separately, as it doesn't need carry-select logic
-    {carry_prev, sum_chunk[0]} = a_i[0 +: CHUNK_WIDTH] + b_i[0 +: CHUNK_WIDTH];
+    {carry_prev, sum_chunk[0]} = a_i[0 +: ChunkWidth] + b_i[0 +: ChunkWidth];
     carry[0]                   = carry_prev;
 
     // Sum the rest with carry-select logic
     for (int i = 1; i < NUM_CHUNKS; i++) begin
       // Compute sum and mux based on carry
-      sum_chunk_c0[i]          = a_i[i*CHUNK_WIDTH +: CHUNK_WIDTH] + b_i[i*CHUNK_WIDTH +: CHUNK_WIDTH];
-      sum_chunk_c1[i]          = a_i[i*CHUNK_WIDTH +: CHUNK_WIDTH] + b_i[i*CHUNK_WIDTH +: CHUNK_WIDTH] + 1'b1;
+      sum_chunk_c0[i]          = a_i[i*ChunkWidth +: ChunkWidth] + b_i[i*ChunkWidth +: ChunkWidth];
+      sum_chunk_c1[i]          = a_i[i*ChunkWidth +: ChunkWidth] + b_i[i*ChunkWidth +: ChunkWidth] + 1'b1;
       {carry[i], sum_chunk[i]} = carry_prev ? sum_chunk_c1[i] : sum_chunk_c0[i];
       carry_prev               = carry[i];
     end
@@ -44,10 +44,8 @@ module prim_carry_select_adder #(
   assign c_o = carry[NUM_CHUNKS-1];
 
   // Assertion to make sure NUM_CHUNKS divides DATA_WIDTH without remainder
-  generate
-    if (DATA_WIDTH % NUM_CHUNKS != 0) begin : gen_error
-      $error("DATA_WIDTH must be a multiple of NUM_CHUNKS");
-    end
-  endgenerate
+  if (DATA_WIDTH % NUM_CHUNKS != 0) begin : gen_error
+    $error("DATA_WIDTH must be a multiple of NUM_CHUNKS");
+  end
 
 endmodule

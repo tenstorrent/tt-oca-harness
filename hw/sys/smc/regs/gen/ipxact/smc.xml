@@ -912,7 +912,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>debug_module</ipxact:name>
           <ipxact:displayName>Debug Module Hart Interface</ipxact:displayName>
-          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
+          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. Only the harts of the CPU cluster reach this region; SMC bus initiators outside the cluster do not. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
           <ipxact:addressOffset>'hc0001000</ipxact:addressOffset>
           <ipxact:range>'h868</ipxact:range>
           <ipxact:register>
@@ -3876,8 +3876,8 @@ bit is:
         should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
         flags to detect Start/Stop events.
 * `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
-        When a START (or repeated START) is detected, an `AcqStart` or `AcqRestart`
-        entry is written. When a STOP is detected, an `AcqStop` or `AcqNackStop`
+        When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`
+        entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`
         entry is written.</ipxact:description>
                 <ipxact:bitOffset>7</ipxact:bitOffset>
                 <ipxact:resets>
@@ -8448,7 +8448,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>size</ipxact:name>
-              <ipxact:description>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</ipxact:description>
+              <ipxact:description>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48384,7 +48384,7 @@ reaches termination value.</ipxact:description>
           <ipxact:registerFile>
             <ipxact:name>mandatory</ipxact:name>
             <ipxact:displayName>SMC External Mandatory Region Address Map</ipxact:displayName>
-            <ipxact:description>Mandatory adopter blocks in the external window: eFuse shim, per-pad GPIO control, PLL, and captured GPIO straps.</ipxact:description>
+            <ipxact:description>Mandatory adopter blocks in the external window: eFuse shim, per-pad GPIO control, PLL, and configuration straps.</ipxact:description>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:range>'h3008</ipxact:range>
             <ipxact:registerFile>
@@ -48415,7 +48415,7 @@ reaches termination value.</ipxact:description>
             <ipxact:registerFile>
               <ipxact:name>straps</ipxact:name>
               <ipxact:displayName>Straps Address Map</ipxact:displayName>
-              <ipxact:description>Captured GPIO strap values (adopter padring capture)</ipxact:description>
+              <ipxact:description>Configuration strap values. How they are captured is adopter-defined.</ipxact:description>
               <ipxact:addressOffset>'h3000</ipxact:addressOffset>
               <ipxact:range>'h8</ipxact:range>
               <ipxact:register>
@@ -48424,9 +48424,9 @@ reaches termination value.</ipxact:description>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
                   <ipxact:name>straps</ipxact:name>
-                  <ipxact:description>Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.
-Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still
-latch their pad value here, but no strap function consumes it.
+                  <ipxact:description>Configuration straps 0 - 31.
+Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned; no strap function
+consumes them.
 Strap assignments in this range:
 * bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
 * bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
@@ -48439,7 +48439,7 @@ Strap assignments in this range:
 * bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
 * bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
 * bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
-* bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master
+* bit 25: PRIMARY_CHIPLET - Identifies the primary chiplet, the boot master
 * bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</ipxact:description>
                   <ipxact:bitOffset>0</ipxact:bitOffset>
                   <ipxact:resets>
@@ -48458,14 +48458,12 @@ Strap assignments in this range:
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
                   <ipxact:name>straps</ipxact:name>
-                  <ipxact:description>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.
-All bits other than those listed below have no strap assigned. Those GPIOs
-still latch their pad value here, but no strap function consumes it.
-GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie
-outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).
+                  <ipxact:description>Configuration straps 32 - 60.
+All bits other than those listed below have no strap assigned; no strap
+function consumes them.
 Strap assignments in this range:
-* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot
-* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</ipxact:description>
+* bit 22: MBIST_BYPASS - Ignore results of Power-On MBIST for boot
+* bit 26: ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</ipxact:description>
                   <ipxact:bitOffset>0</ipxact:bitOffset>
                   <ipxact:resets>
                     <ipxact:reset>

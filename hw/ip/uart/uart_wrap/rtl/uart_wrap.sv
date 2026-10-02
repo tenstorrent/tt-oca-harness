@@ -13,28 +13,28 @@
 
 module uart_wrap #(
   parameter int unsigned        NUM_UARTS             = 4,  // UART instance count; 1 to
-                                                            // MAX_NUM_UARTS.
+                                                            // MaxNumUarts.
   parameter int unsigned        UART_TX_FIFO_DEPTH    = 32,  // Per-UART TX FIFO depth.
   parameter int unsigned        UART_RX_FIFO_DEPTH    = 32,  // Per-UART RX FIFO depth.
   parameter bit [NUM_UARTS-1:0] GEN_LOG_ENGINES       = {NUM_UARTS{1'b1}},  // Bit i instantiates the log engine of UART i.
   parameter int unsigned        LOG_ENGINE_FIFO_DEPTH = 4,  // Entries in each log engine's
                                                             // read-data FIFO.
 
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR = 0,  // Base of instance 0's decode window.
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      = 0,  // Size of each instance's decode window.
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_WRAP_SPACING              = 0,  // Address stride between instance windows and their internal map bases.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR = 0,  // Base of instance 0's decode window.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      = 0,  // Size of each instance's decode window.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_WRAP_SPACING              = 0,  // Address stride between instance windows and their internal map bases.
 
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_REG_MAP_BASE_ADDR = 0,  // Instance 0's UART register-map base.
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_REG_MAP_SIZE      = 0,  // Per-instance UART register-map size.
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,  // Instance 0's log-engine register-map base.
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,  // Per-instance log-engine register-map size.
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,  // Instance 0's CTRL register-map base.
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0,  // Per-instance CTRL register-map size.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_REG_MAP_BASE_ADDR = 0,  // Instance 0's UART register-map base.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_REG_MAP_SIZE      = 0,  // Per-instance UART register-map size.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,  // Instance 0's log-engine register-map base.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,  // Per-instance log-engine register-map size.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,  // Instance 0's CTRL register-map base.
+  parameter bit [uart_wrap_pkg::RegAddrWidth-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0,  // Per-instance CTRL register-map size.
 
-  localparam int unsigned NUM_REG_MAPS = NUM_UARTS + 1,  // +1 for error slave.
-  localparam type uart_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0],  // UART-wrap window select type.
-  localparam uart_wrap_reg_map_select_t UNDEFINED_REG_MAP =  // Unmapped address sink select.
-        uart_wrap_reg_map_select_t'(NUM_REG_MAPS - 1)
+  localparam int unsigned NumRegMaps = NUM_UARTS + 1,  // +1 for error slave.
+  localparam type uart_wrap_reg_map_select_t = logic [$clog2(NumRegMaps)-1:0],  // UART-wrap window select type.
+  localparam uart_wrap_reg_map_select_t UndefinedRegMap =  // Unmapped address sink select.
+        uart_wrap_reg_map_select_t'(NumRegMaps - 1)
 ) (
   input  logic                                 clk_i,  // System clock.
   input  logic                                 rst_ni,  // Active-low reset.
@@ -93,8 +93,8 @@ module uart_wrap #(
   // Signal Declarations //
   /////////////////////////
 
-  uart_wrap_pkg::csr_axil_req_t  [NUM_REG_MAPS-1:0] csr_axil_reqs;
-  uart_wrap_pkg::csr_axil_resp_t [NUM_REG_MAPS-1:0] csr_axil_resps;
+  uart_wrap_pkg::csr_axil_req_t  [NumRegMaps-1:0] csr_axil_reqs;
+  uart_wrap_pkg::csr_axil_resp_t [NumRegMaps-1:0] csr_axil_resps;
 
 
   //////////////////////////////
@@ -104,11 +104,11 @@ module uart_wrap #(
   uart_wrap_reg_map_select_t csr_axil_aw_select, csr_axil_ar_select;
 
   always_comb begin
-    csr_axil_aw_select = UNDEFINED_REG_MAP;
-    csr_axil_ar_select = UNDEFINED_REG_MAP;
+    csr_axil_aw_select = UndefinedRegMap;
+    csr_axil_ar_select = UndefinedRegMap;
 
     for (int i = 0; i < NUM_UARTS; i++) begin
-      logic [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] uart_i_base_addr;
+      logic [uart_wrap_pkg::RegAddrWidth-1:0] uart_i_base_addr;
       uart_i_base_addr = UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR + i * UART_LOG_ENGINE_WRAP_SPACING;
       if (csr_axil_req_i.aw.addr >= uart_i_base_addr &&
                 csr_axil_req_i.aw.addr <  uart_i_base_addr +
@@ -131,7 +131,7 @@ module uart_wrap #(
     .r_chan_t        (uart_wrap_pkg::csr_axil_r_chan_t),
     .axi_req_t       (uart_wrap_pkg::csr_axil_req_t),
     .axi_resp_t      (uart_wrap_pkg::csr_axil_resp_t),
-    .NoMstPorts      (NUM_REG_MAPS),
+    .NoMstPorts      (NumRegMaps),
     .MaxTrans        (1),
     .FallThrough     (1'b0),
     .SpillAw         (1'b1),
@@ -152,20 +152,20 @@ module uart_wrap #(
   );
 
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (uart_wrap_pkg::REG_ADDR_WIDTH),
-    .AXI_DATA_WIDTH (uart_wrap_pkg::REG_DATA_WIDTH),
+    .AXI_ADDR_WIDTH (uart_wrap_pkg::RegAddrWidth),
+    .AXI_DATA_WIDTH (uart_wrap_pkg::RegDataWidth),
     .axil_req_t     (uart_wrap_pkg::csr_axil_req_t),
     .axil_resp_t    (uart_wrap_pkg::csr_axil_resp_t),
     .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (uart_wrap_pkg::REG_DATA_WIDTH),
+    .RESP_WIDTH     (uart_wrap_pkg::RegDataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
   ) u_csr_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
 
-    .axil_req_i     (csr_axil_reqs [UNDEFINED_REG_MAP]),
-    .axil_resp_o    (csr_axil_resps[UNDEFINED_REG_MAP])
+    .axil_req_i     (csr_axil_reqs [UndefinedRegMap]),
+    .axil_resp_o    (csr_axil_resps[UndefinedRegMap])
   );
 
 
@@ -273,7 +273,7 @@ module uart_wrap #(
   ////////////////
 
   `OCAH_OT_ASSERT_INIT(paramCheckNumUarts_A,
-                       NUM_UARTS > 0 && NUM_UARTS <= uart_wrap_pkg::MAX_NUM_UARTS)
+                       NUM_UARTS > 0 && NUM_UARTS <= uart_wrap_pkg::MaxNumUarts)
 
   `OCAH_OT_ASSERT_KNOWN(CsrAxilRespKnownO_A, csr_axil_resp_o)
   `OCAH_OT_ASSERT_KNOWN(LogFetchAxilReqKnownO_A, log_fetch_axil_req_o)

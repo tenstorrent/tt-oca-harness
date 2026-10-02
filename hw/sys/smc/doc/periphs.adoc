@@ -179,13 +179,13 @@ each peripheral's default values.
 |=======================================================================
 |Peripheral |Parameter |IP default |SMC value
 
-|Mailbox |`smc_pkg::NUM_MAILBOXES` |2 |32
+|Mailbox |`smc_pkg::NumMailboxes` |2 |32
 
-|Mailbox |`smc_pkg::MAILBOX_DEPTH` |8 |2
+|Mailbox |`smc_pkg::MailboxDepth` |8 |2
 
-|I2C |`smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH` |268 |64
+|I2C |`smc_config_pkg::I2cTargetRxFifoDepth` |268 |64
 
-|I3C |`smc_config_pkg::NUM_I3C` |2 |6
+|I3C |`smc_config_pkg::NumI3c` |2 |6
 
 |GPIO |`MAX_TRANS` (threaded from the `smc` module parameter) |32 |2
 

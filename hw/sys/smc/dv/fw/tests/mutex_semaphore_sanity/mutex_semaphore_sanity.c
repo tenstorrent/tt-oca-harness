@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-#include "metal/atomic.h"
 #include "metal/lock.h"
 #include "smc_io.h"
 #include "smc_test.h"
@@ -11,7 +10,6 @@
 int main(void) {
     int hartid = metal_cpu_get_current_hartid();
 
-    // each core will try to acquire the mutex
     uint64_t mutex_0;
 
     do {
@@ -23,15 +21,12 @@ int main(void) {
         write_scratch(hartid, 0xbeefbeef);
     }
 
-    // release mutex
     write_periph_reg((SMC_TOP_SMC_CPU_CTRL_MUTEX_BASE_ADDR(0) - SMC_TOP_SMC_CPU_CTRL_BASE_ADDR),
                      0x1);
 
     uint32_t scratch_reg_0_data, scratch_reg_1_data, scratch_reg_2_data, scratch_reg_3_data;
 
-    // semaphore
-    // - other cores will increment the semaphore, core 0 will write test pass once all
-    //   other cores have incremented the semaphore
+    // Core 0 waits for the secondary cores, which mark before they increment.
     uint64_t semaphore;
     if (hartid == 0) {
         do {

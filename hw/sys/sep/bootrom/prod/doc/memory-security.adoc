@@ -20,10 +20,10 @@
 |64 KiB
 |BL0 code, metadata, read-only data, and the load image of `.data`.
 
-|SPI XIP
+|External XIP window
 |`0x3000_0000`
 |256 MiB aperture
-|Memory-mapped flash source for the default controller path.
+|Memory-mapped external flash window; an accepted secure-DMA source, and the boot-flash source when built with `BOOT_SPI_CONTROLLER_OT=0`.
 
 |SMC SRAM
 |SEP view `0x4006_0000`

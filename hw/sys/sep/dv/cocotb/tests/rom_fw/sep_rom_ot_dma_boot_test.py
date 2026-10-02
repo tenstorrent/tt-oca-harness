@@ -2,36 +2,22 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP ROM boot over the OpenTitan SPI host, SECURE_DMA drain (PyUVM).
 
-Sibling of ``sep_rom_non_secure_boot_test``. Same production Boot ROM, same BL1
-payload, same PASS criteria -- but the manifest and payload are fetched over the
-**real OpenTitan SPI host** from a flash device model, instead of being handed to
-the ROM through the behavioral SMC-SRAM responder.
+Sibling of ``sep_rom_non_secure_boot_test`` with the same Boot ROM, BL1 payload and PASS
+criteria, but the manifest and payload come from a flash model over the OpenTitan SPI host
+instead of the behavioral SMC-SRAM responder.
 
-``dma`` in the name is load-bearing, not decoration. The OpenTitan controller can
-drain its RX FIFO two ways, chosen at build time in ``boot_flash.h``: the
-SECURE_DMA hardware handshake (``BOOT_OT_SPI_USE_PIO=0``, what this test builds)
-or CPU programmed I/O (``=1``, ``build_ot_pio/``). They are different datapaths
-reading the same bytes, so a passing DMA boot says nothing about the PIO one.
-The PIO variant is ``sep_rom_ot_pio_boot_test`` (built by
-``ot-pio-toolchain-images``); this test is the DMA half of the pair.
+``boot_flash.h`` selects the RX FIFO drain at build time: SECURE_DMA
+(``BOOT_OT_SPI_USE_PIO=0``, the default ``build/`` image this test runs) or CPU PIO
+(``=1``, ``build_pio/``, covered by ``sep_rom_ot_pio_boot_test``). The two are different
+datapaths, so a passing DMA boot says nothing about the PIO one.
 
-What differs from the SMC-SRAM sibling:
+  * ``+sep_boot_from_spi`` makes the testbench seed ``STRAPS_LO[25]`` (primary_chiplet) in
+    the SMC responder, so the ROM takes its SPI branch. Without it the ROM boots from SMC
+    SRAM, which is why the path markers below are required.
+  * ``OcahSpiFlash`` serves the packed image from flash offset 0; the packer places the
+    primary manifest at ``PRIMARY_MANIFEST_OFFSET`` (0x1000), so no fixups are needed.
 
-  * The ROM is built with ``BOOT_SPI_CONTROLLER_OT=1`` (``build_ot/``), so
-    ``boot_flash.h`` links the OpenTitan driver (``ot_spi_flash_read_dma``) rather
-    than the weak ``sep_spi.c`` stub that returns "SPI unavailable".
-  * ``+sep_boot_from_spi`` makes the testbench seed ``STRAPS_LO[25]``
-    (primary_chiplet) in the SMC responder, so ``boot_from_spi()`` is true and the
-    ROM takes its SPI branch. Without it the ROM falls back to SMC-SRAM and this
-    test would silently prove nothing -- hence the explicit path assertions below.
-  * ``OcahSpiFlash`` answers on the SPI pads, preloaded with the packed image at
-    flash offset 0. The packer lays the primary manifest at 0x1000, which is
-    exactly ``PRIMARY_MANIFEST_OFFSET``, so the ROM's fixed offsets
-    line up with the image with no fixups.
-
-The SMC responder is still present (target ``rom_boot``): the ROM reads its straps,
-the DFX/mem-repair gate and the status ring from SMC regardless of boot source.
-Only the manifest/payload transport changes.
+The SMC responder still supplies the straps, the DFX/mem-repair gate and the status ring.
 
 Exercised datapath: flash BFM -> MISO -> OT spi_host RX FIFO -> (RX-watermark
 lsio_trigger) -> Secure DMA -> SEP SRAM -> ROM SHA-256 validate -> BL1 jump.

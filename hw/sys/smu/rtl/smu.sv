@@ -106,32 +106,32 @@ module smu #(
   parameter  type         smc_l1_dcache_data_req_t  = chipyard_4core_mem_pkg::l1_dcache_data_req_t,  // SMC L1 D-cache data request type.
   parameter  type         smc_l1_dcache_data_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,  // SMC L1 D-cache data response type.
 
-  localparam int unsigned NUM_CPU_CORES         = smc_4core_cpu_pkg::NUM_CPU_CORES,  // SMC CPU core count.
-  localparam int unsigned NUM_CPU_INTERRUPTS    = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,  // Per-core CPU interrupt count.
-  localparam int unsigned NUM_EXT_INTERRUPTS    = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS,  // External interrupt count into the SMC.
+  localparam int unsigned NumCpuCores         = smc_4core_cpu_pkg::NumCpuCores,  // SMC CPU core count.
+  localparam int unsigned NumCpuInterrupts    = smc_4core_cpu_pkg::NumCpuInterrupts,  // Per-core CPU interrupt count.
+  localparam int unsigned NumExtInterrupts    = smc_4core_cpu_pkg::NumExtInterrupts,  // External interrupt count into the SMC.
 
-  localparam int unsigned NUM_SRAM_BANKS        = chipyard_4core_mem_pkg::NUM_SRAM_BANKS,  // SMC scratch-RAM bank count.
-  localparam int unsigned NUM_ICACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS,  // SMC L1 I-cache tag bank count.
-  localparam int unsigned NUM_ICACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS,  // SMC L1 I-cache data bank count.
-  localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,  // SMC L1 D-cache tag bank count.
-  localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS,  // SMC L1 D-cache data bank count.
+  localparam int unsigned NumSramBanks        = chipyard_4core_mem_pkg::NumSramBanks,  // SMC scratch-RAM bank count.
+  localparam int unsigned NumIcacheTagBanks   = chipyard_4core_mem_pkg::NumIcacheTagBanks,  // SMC L1 I-cache tag bank count.
+  localparam int unsigned NumIcacheDataBanks  = chipyard_4core_mem_pkg::NumIcacheDataBanks,  // SMC L1 I-cache data bank count.
+  localparam int unsigned NumDcacheTagBanks   = chipyard_4core_mem_pkg::NumDcacheTagBanks,  // SMC L1 D-cache tag bank count.
+  localparam int unsigned NumDcacheDataBanks  = chipyard_4core_mem_pkg::NumDcacheDataBanks,  // SMC L1 D-cache data bank count.
 
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // External IC_RESET TDR slice type,
                                                                            // forwarded to the DTP ic_reset_ext_t; a
                                                                            // packed struct with .ovrd and .val halves
                                                                            // of equal width.
 
-  localparam int unsigned  XTRIG_NUM_CTP          = CFG.XTRIG_NUM_CTP,  // External cross-trigger port count from CFG,
+  localparam int unsigned  XtrigNumCtp          = CFG.XTRIG_NUM_CTP,    // External cross-trigger port count from CFG,
                                                                         // forwarded to the DTP XTRIG_NUM_CTP.
-  localparam int unsigned  XTRIG_NUM_INT_CT       = CFG.XTRIG_NUM_INT_CT,  // SMU-exposed internal CT lane count from CFG.
-  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = CFG.XTRIG_NUM_CLK_STOP_REQ,  // SMU-exposed clock-stop request count from CFG.
-  localparam int unsigned  DTP_XTRIG_NUM_INT_CT =  // Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.
-      CFG.XTRIG_NUM_INT_CT + smu_pkg::XTRIG_SMC_INT_CT_LANES,
-  localparam int unsigned  DTP_XTRIG_NUM_CLK_STOP_REQ =  // Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.
-      CFG.XTRIG_NUM_CLK_STOP_REQ + smu_pkg::XTRIG_SMC_CLK_STOP_LANES,
-  localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (CFG.JTAG_NUM_EXTRA_STAPS > 0) ? CFG.JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
-  localparam logic [DTP_XTRIG_NUM_INT_CT-1:0]  DTP_XTRIG_INT_CT_MODE =  // Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.
-      {CFG.XTRIG_INT_CT_MODE[XTRIG_NUM_INT_CT-1:0], {smu_pkg::XTRIG_SMC_INT_CT_LANES{1'b0}}}
+  localparam int unsigned  XtrigNumIntCt       = CFG.XTRIG_NUM_INT_CT,  // SMU-exposed internal CT lane count from CFG.
+  localparam int unsigned  XtrigNumClkStopReq  = CFG.XTRIG_NUM_CLK_STOP_REQ,  // SMU-exposed clock-stop request count from CFG.
+  localparam int unsigned  DtpXtrigNumIntCt =  // Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.
+      CFG.XTRIG_NUM_INT_CT + smu_pkg::XtrigSmcIntCtLanes,
+  localparam int unsigned  DtpXtrigNumClkStopReq =  // Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.
+      CFG.XTRIG_NUM_CLK_STOP_REQ + smu_pkg::XtrigSmcClkStopLanes,
+  localparam int unsigned  JtagNumExtraStapPorts = (CFG.JTAG_NUM_EXTRA_STAPS > 0) ? CFG.JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
+  localparam logic [DtpXtrigNumIntCt-1:0]  DtpXtrigIntCtMode =  // Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.
+      {CFG.XTRIG_INT_CT_MODE[XtrigNumIntCt-1:0], {smu_pkg::XtrigSmcIntCtLanes{1'b0}}}
 ) (
   input  logic  clk_smu_i,                      // SMU clock; clocks the SMC core, the SEP, the DTP
                                                 // and the SMU AXI crossbar.
@@ -164,10 +164,10 @@ module smu #(
   output logic            jtag_stap_io_host_tdo_o,  // I/O STAP TDO.
   output logic            jtag_stap_io_host_tdo_oen_o,  // I/O STAP TDO output enable.
 
-  output prim_jtag_pkg::jtag_tap_ctrl_t  jtag_stap_extra_host_tap_ctrl_o [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP host TAP controls.
-  input  logic            jtag_stap_extra_host_tdi_i      [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP TDI bits.
-  output logic            jtag_stap_extra_host_tdo_o      [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP TDO bits.
-  output logic            jtag_stap_extra_host_tdo_oen_o  [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP TDO output enables.
+  output prim_jtag_pkg::jtag_tap_ctrl_t  jtag_stap_extra_host_tap_ctrl_o [JtagNumExtraStapPorts-1:0],  // Extra STAP host TAP controls.
+  input  logic            jtag_stap_extra_host_tdi_i      [JtagNumExtraStapPorts-1:0],  // Extra STAP TDI bits.
+  output logic            jtag_stap_extra_host_tdo_o      [JtagNumExtraStapPorts-1:0],  // Extra STAP TDO bits.
+  output logic            jtag_stap_extra_host_tdo_oen_o  [JtagNumExtraStapPorts-1:0],  // Extra STAP TDO output enables.
 
   output prim_jtag_pkg::jtag_scan_ctrl_t  jtag_stap_host_scan_ctrl_o,  // Extended STAP scan control.
   input  logic             jtag_stap_host_scan_in_i,  // Extended STAP scan input.
@@ -196,34 +196,34 @@ module smu #(
                                                 // integrator, a typed packed struct with .ovrd and
                                                 // .val halves.
 
-  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_req_o,  // CTM source requests toward sinks;
+  output logic [XtrigNumIntCt-1:0]  xtrig_ctm_src_req_o,     // CTM source requests toward sinks;
                                                              // the SMC-reserved lanes stay inside
                                                              // the SMU.
-  input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_ack_i,  // CTM source acknowledges from sinks.
-  input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_req_i,  // CTM destination requests from
+  input  logic [XtrigNumIntCt-1:0]  xtrig_ctm_src_ack_i,     // CTM source acknowledges from sinks.
+  input  logic [XtrigNumIntCt-1:0]  xtrig_ctm_dst_req_i,     // CTM destination requests from
                                                              // sources.
-  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_ack_o,  // CTM destination acknowledges toward
+  output logic [XtrigNumIntCt-1:0]  xtrig_ctm_dst_ack_o,     // CTM destination acknowledges toward
                                                              // sources.
 
-  input  logic [XTRIG_NUM_CLK_STOP_REQ-1:0]  xtrig_clk_stop_req_i,  // Per-lane clock-stop requests into the CTN; the
+  input  logic [XtrigNumClkStopReq-1:0]  xtrig_clk_stop_req_i,      // Per-lane clock-stop requests into the CTN; the
                                                                     // SMC-reserved lane stays inside the SMU.
 
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_out_dout_o,  // CTP req-out pad data.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_out_dout_en_o,  // CTP req-out pad output enable.
-  input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_out_din_i,  // CTP req-out pad input.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_out_din_en_o,  // CTP req-out pad input enable.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_in_dout_o,  // CTP req-in pad data.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_in_dout_en_o,  // CTP req-in pad output enable.
-  input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_in_din_i,  // CTP req-in pad input.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_in_din_en_o,  // CTP req-in pad input enable.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_in_dout_o,  // CTP ack-in pad data.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_in_dout_en_o,  // CTP ack-in pad output enable.
-  input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_in_din_i,  // CTP ack-in pad input.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_in_din_en_o,  // CTP ack-in pad input enable.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_dout_o,  // CTP ack-out pad data.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_dout_en_o,  // CTP ack-out pad output enable.
-  input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_i,  // CTP ack-out pad input.
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_en_o,  // CTP ack-out pad input enable.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_out_dout_o,  // CTP req-out pad data.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_out_dout_en_o,  // CTP req-out pad output enable.
+  input  logic [XtrigNumCtp-1:0]  xtrig_ctp_req_out_din_i,  // CTP req-out pad input.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_out_din_en_o,  // CTP req-out pad input enable.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_in_dout_o,  // CTP req-in pad data.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_in_dout_en_o,  // CTP req-in pad output enable.
+  input  logic [XtrigNumCtp-1:0]  xtrig_ctp_req_in_din_i,  // CTP req-in pad input.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_in_din_en_o,  // CTP req-in pad input enable.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_in_dout_o,  // CTP ack-in pad data.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_in_dout_en_o,  // CTP ack-in pad output enable.
+  input  logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_in_din_i,  // CTP ack-in pad input.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_in_din_en_o,  // CTP ack-in pad input enable.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_out_dout_o,  // CTP ack-out pad data.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_out_dout_en_o,  // CTP ack-out pad output enable.
+  input  logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_out_din_i,  // CTP ack-out pad input.
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_out_din_en_o,  // CTP ack-out pad input enable.
 
   output logic  rst_primary_ref_clk_no,         // Primary reset, active-low, synchronized to
                                                 // clk_ref_i.
@@ -262,22 +262,22 @@ module smu #(
   input  smc_efuse_pkg::fuse_command_resp_t   smc_efuse_shim_command_resp_i,  // SMC eFuse shim command response.
   output smc_efuse_pkg::efuse_map_t           smc_shadow_regs_o,  // SMC eFuse shadow-register map.
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  lsio_interface_select_o,  // Per-GPIO-wrap LSIO interface select.
-  input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  pad2core_i,  // GPIO pad-to-core data.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  core2pad_o,  // GPIO core-to-pad data.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  pad2core_en_o,  // GPIO pad-to-core input enables.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  core2pad_en_o,  // GPIO core-to-pad output enables.
+  output logic [smc_pkg::NumGpioWraps-1:0]  lsio_interface_select_o,  // Per-GPIO-wrap LSIO interface select.
+  input  logic [smc_pkg::NumGpioWraps-1:0]  pad2core_i,  // GPIO pad-to-core data.
+  output logic [smc_pkg::NumGpioWraps-1:0]  core2pad_o,  // GPIO core-to-pad data.
+  output logic [smc_pkg::NumGpioWraps-1:0]  pad2core_en_o,  // GPIO pad-to-core input enables.
+  output logic [smc_pkg::NumGpioWraps-1:0]  core2pad_en_o,  // GPIO core-to-pad output enables.
 
   input  logic  rst_cool_n_from_pin_i,          // Cool reset from the package pin, active-low.
 
   input  logic  clk_telemetry_i,                // ATB telemetry clock.
   input  logic  rst_telemetry_ni,               // ATB telemetry reset, active-low.
-  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_atdata_i,  // ATB telemetry data from receivers.
-  input  telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_atid_i,  // ATB telemetry IDs from receivers.
-  output logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_atready_o,  // ATB ready toward telemetry sources.
-  input  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_atvalid_i,  // ATB valid from telemetry sources.
-  output logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_afvalid_o,  // ATB flush valid toward telemetry sources.
-  input  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_afready_i,  // ATB flush ready from telemetry sources.
+  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_atdata_i,  // ATB telemetry data from receivers.
+  input  telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_atid_i,  // ATB telemetry IDs from receivers.
+  output logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_atready_o,  // ATB ready toward telemetry sources.
+  input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_atvalid_i,  // ATB valid from telemetry sources.
+  output logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afvalid_o,  // ATB flush valid toward telemetry sources.
+  input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afready_i,  // ATB flush ready from telemetry sources.
 
   output logic  smc_cluster_ded_o,              // SMC CPU cluster uncorrectable
                                                 // (double-error-detected) memory error.
@@ -305,7 +305,7 @@ module smu #(
 
   input  logic [CFG.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,  // External interrupts into the SMC,
                                                                 // zero-extended to the SMC's
-                                                                // NUM_EXT_INTERRUPTS inputs.
+                                                                // NumExtInterrupts inputs.
 
   output logic  smc_fuse_sense_done_o,          // SMC fuse sense complete.
   output logic  smc_fuse_reset_n_delayed_o,     // Fuse-released SMC reset, active-low, delayed by
@@ -315,17 +315,17 @@ module smu #(
   output logic  skip_mem_repair_o,              // Skip memory repair during boot.
   input  logic  ext_boot_seq_done_i,            // External boot sequence complete.
 
-  output logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  lc_state_o,  // Lifecycle state driven by the SEP;
+  output logic [2*smc_pkg::LcStateWidth-1:0]  lc_state_o,    // Lifecycle state driven by the SEP;
                                                              // fixed at 8'hF0 when SEP is 0.
   output logic                                  lc_sigint_err_o,  // Lifecycle signal-integrity
                                                                   // error, the OR of the SEP and
                                                                   // SMC eFuse differential-encoding
                                                                   // errors.
 
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_request_i,  // Per-cluster NDM reset requests.
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_process_o,  // Per-cluster NDM reset in-progress.
+  input  logic [smc_config_pkg::CpuClusterCount - 1:0]  smc_ndmreset_request_i,  // Per-cluster NDM reset requests.
+  output logic [smc_config_pkg::CpuClusterCount - 1:0]  smc_ndmreset_process_o,  // Per-cluster NDM reset in-progress.
 
-  output logic [smc_pkg::NUM_MAILBOXES-1:0]  smc_ext_mailbox_interrupts_o,  // Mailbox interrupts toward the SMC.
+  output logic [smc_pkg::NumMailboxes-1:0]  smc_ext_mailbox_interrupts_o,  // Mailbox interrupts toward the SMC.
 
   input  logic  cfg_flr_pf_active_i,            // Function-level reset / PF-active configuration.
   output logic [31:0]  isolate_req_o,           // Per-subsystem isolate requests.
@@ -337,16 +337,16 @@ module smu #(
 
   output smc_rom_req_t             smc_rom_intf_req_o,  // SMC ROM hard-macro request.
   input  smc_rom_rsp_t             smc_rom_intf_rsp_i,  // SMC ROM hard-macro response.
-  output smc_scratch_ram_req_t     smc_scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],  // SMC scratch-RAM bank requests.
-  input  smc_scratch_ram_rsp_t     smc_scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],  // SMC scratch-RAM bank responses.
-  output smc_l1_icache_tag_req_t   smc_l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],  // SMC L1 I-cache tag bank requests.
-  input  smc_l1_icache_tag_rsp_t   smc_l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],  // SMC L1 I-cache tag bank responses.
-  output smc_l1_icache_data_req_t  smc_l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],  // SMC L1 I-cache data bank requests.
-  input  smc_l1_icache_data_rsp_t  smc_l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],  // SMC L1 I-cache data bank responses.
-  output smc_l1_dcache_tag_req_t   smc_l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],  // SMC L1 D-cache tag bank requests.
-  input  smc_l1_dcache_tag_rsp_t   smc_l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],  // SMC L1 D-cache tag bank responses.
-  output smc_l1_dcache_data_req_t  smc_l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],  // SMC L1 D-cache data bank requests.
-  input  smc_l1_dcache_data_rsp_t  smc_l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],  // SMC L1 D-cache data bank responses.
+  output smc_scratch_ram_req_t     smc_scratch_ram_intf_req_o [NumSramBanks-1:0],  // SMC scratch-RAM bank requests.
+  input  smc_scratch_ram_rsp_t     smc_scratch_ram_intf_rsp_i [NumSramBanks-1:0],  // SMC scratch-RAM bank responses.
+  output smc_l1_icache_tag_req_t   smc_l1_icache_tag_intf_req_o [NumIcacheTagBanks-1:0],  // SMC L1 I-cache tag bank requests.
+  input  smc_l1_icache_tag_rsp_t   smc_l1_icache_tag_intf_rsp_i [NumIcacheTagBanks-1:0],  // SMC L1 I-cache tag bank responses.
+  output smc_l1_icache_data_req_t  smc_l1_icache_data_intf_req_o [NumIcacheDataBanks-1:0],  // SMC L1 I-cache data bank requests.
+  input  smc_l1_icache_data_rsp_t  smc_l1_icache_data_intf_rsp_i [NumIcacheDataBanks-1:0],  // SMC L1 I-cache data bank responses.
+  output smc_l1_dcache_tag_req_t   smc_l1_dcache_tag_intf_req_o [NumDcacheTagBanks-1:0],  // SMC L1 D-cache tag bank requests.
+  input  smc_l1_dcache_tag_rsp_t   smc_l1_dcache_tag_intf_rsp_i [NumDcacheTagBanks-1:0],  // SMC L1 D-cache tag bank responses.
+  output smc_l1_dcache_data_req_t  smc_l1_dcache_data_intf_req_o [NumDcacheDataBanks-1:0],  // SMC L1 D-cache data bank requests.
+  input  smc_l1_dcache_data_rsp_t  smc_l1_dcache_data_intf_rsp_i [NumDcacheDataBanks-1:0],  // SMC L1 D-cache data bank responses.
 
   input  logic  smc_disable_sram_auto_init_i,   // Disable SMC SRAM automatic initialization.
   output logic  smc_init_mem_done_o,            // SMC memory initialization complete.
@@ -407,8 +407,6 @@ module smu #(
   input  logic                               entropy_rosc_sample_clk_i,  // Ring-oscillator sample clock for the SEP
                                                                          // entropy source, asynchronous to clk_smu_i.
 
-  output sep_io_pkg::sep_io_spi_req_t        sep_io_spi_req_o,  // SEP OpenTitan SPI request.
-
   output km_intf_pkg::km_rom_mem_req_t   sep_km_rom_mem_req_o,  // SEP Key Manager ROM memory
                                                                 // request.
   input  km_intf_pkg::km_rom_mem_rsp_t   sep_km_rom_mem_rsp_i,  // SEP Key Manager ROM memory
@@ -450,20 +448,20 @@ module smu #(
 
   input  logic                  secure_tm_req_i,  // SEP secure test-mode request strap.
 
-  input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,  // I3C DAT memory source interfaces.
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_sink_o,  // I3C DAT memory sink interfaces.
-  input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,  // I3C DCT memory source interfaces.
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_sink_o,  // I3C DCT memory sink interfaces.
-  input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,  // I3C RLT memory source interfaces.
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_sink_o,  // I3C RLT memory sink interfaces.
+  input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NumI3c-1:0]   i3c_dat_mem_src_i,  // I3C DAT memory source interfaces.
+  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0]   i3c_dat_mem_sink_o,  // I3C DAT memory sink interfaces.
+  input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NumI3c-1:0]   i3c_dct_mem_src_i,  // I3C DCT memory source interfaces.
+  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0]   i3c_dct_mem_sink_o,  // I3C DCT memory sink interfaces.
+  input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NumI3c-1:0]   i3c_rlt_mem_src_i,  // I3C RLT memory source interfaces.
+  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0]   i3c_rlt_mem_sink_o,  // I3C RLT memory sink interfaces.
   output logic                                                  gated_clk_periph_i3c_o,  // Gated peripheral clock for I3C.
 
   input  logic [127:0]  ext_debug_bus_i,        // External debug bus; the SMC receives it above the
                                                 // 384-bit SEP debug bus, which is zero when SEP is
                                                 // 0. Signals must be 16-bit aligned within it.
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o,  // GPIO wrap interrupt outputs.
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_o  // UART interrupt outputs.
+  output logic [smc_pkg::NumGpioWraps-1:0]   gpio_interrupt_o,  // GPIO wrap interrupt outputs.
+  output logic [smc_config_pkg::NumUart-1:0] uart_interrupt_o  // UART interrupt outputs.
 );
 
   `include "axi/assign.svh"
@@ -472,9 +470,9 @@ module smu #(
   // Internal Signals
   //--------------------------------------------------------------------------
 
-  // Zero-pad smc_ext_interrupts_i to full NUM_EXT_INTERRUPTS width for SMC
-  logic [NUM_EXT_INTERRUPTS-1:0] smc_ext_interrupts_padded;
-  assign smc_ext_interrupts_padded = NUM_EXT_INTERRUPTS'(smc_ext_interrupts_i);
+  // Zero-pad smc_ext_interrupts_i to full NumExtInterrupts width for SMC
+  logic [NumExtInterrupts-1:0] smc_ext_interrupts_padded;
+  assign smc_ext_interrupts_padded = NumExtInterrupts'(smc_ext_interrupts_i);
 
   logic powergood_stable;
 
@@ -498,14 +496,14 @@ module smu #(
   // DTP DEBUG_CONTROL CLA clock-stop enable to SMC TDR path
   logic dtp_cla_clock_stop_en;
 
-  // DTP internal CT: [XTRIG_SMC_INT_CT_LANES-1:0] for SMC, remainder exposed
-  logic [DTP_XTRIG_NUM_INT_CT-1:0]  dtp_xtrig_ctm_src_req;
-  logic [DTP_XTRIG_NUM_INT_CT-1:0]  dtp_xtrig_ctm_src_ack;
-  logic [DTP_XTRIG_NUM_INT_CT-1:0]  dtp_xtrig_ctm_dst_req;
-  logic [DTP_XTRIG_NUM_INT_CT-1:0]  dtp_xtrig_ctm_dst_ack;
+  // DTP internal CT: [XtrigSmcIntCtLanes-1:0] for SMC, remainder exposed
+  logic [DtpXtrigNumIntCt-1:0]  dtp_xtrig_ctm_src_req;
+  logic [DtpXtrigNumIntCt-1:0]  dtp_xtrig_ctm_src_ack;
+  logic [DtpXtrigNumIntCt-1:0]  dtp_xtrig_ctm_dst_req;
+  logic [DtpXtrigNumIntCt-1:0]  dtp_xtrig_ctm_dst_ack;
 
-  // DTP clock stop: [XTRIG_SMC_CLK_STOP_LANES-1:0] for SMC, remainder exposed
-  logic [DTP_XTRIG_NUM_CLK_STOP_REQ-1:0]  dtp_xtrig_clk_stop_req;
+  // DTP clock stop: [XtrigSmcClkStopLanes-1:0] for SMC, remainder exposed
+  logic [DtpXtrigNumClkStopReq-1:0]  dtp_xtrig_clk_stop_req;
 
   // SMC cross trigger output
   smc_pkg::xtrigger_t  smc_xtrigger_ss_o;
@@ -542,10 +540,10 @@ module smu #(
   logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom;
 
   // SEP lifecycle and mailbox signals
-  logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  sep_lc_state;
+  logic [2*smc_pkg::LcStateWidth-1:0]    sep_lc_state;
   sep_lifecycle_ctrl_pkg::dbg_disable_t  sep_dbg_disable;
   logic  sep_lc_sigint_err;
-  logic [sep_pkg::NUM_MAILBOXES-1:0]  sep_mailbox_interrupts;
+  logic [sep_pkg::NumMailboxes-1:0]  sep_mailbox_interrupts;
 
   // SEP security disable
   logic  sep_security_disable;
@@ -649,9 +647,9 @@ module smu #(
     .JTAG_IDCODE_SI_REV        (CFG.JTAG_IDCODE_SI_REV),
     .JTAG_OCH_VER              (CFG.JTAG_OCH_VER),
     .XTRIG_NUM_CTP             (CFG.XTRIG_NUM_CTP),
-    .XTRIG_NUM_INT_CT          (DTP_XTRIG_NUM_INT_CT),
-    .XTRIG_NUM_CLK_STOP_REQ    (DTP_XTRIG_NUM_CLK_STOP_REQ),
-    .XTRIG_INT_CT_MODE         (DTP_XTRIG_INT_CT_MODE),
+    .XTRIG_NUM_INT_CT          (DtpXtrigNumIntCt),
+    .XTRIG_NUM_CLK_STOP_REQ    (DtpXtrigNumClkStopReq),
+    .XTRIG_INT_CT_MODE         (DtpXtrigIntCtMode),
     .jtag_tap_ctrl_t           (prim_jtag_pkg::jtag_tap_ctrl_t),
     .jtag_scan_ctrl_t          (prim_jtag_pkg::jtag_scan_ctrl_t),
     .ic_reset_smc_t            (smc_pkg::jtag_smc_reset_ctrl_t),
@@ -1152,7 +1150,7 @@ module smu #(
 
     axi_iw_converter #(
       .AxiSlvPortIdWidth      (smu_axi_xbar_pkg::XbarOutputIdW),
-      .AxiMstPortIdWidth      (smc_pkg::SYS_IN_ID_WIDTH),
+      .AxiMstPortIdWidth      (smc_pkg::SysInIdWidth),
       .AxiSlvPortMaxUniqIds   (16),
       .AxiSlvPortMaxTxnsPerId (8),
       .AxiSlvPortMaxTxns      (0),
@@ -1188,27 +1186,27 @@ module smu #(
     // differential encoding error reported by either the SEP or SMC efuse interface
     assign lc_sigint_err_o = sep_lc_sigint_err | efuse_lc_sigint_err;
 
-    // Export the OT SPI request to the wrapper-level SPI mux (u_sep_ip_integration).
-    assign sep_io_spi_req_o = sep_io_spi_req;
-
     // ==================================================================
     // SEP SPI signal assignments (connect struct to intermediate signals)
     // ==================================================================
-    assign sep_spi_enable       = 1'b1;
-    assign sep_spi_clk          = sep_io_spi_req.sck;
-    assign sep_spi_txd          = {4'b0, sep_io_spi_req.sd};
-    assign sep_spi_cs_n         = sep_io_spi_req.cs_n;
-    assign sep_spi_cs_oe_n      = ~sep_io_spi_req.cs_oe;
-    assign sep_spi_cs_ie_n      = sep_io_spi_req.cs_oe;
-    assign sep_spi_clk_ie_n     = sep_io_spi_req.sck_oe;
-    assign sep_spi_clk_oe_n     = ~sep_io_spi_req.sck_oe;
-    assign sep_spi_dqs_ie_n     = 1'b1;
-    assign sep_spi_dqs_oe_n     = 1'b1;
-    assign sep_spi_dq_ie_n      = {4'hF, sep_io_spi_req.sd_oe};
-    assign sep_spi_dq_oe_n      = {4'hF, ~sep_io_spi_req.sd_oe};
-    assign sep_spi_mem_rebar_oepad = 1'b0;
-    assign sep_spi_mem_rebar_opad  = 1'b0;
-    assign sep_spi_mem_rebar_iepad = 1'b0;
+    sep_io_pkg::sep_io_spi_pads_t sep_spi_pads;
+    assign sep_spi_pads = sep_io_pkg::ot_spi_pad_map(sep_io_spi_req);
+
+    assign sep_spi_enable       = sep_spi_pads.enable;
+    assign sep_spi_clk          = sep_spi_pads.clk;
+    assign sep_spi_txd          = sep_spi_pads.txd;
+    assign sep_spi_cs_n         = sep_spi_pads.cs_n;
+    assign sep_spi_cs_oe_n      = sep_spi_pads.cs_oe_n;
+    assign sep_spi_cs_ie_n      = sep_spi_pads.cs_ie_n;
+    assign sep_spi_clk_ie_n     = sep_spi_pads.clk_ie_n;
+    assign sep_spi_clk_oe_n     = sep_spi_pads.clk_oe_n;
+    assign sep_spi_dqs_ie_n     = sep_spi_pads.dqs_ie_n;
+    assign sep_spi_dqs_oe_n     = sep_spi_pads.dqs_oe_n;
+    assign sep_spi_dq_ie_n      = sep_spi_pads.dq_ie_n;
+    assign sep_spi_dq_oe_n      = sep_spi_pads.dq_oe_n;
+    assign sep_spi_mem_rebar_oepad = sep_spi_pads.mem_rebar_oepad;
+    assign sep_spi_mem_rebar_opad  = sep_spi_pads.mem_rebar_opad;
+    assign sep_spi_mem_rebar_iepad = sep_spi_pads.mem_rebar_iepad;
 
     // SEP SPI response (RX data from SMC to SEP)
     assign sep_io_spi_rsp.sd = sep_spi_rxd[3:0];
@@ -1279,7 +1277,7 @@ module smu #(
 
     // Output path: SMC output (8-bit ID) -> external output (10-bit ID)
     axi_iw_converter #(
-      .AxiSlvPortIdWidth      (smc_pkg::SYS_OUT_ID_WIDTH),       // 8
+      .AxiSlvPortIdWidth      (smc_pkg::SysOutIdWidth),          // 8
       .AxiMstPortIdWidth      (smu_axi_xbar_pkg::XbarOutputIdW), // 10
       .AxiSlvPortMaxUniqIds   (16),
       .AxiSlvPortMaxTxnsPerId (8),
@@ -1305,7 +1303,7 @@ module smu #(
     // Input path: external input (8-bit ID) -> SMC input (6-bit ID)
     axi_iw_converter #(
       .AxiSlvPortIdWidth      (smu_axi_xbar_pkg::MaxInputIdW),   // 8
-      .AxiMstPortIdWidth      (smc_pkg::SYS_IN_ID_WIDTH),        // 6
+      .AxiMstPortIdWidth      (smc_pkg::SysInIdWidth),           // 6
       .AxiSlvPortMaxUniqIds   (16),
       .AxiSlvPortMaxTxnsPerId (8),
       .AxiSlvPortMaxTxns      (0),
@@ -1392,12 +1390,12 @@ module smu #(
   // DTP-SMC Internal Connections
   //--------------------------------------------------------------------------
 
-  assign dtp_xtrig_ctm_dst_req[smu_pkg::XTRIG_SMC_INT_CT_LANES-1:0] = smc_xtrigger_ss_o;
+  assign dtp_xtrig_ctm_dst_req[smu_pkg::XtrigSmcIntCtLanes-1:0] = smc_xtrigger_ss_o;
 
-  assign smc_xtrigger_ss_i = dtp_xtrig_ctm_src_req[smu_pkg::XTRIG_SMC_INT_CT_LANES-1:0];
-  assign dtp_xtrig_ctm_src_ack[smu_pkg::XTRIG_SMC_INT_CT_LANES-1:0] = '0;
+  assign smc_xtrigger_ss_i = dtp_xtrig_ctm_src_req[smu_pkg::XtrigSmcIntCtLanes-1:0];
+  assign dtp_xtrig_ctm_src_ack[smu_pkg::XtrigSmcIntCtLanes-1:0] = '0;
 
-  assign dtp_xtrig_clk_stop_req[smu_pkg::XTRIG_SMC_CLK_STOP_LANES-1:0] =
+  assign dtp_xtrig_clk_stop_req[smu_pkg::XtrigSmcClkStopLanes-1:0] =
       tdr_dbg_ctrl_clocks_stopped_by_cla;
 
   //--------------------------------------------------------------------------
@@ -1405,18 +1403,18 @@ module smu #(
   //--------------------------------------------------------------------------
 
   assign xtrig_ctm_src_req_o =
-      dtp_xtrig_ctm_src_req[DTP_XTRIG_NUM_INT_CT-1:smu_pkg::XTRIG_SMC_INT_CT_LANES];
+      dtp_xtrig_ctm_src_req[DtpXtrigNumIntCt-1:smu_pkg::XtrigSmcIntCtLanes];
 
-  assign dtp_xtrig_ctm_src_ack[DTP_XTRIG_NUM_INT_CT-1:smu_pkg::XTRIG_SMC_INT_CT_LANES] =
+  assign dtp_xtrig_ctm_src_ack[DtpXtrigNumIntCt-1:smu_pkg::XtrigSmcIntCtLanes] =
       xtrig_ctm_src_ack_i;
 
-  assign dtp_xtrig_ctm_dst_req[DTP_XTRIG_NUM_INT_CT-1:smu_pkg::XTRIG_SMC_INT_CT_LANES] =
+  assign dtp_xtrig_ctm_dst_req[DtpXtrigNumIntCt-1:smu_pkg::XtrigSmcIntCtLanes] =
       xtrig_ctm_dst_req_i;
 
   assign xtrig_ctm_dst_ack_o =
-      dtp_xtrig_ctm_dst_ack[DTP_XTRIG_NUM_INT_CT-1:smu_pkg::XTRIG_SMC_INT_CT_LANES];
+      dtp_xtrig_ctm_dst_ack[DtpXtrigNumIntCt-1:smu_pkg::XtrigSmcIntCtLanes];
 
-  assign dtp_xtrig_clk_stop_req[DTP_XTRIG_NUM_CLK_STOP_REQ-1:smu_pkg::XTRIG_SMC_CLK_STOP_LANES] =
+  assign dtp_xtrig_clk_stop_req[DtpXtrigNumClkStopReq-1:smu_pkg::XtrigSmcClkStopLanes] =
       xtrig_clk_stop_req_i;
 
 endmodule

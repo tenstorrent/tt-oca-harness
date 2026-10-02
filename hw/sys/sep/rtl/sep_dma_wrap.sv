@@ -72,7 +72,7 @@ module sep_dma_wrap #(
 );
 
   // Local parameter for 32-bit data width
-  localparam int unsigned DATA_WIDTH_32 = 32;
+  localparam int unsigned DataWidth32 = 32;
 
   /////////////////////////
   // Signal Declarations //
@@ -171,7 +171,7 @@ module sep_dma_wrap #(
   axi_dw_downsizer #(
     .AxiMaxReads         (8),
     .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-    .AxiMstPortDataWidth (DATA_WIDTH_32),
+    .AxiMstPortDataWidth (DataWidth32),
     .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
     .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
     .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
@@ -288,7 +288,7 @@ module sep_dma_wrap #(
 
   axi_dw_upsizer #(
     .AxiMaxReads         (8),
-    .AxiSlvPortDataWidth (DATA_WIDTH_32),
+    .AxiSlvPortDataWidth (DataWidth32),
     .AxiMstPortDataWidth (sep_pkg::SEP_32_64_3_12_DATA_WIDTH),
     .AxiAddrWidth        (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH),
     .AxiIdWidth          (sep_pkg::SEP_32_64_3_12_ID_WIDTH),
@@ -330,8 +330,8 @@ module sep_dma_wrap #(
     .mst_req_o          (dma_req_o),
     .mst_resp_i         (dma_resp_i),
     .local_alias_base_i (sep_local_base_addr_i),
-    .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
-    .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
+    .region_size_i      (sep_pkg::SepLocalAliasRegionSize[31:0]),
+    .target_base_i      (sep_pkg::SepLocalAliasRegionBase[31:0])
   );
 
   ///////////////////
@@ -340,7 +340,7 @@ module sep_dma_wrap #(
 
   assign ctn_tl_d2h.a_ready = 1'b1;
   assign ctn_tl_d2h.d_valid = 1'b0;
-  assign ctn_tl_d2h.d_opcode = tlul_pkg::AccessAck;
+  assign ctn_tl_d2h.d_opcode = tlul_pkg::ACCESS_ACK;
   assign ctn_tl_d2h.d_param = '0;
   assign ctn_tl_d2h.d_size = '0;
   assign ctn_tl_d2h.d_source = '0;

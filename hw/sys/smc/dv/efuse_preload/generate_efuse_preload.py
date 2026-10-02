@@ -18,7 +18,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - older interpreters
     import tomli as tomllib  # type: ignore[no-redef]
 
-# Must match smc_efuse_pkg::SHADOW_REG_BITS.
+# Must match smc_efuse_pkg::ShadowRegBits.
 EFUSE_SIZE_BITS = 8192
 EFUSE_WORD_SIZE_BITS = 32
 
@@ -97,7 +97,7 @@ def build_image(config: dict, schema: dict) -> int:
     if offset != EFUSE_SIZE_BITS:
         sys.exit(
             f"error: schema totals {offset} bits, expected {EFUSE_SIZE_BITS} "
-            "(smc_efuse_pkg::SHADOW_REG_BITS). Schema and "
+            "(smc_efuse_pkg::ShadowRegBits). Schema and "
             "smc_efuse_map.rdl have diverged."
         )
     if locks >= (1 << lock_width):

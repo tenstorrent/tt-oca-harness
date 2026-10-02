@@ -15,14 +15,14 @@
 
 package tlul_pkg;
   typedef enum logic [2:0] {
-    PutFullData    = 3'h 0,
-    PutPartialData = 3'h 1,
-    Get            = 3'h 4
+    PUT_FULL_DATA    = 3'h 0,
+    PUT_PARTIAL_DATA = 3'h 1,
+    GET              = 3'h 4
   } tl_a_op_e;
 
   typedef enum logic [2:0] {
-    AccessAck     = 3'h 0,
-    AccessAckData = 3'h 1
+    ACCESS_ACK      = 3'h 0,
+    ACCESS_ACK_DATA = 3'h 1
   } tl_d_op_e;
 
   parameter int H2D_CMD_MAX_WIDTH = 57;
@@ -87,7 +87,7 @@ package tlul_pkg;
   // There is however no perfect value for this purpose.
   localparam logic [top_pkg::TL_DW-1:0] BlankedAData = {top_pkg::TL_DW{1'b1}};
 
-  localparam tl_h2d_t TL_H2D_DEFAULT = '{
+  localparam tl_h2d_t TlH2dDefault = '{
       d_ready: 1'b1,
       a_opcode: tl_a_op_e'('0),
       a_user: TL_A_USER_DEFAULT,
@@ -131,7 +131,7 @@ package tlul_pkg;
     logic                         error;
   } tl_d2h_rsp_intg_t;
 
-  localparam tl_d2h_t TL_D2H_DEFAULT = '{
+  localparam tl_d2h_t TlD2hDefault = '{
       a_ready: 1'b1,
       d_opcode: tl_d_op_e'('0),
       d_user: TL_D_USER_DEFAULT,

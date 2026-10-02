@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdbool.h>
 
 #include "smc_io.h"
@@ -15,27 +13,20 @@
 
 static int arr[INT_POW];
 
-// Function to swap two elements
 void swap(int *a, int *b) {
     int t = *a;
     *a = *b;
     *b = t;
 }
 
-// This function takes last element as pivot, places
-// the pivot element at its correct position in sorted
-// array, and places all smaller (smaller than pivot)
-// to left of pivot and all greater elements to right
-// of pivot
+// Partition around the last element; returns the pivot's final index.
 int partition(int arr[], int low, int high) {
-    int pivot = arr[high]; // pivot
-    int i = (low - 1);     // Index of smaller element
+    int pivot = arr[high];
+    int i = (low - 1);
 
     for (int j = low; j <= high - 1; j++) {
-        // If current element is smaller than or
-        // equal to pivot
         if (arr[j] <= pivot) {
-            i++; // increment index of smaller element
+            i++;
             swap(&arr[i], &arr[j]);
         }
     }
@@ -43,39 +34,18 @@ int partition(int arr[], int low, int high) {
     return (i + 1);
 }
 
-// The main function that implements QuickSort
-// arr[] --> Array to be sorted,
-// low  --> Starting index,
-// high  --> Ending index
-//
-// HAZARD, left as-is: recursion depth here is unbounded and can
-// exceed the stack. Lomuto partition degrades to depth n when the pivot is
-// always extremal, and the frame is 48 bytes (see the prologue in the built
-// .dis), so ARRAY_SIZES-1 = 2048 elements needs ~98 KB against
-// __stack_size = 4K (toolchain.mk) -- about 85 frames is all that fits. The
-// all-equal input is one of the degenerate cases, and it is exactly what the
-// fill path produces when the seed is zero.
-//
-// Not repaired here because the standard fix -- recurse into the smaller
-// partition and loop on the larger, bounding depth to O(log n) -- changes the
-// call structure of a routine whose purpose is to be *measured*. Doing that
-// silently would alter the benchmark while its numbers are already unchecked
-// (this test compares no result and calls test_pass unconditionally). It needs
-// the perf owner to say whether the published figures may move.
+// Recursion depth is not bounded: an input whose pivot is always extremal,
+// such as all-equal values (what the fill produces from a zero seed), recurses
+// once per element and overflows the stack at the larger array sizes.
 void quick_sort(int arr[], int low, int high) {
     if (low < high) {
-        // pi is partitioning index, arr[p] is now
-        // at right place
         int pi = partition(arr, low, high);
 
-        // Separately sort elements before
-        // partition and after partition
         quick_sort(arr, low, pi - 1);
         quick_sort(arr, pi + 1, high);
     }
 }
 
-// Utility function to fill array with random numbers
 void fill_array(int arr[], int size) {
     for (int i = 0; i < size; i++) {
         arr[i] = get_random_int() % 1000;
@@ -85,7 +55,7 @@ void fill_array(int arr[], int size) {
 /* Require the array to be non-decreasing and its element sum to be unchanged.
  *
  * Ordering alone is satisfied by a sort that drops or duplicates elements; the
- * sum carried in from before the sort makes this a permutation check. */
+ * sum carried in from before the sort catches most such losses. */
 static void check_sorted(int arr[], int size, int expect_sum, int size_log, int iter) {
     int sum = 0;
 

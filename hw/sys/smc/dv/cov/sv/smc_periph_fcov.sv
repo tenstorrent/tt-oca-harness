@@ -209,7 +209,7 @@ module smc_periph_fcov #(
   `OCAH_FCOV_COVER(c_gpio_multi_pad_enabled, gpio_multi_pad_enabled_e, clk_periph_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_output_value_driven, gpio_output_value_set_e, clk_periph_i, in_reset)
 
-  // BOOT_STALL_PAD at both values through the pad shim. Both are product
+  // BootStallPad at both values through the pad shim. Both are product
   // states, but one of them is whatever the straps leave at power-up, so
   // each level is qualified by the pad having changed at least once --
   // otherwise the power-on value is covered with no stimulus at all.

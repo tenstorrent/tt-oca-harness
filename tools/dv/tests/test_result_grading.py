@@ -12,25 +12,30 @@ Run from the repository root:
     python3 -m unittest discover tools/dv/tests
 """
 
+import io
 import shutil
 import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from argparse import Namespace
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from runlib import stages  # noqa: E402
 from runlib.config import load_simulators  # noqa: E402
 from runlib.junit import (  # noqa: E402
     PRODUCER,
+    ensure_graded_junit,
     ensure_leaf_junit,
     is_generated_junit,
     materialize_stage_junit,
 )
 from runlib.logparse import parse_stage_result, validate_parser_registry  # noqa: E402
-from runlib.models import Dut, StageResult  # noqa: E402
+from runlib.models import Dut, StageResult, TestCatalog, TestEntry  # noqa: E402
 from runlib.results import (  # noqa: E402
     EXIT_CODE_BY_STATUS,
     aggregate_status,
@@ -50,6 +55,7 @@ FAILING_XML = (
     '<testcase classname="t" name="test_a" time="0.1"><failure message="boom"/></testcase>'
     "</testsuite></testsuites>\n"
 )
+ERRORED_XML = FAILING_XML.replace("failure", "error")
 EMPTY_SUITE_XML = '<?xml version="1.0"?><testsuites><testsuite name="s" tests="0"/></testsuites>\n'
 COCOTB_SUMMARY_PASS = "TESTS=2 PASS=2 FAIL=0 SKIP=0\n"
 COCOTB_SUMMARY_FAIL = "TESTS=2 PASS=1 FAIL=1 SKIP=0\n"
@@ -136,6 +142,16 @@ class LeafGrading(unittest.TestCase):
         self.assertEqual(decision.status, "UNKNOWN")
         self.assertIn("structured result missing", decision.reason)
         self.assertEqual(decision.failure_buckets[0]["kind"], "unknown")
+
+    def test_a_graded_xml_beside_the_framework_file_is_never_evidence(self):
+        marked = FAILING_XML.replace(
+            '<testsuite name="s" tests="1">',
+            '<testsuite name="s" tests="1"><properties>'
+            f'<property name="producer" value="{PRODUCER}"/></properties>',
+        )
+        (self.leaf / "results" / "graded.xml").write_text(marked, encoding="utf-8")
+        decision = self.grade(log="TEST PASSED\n", xml=PASSING_XML)
+        self.assertEqual(decision.status, "PASS", decision.reason)
 
     def test_empty_malformed_and_caseless_xml_are_unknown(self):
         for body in ("", "<testsuites><testsuite", EMPTY_SUITE_XML):
@@ -396,6 +412,123 @@ class JunitOwnership(unittest.TestCase):
         node = ET.parse(self.synthesize(result)).getroot().find("./testsuite/testcase/error")
         self.assertEqual(node.get("type"), "compile_error")
 
+    def test_the_named_record_defaults_to_the_leaf_and_can_be_the_run(self):
+        result = stage("t_a", "ERROR", metadata={"seed": 7}, reason="environment_error: lost")
+        for override, expected in (
+            (None, "dut/build/runs/r/t_a/seed_7/attempt_0/result.json"),
+            (self.run_dir / "result.json", "dut/build/runs/r/result.json"),
+        ):
+            with self.subTest(expected=expected):
+                shutil.rmtree(self.leaf / "results", ignore_errors=True)
+                path = ensure_leaf_junit(
+                    flow=self.flow,
+                    root=self.root,
+                    run_dir=self.run_dir,
+                    tool=TOOL,
+                    result=result,
+                    leaf_dir=self.leaf,
+                    result_json=override,
+                )
+                assert path is not None
+                suites = ET.parse(path).getroot()
+                recorded = [
+                    prop.get("value")
+                    for prop in suites.iter("property")
+                    if prop.get("name") == "result_json"
+                ]
+                self.assertEqual(recorded, [expected])
+                self.assertIn(
+                    f"result_json: {expected}",
+                    suites.findtext("./testsuite/testcase/system-out", ""),
+                )
+
+    def graded(self, result: StageResult, native: str | None = PASSING_XML) -> Path | None:
+        """`ensure_graded_junit` over `native` as the leaf's framework-written results.xml."""
+        xml_path = self.leaf / "results" / "results.xml"
+        if native is not None:
+            xml_path.parent.mkdir(exist_ok=True)
+            xml_path.write_text(native, encoding="utf-8")
+        written = ensure_graded_junit(
+            flow=self.flow,
+            root=self.root,
+            run_dir=self.run_dir,
+            tool=TOOL,
+            result=result,
+            leaf_dir=self.leaf,
+        )
+        if native is not None:
+            self.assertEqual(xml_path.read_text(encoding="utf-8"), native)
+        return written
+
+    def test_a_non_passing_grade_over_a_passing_native_file_writes_graded_xml(self):
+        expected = {
+            "FAIL": ("failure", "sim_failure"),
+            "ERROR": ("error", "tool_error"),
+            "TIMEOUT": ("error", "timeout"),
+            "UNKNOWN": ("error", "unknown"),
+        }
+        for status, (tag, type_attr) in expected.items():
+            with self.subTest(status=status):
+                result = stage("t_a", status, metadata={"seed": 7}, reason=f"{status} reason")
+                path = self.graded(result)
+                self.assertEqual(path, self.leaf / "results" / "graded.xml")
+                assert path is not None
+                self.assertTrue(is_generated_junit(path))
+                (case,) = ET.parse(path).getroot().iter("testcase")
+                self.assertEqual(case.get("name"), "t_a[seed=7]")
+                (node,) = [child for child in case if child.tag in {"failure", "error"}]
+                self.assertEqual(
+                    (node.tag, node.get("type"), node.get("message")),
+                    (tag, type_attr, f"{status} reason"),
+                )
+
+    def test_a_native_file_that_does_not_parse_gets_graded_xml(self):
+        result = stage("t_a", "UNKNOWN", metadata={"seed": 7}, reason="malformed")
+        path = self.graded(result, native="<testsuites><testsuite")
+        assert path is not None
+        self.assertIsNotNone(ET.parse(path).getroot().find("./testsuite/testcase/error"))
+
+    def test_a_native_file_that_records_the_failure_gets_no_graded_xml(self):
+        for native in (FAILING_XML, ERRORED_XML):
+            with self.subTest(native=native[-60:]):
+                result = stage("t_a", "FAIL", metadata={"seed": 7})
+                self.assertIsNone(self.graded(result, native=native))
+                self.assertFalse((self.leaf / "results" / "graded.xml").exists())
+
+    def test_a_passing_or_skipped_grade_gets_no_graded_xml(self):
+        for status in ("PASS", "SKIP"):
+            with self.subTest(status=status):
+                self.assertIsNone(self.graded(stage("t_a", status, metadata={"seed": 7})))
+                self.assertFalse((self.leaf / "results" / "graded.xml").exists())
+
+    def test_a_synthesized_or_absent_results_xml_gets_no_graded_xml(self):
+        result = stage("t_a", "FAIL", metadata={"seed": 7})
+        self.assertIsNone(self.graded(result, native=None))
+        self.synthesize(result)
+        self.assertIsNone(self.graded(result, native=None))
+        self.assertFalse((self.leaf / "results" / "graded.xml").exists())
+
+    def test_a_stale_graded_xml_is_removed_once_the_grade_agrees(self):
+        graded_path = self.leaf / "results" / "graded.xml"
+        failing = stage("t_a", "FAIL", metadata={"seed": 7})
+        for agreeing, native in (
+            (stage("t_a", "PASS", metadata={"seed": 7}), PASSING_XML),
+            (failing, FAILING_XML),
+        ):
+            with self.subTest(status=agreeing.status, native=native[-60:]):
+                self.assertIsNotNone(self.graded(failing))
+                self.assertIsNone(self.graded(agreeing, native=native))
+                self.assertFalse(graded_path.exists())
+
+    def test_a_graded_xml_without_the_marker_is_left_alone(self):
+        graded_path = self.leaf / "results" / "graded.xml"
+        graded_path.parent.mkdir()
+        graded_path.write_text(PASSING_XML, encoding="utf-8")
+        for status in ("FAIL", "PASS"):
+            with self.subTest(status=status):
+                self.assertIsNone(self.graded(stage("t_a", status, metadata={"seed": 7})))
+                self.assertEqual(graded_path.read_text(encoding="utf-8"), PASSING_XML)
+
     def test_leafless_failing_run_gets_a_stage_file_in_precedence_order(self):
         stages = [
             stage(None, "FAIL", stage="flist"),
@@ -450,6 +583,185 @@ class JunitOwnership(unittest.TestCase):
                 flow=self.flow, root=self.root, run_dir=self.run_dir, tool=TOOL, stages=stages
             )
         )
+
+
+class LeafJunitRunStage(unittest.TestCase):
+    """A cocotb `sim` leaf through `run_stage`, with a `noop` stage whose note is the log."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.policies = validate_parser_registry(REPO_ROOT)
+        cls.simulators = load_simulators(REPO_ROOT)
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.results = self.root / "run" / "t_a" / "results"
+
+    def run_leaf(
+        self, log: str, native: str, *, debug: bool = False, entry: TestEntry | None = None
+    ) -> StageResult:
+        """Grade `t_a`, or `entry`, with `native` as the results.xml its framework wrote.
+
+        `debug` runs the leaf as a wave-debug rerun, whose framework writes under `debug/`.
+        """
+        framework_dir = self.results.with_name("debug") if debug else self.results
+        framework_dir.mkdir(parents=True, exist_ok=True)
+        (framework_dir / "results.xml").write_text(native, encoding="utf-8")
+        raw = {"native": {"stages": {"sim": {"kind": "noop", "note": log}}}}
+        flow = make_flow(self.root, raw=raw)
+        catalog = TestCatalog(
+            path=None, groups={}, tests={"t_a": entry or TestEntry(name="t_a", module="t_a")}
+        )
+        args = Namespace(
+            dry_run=False,
+            quiet=True,
+            verbose=False,
+            timeout=None,
+            ui="plain",
+            seed=None,
+            sim_jobs=1,
+            cov=False,
+            waves=None,
+            _wave_debug_rerun=debug,
+        )
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            return stages.run_stage(
+                flow,
+                self.root,
+                raw,
+                catalog,
+                "sim",
+                "t_a",
+                args,
+                TOOL,
+                self.root / "run",
+                self.simulators,
+                self.policies,
+            )
+
+    def test_a_log_fail_pattern_over_a_passing_cocotb_file_publishes_graded_xml(self):
+        result = self.run_leaf("TEST FAILED\n", PASSING_XML)
+        self.assertEqual(result.status, "FAIL", result.reason)
+        self.assertEqual(result.parser["status_source"], "log_pattern")
+        native = self.results / "results.xml"
+        self.assertEqual(native.read_text(encoding="utf-8"), PASSING_XML)
+        self.assertEqual(result.artifacts["results_xml"], "run/t_a/results/results.xml")
+        graded = self.results / "graded.xml"
+        self.assertTrue(is_generated_junit(graded))
+        (case,) = ET.parse(graded).getroot().iter("testcase")
+        self.assertEqual(case.get("name"), "t_a[seed=1]")
+        failure = case.find("failure")
+        assert failure is not None
+        self.assertEqual(failure.get("type"), "sim_failure")
+        self.assertEqual(failure.get("message"), result.reason)
+
+    def test_a_rerun_removes_the_previous_graded_xml_before_the_leaf_runs(self):
+        self.assertEqual(self.run_leaf("TEST FAILED\n", PASSING_XML).status, "FAIL")
+        self.assertTrue((self.results / "graded.xml").is_file())
+        with mock.patch.object(stages, "ensure_graded_junit", lambda **_: None):
+            result = self.run_leaf("TEST PASSED\n", PASSING_XML)
+        self.assertEqual(result.status, "PASS", result.reason)
+        self.assertFalse((self.results / "graded.xml").exists())
+
+    def test_a_failure_the_cocotb_file_records_publishes_no_graded_xml(self):
+        result = self.run_leaf("TEST FAILED\n", FAILING_XML)
+        self.assertEqual(result.status, "FAIL")
+        self.assertFalse((self.results / "graded.xml").exists())
+
+    def test_a_wave_debug_rerun_keeps_its_framework_file_outside_results(self):
+        leaf = self.results.parent
+        self.assertEqual(stages.framework_results_dir(leaf, Namespace()), leaf / "results")
+        rerun = Namespace(_wave_debug_rerun=True)
+        self.assertEqual(stages.framework_results_dir(leaf, rerun), leaf / "debug")
+
+    def test_a_wave_debug_rerun_grades_from_its_own_framework_file(self):
+        result = self.run_leaf("TEST PASSED\n", FAILING_XML, debug=True)
+        self.assertEqual(result.status, "FAIL", result.reason)
+        self.assertEqual(result.parser["status_source"], "structured_result")
+        self.assertFalse(self.results.exists())
+
+    def test_a_wave_debug_rerun_writes_nothing_under_results(self):
+        result = self.run_leaf("TEST FAILED\n", PASSING_XML, debug=True)
+        self.assertEqual(result.status, "FAIL", result.reason)
+        self.assertNotIn("results_xml", result.artifacts)
+        self.assertFalse(self.results.exists())
+        self.assertEqual(
+            (self.results.with_name("debug") / "results.xml").read_text(encoding="utf-8"),
+            PASSING_XML,
+        )
+
+    def test_a_wave_debug_rerun_matches_its_expected_failure_from_its_own_framework_file(self):
+        entry = TestEntry(
+            name="t_a", module="t_a", expect_fail="a filed defect", expect_fail_match="^boom$"
+        )
+        result = self.run_leaf("TEST PASSED\n", FAILING_XML, debug=True, entry=entry)
+        self.assertEqual(result.status, "PASS", result.reason)
+        record = result.metadata["expected_fail"]
+        self.assertEqual(record["observed_failures"], ["boom"])
+        self.assertEqual(record["matched_failure"], "boom")
+
+
+class VcsXceliumSimResultsDir(unittest.TestCase):
+    """The results directory the VCS and Xcelium sim stages create for a leaf."""
+
+    STAGES = (("vcs_sim", "_vcs_resolve_build"), ("xcelium_sim", "_xcelium_resolve_build"))
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+    def sim(self, stage_name: str, resolver: str, *, debug: bool) -> Path:
+        leaf = self.root / stage_name / ("rerun" if debug else "graded")
+        catalog = TestCatalog(
+            path=None, groups={}, tests={"t_a": TestEntry(name="t_a", module="t_a")}
+        )
+        args = Namespace(
+            dry_run=False,
+            quiet=True,
+            verbose=False,
+            timeout=None,
+            ui="plain",
+            run_mode=None,
+            cov=False,
+            _wave_debug_rerun=debug,
+        )
+        info = {
+            "simv": "simv",
+            "vcs_cfg": {},
+            "xcelium_cfg": {},
+            "snapshot": "snapshot",
+            "build_dir": self.root / "build",
+        }
+        with (
+            mock.patch.object(stages, resolver, return_value=info),
+            mock.patch.object(stages, "_wave_format", return_value=""),
+            mock.patch.object(stages, "run_subprocess", return_value=0),
+            redirect_stdout(io.StringIO()),
+        ):
+            getattr(stages, stage_name)(
+                make_flow(self.root, framework="uvm"),
+                self.root,
+                {},
+                catalog,
+                "t_a",
+                args,
+                leaf,
+                leaf / "t_a.log",
+                leaf / "t_a.sh",
+                leaf / "t_a.env",
+                1,
+                test_args=[],
+            )
+        return leaf
+
+    def test_a_wave_debug_rerun_creates_debug_instead_of_results(self):
+        for stage_name, resolver in self.STAGES:
+            for debug, created, absent in ((False, "results", "debug"), (True, "debug", "results")):
+                with self.subTest(stage=stage_name, debug=debug):
+                    leaf = self.sim(stage_name, resolver, debug=debug)
+                    self.assertTrue((leaf / created).is_dir())
+                    self.assertFalse((leaf / absent).exists())
 
 
 if __name__ == "__main__":
