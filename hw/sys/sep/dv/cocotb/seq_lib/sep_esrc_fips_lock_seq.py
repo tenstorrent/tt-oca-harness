@@ -55,6 +55,7 @@ OBS_ENABLE_BIT = ENTROPY_SOURCE.fields("BIW_OBS_CTRL")["RAW_ENABLE"]["bm"]
 SHA256_BIT = ENTROPY_SOURCE.fields("CTRL")["SHA256_WHITENING_ENABLE"]["bm"]
 CTRL_RSVD0_BIT = ENTROPY_SOURCE.fields("CTRL")["RSVD0"]["bm"]
 CHURN_BIT = ENTROPY_SOURCE.fields("FIFO_CTRL")["ENTROPY_CHURN_ENABLE"]["bm"]
+FIFO_ENABLE_BIT = ENTROPY_SOURCE.fields("FIFO_CTRL")["ENABLE"]["bm"]
 WINDOW_MASK = ENTROPY_SOURCE.fields("HEALTH_TEST_WINDOW_SIZE")["SIZE"]["bm"]
 WINDOW_RESET = ENTROPY_SOURCE.reset("HEALTH_TEST_WINDOW_SIZE")
 THRESH_MASK = ENTROPY_SOURCE.fields("ALERT_THRESHOLD")["THRESHOLD"]["bm"]
@@ -103,7 +104,7 @@ _WALK_FIELDS: dict[str, frozenset[str]] = {
     "RING_OSC_ENABLE": frozenset({"ENABLE", "SAMPLE_CLK_ENABLE"}),
     "RING_OSC_TUNE": frozenset({"DETUNE", "SAMPLE_CLK_DETUNE"}),
     "RING_OSC_CTRL": frozenset({"SAMPLE_CLK_SELECT"}),
-    "FIFO_CTRL": frozenset({"ENTROPY_CHURN_ENABLE"}),
+    "FIFO_CTRL": frozenset({"ENABLE", "ENTROPY_CHURN_ENABLE"}),
     "ALERT_THRESHOLD": frozenset({"THRESHOLD"}),
     "MARKOV_TEST_PROB_THRESHOLDS": frozenset({"PROB_01_THRESHOLD", "PROB_10_THRESHOLD"}),
     "APT_PROPORTION_1BIT": frozenset({"LIMIT"}),
@@ -346,12 +347,15 @@ class SepEsrcFipsLockCfg:
                 GEN_DIV_MASK,
                 GEN_DIV_RESET,
             ),
+            # Both FIFO_CTRL fields are locked. ENABLE is cleared before the
+            # lock, so the rejected poke is software turning the seed-read path
+            # back on.
             SepEsrcFipsLockTarget(
-                "FIFO_CHURN",
+                "FIFO_CTRL",
                 ESRC_FIFO_CTRL,
-                ENTROPY_SOURCE.value("FIFO_CTRL", ENABLE=1, ENTROPY_CHURN_ENABLE=1),
+                ENTROPY_SOURCE.value("FIFO_CTRL", ENABLE=0, ENTROPY_CHURN_ENABLE=1),
                 ENTROPY_SOURCE.value("FIFO_CTRL", ENABLE=1, ENTROPY_CHURN_ENABLE=0),
-                CHURN_BIT,
+                FIFO_ENABLE_BIT | CHURN_BIT,
                 ENTROPY_SOURCE.reset("FIFO_CTRL"),
             ),
             SepEsrcFipsLockTarget(

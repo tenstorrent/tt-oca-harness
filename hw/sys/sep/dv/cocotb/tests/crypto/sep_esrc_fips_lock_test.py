@@ -4,7 +4,7 @@
 
 no_cpu / +skip_fuse_sense. RANDCFG walks every locked field class every
 seed (CTRL functional, health-test window/enable, decorrelator,
-ring-osc enable/tune, one generator sample-clock divider, FIFO churn,
+ring-osc enable/tune, one generator sample-clock divider, FIFO enable and churn,
 alert threshold). A pre-lock write moves the field off reset so the
 post-lock reject is not a stuck register. Write-0 leaves LOCK=1.
 Reserved CTRL.RSVD0 is RAZ/WI before the lock and does not clear it after;
