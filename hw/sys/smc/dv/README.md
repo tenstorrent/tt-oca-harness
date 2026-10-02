@@ -419,13 +419,16 @@ hw/sys/smc/dv/
 │                           #   postprocess.mk. Needs the RISC-V toolchain; not
 │                           #   required by the `smoke` or `hosted` groups. The Boot ROM is NOT
 │                           #   here — it lives outside DV at ../bootrom/prod/
-├── efuse_preload/          # generator for the eFuse OTP image the `dual` run
-│                           #   mode senses: efuse_schema.toml declares the
-│                           #   fields, configurations/*.toml an image, and
+├── efuse_preload/          # generators for the eFuse OTP images the bench
+│                           #   senses: efuse_schema.toml declares the fields,
+│                           #   configurations/*.toml an image, and
 │                           #   generate_efuse_preload.py / randomize_efuse.py
-│                           #   emit build/efuse/smc_efuse_generated.hex at
-│                           #   c_compile. Build-time tooling, not part of any
-│                           #   test's proof path
+│                           #   emit build/efuse/smc_efuse_generated.hex for the
+│                           #   `dual` run mode at c_compile. pattern_efuse.py
+│                           #   writes the full-width configuration each
+│                           #   smc_efuse_image_*_test leaf generates into its
+│                           #   run directory at test start; those leaves derive
+│                           #   their expectations from that image
 ├── assets/                 # the committed images: the hand-maintained eFuse
 │                           #   image and shadow-register preload the
 │                           #   single-instance run modes load
@@ -474,12 +477,14 @@ hw/sys/smc/dv/
   not fit.
 * `uvm/` — the SV-UVM shape of the same scenarios, selected by
   `--framework uvm`; it shares `tb/tb_top.sv` with the cocotb shape.
-* `efuse_preload/` — the schema and generator that produce the eFuse image the
-  `dual` run mode senses (`build/efuse/smc_efuse_generated.hex`). It does not
-  produce `assets/smc_efuse_default.hex`, which is hand-maintained; the two
-  targets sense different images, and `smc_sim_cfg.toml` (`[run_modes.dual]`)
-  says why. Keeping the generator beside the schema is what lets a reviewer
-  read which field a configuration sets.
+* `efuse_preload/` — the schema and generators that produce the eFuse image the
+  `dual` run mode senses (`build/efuse/smc_efuse_generated.hex`) and the image
+  each `smc_efuse_image_*_test` leaf writes into its run directory and names
+  through its own `+smc_efuse_hex`. It does not produce
+  `assets/smc_efuse_default.hex`, which is hand-maintained; the two targets
+  sense different images, and `smc_sim_cfg.toml` (`[run_modes.dual]`) says why.
+  Keeping the generators beside the schema is what lets a reviewer read which
+  field a configuration sets.
 * `smc_sim.core` — a FuseSoC/CAPI-2 view of the same Bender targets for an
   external consumer; `run_dv.py` does not read it, and it is kept here so the
   two descriptions of the build sit in one directory.
