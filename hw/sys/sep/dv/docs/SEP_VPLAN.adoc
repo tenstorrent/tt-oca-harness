@@ -405,7 +405,7 @@ never when it was written.
 |`sep_esrc_fips_lock_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the BIW observe enable still writable under the lock. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
+|The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back. The lock also freezes the debug-pin mux and both observe-tap enables: one tap held at 1 rejects a clear, the other held at 0 rejects a set, while `NOISE_OBS_CTRL.LANE_SEL` stays writable. `FIFO_CTRL.ENABLE`, cleared before the lock, rejects a set under it, so software cannot re-open the `FIFO_RDATA` read path of the DRBG seed words. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
 |`sep_esrc_alert_delivery_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -6680,9 +6680,9 @@ The `UNMAPPED-CODE` lines tally the codes `CHK-UNMAPPED-CODE` graded, per group 
 
 *BFM / Model*: ocah_axi_vip, entropy golden
 
-*Randomization*: RANDCFG — every certified-configuration class every seed; pre-lock value and rejected poke come from the run seed, and each field's poke is selected to differ from that field's pre-lock value.
+*Randomization*: RANDCFG — every certified-configuration class every seed; pre-lock value and rejected poke come from the run seed, and each field's poke is selected to differ from that field's pre-lock value. The seed also picks which observe tap is held at 1 and which at 0 across the lock, and the `NOISE_OBS_CTRL.LANE_SEL` values before and under the lock.
 
-*Objective*: The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the BIW observe enable still writable under the lock. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
+*Objective*: The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back. The lock also freezes the debug-pin mux (`DEBUG_CTRL`) and both observe-tap enables (`BIW_OBS_CTRL.RAW_ENABLE`, `NOISE_OBS_CTRL.RAW_ENABLE`), so a locked part cannot capture or route pre-conditioning entropy. Each conditioned word goes to the DRBG and into the main FIFO in parallel, so `FIFO_CTRL.ENABLE` gates the software copy of the DRBG seed words: the walk clears it before the lock, as a certified configuration does, and the lock must hold it at 0. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
 
 *Test Coverage*: FIPS lock and the matching entropy-source status.
 
@@ -6692,7 +6692,7 @@ The `UNMAPPED-CODE` lines tally the codes `CHK-UNMAPPED-CODE` graded, per group 
 . One of two vehicles on the ESRC lock-and-alert scorecard row.
 . Health-test *quality* is not claimed.
 . `FIPS_LOCK.LOCK` is write-1-only.
-. Observe FIFOs stay writable under lock.
+. The observe-tap enables and the debug-pin mux are locked; `NOISE_OBS_CTRL.LANE_SEL` is not.
 . Walks every field `entropy_source.rdl` marks `swwel` -- the
 certified-configuration inventory `FIPS_LOCK` freezes -- one target per
 register, except `CTRL.MODULE_ENABLE`. The sequence declares its coverage and
@@ -6723,20 +6723,32 @@ leaves `FIPS_LOCK.LOCK=1`.
 |After `rst_ni` the released target reads its register reset, then takes the
 poke that the lock rejected. The target is chosen so its poke differs from the
 reset, otherwise the reset value alone would satisfy the readback.
-|CHK-OBS-ENABLE-WRITABLE
-|`BIW_OBS_CTRL.RAW_ENABLE` stays writable under lock. This is the control bit
-only. `BIW_OBS_STATUS` and `BIW_OBS_RDATA` are not read, so the observe FIFO
-itself is not claimed live.
+|CHK-OBS-PRE-LOCK
+|Before the lock, `BIW_OBS_CTRL.RAW_ENABLE` and `NOISE_OBS_CTRL.RAW_ENABLE`
+each take both values on readback, so a bit stuck at either value fails here.
+|CHK-OBS-ENABLE-LOCKED
+|Under the lock each tap enable rejects a write of the opposite value. One tap
+is held at 1 and rejects a clear, the other is held at 0 and rejects a set,
+picked by the seed, so every seed grades both directions on both taps over
+the reseeds.
+|CHK-OBS-LANE-SEL
+|The same `NOISE_OBS_CTRL` write under the lock moves `LANE_SEL`, which is not
+locked. The lane moving while `RAW_ENABLE` holds shows the write reached the
+register and the lock is per field.
+|CHK-OBS-POST-UNLOCK
+|After `rst_ni` the tap that held 0 reads 0 and takes the set the lock rejected.
 |CHK-REC-THRESH
 |`RECOMMENDED_THRESHOLDS.RCT_LIMIT` tracks `MIN_ENTROPY_H` across a sweep of
 eight Q4.4 points, compared against SP 800-90B 4.4.1 `C = 1 + ceil(20/H)`
 re-derived in the test. The oracle is the standard, not
 `entropy_source_rec_thresh_lut.sv`, which the checker never reads. `APT_LIMIT` is
 an exact binomial cutoff with no closed form; what is claimed for it is that it
-stays inside the 1024-sample window and falls as the assessed min-entropy rises.
+stays inside the 1024-sample window, never rises between sweep points, and is
+lower at the Q4.4 maximum than at `MIN_ENTROPY_H=0x00`.
 |CHK-RANDCFG
-|26 locked registers walked in one invocation, covering 34 of the 35 fields
-`entropy_source.rdl` marks `swwel`. Every register that locks two
+|27 locked registers walked in one invocation, covering 37 of the 40 fields
+`entropy_source.rdl` marks `swwel`. The two observe-tap enables are graded by
+the `CHK-OBS-*` checkers. Every register that locks two
 fields moves both off reset in the pre-lock write, so a field inside the compare
 mask is never left unwritten.
 |===
@@ -6745,7 +6757,9 @@ mask is never left unwritten.
 
 *Not claimed*: `CTRL.MODULE_ENABLE`. It is locked too, but clearing it stops the
 block for the rest of the walk, so its lock belongs to the reset-recovery
-vehicle.
+vehicle. The observe FIFOs' data path under the lock: `BIW_OBS_STATUS`,
+`NOISE_OBS_STATUS` and the `*_OBS_RDATA` ports are not read, so a locked-off
+tap and a locked-off main FIFO are graded at the control bit only.
 
 '''''
 

@@ -5884,7 +5884,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>ENABLE</ipxact:name>
-              <ipxact:description>Enables FIFO writes. Reads remain available while writes are disabled.</ipxact:description>
+              <ipxact:description>Enables FIFO writes. Reads remain available while writes are disabled. Words offered to the FIFO are also the DRBG seed stream, which this field does not gate. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
