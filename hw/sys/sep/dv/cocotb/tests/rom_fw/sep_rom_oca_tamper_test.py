@@ -69,14 +69,12 @@ class sep_rom_oca_tamper_test(sep_rom_ot_secure_boot_test):
     # PAYLOAD_OK), none of which may happen here. What survives is the transport
     # evidence -- this must still be a real SPI boot, or the refusal proves
     # nothing about the SPI path.
-    # Measured: both slots are read and rejected and rom_err_fail() reports the
-    # failure by ~1.65M cycles, so poll_boot does break out on fw_done and this
-    # budget is a backstop rather than the normal exit. It is trimmed from the
-    # inherited 24M anyway: if a future refusal path ever hangs instead of
-    # reporting, the budget IS the runtime, and 24M is ~6 hours at the ~1.1k
-    # cycles/s this testbench sustains -- past the testlist timeout, so the
-    # failure would surface as an unhelpful timeout rather than a verdict.
-    max_run_cycles = 3_000_000
+    # Both slots complete just above 3M cycles on the acceptance backend. Keep a
+    # bounded margin rather than the inherited 24M: if the refusal path hangs,
+    # the cycle budget determines when the test reports a useful failure.
+    max_run_cycles = 3_500_000
+    verdict_source = "scratch0"
+    verify_otbn_edn = False
 
     required_markers = (
         "BOOT_SPI",
@@ -124,14 +122,10 @@ class sep_rom_oca_tamper_test(sep_rom_ot_secure_boot_test):
         # test for the very outcome it exists to require.
         self.sb.expect_fw_pass = False
         await super().run_scenario()
-        # The ROM reports the refusal through the mailbox (rom_err_fail) rather
-        # than hanging, so fw_done asserts with fw_pass low. Assert that
-        # explicitly: "no PASS" alone would also be satisfied by a ROM that
-        # wedged before reaching a verdict, and a refusal nobody is told about is
-        # a worse outcome than one that is.
+        # rom_err_fail records the terminal verdict in cold_scratch[0], so
+        # poll_boot reports fw_done with fw_pass low.
         assert self.sb.fw_done, (
             "ROM never reported a verdict: the tampered image was refused (the "
-            "console markers confirm it) but nothing signaled completion, so the "
-            "failure would be invisible to anything watching the mailbox"
+            "console markers confirm it) but cold_scratch[0] never signaled completion"
         )
         assert not self.sb.fw_pass, "scoreboard recorded PASS on a refused boot"

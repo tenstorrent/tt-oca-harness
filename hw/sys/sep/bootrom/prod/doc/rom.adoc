@@ -1833,8 +1833,8 @@ commercial IP that is not part of this design.
 
 NOTE: Simulation still forces the ESRC *noise* source (`+esrc_noise_force`), because ring
 oscillators do not self-oscillate in simulation. Everything above that — the health tests,
-CSRNG, EDN, and the command handshakes — is exercised for real. This is a much weaker
-shortcut than the whole-chain EDN grant it replaces.
+CSRNG, EDN, and the command handshakes — is exercised for real. The physical
+ring-oscillator noise source itself remains outside this simulation coverage.
 
 [[sec:secure_boot]]
 == Secure Boot Decision and Signature Verification
