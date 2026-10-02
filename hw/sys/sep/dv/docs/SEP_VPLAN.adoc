@@ -2271,7 +2271,7 @@ recovery. Those are listed in <<phase-3>>.
 . Assert the aggregator bit is low.
 . Enable the interrupt and write the real test bit.
 . Wait for the matching aggregator bit to assert; confirm the other covered bits stay low.
-. Clear the test bit and the pending state; wait for deassertion.
+. Clear the test bit. For an Event source, confirm the aggregator bit stays high for 32 clocks and the pending state still reads 1, then clear the pending state. Wait for deassertion.
 . Confirm both bus-error STATUS registers and aggregator bits 40 and 42 read 0.
 . Read the unused word between the last DMA `INTR_SRC_ADDR` and the first `INTR_SRC_WR_VAL`; require SLVERR, exclusive `reg_path_err`, and bit 40.
 . Write `DMA_BUS_ERR_CLEAR`; STATUS and bit 40 read 0.
@@ -2285,7 +2285,7 @@ recovery. Those are listed in <<phase-3>>.
 |===
 |Checker |Contract
 |CHK-AGG
-|All covered interrupts (CSRNG, EDN, HMAC error, DMA done/chunk/error) propagate to their expected aggregator bit and clear again — baseline-low, assert, isolation and clear all covered. Event sources clear by W1C of `INTR_STATE`; DMA Status sources clear by `INTR_TEST=0`. "One-hot" here means one-hot among the covered bits. Bits outside that set are not compared — and the logged vector shows some of them are legitimately high, so this is a real scope limit rather than a theoretical one. HMAC/KMAC `fifo_empty` Status bits are idle-true and are not walked.
+|All covered interrupts (CSRNG, EDN, HMAC error, DMA done/chunk/error) propagate to their expected aggregator bit and clear again — baseline-low, assert, isolation and clear all covered. Event sources stay set after `INTR_TEST=0` (aggregator bit 1 for 32 clocks, `INTR_STATE` bit 1) and clear only by W1C of `INTR_STATE`; DMA Status sources clear by `INTR_TEST=0`, and the slowest of them must drop inside those 32 clocks, so the hold is long enough to catch a state that follows the test level. "One-hot" here means one-hot among the covered bits. Bits outside that set are not compared — and the logged vector shows some of them are legitimately high, so this is a real scope limit rather than a theoretical one. HMAC/KMAC `fifo_empty` Status bits are idle-true and are not walked.
 |Non-vacuity (not a leaf checker)
 |A non-zero number of AXI transactions was observed, so the run cannot pass having done nothing. This leaf emits no `CHK-NONVAC` of its own: the floor is the shared scoreboard's `checks > 0` activity guard (`cocotb/env/sep_scoreboard.py`). It is a transaction floor, not a per-source minimum — no assertion requires that every covered source ran. The per-source lines are what evidence that.
 |CHK-BUSERR-BASE
