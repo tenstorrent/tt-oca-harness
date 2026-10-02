@@ -4,13 +4,16 @@
 
 no_cpu / +skip_fuse_sense. RANDCFG walks every locked field class every
 seed (CTRL functional, health-test window/enable, decorrelator,
-ring-osc enable/tune, one generator sample-clock divider, FIFO enable and churn,
-alert threshold). A pre-lock write moves the field off reset so the
+ring-osc enable/tune, every generator sample-clock divider, FIFO enable and churn,
+alert threshold, debug-pin mux). A pre-lock write moves the field off reset so the
 post-lock reject is not a stuck register. Write-0 leaves LOCK=1.
 Reserved CTRL.RSVD0 is RAZ/WI before the lock and does not clear it after;
 rst_ni does. The advisory RCT/APT cutoffs track MIN_ENTROPY_H against an
-SP 800-90B oracle. The BIW observe enable is writable before the lock and
-frozen after it (CHK-OBS-ENABLE-LOCKED). Health-test ENABLE
+SP 800-90B oracle. Both observe-tap enables are writable before the lock and
+frozen after it: one tap is held at 1 and rejects a clear, the other is held
+at 0 and rejects a set (CHK-OBS-ENABLE-LOCKED). NOISE_OBS_CTRL.LANE_SEL stays
+writable under the lock (CHK-OBS-LANE-SEL), and after rst_ni the tap held at 0
+can be set again (CHK-OBS-POST-UNLOCK). Health-test ENABLE
 stays 0 so this vehicle does not trip the alert path.
 
 Accepted scope: class walk, not an invert of every swwel bit. Alert
@@ -32,7 +35,23 @@ from seq_lib.sep_esrc_fips_lock_seq import (
 
 @pyuvm.test()
 class sep_esrc_fips_lock_test(sep_base_test):
-    """Lock freezes certified config and the observe-tap enable; rst_ni clears it."""
+    """Lock freezes certified config, the debug pin and both observe-tap enables."""
+
+    required_evidence = (
+        "CHK-PRE-LOCK",
+        "CHK-CTRL-RSVD",
+        "CHK-REC-THRESH",
+        "CHK-OBS-PRE-LOCK",
+        "CHK-LOCK-SET",
+        "CHK-LOCK-W1S",
+        "CHK-POST-LOCK",
+        "CHK-OBS-ENABLE-LOCKED",
+        "CHK-OBS-LANE-SEL",
+        "CHK-RST-NI",
+        "CHK-POST-UNLOCK",
+        "CHK-OBS-POST-UNLOCK",
+        "CHK-RANDCFG",
+    )
 
     async def _check_pre(self, esrc: SepEsrcFipsLock, target) -> None:
         await esrc.write(target.addr, target.pre)
@@ -123,14 +142,27 @@ class sep_esrc_fips_lock_test(sep_base_test):
         h_target = next(t for t in cfg.targets if t.name == "MIN_ENTROPY_H")
         await esrc.write(h_target.addr, h_target.pre)
 
-        # Prove the observe-tap enable is writable before the lock, so the
-        # post-lock freeze below cannot pass on a stuck register.
-        await esrc.write_obs_enable(cfg.obs_enable)
-        got = await esrc.read_obs_enable()
-        assert got == cfg.obs_enable, (
-            f"CHK-OBS-PRE-LOCK FAIL: BIW_OBS_CTRL.RAW_ENABLE={got} before lock"
-        )
-        self.logger.info("CHK-OBS-PRE-LOCK PASS: BIW_OBS_CTRL.RAW_ENABLE=%d before lock", got)
+        # Prove each observe-tap enable takes both values before the lock, then
+        # leave it at the value it holds across the lock. A tap stuck at either
+        # value fails here, so the post-lock freeze cannot pass on a stuck bit.
+        for reg, held in cfg.obs_held.items():
+            for want in (held ^ 1, held):
+                await esrc.write_obs(reg, want, cfg.lane_pre)
+                got, lane = await esrc.read_obs(reg)
+                assert got == want, (
+                    f"CHK-OBS-PRE-LOCK FAIL: {reg}.RAW_ENABLE wrote {want} read {got} before lock"
+                )
+            if reg == "NOISE_OBS_CTRL":
+                assert lane == cfg.lane_pre, (
+                    f"CHK-OBS-PRE-LOCK FAIL: NOISE_OBS_CTRL.LANE_SEL wrote {cfg.lane_pre} "
+                    f"read {lane} before lock"
+                )
+            self.logger.info(
+                "CHK-OBS-PRE-LOCK PASS: %s.RAW_ENABLE took %d then %d before lock",
+                reg,
+                held ^ 1,
+                held,
+            )
 
         await esrc.set_lock()
         got = await esrc.read_lock()
@@ -145,14 +177,34 @@ class sep_esrc_fips_lock_test(sep_base_test):
         for target in cfg.targets:
             await self._check_post(esrc, target)
 
-        await esrc.write_obs_enable(0)
-        got = await esrc.read_obs_enable()
-        assert got == cfg.obs_enable, (
-            f"CHK-OBS-ENABLE-LOCKED FAIL: BIW_OBS_CTRL.RAW_ENABLE={got} accepted a clear under lock"
-        )
-        self.logger.info(
-            "CHK-OBS-ENABLE-LOCKED PASS: BIW_OBS_CTRL.RAW_ENABLE held %d under lock", got
-        )
+        # Under the lock, write the opposite value to each tap enable. For
+        # NOISE_OBS_CTRL the same write moves LANE_SEL, which is not locked: the
+        # lane moving while RAW_ENABLE holds shows the write reached the register
+        # and the lock is per field, not a dropped write or a whole-register freeze.
+        for reg, held in cfg.obs_held.items():
+            await esrc.write_obs(reg, held ^ 1, cfg.lane_post)
+            got, lane = await esrc.read_obs(reg)
+            direction = "set" if held == 0 else "clear"
+            assert got == held, (
+                f"CHK-OBS-ENABLE-LOCKED FAIL: {reg}.RAW_ENABLE={got} accepted a {direction} "
+                f"under lock (held {held})"
+            )
+            self.logger.info(
+                "CHK-OBS-ENABLE-LOCKED PASS: %s.RAW_ENABLE held %d, rejected a %s under lock",
+                reg,
+                got,
+                direction,
+            )
+            if reg == "NOISE_OBS_CTRL":
+                assert lane == cfg.lane_post, (
+                    f"CHK-OBS-LANE-SEL FAIL: NOISE_OBS_CTRL.LANE_SEL wrote {cfg.lane_post} "
+                    f"read {lane} under lock (pre-lock {cfg.lane_pre})"
+                )
+                self.logger.info(
+                    "CHK-OBS-LANE-SEL PASS: NOISE_OBS_CTRL.LANE_SEL moved %d -> %d under lock",
+                    cfg.lane_pre,
+                    lane,
+                )
 
         await esrc.poke_reserved_ctrl_bit()
         got = await esrc.read_lock()
@@ -185,6 +237,21 @@ class sep_esrc_fips_lock_test(sep_base_test):
             rel.name,
             at_reset & rel.mask,
             got & rel.mask,
+        )
+        # After rst_ni the tap that held 0 under the lock reads its reset and
+        # accepts the set the lock rejected; then clear it again.
+        rel_tap = next(reg for reg, held in cfg.obs_held.items() if held == 0)
+        at_reset, _ = await esrc.read_obs(rel_tap)
+        await esrc.write_obs(rel_tap, 1)
+        got, _ = await esrc.read_obs(rel_tap)
+        assert at_reset == 0 and got == 1, (
+            f"CHK-OBS-POST-UNLOCK FAIL: {rel_tap}.RAW_ENABLE read {at_reset} after rst_ni "
+            f"and {got} after a set"
+        )
+        await esrc.write_obs(rel_tap, 0)
+        self.logger.info(
+            "CHK-OBS-POST-UNLOCK PASS: %s.RAW_ENABLE read 0 after rst_ni and took a set",
+            rel_tap,
         )
         self.logger.info(
             "CHK-RANDCFG PASS: walked %d locked classes: %s",
