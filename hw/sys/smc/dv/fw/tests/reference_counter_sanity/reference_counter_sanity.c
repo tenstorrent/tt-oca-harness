@@ -1,18 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/*******************************************************************************
- * SMC Reference Counter Test
+/**
+ * @brief SMC Reference Counter Test
  *
- * This test verifies REFERENCE_COUNTER (smc cpu_ctrl) is a free-running
- * reference-clock counter, using the refclk poll from the avsbus_sanity test.
- *
- * Test flow:
- * 1. Sample the counter and poll until it counts up (fail if it never advances)
- * 2. Write the counter CSR and confirm the counter reloads to the written
- *    value (wr_swacc update path)
- * 3. Confirm the counter keeps counting from the written value
- ******************************************************************************/
+ * Verifies that the SMC CPU reference counter is free-running, and that a
+ * software write reloads it, after which it keeps counting.
+ */
 
 #include <stdint.h>
 
@@ -65,15 +59,11 @@ int main(void) {
     simputs("SMC Reference Counter Test\n");
     simputs("====================================\n\n");
 
-    // Step 1: read refclk counter and wait until it counts up
     if (wait_refclk_advance() != 0) {
         simputs("\n*** SMC Reference Counter Test FAILED (counter stuck) ***\n");
         test_fail(hartid);
     }
 
-    // Step 2: write a distinctive value to the counter CSR and confirm the
-    // counter reloaded to it (wr_swacc path); readback must land within
-    // REF_COUNT_WR_MARGIN above the written value
     write_reg(SMC_TOP_SMC_CPU_CTRL_REFERENCE_COUNTER_BASE_ADDR, REF_COUNT_WR_VALUE);
     uint32_t readback;
     if (wait_counter_update(REF_COUNT_WR_VALUE, &readback) != 0) {
@@ -83,7 +73,6 @@ int main(void) {
         test_fail(hartid);
     }
 
-    // Step 3: confirm the counter keeps counting from the written value
     if (wait_refclk_advance() != 0) {
         simputs("\n*** SMC Reference Counter Test FAILED (stuck after write) ***\n");
         test_fail(hartid);

@@ -130,8 +130,9 @@ uint32_t rom_lifecycle_policy(void) {
         // SMC continue running in an unknown state.
         uint32_t reset_ctrl = sep_get_smc_base() + SMC_CPU_CTRL_RESET_CTRL_OFFSET;
         uint32_t rst = mmio_read32(reset_ctrl);
-        mmio_write32(reset_ctrl, rst & ~SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK);
-        simputs("SMC_RESET_ON_INVALID_LC\n");
+        rst &= ~(uint32_t)SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK;
+        mmio_write32(reset_ctrl, rst);
+        simputshex32("SMC_RESET_ON_INVALID_LC=", rst);
         // Diagnostic only: the halt below happens either way. A core bit that
         // reads back set means that core is still running.
         rst = mmio_read32(reset_ctrl);

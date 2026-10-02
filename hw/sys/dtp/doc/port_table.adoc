@@ -48,10 +48,10 @@ endif::backend-html5[]
 |`jtag_stap_sep_host_tdo_o` |`logic` |Out |1 |SEP debug STAP TDO (to SEP TDI). |SEP JTAG port
 |`jtag_stap_sep_host_tdo_oen_o` |`logic` |Out |1 |SEP debug STAP TDO output enable. |SEP JTAG port
 
-|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TAP control array. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_NUM_EXTRA_STAPS=0`. |Extra STAP hosts
-|`jtag_stap_extra_host_tdi_i` |`logic` |In |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDI array. Default: Tie to '0 if unused. |Extra STAP hosts
-|`jtag_stap_extra_host_tdo_o` |`logic` |Out |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO array. |Extra STAP hosts
-|`jtag_stap_extra_host_tdo_oen_o` |`logic` |Out |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO output enable array. |Extra STAP hosts
+|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TAP control array. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_NUM_EXTRA_STAPS=0`. |Extra STAP hosts
+|`jtag_stap_extra_host_tdi_i` |`logic` |In |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TDI array. Default: Tie to '0 if unused. |Extra STAP hosts
+|`jtag_stap_extra_host_tdo_o` |`logic` |Out |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TDO array. |Extra STAP hosts
+|`jtag_stap_extra_host_tdo_oen_o` |`logic` |Out |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TDO output enable array. |Extra STAP hosts
 
 |`jtag_stap_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Out |- |Extended STAP scan control. Tie scan_in to scan_out if unused. |STAP scan chain
 |`jtag_stap_host_scan_in_i` |`logic` |In |1 |Extended STAP scan data in. |STAP scan chain

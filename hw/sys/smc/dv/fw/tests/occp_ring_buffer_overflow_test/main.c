@@ -2,20 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Ring Buffer Overflow Protection Test
+ * OCCP Ring Buffer Overflow Test - Per-Type Overflow Limits
  *
- * **SPECIFICATION COMPLIANCE TEST**
- * This test checks the ROM status ring buffer for per-message-type overflow
- * limits:
- * - Status messages: Must leave 2 empty entries (for 1 warning + 1 error)
- * - Warning messages: Must leave 1 entry (for errors)
- * - Error messages: May fill the last entry (always fatal)
- *
- * **TEST STRATEGY:**
- * 1. Trigger ROM status reporting to fill the ring buffer
- * 2. Force different types of status reports near overflow conditions
- * 3. Verify overflow protection behaves per specification
- * 4. FAIL if protection is not implemented (test should catch the bug)
+ * Probes the target ROM's SMC status ring buffer against the per-message-type
+ * overflow limits: status entries keep two slots free, warnings keep one, and
+ * errors may fill the last slot. The test sends too few commands to reach the
+ * limits, so it only reads and logs entries; every check then reports failure
+ * unconditionally, and the test always fails.
  */
 
 #include "occp_test_common.h"
@@ -23,8 +16,6 @@
 #include "smc_test.h"
 #include <string.h>
 #include "smc_status.h"
-
-#define SMC_RING_BUFFER_SIZE 512
 
 typedef struct {
     test_context_t *occp_ctx;
@@ -41,10 +32,6 @@ static void init_test_context(overflow_test_context_t *ctx, test_context_t *occp
     ctx->passed_tests = 0;
 }
 
-static uint32_t create_status_message(uint32_t fw_id, uint32_t msg_type, uint32_t msg_value) {
-    return ((fw_id & 0xFF) << 16) | ((msg_type & 0xFF) << 24) | (msg_value & 0xFFFF);
-}
-
 static void mark_test_result(overflow_test_context_t *ctx, bool passed, const char *test_name) {
     ctx->total_tests++;
     if (passed) {
@@ -58,52 +45,14 @@ static void mark_test_result(overflow_test_context_t *ctx, bool passed, const ch
     simputs("\n");
 }
 
-static bool fill_buffer_to_limit(overflow_test_context_t *ctx, int entries_to_leave) {
-    simputs("Filling ring buffer systematically...\n");
-
-    uint32_t empty_reads = 0;
-    int consecutive_empty = 0;
-    const int max_fill_attempts = SMC_RING_BUFFER_SIZE + 100; // Safety margin
-
-    // First, drain any existing messages
-    for (int i = 0; i < max_fill_attempts && consecutive_empty < 10; i++) {
-        uint32_t status;
-        int result =
-            occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
-
-        if (result != OCCP_SUCCESS) {
-            simputs("ERROR: Failed to read SMC status during buffer drain\n");
-            return false;
-        }
-
-        if (status == 0) {
-            consecutive_empty++;
-            empty_reads++;
-        } else {
-            consecutive_empty = 0;
-        }
-    }
-
-    simputshex32("Buffer drained, empty reads: ", empty_reads);
-
-    // The ROM ring buffer cannot be filled directly from the master; only its drained
-    // state is observable here.
-    simputs("Note: Testing current buffer state against specification\n");
-
-    return true;
-}
-
 static bool test_status_message_overflow_protection(overflow_test_context_t *ctx) {
     simputs("\n=== Test 1: Status Message Overflow Protection ===\n");
     simputs("SPEC: Status messages must leave 2 empty entries (for 1 warning + 1 error)\n");
 
     bool test_passed = true;
 
-    // Strategy: Force ROM to generate many status messages by sending OCCP commands
-    // This should trigger internal status reporting and fill the buffer
     simputs("Forcing ROM to generate status messages by sending multiple OCCP commands...\n");
 
-    // Send many GET_VERSION commands to force ROM status reporting
     for (int i = 0; i < 50; i++) {
         uint32_t version;
         int result =
@@ -113,26 +62,22 @@ static bool test_status_message_overflow_protection(overflow_test_context_t *ctx
         }
     }
 
-    // Send invalid commands to force error status reporting
     simputs("Sending invalid commands to trigger error status reporting...\n");
     for (int i = 0; i < 20; i++) {
-        // Send invalid command by crafting raw command
-        uint32_t invalid_cmd = 0xFF; // Invalid command
+        uint32_t invalid_cmd = 0xFF;
         uint8_t cmd_bytes[4];
         cmd_bytes[0] = invalid_cmd & 0xFF;
         cmd_bytes[1] = (invalid_cmd >> 8) & 0xFF;
         cmd_bytes[2] = (invalid_cmd >> 16) & 0xFF;
         cmd_bytes[3] = (invalid_cmd >> 24) & 0xFF;
 
-        // This should fail and trigger error status reporting in ROM
+        // An unmapped write is rejected and should log an error entry.
         occp_send_write_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xDEADBEEF, cmd_bytes,
                                 sizeof(cmd_bytes));
     }
 
-    // Now test if overflow protection is working
     simputs("Testing if overflow protection is active...\n");
 
-    // Read status messages to see buffer behavior
     int consecutive_empty = 0;
     int total_messages = 0;
     bool found_recent_activity = false;
@@ -152,7 +97,7 @@ static bool test_status_message_overflow_protection(overflow_test_context_t *ctx
                 uint32_t msg_type = (status >> 24) & 0xFF;
                 uint32_t msg_value = status & 0xFFFF;
 
-                if (i < 10) { // Log first few messages
+                if (i < 10) {
                     simputshex32("  Status message: 0x", status);
                     simputshex32("    FW_ID: ", fw_id);
                     simputshex32("    Type: ", msg_type);
@@ -199,22 +144,15 @@ static bool test_warning_message_overflow_protection(overflow_test_context_t *ct
 
     bool test_passed = true;
 
-    // Try to trigger warning messages in ROM
     simputs("Attempting to trigger warning conditions...\n");
 
-    // Send commands that might trigger warnings (interface errors, etc.)
+    // Out-of-range reads are rejected; the ROM may log them as warnings.
     for (int i = 0; i < 10; i++) {
-        // Try to read from an invalid address range to trigger warnings
         uint32_t invalid_data[2];
-        int result = occp_send_read_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xFFFFFFFF,
-                                            (uint8_t *)invalid_data, sizeof(invalid_data));
-
-        if (result != OCCP_SUCCESS) {
-            // This is expected - should trigger warning/error status in ROM
-        }
+        occp_send_read_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xFFFFFFFF,
+                               (uint8_t *)invalid_data, sizeof(invalid_data));
     }
 
-    // Check for warning messages
     bool found_warnings = false;
     int warning_count = 0;
 
@@ -228,7 +166,7 @@ static bool test_warning_message_overflow_protection(overflow_test_context_t *ct
             if (msg_type == SMC_STATUS_TYPE_WARNING) {
                 found_warnings = true;
                 warning_count++;
-                if (warning_count <= 3) { // Log first few
+                if (warning_count <= 3) {
                     simputshex32("Warning message: 0x", status);
                 }
             }
@@ -261,22 +199,15 @@ static bool test_error_message_overflow_protection(overflow_test_context_t *ctx)
 
     bool test_passed = true;
 
-    // Try to trigger error conditions in ROM
     simputs("Attempting to trigger error conditions...\n");
 
-    // Send invalid commands that should trigger errors
+    // Unmapped reads are rejected and should log error entries.
     for (int i = 0; i < 15; i++) {
-        // Try invalid memory access that should trigger error status
         uint32_t invalid_data[4];
-        int result = occp_send_read_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xDEADBEEF,
-                                            (uint8_t *)invalid_data, sizeof(invalid_data));
-
-        if (result != OCCP_SUCCESS) {
-            // Expected - should trigger error reporting
-        }
+        occp_send_read_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, 0xDEADBEEF,
+                               (uint8_t *)invalid_data, sizeof(invalid_data));
     }
 
-    // Check for error messages
     bool found_errors = false;
     int error_count = 0;
 
@@ -290,7 +221,7 @@ static bool test_error_message_overflow_protection(overflow_test_context_t *ctx)
             if (msg_type == SMC_STATUS_TYPE_ERROR) {
                 found_errors = true;
                 error_count++;
-                if (error_count <= 3) { // Log first few
+                if (error_count <= 3) {
                     simputshex32("Error message: 0x", status);
                 }
             }
@@ -323,7 +254,6 @@ static bool test_overflow_boundary_conditions(overflow_test_context_t *ctx) {
 
     bool test_passed = true;
 
-    // Test rapid status polling to stress the buffer system
     int successful_reads = 0;
     int valid_messages = 0;
     const int boundary_test_iterations = 30;
@@ -342,9 +272,7 @@ static bool test_overflow_boundary_conditions(overflow_test_context_t *ctx) {
                 valid_messages++;
                 uint32_t fw_id = (status >> 16) & 0xFF;
                 uint32_t msg_type = (status >> 24) & 0xFF;
-                uint32_t msg_value = status & 0xFFFF;
 
-                // Validate message structure
                 if (fw_id > 0x3 || msg_type > 0x2) {
                     simputshex32("ERROR: Invalid message structure at iteration: ", i);
                     simputshex32("  Status: 0x", status);
@@ -353,7 +281,7 @@ static bool test_overflow_boundary_conditions(overflow_test_context_t *ctx) {
             }
         } else {
             simputshex32("OCCP command failed at iteration: ", i);
-            // Don't fail the test for OCCP errors - focus on boundary behavior
+            // A failed read only counts against the success-rate check below.
         }
     }
 
@@ -366,12 +294,9 @@ static bool test_overflow_boundary_conditions(overflow_test_context_t *ctx) {
         test_passed = false;
     }
 
-    // **CRITICAL TEST**: Verify boundary behavior vs specification
     simputs("\n**BOUNDARY OVERFLOW PROTECTION VERIFICATION**:\n");
     if (valid_messages > 0) {
         simputs(" ROM buffer accepts messages during boundary stress\n");
-
-        // The critical issue: no message-type-specific boundary protection
         simputs("BOUNDARY PROTECTION VERIFICATION FAILED\n");
         simputs("Expected: Different boundary limits per message type\n");
         simputs("Actual: Uniform behavior regardless of message type\n");
@@ -401,22 +326,13 @@ static bool test_specification_discrepancy_detection(overflow_test_context_t *ct
     simputs("- IMPL: NO message-type-specific overflow protection\n");
 
     simputs("\n**VERIFICATION ATTEMPT**:\n");
-
-    // Try to verify the implementation matches specification
     simputs("Testing if ROM implementation follows specification...\n");
 
-    // Send a few commands to see current behavior
-    int message_count = 0;
     for (int i = 0; i < 10; i++) {
         uint32_t version;
-        int result =
-            occp_send_get_version_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &version);
-        if (result == OCCP_SUCCESS) {
-            message_count++;
-        }
+        occp_send_get_version_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &version);
     }
 
-    // Check status messages
     bool found_any_status = false;
     for (int i = 0; i < 20; i++) {
         uint32_t status;
@@ -439,8 +355,6 @@ static bool test_specification_discrepancy_detection(overflow_test_context_t *ct
     simputs("mechanisms specified for the ROM status ring buffer\n");
     simputs("\n**TEST RESULT**: TEST COMPLETED WITH EXPECTED DISCREPANCY\n");
 
-    // The ROM overwrites the oldest entry when its buffer is full and applies no
-    // per-message-type limit; this test reports that as a failure.
     test_passed = false;
 
     mark_test_result(ctx, test_passed, "Specification Discrepancy Detection");

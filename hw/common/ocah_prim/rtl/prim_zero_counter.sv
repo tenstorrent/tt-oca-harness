@@ -5,15 +5,15 @@
 //
 // COUNT_LEADING of 1 counts leading zeros; 0 counts trailing zeros.
 // empty_o is high when every bit of in_i is zero.
-// CNT_WIDTH is clog2(WIDTH) and must not be overwritten.
+// CntWidth is clog2(WIDTH) and must not be overwritten.
 
 module prim_zero_counter #(
   parameter int unsigned WIDTH = 2,  // Width of the input vector.
   parameter bit          COUNT_LEADING  = 1'b0,  // 0 counts trailing zeros; 1 counts leading zeros.
-  localparam int unsigned CNT_WIDTH = WIDTH > 1 ? $clog2(WIDTH) : 1  // Width of count_o; dependent, do not change.
+  localparam int unsigned CntWidth = WIDTH > 1 ? $clog2(WIDTH) : 1  // Width of count_o; dependent, do not change.
 ) (
   input  logic [WIDTH-1:0]     in_i,  // Vector whose zeros are counted.
-  output logic [CNT_WIDTH-1:0] count_o,  // Leading or trailing zero count.
+  output logic [CntWidth-1:0]  count_o,  // Leading or trailing zero count.
   output logic                 empty_o  // High when every bit of in_i is zero.
 );
 

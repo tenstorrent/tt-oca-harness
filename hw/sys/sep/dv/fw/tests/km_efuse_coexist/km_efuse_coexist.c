@@ -3,34 +3,22 @@
 //
 // SEP dual-CPU eFuse AXI-lite mux coexistence firmware (EL2 host side).
 //
-// OSS port of the reference-suite sep_efuse_km_axil_cpu_mux_coexist_test.
-// Two REAL CPUs contend at the SEP eFuse AXI-lite mux (u_km_efuse_axi_lite_mux):
-//   * this EL2 host firmware, and
-//   * the Key Manager (KM) PicoRV32 running km_rom_coexist (the KM ROM image).
+// The EL2 host and the Key Manager (KM) CPU, running km_rom_coexist.S, contend
+// at the eFuse AXI-lite mux. The host waits for fuse sense, releases the KM from
+// software reset, handshakes over the KM<->SEP mailbox, then runs a fixed window
+// of CONTENDED_LOOPS iterations. Each iteration reads the host CHIPLET_UID, which
+// must keep its preloaded value, and the two KM-owned MMRs. The host publishes a
+// summary to the scratch-cold words for the cocotb observer and returns the error
+// count; crt0.s turns 0 into the PASS magic and any other value into FAIL.
 //
-// EL2 flow:
-//   1. open the outbound filter + poll real fuse-sense done (CHIPLET_UID valid);
-//   2. release the KM from warm reset, then handshake over the KM<->SEP mailbox
-//      (receive READY, send GO) so both cores are up and contending;
-//   3. loop CONTENDED_LOOPS times: read the host CHIPLET_UID (must stay the
-//      golden 0xDEADBEEF -> host-data-integrity under KM contention) and read the
-//      two KM-owned MMRs, checking owner tags, lead/trail ordering, monotonicity,
-//      and counting KM progress;
-//   4. publish the measured summary to the SEP scratch-cold registers (a passive
-//      cocotb observer reads them back), then self-check and return the error
-//      count. start.S turns 0 -> PASS magic, non-zero -> FAIL magic on STDOUT.
+// The KM writes MMR1 (lead) then MMR0 (trail), each with its own owner tag and
+// the same incrementing payload, so a correct mux always gives tag-correct,
+// monotonic reads with MMR1 >= MMR0. A torn, stale or cross-attributed response,
+// or a corrupted host UID, fails the test.
 //
-// The KM writes MMR1 (lead) then MMR0 (trail) with owner tags 0x5A / 0xA5 and an
-// incrementing 24-bit payload, so a correct mux always yields tag-correct,
-// monotonic, MMR1 >= MMR0 reads. A torn/stale/cross-attributed mux response
-// shows up as a nonzero backward / bad_tag / bad_uid count -> FAIL.
-//
-// OSS delta vs the reference suite: the reference UVM sequence deposits an UVM_DONE marker to
-// release a host loop that otherwise waits; cocotb cannot deposit an internal register without a
-// force port, so the OSS host loop is a FIXED contended window and the observer is read-only.
-// Mutual non-starvation is proven by the host completing all CONTENDED_LOOPS (final COUNT) AND the
-// KM making progress (CHANGES > 0) in the same window -- equivalent-or-stronger evidence than a
-// single sampled before/after window plus a release handshake.
+// The window is fixed because the observer is read-only. Non-starvation needs
+// the host to finish all CONTENDED_LOOPS and the KM to make progress in the same
+// window.
 
 #include <stdint.h>
 
@@ -60,9 +48,8 @@
 #define SCRATCH_BACKWARD 5u // KM counter went backward count
 #define SCRATCH_BAD_TAG 6u  // KM tag/attribution/ordering failure count
 
-// Fixed contended window. Long enough that the free-running KM makes many MMR
-// changes through the mux while the (slower, multi-read) host completes; above
-// the reference suite minimum-evidence floor (MIN_CPU_EFUSE_LOOPS = 256).
+// Fixed contended window, long enough that the free-running KM makes many MMR
+// changes through the mux while the slower host completes.
 #define CONTENDED_LOOPS 512u
 #define SENSE_WAIT_LIMIT 1000000
 #define MBOX_WAIT_LIMIT 500000
@@ -70,7 +57,7 @@
 int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the mailbox window
     sep_mbx_puts("SEP KM-eFuse mux coexist test\n");
 
     // Real fuse-sense must be complete before the host CHIPLET_UID read path is
@@ -113,8 +100,8 @@ int main(void) {
     int started = 0;
 
     for (uint32_t loop = 0; loop < CONTENDED_LOOPS; loop++) {
-        // Host data integrity: the stable MAP field must never be corrupted by a
-        // concurrent KM MMR write through the shared mux.
+        // Host data integrity: a concurrent KM MMR write through the shared mux
+        // must never corrupt the host CHIPLET_UID read.
         uint32_t uid = sep_efuse_rd(SEP_EFUSE_CHIPLET_UID0);
         if (uid != KNOWN_UID) {
             bad_uid++;
@@ -149,8 +136,6 @@ int main(void) {
     sep_scratch_wr(SCRATCH_BACKWARD, backward);
     sep_scratch_wr(SCRATCH_BAD_TAG, bad_tag);
 
-    // Verdict (matches reference suite): KM made progress, host data uncorrupted, KM counter
-    // monotonic, KM MMRs correctly attributed.
     if (changes == 0) {
         sep_mbx_puts("FAIL: KM made no progress through the mux\n");
         errors++;

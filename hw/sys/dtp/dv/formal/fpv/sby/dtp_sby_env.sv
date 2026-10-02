@@ -83,7 +83,7 @@ module dtp_sby_env #(
 endmodule : dtp_sby_env
 
 bind dtp dtp_sby_env #(
-  .NUM_EXTRA_STAP(JTAG_NUM_EXTRA_STAP_PORTS)
+  .NUM_EXTRA_STAP(JtagNumExtraStapPorts)
 ) u_dtp_sby_env (
   .tck_i                (jtag_ptap_client_tap_ctrl_i.tck),
   .trst_ni              (jtag_ptap_client_tap_ctrl_i.trst_n),

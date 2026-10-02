@@ -43,23 +43,23 @@ class DtpDatasheetTests(unittest.TestCase):
         smu_package = (self.root / "hw/sys/smu/rtl/smu_pkg.sv").read_text(encoding="utf-8")
 
         expected = {
-            "DEFAULT_NUM_CTP": "16",
-            "DEFAULT_NUM_INT_CT": "10",
-            "DEFAULT_NUM_CLK_STOP_REQ": "9",
+            "DefaultNumCtp": "16",
+            "DefaultNumIntCt": "10",
+            "DefaultNumClkStopReq": "9",
         }
         for parameter, value in expected.items():
             self.assertRegex(dtp_package, rf"{parameter}\s*=\s*{value};")
         # The SMU reserves two internal trigger lanes and one clock-stop lane for
         # SMC, so it exposes eight of each at its boundary.
-        self.assertRegex(smu_package, r"XTRIG_SMC_INT_CT_LANES\s*=\s*2;")
-        self.assertRegex(smu_package, r"XTRIG_SMC_CLK_STOP_LANES\s*=\s*1;")
+        self.assertRegex(smu_package, r"XtrigSmcIntCtLanes\s*=\s*2;")
+        self.assertRegex(smu_package, r"XtrigSmcClkStopLanes\s*=\s*1;")
         self.assertRegex(
             smu_package,
-            r"XTRIG_NUM_INT_CT:\s*dtp_pkg::DEFAULT_NUM_INT_CT\s*-\s*XTRIG_SMC_INT_CT_LANES",
+            r"XTRIG_NUM_INT_CT:\s*dtp_pkg::DefaultNumIntCt\s*-\s*XtrigSmcIntCtLanes",
         )
         self.assertRegex(
             smu_package,
-            r"XTRIG_NUM_CLK_STOP_REQ:\s*dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ\s*-\s*XTRIG_SMC_CLK_STOP_LANES",
+            r"XTRIG_NUM_CLK_STOP_REQ:\s*dtp_pkg::DefaultNumClkStopReq\s*-\s*XtrigSmcClkStopLanes",
         )
         self.assertIn(
             "!External / internal triggers !1-32 CTPs / 0-32 internal interfaces", self.source

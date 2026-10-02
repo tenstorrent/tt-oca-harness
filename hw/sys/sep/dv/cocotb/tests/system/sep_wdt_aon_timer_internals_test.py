@@ -84,7 +84,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
     async def _poll_bit_set(
         self, addr: int, bit: int, *, timeout_cycles: int, step: int
     ) -> tuple[bool, int]:
-        """Poll addr until (val>>bit)&1 == 1 or timeout; FAIL-checked by the caller."""
+        """Poll addr until (val>>bit)&1 == 1 or timeout; the caller grades it."""
         waited = 0
         val = 0
         while waited < timeout_cycles:

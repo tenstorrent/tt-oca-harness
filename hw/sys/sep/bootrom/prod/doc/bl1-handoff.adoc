@@ -57,8 +57,8 @@ the watchdog. This register bank survives the warm watchdog reset. On reset,
 BL0 reads the slot before setting a stack or touching DCCM:
 
 * zero selects a cold boot, after which BL0 poisons the slot with `-1`;
-* an address inside ICCM transfers directly to the handler and remains in the
-  slot for subsequent watchdog resets; and
+* an address inside ICCM makes BL0 clear the slot to 0 and transfer control to
+  the handler, so BL1 must re-arm the slot on every handler entry; and
 * any other nonzero value reports an invalid target and stops.
 
 The direct warm path preserves BL1 DCCM and ICCM state. The handler must

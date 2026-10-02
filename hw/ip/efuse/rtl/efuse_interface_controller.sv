@@ -51,26 +51,26 @@ module efuse_interface_controller #(
   parameter bit [31:0] EFUSE_MAP_REG_MAP_BASE_ADDR = 32'h0,  // Base address of the MAP window
                                                              // holding the shadow registers.
   parameter bit [31:0] EFUSE_MAP_REG_MAP_SIZE = 32'h1000,  // Size of the MAP window in bytes.
-  localparam bit [31:0] EFUSE_MAP_REG_MAP_END_ADDR = EFUSE_MAP_REG_MAP_BASE_ADDR + EFUSE_MAP_REG_MAP_SIZE - 32'd1,  // Last byte address of the MAP window.
-  localparam bit [31:0] EFUSE_MAP_REG_MAP_WIDTH = $clog2(EFUSE_MAP_REG_MAP_SIZE),  // Offset address width of the MAP window.
+  localparam bit [31:0] EfuseMapRegMapEndAddr = EFUSE_MAP_REG_MAP_BASE_ADDR +  EFUSE_MAP_REG_MAP_SIZE - 32'd1,  // Last byte address of the MAP window.
+  localparam bit [31:0] EfuseMapRegMapWidth = $clog2(EFUSE_MAP_REG_MAP_SIZE),  // Offset address width of the MAP window.
 
   parameter bit [31:0] EFUSE_CTRL_REG_MAP_BASE_ADDR = 32'h1000,  // Base address of the CTRL window
                                                                  // holding the interface control
                                                                  // registers.
   parameter bit [31:0] EFUSE_CTRL_REG_MAP_SIZE = 32'h1000,  // Size of the CTRL window in bytes.
-  localparam bit [31:0] EFUSE_CTRL_REG_MAP_END_ADDR = EFUSE_CTRL_REG_MAP_BASE_ADDR + EFUSE_CTRL_REG_MAP_SIZE - 32'd1,  // Last byte address of the CTRL window.
+  localparam bit [31:0] EfuseCtrlRegMapEndAddr = EFUSE_CTRL_REG_MAP_BASE_ADDR + EFUSE_CTRL_REG_MAP_SIZE - 32'd1,  // Last byte address of the CTRL window.
 
   parameter bit [31:0] EFUSE_MMR_REG_MAP_BASE_ADDR = 32'h2000,  // Base address of the MMR window
                                                                 // holding the token registers;
                                                                 // decoded only when HAS_LC_STATE is
                                                                 // set.
   parameter bit [31:0] EFUSE_MMR_REG_MAP_SIZE = 32'h1000,  // Size of the MMR window in bytes.
-  localparam bit [31:0] EFUSE_MMR_REG_MAP_END_ADDR = EFUSE_MMR_REG_MAP_BASE_ADDR + EFUSE_MMR_REG_MAP_SIZE - 32'd1,  // Last byte address of the MMR window.
+  localparam bit [31:0] EfuseMmrRegMapEndAddr = EFUSE_MMR_REG_MAP_BASE_ADDR + EFUSE_MMR_REG_MAP_SIZE - 32'd1,  // Last byte address of the MMR window.
 
   parameter int unsigned SHADOW_REG_BITS = 8192,  // Shadow register file size in bits; program and
                                                   // read CSR bit addresses at or above it are
                                                   // rejected as out of bounds.
-  localparam int unsigned SHADOW_REG_BYTES = SHADOW_REG_BITS / 8,  // Shadow register file size in
+  localparam int unsigned ShadowRegBytes = SHADOW_REG_BITS / 8,    // Shadow register file size in
                                                                    // bytes.
   parameter int unsigned EFUSE_MACRO_WORD_WIDTH = 32,  // Macro word width in bits.
 
@@ -83,7 +83,7 @@ module efuse_interface_controller #(
                                                                            // separately named storage for scan
                                                                            // exclusion.
   parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,  // Secret shadow ranges masked under secure_tm.
-  localparam int unsigned LC_STATE_WIDTH = efuse_pkg::LC_STATE_RAW_WIDTH,  // Lifecycle-state field width.
+  localparam int unsigned LcStateWidth = efuse_pkg::LcStateRawWidth,       // Lifecycle-state field width.
   parameter int unsigned LC_STATE_BIT_POSITION = 0,  // Bit address of the lifecycle-state field.
 
   parameter type efuse_map_t = logic    // Shadow eFuse map type.
@@ -173,10 +173,10 @@ module efuse_interface_controller #(
                                                                      // reset; tied low when HAS_LC_STATE is clear.
 );
 
-  localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;
-  localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;
+  localparam fuse_command_resp_t FuseCommandRespDefault = '0;
+  localparam fuse_command_req_t FuseCommandReqDefault = '0;
 
-  localparam logic [5:0] TOKEN_MATCH_CODE = 6'b010101;
+  localparam logic [5:0] TokenMatchCode = 6'b010101;
 
   ////////////////////////////////////////////////////////////////////////////
   // Signal Declarations
@@ -213,8 +213,8 @@ module efuse_interface_controller #(
   efuse_apb_req_t  apb_mux_req;
   efuse_apb_resp_t apb_mux_resp;
 
-  efuse_apb_req_t  [efuse_pkg::NUM_END_POINTS_REG-1:0] apb_endpoint_reqs;
-  efuse_apb_resp_t [efuse_pkg::NUM_END_POINTS_REG-1:0] apb_endpoint_resps;
+  efuse_apb_req_t  [efuse_pkg::NumEndPointsReg-1:0] apb_endpoint_reqs;
+  efuse_apb_resp_t [efuse_pkg::NumEndPointsReg-1:0] apb_endpoint_resps;
 
   // AXI-Lite interface signals
   efuse_axil_req_t  axil_xbar_mst_req;
@@ -263,8 +263,8 @@ module efuse_interface_controller #(
   );
 
   // Demux axil_mux_req to shim request and internal controller request
-  efuse_axil_req_t  [efuse_pkg::NUM_END_POINTS_DECODE-1:0] axil_mux_req_routed;
-  efuse_axil_resp_t [efuse_pkg::NUM_END_POINTS_DECODE-1:0] axil_mux_resp_routed;
+  efuse_axil_req_t  [efuse_pkg::NumEndPointsDecode-1:0] axil_mux_req_routed;
+  efuse_axil_resp_t [efuse_pkg::NumEndPointsDecode-1:0] axil_mux_resp_routed;
 
   efuse_pkg::efuse_req_decode_select_e efuse_req_decode_select_aw, efuse_req_decode_select_ar;
 
@@ -272,13 +272,13 @@ module efuse_interface_controller #(
   always_comb begin
     if (HAS_LC_STATE) begin
       // ASSUMPTION: ADDRESS SPACE ORDER IS FUSE MAP, INTERFACE CSR, MMR, SHIM
-      unique if (axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EFUSE_MMR_REG_MAP_END_ADDR]}) begin
+      unique if (axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]}) begin
         efuse_req_decode_select_aw = efuse_pkg::INTERFACE_SEL;
       end else begin
         efuse_req_decode_select_aw = efuse_pkg::SHIM_SEL;
       end
     end else begin
-      unique if (axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EFUSE_CTRL_REG_MAP_END_ADDR]}) begin
+      unique if (axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
         efuse_req_decode_select_aw = efuse_pkg::INTERFACE_SEL;
       end else begin
         efuse_req_decode_select_aw = efuse_pkg::SHIM_SEL;
@@ -290,13 +290,13 @@ module efuse_interface_controller #(
   always_comb begin
     if (HAS_LC_STATE) begin
       // ASSUMPTION: ADDRESS SPACE ORDER IS FUSE MAP, INTERFACE CSR, MMR, SHIM
-      unique if (axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EFUSE_MMR_REG_MAP_END_ADDR]}) begin
+      unique if (axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]}) begin
         efuse_req_decode_select_ar = efuse_pkg::INTERFACE_SEL;
       end else begin
         efuse_req_decode_select_ar = efuse_pkg::SHIM_SEL;
       end
     end else begin
-      unique if (axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EFUSE_CTRL_REG_MAP_END_ADDR]}) begin
+      unique if (axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
         efuse_req_decode_select_ar = efuse_pkg::INTERFACE_SEL;
       end else begin
         efuse_req_decode_select_ar = efuse_pkg::SHIM_SEL;
@@ -312,7 +312,7 @@ module efuse_interface_controller #(
     .r_chan_t(efuse_axil_r_chan_t),
     .axi_req_t(efuse_axil_req_t),
     .axi_resp_t(efuse_axil_resp_t),
-    .NoMstPorts(efuse_pkg::NUM_END_POINTS_DECODE),
+    .NoMstPorts(efuse_pkg::NumEndPointsDecode),
     .MaxTrans(2),
     .FallThrough(1'b1),
     .SpillAw(1'b0),
@@ -401,19 +401,19 @@ module efuse_interface_controller #(
   // APB slave select logic
   always_comb begin
     if (HAS_LC_STATE) begin
-      unique if (apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EFUSE_MAP_REG_MAP_END_ADDR]}) begin
+      unique if (apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}) begin
         efuse_reg_select = efuse_pkg::SHADOW_REG_MAP;
-      end else if (apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EFUSE_CTRL_REG_MAP_END_ADDR]}) begin
+      end else if (apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
         efuse_reg_select = efuse_pkg::EFUSE_CSR_REG_MAP;
-      end else if (apb_mux_req.paddr inside {[EFUSE_MMR_REG_MAP_BASE_ADDR:EFUSE_MMR_REG_MAP_END_ADDR]}) begin
+      end else if (apb_mux_req.paddr inside {[EFUSE_MMR_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]}) begin
         efuse_reg_select = efuse_pkg::EFUSE_MMR_REG_MAP;
       end else begin
         efuse_reg_select = efuse_pkg::ERR_DECODE;
       end
     end else begin
-      unique if (apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EFUSE_MAP_REG_MAP_END_ADDR]}) begin
+      unique if (apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}) begin
         efuse_reg_select = efuse_pkg::SHADOW_REG_MAP;
-      end else if (apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EFUSE_CTRL_REG_MAP_END_ADDR]}) begin
+      end else if (apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
         efuse_reg_select = efuse_pkg::EFUSE_CSR_REG_MAP;
       end else begin
         efuse_reg_select = efuse_pkg::ERR_DECODE;
@@ -427,7 +427,7 @@ module efuse_interface_controller #(
 
   // APB demultiplexer for routing to shadow registers, CSR, and (if SEP) MMR
   apb_demux #(
-    .NoMstPorts (efuse_pkg::NUM_END_POINTS_REG),
+    .NoMstPorts (efuse_pkg::NumEndPointsReg),
     .req_t      (efuse_apb_req_t),
     .resp_t     (efuse_apb_resp_t)
   ) u_apb_demux (
@@ -452,7 +452,7 @@ module efuse_interface_controller #(
 
     efuse_token_processing #(
       .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN),
-      .TOKEN_MATCH_CODE      (TOKEN_MATCH_CODE),
+      .TOKEN_MATCH_CODE      (TokenMatchCode),
       .efuse_apb_req_t       (efuse_apb_req_t),
       .efuse_apb_resp_t      (efuse_apb_resp_t),
       .efuse_map_t           (efuse_map_t)
@@ -714,16 +714,16 @@ module efuse_interface_controller #(
     .FUSE_MAP_REG_MAP_BASE_ADDR(EFUSE_MAP_REG_MAP_BASE_ADDR),
 
     .SHADOW_REG_BITS     (SHADOW_REG_BITS),
-    .SHADOW_REG_BYTES    (SHADOW_REG_BYTES),
+    .SHADOW_REG_BYTES    (ShadowRegBytes),
     .SHADOW_REG_WORD_WIDTH(EFUSE_MACRO_WORD_WIDTH),
     .EFUSE_FIELDS        (EFUSE_FIELDS),
-    .REG_ADDR_WIDTH      (EFUSE_MAP_REG_MAP_WIDTH),
+    .REG_ADDR_WIDTH      (EfuseMapRegMapWidth),
 
     .HAS_LC_STATE        (HAS_LC_STATE),
     .CLASS1_SHADOW_RANGES(CLASS1_SHADOW_RANGES),
     .SECRET_SHADOW_RANGES(SECRET_SHADOW_RANGES),
 
-    .TOKEN_MATCH_CODE    (TOKEN_MATCH_CODE),
+    .TOKEN_MATCH_CODE    (TokenMatchCode),
 
     .addr_t              (addr_t),
     .data_t              (data_t),
@@ -750,7 +750,7 @@ module efuse_interface_controller #(
     .efuse_field_map_i    (efuse_field_map_i),
 
     // APB interface - shadow registers
-    .apb_req_paddr_i         (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].paddr[EFUSE_MAP_REG_MAP_WIDTH-1:0]),
+    .apb_req_paddr_i         (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].paddr[EfuseMapRegMapWidth-1:0]),
     .apb_req_pprot_i         (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pprot),
     .apb_req_psel_i          (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].psel),
     .apb_req_penable_i       (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].penable),
@@ -789,9 +789,9 @@ module efuse_interface_controller #(
 
   always_comb begin : efuse_command_request_mux
 
-    fuse_command_resp_shadow_regs = FUSE_COMMAND_RESP_DEFAULT;
-    fuse_command_resp_interface_ctrl_w = FUSE_COMMAND_RESP_DEFAULT;
-    fuse_command_resp_interface_ctrl_r = FUSE_COMMAND_RESP_DEFAULT;
+    fuse_command_resp_shadow_regs = FuseCommandRespDefault;
+    fuse_command_resp_interface_ctrl_w = FuseCommandRespDefault;
+    fuse_command_resp_interface_ctrl_r = FuseCommandRespDefault;
 
     // Fuse sensing into the shadow registers must be done first - will start automatic upon cold reset de-assertion
     priority if ((!fuse_sense_done) && (!security_disable_i)) begin : auto_sense_mode
@@ -804,18 +804,18 @@ module efuse_interface_controller #(
       fuse_command_req_pre_filter = fuse_command_req_interface_ctrl_r;
       fuse_command_resp_interface_ctrl_r = fuse_command_resp_post_filter;
     end else begin : idle_mode
-      fuse_command_req_pre_filter = FUSE_COMMAND_REQ_DEFAULT;
+      fuse_command_req_pre_filter = FuseCommandReqDefault;
     end
   end
 
   // The efuse guard blocks requests and responses to the eFuse bank based on locks
   efuse_guard #(
-    .EFUSE_ADDR_WIDTH(EFUSE_MAP_REG_MAP_WIDTH),
+    .EFUSE_ADDR_WIDTH(EfuseMapRegMapWidth),
     .HAS_LC_STATE(HAS_LC_STATE),
     .LC_STATE_BIT_POSITION(LC_STATE_BIT_POSITION),
     .EFUSE_FIELDS(EFUSE_FIELDS),
 
-    .TOKEN_MATCH_CODE(TOKEN_MATCH_CODE),
+    .TOKEN_MATCH_CODE(TokenMatchCode),
 
     .efuse_map_t(efuse_map_t),
     .fuse_command_req_t(fuse_command_req_t),

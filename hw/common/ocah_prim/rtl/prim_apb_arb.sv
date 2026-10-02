@@ -17,7 +17,7 @@ module prim_apb_arb #(
   parameter bit [31:0] SLAVE_ADDR_START = 32'h0000,  // Declared but unused; no address decoding.
   parameter bit [31:0] SLAVE_ADDR_END = 32'h1000,  // Declared but unused; addresses reach
                                                    // the slave port unchecked.
-  localparam int unsigned DATA_STRB_WIDTH = DATA_WIDTH / 8  // Write-strobe width from DATA_WIDTH.
+  localparam int unsigned DataStrbWidth = DATA_WIDTH / 8  // Write-strobe width from DATA_WIDTH.
 ) (
   input logic clk_i,  // APB clock.
   input logic rst_ni,  // Active-low reset, sampled synchronously; clears requests and
@@ -29,7 +29,7 @@ module prim_apb_arb #(
   input  logic [ADDR_WIDTH -1:0]      test_paddr_i,  // SIM test-master PADDR.
   input  logic                        test_pwrite_i,  // SIM test-master PWRITE.
   input  logic [DATA_WIDTH -1:0]      test_pwdata_i,  // SIM test-master PWDATA.
-  input  logic [DATA_STRB_WIDTH -1:0] test_pstrb_i,  // SIM test-master PSTRB.
+  input  logic [DataStrbWidth -1:0]   test_pstrb_i,  // SIM test-master PSTRB.
   output logic [DATA_WIDTH -1:0]      test_prdata_o,  // SIM test-master PRDATA.
   output logic                        test_pready_o,  // SIM test-master PREADY.
   output logic                        test_pslverr_o,  // SIM test-master PSLVERR.
@@ -41,7 +41,7 @@ module prim_apb_arb #(
   input  logic [MASTER_NUM-1:0][ADDR_WIDTH -1:0]      mst_paddr_i,  // APB master PADDRs.
   input  logic [MASTER_NUM-1:0]                       mst_pwrite_i,  // APB master PWRITEs.
   input  logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      mst_pwdata_i,  // APB master PWDATAs.
-  input  logic [MASTER_NUM-1:0][DATA_STRB_WIDTH -1:0] mst_pstrb_i,  // APB master PSTRBs.
+  input  logic [MASTER_NUM-1:0][DataStrbWidth -1:0]   mst_pstrb_i,  // APB master PSTRBs.
   output logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      mst_prdata_o,  // APB master PRDATAs.
   output logic [MASTER_NUM-1:0]                       mst_pready_o,  // APB master PREADYs.
   output logic [MASTER_NUM-1:0]                       mst_pslverr_o,  // APB master PSLVERRs.
@@ -51,31 +51,31 @@ module prim_apb_arb #(
   output logic [ADDR_WIDTH -1:0]      slv_paddr_o,  // APB slave PADDR.
   output logic                        slv_pwrite_o,  // APB slave PWRITE.
   output logic [DATA_WIDTH -1:0]      slv_pwdata_o,  // APB slave PWDATA.
-  output logic [DATA_STRB_WIDTH -1:0] slv_pstrb_o,  // APB slave PSTRB.
+  output logic [DataStrbWidth -1:0]   slv_pstrb_o,  // APB slave PSTRB.
   input  logic [DATA_WIDTH -1:0]      slv_prdata_i,  // APB slave PRDATA.
   input  logic                        slv_pready_i,  // APB slave PREADY.
   input  logic                        slv_pslverr_i  // APB slave PSLVERR.
 );
 
 `ifdef SIM_APB_ARB
-  localparam int unsigned MASTER_SUM_NUM = MASTER_NUM + 1;
+  localparam int unsigned MasterSumNum = MASTER_NUM + 1;
 `else
-  localparam int unsigned MASTER_SUM_NUM = MASTER_NUM;
+  localparam int unsigned MasterSumNum = MASTER_NUM;
 `endif
 
-  localparam int unsigned PTR_WIDTH = $clog2(MASTER_SUM_NUM);
+  localparam int unsigned PtrWidth = $clog2(MasterSumNum);
 
-  logic [MASTER_SUM_NUM-1:0]                       mst_sel_arb;
+  logic [MasterSumNum-1:0]                       mst_sel_arb;
 
-  logic [MASTER_SUM_NUM-1:0]                       mst_psel;
-  logic [MASTER_SUM_NUM-1:0]                       mst_penable;
-  logic [MASTER_SUM_NUM-1:0][ADDR_WIDTH -1:0]      mst_paddr;
-  logic [MASTER_SUM_NUM-1:0]                       mst_pwrite;
-  logic [MASTER_SUM_NUM-1:0][DATA_WIDTH -1:0]      mst_pwdata;
-  logic [MASTER_SUM_NUM-1:0][DATA_STRB_WIDTH -1:0] mst_pstrb;
-  logic [MASTER_SUM_NUM-1:0][DATA_WIDTH -1:0]      mst_prdata;
-  logic [MASTER_SUM_NUM-1:0]                       mst_pready;
-  logic [MASTER_SUM_NUM-1:0]                       mst_pslverr;
+  logic [MasterSumNum-1:0]                       mst_psel;
+  logic [MasterSumNum-1:0]                       mst_penable;
+  logic [MasterSumNum-1:0][ADDR_WIDTH -1:0]      mst_paddr;
+  logic [MasterSumNum-1:0]                       mst_pwrite;
+  logic [MasterSumNum-1:0][DATA_WIDTH -1:0]      mst_pwdata;
+  logic [MasterSumNum-1:0][DataStrbWidth -1:0]   mst_pstrb;
+  logic [MasterSumNum-1:0][DATA_WIDTH -1:0]      mst_prdata;
+  logic [MasterSumNum-1:0]                       mst_pready;
+  logic [MasterSumNum-1:0]                       mst_pslverr;
 
 `ifdef SIM_APB_ARB
   // in case we have TEST port, we connect it as highest index master
@@ -101,23 +101,23 @@ module prim_apb_arb #(
   assign mst_pslverr_o = mst_pslverr;
 `endif
 
-  logic [MASTER_SUM_NUM-1:0] mst_req_r, mst_req_nxt;
-  logic [MASTER_SUM_NUM-1:0][ADDR_WIDTH -1:0] mst_paddr_r, mst_paddr_nxt;
-  logic [MASTER_SUM_NUM-1:0] mst_pwrite_r, mst_pwrite_nxt;
-  logic [MASTER_SUM_NUM-1:0][DATA_WIDTH -1:0] mst_pwdata_r, mst_pwdata_nxt;
-  logic [MASTER_SUM_NUM-1:0][DATA_STRB_WIDTH -1:0] mst_pstrb_r, mst_pstrb_nxt;
-  logic [MASTER_SUM_NUM-1:0][DATA_WIDTH -1:0] mst_prdata_r, mst_prdata_nxt;
-  logic [MASTER_SUM_NUM-1:0] mst_pready_r, mst_pready_nxt;
-  logic [MASTER_SUM_NUM-1:0] mst_pslverr_r, mst_pslverr_nxt;
+  logic [MasterSumNum-1:0] mst_req_r, mst_req_nxt;
+  logic [MasterSumNum-1:0][ADDR_WIDTH -1:0] mst_paddr_r, mst_paddr_nxt;
+  logic [MasterSumNum-1:0] mst_pwrite_r, mst_pwrite_nxt;
+  logic [MasterSumNum-1:0][DATA_WIDTH -1:0] mst_pwdata_r, mst_pwdata_nxt;
+  logic [MasterSumNum-1:0][DataStrbWidth -1:0] mst_pstrb_r, mst_pstrb_nxt;
+  logic [MasterSumNum-1:0][DATA_WIDTH -1:0] mst_prdata_r, mst_prdata_nxt;
+  logic [MasterSumNum-1:0] mst_pready_r, mst_pready_nxt;
+  logic [MasterSumNum-1:0] mst_pslverr_r, mst_pslverr_nxt;
 
   logic slv_psel_r, slv_psel_nxt;
   logic slv_penable_r, slv_penable_nxt;
   logic [ADDR_WIDTH -1:0] slv_paddr_r, slv_paddr_nxt;
   logic slv_pwrite_r, slv_pwrite_nxt;
   logic [DATA_WIDTH -1:0] slv_pwdata_r, slv_pwdata_nxt;
-  logic [DATA_STRB_WIDTH -1:0] slv_pstrb_r, slv_pstrb_nxt;
+  logic [DataStrbWidth -1:0] slv_pstrb_r, slv_pstrb_nxt;
 
-  logic [PTR_WIDTH-1:0] mask_ptr_r, mask_ptr_nxt;
+  logic [PtrWidth-1:0] mask_ptr_r, mask_ptr_nxt;
 
   logic update_arb;
 
@@ -126,19 +126,19 @@ module prim_apb_arb #(
     SETUP = 2'd1,
     ACCESS = 2'd2,
     IDLE_MASK = 2'd3
-  } apb_state_t;
-  apb_state_t apb_state_r, apb_state_nxt;
+  } apb_state_e;
+  apb_state_e apb_state_r, apb_state_nxt;
 
   // APB DATAPATH registers don't have reset for common rtl optimization
   always_ff @(posedge clk_i) begin : mst_stage
     if (~rst_ni) begin
-      for (int i = 0; i < MASTER_SUM_NUM; i++) begin
+      for (int i = 0; i < MasterSumNum; i++) begin
         mst_req_r[i]    <= 1'b0;
         mst_pready_r[i] <= 1'b0;
       end
       slv_psel_r    <= 1'b0;
       slv_penable_r <= 1'b0;
-      mask_ptr_r    <= {PTR_WIDTH{1'd0}};
+      mask_ptr_r    <= {PtrWidth{1'd0}};
     end else begin
       mst_req_r     <= mst_req_nxt;
       mst_paddr_r   <= mst_paddr_nxt;
@@ -158,10 +158,10 @@ module prim_apb_arb #(
     end
   end
 
-  wire [$clog2(MASTER_SUM_NUM)-1:0] mst_sel_index;
+  wire [$clog2(MasterSumNum)-1:0] mst_sel_index;
   wire mst_sel_request;
   prim_fair_rr_arb #(
-    .NUM_IN(MASTER_SUM_NUM),
+    .NUM_IN(MasterSumNum),
     .DATA_WIDTH(0),
     .data_t(logic),
     .EXT_PRIO(1'b0),
@@ -172,10 +172,10 @@ module prim_apb_arb #(
     .clk_i        (clk_i),
     .rst_ni       (rst_ni),
     .flush_i      (1'b0),
-    .rr_priority_i({$clog2(MASTER_SUM_NUM){1'b0}}),
+    .rr_priority_i({$clog2(MasterSumNum){1'b0}}),
     .request_i    (mst_req_r),
     .grant_o      (),
-    .data_i       ({MASTER_SUM_NUM{1'b0}}),
+    .data_i       ({MasterSumNum{1'b0}}),
     .request_o    (mst_sel_request),
     .grant_i      (update_arb),
     .data_o       (),
@@ -213,15 +213,15 @@ module prim_apb_arb #(
     mst_pwdata_nxt  = mst_pwdata;
     mst_pstrb_nxt   = mst_pstrb;
     mst_prdata_nxt  = mst_prdata_r;
-    mst_pready_nxt  = {MASTER_SUM_NUM{1'b0}};
-    mst_pslverr_nxt = {MASTER_SUM_NUM{1'b0}};
+    mst_pready_nxt  = {MasterSumNum{1'b0}};
+    mst_pslverr_nxt = {MasterSumNum{1'b0}};
 
     mask_ptr_nxt    = mask_ptr_r;
     update_arb      = 1'b0;
 
     unique case (apb_state_r)
       IDLE: begin
-        for (int i = 0; i < MASTER_SUM_NUM; i++) begin
+        for (int i = 0; i < MasterSumNum; i++) begin
           if (mst_sel_arb[i] == 1'b1) begin  // one hot array
             slv_psel_nxt   = 1'b1;
             slv_paddr_nxt  = mst_paddr_r[i];
@@ -240,7 +240,7 @@ module prim_apb_arb #(
 
       ACCESS: begin
         if (slv_pready_i) begin
-          for (int i = 0; i < MASTER_SUM_NUM; i++) begin
+          for (int i = 0; i < MasterSumNum; i++) begin
             if (mst_sel_arb[i] == 1'b1) begin  // one hot array
               mst_prdata_nxt[i] = slv_prdata_i;
               mst_pready_nxt[i] = 1'b1;
@@ -254,7 +254,7 @@ module prim_apb_arb #(
               // That's why we introduce additional state that will mask this for 1 more transaction
               // Otherwise this state is working in same manner as IDLE state, and it can receive next transaction
               mst_req_nxt[i] = 1'b0;
-              mask_ptr_nxt = i[PTR_WIDTH-1:0];
+              mask_ptr_nxt = i[PtrWidth-1:0];
             end
           end
           slv_psel_nxt    = 1'b0;
@@ -275,7 +275,7 @@ module prim_apb_arb #(
         if (|mst_sel_arb == 1'b0) begin
           apb_state_nxt = IDLE;
         end else begin
-          for (int i = 0; i < MASTER_SUM_NUM; i++) begin
+          for (int i = 0; i < MasterSumNum; i++) begin
             if (mst_sel_arb[i] == 1'b1) begin  // one hot array
               slv_psel_nxt   = 1'b1;
               slv_paddr_nxt  = mst_paddr_r[i];

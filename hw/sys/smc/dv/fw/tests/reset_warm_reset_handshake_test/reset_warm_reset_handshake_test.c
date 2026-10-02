@@ -8,7 +8,7 @@
 #include "smc_test.h"
 #include "virt_console.h"
 
-// Clock_7: Warm reset handshake via ss_reset_complete
+// Warm reset handshake: a subsystem's reset-complete falls and rises while its warm reset is held
 //
 // Scratch protocol (scratch[1]):
 //   0xC7000000 | (ss_idx << 8) | stage
@@ -93,14 +93,12 @@ int main(void) {
 
     init_test(hartid);
 
-    // Clear status
     write_scratch(0, 0x0);
     write_scratch(1, 0x0);
 
     // Ensure warm reset is deasserted for all subsystems before starting.
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, 0xFFFFFFFFu);
 
-    // Run the handshake on two subsystems.
     warm_reset_handshake(hartid, 0);
     warm_reset_handshake(hartid, 1);
 

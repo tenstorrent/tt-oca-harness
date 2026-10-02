@@ -256,7 +256,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |F5.2 CTP point-to-point four-phase handshake: a request held until its acknowledge and released by it, an acknowledge raised by a request and dropped after it, STATUS through each phase |`dtp_xtrig_p2p_test`, `dtp_ctm_p2p_cla_to_ctp_test`, `dtp_ctm_p2p_ctp_to_cla_test`, `dtp_ctm_p2p_ctp_to_ctp_test`, `dtp_ctm_rand_p2p_only_test` |xtrig |`ctp_cg` P2P state bins |`CHK-XTRIG-SIGNAL` (each handshake phase at the CTP endpoints), `CHK-XTRIG-CSR` (STATUS, `dtp_xtrig_p2p_test`), `CHK-XTRIG-ROUTE-MODEL` |YES
 |F5.3 CTM routing: every source and destination index, fanout, isolation of unrouted ports |`dtp_xtrig_rand_test`, `dtp_xtrig_rand_deterministic_dst_port_sweep_test`, `dtp_ctm_p2p_cla_to_cla_test`, `dtp_ctm_rand_all_scenarios_test`, `dtp_ctm_rand_cla_to_ctp_test`, `dtp_ctm_rand_ctp_to_cla_test`, `dtp_ctm_rand_all_source_select_coverage_test` |xtrig |`ctm_cg` source, destination, and fanout bins |`CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION`, `CHK-XTRIG-CSR` |YES
 |F5.4 CSR map: CTP CONFIG and STATUS, CTM source selects, STRETCH_MULT; readback, byte enables, reserved bits, holes, no aliasing, reset defaults |`dtp_xtrig_rand_deterministic_csr_sweep_test`, `dtp_ctm_rand_deterministic_csr_sweep_test`, `dtp_xtrig_reg_stall_test` |xtrig |`ctp_cg` and `ctm_cg` index bins |`CHK-XTRIG-CSR`, `CHK-XTRIG-AXIL`, `CHK-XTRIG-QUIET` and `CHK-XTRIG-SIGNAL` (`dtp_xtrig_reg_stall_test`); `xtrig_csr` scoreboard feature, and `xtrig_decode` on the two sweeps (SV-UVM) |YES
-|F5.5 AXI4-Lite CSR port: channel skew, demux pending-W admission, read-decode backpressure; unmapped addresses complete with DECERR |`dtp_xtrig_axi_channel_skew_test`, `dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test`, `dtp_xtrig_axi_channel_skew_read_decode_backpressure_test` |xtrig |`ocah_axi_sva` on the CSR port; no dedicated covergroup |`CHK-XTRIG-AXIL`, `CHK-XTRIG-CSR`, `CHK-XTRIG-AW-LOCK` (the demux pending-W state and the bench open-write counters), `CHK-XTRIG-AR-STALL` (the bench open-read counters); `xtrig_decode` scoreboard feature (SV-UVM) |YES
+|F5.5 AXI4-Lite CSR port: registered channels, channel skew, demux pending-W admission, read-decode backpressure; unmapped addresses complete with DECERR |`dtp_xtrig_axi_channel_skew_test`, `dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test`, `dtp_xtrig_axi_channel_skew_read_decode_backpressure_test` |xtrig |`ocah_axi_sva` on the CSR port; no dedicated covergroup |`CHK-XTRIG-AXIL` (with the spill-register counters), `CHK-XTRIG-CSR`, `CHK-XTRIG-AW-LOCK` (the demux pending-W state and the demux open-write counters), `CHK-XTRIG-AR-STALL` (the demux open-read counters); `xtrig_csr` scoreboard feature, and `xtrig_decode` on the read-decode backpressure test (SV-UVM) |YES
 |F5.6 CTP and CTM reset recovery in each mode |`dtp_xtrig_reset_test`, `dtp_ctm_reset_wire_or_mode_test`, `dtp_ctm_reset_p2p_mode_test`, `dtp_ctm_reset_all_modes_test` |xtrig |`ctp_cg` reset-recovery bin |`CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-QUIET`, `CHK-XTRIG-SIGNAL` (each watched observable active before the reset), `CHK-RESET-COUNT`; the `xtrig_csr` shadow (SV-UVM) is cleared on every reset |YES
 |F5.7 Clock-stop aggregation: registered `stop_clks_o` from `jtag_clock_stop` OR any `xtrig_clk_stop_req_i` bit; `cla_clock_stop` status from the CLA requests alone |`dtp_dbg_ctrl_clk_stop_cla_clock_stop_test`, `dtp_dbg_ctrl_clk_stop_random_clock_stop_test` (shared with F2.3) |debug_tdr |`debug_control_cg` request-source and output bins |As F2.3 |YES
 |===
@@ -5592,6 +5592,12 @@ c. `tdo_oen` never pulses.
 [[sec-6-xtrig-ctp-and-ctm-scenarios]]
 ==== 6. XTRIG, CTP, and CTM Scenarios
 
+NOTE: Every scenario in this section ends each pass with `spill_contract_all`
+(`CHK-XTRIG-AXIL`): since the last system reset, every CSR port spill register
+(<<sec-68-dtp_xtrig_axi_channel_skew_test>>) has kept its input READY high exactly while it
+holds fewer than two beats and its output VALID high exactly while it holds a beat
+(`xtrig_axil_spill_err_count` reads 0).
+
 [[sec-61-dtp_xtrig_wire_or_test]]
 ===== 6.1 `dtp_xtrig_wire_or_test`
 
@@ -5852,7 +5858,7 @@ d. Pulse the internal CT acknowledge for that destination; every route of the sw
 
 *Test Coverage*:
 
-* The upstream AXI-Lite path always presents the XTRIG regblock a ready interface, so the regblock local stall (back-pressure) paths are unreachable in the DTP integration: the crossbar's AW and AR READY-low stall counters (`dtp_tb_if`) do not advance across the accesses
+* The upstream AXI-Lite path always presents the XTRIG regblock a ready interface, so the regblock local stall (back-pressure) paths are unreachable in the DTP integration: the crossbar demux's AW and AR READY-low stall counters (`dtp_tb_if`), which count the cycles a request waits at the demux behind the CSR port's spill registers (<<sec-68-dtp_xtrig_axi_channel_skew_test>>), do not advance across the accesses
 * Confirms XTRIG CSR writes and reads complete without corruption when the register interface is exercised
 * No trigger state changes occur while an access is in flight: an activity window over the internal-lane requests, every CTP request and acknowledge enable, and every CTP busy flop spans the accesses (the pad levels follow the polarity CSR the accesses write, so they stay out of it, and the internal lanes run in pulse mode, where their acknowledge is unused)
 * Two routes after the accesses are the positive control: a wire-OR route from an internal CT to a CTP and a second internal CT, and a point-to-point route from an internal CT to another CTP, move every observable the quiet records judge
@@ -5863,7 +5869,7 @@ d. Pulse the internal CT acknowledge for that destination; every route of the sw
 . Open an activity window over the internal-lane requests, every CTP request/acknowledge enable, and every CTP busy flop, then exercise representative XTRIG CSR writes and reads through `OcahAxiLiteMasterAgent` on the accepted-access path.
 a. Verify each write/read completes without corruption.
 b. Close the window after the last access and verify zero activity across it, then a further quiet window after the accesses.
-. Verify the crossbar's AW and AR stall counters did not advance across the accesses while the AWVALID and ARVALID counters did.
+. Verify the crossbar demux's AW and AR stall counters did not advance across the accesses while the port's AWVALID and ARVALID counters did.
 . Program the two control routes and drive them inside an activity window over the same observables: each of them moves.
 
 *Checkers*:
@@ -5871,7 +5877,7 @@ b. Close the window after the last access and verify zero activity across it, th
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`xtrig_reg_stall_unreachable_chk` |The crossbar's AW and AR READY-low stall counters do not advance across the exercised accesses (`CHK-XTRIG-AXIL`)
+|`xtrig_reg_stall_unreachable_chk` |The crossbar demux's AW and AR READY-low stall counters do not advance across the exercised accesses (`CHK-XTRIG-AXIL`)
 |`xtrig_reg_stall_csr_chk` |Accepted XTRIG CSR writes/reads read back without corruption
 |`xtrig_reg_stall_no_premature_chk` |No internal-lane request, CTP request or acknowledge enable, or CTP busy flop changes while the accesses are in flight (`CHK-XTRIG-QUIET`), and each of them moves in the control window afterwards (`CHK-XTRIG-SIGNAL`)
 |===
@@ -5889,7 +5895,8 @@ b. Close the window after the last access and verify zero activity across it, th
 
 *Test Coverage*:
 
-* Manual XTRIG AXI-Lite AW/W/R/B channel skew for ready-low and response-hold coverage
+* Manual XTRIG AXI-Lite AW/W/R/B channel skew for demux ready-low and response-hold coverage
+* The crossbar registers each of the five channels at the CSR port (`hw/ip/cross_trigger/cross_trigger_network/doc/architecture.adoc`, Address Map) in a spill register, a two-beat register that keeps its input READY high exactly while it holds fewer than two beats and its output VALID high exactly while it holds a beat, so the port takes a beat that must wait and the crossbar demux behind it holds the beat. The bench checks this rule on all five channels every cycle (`xtrig_axil_spill_err_count`). The W-first pair of <<sec-69-dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test>> fills the W spill register and the RREADY hold of <<sec-610-dtp_xtrig_axi_channel_skew_read_decode_backpressure_test>> fills the R one; the AW and AR spill registers pass the first beat of each pair to the crossbar demux no later than the cycle they take the second, so they hold at most one beat
 * Write-channel skew: AW and W arrival offset in both orders with master-driven valid/ready timing
 * Read-channel skew: AR issued with the slave R response held to exercise response-hold paths
 * Protocol completion and the stored register value under skew, each skewed access completing with its own response before the next is issued
@@ -5899,7 +5906,7 @@ b. Close the window after the last access and verify zero activity across it, th
 [arabic]
 . Configure the XTRIG AXI-Lite master in manual mode so AW/W/AR/B/R channel timing is driven explicitly.
 . Apply write-channel skew.
-a. Drive AW before W (and W before AW) with a configurable gap, holding the later channel's VALID low; the W-first write's W beat waits with WREADY low until its AW arrives (`xtrig_axil_w_stall_count` advances by at least the AW delay).
+a. Drive AW before W (and W before AW) with a configurable gap, holding the later channel's VALID low; the port's W spill register takes the W-first write's W beat with WREADY high (`xtrig_axil_w_stall_count` does not advance), and the crossbar demux holds the beat until the cycle after its AW enters the demux's W-select queue (`xtrig_demux_w_stall_count` advances by at least the AW delay plus one); every spill register's READY and VALID match the beats it holds (`xtrig_axil_spill_err_count` does not advance).
 b. Verify each write completes with an OKAY B response and the target CSR then holds the written value, each write replacing a different value.
 . Apply read-channel skew.
 a. Issue AR, then hold the R response by keeping the master RREADY low for several cycles (response-hold).
@@ -5912,7 +5919,7 @@ b. Verify RVALID, RDATA, and RRESP stay stable while RREADY is held low and the 
 |===
 |Checker |Description
 |`xtrig_axi_skew_aw_w_chk` |AW/W skew in both orders completes with an OKAY B response, and a readback after each skewed write returns the written value
-|`xtrig_axi_skew_ready_low_chk` |The W-first write's W beat waits with WREADY low for at least the AW delay (bench W stall counter) and the R channel holds RVALID, RDATA, and RRESP stable through the response-hold window; the `ocah_axi_sva` stability rules on the CSR port judge every ready-low cycle, and on four-state simulators the bench's four-state RDATA-known rule on the XTRIG CSR port holds RDATA resolved while RVALID is high
+|`xtrig_axi_skew_ready_low_chk` |The port takes the W-first write's W beat with WREADY high (port W stall counter), the crossbar demux holds it with its W READY low for at least the AW delay plus one cycle (demux W stall counter), every spill register's READY and VALID match the beats it holds (spill-register counter), and the R channel holds RVALID, RDATA, and RRESP stable through the response-hold window; on four-state simulators the bench's four-state RDATA-known rule on the XTRIG CSR port holds RDATA resolved while RVALID is high
 |`xtrig_axi_skew_order_chk` |Each skewed access completes with its own response before the next is issued
 |`xtrig_axi_skew_csr_chk` |Final XTRIG CSR contents match the programmed values
 |===
@@ -5931,7 +5938,8 @@ b. Verify RVALID, RDATA, and RRESP stay stable while RREADY is held low and the 
 *Test Coverage*:
 
 * Two outstanding skewed writes through the shared AXI-Lite master: the second AW is presented while the first W is still pending
-* The demux's AW-before-W bookkeeping, mirrored from the crossbar as `xtrig_demux_w_pending` (the W-select queue holds the first AW's port), engages on the first AW and releases when its W passes; meanwhile the second AW is held with AWREADY low and not accepted, as the bench open-write counters show, and the bench stall counter `xtrig_axil_aw_stall_count` and the VIP count its stall cycles
+* The demux's AW-before-W bookkeeping, mirrored from the crossbar as `xtrig_demux_w_pending` (the W-select queue holds the first AW's port), engages on the first AW and releases when its W passes; meanwhile the demux holds the second AW and does not accept it, as the demux open-write counters show, and the port stall counter `xtrig_axil_aw_stall_count` and the VIP count the port's AW stall cycles
+* The port's spill registers (<<sec-68-dtp_xtrig_axi_channel_skew_test>>) take the pair ahead of the demux: the port accepts the second AW of the AW-first pair while the first is owed its W (`xtrig_axil_aw_open_accept_count` advances by one), and the W spill register holds both W beats of the W-first pair (`xtrig_axil_w_spill_full_count` advances)
 * The demux AW lock flag, mirrored as `xtrig_demux_aw_lock`, stays clear: it engages only when the addressed subordinate refuses an AW the demux presents, and the subordinates this traffic addresses accept every AW presented to them
 * Response ordering across the pair proven by distinguishable response codes (OKAY then DECERR) and by both readbacks
 
@@ -5941,10 +5949,10 @@ b. Verify RVALID, RDATA, and RRESP stay stable while RREADY is held low and the 
 . Configure the XTRIG AXI-Lite master in manual mode and open an activity window over the two demux mirrors.
 . Issue an AW-first pair to two seeded CTP CONFIG registers: the first W delayed 4..8 cycles, BREADY deferred 1..4 cycles.
 a. Verify `xtrig_demux_w_pending` was 1 during the pair and is 0 at its end, and `xtrig_demux_aw_lock` stayed 0.
-b. Verify the second AW stalled with AWREADY low while the first write was owed its W and was not accepted before that W passed (`xtrig_axil_aw_open_stall_count` advanced, `xtrig_axil_aw_open_accept_count` did not), and that the bench AW stall counter advanced by the VIP's stall count; the bench master holds AWVALID and AWADDR through the stall, which the `ocah_axi_sva` initiator rules on the CSR port check.
+b. Verify the port accepted the second AW while the first write was owed its W (`xtrig_axil_aw_open_accept_count` advanced by one), that the crossbar demux then held it and did not accept it before the first W passed (`xtrig_demux_aw_open_stall_count` advanced, `xtrig_demux_aw_open_accept_count` did not), that every spill register's READY and VALID matched the beats it holds (`xtrig_axil_spill_err_count` did not advance), and that the port AW stall counter advanced by the VIP's stall count.
 c. Verify both B responses are OKAY and both CONFIG readbacks match.
 . Issue a W-first pair to a CTM select register and an unmapped word (AW delayed 4..8 cycles).
-a. Verify the first B is OKAY and the second DECERR, in issue order, with the same demux-state and stall evidence.
+a. Verify the first B is OKAY and the second DECERR, in issue order, with the same demux-state, demux open-write, spill-register and port stall evidence, and that the W spill register held both W beats (`xtrig_axil_w_spill_full_count` advanced).
 b. Verify the CTM select readback matches.
 
 *Checkers*:
@@ -5952,14 +5960,15 @@ b. Verify the CTM select readback matches.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`xtrig_demux_w_pending_engage_chk` |The first AW of the pair engages the demux's pending-W state (`xtrig_demux_w_pending`=1) and the second AW is held with AWREADY low until the first W passes (bench open-write counters)
-|`xtrig_demux_w_pending_release_chk` |The pending-W state releases once the first W passes (`xtrig_demux_w_pending`=0 at the end of the pair) and the bench AW stall counter equals the VIP's stall count
+|`xtrig_demux_w_pending_engage_chk` |The first AW of the pair engages the demux's pending-W state (`xtrig_demux_w_pending`=1) and the demux holds the second AW until the first W passes (demux open-write counters)
+|`xtrig_demux_w_pending_release_chk` |The pending-W state releases once the first W passes (`xtrig_demux_w_pending`=0 at the end of the pair) and the port AW stall counter equals the VIP's stall count
 |`xtrig_demux_aw_lock_clear_chk` |The AW lock flag (`xtrig_demux_aw_lock`) stays 0 through each pair
+|`xtrig_demux_port_spill_chk` |The port accepts the second AW of the AW-first pair while the first is owed its W, the W spill register holds both W beats of the W-first pair, and every spill register's READY and VALID match the beats it holds (`CHK-XTRIG-AXIL`)
 |`xtrig_demux_order_chk` |With the pair's second write aimed at an unmapped word, the first B is OKAY and the second DECERR, in issue order, and both responses complete
 |`xtrig_demux_csr_chk` |Both CTP CONFIG readbacks and the CTM select readback match the programmed values
 |===
 
-*Pass Criteria*: The demux's pending-W state engages on the first AW and releases when its W passes, the second AW waits for it, the AW lock flag stays clear, responses complete in issue order, and the CSR readbacks match, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The demux's pending-W state engages on the first AW and releases when its W passes, the second AW waits for it at the demux, the AW lock flag stays clear, responses complete in issue order, and the CSR readbacks match, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5972,19 +5981,19 @@ b. Verify the CTM select readback matches.
 
 *Test Coverage*:
 
-* Unmapped XTRIG reads answered DECERR: no subordinate decodes the address
-* Two outstanding reads through the shared AXI-Lite master: the second AR is presented while RREADY is held on the first DECERR, and the crossbar, which admits one read in flight, holds it with ARREADY low until the first response is accepted
-* Both unmapped reads return DECERR; no deadlock on the backpressured read path
+* An unmapped XTRIG read answered DECERR: no subordinate decodes the address
+* Two outstanding reads through the shared AXI-Lite master, a CTP STRETCH_MULT read and then an unmapped read: the second AR is presented while RREADY is held on the first response, the port's AR spill register (<<sec-68-dtp_xtrig_axi_channel_skew_test>>) accepts it, and the crossbar demux, which admits one read in flight, holds it until the first response passes the demux into the port's R spill register; the R spill register then holds both responses during the RREADY hold. The two reads address different subordinates, so the demux alone holds the second AR
+* The first read returns OKAY with the STRETCH_MULT value written before the pair and the second DECERR, in issue order; no deadlock on the backpressured read path
 * Stable read data (RVALID, RDATA, RRESP) through the decode-backpressure window
 
 *Test Procedure*:
 
 [arabic]
 . Idle all manual AXI-Lite master outputs after reset; the XTRIG crossbar address map has no subordinate at the unmapped base (the word after the last CTP window) and above.
-. Issue two unmapped reads at seeded offsets as one pair: hold the first DECERR response by keeping RREADY=0 for 4..8 cycles while the second AR is presented.
-a. Verify the second AR stalled with ARREADY low while the first read was open and was not accepted before the first response was (`xtrig_axil_ar_open_stall_count` advanced, `xtrig_axil_ar_open_accept_count` did not), and that the bench counter `xtrig_axil_ar_stall_count` advanced by the VIP's stall count; the bench master holds ARVALID and ARADDR through the stall, which the `ocah_axi_sva` initiator rules on the CSR port check.
+. Write a seeded nonzero value to the STRETCH_MULT register of a seeded CTP, then issue a read of that register and a read of an unmapped word at a seeded offset as one pair: hold the first response by keeping RREADY=0 for 4..8 cycles while the second AR is presented.
+a. Verify the port accepted the second AR while the first read was open (`xtrig_axil_ar_open_accept_count` advanced by one), that the crossbar demux then held it and did not accept it before the first response passed the demux (`xtrig_demux_ar_open_stall_count` advanced, `xtrig_demux_ar_open_accept_count` did not), that the R spill register held both responses during the hold (`xtrig_axil_r_spill_full_count` advanced), that every spill register's READY and VALID matched the beats it holds (`xtrig_axil_spill_err_count` did not advance), and that the port counter `xtrig_axil_ar_stall_count` advanced by the VIP's stall count.
 b. Verify RVALID/RDATA/RRESP stayed stable across the hold.
-. Release RREADY, allow the second AR to complete, and verify both responses are DECERR.
+. Release RREADY, let both responses complete, and verify the first is OKAY with the written STRETCH_MULT value and the second DECERR.
 . Verify exactly two AR beats were accepted (ARVALID cycles minus stall cycles).
 
 *Checkers*:
@@ -5992,12 +6001,13 @@ b. Verify RVALID/RDATA/RRESP stayed stable across the hold.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`xtrig_read_decerr_chk` |Both unmapped reads return DECERR
-|`xtrig_read_ar_held_chk` |The second AR is held with ARREADY low while the first read is open and is not accepted before the first response (bench open-read counters), the bench AR stall counter equals the VIP's count, and exactly two AR beats are accepted
+|`xtrig_read_decerr_chk` |The first read returns OKAY with the written STRETCH_MULT value and the unmapped second read DECERR
+|`xtrig_read_ar_held_chk` |The crossbar demux holds the second AR while the first read is open and does not accept it before the first response passes the demux (demux open-read counters), the port AR stall counter equals the VIP's count, and exactly two AR beats are accepted
+|`xtrig_read_port_spill_chk` |The port accepts the second AR while the first read is open, its R spill register holds both responses through the RREADY hold, and every spill register's READY and VALID match the beats it holds (`CHK-XTRIG-AXIL`)
 |`xtrig_read_no_deadlock_chk` |Both responses complete once RREADY is released, and RVALID/RDATA/RRESP hold stable across the RREADY-low window; on four-state simulators the bench's four-state RDATA-known rule on the XTRIG CSR port holds RDATA resolved while RVALID is high
 |===
 
-*Pass Criteria*: Both unmapped reads return DECERR with stable read data through the backpressure window and the second AR held until the first response is accepted, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The mapped read returns OKAY with the written value and the unmapped read DECERR, with stable read data through the backpressure window and the second AR held at the demux until the first response passes it, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -6828,7 +6838,7 @@ fixed access policy. Data movement is out (<<dtp-formal-exclusions>>).
 [cols="3,4",options="header",]
 |===
 |Logic |Reason and where the credit lives
-|JTAG2AXI data path: the 132-bit shared shift register with a variable active length, the byte-lane shifts by `addr mod BEAT_BYTES`, the 56-bit series address increment and its wrap, the `DEADBEEF` pending-read capture |Wide arithmetic and per-bit loops; a bounded proof over them is a data check the F4.1 and F4.2 scenarios make with data verification. The bridge target proves control only.
+|JTAG2AXI data path: the 132-bit shared shift register with a variable active length, the byte-lane shifts by `addr mod BeatBytes`, the 56-bit series address increment and its wrap, the `DEADBEEF` pending-read capture |Wide arithmetic and per-bit loops; a bounded proof over them is a data check the F4.1 and F4.2 scenarios make with data verification. The bridge target proves control only.
 |The five gray-coded clearable CDC FIFOs with three-stage synchronizers and the coupled reset controller inside `axi_cdc_clearable` |Third-party IP with its own correctness argument; the open path takes the AXI side as free inputs. A reset that lands mid-transaction leaves the request machine waiting with no recovery other than Test-Logic-Reset; that path is a licensed reset and X-propagation check, not an open-path property.
 |Boundary-scan data and the external iJTAG instrument chains |Loopbacks in `tb_top`; the design carries selection and gating only, which T2 and T5 cover.
 |`ctp_pulse_stretcher` at large `STRETCH_MULT` |A 16-bit down counter, up to 65 536 cycles. End-to-end proofs assume `STRETCH_MULT <= 4`; the counter's reload and terminal behaviour is one inductive property of its own.
@@ -6903,7 +6913,7 @@ their arrays:
 |T6 |`dtp_dbgctl_props.sv` on `jtag_debug_ctrl_reg`; `dtp_ctn_clkstop_props.sv` on `ctn_clock_stop_ctrl` |`ast_dbgctl_rw_bits_hold`: bits 3:0 change only on an Update-DR of the DEBUG_CONTROL TDR. `ast_dbgctl_ro_bit_captures_status`: bit 4 captures the synchronized `cla_clock_stop` and ignores the shifted value. `ast_dbgctl_outputs_follow_update_reg`: the four outputs equal the update register bits. `ast_clkstop_or_after_three`: `stop_clks_o` equals the OR of `jtag_clock_stop_i` and every `clk_stop_req_i` bit sampled three `clk_i` cycles earlier. `ast_cla_status_excludes_jtag`: `cla_clock_stop_o` is the OR of the request bits alone, with no register. `ast_clkstop_low_in_reset`: `stop_clks_o` is 0 while `rst_ni` is low. Covers: a JTAG stop with no CLA request, a CLA request with no JTAG stop, the boot-stall override with each stall value. |P1
 |T7 |`dtp_jtag2axi_ctrl_props.sv` on `jtag2axi`, one bind serving the three instances |`ast_j2a_state_valid`: the request machine holds one of its seven states. `ast_j2a_valid_only_in_send_states`: the TCK-side `aw_valid`, `w_valid` and `ar_valid` requests are high only in the address and data states. `ast_j2a_idle_after_status`: UPDATE_STATUS returns to IDLE in one cycle. `ast_j2a_resp_only_while_waiting`: a response beat from a responder that follows the shared checker's rules arrives no earlier than the request's last handshake and no later than the state that consumes it, so it depends on the assumed responder rules and fails without them. `ast_j2a_status_encodes_resp`: OKAY, SLVERR and DECERR responses map to SUCCESS, SLVERR and DECERR, any other code to SLVERR. `ast_j2a_series_status_sticky`: the first series error status holds across later series completions until the series-control reset bit, a SINGLE_OP completion leaves the series status unchanged, the full flag holds until a reset write, and a reset write with no completion beside it returns the status to SUCCESS and clears the full flag. `ast_j2a_series_error_holds`: an error code holds until the series-control reset bit. `ast_j2a_one_read_in_flight`: at most one series read is in flight, and only while the machine waits for its data. `ast_j2a_admit_bounded_by_depth`: the in-flight and pushed counters never exceed the pipeline depth, itself clamped to `FIFO_DEPTH`. `ast_j2a_series_ops_are_axi`: the series mode never holds the reserved op code, and every request-FIFO push carries READ or WRITE. `ast_j2a_outstanding_saturates`: at their saturation value the ACLK outstanding counters hold the CDC ready low, so they never wrap. `ast_j2a_disable_holds_idle`: after a cycle with the disable high and the machine idle, the machine is idle, the single-request buffer, both series FIFOs and the read counters are empty, and no Update-DR latches while the disable is high. `ast_j2a_disable_inflight_completes`: a disable that arrives outside IDLE does not abort the transaction in flight: the send states keep their valids, a response completes into UPDATE_STATUS, and IDLE is entered from UPDATE_STATUS alone. `ast_j2a_release_replays_nothing`: an idle machine with an empty single buffer and request FIFO stays idle, so a released disable issues nothing until a new Update-DR. Covers: a single write and a single read to completion, a series of `FIFO_DEPTH` reads admitted, a SLVERR and a DECERR status, a clean completion while an error code is held, an error status held across a later OKAY series completion, a series-control update with the reserved op code, a disable landing in each non-idle state. |P0 for the disable and admit properties, P1 otherwise
 |T8 |`dtp_ctn_xtrig_props.sv` on `ctp_handshake_ctrl`, `ctp_core`, `ctp_pulse_stretcher`, `ctm_src_selector` |`ast_hs_sender_states`, `ast_hs_receiver_states`: the two machines hold legal states and take only the four-phase arcs. `ast_hs_req_stable_until_ack`: `ct_req_out` holds until the synchronized ack. `ast_hs_ack_mirrors_req`: the receiver asserts ack on a synchronized request and drops it when the request drops. `ast_hs_dst_is_one_pulse`: `ct_dst` rises only from the idle receiver on a synchronized request and lasts one cycle. `ast_hs_busy_lags_state`: `busy` is the registered not-idle of either machine. `ast_hs_reset_recovers_sender`: `reset_i` returns the sender to IDLE with `ct_req_out` low, and leaves the receiver untouched. `ast_ctp_mode_enables_exclusive`: the wire-OR and point-to-point pad enables are mutually exclusive and match `CONFIG.MODE`. `ast_ctp_wire_or_sense`: the optional inversion sits after the synchronizer, so the sensed wire rests at 1 in either sense. `ast_ctp_wire_or_edge_pulse`: in wire-OR mode `ct_dst` is the sensed wire having moved from rest to asserted one cycle earlier, the falling edge of the raw pad for INVERT=0 and its rising edge for INVERT=1, and the release edge yields nothing; in point-to-point mode it is the handshake's `ct_dst`. `ast_stretch_width`: a trigger holds the output for `STRETCH_MULT + 1` cycles and a new trigger reloads the counter. `ast_ctm_slice_route`: `ct_src_o` equals the registered OR of `ct_dst AND select`, and an all-zero select isolates the output. `ast_ctp_status_reflects_pins`: `STATUS.REQ_IN` and `ACK_IN` equal the synchronized de-inverted pad values, `REQ_OUT` and `ACK_OUT` the de-inverted registered outputs; in wire-OR mode `REQ_OUT` and `ACK_OUT` read 0. Covers: a full four-phase cycle against the peer model, a stretched wire-OR pulse of the maximum assumed width, a wire-OR receive in each sense, a route from an internal source to an external port and back, reset in each mode. |P1
-|T9 |`dtp_ctn_csr_props.sv` on `cross_trigger_network` and one CTP and one CTM register block |`ast_csr_unmapped_decerr`: an address outside the matrix register extent (`0x000` to `0x0CF`) and the port windows (`0x200` to `0x2FF`) completes with DECERR on both channels, including `0x0D0` to `0x1FF` of the matrix aperture; every byte address inside them completes with OKAY. `ast_csr_ctp_window`: an address in `0x200 + 16n` to `0x20F + 16n` reaches CTP `n` alone. `ast_csr_ctm_readback`: the matrix block dispatches the word address it receives, its readback follows address bits 7:2, and the response carries the dispatched readback. `ast_csr_reset_values`: CONFIG, STRETCH_MULT and every CT_DST_SELECT read 0 after reset. `ast_csr_status_write_ignored`: a write to STATUS returns OKAY and changes nothing. `ast_csr_strobe_masks_bytes`: a write changes only the strobed bytes. `ast_csr_read_after_write`: a read after a completed write returns the written field value. Covers: a DECERR write and read, a DECERR read past the matrix register extent, a CTP and a CTM read-after-write, a masked write. |P1
+|T9 |`dtp_ctn_csr_props.sv` on `cross_trigger_network` and one CTP and one CTM register block |`ast_csr_unmapped_decerr`: an address outside the matrix register extent (`0x000` to `0x0CF`) and the port windows (`0x200` to `0x2FF`) completes with DECERR on both channels, including `0x0D0` to `0x1FF` of the matrix aperture; every byte address inside them completes with OKAY. `ast_csr_ctp_window`: an address in `0x200 + 16n` to `0x20F + 16n` reaches CTP `n` alone, and a crossbar master port carries a request only while the subordinate port holds it accepted and unanswered, from the cycle after its address handshake, and never again once a master port has released it. `ast_csr_ctm_readback`: the matrix block dispatches the word address it receives, its readback follows address bits 7:2, and the response carries the dispatched readback. `ast_csr_reset_values`: CONFIG, STRETCH_MULT and every CT_DST_SELECT read 0 after reset. `ast_csr_status_write_ignored`: a write to STATUS returns OKAY and changes nothing. `ast_csr_strobe_masks_bytes`: a write changes only the strobed bytes. `ast_csr_read_after_write`: a read after a completed write returns the written field value. Covers: a DECERR write and read, a DECERR read past the matrix register extent, a CTP and a CTM read-after-write, a masked write, a write and a read that a master port has released before the subordinate port answers them. |P1
 |===
 
 [[dtp-formal-observations]]
@@ -6918,7 +6928,7 @@ state.
 * `stop_clks_o` is the OR of the requests through a two-flop synchronizer
   and an output flop, three `clk_i` cycles (`ast_clkstop_or_after_three`).
 * `INT_CT_MODE[i] = 0` is the wire-OR pulse mode,
-  `MODE_WIRE_OR = ~INT_CT_MODE[i]` (`ast_ctp_mode_enables_exclusive`, checked
+  `ModeWireOr = ~INT_CT_MODE[i]` (`ast_ctp_mode_enables_exclusive`, checked
   per internal port).
 * `CONFIG.RESET` returns only the sender machine to IDLE; the receiver has no
   reset arc (`ast_hs_reset_recovers_sender`).
@@ -6943,7 +6953,7 @@ The proofs and cover traces add three points the chapters do not state.
   and covers that half of the instruction space; the zero-length bypass, the
   upper capability registers and the SEP and SMC bridge instructions have no
   open-path cover. The instruction package's own enum values use the shift
-  form `DECODED_IR_WIDTH'(1'b1) << opcode`, which every frontend sizes alike
+  form `DecodedIrWidth'(1'b1) << opcode`, which every frontend sizes alike
   (`formal-property-style.adoc`, Accepted constructs).
 
 Two reset paths are checks for the licensed X-propagation app
@@ -7075,8 +7085,8 @@ Update-DR).
 |T5 |`cov_sib_disabled_while_open` on the DFD SIB and the eight SIB patterns: SELECT_IJTAG loaded, a 3-bit DR scan writes the SIBs, the disable rises two edges later |41 |55
 |T6 |`cov_dbgctl_boot_stall_ovrd_stall_high`: DEBUG_CONTROL loaded, a 5-bit DR scan sets both bits |37 |55 on `dtp`; the `ctn_clkstop_fpv` covers are reached at step 6 and its triple uses depth 10
 |T7 |`cov_j2a_series_reads_admitted`: a CTRL update programs a read series and `FIFO_DEPTH + 1` data updates are admitted; a single write or read completes through the free response side at step 13 |23 |40; the `prove` task runs `abc pdr` on the model with the CDC in the loop, since k-induction cannot close `$past` relations under explicit clocks, where an induction window may hold a single `tck` edge
-|T8 |`cov_hs_four_phase_complete` and `cov_stretch_max_width`: a CSR write sets the mode or the stretch, a source pulse starts the sender, the peer acknowledges and releases |10 |20; the item runs `bmc` and `cover` alone, since the block is P1 and signs off on a bounded result
-|T9 |`cov_csr_ctp_read_after_write`: a write to CONFIG and a read of it complete through the crossbar and the register block |6 |12; the `prove` task also carries the shared AXI checker's assertions on the port
+|T8 |`cov_hs_four_phase_complete`: a CSR write sets the mode, a source pulse starts the sender, the peer acknowledges and releases |18 |20; the item runs `bmc` and `cover` alone, since the block is P1 and signs off on a bounded result
+|T9 |`cov_csr_ctp_read_after_write`: a write to CONFIG and a read of it complete through the crossbar and the register block |8 |12; the `prove` task also carries the shared AXI checker's assertions on the port
 |===
 
 A cover added at a greater distance raises its block's depth. The

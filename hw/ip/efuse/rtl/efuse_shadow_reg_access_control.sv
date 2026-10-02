@@ -6,7 +6,7 @@
 // Filter APB requests using efuse_field_map_i and locks_i before they reach the shadow
 // regs.
 //
-// LOCK_VECTOR_BITS is 2*(EFUSE_FIELDS-1), with write-lock at 2n and read-lock at 2n+1 per
+// LockVectorBits is 2*(EFUSE_FIELDS-1), with write-lock at 2n and read-lock at 2n+1 per
 // real field. The LOCKS meta-field uses sentinel idx all-ones and is excluded from hw-lock
 // checks.
 //
@@ -30,7 +30,7 @@ module efuse_shadow_reg_access_control #(
 
   localparam type efuse_strb_t = logic [3:0],  // APB write-strobe type.
 
-  localparam int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1)  // Hardware lock bits: a write and a read lock
+  localparam int unsigned LockVectorBits = 2 * (EFUSE_FIELDS - 1)    // Hardware lock bits: a write and a read lock
                                                                      // per field, excluding the LOCKS meta-field.
 ) (
   input  logic                                  clk_i,  // System clock; not used, the module is
@@ -84,7 +84,7 @@ module efuse_shadow_reg_access_control #(
                                                                 // read locked by its hardware or
                                                                 // software lock bit.
 
-  input  logic [LOCK_VECTOR_BITS-1:0]           locks_i,  // Hardware lock bits from the shadow
+  input  logic [LockVectorBits-1:0]           locks_i,    // Hardware lock bits from the shadow
                                                           // LOCKS words: write lock at 2n, read
                                                           // lock at 2n+1 for field n.
 
@@ -126,7 +126,7 @@ module efuse_shadow_reg_access_control #(
   logic                                     is_lc_state_access;
 
   // Field lookup results
-  logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] field_index;
+  logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] field_index;
   logic [3:0]                               sw_lock_bits;
 
   // Final combined status
@@ -237,7 +237,7 @@ module efuse_shadow_reg_access_control #(
   // Find the efuse field index for a given address.
   // Returns '1 (all-ones) for the LOCKS meta-field or any unmapped address;
   // both cases are excluded from hardware lock checks.
-  function automatic logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] find_efuse_field_index(
+  function automatic logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] find_efuse_field_index(
       efuse_addr_t address);
     for (int i = 0; i < EFUSE_FIELDS; i = i + 1) begin
       if (address >= efuse_addr_t'(efuse_field_map_i[i].start_addr) &&
@@ -262,7 +262,7 @@ module efuse_shadow_reg_access_control #(
   // Check if a field is write locked by hardware locks.
   // idx '1 (all-ones) is the sentinel for the LOCKS meta-field and unmapped
   // addresses; both are excluded from hardware lock checks.
-  function automatic logic write_locked(logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] index);
+  function automatic logic write_locked(logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index);
     if (index != '1) begin
       return locks_i[index*2];
     end else begin
@@ -271,7 +271,7 @@ module efuse_shadow_reg_access_control #(
   endfunction
 
   // Check if a field is read locked by hardware locks.
-  function automatic logic read_locked(logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] index);
+  function automatic logic read_locked(logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index);
     if (index != '1) begin
       return locks_i[index*2+1];
     end else begin

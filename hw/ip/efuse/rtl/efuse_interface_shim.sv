@@ -26,7 +26,7 @@ module efuse_interface_shim
   parameter type fuse_command_req_t = logic,  // Fuse-command request type.
   parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
-  localparam int unsigned COUNTER_WIDTH = 32  // Width of the read and write bank init-time
+  localparam int unsigned CounterWidth = 32   // Width of the read and write bank init-time
                                               // counters.
 ) (
   input logic                      clk_i,  // System clock.
@@ -56,10 +56,10 @@ module efuse_interface_shim
                                                 // state}.
 );
 
-  localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;
-  localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;
-  localparam efuse_apb_req_t EFUSE_APB_REQ_DEFAULT = '0;
-  localparam efuse_apb_resp_t EFUSE_APB_RESP_DEFAULT = '0;
+  localparam fuse_command_resp_t FuseCommandRespDefault = '0;
+  localparam fuse_command_req_t FuseCommandReqDefault = '0;
+  localparam efuse_apb_req_t EfuseApbReqDefault = '0;
+  localparam efuse_apb_resp_t EfuseApbRespDefault = '0;
 
 
   efuse_addr_byte_t efuse_addr_byte_address;
@@ -119,8 +119,8 @@ module efuse_interface_shim
 
   // Counter for fuse bank init cycles
   prim_count #(
-    .Width(COUNTER_WIDTH),
-    .ResetValue(COUNTER_WIDTH'(32)), // 0x20 = 32
+    .Width(CounterWidth),
+    .ResetValue(CounterWidth'(32)), // 0x20 = 32
     .EnableAlertTriggerSVA(1'b0)
   ) u_prim_count_r (
     .clk_i                (clk_i),
@@ -130,7 +130,7 @@ module efuse_interface_shim
     .set_cnt_i            (fuse_bank_init_cycles_r),
     .incr_en_i            (1'b0),
     .decr_en_i            (1'b1),                                     // Decrement Always
-    .step_i               (COUNTER_WIDTH'(1)),                                     // Step size
+    .step_i               (CounterWidth'(1)),                                     // Step size
     .commit_i             (fuse_bank_init_cycles_count_commit_en_r),  // Counter changes only take effect when `commit_i` is set
     .cnt_o                (fuse_bank_init_cycles_count_r),
     .cnt_after_commit_o   (),
@@ -173,8 +173,8 @@ module efuse_interface_shim
     fuse_bank_init_cycles_count_set_en_r = 1'b1;
     fuse_bank_init_cycles_count_commit_en_r = 1'b0;
 
-    fuse_command_resp_r = FUSE_COMMAND_RESP_DEFAULT;
-    apb_fuse_bank_req_read = EFUSE_APB_REQ_DEFAULT;
+    fuse_command_resp_r = FuseCommandRespDefault;
+    apb_fuse_bank_req_read = EfuseApbReqDefault;
 
     unique case (efuse_read_state_q)
       ST_READ_IDLE: begin
@@ -262,7 +262,7 @@ module efuse_interface_shim
     if (!rst_ni) begin
       efuse_read_state_q <= ST_READ_IDLE;
       outstanding_accesses_read_q <= efuse_word_counter_t'(0);
-      apb_fuse_bank_req_read_flopped <= EFUSE_APB_REQ_DEFAULT;
+      apb_fuse_bank_req_read_flopped <= EfuseApbReqDefault;
       fuse_bank_address_read_q <= '0;
     end else begin
       efuse_read_state_q <= efuse_read_state_d;
@@ -278,20 +278,20 @@ module efuse_interface_shim
   //////////////////////////
 
   // Fuse Bank Ctrl CSRs - foundry specific timing/config signals
-  logic [COUNTER_WIDTH-1:0] fuse_bank_init_cycles_w;
+  logic [CounterWidth-1:0] fuse_bank_init_cycles_w;
   assign fuse_bank_init_cycles_w = fuse_bank_ctrl_hwif_out.EFUSE_BANK_INIT_TIME.init_time.value;
 
   // Counter control signals for fuse bank init cycles
   logic fuse_bank_init_cycles_count_set_en_w;
   logic fuse_bank_init_cycles_count_commit_en_w;
-  logic [COUNTER_WIDTH-1:0] fuse_bank_init_cycles_count_w;
+  logic [CounterWidth-1:0] fuse_bank_init_cycles_count_w;
   logic fuse_bank_init_cycles_counter_is_zero_w;
   logic fuse_bank_init_cycles_counter_err_w;
 
   // Counter for fuse bank init cycles
   prim_count #(
-    .Width(COUNTER_WIDTH),
-    .ResetValue(COUNTER_WIDTH'(32)), // 0x20 = 32
+    .Width(CounterWidth),
+    .ResetValue(CounterWidth'(32)), // 0x20 = 32
     .EnableAlertTriggerSVA(1'b0)
   ) u_prim_count_w (
     .clk_i                (clk_i),
@@ -301,7 +301,7 @@ module efuse_interface_shim
     .set_cnt_i            (fuse_bank_init_cycles_w),
     .incr_en_i            (1'b0),
     .decr_en_i            (1'b1),                                    // Decrement Always
-    .step_i               (COUNTER_WIDTH'(1)),                       // Step size
+    .step_i               (CounterWidth'(1)),                        // Step size
     .commit_i             (fuse_bank_init_cycles_count_commit_en_w), // Counter changes only take effect when `commit_i` is set
     .cnt_o                (fuse_bank_init_cycles_count_w),
     .cnt_after_commit_o   (),
@@ -349,9 +349,9 @@ module efuse_interface_shim
     fuse_bank_init_cycles_count_set_en_w = 1'b1;
     fuse_bank_init_cycles_count_commit_en_w = 1'b0;
 
-    fuse_command_resp_w = FUSE_COMMAND_RESP_DEFAULT;
-    apb_fuse_bank_req_write = EFUSE_APB_REQ_DEFAULT;
-    apb_fuse_bank_req_write_readback = EFUSE_APB_REQ_DEFAULT;
+    fuse_command_resp_w = FuseCommandRespDefault;
+    apb_fuse_bank_req_write = EfuseApbReqDefault;
+    apb_fuse_bank_req_write_readback = EfuseApbReqDefault;
 
     write_readback_phase_en = write_readback_phase_en_flopped;
 
@@ -496,8 +496,8 @@ module efuse_interface_shim
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       efuse_write_state_q <= ST_WRITE_IDLE;
-      apb_fuse_bank_req_write_flopped <= EFUSE_APB_REQ_DEFAULT;
-      apb_fuse_bank_req_write_readback_flopped <= EFUSE_APB_REQ_DEFAULT;
+      apb_fuse_bank_req_write_flopped <= EfuseApbReqDefault;
+      apb_fuse_bank_req_write_readback_flopped <= EfuseApbReqDefault;
       write_readback_phase_en_flopped <= 1'b0;
     end else begin
       efuse_write_state_q <= efuse_write_state_d;
@@ -518,8 +518,8 @@ module efuse_interface_shim
       apb_fuse_bank_resp_r = efuse_model_otp_resp_i;
 
       // Write and write readback responses are not used
-      apb_fuse_bank_resp_w = EFUSE_APB_RESP_DEFAULT;
-      apb_fuse_bank_resp_w_readback = EFUSE_APB_RESP_DEFAULT;
+      apb_fuse_bank_resp_w = EfuseApbRespDefault;
+      apb_fuse_bank_resp_w_readback = EfuseApbRespDefault;
 
     end else if (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM || fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK) begin
       if (write_readback_phase_en_flopped) begin
@@ -528,7 +528,7 @@ module efuse_interface_shim
         // Route the write readback response back to the command interface
         apb_fuse_bank_resp_w_readback = efuse_model_otp_resp_i;
         // Write response is not used
-        apb_fuse_bank_resp_w = EFUSE_APB_RESP_DEFAULT;
+        apb_fuse_bank_resp_w = EfuseApbRespDefault;
 
       end else begin
         // Route the write request to the fuse model
@@ -536,25 +536,25 @@ module efuse_interface_shim
         // Route the write response back to the command interface
         apb_fuse_bank_resp_w = efuse_model_otp_resp_i;
         // Write readback response is not used
-        apb_fuse_bank_resp_w_readback = EFUSE_APB_RESP_DEFAULT;
+        apb_fuse_bank_resp_w_readback = EfuseApbRespDefault;
 
       end
 
       // Read back response is not used
-      apb_fuse_bank_resp_r = EFUSE_APB_RESP_DEFAULT;
+      apb_fuse_bank_resp_r = EfuseApbRespDefault;
 
     end else begin
-      efuse_model_otp_req_o = EFUSE_APB_REQ_DEFAULT;
-      apb_fuse_bank_resp_r = EFUSE_APB_RESP_DEFAULT;
-      apb_fuse_bank_resp_w = EFUSE_APB_RESP_DEFAULT;
-      apb_fuse_bank_resp_w_readback = EFUSE_APB_RESP_DEFAULT;
+      efuse_model_otp_req_o = EfuseApbReqDefault;
+      apb_fuse_bank_resp_r = EfuseApbRespDefault;
+      apb_fuse_bank_resp_w = EfuseApbRespDefault;
+      apb_fuse_bank_resp_w_readback = EfuseApbRespDefault;
     end
   end
 
   // Multiplex the command responses back to the command interface
   assign fuse_command_resp_o = (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_READ)  ? fuse_command_resp_r :
                                  (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM || fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK) ? fuse_command_resp_w :
-                                 FUSE_COMMAND_RESP_DEFAULT;
+                                 FuseCommandRespDefault;
 
 
   // Calculate APB address for bank, must convert from bit to byte address

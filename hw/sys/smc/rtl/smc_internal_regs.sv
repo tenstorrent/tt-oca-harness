@@ -50,15 +50,15 @@ module smc_internal_regs #(
                                                                                                    // configuration of each
                                                                                                    // inbound filter entry.
 
-  output output_remap_reg_pkg::output_remap__out_t mR_ctrl_o [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],  // Register
+  output output_remap_reg_pkg::output_remap__out_t mR_ctrl_o [smc_pkg::NumMmodeOutputRemapRegions-1:0],      // Register
                                                                                                              // configuration of each
                                                                                                              // M-mode output remap
                                                                                                              // region.
-  output output_remap_reg_pkg::output_remap__out_t xR_ctrl_o [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],  // Register
+  output output_remap_reg_pkg::output_remap__out_t xR_ctrl_o [smc_pkg::NumXvisorOutputRemapRegions-1:0],      // Register
                                                                                                               // configuration of each
                                                                                                               // Xvisor output remap
                                                                                                               // region.
-  output alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_o [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Register
+  output alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_o [smc_pkg::NumAliasRemapRegions-1:0],     // Register
                                                                                                       // configuration of each
                                                                                                       // alias remap region.
 
@@ -112,10 +112,10 @@ module smc_internal_regs #(
   output smc_pkg::smc_axil_32_64_resp_t axil_dfx_csr_resp_o,  // Response for the DFX control
                                                               // window.
 
-  output logic [smc_pkg::NUM_MAILBOXES-1:0] inbound_interrupt_o,  // Per-mailbox inbound data
+  output logic [smc_pkg::NumMailboxes-1:0] inbound_interrupt_o,   // Per-mailbox inbound data
                                                                   // interrupt; smc_base routes
                                                                   // it to the SMC CPU.
-  output logic [smc_pkg::NUM_MAILBOXES-1:0] outbound_interrupt_o,  // Per-mailbox outbound data
+  output logic [smc_pkg::NumMailboxes-1:0] outbound_interrupt_o,   // Per-mailbox outbound data
                                                                    // interrupt; smc_base drives
                                                                    // it out of the SMC.
 
@@ -266,7 +266,7 @@ module smc_internal_regs #(
 
   // Outstanding-transaction bound for axi_cg_snoop
   // per-master-port axi_lite_mux that gates transactions to them is sized by XbarCfg.MaxSlvTrans
-  localparam int unsigned AXIL_OUTSTANDING_TX = smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans;
+  localparam int unsigned AxilOutstandingTx = smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans;
 
   // DFD config from the DFT/DFD CSR block
   smc_pkg::dfd_enable_t                   dfd_enables;
@@ -276,14 +276,14 @@ module smc_internal_regs #(
   // SMC Mailbox //
   /////////////////
 
-  localparam int unsigned SPACE_PER_MAILBOX = smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR;
+  localparam int unsigned SpacePerMailbox = smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR;
 
   logic mailbox_clk;
 
   axi_cg_snoop #(
-    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .OUTSTANDING_TX(AxilOutstandingTx), // all in-flight txns this AXI-Lite port admits
     .DENY_DELAY(),
-    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
+    .HYST_WIDTH(smc_pkg::CgHysteresisW)
   ) u_mailbox_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -309,13 +309,13 @@ module smc_internal_regs #(
   );
 
   axi_lite_mailbox_unit #(
-    .NUM_MAILBOXES          (smc_pkg::NUM_MAILBOXES),
-    .MAILBOX_DEPTH          (smc_pkg::MAILBOX_DEPTH),
-    .MAX_TRANS              (smc_pkg::FABRIC_MAX_TRANS),
+    .NUM_MAILBOXES          (smc_pkg::NumMailboxes),
+    .MAILBOX_DEPTH          (smc_pkg::MailboxDepth),
+    .MAX_TRANS              (smc_pkg::FabricMaxTrans),
     .MAILBOX_BASE_ADDR      (smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
-    .MAILBOX_SIZE           (SPACE_PER_MAILBOX),
-    .ADDR_WIDTH             (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-    .DATA_WIDTH             (smc_pkg::AXI_LITE_64_DATA_WIDTH),
+    .MAILBOX_SIZE           (SpacePerMailbox),
+    .ADDR_WIDTH             (smc_pkg::SmcLocalAddrWidth),
+    .DATA_WIDTH             (smc_pkg::AxiLite64DataWidth),
     .aw_chan_t              (smc_pkg::smc_axil_32_64_aw_chan_t),
     .w_chan_t               (smc_pkg::smc_axil_32_64_w_chan_t),
     .b_chan_t               (smc_pkg::smc_axil_32_64_b_chan_t),
@@ -348,9 +348,9 @@ module smc_internal_regs #(
   logic outbound_filter_clk;
 
   axi_cg_snoop #(
-    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .OUTSTANDING_TX(AxilOutstandingTx), // all in-flight txns this AXI-Lite port admits
     .DENY_DELAY(1),
-    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
+    .HYST_WIDTH(smc_pkg::CgHysteresisW)
   ) u_outbound_filter_reg_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -485,8 +485,8 @@ module smc_internal_regs #(
 
     // AXI-Lite error slave for locked filters
     prim_axi_lite_err_slv #(
-      .AXI_ADDR_WIDTH (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-      .AXI_DATA_WIDTH (smc_pkg::AXI_LITE_64_DATA_WIDTH),
+      .AXI_ADDR_WIDTH (smc_pkg::SmcLocalAddrWidth),
+      .AXI_DATA_WIDTH (smc_pkg::AxiLite64DataWidth),
 
       .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
       .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
@@ -517,9 +517,9 @@ module smc_internal_regs #(
   logic inbound_filter_clk;
 
   axi_cg_snoop #(
-    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .OUTSTANDING_TX(AxilOutstandingTx), // all in-flight txns this AXI-Lite port admits
     .DENY_DELAY(1),
-    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
+    .HYST_WIDTH(smc_pkg::CgHysteresisW)
   ) u_inbound_filter_reg_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -648,8 +648,8 @@ module smc_internal_regs #(
 
     // AXI-Lite error slave for locked filters
     prim_axi_lite_err_slv #(
-      .AXI_ADDR_WIDTH (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-      .AXI_DATA_WIDTH (smc_pkg::AXI_LITE_64_DATA_WIDTH),
+      .AXI_ADDR_WIDTH (smc_pkg::SmcLocalAddrWidth),
+      .AXI_DATA_WIDTH (smc_pkg::AxiLite64DataWidth),
 
       .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
       .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
@@ -670,9 +670,9 @@ module smc_internal_regs #(
   logic mR_local_clk;
 
   axi_cg_snoop #(
-    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .OUTSTANDING_TX(AxilOutstandingTx), // all in-flight txns this AXI-Lite port admits
     .DENY_DELAY(1),
-    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
+    .HYST_WIDTH(smc_pkg::CgHysteresisW)
   ) u_mmode_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -697,13 +697,13 @@ module smc_internal_regs #(
     .bus_active_o    (mmode_remap_bus_active_o)
   );
 
-  localparam int unsigned mmode_remap_sel_start_idx = $clog2(
+  localparam int unsigned MmodeRemapSelStartIdx = $clog2(
       smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_SIZE
   );
-  localparam int unsigned mmode_remap_sel_end_idx = mmode_remap_sel_start_idx + smc_pkg::MMODE_REMAP_SEL_W - 1;
+  localparam int unsigned MmodeRemapSelEndIdx = MmodeRemapSelStartIdx + smc_pkg::MmodeRemapSelW - 1;
 
-  smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0] axil_mR_ctrl_reqs;
-  smc_pkg::smc_axil_32_64_resp_t [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0] axil_mR_ctrl_resps;
+  smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NumMmodeOutputRemapRegions-1:0] axil_mR_ctrl_reqs;
+  smc_pkg::smc_axil_32_64_resp_t [smc_pkg::NumMmodeOutputRemapRegions-1:0] axil_mR_ctrl_resps;
 
   axi_lite_demux #(
     .aw_chan_t   (smc_pkg::smc_axil_32_64_aw_chan_t),
@@ -713,7 +713,7 @@ module smc_internal_regs #(
     .r_chan_t    (smc_pkg::smc_axil_32_64_r_chan_t),
     .axi_req_t   (smc_pkg::smc_axil_32_64_req_t),
     .axi_resp_t  (smc_pkg::smc_axil_32_64_resp_t),
-    .NoMstPorts  (smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS),
+    .NoMstPorts  (smc_pkg::NumMmodeOutputRemapRegions),
     .MaxTrans    (1),
     .FallThrough (1'b0),
     .SpillAw     (1'b1),
@@ -727,13 +727,13 @@ module smc_internal_regs #(
     .test_i          (test_en_i),
     .slv_req_i       (axil_mR_ctrl_req_i),
     .slv_resp_o      (axil_mR_ctrl_resp_o),
-    .slv_aw_select_i (axil_mR_ctrl_req_i.aw.addr[mmode_remap_sel_end_idx:mmode_remap_sel_start_idx]), // 0x8 spacing: use bits [5:3] for 8 regions
-    .slv_ar_select_i (axil_mR_ctrl_req_i.ar.addr[mmode_remap_sel_end_idx:mmode_remap_sel_start_idx]), // 0x8 spacing: use bits [5:3] for 8 regions
+    .slv_aw_select_i (axil_mR_ctrl_req_i.aw.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
+    .slv_ar_select_i (axil_mR_ctrl_req_i.ar.addr[MmodeRemapSelEndIdx:MmodeRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
     .mst_reqs_o      (axil_mR_ctrl_reqs),
     .mst_resps_i     (axil_mR_ctrl_resps)
   );
 
-  for (genvar i = 0; i < smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS; i++) begin : gen_mmode_remap_reg
+  for (genvar i = 0; i < smc_pkg::NumMmodeOutputRemapRegions; i++) begin : gen_mmode_remap_reg
     output_remap_reg u_smc_mmode_remap_reg (
       .clk            (mR_local_clk),
       .arst_n         (rst_primary_smc_clk_ni),
@@ -769,9 +769,9 @@ module smc_internal_regs #(
   logic xR_local_clk;
 
   axi_cg_snoop #(
-    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .OUTSTANDING_TX(AxilOutstandingTx), // all in-flight txns this AXI-Lite port admits
     .DENY_DELAY(1),
-    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
+    .HYST_WIDTH(smc_pkg::CgHysteresisW)
   ) u_xvisor_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -796,13 +796,13 @@ module smc_internal_regs #(
     .bus_active_o    (xvisor_remap_bus_active_o)
   );
 
-  localparam int unsigned xvisor_remap_sel_start_idx = $clog2(
+  localparam int unsigned XvisorRemapSelStartIdx = $clog2(
       smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_SIZE
   );
-  localparam int unsigned xvisor_remap_sel_end_idx = mmode_remap_sel_start_idx + smc_pkg::XVISOR_REMAP_SEL_W - 1;
+  localparam int unsigned XvisorRemapSelEndIdx = MmodeRemapSelStartIdx + smc_pkg::XvisorRemapSelW - 1;
 
-  smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0] axil_xR_ctrl_reqs;
-  smc_pkg::smc_axil_32_64_resp_t [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0] axil_xR_ctrl_resps;
+  smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NumXvisorOutputRemapRegions-1:0] axil_xR_ctrl_reqs;
+  smc_pkg::smc_axil_32_64_resp_t [smc_pkg::NumXvisorOutputRemapRegions-1:0] axil_xR_ctrl_resps;
 
   axi_lite_demux #(
     .aw_chan_t   (smc_pkg::smc_axil_32_64_aw_chan_t),
@@ -812,7 +812,7 @@ module smc_internal_regs #(
     .r_chan_t    (smc_pkg::smc_axil_32_64_r_chan_t),
     .axi_req_t   (smc_pkg::smc_axil_32_64_req_t),
     .axi_resp_t  (smc_pkg::smc_axil_32_64_resp_t),
-    .NoMstPorts  (smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS),
+    .NoMstPorts  (smc_pkg::NumXvisorOutputRemapRegions),
     .MaxTrans    (1),
     .FallThrough (1'b0),
     .SpillAw     (1'b1),
@@ -826,13 +826,13 @@ module smc_internal_regs #(
     .test_i          (test_en_i),
     .slv_req_i       (axil_xR_ctrl_req_i),
     .slv_resp_o      (axil_xR_ctrl_resp_o),
-    .slv_aw_select_i (axil_xR_ctrl_req_i.aw.addr[xvisor_remap_sel_end_idx:xvisor_remap_sel_start_idx]), // 0x8 spacing: use bits [5:3] for 8 regions
-    .slv_ar_select_i (axil_xR_ctrl_req_i.ar.addr[xvisor_remap_sel_end_idx:xvisor_remap_sel_start_idx]), // 0x8 spacing: use bits [5:3] for 8 regions
+    .slv_aw_select_i (axil_xR_ctrl_req_i.aw.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
+    .slv_ar_select_i (axil_xR_ctrl_req_i.ar.addr[XvisorRemapSelEndIdx:XvisorRemapSelStartIdx]), // 0x8 spacing: use bits [5:3] for 8 regions
     .mst_reqs_o      (axil_xR_ctrl_reqs),
     .mst_resps_i     (axil_xR_ctrl_resps)
   );
 
-  for (genvar i = 0; i < smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS; i++) begin : gen_xvisor_remap_reg
+  for (genvar i = 0; i < smc_pkg::NumXvisorOutputRemapRegions; i++) begin : gen_xvisor_remap_reg
     output_remap_reg u_smc_xvisor_remap_reg (
       .clk            (xR_local_clk),
       .arst_n         (rst_primary_smc_clk_ni),
@@ -868,9 +868,9 @@ module smc_internal_regs #(
   logic aR_local_clk;
 
   axi_cg_snoop #(
-    .OUTSTANDING_TX(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
+    .OUTSTANDING_TX(AxilOutstandingTx), // all in-flight txns this AXI-Lite port admits
     .DENY_DELAY(1),
-    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
+    .HYST_WIDTH(smc_pkg::CgHysteresisW)
   ) u_alias_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -895,13 +895,13 @@ module smc_internal_regs #(
     .bus_active_o    (alias_remap_bus_active_o)
   );
 
-  localparam int unsigned alias_remap_sel_start_idx = $clog2(
+  localparam int unsigned AliasRemapSelStartIdx = $clog2(
       smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_SIZE
   );
-  localparam int unsigned alias_remap_sel_end_idx = alias_remap_sel_start_idx + smc_pkg::ALIAS_REMAP_SEL_W - 1;
+  localparam int unsigned AliasRemapSelEndIdx = AliasRemapSelStartIdx + smc_pkg::AliasRemapSelW - 1;
 
-  smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0] axil_aR_ctrl_reqs;
-  smc_pkg::smc_axil_32_64_resp_t [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0] axil_aR_ctrl_resps;
+  smc_pkg::smc_axil_32_64_req_t  [smc_pkg::NumAliasRemapRegions-1:0] axil_aR_ctrl_reqs;
+  smc_pkg::smc_axil_32_64_resp_t [smc_pkg::NumAliasRemapRegions-1:0] axil_aR_ctrl_resps;
 
   // AXI-Lite Demux for alias remap regions
   axi_lite_demux #(
@@ -912,7 +912,7 @@ module smc_internal_regs #(
     .r_chan_t    (smc_pkg::smc_axil_32_64_r_chan_t),
     .axi_req_t   (smc_pkg::smc_axil_32_64_req_t),
     .axi_resp_t  (smc_pkg::smc_axil_32_64_resp_t),
-    .NoMstPorts  (smc_pkg::NUM_ALIAS_REMAP_REGIONS),
+    .NoMstPorts  (smc_pkg::NumAliasRemapRegions),
     .MaxTrans    (1),
     .FallThrough (1'b0),
     .SpillAw     (1'b1),
@@ -926,13 +926,13 @@ module smc_internal_regs #(
     .test_i           (test_en_i),
     .slv_req_i        (axil_aR_ctrl_req_i),
     .slv_resp_o       (axil_aR_ctrl_resp_o),
-    .slv_aw_select_i  (axil_aR_ctrl_req_i.aw.addr[alias_remap_sel_end_idx:alias_remap_sel_start_idx]),  // 0x20 spacing: use bits [7:5] for 8 regions
-    .slv_ar_select_i  (axil_aR_ctrl_req_i.ar.addr[alias_remap_sel_end_idx:alias_remap_sel_start_idx]),  // 0x20 spacing: use bits [7:5] for 8 regions
+    .slv_aw_select_i  (axil_aR_ctrl_req_i.aw.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: use bits [7:5] for 8 regions
+    .slv_ar_select_i  (axil_aR_ctrl_req_i.ar.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: use bits [7:5] for 8 regions
     .mst_reqs_o       (axil_aR_ctrl_reqs),
     .mst_resps_i      (axil_aR_ctrl_resps)
   );
 
-  for (genvar i = 0; i < smc_pkg::NUM_ALIAS_REMAP_REGIONS; i++) begin : gen_alias_remap_reg
+  for (genvar i = 0; i < smc_pkg::NumAliasRemapRegions; i++) begin : gen_alias_remap_reg
     alias_remap_reg u_smc_alias_remap_reg (
       .clk            (aR_local_clk),
       .arst_n         (rst_primary_smc_clk_ni),

@@ -54,13 +54,13 @@ module uart_wrap_tb_top #(
 
   // AXI4-Lite log-fetch master port (flattened, VIP responder side)
   output wire                                             log_fetch_awvalid,
-  output wire [log_engine_pkg::LOG_FETCH_ADDR_WIDTH-1:0]  log_fetch_awaddr,
+  output wire [log_engine_pkg::LogFetchAddrWidth-1:0]     log_fetch_awaddr,
   output wire [2:0]                                       log_fetch_awprot,
   input  wire                                             log_fetch_awready,
 
   output wire                                             log_fetch_wvalid,
-  output wire [log_engine_pkg::LOG_FETCH_DATA_WIDTH-1:0]  log_fetch_wdata,
-  output wire [log_engine_pkg::LOG_FETCH_STRB_WIDTH-1:0]  log_fetch_wstrb,
+  output wire [log_engine_pkg::LogFetchDataWidth-1:0]     log_fetch_wdata,
+  output wire [log_engine_pkg::LogFetchStrbWidth-1:0]     log_fetch_wstrb,
   input  wire                                             log_fetch_wready,
 
   output wire                                             log_fetch_bready,
@@ -68,17 +68,17 @@ module uart_wrap_tb_top #(
   input  wire [1:0]                                       log_fetch_bresp,
 
   output wire                                             log_fetch_arvalid,
-  output wire [log_engine_pkg::LOG_FETCH_ADDR_WIDTH-1:0]  log_fetch_araddr,
+  output wire [log_engine_pkg::LogFetchAddrWidth-1:0]     log_fetch_araddr,
   output wire [2:0]                                       log_fetch_arprot,
   input  wire                                             log_fetch_arready,
 
   output wire                                             log_fetch_rready,
   input  wire                                             log_fetch_rvalid,
-  input  wire [log_engine_pkg::LOG_FETCH_DATA_WIDTH-1:0]  log_fetch_rdata,
+  input  wire [log_engine_pkg::LogFetchDataWidth-1:0]     log_fetch_rdata,
   input  wire [1:0]                                       log_fetch_rresp,
 
   // Pad-mux control, one bit per UART
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_en,
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_en,
 
   // Serial lines, one scalar pair per UART
   input  wire                                             uart_rx_0,
@@ -91,24 +91,24 @@ module uart_wrap_tb_top #(
   output wire                                             uart_tx_3,
 
   // Modem inputs and outputs (active low), one bit per UART
-  input  wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_cts_n,
-  input  wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_dsr_n,
-  input  wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_ri_n,
-  input  wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_dcd_n,
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_rts_n,
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_dtr_n,
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_out1_n,
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_out2_n,
+  input  wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_cts_n,
+  input  wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_dsr_n,
+  input  wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_ri_n,
+  input  wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_dcd_n,
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_rts_n,
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_dtr_n,
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_out1_n,
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_out2_n,
 
   // DMA, error and interrupt outputs, one bit per UART
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_rxrdy,
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_txrdy,
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_err,
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          uart_irq,
-  output wire [uart_wrap_pkg::MAX_NUM_UARTS-1:0]          log_engine_irq
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_rxrdy,
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_txrdy,
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_err,
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          uart_irq,
+  output wire [uart_wrap_pkg::MaxNumUarts-1:0]          log_engine_irq
 );
 
-  localparam int unsigned NumUarts = uart_wrap_pkg::MAX_NUM_UARTS;
+  localparam int unsigned NumUarts = uart_wrap_pkg::MaxNumUarts;
 
   uart_wrap_pkg::csr_axil_req_t  csr_axil_req;
   uart_wrap_pkg::csr_axil_resp_t csr_axil_resp;
@@ -182,7 +182,7 @@ module uart_wrap_tb_top #(
 
     .UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR (UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR),
     .UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      (UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE),
-    .UART_LOG_ENGINE_WRAP_SPACING              (uart_wrap_pkg::UART_LOG_ENGINE_WRAP_SPACING),
+    .UART_LOG_ENGINE_WRAP_SPACING              (uart_wrap_pkg::UartLogEngineWrapSpacing),
 
     .UART_REG_MAP_BASE_ADDR                    (UART_LOG_ENGINE_WRAP_0__UART_REG_MAP_BASE_ADDR),
     .UART_REG_MAP_SIZE                         (UART_LOG_ENGINE_WRAP_0__UART_REG_MAP_SIZE),

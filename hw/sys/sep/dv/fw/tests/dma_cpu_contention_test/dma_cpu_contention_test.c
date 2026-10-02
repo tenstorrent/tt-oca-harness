@@ -1,38 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP Secure-DMA vs CPU-LSU SRAM contention firmware test (OSS port of the reference suite
-// dma_cpu_contention_test). The Secure-DMA master and the
-// CPU-LSU master concurrently drive the SEP-local AXI xbar to the shared SRAM
-// slave (0x1000_0000). The EL2 CPU kicks off a long SRAM->SRAM DMA copy, then
-// immediately runs its own store loop into a DISJOINT SRAM region while the DMA
-// is still in flight, so both masters arbitrate at the SRAM target at once.
-// Everything is internal to bare `sep` -- the firmware itself produces the
-// contention, no testbench injection.
+// SEP Secure DMA vs CPU LSU SRAM contention test. The CPU starts a long
+// SRAM-to-SRAM DMA copy, then immediately runs its own store loop into a
+// disjoint SRAM region, so both masters arbitrate at the SRAM target at once.
+// The firmware alone produces the contention; the testbench injects nothing.
 //
-// The DMA copy is much larger than the CPU loop (2 KiB vs 256 B,
-// 8:1) so the DMA is provably still busy when the CPU loop finishes -- that
-// mid-flight STATUS read is the non-vacuity proof that the two streams really
-// overlapped. Sizes stay small enough for the Verilator timeout; the 8:1
-// imbalance is what makes the mid-flight BUSY && !DONE sample a real overlap.
+// The DMA copy is 8 times larger than the CPU loop, so the DMA is still busy
+// when the loop finishes; that mid-flight status sample proves the two streams
+// overlapped. The sizes stay small enough for the Verilator timeout.
 //
-// Checks (every failure increments errors; main() returns it and start.S turns
-// 0 -> PASS magic / non-zero -> FAIL magic on the 0x8000_0000 mailbox):
-//   * overlap (non-vacuity): mid-flight STATUS shows BUSY==1 && DONE==0;
-//   * the DMA reaches DONE with ERROR==0 and ERROR_CODE==0;
-//   * STATUS RW1C clear: W1C the DONE/CHUNK_DONE bits and read back 0 (AGENTS.md
-//     the contract holds for polled status, not just ISR paths; reference suite does
-//     not clear, so this is a strengthening);
-//   * DMA data integrity: every copied dst word == the source pattern;
-//   * CPU data integrity: every CPU-written word == the CPU pattern (proves the
-//     CPU's own stores were not corrupted/dropped under contention);
-//   * no master starvation is proven jointly by the above -- a starved DMA never
-//     reaches DONE (timeout FAIL) and a starved/corrupted CPU stream fails the
-//     CPU-integrity check.
+// Checks (main() returns the error count; startup/crt0.s turns it into the
+// PASS/FAIL magic on the mailbox):
+//   * overlap: the mid-flight status shows the DMA busy and not done;
+//   * the DMA reaches done with no error status and a zero error code;
+//   * the done status bits clear on write-1-to-clear in the polled path;
+//   * every copied destination word equals the source pattern;
+//   * every CPU-written word equals the CPU pattern;
+//   * together these show neither master starved: a starved DMA never reaches
+//     done, and a starved CPU stream fails its integrity check.
 //
-// Polled, interrupt-free: no PIC/ISR. DMA CSRs are dynamically clocked on
-// access; this test does not write CLOCK_GATE_CTRL. Side-effect region marking
-// is inherited from startup; this test does not write MRAC.
+// Polled, with no interrupts. The DMA registers are clocked on access, so the
+// test does not program the DMA clock gate; it inherits the side-effect region
+// marking from startup.
 
 #include <stdint.h>
 
@@ -56,7 +46,7 @@
 int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init(); // open the 0x8000_0000 mailbox window
+    sep_outbound_filter_init(); // open the mailbox window
     sep_mbx_puts("SEP DMA/CPU contention test\n");
     sep_mbx_puts("STEP side-effect region marking inherited from startup\n");
 

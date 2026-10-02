@@ -73,19 +73,13 @@ static void run_test_suite(test_context_t *ctx) {
 }
 
 static void finalize_test_results(test_context_t *ctx) {
-    uint32_t result_code;
     if (ctx->overall_result) {
         simputs("ALL TESTS PASSED!\n");
-        result_code = SMC_SCRATCHPAD_SIM_PASS_CODE;
         test_pass(0);
     } else {
         simputs("SOME TESTS FAILED!\n");
-        result_code = SMC_SCRATCHPAD_SIM_FAIL_CODE;
         test_fail(0);
     }
-
-    occp_send_write_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                            (uint8_t *)&result_code, sizeof(result_code));
 }
 
 int main(void) {
@@ -96,7 +90,6 @@ int main(void) {
     if (!initialize_interface(&ctx)) {
         simputs("FAIL: Interface initialization failed\n");
         test_fail(0);
-        return -1;
     }
 
     ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
@@ -110,13 +103,6 @@ int main(void) {
     run_test_suite(&ctx);
 
     finalize_test_results(&ctx);
-
-    simputs("Done\n");
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
 int other_main(int hartid) {

@@ -2,15 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Interface Latch Test
- *
- * Verifies that ROM latches to the first interface that issues a valid OCCP command
- * and ignores commands from other interfaces thereafter.
+ * Verifies that the ROM latches to the first I2C interface that issues a valid OCCP command
+ * and ignores commands from the other I2C interface thereafter.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
-/* Do not include smc_top_regs.h: its types collide with the dv_rom build's I3C shims. */
+/* Do not include smc_top_regs.h: its I3C types collide with headers this firmware includes. */
 #include "smc_strap.h"
 
 typedef enum { IFACE_I2C0 = 0, IFACE_I2C1 = 1 } iface_id_t;
@@ -114,36 +112,25 @@ int main(void) {
     if (!init_ctx_for_iface(&ctxA, ifaceA)) {
         simputs("FAIL: init ifaceA\n");
         test_fail(0);
-        while (1) {
-            __asm__("wfi");
-        }
     }
     if (!init_ctx_for_iface(&ctxB, ifaceB)) {
         simputs("FAIL: init ifaceB\n");
         test_fail(0);
-        while (1) {
-            __asm__("wfi");
-        }
     }
 
-    /* 1) Latch on ifaceA with a safe valid command */
-    // 50/50 chance of 1 or random number of initial commands
+    // The draw is unused but advances the random sequence that later steps consume.
     int num_initial_commands = (get_random_int() % 2) ? (1) : ((get_random_int() % 10) + 1);
     simputs("Step 1: Send valid commands on ifaceA to trigger latch\n");
     execute_random_commands(&ctxA, 1);
 
     ctxB.exp_timeout = true;
     ctxB.timeout = 2000;
-    /* 2) Attempt to send commands on ifaceB which should be ignored */
     simputs("Step 2: Send probe writes on ifaceB; expect to be ignored due to latch\n");
     execute_random_commands(&ctxB, 1);
 
     simputs("Step 3: Verify cmd_count unchanged on ifaceA after ifaceB attempts\n");
     if (!get_status_and_check_cmd_count(&ctxA, (uint8_t)ctxA.cmd_count)) {
         test_fail(0);
-        while (1) {
-            __asm__("wfi");
-        }
     }
     increment_cmd_count(&ctxA);
 
@@ -157,10 +144,4 @@ int main(void) {
         simputs("\nOCCP INTERFACE LATCH TEST FAILED!\n");
         test_fail(0);
     }
-
-    simputs("Done\n");
-    while (1) {
-        __asm__("wfi");
-    }
-    return 0;
 }

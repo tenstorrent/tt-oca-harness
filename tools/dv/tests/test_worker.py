@@ -36,6 +36,7 @@ from runlib.executors.manifest import (  # noqa: E402
     attempt_args,
     completion_path,
     execute_attempt,
+    graded_path,
     load_manifest,
     manifest_digest,
     manifest_path,
@@ -44,7 +45,7 @@ from runlib.executors.manifest import (  # noqa: E402
     write_manifest,
 )
 from runlib.models import StageResult  # noqa: E402
-from runlib.results import exit_code_for_status  # noqa: E402
+from runlib.results import exit_code_for_status, write_result  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RUN_DV = REPO_ROOT / "tools" / "dv" / "run_dv.py"
@@ -220,6 +221,54 @@ class ManifestTest(ManifestCase):
             )
         self.assertFalse(task.result_json.exists())
 
+    def leave_earlier_outputs(self, task: LeafTask) -> list[Path]:
+        """What an earlier invocation into this run directory left at the attempt's paths."""
+        xml = task.leaf_dir / "results" / "results.xml"
+        done = completion_path(self.run_dir, task.task_id)
+        for path in (xml, task.result_json, done):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}", encoding="utf-8")
+        return [xml, task.result_json, done]
+
+    def test_execute_attempt_removes_what_an_earlier_invocation_left(self) -> None:
+        task = self.task()
+        earlier = self.leave_earlier_outputs(task)
+        args = parse_args(["--dut", DUT, "--items", self.item])
+        with (
+            mock.patch("runlib.executors.manifest.run_stage", side_effect=OSError("disk")),
+            self.assertRaises(OSError),
+        ):
+            execute_attempt(
+                flow=self.flow,
+                root=REPO_ROOT,
+                sim_cfg={},
+                catalog=self.catalog,
+                task=task,
+                args=args,
+                tool="verilator",
+                simulators={},
+                policies={},
+            )
+        self.assertEqual([path for path in earlier if path.exists()], [])
+
+    def test_dry_run_removes_nothing(self) -> None:
+        task = self.task()
+        earlier = self.leave_earlier_outputs(task)
+        args = parse_args(["--dut", DUT, "--items", self.item, "--dry-run"])
+        with mock.patch("runlib.executors.manifest.run_stage", return_value=stage_result(task)):
+            execute_attempt(
+                flow=self.flow,
+                root=REPO_ROOT,
+                sim_cfg={},
+                catalog=self.catalog,
+                task=task,
+                args=args,
+                tool="verilator",
+                simulators={},
+                policies={},
+            )
+        self.assertEqual([path for path in earlier if not path.exists()], [])
+
 
 def run_worker(path: Path) -> int:
     """The worker's exit status, with its console lines kept out of the test output."""
@@ -232,6 +281,94 @@ class WorkerMainTest(ManifestCase):
         return write_manifest(
             manifest_path(self.run_dir, task.task_id), self.payload(task, **overrides)
         )
+
+    def mark_graded(self, task: LeafTask) -> None:
+        """The mark the coordinator leaves when it grades the attempt without this worker."""
+        mark = graded_path(self.run_dir, task.task_id)
+        mark.parent.mkdir(parents=True, exist_ok=True)
+        mark.write_text(json.dumps({"task_id": task.task_id, "state": "LOST"}), encoding="utf-8")
+
+    def run_worker_console(self, path: Path) -> tuple[int, str]:
+        console = io.StringIO()
+        with redirect_stdout(console), redirect_stderr(console):
+            code = worker.main([str(path)])
+        return code, console.getvalue()
+
+    def assert_wrote_nothing(self, task: LeafTask, code: int, console: str) -> None:
+        self.assertEqual(code, worker.ENVIRONMENT_ERROR_EXIT)
+        self.assertFalse(task.result_json.exists())
+        self.assertFalse(completion_path(self.run_dir, task.task_id).exists())
+        self.assertIn("graded this attempt without its result", console)
+
+    def test_a_graded_attempt_runs_nothing_and_leaves_the_coordinator_files(self) -> None:
+        task = self.task()
+        path = self.write(task)
+        self.mark_graded(task)
+        graded_xml = task.leaf_dir / "results" / "results.xml"
+        graded_xml.parent.mkdir(parents=True)
+        graded_xml.write_text("<testsuites/>\n", encoding="utf-8")
+        with mock.patch("runlib.executors.manifest.run_stage") as run:
+            code, console = self.run_worker_console(path)
+        run.assert_not_called()
+        self.assert_wrote_nothing(task, code, console)
+        self.assertIn("leaving neither result.json nor the completion record", console)
+        self.assertTrue(graded_xml.is_file())
+
+    def test_a_mark_left_while_the_stage_ran_stops_both_writes(self) -> None:
+        task = self.task()
+        path = self.write(task)
+
+        def stage(*_args, **_kwargs) -> StageResult:
+            self.mark_graded(task)
+            return stage_result(task)
+
+        with mock.patch("runlib.executors.manifest.run_stage", side_effect=stage):
+            code, console = self.run_worker_console(path)
+        self.assert_wrote_nothing(task, code, console)
+
+    def test_a_mark_left_while_the_stage_ran_stops_the_error_record(self) -> None:
+        task = self.task()
+        path = self.write(task)
+
+        def stage(*_args, **_kwargs) -> StageResult:
+            self.mark_graded(task)
+            raise OSError("disk")
+
+        with mock.patch("runlib.executors.manifest.run_stage", side_effect=stage):
+            code, console = self.run_worker_console(path)
+        self.assert_wrote_nothing(task, code, console)
+
+    def test_a_mark_left_after_the_result_removes_it_and_stops_the_completion_record(
+        self,
+    ) -> None:
+        task = self.task()
+        path = self.write(task)
+        written: list[Path] = []
+
+        def write_then_grade(target: Path, payload: dict) -> None:
+            write_result(target, payload)
+            written.append(target)
+            if target == task.result_json:
+                self.mark_graded(task)
+
+        with (
+            mock.patch("runlib.executors.manifest.run_stage", return_value=stage_result(task)),
+            mock.patch("runlib.executors.manifest.write_result", side_effect=write_then_grade),
+        ):
+            code, console = self.run_worker_console(path)
+        self.assertEqual(written, [task.result_json])
+        self.assert_wrote_nothing(task, code, console)
+        self.assertIn("leaving neither result.json nor the completion record", console)
+
+    def test_a_graded_attempt_with_an_untrusted_manifest_writes_no_result(self) -> None:
+        task = self.task()
+        path = self.write(task)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["item"] = "someone_else"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        self.mark_graded(task)
+        code, console = self.run_worker_console(path)
+        self.assert_wrote_nothing(task, code, console)
 
     def test_runs_one_attempt_and_records_completion(self) -> None:
         task = self.task()

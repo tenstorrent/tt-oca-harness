@@ -683,11 +683,11 @@ with its entry index, and they are accepted only at the enabling
 `FILTER_CONFIG` write of that same entry. Independent last-writes would otherwise assemble a window out
 of one entry's START, another's END and a third's ENABLE -- a window the DUT
 never held. The entry count comes from
-`sep_pkg::INBOUND_FILTER_NUM_FILTERS`, not a literal.
+`sep_pkg::InboundFilterNumFilters`, not a literal.
 
 The full rule matrix, the deny path, and the winner walk over all 48 entries
-(inbound `INBOUND_FILTER_NUM_FILTERS` = 16 plus outbound
-`OUTBOUND_FILTER_NUM_FILTERS` = 32) are Phase 2.
+(inbound `InboundFilterNumFilters` = 16 plus outbound
+`OutboundFilterNumFilters` = 32) are Phase 2.
 
 ==== `sep_efuse_sense_cg`
 

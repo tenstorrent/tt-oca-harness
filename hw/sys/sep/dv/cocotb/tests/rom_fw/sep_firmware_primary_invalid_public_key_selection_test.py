@@ -2,42 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest names two public keys at once; the backup boots.
 
-The PRIMARY's ``public_key_select_classic`` names ROM key slots 0 AND 1. Under OCA
-the field is a 128-bit BITMAP, not a packed selection value, and
-[SEP-ROM-SB-045] requires it to resolve to exactly one slot: a bitmap with more
-than one bit set is ambiguous about which anchor applies, so the ROM refuses it
-rather than resolving to either. Both named slots are individually valid and
-provisioned, which is what makes the ambiguity itself the sole possible cause.
+The primary's ``public_key_select_classic`` bitmap names ROM key slots 0 and 1, both valid and
+provisioned. The bitmap must name exactly one slot, so ``plat_is_key_authorized`` prints
+``PUBK_SEL_AMBIGUOUS`` and returns ``OCA_FAIL_ROOT_KEY_UNAUTHORIZED`` before it echoes a slot;
+the run's only ``PUBK_SEL=`` line is the backup's. The primary is broken in no other way.
 
-``plat_is_key_authorized`` (``oca_platform.c``) prints ``PUBK_SEL_AMBIGUOUS`` and
-returns ``OCA_FAIL_ROOT_KEY_UNAUTHORIZED`` -- a key-AUTHORIZATION verdict, not a
-signature one. The refusal happens inside the resolution loop, before any slot
-number is echoed, so the primary contributes no ``PUBK_SEL=`` line and the single
-``PUBK_SEL=`` in the console is the backup's.
+The status ring reports every key-authorization refusal as ``SEP_MSG_INVALID_KEY_HASH``, so the
+console token is the per-reason evidence; ``PUBK_SLOT_RESERVED`` (a bad slot index, same error
+code) is forbidden so the two cannot be confused.
 
-THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY, and that is the whole difference between
-this testcase and its backup-side sibling. So there is no BAD_MAGIC failover trigger
-here: the primary is structurally perfect and is rejected by key selection alone.
-
-The expected outcome is A Completed boot, NOT A Terminal failure. Copying the backup-
-side base class here would have inverted the requirement.
-
-Platform adaptation -- MARKER. This ROM *defines* that code
-(``bootrom/prod/include/status_values.h:12``) but never EMITS it: there is no
-``report_status`` call for it anywhere under ``bootrom/prod/src``, so the architected
-status ring carries only the generic terminal code and the debug console token is the
-only per-reason evidence available. Hence the ambiguity arm's
-``PUBK_SEL_AMBIGUOUS`` is required here instead. ``PUBK_SLOT_RESERVED`` -- a bad ROM key
-INDEX, a different arm -- is forbidden below so the two cannot be confused.
-
-``public_key_sel`` is at offset 166, inside the TBS, so the helper re-hashes. No
-re-sign: the selection is rejected before ``rsa_3072_verify``, so the primary's
-now-stale signature is never examined, and the shared base forbids any
-``RSA_EXEC`` before the backup read to check that rather than assume it.
-
-Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
-assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
+The selector is inside the signed region, so the helper re-hashes but does not re-sign: the
+refusal precedes ``rsa_3072_verify``, and the base forbids ``RSA_EXEC`` before the backup read.
+Needs ``+esrc_noise_force``: the backup's RSA-3072 modexp stalls OTBN until EDN grants entropy.
 """
 
 from __future__ import annotations

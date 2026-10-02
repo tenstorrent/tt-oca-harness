@@ -120,6 +120,17 @@ def _set_only_fixed(seed: int) -> dict[str, int]:
     return mod.SepEfuseSetOnlyCfg(seed).image_fixed()
 
 
+def _key_revocation_fixed(seed: int) -> dict[str, int]:
+    """Pins for ``sep_key_revocation_bitmap_random_test``.
+
+    The bitmap comes from ``env/sep_key_revocation_draw.py``, which the test also calls, so the
+    staged bitmap and the predicted outcome cannot drift.
+    """
+    mod = _load_env_module("sep_key_revocation_draw", "sep_key_revocation_draw.py")
+    fixed: dict[str, int] = mod.efuse_fixed(mod.draw(seed).bitmap)
+    return fixed
+
+
 def _km_otp_id_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_km_public_id_test``'s ``cfg.image_fixed()``.
 
@@ -291,6 +302,13 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x1,
         "fixed_from": "locked_field_irq",
     },
+    # The bitmap draw is shared with the testcase so staging and prediction
+    # cannot drift onto different randomized revocation values.
+    "sep_key_revocation_bitmap_random_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "key_revocation_draw",
+    },
     # KM public-ID readout. The three SEP_*_ID values and the one eFuse read
     # lock among them come from SepKmOtpIdCfg(seed); see _km_otp_id_fixed().
     "sep_efuse_km_public_id_test": {
@@ -429,6 +447,8 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
             fixed = _program_lock_spares_fixed()
         elif spec.get("fixed_from") == "locked_field_irq":
             fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "key_revocation_draw":
+            fixed = _key_revocation_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "km_otp_id":
             fixed = _km_otp_id_fixed(seed + int(spec.get("seed_offset", 0)))
         extra = spec.get("fixed_extra")

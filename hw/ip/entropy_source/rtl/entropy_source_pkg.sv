@@ -3,23 +3,22 @@
 
 // Define entropy-source register widths, type aliases, lane count, and the error aggregation bus.
 //
-// REG_ADDR_WIDTH/REG_DATA_WIDTH/REG_STRB_WIDTH and reg_addr_t/reg_data_t/reg_strb_t serve
-// register access; NRINGS is the generator-lane count.
+// RegAddrWidth/RegDataWidth/RegStrbWidth and reg_addr_t/reg_data_t/reg_strb_t serve
+// register access; NRings is the generator-lane count.
 // entropy_source_err_bus_t collects every error and fault that drives INTR_STATUS sticky
 // bits; irq_o is the single OR of those bits masked by INTR_ENABLE.
 
 package entropy_source_pkg;
 
-  localparam int unsigned REG_ADDR_WIDTH =
-        entropy_source_reg_pkg::ENTROPY_SOURCE_REG_MIN_ADDR_WIDTH;
-  localparam int unsigned REG_DATA_WIDTH = 32;
-  localparam int unsigned REG_STRB_WIDTH = REG_DATA_WIDTH / 8;
+  localparam int unsigned RegAddrWidth = entropy_source_reg_pkg::ENTROPY_SOURCE_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned RegDataWidth = 32;
+  localparam int unsigned RegStrbWidth = RegDataWidth / 8;
 
-  typedef logic [REG_ADDR_WIDTH-1:0] reg_addr_t;
-  typedef logic [REG_DATA_WIDTH-1:0] reg_data_t;
-  typedef logic [REG_STRB_WIDTH-1:0] reg_strb_t;
+  typedef logic [RegAddrWidth-1:0] reg_addr_t;
+  typedef logic [RegDataWidth-1:0] reg_data_t;
+  typedef logic [RegStrbWidth-1:0] reg_strb_t;
 
-  localparam int unsigned NRINGS = 12;
+  localparam int unsigned NRings = 12;
 
   // ------------------------------------------------------------------------
   // Error / fault aggregation bus.

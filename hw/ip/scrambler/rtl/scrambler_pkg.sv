@@ -243,169 +243,169 @@ package scrambler_pkg;
 
   // ROL - Rotate Left functions enumerated for input data width range [6,16]
   // The barrel shifter uses a triple-replicated (or double for powers-of-2)
-  // extended word; only the top WIDTH bits of the final stage are returned.
+  // extended word; only the top Width bits of the final stage are returned.
   // The lower bits of intermediate signals are intentionally unused.
   /* verilator lint_off UNUSEDSIGNAL */
   function automatic logic [5:0] rol6(input logic [5:0] d, input logic [2:0] r);
-    localparam int WIDTH = 6;
-    localparam int IWIDTH = 3 * WIDTH;
+    localparam int Width = 6;
+    localparam int IWidth = 3 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2;
 
     d_xtnd = {d,d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
-    return d_xtnd_s2[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s2[IWidth-1:IWidth-Width];
   endfunction
 
   function automatic logic [6:0] rol7(input logic [6:0] d, input logic [2:0] r);
-    localparam int WIDTH = 7;
-    localparam int IWIDTH = 3 * WIDTH;
+    localparam int Width = 7;
+    localparam int IWidth = 3 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2;
 
     d_xtnd = {d,d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
-    return d_xtnd_s2[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s2[IWidth-1:IWidth-Width];
   endfunction
 
   function automatic logic [7:0] rol8(input logic [7:0] d, input logic [2:0] r);
-    localparam int WIDTH = 8;
-    localparam int IWIDTH = 2 * WIDTH;
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2;
+    localparam int Width = 8;
+    localparam int IWidth = 2 * Width;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2;
 
     d_xtnd = {d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
-    return d_xtnd_s2[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s2[IWidth-1:IWidth-Width];
   endfunction
 
   function automatic logic [8:0] rol9(input logic [8:0] d, input logic [3:0] r);
-    localparam int WIDTH = 9;
-    localparam int IWIDTH = 3 * WIDTH;
+    localparam int Width = 9;
+    localparam int IWidth = 3 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
 
     d_xtnd = {d,d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
     d_xtnd_s3 = r[3] ? d_xtnd_s2 << 8 : d_xtnd_s2;
-    return d_xtnd_s3[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s3[IWidth-1:IWidth-Width];
   endfunction
 
   function automatic logic [9:0] rol10(input logic [9:0] d, input logic [3:0] r);
-    localparam int WIDTH = 10;
-    localparam int IWIDTH = 3 * WIDTH;
+    localparam int Width = 10;
+    localparam int IWidth = 3 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
 
     d_xtnd = {d,d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
     d_xtnd_s3 = r[3] ? d_xtnd_s2 << 8 : d_xtnd_s2;
-    return d_xtnd_s3[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s3[IWidth-1:IWidth-Width];
   endfunction
 
   function automatic logic [10:0] rol11(input logic [10:0] d, input logic [3:0] r);
-    localparam int WIDTH = 11;
-    localparam int IWIDTH = 3 * WIDTH;
+    localparam int Width = 11;
+    localparam int IWidth = 3 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
 
     d_xtnd = {d,d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
     d_xtnd_s3 = r[3] ? d_xtnd_s2 << 8 : d_xtnd_s2;
-    return d_xtnd_s3[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s3[IWidth-1:IWidth-Width];
   endfunction
 
   function automatic logic [11:0] rol12(input logic [11:0] d, input logic [3:0] r);
-    localparam int WIDTH = 12;
-    localparam int IWIDTH = 3 * WIDTH;
+    localparam int Width = 12;
+    localparam int IWidth = 3 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
 
     d_xtnd = {d,d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
     d_xtnd_s3 = r[3] ? d_xtnd_s2 << 8 : d_xtnd_s2;
-    return d_xtnd_s3[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s3[IWidth-1:IWidth-Width];
   endfunction
 
 
   function automatic logic [12:0] rol13(input logic [12:0] d, input logic [3:0] r);
-    localparam int WIDTH = 13;
-    localparam int IWIDTH = 3 * WIDTH;
+    localparam int Width = 13;
+    localparam int IWidth = 3 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
 
     d_xtnd = {d,d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
     d_xtnd_s3 = r[3] ? d_xtnd_s2 << 8 : d_xtnd_s2;
-    return d_xtnd_s3[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s3[IWidth-1:IWidth-Width];
   endfunction
 
   function automatic logic [13:0] rol14(input logic [13:0] d, input logic [3:0] r);
-    localparam int WIDTH = 14;
-    localparam int IWIDTH = 3 * WIDTH;
+    localparam int Width = 14;
+    localparam int IWidth = 3 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
 
     d_xtnd = {d,d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
     d_xtnd_s3 = r[3] ? d_xtnd_s2 << 8 : d_xtnd_s2;
-    return d_xtnd_s3[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s3[IWidth-1:IWidth-Width];
   endfunction
 
   function automatic logic [14:0] rol15(input logic [14:0] d, input logic [3:0] r);
-    localparam int WIDTH = 15;
-    localparam int IWIDTH = 3 * WIDTH;
+    localparam int Width = 15;
+    localparam int IWidth = 3 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
 
     d_xtnd = {d,d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
     d_xtnd_s3 = r[3] ? d_xtnd_s2 << 8 : d_xtnd_s2;
-    return d_xtnd_s3[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s3[IWidth-1:IWidth-Width];
   endfunction
 
   function automatic logic [15:0] rol16(input logic [15:0] d, input logic [3:0] r);
-    localparam int WIDTH = 16;
-    localparam int IWIDTH = 2 * WIDTH;
+    localparam int Width = 16;
+    localparam int IWidth = 2 * Width;
 
-    logic [IWIDTH-1:0] d_xtnd;
-    logic [IWIDTH-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
+    logic [IWidth-1:0] d_xtnd;
+    logic [IWidth-1:0] d_xtnd_s0, d_xtnd_s1, d_xtnd_s2, d_xtnd_s3;
 
     d_xtnd = {d,d};
     d_xtnd_s0 = r[0] ? d_xtnd    << 1 : d_xtnd;
     d_xtnd_s1 = r[1] ? d_xtnd_s0 << 2 : d_xtnd_s0;
     d_xtnd_s2 = r[2] ? d_xtnd_s1 << 4 : d_xtnd_s1;
     d_xtnd_s3 = r[3] ? d_xtnd_s2 << 8 : d_xtnd_s2;
-    return d_xtnd_s3[IWIDTH-1:IWIDTH-WIDTH];
+    return d_xtnd_s3[IWidth-1:IWidth-Width];
   endfunction
   /* verilator lint_on UNUSEDSIGNAL */
 

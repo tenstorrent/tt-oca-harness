@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Reject SystemVerilog enum members that are not UPPER_SNAKE_CASE."""
+"""Reject SystemVerilog enum members that are not UPPER_SNAKE_CASE and enum types that are not
+lower_snake_case with an _e suffix."""
 
 import re
 import sys
@@ -10,6 +11,7 @@ from pathlib import Path
 from pyslang.syntax import SyntaxKind, SyntaxNode, SyntaxTree
 
 UPPER_SNAKE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+LOWER_SNAKE_E = re.compile(r"^[a-z][a-z0-9_]*_e$")
 
 
 def main(paths: list[str]) -> int:
@@ -19,7 +21,14 @@ def main(paths: list[str]) -> int:
         tree = SyntaxTree.fromFile(str(path))
         sources = tree.sourceManager
 
-        def visit(node, path=path, sources=sources):
+        def report(token, message, path=path, sources=sources):
+            location = token.location
+            # An `include pulls other files into the tree; each file reports its own enums.
+            if Path(sources.getFileName(location)).resolve() != path.resolve():
+                return
+            diagnostics.append(f"{path}:{sources.getLineNumber(location)}: {message}")
+
+        def visit(node, report=report):
             if not isinstance(node, SyntaxNode):
                 return
             if node.kind != SyntaxKind.EnumType:
@@ -30,16 +39,16 @@ def main(paths: list[str]) -> int:
             for member in node.members:
                 if not hasattr(member, "name"):
                     continue
-                location = member.name.location
-                # An `include pulls other files into the tree; each file reports its own members.
-                if Path(sources.getFileName(location)).resolve() != path.resolve():
-                    continue
                 if not UPPER_SNAKE.match(member.name.valueText):
-                    line = sources.getLineNumber(location)
-                    diagnostics.append(
-                        f"{path}:{line}: enum member {member.name.valueText}{owner} "
-                        "is not UPPER_SNAKE_CASE"
+                    report(
+                        member.name,
+                        f"enum member {member.name.valueText}{owner} is not UPPER_SNAKE_CASE",
                     )
+            if typedef and not LOWER_SNAKE_E.match(parent.name.valueText):
+                report(
+                    parent.name,
+                    f"enum type {parent.name.valueText} is not lower_snake_case with an _e suffix",
+                )
 
         tree.root.visit(visit)
     if diagnostics:

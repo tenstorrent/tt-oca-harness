@@ -65,30 +65,30 @@ module dtp_ctn_xtrig_props #(
 );
 
   // sender_state_e and receiver_state_e encodings of ctp_handshake_ctrl.
-  localparam logic [1:0] S_IDLE = 2'd0;
-  localparam logic [1:0] S_REQ_ASSERTED = 2'd1;
-  localparam logic [1:0] S_WAIT_ACK_DEASSERT = 2'd2;
-  localparam logic [1:0] R_IDLE = 2'd0;
-  localparam logic [1:0] R_ACK_ASSERTED = 2'd1;
-  localparam logic [1:0] R_WAIT_REQ_DEASSERT = 2'd2;
+  localparam logic [1:0] SIdle = 2'd0;
+  localparam logic [1:0] SReqAsserted = 2'd1;
+  localparam logic [1:0] SWaitAckDeassert = 2'd2;
+  localparam logic [1:0] RIdle = 2'd0;
+  localparam logic [1:0] RAckAsserted = 2'd1;
+  localparam logic [1:0] RWaitReqDeassert = 2'd2;
 
   function automatic logic [1:0] sender_next(input logic [1:0] state, input logic src,
                                              input logic ack, input logic reset);
-    if (reset) return S_IDLE;
+    if (reset) return SIdle;
     case (state)
-      S_IDLE:              return src ? S_REQ_ASSERTED : S_IDLE;
-      S_REQ_ASSERTED:      return ack ? S_WAIT_ACK_DEASSERT : S_REQ_ASSERTED;
-      S_WAIT_ACK_DEASSERT: return ack ? S_WAIT_ACK_DEASSERT : S_IDLE;
-      default:             return S_IDLE;
+      SIdle:               return src ? SReqAsserted : SIdle;
+      SReqAsserted:        return ack ? SWaitAckDeassert : SReqAsserted;
+      SWaitAckDeassert:    return ack ? SWaitAckDeassert : SIdle;
+      default:             return SIdle;
     endcase
   endfunction
 
   function automatic logic [1:0] receiver_next(input logic [1:0] state, input logic req);
     case (state)
-      R_IDLE:              return req ? R_ACK_ASSERTED : R_IDLE;
-      R_ACK_ASSERTED:      return req ? R_ACK_ASSERTED : R_WAIT_REQ_DEASSERT;
-      R_WAIT_REQ_DEASSERT: return req ? R_WAIT_REQ_DEASSERT : R_IDLE;
-      default:             return R_IDLE;
+      RIdle:               return req ? RAckAsserted : RIdle;
+      RAckAsserted:        return req ? RAckAsserted : RWaitReqDeassert;
+      RWaitReqDeassert:    return req ? RWaitReqDeassert : RIdle;
+      default:             return RIdle;
     endcase
   endfunction
 
@@ -97,7 +97,7 @@ module dtp_ctn_xtrig_props #(
 
   // ---- Four-phase handshake controller ------------------------------------------------------
   `OCAH_FV_ASSERT(ast_hs_sender_states,
-                  sender_state_i <= S_WAIT_ACK_DEASSERT &&
+                  sender_state_i <= SWaitAckDeassert &&
                   `OCAH_FV_IMPLIES($past(rst_ni),
                                    sender_state_i == sender_next($past(sender_state_i),
                                                                  $past(ct_src_i),
@@ -105,39 +105,39 @@ module dtp_ctn_xtrig_props #(
                                                                  $past(hs_reset_i))),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_receiver_states,
-                  receiver_state_i <= R_WAIT_REQ_DEASSERT &&
+                  receiver_state_i <= RWaitReqDeassert &&
                   `OCAH_FV_IMPLIES($past(rst_ni),
                                    receiver_state_i == receiver_next($past(receiver_state_i),
                                                                      $past(req_in_sync_i))),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_req_stable_until_ack,
-                  hs_req_out_i == (sender_state_i == S_REQ_ASSERTED) &&
+                  hs_req_out_i == (sender_state_i == SReqAsserted) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && $past(hs_req_out_i) && !$past(ack_in_sync_i) &&
                                    !$past(hs_reset_i),
                                    hs_req_out_i),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_ack_mirrors_req,
-                  hs_ack_out_i == (receiver_state_i == R_ACK_ASSERTED) &&
-                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(receiver_state_i) == R_IDLE &&
+                  hs_ack_out_i == (receiver_state_i == RAckAsserted) &&
+                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(receiver_state_i) == RIdle &&
                                    $past(req_in_sync_i),
                                    hs_ack_out_i) &&
-                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(receiver_state_i) == R_ACK_ASSERTED &&
+                  `OCAH_FV_IMPLIES($past(rst_ni) && $past(receiver_state_i) == RAckAsserted &&
                                    !$past(req_in_sync_i),
                                    !hs_ack_out_i),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_dst_is_one_pulse,
                   !($past(rst_ni) && hs_dst_i && $past(hs_dst_i)) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && `OCAH_FV_ROSE(hs_dst_i),
-                                   $past(receiver_state_i) == R_IDLE && $past(req_in_sync_i)),
+                                   $past(receiver_state_i) == RIdle && $past(req_in_sync_i)),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_busy_lags_state,
                   `OCAH_FV_IMPLIES($past(rst_ni),
-                                   hs_busy_i == ($past(sender_state_i) != S_IDLE ||
-                                                 $past(receiver_state_i) != R_IDLE)),
+                                   hs_busy_i == ($past(sender_state_i) != SIdle ||
+                                                 $past(receiver_state_i) != RIdle)),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_reset_recovers_sender,
                   `OCAH_FV_IMPLIES($past(rst_ni) && $past(hs_reset_i),
-                                   sender_state_i == S_IDLE && !hs_req_out_i &&
+                                   sender_state_i == SIdle && !hs_req_out_i &&
                                    receiver_state_i == receiver_next($past(receiver_state_i),
                                                                      $past(req_in_sync_i))),
                   clk_i, rst_ni)
@@ -196,10 +196,10 @@ module dtp_ctn_xtrig_props #(
 
   // ---- Covers -------------------------------------------------------------------------------
   `OCAH_FV_COVER(cov_hs_four_phase_complete,
-                 $past(sender_state_i) == S_WAIT_ACK_DEASSERT && sender_state_i == S_IDLE,
+                 $past(sender_state_i) == SWaitAckDeassert && sender_state_i == SIdle,
                  clk_i, rst_ni)
   `OCAH_FV_COVER(cov_hs_request_received,
-                 $past(receiver_state_i) == R_WAIT_REQ_DEASSERT && receiver_state_i == R_IDLE,
+                 $past(receiver_state_i) == RWaitReqDeassert && receiver_state_i == RIdle,
                  clk_i, rst_ni)
   `OCAH_FV_COVER(cov_stretch_max_width,
                  mode_wire_or_i && $past(ct_src_i) && stretch_count_i == 16'd4, clk_i, rst_ni)
