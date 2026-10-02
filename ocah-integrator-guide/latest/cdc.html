@@ -271,7 +271,9 @@ per-instance bounds below are not masked by a false path.</p>
 </li>
 <li>
 <p><code>&lt;block&gt;_io_delays.sdc</code>:
-The input and output delays on the block&#8217;s ports.</p>
+The input and output delays on the block&#8217;s ports.
+The CDC/RDC sign-off run reads the same three files, without the max-delay
+layer below (see <a href="#cdc-signoff-collateral">CDC/RDC sign-off collateral</a>).</p>
 </li>
 <li>
 <p><code>&lt;block&gt;_cdc_max_delay.tcl</code>:
@@ -467,9 +469,12 @@ refine it.</p>
 </div>
 <div class="paragraph">
 <p><strong>Layer 1</strong> is <code>set_async_clock_groups</code>, defined in
-<code>flows/synth/constraints/async_clock_groups.tcl</code> and called from each block&#8217;s
-<code>constraints.sdc</code>. It declares the asynchronous groups <strong>with <code>-allow_paths</code></strong> and
-applies a loose 20 ns / -20 ns default to every inter-group clock pair.</p>
+<code>flows/synth/constraints/async_clock_groups.tcl</code> and reached from each block&#8217;s
+<code>&lt;block&gt;_clock_groups.sdc</code> through <code>cdc_apply_async_groups</code> (in the same file),
+which resolves each domain&#8217;s membership and passes the block&#8217;s <code>-exclude</code>
+pairs through. It declares the asynchronous groups <strong>with
+<code>-allow_paths</code></strong> and applies a loose 20 ns / -20 ns default to every inter-group
+clock pair.</p>
 </div>
 <div class="admonitionblock important">
 <table>
@@ -523,7 +528,75 @@ that are separate domains upstream but share a clock in SEP.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="what-is-covered"><a class="anchor" href="#what-is-covered"></a><a class="link" href="#what-is-covered">4. What is covered</a></h2>
+<h2 id="cdc-signoff-collateral"><a class="anchor" href="#cdc-signoff-collateral"></a><a class="link" href="#cdc-signoff-collateral">4. CDC/RDC sign-off collateral</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The same clock, group and I/O-delay files that synthesis reads are the clock
+truth for static CDC/RDC sign-off, and the rest of that sign-off collateral is
+checked in beside them, so an adopter can run their own tool against the
+reviewed constraints and waivers rather than reconstructing them.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>hw/sys/&lt;block&gt;/cdc/&lt;block&gt;.cdc_rdc.tcl</code> is the entry point. It sources the
+block&#8217;s files in dependency order: <code>hier_reuse_procs.tcl</code>, <code>clock_periods.tcl</code>
+and the <code>&lt;block&gt;_{clocks,clock_groups,io_delays}.sdc</code> siblings (without the
+CDC max-delay layer <code>constraints.sdc</code> adds), <code>&lt;block&gt;.resets.tcl</code> (the reset
+tree and its assertion sequences), <code>&lt;block&gt;.case_analysis.tcl</code> (the functional
+pins for DFT and strap ports), <code>&lt;block&gt;.static_signals.tcl</code> (quasi-static
+signals, CDC only), the shared type-level setup in
+<code>flows/cdc/cdc_rdc_setup.tcl</code> (synchronizer and verified-IP modules, gray
+annotations) and the block&#8217;s instance-level <code>&lt;block&gt;.cdc_rdc_setup.tcl</code>.</p>
+</li>
+<li>
+<p><code>hw/sys/&lt;block&gt;/cdc/&lt;block&gt;.vccdc*.waiver.tcl</code> and
+<code>hw/sys/&lt;block&gt;/rdc/&lt;block&gt;.vcrdc*.waiver.tcl</code> hold the reviewed waivers, one
+file for Tenstorrent-owned RTL and, where needed, an <code>.opensource_ip</code> file
+for third-party IP. Each waiver carries its rationale in <code>-comment {}</code>.</p>
+</li>
+<li>
+<p><code>flows/synth/constraints/hier_reuse_procs.tcl</code> wraps the tool commands these
+files use so they can be replayed under a hierarchy prefix.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The files name the leaves of the generic primitives (<code>q_d</code>/<code>q_ddd</code> synchroniser
+stages, <code>u_sync_1</code>/<code>u_sync_2</code> two-stage synchronisers, <code>q_o</code> flops, <code>en_latch</code>
+clock gates); <code>flows/cdc/README.md</code> lists them. Run the sign-off against the
+generic primitive set or re-anchor the collateral to the swapped names.</p>
+</div>
+<div class="paragraph">
+<p>Two variables select how the files are read:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>::cdc_app</code> is <code>cdc</code> (default) or <code>rdc</code>; the entry skips CDC-only files for
+<code>rdc</code>.</p>
+</li>
+<li>
+<p><code>::cdc_scenario</code> is <code>synth</code> (default) or <code>functional</code>. The functional scenario
+is the sign-off run: the case-analysis files pin the DFT and strap ports, so
+<code>cdc_pinned_port_delay</code> skips the I/O delays on those ports.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>hw/sys/smu/cdc/smu.cdc_rdc.tcl</code> shows how a parent replays a child:
+<code>cdc_begin_block &lt;prefix&gt; {clock aliases} {reset aliases}</code>, source the child&#8217;s
+entry, <code>cdc_end_block</code>. Port clocks, I/O delays, port resets and the child&#8217;s own
+group declaration are block-top gated and skipped under a prefix; internal
+constraints re-anchor through <code>cdc_inst</code>, and generated clocks registered with
+<code>cdc_group_extra</code> land in the parent&#8217;s single <code>cdc_apply_async_groups</code>. Waiver
+filter fields carry a <code>${PREFIX}</code> token for the same reason. <code>flows/cdc/README.md</code>
+summarises the layout.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="what-is-covered"><a class="anchor" href="#what-is-covered"></a><a class="link" href="#what-is-covered">5. What is covered</a></h2>
 <div class="sectionbody">
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -572,7 +645,7 @@ elements, respectively.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="cdc-integration-checklist"><a class="anchor" href="#cdc-integration-checklist"></a><a class="link" href="#cdc-integration-checklist">5. Integration checklist</a></h2>
+<h2 id="cdc-integration-checklist"><a class="anchor" href="#cdc-integration-checklist"></a><a class="link" href="#cdc-integration-checklist">6. Integration checklist</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Five things must change, three should be checked. None of them requires editing
@@ -580,7 +653,7 @@ per-instance data by hand. Every change is either a one-line policy edit or a
 regeneration.</p>
 </div>
 <div class="sect2">
-<h3 id="1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"><a class="anchor" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"></a><a class="link" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper">5.1. 1. Repoint the constraints at the pin of the cell inside the prim wrapper</a></h3>
+<h3 id="1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"><a class="anchor" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper"></a><a class="link" href="#1-repoint-the-constraints-at-the-pin-of-the-cell-inside-the-prim-wrapper">6.1. 1. Repoint the constraints at the pin of the cell inside the prim wrapper</a></h3>
 <div class="paragraph">
 <p>This is the most important change.</p>
 </div>
@@ -646,7 +719,7 @@ path and the capturing clock regardless of the module they were named after.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="2-point-the-files-at-your-hierarchy-or-regenerate"><a class="anchor" href="#2-point-the-files-at-your-hierarchy-or-regenerate"></a><a class="link" href="#2-point-the-files-at-your-hierarchy-or-regenerate">5.2. 2. Point the files at your hierarchy, or regenerate</a></h3>
+<h3 id="2-point-the-files-at-your-hierarchy-or-regenerate"><a class="anchor" href="#2-point-the-files-at-your-hierarchy-or-regenerate"></a><a class="link" href="#2-point-the-files-at-your-hierarchy-or-regenerate">6.2. 2. Point the files at your hierarchy, or regenerate</a></h3>
 <div class="paragraph">
 <p>The checked-in <code>&lt;block&gt;_cdc_max_delay_generated.tcl</code> files are written against the
 OCAH hierarchy, with paths relative to the block&#8217;s own top and clocks named as
@@ -692,7 +765,7 @@ not the child&#8217;s file with a prefix.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="3-set-the-default-bound"><a class="anchor" href="#3-set-the-default-bound"></a><a class="link" href="#3-set-the-default-bound">5.3. 3. Set the default bound</a></h3>
+<h3 id="3-set-the-default-bound"><a class="anchor" href="#3-set-the-default-bound"></a><a class="link" href="#3-set-the-default-bound">6.3. 3. Set the default bound</a></h3>
 <div class="paragraph">
 <p>The 20 ns / -20 ns figures are a starting point. Both are
 <code>info exists</code>-guarded in <code>flows/synth/constraints/async_clock_groups.tcl</code>, so
@@ -720,12 +793,16 @@ hold is not a real requirement.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="4-declare-your-own-clock-groups"><a class="anchor" href="#4-declare-your-own-clock-groups"></a><a class="link" href="#4-declare-your-own-clock-groups">5.4. 4. Declare your own clock groups</a></h3>
+<h3 id="4-declare-your-own-clock-groups"><a class="anchor" href="#4-declare-your-own-clock-groups"></a><a class="link" href="#4-declare-your-own-clock-groups">6.4. 4. Declare your own clock groups</a></h3>
 <div class="paragraph">
-<p><code>set_async_clock_groups</code> is called from each block&#8217;s <code>constraints.sdc</code> with that
-block&#8217;s group list. Each inner list is one asynchronous group and globs are
-allowed. Globs resolve when the call runs, so it has to come after every
-<code>create_clock</code> and <code>create_generated_clock</code> it is meant to cover.</p>
+<p>Each block&#8217;s <code>&lt;block&gt;_clock_groups.sdc</code> calls <code>cdc_apply_async_groups</code> with its
+list of domain names. A domain&#8217;s group is its clock plus every generated clock
+registered against it with <code>cdc_group_extra</code>, clocks absent from the session are
+dropped, and the call reaches <code>set_async_clock_groups</code> with any <code>-exclude</code>
+pairs passed through. Both calls have to come after
+every <code>create_clock</code> and <code>create_generated_clock</code> they are meant to cover. Call
+<code>set_async_clock_groups</code> directly when you need globs or per-call bounds; each
+inner list is one asynchronous group:</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -744,7 +821,7 @@ unless you hit a <code>TIM-184</code> conflict.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="5-declare-periods-for-generated-clocks"><a class="anchor" href="#5-declare-periods-for-generated-clocks"></a><a class="link" href="#5-declare-periods-for-generated-clocks">5.5. 5. Declare periods for generated clocks</a></h3>
+<h3 id="5-declare-periods-for-generated-clocks"><a class="anchor" href="#5-declare-periods-for-generated-clocks"></a><a class="link" href="#5-declare-periods-for-generated-clocks">6.5. 5. Declare periods for generated clocks</a></h3>
 <div class="paragraph">
 <p>A generated clock exposes no readable <code>period</code> attribute in Design Compiler, so
 any generated clock that clocks a CDC element needs an explicit entry in
@@ -762,7 +839,7 @@ a clean run means you have them all. Keep them in step with your
 </div>
 </div>
 <div class="sect2">
-<h3 id="also-check"><a class="anchor" href="#also-check"></a><a class="link" href="#also-check">5.6. Also check</a></h3>
+<h3 id="also-check"><a class="anchor" href="#also-check"></a><a class="link" href="#also-check">6.6. Also check</a></h3>
 <div class="paragraph">
 <p><strong>Hierarchy preservation.</strong> The reference flow applies <code>set_ungroup false</code> and
 <code>set_boundary_optimization false</code> to the CDC designs before <code>compile</code>. How much
@@ -788,7 +865,7 @@ PrimeTime, making item 5 unnecessary.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="confirming-it-worked"><a class="anchor" href="#confirming-it-worked"></a><a class="link" href="#confirming-it-worked">6. Confirming it worked</a></h2>
+<h2 id="confirming-it-worked"><a class="anchor" href="#confirming-it-worked"></a><a class="link" href="#confirming-it-worked">7. Confirming it worked</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Load the constraints and check the summary:</p>
@@ -831,7 +908,7 @@ the constraints did not load, not that the design has no crossings.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="scope-and-limitations"><a class="anchor" href="#scope-and-limitations"></a><a class="link" href="#scope-and-limitations">7. Scope and limitations</a></h2>
+<h2 id="scope-and-limitations"><a class="anchor" href="#scope-and-limitations"></a><a class="link" href="#scope-and-limitations">8. Scope and limitations</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The 20 ns default is loose by design. Against a 1 ns clock it permits twenty clock

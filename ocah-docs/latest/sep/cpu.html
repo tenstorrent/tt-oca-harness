@@ -1080,7 +1080,7 @@ The scratch-bank register layout appears under Local Memory above.</p>
 <table id="trm-table-8">
 <caption class="title"><a href="#trm-table-8">Table 8</a>. sep_cpu_ctrl.REFERENCE_COUNTER fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset</td></tr>
+<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,<br>then poll this register until the readback reflects the written value before<br>writing again. The counter keeps advancing, so the readback is at or just<br>above the written value rather than equal to it.</td></tr>
 </table>
 <span id="TIMEOUT_INTERRUPT"></span><h3 id="sep_cpu_ctrl-TIMEOUT_INTERRUPT" data-register-alias="TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</h3>
 <table id="trm-table-9">

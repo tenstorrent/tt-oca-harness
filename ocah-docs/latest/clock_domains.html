@@ -812,6 +812,15 @@ write the CSR to reload the counter, after which it resumes counting from the
 loaded value. Both subsystems share the same implementation
 (<code>prim_refclk_count_w_cdc</code>) and behave identically.</p>
 </div>
+<div class="paragraph">
+<p>Reload the counter one write at a time: write the new value, poll
+<code>REFERENCE_COUNTER</code> until the readback is at or just above the written value,
+and only then issue the next write. Compare against a window above the written
+value rather than for equality, since the counter advances while the poll runs.
+Where the written value is too close to the free-running count to tell the two
+apart, separate consecutive writes by at least eight reference-clock periods
+instead.</p>
+</div>
 </div>
 </div>
 <nav class="pagination">

@@ -317,10 +317,16 @@ leaf IP does not need on its own:</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>synth/</code>&#8201;&#8212;&#8201;synthesis and timing constraints</p>
+<p><code>synth/</code>&#8201;&#8212;&#8201;the block SDC (clocks, I/O delays, asynchronous clock groups)
+and its CDC max-delay bounds</p>
 </li>
 <li>
-<p><code>cdc/</code>, <code>rdc/</code>&#8201;&#8212;&#8201;clock- and reset-domain-crossing waivers</p>
+<p><code>cdc/</code>&#8201;&#8212;&#8201;clock- and reset-domain-crossing sign-off constraints (the
+<code>&lt;sys&gt;.cdc_rdc.tcl</code> entry, resets, case analysis, quasi-static signals,
+synchronizer setup) and the CDC waivers</p>
+</li>
+<li>
+<p><code>rdc/</code>&#8201;&#8212;&#8201;reset-domain-crossing waivers</p>
 </li>
 <li>
 <p><code>bootrom/</code>&#8201;&#8212;&#8201;immutable ROM firmware sources, where the subsystem has one</p>

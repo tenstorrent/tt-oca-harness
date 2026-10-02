@@ -861,7 +861,7 @@ The detailed map below defines each register and its fields.</p>
 <span id="REFERENCE_COUNTER"></span><h3 id="cpu_ctrl-REFERENCE_COUNTER" data-register-alias="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>Reference counter for the CPU</td></tr>
+<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>Reference counter for the CPU. Write once, then poll this register until<br>the readback reflects the written value before writing again. The counter<br>keeps advancing, so the readback is at or just above the written value<br>rather than equal to it.</td></tr>
 </table>
 <span id="WDT_TIMEOUT"></span><h3 id="cpu_ctrl-WDT_TIMEOUT" data-register-alias="WDT_TIMEOUT">WDT_TIMEOUT</h3>
 <table>
