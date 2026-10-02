@@ -51,7 +51,9 @@ Checkers:
               DISTINCT known key transferred after the shred encrypts to its
               own golden and NOT to the first key's
   CHK-REVOKE  CMD_KEY_REVOKE returns rc=0 with the handle echoed
-  CHK-CLOSED  a transfer on the REVOKED handle is refused: revoke fails closed
+  CHK-CLOSED  the generated handle transfers to AES (rc=0, handle and dest
+              echoed) just before the revoke, and the same transfer on the
+              REVOKED handle is refused RC_FAILURE: revoke fails closed
   CHK-NULL    CMD_KEY_REVOKE of the reserved null handle is refused
   CHK-ILLEGAL every seeded undefined command ID returns RC_INVALID_CMD (-4)
   CHK-LEN     a defined command carrying the wrong payload length returns
@@ -487,6 +489,21 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
 
         # --- CHK-REVOKE / CHK-CLOSED: destroy a key, then fail closed ---------
+        # Allow leg of CHK-CLOSED: the generated handle transfers to AES (its
+        # DEST_VALID) right before the revoke, so a refusal after the revoke
+        # comes from the revoke and not from a KM that refuses generated keys.
+        rc, arg = await self.km.key_transfer(handle=gen_handle, dest=KM_DEST_AES)
+        assert rc == KM_RC_SUCCESS, (
+            f"CHK-CLOSED FAIL: pre-revoke CMD_KEY_TRANSFER of generated handle "
+            f"0x{gen_handle:02x} to 0x{KM_DEST_AES:02x} returned rc={rc}, expected rc=0, "
+            "so a refusal after the revoke would not be attributable to the revoke"
+        )
+        assert (arg & 0xFF) == gen_handle and ((arg >> 8) & 0xFF) == KM_DEST_AES, (
+            f"CHK-CLOSED FAIL: pre-revoke RETURN_ARG 0x{arg:08x} does not echo handle "
+            f"0x{gen_handle:02x} and dest 0x{KM_DEST_AES:02x}"
+        )
+        allow_arg = arg
+
         rc, arg = await self.km.key_revoke(handle=gen_handle)
         assert rc == KM_RC_SUCCESS, f"CHK-REVOKE FAIL: CMD_KEY_REVOKE rc={rc}"
         assert (arg & 0xFF) == gen_handle, (
@@ -503,7 +520,14 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"returned rc={rc}, expected {KM_RC_FAILURE} (RC_FAILURE) -- revoke did "
             "not fail closed"
         )
-        self.logger.info("CHK-CLOSED PASS: transfer on the revoked handle refused with RC_FAILURE")
+        self.logger.info(
+            "CHK-CLOSED PASS: generated handle 0x%02x transferred to AES before the revoke "
+            "(rc=0 RETURN_ARG=0x%08x) and the same transfer after the revoke returned "
+            "rc=%d (RC_FAILURE)",
+            gen_handle,
+            allow_arg,
+            rc,
+        )
         await self._check_alive("post-revoked-transfer")
 
         # --- CHK-NULL: the reserved handle is never a target ------------------

@@ -7833,7 +7833,7 @@ Consume of HMAC / KMAC / OTBN stays on the sideload KATs.
 . Transfer the same handle to an engine outside its permitted set.
 . Shred the AES key, then load and transfer a second, distinct known key and
 encrypt again.
-. Revoke the generated handle, then transfer on it.
+. Transfer the generated handle to AES, revoke it, then transfer on it again.
 . Revoke the reserved null handle; walk seeded undefined command IDs; send a
 defined command with the wrong payload length. Probe with `CMD_STAT` after each
 refusal.
@@ -7889,7 +7889,7 @@ slot, so over this surface an erase always frees.
 |CHK-REVOKE
 |`CMD_KEY_REVOKE` succeeds with the handle echoed.
 |CHK-CLOSED
-|A transfer on the revoked handle is refused with the failure code: revoke fails closed.
+|A transfer on the revoked handle is refused with the failure code: revoke fails closed. Allow leg: the same transfer of the generated handle to AES, its permitted destination, returns success with the handle and destination echoed right before the revoke, so the refusal comes from the revoke and not from a KM that refuses generated-key transfers.
 |CHK-NULL
 |Revoking the reserved null handle is refused with the invalid-argument code.
 |CHK-ILLEGAL
