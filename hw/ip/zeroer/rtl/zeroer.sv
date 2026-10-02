@@ -65,12 +65,12 @@ module zeroer #(
   `include "axi/typedef.svh"
 
   // Local type derivations from width parameters
-  localparam int unsigned AXI_STRB_WIDTH = AXI_DATA_WIDTH / 8;
-  localparam int unsigned AXI_DATA_SIZE = $clog2(AXI_STRB_WIDTH);
+  localparam int unsigned AxiStrbWidth = AXI_DATA_WIDTH / 8;
+  localparam int unsigned AxiDataSize = $clog2(AxiStrbWidth);
 
   typedef logic [AXI_ADDR_WIDTH-1:0] axi_addr_t;
   typedef logic [AXI_DATA_WIDTH-1:0] axi_data_t;
-  typedef logic [AXI_STRB_WIDTH-1:0] axi_strb_t;
+  typedef logic [AxiStrbWidth-1:0] axi_strb_t;
   typedef logic [AXI_USER_WIDTH-1:0] axi_user_t;
   typedef logic [MST_ID_WIDTH-1:0] mst_id_t;
 
@@ -116,7 +116,7 @@ module zeroer #(
   // Zeroer Core Logic //
   ///////////////////////
 
-  localparam int unsigned AXI_MAX_BURST_LEN = 255;
+  localparam int unsigned AxiMaxBurstLen = 255;
 
   logic [63:0] dest_addr;
   logic [63:0] size;
@@ -131,8 +131,8 @@ module zeroer #(
     ST_IDLE       = 3'b001,
     ST_ISSUE_ADDR = 3'b010,
     ST_ISSUE_DATA = 3'b100
-  } state_t;
-  state_t cur_state, nxt_state;
+  } state_e;
+  state_e cur_state, nxt_state;
 
   // ----------
 
@@ -297,62 +297,62 @@ module zeroer #(
         mst_awvalid = 1'b1;
 
         // remove any offset from address
-        mst_awaddr = cur_dest_addr & {{(AXI_ADDR_WIDTH-AXI_DATA_SIZE){1'b1}},{AXI_DATA_SIZE{1'b0}}};
+        mst_awaddr = cur_dest_addr & {{(AXI_ADDR_WIDTH-AxiDataSize){1'b1}},{AxiDataSize{1'b0}}};
 
         // cannot burst across 4KB boundary, calculate how many bursts can be done before hitting boundary
         // -> using 'hFFF ensures that when addr offset == data_size, it gives the correct length
-        if ((('hFFF - 32'(cur_dest_addr[11:0])) >> AXI_DATA_SIZE) > AXI_MAX_BURST_LEN) begin
-          burst_len = axi_pkg::len_t'(AXI_MAX_BURST_LEN);
+        if ((('hFFF - 32'(cur_dest_addr[11:0])) >> AxiDataSize) > AxiMaxBurstLen) begin
+          burst_len = axi_pkg::len_t'(AxiMaxBurstLen);
         end else begin
-          burst_len = axi_pkg::len_t'(('hFFF - 32'(cur_dest_addr[11:0])) >> AXI_DATA_SIZE);
+          burst_len = axi_pkg::len_t'(('hFFF - 32'(cur_dest_addr[11:0])) >> AxiDataSize);
         end
 
         // the range can start partway into the first beat, so the beat count and final-beat
         // width follow the aligned end offset within the data width
-        aligned_size = {1'b0, cur_size} + {62'd0, cur_dest_addr[AXI_DATA_SIZE-1:0]};
+        aligned_size = {1'b0, cur_size} + {62'd0, cur_dest_addr[AxiDataSize-1:0]};
 
         // check if data left to transfer can be done in less than the max burst length
         // if it can, check if size is not perfectly sized and a strobe is needed
-        if (((aligned_size - 65'd1) >> AXI_DATA_SIZE) <= {57'd0, burst_len}) begin
-          mst_awlen = axi_pkg::len_t'((aligned_size - 65'd1) >> AXI_DATA_SIZE);
+        if (((aligned_size - 65'd1) >> AxiDataSize) <= {57'd0, burst_len}) begin
+          mst_awlen = axi_pkg::len_t'((aligned_size - 65'd1) >> AxiDataSize);
           // final beat starts aligned; its width is the offset end address within the beat
-          last_transfer_size = (|aligned_size[AXI_DATA_SIZE-1:0]) ? {61'd0, aligned_size[AXI_DATA_SIZE-1:0]} : {32'd0, AXI_STRB_WIDTH};
+          last_transfer_size = (|aligned_size[AxiDataSize-1:0]) ? {61'd0, aligned_size[AxiDataSize-1:0]} : {32'd0, AxiStrbWidth};
         end else begin
           mst_awlen = burst_len;
           // if single beat of data allowed, check for address offsets
-          last_transfer_size = |burst_len ? axi_data_t'(AXI_STRB_WIDTH)
-                                           : axi_data_t'(AXI_STRB_WIDTH)
-                                             - axi_data_t'(cur_dest_addr[AXI_DATA_SIZE-1:0]);
+          last_transfer_size = |burst_len ? axi_data_t'(AxiStrbWidth)
+                                           : axi_data_t'(AxiStrbWidth)
+                                             - axi_data_t'(cur_dest_addr[AxiDataSize-1:0]);
         end
 
-        nxt_last_transfer_strb = ~({AXI_STRB_WIDTH{1'b1}} << last_transfer_size);
+        nxt_last_transfer_strb = ~({AxiStrbWidth{1'b1}} << last_transfer_size);
 
         if (|mst_awlen) begin
-          total_transfer_size_overflow = ($bits(total_transfer_size_overflow)'(mst_awlen) << AXI_DATA_SIZE)
-                                          - $bits(total_transfer_size_overflow)'(cur_dest_addr[AXI_DATA_SIZE-1:0])
+          total_transfer_size_overflow = ($bits(total_transfer_size_overflow)'(mst_awlen) << AxiDataSize)
+                                          - $bits(total_transfer_size_overflow)'(cur_dest_addr[AxiDataSize-1:0])
                                           + last_transfer_size;
           total_transfer_size = total_transfer_size_overflow[AXI_DATA_WIDTH-1:0];
           // first wstrb depends on address offset
-          nxt_strb = {AXI_STRB_WIDTH{1'b1}} << cur_dest_addr[AXI_DATA_SIZE-1:0];
+          nxt_strb = {AxiStrbWidth{1'b1}} << cur_dest_addr[AxiDataSize-1:0];
         end else begin
           // single beat: cover [offset, offset+bytes), where bytes is bounded by both the
           // remaining size and the space left in the beat after the offset
-          single_beat_bytes = (cur_size < (axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[AXI_DATA_SIZE-1:0])))
+          single_beat_bytes = (cur_size < (axi_data_t'(AxiStrbWidth) - axi_data_t'(cur_dest_addr[AxiDataSize-1:0])))
                              ? cur_size[AXI_DATA_WIDTH-1:0]
-                             : axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[AXI_DATA_SIZE-1:0]);
+                             : axi_data_t'(AxiStrbWidth) - axi_data_t'(cur_dest_addr[AxiDataSize-1:0]);
           total_transfer_size = single_beat_bytes;
           // only enough strb bits for the covered bytes when it's a single beat
-          for (int i = 0; i < AXI_STRB_WIDTH; i++) begin
+          for (int i = 0; i < AxiStrbWidth; i++) begin
             last_strb[i] = single_beat_bytes > axi_data_t'(i);
           end
           // shift strb to correct position based on address offset
-          nxt_strb = last_strb << cur_dest_addr[AXI_DATA_SIZE-1:0];
+          nxt_strb = last_strb << cur_dest_addr[AxiDataSize-1:0];
         end
 
         if (mst_axi_resp_i.aw_ready) begin
           nxt_state = ST_ISSUE_DATA;
           nxt_beats_to_transfer = mst_awlen;
-          nxt_dest_addr = mst_awaddr + (($bits(nxt_dest_addr)'(mst_awlen) + 1) << AXI_DATA_SIZE);
+          nxt_dest_addr = mst_awaddr + (($bits(nxt_dest_addr)'(mst_awlen) + 1) << AxiDataSize);
           // calculate how much data gets transferred
           // sub last transfer size, sub other transfers, add first transfer offset
           nxt_size_overflow = cur_size - total_transfer_size;
@@ -367,12 +367,12 @@ module zeroer #(
           if (cur_beats_to_transfer == 0) begin
             mst_wlast = 1'b1;
             nxt_beats_to_transfer = axi_pkg::len_t'(0);
-            nxt_strb = {AXI_STRB_WIDTH{1'b0}};
+            nxt_strb = {AxiStrbWidth{1'b0}};
             // after current chunk of data is transferred, anymore chunks?
             nxt_state = (cur_size == '0) ? ST_IDLE : ST_ISSUE_ADDR;
           end else begin
             nxt_beats_to_transfer = cur_beats_to_transfer - 1;
-            nxt_strb = (cur_beats_to_transfer == axi_pkg::len_t'(1)) ? cur_last_transfer_strb : {AXI_STRB_WIDTH{1'b1}};
+            nxt_strb = (cur_beats_to_transfer == axi_pkg::len_t'(1)) ? cur_last_transfer_strb : {AxiStrbWidth{1'b1}};
           end
         end
       end
@@ -444,7 +444,7 @@ module zeroer #(
 
   // tie off unused write channel signals
   assign mst_axi_req_o.aw.id     = mst_id_t'(0);
-  assign mst_axi_req_o.aw.size   = axi_pkg::size_t'(AXI_DATA_SIZE);
+  assign mst_axi_req_o.aw.size   = axi_pkg::size_t'(AxiDataSize);
   assign mst_axi_req_o.aw.burst  = axi_pkg::BURST_INCR;
   assign mst_axi_req_o.aw.lock   = 1'b0;
   assign mst_axi_req_o.aw.cache  = axi_pkg::cache_t'(0);

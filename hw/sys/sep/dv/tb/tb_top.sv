@@ -138,11 +138,11 @@ module sep_uvm_top
     // table: 8 ports when SEP=1 (doc/integrator/src/smu.adoc). The TAP
     // instruction that selects the TDR is outside this DUT. tdr_en selects
     // the register; otherwise the per-port pins drive the same struct.
-    localparam int unsigned SEP_IC_RESET_PORTS = 8;
+    localparam int unsigned SepIcResetPorts = 8;
     prim_jtag_pkg::jtag_scan_ctrl_t ic_reset_scan_ctrl;
     prim_jtag_pkg::jtag_tap_ctrl_t  ic_reset_tap_ctrl;
-    logic [SEP_IC_RESET_PORTS-1:0]  ic_reset_ovrd_w;
-    logic [SEP_IC_RESET_PORTS-1:0]  ic_reset_ctrl_n_w;
+    logic [SepIcResetPorts-1:0]     ic_reset_ovrd_w;
+    logic [SepIcResetPorts-1:0]     ic_reset_ctrl_n_w;
     sep_pkg::jtag_sep_reset_ctrl_t  ic_reset_sep_packed;
     always_comb begin
         ic_reset_scan_ctrl         = '0;
@@ -158,7 +158,7 @@ module sep_uvm_top
         ic_reset_tap_ctrl.tck      = jtag_ic_reset_tck_i;
     end
     jtag_ic_reset_reg #(
-        .NUM_IC_RESET_PORTS(SEP_IC_RESET_PORTS)
+        .NUM_IC_RESET_PORTS(SepIcResetPorts)
     ) u_ic_reset_sep (
         .scan_ctrl_i      (ic_reset_scan_ctrl),
         .scan_in_i        (jtag_ic_reset_tdi_i),
@@ -268,7 +268,7 @@ module sep_uvm_top
             .AxisEdnAllAckSmHealthy_A);
         // Unrolled: a generate-block index must resolve at elaboration, so a
         // procedural loop variable cannot select gen_ep[]. One line per
-        // endpoint of SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT (AES, KMAC, OTBN RND,
+        // endpoint of SepCryptoAxisEdnClientCount (AES, KMAC, OTBN RND,
         // OTBN URND).
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .gen_ep[0].AxisEdnNoAckDuringClear_A);
@@ -410,7 +410,7 @@ module sep_uvm_top
     logic jtag_tdi   = 1'b0;
     logic jtag_trst_n = 1'b0;
 
-    localparam logic [4:0] RESET_VECTOR_TDR_IR = 5'h18;
+    localparam logic [4:0] ResetVectorTdrIr = 5'h18;
 
     task automatic jtag_tb_clock(input logic tms, input logic tdi);
         jtag_tms = tms;
@@ -445,7 +445,7 @@ module sep_uvm_top
         jtag_tb_clock(1'b0, 1'b0); // Capture-IR
         jtag_tb_clock(1'b0, 1'b0); // Shift-IR
         for (bit_idx = 0; bit_idx < 5; bit_idx++) begin
-            jtag_tb_clock(bit_idx == 4, RESET_VECTOR_TDR_IR[bit_idx]);
+            jtag_tb_clock(bit_idx == 4, ResetVectorTdrIr[bit_idx]);
         end
         jtag_tb_clock(1'b1, 1'b0); // Update-IR
         jtag_tb_clock(1'b0, 1'b0); // Run-Test/Idle
@@ -499,7 +499,7 @@ module sep_uvm_top
     // (the vendored VeeR tap has no reset-vector TDR).
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
-    // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT (3):
+    // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SepCryptoEdnEndpointCount (3):
     // sep_crypto.u_sep_trng binds u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp as a
     // DIRECT packed-array connection, one mux leg per DRBG EDN endpoint
     // ([0]=Key Manager, [1]=crypto adapter, [2]=entropy pool). Width 2 truncates
@@ -520,7 +520,7 @@ module sep_uvm_top
     // SHA-256 of the all-zero 32-byte token so a frontdoor write of zeros can
     // take the match. This is the TB stand-in for the metal ECO; it does not
     // force security_disable.
-    localparam bit [255:0] SEC_DIS_TB_DIGEST =
+    localparam bit [255:0] SecDisTbDigest =
         256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
     // SMC fuse-sense completion. No SMC RTL is instantiated in this top, so the TB
     // stands in for what the SoC provides: the SMC finishes sensing its eFuse array
@@ -560,7 +560,7 @@ module sep_uvm_top
 
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
-        .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
+        .SEP_SEC_DISABLE_TOKEN (SecDisTbDigest)
     ) u_dut (
         // Clocks / resets
         .clk_i                        (clk_i),
@@ -840,7 +840,7 @@ module sep_uvm_top
         for (int unsigned i = 0; i < 4; i++) bd_km_word_parity[i] = ~^w[8*i +: 8];
     endfunction
 
-    localparam logic [38:0] BD_OTBN_ZERO = prim_secded_pkg::SecdedInv3932ZeroWord;
+    localparam logic [38:0] BdOtbnZero = prim_secded_pkg::SecdedInv3932ZeroWord;
 
 `define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.u_ram.ram_core
 `define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.u_ram.ram_core
@@ -853,9 +853,9 @@ module sep_uvm_top
         for (int i = 0; i < 8192; i++)
             `SEP_IPI.u_km_sram.gen_ram_inst[0].u_mem.mem[i] = {4'hF, 32'h0};
         for (int i = 0; i < 4096; i++)
-            `SEP_IPI.u_otbn_imem_sram.mem[i] = BD_OTBN_ZERO;
+            `SEP_IPI.u_otbn_imem_sram.mem[i] = BdOtbnZero;
         for (int i = 0; i < 1024; i++)
-            `SEP_IPI.u_otbn_dmem_sram.mem[i] = {8{BD_OTBN_ZERO}};
+            `SEP_IPI.u_otbn_dmem_sram.mem[i] = {8{BdOtbnZero}};
     end
 
 `ifndef VERILATOR
@@ -1296,6 +1296,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
     assign lcc_demote_lock_2_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_2.lock;
+    // XMR, not AXI: the AXI read is inbound-filtered at PROD_END once sep_debug is 0.
+    assign lcc_feat_ctrl_probe_o = `SEP_CORE.feat_ctrl;
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
     // req is a wrapper-internal net (u_sep -> ip_integration).
@@ -1340,6 +1342,14 @@ module sep_uvm_top
         `SEP_CORE.u_sep_system_peripherals.system_csr_axil_resp.aw_ready;
     assign sys_csr_axil_awaddr_o =
         `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
+
+    // Local crossbar `ext` initiator (sep.sv smn_inbound_to_sep_axi_*). See port comment.
+    assign xbar_ext_in_arvalid_o = `SEP_CORE.smn_inbound_to_sep_axi_req.ar_valid;
+    assign xbar_ext_in_arready_o = `SEP_CORE.smn_inbound_to_sep_axi_resp.ar_ready;
+    assign xbar_ext_in_araddr_o  = `SEP_CORE.smn_inbound_to_sep_axi_req.ar.addr[31:0];
+    assign xbar_ext_in_awvalid_o = `SEP_CORE.smn_inbound_to_sep_axi_req.aw_valid;
+    assign xbar_ext_in_awready_o = `SEP_CORE.smn_inbound_to_sep_axi_resp.aw_ready;
+    assign xbar_ext_in_awaddr_o  = `SEP_CORE.smn_inbound_to_sep_axi_req.aw.addr[31:0];
 
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
     // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during
@@ -2677,6 +2687,7 @@ module sep_uvm_top
         .lsu_ar_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.addr),
         .lsu_ar_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar_valid),
         .lsu_ar_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready),
+        .lsu_ar_size_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.size),
         .lsu_r_data_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.data),
         .lsu_r_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.resp),
         .lsu_r_last_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.last),
@@ -2700,9 +2711,14 @@ module sep_uvm_top
         .hmac_gated_rst_n_i    (hmac_gated_rst_n_probe_o),
         .hmac_host_isolated_i  (hmac_host_isolated_probe_o),
         .hmac_km_isolated_i    (hmac_km_isolated_probe_o),
+        .hmac_host_isolate_req_i (hmac_host_isolate_req_probe_o),
         .abr_gated_rst_n_i     (abr_gated_rst_n_probe_o),
         .abr_host_isolated_i   (abr_host_isolated_probe_o),
         .abr_km_isolated_i     (abr_km_isolated_probe_o),
+        .abr_host_isolate_req_i  (abr_host_isolate_req_probe_o),
+        // sep.sv wires the WDT bark to the CPU NMI input; read-only, like the
+        // LSU request bus above.
+        .wdt_bark_irq_i        (`SEP_CORE.intr_wdog_timer_bark),
 
         .cpu_trace_valid_i     (cpu_trace_valid_o),
         .cpu_trace_addr_i      (cpu_trace_addr_o),
@@ -2732,7 +2748,7 @@ module sep_uvm_top
         // frontdoor first, so the frontdoor path cannot observe RMA_SIP_0 /
         // RMA_CHIP_0 at all.
         .efuse_lc_raw_i        (efuse_shadow_probe_o[
-            32 * efuse_pkg::SHADOW_IDX_LC_STATE +: 4]),
+            32 * efuse_pkg::ShadowIdxLcState +: 4]),
         .efuse_read_state_i    (efuse_read_state_o),
         .efuse_program_state_i  (efuse_program_state_o),
         .secure_tm_i           (secure_tm_o),
@@ -2740,8 +2756,10 @@ module sep_uvm_top
         .demote_1_i            (lcc_demote_state_1_probe_o),
         .demote_2_i            (lcc_demote_state_2_probe_o),
         .cpu_reset_n_i         (sep_cpu_reset_n_o),
+        .sep_reset_n_i         (dbg_sep_reset_n_o),
         .spi_cs_n_i            (spi_cs_n_o),
         .spi_sck_i             (spi_sck_o),
+        .spi_mosi_i            (spi_mosi_o),
         // Values SEP receives, after the pin-or-TDR mux.
         .jtag_sep_reset_n_ovrd_i (jtag_sep_reset_ctrl_drive.ovrd.sep_reset_n_ovrd),
         .jtag_sep_reset_n_val_i  (jtag_sep_reset_ctrl_drive.val.sep_reset_n_val)

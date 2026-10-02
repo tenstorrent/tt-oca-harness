@@ -55,7 +55,7 @@ module entropy_fifo #(
 
   // Memory: 32-bit data + 4 parity bits (one per byte, odd parity)
   // [35:32] = parity, [31:0] = data
-  localparam int unsigned MEM_WIDTH = 36;
+  localparam int unsigned MemWidth = 36;
 
   //////////
   // Types
@@ -79,17 +79,17 @@ module entropy_fifo #(
 
   logic push_valid, pop_valid;
 
-  logic [MEM_WIDTH-1:0] mem[DEPTH];
+  logic [MemWidth-1:0] mem[DEPTH];
 
   logic [3:0] expected_parity, stored_parity;
   logic       parity_error_detected;
 
   ptr_t  churn_addr;
-  logic [MEM_WIDTH-1:0] churn_entry;
+  logic [MemWidth-1:0] churn_entry;
   logic [31:0] churn_data;
   logic [31:0] final_wdata;
 
-  logic [MEM_WIDTH-1:0] read_entry;
+  logic [MemWidth-1:0]  read_entry;
   logic [31:0]          read_data;
 
   ///////////////////////

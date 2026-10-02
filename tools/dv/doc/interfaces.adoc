@@ -34,7 +34,7 @@ tools/dv/run_dv.py
   plans  flist -> hdl_compile -> sim leaves -> cov_merge -> cov_report
   writes <run>/result.json                    (integer schema_version 1)
          <run>/stages/regress/regression.json
-         <run>/<test>/.../result.json, results/results.xml
+         <run>/<test>/.../result.json, results/{results,graded}.xml
          <run>/cov/report/{summary,coverage-details,policy-application}.json
   |
   v
@@ -125,18 +125,23 @@ formal-config entry. The active file is recorded as `site` in
 `result.json`. Checked by `--validate-configs`, which reports the merged
 registries, and by the site-layer tests.
 
-|Leaf manifest: `<run>/stages/regress/jobs/<task>.json` and its
-`<task>.done.json` completion record
+|Leaf manifest: `<run>/stages/regress/jobs/<task>.json`, its
+`<task>.done.json` completion record, and the coordinator's
+`<task>.graded.json` mark
 |`tools/dv/runlib` (the coordinator)
 |`run_dv.py --worker-manifest` (a farm worker)
 |Integer `schema_version` `1`. `plan_digest` covers every other key and a
 worker refuses a mismatch; the overrides a manifest may carry are limited to
 wave and console options; the worker writes only its own leaf directory and
 the completion record, and a manifest it cannot trust or run leaves an
-`ERROR` result whose reason starts with `environment_error`. A manifest with
-`role = "build"` names a target and no item, and the worker runs its build
-stage with the job's core request as the build concurrency. Checked by the
-worker tests in `tools/dv/tests`.
+`ERROR` result with an `environment_error` failure bucket and a reason that
+starts with `environment_error`. The coordinator writes the graded mark when
+it grades a submitted job's attempt without the worker's `result.json`; a
+worker that finds it, before the attempt starts or immediately before
+writing, leaves neither `result.json` nor the completion record and exits
+`2`. A manifest with `role = "build"` names a target and no item, and the
+worker runs its build stage with the job's core request as the build
+concurrency. Checked by the worker tests in `tools/dv/tests`.
 
 |Cluster job files: `<run>/stages/regress/scripts/<task>.sh` (or
 `<stage>-arr<N>.sh` with its `.tasks` list for a job array),
@@ -167,12 +172,15 @@ per-leaf directories, and `cov/`
 |Status maps to exit code as the runner page tabulates, and run-level
 aggregation orders `ERROR > TIMEOUT > FAIL > UNKNOWN > PASS`. Return code
 zero from a simulator is never sufficient for `PASS`. An explicit `--run-dir`
-is reused as supplied and never creates or updates `latest`. Most subprocess
+is reused as supplied and never creates or updates `latest`; each attempt's
+previous leaf `result.json`, completion record, graded mark, job log, and XML
+files under `results/` and a wave-debug rerun's `debug/` are removed before it
+is submitted. Most subprocess
 stages leave a replayable script under `scripts/`. Checked by the smoke job
 on every pull request and by the result and stage tests.
 
 |Native run result: run-level `result.json`, `stages/regress/regression.json`,
-per-leaf `result.json`, and `results/results.xml`
+per-leaf `result.json`, `results/results.xml`, and `results/graded.xml`
 |`tools/dv/runlib/results.py`
 |The composite action's gate, `collect`, `--waive`, JUnit consumers
 |Integer `schema_version` `1`. The file is written atomically, starting with

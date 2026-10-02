@@ -50,13 +50,13 @@ module km_drbg_sampler
   `include "prim_assert.sv"
 
   // Register block address width, from the generated register map.
-  localparam int unsigned ADDR_W = KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned AddrW = KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH;
 
   //--------------------------------------------------------------------------
   // Register block AXI (flat) and hwif
   //--------------------------------------------------------------------------
   logic reg_awready, reg_awvalid;
-  logic [ADDR_W-1:0] reg_awaddr;
+  logic [AddrW-1:0]  reg_awaddr;
   logic [2:0] reg_awprot;
   logic reg_wready, reg_wvalid;
   logic [31:0] reg_wdata;
@@ -64,7 +64,7 @@ module km_drbg_sampler
   logic reg_bready, reg_bvalid;
   logic [1:0] reg_bresp;
   logic reg_arready, reg_arvalid;
-  logic [ADDR_W-1:0] reg_araddr;
+  logic [AddrW-1:0]  reg_araddr;
   logic [2:0] reg_arprot;
   logic reg_rready, reg_rvalid;
   logic [31:0] reg_rdata;
@@ -85,21 +85,21 @@ module km_drbg_sampler
   // Only accept AR when no outstanding read
   logic ar_accept;
   logic is_data_read;
-  assign is_data_read = (axil_req_i.ar.addr[ADDR_W-1:0] == KM_DRBG_SAMPLER_DATA_BASE_ADDR[ADDR_W-1:0]);
+  assign is_data_read = (axil_req_i.ar.addr[AddrW-1:0] == KM_DRBG_SAMPLER_DATA_BASE_ADDR[AddrW-1:0]);
   assign ar_accept = axil_req_i.ar_valid && !slot_valid;
 
   // Forward to reg block: writes always; reads only when not DATA (we handle DATA ourselves)
   logic forward_ar;
   assign forward_ar = ar_accept && !is_data_read;
   assign reg_awvalid = axil_req_i.aw_valid;
-  assign reg_awaddr  = axil_req_i.aw.addr[ADDR_W-1:0];
+  assign reg_awaddr  = axil_req_i.aw.addr[AddrW-1:0];
   assign reg_awprot  = axil_req_i.aw.prot;
   assign reg_wvalid  = axil_req_i.w_valid;
   assign reg_wdata   = axil_req_i.w.data;
   assign reg_wstrb   = axil_req_i.w.strb;
   assign reg_bready  = axil_req_i.b_ready;
   assign reg_arvalid = forward_ar;
-  assign reg_araddr  = axil_req_i.ar.addr[ADDR_W-1:0];
+  assign reg_araddr  = axil_req_i.ar.addr[AddrW-1:0];
   assign reg_arprot  = axil_req_i.ar.prot;
   assign reg_rready  = axil_req_i.r_ready;
 

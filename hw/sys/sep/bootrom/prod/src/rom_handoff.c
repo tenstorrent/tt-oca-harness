@@ -53,6 +53,34 @@
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+#if PMP_ENABLE
+#define PMP_EXEC_PERMISSION 0x04u
+#define PMP_CFG0_SRAM_EXEC (PMP_EXEC_PERMISSION << 24)
+#define PMP_CFG1_ICCM_EXEC (PMP_EXEC_PERMISSION << 8)
+#endif
+
+// The cold policy keeps both BL1 destinations non-executable. RLB remains set,
+// so the hand-off can add X to exactly the authenticated destination rule.
+static bool pmp_release_bl1(bool in_iccm) {
+#if PMP_ENABLE
+    uint32_t cfg;
+    if (in_iccm) {
+        const uint32_t mask = PMP_CFG1_ICCM_EXEC;
+        __asm__ volatile("csrs pmpcfg1, %0" : : "r"(mask) : "memory");
+        __asm__ volatile("csrr %0, pmpcfg1" : "=r"(cfg));
+        return (cfg & mask) == mask;
+    }
+
+    const uint32_t mask = PMP_CFG0_SRAM_EXEC;
+    __asm__ volatile("csrs pmpcfg0, %0" : : "r"(mask) : "memory");
+    __asm__ volatile("csrr %0, pmpcfg0" : "=r"(cfg));
+    return (cfg & mask) == mask;
+#else
+    (void)in_iccm;
+    return true;
+#endif
+}
+
 // oca_image_info_t::type is a NUL-terminated 17-byte buffer holding the 16
 // on-disk bytes, so a plain fixed-length compare is enough; no libc.
 static bool type_matches(const char *type, const char *want) {
@@ -252,6 +280,9 @@ uint32_t rom_handoff_bl1(void) {
     report_status(STATUS_TYPE_INFO_EXT, (uint16_t)(entry_addr & 0xFFFF));
     simputshex32("BL1_JUMP=", entry_addr);
 
+    if (!pmp_release_bl1(bl1_in_iccm)) {
+        return ROM_ERR_HANDOFF_SELFCHECK_FAILED;
+    }
     jump_to_bl1(entry_addr);
 
     return OCA_BOOT_ERR_NO_BL1; // unreachable

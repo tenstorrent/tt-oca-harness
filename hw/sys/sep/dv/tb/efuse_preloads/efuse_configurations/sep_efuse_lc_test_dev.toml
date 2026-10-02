@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# TEST_DEV lifecycle, everything else at zero.
+#
+# An unprogrammed OTP already senses this image; the file exists so the four
+# fuse-lock cells all name their OTP the same way and `check_efuse()` has a file
+# to assert against. Without a plusarg, `dv_sim_prestage.stage()` stages nothing
+# and the sensed image is the RTL array default.
+#
+# This image is bit-identical to a blank array, shadow included, so neither the
+# sense-time compare nor the console `LC_STATE=0x00000000` can tell them apart.
+# The SBOOT_DIS echo identifies the cell: 0 here, 1 in
+# sep_efuse_lc_test_dev_sboot_dis.toml.
+#
+# With SBOOT_DIS 0 and TEST_DEV not enforcing secure boot, the manifest flag
+# decides; this is the only fuse-lock cell where it does.
+#
+# LC_STATE is the differentially encoded byte {~raw, raw}; 0xF0 is raw 0x0. See
+# README.md.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xF0   # TEST_DEV (raw=0x0)

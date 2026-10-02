@@ -8,7 +8,7 @@
 
 bind cross_trigger_network dtp_ctn_xtrig_props #(
   .NUM_INT_CT (NUM_INT_CT),
-  .NUM_CT_DST (NUM_CTM_PORTS)
+  .NUM_CT_DST (NumCtmPorts)
 ) u_dtp_ctn_xtrig_props (
   .clk_i                 (clk_i),
   .rst_ni                (rst_ni),

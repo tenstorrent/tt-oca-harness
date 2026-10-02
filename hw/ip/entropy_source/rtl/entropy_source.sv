@@ -79,11 +79,11 @@ module entropy_source
     entropy_source_reg_pkg::entropy_source__out_t reg_out;
 
     logic [31:0]            entropy_stream;
-    logic [NRINGS-1:0][7:0] entropy_stream_uncompressed;
+    logic [NRings-1:0][7:0] entropy_stream_uncompressed;
     logic                   entropy_stream_valid;
     logic                   entropy_stream_valid_gated;
-    logic [NRINGS-1:0]      noise_bit_monitor;
-    logic [NRINGS-1:0]      sample_clk_monitor;
+    logic [NRings-1:0]      noise_bit_monitor;
+    logic [NRings-1:0]      sample_clk_monitor;
     logic [7:0]             health_status;
     logic                   window_wrap_pulse;
 
@@ -131,7 +131,7 @@ module entropy_source
         ST_FIFO_PUSH      = 1'd1
     } fifo_push_fsm_state_e;
 
-    logic [NRINGS-1:0][7:0] fifo_push_stream,     fifo_push_stream_next;
+    logic [NRings-1:0][7:0] fifo_push_stream,     fifo_push_stream_next;
     logic [1:0]             fifo_push_count,      fifo_push_count_next;
     fifo_push_fsm_state_e   fifo_push_state,      fifo_push_state_next;
 
@@ -260,7 +260,7 @@ module entropy_source
     /////////////////
 
     entropy_generator_complex #(
-        .NRINGS       (NRINGS),
+        .NRINGS       (NRings),
         .CLKDIV_WIDTH (20)
     ) u_generator_complex (
         .clk_i,
@@ -274,7 +274,7 @@ module entropy_source
 
         .jitter_ro_enable_i                     (reg_out.RING_OSC_ENABLE.ENABLE.value),
         .jitter_ro_detune_i                     (reg_out.RING_OSC_TUNE.DETUNE.value),
-        .jitter_ro_auto_tune_enable_i           ({NRINGS{reg_out.CTRL.AUTOTUNE_ENABLE.value}}),
+        .jitter_ro_auto_tune_enable_i           ({NRings{reg_out.CTRL.AUTOTUNE_ENABLE.value}}),
 
         .sample_clk_select_i                    (reg_out.RING_OSC_CTRL.SAMPLE_CLK_SELECT.value),
         .sample_clk_ro_detune_i                 (reg_out.RING_OSC_TUNE.SAMPLE_CLK_DETUNE.value),
@@ -500,14 +500,14 @@ module entropy_source
     // full FIFO simply drops the word (never stalls capture or the datapath).
     // ----------------------------------------------------------------------
 
-    // Lane mux. LANE_SEL is 4 bits (0-15) but NRINGS==12. Clamp out-of-range
+    // Lane mux. LANE_SEL is 4 bits (0-15) but NRings==12. Clamp out-of-range
     // selects (>=12) to lane 0, matching the RDL contract. Zero-padding to 16
     // entries keeps the index within array bounds (no SELRANGE lint warning).
     assign noise_obs_lane_sel_eff =
-        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value >= 4'(NRINGS))
+        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value >= 4'(NRings))
         ? 4'd0 : reg_out.NOISE_OBS_CTRL.LANE_SEL.value;
-    assign noise_bit_monitor_ext  = {{(16 - NRINGS){1'b0}}, noise_bit_monitor};
-    assign sample_clk_monitor_ext = {{(16 - NRINGS){1'b0}}, sample_clk_monitor};
+    assign noise_bit_monitor_ext  = {{(16 - NRings){1'b0}}, noise_bit_monitor};
+    assign sample_clk_monitor_ext = {{(16 - NRings){1'b0}}, sample_clk_monitor};
     assign noise_obs_raw_bit  = noise_bit_monitor_ext [noise_obs_lane_sel_eff];
     assign noise_obs_raw_sclk = sample_clk_monitor_ext[noise_obs_lane_sel_eff];
 
@@ -768,12 +768,15 @@ module entropy_source
     // lockable-asset inventory (SP 800-90B 4.3/4.4, 3.1.5.1.1, 3.2.2-6) is:
     //   Group A - health-test config; Group B - conditioning/digitisation;
     //   Group C - noise-source physical config; plus master enable +
-    //   ALERT_THRESHOLD/MIN_ENTROPY_H.
-    // Left writable by design: BIW_OBS_CTRL.RAW_ENABLE and
-    //   NOISE_OBS_CTRL.{RAW_ENABLE,LANE_SEL} (diagnostic copy-only observe
-    //   taps), INTR_*, and the W1C status/fail-count fields — these
-    //   support interrupt servicing and the on-demand health-test trigger
-    //   (4.3 req 5) without altering the certified configuration.
+    //   ALERT_THRESHOLD/MIN_ENTROPY_H; Group D - pre-conditioning observation
+    //   taps (GetNoise-class) and the debug pin, which SP 800-90B 2.3.2/3.2.1
+    //   allow disabling outside validation; Group E - FIFO_CTRL.ENABLE, whose
+    //   FIFO holds the words that also seed the DRBG.
+    // Left writable by design: NOISE_OBS_CTRL.{FLUSH,LANE_SEL} (inert while
+    //   RAW_ENABLE is locked off), INTR_*, and the W1C status/fail-count
+    //   fields — these support interrupt servicing and the on-demand
+    //   health-test trigger (4.3 req 5) without altering the certified
+    //   configuration.
     // ----------------------------------------------------------------------
     assign fips_lock = reg_out.FIPS_LOCK.LOCK.value;
 
@@ -817,6 +820,16 @@ module entropy_source
     assign reg_in.GENERATOR_9_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel  = fips_lock;
     assign reg_in.GENERATOR_10_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel = fips_lock;
     assign reg_in.GENERATOR_11_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE.swwel = fips_lock;
+
+    // Group D — pre-conditioning observation taps and debug pin.
+    assign reg_in.BIW_OBS_CTRL.RAW_ENABLE.swwel                  = fips_lock;
+    assign reg_in.NOISE_OBS_CTRL.RAW_ENABLE.swwel                = fips_lock;
+    assign reg_in.DEBUG_CTRL.SELECT_SIGNAL.swwel                 = fips_lock;
+    assign reg_in.DEBUG_CTRL.SELECT_FREQ_DIV.swwel              = fips_lock;
+
+    // Group E — software read path of the conditioned output. FIFO_CTRL.ENABLE
+    // gates only the main-FIFO push, so the DRBG seed stream is unaffected.
+    assign reg_in.FIFO_CTRL.ENABLE.swwel                         = fips_lock;
 
     // ----------------------------------------------------------------------
     // SP 800-90B recommended-threshold LUT.

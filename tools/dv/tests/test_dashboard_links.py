@@ -283,5 +283,284 @@ class RelocatedRunTree(unittest.TestCase):
         self.assertNotIn("source_report", record["coverage"])
 
 
+class CoordinatorGradedLeaf(unittest.TestCase):
+    """A leaf whose job left no result: the coordinator's JUnit sits in the graded attempt."""
+
+    LEAF = "t_alpha/seed_3"
+    JOB_LOGS = ("stages/regress/logs/sim-000000-a0.log", "stages/regress/logs/sim-000000-a1.log")
+    SIGNATURE = "ended failed: failed reported with exit code 127 but no result.json appeared"
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.run_root = self.root / "build" / "runs" / "r"
+        self.flow = make_flow(self.root)
+        for log in self.JOB_LOGS:
+            (self.run_root / log).parent.mkdir(parents=True, exist_ok=True)
+            (self.run_root / log).write_text("exec: python3: not found\n")
+        xml_path = self.run_root / self.LEAF / "attempt_1" / "results" / "results.xml"
+        xml_path.parent.mkdir(parents=True)
+        xml_path.write_text("<testsuites/>\n")
+        bucket = {"kind": "environment_error", "signature": self.SIGNATURE, "count": 1}
+        graded = {
+            "name": "sim",
+            "item": "t_alpha",
+            "status": "ERROR",
+            "log": self.rel(self.JOB_LOGS[1]),
+            "failure_buckets": [bucket],
+            "metadata": {"seed": 3, "attempt": 1},
+            "result_json": self.rel(f"{self.LEAF}/attempt_1/result.json"),
+        }
+        result = {
+            "schema_version": 1,
+            "flow": "fixture",
+            "status": "ERROR",
+            "run_dir": self.rel(""),
+            "stages": [graded],
+            "tests": {"total": 1, "passing": 0, "completed": True},
+        }
+        (self.run_root / "result.json").write_text(json.dumps(result))
+        jobs = [
+            {
+                "stage": "sim",
+                "item": "t_alpha",
+                "seed": 3,
+                "attempt": attempt,
+                "status": "ERROR",
+                "log": self.rel(log),
+                "failure_buckets": [bucket],
+                "result_json": self.rel(f"{self.LEAF}/attempt_{attempt}/result.json"),
+            }
+            for attempt, log in enumerate(self.JOB_LOGS)
+        ]
+        regression = {
+            "schema_version": 1,
+            "flow": "fixture",
+            "run_dir": self.rel(""),
+            "jobs": jobs,
+            "failed_tests": [],
+            "flaky_tests": [],
+            "failure_buckets": [
+                {**bucket, "affected": ["t_alpha"], "examples": [self.rel(self.JOB_LOGS[1])]}
+            ],
+        }
+        (self.run_root / "stages" / "regress" / "regression.json").write_text(
+            json.dumps(regression)
+        )
+
+    def rel(self, relative: str) -> str:
+        return str((self.run_root / relative).relative_to(self.root))
+
+    def test_the_graded_attempt_junit_is_found_and_no_job_log_path_is_guessed(self):
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        self.assertEqual(record["junit_xml"], {"total": 1, "missing": 0})
+        self.assertEqual(record.get("warnings", []), [])
+
+    def test_a_graded_xml_beside_the_leaf_file_counts_as_recorded(self):
+        results = self.run_root / self.LEAF / "attempt_1" / "results"
+        (results / "graded.xml").write_text("<testsuites/>\n")
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        self.assertEqual(record["junit_xml"], {"total": 2, "missing": 0})
+        self.assertEqual(record.get("warnings", []), [])
+
+    def test_a_regression_leaf_bucket_counts_once_with_its_example(self):
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        (bucket,) = record["failure_buckets"]
+        self.assertEqual((bucket["kind"], bucket["count"]), ("environment_error", 1))
+        self.assertEqual(bucket["examples"], [self.rel(self.JOB_LOGS[1])])
+
+    def test_a_leaf_file_written_after_the_grade_fills_only_what_the_record_lacks(self):
+        regression_path = self.run_root / "stages" / "regress" / "regression.json"
+        regression = json.loads(regression_path.read_text())
+        reason = f"environment_error: attempt sim-000000-a1 {self.SIGNATURE}"
+        regression["jobs"][1]["reason"] = reason
+        regression_path.write_text(json.dumps(regression))
+        late = {
+            "item": "t_alpha",
+            "seed": 3,
+            "attempt": 1,
+            "status": "PASS",
+            "reason": "",
+            "duration_sec": 12.5,
+            "artifacts": {"results_xml": self.rel(f"{self.LEAF}/attempt_1/results/results.xml")},
+        }
+        (self.run_root / self.LEAF / "attempt_1" / "result.json").write_text(json.dumps(late))
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        (detail,) = record["tests_detail"]
+        self.assertEqual((detail["status"], detail["reason"]), ("ERROR", reason))
+        self.assertEqual(detail["duration_sec"], 12.5)
+        self.assertEqual(record["junit_xml"], {"total": 1, "missing": 0})
+
+    def test_a_formal_regression_leaf_bucket_counts_once(self):
+        formal = {"kind": "formal_fail", "signature": "assert_p", "count": 1}
+        result_path = self.run_root / "result.json"
+        result = json.loads(result_path.read_text())
+        result["stages"].append(
+            {"name": "formal", "item": "t_alpha", "status": "FAIL", "failure_buckets": [formal]}
+        )
+        result_path.write_text(json.dumps(result))
+        regression_path = self.run_root / "stages" / "regress" / "regression.json"
+        regression = json.loads(regression_path.read_text())
+        regression["failure_buckets"].append({**formal, "affected": ["t_alpha"]})
+        regression_path.write_text(json.dumps(regression))
+        record = collect_flow_result(self.root, self.flow, self.run_root)
+        counts = {bucket["kind"]: bucket["count"] for bucket in record["failure_buckets"]}
+        self.assertEqual(counts, {"environment_error": 1, "formal_fail": 1})
+
+
+class RetriedLeafJunit(unittest.TestCase):
+    """A leaf whose first attempt left no result and whose retry passes."""
+
+    LEAF = "t_alpha/seed_3"
+    JOB_LOG = "stages/regress/logs/sim-000000-a0.log"
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.run_root = self.root / "build" / "runs" / "r"
+        self.flow = make_flow(self.root)
+        job_log = self.run_root / self.JOB_LOG
+        job_log.parent.mkdir(parents=True)
+        job_log.write_text("exec: python3: not found\n")
+        self.xml = self.attempt_dir(1) / "results" / "results.xml"
+        self.xml.parent.mkdir(parents=True)
+        self.xml.write_text("<testsuites/>\n")
+        self.write_leaf(1, "PASS", artifacts={"results_xml": self.rel(self.xml)})
+        jobs = [
+            {**self.job(0), "status": "ERROR", "log": self.rel(job_log)},
+            {**self.job(1), "status": "PASS", "log": self.rel(self.attempt_dir(1) / "t.log")},
+        ]
+        regression = {
+            "schema_version": 1,
+            "flow": "fixture",
+            "run_dir": self.rel(self.run_root),
+            "jobs": jobs,
+            "failed_tests": [],
+            "flaky_tests": [{"item": "t_alpha", "seed": 3, "final_status": "PASS"}],
+            "failure_buckets": [],
+        }
+        (self.run_root / "stages" / "regress" / "regression.json").write_text(
+            json.dumps(regression)
+        )
+        graded = {
+            "name": "sim",
+            "item": "t_alpha",
+            "status": "PASS",
+            "metadata": {"seed": 3, "attempt": 1},
+            "result_json": self.job(1)["result_json"],
+        }
+        result = {
+            "schema_version": 1,
+            "flow": "fixture",
+            "status": "PASS",
+            "run_dir": self.rel(self.run_root),
+            "stages": [graded],
+            "tests": {"total": 1, "passing": 1, "completed": True},
+        }
+        (self.run_root / "result.json").write_text(json.dumps(result))
+
+    def rel(self, path: Path) -> str:
+        return str(path.relative_to(self.root))
+
+    def attempt_dir(self, attempt: int) -> Path:
+        return self.run_root / self.LEAF / f"attempt_{attempt}"
+
+    def job(self, attempt: int) -> dict:
+        leaf_json = self.attempt_dir(attempt) / "result.json"
+        return {
+            "stage": "sim",
+            "item": "t_alpha",
+            "seed": 3,
+            "attempt": attempt,
+            "result_json": self.rel(leaf_json),
+        }
+
+    def write_leaf(self, attempt: int, status: str, **extra) -> None:
+        leaf = {"schema_version": 1, "flow": "fixture", **self.job(attempt), "status": status}
+        leaf_json = self.attempt_dir(attempt) / "result.json"
+        leaf_json.parent.mkdir(parents=True, exist_ok=True)
+        leaf_json.write_text(json.dumps({**leaf, **extra}))
+
+    def collect(self) -> dict:
+        return collect_flow_result(self.root, self.flow, self.run_root)
+
+    def test_a_superseded_attempt_without_junit_is_not_a_warning(self):
+        record = self.collect()
+        self.assertEqual(record["junit_xml"], {"total": 1, "missing": 0})
+        self.assertEqual(record.get("warnings", []), [])
+
+    def test_a_graded_attempt_without_junit_warns_with_its_seed_and_attempt(self):
+        self.xml.unlink()
+        self.write_leaf(1, "PASS", log=None)
+        jobs_path = self.run_root / "stages" / "regress" / "regression.json"
+        regression = json.loads(jobs_path.read_text())
+        regression["jobs"][1]["log"] = None
+        jobs_path.write_text(json.dumps(regression))
+        self.assertEqual(
+            self.collect()["warnings"], ["JUnit XML not recorded for t_alpha seed 3 attempt 1"]
+        )
+
+    def test_a_named_file_that_is_absent_warns_for_any_attempt(self):
+        self.xml.unlink()
+        named = self.rel(self.attempt_dir(0) / "results" / "results.xml")
+        self.write_leaf(0, "ERROR", artifacts={"results_xml": named})
+        self.assertEqual(
+            self.collect()["warnings"],
+            [
+                f"JUnit XML missing for t_alpha seed 3 attempt 0: {named}",
+                f"JUnit XML missing for t_alpha seed 3 attempt 1: {self.rel(self.xml)}",
+            ],
+        )
+
+
+class LayoutLeafJunit(unittest.TestCase):
+    """A run with no regression record and no sim stage, read from `<run>/<item>/result.json`."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.run_root = self.root / "build" / "runs" / "r"
+        self.flow = make_flow(self.root)
+        self.leaf = self.run_root / "t_alpha"
+        self.leaf.mkdir(parents=True)
+        leaf = {
+            "schema_version": 1,
+            "flow": "fixture",
+            "stage": "sim",
+            "item": "t_alpha",
+            "seed": 3,
+            "attempt": 0,
+            "status": "PASS",
+        }
+        (self.leaf / "result.json").write_text(json.dumps(leaf))
+        result = {
+            "schema_version": 1,
+            "flow": "fixture",
+            "status": "PASS",
+            "run_dir": str(self.run_root.relative_to(self.root)),
+            "stages": [],
+            "tests": {"total": 1, "passing": 1, "completed": True},
+        }
+        (self.run_root / "result.json").write_text(json.dumps(result))
+
+    def collect(self) -> dict:
+        return collect_flow_result(self.root, self.flow, self.run_root)
+
+    def test_a_leaf_without_junit_warns_with_its_seed_and_attempt(self):
+        record = self.collect()
+        self.assertEqual(record["junit_xml"], {"total": 0, "missing": 0})
+        self.assertEqual(
+            record["warnings"], ["JUnit XML not recorded for t_alpha seed 3 attempt 0"]
+        )
+
+    def test_a_leaf_with_junit_beside_its_result_does_not_warn(self):
+        xml = self.leaf / "results" / "results.xml"
+        xml.parent.mkdir()
+        xml.write_text("<testsuites/>\n")
+        record = self.collect()
+        self.assertEqual(record["junit_xml"], {"total": 1, "missing": 0})
+        self.assertEqual(record.get("warnings", []), [])
+
+
 if __name__ == "__main__":
     unittest.main()

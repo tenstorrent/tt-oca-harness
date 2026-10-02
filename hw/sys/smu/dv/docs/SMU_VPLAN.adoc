@@ -303,7 +303,7 @@ one-line intent.
 |`smu_sep_efuse_test` |wrapper |The SEP-side eFuse control and external-shim CSR read/write path clears on-chip.
 |`smu_sep_wdt_test` |wrapper |The SEP watchdog control and threshold register path clears on-chip.
 |`smu_sep_dma_test` |wrapper |The SEP DMA engine register path clears on-chip.
-|`smu_sep_spi_test` |wrapper |A command / address / receive sequence completes on the SEP's OpenTitan `spi_controller` and the received word is read back through RXDATA.
+|`smu_sep_spi_test` |wrapper |The SEP OpenTitan SPI host request reaches the SMC SPI pins as a DV-owned, spec-cited pin table states, on every cycle, with the firmware's SCK count, CS# framing, output enables and transmit bytes at the pads, a seeded receive word returned from the pad to RXDATA, and no pad change while the host is idle.
 |`smu_sep_remap_test` |wrapper |The AP and STEE output-remap region-0 offsets end up at the goldens the firmware names.
 |`smu_sep_smc_notify_test` |wrapper |The SEP outbound egress path is proven segment by segment, not inferred from the arriving magic.
 |`smu_sep_bidirect_test` |wrapper |SEP and SMC complete a bidirectional handshake across the SMU crossbar, with both directions load-bearing.
@@ -1833,7 +1833,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 |`CHK-SMU-INT-AGG-S1` |smc_ext_interrupts_i is 256 wide, the SMC external interrupt count
 |`CHK-SMU-XTRIG-CTP-S1` |all four CTP groups are 16 wide, the XTRIG_NUM_CTP default
 |`CHK-SMU-XTRIG-CTP-S6` |bench-held resting CTP data inputs leave the CTP outputs static (live control: `smu_xtrig_ctp_pad_test`)
-|`CHK-SMU-LC-STATE-S1` |lc_state_o is 8 bits, 2*LC_STATE_WIDTH
+|`CHK-SMU-LC-STATE-S1` |lc_state_o is 8 bits, 2*LcStateWidth
 |`CHK-SMU-LC-DEMOTE-S1` |both lcc_demote_state outputs are 2 bits
 |`CHK-SMU-EFUSE-SHIM-SMC-S3` |the smu_wrapper smc_shadow_regs_o port and the bench net are as wide as the smu port, and after the sense completes all three carry the non-zero image +smc_efuse_hex names
 |`CHK-SMU-FUSE-SENSE-S4` |skip_mem_repair_o is one bit and clear with no isolation request pending
@@ -2954,7 +2954,7 @@ with the completion the bus returned.
 *Test Coverage*:
 
 * Sequence for smu_smc_mailbox_int_test (SMU_ALL_004).
-* SMU_ALL_004 owns SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary, measured on the DUT's own `smc_ext_mailbox_interrupts_o` output port rather than on the testbench net it drives.
+* SMU_ALL_004 owns SMC-MBX-IRQ-EXT.S2 — Width equals NumMailboxes (32) at the SMU boundary, measured on the DUT's own `smc_ext_mailbox_interrupts_o` output port rather than on the testbench net it drives.
 * Mailbox 0 and mailbox 31 raise their outbound write-threshold IRQ over the JTAG2AXI frontdoor, and the boundary vector must equal `baseline | 1<<idx` and return to baseline when the enable is cleared.
 * CHANNELS.S2/S3 and EXT.S1 are owned by SMU_ALL_008 — out of scope.
 * No mailbox MMIO; no Force/deposit on smc_ext_mailbox_interrupts_o.
@@ -3723,39 +3723,66 @@ Two things are worth reading before the entries:
 [[sec-090-smu_sep_spi_test]]
 ===== 90 `smu_sep_spi_test`
 
-*Source Module*: `smu_sep_spi_test`
+*Source Module*: `smu_sep_spi_test` (`cocotb_wrapper/tests/`), sequence `cocotb_wrapper/seq_lib/smu_sep_spi_seq.py`
 
-*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_spi` (on-chip verdict), classified by the terminal-loop PC the SEP settles on; loop addresses come from the staged `.sym`, so the contract survives a relink
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_spi` (the transfer and its on-chip stage checks), classified by the terminal-loop PC the SEP settles on; a per-`clk_smu`-cycle pad monitor on the SMC pad ports of `smu.sv`; the DV-owned pin table `SPI_PIN_TABLE` in the sequence as the reference, each row cited to a spec file and line; a bench SPI device that drives a seeded word on the receive pin through `tb_gpio_drive_en` / `tb_gpio_drive_val`, with the stream from `hw/sys/sep/dv/cocotb/env/sep_seeded_rng.py`
 
-*Objective*: A command / address / receive sequence completes on the SEP's OpenTitan `spi_controller` and the received word is read back through RXDATA.
+*Objective*: While the SEP firmware runs a real command / address / receive transfer, the SMC SPI pins carry the SEP OpenTitan SPI host request as the pin table states on every cycle; the transfer has the SCK count, CS# framing, output enables and transmit bytes the firmware asks for; a word driven on the receive pin reaches RXDATA; and the pins stay still while the host is idle.
 
 *Test Coverage*:
 
-* The image is written for exactly this configuration: it needs no external flash model and programs no pad mux, because the open DUT has neither.
-* This is the SPI path that survives into OSS. The Cadence xSPI wrapper and the SPI flash device models are excluded from the build, so anything routed through those cannot run here -- but `spi_controller` itself is present and this image exercises it.
-* The image parks in one of six per-stage fail loops mirroring its `SPI_ERR_*` codes, so a failure names the point in the transfer that stalled.
-* A seventh catch-all fail loop exists for an `rc` outside the enumerated codes; the compiler can prove it unreachable and drop it, in which case it is reported as a path not covered.
+* Probe point. The pad side is read on the `smu.sv` ports `core2pad_o`, `core2pad_en_o` and `pad2core_i`, the deepest point the open tree owns. The host side is read on the ports of `u_sep_ot_spi_wrap` (`spi_sck_o`, `spi_sck_oe_o`, `spi_cs_no`, `spi_cs_oe_o`, `spi_sd_o`, `spi_sd_oe_o`, `spi_sd_i`), upstream of `smu.sv`, and the RX FIFO read port of `u_spi_host` (`rx_valid`, `rx_ready`, `rx_data`). Every probe is resolved by its full path before the run; a path that does not resolve fails the leaf, and there is no second path. `hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt` makes those host signals visible on Verilator.
+* Reference. The pin table is DV-owned and cites only spec files, never the RTL that implements the pins. A spec-vs-RTL disagreement on a graded row fails the leaf. The sources: GPIO = `doc/integrator/meta/ocah_gpio_table.csv`; SEP = `hw/sys/sep/doc/spi.adoc`; OT = `vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson`; OTDOC = the OpenTitan SPI Host documentation that `hw/sys/sep/doc/spi.adoc:69-71` names authoritative; EN = `doc/starting/src/guidelines.adoc:166-167` (an active-low name carries `_n`) and `hw/sys/smu/doc/port_table.adoc:105-108` (`core2pad_en_o` is the core-to-pad path enable, so active high). The host enables are the OpenTitan output-buffer enables that CONTROL.OUTPUT_EN gates (OT :221-225).
++
+[cols="1,2,2,2,2,3",options="header"]
+|===
+|GPIO |Function |`core2pad_o` carries |`core2pad_en_o` follows |`pad2core_i` feeds |Source
+|0-3 |SPI.DATA[n] |host `sd[n]` |host `sd_en[n]` |host `sd_i[n]` |GPIO :2-5; SEP :48 (4-bit bidirectional I/O)
+|4-7 |SPI.DATA[n] |not graded |held 0 (no SEP source) |- |GPIO :6-9; SEP :35-36 (four data lines)
+|8 |SPI.CS |host `csb` |host `csb_en` |- |GPIO :10; OT :113-116 (csb, active low)
+|9 |SPI.CLK |host `sck` |host `sck_en` |- |GPIO :11; OT :110-112
+|10 |SPI.DQS |not graded |held 0 (no SEP source) |- |GPIO :12; SEP :37-38 (no DQS)
+|54 |SPI DQS Loopback |not graded |held 0 (no SEP source) |- |GPIO :56; SEP :37-38
+|===
++
+In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data (OTDOC), so the transmit pin is GPIO 0, the receive pin is GPIO 1, and lanes 2-3 are unused.
+* Spec gaps, for an owner decision. Graded with no spec text: the SMC GPIO `SPI.*` functions are driven by the SEP SPI host (the GPIO table names the function `SPI` and no document names its source); host lane _n_ is `SPI.DATA[n]` (by name only); a pin with no SEP source is not output-enabled (DV rule); the standard-mode lane roles come from OTDOC, which is not in the repository. Not graded, because no spec states them: the SPI function select (`lsio_interface_select_o`), the pad input enable (`pad2core_en_o`) of every SPI pin, the pad data level on pins with no SEP source, and whether a data lane may be driven while CS# is high. The leaf logs the table and these gaps on every run.
+* Stimulus. The firmware runs three standard-speed segments with CONFIGOPTS.CPOL=0: a 1-byte TX (0x9F, pushed as one byte with a byte store; TXDATA takes byte enables, OT :518), a 4-byte TX (one word, 0x03 and the address 0x001000, CSAAT=1) and a 4-byte RX (CSAAT=0). A segment moves LEN+1 bytes (OT :443-453), CSAAT=0 raises CS# at its end (OT :470-476), and with CPOL=0 SCK idles low and emits one high pulse per bit (OT :352-356): 8 x (1 + 4 + 4) = 72 SCK rises in two CS# windows of 8 and 64 rises. The sequence holds the byte counts as `FW_SEGMENTS` and the pushed bytes as `FW_TXDATA_BYTES`; the firmware header points back to them.
+* Response stimulus. The bench device drives a 32-bit word drawn from the seed (`RANDOM_SEED`, salted) on the receive pin, one bit per receive SCK period. With CPHA=0 the data changes on the trailing edge and is sampled on the leading edge (OT :360-364), so the device changes the bit on the SCK falling edge; it releases the pin after the last receive bit and when CS# rises. The draw is rejected until the four bytes are distinct and none is 0x00 or 0xFF, so a stuck lane, a lane swap or a byte-order fault gives a different word. The word is a function of the seed only; it is not evidence on its own.
+* Firmware verdict. The image checks on-chip that each stage reaches READY / idle, that ERROR_STATUS has no CMDINVAL / CSIDINVAL, that exactly one word lands in the RX FIFO and that the FIFO then drains. It parks in one of eight per-stage fail loops, or in a catch-all loop the compiler can drop (then reported as a path not covered). The image does not judge the received word: the bench grades it.
+* Graded window. Every `clk_smu` cycle from the first cycle the monitor samples with the SEP's ICCM-fetch latch (`sep_iccm_fetch_seen_o`) set to 2000 cycles after the firmware verdict. The window starts before the firmware enables the host outputs, which the OE checker proves with at least one cycle of released SCK and CS# pins.
+* Controls. The host SCK output is counted on the same window as the pad SCK, and both must equal 72. Each host field that a pin follows (`sck`, `sck_en`, `csb`, `csb_en`, data lane 0, its enable) must take both values in the window, so the map checker grades both polarities. The idle checker needs a pre-transfer window of at least 200 cycles and a post-transfer window of at least 2000 cycles with no pad change, and it needs SCK, CS# and the transmit pin to move as data and as output enable inside the transfer.
+* X/Z. Graded on VCS, not run on Verilator. On a four-state simulator (`run_dv.py --dut smu --tool vcs`) `CHK-SEP-SPI-PAD-XZ` requires every probed pad bit, host net and RX FIFO handshake bit to read 0 or 1 on every cycle of the graded window. Verilator is two-state, so there the check cannot fail and is not run: the leaf logs that the four-state X/Z check is not run and emits no X/Z evidence. On either simulator a sample the monitor cannot read as 0/1 fails the run, because the checkers cannot grade that cycle.
+* Out of scope. Excluded for OSS hygiene: proprietary IPs in nonfree. Dual and quad speed and lanes 1-3 as outputs are not run, so the map checker grades the data and enable of GPIO 1-3 at the single value the host gives in standard mode.
 
 *Test Procedure*:
 
 [arabic]
-. Require the staged ITCM image and the `.sym` to name the same firmware -- sibling images share a crt0 layout, so loop addresses collide and a mismatched pair would give a confident, wrong PASS.
-. Resolve the pass loop and the fail loops (`wait_ready_cmd`, `wait_idle_cmd`, `wait_ready_addr`, `wait_ready_rx`, `wait_idle_rx`, `error_status`, `unclassified`) from the symbol table; a fail symbol the linker dropped is reported as a path not covered, not as passed.
-. Run the SEP, sampling `sep_trace_valid_o` / `sep_pc_o` each `clk_smu` edge, and stop at the first terminal loop entered.
-. Assert the boot-ROM, ICCM and `boot_rom < iccm < pass_loop` ordering conditions, then emit the evidence tokens.
+. Resolve every pad, host and RX FIFO probe and the bench drive pins by full path; require each pad vector to be wide enough for GPIO 54.
+. Draw the receive word from the seed; log it with the expected SCK count, the rises per CS# window and the TXDATA bytes, then log the pin table and the spec gaps.
+. Start the pad monitor, then run the base terminal-loop flow: require the staged ITCM image and the `.sym` to name the same firmware, resolve the pass loop and the fail loops, run the SEP until it parks, and require the boot-ROM, ICCM and `boot_rom < iccm < pass_loop` ordering.
+. On every cycle of the graded window: sample every probe, compare each pin of the table with the host, count host and pad SCK rises and CS# falls, record the enables and the transmit pin at each pad SCK rise, record each RX FIFO pop, and run the bench device.
+. Keep sampling for 2000 cycles after the verdict, then grade the checkers below and emit the pad evidence tokens only when all of them hold.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`+CHK-SEP_SEP_SPI-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, and both boot-ROM and ICCM execution were seen
-|`+CHK-SEP_SEP_SPI-VERDICT+` |the pass loop was reached and no fail loop was entered
-|`+CHK-SEP_SEP_SPI-RX+` |inside the image's verdict: after the RX segment idles, STATUS.RXQD reads 1, RXDATA returns the word the bench presents on MISO (0x00000000 -- no flash model or loopback is attached and the receive pad is undriven, so this is the pad's idle level under Verilator, not device content), and the FIFO drains to RXQD 0 / RXEMPTY; each mismatch parks the image in its own fail loop (`rx_depth`, `rx_data`, `rx_drain`), which the sequence classifies as FAIL
+|`+CHK-SEP_SPI-FRONTDOOR+` |the first retired PC is the boot-ROM reset vector, and the SEP executes from both the boot ROM and the ICCM. Fails when the SEP does not boot from its ROM or never runs the image
+|`+CHK-SEP_SPI-VERDICT+` |the SEP parks in the pass loop and enters no fail loop. Fails when a stage of the transfer stalls, ERROR_STATUS flags the command or the chip select, or the RX FIFO does not hold exactly one word and then drain
 |`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|`CHK-SEP-SPI-PAD-MAP` |on every cycle of the window, each graded cell of the pin table holds: `core2pad_o` carries the host output, `core2pad_en_o` follows the host enable or is 0 on a pin with no SEP source, and the host data input of each lane equals `pad2core_i` of its pin; each host field the pins follow took both values. Fails when a pin is routed to the wrong GPIO, inverted, tied, or not enabled as the table states, or the wrong pad feeds a host input
+|`CHK-SEP-SPI-PAD-SCK` |the SCK pin (GPIO 9) rises exactly 72 times, the count the firmware's byte counts give, and the host `spi_sck_o` rises 72 times on the same window. Fails when SCK does not reach the pin, toggles extra, or the host clocks a different number of bits
+|`CHK-SEP-SPI-PAD-FRAME` |the CS# pin (GPIO 8) falls twice, once per firmware CS# window, and the host CS# also falls twice; the windows hold 8 and 64 SCK rises; no SCK rise occurs with CS# high; CS# is high again at the end. Fails when CS# does not reach the pin, is stuck, or frames the bits differently from CSAAT
+|`CHK-SEP-SPI-PAD-OE` |the enables are graded at all 72 pad SCK rises (fewer rises fail the checker); at every one the SCK and CS# pins are driven, the receive pin (GPIO 1), the unused standard-mode lanes (GPIO 2-3) and the pins with no SEP source (GPIO 4-7, 10, 54) are released, and on every transmit bit the transmit pin (GPIO 0) is driven; at least one cycle before the host enables its outputs has the SCK and CS# pins released. Fails on an inverted or tied output enable. The host may keep lane 0 driven into a receive segment, so lane 0's enable on receive bits is graded by `CHK-SEP-SPI-PAD-MAP` against the host, not here
+|`CHK-SEP-SPI-PAD-MOSI` |the transmit pin sampled at the 40 transmit SCK rises gives the bytes 0x9F, 0x03, 0x00, 0x10, 0x00: the bytes the firmware pushes into TXDATA in FIFO order, the low byte of a word first (STATUS.BYTEORDER=1, OT :76-82), MSB first in a byte (OT :521-522). Fails when the transmit data does not reach GPIO 0, a lane is swapped, or the bit or byte order changes
+|`CHK-SEP-SPI-PAD-RSP` |at each of the 32 receive SCK rises the bench device is driving and the host `spi_sd_i[1]` equals the driven bit, and the RX FIFO is popped exactly once in the window with a word equal to the driven word, the first received byte in RXDATA[7:0] (OT :76-82). Fails when the receive pin does not reach the host input, the response lanes are swapped or tied, or the host assembles a different word
+|`CHK-SEP-SPI-PAD-IDLE` |no `core2pad_o` or `core2pad_en_o` bit of an SPI pin changes on a cycle where the host outputs do not change; the pre-transfer window (at least 200 cycles) and the post-transfer window (at least 2000 cycles) have no such change; SCK, CS# and the transmit pin each move as data and as output enable inside the transfer. Fails when a pin moves without the host, for example when another source drives it
+|`CHK-SEP-SPI-PAD-XZ` |four-state simulator only: on every cycle of the window the bits of the 12 SPI pins in `core2pad_o`, `core2pad_en_o`, `pad2core_en_o`, `lsio_interface_select_o` and `pad2core_i`, the seven host nets and the RX FIFO handshake (and `rx_data` on a pop) read 0 or 1. Fails when an X or Z reaches a probed net, for example from an undriven or unreset pin path. Not run on Verilator, which is two-state
 |===
 
-*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_SPI_OK`, `SEP_SPI_CONTROLLER_TXRX_OK`. Enrolled in: `all`, `sep_real_fw`.
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_SPI_OK`, `SEP_SPI_CONTROLLER_TXRX_OK`, `SEP_SPI_PAD_MAP_OK`, `SEP_SPI_PAD_SCK_COUNT_OK`, `SEP_SPI_PAD_FRAMING_OK`, `SEP_SPI_PAD_OE_OK`, `SEP_SPI_PAD_MOSI_OK`, `SEP_SPI_PAD_RSP_OK`, `SEP_SPI_PAD_IDLE_OK`, and on a four-state simulator `SEP_SPI_PAD_XZ_OK`. Enrolled in: `all`, `sep_real_fw`.
 
 '''''
 [[sec-091-smu_sep_remap_test]]

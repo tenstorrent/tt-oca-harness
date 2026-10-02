@@ -5,33 +5,17 @@
  * @file main.c
  * @brief OCTS P12 Test - DUT as PRIMARY, BFM as SECONDARY
  *
- * DUT acts as PRIMARY timer (generates sync signals)
- * BFM acts as SECONDARY timer (receives signals and responds)
- *
- * Test verifies synchronization scenarios based on octs_p1_credit_test goals:
- *   1. PRIMARY and SECONDARY timer synchronization
- *   2. PRIMARY generates TMR_CNT_CREDIT pulses
- *   3. SECONDARY credit counter accumulation and consumption
- *   4. Counter monotonic increment
- *   5. Long-term synchronization deviation < 50ns tolerance
- *
- * Steps:
- *   1. Initialize OCTS PRIMARY mode
- *   2. Set timer preset value
- *   3. Start timer (generates sync_load pulses and credit pulses)
- *   4. Monitor counter increment
- *   5. Report result to scratch[0]
+ * Runs the DUT as OCTS PRIMARY, which drives sync_load and credit pulses to a
+ * SECONDARY on the BFM chiplet, and verifies that the PRIMARY counter advances
+ * while the timer stays in PRIMARY mode. SECONDARY tracking is not checked by
+ * this firmware.
  */
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "smc_defines.h"
 #include "smc_test.h"
 #include "virt_console.h"
-
-#define WAIT_CYCLES 50
-#define MAX_PRESET_VALUE 0x10000ULL
 
 static void wait_cycles(uint32_t cycles) {
     for (volatile uint32_t i = 0; i < cycles; i++) {
@@ -58,10 +42,7 @@ static void timer_init(void) {
 
     simputs("Initializing OCTS PRIMARY timer\n");
 
-    // CTRL Register Configuration (STEP << 16 | PULSE_WIDTH << 8 | CREDIT_VAL)
-    // CREDIT_VAL = 0x10 (16) - Must be > PULSE_WIDTH
-    // PULSE_WIDTH = 0x02 (2) - Must be < CREDIT_VAL
-    // STEP = 0x01 (1) - Step size for SECONDARY timer
+    // The credit value must stay greater than the pulse width.
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR, 0x00010210);
 
     ctrl_val = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR);
@@ -69,12 +50,10 @@ static void timer_init(void) {
         simputs("ERROR: CTRL register not set correctly\n");
         write_scratch(0, 0xBAD00000u | ctrl_val);
         test_fail(0);
-        while (1) {
-            __asm__ volatile("nop");
-        }
     }
 
-    // Enable GPIO pad lsio interface to prevent X-prop on reset
+    // Enable the timer's GPIO outputs, which also keeps X out of the SECONDARY
+    // across reset.
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR, 1);
     wait_cycles(10);
     uint32_t gpio_enable_val = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR);
@@ -82,9 +61,6 @@ static void timer_init(void) {
         simputs("ERROR: TIMER_GPIO_ENABLE register not set correctly\n");
         write_scratch(0, 0xBAD00005u | gpio_enable_val);
         test_fail(0);
-        while (1) {
-            __asm__ volatile("nop");
-        }
     }
     simputs("TIMER_GPIO_ENABLE register initialized: 0x1\n");
 }
@@ -107,18 +83,12 @@ static void timer_start(uint64_t preset_value) {
         simputs("ERROR: PRESET register not set correctly\n");
         write_scratch(0, 0xBAD00001u);
         test_fail(0);
-        while (1) {
-            __asm__ volatile("nop");
-        }
     }
 
     if (!timer_is_primary()) {
         simputs("ERROR: Timer is not in PRIMARY mode\n");
         write_scratch(0, 0xBAD00002u);
         test_fail(0);
-        while (1) {
-            __asm__ volatile("nop");
-        }
     }
 
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR, 1);
@@ -147,15 +117,12 @@ int main(void) {
     timer_start(0x1000ULL);
     write_scratch(0, 0x01);
 
-    /* Wait for timer to start and stabilize */
     wait_cycles(1000);
 
-    /* Verify counter is incrementing */
     count_start = timer_get_count();
     simputshex64("Count check start: ", count_start);
     write_scratch(0, 0x02);
 
-    /* Wait for counter increment */
     wait_cycles(2000);
 
     count_end = timer_get_count();
@@ -168,19 +135,12 @@ int main(void) {
         simputshex64("  End count: ", count_end);
         write_scratch(0, 0xBAD30005u);
         test_fail(0);
-        while (1) {
-            __asm__ volatile("nop");
-        }
     }
 
-    /* Verify timer is in PRIMARY mode */
     if (!timer_is_primary()) {
         simputs("ERROR: Timer is not in PRIMARY mode\n");
         write_scratch(0, 0xBAD30006u);
         test_fail(0);
-        while (1) {
-            __asm__ volatile("nop");
-        }
     }
 
     simputs("All tests passed\n");
@@ -190,12 +150,6 @@ int main(void) {
     wait_cycles(5);
 
     test_pass(0);
-
-    while (1) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
 int other_main(int hartid) {
@@ -203,7 +157,6 @@ int other_main(int hartid) {
     while (1) {
         __asm__("wfi");
     }
-    return 0;
 }
 
 int secondary_main(void) {

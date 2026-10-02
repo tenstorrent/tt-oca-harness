@@ -45,9 +45,9 @@ module prim_pulse_signal #(
     IDLE        = 2'b00,
     PRE_RESET   = 2'b01,
     POST_RESET  = 2'b10
-  } pulse_state_t;
+  } pulse_state_e;
 
-  pulse_state_t pulse_state, pulse_state_nxt;
+  pulse_state_e pulse_state, pulse_state_nxt;
 
   prim_updown_counter #(
     .WIDTH(COUNT_WIDTH),

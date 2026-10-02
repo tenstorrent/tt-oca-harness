@@ -23,6 +23,21 @@ CHK-SYSCSR-HOLE-REFUSE, CHK-SYS-RESERVED-REFUSE, CHK-MBOX-UPPER-REFUSE,
 CHK-EFUSE-CTRL-PAST-REFUSE, CHK-EFUSE-MMR-PAST-REFUSE and CHK-SPI-PAST-REFUSE:
 every read and write in that set is refused (never OKAY, never a timeout).
 
+CHK-SYSCSR-HOLE-DECODE: no system-CSR hole or reserved-row probe reaches the
+system-CSR AXI-Lite port. The system-peripherals crossbar refuses them itself,
+so a write answers DECERR rather than the SLVERR the AXI-Lite converter makes of
+any write error behind it. A watched write and read of SEP_NMI_VEC must each
+show their handshake at that port, so a watcher that sees nothing fails.
+
+CHK-SYS-RESERVED-NO-LOOPBACK: no system-CSR hole or reserved-row probe arrives
+at the local crossbar's ext initiator. The peripheral crossbar forwards an
+address outside the mailbox and system CSR windows back to that initiator
+(``hw/sys/sep/doc/fabric.adoc``), so a reserved address the local crossbar sends
+to sep_system_peripherals returns there instead of being refused at its first
+decode. A watched write and read of the first External address, which takes
+that route, must each show their handshake at the ext initiator, so a watcher
+that sees nothing fails.
+
 CHK-TOKEN-FAULT-EXTENT: TOKEN_MATCH_FAULT, the last register the RDL gives the
 eFuse token MMR, reads OKAY with its RDL reset, and the first word after it is
 refused. The extent therefore ends where the RDL ends it.
@@ -61,6 +76,7 @@ from collections import Counter
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_unmapped_access_seq import (
+    EXT_LOOPBACK_CTRL,
     GROUP_EFUSE_CTRL,
     GROUP_EFUSE_MMR,
     GROUP_MBOX,
@@ -131,6 +147,10 @@ class sep_unmapped_access_policy_test(sep_base_test):
             len(ua.snap),
         )
 
+        # --- Lite-port watcher control ---------------------------------------
+        lite_ctrl_fails = await ua.lite_control()
+        loop_fails: list[str] = await ua.ext_control()
+
         # --- TOKEN_MATCH_FAULT extent end -----------------------------------
         resp, val, to = await ua.access("r", TOKEN_MATCH_FAULT, may_refuse=True)
         tok_fail = []
@@ -151,16 +171,23 @@ class sep_unmapped_access_policy_test(sep_base_test):
         alias_fails: list[str] = []
         per_group: dict[str, list[str]] = {g: [] for g in REFUSE_GROUPS}
         code_fails: list[str] = []
+        decode_fails: list[str] = list(lite_ctrl_fails)
         n_code = 0
+        n_watched = 0
         for p in cfg.probes:
             r = await ua.probe(p)
             key = (p.group, p.op)
             codes.setdefault(key, Counter())[_code(r.resp)] += 1
+            where = f"{p.op} 0x{p.addr:08x} ({p.note})"
             if r.lite_reached is not None:
                 tally = lite.setdefault(key, [0, 0])
                 tally[0] += int(r.lite_reached)
                 tally[1] += 1
-            where = f"{p.op} 0x{p.addr:08x} ({p.note})"
+                n_watched += 1
+                if r.lite_reached:
+                    decode_fails.append(f"{where} reached the system-CSR AXI-Lite port")
+                if r.ext_reached:
+                    loop_fails.append(f"{where} arrived at the local crossbar's ext initiator")
             if r.timed_out:
                 per_group[p.group].append(f"{where} timed out")
             elif r.resp == RESP_OKAY:
@@ -176,7 +203,10 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 alias_fails.append(f"{where} moved " + ", ".join(r.changed))
             lite_note = ""
             if r.lite_reached is not None:
-                lite_note = f" system-CSR Lite {'reached' if r.lite_reached else 'not reached'}"
+                lite_note = (
+                    f" system-CSR Lite {'reached' if r.lite_reached else 'not reached'},"
+                    f" ext initiator {'reached' if r.ext_reached else 'not reached'}"
+                )
             self.logger.info(
                 "UNMAPPED-PROBE: %s %s resp=%s rdata=0x%08x%s",
                 p.group,
@@ -193,6 +223,12 @@ class sep_unmapped_access_policy_test(sep_base_test):
                     )
         for g in REFUSE_GROUPS:
             verdict[_CHK[g]] = per_group[g]
+        if n_watched == 0:
+            decode_fails.append("no probe watched the system-CSR AXI-Lite port")
+        verdict["CHK-SYSCSR-HOLE-DECODE"] = decode_fails
+        if n_watched == 0:
+            loop_fails.append("no probe watched the local crossbar's ext initiator")
+        verdict["CHK-SYS-RESERVED-NO-LOOPBACK"] = loop_fails
 
         # Tally of the codes CHK-UNMAPPED-CODE graded, per group and channel.
         for (g, op), c in codes.items():
@@ -207,13 +243,6 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 "write BRESP" if op == "w" else "read RRESP",
                 line,
                 extra,
-            )
-        for g in LITE_WATCHED:
-            self.logger.info(
-                "UNMAPPED-CODE: %s: the Lite port has no response probe, so the "
-                "slave-side BRESP of a write is not observable here; a read RRESP "
-                "is the slave's code, passed through unchanged",
-                g,
             )
 
         # --- array tails ----------------------------------------------------
@@ -349,6 +378,16 @@ class sep_unmapped_access_policy_test(sep_base_test):
         for g in REFUSE_GROUPS:
             n = sum(1 for p in cfg.probes if p.group == g)
             counts[_CHK[g]] = f"all {n} {g} probe(s) were refused"
+        counts["CHK-SYSCSR-HOLE-DECODE"] = (
+            f"the watcher saw the {cfg.lite_ctrl.name} control write and read at the "
+            f"system-CSR AXI-Lite port, and none of the {n_watched} "
+            f"{' and '.join(LITE_WATCHED)} probe(s) reached it"
+        )
+        counts["CHK-SYS-RESERVED-NO-LOOPBACK"] = (
+            f"the watcher saw the 0x{EXT_LOOPBACK_CTRL:08x} control write and read at the "
+            f"local crossbar's ext initiator, and none of the {n_watched} "
+            f"{' and '.join(LITE_WATCHED)} probe(s) arrived there"
+        )
         bad = []
         for chk, fails in verdict.items():
             if fails:

@@ -6,9 +6,8 @@ SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the
 reference suite OT-SPI host-control directed family (fw spi_ot_reg / tx_fifo /
 cmd_queue / interrupt / error_handling / watermark / enable_disable) into ONE rep.
 Not folded, because nothing here checks them: clock_config (CFG.CLKDIV is
-R/W-walked but no transfer runs at a programmed divider), rx_fifo (the only RX
-touch is the empty-FIFO read that triggers UNDERFLOW), and mux_select (a no-op --
-the OT SPI host is already the active bare-SEP path). Drives the upstream OpenTitan
+R/W-walked but no transfer runs at a programmed divider) and rx_fifo (the only RX
+touch is the empty-FIFO read that triggers UNDERFLOW). Drives the upstream OpenTitan
 spi_host CSRs (@0x10B0_0000, NUM_CS=1) directly over the CPU-LSU AXI splice (no_cpu, no
 firmware, no flash BFM) -- this is the host CONTROL plane, DISTINCT from SPI flash command breadth
 (flash command datapath) and `sep_spi_ot_dma_rx_test` (flash READ + DMA).
@@ -193,7 +192,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     # ---- CHK-REG-RW (+ CHK-NONVAC) ---------------------------------------
     async def _chk_reg_rw(self) -> None:
         for name, addr, wmask, impl_mask, val in self.scfg.rw_regs:
-            # The reference for CHK-NONVAC is the observed pre-write value, not the
+            # The baseline for CHK-NONVAC is the observed pre-write value, not the
             # reset table: the readback below is already asserted equal to the
             # written value, so a reset-table compare would grade the stimulus.
             pre = await self.spi.rd(addr)

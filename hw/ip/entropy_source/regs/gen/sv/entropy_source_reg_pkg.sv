@@ -39,6 +39,19 @@ package entropy_source_reg_pkg;
     } entropy_source__CTRL__in_t;
 
     typedef struct {
+        logic swwel;
+    } entropy_source__DEBUG_CTRL__SELECT_SIGNAL__in_t;
+
+    typedef struct {
+        logic swwel;
+    } entropy_source__DEBUG_CTRL__SELECT_FREQ_DIV__in_t;
+
+    typedef struct {
+        entropy_source__DEBUG_CTRL__SELECT_SIGNAL__in_t SELECT_SIGNAL;
+        entropy_source__DEBUG_CTRL__SELECT_FREQ_DIV__in_t SELECT_FREQ_DIV;
+    } entropy_source__DEBUG_CTRL__in_t;
+
+    typedef struct {
         logic next;
     } entropy_source__INTR_STATUS__HEALTH_TEST_FAILED__in_t;
 
@@ -101,9 +114,14 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         logic swwel;
+    } entropy_source__FIFO_CTRL__ENABLE__in_t;
+
+    typedef struct {
+        logic swwel;
     } entropy_source__FIFO_CTRL__ENTROPY_CHURN_ENABLE__in_t;
 
     typedef struct {
+        entropy_source__FIFO_CTRL__ENABLE__in_t ENABLE;
         entropy_source__FIFO_CTRL__ENTROPY_CHURN_ENABLE__in_t ENTROPY_CHURN_ENABLE;
     } entropy_source__FIFO_CTRL__in_t;
 
@@ -631,6 +649,14 @@ package entropy_source_reg_pkg;
     } entropy_source__RECOMMENDED_THRESHOLDS__in_t;
 
     typedef struct {
+        logic swwel;
+    } entropy_source__BIW_OBS_CTRL__RAW_ENABLE__in_t;
+
+    typedef struct {
+        entropy_source__BIW_OBS_CTRL__RAW_ENABLE__in_t RAW_ENABLE;
+    } entropy_source__BIW_OBS_CTRL__in_t;
+
+    typedef struct {
         logic [6:0] next;
     } entropy_source__BIW_OBS_STATUS__LEVEL__in_t;
 
@@ -656,6 +682,14 @@ package entropy_source_reg_pkg;
         logic rd_ack;
         entropy_source__BIW_OBS_RDATA__external__fields__in_t rd_data;
     } entropy_source__BIW_OBS_RDATA__external__in_t;
+
+    typedef struct {
+        logic swwel;
+    } entropy_source__NOISE_OBS_CTRL__RAW_ENABLE__in_t;
+
+    typedef struct {
+        entropy_source__NOISE_OBS_CTRL__RAW_ENABLE__in_t RAW_ENABLE;
+    } entropy_source__NOISE_OBS_CTRL__in_t;
 
     typedef struct {
         logic [6:0] next;
@@ -686,6 +720,7 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         entropy_source__CTRL__in_t CTRL;
+        entropy_source__DEBUG_CTRL__in_t DEBUG_CTRL;
         entropy_source__INTR_STATUS__in_t INTR_STATUS;
         entropy_source__SHA256_STATUS__in_t SHA256_STATUS;
         entropy_source__FIFO_CTRL__in_t FIFO_CTRL;
@@ -743,8 +778,10 @@ package entropy_source_reg_pkg;
         entropy_source__ALERT_THRESHOLD__in_t ALERT_THRESHOLD;
         entropy_source__MIN_ENTROPY_H__in_t MIN_ENTROPY_H;
         entropy_source__RECOMMENDED_THRESHOLDS__in_t RECOMMENDED_THRESHOLDS;
+        entropy_source__BIW_OBS_CTRL__in_t BIW_OBS_CTRL;
         entropy_source__BIW_OBS_STATUS__in_t BIW_OBS_STATUS;
         entropy_source__BIW_OBS_RDATA__external__in_t BIW_OBS_RDATA;
+        entropy_source__NOISE_OBS_CTRL__in_t NOISE_OBS_CTRL;
         entropy_source__NOISE_OBS_STATUS__in_t NOISE_OBS_STATUS;
         entropy_source__NOISE_OBS_RDATA__external__in_t NOISE_OBS_RDATA;
     } entropy_source__in_t;

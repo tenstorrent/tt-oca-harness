@@ -30,11 +30,11 @@ module sep_system_csr (
   output output_remap_reg_pkg::output_remap__out_t ap_output_remap_reg_ctrl_o [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0],  // Per-region output-remap register outputs for the AP region window.
   output output_remap_reg_pkg::output_remap__out_t stee_output_remap_reg_ctrl_o [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0],  // Per-region output-remap register outputs for the STEE region window.
 
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter control register outputs for the outbound (SEP to SMN) AXI filter.
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter status written back by the outbound AXI filter.
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [sep_pkg::OutboundFilterNumFilters-1:0],  // Per-filter control register outputs for the outbound (SEP to SMN) AXI filter.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [sep_pkg::OutboundFilterNumFilters-1:0],  // Per-filter status written back by the outbound AXI filter.
 
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter control register outputs for the inbound (SMN to SEP) AXI filter.
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter status written back by the inbound AXI filter.
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [sep_pkg::InboundFilterNumFilters-1:0],  // Per-filter control register outputs for the inbound (SMN to SEP) AXI filter.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [sep_pkg::InboundFilterNumFilters-1:0],  // Per-filter status written back by the inbound AXI filter.
 
   output logic [55:0] sep_global_base_addr_o,  // SEP_GLOBAL_BASE_ADDR register value: base of the
                                                // SEP aperture in the global address map.
@@ -84,22 +84,22 @@ module sep_system_csr (
   ////////////////////////////////////////////////////////////////////////////
 
   // AXI Demux signals
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::SYSTEM_CSR_DEMUX_PORTS-1:0] sep_system_csr_axil_reqs;
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::SYSTEM_CSR_DEMUX_PORTS-1:0] sep_system_csr_axil_resps;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::SystemCsrDemuxPorts-1:0] sep_system_csr_axil_reqs;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::SystemCsrDemuxPorts-1:0] sep_system_csr_axil_resps;
 
-  sep_pkg::system_csr_demux_select_t system_csr_demux_select_aw;
-  sep_pkg::system_csr_demux_select_t system_csr_demux_select_ar;
+  sep_pkg::system_csr_demux_select_e system_csr_demux_select_aw;
+  sep_pkg::system_csr_demux_select_e system_csr_demux_select_ar;
 
   // Outbound Filter signals
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0] outbound_filter_axil_reqs;
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0] outbound_filter_axil_resps;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::OutboundFilterNumFilters-1:0] outbound_filter_axil_reqs;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::OutboundFilterNumFilters-1:0] outbound_filter_axil_resps;
 
   sep_pkg::outbound_filter_select_t outbound_filter_aw_select;
   sep_pkg::outbound_filter_select_t outbound_filter_ar_select;
 
   // Inbound Filter signals
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0] inbound_filter_axil_reqs;
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0] inbound_filter_axil_resps;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::InboundFilterNumFilters-1:0] inbound_filter_axil_reqs;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::InboundFilterNumFilters-1:0] inbound_filter_axil_resps;
 
   sep_pkg::inbound_filter_select_t inbound_filter_aw_select;
   sep_pkg::inbound_filter_select_t inbound_filter_ar_select;
@@ -251,7 +251,7 @@ module sep_system_csr (
     .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
     .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
     .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
-    .NoMstPorts  (sep_pkg::SYSTEM_CSR_DEMUX_PORTS),
+    .NoMstPorts  (sep_pkg::SystemCsrDemuxPorts),
     .MaxTrans    (16),
     .FallThrough (1'b0),
     .SpillAw     (1'b1),
@@ -275,10 +275,10 @@ module sep_system_csr (
   // Alias Remap Register Block - Local Masters
   ////////////////////////////////////////////////////////////////////////////
 
-  localparam int unsigned alias_remap_sel_start_idx = $clog2(
+  localparam int unsigned AliasRemapSelStartIdx = $clog2(
       sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_SIZE
   );
-  localparam int unsigned alias_remap_sel_end_idx = alias_remap_sel_start_idx + sep_pkg::ALIAS_REMAP_SEL_W - 1;
+  localparam int unsigned AliasRemapSelEndIdx = AliasRemapSelStartIdx + sep_pkg::ALIAS_REMAP_SEL_W - 1;
 
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS-1:0] local_master_aR_reqs;
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS-1:0] local_master_aR_resps;
@@ -304,52 +304,50 @@ module sep_system_csr (
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
     .slv_req_i       (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP]),
-    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP].aw.addr[alias_remap_sel_end_idx:alias_remap_sel_start_idx]),  // 0x20 spacing: bits [8:5] for 16 regions
-    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP].ar.addr[alias_remap_sel_end_idx:alias_remap_sel_start_idx]),  // 0x20 spacing: bits [8:5] for 16 regions
+    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP].aw.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: bits [8:5] for 16 regions
+    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP].ar.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: bits [8:5] for 16 regions
     .slv_resp_o      (sep_system_csr_axil_resps[sep_pkg::LOCAL_MASTER_ALIAS_REMAP]),
     .mst_reqs_o      (local_master_aR_reqs),
     .mst_resps_i     (local_master_aR_resps)
   );
 
-  generate
-    for (
-        genvar i = 0; i < sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS; i++
-    ) begin : gen_local_master_alias_remap_reg
-      alias_remap_reg u_local_masters_alias_remap_reg (
-        .clk            (clk_i),
-        .arst_n         (rst_ni),
-        .s_axil_awready (local_master_aR_resps[i].aw_ready),
-        .s_axil_awvalid (local_master_aR_reqs[i].aw_valid),
-        .s_axil_awaddr  (local_master_aR_reqs[i].aw.addr[4:0]),  // 0x20 spacing: bits [4:0] for register offset
-        .s_axil_awprot  (local_master_aR_reqs[i].aw.prot),
-        .s_axil_wready  (local_master_aR_resps[i].w_ready),
-        .s_axil_wvalid  (local_master_aR_reqs[i].w_valid),
-        .s_axil_wdata   (local_master_aR_reqs[i].w.data),
-        .s_axil_wstrb   (local_master_aR_reqs[i].w.strb),
-        .s_axil_bready  (local_master_aR_reqs[i].b_ready),
-        .s_axil_bvalid  (local_master_aR_resps[i].b_valid),
-        .s_axil_bresp   (local_master_aR_resps[i].b.resp),
-        .s_axil_arready (local_master_aR_resps[i].ar_ready),
-        .s_axil_arvalid (local_master_aR_reqs[i].ar_valid),
-        .s_axil_araddr  (local_master_aR_reqs[i].ar.addr[4:0]),  // 0x20 spacing: bits [4:0] for register offset
-        .s_axil_arprot  (local_master_aR_reqs[i].ar.prot),
-        .s_axil_rready  (local_master_aR_reqs[i].r_ready),
-        .s_axil_rvalid  (local_master_aR_resps[i].r_valid),
-        .s_axil_rdata   (local_master_aR_resps[i].r.data),
-        .s_axil_rresp   (local_master_aR_resps[i].r.resp),
-        .hwif_out       (local_masters_alias_remap_reg_ctrl_o[i])
-      );
-    end
-  endgenerate
+  for (
+      genvar i = 0; i < sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS; i++
+  ) begin : gen_local_master_alias_remap_reg
+    alias_remap_reg u_local_masters_alias_remap_reg (
+      .clk            (clk_i),
+      .arst_n         (rst_ni),
+      .s_axil_awready (local_master_aR_resps[i].aw_ready),
+      .s_axil_awvalid (local_master_aR_reqs[i].aw_valid),
+      .s_axil_awaddr  (local_master_aR_reqs[i].aw.addr[4:0]),  // 0x20 spacing: bits [4:0] for register offset
+      .s_axil_awprot  (local_master_aR_reqs[i].aw.prot),
+      .s_axil_wready  (local_master_aR_resps[i].w_ready),
+      .s_axil_wvalid  (local_master_aR_reqs[i].w_valid),
+      .s_axil_wdata   (local_master_aR_reqs[i].w.data),
+      .s_axil_wstrb   (local_master_aR_reqs[i].w.strb),
+      .s_axil_bready  (local_master_aR_reqs[i].b_ready),
+      .s_axil_bvalid  (local_master_aR_resps[i].b_valid),
+      .s_axil_bresp   (local_master_aR_resps[i].b.resp),
+      .s_axil_arready (local_master_aR_resps[i].ar_ready),
+      .s_axil_arvalid (local_master_aR_reqs[i].ar_valid),
+      .s_axil_araddr  (local_master_aR_reqs[i].ar.addr[4:0]),  // 0x20 spacing: bits [4:0] for register offset
+      .s_axil_arprot  (local_master_aR_reqs[i].ar.prot),
+      .s_axil_rready  (local_master_aR_reqs[i].r_ready),
+      .s_axil_rvalid  (local_master_aR_resps[i].r_valid),
+      .s_axil_rdata   (local_master_aR_resps[i].r.data),
+      .s_axil_rresp   (local_master_aR_resps[i].r.resp),
+      .hwif_out       (local_masters_alias_remap_reg_ctrl_o[i])
+    );
+  end
 
   ////////////////////////////////////////////////////////////////////////////
   // Output Remap Register Block - AP
   ////////////////////////////////////////////////////////////////////////////
 
-  localparam int unsigned ap_remap_sel_start_idx = $clog2(
+  localparam int unsigned ApRemapSelStartIdx = $clog2(
       sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_SIZE
   );
-  localparam int unsigned ap_remap_sel_end_idx = ap_remap_sel_start_idx + sep_pkg::AP_REMAP_SEL_W - 1;
+  localparam int unsigned ApRemapSelEndIdx = ApRemapSelStartIdx + sep_pkg::AP_REMAP_SEL_W - 1;
 
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0] ap_output_remap_reqs;
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0] ap_output_remap_resps;
@@ -375,52 +373,48 @@ module sep_system_csr (
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
     .slv_req_i       (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP]),
-    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].aw.addr[ap_remap_sel_end_idx:ap_remap_sel_start_idx]),  // 0x8 spacing: bits [6:3] for 16 regions
-    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].ar.addr[ap_remap_sel_end_idx:ap_remap_sel_start_idx]),  // 0x8 spacing: bits [6:3] for 16 regions
+    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].aw.addr[ApRemapSelEndIdx:ApRemapSelStartIdx]),  // 0x8 spacing: bits [6:3] for 16 regions
+    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].ar.addr[ApRemapSelEndIdx:ApRemapSelStartIdx]),  // 0x8 spacing: bits [6:3] for 16 regions
     .slv_resp_o      (sep_system_csr_axil_resps[sep_pkg::AP_OUTPUT_REMAP]),
     .mst_reqs_o      (ap_output_remap_reqs),
     .mst_resps_i     (ap_output_remap_resps)
   );
 
-  generate
-    for (
-        genvar i = 0; i < sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS; i++
-    ) begin : gen_ap_output_remap_reg
-      output_remap_reg u_ap_output_remap_reg (
-        .clk            (clk_i),
-        .arst_n         (rst_ni),
-        .s_axil_awready (ap_output_remap_resps[i].aw_ready),
-        .s_axil_awvalid (ap_output_remap_reqs[i].aw_valid),
-        .s_axil_awaddr  ({1'b0, ap_output_remap_reqs[i].aw.addr[2:0]}),
-        .s_axil_awprot  (ap_output_remap_reqs[i].aw.prot),
-        .s_axil_wready  (ap_output_remap_resps[i].w_ready),
-        .s_axil_wvalid  (ap_output_remap_reqs[i].w_valid),
-        .s_axil_wdata   (ap_output_remap_reqs[i].w.data),
-        .s_axil_wstrb   (ap_output_remap_reqs[i].w.strb),
-        .s_axil_bready  (ap_output_remap_reqs[i].b_ready),
-        .s_axil_bvalid  (ap_output_remap_resps[i].b_valid),
-        .s_axil_bresp   (ap_output_remap_resps[i].b.resp),
-        .s_axil_arready (ap_output_remap_resps[i].ar_ready),
-        .s_axil_arvalid (ap_output_remap_reqs[i].ar_valid),
-        .s_axil_araddr  ({1'b0, ap_output_remap_reqs[i].ar.addr[2:0]}),
-        .s_axil_arprot  (ap_output_remap_reqs[i].ar.prot),
-        .s_axil_rready  (ap_output_remap_reqs[i].r_ready),
-        .s_axil_rvalid  (ap_output_remap_resps[i].r_valid),
-        .s_axil_rdata   (ap_output_remap_resps[i].r.data),
-        .s_axil_rresp   (ap_output_remap_resps[i].r.resp),
-        .hwif_out       (ap_output_remap_reg_ctrl_o[i])
-      );
-    end
-  endgenerate
+  for (genvar i = 0; i < sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS; i++) begin : gen_ap_output_remap_reg
+    output_remap_reg u_ap_output_remap_reg (
+      .clk            (clk_i),
+      .arst_n         (rst_ni),
+      .s_axil_awready (ap_output_remap_resps[i].aw_ready),
+      .s_axil_awvalid (ap_output_remap_reqs[i].aw_valid),
+      .s_axil_awaddr  ({1'b0, ap_output_remap_reqs[i].aw.addr[2:0]}),
+      .s_axil_awprot  (ap_output_remap_reqs[i].aw.prot),
+      .s_axil_wready  (ap_output_remap_resps[i].w_ready),
+      .s_axil_wvalid  (ap_output_remap_reqs[i].w_valid),
+      .s_axil_wdata   (ap_output_remap_reqs[i].w.data),
+      .s_axil_wstrb   (ap_output_remap_reqs[i].w.strb),
+      .s_axil_bready  (ap_output_remap_reqs[i].b_ready),
+      .s_axil_bvalid  (ap_output_remap_resps[i].b_valid),
+      .s_axil_bresp   (ap_output_remap_resps[i].b.resp),
+      .s_axil_arready (ap_output_remap_resps[i].ar_ready),
+      .s_axil_arvalid (ap_output_remap_reqs[i].ar_valid),
+      .s_axil_araddr  ({1'b0, ap_output_remap_reqs[i].ar.addr[2:0]}),
+      .s_axil_arprot  (ap_output_remap_reqs[i].ar.prot),
+      .s_axil_rready  (ap_output_remap_reqs[i].r_ready),
+      .s_axil_rvalid  (ap_output_remap_resps[i].r_valid),
+      .s_axil_rdata   (ap_output_remap_resps[i].r.data),
+      .s_axil_rresp   (ap_output_remap_resps[i].r.resp),
+      .hwif_out       (ap_output_remap_reg_ctrl_o[i])
+    );
+  end
 
   ////////////////////////////////////////////////////////////////////////////
   // Alias Remap Register Block - STEE
   ////////////////////////////////////////////////////////////////////////////
 
-  localparam int unsigned stee_remap_sel_start_idx = $clog2(
+  localparam int unsigned SteeRemapSelStartIdx = $clog2(
       sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_SIZE
   );
-  localparam int unsigned stee_remap_sel_end_idx = stee_remap_sel_start_idx + sep_pkg::STEE_REMAP_SEL_W - 1;
+  localparam int unsigned SteeRemapSelEndIdx = SteeRemapSelStartIdx + sep_pkg::STEE_REMAP_SEL_W - 1;
 
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0] stee_output_remap_reqs;
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0] stee_output_remap_resps;
@@ -446,51 +440,49 @@ module sep_system_csr (
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
     .slv_req_i       (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP]),
-    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP].aw.addr[stee_remap_sel_end_idx:stee_remap_sel_start_idx]),  // 0x8 spacing: bits [6:3] for 16 regions
-    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP].ar.addr[stee_remap_sel_end_idx:stee_remap_sel_start_idx]),  // 0x8 spacing: bits [6:3] for 16 regions
+    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP].aw.addr[SteeRemapSelEndIdx:SteeRemapSelStartIdx]),  // 0x8 spacing: bits [6:3] for 16 regions
+    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP].ar.addr[SteeRemapSelEndIdx:SteeRemapSelStartIdx]),  // 0x8 spacing: bits [6:3] for 16 regions
     .slv_resp_o      (sep_system_csr_axil_resps[sep_pkg::STEE_OUTPUT_REMAP]),
     .mst_reqs_o      (stee_output_remap_reqs),
     .mst_resps_i     (stee_output_remap_resps)
   );
 
-  generate
-    for (
-        genvar i = 0; i < sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS; i++
-    ) begin : gen_stee_output_remap_reg
-      output_remap_reg u_stee_output_remap_reg (
-        .clk            (clk_i),
-        .arst_n         (rst_ni),
-        .s_axil_awready (stee_output_remap_resps[i].aw_ready),
-        .s_axil_awvalid (stee_output_remap_reqs[i].aw_valid),
-        .s_axil_awaddr  ({1'b0, stee_output_remap_reqs[i].aw.addr[2:0]}),
-        .s_axil_awprot  (stee_output_remap_reqs[i].aw.prot),
-        .s_axil_wready  (stee_output_remap_resps[i].w_ready),
-        .s_axil_wvalid  (stee_output_remap_reqs[i].w_valid),
-        .s_axil_wdata   (stee_output_remap_reqs[i].w.data),
-        .s_axil_wstrb   (stee_output_remap_reqs[i].w.strb),
-        .s_axil_bready  (stee_output_remap_reqs[i].b_ready),
-        .s_axil_bvalid  (stee_output_remap_resps[i].b_valid),
-        .s_axil_bresp   (stee_output_remap_resps[i].b.resp),
-        .s_axil_arready (stee_output_remap_resps[i].ar_ready),
-        .s_axil_arvalid (stee_output_remap_reqs[i].ar_valid),
-        .s_axil_araddr  ({1'b0, stee_output_remap_reqs[i].ar.addr[2:0]}),
-        .s_axil_arprot  (stee_output_remap_reqs[i].ar.prot),
-        .s_axil_rready  (stee_output_remap_reqs[i].r_ready),
-        .s_axil_rvalid  (stee_output_remap_resps[i].r_valid),
-        .s_axil_rdata   (stee_output_remap_resps[i].r.data),
-        .s_axil_rresp   (stee_output_remap_resps[i].r.resp),
-        .hwif_out       (stee_output_remap_reg_ctrl_o[i])
-      );
-    end
-  endgenerate
+  for (
+      genvar i = 0; i < sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS; i++
+  ) begin : gen_stee_output_remap_reg
+    output_remap_reg u_stee_output_remap_reg (
+      .clk            (clk_i),
+      .arst_n         (rst_ni),
+      .s_axil_awready (stee_output_remap_resps[i].aw_ready),
+      .s_axil_awvalid (stee_output_remap_reqs[i].aw_valid),
+      .s_axil_awaddr  ({1'b0, stee_output_remap_reqs[i].aw.addr[2:0]}),
+      .s_axil_awprot  (stee_output_remap_reqs[i].aw.prot),
+      .s_axil_wready  (stee_output_remap_resps[i].w_ready),
+      .s_axil_wvalid  (stee_output_remap_reqs[i].w_valid),
+      .s_axil_wdata   (stee_output_remap_reqs[i].w.data),
+      .s_axil_wstrb   (stee_output_remap_reqs[i].w.strb),
+      .s_axil_bready  (stee_output_remap_reqs[i].b_ready),
+      .s_axil_bvalid  (stee_output_remap_resps[i].b_valid),
+      .s_axil_bresp   (stee_output_remap_resps[i].b.resp),
+      .s_axil_arready (stee_output_remap_resps[i].ar_ready),
+      .s_axil_arvalid (stee_output_remap_reqs[i].ar_valid),
+      .s_axil_araddr  ({1'b0, stee_output_remap_reqs[i].ar.addr[2:0]}),
+      .s_axil_arprot  (stee_output_remap_reqs[i].ar.prot),
+      .s_axil_rready  (stee_output_remap_reqs[i].r_ready),
+      .s_axil_rvalid  (stee_output_remap_resps[i].r_valid),
+      .s_axil_rdata   (stee_output_remap_resps[i].r.data),
+      .s_axil_rresp   (stee_output_remap_resps[i].r.resp),
+      .hwif_out       (stee_output_remap_reg_ctrl_o[i])
+    );
+  end
 
   ////////////////////////////////////////////////////////////////////////////
   // Outbound Filter Register Block
   ////////////////////////////////////////////////////////////////////////////
 
   always_comb begin
-    outbound_filter_aw_select = sep_system_csr_axil_reqs[sep_pkg::OUTBOUND_FILTER].aw.addr[5+:$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)];
-    outbound_filter_ar_select = sep_system_csr_axil_reqs[sep_pkg::OUTBOUND_FILTER].ar.addr[5+:$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)];
+    outbound_filter_aw_select = sep_system_csr_axil_reqs[sep_pkg::OUTBOUND_FILTER].aw.addr[5+:$clog2(sep_pkg::OutboundFilterNumFilters)];
+    outbound_filter_ar_select = sep_system_csr_axil_reqs[sep_pkg::OUTBOUND_FILTER].ar.addr[5+:$clog2(sep_pkg::OutboundFilterNumFilters)];
   end
 
   axi_lite_demux #(
@@ -501,7 +493,7 @@ module sep_system_csr (
     .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
     .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
     .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
-    .NoMstPorts  (sep_pkg::OUTBOUND_FILTER_NUM_FILTERS),
+    .NoMstPorts  (sep_pkg::OutboundFilterNumFilters),
     .MaxTrans    (16),
     .SpillAw     (1'b1),
     .SpillW      (1'b0),
@@ -520,95 +512,93 @@ module sep_system_csr (
     .mst_resps_i     (outbound_filter_axil_resps)
   );
 
-  generate
-    for (
-        genvar f = 0; f < sep_pkg::OUTBOUND_FILTER_NUM_FILTERS; f = f + 1
-    ) begin : gen_outbound_filter_reg
+  for (
+      genvar f = 0; f < sep_pkg::OutboundFilterNumFilters; f = f + 1
+  ) begin : gen_outbound_filter_reg
 
-      // Intermediate signals for conditional connection based on locked status
-      sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t filter_reg_req, locked_reg_req;
-      sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t filter_reg_resp, locked_reg_resp;
+    // Intermediate signals for conditional connection based on locked status
+    sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t filter_reg_req, locked_reg_req;
+    sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t filter_reg_resp, locked_reg_resp;
 
-      wire filter_reg_aw_select = outbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (outbound_filter_axil_reqs[f].aw_valid || outbound_filter_axil_reqs[f].w_valid);
+    wire filter_reg_aw_select = outbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (outbound_filter_axil_reqs[f].aw_valid || outbound_filter_axil_reqs[f].w_valid);
 
-      axi_lite_demux #(
-        .aw_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_aw_chan_t),
-        .w_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_w_chan_t),
-        .b_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_b_chan_t),
-        .ar_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_ar_chan_t),
-        .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
-        .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
-        .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
-        .NoMstPorts  (2),
-        .MaxTrans    (1),
-        .FallThrough (1'b0),
-        .SpillAw     (1'b1),
-        .SpillW      (1'b0),
-        .SpillB      (1'b0),
-        .SpillAr     (1'b1),
-        .SpillR      (1'b0)
-      ) u_outbound_filter_axil_demux (
-        .clk_i            (clk_i),
-        .rst_ni           (rst_ni),
-        .test_i           (test_en_i),
-        .slv_req_i        (outbound_filter_axil_reqs[f]),
-        .slv_resp_o       (outbound_filter_axil_resps[f]),
-        .slv_aw_select_i  (filter_reg_aw_select),
-        .slv_ar_select_i  (1'b0), // Always pass through reads
-        .mst_reqs_o       ({locked_reg_req, filter_reg_req}),
-        .mst_resps_i      ({locked_reg_resp, filter_reg_resp})
-      );
+    axi_lite_demux #(
+      .aw_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_aw_chan_t),
+      .w_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_w_chan_t),
+      .b_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_b_chan_t),
+      .ar_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_ar_chan_t),
+      .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
+      .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
+      .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
+      .NoMstPorts  (2),
+      .MaxTrans    (1),
+      .FallThrough (1'b0),
+      .SpillAw     (1'b1),
+      .SpillW      (1'b0),
+      .SpillB      (1'b0),
+      .SpillAr     (1'b1),
+      .SpillR      (1'b0)
+    ) u_outbound_filter_axil_demux (
+      .clk_i            (clk_i),
+      .rst_ni           (rst_ni),
+      .test_i           (test_en_i),
+      .slv_req_i        (outbound_filter_axil_reqs[f]),
+      .slv_resp_o       (outbound_filter_axil_resps[f]),
+      .slv_aw_select_i  (filter_reg_aw_select),
+      .slv_ar_select_i  (1'b0), // Always pass through reads
+      .mst_reqs_o       ({locked_reg_req, filter_reg_req}),
+      .mst_resps_i      ({locked_reg_resp, filter_reg_resp})
+    );
 
-      filter_ctrl_reg u_outbound_filter_reg (
-        .clk            (clk_i),
-        .arst_n         (rst_ni),
-        .s_axil_awready (filter_reg_resp.aw_ready),
-        .s_axil_awvalid (filter_reg_req.aw_valid),
-        .s_axil_awaddr  (filter_reg_req.aw.addr[filter_ctrl_reg_pkg::FILTER_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
-        .s_axil_awprot  (filter_reg_req.aw.prot),
-        .s_axil_wready  (filter_reg_resp.w_ready),
-        .s_axil_wvalid  (filter_reg_req.w_valid),
-        .s_axil_wdata   (filter_reg_req.w.data),
-        .s_axil_wstrb   (filter_reg_req.w.strb),
-        .s_axil_bready  (filter_reg_req.b_ready),
-        .s_axil_bvalid  (filter_reg_resp.b_valid),
-        .s_axil_bresp   (filter_reg_resp.b.resp),
-        .s_axil_arready (filter_reg_resp.ar_ready),
-        .s_axil_arvalid (filter_reg_req.ar_valid),
-        .s_axil_araddr  (filter_reg_req.ar.addr[filter_ctrl_reg_pkg::FILTER_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
-        .s_axil_arprot  (filter_reg_req.ar.prot),
-        .s_axil_rready  (filter_reg_req.r_ready),
-        .s_axil_rvalid  (filter_reg_resp.r_valid),
-        .s_axil_rdata   (filter_reg_resp.r.data),
-        .s_axil_rresp   (filter_reg_resp.r.resp),
+    filter_ctrl_reg u_outbound_filter_reg (
+      .clk            (clk_i),
+      .arst_n         (rst_ni),
+      .s_axil_awready (filter_reg_resp.aw_ready),
+      .s_axil_awvalid (filter_reg_req.aw_valid),
+      .s_axil_awaddr  (filter_reg_req.aw.addr[filter_ctrl_reg_pkg::FILTER_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
+      .s_axil_awprot  (filter_reg_req.aw.prot),
+      .s_axil_wready  (filter_reg_resp.w_ready),
+      .s_axil_wvalid  (filter_reg_req.w_valid),
+      .s_axil_wdata   (filter_reg_req.w.data),
+      .s_axil_wstrb   (filter_reg_req.w.strb),
+      .s_axil_bready  (filter_reg_req.b_ready),
+      .s_axil_bvalid  (filter_reg_resp.b_valid),
+      .s_axil_bresp   (filter_reg_resp.b.resp),
+      .s_axil_arready (filter_reg_resp.ar_ready),
+      .s_axil_arvalid (filter_reg_req.ar_valid),
+      .s_axil_araddr  (filter_reg_req.ar.addr[filter_ctrl_reg_pkg::FILTER_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
+      .s_axil_arprot  (filter_reg_req.ar.prot),
+      .s_axil_rready  (filter_reg_req.r_ready),
+      .s_axil_rvalid  (filter_reg_resp.r_valid),
+      .s_axil_rdata   (filter_reg_resp.r.data),
+      .s_axil_rresp   (filter_reg_resp.r.resp),
 
-        .hwif_in        (outbound_filter_status_i[f]),
-        .hwif_out       (outbound_filter_ctrl_o[f])
-      );
+      .hwif_in        (outbound_filter_status_i[f]),
+      .hwif_out       (outbound_filter_ctrl_o[f])
+    );
 
-      // AXI-Lite error slave for locked filters
-      prim_axi_lite_err_slv #(
-        .AXI_ADDR_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH),
-        .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
-        .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
-        .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
-      ) u_err_slv (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .axil_req_i  (locked_reg_req),
-        .axil_resp_o (locked_reg_resp)
-      );
+    // AXI-Lite error slave for locked filters
+    prim_axi_lite_err_slv #(
+      .AXI_ADDR_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH),
+      .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
+      .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
+      .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
+    ) u_err_slv (
+      .clk_i       (clk_i),
+      .rst_ni      (rst_ni),
+      .axil_req_i  (locked_reg_req),
+      .axil_resp_o (locked_reg_resp)
+    );
 
-    end
-  endgenerate
+  end
 
   ////////////////////////////////////////////////////////////////////////////
   // Inbound Filter Register Block
   ////////////////////////////////////////////////////////////////////////////
 
   always_comb begin
-    inbound_filter_aw_select = sep_system_csr_axil_reqs[sep_pkg::INBOUND_FILTER].aw.addr[5+:$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)];
-    inbound_filter_ar_select = sep_system_csr_axil_reqs[sep_pkg::INBOUND_FILTER].ar.addr[5+:$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)];
+    inbound_filter_aw_select = sep_system_csr_axil_reqs[sep_pkg::INBOUND_FILTER].aw.addr[5+:$clog2(sep_pkg::InboundFilterNumFilters)];
+    inbound_filter_ar_select = sep_system_csr_axil_reqs[sep_pkg::INBOUND_FILTER].ar.addr[5+:$clog2(sep_pkg::InboundFilterNumFilters)];
   end
 
   axi_lite_demux #(
@@ -619,7 +609,7 @@ module sep_system_csr (
     .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
     .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
     .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
-    .NoMstPorts  (sep_pkg::INBOUND_FILTER_NUM_FILTERS),
+    .NoMstPorts  (sep_pkg::InboundFilterNumFilters),
     .MaxTrans    (1),
     .FallThrough (1'b0),
     .SpillAw     (1'b1),
@@ -639,87 +629,83 @@ module sep_system_csr (
     .mst_resps_i     (inbound_filter_axil_resps)
   );
 
-  generate
-    for (
-        genvar f = 0; f < sep_pkg::INBOUND_FILTER_NUM_FILTERS; f = f + 1
-    ) begin : gen_inbound_filter_reg
+  for (genvar f = 0; f < sep_pkg::InboundFilterNumFilters; f = f + 1) begin : gen_inbound_filter_reg
 
-      // Intermediate signals for conditional connection based on locked status
-      sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t filter_reg_req, locked_reg_req;
-      sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t filter_reg_resp, locked_reg_resp;
+    // Intermediate signals for conditional connection based on locked status
+    sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t filter_reg_req, locked_reg_req;
+    sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t filter_reg_resp, locked_reg_resp;
 
-      wire filter_reg_aw_select = inbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (inbound_filter_axil_reqs[f].aw_valid || inbound_filter_axil_reqs[f].w_valid);
+    wire filter_reg_aw_select = inbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value && (inbound_filter_axil_reqs[f].aw_valid || inbound_filter_axil_reqs[f].w_valid);
 
-      axi_lite_demux #(
-        .aw_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_aw_chan_t),
-        .w_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_w_chan_t),
-        .b_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_b_chan_t),
-        .ar_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_ar_chan_t),
-        .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
-        .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
-        .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
-        .NoMstPorts  (2),
-        .MaxTrans    (1),
-        .FallThrough (1'b0),
-        .SpillAw     (1'b1),
-        .SpillW      (1'b0),
-        .SpillB      (1'b0),
-        .SpillAr     (1'b1),
-        .SpillR      (1'b0)
-      ) u_inbound_filter_axil_demux (
-        .clk_i            (clk_i),
-        .rst_ni           (rst_ni),
-        .test_i           (test_en_i),
-        .slv_req_i        (inbound_filter_axil_reqs[f]),
-        .slv_resp_o       (inbound_filter_axil_resps[f]),
-        .slv_aw_select_i  (filter_reg_aw_select),
-        .slv_ar_select_i  (1'b0), // Always pass through reads
-        .mst_reqs_o       ({locked_reg_req, filter_reg_req}),
-        .mst_resps_i      ({locked_reg_resp, filter_reg_resp})
-      );
+    axi_lite_demux #(
+      .aw_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_aw_chan_t),
+      .w_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_w_chan_t),
+      .b_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_b_chan_t),
+      .ar_chan_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_ar_chan_t),
+      .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
+      .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
+      .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
+      .NoMstPorts  (2),
+      .MaxTrans    (1),
+      .FallThrough (1'b0),
+      .SpillAw     (1'b1),
+      .SpillW      (1'b0),
+      .SpillB      (1'b0),
+      .SpillAr     (1'b1),
+      .SpillR      (1'b0)
+    ) u_inbound_filter_axil_demux (
+      .clk_i            (clk_i),
+      .rst_ni           (rst_ni),
+      .test_i           (test_en_i),
+      .slv_req_i        (inbound_filter_axil_reqs[f]),
+      .slv_resp_o       (inbound_filter_axil_resps[f]),
+      .slv_aw_select_i  (filter_reg_aw_select),
+      .slv_ar_select_i  (1'b0), // Always pass through reads
+      .mst_reqs_o       ({locked_reg_req, filter_reg_req}),
+      .mst_resps_i      ({locked_reg_resp, filter_reg_resp})
+    );
 
-      filter_ctrl_reg u_inbound_filter_reg (
-        .clk            (clk_i),
-        .arst_n         (rst_ni),
-        .s_axil_awready (filter_reg_resp.aw_ready),
-        .s_axil_awvalid (filter_reg_req.aw_valid),
-        .s_axil_awaddr  (filter_reg_req.aw.addr[filter_ctrl_reg_pkg::FILTER_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
-        .s_axil_awprot  (filter_reg_req.aw.prot),
-        .s_axil_wready  (filter_reg_resp.w_ready),
-        .s_axil_wvalid  (filter_reg_req.w_valid),
-        .s_axil_wdata   (filter_reg_req.w.data),
-        .s_axil_wstrb   (filter_reg_req.w.strb),
-        .s_axil_bready  (filter_reg_req.b_ready),
-        .s_axil_bvalid  (filter_reg_resp.b_valid),
-        .s_axil_bresp   (filter_reg_resp.b.resp),
-        .s_axil_arready (filter_reg_resp.ar_ready),
-        .s_axil_arvalid (filter_reg_req.ar_valid),
-        .s_axil_araddr  (filter_reg_req.ar.addr[filter_ctrl_reg_pkg::FILTER_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
-        .s_axil_arprot  (filter_reg_req.ar.prot),
-        .s_axil_rready  (filter_reg_req.r_ready),
-        .s_axil_rvalid  (filter_reg_resp.r_valid),
-        .s_axil_rdata   (filter_reg_resp.r.data),
-        .s_axil_rresp   (filter_reg_resp.r.resp),
+    filter_ctrl_reg u_inbound_filter_reg (
+      .clk            (clk_i),
+      .arst_n         (rst_ni),
+      .s_axil_awready (filter_reg_resp.aw_ready),
+      .s_axil_awvalid (filter_reg_req.aw_valid),
+      .s_axil_awaddr  (filter_reg_req.aw.addr[filter_ctrl_reg_pkg::FILTER_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
+      .s_axil_awprot  (filter_reg_req.aw.prot),
+      .s_axil_wready  (filter_reg_resp.w_ready),
+      .s_axil_wvalid  (filter_reg_req.w_valid),
+      .s_axil_wdata   (filter_reg_req.w.data),
+      .s_axil_wstrb   (filter_reg_req.w.strb),
+      .s_axil_bready  (filter_reg_req.b_ready),
+      .s_axil_bvalid  (filter_reg_resp.b_valid),
+      .s_axil_bresp   (filter_reg_resp.b.resp),
+      .s_axil_arready (filter_reg_resp.ar_ready),
+      .s_axil_arvalid (filter_reg_req.ar_valid),
+      .s_axil_araddr  (filter_reg_req.ar.addr[filter_ctrl_reg_pkg::FILTER_CTRL_REG_MIN_ADDR_WIDTH-1:0]),
+      .s_axil_arprot  (filter_reg_req.ar.prot),
+      .s_axil_rready  (filter_reg_req.r_ready),
+      .s_axil_rvalid  (filter_reg_resp.r_valid),
+      .s_axil_rdata   (filter_reg_resp.r.data),
+      .s_axil_rresp   (filter_reg_resp.r.resp),
 
-        .hwif_in        (inbound_filter_status_i[f]),
-        .hwif_out       (inbound_filter_ctrl_o[f])
-      );
+      .hwif_in        (inbound_filter_status_i[f]),
+      .hwif_out       (inbound_filter_ctrl_o[f])
+    );
 
-      // AXI-Lite error slave for locked filters
-      prim_axi_lite_err_slv #(
-        .AXI_ADDR_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH),
-        .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
-        .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
-        .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
-      ) u_err_slv (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .axil_req_i  (locked_reg_req),
-        .axil_resp_o (locked_reg_resp)
-      );
+    // AXI-Lite error slave for locked filters
+    prim_axi_lite_err_slv #(
+      .AXI_ADDR_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_ADDR_WIDTH),
+      .AXI_DATA_WIDTH (sep_pkg::SEP_SYSTEM_PERIPHERALS_SYSTEM_CSR_AXI_LITE_DATA_WIDTH),
+      .axil_req_t     (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
+      .axil_resp_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t)
+    ) u_err_slv (
+      .clk_i       (clk_i),
+      .rst_ni      (rst_ni),
+      .axil_req_i  (locked_reg_req),
+      .axil_resp_o (locked_reg_resp)
+    );
 
-    end
-  endgenerate
+  end
 
   ////////////////////////////////////////////////////////////////////////////
   // SEP CPU Control Register Block

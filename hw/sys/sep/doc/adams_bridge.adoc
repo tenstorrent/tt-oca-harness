@@ -53,8 +53,8 @@ design, so its bus pipeline ends in AHB-lite rather than TL-UL.
 `sep_crypto_abr_wrapper` narrows its 64-bit AXI4 slave port to 32 bits,
 converts it to AXI4-lite, and drives `abr_top` through `axi_lite_to_ahb`, which
 issues one single AHB transfer at a time and returns its response before it
-accepts the next access. The wrapper occupies a 64 kB aperture at
-`0x1094_0000`, decoded as port `SEP_CRYPTO_AXI_ABR` of the crypto demux.
+accepts the next access. The wrapper is port `SEP_CRYPTO_AXI_ABR` of the crypto
+demux and occupies a 64 kB aperture at `0x1094_0000`.
 
 [[abr-access-size,ABR access size]]
 Every ABR register is 32 bits wide, and the aperture is accessed in words:
@@ -78,24 +78,25 @@ of masters. They are performed one at a time, and each returns the value of the
 address it names.
 
 [[abr-aperture-decode]]
-Inside that aperture there is no further decode. The vendored register block
-consumes all sixteen address bits and applies no address-validity or permission
-check, so the window is fully consumed but not fully populated: 24,160 of its
-65,536 bytes are defined. Objects sit at coarse offsets with the space between
-them unused -- most on a 4 kB boundary, the interrupt block at `0x8100`,
-`MLKEM_MSG` at `0x9080` and `MLKEM_CIPHERTEXT` at `0xB800` -- and the map ends
-at `0xC018`, leaving the last 16,360 bytes undefined.
+The crypto demux decodes the aperture only as far as the register map extends.
+It forwards an offset inside that extent to ABR and answers every access past
+it with DECERR itself, whatever its size or strobes.
+
+Inside the extent there is no further decode. The vendored register block
+consumes every offset bit and applies no address-validity or permission check,
+so the extent is fully consumed but not fully populated: register objects sit
+at coarse offsets with unused space between them.
 
 ifdef::backend-html5[]
 The xref:sep:memory_map.adoc#sep-memory-map[SEP memory map] states how a word
-access to an unpopulated offset answers.
+access to an unpopulated offset answers, inside the extent and past it.
 endif::backend-html5[]
 ifdef::backend-pdf[]
 The <<sep-memory-map,SEP memory map>> states how a word access to an
-unpopulated offset answers.
+unpopulated offset answers, inside the extent and past it.
 endif::backend-pdf[]
-A partial-word write is answered with SLVERR wherever it lands
-(<<abr-access-size>>). ABR never drives `hresp` to error, so the AHB error
+A partial-word write inside the extent is answered with SLVERR wherever it
+lands (<<abr-access-size>>). ABR never drives `hresp` to error, so the AHB error
 response its slave interface implements is unreachable. A burst is answered
 ifdef::backend-html5[]
 with DECERR by the demux (xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]).
@@ -104,9 +105,10 @@ ifdef::backend-pdf[]
 with DECERR by the demux (<<crypto-single-beat-only>>).
 endif::backend-pdf[]
 Software shall not rely on a bus error to detect a malformed ABR register
-address.
+address inside the extent.
 
-NOTE: This follows from the vendored collateral rather than a SEP decision.
+NOTE: The absence of decode inside the extent follows from the vendored
+collateral rather than a SEP decision.
 `abr_reg.sv` is generated in the Adams Bridge repository, not by the OCAH
 register flow, and address-validity decode is a PeakRDL-regblock exporter option
 rather than a SystemRDL property; the committed file predates that option.

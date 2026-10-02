@@ -25,20 +25,20 @@ module picorv32_pcpi_crc (
   `include "prim_assert.sv"
   `include "ocah_assert.svh"
 
-  localparam logic [6:0] CRC_OPCODE_CUSTOM0 = 7'b0001011;
-  localparam logic [6:0] CRC_FUNCT7 = 7'b0101100;
-  localparam logic [2:0] CRC_FUNCT3_32C_WORD = 3'b000;
-  localparam logic [2:0] CRC_FUNCT3_32C_BYTE = 3'b001;
-  localparam logic [2:0] CRC_FUNCT3_8_ROHC = 3'b010;
+  localparam logic [6:0] CrcOpcodeCustom0 = 7'b0001011;
+  localparam logic [6:0] CrcFunct7 = 7'b0101100;
+  localparam logic [2:0] CrcFunct332cWord = 3'b000;
+  localparam logic [2:0] CrcFunct332cByte = 3'b001;
+  localparam logic [2:0] CrcFunct38Rohc = 3'b010;
 
-  localparam logic [1:0] CRC_MODE_32C_WORD = 2'b00;
-  localparam logic [1:0] CRC_MODE_32C_BYTE = 2'b01;
-  localparam logic [1:0] CRC_MODE_8_ROHC = 2'b10;
+  localparam logic [1:0] CrcMode32cWord = 2'b00;
+  localparam logic [1:0] CrcMode32cByte = 2'b01;
+  localparam logic [1:0] CrcMode8Rohc = 2'b10;
 
-  localparam logic [31:0] CRC32C_POLY = 32'h82F6_3B78;
-  localparam logic [31:0] CRC32C_STATE_MASK = 32'hFFFF_FFFF;
-  localparam logic [31:0] CRC8_ROHC_POLY = 32'h0000_00E0;
-  localparam logic [31:0] CRC8_STATE_MASK = 32'h0000_00FF;
+  localparam logic [31:0] Crc32cPoly = 32'h82F6_3B78;
+  localparam logic [31:0] Crc32cStateMask = 32'hFFFF_FFFF;
+  localparam logic [31:0] Crc8RohcPoly = 32'h0000_00E0;
+  localparam logic [31:0] Crc8StateMask = 32'h0000_00FF;
 
   logic opcode_match;
   logic funct7_match;
@@ -78,22 +78,22 @@ module picorv32_pcpi_crc (
     end
   endfunction
 
-  assign opcode_match    = pcpi_insn_i[6:0] == CRC_OPCODE_CUSTOM0;
-  assign funct7_match    = pcpi_insn_i[31:25] == CRC_FUNCT7;
+  assign opcode_match    = pcpi_insn_i[6:0] == CrcOpcodeCustom0;
+  assign funct7_match    = pcpi_insn_i[31:25] == CrcFunct7;
   assign recognized_word = pcpi_valid_i && opcode_match && funct7_match &&
-                             pcpi_insn_i[14:12] == CRC_FUNCT3_32C_WORD;
+                             pcpi_insn_i[14:12] == CrcFunct332cWord;
   assign recognized_byte = pcpi_valid_i && opcode_match && funct7_match &&
-                             pcpi_insn_i[14:12] == CRC_FUNCT3_32C_BYTE;
+                             pcpi_insn_i[14:12] == CrcFunct332cByte;
   assign recognized_crc8 = pcpi_valid_i && opcode_match && funct7_match &&
-                             pcpi_insn_i[14:12] == CRC_FUNCT3_8_ROHC;
+                             pcpi_insn_i[14:12] == CrcFunct38Rohc;
   assign insn_recognized = recognized_word || recognized_byte || recognized_crc8;
 
   always_comb begin
     unique case (1'b1)
-      recognized_word: decoded_mode = CRC_MODE_32C_WORD;
-      recognized_byte: decoded_mode = CRC_MODE_32C_BYTE;
-      recognized_crc8: decoded_mode = CRC_MODE_8_ROHC;
-      default:         decoded_mode = CRC_MODE_32C_WORD;
+      recognized_word: decoded_mode = CrcMode32cWord;
+      recognized_byte: decoded_mode = CrcMode32cByte;
+      recognized_crc8: decoded_mode = CrcMode8Rohc;
+      default:         decoded_mode = CrcMode32cWord;
     endcase
   end
 
@@ -114,7 +114,7 @@ module picorv32_pcpi_crc (
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       active_q   <= 1'b0;
-      op_mode_q  <= CRC_MODE_32C_WORD;
+      op_mode_q  <= CrcMode32cWord;
       op_state_q <= '0;
       op_data_q  <= '0;
     end else begin
@@ -142,13 +142,13 @@ module picorv32_pcpi_crc (
       clk_i, !rst_ni)
   `OCAH_ASSERT(
       Crc32cByteLowByteOnly_A,
-      engine_done && op_mode_q == CRC_MODE_32C_BYTE |-> engine_result == crc_reflected_byte_step(
-      op_state_q, op_data_q[7:0], CRC32C_POLY, CRC32C_STATE_MASK), clk_i, !rst_ni)
+      engine_done && op_mode_q == CrcMode32cByte |-> engine_result == crc_reflected_byte_step(
+      op_state_q, op_data_q[7:0], Crc32cPoly, Crc32cStateMask), clk_i, !rst_ni)
   `OCAH_ASSERT(
       Crc8LowByteOnlyZeroExtended_A,
-      engine_done && op_mode_q == CRC_MODE_8_ROHC |-> engine_result == crc_reflected_byte_step(
-      op_state_q, op_data_q[7:0], CRC8_ROHC_POLY, CRC8_STATE_MASK) && engine_result[31:8] == '0,
-      clk_i, !rst_ni)
+      engine_done && op_mode_q == CrcMode8Rohc |-> engine_result == crc_reflected_byte_step(
+      op_state_q, op_data_q[7:0], Crc8RohcPoly, Crc8StateMask) && engine_result[31:8] == '0, clk_i,
+      !rst_ni)
 
   `OCAH_ASSERT_PULSE(ReadyPulse_A, pcpi_ready_o, clk_i, !rst_ni)
   `OCAH_ASSERT_PULSE(WritePulse_A, pcpi_wr_o, clk_i, !rst_ni)

@@ -18,8 +18,10 @@
     ((2u << SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bp) | \
      (2u << SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_bp) | \
      (2u << SPI_CONTROLLER__CONFIGOPTS__CSNLEAD_bp))
-#define SPI_CFG_CLKDIV9_CSN (SPI_CFG_CSN_TIMING | 9u)
-#define SPI_CFG_CSN(clkdiv) (SPI_CFG_CSN_TIMING | ((uint32_t)(clkdiv)&0xFFFFu))
+#define SPI_CFG_CSN(clkdiv) \
+    (SPI_CFG_CSN_TIMING | (((uint32_t)(clkdiv) << SPI_CONTROLLER__CONFIGOPTS__CLKDIV_bp) & \
+                           SPI_CONTROLLER__CONFIGOPTS__CLKDIV_bm))
+#define SPI_CFG_CLKDIV9_CSN SPI_CFG_CSN(9u)
 
 // CMD.DIRECTION encodings (not named in PeakRDL).
 #define SPI_CMD_DIR_RX 1u

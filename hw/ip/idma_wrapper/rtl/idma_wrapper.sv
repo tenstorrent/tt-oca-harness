@@ -154,7 +154,7 @@ module idma_wrapper #(
   typedef logic [MST_ID_WIDTH-1:0] mst_id_t;
 
   // Control interface address width derived from ctrl type (9-bit for DMA regs)
-  localparam int unsigned CTRL_ADDR_WIDTH = $bits(dma_ctrl_axi_req_i[0].aw.addr);
+  localparam int unsigned CtrlAddrWidth = $bits(dma_ctrl_axi_req_i[0].aw.addr);
 
   localparam int unsigned TFLenWidth = AXI_ADDR_WIDTH;  // width for representing transaction length
   localparam int unsigned NumDim = 2;  // 2 dimensions to support 2d transfers
@@ -269,7 +269,7 @@ module idma_wrapper #(
     .dma_mst_addr_t(axi_addr_t),
     .dma_ctrl_req_t(dma_ctrl_req_t),
     .dma_ctrl_resp_t(dma_ctrl_resp_t),
-    .CTRL_ADDR_WIDTH(CTRL_ADDR_WIDTH),
+    .CTRL_ADDR_WIDTH(CtrlAddrWidth),
     .CTRL_DATA_WIDTH(AXI_DATA_WIDTH),
     .CTRL_ID_WIDTH(CTRL_ID_WIDTH),
     .CTRL_USER_WIDTH(AXI_USER_WIDTH)

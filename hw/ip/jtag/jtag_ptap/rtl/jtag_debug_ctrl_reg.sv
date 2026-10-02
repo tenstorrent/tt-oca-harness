@@ -27,13 +27,13 @@ module jtag_debug_ctrl_reg
   //--------------------------------------------------------------------------
   // Local Parameters
   //--------------------------------------------------------------------------
-  localparam int unsigned REG_WIDTH = 5;  // DEBUG_CTRL register: 5 bits (bits 0-4)
+  localparam int unsigned RegWidth = 5;  // DEBUG_CTRL register: 5 bits (bits 0-4)
 
   //--------------------------------------------------------------------------
   // Internal Signals
   //--------------------------------------------------------------------------
 
-  logic [REG_WIDTH-1:0] debug_ctrl_reg_q;  // Debug control register output (update register)
+  logic [RegWidth-1:0] debug_ctrl_reg_q;  // Debug control register output (update register)
 
   //--------------------------------------------------------------------------
   // Bit Field Assignments
@@ -73,7 +73,7 @@ module jtag_debug_ctrl_reg
   // - Bits [3:0]: R/W control bits
   // On capture: bit 4 captures cla_clock_stop_sync, bits [3:0] retain their value
   prim_jtag_scan_reg #(
-    .WIDTH(REG_WIDTH),
+    .WIDTH(RegWidth),
     .RESET_VAL(5'b00000),  // All bits reset to 0
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_debug_ctrl_scan_reg (

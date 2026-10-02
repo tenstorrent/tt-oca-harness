@@ -3,7 +3,7 @@
 
 // Demux one AXI-Lite slave onto NUM_I2CS I2C cores and a shared ctrl map.
 //
-// NUM_REG_MAPS is NUM_I2CS plus one for ctrl and one for the error slave.
+// NumRegMaps is NUM_I2CS plus one for ctrl and one for the error slave.
 // Addresses outside every map reach the error slave, which answers DECERR with read data
 // 0xBADCAB1E.
 // The ctrl map holds one I2C_CTRL register per instance, which drives i2c_en_o,
@@ -13,7 +13,7 @@
 
 module i2c_wrap #(
   parameter int unsigned NUM_I2CS                 = 3,      // Number of I2C instances; 1 to
-                                                            // i2c_wrap_pkg::MAX_NUM_I2CS.
+                                                            // i2c_wrap_pkg::MaxNumI2cs.
   parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,     // Entries in the controller format
                                                             // (FMT) FIFO in each instance; 1 to
                                                             // 4095.
@@ -30,20 +30,20 @@ module i2c_wrap #(
                                                             // interference-detection blanking
                                                             // window after each output change.
 
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_CTRL_REG_MAP_BASE_ADDR = 0, // Shared ctrl register-map base.
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_CTRL_REG_MAP_SIZE      = 0, // Shared ctrl register-map size.
+  parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_CTRL_REG_MAP_BASE_ADDR = 0, // Shared ctrl register-map base.
+  parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_CTRL_REG_MAP_SIZE      = 0, // Shared ctrl register-map size.
 
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_0__REG_MAP_BASE_ADDR = 0, // Instance 0 register-map base.
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_0__REG_MAP_SIZE      = 0, // Per-instance register-map size.
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_INSTANCE_SPACING     = 0, // Byte spacing between instances.
+  parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_0__REG_MAP_BASE_ADDR = 0, // Instance 0 register-map base.
+  parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_0__REG_MAP_SIZE      = 0, // Per-instance register-map size.
+  parameter bit [i2c_wrap_pkg::RegAddrWidth-1:0] I2C_INSTANCE_SPACING     = 0, // Byte spacing between instances.
 
-  localparam int unsigned NUM_REG_MAPS = NUM_I2CS + 2,      // Decode targets: instances + ctrl +
+  localparam int unsigned NumRegMaps = NUM_I2CS + 2,        // Decode targets: instances + ctrl +
                                                             // error slave.
-  localparam type i2c_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0], // Register-map select type.
-  localparam i2c_wrap_reg_map_select_t CTRL_REG_MAP =       // Select index for the ctrl map.
-        i2c_wrap_reg_map_select_t'(NUM_REG_MAPS - 2),
-  localparam i2c_wrap_reg_map_select_t UNDEFINED_REG_MAP =  // Select index for the error slave.
-        i2c_wrap_reg_map_select_t'(NUM_REG_MAPS - 1)
+  localparam type i2c_wrap_reg_map_select_t = logic [$clog2(NumRegMaps)-1:0], // Register-map select type.
+  localparam i2c_wrap_reg_map_select_t CtrlRegMap =       // Select index for the ctrl map.
+        i2c_wrap_reg_map_select_t'(NumRegMaps - 2),
+  localparam i2c_wrap_reg_map_select_t UndefinedRegMap =  // Select index for the error slave.
+        i2c_wrap_reg_map_select_t'(NumRegMaps - 1)
 ) (
   input  logic                clk_i,                        // System clock.
   input  logic                rst_ni,                       // Async reset, active-low.
@@ -111,8 +111,8 @@ module i2c_wrap #(
 
   logic [NUM_I2CS-1:0] smbus_en;
 
-  i2c_wrap_pkg::axil_req_t  [NUM_REG_MAPS-1:0] axil_reqs;
-  i2c_wrap_pkg::axil_resp_t [NUM_REG_MAPS-1:0] axil_resps;
+  i2c_wrap_pkg::axil_req_t  [NumRegMaps-1:0] axil_reqs;
+  i2c_wrap_pkg::axil_resp_t [NumRegMaps-1:0] axil_resps;
 
 
   //////////////////////////////
@@ -122,15 +122,15 @@ module i2c_wrap #(
   i2c_wrap_reg_map_select_t axil_aw_select, axil_ar_select;
 
   always_comb begin
-    axil_aw_select = UNDEFINED_REG_MAP;
+    axil_aw_select = UndefinedRegMap;
 
     if (axil_req_i.aw.addr >= I2C_CTRL_REG_MAP_BASE_ADDR &&
             axil_req_i.aw.addr <  I2C_CTRL_REG_MAP_BASE_ADDR +
                                   I2C_CTRL_REG_MAP_SIZE) begin
-      axil_aw_select = CTRL_REG_MAP;
+      axil_aw_select = CtrlRegMap;
     end else begin
       for (int i = 0; i < NUM_I2CS; i++) begin
-        logic [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] i2c_i_base_addr;
+        logic [i2c_wrap_pkg::RegAddrWidth-1:0] i2c_i_base_addr;
         i2c_i_base_addr = I2C_0__REG_MAP_BASE_ADDR + i * I2C_INSTANCE_SPACING;
         if (axil_req_i.aw.addr >= i2c_i_base_addr &&
                     axil_req_i.aw.addr <  i2c_i_base_addr +
@@ -142,15 +142,15 @@ module i2c_wrap #(
   end
 
   always_comb begin
-    axil_ar_select = UNDEFINED_REG_MAP;
+    axil_ar_select = UndefinedRegMap;
 
     if (axil_req_i.ar.addr >= I2C_CTRL_REG_MAP_BASE_ADDR &&
             axil_req_i.ar.addr <  I2C_CTRL_REG_MAP_BASE_ADDR +
                                   I2C_CTRL_REG_MAP_SIZE) begin
-      axil_ar_select = CTRL_REG_MAP;
+      axil_ar_select = CtrlRegMap;
     end else begin
       for (int i = 0; i < NUM_I2CS; i++) begin
-        logic [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] i2c_i_base_addr;
+        logic [i2c_wrap_pkg::RegAddrWidth-1:0] i2c_i_base_addr;
         i2c_i_base_addr = I2C_0__REG_MAP_BASE_ADDR + i * I2C_INSTANCE_SPACING;
         if (axil_req_i.ar.addr >= i2c_i_base_addr &&
                     axil_req_i.ar.addr <  i2c_i_base_addr +
@@ -169,7 +169,7 @@ module i2c_wrap #(
     .r_chan_t        (i2c_wrap_pkg::axil_r_chan_t),
     .axi_req_t       (i2c_wrap_pkg::axil_req_t),
     .axi_resp_t      (i2c_wrap_pkg::axil_resp_t),
-    .NoMstPorts      (NUM_REG_MAPS),
+    .NoMstPorts      (NumRegMaps),
     .MaxTrans        (1),
     .FallThrough     (1'b0),
     .SpillAw         (1'b1),
@@ -190,20 +190,20 @@ module i2c_wrap #(
   );
 
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (i2c_wrap_pkg::REG_ADDR_WIDTH),
-    .AXI_DATA_WIDTH (i2c_wrap_pkg::REG_DATA_WIDTH),
+    .AXI_ADDR_WIDTH (i2c_wrap_pkg::RegAddrWidth),
+    .AXI_DATA_WIDTH (i2c_wrap_pkg::RegDataWidth),
     .axil_req_t     (i2c_wrap_pkg::axil_req_t),
     .axil_resp_t    (i2c_wrap_pkg::axil_resp_t),
     .RESP           (axi_pkg::RESP_DECERR),
-    .RESP_WIDTH     (i2c_wrap_pkg::REG_DATA_WIDTH),
+    .RESP_WIDTH     (i2c_wrap_pkg::RegDataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
   ) u_prim_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
 
-    .axil_req_i     (axil_reqs [UNDEFINED_REG_MAP]),
-    .axil_resp_o    (axil_resps[UNDEFINED_REG_MAP])
+    .axil_req_i     (axil_reqs [UndefinedRegMap]),
+    .axil_resp_o    (axil_resps[UndefinedRegMap])
   );
 
 
@@ -273,29 +273,29 @@ module i2c_wrap #(
     .clk            (clk_i),
     .arst_n         (rst_ni),
 
-    .s_axil_awready (axil_resps[CTRL_REG_MAP].aw_ready),
-    .s_axil_awvalid (axil_reqs [CTRL_REG_MAP].aw_valid),
-    .s_axil_awaddr  (axil_reqs [CTRL_REG_MAP].aw.addr[
+    .s_axil_awready (axil_resps[CtrlRegMap].aw_ready),
+    .s_axil_awvalid (axil_reqs [CtrlRegMap].aw_valid),
+    .s_axil_awaddr  (axil_reqs [CtrlRegMap].aw.addr[
                             i2c_ctrl_reg_pkg::I2C_CTRL_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_awprot  (axil_reqs [CTRL_REG_MAP].aw.prot),
-    .s_axil_wready  (axil_resps[CTRL_REG_MAP].w_ready),
-    .s_axil_wvalid  (axil_reqs [CTRL_REG_MAP].w_valid),
-    .s_axil_wdata   (axil_reqs [CTRL_REG_MAP].w.data),
-    .s_axil_wstrb   (axil_reqs [CTRL_REG_MAP].w.strb),
-    .s_axil_bready  (axil_reqs [CTRL_REG_MAP].b_ready),
-    .s_axil_bvalid  (axil_resps[CTRL_REG_MAP].b_valid),
-    .s_axil_bresp   (axil_resps[CTRL_REG_MAP].b.resp),
-    .s_axil_arready (axil_resps[CTRL_REG_MAP].ar_ready),
-    .s_axil_arvalid (axil_reqs [CTRL_REG_MAP].ar_valid),
-    .s_axil_araddr  (axil_reqs [CTRL_REG_MAP].ar.addr[
+    .s_axil_awprot  (axil_reqs [CtrlRegMap].aw.prot),
+    .s_axil_wready  (axil_resps[CtrlRegMap].w_ready),
+    .s_axil_wvalid  (axil_reqs [CtrlRegMap].w_valid),
+    .s_axil_wdata   (axil_reqs [CtrlRegMap].w.data),
+    .s_axil_wstrb   (axil_reqs [CtrlRegMap].w.strb),
+    .s_axil_bready  (axil_reqs [CtrlRegMap].b_ready),
+    .s_axil_bvalid  (axil_resps[CtrlRegMap].b_valid),
+    .s_axil_bresp   (axil_resps[CtrlRegMap].b.resp),
+    .s_axil_arready (axil_resps[CtrlRegMap].ar_ready),
+    .s_axil_arvalid (axil_reqs [CtrlRegMap].ar_valid),
+    .s_axil_araddr  (axil_reqs [CtrlRegMap].ar.addr[
                             i2c_ctrl_reg_pkg::I2C_CTRL_REG_MIN_ADDR_WIDTH-1:0
                          ]),
-    .s_axil_arprot  (axil_reqs [CTRL_REG_MAP].ar.prot),
-    .s_axil_rready  (axil_reqs [CTRL_REG_MAP].r_ready),
-    .s_axil_rvalid  (axil_resps[CTRL_REG_MAP].r_valid),
-    .s_axil_rdata   (axil_resps[CTRL_REG_MAP].r.data),
-    .s_axil_rresp   (axil_resps[CTRL_REG_MAP].r.resp),
+    .s_axil_arprot  (axil_reqs [CtrlRegMap].ar.prot),
+    .s_axil_rready  (axil_reqs [CtrlRegMap].r_ready),
+    .s_axil_rvalid  (axil_resps[CtrlRegMap].r_valid),
+    .s_axil_rdata   (axil_resps[CtrlRegMap].r.data),
+    .s_axil_rresp   (axil_resps[CtrlRegMap].r.resp),
 
     .hwif_out       (reg_out)
   );
@@ -315,7 +315,7 @@ module i2c_wrap #(
   ////////////////
 
   `OCAH_OT_ASSERT_INIT(paramCheckNumI2cs_A, NUM_I2CS > 0)
-  `OCAH_OT_ASSERT_INIT(paramCheckMaxNumI2cs_A, NUM_I2CS <= i2c_wrap_pkg::MAX_NUM_I2CS)
+  `OCAH_OT_ASSERT_INIT(paramCheckMaxNumI2cs_A, NUM_I2CS <= i2c_wrap_pkg::MaxNumI2cs)
 
   `OCAH_OT_ASSERT_KNOWN(AxilRespKnownO_A, axil_resp_o)
   `OCAH_OT_ASSERT_KNOWN(I2CEnKnownO_A, i2c_en_o)

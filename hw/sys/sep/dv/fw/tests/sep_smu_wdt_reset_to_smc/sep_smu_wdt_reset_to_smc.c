@@ -4,10 +4,9 @@
 /*
  * sep_smu_wdt_reset_to_smc - FW-armed WDT bark NMI then sticky bite.
  *
- * Frontdoor-brings SMC, programs SEP_NMI_VEC, arms aon_timer WDOG
- * (bark=0x200, bite=0x400), handles exactly one bark NMI, publishes
- * POST_NMI_ALIVE, then stops petting so the real bite asserts.
- * Recovery is out of scope (DG-WDT-STICKY).
+ * Brings the SMC up, installs the NMI vector, arms the SEP watchdog, handles
+ * exactly one bark NMI, reports that it is still alive after it, then never
+ * pets the watchdog so the real bite asserts. Recovery is out of scope.
  */
 
 #include <stdint.h>
@@ -124,8 +123,8 @@ static int arm_wdt_and_wait_bite(void) {
         return -22;
     }
     smu_sep_wdt_reset_to_smc_post_nmi_alive();
-    /* Bite is the success: stay in the named pass loop so the SMU leaf
-     * classifies on this PC. The bite itself never returns. */
+    /* The bite is the pass condition: park in the named pass loop so the
+     * testbench classifies on this PC. */
     smu_sep_wdt_reset_to_smc_pass_loop();
 }
 

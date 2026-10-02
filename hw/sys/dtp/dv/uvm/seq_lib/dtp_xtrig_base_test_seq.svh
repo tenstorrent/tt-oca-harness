@@ -227,6 +227,10 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     scenario_required_ids(scenario, ids);
     attach_xtrig_checker(ids);
     dispatch_scenario();
+    // Every CSR port spill register has kept READY and VALID matched to the
+    // beats it holds since the last system reset.
+    check_evidence(ChkAxil, "spill_contract_all", 64'(xtrig_pin("xtrig_axil_spill_err_count")),
+                   64'd0);
     finalize_xtrig_checker();
   endtask
 
@@ -375,6 +379,14 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
 
   static function bit [63:0] ctp_stretch_addr(int unsigned ctp_idx);
     return XtrigCtpBase + ctp_idx * XtrigCtpStride + CtpStretchOffset;
+  endfunction
+
+  static function bit [63:0] ctm_hole_addr(int unsigned src_idx);
+    return dtp_xtrig_ctm_hole_addr(src_idx);
+  endfunction
+
+  static function bit [63:0] ctp_hole_addr(int unsigned ctp_idx);
+    return dtp_xtrig_ctp_hole_addr(ctp_idx);
   endfunction
 
   // CTM port numbering: external CTP[i] occupies port i, internal CT[i]
@@ -723,6 +735,16 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       "xtrig_axil_aw_open_accept_count": sampled = tb_vif.xtrig_axil_aw_open_accept_count;
       "xtrig_axil_ar_open_stall_count": sampled = tb_vif.xtrig_axil_ar_open_stall_count;
       "xtrig_axil_ar_open_accept_count": sampled = tb_vif.xtrig_axil_ar_open_accept_count;
+      "xtrig_axil_spill_err_count": sampled = tb_vif.xtrig_axil_spill_err_count;
+      "xtrig_axil_w_spill_full_count":    sampled = tb_vif.xtrig_axil_w_spill_full_count;
+      "xtrig_axil_r_spill_full_count":    sampled = tb_vif.xtrig_axil_r_spill_full_count;
+      "xtrig_demux_aw_stall_count": sampled = tb_vif.xtrig_demux_aw_stall_count;
+      "xtrig_demux_w_stall_count": sampled = tb_vif.xtrig_demux_w_stall_count;
+      "xtrig_demux_ar_stall_count": sampled = tb_vif.xtrig_demux_ar_stall_count;
+      "xtrig_demux_aw_open_stall_count": sampled = tb_vif.xtrig_demux_aw_open_stall_count;
+      "xtrig_demux_aw_open_accept_count": sampled = tb_vif.xtrig_demux_aw_open_accept_count;
+      "xtrig_demux_ar_open_stall_count": sampled = tb_vif.xtrig_demux_ar_open_stall_count;
+      "xtrig_demux_ar_open_accept_count": sampled = tb_vif.xtrig_demux_ar_open_accept_count;
       default: begin
         `uvm_fatal(get_type_name(), $sformatf("unknown xtrig observable %s", name))
         sampled = '0;

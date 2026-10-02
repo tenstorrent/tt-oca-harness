@@ -3,16 +3,16 @@
 
 #include <stdint.h>
 
-#include "metal/uart.h"
 #include "smc_io.h"
 #include "smc_test.h"
 #include "virt_console.h"
 
-// Test focus: UART FIFO enable / trigger level / reset behavior.
-// To control simulation time, this test only targets a single UART (index 0, loopback mode)
-// and validates two representative trigger levels (for example, 1 byte and 4 bytes).
+// Verifies the UART receive FIFO trigger level and the receive and transmit FIFO resets.
+// To keep the simulation short, only UART 0 in internal loopback and two trigger levels
+// (1 byte and 4 bytes) are tested.
 
-// FCR bit definitions (write-only, sharing the address with IIR)
+// FIFO control fields; the FIFO control register is write-only and shares its address with the
+// interrupt identification register.
 #define UART_FCR_FIFO_ENABLE (1u << 0)
 #define UART_FCR_RCVR_FIFO_RESET (1u << 1)
 #define UART_FCR_XMIT_FIFO_RESET (1u << 2)
@@ -20,13 +20,13 @@
 #define UART_FCR_RCVR_TRIGGER_SHIFT 6
 #define UART_FCR_RCVR_TRIGGER_MASK (3u << UART_FCR_RCVR_TRIGGER_SHIFT)
 
-// IIR interrupt IDs (corresponding to the IntrID enum)
+// Interrupt identifiers reported by the UART
 #define UART_INTR_ID_RECEIVED_DATA_READY 0x2u
 #define UART_INTR_ID_RECEPTION_TIMEOUT 0x6u
 
-// Trigger-level mapping (1 byte / 4 bytes)
-#define UART_RX_TRIGGER_CFG_1BYTE 0u // rcvr_trigger = 0b00
-#define UART_RX_TRIGGER_CFG_4BYTE 1u // rcvr_trigger = 0b01
+// Receive trigger-level selections
+#define UART_RX_TRIGGER_CFG_1BYTE 0u
+#define UART_RX_TRIGGER_CFG_4BYTE 1u
 
 static inline uint32_t get_uart_reg_base(uint32_t idx) {
     if (idx == 0) return SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0);
@@ -59,9 +59,8 @@ static void uart_init_loopback(uint32_t uart_base) {
     uart_16550_main__LCR_t lcr;
     uart_16550_main__MCR_t mcr;
     uart_16550_main__IER_t ier;
-    uint32_t divisor = 1u; // Simple choice of a valid divisor (divide-by-1).
+    uint32_t divisor = 1u;
 
-    // Read default values.
     mcr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
     lcr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
@@ -69,21 +68,22 @@ static void uart_init_loopback(uint32_t uart_base) {
     ier.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
 
-    // First program the divisor (DLL/DLH accessed via DLAB=1).
+    // Program the baud divisor; the divisor latches alias the data and interrupt-enable offsets
+    // while the divisor-latch access bit is set.
     lcr.f.DLAB = 0x1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               lcr.w);
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              divisor & 0xFFu); // DLL
+              divisor & 0xFFu);
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
-              (divisor >> 8) & 0xFFu); // DLH
+              (divisor >> 8) & 0xFFu);
 
-    // 8N1 configuration (word length = 8 bits, 1 stop, no parity).
+    // Configure 8N1 framing.
     lcr.f.DLAB = 0x0;
-    lcr.f.WLS = 0x3; // 8 bits
+    lcr.f.WLS = 0x3;
     lcr.f.STB = 0x0;
     lcr.f.PEN = 0x0;
     lcr.f.EPS = 0x0;
@@ -91,14 +91,14 @@ static void uart_init_loopback(uint32_t uart_base) {
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               lcr.w);
 
-    // Enable loopback mode so TX is internally looped back to RX.
+    // Enable internal loopback so transmitted bytes return to the receiver.
     mcr.f.LOOP = 0x1;
     mcr.f.RTS = 0x1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               mcr.w);
 
-    // Enable RX interrupt (keep the rest unchanged).
+    // Enable the received-data interrupt and keep the other enables.
     ier.f.ERBFI = 0x1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
@@ -109,13 +109,10 @@ static void uart_fifo_set_trigger(uint32_t uart_base, uint32_t trigger_cfg) {
     uint32_t fcr = 0;
 
     fcr |= UART_FCR_FIFO_ENABLE;
-    // Use DMA mode 0.
     fcr &= ~UART_FCR_DMA_MODE_SELECT;
-    // Configure RX trigger level (low two bits are in FCR[7:6]).
     fcr &= ~UART_FCR_RCVR_TRIGGER_MASK;
     fcr |= (trigger_cfg << UART_FCR_RCVR_TRIGGER_SHIFT);
 
-    // Write FCR (write-only, shares the address with IIR).
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               fcr);
@@ -133,11 +130,8 @@ static void uart_fifo_reset(uint32_t uart_base, int reset_rx, int reset_tx) {
               fcr);
 }
 
-// Under a specified trigger level, verify:
-// 1. Write (trigger_level + 1) bytes and check whether RECEPTION_TIMEOUT occurs.
-// 2. When RECEPTION_TIMEOUT occurs, read 1 byte to clear the timeout condition.
-// 3. Then check whether RECEIVED_DATA_READY is seen (to confirm the FIFO trigger for RDR is still
-// effective).
+// Fill the receive FIFO one byte past the trigger level and expect a reception timeout. Popping one
+// byte clears the timeout; the FIFO still holds the trigger level, so received data ready follows.
 static int uart_test_rx_trigger(uint32_t uart_base, uint32_t trigger_cfg, uint32_t trigger_level) {
     uart_16550_main__IIR_t iir;
 
@@ -145,7 +139,6 @@ static int uart_test_rx_trigger(uint32_t uart_base, uint32_t trigger_cfg, uint32
     simputs("\n");
     simputshex32("Expected Trigger at depth=", trigger_level);
     simputs("\n");
-    // First reset the FIFO and configure the trigger level.
     uart_fifo_reset(uart_base, 1, 1);
     uart_fifo_set_trigger(uart_base, trigger_cfg);
 
@@ -155,15 +148,14 @@ static int uart_test_rx_trigger(uint32_t uart_base, uint32_t trigger_cfg, uint32
     (void)read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
                                 SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
 
-    // Write (trigger_level + 1) bytes in one shot without checking interrupts in between,
-    // allowing RX FIFO depth to exceed the threshold before observing timeout and RDR behavior.
+    // Send all bytes before polling so the FIFO passes the trigger level before any check.
     for (uint32_t depth = 1; depth <= (trigger_level + 1u); depth++) {
         write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
                   0x30u + depth);
     }
 
-    // Step 1: check whether RECEPTION_TIMEOUT appears first.
+    // The reception timeout is reported first.
     {
         int seen_timeout = 0;
         int max_iters = 128;
@@ -188,13 +180,11 @@ static int uart_test_rx_trigger(uint32_t uart_base, uint32_t trigger_cfg, uint32
         }
     }
 
-    // Step 2: read 1 byte to clear the timeout condition; the FIFO is expected to still hold data
-    // at the trigger level, so RECEIVED_DATA_READY should be observed.
+    // Popping one byte clears the timeout and leaves the FIFO at the trigger level.
     {
         int seen_rdr = 0;
         int max_iters = 128;
 
-        // Read 1 byte to emulate an ISR popping one entry while handling the timeout.
         (void)read_reg(uart_base +
                        (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
                         SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
@@ -224,19 +214,17 @@ static int uart_test_rx_trigger(uint32_t uart_base, uint32_t trigger_cfg, uint32
     return 0;
 }
 
-// Test whether TX/RX FIFO reset clears data and status.
+// Check that the receive and transmit FIFO resets clear data and status.
 static int uart_test_fifo_reset(uint32_t uart_base) {
     uart_16550_main__LSR_t lsr;
     uart_16550_main__IIR_t iir;
 
     simputs("=== FIFO Reset Subtest ===\n");
 
-    // First ensure FIFO is enabled and the trigger level is set to the minimum.
     simputs("  [STEP] Enable FIFO & set trigger to 1 byte\n");
     uart_fifo_reset(uart_base, 1, 1);
     uart_fifo_set_trigger(uart_base, UART_RX_TRIGGER_CFG_1BYTE);
 
-    // Fill several bytes so RX FIFO becomes non-empty.
     simputs("  [STEP] Fill RX FIFO with 4 bytes\n");
     for (int i = 0; i < 4; i++) {
         write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
@@ -268,14 +256,13 @@ static int uart_test_fifo_reset(uint32_t uart_base) {
         }
     }
 
-    // Let the final byte finish shifting through the RX side after TEMT=1.
+    // Let the final byte finish shifting into the receiver after the transmitter goes idle.
     for (int iter = 0; iter < 64; iter++) {
         (void)read_reg(uart_base +
                        (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                         SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
     }
 
-    // Confirm that LSR.DR (data ready) is 1.
     simputs("  [CHECK] LSR.DR should be 1 before RX reset\n");
     lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
@@ -283,14 +270,12 @@ static int uart_test_fifo_reset(uint32_t uart_base) {
         simputs("    [ERROR] LSR.DR == 0 before RX reset (expected data ready)\n");
         simputshex32("    LSR = 0x", lsr.w);
         simputs("\n");
-        return -3; // Data should already be ready.
+        return -3;
     }
 
-    // Perform RX reset.
     simputs("  [STEP] Do RX FIFO reset\n");
     uart_fifo_reset(uart_base, 1, 0);
 
-    // Read LSR and expect DR = 0 (FIFO has been emptied).
     simputs("  [CHECK] LSR.DR should be 0 after RX reset\n");
     lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
@@ -298,10 +283,9 @@ static int uart_test_fifo_reset(uint32_t uart_base) {
         simputs("    [ERROR] LSR.DR != 0 after RX reset (FIFO not empty?)\n");
         simputshex32("    LSR = 0x", lsr.w);
         simputs("\n");
-        return -4; // Data still remains after reset.
+        return -4;
     }
 
-    // Read IIR and confirm that RECEIVED_DATA_READY is no longer reported.
     simputs("  [CHECK] IIR should not report RECEIVED_DATA_READY after RX reset\n");
     iir.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
@@ -310,11 +294,10 @@ static int uart_test_fifo_reset(uint32_t uart_base) {
         simputshex32("    IIR = 0x", iir.w);
         simputshex32("    IIR.ID = 0x", (uint32_t)iir.f.INTERRUPT_ID);
         simputs("\n");
-        return -5; // RX ready interrupt should not be pending after reset.
+        return -5;
     }
 
-    // TX side: fill until THRE==0 (TX holding data), then XMIT reset must idle.
-    // Slow the divisor so the FIFO cannot drain before the pre-reset sample.
+    // Slow the baud rate so the transmit FIFO still holds data when it is reset.
     {
         uart_16550_main__LCR_t lcr;
         const uint32_t slow_div = 32u;
@@ -363,7 +346,7 @@ static int uart_test_fifo_reset(uint32_t uart_base) {
         }
     }
 
-    // Pre-reset proof: TX must still hold data so post-idle cannot be natural drain alone.
+    // The transmitter must still hold data, so an idle transmitter afterwards proves the reset.
     simputs("  [CHECK] LSR.THRE should be 0 before TX reset\n");
     lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
@@ -374,13 +357,11 @@ static int uart_test_fifo_reset(uint32_t uart_base) {
         return -7;
     }
 
-    // Perform TX reset.
     simputs("  [STEP] Do TX FIFO reset\n");
     uart_fifo_reset(uart_base, 0, 1);
 
-    // XMIT FIFO reset must raise THRE immediately (FIFO empty). TEMT may lag while
-    // a character already in the shift register drains at the slow divisor — wait
-    // for TEMT separately with a long poll (fail-closed).
+    // The holding register empties at once; the transmitter goes idle only after the character
+    // already in the shifter drains at the slow baud rate.
     simputs("  [CHECK] LSR.THRE should be 1 after TX reset\n");
     lsr.w = read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
@@ -421,29 +402,25 @@ static int uart_test_fifo_reset(uint32_t uart_base) {
 int main(void) {
     simputs("\n=== Starting UART FIFO Basic Trigger Reset Test ===\n");
 
-    uint32_t uart_idx = 0; // Test a single UART instance.
+    uint32_t uart_idx = 0;
     uint32_t uart_base = get_uart_reg_base(uart_idx);
 
-    // Enable the target UART and initialize it in loopback mode.
     uart_enable_single(uart_idx);
     uart_init_loopback(uart_base);
 
     simputs("Checking 1-byte Trigger Level...\n");
-    // Test RX trigger level = 1 byte.
     if (uart_test_rx_trigger(uart_base, UART_RX_TRIGGER_CFG_1BYTE, 1u) != 0) {
         simputs("1-byte Trigger Test FAILED!\n");
         test_fail(0);
     }
 
     simputs("Checking 4-byte Trigger Level...\n");
-    // Test RX trigger level = 4 bytes (higher threshold).
     if (uart_test_rx_trigger(uart_base, UART_RX_TRIGGER_CFG_4BYTE, 4u) != 0) {
         simputs("4-byte Trigger Test FAILED!\n");
         test_fail(0);
     }
 
     simputs("Checking FIFO Reset...\n");
-    // Test FIFO reset behavior.
     if (uart_test_fifo_reset(uart_base) != 0) {
         simputs("FIFO Reset Test FAILED!");
         test_fail(0);
@@ -451,10 +428,4 @@ int main(void) {
 
     simputs("ALL TESTS PASSED!");
     test_pass(0);
-
-    while (1) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

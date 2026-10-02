@@ -62,11 +62,11 @@ class BadgesForTests(unittest.TestCase):
 
     def test_reports_a_measured_rate_and_coverage(self):
         badges = badges_for(
-            {"flow": "dtp", "status": "PASS", "pass_rate": 100.0}, {"total_percent": 79.83}
+            {"flow": "dtp", "status": "PASS", "pass_rate": 100.0}, {"total_percent": 89.83}
         )
         self.assertEqual(sorted(badges), ["coverage", "status", "tests"])
         self.assertEqual(badges["tests"], ("tests", "100.0 %", GREEN))
-        self.assertEqual(badges["coverage"], ("coverage", "79.8 %", AMBER))
+        self.assertEqual(badges["coverage"], ("coverage", "89.8 %", AMBER))
 
     def test_anything_unusable_reads_as_no_data_rather_than_raising(self):
         for dut, coverage in (

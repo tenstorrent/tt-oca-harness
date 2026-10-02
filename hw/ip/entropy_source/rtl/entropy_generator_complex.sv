@@ -125,20 +125,20 @@ module entropy_generator_complex #(
   /////////////////////
 
   // Full ring lengths, selected while a lane's detune is high.
-  localparam int unsigned TOTAL_LENGTH_0 = 5, TOTAL_LENGTH_1 = 7;
-  localparam int unsigned TOTAL_LENGTH_2 = 11, TOTAL_LENGTH_3 = 13;
-  localparam int unsigned TOTAL_LENGTH_4 = 17, TOTAL_LENGTH_5 = 19;
-  localparam int unsigned TOTAL_LENGTH_6 = 6, TOTAL_LENGTH_7 = 8;
-  localparam int unsigned TOTAL_LENGTH_8 = 12, TOTAL_LENGTH_9 = 15;
-  localparam int unsigned TOTAL_LENGTH_10 = 18, TOTAL_LENGTH_11 = 23;
+  localparam int unsigned TotalLength0 = 5, TotalLength1 = 7;
+  localparam int unsigned TotalLength2 = 11, TotalLength3 = 13;
+  localparam int unsigned TotalLength4 = 17, TotalLength5 = 19;
+  localparam int unsigned TotalLength6 = 6, TotalLength7 = 8;
+  localparam int unsigned TotalLength8 = 12, TotalLength9 = 15;
+  localparam int unsigned TotalLength10 = 18, TotalLength11 = 23;
 
   // Shorter tapped lengths (higher frequency), selected while a lane's detune is low.
-  localparam int unsigned TAPPED_LENGTH_0 = 3, TAPPED_LENGTH_1 = 5;
-  localparam int unsigned TAPPED_LENGTH_2 = 9, TAPPED_LENGTH_3 = 10;
-  localparam int unsigned TAPPED_LENGTH_4 = 14, TAPPED_LENGTH_5 = 16;
-  localparam int unsigned TAPPED_LENGTH_6 = 4, TAPPED_LENGTH_7 = 7;
-  localparam int unsigned TAPPED_LENGTH_8 = 11, TAPPED_LENGTH_9 = 13;
-  localparam int unsigned TAPPED_LENGTH_10 = 15, TAPPED_LENGTH_11 = 21;
+  localparam int unsigned TappedLength0 = 3, TappedLength1 = 5;
+  localparam int unsigned TappedLength2 = 9, TappedLength3 = 10;
+  localparam int unsigned TappedLength4 = 14, TappedLength5 = 16;
+  localparam int unsigned TappedLength6 = 4, TappedLength7 = 7;
+  localparam int unsigned TappedLength8 = 11, TappedLength9 = 13;
+  localparam int unsigned TappedLength10 = 15, TappedLength11 = 21;
 
   //////////
   // Types
@@ -147,36 +147,36 @@ module entropy_generator_complex #(
   // Lookup functions used to parameterise the generate loop below
   function automatic int get_total_length(input int idx);
     unique case (idx)
-      0:       return TOTAL_LENGTH_0;
-      1:       return TOTAL_LENGTH_1;
-      2:       return TOTAL_LENGTH_2;
-      3:       return TOTAL_LENGTH_3;
-      4:       return TOTAL_LENGTH_4;
-      5:       return TOTAL_LENGTH_5;
-      6:       return TOTAL_LENGTH_6;
-      7:       return TOTAL_LENGTH_7;
-      8:       return TOTAL_LENGTH_8;
-      9:       return TOTAL_LENGTH_9;
-      10:      return TOTAL_LENGTH_10;
-      11:      return TOTAL_LENGTH_11;
+      0:       return TotalLength0;
+      1:       return TotalLength1;
+      2:       return TotalLength2;
+      3:       return TotalLength3;
+      4:       return TotalLength4;
+      5:       return TotalLength5;
+      6:       return TotalLength6;
+      7:       return TotalLength7;
+      8:       return TotalLength8;
+      9:       return TotalLength9;
+      10:      return TotalLength10;
+      11:      return TotalLength11;
       default: return 29;
     endcase
   endfunction
 
   function automatic int get_tapped_length(input int idx);
     unique case (idx)
-      0:       return TAPPED_LENGTH_0;
-      1:       return TAPPED_LENGTH_1;
-      2:       return TAPPED_LENGTH_2;
-      3:       return TAPPED_LENGTH_3;
-      4:       return TAPPED_LENGTH_4;
-      5:       return TAPPED_LENGTH_5;
-      6:       return TAPPED_LENGTH_6;
-      7:       return TAPPED_LENGTH_7;
-      8:       return TAPPED_LENGTH_8;
-      9:       return TAPPED_LENGTH_9;
-      10:      return TAPPED_LENGTH_10;
-      11:      return TAPPED_LENGTH_11;
+      0:       return TappedLength0;
+      1:       return TappedLength1;
+      2:       return TappedLength2;
+      3:       return TappedLength3;
+      4:       return TappedLength4;
+      5:       return TappedLength5;
+      6:       return TappedLength6;
+      7:       return TappedLength7;
+      8:       return TappedLength8;
+      9:       return TappedLength9;
+      10:      return TappedLength10;
+      11:      return TappedLength11;
       default: return 19;
     endcase
   endfunction

@@ -7,8 +7,8 @@
 // carries a contract at all (compare = 0 pairs and drops without a record,
 // so a reference model can publish one item per observed item and keep the
 // two streams in lockstep). Used by ir_decode, idcode, bypass, xtrig_csr,
-// and xtrig_decode. The cocotb realization has no twin (its scoreboard
-// checks inline; see DTP_TB_ARCH).
+// and xtrig_decode. The cocotb twin is DtpExpectedItem in
+// env/dtp_expected_item.py.
 
 class dtp_expected_item extends ocah_sequence_item;
   `uvm_object_utils(dtp_expected_item)

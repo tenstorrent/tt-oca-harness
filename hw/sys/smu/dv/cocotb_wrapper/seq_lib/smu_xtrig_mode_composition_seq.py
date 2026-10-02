@@ -62,7 +62,7 @@ class smu_xtrig_mode_composition_seq:
         await self.test.cfg.reset_done.wait()
         await ClockCycles(dut.clk_smu_i, 8)
 
-        smu_vec = hier(smu, "DTP_XTRIG_INT_CT_MODE")
+        smu_vec = hier(smu, "DtpXtrigIntCtMode")
         dtp_vec = hier(smu, "u_dtp.XTRIG_INT_CT_MODE")
         sb.expect_eq(
             "mode vector width at the DTP is the specified internal CT count",
@@ -73,7 +73,7 @@ class smu_xtrig_mode_composition_seq:
         sb.expect_eq(
             "DTP receives the vector the SMU concatenates",
             dtp_mode,
-            sample(smu_vec, "DTP_XTRIG_INT_CT_MODE"),
+            sample(smu_vec, "DtpXtrigIntCtMode"),
         )
         sb.expect_eq(
             "mode bits in the SMC reservation presented to DTP are zero (pulse-sync)",

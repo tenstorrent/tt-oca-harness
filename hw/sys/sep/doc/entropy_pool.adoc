@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Entropy Pool
+:description: SEP fabric entropy pool: a read-only AXI aperture that software drains for conditioned entropy.
+
+ifdef::backend-html5[]
+:sep-register-single-beat-ref: xref:sep:memory_map.adoc#sep-register-single-beat[Single-Beat Register Access]
+:sep-memory-map-ref: xref:sep:memory_map.adoc[Memory Map]
+:sep-trng-ref: xref:sep:trng.adoc[TRNG and DRBG]
+:sep-interrupts-ref: xref:sep:interrupts.adoc[Interrupts]
+endif::backend-html5[]
+ifndef::backend-html5[]
+:sep-register-single-beat-ref: <<sep-register-single-beat>>
+:sep-memory-map-ref: <<sep-memory-map,Memory Map>>
+:sep-trng-ref: TRNG and DRBG chapter
+:sep-interrupts-ref: Interrupts chapter
+endif::backend-html5[]
+
+[[sep-entropy-pool,Entropy Pool]]
+
+The entropy pool (`sep_entropy_fifo`) is a read-only 64-bit AXI aperture through
+which software drains conditioned entropy. It is a top-level block in `sep`,
+reached as a target on the SEP local crossbar; see the {sep-memory-map-ref} for
+its address window. The pool is filled autonomously by a native EDN endpoint on a
+separate hardware path, not through the crossbar; see the {sep-trng-ref} for the
+fill path and the entropy it carries.
+
+== Access Policy
+
+* A read of `DATA` pops one 64-bit conditioned word. Reading an empty pool
+  returns `SLVERR` rather than `OKAY`, so an empty pool is distinguishable from a
+  genuine zero word.
+* `STATUS` and `IRQ_CAUSE` are non-destructive reads. `STATUS` reports pool
+  occupancy (`fifo_level`), the low-watermark condition (`pool_low`), an EDN fill
+  stall (`fill_stall`) and a FIFO integrity fault (`pool_error`); the latter
+  three are also raised to the PIC (see the {sep-interrupts-ref}).
+* The pool is read-only. A write to any offset terminates with `BRESP=SLVERR`
+  and changes no state.
+* All three registers are 64-bit access-width (`STATUS`, `IRQ_CAUSE` and `DATA`
+  each occupy one 8-byte slot) and are read with a single 64-bit access. A 32-bit
+  read of a register's upper word (offset +4) is not decoded: it returns `SLVERR`
+  with zero data, and for `DATA` it does not pop the pool. Read the full 64-bit
+  word to obtain a register's value. The exact decode response codes are
+  tabulated with the aperture in the {sep-memory-map-ref}.
+* The aperture accepts single-beat accesses only
+  ({sep-register-single-beat-ref}). An access to an unmapped offset within the
+  aperture likewise returns `SLVERR` with zero data.
+
+== Memory Map and Register Reference
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_entropy_pool.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_entropy_pool.adoc[leveloffset=+2]
+endif::backend-pdf[]

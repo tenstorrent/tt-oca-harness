@@ -1,19 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// smc_uart_log_engine_ctrl_en_test
-//
-// Exercise the wrapper-level CTRL.UART_EN bit (offset 0 of the
-// uart_log_engine_ctrl region). FW verifies the CSR-side behavior:
-//   * Reset default = 0
-//   * Write 1 → read-back 1
-//   * Write 0 → read-back 0
-//   * Toggle N times: read-backs match writes
-//   * Reserved bits [31:1] stay 0
-//
-// The pad-mux side-effect (uart_en_o) is not visible from FW. The wrapper's
-// `ASSERT_KNOWN(UartEnKnownO_A, uart_en_o)` SVA fires if the output ever
-// becomes X during this sequence.
+/**
+ * @brief UART Log Engine Wrapper UART Enable Test
+ *
+ * Verifies the UART enable control of UART wrapper 0 from firmware: it resets
+ * to disabled, follows writes, keeps its reserved bits at zero even after an
+ * all-ones write, and reads back correctly over repeated toggles. The pad-mux
+ * output it drives is not visible to firmware; an RTL known-value assertion on
+ * that output covers it during this sequence.
+ */
 
 #include <stdint.h>
 
@@ -47,7 +43,7 @@ int main(void) {
     write_reg(WRAP0_CTRL_REG, 1u);
     check_eq(read_reg(WRAP0_CTRL_REG) & 0x1u, 0x1u, "after write 1, UART_EN != 1");
 
-    // Reserved bits should remain 0
+    // Reserved bits stay zero
     check_eq(read_reg(WRAP0_CTRL_REG) & 0xFFFFFFFEu, 0x0u, "reserved bits set after write 1");
 
     //--------------------------------------------------------------------------
@@ -57,8 +53,7 @@ int main(void) {
     check_eq(read_reg(WRAP0_CTRL_REG) & 0x1u, 0x0u, "after write 0, UART_EN != 0");
 
     //--------------------------------------------------------------------------
-    // Write a value with reserved bits set (0xFFFFFFFF) — only UART_EN
-    // (bit 0) should latch, reserved bits drop.
+    // Write all ones — only the enable latches; reserved bits read as zero
     //--------------------------------------------------------------------------
     write_reg(WRAP0_CTRL_REG, 0xFFFFFFFFu);
     check_eq(read_reg(WRAP0_CTRL_REG) & 0x1u, 0x1u, "after write 0xFFFFFFFF, UART_EN != 1");
@@ -66,7 +61,7 @@ int main(void) {
              "after write 0xFFFFFFFF, reserved bits not RAZ");
 
     //--------------------------------------------------------------------------
-    // Toggle 10x — observe no spurious transitions in read-back
+    // Toggle 10x — every read-back matches the value written
     //--------------------------------------------------------------------------
     for (int i = 0; i < 10; i++) {
         uint32_t v = (uint32_t)(i & 1);
@@ -79,12 +74,9 @@ int main(void) {
         }
     }
 
-    // Leave UART disabled at the pad-mux level at end of test
+    // Leave the UART pads disabled at the end of the test
     write_reg(WRAP0_CTRL_REG, 0u);
 
     info_msg_s(0, "smc_uart_log_engine_ctrl_en_test done");
     test_pass(0);
-
-    while (1) __asm__("wfi");
-    return 0;
 }

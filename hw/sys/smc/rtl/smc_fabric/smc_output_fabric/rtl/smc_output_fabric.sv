@@ -17,7 +17,7 @@ module smc_output_fabric #(
   parameter int unsigned NUM_FILTERS                = 16,  // Number of system outbound filter
                                                            // entries; sizes the filter CSR arrays
                                                            // and the hit-index outputs.
-  parameter int unsigned MAX_TRANS                  = smc_pkg::FABRIC_MAX_TRANS,  // Outstanding transactions per ID bucket in
+  parameter int unsigned MAX_TRANS                  = smc_pkg::FabricMaxTrans,    // Outstanding transactions per ID bucket in
                                                                                   // the remap demux and mux, which also sizes
                                                                                   // their clock-gate snoop; unused when
                                                                                   // NO_ADDR_REMAP is set.
@@ -82,11 +82,11 @@ module smc_output_fabric #(
                                                                                      // filter status returned to
                                                                                      // the register block.
 
-  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],  // M-mode output remap
+  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NumMmodeOutputRemapRegions-1:0],      // M-mode output remap
                                                                                                              // region configuration;
                                                                                                              // unused when
                                                                                                              // NO_ADDR_REMAP is set.
-  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],  // Xvisor output remap
+  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NumXvisorOutputRemapRegions-1:0],      // Xvisor output remap
                                                                                                               // region configuration;
                                                                                                               // unused when
                                                                                                               // NO_ADDR_REMAP is set.
@@ -128,10 +128,10 @@ module smc_output_fabric #(
 
     // Pass through main AXI data path (no remapping), still need ID width conversion
     prim_axi_id_converter #(
-      .AXI_ADDR_WIDTH   (smc_pkg::AXI_ADDR_WIDTH),
-      .AXI_DATA_WIDTH   (smc_pkg::AXI_DATA_WIDTH),
-      .AXI_ID_WIDTH_IN  (smc_pkg::SMC_LOCAL_OUTPUT_FABRIC_SLAVE_ID_WIDTH),
-      .AXI_ID_WIDTH_OUT (smc_pkg::SMC_OUTPUT_FABRIC_MASTER_ID_WIDTH),
+      .AXI_ADDR_WIDTH   (smc_pkg::AxiAddrWidth),
+      .AXI_DATA_WIDTH   (smc_pkg::AxiDataWidth),
+      .AXI_ID_WIDTH_IN  (smc_pkg::SmcLocalOutputFabricSlaveIdWidth),
+      .AXI_ID_WIDTH_OUT (smc_pkg::SmcOutputFabricMasterIdWidth),
 
       .input_axi_req_t (smc_pkg::smc_56_64_6_12_axi_req_t),
       .input_axi_resp_t (smc_pkg::smc_56_64_6_12_axi_resp_t),
@@ -162,9 +162,9 @@ module smc_output_fabric #(
     axi_cg_snoop #(
       // ALL IDs, both directions: tracks the remap demux/mux below, which are sized by the
       // MAX_TRANS parameter of this module (per ID bucket) rather than by smc_pkg
-      .OUTSTANDING_TX(smc_pkg::FABRIC_ID_BUCKETS * MAX_TRANS),
+      .OUTSTANDING_TX(smc_pkg::FabricIdBuckets * MAX_TRANS),
       .DENY_DELAY(1),
-      .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
+      .HYST_WIDTH(smc_pkg::CgHysteresisW)
     ) u_fabric_cg (
       .clk_i           (clk_i),
       .rst_ni          (rst_ni),
@@ -202,15 +202,15 @@ module smc_output_fabric #(
 
     always_comb begin
       // decode whether it's mmode or xvisor based on address
-      is_mmode_write_global  = ((axi_req_i.aw.addr >= global_base_addr_i + smc_pkg::MMODE_REMAP_START) & (axi_req_i.aw.addr < global_base_addr_i + smc_pkg::MMODE_REMAP_START + smc_pkg::MMODE_REMAP_SIZE));
-      is_mmode_write_local   = ((axi_req_i.aw.addr >= local_base_addr_i  + smc_pkg::MMODE_REMAP_START) & (axi_req_i.aw.addr < local_base_addr_i  + smc_pkg::MMODE_REMAP_START + smc_pkg::MMODE_REMAP_SIZE));
-      is_mmode_read_global   = ((axi_req_i.ar.addr >= global_base_addr_i + smc_pkg::MMODE_REMAP_START) & (axi_req_i.ar.addr < global_base_addr_i + smc_pkg::MMODE_REMAP_START + smc_pkg::MMODE_REMAP_SIZE));
-      is_mmode_read_local    = ((axi_req_i.ar.addr >= local_base_addr_i  + smc_pkg::MMODE_REMAP_START) & (axi_req_i.ar.addr < local_base_addr_i  + smc_pkg::MMODE_REMAP_START + smc_pkg::MMODE_REMAP_SIZE));
+      is_mmode_write_global  = ((axi_req_i.aw.addr >= global_base_addr_i + smc_pkg::MmodeRemapStart) & (axi_req_i.aw.addr < global_base_addr_i + smc_pkg::MmodeRemapStart + smc_pkg::MmodeRemapSize));
+      is_mmode_write_local   = ((axi_req_i.aw.addr >= local_base_addr_i  + smc_pkg::MmodeRemapStart) & (axi_req_i.aw.addr < local_base_addr_i  + smc_pkg::MmodeRemapStart + smc_pkg::MmodeRemapSize));
+      is_mmode_read_global   = ((axi_req_i.ar.addr >= global_base_addr_i + smc_pkg::MmodeRemapStart) & (axi_req_i.ar.addr < global_base_addr_i + smc_pkg::MmodeRemapStart + smc_pkg::MmodeRemapSize));
+      is_mmode_read_local    = ((axi_req_i.ar.addr >= local_base_addr_i  + smc_pkg::MmodeRemapStart) & (axi_req_i.ar.addr < local_base_addr_i  + smc_pkg::MmodeRemapStart + smc_pkg::MmodeRemapSize));
 
-      is_xvisor_write_global = ((axi_req_i.aw.addr >= global_base_addr_i + smc_pkg::XVISOR_REMAP_START) & (axi_req_i.aw.addr < global_base_addr_i + smc_pkg::XVISOR_REMAP_START + smc_pkg::XVISOR_REMAP_SIZE));
-      is_xvisor_write_local  = ((axi_req_i.aw.addr >= local_base_addr_i  + smc_pkg::XVISOR_REMAP_START) & (axi_req_i.aw.addr < local_base_addr_i  + smc_pkg::XVISOR_REMAP_START + smc_pkg::XVISOR_REMAP_SIZE));
-      is_xvisor_read_global  = ((axi_req_i.ar.addr >= global_base_addr_i + smc_pkg::XVISOR_REMAP_START) & (axi_req_i.ar.addr < global_base_addr_i + smc_pkg::XVISOR_REMAP_START + smc_pkg::XVISOR_REMAP_SIZE));
-      is_xvisor_read_local   = ((axi_req_i.ar.addr >= local_base_addr_i  + smc_pkg::XVISOR_REMAP_START) & (axi_req_i.ar.addr < local_base_addr_i  + smc_pkg::XVISOR_REMAP_START + smc_pkg::XVISOR_REMAP_SIZE));
+      is_xvisor_write_global = ((axi_req_i.aw.addr >= global_base_addr_i + smc_pkg::XvisorRemapStart) & (axi_req_i.aw.addr < global_base_addr_i + smc_pkg::XvisorRemapStart + smc_pkg::XvisorRemapSize));
+      is_xvisor_write_local  = ((axi_req_i.aw.addr >= local_base_addr_i  + smc_pkg::XvisorRemapStart) & (axi_req_i.aw.addr < local_base_addr_i  + smc_pkg::XvisorRemapStart + smc_pkg::XvisorRemapSize));
+      is_xvisor_read_global  = ((axi_req_i.ar.addr >= global_base_addr_i + smc_pkg::XvisorRemapStart) & (axi_req_i.ar.addr < global_base_addr_i + smc_pkg::XvisorRemapStart + smc_pkg::XvisorRemapSize));
+      is_xvisor_read_local   = ((axi_req_i.ar.addr >= local_base_addr_i  + smc_pkg::XvisorRemapStart) & (axi_req_i.ar.addr < local_base_addr_i  + smc_pkg::XvisorRemapStart + smc_pkg::XvisorRemapSize));
 
       write_slv_sel = {
                 (is_xvisor_write_global | is_xvisor_write_local),
@@ -229,7 +229,7 @@ module smc_output_fabric #(
     smc_pkg::output_fabric_axi_struct_resp_t  axi_remap_out_resp;
 
     axi_demux #(
-      .AxiIdWidth         (smc_pkg::SMC_LOCAL_OUTPUT_FABRIC_SLAVE_ID_WIDTH),
+      .AxiIdWidth         (smc_pkg::SmcLocalOutputFabricSlaveIdWidth),
       .AtopSupport        (1'b0),
       .aw_chan_t          (smc_pkg::smc_56_64_6_12_axi_aw_chan_t),
       .w_chan_t           (smc_pkg::smc_56_64_6_12_axi_w_chan_t),
@@ -240,7 +240,7 @@ module smc_output_fabric #(
       .axi_resp_t         (smc_pkg::smc_56_64_6_12_axi_resp_t),
       .NoMstPorts         (3),
       .MaxTrans           (MAX_TRANS),
-      .AxiLookBits        (smc_pkg::FABRIC_ID_LOOKUP_BITS),
+      .AxiLookBits        (smc_pkg::FabricIdLookupBits),
       .UniqueIds          (1'b0),
       .SelHashIds         (1'b0),
       .SpillAw            (1'b0),
@@ -264,11 +264,11 @@ module smc_output_fabric #(
     );
 
     prim_axi_user_override_struct #(
-      .AXI_ADDR_WIDTH   (smc_pkg::AXI_ADDR_WIDTH),
-      .AXI_DATA_WIDTH   (smc_pkg::AXI_DATA_WIDTH),
-      .AXI_ID_WIDTH     (smc_pkg::SMC_LOCAL_OUTPUT_FABRIC_SLAVE_ID_WIDTH),
-      .AXI_USER_WIDTH   (smc_pkg::AXI_USER_WIDTH),
-      .AXI_USER_OVERRIDE(smc_pkg::SMC_SRC_ID),
+      .AXI_ADDR_WIDTH   (smc_pkg::AxiAddrWidth),
+      .AXI_DATA_WIDTH   (smc_pkg::AxiDataWidth),
+      .AXI_ID_WIDTH     (smc_pkg::SmcLocalOutputFabricSlaveIdWidth),
+      .AXI_USER_WIDTH   (smc_pkg::AxiUserWidth),
+      .AXI_USER_OVERRIDE(smc_pkg::SmcSrcId),
 
       .axi_req_t        (smc_pkg::smc_56_64_6_12_axi_req_t),
       .axi_resp_t       (smc_pkg::smc_56_64_6_12_axi_resp_t)
@@ -284,11 +284,11 @@ module smc_output_fabric #(
       .axi_resp_t         (smc_pkg::smc_56_64_6_12_axi_resp_t),
       .remap_addr_t       (smc_pkg::smc_axi_addr_t),
       .user_ovrd_t        (smc_pkg::smc_axi_user_t),
-      .NUM_REGIONS        (smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS),
+      .NUM_REGIONS        (smc_pkg::NumMmodeOutputRemapRegions),
       .REGION_BASE        (MMODE_BASE_ADDR),
-      .IDX_START          (smc_pkg::OUTPUT_REMAP_IDX_START),
+      .IDX_START          (smc_pkg::OutputRemapIdxStart),
       .USER_OVERRIDE_EN   (1'b1),
-      .USER_OVERRIDE_VAL  (smc_pkg::MMODE_SRC_ID)
+      .USER_OVERRIDE_VAL  (smc_pkg::MmodeSrcId)
     ) u_mmode_addr_remap (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
@@ -307,11 +307,11 @@ module smc_output_fabric #(
       .axi_resp_t         (smc_pkg::smc_56_64_6_12_axi_resp_t),
       .remap_addr_t       (smc_pkg::smc_axi_addr_t),
       .user_ovrd_t        (smc_pkg::smc_axi_user_t),
-      .NUM_REGIONS        (smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS),
+      .NUM_REGIONS        (smc_pkg::NumXvisorOutputRemapRegions),
       .REGION_BASE        (XVISOR_BASE_ADDR),
-      .IDX_START          (smc_pkg::OUTPUT_REMAP_IDX_START),
+      .IDX_START          (smc_pkg::OutputRemapIdxStart),
       .USER_OVERRIDE_EN   (1'b1),
-      .USER_OVERRIDE_VAL  (smc_pkg::OTHERS_SRC_ID)
+      .USER_OVERRIDE_VAL  (smc_pkg::OthersSrcId)
     ) u_xvisor_addr_remap (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
@@ -339,7 +339,7 @@ module smc_output_fabric #(
       .slv_resp_t     (smc_pkg::smc_56_64_6_12_axi_resp_t),
       .mst_req_t      (smc_pkg::smc_output_56_64_8_12_axi_req_t),
       .mst_resp_t     (smc_pkg::smc_output_56_64_8_12_axi_resp_t),
-      .SlvAxiIDWidth  (smc_pkg::SMC_LOCAL_OUTPUT_FABRIC_SLAVE_ID_WIDTH),
+      .SlvAxiIDWidth  (smc_pkg::SmcLocalOutputFabricSlaveIdWidth),
       .NoSlvPorts     (3),
       .MaxWTrans      (MAX_TRANS),
       .FallThrough    (1'b0),
@@ -376,10 +376,10 @@ module smc_output_fabric #(
 
   axi_cg_snoop #(
     // ALL IDs, both directions: matches the outbound filter's demux below, which takes
-    // MaxTrans from smc_pkg::FABRIC_MAX_TRANS (per ID bucket)
-    .OUTSTANDING_TX(smc_pkg::FABRIC_OUTSTANDING_TX),
+    // MaxTrans from smc_pkg::FabricMaxTrans (per ID bucket)
+    .OUTSTANDING_TX(smc_pkg::FabricOutstandingTx),
     .DENY_DELAY(1),
-    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
+    .HYST_WIDTH(smc_pkg::CgHysteresisW)
   ) u_sys_out_filter_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
@@ -415,12 +415,12 @@ module smc_output_fabric #(
     .GROUP_ID_USER_BIT_START (4),
     .GROUP_ID_WIDTH          (4),
     .EN_NS_FILTER            (1'b1),
-    .AXI_ADDR_WIDTH          (smc_pkg::AXI_ADDR_WIDTH),
-    .AXI_ID_WIDTH            (smc_pkg::SMC_OUTPUT_FABRIC_MASTER_ID_WIDTH),
-    .AXI_DATA_WIDTH          (smc_pkg::AXI_DATA_WIDTH),
-    .MAX_TRANS               (smc_pkg::FABRIC_MAX_TRANS),
-    .AXI_LOOK_BITS           (smc_pkg::FABRIC_ID_LOOKUP_BITS),
-    .ERR_SLV_MAX_TRANS       (smc_pkg::ERR_SLV_MAX_TRANS),
+    .AXI_ADDR_WIDTH          (smc_pkg::AxiAddrWidth),
+    .AXI_ID_WIDTH            (smc_pkg::SmcOutputFabricMasterIdWidth),
+    .AXI_DATA_WIDTH          (smc_pkg::AxiDataWidth),
+    .MAX_TRANS               (smc_pkg::FabricMaxTrans),
+    .AXI_LOOK_BITS           (smc_pkg::FabricIdLookupBits),
+    .ERR_SLV_MAX_TRANS       (smc_pkg::ErrSlvMaxTrans),
     .FLOP_REQ_EN             (FILTER_REQ_PIPELINE_ENABLE),
     .FLOP_RESP_EN            (FILTER_RSP_PIPELINE_ENABLE),
     .filter_axi_req_t        (smc_pkg::smc_output_56_64_8_12_axi_req_t),

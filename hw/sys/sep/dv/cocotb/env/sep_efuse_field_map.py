@@ -7,7 +7,7 @@ Write-policy and ``SECURE_TM`` membership come from ``_FIELD_ROWS``
 come from the generated RDL header. The set-only, lock, and writable
 walks together cover every row except ``LC_STATE``. ``LOCK`` is walked
 only when both RDL windows (``LOCKS`` and ``LOCKS_SPARE``) are written.
-``REQUIRED_SIGNERS`` is writable and is not on the ``SECURE_TM_LOCK``
+``REQUIRED_SIGNERS`` is writable and is not on the ``SecureTmLock``
 list.
 """
 

@@ -2,59 +2,29 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DRBG real-sink multi-consumer: KM + AES concurrent.
 
-One real DRBG/ESRC/EDN stream feeds TWO real entropy sinks concurrently:
-the KM AXIS endpoint (real KM firmware rom_main pulls the DRBG sampler)
-and the AES native crypto-EDN leg (ECB-256 reseed+encrypt). KM and AES are driven as a
-TRUE cocotb fork so both contend at the EDN arbiter in the same window. The CHK5 proof
-is BIT-EXACT and genbits-anchored:
-
-  * AES (per-sink ROUTING, golden): each AES post-adapter beat == the next word on the
-    AXIS1 pre-adapter golden tap (sep_crypto.entropy_muxed_req[1], tb_top axis1_*).
-    The drbg_axis_edn_adapter is round-robin, so this in-order equality holds because
-    AES is the ONLY active crypto sink (OTBN/KMAC parked -> never request -> AES is
-    granted every word in order). This is exactly the reference suite's AXIS1 routing proof.
-  * Genbits chain: every AXIS1 word AND every KM AXIS word must be
-    a member of the CHK4 CTR_DRBG genbits-golden word multiset (report() tally, with
-    removal) -- proving the one verified DRBG stream PARTITIONS into the two sinks.
-    the reference suite treats the AXIS1 tap as its own golden; here it is anchored back to the
-    bit-exact CTR_DRBG genbits.
-  * KM (membership): rom_main's pull ORDER is firmware-driven (not order-predictable),
-    so KM is scored bit-exact MEMBERSHIP (each KM word is a genbits-golden word) rather
-    than order.
-
-Consumption is bounded to a single CSRNG Generate (<= cfg.glen=32 genbits blocks) so
-the CHK4 genbits golden (one Generate per seed) stays bit-exact -- the genbits-word
-pool the membership tally draws from must cover all consumed words. 1 keygen + 2 AES
-blocks + KM boot ~ 24 blocks (< 32); the per-consumer block costs are at the
-constants.
+One real DRBG/ESRC/EDN stream feeds two real entropy sinks in one cocotb fork: the KM AXIS
+endpoint (KM firmware rom_main pulls the DRBG sampler) and the AES native crypto-EDN leg
+(ECB-256 reseed+encrypt). Consumption stays inside one CSRNG Generate (cfg.glen=32 blocks), so
+the CHK4 genbits golden stays bit-exact and its word pool covers every consumed word.
 
 Checkers:
-  CHK1..CHK4  bit-exact golden (decorrelator / compressor / seed / CTR_DRBG genbits)
-              -- the correctness anchor for the genbits-chain membership below.
-  CHK-AESKAT  AES block-0 ciphertext == independent AES-256-ECB golden (sep_aes_golden,
-              FIPS-197) -- the AES engine computes correctly, not just "consumed".
-  CHK5_aes (golden)  bit-exact per-sink ROUTING: every AES post-adapter beat == the
-              next AXIS1 word (scoreboard _mon_edn_sink_golden); strict report() fails
-              on any mismatch or an ack with an empty AXIS1 queue.
-  CHK5_axis1 / CHK5_km (membership)  every AXIS1 word and every KM word is a genbits-
-              golden word (report() multiset tally, removal) -- the genbits-anchored
-              partition proof; a non-member word fails the run.
-  CHK-CONCUR  KM AXIS beats AND AES crypto-EDN beats BOTH advance during the concurrent
-              fork (per-sink beat delta > 0) -- both sinks consumed within the fork
-              window (the OSS analog of the reference suite's fork count_good/ack-advance check;
-              like the reference suite it evidences overlap, not strict same-cycle arbiter contention).
-  CSRNG/EDN error/recoverable-alert regs stay zero; AES STATUS no alert.
+  CHK1..CHK4  bit-exact golden (decorrelator / compressor / seed / CTR_DRBG genbits).
+  CHK-AESKAT  AES block-0 ciphertext == independent AES-256-ECB golden (FIPS-197).
+  CHK5_aes    every AES post-adapter beat == the next word on the AXIS1 pre-adapter tap
+              (sep_crypto.entropy_muxed_req[1]). The adapter is round-robin, so in-order
+              equality holds only because AES is the sole active crypto sink (OTBN/KMAC
+              parked); the scoreboard rejects more than one golden crypto sink.
+  CHK5_axis1 / CHK5_km
+              every AXIS1 word and every KM word is a member of the CHK4 genbits multiset
+              (tally with removal), so the one DRBG stream partitions into the two sinks.
+              KM pull order is firmware-driven, so KM is scored by membership, not order.
+  CHK-CONCUR  KM and AES beat counts both advance during the fork. This shows overlap, not
+              same-cycle arbiter contention.
+  CSRNG/EDN error and recoverable-alert registers stay zero; AES STATUS shows no alert.
 
-Delta vs the reference suite: per-sink bit-exact for >1 CONCURRENT crypto sink
-(e.g. AES+KMAC at once) would need the reference suite's full per-endpoint arbiter-assignment trace
-(the round-robin reorder); the scoreboard rejects >1 golden crypto sink. KM bit-exact
-ORDER needs controlled KM firmware (rom_main is firmware-driven); KM here is bit-exact
-membership. Neither is required by this test's KM+AES scope.
-
-Boot recipe matches the KAT family (real fuse-sense, valid PROD OTP image;
-rom_main built PROD_BOOT_WIPE=0). AES is left released through entropy bring-up so
-its masking PRNG reseed is served as EDN starts (the real_sink_aes ordering);
-OTBN/KMAC/HMAC are parked so KM + AES are the only entropy sinks.
+Boot follows the KAT recipe (real fuse-sense, PROD OTP image, rom_main built with
+PROD_BOOT_WIPE=0). AES stays released through entropy bring-up so its masking-PRNG reseed is
+served as EDN starts; OTBN/KMAC/HMAC are parked so KM and AES are the only sinks.
 """
 
 from __future__ import annotations
@@ -181,9 +151,8 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         self.logger.info("CHK-AESKAT PASS: block-0 ciphertext == AES-256-ECB golden")
 
         # Both sinks consumed entropy DURING the concurrent fork (not just one) --
-        # evidences overlap (the OSS analog of the reference suite's fork count_good/ack-advance
-        # check); like the reference suite it shows both advanced in-window, not strict same-cycle
-        # arbiter contention.
+        # evidences overlap: both advanced in-window, which is weaker than strict
+        # same-cycle arbiter contention.
         km_after = self._km_beats()
         aes_after = self._aes_beats()
         assert km_after > km_before, (

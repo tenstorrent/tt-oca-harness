@@ -4,81 +4,81 @@
 // Declare pad and mux types for the SMC padring.
 //
 // Holds DefaultDirectionMap, the reset-default direction of each GPIO pad (GPIO 62-64
-// output, all others input), and pad_enable_t, the active-low LSIO enable encoding
+// output, all others input), and pad_enable_e, the active-low LSIO enable encoding
 // (ENABLED is 0, DISABLED is 1) used by smc_padring.
 
 package smc_padring_pkg;
 
 
-  localparam bit IS_INPUT = 1'b1;
-  localparam bit IS_OUTPUT = 1'b0;
+  localparam bit IsInput = 1'b1;
+  localparam bit IsOutput = 1'b0;
 
-  localparam bit [smc_pkg::NUM_GPIO_WRAPS-1:0] DefaultDirectionMap = {
-    IS_OUTPUT,  // 64.
-    IS_OUTPUT,  // 63.
-    IS_OUTPUT,  // 62.
-    IS_INPUT,  // 61.
-    IS_INPUT,  // 60.
-    IS_INPUT,  // 59.
-    IS_INPUT,  // 58.
-    IS_INPUT,  // 57.
-    IS_INPUT,  // 56.
-    IS_INPUT,  // 55.
-    IS_INPUT,  // 54.
-    IS_INPUT,  // 53.
-    IS_INPUT,  // 52.
-    IS_INPUT,  // 51.
-    IS_INPUT,  // 50.
-    IS_INPUT,  // 49.
-    IS_INPUT,  // 48.
-    IS_INPUT,  // 47.
-    IS_INPUT,  // 46.
-    IS_INPUT,  // 45.
-    IS_INPUT,  // 44.
-    IS_INPUT,  // 43.
-    IS_INPUT,  // 42.
-    IS_INPUT,  // 41.
-    IS_INPUT,  // 40.
-    IS_INPUT,  // 39.
-    IS_INPUT,  // 38.
-    IS_INPUT,  // 37.
-    IS_INPUT,  // 36.
-    IS_INPUT,  // 35.
-    IS_INPUT,  // 34.
-    IS_INPUT,  // 33.
-    IS_INPUT,  // 32.
-    IS_INPUT,  // 31.
-    IS_INPUT,  // 30.
-    IS_INPUT,  // 29.
-    IS_INPUT,  // 28.
-    IS_INPUT,  // 27.
-    IS_INPUT,  // 26.
-    IS_INPUT,  // 25.
-    IS_INPUT,  // 24.
-    IS_INPUT,  // 23.
-    IS_INPUT,  // 22.
-    IS_INPUT,  // 21.
-    IS_INPUT,  // 20.
-    IS_INPUT,  // 19.
-    IS_INPUT,  // 18.
-    IS_INPUT,  // 17.
-    IS_INPUT,  // 16.
-    IS_INPUT,  // 15.
-    IS_INPUT,  // 14.
-    IS_INPUT,  // 13.
-    IS_INPUT,  // 12.
-    IS_INPUT,  // 11.
-    IS_INPUT,  // 10.
-    IS_INPUT,  //  9.
-    IS_INPUT,  //  8.
-    IS_INPUT,  //  7.
-    IS_INPUT,  //  6.
-    IS_INPUT,  //  5.
-    IS_INPUT,  //  4.
-    IS_INPUT,  //  3.
-    IS_INPUT,  //  2.
-    IS_INPUT,  //  1.
-    IS_INPUT  //  0.
+  localparam bit [smc_pkg::NumGpioWraps-1:0] DefaultDirectionMap = {
+    IsOutput,  // 64.
+    IsOutput,  // 63.
+    IsOutput,  // 62.
+    IsInput,  // 61.
+    IsInput,  // 60.
+    IsInput,  // 59.
+    IsInput,  // 58.
+    IsInput,  // 57.
+    IsInput,  // 56.
+    IsInput,  // 55.
+    IsInput,  // 54.
+    IsInput,  // 53.
+    IsInput,  // 52.
+    IsInput,  // 51.
+    IsInput,  // 50.
+    IsInput,  // 49.
+    IsInput,  // 48.
+    IsInput,  // 47.
+    IsInput,  // 46.
+    IsInput,  // 45.
+    IsInput,  // 44.
+    IsInput,  // 43.
+    IsInput,  // 42.
+    IsInput,  // 41.
+    IsInput,  // 40.
+    IsInput,  // 39.
+    IsInput,  // 38.
+    IsInput,  // 37.
+    IsInput,  // 36.
+    IsInput,  // 35.
+    IsInput,  // 34.
+    IsInput,  // 33.
+    IsInput,  // 32.
+    IsInput,  // 31.
+    IsInput,  // 30.
+    IsInput,  // 29.
+    IsInput,  // 28.
+    IsInput,  // 27.
+    IsInput,  // 26.
+    IsInput,  // 25.
+    IsInput,  // 24.
+    IsInput,  // 23.
+    IsInput,  // 22.
+    IsInput,  // 21.
+    IsInput,  // 20.
+    IsInput,  // 19.
+    IsInput,  // 18.
+    IsInput,  // 17.
+    IsInput,  // 16.
+    IsInput,  // 15.
+    IsInput,  // 14.
+    IsInput,  // 13.
+    IsInput,  // 12.
+    IsInput,  // 11.
+    IsInput,  // 10.
+    IsInput,  //  9.
+    IsInput,  //  8.
+    IsInput,  //  7.
+    IsInput,  //  6.
+    IsInput,  //  5.
+    IsInput,  //  4.
+    IsInput,  //  3.
+    IsInput,  //  2.
+    IsInput,  //  1.
+    IsInput  //  0.
   };
 
   //////////////////
@@ -88,6 +88,6 @@ package smc_padring_pkg;
   typedef enum logic {
     DISABLED = 1'b1,
     ENABLED  = 1'b0
-  } pad_enable_t;
+  } pad_enable_e;
 
 endpackage

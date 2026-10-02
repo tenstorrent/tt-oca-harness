@@ -47,6 +47,39 @@
 
 #define STATUS_OUT(code) mmio_write32(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1), (code))
 
+// ── Terminal error codes: rom_err_fail() ──
+//
+// The ROM core's terminal codes. They keep the upper half zero, which is
+// what lets rom_err_fail() also post them to cold_scratch[1]. A subsystem's own
+// codes carry its tag in the upper half instead: 0x0002xxxx for the DMA driver
+// (SEP_DMA_ERR_*, sep_dma.c) and 0x0003xxxx for the manifest module
+// (OCA_BOOT_ERR_*, oca_boot.h). The nibble at [15:12] names the
+// area: A platform checks, B C runtime, C SMC coordination, D DFT gate, E SPI
+// bring-up, F boot core.
+enum {
+    ROM_ERR_SMC_SANITY_FAILED = 0x0000A001u,
+    ROM_ERR_LIFECYCLE_INVALID = 0x0000A002u,
+    ROM_ERR_RUNTIME_INIT_FAILED = 0x0000B001u,
+    ROM_ERR_SMC_COORD_NOT_READY = 0x0000C001u,
+    // Reserved in the error-code space only; the MEM_REPAIR gate is in
+    // vector.S and reports STATUS_ENCODE(ERROR, SEP_MSG_MBIST_FAIL) directly,
+    // since rom_err_fail() needs a C stack that does not exist that early.
+    ROM_ERR_DFT_GATE_BLOCKED = 0x0000D001u,
+    ROM_ERR_SPI_INIT_FAILED = 0x0000E001u,
+    ROM_ERR_STACK_OVERFLOW = 0x0000F001u,
+    ROM_ERR_CRYPTO_SELFTEST_FAILED = 0x0000F002u,
+    ROM_ERR_FUSE_SECRETS_NOT_LOCKED = 0x0000F003u,
+    ROM_ERR_HANDOFF_SELFCHECK_FAILED = 0x0000F004u,
+    ROM_ERR_ROM_HASH_MISMATCH = 0x0000F005u,
+    ROM_ERR_MEASUREMENT_FAILED = 0x0000F006u,
+    ROM_ERR_BL0_STATE_OVERLAPS_STACK = 0x0000F007u,
+    ROM_ERR_SBOOT_DIS_RSVD_SET = 0x0000F008u,
+    ROM_ERR_ENTROPY_INIT_FAILED = 0x0000F009u,
+};
+
+// Records error_code and halts; defined in rom_main.c.
+__attribute__((noreturn)) void rom_err_fail_ext(uint32_t error_code);
+
 // ── Final verdict channel: cold_scratch[0] ──
 // Only the terminal outcome goes here, so one read gives one answer. It is
 // SEP-internal and writable from the first instruction, unlike the mailbox at

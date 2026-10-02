@@ -16,14 +16,14 @@ package smc_4core_cpu_pkg;
   // CPU Control Parameters //
   ////////////////////////////
 
-  localparam int unsigned NUM_CPU_CORES = 4;
+  localparam int unsigned NumCpuCores = 4;
 
   // Interrupt Parameters
-  localparam bit [8:0] NUM_CPU_INTERRUPTS = 328;
-  localparam bit [8:0] NUM_EXT_INTERRUPTS = 256;
+  localparam bit [8:0] NumCpuInterrupts = 328;
+  localparam bit [8:0] NumExtInterrupts = 256;
 
   // in the four core config, the CPU cores are out of reset by default
-  localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS = '{
+  localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DefaultResetSettings = '{
       core0_reset_n_n0_scan: 1'b1,
       core1_reset_n_n0_scan: 1'b1,
       core2_reset_n_n0_scan: 1'b1,

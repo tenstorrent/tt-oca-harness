@@ -76,8 +76,7 @@ extend-exclude = [
   "nonfree",
   "vendor",
   "**/build",
-  "**/build_ot",
-  "**/build_ot_pio",
+  "**/build_pio",
   "**/regs/gen/py",
   "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest",
   # The VP simulator is a submodule, so it is not covered by a .gitignore the
@@ -174,8 +173,9 @@ skip = """\
 # "interrupter" spelling codespell's dictionary otherwise prefers.
 ignore-words-list = """\
 STAP,stap,STAPs,staps,EDN,edn,OT,hart,Hart,THRE,thre,WEL,DED,ded,\
-inout,Inout,ist,wit,dout,oen,chainIn,LockIn,DAA,clen,aack,thi,pres,te,\
+inout,Inout,ist,wit,dout,oen,chainIn,LockIn,DAA,clen,aack,thi,pres,te,ues,\
 Dum,ND,nd,RUNN,ASSIGNIN,Synopsys,synopsys,unsecure,Unsecure,UNSECURE,\
 interruptor,Interruptor,interruptors,Interruptors,\
-SpecField,specfield\
+SpecField,specfield,\
+Tye,tye\
 """
