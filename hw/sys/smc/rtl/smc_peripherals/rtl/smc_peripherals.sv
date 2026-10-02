@@ -10,7 +10,8 @@
 // interrupts, the gated I3C clock, and debug buses.
 //
 // EFUSE_SHIM_SIZE is the vendor eFuse shim CSR carve-out at the base of the opaque
-// smc_external window. Each peripheral clock-gate enable stops its clock when high.
+// smc_external window. Each peripheral clock-gate enable stops its clock when high. The DTP
+// CSR, smc_external, eFuse shim and JTAG eFuse AXI-Lite ports each pass through an axi_cut.
 
 module smc_peripherals #(
   parameter int unsigned MAX_TRANS = 2,  // Maximum outstanding transactions of the padring
@@ -402,7 +403,15 @@ module smc_peripherals #(
   smc_pkg::smc_axil_32_32_resp_t axil_misc_resp;
 
   // DTP CSR request before the xbar base address is stripped off
-  smc_pkg::smc_axil_32_32_req_t axil_dtp_csr_req;
+  smc_pkg::smc_axil_32_32_req_t  axil_dtp_csr_req;
+  smc_pkg::smc_axil_32_32_req_t  axil_dtp_csr_rebased_req;
+  smc_pkg::smc_axil_32_32_resp_t axil_dtp_csr_resp;
+
+  smc_pkg::smc_axil_32_32_req_t  axil_smc_otp_jtag_req;
+  smc_pkg::smc_axil_32_32_resp_t axil_smc_otp_jtag_resp;
+
+  smc_pkg::smc_axil_32_32_req_t  fuse_bank_ctrl_req;
+  smc_pkg::smc_axil_32_32_resp_t fuse_bank_ctrl_resp;
 
   // Clock gate enable signals synchronized to destination domains
   logic i2c_cg_en_periph_clk;
@@ -528,7 +537,7 @@ module smc_peripherals #(
     .system_timer_octs_req_o          (axil_system_timer_octs_req),
     .system_timer_octs_resp_i         (axil_system_timer_octs_resp),
     .dtp_csr_req_o                    (axil_dtp_csr_req),
-    .dtp_csr_resp_i                   (axil_dtp_csr_resp_i),
+    .dtp_csr_resp_i                   (axil_dtp_csr_resp),
     .i3c_req_o                        (axil_i3c_req_smc_clk),
     .i3c_resp_i                       (axil_i3c_resp_smc_clk),
     .reset_unit_req_o                 (axil_reset_unit_req),
@@ -539,16 +548,85 @@ module smc_peripherals #(
     .external_resp_i                  (axil_external_resp)
   );
 
-  assign smc_external_req_o = axil_external_req;
-  assign axil_external_resp = smc_external_resp_i;
-
   // Rebase DTP CSR addresses to zero: the xbar routes on the full system
   // address, but the DTP CSR block expects an offset from its base.
   always_comb begin
-    axil_dtp_csr_req_o         = axil_dtp_csr_req;
-    axil_dtp_csr_req_o.aw.addr = axil_dtp_csr_req.aw.addr - smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR;
-    axil_dtp_csr_req_o.ar.addr = axil_dtp_csr_req.ar.addr - smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR;
+    axil_dtp_csr_rebased_req         = axil_dtp_csr_req;
+    axil_dtp_csr_rebased_req.aw.addr = axil_dtp_csr_req.aw.addr - smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR;
+    axil_dtp_csr_rebased_req.ar.addr = axil_dtp_csr_req.ar.addr - smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR;
   end
+
+  ////////////////////////
+  // AXI-Lite Port Cuts //
+  ////////////////////////
+
+  axi_cut #(
+    .aw_chan_t  (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .w_chan_t   (smc_pkg::smc_axil_32_32_w_chan_t),
+    .b_chan_t   (smc_pkg::smc_axil_32_32_b_chan_t),
+    .ar_chan_t  (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .r_chan_t   (smc_pkg::smc_axil_32_32_r_chan_t),
+    .axi_req_t  (smc_pkg::smc_axil_32_32_req_t),
+    .axi_resp_t (smc_pkg::smc_axil_32_32_resp_t)
+  ) u_dtp_csr_axil_cut (
+    .clk_i      (clk_smc_i),
+    .rst_ni     (rst_primary_smc_clk_no),
+    .slv_req_i  (axil_dtp_csr_rebased_req),
+    .slv_resp_o (axil_dtp_csr_resp),
+    .mst_req_o  (axil_dtp_csr_req_o),
+    .mst_resp_i (axil_dtp_csr_resp_i)
+  );
+
+  axi_cut #(
+    .aw_chan_t  (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .w_chan_t   (smc_pkg::smc_axil_32_32_w_chan_t),
+    .b_chan_t   (smc_pkg::smc_axil_32_32_b_chan_t),
+    .ar_chan_t  (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .r_chan_t   (smc_pkg::smc_axil_32_32_r_chan_t),
+    .axi_req_t  (smc_pkg::smc_axil_32_32_req_t),
+    .axi_resp_t (smc_pkg::smc_axil_32_32_resp_t)
+  ) u_external_axil_cut (
+    .clk_i      (clk_smc_i),
+    .rst_ni     (rst_primary_smc_clk_no),
+    .slv_req_i  (axil_external_req),
+    .slv_resp_o (axil_external_resp),
+    .mst_req_o  (smc_external_req_o),
+    .mst_resp_i (smc_external_resp_i)
+  );
+
+  axi_cut #(
+    .aw_chan_t  (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .w_chan_t   (smc_pkg::smc_axil_32_32_w_chan_t),
+    .b_chan_t   (smc_pkg::smc_axil_32_32_b_chan_t),
+    .ar_chan_t  (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .r_chan_t   (smc_pkg::smc_axil_32_32_r_chan_t),
+    .axi_req_t  (smc_pkg::smc_axil_32_32_req_t),
+    .axi_resp_t (smc_pkg::smc_axil_32_32_resp_t)
+  ) u_otp_jtag_axil_cut (
+    .clk_i      (clk_smc_i),
+    .rst_ni     (rst_primary_smc_clk_no),
+    .slv_req_i  (axil_smc_otp_jtag_req_i),
+    .slv_resp_o (axil_smc_otp_jtag_resp_o),
+    .mst_req_o  (axil_smc_otp_jtag_req),
+    .mst_resp_i (axil_smc_otp_jtag_resp)
+  );
+
+  axi_cut #(
+    .aw_chan_t  (smc_pkg::smc_axil_32_32_aw_chan_t),
+    .w_chan_t   (smc_pkg::smc_axil_32_32_w_chan_t),
+    .b_chan_t   (smc_pkg::smc_axil_32_32_b_chan_t),
+    .ar_chan_t  (smc_pkg::smc_axil_32_32_ar_chan_t),
+    .r_chan_t   (smc_pkg::smc_axil_32_32_r_chan_t),
+    .axi_req_t  (smc_pkg::smc_axil_32_32_req_t),
+    .axi_resp_t (smc_pkg::smc_axil_32_32_resp_t)
+  ) u_fuse_bank_ctrl_axil_cut (
+    .clk_i      (clk_smc_i),
+    .rst_ni     (rst_primary_smc_clk_no),
+    .slv_req_i  (fuse_bank_ctrl_req),
+    .slv_resp_o (fuse_bank_ctrl_resp),
+    .mst_req_o  (fuse_bank_ctrl_req_o),
+    .mst_resp_i (fuse_bank_ctrl_resp_i)
+  );
 
   //////////////////////
   // Periph Clock CDC //
@@ -1040,16 +1118,16 @@ module smc_peripherals #(
     .axil_resp_o                     (axil_efuse_resp),
 
     // JTAG AXI4-Lite slave
-    .axil_smc_otp_jtag_req_i         (axil_smc_otp_jtag_req_i),
-    .axil_smc_otp_jtag_resp_o        (axil_smc_otp_jtag_resp_o),
+    .axil_smc_otp_jtag_req_i         (axil_smc_otp_jtag_req),
+    .axil_smc_otp_jtag_resp_o        (axil_smc_otp_jtag_resp),
 
     // LC state from SEP
     .lc_state_i                      (lc_state_i),
     .lc_sigint_err_o                 (lc_sigint_err_o),
 
     // SHIM CSR + custom command interface
-    .fuse_bank_ctrl_req_o            (fuse_bank_ctrl_req_o),
-    .fuse_bank_ctrl_resp_i           (fuse_bank_ctrl_resp_i),
+    .fuse_bank_ctrl_req_o            (fuse_bank_ctrl_req),
+    .fuse_bank_ctrl_resp_i           (fuse_bank_ctrl_resp),
     .efuse_shim_command_req_o        (efuse_shim_command_req_o),
     .efuse_shim_command_resp_i       (efuse_shim_command_resp_i),
 
