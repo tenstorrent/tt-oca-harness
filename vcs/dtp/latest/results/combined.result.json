@@ -8,99 +8,99 @@
     "run_dir": "vcs/dtp/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-44d37bf8781d910c",
+    "comparison_key": "COVCMP-c01950a2df1a9587",
     "details_available": true,
     "effective_metrics": {
-      "assertion": 95.54,
-      "branch": 87.12,
-      "condition": 84.43,
-      "fsm_state": 70.87,
+      "assertion": 93.64,
+      "branch": 87.46,
+      "condition": 85.62,
+      "fsm_state": 77.58,
       "functional": 100.0,
-      "line": 94.82,
-      "toggle": 93.38,
-      "user": 96.4361
+      "line": 95.28,
+      "toggle": 83.36,
+      "user": 96.0168
     },
     "holes_summary": {
       "accepted": 0,
       "by_category": {
-        "user": 17
+        "user": 19
       },
       "by_disposition": {
-        "cover": 17
+        "cover": 19
       },
       "by_metric": {
-        "user": 17
+        "user": 19
       },
       "by_status": {
-        "open": 17
+        "open": 19
       },
       "details_available": true,
       "hole_group_count": 0,
-      "native_point_count": 17,
+      "native_point_count": 19,
       "observations_complete": false,
-      "open": 17,
-      "unclassified": 17
+      "open": 19,
+      "unclassified": 19
     },
     "manifest": "artifacts/dtp/coverage/coverage.json",
     "policy_application": "artifacts/dtp/coverage/report/policy-application.json",
     "policy_thresholds": [
       {
-        "actual_percent": 94.82,
+        "actual_percent": 95.28,
         "id": "line",
         "max_unclassified_points": null,
-        "met": false,
+        "met": true,
         "metric_family": "line",
-        "minimum_percent": 98.0,
+        "minimum_percent": 85.0,
         "population": "effective",
         "scope": "*",
         "unclassified_points": 0
       },
       {
-        "actual_percent": 84.43,
+        "actual_percent": 85.62,
         "id": "condition",
         "max_unclassified_points": null,
-        "met": false,
+        "met": true,
         "metric_family": "condition",
-        "minimum_percent": 98.0,
+        "minimum_percent": 85.0,
         "population": "effective",
         "scope": "*",
         "unclassified_points": 0
       },
       {
-        "actual_percent": 93.38,
+        "actual_percent": 83.36,
         "id": "toggle",
         "max_unclassified_points": null,
         "met": false,
         "metric_family": "toggle",
-        "minimum_percent": 98.0,
+        "minimum_percent": 85.0,
         "population": "effective",
         "scope": "*",
         "unclassified_points": 0
       },
       {
-        "actual_percent": 70.87,
+        "actual_percent": 77.58,
         "id": "fsm",
         "max_unclassified_points": null,
         "met": false,
         "metric_family": "fsm_state",
-        "minimum_percent": 98.0,
+        "minimum_percent": 85.0,
         "population": "effective",
         "scope": "*",
         "unclassified_points": 0
       },
       {
-        "actual_percent": 87.12,
+        "actual_percent": 87.46,
         "id": "branch",
         "max_unclassified_points": null,
-        "met": false,
+        "met": true,
         "metric_family": "branch",
-        "minimum_percent": 98.0,
+        "minimum_percent": 85.0,
         "population": "effective",
         "scope": "*",
         "unclassified_points": 0
       },
       {
-        "actual_percent": 95.54,
+        "actual_percent": 93.64,
         "id": "assertion",
         "max_unclassified_points": null,
         "met": false,
@@ -123,14 +123,14 @@
       }
     ],
     "raw_metrics": {
-      "assertion": 95.54,
-      "branch": 83.55,
-      "condition": 82.47,
+      "assertion": 93.64,
+      "branch": 83.31,
+      "condition": 82.27,
       "fsm_state": 52.64,
       "functional": 100.0,
-      "line": 93.05,
-      "toggle": 65.83,
-      "user": 96.4361
+      "line": 93.08,
+      "toggle": 66.09,
+      "user": 96.0168
     },
     "report": "artifacts/dtp/coverage/report",
     "source_manifest": "vcs/dtp/runs/combined/cov/coverage.json",
@@ -142,7 +142,7 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": false,
-    "total_percent": 89.45
+    "total_percent": 88.99
   },
   "failure_buckets": [
     {
@@ -156,11 +156,11 @@
   ],
   "flow": "dtp",
   "framework": "",
-  "generated_at": "2026-10-02T11:33:06+00:00",
+  "generated_at": "2026-10-02T23:31:33+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "9712dfcb5076749017a29d30b09b5a2b1515018a",
-    "short_sha": "9712dfcb5"
+    "sha": "44d5257825ce985ecbb54602943936cb9e51da0e",
+    "short_sha": "44d525782"
   },
   "junit_xml": {
     "missing": 0,
@@ -169,10 +169,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-02T11:33:03.361401+00:00",
+    "generated_at": "2026-10-02T23:31:29.633098+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "9712dfcb5076749017a29d30b09b5a2b1515018a",
+      "commit": "44d5257825ce985ecbb54602943936cb9e51da0e",
       "dirty": "false"
     },
     "label": "combine",
@@ -197,9 +197,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 20.166,
-    "end_time": "2026-10-02T11:33:02.981490+00:00",
-    "start_time": "2026-10-02T11:32:42.796880+00:00"
+    "duration_sec": 21.963,
+    "end_time": "2026-10-02T23:31:28.994027+00:00",
+    "start_time": "2026-10-02T23:31:07.002451+00:00"
   },
   "tool": "vcs"
 }
