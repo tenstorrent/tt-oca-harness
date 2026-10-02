@@ -75,6 +75,7 @@ ABR_WINDOW = window("ABR")
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
+RESP_DECERR = 3
 RESP_NAME = {-1: "TIMEOUT", 0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 # AXI ID width of each TB master port (tb/sep_tb_signal_list.svh).

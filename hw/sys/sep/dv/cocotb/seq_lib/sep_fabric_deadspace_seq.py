@@ -16,7 +16,7 @@ CSRNG / EDN / entropy_source). Window end comes from
 of legality.
 
 Windows cover CSR apertures whose memory-map window is larger than
-``REG_MAP_SIZE`` (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox,
+``REG_MAP_SIZE`` (DMA, WDT, AES, OTBN, ABR, CSRNG, EDN, ESRC, KM mailbox,
 lifecycle, SPI). HMAC/KMAC fill their map window so they have no
 intra-window dead span here. Remap / filter arrays and scratch are
 owned elsewhere for live programming.
@@ -100,7 +100,7 @@ class DeadWindow:
     # put back.
     #
     # Populated for entropy_src only, the one leaf whose Python header carries
-    # generated field-access metadata. For the other nine windows restore() writes
+    # generated field-access metadata. For the other windows restore() writes
     # back W1C registers such as spi_controller ERROR_STATUS and km_mailbox
     # status_reg / irq_status_reg. restore() runs only after a probe has failed,
     # so the corruption is confined to a run that is already reporting failure.
@@ -150,6 +150,9 @@ def _ot_named(ip: str, base: int, alloc: int, names) -> frozenset[int]:
     )
 
 
+_ABR = sym("ABR_REG_MAP_BASE_ADDR")
+
+
 def dead_windows() -> tuple[DeadWindow, ...]:
     """Source-derived windows. Allocated size is never the RTL truncate width."""
     esrc_base = sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR")
@@ -181,6 +184,13 @@ def dead_windows() -> tuple[DeadWindow, ...]:
             sym("AES_REG_MAP_BASE_ADDR"),
             block_size("OTBN"),
             _sep_watch(sym("OTBN_REG_MAP_BASE_ADDR"), block_size("OTBN")),
+        ),
+        DeadWindow(
+            "abr",
+            _ABR,
+            sym("ENTROPY_POOL_REG_MAP_BASE_ADDR"),
+            block_size("ABR"),
+            _sep_watch(_ABR, block_size("ABR")),
         ),
         DeadWindow(
             "csrng",
@@ -288,6 +298,12 @@ DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("csrng", 0x1091_5248, "w"),
     ("entropy_src", 0x1091_651C, "w"),
     ("secure_dma", 0x1080_08A8, "w"),
+    # First word past the ABR map, error_intr_en_r with offset bit 14 set, and
+    # the last word of the ABR window.
+    ("abr", _ABR + block_size("ABR"), "r"),
+    ("abr", _ABR + block_size("ABR"), "w"),
+    ("abr", sym("ABR_INTR_BLOCK_RF_ERROR_INTR_EN_R_REG_ADDR") | 0x4000, "w"),
+    ("abr", sym("ENTROPY_POOL_REG_MAP_BASE_ADDR") - 4, "w"),
     # First, middle and last word of the adopter TRNG window, read and write.
     ("trng", _TRNG + 0x000, "r"),
     ("trng", _TRNG + 0x000, "w"),

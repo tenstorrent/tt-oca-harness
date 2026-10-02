@@ -117,15 +117,10 @@ package sep_crypto_pkg;
       end_addr: TRNG_END_ADDR
   };
 
-  // Adams Bridge (PQC: ML-DSA-87 / ML-KEM-1024): OCH spec 0x1094_0000-0x1094_FFFF
-  // (64 kB register aperture; AB's secret sk_ram is internal to the block).
-  localparam logic [31:0] ABR_REG_MAP_BASE_ADDR = 32'h1094_0000;
-  localparam logic [31:0] ABR_REG_MAP_END_ADDR = 32'h1095_0000;
-
   parameter axi_pkg::xbar_rule_32_t ABR_RULE = '{
       idx: 11,
-      start_addr: ABR_REG_MAP_BASE_ADDR,
-      end_addr: ABR_REG_MAP_END_ADDR
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR,
+      end_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_ABR_SIZE
   };
 
   // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).
