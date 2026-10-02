@@ -2,11 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_ext_irq - SMU wrapper interrupt pin bit0 through the EL2 PIC.
+ * sep_smu_ext_irq - SMU wrapper interrupt pin 0 reaches the SEP PIC.
  *
- * Frontdoor-brings SMC, arms exactly the one PIC source the wrapper pin maps
- * to, proves a disabled pulse does not trap, then an enabled pulse claims that
- * same source, waits 32 mcycle, MEIGWCLR, no-refire, pass_loop.
+ * Arms only the PIC source the wrapper pin maps to. A pulse while the source is
+ * disabled must not trap; an enabled pulse is claimed as that source and does
+ * not fire again once the gateway is cleared.
  */
 
 #include <stdint.h>
@@ -40,8 +40,8 @@ static inline void wait_mcycle(uint32_t n) {
 __attribute__((interrupt("machine"))) void sep_smu_ext_irq_isr(void) {
     g_claimid = read_claimid();
     g_isr_count += 1u;
-    /* Edge pending stays until MEIGWCLR. Clear MPIE so mret leaves MIE=0 and
-     * main can run the 32-mcycle delay + MEIGWCLR (card: ISR does not clear). */
+    /* The edge stays pending until main clears the gateway, so return with
+     * interrupts disabled to keep the ISR from re-entering first. */
     __asm__ volatile("csrc mstatus, %0" ::"r"(1u << 7));
 }
 
@@ -91,8 +91,6 @@ __attribute__((used, noinline, noreturn)) void sep_smu_ext_irq_fail_loop(void) {
         __asm__ volatile("wfi");
     }
 }
-
-static void (*const keep_fail)(void) = sep_smu_ext_irq_fail_loop;
 
 static int wr_rd32(uint32_t addr, uint32_t expect) {
     WRITE_REG(addr, expect);
@@ -210,7 +208,6 @@ static int run_ext_irq(void) {
     }
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), EXT_IRQ_CLEARED);
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(10), g_isr_count);
-    (void)keep_fail;
     return 0;
 }
 

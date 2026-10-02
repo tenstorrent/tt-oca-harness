@@ -31,9 +31,8 @@
 .equ SECURE_DMA_STATUS_REG_ADDR,                      0x10800050
 .equ SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR,           0x10A300D0
 
-/* SEP outbound egress filter, entry 0. Offsets and the open-window encoding
- * match drivers/sep_outbound_filter.h: CONFIG @0x0, START @0x8, END @0x10;
- * CONFIG = read|write|entry_enabled|allow_burst plus the reserved bit 32. */
+/* SEP outbound egress filter, entry 0. The layout and the open-window
+ * encoding match drivers/sep_outbound_filter.h. */
 .equ OUTBOUND_FILTER_CTRL_BASE, 0x10A20000
 .equ FILTER_CONFIG_OFF,         0x0
 .equ FILTER_START_OFF,          0x8
@@ -53,13 +52,10 @@ _start:
     csrw    mtvec, t0
 
     /*
-     * Open the outbound egress window over STDOUT before anything writes there.
-     * The SEP outbound filter is BLOCK_BY_DEFAULT=1, so an unopened window does
-     * not silently drop the store -- it isolates it and answers with an error,
-     * which the EL2 takes as a store access fault. Both the PASS routine and
-     * trap_fail report through STDOUT, so without this the image cannot report
-     * at all: it faults on the first mailbox write and lands in fail_hang with
-     * no verdict, whatever actually happened earlier.
+     * Open the outbound egress window over STDOUT before the first report. The
+     * outbound filter blocks by default and answers a store to an unopened
+     * window with an error, which the CPU takes as a store access fault, so
+     * neither the PASS routine nor trap_fail could report a verdict.
      *
      * START/END before CONFIG so the entry enables over the final range.
      */
@@ -122,8 +118,9 @@ _start:
     sw      t1, 0(t0)
 
     /*
-     * Disable local-alias remap while DMA targets ICCM.  Otherwise the DMA path
-     * remaps 0xC000_0000 down to 0x0000_0000 before it reaches the TCM port.
+     * Disable the local-alias remap while DMA targets ICCM. Otherwise the DMA
+     * path remaps the ICCM alias to the low address space before it reaches
+     * the TCM port.
      */
     li      t0, SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR
     lw      s0, 0(t0)

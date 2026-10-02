@@ -113,5 +113,5 @@ int main(void) {
         sep_mbx_putc('\n');
     }
 
-    return errors; // start.S writes the PASS/FAIL completion magic
+    return errors;
 }
