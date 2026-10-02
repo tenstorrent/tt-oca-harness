@@ -19,7 +19,9 @@ keeps ``BOOT_STATUS.COLD_BOOT_DONE`` across it.
 
 The entropy chain stays at its reset (CSRNG and EDN disabled) until the control
 leg, so no beat reaches the KM before then. The host watches the sampler's
-TREADY on ``km_entropy_tready_o`` and the image's KM SRAM dump.
+TREADY on ``km_entropy_tready_o`` and the image's KM SRAM dump. Each TREADY
+checker also fails on any X/Z TREADY, or X/Z TVALID while TREADY is not low,
+in its own window, since an unknown read as 0 is the passing value.
 
   CHK-SMP-TIMEOUT        the timed-out read: TREADY high for exactly
                          TIMEOUT_CYCLES with no handshake; DATA read 0; the
@@ -38,6 +40,9 @@ TREADY on ``km_entropy_tready_o`` and the image's KM SRAM dump.
                          waiting (DRBG_READY=1) completes OKAY in one handshake
                          and less than the budget; DATA equals the word on the
                          KM AXI-Stream; no error bit sets; COUNT_GOOD=1.
+  CHK-ALERTS-ZERO        after the control leg, CSRNG and EDN ERR_CODE and
+                         RECOV_ALERT_STS read zero, so the control beat came
+                         from a chain with no error.
 
 The control leg makes the timeout leg discriminating: same image, same budget,
 same DATA load, differing only in whether the chain delivers. Expected values
@@ -111,6 +116,7 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         "CHK-SMP-WARM-CANCEL",
         "CHK-SMP-WARM-RESET",
         "CHK-SMP-CONTROL",
+        "CHK-ALERTS-ZERO",
     )
 
     async def _await_marker(self, marker: int, what: str) -> None:
@@ -166,7 +172,10 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         drop_cycle = mon.cycle
         runs_at_drop = len(mon.runs)
         await ClockCycles(dut.clk_i, _RESET_HOLD_CYCLES)
+        xz = mon.take_xz()
         faults = []
+        if xz:
+            faults.append(f"{xz} cycle(s) with TREADY or TVALID X/Z")
         if mon.high or drop_cycle - park_cycle >= _RESET_DROP_CYCLES:
             faults.append(
                 f"TREADY still high {drop_cycle - park_cycle} cycles after the KM reset write"
@@ -178,10 +187,12 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         assert not faults, "CHK-SMP-WARM-CANCEL FAIL: " + "; ".join(faults)
         self.logger.info(
             "CHK-SMP-WARM-CANCEL PASS: pending read held TREADY %d cycles; TREADY fell "
-            "%d cycles after the SW_RESET_N KM park write and stayed low for %d held cycles",
+            "%d cycles after the SW_RESET_N KM park write and stayed low for %d held cycles; "
+            "X/Z cycles=%d",
             mon.runs[1][1],
             drop_cycle - park_cycle,
             _RESET_HOLD_CYCLES,
+            xz,
         )
         await self.swrst.release("km")
 
@@ -221,7 +232,10 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
 
         st = w[W_T_STATUS]
         irq = w[W_T_IRQ]
+        xz = mon.take_xz()
         faults = []
+        if xz:
+            faults.append(f"{xz} cycle(s) with TREADY or TVALID X/Z")
         if not mon.runs:
             faults.append("TREADY never rose for the DATA read")
         else:
@@ -253,7 +267,8 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
             "CHK-SMP-TIMEOUT PASS: before the read BOOT_STATUS=0x%08x (first boot), "
             "STATUS=0x%08x == RDL reset 0x%08x, IRQ_STATUS=0x%08x after the clear; "
             "CFG=0x%08x; TREADY high %d cycles (TIMEOUT=%d) from "
-            "cycle %d, 0 handshakes; DATA=0x%08x; IRQ_STATUS=0x%08x (%s); STATUS=0x%08x (%s)",
+            "cycle %d, 0 handshakes, X/Z cycles=%d; DATA=0x%08x; IRQ_STATUS=0x%08x (%s); "
+            "STATUS=0x%08x (%s)",
             w[W_T_BOOT],
             w[W_T_STATUS_PRE],
             STATUS_RESET,
@@ -262,6 +277,7 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
             mon.runs[0][1],
             TIMEOUT_CYCLES,
             mon.runs[0][0],
+            xz,
             w[W_T_DATA],
             irq,
             irq_names(irq),
@@ -271,7 +287,10 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
 
     def _check_no_timeout(self, w: dict[int, int], mon: SepKmTreadyMonitor) -> None:
         marker = self.rd(cocotb.top.km_sram_word0_o)
+        xz = mon.take_xz()
         faults = []
+        if xz:
+            faults.append(f"{xz} cycle(s) with TREADY or TVALID X/Z")
         if w[W_R_CFG] != 0:
             faults.append(f"CFG read 0x{w[W_R_CFG]:08x} after the image wrote 0")
         if len(mon.runs) < 2 or not mon.high or mon.runs[1][1] < _HOLD_CYCLES:
@@ -289,10 +308,11 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         )
         self.logger.info(
             "CHK-SMP-NO-TIMEOUT PASS: CFG=0x%08x; TREADY held %d cycles (>= %d) with "
-            "0 handshakes; KM SRAM word0=0x%08x (read pending)",
+            "0 handshakes, X/Z cycles=%d; KM SRAM word0=0x%08x (read pending)",
             w[W_R_CFG],
             mon.runs[1][1],
             _HOLD_CYCLES,
+            xz,
             marker,
         )
 
@@ -325,9 +345,10 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
             "counters and error bits: " + "; ".join(faults)
         )
         self.logger.info(
-            "CHK-SMP-WARM-RESET PASS: BOOT_STATUS=0x%08x; CFG 0x00000000 -> 0x%08x; "
+            "CHK-SMP-WARM-RESET PASS: BOOT_STATUS=0x%08x; CFG 0x%08x -> 0x%08x; "
             "STATUS 0x%08x (%s) -> 0x%08x; IRQ_STATUS=0x%08x",
             w[W_W_BOOT],
+            w[W_R_CFG],
             w[W_W_CFG],
             before,
             status_str(before),
@@ -348,7 +369,10 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         assert not pre, "CHK-SMP-CONTROL FAIL (precondition): " + "; ".join(pre)
 
         st = w[W_P_STATUS]
+        xz = mon.take_xz()
         faults = []
+        if xz:
+            faults.append(f"{xz} cycle(s) with TREADY or TVALID X/Z")
         if len(mon.runs) != 3:
             faults.append(f"{len(mon.runs)} TREADY runs, expected 3 (timeout, pending, control)")
         else:
@@ -373,10 +397,11 @@ class sep_km_drbg_sampler_timeout_reset_test(sep_base_test):
         )
         self.logger.info(
             "CHK-SMP-CONTROL PASS: CFG=0x%08x, DRBG_READY=1; TREADY high %d cycle(s), "
-            "1 handshake; DATA=0x%08x == KM AXI-Stream word; IRQ_STATUS=0x%08x; "
-            "STATUS=0x%08x (%s)",
+            "1 handshake, X/Z cycles=%d; DATA=0x%08x == KM AXI-Stream word; "
+            "IRQ_STATUS=0x%08x; STATUS=0x%08x (%s)",
             w[W_P_CFG],
             mon.runs[2][1],
+            xz,
             w[W_P_DATA],
             w[W_P_IRQ],
             st,

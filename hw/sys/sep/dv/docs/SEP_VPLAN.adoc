@@ -8539,6 +8539,7 @@ the wipe security contract.
 . Reset leg: the image writes `CFG` = 0 and reads `DATA`. The host waits four reset timeout budgets, then parks and releases the KM `SW_RESET_N` bit.
 . The image takes its warm path and stores `BOOT_STATUS`, `CFG`, `STATUS` and `IRQ_STATUS` as found.
 . Control leg: the host brings up the entropy chain; the image sets the same `CFG.TIMEOUT`, waits for `STATUS.DRBG_READY` and reads `DATA`.
+. After the control leg, the host reads CSRNG `ERR_CODE` and `RECOV_ALERT_STS` and EDN `ERR_CODE` and `RECOV_ALERT_STS`.
 
 *Checkers*:
 
@@ -8555,7 +8556,11 @@ the wipe security contract.
 |The image runs its warm path (`COLD_BOOT_DONE` 1). `CFG` and `STATUS` read their RDL resets and `IRQ_STATUS.DRBG_ERR` is clear, although the image left `CFG` = 0 and `TIMEOUT_ERR`, `COUNT_BAD` and `DRBG_ERR` set before the reset.
 |CHK-SMP-CONTROL
 |Control for CHK-SMP-TIMEOUT: the same budget with `DRBG_READY` 1 completes with one handshake in less than the budget; `DATA` equals the word on the KM AXI-Stream; no watched `IRQ_STATUS` bit sets; `STATUS` has `COUNT_GOOD` 1 and no error.
+|CHK-ALERTS-ZERO
+|After the control leg, CSRNG `ERR_CODE` and `RECOV_ALERT_STS` and EDN `ERR_CODE` and `RECOV_ALERT_STS` each read zero, so the control beat came from a chain with no error. The shared base-test step `check_entropy_alerts_zero` (`cocotb/tests/sep_base_test.py`) reads and grades them.
 |===
+
+CHK-SMP-TIMEOUT, CHK-SMP-NO-TIMEOUT, CHK-SMP-WARM-CANCEL and CHK-SMP-CONTROL each also fail on any cycle in their window with TREADY X/Z, or TVALID X/Z while TREADY is not low, and log that count.
 
 *Pass Criteria*: Every named checker PASSes, and the DRBG scoreboard reports PASS. `UVM_ERROR` is 0.
 

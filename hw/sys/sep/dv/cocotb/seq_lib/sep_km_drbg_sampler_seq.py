@@ -111,8 +111,11 @@ class SepKmTreadyMonitor:
 
     ``km_entropy_tready_o`` is the TREADY the DRBG sampler drives on the
     EDN->KM AXI-Stream. Each run is ``[start_cycle, length, handshakes]``; the
-    last run is still open while TREADY is high. An unknown TREADY (before the
-    first reset) reads as low.
+    last run is still open while TREADY is high. The monitor starts after
+    reset, so every sample must be known: ``xz`` counts the cycles with an X/Z
+    TREADY, or an X/Z TVALID while TREADY is not low. Such a cycle opens no run
+    and adds no handshake, so each checker fails on ``take_xz()``, the X/Z
+    cycles since the previous checker took them.
     """
 
     def __init__(self, test) -> None:
@@ -120,7 +123,27 @@ class SepKmTreadyMonitor:
         self.cycle = 0
         self.runs: list[list[int]] = []
         self.high = False
+        self.xz = 0
+        self._xz_taken = 0
         self._task = None
+
+    def take_xz(self) -> int:
+        """X/Z cycles since the previous call: the window of the calling checker."""
+        n = self.xz - self._xz_taken
+        self._xz_taken = self.xz
+        return n
+
+    @staticmethod
+    def _bit(sig) -> int | None:
+        """Bit 0 of ``sig``, or None when it is not 0 or 1."""
+        value = sig.value
+        if isinstance(value, int):
+            return int(value) & 1
+        bits = getattr(value, "binstr", None)
+        if bits is None:
+            bits = str(value)
+        c = bits.strip()[-1:]
+        return {"0": 0, "1": 1}.get(c)
 
     def start(self) -> None:
         self._task = cocotb.start_soon(self._run())
@@ -136,8 +159,11 @@ class SepKmTreadyMonitor:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             self.cycle += 1
-            ready = self.test.rd(dut.km_entropy_tready_o, allow_unknown=True) & 1
-            valid = self.test.rd(dut.km_entropy_tvalid_o, allow_unknown=True) & 1
+            ready = self._bit(dut.km_entropy_tready_o)
+            valid = self._bit(dut.km_entropy_tvalid_o) if ready != 0 else 0
+            if ready is None or valid is None:
+                self.xz += 1
+                ready = valid = 0
             if ready and not self.high:
                 self.runs.append([self.cycle, 0, 0])
             if ready:
