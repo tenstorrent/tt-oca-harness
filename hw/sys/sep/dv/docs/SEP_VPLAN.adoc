@@ -3130,7 +3130,7 @@ one word and parks, which is enough for the legality check to execute.
 |CHK-REVERSE
 |The reverse direction: the HMAC reset clears its own digest to the exact reset value, and the AES output is bit-exact intact.
 |CHK-KMAC-SELF
-|KMAC `SW_RESET_N` restores `STATUS` to its register-map reset and STATE (share0^share1) reads 0, while HMAC DIGEST stays bit-exact.
+|KMAC `SW_RESET_N` restores `STATUS` to its register-map reset on the fields the RDL resets (`sha3_idle`, `fifo_empty`, the two alert bits) and to the idle 0 on the fields with no RDL reset (`sha3_absorb`, `sha3_squeeze`, `fifo_depth`, `fifo_full`, per their field descriptions), and STATE (share0^share1) reads 0, while HMAC DIGEST stays bit-exact. `sha3_squeeze` reads 1 before the pulse.
 |CHK-ABR-DRAIN-ORDER
 |The Adams Bridge reset does not assert until both paths its domain depends on
 report isolated: the full-AXI SEP host path and the shared Key Manager path. The
