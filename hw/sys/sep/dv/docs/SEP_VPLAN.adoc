@@ -175,27 +175,27 @@ never when it was written.
 |===
 |Test Case |Run mode |VIP / Model |Description
 |`sep_axi_smoke_test`
-|no_cpu
+|no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Proves the SEP register fabric decodes and responds on the CPU LSU bus with no CPU booted.
 |`sep_hello_world_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |The minimum proof that the CPU boot path works end to end: firmware is compiled for the VeeR EL2 core, loaded into tightly-coupled memory, and the released core fetches, executes and prints over the firmware console.
 |`sep_cpu_trace_diag_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Boots a known noinline call chain and one breakpoint trap, then cross-checks the processor-state monitor's reconstruction against the firmware-reported `mcause` / `mepc`.
 |`sep_boot_rom_smoke_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Proves the CPU instruction fetch unit can fetch and retire instructions out of the boot ROM.
 |`sep_sram_smoke_test`
-|no_cpu
+|no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Proves the SEP local fabric routes to the SRAM and that the SRAM stores.
 |`sep_km_mem_smoke_test`
-|no_cpu
+|no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
 |Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, that consecutive SRAM reads of different words through the enabled SRAM scrambler return their plaintexts, and that a store through the enabled scrambler does not leave its plaintext in the probed SRAM words. The SRAM read latency is measured and logged, not graded.
 |`sep_otbn_mem_smoke_test`
@@ -207,15 +207,15 @@ never when it was written.
 |ocah_axi_vip
 |Proves the eFuse sense sequence runs to completion at reset and that what landed in the shadow registers matches the programmed image word for word.
 |`sep_spi_flash_jedec_smoke_test`
-|no_cpu
+|no_cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip
 |Proves the OpenTitan SPI host controller is configured, clocks a real command out, and receives a real reply.
 |`sep_rom_sanity_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Proves the CPU fetch unit executes real code out of the boot ROM across the main RISC-V instruction formats.
 |`sep_hmac_kmac_cpu_crypto_smoke_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Brings the HMAC, KMAC and AES engines up over the real CPU-to-fabric path, as a complement to the sideload tests which drive them from the Key Manager. The AES leg round-trips a block through SRAM in both directions, against the published FIPS-197 vector on the encrypt side.
 |===
@@ -226,7 +226,7 @@ never when it was written.
 |===
 |Test Case |Run mode |VIP / Model |Description
 |`sep_address_map_test`
-|no_cpu
+|no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool).
 |`sep_efuse_image_test`
@@ -238,11 +238,11 @@ never when it was written.
 |ocah_axi_vip, CPU FW
 |The widest single test in the suite: two independent processors contend for the eFuse block at the same time.
 |`sep_dma_hash_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Drives the secure DMA engine from real firmware to copy a block from SRAM into the CPU's data tightly-coupled memory with the inline hash engine enabled, then proves two things independently: the copied data is identical to the source, and the hardware digest is correct. Walks both SHA-256, against a software digest over build-varying data, and SHA-384, against the published FIPS 180-4 vector for a fixed message. Also carries the same message as two chunks and re-runs it with the digest byte-swap off.
 |`sep_spi_ot_dma_rx_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, CPU FW
 |Proves the hardware handshake between the SPI host and the secure DMA engine.
 |`sep_km_otbn_sideload_kat_test`
@@ -254,7 +254,7 @@ never when it was written.
 |ocah_axi_vip
 |Walks the device through four lifecycle states — one preloaded, three programmed for real into one-time-programmable memory — and proves each reaches the lifecycle controller and produces the expected feature-control decode.
 |`sep_dma_cpu_contention_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |The CPU and DMA complete disjoint SRAM traffic while a TB monitor proves their request windows overlap on the same local-crossbar address channel.
 |`sep_clock_uvm_wdt_rst_input_reset_path_test`
@@ -262,7 +262,7 @@ never when it was written.
 |ocah_axi_vip
 |Drives the watchdog reset input pin and proves it takes the SEP CPU-reset net low and releases it again, without disturbing the main SEP reset.
 |`sep_mailbox_plic_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Completes the inbound-aperture interrupt path all the way to the CPU.
 |`sep_km_aes_sideload_kat_test`
@@ -278,11 +278,11 @@ never when it was written.
 |ocah_axi_vip, KM path / golden
 |The KMAC member of the sideload family.
 |`sep_irq_ip_to_aggregator_test`
-|no_cpu
+|no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Proves that interrupts owned by the entropy blocks, HMAC error, and DMA done/chunk/error reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit from both a read and a write, and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 40 and 42, and clears each.
 |`sep_periph_bus_err_misaligned_test`
-|no_cpu
+|no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |A single-beat misaligned read inside the HMAC register extent receives SLVERR and latches the `hmac` bit of `PERIPH_BUS_ERR_STATUS`, and one inside the Secure DMA register extent receives SLVERR and latches `DMA_BUS_ERR_STATUS.reg_path_err`, as `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require. The same read at each aligned offset is the control.
 |`sep_drbg_real_sink_multi_km_aes_test`
@@ -290,7 +290,7 @@ never when it was written.
 |ocah_axi_vip, entropy golden
 |One entropy source feeding two real consumers at once.
 |`sep_cpu_ifu_lsu_alias_remap_matrix_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Proves the CPU-side address alias window remaps both data and instruction accesses to physical SRAM.
 |`sep_efuse_jtag_axil_el2_cpu_mux_test`
@@ -302,11 +302,11 @@ never when it was written.
 |ocah_axi_vip
 |TEST_DEV JTAG reads of the shadow map and `EFUSE_PROGRAM_CTRL` return OKAY. Together with the PROD deny in `sep_efuse_jtag_axil_el2_cpu_mux_test`, the two windows are gated rather than hard-denied.
 |`sep_nmi_sanity_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Covers the non-maskable interrupt mechanism end to end: the vector register has the right default, accepts a new value, and refuses further writes once locked — and then a real watchdog bark delivers an actual non-maskable interrupt to that handler, which clears the condition and returns.
 |`sep_reset_wdt_sanity_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Two related mechanisms in one boot.
 |`sep_lcc_uvm_inbound_filter_gating_test`
@@ -553,15 +553,15 @@ never when it was written.
 |===
 |Test Case |Run mode |VIP / Model |Description
 |`sep_spi_ot_dma_tx_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, CPU FW
 |Drives SRAM through the secure DMA into the OpenTitan SPI host transmit FIFO and on to the flash BFM, then reads the flash back and compares against the cocotb-seeded random source data.
 |`sep_spi_ot_flash_cmd_rand_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, ocah_spi_vip, CPU FW
 |JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery.
 |`sep_dma_basic_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address, address-space-id and transfer-width refusals, the inverted-range refusal, a copy that leaves SRAM for the instruction memory and back, a DMA-issued host-path command-integrity inject (`host_path_err` / aggregator bit 41), and a fabric DECERR dest that raises the same bit with the pin low. The mode and width walk is directed.
 |===
@@ -582,7 +582,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |ocah_axi_vip
 |A FIXED and a WRAP burst into SEP SRAM are refused with SRAM unchanged, or performed at the beat addresses AXI4 gives them (`hw/sys/sep/doc/fabric.adoc`: the SEP interconnect is an AXI4 fabric). The SRAM target refuses them with SLVERR (`fabric.adoc`, "SRAM").
 |`sep_boot_rom_lsu_read_test`
-|cpu
+|cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
 |LSU reads of the Boot ROM match the loaded image; stores to ROM are ignored.
 |`sep_warm_cold_reset_scratch_test`
@@ -710,7 +710,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_abr_seed_sideload_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|KM `CMD_KEY_TRANSFER` dest ABR ML-DSA seed, KV pull, KEYGEN public key equals a direct-seed KEYGEN of the same palindromic seed, and differs from the key of the seed the register held before.
+|KM `CMD_KEY_TRANSFER` dest ABR ML-DSA seed, KV pull, KEYGEN public key equals a direct-seed KEYGEN of the same palindromic seed, and differs from the first seed's public key.
 |`sep_km_abr_mlkem_sideload_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
@@ -986,7 +986,7 @@ The checker table is the fail-able contract.
 
 *Phase*: 1
 
-*Run mode*: `no_cpu`
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_axi_smoke_test`
 
@@ -1029,7 +1029,7 @@ The checker table is the fail-able contract.
 
 *Phase*: 1
 
-*Run mode*: `no_cpu`
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_address_map_test`
 
@@ -1069,7 +1069,7 @@ The checker table is the fail-able contract.
 |Each `sep_cpu_ctrl` word in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` reads OKAY with zero data, and a write to `0x10A3_0170` does not change `SEP_SW_DEBUG` -- whose writability a control write proves first, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it. `hw/sys/sep/doc/memory_map.adoc` states both halves: a unit accepts such an offset with zero/OKAY, and non-aliasing follows from exact-match register decode rather than from refusal.
 |===
 
-*Evidence*: the test logs `CHK-ADDRMAP FAIL` and stops before the PASS records if the shared scoreboard holds any response or value error, so a PASS record never survives a scoreboard failure.
+*Evidence*: the test logs `CHK-ADDRMAP FAIL` and stops before the CHK-REFCNT-READ, CHK-BASEADDR-RW, CHK-RW-READBACK and CHK-FABRIC-WALK records if the shared scoreboard holds any response or value error. CHK-CPU-CTRL-HOLE and CHK-EXT-DEMUX-BOUND are logged after further accesses; a scoreboard error from those accesses fails the run in `check_phase`, after their PASS lines.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -1080,7 +1080,7 @@ The checker table is the fail-able contract.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_hello_world_test`
 
@@ -1115,7 +1115,7 @@ The checker table is the fail-able contract.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_cpu_trace_diag_test`
 
@@ -1148,6 +1148,8 @@ The checker table is the fail-able contract.
 |While the trap frame is live, the shadow call stack holds exactly the named chain, each frame resolved through the firmware symbol listing: the crt0 call from `_start` into `main`, then `main` -> `diag_leaf1` -> `diag_leaf2` -> `diag_leaf3` (each call site inside the caller, each target the callee's entry), and the breakpoint trap inside `diag_leaf3` as the innermost frame. A stale, missing or extra frame fails even at the same depth. The stack is the snapshot at the breakpoint push, not the run-global maximum.
 |===
 
+*Evidence*: the firmware prints `CHK-CHAIN PASS` (the call chain returns its summed constant) and `CHK-TRAP PASS` (exactly one breakpoint trap, `mcause` 3), and a failure of either turns the completion magic to FAIL. They make sure the firmware ran the chain and the trap that CHK-CHAIN-SYM, CHK-TRAP-EVENT and CHK-TRAP-SYM check against the trace monitor.
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 '''''
@@ -1157,7 +1159,7 @@ The checker table is the fail-able contract.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_boot_rom_smoke_test`
 
@@ -1192,7 +1194,7 @@ The checker table is the fail-able contract.
 
 *Phase*: 1
 
-*Run mode*: `no_cpu`
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_sram_smoke_test`
 
@@ -1238,7 +1240,7 @@ The checker table is the fail-able contract.
 
 *Bucket*: Key Manager vault
 
-*Run mode*: `no_cpu`
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_km_mem_smoke_test`
 
@@ -1453,7 +1455,7 @@ guard is proven.
 
 *Phase*: 1
 
-*Run mode*: `no_cpu`
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_spi_flash_jedec_smoke_test`
 
@@ -1548,7 +1550,7 @@ starved it to a handful of writes fails.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_dma_hash_test`
 
@@ -1609,7 +1611,7 @@ starved it to a handful of writes fails.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_spi_ot_dma_rx_test`
 
@@ -1784,7 +1786,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_dma_cpu_contention_test`
 
@@ -1874,7 +1876,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_mailbox_plic_test`
 
@@ -1978,7 +1980,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_rom_sanity_test`
 
@@ -2066,7 +2068,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |Both the Key Manager and AES draw real entropy beats. Alive-mode beat count; bit-exact per-sink compare is the small KM ROM tests, not `rom_main`.
 |===
 
-*Observation*: `PUB-OBSERVATION` is logged and not scored. `aes.hjson` declares `KEY_SHARE0`/`KEY_SHARE1` `swaccess = wo`. A frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered, so the read cannot fail. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-F: the sideload key encrypts to the golden ciphertext.
+*Observation*: `PUB-OBSERVATION`. The test asserts that the public key registers read zero, but `aes.hjson` declares `KEY_SHARE0`/`KEY_SHARE1` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered, and that half cannot fail. It also asserts that a STATUS read over the same frontdoor is non-zero, which fails if the read path is dead. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-F: the sideload key encrypts to the golden ciphertext.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -2123,7 +2125,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |The Key Manager draws real entropy beats from the shared bus while the key is staged: the `CHK5_km` beat count after the `CMD_KEY_TRANSFER` response is higher than the count taken just before `CMD_KEY_LOAD`. Alive-mode beat count; bit-exact per-sink compare is the small KM ROM tests, not `rom_main`.
 |===
 
-*Observation*: `PUB-OBSERVATION` is logged and not scored. `hmac.hjson` declares `KEY` `swaccess = wo`. A frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered, so the read cannot fail. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-MAC: the sideload key produces the golden digest.
+*Observation*: `PUB-OBSERVATION`. The test asserts that the public key registers read zero, but `hmac.hjson` declares `KEY` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered, and that half cannot fail. It also asserts that a STATUS read over the same frontdoor is non-zero, which fails if the read path is dead. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-MAC: the sideload key produces the golden digest.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -2181,7 +2183,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |The entropy stack matches its golden bit-exactly at the decorrelator, compress and seed stages.
 |===
 
-*Observation*: `PUB-OBSERVATION` is logged and not scored. `kmac.hjson` declares `KEY_SHARE0`/`KEY_SHARE1` `swaccess = wo`. A frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered, so the read cannot fail. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-SIDE and CHK-MAC.
+*Observation*: `PUB-OBSERVATION`. The test asserts that the public key registers read zero, but `kmac.hjson` declares `KEY_SHARE0`/`KEY_SHARE1` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered, and that half cannot fail. It also asserts that a STATUS read over the same frontdoor is non-zero, which fails if the read path is dead. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-SIDE and CHK-MAC.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -2196,7 +2198,7 @@ recovery. Those are listed in <<phase-3>>.
 
 *Phase*: 1
 
-*Run mode*: `no_cpu`
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_irq_ip_to_aggregator_test`
 
@@ -2255,7 +2257,7 @@ recovery. Those are listed in <<phase-3>>.
 
 *Phase*: 1
 
-*Run mode*: `no_cpu`
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_periph_bus_err_misaligned_test`
 
@@ -2350,7 +2352,7 @@ Each probe must be one beat. A four-byte read at a word offset + 2 crosses the w
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_cpu_ifu_lsu_alias_remap_matrix_test`
 
@@ -2440,6 +2442,8 @@ remapped routes to the error slave and never executes.
 |In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes with an error response (SLVERR or DECERR) and the `hw/ip/efuse/doc/architecture.adoc` error-slave data `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
 |===
 
+*Evidence*: the firmware prints `CHK-SENSE PASS` (real fuse sense completed) and `CHK-CPU-SEED PASS` (the CPU token seed written to the first eFuse MMR word reads back) before it starts the MMR loop, and exits with FAIL if either does not hold. These are preconditions of the coexistence checkers.
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 '''''
@@ -2457,7 +2461,7 @@ remapped routes to the error slave and never executes.
 
 *BFM / Model*: ocah_axi_vip (JTAG AXI-Lite master)
 
-*Objective*: Prove the JTAG lifecycle gate denies the shadow map and `EFUSE_PROGRAM_CTRL` by lifecycle state, not always. `sep_efuse_jtag_axil_el2_cpu_mux_test` requires DECERR on both windows in PROD; this leaf requires OKAY on the same two windows in TEST_DEV, which is not a restricted state.
+*Objective*: Prove the JTAG lifecycle gate denies the shadow map and `EFUSE_PROGRAM_CTRL` by lifecycle state, not always. `sep_efuse_jtag_axil_el2_cpu_mux_test` requires a refusal (SLVERR or DECERR) on both windows in PROD; this leaf requires OKAY on the same two windows in TEST_DEV, which is not a restricted state.
 
 *Test Coverage*: JTAG reaches the shadow map and `EFUSE_PROGRAM_CTRL` when `LC_STATE` is TEST_DEV.
 
@@ -2473,7 +2477,7 @@ remapped routes to the error slave and never executes.
 |===
 |Checker |Contract
 |CHK-JTAG-WINDOW-ALLOW
-|In TEST_DEV, a JTAG read of the shadow map and a JTAG read of `EFUSE_PROGRAM_CTRL` both complete OKAY. The PROD DECERR for the same two windows is `sep_efuse_jtag_axil_el2_cpu_mux_test`.
+|In TEST_DEV, a JTAG read of the shadow map and a JTAG read of `EFUSE_PROGRAM_CTRL` both complete OKAY. The PROD refusal (SLVERR or DECERR) for the same two windows is `sep_efuse_jtag_axil_el2_cpu_mux_test`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -2485,7 +2489,7 @@ remapped routes to the error slave and never executes.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_nmi_sanity_test`
 
@@ -2536,7 +2540,7 @@ reaches its wait before the interrupt fires.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`
 
 *Source Module*: `sep_reset_wdt_sanity_test`
 
@@ -4317,7 +4321,7 @@ poll and yields the same pass.
 
 *Bucket*: SPI and DMA
 
-*Run mode*: `cpu`, firmware `spi_ot_dma_tx_test`, 3 seeds
+*Run mode*: `cpu`, `+skip_fuse_sense`, firmware `spi_ot_dma_tx_test`, 3 seeds
 
 *Source Module*: `sep_spi_ot_dma_tx_test`
 
@@ -4367,7 +4371,7 @@ poll and yields the same pass.
 
 *Bucket*: SPI and DMA
 
-*Run mode*: `cpu`, firmware `spi_ot_flash_cmd_test`, 3 seeds
+*Run mode*: `cpu`, `+skip_fuse_sense`, firmware `spi_ot_flash_cmd_test`, 3 seeds
 
 *Source Module*: `sep_spi_ot_flash_cmd_rand_test`
 
@@ -4592,7 +4596,7 @@ claimed.
 
 *Bucket*: SPI and DMA
 
-*Run mode*: `cpu`, firmware `dma_basic_test`, 3 seeds
+*Run mode*: `cpu`, `+skip_fuse_sense`, firmware `dma_basic_test`, 3 seeds
 
 *Source Module*: `sep_dma_basic_test`
 
@@ -4666,7 +4670,7 @@ the register description — are unproven here.
 
 *Bucket*: Memory, boot, reset, WDT, clock
 
-*Run mode*: `cpu`, firmware `rom_lsu_read_test`
+*Run mode*: `cpu`, `+skip_fuse_sense`, firmware `rom_lsu_read_test`
 
 *Source Module*: `sep_boot_rom_lsu_read_test`
 
@@ -5236,7 +5240,7 @@ this entry does not write or grade them with the strap high.
 |Checker |Leaves |Contract
 |CHK-START-SENSED
 |prod, rma_sip, rma_chiplet, prod_end, prod_end_rma
-|Before the first write, `LC_STATE` reads the sensed starting state the leaf claims. Nothing else asserts that the preloaded image starts the walk where the leaf says.
+|Before the first write, a frontdoor read of `LC_STATE` returns the sensed starting state the leaf claims. The bring-up already compares the sensed nibble on the shadow probe; this cell confirms the same value over the bus the walk writes on.
 |CHK-W1S-NO-CLEAR
 |prod, transient
 |A write of zero to the lifecycle word clears nothing. Write-one-to-set means a bit never returns to 0, so a controller that treated the write as an assignment fails here.
@@ -5271,10 +5275,10 @@ this entry does not write or grade them with the strap high.
 |rma_sip
 |A write whose result falls outside the named encodings lands there, reached from a state the same leaf advanced into legitimately. Feature control must then read exactly 0 — the fail-closed default. Under the pinned disable vectors no named state decodes to 0, so this discriminates rather than coinciding.
 |CHK-INVALID-TERM
-|prod_end
+|prod_end, prod_end_rma
 |From the INVALID state the exit reached, the lifecycle bits the exit left clear are written with both tokens matched, and `RMA_SIP_TOKEN_MATCH` re-read as the match code after the RMA_CHIPLET match. After the bit-0 exit (`0x9`) those are bits 1 and 2; after the bit-1 exit (`0xA`) they are bits 0 and 2, and bit 0 is ungated. The write changes nothing. An ordinary write-one-to-set implementation would set bits the gates leave open, so the held value proves the end-of-life state is terminal.
 |CHK-PROD-END-INVALID
-|prod_end
+|prod_end, prod_end_rma
 |From the terminal product state, both exits land outside the named set — the specification's "the only permitted transition is to INVALID", proven rather than assumed. One sensed start allows one exit, so each exit is its own leaf (`sep_lcc_lc_state_w1s_prod_end_test` pins bit 0, `sep_lcc_lc_state_w1s_prod_end_rma_test` pins the RMA path): a write of the ungated bit 0 lands on `0x9`, or the RMA path — an RMA_SIP token match, then a write of bit 1 — lands on the golden `lc_state_next(PROD_END, 0x2, sip_match=True)` value `0xA`, not on a named RMA state, which the specification forbids from PROD_END. Feature control reads 0 after either exit. Each leaf pins its exit with `+lc_prod_end_exit=bit0\|rma_sip`; without the plusarg the seed selects one.
 |CHK-TRANSIENT-NO-TOKEN
 |transient
@@ -5626,8 +5630,8 @@ behaviour and the JTAG read are graded on
 
 [arabic]
 . Program one region to `0x8000_0000` and allow-list the remapped beat. CPU-LSU read of the window is OKAY.
+. Disable the outbound allow entry and repeat the read of the programmed window. It returns DECERR. Enable the entry again.
 . A second region, left invalid so its beat passes through untranslated, returns DECERR.
-. Disable the outbound allow entry and repeat the read of the programmed window. It returns DECERR.
 
 *Checkers*:
 
@@ -5910,7 +5914,7 @@ watermark together; no vehicle asserts that pair.
 |The whole seed-built configuration ran in one invocation: the reset, write and storage-touch walks each covered every register the cfg named. `TOUCH_BLOCKS` is the anti-vacuity list, not the third walk. A completeness control over the sweep itself, not evidence about the DUT -- it fails when a walk silently drops work, not when a register misbehaves. The walk sizes (`export`, `inventory`, `nometa`) are logged with it so a shrunken inventory is visible rather than inferred from a PASS.
 |===
 
-*Evidence*: a failed complement write or restore reports as `CHK-WRITE FAIL`, with the per-register lines logged before it; the PASS record is `CHK-WRITE-LANDS`.
+*Evidence*: each register's write leg logs a failure under CHK-WRITE-LANDS, CHK-RO or CHK-RESERVED, or under `CHK-WRITE` when an inbound START/END readback misses the same-beat wrap model (part of CHK-WRITE-LANDS). The test then stops with one `CHK-WRITE FAIL` summary that counts the failing registers. The PASS records are `CHK-WRITE-LANDS`, `CHK-RO` and `CHK-RESERVED`.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -6530,6 +6534,8 @@ reported as such rather than counted as a pass.
 |CHK-TRNG-UNOWNED
 |Every TRNG-window probe is refused (never OKAY, no timeout), a refused read returns no neighbouring ESRC register value, and no ESRC register moves; at least one read and one write are refused. The reference integration connects no external TRNG, so no offset owns a register. For that case `hw/sys/sep/doc/memory_map.adoc` states the code: the window ends in a DECERR slave, so every read answers DECERR, and the AXI4-to-AXI-Lite conversion on the TRNG path makes every errored write SLVERR. Each probe is graded against that code, and the `TRNG-UNOWNED-RESP` lines log each one. The window lies in the crypto region, so its burst leg, issued at the window base, is graded under CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST.
 |===
+
+*Evidence*: each probe that is not refused, or that moves a live register, logs `CHK-DEADSPACE FAIL [anchor]` or `[rand]` with the reason. The probe loop then fails once with a `CHK-DEADSPACE-REFUSE FAIL` summary that counts the accepted and the aliasing probes, which covers CHK-DEADSPACE-REFUSE and CHK-DEADSPACE-NO-ALIAS.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -7273,8 +7279,6 @@ two codes as one field.
 |Checker |Contract
 |CHK-SLOT
 |`CTRL.lock_write` sticks on slots 0, the seed slot, and 63.
-|CHK-LIVE
-|The vault image publishes its result magic in KM SRAM word 0 within the cycle budget, and the graded word is re-read with no unknown bits. Every other checker decodes that word, so a KM CPU that never ran fails here rather than on a flag decode.
 |CHK-LOCKWR
 |A key-data write to a write-locked slot raises AXI SLVERR. This is the LOCK path, not the decode path CHK-EXTENT grades: a legal key-entry address on a locked slot. The sticky error bits are cleared and confirmed clean first, so an earlier fault cannot satisfy it.
 |CHK-LOCKUSE
@@ -7304,6 +7308,8 @@ two codes as one field.
 |CHK-RANDCFG
 |The ROM echoes an eight-bit fold of the WHOLE config word, so all four seeded operands are proven received. Echoing only the slot would let a ROM that ignored the region or either seal-walk slot produce an identical result word.
 |===
+
+*Precondition*: the vault image must publish its result magic in KM SRAM word 0 within the cycle budget, and the graded word is re-read with no unknown bits. Every checker decodes that word, so a KM CPU that never ran stops the test with `CHK-LIVE FAIL` before any checker is graded. There is no `CHK-LIVE` PASS record.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -7599,8 +7605,8 @@ refusal, not an always-success command.
 *BFM / Model*: ocah_axi_vip
 
 *Objective*: a KM-sideloaded ABR ML-DSA seed produces the same public key as
-a direct software-seed KEYGEN of the same seed, and not the key of a seed the
-register held earlier.
+a direct software-seed KEYGEN of the same seed, and not the first seed's
+public key.
 
 *Test Coverage*: KM dest ABR ML-DSA seed consume through the KV seed-read control.
 
