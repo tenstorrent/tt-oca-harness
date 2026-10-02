@@ -42,7 +42,7 @@ it, and why that is still a real DUT path). The helpers that set it live in
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.050 | the functional acceptance backend | 5.050 specifically: 5.046 miscompiles the C++ init of nested unpacked structs this TB elaborates |
+| Verilator 5.052 | the functional acceptance backend | the CI and `ocah-container` release; 5.046 miscompiles the C++ init of nested unpacked structs this TB elaborates |
 | g++ 13.2.1 | C++20 for cocotb `-fcoroutines` | an older g++ fails with `unrecognized command line option '-fcoroutines'` |
 | Python ≥ 3.11 | launcher | `tools/dv/run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi); there is nothing to source. Set `OCAH_DV_SKIP_UV=1` only inside a pre-provisioned environment that already supplies the `dv` group |
 | Bender | filelist (`--stage flist`) | must be on `PATH` |

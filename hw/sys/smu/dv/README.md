@@ -77,7 +77,7 @@ from, and a value with no pin says so.
 
 | Tool | Version | Pinned in |
 |---|---|---|
-| Verilator | `v5.050`, built from source | `.github/actions/dv-run/action.yml`, `verilator-version` default |
+| Verilator | `v5.052`, built from source in CI and packaged in the `ocah-container` image | `.github/actions/dv-run/action.yml`, `verilator-version` default; `flake.lock` (nixpkgs) for the image |
 | Python | 3.11 in CI; `>=3.11,<3.14` accepted | `.github/actions/dv-run/action.yml`, `python-version` default; `pyproject.toml`, `requires-python` |
 | cocotb / pyuvm / cocotbext-axi | 2.0.1 / 4.0.1 / 0.1.28 | `uv.lock` (`dv` group); `run_dv.py` bootstraps this environment itself |
 | Bender | whatever `pulp-platform/pulp-actions/bender-install@v2.5.1` installs; no Bender version is pinned in this repository | `.github/actions/dv-run/action.yml` |
