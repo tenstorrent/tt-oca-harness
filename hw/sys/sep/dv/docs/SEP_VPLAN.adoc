@@ -593,7 +593,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_sram_burst_type_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|A FIXED and a WRAP burst into SEP SRAM are refused with SRAM unchanged, or performed at the beat addresses AXI4 gives them (`hw/sys/sep/doc/fabric.adoc`: the SEP interconnect is an AXI4 fabric). The SRAM target refuses them with SLVERR (`fabric.adoc`, "SRAM").
+|A 4-beat FIXED and a 4-beat WRAP burst into SEP SRAM are refused with SLVERR: BRESP=SLVERR with SRAM unchanged, and RRESP=SLVERR on every read beat (`hw/sys/sep/doc/fabric.adoc#sep-sram-target`).
 |`sep_sram_inbound_burst_attr_test`
 |no_cpu + external SMN master, +skip_fuse_sense
 |ocah_axi_vip
@@ -4734,7 +4734,7 @@ claimed.
 
 *Randomization*: RAND-NONE — one directed FIXED and one directed WRAP burst, four 8-byte beats each.
 
-*Objective*: `hw/sys/sep/doc/fabric.adoc` specifies the SEP interconnect as an AXI4 fabric, and the SRAM row of the memory map is a slave on it. AXI4 gives each burst type its own beat addresses. For a burst type the slave does not implement, two outcomes are lawful: an error response with SRAM unchanged, or OKAY with the beats at the addresses the burst type names. OKAY with INCR beat addresses is neither.
+*Objective*: `hw/sys/sep/doc/fabric.adoc#sep-sram-target` specifies that the SRAM target serves INCR bursts of every length and single-beat bursts of every type, and refuses a multi-beat FIXED or WRAP burst before it reaches the memory: the write terminates with BRESP=SLVERR and leaves SRAM unchanged, and every beat of the read returns RRESP=SLVERR. Any other response code, and an OKAY-served burst at any beat addresses, fails.
 
 *Test Coverage*: FIXED and WRAP, write and read, on the CPU-LSU master into SEP SRAM.
 
@@ -4742,8 +4742,8 @@ claimed.
 
 [arabic]
 . Write a distinct background word to every word of the region with single beats and read it back.
-. Issue the write burst, then read the region back with single beats and compare with the background and with the AXI4 image of the named burst type.
-. Restore the background, issue the read burst, and compare each OKAY beat with the word the named burst type addresses.
+. Issue the write burst, check BRESP, then read the region back with single beats and compare with the background. A failing log names the AXI4 or INCR image when the DUT wrote one.
+. Restore the background, issue the read burst, and check RRESP on every beat.
 
 *Checkers*:
 
@@ -4755,14 +4755,14 @@ claimed.
 |CHK-BT-CONTROL
 |Single-beat background writes read back, so the region can show where a burst landed.
 |CHK-BT-WRITE
-|After the write burst the region equals the background with a non-OKAY BRESP, or the AXI4 image of the named burst type with OKAY. The log names the INCR image when the DUT produced it.
+|The write burst answers BRESP=SLVERR and the region still equals the background. Any other BRESP or image fails; the log names the AXI4 or INCR image when the DUT produced it.
 |CHK-BT-READ
-|The read burst answers non-OKAY on every beat, or every OKAY beat returns the word the named burst type addresses. A mix of OKAY and error beats fails.
+|The read burst answers RRESP=SLVERR on every beat. Any other code on any beat fails.
 |===
 
-*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0. The SRAM target refuses both bursts (`hw/sys/sep/doc/fabric.adoc`, "SRAM"): BRESP and every RRESP beat are SLVERR and the region keeps its background.
+*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0. The SRAM target refuses both bursts (`hw/sys/sep/doc/fabric.adoc#sep-sram-target`): BRESP and every RRESP beat are SLVERR and the region keeps its background.
 
-*Not claimed*: the refusal code. `fabric.adoc` names SLVERR; the checker accepts any error response or AXI4 semantics.
+*Not claimed*: FIXED or WRAP bursts of other lengths, sizes or masters.
 
 '''''
 

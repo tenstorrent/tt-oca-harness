@@ -44,11 +44,9 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# FIXED and WRAP bursts into SEP SRAM (fabric.adoc: AXI4 fabric). A burst
-# type the slave does not implement must be refused with SRAM unchanged, or
-# performed at the beat addresses AXI4 gives it. OKAY with INCR beat
-# addresses fails. The SRAM target refuses them with SLVERR (fabric.adoc,
-# "SRAM"). no_cpu; +skip_fuse_sense.
+# Multi-beat FIXED and WRAP bursts into SEP SRAM are refused with SLVERR
+# (fabric.adoc#sep-sram-target): BRESP=SLVERR with SRAM unchanged, and
+# RRESP=SLVERR on every read beat. no_cpu; +skip_fuse_sense.
 name = "sep_sram_burst_type_test"
 module = "sram.sep_sram_burst_type_test"
 seed = 1
