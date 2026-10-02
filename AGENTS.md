@@ -44,6 +44,7 @@ partial read costs far more time than a full one.
 | `virtual_platform/README.md` | Virtual platform: the three VP executables and which need Whisper, dependency resolution, the `sepvp` runner and pytest harness, container vs ambient build |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
+| `flows/cdc/README.md` | CDC/RDC sign-off collateral: where the block SDC, constraints and waivers live, the scenario and bounding knobs, replaying a block under a parent |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
 
 `make doc-trm-serve` builds a TRM-first preview with the other documentation
@@ -434,7 +435,7 @@ Whatever the testbench, these hold:
 | `hw/top/` | Top-level integration and wrapper sources |
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
-| `flows/` | Lint, format and synthesis flow makefiles |
+| `flows/` | Lint, format and synthesis flow makefiles; `synth/constraints/` shared SDC code and `cdc/` shared CDC/RDC sign-off collateral |
 | `virtual_platform/` | SystemC virtual platform: the `tt-oca-harness-model` submodule that provides `sep-vp`, `smc-vp` and `smu-vp`, the `sepvp` Python runner and its pytest suite, and the Makefile that builds them and their dependencies |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
@@ -742,7 +743,15 @@ names.
 
 Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
 owner's `lint/` directory: `*.verible.waiver`, `*.verilator.vlt`, and synthesis-only
-`*.slang.expected-errors`. Central Makefiles only discover or pass those files, and each block
+`*.slang.expected-errors`. VC SpyGlass lint, CDC and RDC waivers follow the same ownership as
+`hw/sys/<sys>/{lint,cdc,rdc}/<sys>.vc{lint,cdc,rdc}[.opensource_ip].waiver.tcl`: SPDX header
+plus `# tclint-disable line-length`, tclfmt-clean, hierarchical filter fields carrying the
+`${PREFIX}` token so a parent run can replay them, `#` blocks of one to three lines with the
+mechanism in `-comment {}`, and nothing about who sources the file. The CDC/RDC sign-off
+constraints live beside them under `hw/sys/<sys>/cdc/`, the block SDC under
+`hw/sys/<sys>/synth/`, and the shared pieces under `flows/cdc/` and
+`flows/synth/constraints/`; `flows/cdc/README.md` has the layout and the knobs. Central
+Makefiles only discover or pass those files, and each block
 `flow.mk` declares the exceptions relevant to its elaborated top. Use the narrowest
 diagnostic/path/hierarchy/source match and a constraint-focused rationale. Slang expected-error
 patterns must identify the path and message; the flow must fail if a pattern is unused or an
@@ -753,7 +762,7 @@ Verilator flow loads for every block. Its exact path and message matches cover o
 `field_combo` / `field_storage` aggregate `MULTIDRIVEN` reports, including block register
 modules and the copied SPI register module. They must never expand to member names or to
 `WIDTHEXPAND` / `WIDTHTRUNC`. Before changing the exception, run the unwaived integrated-SMU
-zero-overlap audit documented in `CONTRIBUTING.md`; its non-aggregate search must remain empty,
+zero-overlap audit documented in `doc/starting/src/workflows.adoc`; its non-aggregate search must remain empty,
 and the hand-authored findings must remain in the output.
 
 `OCAH_VERIBLE_LINT_EXCLUDES` and `OCAH_VERIBLE_FORMAT_EXCLUDES` are only for documented parser,

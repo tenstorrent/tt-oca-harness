@@ -107,9 +107,9 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # Clock control
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports stop_clks_o] -add_delay
-# `cla_clock_stop_en_o` is a real `dtp` top-level output; constrained the
-# same as its `stop_clks_o` sibling.
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock DTPCLK] [get_ports cla_clock_stop_en_o] -add_delay
+# `cla_clock_stop_en_o` is bit 2 of the DEBUG_CONTROL TDR update register, so it
+# launches from JTAG_TCK like the boot-stall outputs below, not from DTPCLK.
+set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports cla_clock_stop_en_o] -add_delay
 
 # JTAG boot stall control (driven from JTAG_TCK-domain scan register; use TCK output delay)
 set_output_delay $jtag_io_ext -clock [get_clock JTAG_TCK] [get_ports jtag_boot_stall_ovrd_o] -add_delay
