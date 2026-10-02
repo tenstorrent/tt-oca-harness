@@ -119,7 +119,7 @@ package smu_pkg;
                                          // Forwarded to the SEP and unused when SEP is 0.
     int unsigned EXT_TRNG_NUM_AXIS;      // External TRNG AXI-stream count, one per SEP entropy
                                          // mux leg; must equal
-                                         // sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT (3).
+                                         // sep_crypto_pkg::SepCryptoEdnEndpointCount (3).
                                          // Sets the ext_trng_axis_* port widths and is
                                          // forwarded to the SEP EXT_TRNG_NUM_AXIS.
 

@@ -1353,8 +1353,8 @@ module smu #(
     $error("smu: CFG_IDX must be less than smu_pkg::NumSmuConfigs");
   end
 
-  if (CFG.NUM_INT_TO_SMC < 1 || CFG.NUM_INT_TO_SMC > NUM_EXT_INTERRUPTS) begin : gen_num_int_to_smc_check
-    $error("smu: CFG.NUM_INT_TO_SMC must be 1 to NUM_EXT_INTERRUPTS");
+  if (CFG.NUM_INT_TO_SMC < 1 || CFG.NUM_INT_TO_SMC > NumExtInterrupts) begin : gen_num_int_to_smc_check
+    $error("smu: CFG.NUM_INT_TO_SMC must be 1 to NumExtInterrupts");
   end
 
   if (CFG.XTRIG_NUM_INT_CT < 1 || CFG.XTRIG_NUM_INT_CT > smu_pkg::XtrigIntCtModeWidth)
@@ -1372,9 +1372,9 @@ module smu #(
     $error("smu: CFG.JTAG_EXTEST_TRAIN/EXTEST_PULSE/INTEST_ENABLE need CFG.JTAG_BSR_ENABLE");
   end
 
-  if (CFG.EXT_TRNG_NUM_AXIS != sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT)
+  if (CFG.EXT_TRNG_NUM_AXIS != sep_crypto_pkg::SepCryptoEdnEndpointCount)
   begin : gen_ext_trng_num_axis_check
-    $error("smu: CFG.EXT_TRNG_NUM_AXIS must equal SEP_CRYPTO_EDN_ENDPOINT_COUNT");
+    $error("smu: CFG.EXT_TRNG_NUM_AXIS must equal SepCryptoEdnEndpointCount");
   end
 
   if (CFG.SMC_EFUSE_SHIM_SIZE == 0 ||
