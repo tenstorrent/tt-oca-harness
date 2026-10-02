@@ -126,8 +126,8 @@ module prim_apb_arb #(
     SETUP = 2'd1,
     ACCESS = 2'd2,
     IDLE_MASK = 2'd3
-  } apb_state_t;
-  apb_state_t apb_state_r, apb_state_nxt;
+  } apb_state_e;
+  apb_state_e apb_state_r, apb_state_nxt;
 
   // APB DATAPATH registers don't have reset for common rtl optimization
   always_ff @(posedge clk_i) begin : mst_stage

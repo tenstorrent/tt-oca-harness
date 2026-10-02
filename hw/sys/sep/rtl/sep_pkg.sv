@@ -253,7 +253,7 @@ ADDRESS_REMAP_DEMUX_PORTS
     SEP_EXT_AP_REMAP   = 2,
     SEP_EXT_STEE_REMAP = 3,
     SEP_LOCAL          = 4
-  } address_remap_demux_select_t;
+  } address_remap_demux_select_e;
 
   // External To Chiplet Address Range
   localparam logic [SEP_56_64_5_12_ADDR_WIDTH-1:0] EXTERNAL_TO_CHIPLET_BASE_ADDR = 56'h1_0000_0000;
@@ -267,7 +267,7 @@ OUTBOUND_FILTER_MUX_PORTS
     OUTBOUND_FILTER_LOCAL_MASTER = 0,
     OUTBOUND_FILTER_AP = 1,
     OUTBOUND_FILTER_STEE = 2
-  } outbound_filter_mux_select_t;
+  } outbound_filter_mux_select_e;
 
   // Outbound Filter
   localparam int unsigned OUTBOUND_FILTER_NUM_FILTERS = 32;
@@ -299,7 +299,7 @@ SYSTEM_CSR_DEMUX_PORTS
     SEP_SCRATCH_COLD = 6,
     SEP_SCRATCH_WARM = 7,
     ERR_SLV = 8
-  } system_csr_demux_select_t;
+  } system_csr_demux_select_e;
 
   //////////
   // AXI4-Lite definitions
@@ -415,7 +415,7 @@ SEP_IFU_DEMUX_NUM_PORTS
     SEP_IFU_DEMUX_PORT_ROM     = 0,
     SEP_IFU_DEMUX_PORT_SRAM    = 1,
     SEP_IFU_DEMUX_PORT_ERR_SLV = 2
-  } sep_ifu_demux_port_t;
+  } sep_ifu_demux_port_e;
 
   // LSU Demux
   parameter int unsigned SEP_LSU_DEMUX_NUM_PORTS = 2;
@@ -424,7 +424,7 @@ SEP_LSU_DEMUX_NUM_PORTS
 )-1:0] {
     SEP_LSU_DEMUX_PORT_ROM  = 0,
     SEP_LSU_DEMUX_PORT_XBAR = 1
-  } sep_lsu_demux_port_t;
+  } sep_lsu_demux_port_e;
 
   // Boot ROM Mux (merges IFU and LSU ROM streams onto the single ROM port)
   parameter int unsigned SEP_ROM_MUX_NUM_PORTS = 2;
@@ -433,7 +433,7 @@ SEP_ROM_MUX_NUM_PORTS
 )-1:0] {
     SEP_ROM_MUX_PORT_IFU = 0,
     SEP_ROM_MUX_PORT_LSU = 1
-  } sep_rom_mux_port_t;
+  } sep_rom_mux_port_e;
 
   typedef logic sep_mailbox_slv_req_t;
   typedef logic sep_mailbox_slv_rsp_t;

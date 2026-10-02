@@ -87,8 +87,8 @@ module sep_system_csr (
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::SYSTEM_CSR_DEMUX_PORTS-1:0] sep_system_csr_axil_reqs;
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::SYSTEM_CSR_DEMUX_PORTS-1:0] sep_system_csr_axil_resps;
 
-  sep_pkg::system_csr_demux_select_t system_csr_demux_select_aw;
-  sep_pkg::system_csr_demux_select_t system_csr_demux_select_ar;
+  sep_pkg::system_csr_demux_select_e system_csr_demux_select_aw;
+  sep_pkg::system_csr_demux_select_e system_csr_demux_select_ar;
 
   // Outbound Filter signals
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0] outbound_filter_axil_reqs;

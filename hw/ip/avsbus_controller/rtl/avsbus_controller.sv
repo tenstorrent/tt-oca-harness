@@ -271,12 +271,12 @@ module avsbus_controller #(
     COMMIT_WRITE = 2'b00,
     HOLD_WRITE   = 2'b01,
     READ         = 2'b11
-  } cmd_type_t;
+  } cmd_type_e;
 
   typedef enum logic {
     AVS_BUS = 1'b0,
     MANUFACTURER_SPEC = 1'b1
-  } cmd_group_t;
+  } cmd_group_e;
 
   typedef enum logic [3:0] {
     VOLTAGE     = 4'b0000,
@@ -287,20 +287,20 @@ module avsbus_controller #(
     POWER_MODE  = 4'b0101,
     STATUS      = 4'b1110,
     VERSION     = 4'b1111
-  } cmd_data_type_t;
+  } cmd_data_type_e;
 
   logic [1:0] CmdPreamble;
-  cmd_type_t CmdType;
-  cmd_group_t CmdGroup;
-  cmd_data_type_t CmdDataType;
+  cmd_type_e CmdType;
+  cmd_group_e CmdGroup;
+  cmd_data_type_e CmdDataType;
   logic [3:0] CmdSelect;
   logic [15:0] CmdData;
   logic [2:0] CmdCRC;
 
   assign CmdPreamble = avs_mdata_transmit_frame[31:30];
-  assign CmdType = cmd_type_t'(avs_mdata_transmit_frame[29:28]);
-  assign CmdGroup = cmd_group_t'(avs_mdata_transmit_frame[27]);
-  assign CmdDataType = cmd_data_type_t'(avs_mdata_transmit_frame[26:23]);
+  assign CmdType = cmd_type_e'(avs_mdata_transmit_frame[29:28]);
+  assign CmdGroup = cmd_group_e'(avs_mdata_transmit_frame[27]);
+  assign CmdDataType = cmd_data_type_e'(avs_mdata_transmit_frame[26:23]);
   assign CmdSelect = avs_mdata_transmit_frame[22:19];
   assign CmdData = avs_mdata_transmit_frame[18:3];
   assign CmdCRC = avs_mdata_transmit_frame[2:0];
@@ -312,9 +312,9 @@ module avsbus_controller #(
     SLAVE_ACK_RESOURCE_UNAVAILABLE = 2'b01,
     SLAVE_ACK_BAD_CRC              = 2'b10,
     SLAVE_ACK_BAD_DATA_OR_SELECTOR = 2'b11
-  } slave_ack_t;
-  slave_ack_t slave_ack;
-  assign slave_ack = slave_ack_t'(avs_sdata_capture[31:30]);
+  } slave_ack_e;
+  slave_ack_e slave_ack;
+  assign slave_ack = slave_ack_e'(avs_sdata_capture[31:30]);
 
 
   // AVS FSM states:
@@ -336,10 +336,10 @@ module avsbus_controller #(
     AVS_RETRY_SHIFT_RECV_SUBFRAME          = 17'b00100000000000000,
     AVS_RETRY_END_RECV_SUBFRAME            = 17'b01000000000000000,
     AVS_PROCESS_PREVIOUS_SDATA             = 17'b10000000000000000
-  } state_t;
+  } state_e;
 
-  state_t cur_state, next_state, cur_state_RS_apb_clk;
-  logic [$bits(state_t)-1:0] cur_state_RS_apb_clk_logic;
+  state_e cur_state, next_state, cur_state_RS_apb_clk;
+  logic [$bits(state_e)-1:0] cur_state_RS_apb_clk_logic;
 
   assign cur_state_debug_o = cur_state_RS_apb_clk_logic;
 
@@ -668,7 +668,7 @@ module avsbus_controller #(
     .rst_dst_ni(reset_n_apb_clk_syncd),
     .data_o(cur_state_RS_apb_clk_logic)
   );
-  assign cur_state_RS_apb_clk = state_t'(cur_state_RS_apb_clk_logic);
+  assign cur_state_RS_apb_clk = state_e'(cur_state_RS_apb_clk_logic);
 
   prim_sync_data_autohs #(
     .WIDTH($size(R_avs_cfg_1_F_clk_divider_value)),

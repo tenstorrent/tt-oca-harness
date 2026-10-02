@@ -49,8 +49,8 @@ module smc_misc_wrap #(
   // AXI-Lite Demux //
   ////////////////////
 
-  smc_misc_pkg::select_t reg_axi_lite_aw_select;
-  smc_misc_pkg::select_t reg_axi_lite_ar_select;
+  smc_misc_pkg::select_e reg_axi_lite_aw_select;
+  smc_misc_pkg::select_e reg_axi_lite_ar_select;
 
   smc_pkg::smc_axil_32_32_req_t  [smc_misc_pkg::NumRegMaps-1:0] from_demux_reg_axi_lite_req;
   smc_pkg::smc_axil_32_32_resp_t [smc_misc_pkg::NumRegMaps-1:0] from_demux_reg_axi_lite_resp;

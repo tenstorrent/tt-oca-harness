@@ -317,7 +317,7 @@ jobs:
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: lint_sv_comments.log, efm: '%f:%l: %m', level: error, name: lint-sv-comments }
 
-  lint-sv-enum-members:
+  lint-sv-enums:
     needs: [diff-class, setup-tools]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
@@ -333,23 +333,23 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
-      - name: Check SystemVerilog enum members
+      - name: Check SystemVerilog enums
         id: lint
         shell: bash
         run: |
           set +e
-          make ocah-lint-sv-enum-members 2>&1 | tee lint_sv_enum_members.log
+          make ocah-lint-sv-enums 2>&1 | tee lint_sv_enums.log
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
           exit 0
       # The Checks API post is advisory. The check's exit status, gated
       # below, fails the job, including when it dies before checking a file.
       - uses: ./.github/actions/reviewdog-report
         continue-on-error: true
-        with: { log-file: lint_sv_enum_members.log, efm: '%f:%l: %m', level: error, name: lint-sv-enum-members }
-      - name: Gate on the enum member check's exit status
+        with: { log-file: lint_sv_enums.log, efm: '%f:%l: %m', level: error, name: lint-sv-enums }
+      - name: Gate on the enum check's exit status
         if: always() && steps.lint.outputs.exit_code != '0'
         run: |
-          echo "::error::make ocah-lint-sv-enum-members exited with status ${{ steps.lint.outputs.exit_code }}"
+          echo "::error::make ocah-lint-sv-enums exited with status ${{ steps.lint.outputs.exit_code }}"
           exit 1
 
   # Vale is a Go binary with no PyPI wheel; fetched here from a pinned
