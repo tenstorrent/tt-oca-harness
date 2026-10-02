@@ -61,7 +61,7 @@ summary() {
 if published; then
   exit 0
 fi
-if ((!wait)); then
+if ((! wait)); then
   summary "this run does not wait for it"
 fi
 
