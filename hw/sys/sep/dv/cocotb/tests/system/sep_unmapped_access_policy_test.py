@@ -26,7 +26,8 @@ every read and write in that set is refused (never OKAY, never a timeout).
 CHK-SYSCSR-HOLE-DECODE: no system-CSR hole or reserved-row probe reaches the
 system-CSR AXI-Lite port. The system-peripherals crossbar refuses them itself,
 so a write answers DECERR rather than the SLVERR the AXI-Lite converter makes of
-any write error behind it.
+any write error behind it. A watched write and read of SEP_NMI_VEC must each
+show their handshake at that port, so a watcher that sees nothing fails.
 
 CHK-TOKEN-FAULT-EXTENT: TOKEN_MATCH_FAULT, the last register the RDL gives the
 eFuse token MMR, reads OKAY with its RDL reset, and the first word after it is
@@ -136,6 +137,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
             len(ua.snap),
         )
 
+        # --- Lite-port watcher control ---------------------------------------
+        lite_ctrl_fails = await ua.lite_control()
+
         # --- TOKEN_MATCH_FAULT extent end -----------------------------------
         resp, val, to = await ua.access("r", TOKEN_MATCH_FAULT, may_refuse=True)
         tok_fail = []
@@ -156,7 +160,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
         alias_fails: list[str] = []
         per_group: dict[str, list[str]] = {g: [] for g in REFUSE_GROUPS}
         code_fails: list[str] = []
-        decode_fails: list[str] = []
+        decode_fails: list[str] = list(lite_ctrl_fails)
         n_code = 0
         n_watched = 0
         for p in cfg.probes:
@@ -356,8 +360,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
             n = sum(1 for p in cfg.probes if p.group == g)
             counts[_CHK[g]] = f"all {n} {g} probe(s) were refused"
         counts["CHK-SYSCSR-HOLE-DECODE"] = (
-            f"none of the {n_watched} {' and '.join(LITE_WATCHED)} probe(s) reached the "
-            "system-CSR AXI-Lite port"
+            f"the watcher saw the {cfg.lite_ctrl.name} control write and read at the "
+            f"system-CSR AXI-Lite port, and none of the {n_watched} "
+            f"{' and '.join(LITE_WATCHED)} probe(s) reached it"
         )
         bad = []
         for chk, fails in verdict.items():
