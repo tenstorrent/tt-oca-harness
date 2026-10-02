@@ -21,6 +21,15 @@ ocah-lint-verilator-all:
 
 OCAH_PHONY += ocah-lint-verilator-all
 
+## Build every package in each (or BLOCK=-selected) block's filelist into a
+## Verilator model under --public-flat-rw, the flag cocotb's runner forces.
+## @param BLOCK=smu Optional block(s) to check (space-separated); omit for all
+.PHONY: ocah-lint-verilator-public-all
+ocah-lint-verilator-public-all:
+	$(call ocah_flow_run,ocah-lint-verilator-public)
+
+OCAH_PHONY += ocah-lint-verilator-public-all
+
 ifdef FLOW_DESIGN
 
 OCAH_LINT_VERILATOR_DIR := build/lint
@@ -67,6 +76,44 @@ ocah-lint-verilator: ocah-lint-verilator-flist
 		$(OCAH_LINT_VERILATOR_WAIVER_FILES) \
 		$(if $(VERILATOR_LINT_PATH),$(OCAH_LINT_VERILATOR_FILTER_PATHS)) \
 		-f $(OCAH_LINT_VERILATOR_FLIST)
+
+OCAH_LINT_VERILATOR_PUBLIC_DIR := $(OCAH_LINT_VERILATOR_DIR)/$(FLOW_DESIGN)_public_flat_rw
+OCAH_LINT_VERILATOR_PUBLIC_FLIST := $(OCAH_LINT_VERILATOR_PUBLIC_DIR)/packages.f
+OCAH_LINT_VERILATOR_PUBLIC_TOP := ocah_public_flat_rw_top
+
+# --public-flat-rw registers every package parameter by name, whether or not
+# the top imports the package, so an empty top over the block's packages
+# exercises each registration the cocotb benches compile. The generated C++
+# must also build: the registrations fail in the C++ compile, not in
+# Verilator. Modules are left out because publishing a whole subsystem is
+# what the SMC, SEP and SMU benches drop the flag to avoid.
+## Build this block's packages into a Verilator model under --public-flat-rw.
+.PHONY: ocah-lint-verilator-public
+ocah-lint-verilator-public: ocah-lint-verilator-flist
+	$(call ocah_require_host_tool,verilator,./scripts/docker-run.sh run-here make ocah-lint-verilator-public)
+	@rm -rf $(OCAH_LINT_VERILATOR_PUBLIC_DIR)
+	@mkdir -p $(OCAH_LINT_VERILATOR_PUBLIC_DIR)
+	@{ grep -E '^\+(incdir|define)\+' $(OCAH_LINT_VERILATOR_FLIST); \
+	   grep -vE '^[-+]' $(OCAH_LINT_VERILATOR_FLIST) | while read -r f; do \
+	     case "$$f" in \
+	       *.svh) echo "$$f" ;; \
+	       *) if grep -qE '^[[:space:]]*package[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*;' "$$f"; then echo "$$f"; fi ;; \
+	     esac; \
+	   done; } > $(OCAH_LINT_VERILATOR_PUBLIC_FLIST)
+	@printf 'module %s;\nendmodule\n' $(OCAH_LINT_VERILATOR_PUBLIC_TOP) \
+		> $(OCAH_LINT_VERILATOR_PUBLIC_DIR)/$(OCAH_LINT_VERILATOR_PUBLIC_TOP).sv
+	@echo "$(FLOW_DESIGN): $$(grep -vcE '^\+|\.svh$$' $(OCAH_LINT_VERILATOR_PUBLIC_FLIST)) packages"
+	verilator --cc --build -j 0 -sv --language 1800-2023 \
+		--timing \
+		--timescale $(OCAH_FLOW_TIMESCALE) \
+		--top-module $(OCAH_LINT_VERILATOR_PUBLIC_TOP) \
+		--public-flat-rw \
+		$(OCAH_LINT_VERILATOR_DEFINES) \
+		-Wno-fatal -Wno-lint -Wno-style \
+		+define+ASSERTS_OFF \
+		-f $(OCAH_LINT_VERILATOR_PUBLIC_FLIST) \
+		$(OCAH_LINT_VERILATOR_PUBLIC_DIR)/$(OCAH_LINT_VERILATOR_PUBLIC_TOP).sv \
+		-Mdir $(OCAH_LINT_VERILATOR_PUBLIC_DIR)/obj
 
 endif
 

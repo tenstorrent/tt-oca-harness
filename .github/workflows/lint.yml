@@ -192,6 +192,44 @@ jobs:
           echo "::error::Verilator exited with status ${{ steps.lint.outputs.exit_code }}"
           exit 1
 
+  # cocotb's Verilator runner forces --public-flat-rw, which the lint-only
+  # pass above never applies. SMU elaborates SEP and SMC, so its packages
+  # cover the subsystem benches as well as the IP benches.
+  lint-sv-verilator-public:
+    name: lint-sv-verilator-public/${{ matrix.block }}
+    needs: [diff-class, setup-tools, setup-verilator]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        block: [smu]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: bender-bin, path: ./bin }
+      - uses: actions/download-artifact@v4
+        with: { name: verilator, path: ./verilator }
+      - name: Add tools to PATH
+        run: |
+          chmod +x ./bin/bender
+          # actions/upload-artifact zips (and download-artifact unzips) without
+          # preserving Unix permissions, so every file lands back at 644.
+          chmod +x ./verilator/bin/* ./verilator/share/verilator/bin/*
+          echo "$GITHUB_WORKSPACE/bin" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/verilator/bin" >> "$GITHUB_PATH"
+          # setup-verilator configures --prefix=$HOME/verilator; the runtime
+          # headers --build compiles against are under this artifact instead.
+          echo "VERILATOR_ROOT=$GITHUB_WORKSPACE/verilator/share/verilator" >> "$GITHUB_ENV"
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            install -y --no-install-recommends libfl2
+      - name: Build ${{ matrix.block }} packages under --public-flat-rw
+        run: make ocah-lint-verilator-public-all BLOCK="${{ matrix.block }}"
+
   lint-python:
     needs: [diff-class, setup-tools]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'

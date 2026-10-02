@@ -593,6 +593,17 @@ make lint-verilator-all BLOCK=smu \
   2>&1 | tee "$TMPDIR/verilator-smu-unwaived.log"
 ```
 
+cocotb's Verilator runner always passes `--public-flat-rw`, which registers
+every package parameter by name in the generated C++. Some parameter shapes
+verilate cleanly but then fail the C++ compile. Lint never compiles that C++,
+so a separate target builds every package in a block's filelist under the flag:
+
+```bash
+make lint-verilator-public-all BLOCK=smu
+```
+
+SMU elaborates SEP and SMC, so CI runs it for `smu` only.
+
 ==== Style and Lint checking with Slang
 
 To run the slang linter on each `flow.mk` top, use the following command:
@@ -842,6 +853,7 @@ contributor enables the hook.
 === Linting and CI
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
+`lint-sv-verilator-public`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
 `lint-sv-comments`, `lint-sv-enum-members`, `lint-yaml`, `lint-toml`, `lint-markdown`,
 `lint-make`, `lint-shell`,
@@ -869,6 +881,10 @@ Scheduled and manually dispatched pipelines always run in full.
 | `lint-sv-verilator`
 | `lint-sv-verilator/<block>` for `aou`, `dtp`, `sep`, `smc`, and `smu`
 | `make lint-verilator-all [BLOCK=<block>]`
+
+| `lint-sv-verilator-public`
+| None (job status only), for `smu`
+| `make lint-verilator-public-all BLOCK=smu`
 
 | `lint-sv-verible` (disabled in CI)
 | `lint-sv-verible`
