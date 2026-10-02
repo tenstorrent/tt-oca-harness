@@ -39,7 +39,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR; 0x1000_0000 covers every unit in the SMC map. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</td></tr>
+<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</td></tr>
 </table>
 <h3 id="CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</h3>
 <table>

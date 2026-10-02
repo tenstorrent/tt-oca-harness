@@ -65,14 +65,10 @@ An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers `DECERR`.
 
-Each aperture spans `REGION_SIZE` bytes from its base, so a unit is reachable
-from the inbound port only while its whole aperture lies below
-`BASE + REGION_SIZE`. At the 16 MiB reset value, the PLIC at `BASE + 0x400_0000`
-and the CLINT and bus-error units from `BASE + 0x800_0000` lie outside both
-apertures, and an inbound access to them answers `DECERR`. The responses the
-table lists for these units apply once `REGION_SIZE` covers them; `0x1000_0000`
-(256 MiB) covers every unit in the map. The SMC harts reach their PLIC and CLINT
-inside the CPU cluster, whatever `REGION_SIZE` holds.
+The inbound port reaches a unit only while its whole aperture lies below
+`BASE + REGION_SIZE`. At the reset value the PLIC, CLINT and bus-error units lie
+beyond it and answer `DECERR`. The SMC harts reach the PLIC and CLINT inside the
+CPU cluster regardless of `REGION_SIZE`.
 
 === AXI-Lite External Window
 
