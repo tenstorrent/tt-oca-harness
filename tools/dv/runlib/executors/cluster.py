@@ -5,11 +5,12 @@
 
 Every scheduler interaction is one of the registry's argv templates rendered and run as a
 subprocess: ``submit_argv`` once per attempt or once per job array, ``query_argv`` for a batch
-of job ids on every poll, ``history_argv`` for ids absent from the live query, and
-``cancel_argv`` on interruption and for a job graded ``LOST`` while the scheduler may still
-run it. The executor reads no scheduler output itself; the driver's :class:`SchedulerDialect`
-turns each command's output into normalized observations, so a site changes flags in the
-registry while a driver changes parsing in code.
+of job ids on every poll, ``history_argv`` for ids absent from the live query and for the exit
+code of a failed job whose live record carries none, and ``cancel_argv`` on interruption and
+for a job graded ``LOST`` while the scheduler may still run it. The executor reads no
+scheduler output itself; the driver's :class:`SchedulerDialect` turns each command's output
+into normalized observations, so a site changes flags in the registry while a driver changes
+parsing in code.
 
 With ``arrays`` on, the first attempts of a stage go out as job arrays of at most
 ``array_chunk_size`` elements, one array per coordinator turn. Every element is its own
@@ -44,7 +45,7 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -89,6 +90,24 @@ OUTPUT_LOG_LIMIT = 4000
 CANCEL_POLL_SEC = 1.0
 # Terminal states in which the worker ran to its own end and normally wrote a result.
 _RESULT_BEARING = frozenset({JobState.SUCCEEDED, JobState.FAILED})
+
+
+def _with_history_detail(seen: JobObservation, known: JobObservation | None) -> JobObservation:
+    """``seen`` with what a history record in the same state adds: a non-zero exit code, or
+    failing that its detail, such as the signal that ended the job.
+
+    Accounting can lag the controller, so a record in another state, such as one still
+    running, adds nothing.
+    """
+    if known is None or known.state is not seen.state:
+        return seen
+    if known.exit_code:
+        return replace(seen, exit_code=known.exit_code)
+    if known.reason and known.reason not in seen.reason:
+        return replace(
+            seen, reason=f"{known.reason}; {seen.reason}" if seen.reason else known.reason
+        )
+    return seen
 
 
 class ClusterError(RuntimeError):
@@ -631,6 +650,7 @@ class ClusterExecutor(Executor):
             return out
         answer = self._query(live, self._cfg["query_argv"], self._dialect.parse_query)
         reconciling: list[_Tracked] = []
+        lookups: list[tuple[_Tracked, JobObservation]] = []
         for tracked in live:
             task_id = tracked.task.task_id
             job_id = tracked.handle.native_job_id
@@ -643,11 +663,13 @@ class ClusterExecutor(Executor):
             if seen is None or seen.state is JobState.RECONCILING:
                 reconciling.append(tracked)
                 continue
-            out[task_id] = self._settle(tracked, seen, now)
+            out[task_id] = self._settle(tracked, seen, now, lookups)
         if reconciling:
             self._consult_history(reconciling)
             for tracked in reconciling:
                 out[tracked.task.task_id] = self._reconcile(tracked, now, stamp)
+        for tracked, seen in self._with_history_exit_codes(lookups):
+            out[tracked.task.task_id] = self._expire(tracked, seen)
         if answer.failed:
             self._query_failures += 1
             self._event(
@@ -721,8 +743,19 @@ class ClusterExecutor(Executor):
 
         return "job_id" in names(template)
 
-    def _settle(self, tracked: _Tracked, seen: JobObservation, now: float) -> JobObservation:
-        """Apply one live observation; a terminal one waits for the leaf's result within grace."""
+    def _settle(
+        self,
+        tracked: _Tracked,
+        seen: JobObservation,
+        now: float,
+        lookups: list[tuple[_Tracked, JobObservation]] | None = None,
+    ) -> JobObservation:
+        """Apply one live observation; a terminal one waits for the leaf's result within grace.
+
+        With ``lookups``, an observation whose grace ends without an exit code is appended
+        there and the job's previous observation comes back; the caller finishes the job after
+        one history lookup for the whole list.
+        """
         if not seen.state.terminal:
             tracked.missing_since = None
             tracked.terminal_since = None
@@ -743,21 +776,10 @@ class ClusterExecutor(Executor):
                     )
             return self._finish(tracked, seen)
         if now - tracked.terminal_since >= self.artifact_grace_sec:
-            code = "" if seen.exit_code is None else f" with exit code {seen.exit_code}"
-            reason = (
-                f"{seen.state.value.lower()} reported{code} but no result.json appeared within "
-                f"{self.artifact_grace_sec:g}s"
-            )
-            return self._finish(
-                tracked,
-                JobObservation(
-                    state=seen.state,
-                    exit_code=seen.exit_code,
-                    reason=f"{reason}; {seen.reason}" if seen.reason else reason,
-                    observed_at=seen.observed_at,
-                    raw=seen.raw,
-                ),
-            )
+            if lookups is not None and seen.exit_code is None and self._history_template:
+                lookups.append((tracked, seen))
+                return tracked.last
+            return self._expire(tracked, seen)
         waiting = JobObservation(
             state=JobState.RECONCILING,
             exit_code=seen.exit_code,
@@ -767,6 +789,51 @@ class ClusterExecutor(Executor):
         )
         tracked.last = waiting
         return waiting
+
+    def _expire(self, tracked: _Tracked, seen: JobObservation) -> JobObservation:
+        """Finish a job reported finished whose ``result.json`` did not appear within grace."""
+        code = "" if seen.exit_code is None else f" with exit code {seen.exit_code}"
+        reason = (
+            f"{seen.state.value.lower()} reported{code} but no result.json appeared within "
+            f"{self.artifact_grace_sec:g}s"
+        )
+        return self._finish(
+            tracked,
+            JobObservation(
+                state=seen.state,
+                exit_code=seen.exit_code,
+                reason=f"{reason}; {seen.reason}" if seen.reason else reason,
+                observed_at=seen.observed_at,
+                raw=seen.raw,
+            ),
+        )
+
+    def _with_history_exit_codes(
+        self, lookups: Sequence[tuple[_Tracked, JobObservation]]
+    ) -> list[tuple[_Tracked, JobObservation]]:
+        """Each observation with what history, asked once for every listed job, adds to it.
+
+        A live query that lists a finished job may carry no exit code (Slurm's ``squeue``),
+        and the job can stay listed past the grace.
+        """
+        if not lookups:
+            return []
+        answer = self._query(
+            [tracked for tracked, _ in lookups],
+            self._history_template,
+            self._parse_history,
+            purpose="history",
+        )
+        return [
+            (
+                tracked,
+                _with_history_detail(seen, answer.observations.get(tracked.handle.native_job_id)),
+            )
+            for tracked, seen in lookups
+        ]
+
+    def _parse_history(self, result: CommandResult, job_ids: Sequence[str]) -> QueryOutcome:
+        return self._dialect.parse_history(result, job_ids, self._history_parser)
 
     def _consult_history(self, reconciling: Sequence[_Tracked]) -> None:
         """Ask the scheduler's history once per poll for every vanished job it has not settled."""
@@ -779,11 +846,9 @@ class ClusterExecutor(Executor):
         ]
         if not pending:
             return
-
-        def parse(result: CommandResult, job_ids: Sequence[str]) -> QueryOutcome:
-            return self._dialect.parse_history(result, job_ids, self._history_parser)
-
-        answer = self._query(pending, self._history_template, parse, purpose="history")
+        answer = self._query(
+            pending, self._history_template, self._parse_history, purpose="history"
+        )
         for tracked in pending:
             job_id = tracked.handle.native_job_id
             if job_id in answer.failed:

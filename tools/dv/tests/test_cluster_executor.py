@@ -65,6 +65,7 @@ from runlib.executors.cluster import (  # noqa: E402
     ClusterError,
     ClusterExecutor,
     CommandResult,
+    _with_history_detail,
     array_tasks_path,
     job_log_path,
     script_path,
@@ -349,6 +350,8 @@ class ClusterExecutorTests(FakeSchedulerCase):
             "failed reported with exit code 127 but no result.json appeared within 3s",
             final[handle.task_id].reason,
         )
+        if self.driver == "lsf":
+            self.assertEqual(self.calls("history"), [], "the live query carries the code")
 
     def test_submission_clears_what_an_earlier_invocation_left(self) -> None:
         self.scenario(
@@ -819,7 +822,7 @@ class SlurmExecutorTest(ClusterExecutorTests):
         ]
         self.assertTrue(per_id, "the batched squeue failed and was retried per id")
 
-    def test_a_failed_job_squeue_still_lists_ends_the_wait_without_an_exit_code(self) -> None:
+    def test_a_failed_job_squeue_still_lists_takes_its_exit_code_from_history(self) -> None:
         self.scenario(
             query={"min_job_age_queries": 1000},
             jobs={"default": {"states": ["PEND", "RUN", "EXIT:127"], "run_script": False}},
@@ -828,9 +831,67 @@ class SlurmExecutorTest(ClusterExecutorTests):
         handle = executor.submit(self.task(7))
         final, _ = self.settle(executor, [handle])
         self.assertEqual(final[handle.task_id].state, JobState.FAILED)
+        self.assertEqual(final[handle.task_id].exit_code, 127)
+        self.assertIn(
+            "failed reported with exit code 127 but no result.json appeared within 3s",
+            final[handle.task_id].reason,
+        )
+        self.assertEqual(len(self.calls("history")), 1, "one lookup when the grace ends")
+
+    def test_a_failed_job_squeue_still_lists_without_history_names_no_exit_code(self) -> None:
+        self.scenario(
+            query={"min_job_age_queries": 1000},
+            history={"unavailable": True},
+            jobs={"default": {"states": ["PEND", "RUN", "EXIT:127"], "run_script": False}},
+        )
+        executor = self.executor(artifact_grace_sec=3.0)
+        handle = executor.submit(self.task(8))
+        final, _ = self.settle(executor, [handle])
+        self.assertEqual(final[handle.task_id].state, JobState.FAILED)
+        self.assertIsNone(final[handle.task_id].exit_code)
         self.assertIn(
             "failed reported but no result.json appeared within 3s", final[handle.task_id].reason
         )
+        self.assertEqual(len(self.calls("history")), 1)
+
+    def test_a_failed_job_sacct_still_reports_running_names_no_exit_code(self) -> None:
+        self.scenario(
+            query={"min_job_age_queries": 1000},
+            jobs={
+                "default": {
+                    "states": ["PEND", "RUN", "EXIT:127"],
+                    "run_script": False,
+                    "history": "RUN",
+                }
+            },
+        )
+        executor = self.executor(artifact_grace_sec=3.0)
+        handle = executor.submit(self.task(9))
+        final, _ = self.settle(executor, [handle])
+        self.assertEqual(final[handle.task_id].state, JobState.FAILED)
+        self.assertIsNone(final[handle.task_id].exit_code)
+        self.assertIn(
+            "failed reported but no result.json appeared within 3s", final[handle.task_id].reason
+        )
+        self.assertEqual(len(self.calls("history")), 1)
+        executor.close()
+
+    def test_jobs_whose_grace_ends_together_share_one_history_query(self) -> None:
+        self.scenario(
+            query={"min_job_age_queries": 1000},
+            jobs={"default": {"states": ["PEND", "RUN", "EXIT:127"], "run_script": False}},
+        )
+        executor = self.executor(artifact_grace_sec=3.0)
+        handles = executor.submit_many([self.task(60 + i, item=f"t_{i}") for i in range(4)])
+        final, _ = self.settle(executor, handles)
+        for handle in handles:
+            self.assertEqual(final[handle.task_id].exit_code, 127)
+            self.assertIn("with exit code 127", final[handle.task_id].reason)
+        (lookup,) = self.calls("history")
+        asked = " ".join(lookup["argv"])
+        for handle in handles:
+            self.assertIn(handle.native_job_id, asked)
+        executor.close()
 
     def test_sacct_unavailable_then_scontrol_history(self) -> None:
         self.scenario(
@@ -1072,6 +1133,22 @@ class SlurmParserTest(unittest.TestCase):
         outcome = self.dialect.parse_submit(refused)
         self.assertIsNone(outcome.job_id)
         self.assertIn("Invalid partition", outcome.error)
+
+    def test_history_adds_a_signal_or_a_code_only_from_a_record_in_the_listed_state(self) -> None:
+        listed = self.dialect.parse_query(command("5|FAILED|NonZeroExitCode\n"), ["5"])
+        failed = listed.observations["5"]
+        self.assertIsNone(failed.exit_code)
+
+        def history(line: str) -> JobObservation:
+            return self.dialect.parse_sacct(command(line), ["5"]).observations["5"]
+
+        signalled = _with_history_detail(failed, history("5|FAILED|0:9\n"))
+        self.assertIsNone(signalled.exit_code)
+        self.assertEqual(signalled.reason, "signal 9; NonZeroExitCode")
+        self.assertEqual(_with_history_detail(failed, history("5|FAILED|127:0\n")).exit_code, 127)
+        self.assertIs(_with_history_detail(failed, history("5|RUNNING|0:0\n")), failed)
+        self.assertIs(_with_history_detail(failed, history("5|CANCELLED by 1000|0:15\n")), failed)
+        self.assertIs(_with_history_detail(failed, None), failed)
 
     def test_squeue_lines_and_failures(self) -> None:
         text = "1|RUNNING|None\n4_2|PENDING|JobArrayTaskLimit\n7|COMPLETED|None\n8|CANCELLED|None\n"

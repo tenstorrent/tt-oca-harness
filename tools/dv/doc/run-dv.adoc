@@ -1483,10 +1483,15 @@ cancellation to be confirmed.
 |The job ran to its end. The leaf's own `result.json` grades it, with the
 exit code recovered from the query or the completion record when the
 scheduler reports none; no `result.json` within the grace is `ERROR`
-(`environment_error`), with the exit code in the reason when the observation
-that ends the wait carries one. LSF's live query reports it; on Slurm a failed
-job's code arrives only once the job has left the live query and `sacct`
-answers, and a completed job reads as `0`.
+(`environment_error`), with the exit code in the reason when the scheduler
+reports one. LSF's live query carries it. Slurm's carries none, so the code of
+a failed job comes from `history_argv`: from the history that settles a job
+once it has left the live query, or from one lookup per poll for every job
+whose grace ends while `squeue` still lists it. That lookup counts only a
+record in the state the live query reports, since accounting can lag the
+controller. When no record names a code the reason names none, and it carries
+the record's detail instead, such as the signal that ended the job, when there
+is one. A completed job reads as `0`.
 
 |`TIMED_OUT`
 |The scheduler's wall time expired: `TIMEOUT`, with the job log as the
