@@ -63,7 +63,15 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, SimTimeoutError, with_timeout
-from env.sep_efuse_image import LC_WORD_IDX, NUM_FUSE_WORDS, SHADOW_BASE, WORD_BITS, lc_encode
+from env.sep_efuse_image import (
+    LC_FIELD_MASK,
+    LC_WORD_IDX,
+    NUM_FUSE_WORDS,
+    SHADOW_BASE,
+    WORD_BITS,
+    WORD_MASK,
+    lc_encode,
+)
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
@@ -98,7 +106,8 @@ _LC_PRESENSE_RAW = 0xF
 def _shadow_reset_words() -> list[int]:
     """Reset value of each shadow word: the RDL reset, and the pre-sense LC hold."""
     words = [word_reset(SHADOW_BASE + 4 * i) for i in range(NUM_FUSE_WORDS)]
-    words[LC_WORD_IDX] = (words[LC_WORD_IDX] & 0xFFFF_FF00) | lc_encode(_LC_PRESENSE_RAW)
+    keep = words[LC_WORD_IDX] & WORD_MASK & ~LC_FIELD_MASK
+    words[LC_WORD_IDX] = keep | lc_encode(_LC_PRESENSE_RAW)
     return words
 
 
