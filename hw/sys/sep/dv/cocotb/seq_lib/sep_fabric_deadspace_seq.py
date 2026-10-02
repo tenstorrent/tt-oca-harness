@@ -41,6 +41,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import sep_map_row
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import (
     block_size,
@@ -228,8 +229,9 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "km_mailbox",
             sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR"),
-            # Map window end; no neighbouring REG_MAP_BASE_ADDR (memory_map.adoc).
-            0x1092_1000,
+            # Aperture end from the generated SEP memory map; no neighbouring
+            # REG_MAP_BASE_ADDR follows this block.
+            sep_map_row(sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")).end + 1,
             block_size("KM_MAILBOX_SEP"),
             _sep_watch(
                 sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR"),
@@ -250,8 +252,9 @@ def dead_windows() -> tuple[DeadWindow, ...]:
         DeadWindow(
             "spi_controller",
             sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
-            # Map window end; no neighbouring REG_MAP_BASE_ADDR (memory_map.adoc).
-            0x10C0_0000,
+            # Aperture end from the generated SEP memory map; no neighbouring
+            # REG_MAP_BASE_ADDR follows this block.
+            sep_map_row(sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR")).end + 1,
             block_size("SPI_CONTROLLER"),
             _sep_watch(
                 sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
