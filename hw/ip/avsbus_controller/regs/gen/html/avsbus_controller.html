@@ -61,7 +61,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>22</td><td>AVS_SLAVE_IS_IN_RESYNC</td><td>R</td><td>0x0</td><td>Indicates that the AVS master is issuing a slave resync operation (34 clock cycles of holding mdata high)</td></tr>
+<tr><td>22</td><td>AVS_SLAVE_IS_IN_RESYNC</td><td>R</td><td>0x0</td><td>Indicates that the AVS master is issuing a slave resync operation (35 AVS clock cycles of holding mdata high)</td></tr>
 <tr><td>21</td><td>AVS_BUS_IS_IDLE</td><td>R</td><td>0x0</td><td>Indicates that neither AVS master nor slave is currently driving a transaction on the AVS bus</td></tr>
 <tr><td>20</td><td>READBACK_HAS_DATA</td><td>R</td><td>0x0</td><td>Indicates AVS_READBACK register has data ready to read on APB</td></tr>
 <tr><td>19</td><td>READBACK_FIFO_FULL</td><td>R</td><td>0x0</td><td>Indicates read-back fifo is full - no new AVS commands will be launched until<br>space is freed by an AVS_READBACK access</td></tr>
@@ -136,8 +136,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:16</td><td>MAX_RETRIES</td><td>RW</td><td>0x5</td><td>Maximum number of times to attempt a retry if an AVS command returns a fail<br>status (either due to targeted resource being busy or CRC failure)</td></tr>
-<tr><td>15:0</td><td>RESYNC_INTERVAL</td><td>RW</td><td>0x1000</td><td>Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</td></tr>
+<tr><td>23:16</td><td>MAX_RETRIES</td><td>RW</td><td>0x5</td><td>Maximum number of retries, after the original attempt, if an AVS command returns a fail<br>status (either due to targeted resource being busy or CRC failure). A value of 0 disables<br>retries and MAX_RETRIES_ATTEMPTED_INT.</td></tr>
+<tr><td>15:0</td><td>RESYNC_INTERVAL</td><td>RW</td><td>0x1000</td><td>Interval between periodic slave resync operations on the AVS bus, in APB clock cycles counted from the end of the previous resync. The resulting request then crosses a 3-stage AVS clock synchronizer, and the resync starts once any frame in flight has completed.</td></tr>
 </table>
 <h3 id="AVS_CFG_1">AVS_CFG_1</h3>
 <table>
@@ -146,8 +146,8 @@
 <tr><td>23:16</td><td>CLK_DIVIDER_VALUE</td><td>RW</td><td>0x0</td><td>Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).<br>The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%<br>duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of<br>2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings<br>(divider=0x4) by matching the FF default in the resynced version of the signal.</td></tr>
 <tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>10</td><td>TURN_OFF_ALL_PREMUX_CLOCKS</td><td>RW</td><td>0x0</td><td>Gate off all clocks entering the AVS clock mux - do this before changing the mux selection or changing the clock divider settings, then turn back on afterwards</td></tr>
-<tr><td>9</td><td>FORCE_SLAVE_RESYNC_OPERATION</td><td>RW 1P</td><td>0x0</td><td>Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</td></tr>
-<tr><td>8</td><td>STOP_AVS_CLOCK_ON_IDLE</td><td>RW</td><td>0x0</td><td>When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.<br>The master will always first issue 34 slave-resync cycles when the clock first restarts.</td></tr>
+<tr><td>9</td><td>FORCE_SLAVE_RESYNC_OPERATION</td><td>RW 1P</td><td>0x0</td><td>Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.</td></tr>
+<tr><td>8</td><td>STOP_AVS_CLOCK_ON_IDLE</td><td>RW</td><td>0x0</td><td>When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.<br>The master always issues a slave resync first when the clock restarts.</td></tr>
 <tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1:0</td><td>AVS_CLOCK_SELECT</td><td>RW</td><td>0x3</td><td>Selects which clock to use for AVS Clock: [list]<br>[*] 00: Use the APB clock directly as the AVS clock<br>[*] 01: Use a divided version of APB clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[*] 10: Use the refclk clock directly as the AVS clock<br>[*] 11: Use a divided version of refclk clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[/list]</td></tr>
 </table>

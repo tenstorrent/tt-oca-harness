@@ -179,7 +179,7 @@ addrmap avsbus_controller {
       field {
          sw = r;
          hw = w;
-         desc = "Indicates that the AVS master is issuing a slave resync operation (34 clock cycles of holding mdata high)";
+         desc = "Indicates that the AVS master is issuing a slave resync operation (35 AVS clock cycles of holding mdata high)";
       } AVS_SLAVE_IS_IN_RESYNC[22:22] = 0;
 
       field {
@@ -483,14 +483,15 @@ addrmap avsbus_controller {
       field {
          sw = rw;
          hw = r;
-         desc = "Maximum number of times to attempt a retry if an AVS command returns a fail
-                  status (either due to targeted resource being busy or CRC failure)";
+         desc = "Maximum number of retries, after the original attempt, if an AVS command returns a fail
+                  status (either due to targeted resource being busy or CRC failure). A value of 0 disables
+                  retries and MAX_RETRIES_ATTEMPTED_INT.";
       } MAX_RETRIES[23:16] = 5;
 
       field {
          sw = rw;
          hw = r;
-         desc = "Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.";
+         desc = "Interval between periodic slave resync operations on the AVS bus, in APB clock cycles counted from the end of the previous resync. The resulting request then crosses a 3-stage AVS clock synchronizer, and the resync starts once any frame in flight has completed.";
       } RESYNC_INTERVAL[15:0] = 0x1000;
    };
 
@@ -528,14 +529,14 @@ addrmap avsbus_controller {
          sw = rw;
          hw = r;
          singlepulse = true;
-         desc = "Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.";
+         desc = "Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.";
       } FORCE_SLAVE_RESYNC_OPERATION[9:9] = 0;
 
       field {
          sw = rw;
          hw = r;
          desc = "When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.
-                  The master will always first issue 34 slave-resync cycles when the clock first restarts.";
+                  The master always issues a slave resync first when the clock restarts.";
       } STOP_AVS_CLOCK_ON_IDLE[8:8] = 0;
 
       field {
