@@ -47,10 +47,6 @@
 #define SRAM_BASE ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10000000
 #define SRAM_SIZE ((uint32_t)SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
 
-#ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
-#endif
-
 // Staged state, valid only after a successful rom_manifest_boot().
 static const uint8_t *g_body;
 static const uint8_t *g_payload;
@@ -291,7 +287,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     oca_validation_context_t vctx;
     oca_validation_context_init(&vctx);
 
-    report_status(STATUS_TYPE_DEBUG, SEP_MSG_CHECK_MANIFEST_HASH);
+    report_status(STATUS_TYPE_INFO, SEP_MSG_CHECK_MANIFEST_HASH);
     r = oca_validate_manifest(body, pk.body_size, sep_oca_callbacks(), &vctx);
     if (r != OCA_OK) {
         report_status(STATUS_TYPE_WARN, status_for_result(r));
@@ -410,14 +406,9 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         offsets[0] = PRIMARY_MANIFEST_OFFSET;
         offsets[1] = BACKUP_MANIFEST_OFFSET;
         num_retries = 1; // primary, then backup
-#if BOOT_SPI_CONTROLLER_OT
-        // Addresses on this path are raw flash byte offsets.
+        // Set per slot in the retry loop.
         region_base = 0;
-        region_limit = (int64_t)SEP_SPI_MAX_SIZE;
-#else
-        region_base = (int64_t)SEP_SPI_BASE;
-        region_limit = (int64_t)SEP_SPI_BASE + (int64_t)SEP_SPI_MAX_SIZE;
-#endif
+        region_limit = 0;
     } else {
         // Recovery or secondary: the SMC places a manifest in its SRAM and
         // publishes the offset. On a real part it got there over I3C; from the
@@ -457,6 +448,10 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
 #else
             manifest_src = SEP_SPI_BASE + offset;
 #endif
+            // The slot's own window, so its payload_offset cannot reach the other slot.
+            region_base = (int64_t)manifest_src;
+            region_limit =
+                region_base + (int64_t)BOOT_SLOT_SIZE - (int64_t)BOOT_SLOT_MANIFEST_OFFSET;
         } else {
             manifest_src = sep_get_smc_sram_base() + offset;
         }

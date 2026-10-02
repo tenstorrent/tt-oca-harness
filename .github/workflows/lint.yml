@@ -552,7 +552,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-           fetch-depth: 0
+          fetch-depth: 0
       - name: Checkout submodules
         run: |
           git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"

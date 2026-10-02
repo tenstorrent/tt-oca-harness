@@ -575,6 +575,8 @@
 `SEP_TB_OUT(logic [1:0], lcc_demote_state_2_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_1_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_2_probe_o)
+// The packed 64-bit sep_efuse_map_lc_disable_reg_t feature-control vector, read-only XMR.
+`SEP_TB_OUT(logic [63:0], lcc_feat_ctrl_probe_o)
 // Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
 // read these by name so a packed-struct reorder cannot swap two same-case
 // bits past the golden. The flattened vector stays for a width self-test.

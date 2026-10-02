@@ -4,19 +4,11 @@
 /*
  * OCAH SEP ROM — OpenTitan SPI Host driver (public API).
  *
- * Parallel to sep_spi.h. The OpenTitan controller has no XIP window: flash is
- * reached only through command/FIFO transactions (see src/sep_ot_spi.c). The
- * boot path links only the bring-up + read entry points; --gc-sections drops
- * the optional flash write/erase code (and PIO read when the DMA path is built).
+ * Flash is not memory-mapped: it is reached only through command/FIFO transactions.
+ * The boot path links only bring-up and read; --gc-sections drops the optional
+ * write/erase code (and PIO read when the DMA path is built).
  *
- * Register bindings: the sep.h umbrella (SPI_CONTROLLER_* + SECURE_DMA_*),
- * already on the ROM include path. There is no pad mux in this open DUT, so
- * ot_spi_select_pad_mux() is a weak empty stub: a wrapper build whose pads are
- * shared may override it.
- * Freestanding: no libc, no heap. MMIO via include/rom_mmio.h.
- *
- * The controller is chosen at build time; this driver is linked only when
- * BOOT_SPI_CONTROLLER_OT is set (see boot_flash.h / Makefile).
+ * Register bindings come from sep.h. Freestanding: no libc, no heap.
  */
 #ifndef SEP_OT_SPI_H
 #define SEP_OT_SPI_H
@@ -93,7 +85,7 @@ void ot_spi_select_profile(uint32_t index);
  * When added, the fuse read will be isolated behind ot_spi_profile_from_fuse().
  */
 
-/* ── Controller bring-up (mirrors sep_spi.h) ──────────────────────────────── */
+/* ── Controller bring-up ──────────────────────────────────────────────────── */
 
 /* Inform the driver of the sysclk (MHz); used to derive CFG.CLKDIV.
  * Call before ot_spi_init(). */

@@ -2,16 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Boot flash transport shim.
- *
- * The manifest loader reads the manifest and payload from flash without caring
- * which SPI controller is fitted. This header selects the controller at build
- * time (BOOT_SPI_CONTROLLER_OT) and presents one small interface in flash-offset
- * terms:
- *   - XIP controller (default): flash is memory-mapped; a read is a DMA copy
- *     from SEP_SPI_BASE + offset.
- *   - OpenTitan SPI host: no memory-mapped window; a read is a command/FIFO
- *     transfer that streams into SRAM.
+ * Boot flash transport shim: one flash-offset read interface over the SPI controller
+ * that BOOT_SPI_CONTROLLER_OT selects at build time.
+ *   - OpenTitan SPI host (default): no memory-mapped window; a read is a command/FIFO
+ *     transfer into SRAM.
+ *   - XIP controller: flash is memory-mapped; a read is a DMA copy from
+ *     SEP_SPI_BASE + offset.
  *
  * Freestanding ROM: no libc, no heap.
  */
@@ -95,6 +91,8 @@ _Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
 #ifndef SEP_SPI_MAX_SIZE
 #define SEP_SPI_MAX_SIZE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 #endif
+_Static_assert(2u * BOOT_SLOT_SIZE <= SEP_SPI_MAX_SIZE,
+               "both boot slots must fit in the XIP window");
 #endif
 
 /* True iff [addr, addr+len) lies within [base, base+size), with overflow guards.
@@ -160,7 +158,6 @@ static inline uint32_t boot_flash_reinit(void) {
  * hardening). */
 static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32_t dst,
                                         uint32_t dst_len) {
-#if BOOT_SPI_CONTROLLER_OT
     /* Static bound: the read must stay within the boot slot it started in, and
      * the destination within SEP SRAM. The window runs from the slot's manifest
      * to the end of that slot, so it is the slot size less the manifest's offset
@@ -195,14 +192,6 @@ static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32
         return false;
     }
     return ok_first;
-#else
-    /* XIP: flash is memory-mapped; the read source must lie within the XIP
-     * region. (Destination is checked by sep_dma_copy.) */
-    (void)dst;
-    (void)dst_len;
-    uint32_t src = (uint32_t)SEP_SPI_BASE + flash_off;
-    return boot_flash_range_within(src, len, (uint32_t)SEP_SPI_BASE, (uint32_t)SEP_SPI_MAX_SIZE);
-#endif
 }
 
 #endif /* BOOT_FLASH_H */

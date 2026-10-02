@@ -26,7 +26,7 @@ ocah_markdown_root := $(if $(MARKDOWN_PATH),$(OCAH_ROOT)/$(MARKDOWN_PATH),$(OCAH
 # which are hand-authored here.
 ocah_markdown_files = $(shell find $(ocah_markdown_root) -name '*.md' \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
-	-not -path '*/build/*' -not -path '*/build_ot/*' -not -path '*/build_ot_pio/*' \
+	-not -path '*/build/*' -not -path '*/build_pio/*' \
 	-not -path '*/tools/tt-oca-manifest/*' \
 	-not -path '*/tt-oca-harness-model/*' \
 	-not -path '*/.venv/*' -not -path '*/node_modules/*' 2>/dev/null)

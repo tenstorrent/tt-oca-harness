@@ -46,7 +46,7 @@ ocah_vale_root := $(if $(VALE_PATH),$(OCAH_ROOT)/$(VALE_PATH),$(OCAH_ROOT))
 # handed half a path and the whole run dies rather than reporting findings.
 ocah_vale_files = $(shell find $(ocah_vale_root) \( -name '*.adoc' -o -name '*.md' \) \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
-	-not -path '*/build/*' -not -path '*/build_ot/*' -not -path '*/build_ot_pio/*' \
+	-not -path '*/build/*' -not -path '*/build_pio/*' \
 	-not -path '*/regs/gen/*' -not -path '*/doc/*/modules/*' \
 	-not -path '*/tools/tt-oca-manifest/*' \
 	-not -path '*/tt-oca-harness-model/*' \

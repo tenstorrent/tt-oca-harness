@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> OTBN sideload consume-proof KAT (reference suite, sep_km_otbn_sideload_kat_test).
+"""KM -> OTBN sideload consume-proof KAT.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 384-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -15,7 +15,7 @@ and reconstructs it by a read-only backdoor of the wrapper shares. Here the 12
 distinct key words make an exact compare catch any truncation, word-swap, or
 share-defeat bug.
 
-VPLAN-parity checkers (mapped to the reference suite's checker list):
+Checkers:
   CHK0       boot KM on real DRBG -> RESP_KM_READY
   CHK-A      CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN
@@ -40,8 +40,8 @@ receive the key; CHK-D (exact distinct key) further proves OTBN consumed the cor
 sideloaded key, not stale/zero/another engine's. There is no RW1C done-status bit on
 this consume path (OTBN completion is the STATUS->IDLE state + ERR_BITS==0).
 
-Boot recipe (must match the reference subsystem tb to clear the SRAM scrambler cold-boot
-without a parity fault): rom_main built with PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0,
+Boot recipe, required to clear the SRAM scrambler cold-boot without a parity
+fault: rom_main built with PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0,
 and the KM SRAM macro is backdoor-filled to zero+valid-parity by tb_backdoor_mem
 (tb/tb_top.sv). Real fuse-sense (no +skip_fuse_sense): the KM
 firmware reads OTP/lifecycle at boot, so a valid PROD-lifecycle image is staged.
@@ -126,24 +126,15 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_OTBN)
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
-        # Release OTBN from SW reset BEFORE the transfer: CMD_KEY_TRANSFER has the
-        # KM CPU write the OTBN wrapper KEY_SHARE registers, and the wrapper (incl.
-        # its key CSR block) is in the otbn sw-reset domain (sep.sv otbn_sw_rst_ni).
-        # If OTBN stays parked the KM's wrapper write never completes and the KM
-        # hangs with no mailbox response. OTBN is held parked through KM boot/load
-        # so KM owns the entropy stream, then released here to receive the key and
-        # run the key-dump (mirrors the reference suite's "release the target engine when ready to
-        # receive the key + run the consume op"). Wait for OTBN's post-reset secure
-        # wipe to finish (STATUS IDLE) BEFORE transferring, else the wipe can clobber
-        # the just-sideloaded key.
+        # The OTBN wrapper KEY_SHARE registers are in the otbn sw-reset domain, so
+        # OTBN must be released before CMD_KEY_TRANSFER or the KM write never
+        # completes and the KM hangs. Wait for the post-reset secure wipe (IDLE)
+        # first, or the wipe can clobber the sideloaded key.
         await self.swrst.release("otbn")
         await self.otbn.wait_idle("post-reset")
 
-        # CHK-ISO: key-bus isolation, positive evidence (not just by-construction).
-        # Read back SW_RESET_N and prove the other sideload engines (AES/KMAC/HMAC)
-        # are HELD in reset -- they physically cannot receive the key -- while OTBN
-        # is released. Combined with the OTBN-only transfer dest mask and CHK-D
-        # (OTBN got the exact key), this is the OSS analog of the reference suite's bus-target check.
+        # CHK-ISO: AES/KMAC/HMAC are held in reset and OTBN is released; with the
+        # OTBN-only dest mask and CHK-D this pins the key to the intended target.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["aes"])

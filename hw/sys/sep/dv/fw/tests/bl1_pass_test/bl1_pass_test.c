@@ -77,13 +77,18 @@ static inline void bl1_puts(const char *s) {
 // ---------------------------------------------------------------------------
 // Hex print helper for debug output
 // ---------------------------------------------------------------------------
+static char bl1_hex_digit(uint8_t nibble) {
+    if (nibble < 10u) return (char)('0' + nibble);
+    return (char)('A' + nibble - 10u);
+}
+
 static void bl1_puthex32(uint32_t val) {
     char buf[11]; // "0x" + 8 hex digits + '\0'
     buf[0] = '0';
     buf[1] = 'x';
     for (int i = 7; i >= 0; i--) {
         uint8_t nib = (uint8_t)((val >> (4u * (uint32_t)i)) & 0xFu);
-        buf[2 + (7 - i)] = (char)(nib < 10u ? '0' + nib : 'A' + nib - 10u);
+        buf[2 + (7 - i)] = bl1_hex_digit(nib);
     }
     buf[10] = '\0';
     bl1_puts(buf);
@@ -138,6 +143,22 @@ static int bl1_verify_bl0_state(void) {
         bl1_puts("FAIL:BL0S_MFST\n");
         return 1;
     }
+
+    // Emit the enrolled boot-state soft PCR in digest byte order. DV rebuilds
+    // the packed boot_state_record and applies the two-stage extend operation
+    // from measurement.c, so this proves the enrolled value survived handoff.
+    bl1_puts("BL0S_BOOT_PCR=");
+    for (uint32_t i = 0; i < SHA256_DIGEST_SIZE_BYTES; ++i) {
+        uint8_t b = s->soft_pcr[MEAS_SLOT_BOOT_STATE][i];
+        char pair[3];
+        uint8_t hi = (uint8_t)(b >> 4);
+        uint8_t lo = (uint8_t)(b & 0xFu);
+        pair[0] = bl1_hex_digit(hi);
+        pair[1] = bl1_hex_digit(lo);
+        pair[2] = '\0';
+        bl1_puts(pair);
+    }
+    bl1_puts("\n");
 
     return 0;
 }

@@ -12,7 +12,7 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     ``clear_sram_region(SRAM_BASE, SRAM_SIZE)`` on the retry path
     (``bootrom/prod/src/), which zeroes the whole 256 KiB at
     ``bootrom/prod/src/. It is compiled in
-    unconditionally. In ``bootrom/prod/build_ot/boot_rom.dis`` it is the loop
+    unconditionally. In ``bootrom/prod/build/boot_rom.dis`` it is the loop
 
         10042740: lui  a4,0x10000        ; a4 = 0x1000_0000  = SRAM_BASE
         10042744: lui  a3,0x10040        ; a3 = 0x1004_0000  = SRAM_BASE + SIZE
