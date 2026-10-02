@@ -345,7 +345,7 @@ never when it was written.
 |`sep_crypto_edn_round_robin_grant_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|Holds AES and OTBN URND `edn_req` together, then grades that both clients are granted and that a prefix of post-adapter grants alternates. Same-cycle dual-request lockstep is not claimed. Then drives OTBN RND with a program blocked on the RND CSR and KMAC with a keyed digest, so all four adapter clients are live, value-checked consumers in one run, with the entropy pool scored alongside them as a fifth endpoint.
+|Holds AES and OTBN URND `edn_req` together, then grades that both clients are granted and that a prefix of post-adapter grants alternates. Round-robin order under simultaneous request is not claimed: a fixed-priority arbiter is not excluded. Then drives OTBN RND with a program blocked on the RND CSR and KMAC with a keyed digest, so all four adapter clients are live, value-checked consumers in one run, with the entropy pool scored alongside them as a fifth endpoint.
 |`sep_drbg_gen_segmentation_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -2981,7 +2981,7 @@ NIST samples.
 
 *Objective*: `hw/sys/sep/doc/crypto.adoc`: `u_axis_edn_crypto_s3c_scan` (`drbg_axis_edn_adapter`) is a small round-robin native-protocol EDN fan-out to AES, KMAC, OTBN RND, and OTBN URND.
 
-*Test Coverage*: Round-robin EDN fan-out under its full client load. AES and OTBN URND are graded for sharing and alternation; OTBN RND and KMAC are graded for routing and consume; the entropy pool is scored as a concurrent fifth endpoint.
+*Test Coverage*: EDN fan-out under its full client load. AES and OTBN URND are graded for sharing and an alternating grant prefix; round-robin order under simultaneous request is not proven, and a fixed-priority arbiter is not excluded; OTBN RND and KMAC are graded for routing and consume; the entropy pool is scored as a concurrent fifth endpoint.
 
 *Test Procedure*:
 
@@ -3003,7 +3003,7 @@ NIST samples.
 |CHK-DUAL-REQ
 |At least one cycle both selected clients have `edn_req` high. Without this, CHK-GRANT-ALT is vacuous.
 |CHK-GRANT-ALT
-|After that dual request, a prefix of consecutive post-adapter grants strictly alternates between the two clients. A grant stream that is one client then the other, with no alternating prefix, fails. The prefix necessarily contains both clients, since only the two are recorded, so that is not scored separately. Same-cycle dual-`edn_req` grants are not scored: AES reseed pulses, so an ack-time dual sample can be AES-only. This is sharing plus an alternating prefix, not a lockstep proof of `prim_arbiter_ppc` under simultaneous request.
+|After that dual request, a prefix of consecutive post-adapter grants strictly alternates between the two clients. A grant stream that is one client then the other, with no alternating prefix, fails. The prefix necessarily contains both clients, since only the two are recorded, so that is not scored separately. Same-cycle dual-`edn_req` grants are not scored: AES reseed pulses, so an ack-time dual sample can be AES-only. This is sharing plus an alternating prefix, not a proof of round-robin order: a fixed-priority arbiter that serves URND whenever AES has dropped `edn_req` produces the same stream and passes.
 |CHK-NO-STARVE
 |Each requesting client receives at least one `edn_ack` in the window.
 |CHK-ROUTING
