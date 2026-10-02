@@ -60,13 +60,13 @@ terminal status word cannot say which one fired, which is why every other route
 is in ``extra_forbidden`` and the marker ordering below is asserted per slot.
 
 ``+esrc_noise_force`` IS REQUIRED, and this entry is tagged ``dv_shortcut``.
-OTBN parks in ``UrndRefresh`` until EDN grants entropy and the ROM brings up no
-entropy chain, so without it both verifies stall at ``RSA_EXEC`` until the
-timeout. The plusarg grants the crypto blocks' EDN handshakes only
-(``tb_top.sv``, ``+esrc_noise_force``); it touches no RSA input, no
-signature, and no assertion here, so a rejection still means the modexp really
-ran on the real OTBN and its result really disagreed with ``manifest_hash``. The
-entropy_source/CSRNG/EDN chain is NOT exercised by this testcase.
+The ring oscillators do not self-oscillate under Verilator, so the plusarg
+injects deterministic raw noise at their decorrelator inputs. The ROM brings up
+the real entropy-source, CSRNG, and EDN chain from that input; the plusarg
+touches no downstream handshake, RSA input, signature, or assertion here. A
+rejection therefore means the modexp ran on the real OTBN and its result
+disagreed with ``manifest_hash``. The physical ring-oscillator source itself is
+the only part of the entropy path this testcase does not exercise.
 
 RUNTIME. Both slots run a full RSA-3072 modular exponentiation on OTBN
 (~5 ms of simulated time each), which makes this one of the longest tests in

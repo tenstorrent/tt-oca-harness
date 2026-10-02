@@ -185,8 +185,8 @@ args = [
   # live noise stream. Everything above the noise source -- the startup health
   # tests, CSRNG, EDN and the command handshakes -- is brought up for real by the
   # ROM itself, and the RSA assertions are untouched, so a pass still means the
-  # signature really verified. It replaces an older grant that
-  # bypassed the whole chain by forcing EDN.
+  # signature really verified. The dv_shortcut tag covers only this raw-noise
+  # injection; no downstream response is forced.
   "+esrc_noise_force",
 ]
 

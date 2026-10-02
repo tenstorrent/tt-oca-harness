@@ -41,8 +41,9 @@ of ``CHIPLET_PUBK_REVOKE``. Fuse clear boots; bit 0 set is refused with the revo
 error code and never reaches ``RSA_EXEC``. Nothing else about revocation needs arguing.
 
 Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut
-grants OTBN's EDN handshakes only; the RSA assertions are untouched, so
+runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The plusarg
+injects raw noise at the decorrelator inputs; the ROM drives the real health
+tests, CSRNG, EDN, and OTBN handshakes. The RSA assertions are untouched, so
 ``RSA_VERIFY_OK`` still means the signature really verified.
 """
 

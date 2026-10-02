@@ -39,11 +39,11 @@
 #include "rsa_verify.h"
 #include "sep_addr.h"
 
-// Entropy chain bring-up is behind SEP_ENTROPY_BRINGUP while it is being brought
-// up; with the flag off the crypto blocks still rely on the DV
-// +sep_crypto_edn_force shortcut, which is what this replaces. Wrapped in a
-// macro so the two crypto gates below read the same either way and the
-// conditional lives in exactly one place.
+// Entropy chain bring-up is behind SEP_ENTROPY_BRINGUP for diagnostic builds.
+// With the flag off, this ROM does not provide entropy to crypto blocks and
+// entropy-dependent secure boot cannot complete. Wrapped in a macro so the two
+// crypto gates below read the same either way and the conditional lives in
+// exactly one place.
 #if SEP_ENTROPY_BRINGUP
 #include "sep_entropy.h"
 #define ENTROPY_PREREQ() sep_entropy_init()

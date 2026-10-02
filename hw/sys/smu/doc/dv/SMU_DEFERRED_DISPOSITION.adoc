@@ -549,7 +549,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Why the real path cannot be used
 |The ESRC ring oscillators rely on `#delay` feedback, which Verilator ignores, so the twelve noise lanes never toggle and no entropy is produced. The SEP DV bench takes the same exception at the same node.
 |Scope
-|Only under `+esrc_noise_force`; only the twelve `dcor.noise_i` lanes (`gen_ecmplx[0..11].u_generator.u_decorrelator.noise_i`), re-forced every `clk_smu_i` edge from `esrc_noise_ext_i`, which `SmuEsrcNoiseDriver` drives with twelve 16-bit LFSRs from the fixed seed `0xACE1`; every downstream tap is observe-only. The plusarg is carried by three `testlists/all.toml` entries: `smu_sep_entropy_test` (its verdict requires `esrc_noise_took_o`), `smu_sep_modules_test` (its `entropy` stage), and `smu_sep_aes_test` (a prerequisite outside its AES-128 known-answer claim). The SEP bench's `+sep_crypto_edn_force` has no counterpart here.
+|Only under `+esrc_noise_force`; only the twelve `dcor.noise_i` lanes (`gen_ecmplx[0..11].u_generator.u_decorrelator.noise_i`), re-forced every `clk_smu_i` edge from `esrc_noise_ext_i`, which `SmuEsrcNoiseDriver` drives with twelve 16-bit LFSRs from the fixed seed `0xACE1`; every downstream tap is observe-only. The plusarg is carried by three `testlists/all.toml` entries: `smu_sep_entropy_test` (its verdict requires `esrc_noise_took_o`), `smu_sep_modules_test` (its `entropy` stage), and `smu_sep_aes_test` (a prerequisite outside its AES-128 known-answer claim). Neither the SEP nor SMU bench forces downstream EDN responses.
 |Approver
 |MinShao Ho (DV owner)
 |Date, revision

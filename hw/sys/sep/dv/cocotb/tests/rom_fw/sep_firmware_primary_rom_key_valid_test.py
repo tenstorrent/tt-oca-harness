@@ -84,8 +84,9 @@ echoes above carry it instead. ``SEP_MSG_START_MANIFEST_VALIDATION``,
 have zero emitters here.
 
 Needs ``+esrc_noise_force``: the primary is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut
-grants OTBN's EDN handshakes only; the RSA assertions are untouched, so
+runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The plusarg
+injects raw noise at the decorrelator inputs; the ROM drives the real health
+tests, CSRNG, EDN, and OTBN handshakes. The RSA assertions are untouched, so
 ``RSA_VERIFY_OK`` still means the signature really verified.
 """
 
