@@ -2929,8 +2929,9 @@ status files, and JUnit reports, or the app's summary file, are
 
 A `sim` or `regress` leaf that ran to the end is graded by its parser policy
 from three inputs: the structured result files the policy names under
-`results/`, the leaf log, and the process return code. The rules apply in
-this order, and the first that decides ends the grading:
+`results/` (`debug/` for a `--waves-on-fail` rerun,
+<<runner-junit-ownership>>), the leaf log, and the process return code. The
+rules apply in this order, and the first that decides ends the grading:
 
 . A structured result with a `failure` or `error` node is `FAIL`
   (`status_source` `structured_result`, bucket `sim_failure`). A structured
@@ -3105,7 +3106,10 @@ grades without a result of its own: an attempt that ended without
 `result.json`, a scheduler `TIMEOUT`, and a `dependency_blocked` leaf. The
 file names the leaf's `result.json`, or the run's when the leaf has none, and
 an earlier attempt of a retried leaf that left no result gets no file. A leaf
-that ran records the path as `artifacts.results_xml` in its `result.json`.
+that ran records the path as `artifacts.results_xml` in its `result.json`. A
+`--waves-on-fail` rerun writes nothing under `results/`: its framework writes
+to `debug/` in the rerun's attempt directory, and the rerun's own grade reads
+it there.
 
 A framework's file can read as a pass for a leaf the runner grades otherwise:
 a log pattern, the simulator's exit status, or a missing coverage artifact

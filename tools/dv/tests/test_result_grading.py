@@ -598,14 +598,20 @@ class LeafJunitRunStage(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         self.results = self.root / "run" / "t_a" / "results"
 
-    def run_leaf(self, log: str, native: str) -> StageResult:
-        """Grade `t_a` with `native` as the results.xml its framework wrote."""
-        self.results.mkdir(parents=True, exist_ok=True)
-        (self.results / "results.xml").write_text(native, encoding="utf-8")
+    def run_leaf(
+        self, log: str, native: str, *, debug: bool = False, entry: TestEntry | None = None
+    ) -> StageResult:
+        """Grade `t_a`, or `entry`, with `native` as the results.xml its framework wrote.
+
+        `debug` runs the leaf as a wave-debug rerun, whose framework writes under `debug/`.
+        """
+        framework_dir = self.results.with_name("debug") if debug else self.results
+        framework_dir.mkdir(parents=True, exist_ok=True)
+        (framework_dir / "results.xml").write_text(native, encoding="utf-8")
         raw = {"native": {"stages": {"sim": {"kind": "noop", "note": log}}}}
         flow = make_flow(self.root, raw=raw)
         catalog = TestCatalog(
-            path=None, groups={}, tests={"t_a": TestEntry(name="t_a", module="t_a")}
+            path=None, groups={}, tests={"t_a": entry or TestEntry(name="t_a", module="t_a")}
         )
         args = Namespace(
             dry_run=False,
@@ -617,6 +623,7 @@ class LeafJunitRunStage(unittest.TestCase):
             sim_jobs=1,
             cov=False,
             waves=None,
+            _wave_debug_rerun=debug,
         )
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
             return stages.run_stage(
@@ -661,6 +668,100 @@ class LeafJunitRunStage(unittest.TestCase):
         result = self.run_leaf("TEST FAILED\n", FAILING_XML)
         self.assertEqual(result.status, "FAIL")
         self.assertFalse((self.results / "graded.xml").exists())
+
+    def test_a_wave_debug_rerun_keeps_its_framework_file_outside_results(self):
+        leaf = self.results.parent
+        self.assertEqual(stages.framework_results_dir(leaf, Namespace()), leaf / "results")
+        rerun = Namespace(_wave_debug_rerun=True)
+        self.assertEqual(stages.framework_results_dir(leaf, rerun), leaf / "debug")
+
+    def test_a_wave_debug_rerun_grades_from_its_own_framework_file(self):
+        result = self.run_leaf("TEST PASSED\n", FAILING_XML, debug=True)
+        self.assertEqual(result.status, "FAIL", result.reason)
+        self.assertEqual(result.parser["status_source"], "structured_result")
+        self.assertFalse(self.results.exists())
+
+    def test_a_wave_debug_rerun_writes_nothing_under_results(self):
+        result = self.run_leaf("TEST FAILED\n", PASSING_XML, debug=True)
+        self.assertEqual(result.status, "FAIL", result.reason)
+        self.assertNotIn("results_xml", result.artifacts)
+        self.assertFalse(self.results.exists())
+        self.assertEqual(
+            (self.results.with_name("debug") / "results.xml").read_text(encoding="utf-8"),
+            PASSING_XML,
+        )
+
+    def test_a_wave_debug_rerun_matches_its_expected_failure_from_its_own_framework_file(self):
+        entry = TestEntry(
+            name="t_a", module="t_a", expect_fail="a filed defect", expect_fail_match="^boom$"
+        )
+        result = self.run_leaf("TEST PASSED\n", FAILING_XML, debug=True, entry=entry)
+        self.assertEqual(result.status, "PASS", result.reason)
+        record = result.metadata["expected_fail"]
+        self.assertEqual(record["observed_failures"], ["boom"])
+        self.assertEqual(record["matched_failure"], "boom")
+
+
+class VcsXceliumSimResultsDir(unittest.TestCase):
+    """The results directory the VCS and Xcelium sim stages create for a leaf."""
+
+    STAGES = (("vcs_sim", "_vcs_resolve_build"), ("xcelium_sim", "_xcelium_resolve_build"))
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+    def sim(self, stage_name: str, resolver: str, *, debug: bool) -> Path:
+        leaf = self.root / stage_name / ("rerun" if debug else "graded")
+        catalog = TestCatalog(
+            path=None, groups={}, tests={"t_a": TestEntry(name="t_a", module="t_a")}
+        )
+        args = Namespace(
+            dry_run=False,
+            quiet=True,
+            verbose=False,
+            timeout=None,
+            ui="plain",
+            run_mode=None,
+            cov=False,
+            _wave_debug_rerun=debug,
+        )
+        info = {
+            "simv": "simv",
+            "vcs_cfg": {},
+            "xcelium_cfg": {},
+            "snapshot": "snapshot",
+            "build_dir": self.root / "build",
+        }
+        with (
+            mock.patch.object(stages, resolver, return_value=info),
+            mock.patch.object(stages, "_wave_format", return_value=""),
+            mock.patch.object(stages, "run_subprocess", return_value=0),
+            redirect_stdout(io.StringIO()),
+        ):
+            getattr(stages, stage_name)(
+                make_flow(self.root, framework="uvm"),
+                self.root,
+                {},
+                catalog,
+                "t_a",
+                args,
+                leaf,
+                leaf / "t_a.log",
+                leaf / "t_a.sh",
+                leaf / "t_a.env",
+                1,
+                test_args=[],
+            )
+        return leaf
+
+    def test_a_wave_debug_rerun_creates_debug_instead_of_results(self):
+        for stage_name, resolver in self.STAGES:
+            for debug, created, absent in ((False, "results", "debug"), (True, "debug", "results")):
+                with self.subTest(stage=stage_name, debug=debug):
+                    leaf = self.sim(stage_name, resolver, debug=debug)
+                    self.assertTrue((leaf / created).is_dir())
+                    self.assertFalse((leaf / absent).exists())
 
 
 if __name__ == "__main__":

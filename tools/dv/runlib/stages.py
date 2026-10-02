@@ -834,6 +834,15 @@ def artifact_root(
     return item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=nest)
 
 
+def framework_results_dir(leaf_dir: Path, args: argparse.Namespace) -> Path:
+    """Where a leaf's framework writes its structured results and its parser reads them.
+
+    A wave-debug rerun uses ``debug/``, so nothing it writes sits under the ``results/`` a
+    JUnit consumer reads.
+    """
+    return leaf_dir / ("debug" if getattr(args, "_wave_debug_rerun", False) else "results")
+
+
 def seed_for_item(
     catalog: TestCatalog, sim_cfg: dict[str, Any], args: argparse.Namespace, item: str
 ) -> int:
@@ -2270,7 +2279,7 @@ def cocotb_sim(
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
 
-    results_dir = item_dir / "results"
+    results_dir = framework_results_dir(item_dir, args)
     waves_dir = item_dir / "waves"
     cov_dir = item_dir / "coverage"
     results_xml = results_dir / "results.xml"
@@ -2998,7 +3007,7 @@ def vcs_sim(
     vcs_cfg = info["vcs_cfg"]
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
-    results_dir = item_dir / "results"
+    results_dir = framework_results_dir(item_dir, args)
     waves_dir = item_dir / "waves"
     uvm_test = test.module or test.name
 
@@ -3272,7 +3281,7 @@ def xcelium_sim(
     xcelium_cfg = info["xcelium_cfg"]
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
-    results_dir = item_dir / "results"
+    results_dir = framework_results_dir(item_dir, args)
     waves_dir = item_dir / "waves"
     uvm_test = test.module or test.name
 
@@ -4454,7 +4463,7 @@ def run_stage(
                 simulators=simulators,
                 root=root,
                 log_path=log_path,
-                results_dir=stage_dir / "results",
+                results_dir=framework_results_dir(stage_dir, args),
                 return_code=rc,
             )
             status = decision.status
@@ -4475,7 +4484,7 @@ def run_stage(
                     policies=policies,
                     simulators=simulators,
                     log_path=log_path,
-                    results_dir=stage_dir / "results",
+                    results_dir=framework_results_dir(stage_dir, args),
                 )
     except StageTimeoutError as exc:
         rc = 124
@@ -4683,8 +4692,14 @@ def run_stage(
     # Structured-result guarantee: every executed leaf ends with results/results.xml, the
     # framework's own file when it wrote one and a synthesized single-testcase file
     # otherwise, plus results/graded.xml when the framework's file reads as a pass for a
-    # leaf that did not pass. Runs after classification and must never affect status or exit.
-    if stage_name in {"sim", "regress"} and item is not None and not args.dry_run:
+    # leaf that did not pass. A wave-debug rerun never grades the leaf and gets neither. Runs
+    # after classification and must never affect status or exit.
+    if (
+        stage_name in {"sim", "regress"}
+        and item is not None
+        and not args.dry_run
+        and not getattr(args, "_wave_debug_rerun", False)
+    ):
         try:
             native_xml = results_xml_path(stage_dir)
             if native_xml.is_file():

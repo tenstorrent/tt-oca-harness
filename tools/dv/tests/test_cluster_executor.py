@@ -92,6 +92,39 @@ if task_id.startswith("sim-000001"):
 os.execv(sys.executable, [sys.executable, worker, manifest])
 """
 
+# A worker that runs the real `run_stage` and `cocotb_sim` with a simulator process that
+# writes the xUnit file at the runner payload's `results_xml`, as cocotb does: a failing
+# testcase for a scripted FAIL, a passing one otherwise.
+COCOTB_STAGE_WORKER = """
+import ast, sys
+from pathlib import Path
+from unittest import mock
+tests_dir, manifest = sys.argv[1:3]
+sys.path[:0] = [str(Path(tests_dir).parent), tests_dir]
+from fake_worker import scripted_status
+from runlib import stages, worker
+
+def run_subprocess(argv, root, log_path, *_, **__):
+    lines = Path(argv[-1]).read_text(encoding="utf-8").splitlines()
+    payload = ast.literal_eval(next(l for l in lines if l.startswith("payload = "))[10:])
+    attempt_dir = Path(payload["test_dir"])
+    item = attempt_dir.parent.parent.name
+    failed = scripted_status(item, int(attempt_dir.name.rpartition("_")[2])) != "PASS"
+    node = "<failure message='scripted'/>" if failed else ""
+    xml = Path(payload["results_xml"])
+    xml.parent.mkdir(parents=True, exist_ok=True)
+    xml.write_text(
+        f"<testsuites><testsuite name='all'><testcase name='{item}'>{node}</testcase>"
+        "</testsuite></testsuites>"
+    )
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("TEST FAILED" if failed else "TEST PASSED")
+    return 0
+
+with mock.patch.object(stages, "run_subprocess", run_subprocess):
+    sys.exit(worker.main([manifest]))
+"""
+
 
 class FakeClock:
     def __init__(self) -> None:
@@ -1589,6 +1622,34 @@ class CoordinatorTest(unittest.TestCase):
         )
         self.assertEqual(len(self.submit_commands()), self.expected_submits(2, later=1))
 
+    def test_a_wave_debug_rerun_adds_no_testcase_to_the_leaf_junit(self) -> None:
+        worker = self.tmp / "cocotb_stage_worker.py"
+        worker.write_text(COCOTB_STAGE_WORKER, encoding="utf-8")
+        self.write_site(worker=[sys.executable, str(worker), str(TESTS_DIR)])
+        self.scenario()
+        failing = self.items[0]
+        code, summary = self.run_dv("--waves-on-fail", "fst", statuses={failing: ["FAIL", "PASS"]})
+        self.assertEqual(code, 1, summary.get("status"))
+        leaves = {leaf["item"]: leaf for leaf in self.leaves(summary)}
+        published = sorted(
+            (str(path.relative_to(self.run_dir)), case.get("name"), case.find("failure") is None)
+            for path in self.run_dir.glob("*/seed_*/**/results/*.xml")
+            for case in ET.parse(path).getroot().iter("testcase")
+        )
+        expected = sorted(
+            (str(self.junit_path(leaf, 0).relative_to(self.run_dir)), item, item != failing)
+            for item, leaf in leaves.items()
+        )
+        self.assertEqual(published, expected)
+        debug = leaves[failing]["metadata"]["wave_debug"]
+        self.assertEqual((debug["attempt"], debug["status"]), (1, "PASS"))
+        record = json.loads((REPO_ROOT / debug["result_json"]).read_text(encoding="utf-8"))
+        (evidence,) = [e for e in record["parser"]["evidence"] if e["kind"] == "results_xml"]
+        debug_dir = self.junit_path(leaves[failing], 1).parent.parent
+        self.assertEqual(REPO_ROOT / evidence["path"], debug_dir / "debug" / "results.xml")
+        self.assertEqual(evidence["status"], "PASS")
+        self.assertFalse((debug_dir / "results").exists())
+
     # Jobs that stay RUN long past every grace in these tests, then finish on their own so a
     # broken interruption path fails the test instead of hanging it.
     LONG_RUNNING = {"states": ["PEND", *(["RUN"] * 600), "DONE"], "run_script": False}
@@ -1716,6 +1777,9 @@ class SchedulerBuildTest(CoordinatorTest):
         """Skipped here: retries do not depend on where the build ran."""
 
     def test_a_wave_debug_rerun_is_its_own_job(self) -> None:
+        """Skipped here: reruns do not depend on where the build ran."""
+
+    def test_a_wave_debug_rerun_adds_no_testcase_to_the_leaf_junit(self) -> None:
         """Skipped here: reruns do not depend on where the build ran."""
 
     def test_a_lost_job_grades_environment_error(self) -> None:
