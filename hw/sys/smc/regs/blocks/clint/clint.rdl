@@ -33,7 +33,7 @@ addrmap clint {
         field {
             sw=rw; 
             hw=r;
-            desc="Cycle count value to be used for comparison, triggers interrupt once count value matches this";
+            desc="Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.";
         } count[63:0];
     };
 
