@@ -149,7 +149,10 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_cloc
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {trace_mem_resp_i*}] -add_delay
 
 # OCTS
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports chiplet_is_primary_i] -add_delay
+# Quasi-static: a chiplet identity strap, settled before the timer comes out of
+# reset and constant thereafter, so no arrival window needs reserving. Zero
+# keeps the port timed rather than exempted.
+set_input_delay 0 -clock [get_clock ck_feedthru] [get_ports chiplet_is_primary_i] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {timer_count_o*}] -add_delay
 
 # DFD
@@ -216,7 +219,10 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {cla_ext_action_custom_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports tdr_dbg_ctrl_clocks_stopped_by_cla_o] -add_delay
 
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports sep_security_disable_i] -add_delay
+# Quasi-static: the SEP eFuse drives this once the fuses are sensed and it
+# holds for the rest of the power cycle, so no part of the period has to be
+# reserved for its arrival. Zero keeps the port timed rather than exempted.
+set_input_delay 0 -clock [get_clock SMCCLK] [get_ports sep_security_disable_i] -add_delay
 
 # For us its driven by captured straps | shadow reg, but for an adopter its hard to say. Should not assume anything about the source of this signal.
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports smc_disable_sram_auto_init_i] -add_delay
