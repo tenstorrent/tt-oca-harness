@@ -435,6 +435,27 @@ breakpoints. These debug capabilities function independently of
 functional resets and allow override of reset vectors to support
 firmware development and diagnostics.
 
+[[smc-debug-command-cmderr]]
+=== Abstract Command Writes While cmderr Is Set
+
+The Debug Module departs from the RISC-V External Debug Support specification
+(version 0.13) for writes to `command` while `abstractcs.cmderr` is nonzero.
+The specification ignores those writes. In this Debug Module, a `command` write
+made while no abstract command is executing (`abstractcs.busy` is 0) has two
+effects:
+
+* the written value replaces the stored command, whatever `cmderr` holds, and
+* a command type other than Access Register (`cmdtype` other than 0) sets
+  `cmderr` to 2 (not supported), replacing the error code it held.
+
+No abstract command executes while `cmderr` is nonzero. Once `cmderr` is
+cleared, an access that `abstractauto` selects re-executes the stored command,
+which is the last value written to `command`.
+
+A debugger that needs the error code of a failed command reads `abstractcs`
+before it writes `command` again. Before issuing a command, it clears `cmderr`
+by writing 1s to the field and confirms that the field reads 0.
+
 [[detailed-register-map]]
 == Memory Map and Register Reference
 
