@@ -8241,9 +8241,12 @@ success.
 `env/sep_kmac_golden.py`, the `abr_mlkem_seed_z_probe_o` observation probe
 (SEP_TB_ARCH exception list)
 
-*Objective*: every Key Manager delivery destination consumes the exact key the
-KM delivered, takes a second, different key after an engine shred, and shows
-the documented invalid-key behaviour while its `KEY_CTRL.KEY_VALID` is clear.
+*Objective*: AES, HMAC, KMAC and OTBN each consume the exact key the KM
+delivered, and each ABR destination consumes the delivered words up to a dword
+reversal. Every destination takes a second, different key after an engine
+shred, and shows the documented invalid-key behaviour while its
+`KEY_CTRL.KEY_VALID` is clear. ABR dword order is not graded: no spec defines
+the KV-to-ABR seed word order (https://github.com/tenstorrent/tt-oca-harness/issues/2756[#2756]).
 
 *Test Coverage*: all eight `CMD_KEY_TRANSFER` destinations -- AES, HMAC, KMAC,
 OTBN and the four ABR blocks `MLDSA_SEED`, `MLKEM_SEED_D`, `MLKEM_SEED_Z`,
@@ -8268,7 +8271,9 @@ ABR, `ZEROIZE`, set the KV read enable, wait for the KV status to settle, run
 the KV-fed KEYGEN or ENCAPS, then `ZEROIZE` and run the same operation on the
 same words written directly (CHK-MLDSA, CHK-MLKEM-SEED, CHK-MLKEM-MSG). After
 the `D` then `Z` KV read, sample the engine's `Z` through
-`abr_mlkem_seed_z_probe_o` (CHK-MLKEM-SEED).
+`abr_mlkem_seed_z_probe_o` (CHK-MLKEM-SEED). The ABR words are dword
+palindromes, so these compares hold up to a dword reversal; dword order is not
+graded (#2756).
 . `CMD_ENGINE_SHRED` with all eight destination bits. The firmware response is
 a precondition; the hardware effect is graded in the next step.
 . HMAC with a software key (CHK-HMAC-CLR); OTBN key dump (CHK-OTBN-CLR); for
@@ -8315,13 +8320,13 @@ read is logged, not graded.
 |CHK-OTBN-1/2
 |The key-dump program reads the delivered 384-bit key, share0 XOR share1 equals it, the pad is zero and `ERR_BITS` is 0.
 |CHK-MLDSA-1/2
-|The ML-DSA seed KV read completes (`VALID`, `ERROR` = `SUCCESS`) and the KEYGEN public key equals a direct-seed KEYGEN of the same words.
+|The ML-DSA seed KV read completes (`VALID`, `ERROR` = `SUCCESS`) and the KEYGEN public key equals a direct-seed KEYGEN of the same words, up to a dword reversal of the seed. Dword order is not graded: no spec defines the KV-to-ABR seed word order (#2756).
 |CHK-MLKEM-SEED-1/2
-|The 16-dword `D` then `Z` KV read completes, the encapsulation key equals a direct-seed KEYGEN of the same `D` and `Z`, and the `Z` the engine holds after the KV read (`abr_mlkem_seed_z_probe_o`) equals the delivered `Z`. The encapsulation key depends on `D` only and software cannot read `Z` back, so the probe grades `Z`.
+|The 16-dword `D` then `Z` KV read completes, the encapsulation key equals a direct-seed KEYGEN of the same `D` and `Z`, and the `Z` the engine holds after the KV read (`abr_mlkem_seed_z_probe_o`) equals the delivered `Z`, each up to a dword reversal. The encapsulation key depends on `D` only and software cannot read `Z` back, so the probe grades `Z`. Dword order is not graded: no spec defines the KV-to-ABR seed word order (#2756).
 |CHK-MLKEM-MSG-1/2
-|The message KV read completes and the ENCAPS ciphertext equals a direct-message ENCAPS of the same words.
+|The message KV read completes and the ENCAPS ciphertext equals a direct-message ENCAPS of the same words, up to a dword reversal of the message. Dword order is not graded: no spec defines the KV-to-ABR seed word order (#2756).
 |CHK-ROUND
-|Every round-2 ABR output (ML-DSA public key, ML-KEM encapsulation key, ML-KEM ciphertext) differs from its round-1 output. The ABR compares are against the same engine, so this row fails an engine that ignores its seed or message. AES, HMAC, KMAC and OTBN have goldens per round and are not compared here.
+|Every round-2 ABR output (ML-DSA public key, ML-KEM encapsulation key, ML-KEM ciphertext) differs from its round-1 output. The ABR compares are against the same engine, so this row fails an engine that ignores its seed or message. It does not grade dword order (#2756). AES, HMAC, KMAC and OTBN have goldens per round and are not compared here.
 |CHK-HMAC-CLR-1/2
 |After the shred the HMAC digest equals the golden of the software key in the KEY CSRs: with `KEY_VALID` clear the engine falls back to its software key.
 |CHK-OTBN-CLR-1/2

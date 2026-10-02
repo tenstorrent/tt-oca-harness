@@ -11,10 +11,12 @@ write-only and sit on the KM-private bus, so the delivered value is graded at
 the consumer. This leaf walks all eight delivery destinations -- AES, HMAC,
 KMAC, OTBN and the four ABR blocks -- through two rounds. Each round loads a
 fresh seeded key per destination with CMD_KEY_LOAD + CMD_KEY_TRANSFER, proves
-the consumer used exactly that key, then sends one CMD_ENGINE_SHRED for all
-eight destinations and proves the documented invalid-key behaviour of each
-consumer. The shred clears KEY_VALID and overwrites both shares with PRNG
-data (hw/ip/key_manager/doc/firmware.adoc, "Crypto Engine Drivers").
+that AES, HMAC, KMAC and OTBN used exactly that key and that each ABR
+destination used the delivered words up to a dword reversal, then sends one
+CMD_ENGINE_SHRED for all eight destinations and proves the documented
+invalid-key behaviour of each consumer. The shred clears KEY_VALID and
+overwrites both shares with PRNG data (hw/ip/key_manager/doc/firmware.adoc,
+"Crypto Engine Drivers").
 
 Preconditions (asserted, not graded here): rom_main boots on real entropy and
 announces RESP_KM_READY; every CMD_KEY_TRANSFER and CMD_ENGINE_SHRED returns
@@ -29,19 +31,22 @@ Checkers (``r`` is the round, 1 or 2):
   CHK-OTBN-r    the key-dump program reads key == round key, share0 ^ share1 ==
                 round key, ERR_BITS == 0
   CHK-MLDSA-r   the KV seed read completes (VALID, ERROR == SUCCESS) and the
-                KEYGEN public key equals a direct-seed KEYGEN of the same words
+                KEYGEN public key equals a direct-seed KEYGEN of the same words,
+                up to a dword reversal
   CHK-MLKEM-SEED-r
                 the D||Z KV read completes, the encapsulation key equals a
                 direct-seed KEYGEN of the same D and Z, and the Z the engine
-                holds (abr_mlkem_seed_z_probe_o) equals the delivered Z. The
+                holds (abr_mlkem_seed_z_probe_o) equals the delivered Z, each up
+                to a dword reversal. The
                 encapsulation key depends on D only, and software cannot read
                 Z back, so the probe is what grades Z
   CHK-MLKEM-MSG-r
                 the message KV read completes and the ENCAPS ciphertext equals
-                a direct-message ENCAPS of the same words
+                a direct-message ENCAPS of the same words, up to a dword
+                reversal
   CHK-ROUND     every round-2 ABR output differs from its round-1 output. The
                 ABR compares are differential, so this is what fails an engine
-                that ignores its seed or message
+                that ignores its seed or message. It does not grade dword order
   CHK-HMAC-CLR-r
                 with KEY_VALID clear HMAC uses its software key registers: the
                 digest == golden of the software key (doc/hmac.adoc)
@@ -73,8 +78,11 @@ Ordering that the compares rely on:
   * Every round-2 key word differs from the round-1 word at the same index,
     so a stale share word changes the consumer output. AES, HMAC, KMAC and
     OTBN then fail their golden; ABR fails its KV-vs-direct compare.
-  * ABR seeds are dword palindromes: the KV read and a direct register write
-    disagree on dword order, and a palindrome keeps the compare off it.
+  * ABR seeds, message, D and Z are dword palindromes: the KV read and a
+    direct register write disagree on dword order, and a palindrome keeps the
+    compare off it. So a full dword reversal in KM-to-ABR delivery is not
+    detected. No spec defines the KV-to-ABR seed word order, so dword order is
+    not graded (https://github.com/tenstorrent/tt-oca-harness/issues/2756).
 """
 
 from __future__ import annotations
