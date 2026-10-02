@@ -1859,7 +1859,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 . Start the DMA copy and do not wait.
 . Immediately run the CPU store loop.
 . Sample DMA status at store-loop exit, then poll to completion. After firmware completion, require the TB's same-channel CPU/DMA SRAM-request overlap count to be nonzero.
-. Check both regions and clear the status bits.
+. Check both regions; read the status again and require done still set, then clear the status bits.
 
 *Checkers*:
 
@@ -1873,7 +1873,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-NOERR
 |The DMA completes with no error.
 |CHK-RW1C
-|The done status bit clears on write-one-to-clear. Chunk-done is never raised in this single-chunk configuration, so its clear is not exercised.
+|The done status bit still reads set on a second read after the poll, so a read does not clear it and it does not drop by itself; it then clears on write-one-to-clear. Both status values are logged. Chunk-done is never raised in this single-chunk configuration, so its clear is not exercised.
 |CHK-DMA-DATA
 |The DMA destination matches its source.
 |CHK-CPU-DATA
