@@ -26,7 +26,7 @@ role = "unreachable"
 path = "dtp_unreachable.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
-sha256 = "56ba97192c3ceedff02341d919a13aefba0a363fbe5395751a47e0150289ffcc"
+sha256 = "e5b31aa61ed0e5b93d8c2bec84c3c62efbc61de379280d1b88b5981b8ebc711c"
 
 [[thresholds]]
 id = "line"
