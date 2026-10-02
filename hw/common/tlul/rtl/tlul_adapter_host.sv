@@ -15,8 +15,8 @@
 // The outgoing address is always word aligned and the access size is always the TL word
 // size (TL_DW). The A-channel opcode and mask follow the access:
 //
-// - Full-lane writes use PutFullData.
-// - Other writes use PutPartialData, with the mask generated from be_i.
+// - Full-lane writes use PUT_FULL_DATA.
+// - Other writes use PUT_PARTIAL_DATA, with the mask generated from be_i.
 // - Reads enable every lane in the mask as required by TL-UL.
 //
 // Integrity handling is optional:
@@ -99,15 +99,15 @@ module tlul_adapter_host
     assign tl_source = top_pkg::TL_AIW'(source_q);
   end
 
-  // For TL-UL Get opcode all active bytes must have their mask bit set, so all reads get all tl_be
+  // For TL-UL GET opcode all active bytes must have their mask bit set, so all reads get all tl_be
   // bits set. For writes the supplied be_i is used as the mask.
   assign tl_be = ~we_i ? {top_pkg::TL_DBW{1'b1}} : be_i;
 
   assign tl_out = '{
     a_valid:   req_i,
-    a_opcode:  (~we_i) ? Get           :
-               (&be_i) ? PutFullData   :
-                         PutPartialData,
+    a_opcode:  (~we_i) ? GET           :
+               (&be_i) ? PUT_FULL_DATA   :
+                         PUT_PARTIAL_DATA,
     a_param:   3'h0,
     a_size:    top_pkg::TL_SZW'(WordSize),
     a_mask:    tl_be,

@@ -1883,7 +1883,7 @@ module sep_uvm_top
     assign tbadp_r_valid_o = tbadp_rsp.r_valid;
     assign tbadp_r_data_o  = tbadp_rsp.r.data;
     // The response CODES, not just the valids. An access the adapter rejects
-    // as unsupported answers SLVERR from StIdle without forwarding anything,
+    // as unsupported answers SLVERR from ST_IDLE without forwarding anything,
     // and retires just as promptly as a real one -- so a control that only
     // watched the valid could not tell a live forwarding path from a rejected
     // access.

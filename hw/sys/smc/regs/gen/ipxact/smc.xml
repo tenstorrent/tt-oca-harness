@@ -912,7 +912,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>debug_module</ipxact:name>
           <ipxact:displayName>Debug Module Hart Interface</ipxact:displayName>
-          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
+          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. Only the harts of the CPU cluster reach this region; SMC bus initiators outside the cluster do not. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
           <ipxact:addressOffset>'hc0001000</ipxact:addressOffset>
           <ipxact:range>'h868</ipxact:range>
           <ipxact:register>
@@ -3876,8 +3876,8 @@ bit is:
         should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
         flags to detect Start/Stop events.
 * `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
-        When a START (or repeated START) is detected, an `AcqStart` or `AcqRestart`
-        entry is written. When a STOP is detected, an `AcqStop` or `AcqNackStop`
+        When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`
+        entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`
         entry is written.</ipxact:description>
                 <ipxact:bitOffset>7</ipxact:bitOffset>
                 <ipxact:resets>

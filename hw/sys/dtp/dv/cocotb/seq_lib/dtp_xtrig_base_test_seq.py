@@ -37,7 +37,9 @@ from env.dtp_xtrig_types import (
     DtpCtmRefModel,
     apply_wstrb,
     ctm_config_addr,
+    ctm_hole_addr,
     ctp_config_addr,
+    ctp_hole_addr,
     ctp_mask,
     ctp_status_addr,
     ctp_stretch_addr,
@@ -1849,7 +1851,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         final_config: int,
         final_stretch: int,
     ) -> None:
-        """Full-word patterns, every byte strobe, a STATUS write, then the final words, on one CTP."""
+        """Patterns, byte strobes, a STATUS write, the final words, then a hole write, on one CTP."""
         config = ctp_config_addr(ctp_idx)
         stretch = ctp_stretch_addr(ctp_idx)
         for pat_idx, word in enumerate(config_patterns):
@@ -1901,6 +1903,23 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             mask=XTRIG_CTP_STRETCH_MASK,
             label=f"ctp{ctp_idx}.stretch_final",
         )
+        # The word past STRETCH_MULT is a hole: it reads 0 after an all-ones
+        # write, and the write leaves the window's registers on the final words.
+        await self.write_read_check(
+            ctp_hole_addr(ctp_idx), FULL_WORD, 0, label=f"ctp{ctp_idx}.hole"
+        )
+        for name, addr, mask, expected in (
+            ("config", config, XTRIG_CTP_CONFIG_MASK, final_config),
+            ("stretch", stretch, XTRIG_CTP_STRETCH_MASK, final_stretch),
+        ):
+            observed = await self.csr_read(addr, label=f"ctp{ctp_idx}.hole_after.{name}")
+            self.check_evidence(
+                self.CHK_CSR,
+                f"ctp{ctp_idx}.hole_no_alias.{name}",
+                observed & mask,
+                expected & mask,
+                context=f"ctp={ctp_idx}",
+            )
 
     async def run_dst_port_sweep(self) -> None:
         self.log_banner("DTP XTRIG deterministic destination-port sweep")
@@ -2899,14 +2918,31 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             for wstrb in (0x1, 0x2, 0x4, 0x8):
                 old_mask = rng.getrandbits(32) & XTRIG_CTM_SELECT_MASK
                 new_mask = rng.getrandbits(32)
+                held = apply_wstrb(old_mask, new_mask, wstrb) & XTRIG_CTM_SELECT_MASK
                 await self.program_ctm_src(src_idx, old_mask)
                 await self.write_read_check(
                     ctm_config_addr(src_idx),
                     new_mask,
-                    apply_wstrb(old_mask, new_mask, wstrb) & XTRIG_CTM_SELECT_MASK,
+                    held,
                     wstrb=wstrb,
                     label=f"ctm{src_idx}.wstrb{wstrb:x}",
                 )
+            # The word past CT_SRC[src_idx] in its slot is a hole: it reads 0
+            # after an all-ones write, and the write leaves the register on its
+            # last word.
+            await self.write_read_check(
+                ctm_hole_addr(src_idx), FULL_WORD, 0, label=f"ctm{src_idx}.hole"
+            )
+            observed = await self.csr_read(
+                ctm_config_addr(src_idx), label=f"ctm{src_idx}.hole_after"
+            )
+            self.check_evidence(
+                self.CHK_CSR,
+                f"ctm{src_idx}.hole_no_alias",
+                observed,
+                held,
+                context=f"src={src_idx}",
+            )
         self.log_step(
             "route",
             "Two swept output registers route a selected input and ignore an unselected one",

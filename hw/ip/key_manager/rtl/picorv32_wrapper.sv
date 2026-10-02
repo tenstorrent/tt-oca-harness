@@ -471,10 +471,10 @@ module picorv32_wrapper
   // Hold the last completed read target so the selected data source stays stable after the
   // transfer. Whether the value itself remains valid is still determined by the target memory.
   typedef enum logic [1:0] {
-    MemRdataSelRom,
-    MemRdataSelSram,
-    MemRdataSelVrom,
-    MemRdataSelPeriph
+    MEM_RDATA_SEL_ROM,
+    MEM_RDATA_SEL_SRAM,
+    MEM_RDATA_SEL_VROM,
+    MEM_RDATA_SEL_PERIPH
   } mem_rdata_sel_e;
 
   logic          current_read_complete;
@@ -485,16 +485,16 @@ module picorv32_wrapper
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      mem_rdata_sel_q <= MemRdataSelRom;
+      mem_rdata_sel_q <= MEM_RDATA_SEL_ROM;
     end else if (current_read_complete) begin
       if (is_rom_addr) begin
-        mem_rdata_sel_q <= MemRdataSelRom;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_ROM;
       end else if (is_sram_addr) begin
-        mem_rdata_sel_q <= MemRdataSelSram;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_SRAM;
       end else if (is_vrom_addr) begin
-        mem_rdata_sel_q <= MemRdataSelVrom;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_VROM;
       end else begin
-        mem_rdata_sel_q <= MemRdataSelPeriph;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_PERIPH;
       end
     end
   end
@@ -502,13 +502,13 @@ module picorv32_wrapper
   always_comb begin
     if (current_read_complete) begin
       if (is_rom_addr) begin
-        mem_rdata_sel = MemRdataSelRom;
+        mem_rdata_sel = MEM_RDATA_SEL_ROM;
       end else if (is_sram_addr) begin
-        mem_rdata_sel = MemRdataSelSram;
+        mem_rdata_sel = MEM_RDATA_SEL_SRAM;
       end else if (is_vrom_addr) begin
-        mem_rdata_sel = MemRdataSelVrom;
+        mem_rdata_sel = MEM_RDATA_SEL_VROM;
       end else begin
-        mem_rdata_sel = MemRdataSelPeriph;
+        mem_rdata_sel = MEM_RDATA_SEL_PERIPH;
       end
     end else begin
       mem_rdata_sel = mem_rdata_sel_q;
@@ -522,10 +522,10 @@ module picorv32_wrapper
 
   always_comb begin
     unique case (mem_rdata_sel)
-      MemRdataSelRom:    mem_rdata = rom_mem_rdata_gated;
-      MemRdataSelSram:   mem_rdata = sram_mem_rdata;
-      MemRdataSelVrom:   mem_rdata = vrom_mem_rdata;
-      MemRdataSelPeriph: mem_rdata = axi_adapter_mem_rdata;
+      MEM_RDATA_SEL_ROM:    mem_rdata = rom_mem_rdata_gated;
+      MEM_RDATA_SEL_SRAM:   mem_rdata = sram_mem_rdata;
+      MEM_RDATA_SEL_VROM:   mem_rdata = vrom_mem_rdata;
+      MEM_RDATA_SEL_PERIPH: mem_rdata = axi_adapter_mem_rdata;
       default:           mem_rdata = axi_adapter_mem_rdata;
     endcase
   end

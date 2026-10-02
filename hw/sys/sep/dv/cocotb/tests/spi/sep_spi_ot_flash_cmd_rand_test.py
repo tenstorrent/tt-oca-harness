@@ -173,7 +173,10 @@ class SepSpiFlashCmdCfg:
     @classmethod
     def from_seed(cls, seed: int) -> "SepSpiFlashCmdCfg":
         rng = SepSeededRng(seed)
-        sector = rng.randrange(0, 32)
+        # Sector 0 is not drawn: the flash model records address 0 for a frame
+        # that ends before its address phase completes, so a draw of address 0
+        # cannot tell a truncated WEL-clear PAGE PROGRAM from a complete one.
+        sector = rng.randrange(1, 32)
         page = rng.randrange(0, _SECTOR_SIZE // _PAGE_SIZE)
         addr = sector * _SECTOR_SIZE + page * _PAGE_SIZE
         nwords = rng.randrange(1, _MAX_WORDS + 1)

@@ -9,7 +9,8 @@ UVM realization of the same testbench top selected by `--framework uvm` (VCS).
 (`hw/sys/sep/rtl/sep.sv`) plus its IP integration
 (`hw/top/sep_ip_integration.sv`: real memory macros and the generic eFuse model).
 The OpenTitan SPI host is inside the `sep` core (`sep_io` / `sep_ot_spi_wrap`);
-its pads come out of the wrapper. There is no SPI pad mux in this build.
+its pads come out of the wrapper. No select steers the OT SPI host, so no
+test programs one.
 **Stimulus** = a cocotbext-axi master on the CPU LSU splice (`s_axi_*`), a second
 master on the real SMN-inbound port (`m_axi_*`, inbound filter), and VeeR EL2
 firmware boot on the `cpu` / `rom_fw` paths.

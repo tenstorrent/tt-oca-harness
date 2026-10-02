@@ -13,11 +13,11 @@
 //
 // Two catalogue properties are honoured here rather than in the sequence:
 //
-//   * a `SmcRegKindRwRestore` entry is software storage, so an observed
+//   * a `SMC_REG_KIND_RW_RESTORE` entry is software storage, so an observed
 //     strobed write updates its shadow and later reads follow the write --
 //     that is what makes the prediction survive the 16 scenario passes of
 //     one simulation instead of only being true for a "first" read;
-//   * a `SmcRegKindRoStatic` entry is `sw=r` in the RDL, so a write can
+//   * a `SMC_REG_KIND_RO_STATIC` entry is `sw=r` in the RDL, so a write can
 //     never change what it reads back and the shadow deliberately ignores
 //     writes to it. A DUT that let a write land on such a register is a
 //     defect this model reports through the next read.
@@ -73,7 +73,7 @@ class smc_default_reg_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi
     shadow    = m_shadow.exists(word_addr) ? m_shadow[word_addr] : entry.default_value;
     if (t.direction == OCAH_AXI_DIR_WRITE) begin
       // `sw=r` registers cannot take a write; only software storage moves.
-      if (entry.kind == SmcRegKindRwRestore)
+      if (entry.kind == SMC_REG_KIND_RW_RESTORE)
         m_shadow[word_addr] = apply_write(word_addr, shadow, t);
       return;
     end
