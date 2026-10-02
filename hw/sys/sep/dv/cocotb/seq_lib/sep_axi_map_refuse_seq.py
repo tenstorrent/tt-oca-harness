@@ -30,6 +30,8 @@ from sep_reg_meta import SEP_CPU_CTRL, SEP_RESET_CTRL, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 RESP_OKAY = 0
+RESP_SLVERR = 2
+RESP_DECERR = 3
 
 # Live-bus control. sep_cpu_ctrl SEP_NMI_VEC is a known-good decode target with a
 # non-zero generated reset and no read side effects, so a refusal elsewhere in the
@@ -284,7 +286,7 @@ class SepAxiMapRefuse:
         # bus, so a probe that saw no DECERR beat hands it back. Keyed off the
         # response rather than the monitor tally: the monitor counts on its own
         # clock edge, which may not have run when start_seq returns.
-        if timed_out or resp != 3:
+        if timed_out or resp != RESP_DECERR:
             self.test.env.axi_monitor.release_expected_decerr(1)
 
         if timed_out:
@@ -297,10 +299,18 @@ class SepAxiMapRefuse:
                 f"{item.op} 0x{item.addr:08x} resp=OKAY, expected refuse -- "
                 f"memory_map.adoc lists this address as reserved ({item.unit})"
             )
+        # A refusal is an AXI error response. EXOKAY is a success code, so it
+        # fails here like OKAY does.
+        if resp not in (RESP_SLVERR, RESP_DECERR):
+            return (
+                f"{item.op} 0x{item.addr:08x} resp={resp}, expected a refusal "
+                f"(SLVERR={RESP_SLVERR} or DECERR={RESP_DECERR}) -- memory_map.adoc "
+                f"lists this address as reserved ({item.unit})"
+            )
         self.refused += 1
-        if resp == 3:
+        if resp == RESP_DECERR:
             self.decerr += 1
-        elif resp == 2:
+        else:
             self.slverr += 1
         return data_fail
 

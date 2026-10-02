@@ -6922,7 +6922,7 @@ reported as such rather than counted as a pass.
 
 *Objective*: Rows marked reserved in the DV-owned table in `env/sep_axi_decode_map.py` allocate nothing, so an access there must not answer OKAY. The refusal expectation is taken from that table. Named reserved spans are excluded from the probe set with a counted reason. The walk grades refusal only, so any refusal passes and the code is logged; the code `sep.rdl` states is graded by `sep_unmapped_access_policy_test` at the points that test probes. Scope is the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one, and neither subsumes the other.
 
-*Test Coverage*: Unmapped / refuse addresses complete with the specified error response.
+*Test Coverage*: Reserved addresses complete with an AXI error response (DECERR or SLVERR). The code `sep.rdl` states for each is not graded here.
 
 *Test Procedure*:
 
@@ -6937,7 +6937,7 @@ reported as such rather than counted as a pass.
 |===
 |Checker |Contract
 |CHK-MAP-REFUSE
-|Every probed address is refused. This checker grades refusal only, so DECERR and SLVERR both satisfy it and the line reports the split; the code `sep.rdl` states is graded by `sep_unmapped_access_policy_test` at the points that test probes. The directed anchors include the exact first byte above the generated boot-ROM extent; remaining probes come from map-reserved addresses this test asserts. Excluded spans are skipped before the walk with a counted reason.
+|Every probed address is refused. This checker grades refusal only, so DECERR and SLVERR both satisfy it and the line reports the split. OKAY, EXOKAY or a timeout fails the probe; the code `sep.rdl` states is graded by `sep_unmapped_access_policy_test` at the points that test probes. The directed anchors include the exact first byte above the generated boot-ROM extent; remaining probes come from map-reserved addresses this test asserts. Excluded spans are skipped before the walk with a counted reason.
 |CHK-MAP-REFUSE-DATA
 |A refused read returns none of the live words sampled on the same bus over the ordinary path: the live-bus control (`SEP_NMI_VEC`), `SW_RESET_N` (the block below the `0x10803008` anchor) and boot-ROM word 0 (the block below the one-past-ROM anchor). A refused access never reaches a unit (`hw/sys/sep/doc/memory_map.adoc`), so a refusal that hands back one of these values has reached its owner. Zero words are dropped from the set because they cannot discriminate. At least one refused read must be compared. Other live words are not claimed.
 |CHK-NONVAC
