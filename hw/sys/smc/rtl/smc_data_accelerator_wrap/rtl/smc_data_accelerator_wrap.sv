@@ -24,7 +24,7 @@ module smc_data_accelerator_wrap #(
   input  logic                                             zeroer_cg_en_i,  // Enables idle clock gating of the
                                                                             // zeroer datapath when high; while
                                                                             // low its clock runs continuously.
-  input  logic [smc_pkg::CG_HYSTERESIS_W-1:0]              cg_hysteresis_i,  // Idle SMC core clock cycles the DMA and
+  input  logic [smc_pkg::CgHysteresisW-1:0]              cg_hysteresis_i,    // Idle SMC core clock cycles the DMA and
                                                                              // zeroer clock gates wait after going idle
                                                                              // before stopping their clocks.
 
@@ -105,7 +105,7 @@ module smc_data_accelerator_wrap #(
 
   // Address demux for DMA/Zeroer control interfaces
   axi_demux #(
-    .AxiIdWidth                         (smc_pkg::SMC_LOCAL_FABRIC_XBAR_MASTER_ID_WIDTH),
+    .AxiIdWidth                         (smc_pkg::SmcLocalFabricXbarMasterIdWidth),
     .AtopSupport                        (1'b0),
     .aw_chan_t                          (smc_pkg::smc_local_32_64_8_12_axi_aw_chan_t),
     .w_chan_t                           (smc_pkg::smc_local_32_64_8_12_axi_w_chan_t),
@@ -115,8 +115,8 @@ module smc_data_accelerator_wrap #(
     .axi_req_t                          (smc_pkg::smc_local_32_64_8_12_axi_req_t),
     .axi_resp_t                         (smc_pkg::smc_local_32_64_8_12_axi_resp_t),
     .NoMstPorts                         (NumAccelerators),
-    .MaxTrans                           (smc_pkg::FABRIC_MAX_TRANS),
-    .AxiLookBits                        (smc_pkg::FABRIC_ID_LOOKUP_BITS)
+    .MaxTrans                           (smc_pkg::FabricMaxTrans),
+    .AxiLookBits                        (smc_pkg::FabricIdLookupBits)
   ) u_axi_demux (
     .clk_i                              (clk_i),
     .rst_ni                             (rst_ni),
@@ -136,32 +136,32 @@ module smc_data_accelerator_wrap #(
 
   `AXI_ASSIGN_ADDR_WIDTH_ADJ_CASTING(dma_ctrl_axi_req, dma_ctrl_axi_resp,
                                      axi_ctrl_demux_req[smc_pkg::DMA],
-                                     axi_ctrl_demux_resp[smc_pkg::DMA], smc_pkg::DMA_CTRL_ADDR_W)
+                                     axi_ctrl_demux_resp[smc_pkg::DMA], smc_pkg::DmaCtrlAddrW)
 
   idma_wrapper #(
     .NUM_CTRL_INTERFACES                (1),
     .NUM_CTRL_STREAMS                   (1),
     .NUM_MST_INTERFACES                 (1),
-    .DMA_MST_MAX_TXNS                   (smc_pkg::FABRIC_MAX_TRANS),
+    .DMA_MST_MAX_TXNS                   (smc_pkg::FabricMaxTrans),
     // ctrl port is a master port of u_axi_demux above: MaxTrans per ID bucket, all buckets
-    .CTRL_OUTSTANDING_TX                (smc_pkg::FABRIC_OUTSTANDING_TX),
-    .F2M_FIFO_DEPTH                     (smc_pkg::F2M_FIFO_DEPTH),
-    .M2B_FIFO_DEPTH                     (smc_pkg::M2B_FIFO_DEPTH),
+    .CTRL_OUTSTANDING_TX                (smc_pkg::FabricOutstandingTx),
+    .F2M_FIFO_DEPTH                     (smc_pkg::F2mFifoDepth),
+    .M2B_FIFO_DEPTH                     (smc_pkg::M2bFifoDepth),
     .BUFFER_DEPTH                       (DMA_BUFFER_DEPTH),
     .EN_R_AW_COUPLING                   (1'b1),
     .BYPASS_DMA_CTRL_FLOPS              (1'b0),
     .BYPASS_DMA_MST_FLOPS               (1'b0),
-    .CG_HYSTERESIS_W                    (smc_pkg::CG_HYSTERESIS_W),
+    .CG_HYSTERESIS_W                    (smc_pkg::CgHysteresisW),
     .dma_ctrl_req_t                     (smc_pkg::smc_dma_ctrl_9_64_8_12_axi_req_t),
     .dma_ctrl_resp_t                    (smc_pkg::smc_dma_ctrl_9_64_8_12_axi_resp_t),
     .dma_mst_req_t                      (smc_pkg::smc_cpu_mmio_axi_req_t),
     .dma_mst_resp_t                     (smc_pkg::smc_cpu_mmio_axi_resp_t),
-    .AXI_ADDR_WIDTH                     (smc_pkg::AXI_ADDR_WIDTH),
-    .AXI_DATA_WIDTH                     (smc_pkg::AXI_DATA_WIDTH),
-    .AXI_USER_WIDTH                     (smc_pkg::AXI_USER_WIDTH),
-    .CTRL_ID_WIDTH                      (smc_pkg::SMC_LOCAL_FABRIC_XBAR_MASTER_ID_WIDTH),
-    .MST_ID_WIDTH                       (smc_pkg::SMC_CPU_MMIO_AXI_ID_WIDTH),
-    .BACKEND_INT_ID_WIDTH               (smc_pkg::DMA_BACKEND_MST_ID_W)
+    .AXI_ADDR_WIDTH                     (smc_pkg::AxiAddrWidth),
+    .AXI_DATA_WIDTH                     (smc_pkg::AxiDataWidth),
+    .AXI_USER_WIDTH                     (smc_pkg::AxiUserWidth),
+    .CTRL_ID_WIDTH                      (smc_pkg::SmcLocalFabricXbarMasterIdWidth),
+    .MST_ID_WIDTH                       (smc_pkg::SmcCpuMmioAxiIdWidth),
+    .BACKEND_INT_ID_WIDTH               (smc_pkg::DmaBackendMstIdW)
   ) u_dma_wrap (
     .clk_i                              (clk_i),
     .rst_ni                             (rst_ni),
@@ -191,22 +191,22 @@ module smc_data_accelerator_wrap #(
 
   `AXI_ASSIGN_ADDR_WIDTH_ADJ_CASTING(
       zeroer_ctrl_axi_req, zeroer_ctrl_axi_resp, axi_ctrl_demux_req[smc_pkg::ZEROER],
-      axi_ctrl_demux_resp[smc_pkg::ZEROER], smc_pkg::ZEROER_CTRL_ADDR_W)
+      axi_ctrl_demux_resp[smc_pkg::ZEROER], smc_pkg::ZeroerCtrlAddrW)
 
   zeroer #(
     .zeroer_ctrl_req_t                  (smc_pkg::smc_zeroer_ctrl_5_64_8_12_axi_req_t),
     .zeroer_ctrl_resp_t                 (smc_pkg::smc_zeroer_ctrl_5_64_8_12_axi_resp_t),
     .mst_req_t                          (smc_pkg::smc_cpu_mmio_axi_req_t),
     .mst_resp_t                         (smc_pkg::smc_cpu_mmio_axi_resp_t),
-    .CTRL_ADDR_WIDTH                    (smc_pkg::ZEROER_CTRL_ADDR_W),
-    .CTRL_DATA_WIDTH                    (smc_pkg::AXI_DATA_WIDTH),
-    .CTRL_ID_WIDTH                      (smc_pkg::SMC_LOCAL_FABRIC_XBAR_MASTER_ID_WIDTH),
-    .CTRL_USER_WIDTH                    (smc_pkg::AXI_USER_WIDTH),
-    .AXI_ADDR_WIDTH                     (smc_pkg::AXI_ADDR_WIDTH),
-    .AXI_DATA_WIDTH                     (smc_pkg::AXI_DATA_WIDTH),
-    .AXI_USER_WIDTH                     (smc_pkg::AXI_USER_WIDTH),
-    .MST_ID_WIDTH                       (smc_pkg::SMC_CPU_MMIO_AXI_ID_WIDTH),
-    .CG_HYSTERESIS_W                    (smc_pkg::CG_HYSTERESIS_W)
+    .CTRL_ADDR_WIDTH                    (smc_pkg::ZeroerCtrlAddrW),
+    .CTRL_DATA_WIDTH                    (smc_pkg::AxiDataWidth),
+    .CTRL_ID_WIDTH                      (smc_pkg::SmcLocalFabricXbarMasterIdWidth),
+    .CTRL_USER_WIDTH                    (smc_pkg::AxiUserWidth),
+    .AXI_ADDR_WIDTH                     (smc_pkg::AxiAddrWidth),
+    .AXI_DATA_WIDTH                     (smc_pkg::AxiDataWidth),
+    .AXI_USER_WIDTH                     (smc_pkg::AxiUserWidth),
+    .MST_ID_WIDTH                       (smc_pkg::SmcCpuMmioAxiIdWidth),
+    .CG_HYSTERESIS_W                    (smc_pkg::CgHysteresisW)
   ) u_zeroer (
     .clk_i                              (clk_i),
     .rst_ni                             (rst_ni),
@@ -232,7 +232,7 @@ module smc_data_accelerator_wrap #(
   // AXI Mux to combine DMA and Zeroer master outputs
   // Uses narrower slave ID width to enable ID prepending for source identification
   axi_mux #(
-    .SlvAxiIDWidth                      (smc_pkg::SMC_CPU_MMIO_AXI_ID_WIDTH),
+    .SlvAxiIDWidth                      (smc_pkg::SmcCpuMmioAxiIdWidth),
     .slv_aw_chan_t                      (smc_pkg::smc_cpu_mmio_axi_aw_chan_t),
     .mst_aw_chan_t                      (smc_pkg::smc_input_fabric_56_64_4_12_axi_aw_chan_t),
     .w_chan_t                           (smc_pkg::smc_cpu_mmio_axi_w_chan_t),
@@ -247,7 +247,7 @@ module smc_data_accelerator_wrap #(
     .mst_req_t                          (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
     .mst_resp_t                         (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
     .NoSlvPorts                         (NumAccelerators),
-    .MaxWTrans                          (smc_pkg::FABRIC_MAX_TRANS),
+    .MaxWTrans                          (smc_pkg::FabricMaxTrans),
     .FallThrough                        (1'b0),
     .SpillAw                            (1'b1),
     .SpillW                             (1'b0),

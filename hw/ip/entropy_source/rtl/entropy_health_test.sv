@@ -74,9 +74,9 @@ module entropy_health_test #(
   // Local parameters
   /////////////////////
 
-  localparam int unsigned REG_WIDTH = 16;
-  localparam int unsigned RNG_BUS_WIDTH = DATA_WIDTH;
-  localparam int unsigned RNG_BUS_BIT_SEL_WIDTH = $clog2(DATA_WIDTH);
+  localparam int unsigned RegWidth = 16;
+  localparam int unsigned RngBusWidth = DATA_WIDTH;
+  localparam int unsigned RngBusBitSelWidth = $clog2(DATA_WIDTH);
 
   /////////////
   // Signals
@@ -143,9 +143,9 @@ module entropy_health_test #(
   /////////////////
 
   entropy_src_repcnt_ht #(
-    .RegWidth          (REG_WIDTH),
-    .RngBusWidth       (RNG_BUS_WIDTH),
-    .RngBusBitSelWidth (RNG_BUS_BIT_SEL_WIDTH)
+    .RegWidth          (RegWidth),
+    .RngBusWidth       (RngBusWidth),
+    .RngBusBitSelWidth (RngBusBitSelWidth)
   ) u_repcnt_ht (
     .clk_i             (clk_i),
     .rst_ni            (rst_ni),
@@ -162,9 +162,9 @@ module entropy_health_test #(
   );
 
   entropy_src_adaptp_ht #(
-    .RegWidth          (REG_WIDTH),
-    .RngBusWidth       (RNG_BUS_WIDTH),
-    .RngBusBitSelWidth (RNG_BUS_BIT_SEL_WIDTH)
+    .RegWidth          (RegWidth),
+    .RngBusWidth       (RngBusWidth),
+    .RngBusBitSelWidth (RngBusBitSelWidth)
   ) u_adaptp_ht (
     .clk_i                (clk_i),
     .rst_ni               (rst_ni),
@@ -186,9 +186,9 @@ module entropy_health_test #(
   );
 
   entropy_src_markov_ht #(
-    .RegWidth          (REG_WIDTH),
-    .RngBusWidth       (RNG_BUS_WIDTH),
-    .RngBusBitSelWidth (RNG_BUS_BIT_SEL_WIDTH)
+    .RegWidth          (RegWidth),
+    .RngBusWidth       (RngBusWidth),
+    .RngBusBitSelWidth (RngBusBitSelWidth)
   ) u_markov_ht (
     .clk_i                (clk_i),
     .rst_ni               (rst_ni),

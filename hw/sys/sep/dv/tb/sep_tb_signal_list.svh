@@ -611,7 +611,7 @@
 // test can prove the direction: a push at the inbound aperture raises the CPU
 // PIC source and leaves this line low; a push at the outbound aperture raises
 // this line and no PIC source. One bit per mailbox channel.
-`SEP_TB_OUT(logic [sep_pkg::NUM_MAILBOXES-1:0], smc_mailbox_interrupt_o)
+`SEP_TB_OUT(logic [sep_pkg::NumMailboxes-1:0], smc_mailbox_interrupt_o)
 `SEP_TB_OUT(logic, spi_cs_n_o)
 `SEP_TB_OUT(logic, spi_sck_o)
 `SEP_TB_OUT(logic, spi_mosi_o)

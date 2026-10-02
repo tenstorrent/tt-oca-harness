@@ -17,23 +17,23 @@ class SmuDatasheetTests(unittest.TestCase):
         dtp_package = (self.root / "hw/sys/dtp/rtl/dtp_pkg.sv").read_text(encoding="utf-8")
 
         # The SMU exposes the DTP defaults minus the lanes reserved for SMC.
-        self.assertRegex(dtp_package, r"DEFAULT_NUM_CTP\s*=\s*16;")
-        self.assertRegex(dtp_package, r"DEFAULT_NUM_INT_CT\s*=\s*10;")
-        self.assertRegex(dtp_package, r"DEFAULT_NUM_CLK_STOP_REQ\s*=\s*9;")
-        self.assertRegex(smu_package, r"XTRIG_SMC_INT_CT_LANES\s*=\s*2;")
-        self.assertRegex(smu_package, r"XTRIG_SMC_CLK_STOP_LANES\s*=\s*1;")
+        self.assertRegex(dtp_package, r"DefaultNumCtp\s*=\s*16;")
+        self.assertRegex(dtp_package, r"DefaultNumIntCt\s*=\s*10;")
+        self.assertRegex(dtp_package, r"DefaultNumClkStopReq\s*=\s*9;")
+        self.assertRegex(smu_package, r"XtrigSmcIntCtLanes\s*=\s*2;")
+        self.assertRegex(smu_package, r"XtrigSmcClkStopLanes\s*=\s*1;")
         self.assertRegex(
             smu_package,
-            r"XTRIG_NUM_INT_CT:\s*dtp_pkg::DEFAULT_NUM_INT_CT\s*-\s*XTRIG_SMC_INT_CT_LANES",
+            r"XTRIG_NUM_INT_CT:\s*dtp_pkg::DefaultNumIntCt\s*-\s*XtrigSmcIntCtLanes",
         )
         self.assertRegex(
             smu_package,
-            r"XTRIG_NUM_CLK_STOP_REQ:\s*dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ\s*-\s*XTRIG_SMC_CLK_STOP_LANES",
+            r"XTRIG_NUM_CLK_STOP_REQ:\s*dtp_pkg::DefaultNumClkStopReq\s*-\s*XtrigSmcClkStopLanes",
         )
         self.assertIn("NUM_INT_TO_SMC: 32'd256", smu_package)
-        self.assertRegex(sep_package, r"NUM_MAILBOXES\s*=\s*8;")
+        self.assertRegex(sep_package, r"NumMailboxes\s*=\s*8;")
         self.assertIn("sep_pkg::NUM_EXTERNAL_IRQS-1:0", smu_rtl)
-        self.assertIn("sep_pkg::NUM_MAILBOXES-1:0", smu_rtl)
+        self.assertIn("sep_pkg::NumMailboxes-1:0", smu_rtl)
 
         self.assertNotIn("4-core SMC", self.source)
         self.assertIn("!External interrupts !256 to SMC; 212 to SEP when present", self.source)

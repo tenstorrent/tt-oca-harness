@@ -57,7 +57,7 @@ module drbg_axis_edn_adapter
 
   `include "prim_assert.sv"
 
-  localparam int unsigned DataWidth = DRBG_AXIS_DATA_WIDTH;
+  localparam int unsigned DataWidth = DrbgAxisDataWidth;
   localparam int unsigned StageWidth = DataWidth + 1;  // {tuser, tdata}
   localparam int unsigned StageDepth = 4;
 

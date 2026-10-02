@@ -61,13 +61,13 @@ module km_kpv
   `include "prim_assert.sv"
 
   // Internal register address width, from the generated register map.
-  localparam int unsigned ADDR_W = KM_KPV_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned AddrW = KM_KPV_REG_MIN_ADDR_WIDTH;
 
   // Key slots in the vault, and the index width that addresses them.
-  localparam int unsigned NUM_SLOTS = 64;
-  localparam int unsigned SLOT_W = $clog2(NUM_SLOTS);
-  localparam int unsigned WORDS_PER_SLOT = 16;
-  localparam int unsigned WORD_W = $clog2(WORDS_PER_SLOT);
+  localparam int unsigned NumSlots = 64;
+  localparam int unsigned SlotW = $clog2(NumSlots);
+  localparam int unsigned WordsPerSlot = 16;
+  localparam int unsigned WordW = $clog2(WordsPerSlot);
 
   // Key-data word width, spanning the eraser, scrambler and regfile.
   //
@@ -75,16 +75,16 @@ module km_kpv
   // one KEY_ENTRY sub-word holds, so it follows the RDL regwidth rather than the fabric.
   // The KEY_ENTRY/CTRL address slices below assume that same regwidth, so changing it
   // means regenerating the register block, not just editing this line.
-  localparam int unsigned DATA_W = 32;
+  localparam int unsigned DataW = 32;
 
   // Regfile/scrambler address width: {slot, word}.
-  localparam int unsigned RF_ADDR_W = SLOT_W + WORD_W;
+  localparam int unsigned RfAddrW = SlotW + WordW;
 
   // =========================================================================
   // KM: AXI struct -> flat (to KPV reg block)
   //==========================================================================
   logic km_reg_awready, km_reg_awvalid;
-  logic [ADDR_W-1:0] km_reg_awaddr;
+  logic [AddrW-1:0] km_reg_awaddr;
   logic [2:0] km_reg_awprot;
   logic km_reg_wready, km_reg_wvalid;
   logic [31:0] km_reg_wdata;
@@ -92,21 +92,21 @@ module km_kpv
   logic km_reg_bready, km_reg_bvalid;
   logic [1:0] km_reg_bresp;
   logic km_reg_arready, km_reg_arvalid;
-  logic [ADDR_W-1:0] km_reg_araddr;
+  logic [AddrW-1:0] km_reg_araddr;
   logic [2:0] km_reg_arprot;
   logic km_reg_rready, km_reg_rvalid;
   logic [31:0] km_reg_rdata;
   logic [1:0] km_reg_rresp;
 
   assign km_reg_awvalid = km_axil_req_i.aw_valid;
-  assign km_reg_awaddr  = km_axil_req_i.aw.addr[ADDR_W-1:0];
+  assign km_reg_awaddr  = km_axil_req_i.aw.addr[AddrW-1:0];
   assign km_reg_awprot  = km_axil_req_i.aw.prot;
   assign km_reg_wvalid  = km_axil_req_i.w_valid;
   assign km_reg_wdata   = km_axil_req_i.w.data;
   assign km_reg_wstrb   = km_axil_req_i.w.strb;
   assign km_reg_bready  = km_axil_req_i.b_ready;
   assign km_reg_arvalid = km_axil_req_i.ar_valid;
-  assign km_reg_araddr  = km_axil_req_i.ar.addr[ADDR_W-1:0];
+  assign km_reg_araddr  = km_axil_req_i.ar.addr[AddrW-1:0];
   assign km_reg_arprot  = km_axil_req_i.ar.prot;
   assign km_reg_rready  = km_axil_req_i.r_ready;
 
@@ -155,28 +155,28 @@ module km_kpv
   // erase_done pulse either clears the slot CTRL register or, on a sealed
   // slot, retires it (see the hwif drives below).
   //==========================================================================
-  logic [NUM_SLOTS-1:0] erase_req;
+  logic [NumSlots-1:0]  erase_req;
   logic                 erase_wr_en;
-  logic [SLOT_W-1:0]    erase_slot;
-  logic [WORD_W-1:0]    erase_word;
-  logic [DATA_W-1:0]    erase_wr_data;
-  logic [NUM_SLOTS-1:0] erase_done;
+  logic [SlotW-1:0]     erase_slot;
+  logic [WordW-1:0]     erase_word;
+  logic [DataW-1:0]     erase_wr_data;
+  logic [NumSlots-1:0]  erase_done;
   logic                 erase_busy;
 
   // Per-slot seal state, which decides an erase's outcome.
-  logic [NUM_SLOTS-1:0] slot_sealed;
+  logic [NumSlots-1:0] slot_sealed;
 
   always_comb begin
-    for (int i = 0; i < NUM_SLOTS; i++) begin
+    for (int i = 0; i < NumSlots; i++) begin
       erase_req[i]   = kpv_hwif_out.CTRL[i].erase.value;
       slot_sealed[i] = kpv_hwif_out.CTRL[i].seal.value;
     end
   end
 
   km_kpv_eraser #(
-    .NUM_SLOTS     (NUM_SLOTS),
-    .WORDS_PER_SLOT(WORDS_PER_SLOT),
-    .DATA_WIDTH    (DATA_W)
+    .NUM_SLOTS     (NumSlots),
+    .WORDS_PER_SLOT(WordsPerSlot),
+    .DATA_WIDTH    (DataW)
   ) u_eraser (
     .clk_i        (clk_i),
     .cold_rst_ni  (cold_rst_ni),
@@ -216,7 +216,7 @@ module km_kpv
   assign kpv_scrambler_enable = kpv_hwif_out.KPV_SCRAMBLER_CTRL.enable.value;
 
   always_comb begin
-    for (int i = 0; i < NUM_SLOTS; i++) begin
+    for (int i = 0; i < NumSlots; i++) begin
       // A seal implies a write lock, so hardware holds lock_write set for
       // as long as the slot is sealed.  That also carries lock_write
       // through a retiring erase, which is what stops the slot being
@@ -262,9 +262,9 @@ module km_kpv
   // Mux: find active KM external slot
   logic              km_ext_active;
   logic              km_ext_is_wr;
-  logic [SLOT_W-1:0] km_ext_slot;
-  logic [WORD_W-1:0] km_ext_word;
-  logic [DATA_W-1:0] km_ext_wr_data;
+  logic [SlotW-1:0]  km_ext_slot;
+  logic [WordW-1:0]  km_ext_word;
+  logic [DataW-1:0]  km_ext_wr_data;
 
   always_comb begin
     km_ext_active  = 1'b0;
@@ -272,12 +272,12 @@ module km_kpv
     km_ext_slot    = '0;
     km_ext_word    = '0;
     km_ext_wr_data = '0;
-    for (int i = 0; i < NUM_SLOTS; i++) begin
+    for (int i = 0; i < NumSlots; i++) begin
       if (!km_ext_active && kpv_hwif_out.KEY_ENTRY[i].req) begin
         km_ext_active  = 1'b1;
         km_ext_is_wr   = kpv_hwif_out.KEY_ENTRY[i].req_is_wr;
-        km_ext_slot    = SLOT_W'(i);
-        km_ext_word    = kpv_hwif_out.KEY_ENTRY[i].addr[WORD_W+1:2];
+        km_ext_slot    = SlotW'(i);
+        km_ext_word    = kpv_hwif_out.KEY_ENTRY[i].addr[WordW+1:2];
         km_ext_wr_data = kpv_hwif_out.KEY_ENTRY[i].wr_data;
       end
     end
@@ -298,20 +298,20 @@ module km_kpv
   // produce scrambled random data.  The KM CPU does not drive a key-data
   // access through the scrambler during an erase (it only polls CTRL.erase
   // via the regblock), so there is no contention.
-  logic [RF_ADDR_W-1:0] km_scrambler_addr;
-  logic [DATA_W-1:0]    km_scrambler_in_data;
-  logic [RF_ADDR_W-1:0] km_scrambler_phys_addr;
-  logic [DATA_W-1:0]    km_scrambler_write_out;
-  logic [DATA_W-1:0]    km_scrambler_read_out;
-  logic [DATA_W-1:0]    rf_rd_data;
+  logic [RfAddrW-1:0]  km_scrambler_addr;
+  logic [DataW-1:0]    km_scrambler_in_data;
+  logic [RfAddrW-1:0]  km_scrambler_phys_addr;
+  logic [DataW-1:0]    km_scrambler_write_out;
+  logic [DataW-1:0]    km_scrambler_read_out;
+  logic [DataW-1:0]    rf_rd_data;
 
   assign km_scrambler_addr = erase_busy ? {erase_slot, erase_word}
                                           : {km_ext_slot, km_ext_word};
   assign km_scrambler_in_data = erase_busy ? erase_wr_data : km_ext_wr_data;
 
   scrambler_1024x32 #(
-    .ADDR_WIDTH(RF_ADDR_W),
-    .DATA_WIDTH(DATA_W)
+    .ADDR_WIDTH(RfAddrW),
+    .DATA_WIDTH(DataW)
   ) u_scrambler_km (
     .addr_i                (km_scrambler_addr),
     // scrambler_512x32 reserves byte_mask_i for future byte-masked write support (hw/ip/scrambler/doc/architecture.adoc)
@@ -326,7 +326,7 @@ module km_kpv
   );
 
   // KM external read data: handle lock_use in rd_data
-  logic [DATA_W-1:0] km_ext_rd_data;
+  logic [DataW-1:0] km_ext_rd_data;
   assign km_ext_rd_data =
         km_ext_lock_use      ? '0 :
         kpv_scrambler_enable ? km_scrambler_read_out :
@@ -334,7 +334,7 @@ module km_kpv
 
   // Respond to every per-slot interface (only the active one matters)
   always_comb begin
-    for (int i = 0; i < NUM_SLOTS; i++) begin
+    for (int i = 0; i < NumSlots; i++) begin
       kpv_hwif_in.KEY_ENTRY[i].rd_ack =
                 kpv_hwif_out.KEY_ENTRY[i].req &
                 ~kpv_hwif_out.KEY_ENTRY[i].req_is_wr;
@@ -349,9 +349,9 @@ module km_kpv
   // Key data register file (KM write + read)
   //==========================================================================
   logic                 rf_wr_a_en;
-  logic [RF_ADDR_W-1:0] rf_wr_a_addr;
-  logic [DATA_W-1:0]    rf_wr_a_data;
-  logic [RF_ADDR_W-1:0] rf_rd_addr;
+  logic [RfAddrW-1:0]   rf_wr_a_addr;
+  logic [DataW-1:0]     rf_wr_a_data;
+  logic [RfAddrW-1:0]   rf_rd_addr;
 
   // Write port: eraser (priority while busy) or KM external write
   // (external req, write, !lock_write).  Erase is not gated by lock_write.
@@ -375,9 +375,9 @@ module km_kpv
                         clk_i, !cold_rst_ni || !warm_rst_ni)
 
   km_kpv_regfile #(
-    .NUM_SLOTS     (NUM_SLOTS),
-    .WORDS_PER_SLOT(WORDS_PER_SLOT),
-    .DATA_WIDTH    (DATA_W)
+    .NUM_SLOTS     (NumSlots),
+    .WORDS_PER_SLOT(WordsPerSlot),
+    .DATA_WIDTH    (DataW)
   ) u_key_regfile (
     .clk_i           (clk_i),
     .wipe_i          (wipe_pulse_i),
@@ -396,21 +396,21 @@ module km_kpv
   // only SLVERR information.
   //==========================================================================
   logic km_is_key, km_is_ctrl;
-  logic [SLOT_W-1:0] km_slot;
+  logic [SlotW-1:0] km_slot;
   logic km_wr_violation, km_rd_violation;
-  logic [ADDR_W-1:0] km_addr_accept;
+  logic [AddrW-1:0] km_addr_accept;
 
   assign km_addr_accept =
         km_reg_awvalid ? km_reg_awaddr : km_reg_araddr;
   assign km_is_key =
-        (km_addr_accept < ADDR_W'(KM_KPV_CTRL_BASE_ADDR(0)));
+        (km_addr_accept < AddrW'(KM_KPV_CTRL_BASE_ADDR(0)));
   assign km_is_ctrl =
-        (km_addr_accept >= ADDR_W'(KM_KPV_CTRL_BASE_ADDR(0))) &&
-        (km_addr_accept <= ADDR_W'(KM_KPV_CTRL_BASE_ADDR(NUM_SLOTS-1)));
+        (km_addr_accept >= AddrW'(KM_KPV_CTRL_BASE_ADDR(0))) &&
+        (km_addr_accept <= AddrW'(KM_KPV_CTRL_BASE_ADDR(NumSlots-1)));
   // Key entries are 0x40 apart, so the slot sits above the 6 word/byte bits;
   // CTRL registers are one word apart, so it sits directly above bit 1.
   assign km_slot =
-        km_is_key ? km_addr_accept[SLOT_W+5:6] : km_addr_accept[SLOT_W+1:2];
+        km_is_key ? km_addr_accept[SlotW+5:6] : km_addr_accept[SlotW+1:2];
 
   always_comb begin
     // Key data writes to write-locked slots are protocol violations.

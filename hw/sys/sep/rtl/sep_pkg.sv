@@ -235,18 +235,18 @@ package sep_pkg;
   parameter int unsigned CPU_SLV_ID_WIDTH = SEP_32_64_6_12_ID_WIDTH;  // 6-bit.
 
   // Misc parameters
-  localparam int unsigned LC_STATE_BIT_POSITION = 96;
-  localparam int unsigned LC_STATE_BIT_WIDTH = 4;
+  localparam int unsigned LcStateBitPosition = 96;
+  localparam int unsigned LcStateBitWidth = 4;
 
   //////////////////////////////////
   // SEP System Peripherals Types //
   //////////////////////////////////
 
   // Address Remap (from local masters)
-  localparam int unsigned ADDRESS_REMAP_DEMUX_PORTS = 5;
+  localparam int unsigned AddressRemapDemuxPorts = 5;
 
   typedef enum logic [$clog2(
-ADDRESS_REMAP_DEMUX_PORTS
+AddressRemapDemuxPorts
 )-1:0] {
     SEP_EXT_TO_SMC     = 0,
     SEP_EXT_TO_SMU     = 1,
@@ -256,13 +256,13 @@ ADDRESS_REMAP_DEMUX_PORTS
   } address_remap_demux_select_e;
 
   // External To Chiplet Address Range
-  localparam logic [SEP_56_64_5_12_ADDR_WIDTH-1:0] EXTERNAL_TO_CHIPLET_BASE_ADDR = 56'h1_0000_0000;
+  localparam logic [SEP_56_64_5_12_ADDR_WIDTH-1:0] ExternalToChipletBaseAddr = 56'h1_0000_0000;
 
   // Outbound Filter Mux
-  localparam int unsigned OUTBOUND_FILTER_MUX_PORTS = 3;
+  localparam int unsigned OutboundFilterMuxPorts = 3;
 
   typedef enum logic [$clog2(
-OUTBOUND_FILTER_MUX_PORTS
+OutboundFilterMuxPorts
 )-1:0] {
     OUTBOUND_FILTER_LOCAL_MASTER = 0,
     OUTBOUND_FILTER_AP = 1,
@@ -270,25 +270,25 @@ OUTBOUND_FILTER_MUX_PORTS
   } outbound_filter_mux_select_e;
 
   // Outbound Filter
-  localparam int unsigned OUTBOUND_FILTER_NUM_FILTERS = 32;
+  localparam int unsigned OutboundFilterNumFilters = 32;
 
-  typedef logic [$clog2(OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_filter_select_t;
+  typedef logic [$clog2(OutboundFilterNumFilters)-1:0] outbound_filter_select_t;
 
   // Inbound Filter
-  localparam int unsigned INBOUND_FILTER_NUM_FILTERS = 16;
+  localparam int unsigned InboundFilterNumFilters = 16;
 
-  typedef logic [$clog2(INBOUND_FILTER_NUM_FILTERS)-1:0] inbound_filter_select_t;
+  typedef logic [$clog2(InboundFilterNumFilters)-1:0] inbound_filter_select_t;
 
   // Mailbox
-  localparam int unsigned NUM_MAILBOXES = 8;
-  localparam int unsigned MAILBOX_DEPTH = 8;
-  localparam int unsigned MAILBOX_SIZE = sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR; // 0x800 -> 2kb.
+  localparam int unsigned NumMailboxes = 8;
+  localparam int unsigned MailboxDepth = 8;
+  localparam int unsigned MailboxSize = sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR; // 0x800 -> 2kb.
 
   // System CSRs
-  localparam int unsigned SYSTEM_CSR_DEMUX_PORTS = 9;
+  localparam int unsigned SystemCsrDemuxPorts = 9;
 
   typedef enum logic [$clog2(
-SYSTEM_CSR_DEMUX_PORTS
+SystemCsrDemuxPorts
 )-1:0] {
     LOCAL_MASTER_ALIAS_REMAP = 0,
     AP_OUTPUT_REMAP = 1,
@@ -482,14 +482,14 @@ SEP_ROM_MUX_NUM_PORTS
   // Fixed size of the SEP local alias remap window. This is decoupled from the
   // SMU-programmable SEP_REGION_SIZE CSR (exported as sep_region_size_o to size the
   // SMU-visible aperture); the local alias window is a fixed architectural constant.
-  localparam logic [55:0] SEP_LOCAL_ALIAS_REGION_SIZE = 56'h3000_0000;  // 768 MiB.
-  localparam logic [55:0] SEP_LOCAL_ALIAS_REGION_BASE = 56'h1000_0000;  // 0x1000_0000 - 0x3FFF_FFFF.
-  localparam logic [55:0] SEP_GLOBAL_REGION_SIZE = 56'h4000_0000;  // 1 GiB.
+  localparam logic [55:0] SepLocalAliasRegionSize = 56'h3000_0000;  // 768 MiB.
+  localparam logic [55:0] SepLocalAliasRegionBase = 56'h1000_0000;  // 0x1000_0000 - 0x3FFF_FFFF.
+  localparam logic [55:0] SepGlobalRegionSize = 56'h4000_0000;  // 1 GiB.
 
-  localparam logic [3:0] SEP_SOURCE_ID = 4'b1111;
-  localparam logic [3:0] MMODE_SOURCE_ID = 4'b1100;
-  localparam logic [3:0] SMC_SOURCE_ID = 4'b0011;
-  localparam logic [3:0] OTHERS_SOURCE_ID = 4'b0000;
+  localparam logic [3:0] SepSourceId = 4'b1111;
+  localparam logic [3:0] MmodeSourceId = 4'b1100;
+  localparam logic [3:0] SmcSourceId = 4'b0011;
+  localparam logic [3:0] OthersSourceId = 4'b0000;
 
   typedef struct packed {
     logic [$clog2(NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS)-1:0] aw_remap_hit_debug;

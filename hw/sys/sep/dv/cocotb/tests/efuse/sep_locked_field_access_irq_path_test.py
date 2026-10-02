@@ -20,7 +20,7 @@ leaf's image. Its four-spare draw and ``SIP_DIS`` / ``SYS_DIS`` = 0 pins
 are this leaf's seed-to-image map.
 
 ``+secure_tm_lock`` selects the SECURE_TM leaf instead: the field map marks
-LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS and SYS_DIS ``SECURE_TM_LOCK``, so a
+LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS and SYS_DIS ``SecureTmLock``, so a
 shadow write to any of them is refused while the latched strap is high. Each field is
 written twice with the same seeded payload -- once with the strap low, where it
 must land, and once with it high, where the value must not move and [33] must

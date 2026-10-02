@@ -7,7 +7,7 @@ Addresses and expected defaults both come from the generated PeakRDL map via
 driven against the cataloged symbol).
 
 Reset synchronization is handshake-based, never a fixed settle:
-``smc_reset_ctrl`` de-glitches ``rst_cool_ni`` over ``RESET_DEGLITCH_WIDTH``
+``smc_reset_ctrl`` de-glitches ``rst_cool_ni`` over ``ResetDeglitchWidth``
 ``clk_ref_i`` samples, so the pin is held low until the DUT is *observed* to
 enter cool reset (``rst_warm_smc_clk_n`` / ``rst_primary_smc_clk_no`` drop), and
 released only until the same observables are back and the fuse-sense/warm

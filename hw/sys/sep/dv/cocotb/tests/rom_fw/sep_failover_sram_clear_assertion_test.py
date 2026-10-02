@@ -295,7 +295,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
 
         WHY "residue" TRIGGERS ON THE VALUE AND NOT ON "IT CHANGED". The macro is
         64 bits wide with a per-bit write mask (``hw/top/sep_ip_integration.sv``:
-        ``SRAM_DATA_WIDTH = 64``, ``wmask_i``), and the manifest DMA fills it in
+        ``SramDataWidth = 64``, ``wmask_i``), and the manifest DMA fills it in
         narrower beats, so one macro word is legitimately half-written for a
         while: a trigger on "word[0] != poison" can sample the low half already
         carrying the erased slot's 0xFF bytes and the high half its poison value.

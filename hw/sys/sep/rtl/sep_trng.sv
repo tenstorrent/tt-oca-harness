@@ -21,8 +21,8 @@
 // meant as a synchronous clear downstream, not as a reset.
 
 module sep_trng #(
-  parameter int unsigned NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT  // Number of DRBG AXI-Stream endpoints; elaboration fails
-                                                                                   // unless it equals SEP_CRYPTO_EDN_ENDPOINT_COUNT.
+  parameter int unsigned NUM_AXIS = sep_crypto_pkg::SepCryptoEdnEndpointCount      // Number of DRBG AXI-Stream endpoints; elaboration fails
+                                                                                   // unless it equals SepCryptoEdnEndpointCount.
 ) (
   input logic clk_i,                          // System clock.
   input logic por_rst_ni,                     // Active-low power-on reset; resets only the
@@ -157,8 +157,8 @@ module sep_trng #(
     .edn_bus_err_clr_i         (edn_bus_err_clr_i)
   );
 
-  if (NUM_AXIS != sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT) begin : gen_endpoint_width_check
-    $error("sep_trng: NUM_AXIS must equal SEP_CRYPTO_EDN_ENDPOINT_COUNT");
+  if (NUM_AXIS != sep_crypto_pkg::SepCryptoEdnEndpointCount) begin : gen_endpoint_width_check
+    $error("sep_trng: NUM_AXIS must equal SepCryptoEdnEndpointCount");
   end
 
 endmodule
