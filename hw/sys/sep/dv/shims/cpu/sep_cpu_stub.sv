@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // DV-only compile-time STUB of sep_cpu (no VeeR EL2) for the no_cpu
-// (Verilator and VCS) targets.
+// lsu_stub_* targets: cocotb on Verilator and SV-UVM on VCS. The cocotb VCS
+// coverage build (--target default) does not use this stub; it keeps the full
+// sep_cpu and tb_top force-splices the LSU request instead.
 //
 // The real sep_cpu (hw/sys/sep/rtl/sep_cpu.sv) instantiates el2_veer_wrapper (the full
 // VeeR EL2 RISC-V core complex), which is heavy to elaborate/build and is not
