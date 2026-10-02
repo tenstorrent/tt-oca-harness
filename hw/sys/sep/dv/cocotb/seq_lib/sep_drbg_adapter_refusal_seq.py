@@ -22,7 +22,10 @@ Two drivers:
   through two DUT-visible consequences: the target register keeps its value,
   and the lane's ``PERIPH_BUS_ERR_STATUS`` bit (the bridge's sticky TL-UL
   error, hw/sys/sep/doc/crypto.adoc "Crypto Register-Bridge Faults") stays
-  clear.
+  clear. ``PortWatch`` samples the lane adapter's AXI-Lite-64 input
+  (``drbg_csrng_axil_chan_o`` / ``drbg_edn_axil_chan_o``) over the same
+  window, so the SLVERR is shown to answer a beat the adapter accepted and
+  not a refusal upstream of it.
 
 A probe value that is X or Z is counted, never read as "nothing forwarded".
 """
@@ -46,6 +49,7 @@ from seq_lib.sep_drbg_adapter_port_seq import (
     AW_VALID,
     RESP_OKAY,
     RETIRE_TIMEOUT_CYCLES,
+    VALID_BITS,
     W_READY,
     W_VALID,
     AdapterPortVehicle,
@@ -122,6 +126,10 @@ class FwdWatch:
     async def stop(self) -> FwdWatch:
         """Sample ``POST_RESP_CYCLES`` more cycles, then stop."""
         await ClockCycles(cocotb.top.clk_i, POST_RESP_CYCLES)
+        return self.halt()
+
+    def halt(self) -> FwdWatch:
+        """Stop now, without the trailing cycles."""
         if hasattr(self._task, "cancel"):
             self._task.cancel()
         else:
@@ -130,6 +138,36 @@ class FwdWatch:
 
     def describe(self) -> str:
         return f"fwd=0b{self.bits:02b} over {self.cycles} cycles ({self.unknown} X/Z)"
+
+
+class PortWatch(FwdWatch):
+    """Handshakes at a DUT lane adapter's AXI-Lite-64 input over a window.
+
+    The probe is ``{ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}``
+    (tb/tb_top.sv). ``bits`` collects, per channel, the valid bit of every
+    cycle on which that channel's valid and ready were both high.
+    """
+
+    async def _run(self) -> None:
+        clk = cocotb.top.clk_i
+        while True:
+            await RisingEdge(clk)
+            self.cycles += 1
+            try:
+                chan = int(self.signal.value)
+            except ValueError:
+                self.unknown += 1
+                continue
+            self.bits |= chan & (chan >> 3) & VALID_BITS
+
+    def describe(self) -> str:
+        names = [
+            n for n, b in (("AW", AW_VALID), ("W", W_VALID), ("AR", AR_VALID)) if self.bits & b
+        ]
+        return (
+            f"axil64 handshakes [{' '.join(names) or 'none'}] over {self.cycles} cycles "
+            f"({self.unknown} X/Z)"
+        )
 
 
 class RefusalVehicle(AdapterPortVehicle):
@@ -233,6 +271,11 @@ class DutLane:
         return getattr(cocotb.top, f"drbg_{self.name}_fwd_o")
 
     @property
+    def port_signal(self):
+        """The lane adapter's AXI-Lite-64 input channel probe in tb/tb_top.sv."""
+        return getattr(cocotb.top, f"drbg_{self.name}_axil_chan_o")
+
+    @property
     def reg_addr(self) -> int:
         return sym(f"{self.block.block}_INTR_ENABLE_REG_ADDR")
 
@@ -326,13 +369,15 @@ class SepDrbgLaneRefusal:
 
     async def misaligned_read(
         self, lane: DutLane, offset: int
-    ) -> tuple[int, dict | None, FwdWatch]:
+    ) -> tuple[int, dict | None, FwdWatch, PortWatch]:
         """One single-byte read at ``offset`` into the word.
 
-        Returns (RRESP, presented AR, forward probe over the access).
+        Returns (RRESP, presented AR, forward probe over the access, adapter
+        input handshakes over the access).
         """
         addr = lane.reg_addr + offset
         watch = FwdWatch(lane.fwd_signal).start()
+        port = PortWatch(lane.port_signal).start()
         ar = cocotb.start_soon(capture_addr_handshake("ar"))
         seq = await self._seq(
             f"{lane.name}_rd_misaligned",
@@ -343,16 +388,21 @@ class SepDrbgLaneRefusal:
             expect_error=True,
         )
         await ClockCycles(cocotb.top.clk_i, 1)
-        return seq.resp_code, take_handshake(ar), await watch.stop()
+        # Both watches started together; stopping the port watch when the
+        # forward watch stops gives it the same window.
+        fwd = await watch.stop()
+        return seq.resp_code, take_handshake(ar), fwd, port.halt()
 
     async def narrow_write(
         self, lane: DutLane, nbytes: int, data: int
-    ) -> tuple[int, int | None, FwdWatch]:
+    ) -> tuple[int, int | None, FwdWatch, PortWatch]:
         """One ``nbytes`` write at the aligned word.
 
-        Returns (BRESP, presented WSTRB, forward probe over the access).
+        Returns (BRESP, presented WSTRB, forward probe over the access, adapter
+        input handshakes over the access).
         """
         watch = FwdWatch(lane.fwd_signal).start()
+        port = PortWatch(lane.port_signal).start()
         w = cocotb.start_soon(_capture_w())
         seq = await self._seq(
             f"{lane.name}_wr_narrow",
@@ -364,4 +414,7 @@ class SepDrbgLaneRefusal:
             expect_error=True,
         )
         await ClockCycles(cocotb.top.clk_i, 1)
-        return seq.resp_code, take_handshake(w), await watch.stop()
+        # Both watches started together; stopping the port watch when the
+        # forward watch stops gives it the same window.
+        fwd = await watch.stop()
+        return seq.resp_code, take_handshake(w), fwd, port.halt()

@@ -38,8 +38,11 @@ assigns to that transfer. A cell that presented something else is a stimulus
 miss, not a DUT verdict.
 
 CHK-REFUSE-DUT-READ / CHK-REFUSE-DUT-WRITE: RRESP/BRESP is SLVERR, the lane
-adapter's forward probe is low and known on every cycle, the lane's status bit
-stays clear, and (write) INTR_ENABLE still holds its value.
+adapter accepted the refused beat at its AXI-Lite-64 input (an AR handshake, or
+AW and W handshakes, on drbg_<lane>_axil_chan_o with no X/Z cycle), so the
+SLVERR is the adapter's and not an upstream refusal; the lane adapter's forward
+probe is low and known on every cycle, the lane's status bit stays clear, and
+(write) INTR_ENABLE still holds its value.
 
 CHK-REFUSE-DUT-CONTROL: on the same lane, right after the refusals, a supported
 32-bit write of the same value answers OKAY, is seen as a write on the forward
@@ -65,6 +68,7 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import axi_lane_strobe
 from sep_base_test import sep_base_test
+from seq_lib.sep_drbg_adapter_port_seq import AR_VALID, AW_VALID, W_VALID
 from seq_lib.sep_drbg_adapter_refusal_seq import (
     DUT_LANES,
     FWD_READ,
@@ -131,7 +135,7 @@ class sep_drbg_axil_adapter_refusal_test(sep_base_test):
         reg = lane.reg_addr
 
         # Misaligned single-byte read.
-        resp, ar, fwd = await drv.misaligned_read(lane, plan.rd_offset)
+        resp, ar, fwd, port = await drv.misaligned_read(lane, plan.rd_offset)
         want_ar = {"addr": reg + plan.rd_offset, "len": 0, "size": 0}
         got_ar = None if ar is None else {k: ar[k] for k in want_ar}
         assert got_ar == want_ar, (
@@ -141,23 +145,29 @@ class sep_drbg_axil_adapter_refusal_test(sep_base_test):
         status = await drv.periph_status()
         assert (
             resp == RESP_SLVERR
+            and port.bits & AR_VALID
+            and port.unknown == 0
             and fwd.bits == 0
             and fwd.unknown == 0
             and status & lane.status_bit == 0
         ), (
             f"CHK-REFUSE-DUT-READ FAIL: [{tag}] 1-byte read at 0x{reg + plan.rd_offset:08x} "
             f"(offset {plan.rd_offset}) answered resp={resp} (want SLVERR={RESP_SLVERR}); "
+            f"drbg_{tag}_axil_chan_o {port.describe()} (want an AR handshake, 0 X/Z); "
             f"drbg_{tag}_fwd_o {fwd.describe()} (want 0b00, 0 X/Z); "
             f"PERIPH_BUS_ERR_STATUS=0x{status:x} {tag} bit 0x{lane.status_bit:x} "
             f"{'set: the read reached the TL-UL bridge' if status & lane.status_bit else 'clear'}"
         )
         self.logger.info(
             "CHK-REFUSE-DUT-READ PASS: [%s] 1-byte read at 0x%08x (ARADDR[1:0]=%d) -> resp=%d "
-            "SLVERR; drbg_%s_fwd_o %s; PERIPH_BUS_ERR_STATUS=0x%x, %s bit 0x%x clear",
+            "SLVERR; drbg_%s_axil_chan_o %s; drbg_%s_fwd_o %s; PERIPH_BUS_ERR_STATUS=0x%x, "
+            "%s bit 0x%x clear",
             tag,
             reg + plan.rd_offset,
             plan.rd_offset,
             resp,
+            tag,
+            port.describe(),
             tag,
             fwd.describe(),
             status,
@@ -166,7 +176,7 @@ class sep_drbg_axil_adapter_refusal_test(sep_base_test):
         )
 
         # Narrow write carrying a value the register does not hold.
-        resp, wstrb, fwd = await drv.narrow_write(lane, plan.wr_bytes, plan.pattern)
+        resp, wstrb, fwd, port = await drv.narrow_write(lane, plan.wr_bytes, plan.pattern)
         want_strb = axi_lane_strobe(reg, plan.wr_bytes)
         assert wstrb == want_strb, (
             f"CHK-REFUSE-STIM FAIL: [{tag}] s_axi W beat strobe {wstrb}, expected "
@@ -187,6 +197,8 @@ class sep_drbg_axil_adapter_refusal_test(sep_base_test):
         status = await drv.periph_status()
         assert (
             resp == RESP_SLVERR
+            and port.bits & (AW_VALID | W_VALID) == AW_VALID | W_VALID
+            and port.unknown == 0
             and fwd.bits == 0
             and fwd.unknown == 0
             and after & lane.mask == baseline & lane.mask
@@ -194,20 +206,23 @@ class sep_drbg_axil_adapter_refusal_test(sep_base_test):
         ), (
             f"CHK-REFUSE-DUT-WRITE FAIL: [{tag}] {plan.wr_bytes}-byte write of "
             f"0x{plan.pattern:x} (WSTRB 0x{wstrb:02x}) answered resp={resp} (want "
-            f"SLVERR={RESP_SLVERR}); drbg_{tag}_fwd_o {fwd.describe()} (want 0b00, 0 X/Z); "
+            f"SLVERR={RESP_SLVERR}); drbg_{tag}_axil_chan_o {port.describe()} (want AW and W "
+            f"handshakes, 0 X/Z); drbg_{tag}_fwd_o {fwd.describe()} (want 0b00, 0 X/Z); "
             f"INTR_ENABLE 0x{baseline:x} -> 0x{after:x} under mask "
             f"0x{lane.mask:x}; PERIPH_BUS_ERR_STATUS=0x{status:x} ({tag} bit "
             f"0x{lane.status_bit:x})"
         )
         self.logger.info(
             "CHK-REFUSE-DUT-WRITE PASS: [%s] %d-byte write of 0x%x (WSTRB 0x%02x) -> resp=%d "
-            "SLVERR; drbg_%s_fwd_o %s; INTR_ENABLE still 0x%x (baseline 0x%x, mask 0x%x); "
-            "PERIPH_BUS_ERR_STATUS=0x%x",
+            "SLVERR; drbg_%s_axil_chan_o %s; drbg_%s_fwd_o %s; INTR_ENABLE still 0x%x "
+            "(baseline 0x%x, mask 0x%x); PERIPH_BUS_ERR_STATUS=0x%x",
             tag,
             plan.wr_bytes,
             plan.pattern,
             wstrb,
             resp,
+            tag,
+            port.describe(),
             tag,
             fwd.describe(),
             after,

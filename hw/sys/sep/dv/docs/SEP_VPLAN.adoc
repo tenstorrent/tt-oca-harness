@@ -6601,7 +6601,7 @@ reported as such rather than counted as a pass.
 
 *Source Module*: `sep_drbg_axil_adapter_refusal_test`
 
-*BFM / Model*: ocah_axi_vip on s_axi for the DUT's CSRNG and EDN lane adapters, with each adapter's AXI-Lite-32 request observed on `drbg_csrng_fwd_o` / `drbg_edn_fwd_o`; TB-instantiated `drbg_axil64_lane_adapter` (`u_tbadp_vehicle` in `tb/tb_top.sv`) driven pin-level from cocotb, with its AXI-Lite-32 request observed on `tbadp_fwd_o`
+*BFM / Model*: ocah_axi_vip on s_axi for the DUT's CSRNG and EDN lane adapters, with each adapter's AXI-Lite-64 input handshakes observed on `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` and its AXI-Lite-32 request on `drbg_csrng_fwd_o` / `drbg_edn_fwd_o`; TB-instantiated `drbg_axil64_lane_adapter` (`u_tbadp_vehicle` in `tb/tb_top.sv`) driven pin-level from cocotb, with its AXI-Lite-32 request observed on `tbadp_fwd_o`
 
 *Randomization*: RANDCFG -- per DUT lane, `SepSeededRng(seed)` picks the byte offset of the misaligned read (1, 2 or 3), the width of the narrow write (1 or 2 bytes), and the value that write carries (any implemented `INTR_ENABLE` pattern that differs from the register's value). The vehicle cells are fixed and all run on every seed.
 
@@ -6615,8 +6615,8 @@ reported as such rather than counted as a pass.
 
 [arabic]
 . Bring up `no_cpu`. Require the CSRNG and EDN bits of `PERIPH_BUS_ERR_STATUS` clear and read each block's `INTR_ENABLE` (`CHK-REFUSE-ANCHOR`).
-. Per DUT lane, read one byte at the seeded misaligned offset into `INTR_ENABLE`. Confirm the AR presented on s_axi (`CHK-REFUSE-STIM`). Require SLVERR, the lane adapter's forward probe low on every cycle, and the lane's status bit clear (`CHK-REFUSE-DUT-READ`).
-. Write the seeded value to `INTR_ENABLE` as a 1- or 2-byte transfer. Confirm the W strobe presented on s_axi (`CHK-REFUSE-STIM`). Require SLVERR, the forward probe low on every cycle, `INTR_ENABLE` unchanged and the status bit clear (`CHK-REFUSE-DUT-WRITE`).
+. Per DUT lane, read one byte at the seeded misaligned offset into `INTR_ENABLE`. Confirm the AR presented on s_axi (`CHK-REFUSE-STIM`). Require SLVERR, an AR handshake at the lane adapter's AXI-Lite-64 input, the lane adapter's forward probe low on every cycle, and the lane's status bit clear (`CHK-REFUSE-DUT-READ`).
+. Write the seeded value to `INTR_ENABLE` as a 1- or 2-byte transfer. Confirm the W strobe presented on s_axi (`CHK-REFUSE-STIM`). Require SLVERR, AW and W handshakes at the lane adapter's AXI-Lite-64 input, the forward probe low on every cycle, `INTR_ENABLE` unchanged and the status bit clear (`CHK-REFUSE-DUT-WRITE`).
 . Write the same value as a supported 32-bit write and read it back, each seen on the forward probe, then restore the original value and read it back (`CHK-REFUSE-DUT-CONTROL`).
 . Release the vehicle. For each refused cell, present the access and require SLVERR with no AXI-Lite-32 request on any cycle (`CHK-REFUSE-VEH`). Without a vehicle reset, present the supported access of the same kind on the same lane and require OKAY, a forwarded request, and for a read the responder's word in the addressed lane with the other lane zero (`CHK-REFUSE-VEH-CONTROL`).
 
@@ -6633,10 +6633,10 @@ reported as such rather than counted as a pass.
 |s_axi presented the access the cell names: ARADDR at the misaligned byte with ARLEN 0 and ARSIZE 0, and a W beat whose strobe is the one AMBA assigns to the narrow write at that address (`sep_spec_tables.axi_lane_strobe`). A mismatch is a stimulus miss, reported as one.
 
 |CHK-REFUSE-DUT-READ
-|The misaligned read answers SLVERR, the lane adapter's forward probe is low and not X/Z on every cycle from presentation to four cycles after the response, and the lane's `PERIPH_BUS_ERR_STATUS` bit is still clear.
+|The misaligned read answers SLVERR, and the lane adapter accepted it: `drbg_<lane>_axil_chan_o` shows an AR handshake at the adapter's AXI-Lite-64 input with no X/Z cycle, so the SLVERR is the adapter's and not a refusal upstream of it. The lane adapter's forward probe is low and not X/Z on every cycle from presentation to four cycles after the response, and the lane's `PERIPH_BUS_ERR_STATUS` bit is still clear.
 
 |CHK-REFUSE-DUT-WRITE
-|The narrow write answers SLVERR, the forward probe is low and not X/Z on every cycle of the access, `INTR_ENABLE` still holds its value under the block's implemented mask, and the lane's status bit is still clear. The written value differs from the register's in an implemented bit, so a forwarded write is visible.
+|The narrow write answers SLVERR, and `drbg_<lane>_axil_chan_o` shows AW and W handshakes at the adapter's AXI-Lite-64 input with no X/Z cycle, so the adapter accepted the beat it refused. The forward probe is low and not X/Z on every cycle of the access, `INTR_ENABLE` still holds its value under the block's implemented mask, and the lane's status bit is still clear. The written value differs from the register's in an implemented bit, so a forwarded write is visible.
 
 |CHK-REFUSE-DUT-CONTROL
 |A supported 32-bit write of the same value answers OKAY and is seen as a write on the forward probe, its read-back is seen as a read and returns the value, and the restore write reads back. This shows the probe sees a forwarded access and the value the refused write carried lands when the adapter forwards it, so "probe low" and "unchanged" in the two checks above can fail, and that the adapter serves a supported access after a refusal.
