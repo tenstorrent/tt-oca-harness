@@ -32,9 +32,11 @@ check at the end.
 CHK-MBX-H2P-WALK / CHK-MBX-P2H-WALK: 128 words per mailbox per direction pop
 in push order and bit-exact.
 
-CHK-MBX-DEPTH: on the writing port STATUS.full is clear before the eighth
-push and set after it; on the reading port STATUS.empty is clear with entries
-queued and set after exactly as many pops as pushes.
+CHK-MBX-DEPTH: STATUS is read on both ports after every push and every pop,
+so both flags are graded at every depth from 0 to 8. On the writing port
+STATUS.full is set only with eight entries queued; on the reading port
+STATUS.empty is set only with none queued. The PASS line logs the flag values
+seen at each depth.
 
 CHK-MBX-STROBE: a partial-strobe push (a contiguous byte run that contains
 lane j, for entry j, at an unaligned address inside WRITE_DATA) pushes one
@@ -137,6 +139,8 @@ class sep_mailbox_datapath_walk_test(sep_base_test):
             m: SepMboxWalkPort(self, m, cfg.rng, self.tally) for m in range(MAILBOX_COUNT)
         }
         self.n_depth = 0
+        # depth -> {(reading-port empty, writing-port full): samples}
+        self.depth_seen: dict[int, dict[tuple[bool, bool], int]] = {}
 
         await self._all_empty("CHK-MBX-EMPTY", "before any push")
         self.logger.info(
@@ -187,12 +191,27 @@ class sep_mailbox_datapath_walk_test(sep_base_test):
             "that popped with the strobed bytes in their own lanes",
             strobes,
         )
+        per_depth = "; ".join(
+            f"{q}: "
+            + ",".join(
+                f"empty={int(e)} full={int(f)} x{n}"
+                for (e, f), n in sorted(self.depth_seen[q].items())
+            )
+            for q in sorted(self.depth_seen)
+        )
+        assert sorted(self.depth_seen) == list(range(cfg.depth + 1)), (
+            f"CHK-MBX-DEPTH FAIL: STATUS graded at depths {sorted(self.depth_seen)}, "
+            f"expected every depth 0..{cfg.depth}"
+        )
         self.logger.info(
-            "CHK-MBX-DEPTH PASS: %d batches of %d: full clear before the last push and "
-            "set after it on the writing port; empty clear while queued and set "
-            "after the last pop on the reading port",
+            "CHK-MBX-DEPTH PASS: %d batches of %d; STATUS on both ports after every "
+            "push and pop, writing-port full set only at depth %d and reading-port "
+            "empty set only at depth 0; observed per depth (reading-port empty, "
+            "writing-port full, samples): %s",
             self.n_depth,
             cfg.depth,
+            cfg.depth,
+            per_depth,
         )
 
         await self._all_empty("CHK-MBX-NO-LEAK", "after the walk")
@@ -274,24 +293,8 @@ class sep_mailbox_datapath_walk_test(sep_base_test):
         chk = f"CHK-MBX-{'STROBE' if kind == 'STROBE' else d.upper() + '-WALK'}"
         full_batch = len(cases) == self.cfg_walk.depth
         for i, (data, lo, n, _exp) in enumerate(cases):
-            if full_batch and i == len(cases) - 1:
-                st = await self._write_status(port, d)
-                assert not st & ST_FULL, (
-                    f"CHK-MBX-DEPTH FAIL: mailbox {port.m} {d}: STATUS.full set with "
-                    f"{i} of {self.cfg_walk.depth} entries queued (STATUS=0x{st:08x})"
-                )
             await self._push(port, d, data, lo, n)
-        st_w = await self._write_status(port, d)
-        st_r = await self._read_status(port, d)
-        if full_batch:
-            assert st_w & ST_FULL, (
-                f"CHK-MBX-DEPTH FAIL: mailbox {port.m} {d}: STATUS.full clear after "
-                f"{self.cfg_walk.depth} pushes (STATUS=0x{st_w:08x})"
-            )
-        assert not st_r & ST_EMPTY, (
-            f"CHK-MBX-DEPTH FAIL: mailbox {port.m} {d}: reading port STATUS.empty "
-            f"set with {len(cases)} entries pushed (STATUS=0x{st_r:08x})"
-        )
+            await self._grade_depth(port, d, i + 1, f"after push {i + 1}")
         for i, (data, lo, n, exp) in enumerate(cases):
             got = await self._pop(port, d)
             assert got == exp, (
@@ -299,10 +302,23 @@ class sep_mailbox_datapath_walk_test(sep_base_test):
                 f"expected 0x{exp:016x} (pushed 0x{data:x} at byte {lo}, {n} B); "
                 f"xor=0x{got ^ exp:016x}"
             )
-        st_r = await self._read_status(port, d)
-        assert st_r & ST_EMPTY, (
-            f"CHK-MBX-DEPTH FAIL: mailbox {port.m} {d}: reading port STATUS.empty "
-            f"clear after {len(cases)} pops of {len(cases)} pushes (STATUS=0x{st_r:08x})"
-        )
+            await self._grade_depth(port, d, len(cases) - i - 1, f"after pop {i + 1}")
         if full_batch:
             self.n_depth += 1
+
+    async def _grade_depth(self, port: SepMboxWalkPort, d: str, q: int, when: str) -> None:
+        """CHK-MBX-DEPTH at depth ``q``: the writing port's STATUS.full is set
+        only at the FIFO depth, the reading port's STATUS.empty only at 0."""
+        depth = self.cfg_walk.depth
+        st_w = await self._write_status(port, d)
+        st_r = await self._read_status(port, d)
+        full = bool(st_w & ST_FULL)
+        empty = bool(st_r & ST_EMPTY)
+        assert full == (q == depth) and empty == (q == 0), (
+            f"CHK-MBX-DEPTH FAIL: mailbox {port.m} {d} {when}, {q} of {depth} entries "
+            f"queued: writing port STATUS=0x{st_w:08x} full={int(full)} (expected "
+            f"{int(q == depth)}), reading port STATUS=0x{st_r:08x} empty={int(empty)} "
+            f"(expected {int(q == 0)})"
+        )
+        seen = self.depth_seen.setdefault(q, {})
+        seen[(empty, full)] = seen.get((empty, full), 0) + 1

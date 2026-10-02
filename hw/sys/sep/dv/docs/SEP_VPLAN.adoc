@@ -4338,7 +4338,7 @@ every seed; `reseed = 3`.
 |CHK-MBX-H2P-WALK / CHK-MBX-P2H-WALK
 |Each of the 1024 words per direction pops on the other port bit-exact and in push order. A stuck, swapped or crossed data bit on either port of any mailbox, a reordered FIFO, or a lost or duplicated entry fails a compare.
 |CHK-MBX-DEPTH
-|On the writing port STATUS.full is clear with seven entries queued and set after the eighth; on the reading port STATUS.empty is clear while entries are queued and set after exactly as many pops as pushes.
+|STATUS is read on both ports after every push and every pop, so both flags are graded at every depth from 0 to 8: on the writing port STATUS.full is set only with eight entries queued, and on the reading port STATUS.empty is set only with none queued.
 |CHK-MBX-STROBE
 |A partial-strobe push at an unaligned `WRITE_DATA` address pushes one entry, and that entry pops with every strobed byte in its own lane.
 |CHK-MBX-RESP-ID
