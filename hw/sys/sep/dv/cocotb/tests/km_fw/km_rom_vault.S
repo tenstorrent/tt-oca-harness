@@ -84,11 +84,10 @@
     .equ CTRL_LAST_OFF,    (KEY_MANAGER_KPV_CTRL_BASE_ADDR((KEY_MANAGER_KPV_CTRL_NUM - 1)) - KEY_MANAGER_KPV_CTRL_BASE_ADDR(0))
     .equ KEY_WORD_LAST_OFF, (KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR(0, (KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM - 1)) - KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0))
 
-    // The KM SRAM is a memory, not a register block, so the generated register
-    // header carries no symbol for it. Base 0x8000 and 1 KB lock regions:
+    // KM SRAM base from the generated map. The 1 KB lock regions start here:
     // km_csr.rdl SRAM_LOCK (region 0 = 0x8000-0x83FF) and
     // hw/ip/key_manager/doc/architecture.adoc.
-    .equ KM_SRAM_BASE, 0x00008000
+    .equ KM_SRAM_BASE, KEY_MANAGER_SRAM_BASE_ADDR
 
     .section .text
     .globl _start
