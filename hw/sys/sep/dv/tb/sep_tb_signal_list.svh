@@ -496,6 +496,14 @@
 // Saturating count of cycles where CPU-LSU and DMA simultaneously present an
 // SRAM request on the same local-crossbar address channel.
 `SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
+// W handshakes at the AXI-Lite port of each fabric remap/filter slot register
+// block in sep_system_csr: saturating count of all beats, saturating count of
+// beats with non-zero data on a byte lane whose WSTRB bit is 0, and one sticky
+// bit per slot for the second kind. Slot order: alias [15:0], AP [31:16],
+// STEE [47:32], outbound filter [79:48], inbound filter [95:80].
+`SEP_TB_OUT(logic [31:0], fabric_slot_w_beats_o)
+`SEP_TB_OUT(logic [31:0], fabric_slot_w_fill_beats_o)
+`SEP_TB_OUT(logic [95:0], fabric_slot_w_fill_seen_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
 `SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)

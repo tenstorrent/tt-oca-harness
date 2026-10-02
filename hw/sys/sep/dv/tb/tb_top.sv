@@ -1234,6 +1234,146 @@ module sep_uvm_top
         end
     end
 
+    // Fabric-slot W channel, sampled at the AXI-Lite port of each of the 96
+    // remap/filter slot register blocks in sep_system_csr (the block that
+    // applies WSTRB). A beat counts as fill when a byte lane whose WSTRB bit is
+    // 0 carries non-zero data. Slot order as in the signal list. Explicit
+    // per-index assigns avoid a genvar-indexed XMR. Observation-only: reads
+    // the regblock ports and drives no DUT signal.
+    localparam int unsigned FabricSlots = $bits(fabric_slot_w_fill_seen_o);
+    logic [FabricSlots-1:0] fabric_slot_w_hs;
+    logic [FabricSlots-1:0] fabric_slot_w_fill;
+
+    function automatic logic fabric_w_inactive_data(input logic [63:0] data,
+                                                    input logic [7:0] strb);
+        logic [63:0] inactive;
+        for (int lane = 0; lane < 8; lane++) begin
+            inactive[8*lane +: 8] = {8{~strb[lane]}};
+        end
+        return |(data & inactive);
+    endfunction
+
+`define FABRIC_SLOT_W(k, blk) \
+    assign fabric_slot_w_hs[k] = \
+        (`SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.blk.s_axil_wvalid === 1'b1) && \
+        (`SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.blk.s_axil_wready === 1'b1); \
+    assign fabric_slot_w_fill[k] = fabric_slot_w_hs[k] && fabric_w_inactive_data( \
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.blk.s_axil_wdata, \
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.blk.s_axil_wstrb)
+    `FABRIC_SLOT_W(0, gen_local_master_alias_remap_reg[0].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(1, gen_local_master_alias_remap_reg[1].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(2, gen_local_master_alias_remap_reg[2].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(3, gen_local_master_alias_remap_reg[3].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(4, gen_local_master_alias_remap_reg[4].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(5, gen_local_master_alias_remap_reg[5].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(6, gen_local_master_alias_remap_reg[6].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(7, gen_local_master_alias_remap_reg[7].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(8, gen_local_master_alias_remap_reg[8].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(9, gen_local_master_alias_remap_reg[9].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(10, gen_local_master_alias_remap_reg[10].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(11, gen_local_master_alias_remap_reg[11].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(12, gen_local_master_alias_remap_reg[12].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(13, gen_local_master_alias_remap_reg[13].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(14, gen_local_master_alias_remap_reg[14].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(15, gen_local_master_alias_remap_reg[15].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(16, gen_ap_output_remap_reg[0].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(17, gen_ap_output_remap_reg[1].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(18, gen_ap_output_remap_reg[2].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(19, gen_ap_output_remap_reg[3].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(20, gen_ap_output_remap_reg[4].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(21, gen_ap_output_remap_reg[5].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(22, gen_ap_output_remap_reg[6].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(23, gen_ap_output_remap_reg[7].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(24, gen_ap_output_remap_reg[8].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(25, gen_ap_output_remap_reg[9].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(26, gen_ap_output_remap_reg[10].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(27, gen_ap_output_remap_reg[11].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(28, gen_ap_output_remap_reg[12].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(29, gen_ap_output_remap_reg[13].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(30, gen_ap_output_remap_reg[14].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(31, gen_ap_output_remap_reg[15].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(32, gen_stee_output_remap_reg[0].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(33, gen_stee_output_remap_reg[1].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(34, gen_stee_output_remap_reg[2].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(35, gen_stee_output_remap_reg[3].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(36, gen_stee_output_remap_reg[4].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(37, gen_stee_output_remap_reg[5].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(38, gen_stee_output_remap_reg[6].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(39, gen_stee_output_remap_reg[7].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(40, gen_stee_output_remap_reg[8].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(41, gen_stee_output_remap_reg[9].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(42, gen_stee_output_remap_reg[10].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(43, gen_stee_output_remap_reg[11].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(44, gen_stee_output_remap_reg[12].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(45, gen_stee_output_remap_reg[13].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(46, gen_stee_output_remap_reg[14].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(47, gen_stee_output_remap_reg[15].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(48, gen_outbound_filter_reg[0].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(49, gen_outbound_filter_reg[1].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(50, gen_outbound_filter_reg[2].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(51, gen_outbound_filter_reg[3].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(52, gen_outbound_filter_reg[4].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(53, gen_outbound_filter_reg[5].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(54, gen_outbound_filter_reg[6].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(55, gen_outbound_filter_reg[7].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(56, gen_outbound_filter_reg[8].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(57, gen_outbound_filter_reg[9].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(58, gen_outbound_filter_reg[10].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(59, gen_outbound_filter_reg[11].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(60, gen_outbound_filter_reg[12].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(61, gen_outbound_filter_reg[13].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(62, gen_outbound_filter_reg[14].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(63, gen_outbound_filter_reg[15].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(64, gen_outbound_filter_reg[16].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(65, gen_outbound_filter_reg[17].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(66, gen_outbound_filter_reg[18].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(67, gen_outbound_filter_reg[19].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(68, gen_outbound_filter_reg[20].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(69, gen_outbound_filter_reg[21].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(70, gen_outbound_filter_reg[22].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(71, gen_outbound_filter_reg[23].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(72, gen_outbound_filter_reg[24].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(73, gen_outbound_filter_reg[25].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(74, gen_outbound_filter_reg[26].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(75, gen_outbound_filter_reg[27].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(76, gen_outbound_filter_reg[28].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(77, gen_outbound_filter_reg[29].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(78, gen_outbound_filter_reg[30].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(79, gen_outbound_filter_reg[31].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(80, gen_inbound_filter_reg[0].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(81, gen_inbound_filter_reg[1].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(82, gen_inbound_filter_reg[2].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(83, gen_inbound_filter_reg[3].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(84, gen_inbound_filter_reg[4].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(85, gen_inbound_filter_reg[5].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(86, gen_inbound_filter_reg[6].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(87, gen_inbound_filter_reg[7].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(88, gen_inbound_filter_reg[8].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(89, gen_inbound_filter_reg[9].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(90, gen_inbound_filter_reg[10].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(91, gen_inbound_filter_reg[11].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(92, gen_inbound_filter_reg[12].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(93, gen_inbound_filter_reg[13].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(94, gen_inbound_filter_reg[14].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(95, gen_inbound_filter_reg[15].u_inbound_filter_reg);
+`undef FABRIC_SLOT_W
+
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            fabric_slot_w_beats_o      <= '0;
+            fabric_slot_w_fill_beats_o <= '0;
+            fabric_slot_w_fill_seen_o  <= '0;
+        end else begin
+            if (|fabric_slot_w_hs && !(&fabric_slot_w_beats_o)) begin
+                fabric_slot_w_beats_o <= fabric_slot_w_beats_o + 1'b1;
+            end
+            if (|fabric_slot_w_fill && !(&fabric_slot_w_fill_beats_o)) begin
+                fabric_slot_w_fill_beats_o <= fabric_slot_w_fill_beats_o + 1'b1;
+            end
+            fabric_slot_w_fill_seen_o <= fabric_slot_w_fill_seen_o | fabric_slot_w_fill;
+        end
+    end
+
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;

@@ -66,6 +66,24 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Every slot of the five fabric banks (alias, AP, STEE remap; outbound, inbound
+# filter): RDL reset; 64/32/16/8-bit writes with fill on inactive lanes, graded
+# against the IP-XACT field model, fill also counted at each slot's register block;
+# a write and a read outstanding together on s_axi with BREADY/RREADY held and with
+# W ahead of AW; every filter entry locked, then refused writes leave
+# it unchanged (response code logged). RANDCFG: order, sizes, data, fill and
+# channel delays from the run seed. no_cpu; +skip_fuse_sense.
+name = "sep_fabric_slot_csr_strobe_rand_test"
+module = "system.sep_fabric_slot_csr_strobe_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "remap", "filter", "csr", "strobe", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # WDT/AON-timer internals (the reference suite\'s sep_clock_uvm_aon_timer_operation_test +
 # wdt_wkup_timer_test + wdt_cfg_lock_test + wdt_pet_reset_test). no_cpu host-AXI
 # CSR proof of the aon_timer internals NOT covered by `sep_nmi_sanity_test` /

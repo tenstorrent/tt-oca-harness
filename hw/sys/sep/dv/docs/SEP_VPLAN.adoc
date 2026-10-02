@@ -429,6 +429,10 @@ never when it was written.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, plus per-entry storage independence across all 64 filter and alias entries. Red on the current RTL; see <<known-limitations>>.
+|`sep_fabric_slot_csr_strobe_rand_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|Every one of the 96 fabric remap and filter slots, graded against a register model built from the generated IP-XACT field metadata: RDL reset values; 64-, 32-, 16- and 8-bit writes, with seeded data on every inactive byte lane, land on exactly the strobed lanes of writable fields, and the fill reaches each slot's register block; a write and a read of each slot outstanding together on `s_axi`, with the response channels held and with W ahead of AW; every filter entry locked, after which writes chosen to move it leave it unchanged.
 |`sep_fabric_output_remap_datapath_proxy_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -4107,6 +4111,56 @@ filter only ever sees `tx_len==0`.
 *Scope limit*: one region or entry per bank per seed. Cross-region isolation —
 that writing region *k* leaves region *j* untouched — is not checked beyond the
 immediate neighbour, and nothing records which indices a regression covered.
+
+'''''
+
+[[sep_fabric_slot_csr_strobe_rand_test]]
+===== `sep_fabric_slot_csr_strobe_rand_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and remap
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
+
+*Source Module*: `sep_fabric_slot_csr_strobe_rand_test`
+
+*BFM / Model*: ocah_axi_vip; register model from the generated IP-XACT (`sep_reg_meta.register_fields`)
+
+*Randomization*: `SepSeededRng` from the run seed: slot and register order, write order within each register's plan, access offsets and sizes of the reads, write data, the fill on inactive byte lanes, the BREADY/RREADY hold lengths and the W-ahead-of-AW gap. `reseed = 3` samples different data, fill and orderings; the plan shape (which accesses each register gets) is the same on every seed.
+
+*Objective*: The byte-strobe, access-size, back-pressure and write-once-set rules hold at every slot of the five System-block fabric banks, not at one. Each of the 16 alias-remap regions, 16 AP and 16 STEE output-remap regions, 32 outbound and 16 inbound filter entries is its own register block behind its own AXI-Lite port, so a rule that one slot obeys says nothing about the others.
+
+*Test Coverage*: All 224 registers of the 96 slots: reset, every byte lane written alone and in 16/32/64-bit groups, inactive lanes driven with data, read-only and reserved bits, the filter `START_ADDR`/`END_ADDR` granule write-back, `FILTER_CONFIG.locked` on all 48 filter entries, and a write and a read of every slot outstanding together on `s_axi`.
+
+*Test Procedure*:
+
+[arabic]
+. Read every register as one 64-bit access and as one 32-bit word before any write.
+. Per register, in seeded order: one 64-bit write, one write per byte lane, two 16- or 32-bit writes, each with seeded data on the active lanes and seeded fill on the inactive ones, and a seeded-size read after each write; then a 64-bit read.
+. Per slot, twice: start a 32-bit write of one register's low word and a 32-bit read of its high word together on `s_axi`, once with BREADY and RREADY held and once with W presented ahead of AW and RREADY held; sample the `s_axi` pins during the pair; then read the register.
+. Per filter entry, in seeded order: lock it with a write that strobes `FILTER_CONFIG.locked`; then four seeded writes to its registers, each chosen so that the entry would change if the write were taken, and a write of 0 to the lock bit; read every register of the entry.
+. Read every register of every slot.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-SLOT-RESET
+|Every register reads the reset value its RDL fields declare (`filter_ctrl.rdl`, `alias_remap.rdl`, `output_remap.rdl`, through the generated IP-XACT), as a 64-bit access and as a 32-bit word. Reserved bits read 0; `data_bus_width` reads its declared value 3.
+|CHK-SLOT-STROBE
+|Every write answers OKAY and changes exactly the writable field bits in its strobed byte lanes (AMBA AXI write-strobe rule); read-only and reserved bits keep their RDL value. The master drives seeded data on every inactive lane, and always a 1 on `FILTER_CONFIG.locked` and alias `REGION_ATTRS.valid` when their lane is inactive, so a block that ignored WSTRB would take the fill, lock the entry or arm the remap, and read back changed. A filter `START_ADDR`/`END_ADDR` pair that lands in one granule (4 KB with `allow_burst`, 2^`data_bus_width` bytes without) reads back widened to it, as `filter_ctrl.rdl` describes. The write count is asserted against the plan (11 per register). The W beats that carry data on an inactive lane are counted on the TB `s_axi` pins and at the AXI-Lite W port of each slot's register block (`fabric_slot_w_*` probes in `tb/tb_top.sv`, observation-only): the count must be non-zero, the slot-port count of beats and of fill beats must equal the `s_axi` counts, and every one of the 96 slot blocks must see fill, so the deny leg is exercised at the block that applies WSTRB. The log names how many writes moved the register and how many carried fill that differed from it.
+|CHK-SLOT-PIPE
+|On the `s_axi` pins, each pair has at least one cycle in which both the write (AW accepted) and the read (AR accepted) are unanswered; in the held pair, B and R each wait with VALID high and READY low (the hold lasts 40 to 71 cycles from the request); in the W-first pair, WVALID rises before AWVALID. Both answer OKAY, the read returns the half of the register the write does not strobe (its value does not depend on the order the DUT serves them in), and the write lands. Asserted for 2 pairs per slot. Overlap at the slot's own AXI-Lite port is not claimed: the AXI-Lite demux in front of each slot holds one transaction per direction and forwards W only after its AW, so the slot block does not see the two in flight together or W ahead of AW.
+|CHK-SLOT-LOCK
+|After a write that strobes `FILTER_CONFIG.locked` with a 1, every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` leaves the entry unchanged, and a write of 0 does not clear the lock (`filter_ctrl.rdl` `locked`, `onwrite = woset`). Each refused write is checked on the model to be one that would change the entry if it were taken. The response codes of the refused writes are logged and not graded; `CHK-WOSET` in `sep_fabric_remap_filter_csr_bank_test` grades the code. All 48 filter entries are asserted locked.
+|CHK-SLOT-FINAL
+|At the end, every register of every slot holds its own model value, so no write to one slot or register moved another.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope limit*: CSR layer only. Whether a filter entry or remap region acts on live traffic with the programmed values is graded by the datapath tests in this bucket. Alias-remap `REGION_ATTRS.valid` is never set through an active lane, because a valid region rewrites the CPU-LSU traffic this test runs on.
 
 '''''
 

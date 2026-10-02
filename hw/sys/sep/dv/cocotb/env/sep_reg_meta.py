@@ -511,6 +511,61 @@ def word_has_unreset_field(addr: int) -> bool:
     return words[addr]
 
 
+@dataclass(frozen=True)
+class FieldMeta:
+    """One RDL field of a register, as the generated IP-XACT declares it."""
+
+    name: str
+    lsb: int
+    width: int
+    # IP-XACT access: `read-write`, `read-only` or `write-only`.
+    access: str
+    # RDL reset value, or None when the field declares none.
+    reset: int | None
+    # IP-XACT modifiedWriteValue `oneToSet` (RDL `onwrite = woset`): a written
+    # 1 sets the bit and a written 0 leaves it.
+    one_to_set: bool
+
+    @property
+    def mask(self) -> int:
+        return ((1 << self.width) - 1) << self.lsb
+
+
+@lru_cache(maxsize=1)
+def _ipxact_fields() -> dict[int, tuple[int, tuple[FieldMeta, ...]]]:
+    out: dict[int, tuple[int, tuple[FieldMeta, ...]]] = {}
+    for addr, width, fields in _iter_ipxact_registers():
+        metas = []
+        for one in fields:
+            reset = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
+            metas.append(
+                FieldMeta(
+                    name=one.findtext(_IPXACT_NS + "name") or "",
+                    lsb=_ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0,
+                    width=_ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1,
+                    access=one.findtext(_IPXACT_NS + "access") or "read-write",
+                    reset=None if reset is None else _ipxact_num(reset.text),
+                    one_to_set=(one.findtext(_IPXACT_NS + "modifiedWriteValue") == "oneToSet"),
+                )
+            )
+        out[addr] = (width, tuple(metas))
+    if not out:
+        raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
+    return out
+
+
+def register_fields(addr: int) -> tuple[int, tuple[FieldMeta, ...]]:
+    """``(width_bits, fields)`` of the register at absolute ``addr``.
+
+    Bits outside every field are reserved. Raises ``KeyError`` for an address
+    the IP-XACT gives no register.
+    """
+    regs = _ipxact_fields()
+    if addr not in regs:
+        raise KeyError(f"0x{addr:08x} is not a register in {_GEN_IPXACT.name}")
+    return regs[addr]
+
+
 # The shape of ordinary read-write storage, and the default for a hand-built
 # RegInfo: the self-tests and the wrap models name registers that are exactly
 # that. Frozen and hashable, so it needs no default_factory.
