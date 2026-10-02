@@ -1,0 +1,19 @@
+hw/common/regs/classify.mk
+  s_c5151d462a6a92::t_a714997dfc5bf9 30-34,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "5ff6b2db3fc72bb25154efbaec5883e6b7656588",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

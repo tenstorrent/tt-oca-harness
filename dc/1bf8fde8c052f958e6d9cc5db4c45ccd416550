@@ -1,0 +1,23 @@
+hw/common/regs/classify.mk
+  s_d605cb93395a31::t_18a36d8b1fcbb3 79-84
+hw/common/regs/rules.mk
+  s_d605cb93395a31::t_f6c43bcbd2d6b4 14
+hw/common/regs/out.mk
+  s_d605cb93395a31::t_bec0852be36b89 17-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "dc1bf8fde8c052f958e6d9cc5db4c45ccd416550",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,101 @@
+hw/ip/entropy_source/rtl/gen_recommended_thresholds.py
+  s_42d98e48086972::t_cc30a57f774d2a 1-210
+hw/ip/entropy_source/rtl/entropy_source.sv
+  s_42d98e48086972::t_d85d1c82a7144d 1042-1043,1051-1057
+  s_42d98e48086972::t_555ec379d0e4b8 1044-1050
+  s_42d98e48086972::t_003789f12f7081 1003,1005-1014
+  s_42d98e48086972::t_6662b787a07087 994
+  s_42d98e48086972::t_d226e2d049aca9 1244
+  s_42d98e48086972::t_2be919b5dfef91 106
+  s_42d98e48086972::t_8d790f57a406ee 243
+  s_42d98e48086972::t_71ed6cafff8780 618-619
+  s_42d98e48086972::t_98625a161a0ae6 928-929
+  s_42d98e48086972::t_bec05d234f5cfd 551
+  s_42d98e48086972::t_e881495bc8046b 592
+  s_42d98e48086972::t_9ae5e5126777d1 518-520,522-523,526-527
+  s_42d98e48086972::t_371ece6216a8d8 491-492
+  s_42d98e48086972::t_17a7b24add2440 578
+  s_42d98e48086972::t_078070bd6d551b 521
+  s_42d98e48086972::t_ba1e62cac67eaf 985,988,990
+  s_42d98e48086972::t_4b776055be7ecb 986-987,989
+  s_42d98e48086972::t_2ba278c64ff804 1108-1109
+  s_42d98e48086972::t_214d9ebadbd398 1169
+  s_42d98e48086972::t_50d8f39b69ae82 162-163
+  s_42d98e48086972::t_44b4ce968103d3 984
+hw/sys/sep/doc/crypto.adoc
+  s_42d98e48086972::t_a8ec932389fe80 268-269,277,279-282
+hw/ip/entropy_source/doc/architecture.adoc
+  s_42d98e48086972::t_4993e969ce3a39 64-65,67-69
+doc/trm/src/revision.adoc
+  s_42d98e48086972::t_ce9fd6e2046383 148-149
+  s_42d98e48086972::t_d67c321ad5d8b1 150-152
+  s_42d98e48086972::t_16824550a48786 153-158
+  s_8a5cfbd7ae04eb::t_9952a30bc0a203 163-164
+hw/ip/entropy_source/rtl/entropy_fifo.sv
+  s_42d98e48086972::t_2b103dc7bba183 151
+  s_42d98e48086972::t_d5faa74cf0d3c2 159
+hw/ip/entropy_source/regs/entropy_source.rdl
+  s_42d98e48086972::t_92d872db3c3083 1131-1132,1136-1137
+  s_42d98e48086972::t_a8e2a339f532d9 281
+  s_42d98e48086972::t_2b1173afd1de05 291,296-297,301-302
+  s_42d98e48086972::t_d6f0acf73a1fed 1188-1189,1193-1194
+  s_42d98e48086972::t_83bbd5ee376e6f 378,383,397,402,407,411,416,421,426,430,435,440
+  s_8a5cfbd7ae04eb::t_69b8420d61b034 943
+  s_8a5cfbd7ae04eb::t_1b90b097c1f75a 932
+hw/ip/entropy_source/regs/gen/sv/entropy_source_reg.sv
+  s_42d98e48086972::t_9d606dfaa6ecba 3418-3419,3637-3638,3649-3650
+hw/ip/entropy_source/regs/gen/sv/entropy_source_reg_pkg.sv
+  s_42d98e48086972::t_2a2e9c5a209bc4 123,127,762,766,789,793
+hw/sys/sep/doc/memory_map.adoc
+  s_42d98e48086972::t_e5a52409f77d4d 192-207
+hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc
+  s_42d98e48086972::t_3962acce92c883 26-27,111,213,222-225,227,283-284,293-294,303,305-306,314,316-317,435-436,748-751,778-781
+hw/ip/entropy_source/regs/gen/html/entropy_source.html
+  s_42d98e48086972::t_a0554cf312b5fc 31-32,113,201,208-211,213,255-256,263-264,271,273-274,280,282-283,373-374,608-611,632-635
+hw/sys/sep/rtl/sep_reset_ctrl.sv
+  s_8a5cfbd7ae04eb::t_abb8135f504fc6 141,143
+  s_8a5cfbd7ae04eb::t_1d5656c739caf5 216-222
+  s_8a5cfbd7ae04eb::t_7f642d61bbbd82 9-11
+  s_8a5cfbd7ae04eb::t_a3473bd56a0eac 175-180
+  s_8a5cfbd7ae04eb::t_42bf4c25a6e939 228
+hw/sys/sep/dv/cocotb/env/sep_reg_meta.py
+  s_8a5cfbd7ae04eb::t_24296e39cfb2d1 888
+hw/sys/sep/dv/cocotb/tests/system/sep_crypto_per_ip_reset_isolation_test.py
+  s_8a5cfbd7ae04eb::t_237852474556d8 48-50
+  s_8a5cfbd7ae04eb::t_880666b3fab9d2 399,410-432,435-436
+hw/sys/sep/dv/cocotb/seq_lib/sep_crypto_reset_iso_seq.py
+  s_8a5cfbd7ae04eb::t_4f725c9b303697 33-34
+hw/sys/sep/dv/testlists/system.toml
+  s_8a5cfbd7ae04eb::t_d1df81ab539d76 163
+  s_8a5cfbd7ae04eb::t_65620ecf764bc8 251-252,256-257
+hw/sys/sep/dv/cocotb/tests/system/sep_esrc_e2e_smoke_test.py
+  s_8a5cfbd7ae04eb::t_ceebbc028f715b 14-16
+hw/sys/sep/dv/cocotb/seq_lib/sep_address_map_seq.py
+  s_8a5cfbd7ae04eb::t_0571f88888e919 166-169
+hw/sys/sep/doc/jtag_sep_reset_ctrl_mapping.md
+  s_8a5cfbd7ae04eb::t_345e9bcd6e1efe 62-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7ccadba04e1c109b323eebcc9d6e603bbd3fb0c2",
+  "prompts": {},
+  "sessions": {
+    "s_42d98e48086972": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b3b78d8-5ce4-41c5-b7f4-8bd5173c9e98",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    },
+    "s_8a5cfbd7ae04eb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1d72c2f-f90b-4a57-bca4-e3b65d6ca3d3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

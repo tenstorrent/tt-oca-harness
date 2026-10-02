@@ -1,0 +1,19 @@
+hw/sys/sep/dv/fw/tests/dma_hash_test/dma_hash_test.c
+  s_c5151d462a6a92::t_5480596e6f6f4a 183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "c6c214ec0895cec66e115ede5531f407a4c26704",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+hw/sys/smc/doc/pll.adoc
+  s_c8ce40a7fc1aa0::t_76059ac6c8b467 7-10
+hw/sys/smc/doc/index.adoc
+  s_c8ce40a7fc1aa0::t_7d5361b37b59a8 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "26a51e99acafecf928e149066ec750b40d6e89f5",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

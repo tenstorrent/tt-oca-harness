@@ -1,0 +1,21 @@
+hw/sys/smc/doc/memmap.adoc
+  s_c5151d462a6a92::t_ee2f01aaaa7f99 291-302
+hw/sys/smc/doc/cpu.adoc
+  s_c5151d462a6a92::t_7af955bf8a1bfe 240-241,249-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "043087996db5d9f28745b2ea7e50231b4a926de6",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,59 @@
+hw/common/regs/classify.mk
+  s_d605cb93395a31::t_4e11aed27d7261 44
+hw/common/axi/axi_filter/regs/gen/html/filter_ctrl.html
+  s_d605cb93395a31::t_9e76cba67775ba 19,22-23,27,29,31-32
+hw/ip/entropy_source/regs/gen/html/entropy_source.html
+  s_d605cb93395a31::t_520e060b690670 44,78-87,102,104,106,108-110,129-137,149-157,169-177,365,368-374,573-641
+hw/ip/key_manager/regs/gen/html/key_manager.html
+  s_d605cb93395a31::t_a5777e33424752 121,123,208,210-211,766-776
+hw/ip/key_manager/regs/gen/html/km_csr.html
+  s_d605cb93395a31::t_d2c3cdb7d253e8 104,106,648-658
+hw/ip/key_manager/regs/gen/html/km_kpv.html
+  s_d605cb93395a31::t_ca3875fe3f4b43 32,34-35
+hw/sys/sep/regs/gen/html/blocks/aes.html
+  s_d605cb93395a31::t_19f561e17dff17 10-14,19-23,32,35,37,40,42,45,47,50,52,55,61-66,72-73,79,85-88,94-100,106-107
+hw/sys/sep/regs/gen/html/blocks/aon_timer.html
+  s_d605cb93395a31::t_9b8fdcca1c8f0c 11-24,31,37-38,43,48,53,58,64,70-71,76,81,86,92-93,99-100,106
+hw/sys/sep/regs/gen/html/blocks/hmac.html
+  s_d605cb93395a31::t_678b57ca8be584 10-11,25-26,35-37,43-45,51-53,59,65-71,77-80,86,88-90,95,100,102,105,107,110,115,120
+hw/sys/sep/regs/gen/html/blocks/kmac.html
+  s_d605cb93395a31::t_57e8eb7fd419c3 10-12,29-30,32,40-42,48-50,56-58,64-65,71,77,79,81-82,84,86,88-89,91-93,99-101,103,111-112,114,116-118,123,125,131,137,142,144,147,149,152,158,160,163,168
+hw/sys/sep/regs/gen/html/blocks/otbn.html
+  s_d605cb93395a31::t_38016e494f5444 28,34,40,46-47,53,59,65,71-78,80-87,93-100,105,110
+hw/sys/sep/regs/gen/html/blocks/secure_dma.html
+  s_d605cb93395a31::t_92881b97035281 11-73,88-90,96-98,109,114,119,124,153,159,164,169,175,180,182,184,186-187,194-195,201-202,208-210,212-213,228,231-306,326-426,429,431,434
+hw/sys/sep/regs/gen/html/blocks/sep_cpu_ctrl.html
+  s_d605cb93395a31::t_5d48ab76c923c9 11-25,41,48-49,54,59-60,65-68,73-74,79-80,85-86,91-92,97-98,103-104,109-110,115-116,121-122,127-128,133-134,144-145,157,225-226,234-239
+hw/sys/sep/regs/gen/html/blocks/spi_controller.html
+  s_d605cb93395a31::t_d5c9482d6bb889 11-20,26,29-32,37-40,45-48,50,53-54,65,77,79,82,96,99-113,118-126,132-142,148-158
+hw/sys/smc/dv/models/regs/gen/html/pll_wrap.html
+  s_d605cb93395a31::t_889287e4bf3053 1-23
+hw/sys/smc/dv/models/regs/gen/html/pvt_wrap.html
+  s_d605cb93395a31::t_31adf8fbb36550 1-23
+hw/sys/smc/dv/models/regs/gen/html/smc_axil_extension.html
+  s_d605cb93395a31::t_364ad33eb4925c 1-23
+hw/sys/smc/regs/gen/html/blocks/smc_efuse_map.html
+  s_d605cb93395a31::t_b9c64c29a94f61 64,69
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/html/csrng.html
+  s_d605cb93395a31::t_e7a6193c5e9575 11-13,19-21,37,41-44,46,50-53,55,59-62,68-69,89-93,100-110,120,129,152,163,169,175-178,180-184,190-192,194-217,223,228-229
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/html/edn.html
+  s_d605cb93395a31::t_35d29b79db03e8 35-36,42-43,49-50,56-57
+vendor/pulp-platform/idma/overlay/rdl/gen/html/dma_ctrl.html
+  s_d605cb93395a31::t_7fb77b63d8a32f 1-402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "737524538de794429f192fdd18e6ec6bdfa868f1",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

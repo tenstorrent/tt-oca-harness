@@ -1,0 +1,54 @@
+hw/sys/dtp/flow.mk
+  s_0b0a51c400f7f6::t_226db83c493713 10
+hw/sys/sep/flow.mk
+  s_0b0a51c400f7f6::t_a521c683c2591f 10
+hw/sys/dtp/dv/dtp_sim_cfg.toml
+  s_0b0a51c400f7f6::t_b44065ded38874 25,33
+Bender.yml
+  s_0b0a51c400f7f6::t_6e59183b2764dc 254-255
+  s_0b0a51c400f7f6::t_a43794ae76477c 548,564-565
+  s_0b0a51c400f7f6::t_7b80b97a28ae5d 233-234,236-239,244-245,395-396
+  s_0b0a51c400f7f6::t_ec49f0e071e073 226,247,253,258,267,280,283,286,298,301,307,399,437,462,576,579,657-658,665-666,680-683,700,741,768-769,772-773,775-776,779-780,789,842
+  s_0b0a51c400f7f6::t_6421c14c31bb25 212-214
+  s_0b0a51c400f7f6::t_58e2fc33b829b1 317-318,324-325,354,356-357,373-374,379,420-421,423-424,432,434-435,473,549,585-586,599-600
+  s_0b0a51c400f7f6::t_02fb5081c6321c 248,256,259,268,281,284,287,299,302,308,361,400,438,459,463,577,580,701,723-724,742,790,809-810,812-813,843,1165
+  s_0b0a51c400f7f6::t_8b0d21246a78b7 344-345,347-348,360,378,391-392,402-403,405-406,431,467-468
+  s_0b0a51c400f7f6::t_6c04fe52902e3f 210-211
+  s_0b0a51c400f7f6::t_e9f170e06900be 215
+  s_0b0a51c400f7f6::t_d50c9d4dc173b4 353
+  s_0b0a51c400f7f6::t_524ee3de6857bb 458
+  s_0b0a51c400f7f6::t_1d8745d621aae9 472
+  s_0b0a51c400f7f6::t_5e4d121952fc8f 1164
+hw/sys/smc/flow.mk
+  s_0b0a51c400f7f6::t_1e541f52cdd042 10
+hw/sys/smu/flow.mk
+  s_0b0a51c400f7f6::t_e164ee4ce21350 10
+flows/common.mk
+  s_0b0a51c400f7f6::t_e1b3c23cb21e90 13-14,55,57-58
+vendor/lowRISC/opentitan/Bender.yml
+  s_0b0a51c400f7f6::t_152834e2f6f1f5 14-49,81-86
+vendor/pulp-platform/idma/Bender.yml
+  s_0b0a51c400f7f6::t_c4dc05a9cd1291 53-54
+vendor/tenstorrent/aou-rtl/Bender.yml
+  s_0b0a51c400f7f6::t_2cbe6afa8a7827 15-81
+vendor/tenstorrent/aou-rtl/overlay/flow.mk
+  s_0b0a51c400f7f6::t_dfdfc025e32f66 13-14
+vendor/tenstorrent/tt-picorv32/Bender.yml
+  s_0b0a51c400f7f6::t_3b50070162c5c9 14-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "78d46d7e63ed9f54946e7285a3a4f251904129c5",
+  "prompts": {},
+  "sessions": {
+    "s_0b0a51c400f7f6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "678ceb1e-fcf0-41cf-949b-f93a4df936c4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

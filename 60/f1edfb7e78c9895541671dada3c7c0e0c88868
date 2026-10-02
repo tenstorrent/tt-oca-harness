@@ -1,0 +1,19 @@
+hw/common/dv/fw/smc.h
+  s_d605cb93395a31::t_282860a272afbf 71-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "60f1edfb7e78c9895541671dada3c7c0e0c88868",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "grok-4.5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

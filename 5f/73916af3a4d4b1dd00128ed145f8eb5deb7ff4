@@ -1,0 +1,45 @@
+.github/scripts/ingest_github.py
+  s_c8ce40a7fc1aa0::t_ed9c69302988b0 508
+  s_c8ce40a7fc1aa0::t_8d57049fac3289 458-459,461,463-475,477,479-486
+.github/ISSUE_TEMPLATE/01-bug.yml
+  s_c8ce40a7fc1aa0::t_dafa216d851613 71,76-78,83,88-90,95
+  s_c8ce40a7fc1aa0::t_71c883ea38c46c 12-14
+.github/ISSUE_TEMPLATE/03-feature.yml
+  s_c8ce40a7fc1aa0::t_68b223d6bd4ba8 12-14
+  s_c8ce40a7fc1aa0::t_14063912b1a70b 71,76-78,83,88-90,95
+AGENTS.md
+  s_c8ce40a7fc1aa0::t_bc739becc586a2 374-381
+  s_c8ce40a7fc1aa0::t_fe0e5bcc293072 400
+  s_c8ce40a7fc1aa0::t_850e669f9eb557 389-392
+.github/ISSUE_TEMPLATE/02-task.yml
+  s_c8ce40a7fc1aa0::t_9bb3161a881122 71,76-78,83,88-90,95
+  s_c8ce40a7fc1aa0::t_3190309702f834 12-14
+doc/contributing/src/pull-requests.adoc
+  s_c8ce40a7fc1aa0::t_eb9d9f7e82d210 8,14
+doc/contributing/src/issues.adoc
+  s_c8ce40a7fc1aa0::t_9f264e83c0856c 11-13,15
+doc/contributing/src/alignment.adoc
+  s_c8ce40a7fc1aa0::t_e01a2695789dbb 8-11
+.github/PULL_REQUEST_TEMPLATE.md
+  s_c8ce40a7fc1aa0::t_e2ade88e19b12f 2
+CONTRIBUTING.md
+  s_c8ce40a7fc1aa0::t_8465bb08c00f73 27
+.github/workflows/issue-pr-ingest.yml
+  s_c8ce40a7fc1aa0::t_955226dc3dde4d 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5f73916af3a4d4b1dd00128ed145f8eb5deb7ff4",
+  "prompts": {},
+  "sessions": {
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

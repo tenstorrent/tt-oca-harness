@@ -1,0 +1,25 @@
+hw/sys/smc/dv/fw/tests/occp_secure_boot_test/main.c
+  s_d605cb93395a31::t_bbfc0c11528ff6 33,38
+  s_d605cb93395a31::t_af136b856b77fc 81-83
+hw/sys/smc/dv/fw/tests/occp_jump/main.c
+  s_d605cb93395a31::t_2c0c2d1d2f2629 38-51
+hw/sys/smc/dv/fw/tests/occp_unsecure_boot_test/main.c
+  s_d605cb93395a31::t_8361179d1077ed 35-37,42
+  s_d605cb93395a31::t_72f34c5e1b51cb 99-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1688422c000c118ec5ef7a4d36cdc3c2d828ee2b",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

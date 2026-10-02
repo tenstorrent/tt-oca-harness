@@ -1,0 +1,19 @@
+tools/regs/rdlpyhdr.py
+  s_c5151d462a6a92::t_bbd57a256a5904 200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "e4a9aaa25b0fb79679a331774cb848630365fe91",
+  "prompts": {},
+  "sessions": {
+    "s_c5151d462a6a92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e6b5a7b-8db1-4886-87ca-37b7ffada441",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

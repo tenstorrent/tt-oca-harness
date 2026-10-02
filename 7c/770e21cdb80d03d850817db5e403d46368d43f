@@ -1,0 +1,29 @@
+hw/sys/sep/dv/fw/bootcode/Makefile
+  s_d605cb93395a31::t_dc796e395cee9c 227-262
+hw/sys/sep/dv/fw/bootcode/configs/secure_boot_test.yaml
+  s_d605cb93395a31::t_67b058aa946f3c 1-154
+hw/sys/sep/dv/fw/bootcode/requirements.txt
+  s_d605cb93395a31::t_39335fd8158380 1-13
+hw/sys/sep/dv/fw/bootcode/scripts/bl0-version.py
+  s_d605cb93395a31::t_d02b4b997c6920 1-93
+hw/sys/sep/dv/fw/bootcode/tools/elf_to_vmem64.py
+  s_d605cb93395a31::t_dda4365487b69c 1-117
+hw/sys/sep/dv/fw/bootcode/tools/generate_key_digests.py
+  s_d605cb93395a31::t_51b8f6902be633 1-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7c770e21cdb80d03d850817db5e403d46368d43f",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

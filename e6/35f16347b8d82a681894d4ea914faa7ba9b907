@@ -1,0 +1,188 @@
+hw/ip/axi_window_remap/rtl/axi_address_adjuster.sv
+  h_1abe2da33d4938 1-3
+hw/ip/axi_window_remap/rtl/axi_window_remap.sv
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/drivers/rom_boot_sram_restart.S
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/drivers/rom_wipe.S
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/km_mutable_fw.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/km_production.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/km_sram_layout.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/modes/rom.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/link/modes/vrom.ld
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/production/rom_main/rom_main.c
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/sep_images/test_efuse_km_axil/test_efuse_km_axil.c
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/sep_images/test_efuse_km_coexist/test_efuse_km_coexist.c
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/fw/sep_images/test_efuse_km_perm/test_efuse_km_perm.c
+  h_1abe2da33d4938 1-3
+hw/ip/key_manager/dv/tb/tb_key_manager.sv
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/lint/Makefile
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_1024x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_1024x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_2048x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_2048x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_4096x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_4096x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_512x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_512x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_8192x32.cpp
+  h_1abe2da33d4938 1-3
+hw/ip/scrambler/dv/tests/tb_scrambler_8192x32_bw.cpp
+  h_1abe2da33d4938 1-3
+hw/sys/dtp/rtl/config/dtp.f
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/link/modes/tcm.ld
+  h_1abe2da33d4938 1-3
+hw/sys/sep/dv/fw/tests/common_otbn/generate_otbn_c.py
+  h_1abe2da33d4938 2-4
+hw/sys/sep/dv/fw/tests/common_otbn/otbn_app.mk
+  h_1abe2da33d4938 1-3
+hw/sys/smc/dv/fw/startup/crt0.S
+  h_1abe2da33d4938 1-3
+hw/top/smc_ijtag_net.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/c/csrng.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/c/csrng_addr.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/html/csrng.html
+  h_1abe2da33d4938 1-2
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/py/csrng_reg.py
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/ral/csrng_ral_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/sv/csrng_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/svh/csrng_reg.svh
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/c/edn.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/c/edn_addr.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/html/edn.html
+  h_1abe2da33d4938 1-2
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/py/edn_reg.py
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/ral/edn_ral_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/sv/edn_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/svh/edn_reg.svh
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/c/secure_dma.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/c/secure_dma_addr.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/html/secure_dma.html
+  h_1abe2da33d4938 1-2
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/py/secure_dma_reg.py
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/sv/secure_dma_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/svh/secure_dma_reg.svh
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/c/spi_controller.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/c/spi_controller_addr.h
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/html/spi_controller.html
+  h_1abe2da33d4938 1-2
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/py/spi_controller_reg.py
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/sv/spi_controller_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/svh/spi_controller_reg.svh
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg.sv
+  h_1abe2da33d4938 1-3
+vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/block_flow_customizations/axi/vclint/inputs/waivers/project_waiver.tcl
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/__init__.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/config/__init__.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/config/parser.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/config/schema.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/configs/example_fabric.yaml
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/gen_fabric.py
+  h_1abe2da33d4938 2-4
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/generator/__init__.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/generator/conversion_graph.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/generator/render.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/generator/template_context.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/model/__init__.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/model/conversion.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/axi/overlay/scripts/fabric_gen/model/protocol.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/dma_ctrl.rdl
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/adoc/dma_ctrl.adoc
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/c/dma_ctrl.h
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/c/dma_ctrl_addr.h
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/html/dma_ctrl.html
+  h_1abe2da33d4938 1-2
+vendor/pulp-platform/idma/overlay/rdl/gen/py/dma_ctrl_reg.py
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/sv/dma_ctrl_addrmap_pkg.sv
+  h_1abe2da33d4938 1-3
+vendor/pulp-platform/idma/overlay/rdl/gen/svh/dma_ctrl_reg.svh
+  h_1abe2da33d4938 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e635f16347b8d82a681894d4ea914faa7ba9b907",
+  "prompts": {},
+  "humans": {
+    "h_1abe2da33d4938": {
+      "author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

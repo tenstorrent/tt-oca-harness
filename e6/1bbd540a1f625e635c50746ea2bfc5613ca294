@@ -1,0 +1,21 @@
+ocah.mk
+  s_d605cb93395a31::t_bf72e99b0b1b44 26
+hw/sys/smc/bootrom/prod/scripts/modify_rom_bin64.py
+  s_d605cb93395a31::t_27acf10d54ca13 1-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e61bbd540a1f625e635c50746ea2bfc5613ca294",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

@@ -1,0 +1,381 @@
+Bender.yml
+  s_d605cb93395a31::t_021519455070a6 37
+vendor/lowRISC/opentitan/patches/0009-prim_arbiter_ppc_verilator.patch
+  s_d605cb93395a31::t_12da6578a03ef7 13,17
+vendor/lowRISC/opentitan/patches/0010-prim_arbiter_tree_verilator.patch
+  s_d605cb93395a31::t_5a1d631072ec2e 4,8
+vendor/lowRISC/opentitan/patches/0013-prim_clock_mux2_assert.patch
+  s_d605cb93395a31::t_a7234f2d7f9310 15-16,23-24
+vendor/lowRISC/opentitan/patches/0016-prim_dom_and_2share_verilator.patch
+  s_d605cb93395a31::t_787e50c2d43130 8,15
+vendor/lowRISC/opentitan/patches/0022-prim_reg_cdc_arb_liveness.patch
+  s_d605cb93395a31::t_2a4b209cd6b917 22,24
+vendor/lowRISC/opentitan/patches/0023-prim_reg_cdc_liveness.patch
+  s_d605cb93395a31::t_9203893919e2d5 4-5,22,24
+vendor/lowRISC/opentitan/patches/0030-secure_dma_rename.patch
+  s_d605cb93395a31::t_10c5c1eb64a592 115,118-119
+vendor/lowRISC/opentitan/patches/0031-spi_controller_rename.patch
+  s_d605cb93395a31::t_fd7004783d2081 534,1157,1160-1161,1230,1789,2417,2420-2421,2485
+vendor/lowRISC/opentitan/patches/0034-sha2_pkg_w416_return_width.patch
+  s_d605cb93395a31::t_550f48ec43b549 1-22
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes.sv
+  s_d605cb93395a31::t_e40c633c172983 251-255,260,265,274,279,288,293,301,308,313,319
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_cipher_control.sv
+  s_d605cb93395a31::t_7377c8cb0c823e 480
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_cipher_control_fsm.sv
+  s_d605cb93395a31::t_1ea1018ac16c5c 489,493,496,500,505
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_cipher_core.sv
+  s_d605cb93395a31::t_dee866b5f114ff 793,798,801,821,839,852,859,872,877,926
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_control.sv
+  s_d605cb93395a31::t_90303231ec35b1 138
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_control_fsm.sv
+  s_d605cb93395a31::t_0bc955f89f8364 1169,1172,1181,1185,1189,1200
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_core.sv
+  s_d605cb93395a31::t_6c43e99fb0d726 1101,1104,1113,1119,1132,1138
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_ctr_fsm.sv
+  s_d605cb93395a31::t_b4bdd5a2ef0245 125
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_ghash.sv
+  s_d605cb93395a31::t_8dbb63275efcc9 1064,1092,1095,1098,1103
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_key_expand.sv
+  s_d605cb93395a31::t_8053ce0213dd70 480,483,493,497
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_prng_clearing.sv
+  s_d605cb93395a31::t_6e592f4a2a2cbe 60,147,161
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_prng_masking.sv
+  s_d605cb93395a31::t_e9d6a74abee0b8 68,76,146
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_reg_top.sv
+  s_d605cb93395a31::t_21736d0d004dd9 1934-1935,1937,1939,1943
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_sbox.sv
+  s_d605cb93395a31::t_50d3f8162221bd 29,86,109,131
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_sbox_dom.sv
+  s_d605cb93395a31::t_ae4cb6083a80ae 180,310,576
+vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_sel_buf_chk.sv
+  s_d605cb93395a31::t_d8dc0d7e939f45 73,94,117,143,162
+vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/rtl/aon_timer.sv
+  s_d605cb93395a31::t_cc5da1a4eb307b 228,289-295,297-298,301
+vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv
+  s_d605cb93395a31::t_125083ed336615 1364-1365,1367,1369,1373
+vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng.sv
+  s_d605cb93395a31::t_f6e58c9274310b 137-139,143-147,149,154,156-159,161,166,170,175,179,186,191,199,203
+vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_cmd_stage.sv
+  s_d605cb93395a31::t_f8cfab425fb1a9 510,514,545,547
+vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_core.sv
+  s_d605cb93395a31::t_560d0edb8c03cf 1026,1029-1033
+vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_ctr_drbg.sv
+  s_d605cb93395a31::t_8d771f5438b5f7 524,526,528
+vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_main_sm.sv
+  s_d605cb93395a31::t_30bdbf11d81de4 133,135
+vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_reg_top.sv
+  s_d605cb93395a31::t_159af04c2313ac 2064-2065,2067,2069,2073
+vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_state_db.sv
+  s_d605cb93395a31::t_140640f339912e 156
+vendor/lowRISC/opentitan/upstream/hw/ip/dma/rtl/secure_dma.sv
+  s_d605cb93395a31::t_91525d3a6367d1 1547-1551,1553-1554,1556-1559,1561,1564,1568,1571,1574,1581
+vendor/lowRISC/opentitan/upstream/hw/ip/dma/rtl/secure_dma_reg_top.sv
+  s_d605cb93395a31::t_b66aea0bbc1b4a 3756-3757,3759,3761,3765
+vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn.sv
+  s_d605cb93395a31::t_fa1677cf5999b7 116-117,121,125,131,134,138,141,144,146,150,155,160,163,167,170,175
+vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_ack_sm.sv
+  s_d605cb93395a31::t_f50e422571ed68 121,125
+vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_core.sv
+  s_d605cb93395a31::t_1c35914d93df72 1002,1006
+vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_main_sm.sv
+  s_d605cb93395a31::t_acd48bd67349d2 235,239
+vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_reg_top.sv
+  s_d605cb93395a31::t_02d7cf28afd92a 1646-1647,1649,1651,1655
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src.sv
+  s_d605cb93395a31::t_7813529cab3a4e 79,83,85,283-284,287-288,290,294,297-303,306,309-311,314,319,326,333,339,344,348,352,356,359,362,365,368,371,374,378,382,386,390,394,398,402,406,410,414,418,422,426,430,434,438,442,446,450,453,457,460,464,467,471,474,479
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_core.sv
+  s_d605cb93395a31::t_25870990b259da 1100,1205,2700,2715,3125,3130,3172,3203,3221,3230,3251,3271,3344,3373,3412,3417,3423,3427,3437
+vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_reg_top.sv
+  s_d605cb93395a31::t_04e6c1d459ed80 3771-3772,3774,3776,3780
+vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv
+  s_d605cb93395a31::t_3be72199da8ff3 937,940,942,945,950,954-958,964
+vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac_core.sv
+  s_d605cb93395a31::t_ea5c0f118da813 499-500
+vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac_reg_top.sv
+  s_d605cb93395a31::t_ff4415332c7e82 2637-2638,2640,2642,2646
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/keccak_2share.sv
+  s_d605cb93395a31::t_273b33d6b5191e 336,339-341,347
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/keccak_round.sv
+  s_d605cb93395a31::t_f514224f2954f8 588,591,594,597,600,606,608
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac.sv
+  s_d605cb93395a31::t_4188531b9f3647 184,189,194,357,432,562,580,608,857,1488,1539-1545,1548,1551,1555,1557,1559,1563-1567,1569-1570,1574,1577,1581,1588,1593,1601
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_app.sv
+  s_d605cb93395a31::t_5ad39ab6126a3f 320,904-905,909
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_core.sv
+  s_d605cb93395a31::t_f25790400f2770 368,454,458-460,464-465,468
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_entropy.sv
+  s_d605cb93395a31::t_2b8a14feccf57f 353,458,739,762,775
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_errchk.sv
+  s_d605cb93395a31::t_b8b61ca9ecd3e8 386,389,469
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_msgfifo.sv
+  s_d605cb93395a31::t_6715fe07763c67 274,277,280,283
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_reg_top.sv
+  s_d605cb93395a31::t_abb22041cb89d9 3315-3316,3318,3320,3324
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/sha3.sv
+  s_d605cb93395a31::t_d4da206e71d2a2 500,509-510,515,517,521,526,529
+vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/sha3pad.sv
+  s_d605cb93395a31::t_741fc1bb8fd95b 740,746,749-751,756,759,762,770,809,812,814-816,821,823,830,836,842,849,854,860,866,871,876,881-884
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn.sv
+  s_d605cb93395a31::t_4a82e9fd9bbc87 121-122,466,499-502,750-753,774-776,920,1257,1273,1281,1313,1323,1343,1350,1359,1367,1375,1384,1389,1396,1402,1410-1418,1421,1426-1427,1430,1438,1444,1446-1447,1449,1454,1459,1465,1470,1475,1482,1488,1493,1499,1504,1509,1515,1520,1525
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_alu_bignum.sv
+  s_d605cb93395a31::t_d7b6d981208129 213,239,248,449,566,571,574,1164,1213,1218,1229,1235,1238,1245,1253,1257,1261,1266,1270,1274,1279,1285,1290,1295
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_controller.sv
+  s_d605cb93395a31::t_993b8b8b8bb4e2 545,548,685,690-691,693,697,1078,1088,1382,1423,1575
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_core.sv
+  s_d605cb93395a31::t_d07ad976f2f8e4 106,592,1028-1040,1043-1044,1046,1048,1053,1061,1071,1075,1082,1086
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_decoder.sv
+  s_d605cb93395a31::t_46baed9cc2eeed 1180,1184,1189,1193,1198-1200
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_instruction_fetch.sv
+  s_d605cb93395a31::t_23f7705fe11d58 482-483
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_kmac_if.sv
+  s_d605cb93395a31::t_be06e8f447547a 1-937
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_loop_controller.sv
+  s_d605cb93395a31::t_282d38109b8d43 180,252,322-323,329
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_lsu.sv
+  s_d605cb93395a31::t_7d200de774bce1 129,131
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_mac_bignum.sv
+  s_d605cb93395a31::t_245eaf4a845418 429,676,744
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_mac_bignum_fsm.sv
+  s_d605cb93395a31::t_8eba9443227a4e 343,383,391
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_predecode.sv
+  s_d605cb93395a31::t_65bcc7de90fd69 902-904
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_reg_top.sv
+  s_d605cb93395a31::t_ca82ab9ac74d8c 1154-1155,1157,1159,1163
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_rf_base.sv
+  s_d605cb93395a31::t_9687e038fc7994 243-244
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_rf_bignum.sv
+  s_d605cb93395a31::t_ca78ed8fde0019 181,185,191-192
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_rf_bignum_ff.sv
+  s_d605cb93395a31::t_b57b38263ff0bf 68
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_rnd.sv
+  s_d605cb93395a31::t_4e67c043655397 206
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_scramble_ctrl.sv
+  s_d605cb93395a31::t_1861f3d0ab2790 258
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_sec_add.sv
+  s_d605cb93395a31::t_78600bb2b50c2f 1-325
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_start_stop_control.sv
+  s_d605cb93395a31::t_c3434b47c22ddb 71-72,427,466,477
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_vec_adder.sv
+  s_d605cb93395a31::t_0d57130c27fe8a 115
+vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_vec_transposer.sv
+  s_d605cb93395a31::t_f653d16da39b5f 91,93
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_receiver.sv
+  s_d605cb93395a31::t_af567df896bd50 274,279-282,287-289,295,300,302,306,312,320,330,337,345,355,361,371,377,384
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_sender.sv
+  s_d605cb93395a31::t_9c5a242cc07e50 300,302,315,317,322,324,327,334,348,350,355-356,358,363,368,371-373,375-376,380,383,387,393-396
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_fixed.sv
+  s_d605cb93395a31::t_5c086550c0da51 41,141-143,146,149,151,153,155,157,159,161,163,167
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_ppc.sv
+  s_d605cb93395a31::t_4cbce7550b3d9a 57,124-126,129,134,136,138,140,142,144,146,148,152,156,159,170-171,174-177,180,184,193,208
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv
+  s_d605cb93395a31::t_d75585ddb6edfc 64,205-207,210,215,217,219,221,223,225,227,229,233,237,240,251-252,255-258,261,265,274,289
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv
+  s_d605cb93395a31::t_147940dbec22fb 1-31,33,39,48,55-112,115-117,119-121,123-126,128-130,132-133,136-145,147,150-152,154,157-159,161,164-171,185,190-191
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert_sec_cm.svh
+  s_d605cb93395a31::t_8a1df18d7639f7 20-21,24,31,36-39,50-53,61-62,64-65,67-68,70-71,73-74,77-78,90-91,93-94,96-97,99-100,102-103,106-107,115-121,123-124,126-127,129-130,132-133,135
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert_standard_macros.svh
+  s_d605cb93395a31::t_0c2636ce07f7a8 7-11,13-19,25-26,34,37,40-41,49,52,54-55,60,63,66-67,84-86,88-90,92-93,96-98,100-101,104-106,108-109,111-112,115-118,120-121,124-126,128-134
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert_yosys_macros.svh
+  s_d605cb93395a31::t_42d4d2031b1697 8,13,18,24,28,30-32,34,39,45,47,52,57
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_clock_meas.sv
+  s_d605cb93395a31::t_9f4c5023232179 266,270,274
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count.sv
+  s_d605cb93395a31::t_a4629ca9e9b86b 163,187,190,193,196,200,208,218,228,237,242,247,253,263,268,273,279,289,300,302,310
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_decode.sv
+  s_d605cb93395a31::t_589e685402ece8 258,260-262,266,271,279,285,291,297,307,310,313,318,329,333-335,337
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_dom_and_2share.sv
+  s_d605cb93395a31::t_76466b4805b6b1 153,163,170
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_double_lfsr.sv
+  s_d605cb93395a31::t_10fbdc479c86f8 108,111
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_edn_req.sv
+  s_d605cb93395a31::t_49589433a48417 156,174-175,199
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_esc_receiver.sv
+  s_d605cb93395a31::t_bbead554e597f4 268-269,271-272,274,276,278,282,286,290,292
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_esc_sender.sv
+  s_d605cb93395a31::t_cae764eaae8c9d 238-240,243,245,247,251,256,258,262,264,266-267,269,271,273
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_assert.svh
+  s_d605cb93395a31::t_b3beed71b12bd7 18-19,24,39-40,47,50-51
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv
+  s_d605cb93395a31::t_79a5a0b0918994 34,293,295
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async_sram_adapter.sv
+  s_d605cb93395a31::t_a8c757a08f2caa 386,389,392,395,398,403,407,412,416,419,422,427-428,431,434,439
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
+  s_d605cb93395a31::t_6791b2158ab0e3 45,211-212,217,224-227,229,239
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
+  s_d605cb93395a31::t_dd0ba95161e7bb 146
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_flop_macros.sv
+  s_d605cb93395a31::t_43c0513fcadf69 51,59
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_gate_gen.sv
+  s_d605cb93395a31::t_c8f7d97e25f535 60-61
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_gf_mult.sv
+  s_d605cb93395a31::t_b513243534b99e 55-56
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_hpc2.sv
+  s_d605cb93395a31::t_e58c94debe83f0 5-241
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_intr_hw.sv
+  s_d605cb93395a31::t_c07ad922d1caa0 110
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_keccak.sv
+  s_d605cb93395a31::t_9018717bd37805 78-81
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_lc_and_hardened.sv
+  s_d605cb93395a31::t_bb208b50631c81 60-61
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_lc_or_hardened.sv
+  s_d605cb93395a31::t_af3b49796577a6 67-68
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_lc_sync.sv
+  s_d605cb93395a31::t_8fd0728fb5f2a8 36,65,70,95,114
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_lfsr.sv
+  s_d605cb93395a31::t_747a47ca1dee3b 261,268,291-292,302,316-317,327,337,427,436-439,449-451,498,545,558,564-565,568,571,573,576-577,584,592,597,626,628
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_max_tree.sv
+  s_d605cb93395a31::t_59868a643f9ee9 40,107,144-149
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_msb_extend.sv
+  s_d605cb93395a31::t_255d607ba2611f 17
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi12_dec.sv
+  s_d605cb93395a31::t_71caf970c0ad87 45
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi12_sender.sv
+  s_d605cb93395a31::t_c9f26f41d54411 92
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi12_sync.sv
+  s_d605cb93395a31::t_477c0149df73da 41,114,119-120,125,130,157,176
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi16_dec.sv
+  s_d605cb93395a31::t_c993dfc8acdc5a 45
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi16_sender.sv
+  s_d605cb93395a31::t_a219ee1bace22a 92
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi16_sync.sv
+  s_d605cb93395a31::t_2baaf154ebe0d0 41,114,119-120,125,130,157,176
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi20_dec.sv
+  s_d605cb93395a31::t_0cf868ca5fd13b 45
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi20_sender.sv
+  s_d605cb93395a31::t_8232ac8231aedc 92
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi20_sync.sv
+  s_d605cb93395a31::t_65b1fa802aac88 41,114,119-120,125,130,157,176
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi24_dec.sv
+  s_d605cb93395a31::t_618ed907046de5 45
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi24_sender.sv
+  s_d605cb93395a31::t_74776648d5819b 92
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi24_sync.sv
+  s_d605cb93395a31::t_f6c8fd1d907e2e 41,114,119-120,125,130,157,176
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi28_dec.sv
+  s_d605cb93395a31::t_ca10248aa43d6e 45
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi28_sender.sv
+  s_d605cb93395a31::t_feaeba405017de 92
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi28_sync.sv
+  s_d605cb93395a31::t_bb5b3f65797f3e 41,114,119-120,125,130,157,176
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi32_dec.sv
+  s_d605cb93395a31::t_cd1123b5bbdf10 45
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi32_sender.sv
+  s_d605cb93395a31::t_dc6c477c9007e3 92
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi32_sync.sv
+  s_d605cb93395a31::t_dfe3179be72ad4 41,114,119-120,125,130,157,176
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi4_dec.sv
+  s_d605cb93395a31::t_75846d9cd0dbc6 45
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi4_sender.sv
+  s_d605cb93395a31::t_151365f81eb132 92
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi4_sync.sv
+  s_d605cb93395a31::t_85c152167df26a 41,114,119-120,125,130,157,176
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi8_dec.sv
+  s_d605cb93395a31::t_7d479640577f53 45
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi8_sender.sv
+  s_d605cb93395a31::t_46b3039a516500 92
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi8_sync.sv
+  s_d605cb93395a31::t_cf160c762c483c 41,114,119-120,125,130,157,176
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
+  s_d605cb93395a31::t_882671b443185c 31,170,309,448,587,726,865,1004
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_multibit_sync.sv
+  s_d605cb93395a31::t_892bdba8709e08 56,80,101
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_onehot_check.sv
+  s_d605cb93395a31::t_ecdab98e2cd01f 51-54,112,119,122,133,151,153
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_onehot_mux.sv
+  s_d605cb93395a31::t_1a11f4641fbd5f 47
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_packer.sv
+  s_d605cb93395a31::t_0a8af6748418ca 309,314,317,321,325,329,333,337,342,348,356-357,361,366
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_packer_fifo.sv
+  s_d605cb93395a31::t_a644b3aae40b0e 173,177
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_present.sv
+  s_d605cb93395a31::t_92e51671fcb5ad 151,153-154,156
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv
+  s_d605cb93395a31::t_9a9ea54cb0dd6a 237,239
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_pulse_sync.sv
+  s_d605cb93395a31::t_6c6f5afafe6f7a 43,67,101
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv
+  s_d605cb93395a31::t_7d35f77a5d0379 41,58
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
+  s_d605cb93395a31::t_a31c857e86c0bb 73,148,232,235,292-293
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_scr.sv
+  s_d605cb93395a31::t_d0646c05429d61 116-118
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1r1w.sv
+  s_d605cb93395a31::t_d9f0708c2e60d4 61
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1r1w_async_adv.sv
+  s_d605cb93395a31::t_5634ae1b44da74 61,145,148,180-181
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_2p.sv
+  s_d605cb93395a31::t_715e39dca1df71 66,69
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_2p_async_adv.sv
+  s_d605cb93395a31::t_30ac03b2a10df5 66,173,176,178,231-232
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_reg_cdc.sv
+  s_d605cb93395a31::t_8d531c11db0fcb 83,164,220-221,226
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_reg_cdc_arb.sv
+  s_d605cb93395a31::t_4cd84d11ee7d96 133,170,174,180,241,266
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rom_adv.sv
+  s_d605cb93395a31::t_3c6f1350728aff 53
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2.sv
+  s_d605cb93395a31::t_3b9c69f3f270c5 183,185,187,278,280,282,523
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2_pad.sv
+  s_d605cb93395a31::t_2aa3f7fb9c8d14 384
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sha2_pkg.sv
+  s_d605cb93395a31::t_f3e34e8a07364c 223,233
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_slicer.sv
+  s_d605cb93395a31::t_dd71fc3f202a89 29
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sparse_fsm_flop.sv
+  s_d605cb93395a31::t_4cd9b263f8214e 42,61,64
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sram_arbiter.sv
+  s_d605cb93395a31::t_9a6a80758b1cd6 118
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_shadow.sv
+  s_d605cb93395a31::t_54366b12f73e1a 49
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sum_tree.sv
+  s_d605cb93395a31::t_b709cf7823ff15 33,98,119-121
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sync_reqack.sv
+  s_d605cb93395a31::t_6760e75e565d52 330,349,354,358,392,395
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sync_reqack_data.sv
+  s_d605cb93395a31::t_6f75443da88555 100,120,125,149,168,172
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_trivium.sv
+  s_d605cb93395a31::t_f90befefafcecb 314
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_util_pkg.sv
+  s_d605cb93395a31::t_5cc4de558cbf82 108
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_xoshiro256pp.sv
+  s_d605cb93395a31::t_d922d6c40c5019 85
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_div.sv
+  s_d605cb93395a31::t_8321181a29ced9 22
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
+  s_d605cb93395a31::t_95a7f22865af1b 24-25
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flash.sv
+  s_d605cb93395a31::t_19b851cdfc1a28 145
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_pad_wrapper.sv
+  s_d605cb93395a31::t_05e6543b43a017 33
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv
+  s_d605cb93395a31::t_23f06b7a83ca9d 40
+vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_controller_data_fifos.sv
+  s_d605cb93395a31::t_e28876f1301ff5 137
+vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_controller_fsm.sv
+  s_d605cb93395a31::t_4253b87e4e9887 615,618-619
+vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_controller_shift_register.sv
+  s_d605cb93395a31::t_cc66faa8710ea1 61
+vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_host.sv
+  s_d605cb93395a31::t_4159b2e0563500 170,637-644,647-651,657,660
+vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_host_reg_top.sv
+  s_d605cb93395a31::t_5724f536ef5bb0 2044-2045,2047,2049,2053
+vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_host_window.sv
+  s_d605cb93395a31::t_25dfdd25a1d96b 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "5e22cde4f745bfc62e54f7bb9d73b69cb6ff6846",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

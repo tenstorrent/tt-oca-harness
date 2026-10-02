@@ -1,0 +1,87 @@
+hw/common/dv/fw/sep.h
+  s_d605cb93395a31::t_2079b77beedf5f 64-69,74-80,84-93,95-99
+hw/sys/sep/dv/fw/bootcode/include/boot_flash.h
+  s_d605cb93395a31::t_836c007de4ef62 22-24
+hw/sys/sep/dv/fw/bootcode/src/lifecycle.c
+  s_d605cb93395a31::t_247621d514a850 35-36
+hw/sys/sep/dv/fw/bootcode/src/manifest_crypto.c
+  s_d605cb93395a31::t_78511c2840cf35 331-332
+hw/sys/sep/dv/fw/bootcode/src/manifest_load.c
+  s_d605cb93395a31::t_195631914aa06a 359-360
+hw/sys/sep/dv/fw/bootcode/src/pll_init.c
+  s_d605cb93395a31::t_c647541cfe0a1a 24-25,47-49
+hw/sys/sep/dv/fw/bootcode/src/rom_main.c
+  s_d605cb93395a31::t_3f06564610b73e 590
+hw/sys/sep/dv/fw/bootcode/src/sep_ot_spi.c
+  s_d605cb93395a31::t_4f3e557ce9dcea 126,259-260,483-484,487-488,566-567
+hw/sys/sep/dv/fw/tests/common/sep_interop_protocol.h
+  s_d605cb93395a31::t_63c134514b5f54 28-32,35-41,44-45,48-56,64,88-89,92,98
+hw/sys/sep/dv/fw/tests/common/sep_mbox_irq_protocol.h
+  s_d605cb93395a31::t_83a3727f11f4f6 28-30,52,54,56-57,59-64,66,68-69,71-76,80-81,86,92,96-99,102-103,106-108,110-115,117-120,124-127,144-145,148-153,174-175
+hw/sys/sep/dv/fw/tests/common/sep_smc_bringup.h
+  s_d605cb93395a31::t_f77aa0c45ed19e 32-37,39,42,59,62-65
+hw/sys/sep/dv/fw/tests/common/smc_sep_xbar_protocol.h
+  s_d605cb93395a31::t_4068cd0b7e904e 31-37,40-43,46-49,52-54,57-58,60-61,63,66-67,70,76,80,82-83,89-91,93-94,96-106,111-116
+hw/sys/sep/dv/fw/tests/common/smu_cla_sep_cpu_debug_protocol.h
+  s_d605cb93395a31::t_bc073cc776ef6d 29-32,36-37,42-51,55-56,59,62-64,67,69-72,77,79-86
+hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h
+  s_d605cb93395a31::t_875b513958c6e8 56-59,64-67,71-74,77-78,81-84,89,106-110,113-114,117,120-123,126-129,132-140,155,158,161,164,197-198,203-206,213,217,219-220,228
+hw/sys/sep/dv/fw/tests/common/smu_smc_stall_protocol.h
+  s_d605cb93395a31::t_8a6f87c0eb3329 13-16,37-44,48-50,54-55,59-63,66-69,72-76,83-84,88,99-104
+hw/sys/sep/dv/fw/tests/sep_smc_interop/sep_smc_interop.c
+  s_d605cb93395a31::t_3b471f3e5d1133 5,23-26,29-32,41,43-47,50-51,54-60,67,72,81-82,85-86,90-91,97,106,117,138-139,141-142,148,150,160,162,174
+hw/sys/sep/dv/fw/tests/sep_smc_mbox_irq/sep_smc_mbox_irq.c
+  s_d605cb93395a31::t_d1e8ed6253c133 5,25-28,31-34,39,41-43,46-48,56,61,70-71,74-75,79-80,85,93,111-112,138
+hw/sys/sep/dv/fw/tests/sep_smc_xbar/sep_smc_xbar.c
+  s_d605cb93395a31::t_586880c835bebe 6,31-32,36-37,39-42,46,51,69,79,88,111,155,161,167
+hw/sys/sep/dv/fw/tests/sep_smu_aes/sep_smu_aes.c
+  s_d605cb93395a31::t_ac12272638c16e 16,20,22,24,43,49,55
+hw/sys/sep/dv/fw/tests/sep_smu_bidirect/sep_smu_bidirect.c
+  s_d605cb93395a31::t_4cbcafe51e8d5d 8-10,13-15,17-20,31-32,35-40,49,53,59,68,82-84,96,109,154,160,166
+hw/sys/sep/dv/fw/tests/sep_smu_boot_health/sep_smu_boot_health.c
+  s_d605cb93395a31::t_e4bd81543c4df8 16-17,19-23,26-29,32-35,38
+hw/sys/sep/dv/fw/tests/sep_smu_dma/sep_smu_dma.c
+  s_d605cb93395a31::t_00d7e67f95eb99 15,20-24,27-32,43,49,55
+hw/sys/sep/dv/fw/tests/sep_smu_efuse/sep_smu_efuse.c
+  s_d605cb93395a31::t_d030a0c85042e2 15,20-28,35,41,47
+hw/sys/sep/dv/fw/tests/sep_smu_ext_axi/sep_smu_ext_axi.c
+  s_d605cb93395a31::t_36edde78a8c8f4 6-7,53-56,59-67,78-80,85,99,103-104,108-109,114,123,134,150-152,177,183,189
+hw/sys/sep/dv/fw/tests/sep_smu_modules/sep_smu_modules.c
+  s_d605cb93395a31::t_f6ab59bb62df67 30-31,35,44,49,61-63,66-67,70-71,74-79,81-86,88-93,97-99,108-112,114-119,124,133-134,136-137,153,167,212,222,224,226-227,229,238,250,274-275,297,306-310,315-318,330-331,333,359,365,371,377,383,389,395,401,407,413-417,421-422,424-427
+hw/sys/sep/dv/fw/tests/sep_smu_otbn/sep_smu_otbn.c
+  s_d605cb93395a31::t_1f09c13f870c67 17,27,33,39
+hw/sys/sep/dv/fw/tests/sep_smu_remap/sep_smu_remap.c
+  s_d605cb93395a31::t_1616fa22aa51ac 18,21,37,45,55
+hw/sys/sep/dv/fw/tests/sep_smu_sanity/sep_smu_sanity.c
+  s_d605cb93395a31::t_9dcf8a689d5d39 63-67,74-75,79,94,98,109,114-115,118,160,194-196,199-200,202,212,225,230-234,236,285,325-328,330,339,349-350,354-355,359,363,370-374,377-380,385-387,390-392,396-398,401-402,405-407,412,428,454,456,458
+hw/sys/sep/dv/fw/tests/sep_smu_spi/sep_smu_spi.c
+  s_d605cb93395a31::t_bcfbdb308dc69f 25-27,32,52,62,78,89,91-92,100-101,103,109-110,112,127,133,139,145,151,157,163,169,175
+hw/sys/sep/dv/fw/tests/sep_smu_spi_mux/sep_smu_spi_mux.c
+  s_d605cb93395a31::t_5bce62b5091d58 14-17,26,33,44
+hw/sys/sep/dv/fw/tests/sep_smu_wdt/sep_smu_wdt.c
+  s_d605cb93395a31::t_6540f383271cc9 17,30,36,42
+hw/sys/sep/dv/fw/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.c
+  s_d605cb93395a31::t_fe06892a960f50 7,25-28,31-34,37,40,77
+hw/sys/sep/dv/fw/tests/smu_smc_stall_sep/smu_smc_stall_sep.c
+  s_d605cb93395a31::t_a6735176878aa1 7,23-26,29-32,35,42,59-60,67-68,80-81,89
+hw/sys/sep/lint/sep.spyglass.waiver.tcl
+  s_d605cb93395a31::t_9429afbd14a6c7 1
+hw/sys/smc/lint/smc.spyglass.waiver.tcl
+  s_d605cb93395a31::t_1b90d49450ca4d 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "5e4e68e76c7aaf8f39f1c71b99c954fa4fda3787",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

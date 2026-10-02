@@ -1,0 +1,81 @@
+doc/integrator/src/revision.adoc
+  s_735d663e4c2165::t_6a01834d51a484 18-21
+doc/trm/src/architecture.adoc
+  s_735d663e4c2165::t_f79f24a0ecc3b2 255-266,324-334
+doc/trm/src/revision.adoc
+  s_735d663e4c2165::t_dabb747cb5205d 160-162
+hw/ip/uart/uart_16550/doc/interface.adoc
+  s_735d663e4c2165::t_53c4e2ccff4faf 57-65,72-75,78-79,82-83,86-87,94-97
+hw/ip/uart/uart_16550/doc/programming.adoc
+  s_735d663e4c2165::t_598eb54442d0e5 40-79
+hw/ip/uart/uart_16550/doc/architecture.adoc
+  s_735d663e4c2165::t_b49dc1b467a869 32-37,53-55
+hw/sys/smc/doc/cpu.adoc
+  s_735d663e4c2165::t_02979a3c086467 105-109
+doc/integrator/src/index.adoc
+  s_735d663e4c2165::t_8f0503673e1bc0 285-286
+  s_735d663e4c2165::t_123c54a77bf307 10-11,55-56,128,131,162-177,329-330,338-341,365-368,375,442-447,456-460,574-576,776-789,823-833
+hw/ip/uart/uart_16550/doc/index.adoc
+  s_735d663e4c2165::t_607c067d2ce029 26-27
+hw/sys/sep/doc/periphs.adoc
+  s_735d663e4c2165::t_d078166fc3aab4 318
+  s_c8ce40a7fc1aa0::t_d840a24d1dccb0 391-394
+  s_c8ce40a7fc1aa0::t_cac5d9edcd4e2c 412-415
+doc/trm/src/index.adoc
+  s_735d663e4c2165::t_0ceeea21ce8074 10-11
+hw/sys/smc/doc/interrupts.adoc
+  s_735d663e4c2165::t_74867e0f5d3f28 59,102,382,384-389
+doc/trm/src/aou.placeholder.adoc
+  s_c8ce40a7fc1aa0::t_fecc0db17ea608 8-9,11-12
+hw/sys/smc/doc/pll.adoc
+  s_c8ce40a7fc1aa0::t_76059ac6c8b467 7-10
+hw/sys/smc/doc/index.adoc
+  s_c8ce40a7fc1aa0::t_7d5361b37b59a8 11
+hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc
+  s_c8ce40a7fc1aa0::t_5d421cbd5aedd3 46-58
+hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
+  s_c8ce40a7fc1aa0::t_a86d93c82b11de 53-65
+hw/sys/sep/doc/crypto.adoc
+  s_c8ce40a7fc1aa0::t_691cc0a789d2f7 19-21
+  s_c8ce40a7fc1aa0::t_f9816e47604b29 146,148-149
+  s_c8ce40a7fc1aa0::t_79a1d85cb83933 80-83
+  s_c8ce40a7fc1aa0::t_5909689eee0583 187-190
+  s_c8ce40a7fc1aa0::t_c0c17985c20926 216-219
+hw/sys/sep/doc/memory_map.adoc
+  s_c8ce40a7fc1aa0::t_91c7638133bd89 184-185,189-232,240-249
+  s_c8ce40a7fc1aa0::t_d7d04e65e72255 233-239
+hw/ip/drbg/doc/architecture.adoc
+  s_c8ce40a7fc1aa0::t_63a1bdac2cd520 59
+  s_c8ce40a7fc1aa0::t_4d02c00a2ba4c4 56-58
+hw/ip/key_manager/doc/architecture.adoc
+  s_c8ce40a7fc1aa0::t_59c255bcdb2876 22-24,26-27
+  s_c8ce40a7fc1aa0::t_a94203485750a6 25
+hw/sys/sep/doc/cpu.adoc
+  s_c8ce40a7fc1aa0::t_a76f85172aee56 180-184
+hw/sys/smc/doc/periphs.adoc
+  s_c8ce40a7fc1aa0::t_7331468b3d3b1f 57-58,102-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f3339466fb612fe4a78acec56fb255ec8e023898",
+  "prompts": {},
+  "sessions": {
+    "s_735d663e4c2165": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0a51313d-04e6-40c2-b49e-afad05839e75",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    },
+    "s_c8ce40a7fc1aa0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0d5abf2b-6a5c-43f3-8443-62ecff30dc52",
+        "model": "grok-4.6"
+      },
+      "human_author": null
+    }
+  }
+}

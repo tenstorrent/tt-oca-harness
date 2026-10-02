@@ -1,0 +1,30 @@
+.github/workflows/ocah-project-curator.md
+  s_8a9b8e56b5dc3f::t_c206ca88ab5280 98-100,102,106
+  s_8a9b8e56b5dc3f::t_ffa4e87ff690b7 6
+.github/ISSUE_CURATION.md
+  s_8a9b8e56b5dc3f::t_9a3e3457e7dfd0 42-43
+doc/contributing/src/pull-requests.adoc
+  s_8a9b8e56b5dc3f::t_113add64665d30 16
+doc/contributing/src/alignment.adoc
+  s_8a9b8e56b5dc3f::t_2377b83678d784 12
+AGENTS.md
+  s_8a9b8e56b5dc3f::t_c9fcd545307d8a 389-390
+.github/scripts/ingest_github.py
+  s_8a9b8e56b5dc3f::t_32308f904c550b 351,356,374,380,382
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "15cc68b322cdee13a3d6dbfd4bf0ed0d18f68fdb",
+  "prompts": {},
+  "sessions": {
+    "s_8a9b8e56b5dc3f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "04203c6f-c215-4b0e-814b-5c8666884008",
+        "model": "grok-4.6"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}

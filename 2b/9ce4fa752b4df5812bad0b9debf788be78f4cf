@@ -1,0 +1,23 @@
+hw/sys/smc/dv/fw/tests/occp_undersize_header_test/main.c
+  s_d605cb93395a31::t_d5c7b79f155a40 57-64,67,71-77
+hw/sys/smc/dv/fw/tests/occp_interface_unlatch_test/main.c
+  s_d605cb93395a31::t_c449406f1401c7 308,311,313
+hw/sys/smc/dv/fw/tests/occp_interface_latch_test/main.c
+  s_d605cb93395a31::t_7f1cf12f5b777d 111,114,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2b9ce4fa752b4df5812bad0b9debf788be78f4cf",
+  "prompts": {},
+  "sessions": {
+    "s_d605cb93395a31": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a9e67567-60b6-4a6c-899c-7f93f02a4672",
+        "model": "grok-4.5"
+      },
+      "human_author": "Alessandro Ottaviano <aottaviano@tenstorrent.com>"
+    }
+  }
+}
