@@ -7840,8 +7840,10 @@ refusal.
 . Lock one identity OTP bit with `CMD_OTP_READ_LOCK_COLD`; refuse a reserved bit
 and a zero-length payload.
 . Pulse SEP mailbox `CTRL.FLUSH`, receive `RESP_RECOVERABLE_FAULT`, ACK it, and
-prove `CMD_STAT` clears the latched bit. The following shred is the key command
-that must be accepted after the ACK.
+prove `CMD_STAT` clears the latched bit. The following transfer and shred are
+the key commands that must be accepted after the ACK.
+. Transfer the second known key to AES again and encrypt one block, then shred
+the AES key and start the same block: the engine must produce no output.
 
 *Randomization*: RANDCFG. Generate / transfer / revoke-or-shred /
 illegal-to-error walk every seed. The generated key size, the extra transfer
@@ -7901,9 +7903,9 @@ slot, so over this surface an erase always frees.
 |CHK-OTP
 |`CMD_OTP_READ_LOCK_COLD` of one identity bit returns success with that bit set in the echo; a reserved bit returns the invalid-argument code; a zero-length payload returns the invalid-length code.
 |CHK-RECOV
-|SEP `CTRL.FLUSH` posts `RESP_RECOVERABLE_FAULT` with the flushed-by-SEP code; `CMD_STAT` reports the latched bit; aggregator bit 31 is 1; `CMD_RECOV_ACK` clears the STAT bit and the aggregator bit. The following shred is the key command accepted after the ACK.
+|SEP `CTRL.FLUSH` posts `RESP_RECOVERABLE_FAULT` with the flushed-by-SEP code; `CMD_STAT` reports the latched bit; aggregator bit 31 is 1; `CMD_RECOV_ACK` clears the STAT bit and the aggregator bit. The following transfer and shred are the key commands accepted after the ACK.
 |CHK-GONE
-|A shredded engine refuses to start. After a final `CMD_ENGINE_SHRED` the AES produces no output within a bounded window, which is the only frontdoor evidence the shred reached the key: the engine key registers are write-only. Runs last, because an engine parked waiting for a key stays parked.
+|A shredded engine refuses to start. After a final `CMD_ENGINE_SHRED` the AES produces no output within a bounded window, which is the only frontdoor evidence the shred reached the key: the engine key registers are write-only. Positive control: right before the shred, the second known key is transferred to AES again and the same sideload start gives output inside the same bounded window and encrypts to its golden, so the key is live at the shred, the window is long enough for a keyed block, and the shred is the only change between the two starts. Runs last, because an engine parked waiting for a key stays parked.
 |CHK-ALIVE
 |After every refusal `CMD_STAT` succeeds and reports no latched recoverable error. The second half is what gives CHK-DEST and CHK-CLOSED their meaning: while a recoverable fault is pending the KM refuses every key command with the same failure code those two expect, before it looks at the arguments at all, so a faulted KM would otherwise satisfy both without the policy they name being exercised.
 |===
