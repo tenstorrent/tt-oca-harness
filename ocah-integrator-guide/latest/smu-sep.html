@@ -234,9 +234,12 @@ standalone out-of-context IP.</p>
 </div>
 <div class="paragraph">
 <p>For detailed architectural documentation about the SEP internal design, refer to
-the dedicated SEP documentation located in <code>hw/sys/sep/doc/</code>. The SEP hardware
-overview and interconnect fabric are described in
-<code>hw/sys/sep/doc/overview.adoc</code> and <code>hw/sys/sep/doc/fabric.adoc</code> respectively.</p>
+the dedicated documentation located in the SEP reference manual. The SEP
+hardware overview and interconnect fabric are described in the SEP
+<a href="sep/overview.html" class="xref page">Overview</a>
+and
+<a href="sep/fabric.html" class="xref page">Interconnect</a>
+sections.</p>
 </div>
 </div>
 </div>
@@ -244,7 +247,7 @@ overview and interconnect fabric are described in
 <h2 id="module-overview"><a class="anchor" href="#module-overview"></a><a class="link" href="#module-overview">1. Module Overview</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The <code>sep.sv</code> module provides the complete SEP functionality with logic-level
+<p>The module in <code>sep.sv</code> provides the complete SEP functionality with logic-level
 interfaces. Technology-specific components&#8201;&#8212;&#8201;SRAM, ROM, and eFuse shims&#8201;&#8212;&#8201;are
 instantiated by the adopter outside SEP, following the same vendor-neutral
 philosophy used for the SMC.</p>
@@ -374,13 +377,14 @@ asymmetry.</p>
 <h2 id="efuse-and-lifecycle"><a class="anchor" href="#efuse-and-lifecycle"></a><a class="link" href="#efuse-and-lifecycle">6. eFuse and Lifecycle</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>SEP has its own eFuse bank. Instantiate a separate SHIM and physical
-eFuse bank; do not share the SMC&#8217;s. The SHIM contract is
-<a href="#smc-efuse-connection">[smc-efuse-connection]</a>. On <code>sep.sv</code> connect <code>efuse_bank_ctrl_*</code> and
-<code>efuse_shim_command_*</code>. Through the SMU those ports appear as
-<code>sep_efuse_bank_ctrl_*</code> and <code>sep_efuse_shim_command_*</code>. The SEP SHIM control
-CSRs sit at the base of <code>sep_external</code>; see <a href="#efuse-bank-ctrl-window">[efuse-bank-ctrl-window]</a>.
-SEP routes a burst on its first address, so a burst that begins in that window
+<p>SEP has its own eFuse bank. Instantiate a separate SHIM and physical eFuse bank;
+do not share the SMC&#8217;s. The SHIM contract is the
+<a href="smu-smc.html#smc-efuse-connection" class="xref page">eFuse Interface</a>. On <code>sep.sv</code>, connect
+<code>efuse_bank_ctrl_*</code> and <code>efuse_shim_command_*</code>. Through the SMU those ports
+appear as <code>sep_efuse_bank_ctrl_*</code> and <code>sep_efuse_shim_command_*</code>. The SEP SHIM
+control CSRs sit at the base of <code>sep_external</code>; see the
+<a href="smu-smc.html#efuse-bank-ctrl-window" class="xref page">SHIM control address window</a>. SEP
+routes a burst on its first address, so a burst that begins in that window
 carries its later beats to the SHIM. An address that owns no SHIM register must
 return SLVERR and must not alias onto a live register.</p>
 </div>

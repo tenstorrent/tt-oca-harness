@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">smc_reset_unit_pkg</h1>
-<p>Declare types and helpers for the SMC reset unit.</p><p>Defines reset_ctrl_t, the per-subsystem cold and warm resets, hold qualifiers and force-to-reference-clock select. Also declares a select_t enumeration of the reset-unit and FLR register maps and a max() helper; the SMC RTL references neither.</p>
+<p>Declare types and helpers for the SMC reset unit.</p><p>Defines reset_ctrl_t, the per-subsystem cold and warm resets, hold qualifiers and force-to-reference-clock select. Also declares a select_e enumeration of the reset-unit and FLR register maps and a max() helper; the SMC RTL references neither.</p>
 <div class="ocah-reg-html">
 <h2 id="reset_ctrl_t"><code>reset_ctrl_t</code></h2>
 <p>////////////////</p>
@@ -697,10 +697,10 @@
 <tr><td><code>sram_hold</code></td><td><code>logic</code></td><td></td></tr>
 <tr><td><code>debug_hold</code></td><td><code>logic</code></td><td></td></tr>
 </table>
-<h2 id="select_t"><code>select_t</code></h2>
+<h2 id="select_e"><code>select_e</code></h2>
 <p>Enum (<code>logic [NumRegMaps-1:0]</code>)</p>
 <table id="trm-table-2">
-<caption class="title"><a href="#trm-table-2">Table 2</a>. <code>select_t</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
+<caption class="title"><a href="#trm-table-2">Table 2</a>. <code>select_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>RESET_UNIT</code></td><td>2&#x27;d0</td><td></td></tr>
 <tr><td><code>FLR</code></td><td>2&#x27;d1</td><td></td></tr>
 </table>

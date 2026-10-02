@@ -684,10 +684,10 @@
 <h1 class="page">smc_misc_pkg</h1>
 <p>Declare register-map select types for the SMC miscellaneous block.</p><p>Enumerates the misc register targets the misc wrapper demultiplexes: cold scratch, cold-and-warm scratch, chip_config, NDM reset and the error slave. Exposes NumRegMaps for address decode in smc_misc_wrap; the max() helper is unused by the SMC RTL.</p>
 <div class="ocah-reg-html">
-<h2 id="select_t"><code>select_t</code></h2>
+<h2 id="select_e"><code>select_e</code></h2>
 <p>Enum (<code>logic [$clog2( NumRegMaps )-1:0]</code>)</p>
 <table id="trm-table-1">
-<caption class="title"><a href="#trm-table-1">Table 1</a>. <code>select_t</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
+<caption class="title"><a href="#trm-table-1">Table 1</a>. <code>select_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>SCRATCH_COLD</code></td><td>3&#x27;b000</td><td></td></tr>
 <tr><td><code>SCRATCH_COLD_WARM</code></td><td>3&#x27;b001</td><td></td></tr>
 <tr><td><code>CHIP_CONFIG</code></td><td>3&#x27;b010</td><td></td></tr>
