@@ -263,7 +263,10 @@ subordinate port. An internal AXI-Lite crossbar (`axi_lite_xbar`) routes
 transactions to the CTM and external CTPs based on address decoding. The
 crossbar registers all five channels at the subordinate port, so no
 combinational path runs from the port's inputs to its outputs, and each
-channel adds one cycle of latency.
+channel adds one cycle of latency. Each channel's register holds up to two
+beats and keeps its READY high while it holds fewer than two. The crossbar
+serves one CSR access at a time, so the port can accept a second request on
+a channel while the crossbar is still serving the first.
 
 <<ctn-address-allocation-table>> lists the CTM and external-CTP address ranges.
 
