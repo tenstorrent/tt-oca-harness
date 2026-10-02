@@ -25,7 +25,7 @@ regardless of the LC state and the SIP_DIS / SYS_DIS disables.
 SECURE_TM is not a term in the feature-control computation, so SEC_DIS neither
 qualifies nor overrides it. In particular, SEC_DIS does not open the secure scan
 chain to a dump: that chain admits only test commands, and only at
-`secure_tm = 1`, independently of the feature-control bits (see the Life Cycle
+`secure_tm = 1`, independently of the feature-control bits (see the Lifecycle
 Controller chapter, _`secure_tm` and the Secure Scan Chain_).
 
 == Token Activation
@@ -35,8 +35,7 @@ into the SEP via the JTAG port, hashed, and redundantly compared against an
 embedded hash constant. On a match, i.e. hash(SEC_DIS_TOKEN_I) ==
 SEP_SEC_DISABLE_TOKEN_DIGEST, the life-cycle control is overridden to open
 debug access, and the feature-control output follows the SEC_DIS rules in the
-Life Cycle Controller chapter.
-
+Lifecycle Controller chapter.
 A match does not release the SEP reset, which stays held until fuse sensing
 completes. To boot a part whose fuse sensing does not complete, override
 `sep_reset_n` through the SEP slice of the IC_RESET TDR (see
@@ -44,6 +43,35 @@ completes. To boot a part whose fuse sensing does not complete, override
 match are independent JTAG steps: the override alone releases the reset but
 leaves the life-cycle control closed, so recovering such a part for debug
 takes both.
+
+[[sec-dis-fuse-sensing-and-shadow-map]]
+== Fuse Sensing and the Shadow Map
+
+While a SEC_DIS match holds:
+
+* Automatic fuse sensing does not start, and sensing already in progress stops.
+  No further fuse words are loaded into the shadow registers, and fuse sensing
+  does not complete.
+* A read of the eFuse shadow map over the SEP bus completes with OKAY.
+* The SMC eFuse controller receives the SEP security-disable status, so SMC
+  fuse sensing stops and the SMC shadow map opens in the same way.
+
+[[sec-dis-recovery-sequence]]
+== Recovery Sequence
+
+. Present the SEC_DIS token over JTAG as described in the Token Processing
+  chapter, _Token Match Sequence_, and poll `SEC_DISABLE_TOKEN_MATCH` until it
+  reads the match code. The computed digest is now valid.
+. Apply a cold reset. The token arrays, the computed digest and its valid bit
+  survive reset, so the match holds from cold-reset release. Fuse sensing does
+  not start, and every shadow register keeps its reset value instead of the
+  partial contents of an interrupted sense. SEP samples the secure test-mode
+  request one cycle after cold-reset release, instead of at fuse-sensing
+  completion.
+. Override `sep_reset_n` through the IC_RESET TDR to release the SEP reset.
+
+Without the cold reset, the shadow registers hold whatever the failed sense
+loaded before the match, and the secure test-mode request is never sampled.
 
 == Silicon Revision Scope
 
