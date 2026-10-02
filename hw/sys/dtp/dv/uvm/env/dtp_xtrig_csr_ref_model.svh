@@ -12,8 +12,7 @@
 // read of a hole reads 0 across the full word; writes, STATUS reads,
 // unmapped accesses, and non-OKAY completions carry no contract, and a
 // write to a hole leaves the shadow unchanged. No comparison, no reporting.
-// In the cocotb realization the scenarios record each CSR readback against
-// the written value as CHK-XTRIG-CSR evidence.
+// The cocotb twin is env/dtp_xtrig_csr_ref_model.py.
 
 class dtp_xtrig_csr_ref_model extends ocah_ref_model #(ocah_axi_item, dtp_expected_item);
   `uvm_component_utils(dtp_xtrig_csr_ref_model)

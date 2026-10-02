@@ -102,6 +102,7 @@ from .executors.manifest import (
 )
 from .junit import (
     discard_generated_junit,
+    ensure_graded_junit,
     ensure_leaf_junit,
     materialize_interruption_junit,
     materialize_stage_junit,
@@ -4136,7 +4137,7 @@ def run_flow(
         A leaf that ran names its file in `results_xml`; any other gets a file in its graded
         attempt's directory, pointing at the leaf's `result.json` when there is one and at
         the run's otherwise. A marked file in that directory is overwritten; a native file
-        is kept.
+        is kept, with the graded verdict in `graded.xml` beside it when it reads as a pass.
         """
         if args.dry_run or result.stage not in {"sim", "regress"} or result.status == "SKIP":
             return
@@ -4145,6 +4146,7 @@ def run_flow(
         attempt = int((result.metadata or {}).get("attempt") or 0)
         leaf_dir = item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=nest)
         leaf_json = leaf_dir / "result.json"
+        record = leaf_json if leaf_json.is_file() else run_dir / "result.json"
         try:
             discard_generated_junit(results_xml_path(leaf_dir))
             written = ensure_leaf_junit(
@@ -4154,7 +4156,16 @@ def run_flow(
                 tool=tool,
                 result=result,
                 leaf_dir=leaf_dir,
-                result_json=leaf_json if leaf_json.is_file() else run_dir / "result.json",
+                result_json=record,
+            )
+            ensure_graded_junit(
+                flow=flow,
+                root=root,
+                run_dir=run_dir,
+                tool=tool,
+                result=result,
+                leaf_dir=leaf_dir,
+                result_json=record,
             )
         except Exception as exc:  # noqa: BLE001
             console.event("warning", f"junit synthesis failed for {item}: {exc}", force=True)

@@ -24,6 +24,8 @@
 -module efuse_bank_reg
 -module efuse_shim_ctrl_reg
 -module gpio_model
+-module ocah_axi_if
+-module ocah_axi_struct_bridge
 -module pll_wrap
 -module pvt_wrap
 -module smc_cpu_mem_dv
@@ -561,9 +563,11 @@
 -module prim_flop
 -module prim_flop_2sync
 -module prim_gray2bin
+-module prim_inv
 -module prim_jtag_scan_reg
 -module prim_jtag_sib_mux_post
 -module prim_jtag_sib_mux_pre
+-module prim_pad_shim
 -module prim_pad_wrapper
 -module prim_pipe_stage
 -module prim_pipe_stages
@@ -575,6 +579,7 @@
 -module prim_ram_1p_scr_ext
 -module prim_ram_2p
 -module prim_refclk_count_w_cdc
+-module prim_rev_cell
 -module prim_rom
 -module prim_rst_mux2_hf_n
 -module prim_rst_sync
