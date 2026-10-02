@@ -1174,7 +1174,7 @@ module smc_peripherals #(
 
   ext_boot_seq_done_qual u_ext_boot_seq_done_qual (
     .clk_i                    (clk_smc_i),
-    .rst_ni                   (rst_cold_ni),
+    .rst_ni                   (rst_cold_stable_smc_clk_n),
     .ext_boot_seq_done_i      (ext_boot_seq_done_i),
     .ext_boot_seq_done_qual_o (ext_boot_seq_done_qual)
   );

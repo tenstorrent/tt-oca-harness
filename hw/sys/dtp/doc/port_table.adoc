@@ -33,22 +33,22 @@ endif::backend-html5[]
 |`jtag_bsr_host_scan_in_i` |`logic` |In |1 |Boundary scan data in. |Boundary scan chain
 |`jtag_bsr_host_scan_out_o` |`logic` |Out |1 |Boundary scan data out. |Boundary scan chain
 
-|`jtag_stap_io_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |- |I/O STAP TAP control for chiplet-to-chiplet connectivity. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_STAP_IO_ENABLE=0`. |I/O STAP host
+|`jtag_stap_io_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |- |I/O STAP TAP control for chiplet-to-chiplet connectivity. If `JTAG_STAP_IO_ENABLE=0`, only `.tck` is driven; `.tms` is 0 and `.trst_n` is 0, so TRST is asserted and a TAP connected to the port is held in Test-Logic-Reset. |I/O STAP host
 |`jtag_stap_io_host_tdi_i` |`logic` |In |1 |I/O STAP TDI. Default: Tie to '0 if unused. |I/O STAP host
 |`jtag_stap_io_host_tdo_o` |`logic` |Out |1 |I/O STAP TDO. |I/O STAP host
 |`jtag_stap_io_host_tdo_oen_o` |`logic` |Out |1 |I/O STAP TDO output enable. |I/O STAP host
 
-|`jtag_stap_smc_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |- |SMC debug STAP TAP control. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_SMC_DBG_ENABLE=0`. |SMC JTAG port
+|`jtag_stap_smc_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |- |SMC debug STAP TAP control. If `JTAG_SMC_DBG_ENABLE=0`, only `.tck` is driven; `.tms` is 0 and `.trst_n` is 0, so TRST is asserted and a TAP connected to the port is held in Test-Logic-Reset. |SMC JTAG port
 |`jtag_stap_smc_host_tdi_i` |`logic` |In |1 |SMC debug STAP TDI (from SMC TDO). Default: Tie to '0 if unused. |SMC JTAG port
 |`jtag_stap_smc_host_tdo_o` |`logic` |Out |1 |SMC debug STAP TDO (to SMC TDI). |SMC JTAG port
 |`jtag_stap_smc_host_tdo_oen_o` |`logic` |Out |1 |SMC debug STAP TDO output enable. |SMC JTAG port
 
-|`jtag_stap_sep_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |- |SEP debug STAP TAP control. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_SEP_DBG_ENABLE=0`. |SEP JTAG port
+|`jtag_stap_sep_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |- |SEP debug STAP TAP control. If `JTAG_SEP_DBG_ENABLE=0`, only `.tck` is driven; `.tms` is 0 and `.trst_n` is 0, so TRST is asserted and a TAP connected to the port is held in Test-Logic-Reset. |SEP JTAG port
 |`jtag_stap_sep_host_tdi_i` |`logic` |In |1 |SEP debug STAP TDI (from SEP TDO). Default: Tie to '0 if unused. |SEP JTAG port
 |`jtag_stap_sep_host_tdo_o` |`logic` |Out |1 |SEP debug STAP TDO (to SEP TDI). |SEP JTAG port
 |`jtag_stap_sep_host_tdo_oen_o` |`logic` |Out |1 |SEP debug STAP TDO output enable. |SEP JTAG port
 
-|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TAP control array. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_NUM_EXTRA_STAPS=0`. |Extra STAP hosts
+|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TAP control array. If `JTAG_NUM_EXTRA_STAPS=0`, the single padded element drives only `.tck`; its `.tms` is 0 and its `.trst_n` is 0, so TRST is asserted and a TAP connected to it is held in Test-Logic-Reset. |Extra STAP hosts
 |`jtag_stap_extra_host_tdi_i` |`logic` |In |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TDI array. Default: Tie to '0 if unused. |Extra STAP hosts
 |`jtag_stap_extra_host_tdo_o` |`logic` |Out |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TDO array. |Extra STAP hosts
 |`jtag_stap_extra_host_tdo_oen_o` |`logic` |Out |`[JtagNumExtraStapPorts-1:0]` |Extra STAP TDO output enable array. |Extra STAP hosts
