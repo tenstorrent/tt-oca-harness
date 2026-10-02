@@ -8549,7 +8549,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>output_fabric_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for address remapper register logic</ipxact:description>
+              <ipxact:description>Clock gate enable for the output fabric remap demux and mux</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
