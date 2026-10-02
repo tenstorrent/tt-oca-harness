@@ -3,11 +3,10 @@
 
 /*
  * Issues random OCCP READs and WRITEs in the lowest and highest SCOREBOARD_SIZE bytes of the
- * test range and checks each READ against a scoreboard of earlier WRITEs.
+ * OCCP-accessible SRAM and checks each READ against a scoreboard of earlier WRITEs.
  */
 
 #include "occp_test_common.h"
-#include <string.h>
 
 #define SCOREBOARD_SIZE 256
 #define NUM_RANDOM_COMMANDS 5
@@ -148,15 +147,11 @@ static void run_test_suite(test_context_t *ctx) {
 }
 
 static void finalize_test_results(test_context_t *ctx) {
-    uint32_t result_code;
-
     if (ctx->overall_result) {
         simputs("ALL TESTS PASSED!\n");
-        result_code = SMC_SCRATCHPAD_SIM_PASS_CODE;
         test_pass(0);
     } else {
         simputs("SOME TESTS FAILED!\n");
-        result_code = SMC_SCRATCHPAD_SIM_FAIL_CODE;
         test_fail(0);
     }
 }
@@ -186,8 +181,6 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

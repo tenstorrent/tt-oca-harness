@@ -3,27 +3,20 @@
 
 #include <stdint.h>
 
-#include "metal/atomic.h"
-#include "metal/lock.h"
+#include "metal/cpu.h"
 #include "smc_io.h"
 #include "smc_test.h"
-
-METAL_LOCK_DECLARE(mmio_lock);
-METAL_ATOMIC_DECLARE(shared_counter);
-
-volatile bool _start_other = 0;
-static uint32_t checkin_count = 0;
 
 int main(void) {
     int hartid = metal_cpu_get_current_hartid();
 
-    // write to cold reset to ensure it is writable
+    // An unlocked cold reset is writable
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR, 0x1);
 
-    // write cold reset lock, lock second cold reset
+    // Lock the cold reset of a second subsystem
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR, 0x2);
 
-    // write to cold reset to index 1
+    // The locked cold reset must ignore the write
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR, 0x3);
 
     uint32_t cold_reset_read = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR);
@@ -32,7 +25,7 @@ int main(void) {
         test_fail(hartid);
     }
 
-    // write cold reset lock, try to unlock
+    // The lock is set-only, so writing zero must not clear it
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR, 0x0);
 
     uint32_t cold_reset_lock = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR);
@@ -42,15 +35,10 @@ int main(void) {
     }
 
     test_pass(hartid);
-
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
 int other_main(int hartid) {
+    (void)hartid;
     while (true) {
         __asm__("wfi");
     }

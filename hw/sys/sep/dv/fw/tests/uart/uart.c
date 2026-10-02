@@ -3,22 +3,18 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include "test_completion.h"
 #include "uart_16550_dl_reg.h"
 #include "uart_16550_main_reg.h"
-#include "uart_16550_main_wo_reg.h"
 #include "sep_outbound_filter.h"
 
 int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
-    // Variable declarations
     uint32_t wr_data, rd_data;
     int rc = 0;
 
-    // RNG Seeding
     srand(1234); // TODO: Replace with dynamic seeding
 
     // Register sanity test
@@ -45,9 +41,8 @@ int main(void) {
     printf("Setting baud rate to %d, divisor = %d...\n", baud_rate, divisor);
     *((volatile uint32_t *)(0x44000000 + LCR_REG_OFFSET)) =
         0x83; // Mux to DL address map. 8 data bits, no parity, 1 stop bit.
-    *((volatile uint32_t *)(0x44000000 + DLL_REG_OFFSET)) = divisor & 0xff; // divisor low byte
-    *((volatile uint32_t *)(0x44000000 + DLM_REG_OFFSET)) =
-        divisor >> 8 & 0xff;                                      // divisor high byte
+    *((volatile uint32_t *)(0x44000000 + DLL_REG_OFFSET)) = divisor & 0xff;
+    *((volatile uint32_t *)(0x44000000 + DLM_REG_OFFSET)) = divisor >> 8 & 0xff;
     *((volatile uint32_t *)(0x44000000 + LCR_REG_OFFSET)) = 0x03; // Return to main address map
     *((volatile uint32_t *)(0x44000000 + MCR_REG_OFFSET)) = 0x10; // Enable system loopback
     printf("Configuration complete!\n");
@@ -58,8 +53,8 @@ int main(void) {
     printf("Wrote data 0x%x to THR.\n", wr_data);
 
     uint32_t lsr = *((volatile uint32_t *)(0x44000000 + LSR_REG_OFFSET));
-    for (int i = 0; i < 1000; i++) { // Should in theory take 1085 clock cycles to fully send data
-                                     // given clk frequency = 100 MHz and baud rate = 921600
+    // One character takes about 1085 clock cycles at 100 MHz and 921600 baud
+    for (int i = 0; i < 1000; i++) {
         *((volatile uint32_t *)(0x44000000 + SCR_REG_OFFSET)) = 0x0;
     }
     while (!(lsr & UART_16550_MAIN_LSR_DR_MASK)) {

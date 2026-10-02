@@ -4,8 +4,8 @@
 /*
  * sep_smu_dma - SMU-level SEP DMA register sanity test.
  *
- *   Boot SEP in SMU wrapper and verify basic secure DMA programming path
- *   (range/src/dst/size/start bits) through stable CSR readback checks.
+ * Programs the secure DMA range, source, destination, size and control
+ * registers and checks that each reads back.
  */
 
 #include <stdint.h>
@@ -33,10 +33,7 @@ static int run_dma_reg_sequence(void) {
         return -5;
     if (rw_check32(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, 0x100u) != 0) return -6;
 
-    /*
-     * Keep this as a register-level smoke sequence only; avoid real transfer
-     * side effects in SMU-level integration test.
-     */
+    /* Control stays idle: this test must not start a real transfer. */
     if (rw_check32(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x0u) != 0) return -7;
     return 0;
 }

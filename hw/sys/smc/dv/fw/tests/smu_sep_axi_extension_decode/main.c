@@ -8,13 +8,12 @@
 #include "sep_smu_axi_extension_decode_protocol.h"
 
 /*
- * smu_sep_axi_extension_decode -- SMC pad-arm firmware.
+ * SMU-SEP AXI extension decode: SMC pad firmware.
  *
- * Cadence xSPI reaches the SMU-TB flash model through smc_ip_integration
- * GPIO 2nd-HW-function override (GPIO 0-10 DQ/CS/CLK/DQS, GPIO 54 mem_rebar).
- * hw2_ovrd resets to 0, so the override is a no-op until this image sets it.
- * Publishes GPIO_OVRD_OK on scratch2 after the bits read back; SEP waits
- * on that token before Cadence init.
+ * Connects the SEP xSPI controller to the SMU testbench flash model by enabling
+ * the second hardware function override on the xSPI GPIO pads. The override is
+ * off out of reset, so the pads stay disconnected until this image enables it,
+ * reads it back and publishes the token the SEP waits for before xSPI init.
  */
 void smu_sep_axi_extension_decode_entry(void) __attribute__((naked, section(".init"), used));
 void smu_sep_axi_extension_decode_entry(void) {
@@ -66,9 +65,4 @@ int main(void) {
     write_scratch(2, AXI_EXT_GPIO_OVRD_OK);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
     test_pass(0);
-
-    while (true) {
-        __asm__ volatile("wfi");
-    }
-    return 0;
 }

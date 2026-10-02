@@ -4,8 +4,8 @@
 /*
  * sep_smu_efuse - SMU-level SEP eFuse CSR sanity test.
  *
- *   Verify SEP-side eFuse control/shim register access path in SMU wrapper by
- *   programming benign control values and checking readback.
+ * Writes eFuse control and shim registers with values that start no read or
+ * program, and checks that each reads back.
  */
 
 #include <stdint.h>
@@ -24,14 +24,8 @@ static int run_efuse_reg_sequence(void) {
         return -1;
     if (rw_check32(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0x00000001u) != 0)
         return -2;
-        /*
-         * External efuse shim CSR path.
-         *
-         * EFUSE_TIMING_CTRL_7/8 exist only in register maps that generate the wide
-         * shim block; the narrow block's only register is EFUSE_BANK_INIT_TIME.
-         * Either branch proves the shim CSR path is alive and read/writable and
-         * nothing more.
-         */
+        /* The shim register set depends on the register map variant. Either branch
+         * proves only that the shim CSR path is read/writable. */
 #ifdef SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
     if (rw_check32(SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
                    0x0000ABCDu) != 0)
@@ -45,7 +39,7 @@ static int run_efuse_reg_sequence(void) {
         return -3;
 #endif
 
-    /* Read-only touchpoint to ensure token map access is alive. */
+    /* The token map read only has to complete; its value is not checked. */
     (void)READ_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);
     return 0;
 }

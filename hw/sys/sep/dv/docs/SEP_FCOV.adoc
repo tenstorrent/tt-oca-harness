@@ -160,7 +160,7 @@ the reason, or the planned bin and what it needs.
 |`sep_km_ic_reset_release_test` |Planned: the `km_jtag_rst_n` override edges need a probe
 |`sep_hmac_kmac_cpu_crypto_smoke_test` |Fills the AES, HMAC and KMAC mode groups in passing. A CPU-source label on those cells is planned
 |`sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`, `sep_irq_ip_to_aggregator_test`, `sep_irq_simultaneous_fanin_no_alias_test`, `sep_efuse_token_match_fault_pic_test`, `sep_efuse_set_only_monotonicity_test`, `sep_efuse_digest_latch_fault_test`, `sep_locked_field_access_irq_path_test`, `sep_efuse_secure_tm_write_lock_test`, `sep_efuse_km_public_id_test` |Phase 2: FIPS lock, alerts, the 42-source map, token faults, set-only walks, lock refusals and the KM OTP readout are named Phase 2 groups
-|`sep_periph_bus_err_misaligned_test`, `sep_km_rom_write_err_test`, `sep_km_otp_shim_unreachable_test`, `sep_km_vrom_decerr_test`, `sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test`, `sep_unmapped_access_policy_test`, `sep_fabric_burst_wrap_test` |Error paths (Phase 2 `sep_aperture_reserved_access_cg` and the KM error groups)
+|`sep_periph_bus_err_misaligned_test`, `sep_km_rom_write_err_test`, `sep_km_otp_shim_unreachable_test`, `sep_km_vrom_decerr_test`, `sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test`, `sep_unmapped_access_policy_test` |Error paths (Phase 2 `sep_aperture_reserved_access_cg` and the KM error groups)
 |`sep_sram_burst_type_test` |FIXED and WRAP bursts: the data bins score single-beat transactions only, by the pairing rule above, and no Phase 2 group names burst type yet
 |`sep_fabric_outbound_remap_filter_walk_test`, `sep_fabric_inbound_filter_window_walk_test`, `sep_fabric_local_alias_offset_walk_test`, `sep_fabric_remap_filter_csr_bank_test`, `sep_fabric_output_remap_datapath_proxy_test`, `sep_fabric_local_alias_datapath_test` |Fill the bank cells of `cp_block`. The per-entry winner walk is Phase 2 (`sep_filter_match_cg`, `sep_remap_alias_cg`, `sep_remap_output_offset_cg`)
 |`sep_km_key_policy_vault_test`, `sep_km_crc_pcpi_kat_test`, `sep_km_kpv_scrambler_test` |The behaviour is on the KM CPU bus, which the sampler does not see (Phase 2 `sep_km_kpv_slot_cg`)
@@ -1090,10 +1090,10 @@ reseed / CTR DECRYPT), `sep_aes_op_status_cg`, `sep_kmac_cfg_cmd_cg`,
 
 `sep_aperture_reserved_access_cg` also owns the refused-access response codes:
 DECERR / SLVERR on a reserved or unmapped address, walked by
-`sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test`,
-`sep_unmapped_access_policy_test` and `sep_fabric_burst_wrap_test`. Those are an
-error path, so they stay out of `sep_axi_decode_cg`, whose `cp_resp_wr` and
-`cp_resp_rd` record only that a legal access completed OKAY.
+`sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test` and
+`sep_unmapped_access_policy_test`. Those are an error path, so they stay out of
+`sep_axi_decode_cg`, whose `cp_resp_wr` and `cp_resp_rd` record only that a
+legal access completed OKAY.
 
 `sep_pic_reg_map_cg`, `sep_pic_source_map_cg`,
 `sep_pic_enable_priority_cg`, `sep_pic_gateway_cg`, `sep_pic_delivery_cg`,

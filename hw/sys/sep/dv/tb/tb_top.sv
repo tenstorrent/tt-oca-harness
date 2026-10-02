@@ -1343,6 +1343,14 @@ module sep_uvm_top
     assign sys_csr_axil_awaddr_o =
         `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
 
+    // Local crossbar `ext` initiator (sep.sv smn_inbound_to_sep_axi_*). See port comment.
+    assign xbar_ext_in_arvalid_o = `SEP_CORE.smn_inbound_to_sep_axi_req.ar_valid;
+    assign xbar_ext_in_arready_o = `SEP_CORE.smn_inbound_to_sep_axi_resp.ar_ready;
+    assign xbar_ext_in_araddr_o  = `SEP_CORE.smn_inbound_to_sep_axi_req.ar.addr[31:0];
+    assign xbar_ext_in_awvalid_o = `SEP_CORE.smn_inbound_to_sep_axi_req.aw_valid;
+    assign xbar_ext_in_awready_o = `SEP_CORE.smn_inbound_to_sep_axi_resp.aw_ready;
+    assign xbar_ext_in_awaddr_o  = `SEP_CORE.smn_inbound_to_sep_axi_req.aw.addr[31:0];
+
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
     // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during
     // boot, and these memory-array reads sit outside the ready/valid cones.

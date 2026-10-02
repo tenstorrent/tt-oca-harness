@@ -2,42 +2,19 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SEP Service Request Dispatch Test Firmware
+ * SEP Service Request Dispatch Test
  *
- * Tests a service dispatch protocol where the testbench (acting as SEP) sends
- * a structured request containing an operation code and operand data.  SMC
- * firmware dispatches on the operation code and returns the computed result.
+ * Verifies a request/response exchange between SMC firmware and a SEP-side
+ * peer over scratch registers: for each request the firmware decodes the
+ * operation code, applies the operation (NOT, XOR with a constant, byte
+ * reverse, rotate left by 8, population count) to the operand and returns the
+ * result. An unknown operation code returns an error status.
  *
- * Spec basis: OCAH Specification §Crypto Key Manager — the KM command message
- * format encodes a function_id[15:8] alongside data, enabling a firmware-
- * defined dispatch table.  This test exercises an analogous dispatch table on
- * the SMC side using scratch registers as the transport.
- *
- * Protocol (scratch registers):
- *   scratch[HANDSHAKE_SCRATCH] = CMD_READY_TOKEN       (FW signals ready)
- *   scratch[CMD_SCRATCH_NUM]   = {op_code[7:0], seq[15:8], data[31:16]}
- *   scratch[DATA_SCRATCH_NUM]  = operand data (32-bit)
- *   scratch[RESULT_SCRATCH_NUM]= computed result                       (backup)
- *   scratch[STATUS_SCRATCH_NUM]= 0 on success, error code on failure
- *   scratch[HANDSHAKE_SCRATCH] = computed result                       (primary; TB reads
- *                                                                        directly as wire)
- *   scratch[CMD_SCRATCH_NUM]   = 0                                     (TB acknowledges)
- *   scratch[0]                 = TEST_PASS / TEST_FAIL
- *
- * Operation codes (op_code in bits [7:0] of CMD scratch):
- *   OP_NOT       (0x01): result = ~data
- *   OP_XOR_MAGIC (0x02): result = data ^ 0xDEADBEEF
- *   OP_BYTE_REV  (0x03): result = byte-reversed data
- *   OP_ROT_L8    (0x04): result = rotate_left(data, 8)
- *   OP_POPCOUNT  (0x05): result = population count (number of 1-bits) of data
- *
- * NUM_REQUESTS requests are dispatched sequentially.  After each request the
- * firmware clears its working scratches and re-signals ready before accepting
- * the next.
+ * Only the boot hart runs this test, so no other core writes the shared
+ * scratch registers; the other harts park in WFI.
  */
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "smc_defines.h"
 #include "smc_test.h"
@@ -99,11 +76,9 @@ int main(void) {
             cmd_hdr = read_scratch(CMD_SCRATCH_NUM);
         } while (cmd_hdr == 0U);
 
-        /* Extract operation code (bits [7:0]) and read operand data */
         uint32_t op_code = cmd_hdr & 0xFFU;
         uint32_t data = read_scratch(DATA_SCRATCH_NUM);
 
-        /* Dispatch on operation code */
         uint32_t result = 0U;
         uint32_t status = STATUS_OK;
 
@@ -129,29 +104,17 @@ int main(void) {
             break;
         }
 
-        /* Write result and status.
-         * Write result to RESULT_SCRATCH_NUM (scratch[6]) as backup,
-         * then overwrite HANDSHAKE_SCRATCH (scratch[1]) with the result so
-         * the testbench can read it directly via the RTL wire without AXI. */
+        /* The handshake register also carries the result, so the peer can
+         * read it without a bus access. */
         write_scratch(RESULT_SCRATCH_NUM, result);
         write_scratch(STATUS_SCRATCH_NUM, status);
         write_scratch(HANDSHAKE_SCRATCH, result);
 
-        /* Wait for testbench to acknowledge (clears CMD scratch) */
+        /* Wait for testbench to acknowledge */
         do {
             /* wait */
         } while (read_scratch(CMD_SCRATCH_NUM) != 0U);
     }
 
-    /* All requests handled */
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-    return 0;
 }
-
-/* secondary_main is not defined here: the weak default in crt0.S routes the
- * boot hart to main() and spins non-boot harts, so no second core can write
- * the shared scratch registers used by the test protocol. */

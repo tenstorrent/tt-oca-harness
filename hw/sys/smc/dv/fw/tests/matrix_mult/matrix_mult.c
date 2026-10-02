@@ -7,11 +7,8 @@
 #include "virt_console.h"
 #include "cpu_perf.h"
 
+/* Number of power-of-two size classes; the arrays fit the largest class. */
 #define MATRIX_SIZES 5
-/* MATRIX_SIZES counts size classes; the loop walks dim_log over
- * [0, MATRIX_SIZES) with dim = 2^dim_log, so the widest matrix edge is
- * 2^(MATRIX_SIZES-1). The arrays are sized from that bound so a change to
- * the class count cannot leave them short. */
 #define MAX_DIM (1 << (MATRIX_SIZES - 1))
 #define N_ITER 5
 
@@ -33,8 +30,7 @@ void matrix_multiply_standard(int M, int K, int N) {
 void initialize_matrix_random(double matrix[][MAX_DIM], int M, int N) {
     for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++) {
-            // Using a simple PRNG, scale to get a double
-            matrix[i][j] = (double)get_random_int() / 32767.0 * 10.0; // Values between 0 and 10
+            matrix[i][j] = (double)get_random_int() / 32767.0 * 10.0;
         }
     }
 }
@@ -67,8 +63,6 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

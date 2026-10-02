@@ -887,21 +887,29 @@ class sep_base_test(uvm_test):
         ``sys_csr_axil_*`` observation ports. Lite has no AxLEN; each handshake
         is one converted single.
         """
+        return self._watch_handshakes("sys_csr_axil", write=write)
+
+    def watch_xbar_ext_in(self, *, write: bool) -> tuple[object, list[int]]:
+        """Record AW (``write``) or AR handshakes at the local crossbar's ``ext``
+        initiator (``xbar_ext_in_*``) until the caller kills the task.
+
+        Returns ``(task, addrs)`` as ``watch_sys_csr_lite`` does. The port carries
+        what ``sep_system_peripherals`` forwards into the local crossbar.
+        """
+        return self._watch_handshakes("xbar_ext_in", write=write)
+
+    def _watch_handshakes(self, port: str, *, write: bool) -> tuple[object, list[int]]:
         dut = cocotb.top
+        ch = "aw" if write else "ar"
+        valid = getattr(dut, f"{port}_{ch}valid_o")
+        ready = getattr(dut, f"{port}_{ch}ready_o")
+        addr = getattr(dut, f"{port}_{ch}addr_o")
         addrs: list[int] = []
 
         async def _mon() -> None:
             while True:
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
-                if write:
-                    valid = dut.sys_csr_axil_awvalid_o
-                    ready = dut.sys_csr_axil_awready_o
-                    addr = dut.sys_csr_axil_awaddr_o
-                else:
-                    valid = dut.sys_csr_axil_arvalid_o
-                    ready = dut.sys_csr_axil_arready_o
-                    addr = dut.sys_csr_axil_araddr_o
                 if self.rd_known(valid) and self.rd_known(ready):
                     addrs.append(self.rd_known(addr) & 0xFFFF_FFFF)
 
