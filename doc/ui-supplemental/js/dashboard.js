@@ -50,6 +50,16 @@
   // links and the published data keep the flow.
   var BLOCK_NAMES = { dtp: 'DTP', sep: 'SEP', smc: 'SMC', smu: 'SMU', aou: 'AoU' };
 
+  // The heading a coverage family is shown under, where its full name would
+  // widen the block summary past the page column. The published data keeps the
+  // family.
+  var FAMILY_HEADINGS = { assertion: 'Assert', condition: 'Cond', fsm_state: 'FSM', user: 'Cover' };
+
+  // Headings that replace a FAMILY_HEADINGS entry for one simulator, where its
+  // own reports know the family by another name: Verilator reports cover
+  // properties as user coverage.
+  var TOOL_FAMILY_HEADINGS = { verilator: { user: 'User' } };
+
   /**
    * Read a value from the page theme.
    * @param {string} name CSS custom property, e.g. "--oca-text".
@@ -214,11 +224,22 @@
   }
 
   /**
-   * A coverage family as a column heading, e.g. "fsm_state" to "Fsm state".
+   * A coverage family as a column heading, e.g. "fsm_state" to "FSM" or
+   * "fsm_transition" to "Fsm transition".
    * @param {string} family The family as the publisher names it.
-   * @return {string} The heading.
+   * @param {?string} tool The simulator every series in the table ran on, or
+   *     null when they differ.
+   * @return {string} The tool's TOOL_FAMILY_HEADINGS entry, else the
+   *     FAMILY_HEADINGS entry, else the family capitalised.
    */
-  function familyHeading(family) {
+  function familyHeading(family, tool) {
+    var own = Object.prototype.hasOwnProperty.call(TOOL_FAMILY_HEADINGS, tool)
+      ? TOOL_FAMILY_HEADINGS[tool]
+      : {};
+    if (Object.prototype.hasOwnProperty.call(own, family)) return own[family];
+    if (Object.prototype.hasOwnProperty.call(FAMILY_HEADINGS, family)) {
+      return FAMILY_HEADINGS[family];
+    }
     return (family.charAt(0).toUpperCase() + family.slice(1)).replace(/_/g, ' ');
   }
 
@@ -452,7 +473,15 @@
       if (!series.length) return false;
 
       var families = coverageFamilies(summary, series);
-      var headings = METRIC_HEADINGS.concat(families.map(familyHeading));
+      var oneTool = series.every(function (dut) {
+        return dut.tool === series[0].tool;
+      });
+      var tool = oneTool ? series[0].tool : null;
+      var headings = METRIC_HEADINGS.concat(
+        families.map(function (family) {
+          return familyHeading(family, tool);
+        })
+      );
       fillHead(document.getElementById('dashboard-block-summary-head'), headings);
       series.forEach(function (dut) {
         // The page heading names the series; only several need telling apart.
