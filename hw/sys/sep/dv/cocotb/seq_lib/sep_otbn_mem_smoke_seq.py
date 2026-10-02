@@ -11,6 +11,7 @@ from sep_reg_meta import OTBN, sym
 
 OTBN_BASE = sym("OTBN_REG_MAP_BASE_ADDR")
 OTBN_ADDR_STATUS = OTBN.addr("STATUS")
+OTBN_STATUS_MASK = OTBN.field_mask("STATUS", "status")
 OTBN_IMEM_BASE = sym("OTBN_IMEM_MEM_BASE_ADDR")
 OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 OTBN_IMEM_SMOKE_WORD = 0x0000_0013
@@ -69,7 +70,7 @@ class sep_otbn_mem_smoke_seq(uvm_sequence):
         are checked rather than assumed, so this test fails loudly if OTBN's reset
         behaviour ever changes.
         """
-        st = await self._read(OTBN_ADDR_STATUS) & 0xFF
+        st = await self._read(OTBN_ADDR_STATUS) & OTBN_STATUS_MASK
         assert st != OTBN_STATUS_LOCKED, f"OTBN LOCKED (STATUS=0x{st:02x}) before memory smoke"
         assert st not in OTBN_MEM_ACCESS_ILLEGAL_STATES, (
             f"OTBN is executing (STATUS=0x{st:02x}); a bus access to IMEM/DMEM would "
