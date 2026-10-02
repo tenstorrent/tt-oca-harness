@@ -208,12 +208,12 @@ runs:
         password: ${{ github.token }}
 
     # The registry is the only source of this image; a miss must not fall
-    # through into a local build. push and schedule wait while a container
-    # run on main is still going to publish the tag. A manual dispatch fails
-    # at once.
+    # through into a local build.
     - name: Provision toolchain image
       if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         ./scripts/ci/await_toolchain_image.sh
         ./scripts/docker-run.sh ensure
