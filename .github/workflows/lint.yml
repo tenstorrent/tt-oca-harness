@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  VERILATOR_VERSION: v5.050
+  VERILATOR_VERSION: v5.052
 
 jobs:
   diff-class:
@@ -101,7 +101,7 @@ jobs:
 
   # The ocah-container image takes verilator from the nixpkgs revision that
   # flake.lock pins, so a flake update can move it without touching any
-  # workflow. Every per-push VERILATOR_VERSION must name that same release.
+  # workflow. The release CI builds from source must be that same one.
   verilator-version:
     needs: [diff-class]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
@@ -120,14 +120,17 @@ jobs:
           container="v$(nix eval --raw "github:nixos/nixpkgs/${rev}#verilator.version")"
           echo "ocah-container (nixpkgs ${rev}): ${container}"
           status=0
-          for wf in .github/workflows/lint.yml .github/workflows/sim.yml; do
-            pinned=$(sed -n 's/^  VERILATOR_VERSION: *//p' "$wf")
-            echo "${wf}: ${pinned:-unset}"
-            if [ "$pinned" != "$container" ]; then
-              echo "::error file=${wf}::VERILATOR_VERSION is ${pinned:-unset}; the ocah-container image ships ${container}"
+          check() {
+            echo "$1 ($2): ${3:-unset}"
+            if [ "$3" != "$container" ]; then
+              echo "::error file=$1::$2 is ${3:-unset}; the ocah-container image ships ${container}"
               status=1
             fi
-          done
+          }
+          check .github/workflows/lint.yml VERILATOR_VERSION \
+            "$(sed -n 's/^  VERILATOR_VERSION: *//p' .github/workflows/lint.yml)"
+          check .github/actions/dv-run/action.yml "the verilator-version default" \
+            "$(sed -n "/^  verilator-version:/,/default:/s/^    default: *//p" .github/actions/dv-run/action.yml | tr -d "'\"")"
           exit "$status"
 
   lint-sv-verilator:
