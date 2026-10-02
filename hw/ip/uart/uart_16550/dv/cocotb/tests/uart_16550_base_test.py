@@ -51,7 +51,7 @@ TX_FIFO_DEPTH = 16
 RX_FIFO_DEPTH = 16
 
 # The 16550 receiver reports a reception timeout after four character times
-# without activity while the RX FIFO holds data (uart_16550_pkg::TIMEOUT_CHAR_CNT).
+# without activity while the RX FIFO holds data (uart_16550_pkg::TimeoutCharCnt).
 TIMEOUT_CHAR_CNT = 4
 
 # Reception FIFO trigger levels selectable through FCR.RCVR_TRIGGER.

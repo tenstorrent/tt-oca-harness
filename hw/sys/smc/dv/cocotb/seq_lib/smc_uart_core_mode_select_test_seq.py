@@ -47,7 +47,7 @@ the transmitter drained and requires `LSR.DR` clear on every read up to that
 point.
 
 **The transmit FIFO under DMA mode 1.** Still in line loopback, the divisor is
-slowed and a burst longer than `smc_config_pkg::UART_TX_FIFO_DEPTH` is written
+slowed and a burst longer than `smc_config_pkg::UartTxFifoDepth` is written
 into THR without polling, so the transmit FIFO reaches its full condition while
 the transmitter is still draining the first characters. What the leaf checks is
 what the register map exposes: `LSR.THRE` clear straight after the burst, so the

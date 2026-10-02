@@ -14,10 +14,10 @@ module smc_padring #(
                                                                            // transactions of the
                                                                            // demux and of each
                                                                            // gpio interface.
-  parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_INTF_BASE_ADDR       = 32'h00000000  // Base address of the
+  parameter bit [gpio_pkg::AddrWidth-1:0] GPIO_INTF_BASE_ADDR       = 32'h00000000   // Base address of the
                                                                                      // first GPIO interface;
                                                                                      // the demux decodes
-                                                                                     // NUM_GPIO_WRAPS
+                                                                                     // NumGpioWraps
                                                                                      // 16-byte slots from it.
 
 ) (
@@ -71,20 +71,20 @@ module smc_padring #(
   output logic       spi_mem_rebar_ipad_o,  // Value sampled from the SPI DQS loopback
                                             // pad (GPIO 54).
 
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_i,  // Selects each UART's
+  input  logic [smc_config_pkg::NumUart-1:0] uart_enable_i,   // Selects each UART's
                                                               // four pads, active-high,
                                                               // one bit per UART; UART u
                                                               // uses GPIO 11+4u (RX),
                                                               // 12+4u (TX), 13+4u (RTS)
                                                               // and 14+4u (CTS).
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_rx_o,  // Receive data sampled from
+  output logic [smc_config_pkg::NumUart-1:0] uart_rx_o,   // Receive data sampled from
                                                           // each UART's RX pad.
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_tx_i,  // Transmit data driven onto
+  input  logic [smc_config_pkg::NumUart-1:0] uart_tx_i,   // Transmit data driven onto
                                                           // each UART's TX pad.
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_rts_n_i,  // Request-to-send,
+  input  logic [smc_config_pkg::NumUart-1:0] uart_rts_n_i,   // Request-to-send,
                                                              // active-low, driven onto
                                                              // each UART's RTS pad.
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_cts_n_o,  // Clear-to-send,
+  output logic [smc_config_pkg::NumUart-1:0] uart_cts_n_o,   // Clear-to-send,
                                                              // active-low, sampled from
                                                              // each UART's CTS pad.
 
@@ -104,67 +104,67 @@ module smc_padring #(
   output logic boot_stall_o,            // Boot-stall strap sampled from GPIO 57, not
                                         // synchronized to clk_i.
 
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_enable_i,  // Selects each I3C
+  input  logic [smc_config_pkg::NumI3c-1:0] i3c_enable_i,   // Selects each I3C
                                                             // instance's SCL and SDA
                                                             // pads, active-high:
                                                             // GPIO 27-28 for instance 0,
                                                             // 63-64 for instance 1, and
                                                             // from 29 upward for the
                                                             // rest.
-  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_o,  // SCL sampled from each I3C
+  output logic [smc_config_pkg::NumI3c-1:0] i3c_scl_o,   // SCL sampled from each I3C
                                                          // instance's SCL pad.
-  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_o,  // SDA sampled from each I3C
+  output logic [smc_config_pkg::NumI3c-1:0] i3c_sda_o,   // SDA sampled from each I3C
                                                          // instance's SDA pad.
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_i,  // SCL value driven onto each
+  input  logic [smc_config_pkg::NumI3c-1:0] i3c_scl_i,   // SCL value driven onto each
                                                          // I3C instance's SCL pad.
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_oen_i,  // Output enable for each
+  input  logic [smc_config_pkg::NumI3c-1:0] i3c_scl_oen_i,   // Output enable for each
                                                              // SCL pad, active-low.
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_i,  // SDA value driven onto each
+  input  logic [smc_config_pkg::NumI3c-1:0] i3c_sda_i,   // SDA value driven onto each
                                                          // I3C instance's SDA pad.
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_oen_i,  // Output enable for SDA IO
+  input  logic [smc_config_pkg::NumI3c-1:0] i3c_sda_oen_i,   // Output enable for SDA IO
                                                              // pad (active low).
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_pp_i,  // Push-pull select for each
+  input  logic [smc_config_pkg::NumI3c-1:0] i3c_sda_pp_i,   // Push-pull select for each
                                                             // SDA pad; high enables the
                                                             // SDA output whatever
                                                             // i3c_sda_oen_i is.
 
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_i,  // Selects each I2C
+  input  logic [smc_config_pkg::NumI2c-1:0] i2c_enable_i,   // Selects each I2C
                                                             // instance's SCL, SDA, SMBus
                                                             // alert and SMBus suspend
                                                             // pads, active-high; instance
                                                             // i uses GPIO 37+4i to 40+4i.
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_master_enable_i,  // Controller mode per
+  input  logic [smc_config_pkg::NumI2c-1:0] i2c_master_enable_i,   // Controller mode per
                                                                    // I2C instance: the SMBus
                                                                    // alert pad is sampled and
                                                                    // the suspend pad driven;
                                                                    // in target mode the
                                                                    // directions reverse.
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_o,  // SCL sampled from each I2C
+  output logic [smc_config_pkg::NumI2c-1:0] i2c_scl_o,   // SCL sampled from each I2C
                                                          // instance's SCL pad.
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_o,  // SDA sampled from each I2C
+  output logic [smc_config_pkg::NumI2c-1:0] i2c_sda_o,   // SDA sampled from each I2C
                                                          // instance's SDA pad.
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_n_o,  // SMBus suspend, active-low,
+  output logic [smc_config_pkg::NumI2c-1:0] i2c_smbus_n_o,   // SMBus suspend, active-low,
                                                              // sampled from the pad in
                                                              // target mode; zero in
                                                              // controller mode.
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_alert_n_o,  // SMBus alert,
+  output logic [smc_config_pkg::NumI2c-1:0] i2c_smbus_alert_n_o,   // SMBus alert,
                                                                    // active-low, sampled
                                                                    // from the pad in
                                                                    // controller mode; zero
                                                                    // in target mode.
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_oen_i,  // Open-drain SCL control,
+  input  logic [smc_config_pkg::NumI2c-1:0] i2c_scl_oen_i,   // Open-drain SCL control,
                                                              // active-low: low pulls the
                                                              // pad low, high releases it
                                                              // to the board pull-up.
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_oen_i,  // Open-drain SDA control,
+  input  logic [smc_config_pkg::NumI2c-1:0] i2c_sda_oen_i,   // Open-drain SDA control,
                                                              // active-low: low pulls the
                                                              // pad low, high releases it
                                                              // to the board pull-up.
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_n_i,  // SMBus suspend from the
+  input  logic [smc_config_pkg::NumI2c-1:0] i2c_smbus_n_i,   // SMBus suspend from the
                                                              // I2C core, active-low; in
                                                              // controller mode, low pulls
                                                              // the suspend pad low.
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_alert_oe_i,  // In target mode,
+  input  logic [smc_config_pkg::NumI2c-1:0] i2c_smbus_alert_oe_i,   // In target mode,
                                                                     // high pulls the SMBus
                                                                     // alert pad low.
 
@@ -183,27 +183,27 @@ module smc_padring #(
   output logic isolate_req_pin_o,       // Isolation request sampled from GPIO 53, not
                                         // synchronized to clk_i.
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select_o,  // LSIO select per pad,
+  output logic [smc_pkg::NumGpioWraps-1:0] lsio_interface_select_o,    // LSIO select per pad,
                                                                        // high where a
                                                                        // peripheral function
                                                                        // claims the pad; also
                                                                        // drives each gpio
                                                                        // interface's select.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_o,  // Data driven to each pad by
+  output logic [smc_pkg::NumGpioWraps-1:0] core2pad_o,    // Data driven to each pad by
                                                           // its gpio interface; zero
                                                           // during cold reset.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en_o,  // Output enable for each
+  output logic [smc_pkg::NumGpioWraps-1:0] core2pad_en_o,    // Output enable for each
                                                              // pad, active-high; low
                                                              // during cold reset.
-  input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_i,  // Value received from each
+  input  logic [smc_pkg::NumGpioWraps-1:0] pad2core_i,    // Value received from each
                                                           // pad, not synchronized to
                                                           // clk_i.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en_o,  // Input enable for each
+  output logic [smc_pkg::NumGpioWraps-1:0] pad2core_en_o,    // Input enable for each
                                                              // pad, active-high; the
                                                              // pad's default direction
                                                              // during cold reset.
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_interrupt_o  // Interrupt from each gpio
+  output logic [smc_pkg::NumGpioWraps-1:0] gpio_interrupt_o    // Interrupt from each gpio
                                                                // interface, active-high,
                                                                // registered on clk_i.
 
@@ -214,31 +214,31 @@ module smc_padring #(
   ////////////////////
 
   // Demux across the GPIO interfaces, plus a decode-error target at index
-  // NUM_GPIO_WRAPS for out-of-window / unmapped accesses (including the
+  // NumGpioWraps for out-of-window / unmapped accesses (including the
   // former gpio_ctrl/ext range, now unimplemented).
-  localparam int unsigned NUM_INTF_DEMUX_MST = smc_pkg::NUM_GPIO_WRAPS + 1;
-  localparam int unsigned INTF_ERR_IDX = smc_pkg::NUM_GPIO_WRAPS;
+  localparam int unsigned NumIntfDemuxMst = smc_pkg::NumGpioWraps + 1;
+  localparam int unsigned IntfErrIdx = smc_pkg::NumGpioWraps;
 
-  gpio_pkg::gpio_axil_req_t  [NUM_INTF_DEMUX_MST-1:0] axil_reqs_to_intf;
-  gpio_pkg::gpio_axil_resp_t [NUM_INTF_DEMUX_MST-1:0] axil_resps_from_intf;
+  gpio_pkg::gpio_axil_req_t  [NumIntfDemuxMst-1:0] axil_reqs_to_intf;
+  gpio_pkg::gpio_axil_resp_t [NumIntfDemuxMst-1:0] axil_resps_from_intf;
 
-  logic [$clog2(NUM_INTF_DEMUX_MST)-1:0] gpio_intf_aw_select;
-  logic [$clog2(NUM_INTF_DEMUX_MST)-1:0] gpio_intf_ar_select;
+  logic [$clog2(NumIntfDemuxMst)-1:0] gpio_intf_aw_select;
+  logic [$clog2(NumIntfDemuxMst)-1:0] gpio_intf_ar_select;
 
   always_comb begin
     // Decode gpio_intf window. Out of window accesses routed to error slave
     if (axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR &&
-            ((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS) begin
+            ((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps) begin
       gpio_intf_aw_select = (axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4;
     end else begin
-      gpio_intf_aw_select = INTF_ERR_IDX;
+      gpio_intf_aw_select = IntfErrIdx;
     end
 
     if (axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR &&
-            ((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS) begin
+            ((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps) begin
       gpio_intf_ar_select = (axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4;
     end else begin
-      gpio_intf_ar_select = INTF_ERR_IDX;
+      gpio_intf_ar_select = IntfErrIdx;
     end
   end
 
@@ -250,7 +250,7 @@ module smc_padring #(
     .r_chan_t           (gpio_pkg::gpio_axil_r_chan_t),
     .axi_req_t          (gpio_pkg::gpio_axil_req_t),
     .axi_resp_t         (gpio_pkg::gpio_axil_resp_t),
-    .NoMstPorts         (NUM_INTF_DEMUX_MST),  // gpio_intf + decode-error target
+    .NoMstPorts         (NumIntfDemuxMst),  // gpio_intf + decode-error target
     .MaxTrans           (MAX_TRANS),
     .FallThrough        (1'b0),
     .SpillAw            (1'b1),
@@ -272,35 +272,35 @@ module smc_padring #(
 
   // Decode-error slave on the demux's final target: unmapped gpio_intf-window accesses return DECERR
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH (gpio_pkg::ADDR_WIDTH),
-    .AXI_DATA_WIDTH (gpio_pkg::DATA_WIDTH),
+    .AXI_ADDR_WIDTH (gpio_pkg::AddrWidth),
+    .AXI_DATA_WIDTH (gpio_pkg::DataWidth),
     .axil_req_t     (gpio_pkg::gpio_axil_req_t),
     .axil_resp_t    (gpio_pkg::gpio_axil_resp_t),
-    .RESP_WIDTH     (gpio_pkg::DATA_WIDTH),
+    .RESP_WIDTH     (gpio_pkg::DataWidth),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
   ) u_intf_demux_err_slv (
     .clk_i          (clk_i),
     .rst_ni         (rst_primary_ni),
-    .axil_req_i     (axil_reqs_to_intf[INTF_ERR_IDX]),
-    .axil_resp_o    (axil_resps_from_intf[INTF_ERR_IDX])
+    .axil_req_i     (axil_reqs_to_intf[IntfErrIdx]),
+    .axil_resp_o    (axil_resps_from_intf[IntfErrIdx])
   );
 
   ////////////////////
   // LSIO Interface //
   ////////////////////
 
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_core2pad_en_n;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_core2pad_data;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_pad2core_en_n;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_pad2core_data;
+  logic [smc_pkg::NumGpioWraps-1:0] lsio_core2pad_en_n;
+  logic [smc_pkg::NumGpioWraps-1:0] lsio_core2pad_data;
+  logic [smc_pkg::NumGpioWraps-1:0] lsio_pad2core_en_n;
+  logic [smc_pkg::NumGpioWraps-1:0] lsio_pad2core_data;
 
   always_comb begin
     // Disable all LSIO interface by default
     lsio_interface_select_o = '0;
-    lsio_core2pad_en_n      = {smc_pkg::NUM_GPIO_WRAPS{smc_padring_pkg::DISABLED}};
+    lsio_core2pad_en_n      = {smc_pkg::NumGpioWraps{smc_padring_pkg::DISABLED}};
     lsio_core2pad_data      = '0;
-    lsio_pad2core_en_n      = {smc_pkg::NUM_GPIO_WRAPS{smc_padring_pkg::DISABLED}};
+    lsio_pad2core_en_n      = {smc_pkg::NumGpioWraps{smc_padring_pkg::DISABLED}};
 
     // SPI
     for (int s = 0; s < 8; s = s + 1) begin : gen_spi_connections
@@ -328,7 +328,7 @@ module smc_padring #(
     spi_rxds_o                  = lsio_pad2core_data[10];
 
     // UART
-    for (integer u = 0; u < smc_config_pkg::NUM_UART; u = u + 1) begin : gen_uart_connections
+    for (integer u = 0; u < smc_config_pkg::NumUart; u = u + 1) begin : gen_uart_connections
       lsio_interface_select_o[11+4*u] = uart_enable_i[u];
       lsio_core2pad_en_n[11+4*u]      = smc_padring_pkg::DISABLED;
       lsio_core2pad_data[11+4*u]      = 1'b0;
@@ -365,7 +365,7 @@ module smc_padring #(
     i3c_sda_o[0]                = lsio_pad2core_data[28];
 
     // I3C 2 - 5 (I3C[1] is fully unbonded at GPIO[63,64])
-    for (integer i = 0; i < (smc_config_pkg::NUM_I3C - 2); i = i + 1) begin : gen_i3c_connections
+    for (integer i = 0; i < (smc_config_pkg::NumI3c - 2); i = i + 1) begin : gen_i3c_connections
       lsio_interface_select_o[29+(2*i)] = i3c_enable_i[2+i];
       lsio_core2pad_en_n[29+(2*i)]      = i3c_scl_oen_i[2+i];
       lsio_core2pad_data[29+(2*i)]      = i3c_scl_i[2+i];
@@ -394,7 +394,7 @@ module smc_padring #(
     i3c_sda_o[1]                = lsio_pad2core_data[64];
 
     // I2C
-    for (integer i = 0; i < smc_config_pkg::NUM_I2C; i = i + 1) begin : gen_i2c_connections
+    for (integer i = 0; i < smc_config_pkg::NumI2c; i = i + 1) begin : gen_i2c_connections
       // SCL
       lsio_interface_select_o[37+4*i] = i2c_enable_i[i];
       if (i2c_master_enable_i[i]) begin
@@ -529,22 +529,22 @@ module smc_padring #(
   ///////////
 
   // Generate GPIO interfaces
-  for (genvar i = 0; i < smc_pkg::NUM_GPIO_WRAPS; i++) begin : gen_gpio_intf
+  for (genvar i = 0; i < smc_pkg::NumGpioWraps; i++) begin : gen_gpio_intf
 
     // Pad allocation settings
-    localparam bit INPUT_BY_DEFAULT = smc_padring_pkg::DefaultDirectionMap[i];
+    localparam bit InputByDefault = smc_padring_pkg::DefaultDirectionMap[i];
 
     // Assertion to protect against truncation on casts
     `OCAH_OT_ASSERT_INIT(
         GpioIntfSizeFits_A,
-        smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::ADDR_WIDTH))
+        smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::AddrWidth))
 
     // GPIO interface
     gpio #(
       .MAX_TRANS                  (MAX_TRANS),
-      .INPUT_BY_DEFAULT           (INPUT_BY_DEFAULT),
+      .INPUT_BY_DEFAULT           (InputByDefault),
 
-      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE))
+      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::AddrWidth'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE))
     ) u_gpio_interface (
       .clk_i                  (clk_i),
       .rst_primary_ni         (rst_primary_ni),

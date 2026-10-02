@@ -100,7 +100,7 @@ module aes_wrapper (
 
   // Instantiate the PeakRDL-generated AES key CSR register block
   // (flat AXI4-Lite interface — we connect from the struct-based port)
-  localparam int unsigned AES_KEY_CSR_ADDR_WIDTH = aes_wrapper_key_reg_pkg::AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
+  localparam int unsigned AesKeyCsrAddrWidth = aes_wrapper_key_reg_pkg::AES_WRAPPER_KEY_REG_MIN_ADDR_WIDTH; // 7
 
   aes_wrapper_key_reg u_aes_wrapper_key_reg (
     .clk       (clk_i),
@@ -108,7 +108,7 @@ module aes_wrapper (
 
     // AW channel
     .s_axil_awvalid (aes_key_axil_req_i.aw_valid),
-    .s_axil_awaddr  (aes_key_axil_req_i.aw.addr[AES_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_awaddr  (aes_key_axil_req_i.aw.addr[AesKeyCsrAddrWidth-1:0]),
     .s_axil_awprot  (aes_key_axil_req_i.aw.prot),
     .s_axil_awready (aes_key_axil_resp_o.aw_ready),
 
@@ -125,7 +125,7 @@ module aes_wrapper (
 
     // AR channel
     .s_axil_arvalid (aes_key_axil_req_i.ar_valid),
-    .s_axil_araddr  (aes_key_axil_req_i.ar.addr[AES_KEY_CSR_ADDR_WIDTH-1:0]),
+    .s_axil_araddr  (aes_key_axil_req_i.ar.addr[AesKeyCsrAddrWidth-1:0]),
     .s_axil_arprot  (aes_key_axil_req_i.ar.prot),
     .s_axil_arready (aes_key_axil_resp_o.ar_ready),
 

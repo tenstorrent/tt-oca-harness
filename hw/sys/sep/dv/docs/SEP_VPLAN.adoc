@@ -540,7 +540,7 @@ never when it was written.
 |`sep_efuse_secure_tm_write_lock_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|Prove the field map's `SECURE_TM_LOCK` fields refuse a shadow write while the latched TEST_EN strap is high, and that the same write lands with the strap low.
+|Prove the field map's `SecureTmLock` fields refuse a shadow write while the latched TEST_EN strap is high, and that the same write lands with the strap low.
 |`sep_efuse_token_match_fault_pic_test`
 |cpu, real fuse sense (blank OTP image)
 |ocah_axi_vip, CPU FW
@@ -956,7 +956,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_spi_ot_host_csr_irq_rand_test`. Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the OpenTitan Event-versus-Status interrupt contract (`INTR_STATE.ERROR` latches and clears only on write-one-to-clear; `INTR_STATE.SPI_EVENT` tracks the `INTR_TEST` force), `INTR_ENABLE` gating of `sep_internal_interrupts[13]`, five of the six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others (ACCESSINVAL is not claimed: its documented trigger is a write with no bytes enabled, which neither this AXI master nor the wrapper bridge presents to the core), a 64-bit CONTROL write whose empty STATUS half the wrapper must ack, the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane.
 
 |SECURE_TM shadow-write lock
-|`sep_efuse_secure_tm_write_lock_test`. Each of `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` takes the same seeded payload twice: with the strap low the write lands (set-only rows OR-merge; `LC_STATE[31:8]` takes a plain shadow write), and after the strap is raised and the image re-sensed the stored value does not move and `sep_internal_interrupts[33]` pulses. The write response is logged, not graded. A `SECURE_TM_UNLOCK` spare still takes a write with the strap up, so the refusal is the lock rather than a dead write path. Real fuse sense at `LC_PROD`.
+|`sep_efuse_secure_tm_write_lock_test`. Each of `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` takes the same seeded payload twice: with the strap low the write lands (set-only rows OR-merge; `LC_STATE[31:8]` takes a plain shadow write), and after the strap is raised and the image re-sensed the stored value does not move and `sep_internal_interrupts[33]` pulses. The write response is logged, not graded. A `SecureTmUnlock` spare still takes a write with the strap up, so the refusal is the lock rather than a dead write path. Real fuse sense at `LC_PROD`.
 
 |eFuse locked-field access violation interrupt
 |`sep_locked_field_access_irq_path_test`. A write to a write-locked spare and a read of a read-locked spare each raise `sep_internal_interrupts[33]` (PIC source 34) for the duration of the access and drop the line after the access retires. The write-locked spare keeps its pre-write value, and the read-locked read does not return the stored value. An unlocked spare in the same OTP image is the negative control. The response code of a locked access is logged, not graded. Real fuse sense at `LC_PROD`.
@@ -3311,7 +3311,7 @@ is why they are asserted from Python probes rather than left to the SVA.
 *Test Procedure*:
 
 [arabic]
-. The aperture is a `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR` (`hw/sys/sep/rtl/sep_crypto_pkg.sv`), reachable from the CPU-LSU master the way the OTBN tests already reach their block.
+. The aperture is a `sep_crypto` demux rule at `AbrRegMapBaseAddr` (`hw/sys/sep/rtl/sep_crypto_pkg.sv`), reachable from the CPU-LSU master the way the OTBN tests already reach their block.
 . It is *not* behind an `axi_lite_isolate` unit: unlike the ESRC, CSRNG and EDN legs, the external TRNG passthrough in `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv` carries none.
 . Accesses are 32-bit beats (`AxSIZE=2`), one register each. Other access sizes and strobes are graded by <<sep_abr_access_size_test>>.
 . The Key-Manager-side key CSR is the generated PeakRDL `abr_wrapper_key_reg`. The ABR register block behind this aperture is real RTL.
@@ -3380,7 +3380,7 @@ seed (`SepAbrKeygenCfg`); the vectors are fixed.
 *Test Procedure*:
 
 [arabic]
-. The aperture is the same `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR`
+. The aperture is the same `sep_crypto` demux rule at `AbrRegMapBaseAddr`
 (`hw/sys/sep/rtl/sep_crypto_pkg.sv`) the keyGen leaf uses, with the same 32-bit
 beats and no `axi_lite_isolate` in front of it.
 . Both vectors are ACVP external-mu groups, so `MLDSA_CTRL.EXTERNAL_MU` is set
@@ -3462,7 +3462,7 @@ graded on a live encaps result.
 *Test Procedure*:
 
 [arabic]
-. The aperture is the same `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR`
+. The aperture is the same `sep_crypto` demux rule at `AbrRegMapBaseAddr`
 (`hw/sys/sep/rtl/sep_crypto_pkg.sv`) the ML-DSA leaves use. The ML-KEM windows
 sit higher in the same 64 KB region; offsets resolve from the vendor
 `abr_reg.rdl` by symbol.
@@ -4546,7 +4546,7 @@ feature-scorecard hole.
 |CHK-SEQ
 |Consecutive single-beat 64-bit words hold distinct per-address values, which is the real address-decode proof in this entry.
 |CHK-BOUNDARY
-|The base address and the last valid SRAM word both read and write exactly. The extent is the generated map, not a doc literal: `SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and `SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`, matching SRAM_N_ENTRIES = 256 * 1024 / 8 in `hw/top/sep_ip_integration.sv`, so the top valid 64-bit word is `0x1003fff8`. One-past-top decode-error is `sep_axi_map_refuse_test`, not this row: that address is the ROM base.
+|The base address and the last valid SRAM word both read and write exactly. The extent is the generated map, not a doc literal: `SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and `SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`, matching SramNEntries = 256 * 1024 / 8 in `hw/top/sep_ip_integration.sv`, so the top valid 64-bit word is `0x1003fff8`. One-past-top decode-error is `sep_axi_map_refuse_test`, not this row: that address is the ROM base.
 |CHK-NONVAC
 |Two addresses are written with complementary patterns and both are read back and value-checked, so a read path returning the same value for both fails. Requiring an *unwritten* neighbour to differ from a non-zero pattern is not claimed — that difference is already guaranteed by the pattern constructor; see <<audit>>.
 |CHK-ADDR-LINES
@@ -5093,7 +5093,7 @@ is not the stored value) attributes `[33]` to the locked path.
 *Not claimed*: end-to-end delivery to the CPU — PIC claim, masking and ISR entry
 — which needs `cpu` mode and a firmware image. This entry is
 generate-and-deassert on both lock flavours of one seed-selected spare; the
-`SECURE_TM_LOCK` fields are graded by <<sep_efuse_secure_tm_write_lock_test>>.
+`SecureTmLock` fields are graded by <<sep_efuse_secure_tm_write_lock_test>>.
 
 '''''
 
@@ -5110,7 +5110,7 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Prove the field map's `SECURE_TM_LOCK` term refuses a shadow write while the latched TEST_EN strap is high, and that the identical write lands with the strap low.
+*Objective*: Prove the field map's `SecureTmLock` term refuses a shadow write while the latched TEST_EN strap is high, and that the identical write lands with the strap low.
 
 *Test Coverage*: The `secure_tm` arm of the shadow-write lock, on the five apertures the lifecycle chapter names: `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS`.
 
@@ -5121,7 +5121,7 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 . Write a seeded payload to `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` and read each back: the strap-low half, where every write must land.
 . Raise `test_en_strap_i` and re-sense, so the strap is latched into `secure_tm`. The re-sense reloads every shadow word from the OTP image, so each field's pre-write value in the half below is the sensed value again, not what the half above wrote.
 . Write the same payload to the same five fields, watching the interrupt probe across each beat, and read each back.
-. Write a `SECURE_TM_UNLOCK` spare with the strap still up.
+. Write a `SecureTmUnlock` spare with the strap still up.
 
 *Checkers*:
 
@@ -5133,7 +5133,7 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 |CHK-SECTM-BLOCK
 |With the strap high, the stored value is unchanged, and `[33]` pulses during the beat and is low after it retires. The write response is logged, not graded.
 |CHK-SECTM-CONTRAST
-|A `SECURE_TM_UNLOCK` spare still takes a write with the strap high, and its readback equals what was written.
+|A `SecureTmUnlock` spare still takes a write with the strap high, and its readback equals what was written.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -5152,7 +5152,7 @@ conditions within one run, so a write path that never worked would fail the
 strap-low half, and a lock that never engaged would fail the strap-high half.
 The strap-low half additionally asserts that the value moved, so a payload that
 sets no new bit fails as a test bug rather than passing as a refusal. The
-`SECURE_TM_UNLOCK` contrast separates the lock from a bus that stopped
+`SecureTmUnlock` contrast separates the lock from a bus that stopped
 accepting writes when the strap went up.
 
 *Not claimed*: the JTAG and TRoot writers of the same registers — this entry

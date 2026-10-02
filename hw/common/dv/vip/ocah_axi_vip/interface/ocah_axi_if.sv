@@ -28,7 +28,7 @@ interface ocah_axi_if #(
   input wire logic aresetn
 );
 
-  localparam int unsigned STRB_WIDTH = DATA_WIDTH / 8;
+  localparam int unsigned StrbWidth = DATA_WIDTH / 8;
 
   // Write address channel.
   logic [ID_WIDTH-1:0]   awid;
@@ -47,7 +47,7 @@ interface ocah_axi_if #(
 
   // Write data channel.
   logic [DATA_WIDTH-1:0] wdata;
-  logic [STRB_WIDTH-1:0] wstrb;
+  logic [StrbWidth-1:0]  wstrb;
   logic                  wlast;
   logic [USER_WIDTH-1:0] wuser;
   logic                  wvalid;

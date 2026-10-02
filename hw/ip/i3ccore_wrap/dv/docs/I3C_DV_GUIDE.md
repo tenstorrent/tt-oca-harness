@@ -120,13 +120,13 @@ by bare module name.
   - Read Address Channel: `axi_araddr`, `axi_arprot`, `axi_arvalid`, `axi_arready`
   - Read Data Channel: `axi_rdata`, `axi_rresp`, `axi_rvalid`, `axi_rready`
 
-- **I3C Bus Signals** (NUM_I3C=2 instances):
+- **I3C Bus Signals** (NumI3c=2 instances):
   - Open-drain modeling: `scl_i/o/oe`, `sda_i/o/oe` per instance
   - Bus aggregation: Shared SCL (controller drives), shared SDA (both can pull low)
   - Instance 0: Controller
   - Instance 1: Target
 
-- **Interrupt Signals**: `irq[NUM_I3C-1:0]`
+- **Interrupt Signals**: `irq[NumI3c-1:0]`
 - **Error Injection Hook**: `sda_corrupt`, XOR-ed into the shared SDA so a test
   can flip a single bus bit. It needs to be a TB signal with no continuous
   driver, because `sda_shared` is a continuous assign and a cocotb deposit on it

@@ -13,8 +13,8 @@
 module drbg_edn_axis_adapter
   import drbg_pkg::*;
 #(
-  parameter int unsigned EDN_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_ENDPOINT_COUNT, // Number of exposed EDN endpoints.
-  parameter int unsigned ENDPOINT_FIFO_DEPTH = DRBG_DEFAULT_ENDPOINT_FIFO_DEPTH // FIFO depth for each endpoint AXI-Stream output.
+  parameter int unsigned EDN_ENDPOINT_COUNT = DrbgDefaultEdnEndpointCount, // Number of exposed EDN endpoints.
+  parameter int unsigned ENDPOINT_FIFO_DEPTH = DrbgDefaultEndpointFifoDepth // FIFO depth for each endpoint AXI-Stream output.
 ) (
   input  wire logic                                                   clk_i, // System clock.
   input  wire logic                                                   rst_ni, // Async reset, active-low.

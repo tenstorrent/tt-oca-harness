@@ -15,21 +15,21 @@ package uart_16550_pkg;
   // UART 16550 Definitions //
   ////////////////////////////
 
-  localparam int unsigned MAX_FRAME_LEN = 12;
-  localparam int unsigned TIMEOUT_CHAR_CNT = 4;  // Fixed by UART 16550.
+  localparam int unsigned MaxFrameLen = 12;
+  localparam int unsigned TimeoutCharCnt = 4;  // Fixed by UART 16550.
 
 
   ////////////////////////////////////
   // Register Interface Definitions //
   ////////////////////////////////////
 
-  localparam int unsigned REG_ADDR_WIDTH = uart_16550_main_reg_pkg::UART_16550_MAIN_REG_MIN_ADDR_WIDTH;
-  localparam int unsigned REG_DATA_WIDTH = 32;
-  localparam int unsigned REG_STRB_WIDTH = REG_DATA_WIDTH / 8;
+  localparam int unsigned RegAddrWidth = uart_16550_main_reg_pkg::UART_16550_MAIN_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned RegDataWidth = 32;
+  localparam int unsigned RegStrbWidth = RegDataWidth / 8;
 
-  typedef logic [REG_ADDR_WIDTH-1:0] reg_addr_t;
-  typedef logic [REG_DATA_WIDTH-1:0] reg_data_t;
-  typedef logic [REG_STRB_WIDTH-1:0] reg_strb_t;
+  typedef logic [RegAddrWidth-1:0] reg_addr_t;
+  typedef logic [RegDataWidth-1:0] reg_data_t;
+  typedef logic [RegStrbWidth-1:0] reg_strb_t;
 
   `AXI_LITE_TYPEDEF_ALL(axil, reg_addr_t, reg_data_t, reg_strb_t)
 
@@ -38,10 +38,10 @@ package uart_16550_pkg;
   // Register Map Definitions //
   //////////////////////////////
 
-  localparam int unsigned NUM_REG_MAPS = 3;
+  localparam int unsigned NumRegMaps = 3;
 
   typedef enum logic [$clog2(
-NUM_REG_MAPS
+NumRegMaps
 )-1:0] {
     MAIN_REG_MAP    = 2'd0,
     MAIN_WO_REG_MAP = 2'd1,
@@ -113,7 +113,7 @@ NUM_REG_MAPS
     return rx_data;
   endfunction
 
-  localparam int unsigned NUM_TRIGGER_LEVELS = 12; // 1, 4, 8, 14, 32, 64, 128, 256, 512, 1024, 2048, 4096.
+  localparam int unsigned NumTriggerLevels = 12; // 1, 4, 8, 14, 32, 64, 128, 256, 512, 1024, 2048, 4096.
 
   typedef enum logic {
     DMA_MODE_0 = 1'b0,

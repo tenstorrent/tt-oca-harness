@@ -39,29 +39,29 @@ module smc_cpu_wrapper #(
   parameter type l1_dcache_data_rsp_t = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,  // Data-cache data bank response
                                                                                        // type.
 
-  localparam int unsigned NUM_CPU_CORES      = smc_4core_cpu_pkg::NUM_CPU_CORES,  // Number of cores in the cluster,
+  localparam int unsigned NumCpuCores      = smc_4core_cpu_pkg::NumCpuCores,      // Number of cores in the cluster,
                                                                                   // from smc_4core_cpu_pkg; sizes
                                                                                   // the per-core PC and watchdog
                                                                                   // ports.
-  localparam int unsigned NUM_CPU_INTERRUPTS = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,  // Number of interrupt lines into
+  localparam int unsigned NumCpuInterrupts = smc_4core_cpu_pkg::NumCpuInterrupts,      // Number of interrupt lines into
                                                                                        // the cluster, from
                                                                                        // smc_4core_cpu_pkg.
 
-  localparam int unsigned NUM_SRAM_BANKS        = chipyard_4core_mem_pkg::NUM_SRAM_BANKS,  // Number of scratch RAM banks;
+  localparam int unsigned NumSramBanks        = chipyard_4core_mem_pkg::NumSramBanks,      // Number of scratch RAM banks;
                                                                                            // sizes the scratch RAM port
                                                                                            // arrays.
-  localparam int unsigned NUM_ICACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS,  // Number of instruction-cache tag
+  localparam int unsigned NumIcacheTagBanks  = chipyard_4core_mem_pkg::NumIcacheTagBanks,        // Number of instruction-cache tag
                                                                                                  // banks; sizes the
                                                                                                  // instruction-cache tag port
                                                                                                  // arrays.
-  localparam int unsigned NUM_ICACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS,  // Number of instruction-cache data
+  localparam int unsigned NumIcacheDataBanks = chipyard_4core_mem_pkg::NumIcacheDataBanks,        // Number of instruction-cache data
                                                                                                   // banks; sizes the
                                                                                                   // instruction-cache data port
                                                                                                   // arrays.
-  localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,  // Number of data-cache tag banks;
+  localparam int unsigned NumDcacheTagBanks  = chipyard_4core_mem_pkg::NumDcacheTagBanks,        // Number of data-cache tag banks;
                                                                                                  // sizes the data-cache tag port
                                                                                                  // arrays.
-  localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS  // Number of data-cache data banks;
+  localparam int unsigned NumDcacheDataBanks = chipyard_4core_mem_pkg::NumDcacheDataBanks        // Number of data-cache data banks;
                                                                                                  // sizes the data-cache data port
                                                                                                  // arrays.
 
@@ -102,13 +102,13 @@ module smc_cpu_wrapper #(
                                                                       // response from the
                                                                       // smc_fabric input fabric.
 
-  input  wire logic [NUM_CPU_INTERRUPTS-1:0] interrupts_i,  // Interrupt vector from smc_base,
+  input  wire logic [NumCpuInterrupts-1:0] interrupts_i,    // Interrupt vector from smc_base,
                                                             // passed unchanged to the cluster.
 
-  output logic [NUM_CPU_CORES-1:0][57:0] wb_reg_pc_o,  // Per-core writeback program counter from
+  output logic [NumCpuCores-1:0][57:0] wb_reg_pc_o,    // Per-core writeback program counter from
                                                        // the cluster, zero while the cluster
                                                        // boundary is isolated.
-  output logic [NUM_CPU_CORES-1:0]       wdt_timeout_cluster_o,  // Per-core first-stage watchdog
+  output logic [NumCpuCores-1:0]       wdt_timeout_cluster_o,    // Per-core first-stage watchdog
                                                                  // timeout from the cluster, low
                                                                  // while the cluster boundary is
                                                                  // isolated.
@@ -123,23 +123,23 @@ module smc_cpu_wrapper #(
                                                // bridge, clocked by clk_i, with the write
                                                // fields tied to zero.
   input  rom_rsp_t            rom_intf_rsp_i,  // Boot ROM read data for the TileLink-to-ROM bridge.
-  output scratch_ram_req_t    scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],  // Scratch RAM bank requests,
+  output scratch_ram_req_t    scratch_ram_intf_req_o [NumSramBanks-1:0],    // Scratch RAM bank requests,
                                                                             // driven by the zero-fill
                                                                             // sequencer until the zero-fill
                                                                             // completes.
-  input  scratch_ram_rsp_t    scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],  // Scratch RAM bank read data.
-  output l1_icache_tag_req_t  l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache tag bank
+  input  scratch_ram_rsp_t    scratch_ram_intf_rsp_i [NumSramBanks-1:0],    // Scratch RAM bank read data.
+  output l1_icache_tag_req_t  l1_icache_tag_intf_req_o [NumIcacheTagBanks-1:0],     // Instruction-cache tag bank
                                                                                     // requests.
-  input  l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache tag bank read
+  input  l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp_i [NumIcacheTagBanks-1:0],     // Instruction-cache tag bank read
                                                                                     // data.
-  output l1_icache_data_req_t l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache data bank
+  output l1_icache_data_req_t l1_icache_data_intf_req_o [NumIcacheDataBanks-1:0],     // Instruction-cache data bank
                                                                                       // requests.
-  input  l1_icache_data_rsp_t l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache data bank read
+  input  l1_icache_data_rsp_t l1_icache_data_intf_rsp_i [NumIcacheDataBanks-1:0],     // Instruction-cache data bank read
                                                                                       // data.
-  output l1_dcache_tag_req_t  l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag bank requests.
-  input  l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag bank read data.
-  output l1_dcache_data_req_t l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data bank requests.
-  input  l1_dcache_data_rsp_t l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data bank read data.
+  output l1_dcache_tag_req_t  l1_dcache_tag_intf_req_o [NumDcacheTagBanks-1:0],  // Data-cache tag bank requests.
+  input  l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp_i [NumDcacheTagBanks-1:0],  // Data-cache tag bank read data.
+  output l1_dcache_data_req_t l1_dcache_data_intf_req_o [NumDcacheDataBanks-1:0],  // Data-cache data bank requests.
+  input  l1_dcache_data_rsp_t l1_dcache_data_intf_rsp_i [NumDcacheDataBanks-1:0],  // Data-cache data bank read data.
 
   input  wire logic disable_sram_auto_init_i,  // High skips the scratch RAM zero-fill after
                                                // fuse_reset_ni releases.
@@ -176,15 +176,15 @@ module smc_cpu_wrapper #(
 
   // Reset / drain-handshake / status nets between cpu_ctrl_wrap and the CPU cluster
   logic                            cluster_uncore_reset_n;
-  logic [NUM_CPU_CORES-1:0]        core_reset_n;
+  logic [NumCpuCores-1:0]          core_reset_n;
   logic                            debug_reset_n;
   logic                            isolate_req;
   logic                            drained;
   logic                            isolate_flush;
-  logic [NUM_CPU_CORES-1:0][55:0]  core_reset_vector;
-  logic [NUM_CPU_CORES-1:0]        wb_pc_valid;
-  logic [NUM_CPU_CORES-1:0][57:0]  wb_reg_pc;
-  logic [NUM_CPU_CORES-1:0]        wdt_timeout_cluster;
+  logic [NumCpuCores-1:0][55:0]    core_reset_vector;
+  logic [NumCpuCores-1:0]          wb_pc_valid;
+  logic [NumCpuCores-1:0][57:0]    wb_reg_pc;
+  logic [NumCpuCores-1:0]          wdt_timeout_cluster;
 
   assign wb_reg_pc_o           = wb_reg_pc;
   assign wdt_timeout_cluster_o = wdt_timeout_cluster;
@@ -225,7 +225,7 @@ module smc_cpu_wrapper #(
   end
 
   axi_demux #(
-    .AxiIdWidth  (smc_pkg::SMC_LOCAL_FABRIC_XBAR_MASTER_ID_WIDTH),
+    .AxiIdWidth  (smc_pkg::SmcLocalFabricXbarMasterIdWidth),
     .AtopSupport (1'b0),
     .aw_chan_t   (smc_pkg::smc_local_32_64_8_12_axi_aw_chan_t),
     .w_chan_t    (smc_pkg::smc_local_32_64_8_12_axi_w_chan_t),
@@ -235,8 +235,8 @@ module smc_cpu_wrapper #(
     .axi_req_t   (smc_pkg::smc_local_32_64_8_12_axi_req_t),
     .axi_resp_t  (smc_pkg::smc_local_32_64_8_12_axi_resp_t),
     .NoMstPorts  (2),
-    .MaxTrans    (smc_pkg::FABRIC_MAX_TRANS),
-    .AxiLookBits (smc_pkg::FABRIC_ID_LOOKUP_BITS)
+    .MaxTrans    (smc_pkg::FabricMaxTrans),
+    .AxiLookBits (smc_pkg::FabricIdLookupBits)
   ) u_front_port_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_primary_smc_clk_ni),
@@ -251,10 +251,10 @@ module smc_cpu_wrapper #(
   );
 
   axi_to_axi_lite #(
-    .AxiAddrWidth    (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
-    .AxiDataWidth    (smc_pkg::AXI_DATA_WIDTH),
-    .AxiIdWidth      (smc_pkg::SMC_LOCAL_FABRIC_XBAR_MASTER_ID_WIDTH),
-    .AxiUserWidth    (smc_pkg::AXI_USER_WIDTH),
+    .AxiAddrWidth    (smc_pkg::SmcLocalAddrWidth),
+    .AxiDataWidth    (smc_pkg::AxiDataWidth),
+    .AxiIdWidth      (smc_pkg::SmcLocalFabricXbarMasterIdWidth),
+    .AxiUserWidth    (smc_pkg::AxiUserWidth),
     .AxiMaxWriteTxns (2),
     .AxiMaxReadTxns  (2),
     .full_req_t      (smc_pkg::smc_local_32_64_8_12_axi_req_t),
@@ -277,7 +277,7 @@ module smc_cpu_wrapper #(
 
   smc_cpu_ctrl_wrap #(
     .NO_ADDR_REMAP   (NO_ADDR_REMAP),
-    .NUM_CPU_CORES   (NUM_CPU_CORES)
+    .NUM_CPU_CORES   (NumCpuCores)
   ) u_smc_cpu_ctrl_wrap (
     .clk_ref_i                          (clk_ref_i),
     .clk_smc_i                          (clk_i),

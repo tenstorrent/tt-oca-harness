@@ -11,7 +11,7 @@ module i2c_controller_fsm
   import i2c_pkg::*;
 #(
   parameter  int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,    // FMT FIFO depth.
-  localparam int unsigned CONTROLLER_TX_FIFO_DEPTH_WIDTH = $clog2(CONTROLLER_TX_FIFO_DEPTH + 1) // clog2(depth+1) for FMT fill.
+  localparam int unsigned ControllerTxFifoDepthWidth = $clog2(CONTROLLER_TX_FIFO_DEPTH + 1) // clog2(depth+1) for FMT fill.
 ) (
   input  logic                                      clk_i,  // System clock.
   input  logic                                      rst_ni, // Async reset, active-low.
@@ -27,7 +27,7 @@ module i2c_controller_fsm
   input  logic                                      halt_controller_i, // Halt the controller FSM in IDLE.
 
   input  logic                                      fmt_fifo_rvalid_i, // FMT FIFO has valid data.
-  input  logic [CONTROLLER_TX_FIFO_DEPTH_WIDTH-1:0] fmt_fifo_depth_i, // FMT FIFO fill level.
+  input  logic [ControllerTxFifoDepthWidth-1:0]     fmt_fifo_depth_i, // FMT FIFO fill level.
   output logic                                      fmt_fifo_rready_o, // Pop FMT FIFO.
   input  logic [7:0]                                fmt_byte_i, // Byte in FMT FIFO to send to the
                                                                 // target.

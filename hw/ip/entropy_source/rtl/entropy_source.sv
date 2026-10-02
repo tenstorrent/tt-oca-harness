@@ -79,11 +79,11 @@ module entropy_source
     entropy_source_reg_pkg::entropy_source__out_t reg_out;
 
     logic [31:0]            entropy_stream;
-    logic [NRINGS-1:0][7:0] entropy_stream_uncompressed;
+    logic [NRings-1:0][7:0] entropy_stream_uncompressed;
     logic                   entropy_stream_valid;
     logic                   entropy_stream_valid_gated;
-    logic [NRINGS-1:0]      noise_bit_monitor;
-    logic [NRINGS-1:0]      sample_clk_monitor;
+    logic [NRings-1:0]      noise_bit_monitor;
+    logic [NRings-1:0]      sample_clk_monitor;
     logic [7:0]             health_status;
     logic                   window_wrap_pulse;
 
@@ -131,7 +131,7 @@ module entropy_source
         ST_FIFO_PUSH      = 1'd1
     } fifo_push_fsm_state_e;
 
-    logic [NRINGS-1:0][7:0] fifo_push_stream,     fifo_push_stream_next;
+    logic [NRings-1:0][7:0] fifo_push_stream,     fifo_push_stream_next;
     logic [1:0]             fifo_push_count,      fifo_push_count_next;
     fifo_push_fsm_state_e   fifo_push_state,      fifo_push_state_next;
 
@@ -260,7 +260,7 @@ module entropy_source
     /////////////////
 
     entropy_generator_complex #(
-        .NRINGS       (NRINGS),
+        .NRINGS       (NRings),
         .CLKDIV_WIDTH (20)
     ) u_generator_complex (
         .clk_i,
@@ -274,7 +274,7 @@ module entropy_source
 
         .jitter_ro_enable_i                     (reg_out.RING_OSC_ENABLE.ENABLE.value),
         .jitter_ro_detune_i                     (reg_out.RING_OSC_TUNE.DETUNE.value),
-        .jitter_ro_auto_tune_enable_i           ({NRINGS{reg_out.CTRL.AUTOTUNE_ENABLE.value}}),
+        .jitter_ro_auto_tune_enable_i           ({NRings{reg_out.CTRL.AUTOTUNE_ENABLE.value}}),
 
         .sample_clk_select_i                    (reg_out.RING_OSC_CTRL.SAMPLE_CLK_SELECT.value),
         .sample_clk_ro_detune_i                 (reg_out.RING_OSC_TUNE.SAMPLE_CLK_DETUNE.value),
@@ -500,14 +500,14 @@ module entropy_source
     // full FIFO simply drops the word (never stalls capture or the datapath).
     // ----------------------------------------------------------------------
 
-    // Lane mux. LANE_SEL is 4 bits (0-15) but NRINGS==12. Clamp out-of-range
+    // Lane mux. LANE_SEL is 4 bits (0-15) but NRings==12. Clamp out-of-range
     // selects (>=12) to lane 0, matching the RDL contract. Zero-padding to 16
     // entries keeps the index within array bounds (no SELRANGE lint warning).
     assign noise_obs_lane_sel_eff =
-        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value >= 4'(NRINGS))
+        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value >= 4'(NRings))
         ? 4'd0 : reg_out.NOISE_OBS_CTRL.LANE_SEL.value;
-    assign noise_bit_monitor_ext  = {{(16 - NRINGS){1'b0}}, noise_bit_monitor};
-    assign sample_clk_monitor_ext = {{(16 - NRINGS){1'b0}}, sample_clk_monitor};
+    assign noise_bit_monitor_ext  = {{(16 - NRings){1'b0}}, noise_bit_monitor};
+    assign sample_clk_monitor_ext = {{(16 - NRings){1'b0}}, sample_clk_monitor};
     assign noise_obs_raw_bit  = noise_bit_monitor_ext [noise_obs_lane_sel_eff];
     assign noise_obs_raw_sclk = sample_clk_monitor_ext[noise_obs_lane_sel_eff];
 

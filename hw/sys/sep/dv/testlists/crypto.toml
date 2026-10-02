@@ -235,7 +235,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
 # Adams Bridge ML-DSA-87 keyGen NIST KAT on the ABR aperture
-# (sep_crypto_pkg::ABR_REG_MAP_BASE_ADDR). Software-written seed only.
+# (sep_crypto_pkg::AbrRegMapBaseAddr). Software-written seed only.
 # Public key matches the vendored ACVP vector; one seed-bit flip must
 # change the key. PIC [34] low / [35] high on completion. RANDCFG: masking
 # entropy and flip bit from the run seed. Sign/verify, ML-KEM, and the

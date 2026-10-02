@@ -34,8 +34,8 @@ module system_timer_octs_core
                                                             // and count advance per credit pulse
                                                             // for a secondary; must exceed the
                                                             // pulse width.
-    input  logic [DATA_WIDTH-1:0] reg_preset_lo_i,          // Preset count low half.
-    input  logic [DATA_WIDTH-1:0] reg_preset_hi_i,          // Preset count high half.
+    input  logic [DataWidth-1:0]  reg_preset_lo_i,          // Preset count low half.
+    input  logic [DataWidth-1:0]  reg_preset_hi_i,          // Preset count high half.
     input  logic [7:0]            reg_pulse_width_i,        // Sync/credit pulse width in clk_i
                                                             // cycles; zero acts as one.
 
@@ -43,8 +43,8 @@ module system_timer_octs_core
                                                             // secondary.
     output logic                  reg_running_o,            // Timer is started and its count is
                                                             // nonzero.
-    output logic [DATA_WIDTH-1:0] reg_count_lo_o,           // Count low half.
-    output logic [DATA_WIDTH-1:0] reg_count_hi_o,           // Count high half.
+    output logic [DataWidth-1:0] reg_count_lo_o,            // Count low half.
+    output logic [DataWidth-1:0] reg_count_hi_o,            // Count high half.
 
     input  logic                  timer_sync_load_i,        // Inbound sync-load pulse; ignored in
                                                             // primary mode.

@@ -30,11 +30,11 @@ module sep_system_csr (
   output output_remap_reg_pkg::output_remap__out_t ap_output_remap_reg_ctrl_o [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0],  // Per-region output-remap register outputs for the AP region window.
   output output_remap_reg_pkg::output_remap__out_t stee_output_remap_reg_ctrl_o [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0],  // Per-region output-remap register outputs for the STEE region window.
 
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter control register outputs for the outbound (SEP to SMN) AXI filter.
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter status written back by the outbound AXI filter.
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [sep_pkg::OutboundFilterNumFilters-1:0],  // Per-filter control register outputs for the outbound (SEP to SMN) AXI filter.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [sep_pkg::OutboundFilterNumFilters-1:0],  // Per-filter status written back by the outbound AXI filter.
 
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter control register outputs for the inbound (SMN to SEP) AXI filter.
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter status written back by the inbound AXI filter.
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [sep_pkg::InboundFilterNumFilters-1:0],  // Per-filter control register outputs for the inbound (SMN to SEP) AXI filter.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [sep_pkg::InboundFilterNumFilters-1:0],  // Per-filter status written back by the inbound AXI filter.
 
   output logic [55:0] sep_global_base_addr_o,  // SEP_GLOBAL_BASE_ADDR register value: base of the
                                                // SEP aperture in the global address map.
@@ -84,22 +84,22 @@ module sep_system_csr (
   ////////////////////////////////////////////////////////////////////////////
 
   // AXI Demux signals
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::SYSTEM_CSR_DEMUX_PORTS-1:0] sep_system_csr_axil_reqs;
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::SYSTEM_CSR_DEMUX_PORTS-1:0] sep_system_csr_axil_resps;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::SystemCsrDemuxPorts-1:0] sep_system_csr_axil_reqs;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::SystemCsrDemuxPorts-1:0] sep_system_csr_axil_resps;
 
   sep_pkg::system_csr_demux_select_e system_csr_demux_select_aw;
   sep_pkg::system_csr_demux_select_e system_csr_demux_select_ar;
 
   // Outbound Filter signals
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0] outbound_filter_axil_reqs;
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0] outbound_filter_axil_resps;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::OutboundFilterNumFilters-1:0] outbound_filter_axil_reqs;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::OutboundFilterNumFilters-1:0] outbound_filter_axil_resps;
 
   sep_pkg::outbound_filter_select_t outbound_filter_aw_select;
   sep_pkg::outbound_filter_select_t outbound_filter_ar_select;
 
   // Inbound Filter signals
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0] inbound_filter_axil_reqs;
-  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0] inbound_filter_axil_resps;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::InboundFilterNumFilters-1:0] inbound_filter_axil_reqs;
+  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::InboundFilterNumFilters-1:0] inbound_filter_axil_resps;
 
   sep_pkg::inbound_filter_select_t inbound_filter_aw_select;
   sep_pkg::inbound_filter_select_t inbound_filter_ar_select;
@@ -251,7 +251,7 @@ module sep_system_csr (
     .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
     .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
     .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
-    .NoMstPorts  (sep_pkg::SYSTEM_CSR_DEMUX_PORTS),
+    .NoMstPorts  (sep_pkg::SystemCsrDemuxPorts),
     .MaxTrans    (16),
     .FallThrough (1'b0),
     .SpillAw     (1'b1),
@@ -275,10 +275,10 @@ module sep_system_csr (
   // Alias Remap Register Block - Local Masters
   ////////////////////////////////////////////////////////////////////////////
 
-  localparam int unsigned alias_remap_sel_start_idx = $clog2(
+  localparam int unsigned AliasRemapSelStartIdx = $clog2(
       sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_SIZE
   );
-  localparam int unsigned alias_remap_sel_end_idx = alias_remap_sel_start_idx + sep_pkg::ALIAS_REMAP_SEL_W - 1;
+  localparam int unsigned AliasRemapSelEndIdx = AliasRemapSelStartIdx + sep_pkg::ALIAS_REMAP_SEL_W - 1;
 
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS-1:0] local_master_aR_reqs;
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS-1:0] local_master_aR_resps;
@@ -304,8 +304,8 @@ module sep_system_csr (
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
     .slv_req_i       (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP]),
-    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP].aw.addr[alias_remap_sel_end_idx:alias_remap_sel_start_idx]),  // 0x20 spacing: bits [8:5] for 16 regions
-    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP].ar.addr[alias_remap_sel_end_idx:alias_remap_sel_start_idx]),  // 0x20 spacing: bits [8:5] for 16 regions
+    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP].aw.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: bits [8:5] for 16 regions
+    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::LOCAL_MASTER_ALIAS_REMAP].ar.addr[AliasRemapSelEndIdx:AliasRemapSelStartIdx]),  // 0x20 spacing: bits [8:5] for 16 regions
     .slv_resp_o      (sep_system_csr_axil_resps[sep_pkg::LOCAL_MASTER_ALIAS_REMAP]),
     .mst_reqs_o      (local_master_aR_reqs),
     .mst_resps_i     (local_master_aR_resps)
@@ -344,10 +344,10 @@ module sep_system_csr (
   // Output Remap Register Block - AP
   ////////////////////////////////////////////////////////////////////////////
 
-  localparam int unsigned ap_remap_sel_start_idx = $clog2(
+  localparam int unsigned ApRemapSelStartIdx = $clog2(
       sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_SIZE
   );
-  localparam int unsigned ap_remap_sel_end_idx = ap_remap_sel_start_idx + sep_pkg::AP_REMAP_SEL_W - 1;
+  localparam int unsigned ApRemapSelEndIdx = ApRemapSelStartIdx + sep_pkg::AP_REMAP_SEL_W - 1;
 
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0] ap_output_remap_reqs;
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0] ap_output_remap_resps;
@@ -373,8 +373,8 @@ module sep_system_csr (
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
     .slv_req_i       (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP]),
-    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].aw.addr[ap_remap_sel_end_idx:ap_remap_sel_start_idx]),  // 0x8 spacing: bits [6:3] for 16 regions
-    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].ar.addr[ap_remap_sel_end_idx:ap_remap_sel_start_idx]),  // 0x8 spacing: bits [6:3] for 16 regions
+    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].aw.addr[ApRemapSelEndIdx:ApRemapSelStartIdx]),  // 0x8 spacing: bits [6:3] for 16 regions
+    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::AP_OUTPUT_REMAP].ar.addr[ApRemapSelEndIdx:ApRemapSelStartIdx]),  // 0x8 spacing: bits [6:3] for 16 regions
     .slv_resp_o      (sep_system_csr_axil_resps[sep_pkg::AP_OUTPUT_REMAP]),
     .mst_reqs_o      (ap_output_remap_reqs),
     .mst_resps_i     (ap_output_remap_resps)
@@ -411,10 +411,10 @@ module sep_system_csr (
   // Alias Remap Register Block - STEE
   ////////////////////////////////////////////////////////////////////////////
 
-  localparam int unsigned stee_remap_sel_start_idx = $clog2(
+  localparam int unsigned SteeRemapSelStartIdx = $clog2(
       sep_top_addrmap_pkg::SEP_TOP_STEE_OUTPUT_REMAP_CTRL_SIZE
   );
-  localparam int unsigned stee_remap_sel_end_idx = stee_remap_sel_start_idx + sep_pkg::STEE_REMAP_SEL_W - 1;
+  localparam int unsigned SteeRemapSelEndIdx = SteeRemapSelStartIdx + sep_pkg::STEE_REMAP_SEL_W - 1;
 
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0] stee_output_remap_reqs;
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0] stee_output_remap_resps;
@@ -440,8 +440,8 @@ module sep_system_csr (
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
     .slv_req_i       (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP]),
-    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP].aw.addr[stee_remap_sel_end_idx:stee_remap_sel_start_idx]),  // 0x8 spacing: bits [6:3] for 16 regions
-    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP].ar.addr[stee_remap_sel_end_idx:stee_remap_sel_start_idx]),  // 0x8 spacing: bits [6:3] for 16 regions
+    .slv_aw_select_i (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP].aw.addr[SteeRemapSelEndIdx:SteeRemapSelStartIdx]),  // 0x8 spacing: bits [6:3] for 16 regions
+    .slv_ar_select_i (sep_system_csr_axil_reqs[sep_pkg::STEE_OUTPUT_REMAP].ar.addr[SteeRemapSelEndIdx:SteeRemapSelStartIdx]),  // 0x8 spacing: bits [6:3] for 16 regions
     .slv_resp_o      (sep_system_csr_axil_resps[sep_pkg::STEE_OUTPUT_REMAP]),
     .mst_reqs_o      (stee_output_remap_reqs),
     .mst_resps_i     (stee_output_remap_resps)
@@ -481,8 +481,8 @@ module sep_system_csr (
   ////////////////////////////////////////////////////////////////////////////
 
   always_comb begin
-    outbound_filter_aw_select = sep_system_csr_axil_reqs[sep_pkg::OUTBOUND_FILTER].aw.addr[5+:$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)];
-    outbound_filter_ar_select = sep_system_csr_axil_reqs[sep_pkg::OUTBOUND_FILTER].ar.addr[5+:$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)];
+    outbound_filter_aw_select = sep_system_csr_axil_reqs[sep_pkg::OUTBOUND_FILTER].aw.addr[5+:$clog2(sep_pkg::OutboundFilterNumFilters)];
+    outbound_filter_ar_select = sep_system_csr_axil_reqs[sep_pkg::OUTBOUND_FILTER].ar.addr[5+:$clog2(sep_pkg::OutboundFilterNumFilters)];
   end
 
   axi_lite_demux #(
@@ -493,7 +493,7 @@ module sep_system_csr (
     .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
     .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
     .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
-    .NoMstPorts  (sep_pkg::OUTBOUND_FILTER_NUM_FILTERS),
+    .NoMstPorts  (sep_pkg::OutboundFilterNumFilters),
     .MaxTrans    (16),
     .SpillAw     (1'b1),
     .SpillW      (1'b0),
@@ -513,7 +513,7 @@ module sep_system_csr (
   );
 
   for (
-      genvar f = 0; f < sep_pkg::OUTBOUND_FILTER_NUM_FILTERS; f = f + 1
+      genvar f = 0; f < sep_pkg::OutboundFilterNumFilters; f = f + 1
   ) begin : gen_outbound_filter_reg
 
     // Intermediate signals for conditional connection based on locked status
@@ -597,8 +597,8 @@ module sep_system_csr (
   ////////////////////////////////////////////////////////////////////////////
 
   always_comb begin
-    inbound_filter_aw_select = sep_system_csr_axil_reqs[sep_pkg::INBOUND_FILTER].aw.addr[5+:$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)];
-    inbound_filter_ar_select = sep_system_csr_axil_reqs[sep_pkg::INBOUND_FILTER].ar.addr[5+:$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)];
+    inbound_filter_aw_select = sep_system_csr_axil_reqs[sep_pkg::INBOUND_FILTER].aw.addr[5+:$clog2(sep_pkg::InboundFilterNumFilters)];
+    inbound_filter_ar_select = sep_system_csr_axil_reqs[sep_pkg::INBOUND_FILTER].ar.addr[5+:$clog2(sep_pkg::InboundFilterNumFilters)];
   end
 
   axi_lite_demux #(
@@ -609,7 +609,7 @@ module sep_system_csr (
     .r_chan_t    (sep_pkg::sep_system_peripherals_system_csr_axi_lite_r_chan_t),
     .axi_req_t   (sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t),
     .axi_resp_t  (sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t),
-    .NoMstPorts  (sep_pkg::INBOUND_FILTER_NUM_FILTERS),
+    .NoMstPorts  (sep_pkg::InboundFilterNumFilters),
     .MaxTrans    (1),
     .FallThrough (1'b0),
     .SpillAw     (1'b1),
@@ -629,9 +629,7 @@ module sep_system_csr (
     .mst_resps_i     (inbound_filter_axil_resps)
   );
 
-  for (
-      genvar f = 0; f < sep_pkg::INBOUND_FILTER_NUM_FILTERS; f = f + 1
-  ) begin : gen_inbound_filter_reg
+  for (genvar f = 0; f < sep_pkg::InboundFilterNumFilters; f = f + 1) begin : gen_inbound_filter_reg
 
     // Intermediate signals for conditional connection based on locked status
     sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t filter_reg_req, locked_reg_req;

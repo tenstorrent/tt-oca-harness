@@ -10,7 +10,7 @@
 //
 // WHAT THIS PROVES
 //   1. A pulse on the public rst_cool_ni pin survives smc_reset_ctrl's
-//      de-glitch (RESET_DEGLITCH_WIDTH samples on clk_ref_i) and really
+//      de-glitch (ResetDeglitchWidth samples on clk_ref_i) and really
 //      reaches the reset domain: rst_primary_smc_clk_n AND
 //      rst_warm_smc_clk_n both drop, then both release. Polled, not waited
 //      out with a fixed delay -- a fixed hold could be shorter than the
@@ -60,7 +60,7 @@ class smc_multi_reset_csr_persistence_test_seq extends smc_base_test_seq;
   localparam string ChkNonvac = "CHK-NONVAC";
 
   // Bound on each cool-reset transition poll, in smc clocks. The de-glitch is
-  // RESET_DEGLITCH_WIDTH samples of clk_ref_i (~32), which at the randomized
+  // ResetDeglitchWidth samples of clk_ref_i (~32), which at the randomized
   // ref/smc periods is under a hundred smc clocks; this leaves ample margin
   // and still fails loudly instead of hanging.
   localparam int unsigned CoolResetPollCycles = 5_000;
