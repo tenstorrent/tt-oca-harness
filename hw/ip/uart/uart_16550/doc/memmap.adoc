@@ -21,8 +21,9 @@ ECR extended trigger selection and ITR interrupt tests.
 === Detailed Register Map
 
 The first two register views apply when `LCR.DLAB=0`; read-only and write-only
-aliases at the same offset are shown separately. The divisor-latch view applies
-when `LCR.DLAB=1`.
+aliases at the same offset are shown separately. Registers outside offsets
+`0x00` and `0x04`, including FCR at `0x08`, are accessible for either
+`LCR.DLAB` value. The divisor-latch view applies when `LCR.DLAB=1`.
 
 ifdef::backend-html5[]
 ++++
