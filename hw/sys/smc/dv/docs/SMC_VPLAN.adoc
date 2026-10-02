@@ -1384,18 +1384,19 @@ Drive `smc_zeroer_sanity_test_seq`. Each checker below is a named compare the DU
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); `tb_dma_busy` sampled on every `clk_smc_i` edge across the sweep
 
-*Objective*: All sixteen DMA stream banks decode with `NUM_CTRL_STREAMS = 1`: the reserved `STATUS`, `DONE` and `NEXT_ID` registers complete OKAY and read the value `dma.adoc` gives a reserved bank, and no reserved `NEXT_ID` read launches a transfer.
+*Objective*: All sixteen DMA stream banks decode with `NUM_CTRL_STREAMS = 1`: the reserved `STATUS`, `DONE` and `NEXT_ID` registers complete OKAY and read the value `dma.adoc` gives a reserved bank, and no reserved `NEXT_ID` read launches a transfer. A 32-bit read of the unused word at `0x4C`, the other half of `NEXT_ID_0`'s 8-byte word, answers the map's hole response and launches nothing either.
 
 *Test Coverage*:
 
 * The zeros are given teeth: `DST_ADDRESS_LO` in the same block takes and returns a pattern before the sweep and is restored after it, so a bank reading 0 is reading from a block that answers rather than from a dead bus.
 * `tb_dma_busy` is required resolvable and 0 at every sampled `clk_smc_i` edge across the whole sweep, and the watcher is required to have sampled at least one edge, so "no transfer started" is a per-sample compare and not an untaken branch.
 * Bank 0 is the functional stream: its `STATUS_0` and `DONE_0` are hardware status the specification pins to no value, so they are read for an OKAY response only and their values are reported, not compared. `NEXT_ID_0` is not read here, because reading it launches a transfer.
+* A 32-bit read of `0x4C` must answer OKAY with `0xFFFFFFFF`, the hole response the generated map gives the DMA block, while `tb_dma_busy` stays 0: the access reaches only its own half of the 8-byte word and not `NEXT_ID_0` at `0x48`.
 * The DMA clock gate is saved, ungated for the sweep, and restored with an exact readback.
 
 *Test Procedure*:
 
-Drive `smc_dma_reserved_stream_banks_test_seq` on the SEP_IN AXI sequencer: ungate the DMA clock, start the busy watcher, write and read back the liveness pattern, read `STATUS_0` and `DONE_0` for a response, sweep `STATUS_1..15`, `DONE_1..15` and `NEXT_ID_1..15` against an exact 0, restore the pattern and the clock gate, then require the busy count to be 0 and the access count to have reached its floor. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
+Drive `smc_dma_reserved_stream_banks_test_seq` on the SEP_IN AXI sequencer: ungate the DMA clock, start the busy watcher, write and read back the liveness pattern, read `STATUS_0` and `DONE_0` for a response, sweep `STATUS_1..15`, `DONE_1..15` and `NEXT_ID_1..15` against an exact 0, read `0x4C` against the hole data, restore the pattern and the clock gate, then require the busy count to be 0 and the access count to have reached its floor. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
 
 *Checkers*:
 
