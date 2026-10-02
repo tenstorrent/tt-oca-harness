@@ -166,9 +166,10 @@ Reports completion of the external boot sequence. Its qualified value gates
 fuse-reset release together with fuse sensing; the repair and MBIST status
 bits themselves are not this handshake.
 `skip_mem_repair_o`::
-Asserted by the synchronized isolation pin or the FLR isolation latch.
-External logic determines how it bypasses repair/MBIST. A software-only
-isolation request does not assert it.
+Asserted by the synchronized isolation pin or the FLR-set
+`ISOLATE_REQ_SMC_REG` latch. Software writes can clear this latch but cannot
+set it. A request through the separate `ISOLATE_REQ_REG` register does not
+assert this output. External logic determines how it bypasses repair/MBIST.
 `BYPASS_SRAM_REPAIR` (GPIO strap 13)::
 Requests repair bypass. The ROM skips its repair-status check when this
 strap is set; the external integration owns the repair bypass behavior.
