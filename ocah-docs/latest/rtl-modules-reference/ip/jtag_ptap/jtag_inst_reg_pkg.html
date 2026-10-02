@@ -682,11 +682,11 @@
 </aside>
 <article class="doc">
 <h1 class="page">jtag_inst_reg_pkg</h1>
-<p>Define instruction opcodes and the decode enum for the primary JTAG TAP.</p><p>Holds IR width, opcode constants, the one-hot jtag_instruction_decoded_e, and the IDCODE reset default DEFAULT_INSTRUCTION for jtag_inst_reg. Shared by the PTAP and interface unit so decode stays in one package.</p>
+<p>Define instruction opcodes and the decode enum for the primary JTAG TAP.</p><p>Holds IR width, opcode constants, the one-hot jtag_instruction_decoded_e, and the IDCODE reset default DefaultInstruction for jtag_inst_reg. Shared by the PTAP and interface unit so decode stays in one package.</p>
 <div class="ocah-reg-html">
 <h2 id="jtag_instruction_e"><code>jtag_instruction_e</code></h2>
 <p>--------------------------------------------------------------------------</p>
-<p>Enum (<code>logic [IR_WIDTH-1:0]</code>)</p>
+<p>Enum (<code>logic [IrWidth-1:0]</code>)</p>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. <code>jtag_instruction_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>BYPASS_ALT_INSTR</code></td><td>6&#x27;h00</td><td>Bypass register (all-zero encoding per IEEE 1149.1).</td></tr>
@@ -756,73 +756,73 @@
 </table>
 <h2 id="jtag_instruction_decoded_e"><code>jtag_instruction_decoded_e</code></h2>
 <p>Use shift operator (&lt;&lt;) to create one-hot decoded signals from instruction enumeration</p>
-<p>Enum (<code>logic [DECODED_IR_WIDTH-1:0]</code>)</p>
+<p>Enum (<code>logic [DecodedIrWidth-1:0]</code>)</p>
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. <code>jtag_instruction_decoded_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
-<tr><td><code>BYPASS_ALT_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; BYPASS_ALT_INSTR</td><td></td></tr>
-<tr><td><code>IDCODE_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; IDCODE_INSTR</td><td></td></tr>
-<tr><td><code>RUNBIST_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; RUNBIST_INSTR</td><td></td></tr>
-<tr><td><code>SAMPLE_PRELOAD_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SAMPLE_PRELOAD_INSTR</td><td></td></tr>
-<tr><td><code>EXTEST_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; EXTEST_INSTR</td><td></td></tr>
-<tr><td><code>EXTEST_TRAIN_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; EXTEST_TRAIN_INSTR</td><td></td></tr>
-<tr><td><code>EXTEST_PULSE_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; EXTEST_PULSE_INSTR</td><td></td></tr>
-<tr><td><code>CLAMP_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; CLAMP_INSTR</td><td></td></tr>
-<tr><td><code>HIGHZ_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; HIGHZ_INSTR</td><td></td></tr>
-<tr><td><code>INTEST_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; INTEST_INSTR</td><td></td></tr>
-<tr><td><code>CLAMP_HOLD_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; CLAMP_HOLD_INSTR</td><td></td></tr>
-<tr><td><code>CLAMP_RELEASE_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; CLAMP_RELEASE_INSTR</td><td></td></tr>
-<tr><td><code>TMP_STATUS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; TMP_STATUS_INSTR</td><td></td></tr>
-<tr><td><code>IC_RESET_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; IC_RESET_INSTR</td><td></td></tr>
-<tr><td><code>TAP_3DCR_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; TAP_3DCR_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_0F_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_0F_INSTR</td><td></td></tr>
-<tr><td><code>RISCV_RESERVED_0_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_0_INSTR</td><td></td></tr>
-<tr><td><code>RISCV_RESERVED_1_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_1_INSTR</td><td></td></tr>
-<tr><td><code>RISCV_RESERVED_2_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_2_INSTR</td><td></td></tr>
-<tr><td><code>RISCV_RESERVED_3_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_3_INSTR</td><td></td></tr>
-<tr><td><code>RISCV_RESERVED_4_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_4_INSTR</td><td></td></tr>
-<tr><td><code>RISCV_RESERVED_5_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_5_INSTR</td><td></td></tr>
-<tr><td><code>RISCV_RESERVED_6_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_6_INSTR</td><td></td></tr>
-<tr><td><code>RISCV_RESERVED_7_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_7_INSTR</td><td></td></tr>
-<tr><td><code>DEBUG_CONTROL_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; DEBUG_CONTROL_INSTR</td><td></td></tr>
-<tr><td><code>JTAG_CAPS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; JTAG_CAPS_INSTR</td><td></td></tr>
-<tr><td><code>SELECT_IJTAG_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SELECT_IJTAG_INSTR</td><td></td></tr>
-<tr><td><code>SMC_OTP_JTAG2AXI_CAPS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_JTAG2AXI_CAPS_INSTR</td><td></td></tr>
-<tr><td><code>SMC_OTP_AXI_SINGLE_OP_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SINGLE_OP_INSTR</td><td></td></tr>
-<tr><td><code>SMC_OTP_AXI_SERIES_CTRL_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SERIES_CTRL_INSTR</td><td></td></tr>
-<tr><td><code>SMC_OTP_AXI_SERIES_DATA_INCR_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SERIES_DATA_INCR_INSTR</td><td></td></tr>
-<tr><td><code>SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR</td><td></td></tr>
-<tr><td><code>SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR</td><td></td></tr>
-<tr><td><code>SEP_OTP_JTAG2AXI_CAPS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_JTAG2AXI_CAPS_INSTR</td><td></td></tr>
-<tr><td><code>SEP_OTP_AXI_SINGLE_OP_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SINGLE_OP_INSTR</td><td></td></tr>
-<tr><td><code>SEP_OTP_AXI_SERIES_CTRL_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SERIES_CTRL_INSTR</td><td></td></tr>
-<tr><td><code>SEP_OTP_AXI_SERIES_DATA_INCR_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SERIES_DATA_INCR_INSTR</td><td></td></tr>
-<tr><td><code>SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR</td><td></td></tr>
-<tr><td><code>SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR</td><td></td></tr>
-<tr><td><code>SMC_JTAG2AXI_CAPS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_JTAG2AXI_CAPS_INSTR</td><td></td></tr>
-<tr><td><code>SMC_AXI_SINGLE_OP_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SINGLE_OP_INSTR</td><td></td></tr>
-<tr><td><code>SMC_AXI_SERIES_CTRL_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SERIES_CTRL_INSTR</td><td></td></tr>
-<tr><td><code>SMC_AXI_SERIES_DATA_INCR_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SERIES_DATA_INCR_INSTR</td><td></td></tr>
-<tr><td><code>SMC_AXI_SERIES_DATA_NO_INCR_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SERIES_DATA_NO_INCR_INSTR</td><td></td></tr>
-<tr><td><code>SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_2D_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_2D_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_2E_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_2E_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_2F_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_2F_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_30_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_30_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_31_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_31_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_32_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_32_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_33_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_33_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_34_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_34_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_35_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_35_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_36_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_36_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_37_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_37_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_38_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_38_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_39_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_39_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_3A_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_3A_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_3B_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_3B_INSTR</td><td></td></tr>
-<tr><td><code>UNDEFINED_BYPASS_3C_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_3C_INSTR</td><td></td></tr>
-<tr><td><code>ZERO_LENGTH_BYPASS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; ZERO_LENGTH_BYPASS_INSTR</td><td></td></tr>
-<tr><td><code>INV_BYPASS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; INV_BYPASS_INSTR</td><td></td></tr>
-<tr><td><code>BYPASS_INSTR_DECODED</code></td><td>DECODED_IR_WIDTH&#x27;(1&#x27;b1) &lt;&lt; BYPASS_INSTR</td><td></td></tr>
+<tr><td><code>BYPASS_ALT_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; BYPASS_ALT_INSTR</td><td></td></tr>
+<tr><td><code>IDCODE_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; IDCODE_INSTR</td><td></td></tr>
+<tr><td><code>RUNBIST_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; RUNBIST_INSTR</td><td></td></tr>
+<tr><td><code>SAMPLE_PRELOAD_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SAMPLE_PRELOAD_INSTR</td><td></td></tr>
+<tr><td><code>EXTEST_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; EXTEST_INSTR</td><td></td></tr>
+<tr><td><code>EXTEST_TRAIN_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; EXTEST_TRAIN_INSTR</td><td></td></tr>
+<tr><td><code>EXTEST_PULSE_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; EXTEST_PULSE_INSTR</td><td></td></tr>
+<tr><td><code>CLAMP_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; CLAMP_INSTR</td><td></td></tr>
+<tr><td><code>HIGHZ_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; HIGHZ_INSTR</td><td></td></tr>
+<tr><td><code>INTEST_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; INTEST_INSTR</td><td></td></tr>
+<tr><td><code>CLAMP_HOLD_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; CLAMP_HOLD_INSTR</td><td></td></tr>
+<tr><td><code>CLAMP_RELEASE_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; CLAMP_RELEASE_INSTR</td><td></td></tr>
+<tr><td><code>TMP_STATUS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; TMP_STATUS_INSTR</td><td></td></tr>
+<tr><td><code>IC_RESET_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; IC_RESET_INSTR</td><td></td></tr>
+<tr><td><code>TAP_3DCR_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; TAP_3DCR_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_0F_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_0F_INSTR</td><td></td></tr>
+<tr><td><code>RISCV_RESERVED_0_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_0_INSTR</td><td></td></tr>
+<tr><td><code>RISCV_RESERVED_1_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_1_INSTR</td><td></td></tr>
+<tr><td><code>RISCV_RESERVED_2_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_2_INSTR</td><td></td></tr>
+<tr><td><code>RISCV_RESERVED_3_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_3_INSTR</td><td></td></tr>
+<tr><td><code>RISCV_RESERVED_4_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_4_INSTR</td><td></td></tr>
+<tr><td><code>RISCV_RESERVED_5_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_5_INSTR</td><td></td></tr>
+<tr><td><code>RISCV_RESERVED_6_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_6_INSTR</td><td></td></tr>
+<tr><td><code>RISCV_RESERVED_7_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; RISCV_RESERVED_7_INSTR</td><td></td></tr>
+<tr><td><code>DEBUG_CONTROL_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; DEBUG_CONTROL_INSTR</td><td></td></tr>
+<tr><td><code>JTAG_CAPS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; JTAG_CAPS_INSTR</td><td></td></tr>
+<tr><td><code>SELECT_IJTAG_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SELECT_IJTAG_INSTR</td><td></td></tr>
+<tr><td><code>SMC_OTP_JTAG2AXI_CAPS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_JTAG2AXI_CAPS_INSTR</td><td></td></tr>
+<tr><td><code>SMC_OTP_AXI_SINGLE_OP_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SINGLE_OP_INSTR</td><td></td></tr>
+<tr><td><code>SMC_OTP_AXI_SERIES_CTRL_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SERIES_CTRL_INSTR</td><td></td></tr>
+<tr><td><code>SMC_OTP_AXI_SERIES_DATA_INCR_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SERIES_DATA_INCR_INSTR</td><td></td></tr>
+<tr><td><code>SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR</td><td></td></tr>
+<tr><td><code>SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR</td><td></td></tr>
+<tr><td><code>SEP_OTP_JTAG2AXI_CAPS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_JTAG2AXI_CAPS_INSTR</td><td></td></tr>
+<tr><td><code>SEP_OTP_AXI_SINGLE_OP_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SINGLE_OP_INSTR</td><td></td></tr>
+<tr><td><code>SEP_OTP_AXI_SERIES_CTRL_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SERIES_CTRL_INSTR</td><td></td></tr>
+<tr><td><code>SEP_OTP_AXI_SERIES_DATA_INCR_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SERIES_DATA_INCR_INSTR</td><td></td></tr>
+<tr><td><code>SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR</td><td></td></tr>
+<tr><td><code>SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR</td><td></td></tr>
+<tr><td><code>SMC_JTAG2AXI_CAPS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_JTAG2AXI_CAPS_INSTR</td><td></td></tr>
+<tr><td><code>SMC_AXI_SINGLE_OP_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SINGLE_OP_INSTR</td><td></td></tr>
+<tr><td><code>SMC_AXI_SERIES_CTRL_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SERIES_CTRL_INSTR</td><td></td></tr>
+<tr><td><code>SMC_AXI_SERIES_DATA_INCR_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SERIES_DATA_INCR_INSTR</td><td></td></tr>
+<tr><td><code>SMC_AXI_SERIES_DATA_NO_INCR_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SERIES_DATA_NO_INCR_INSTR</td><td></td></tr>
+<tr><td><code>SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_2D_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_2D_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_2E_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_2E_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_2F_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_2F_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_30_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_30_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_31_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_31_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_32_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_32_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_33_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_33_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_34_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_34_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_35_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_35_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_36_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_36_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_37_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_37_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_38_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_38_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_39_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_39_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_3A_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_3A_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_3B_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_3B_INSTR</td><td></td></tr>
+<tr><td><code>UNDEFINED_BYPASS_3C_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; UNDEFINED_BYPASS_3C_INSTR</td><td></td></tr>
+<tr><td><code>ZERO_LENGTH_BYPASS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; ZERO_LENGTH_BYPASS_INSTR</td><td></td></tr>
+<tr><td><code>INV_BYPASS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; INV_BYPASS_INSTR</td><td></td></tr>
+<tr><td><code>BYPASS_INSTR_DECODED</code></td><td>DecodedIrWidth&#x27;(1&#x27;b1) &lt;&lt; BYPASS_INSTR</td><td></td></tr>
 </table>
 </div>
 </article>

@@ -682,15 +682,15 @@
 </aside>
 <article class="doc">
 <h1 class="page">efuse_token_processing</h1>
-<p>Hash the RMA tokens and the security-disable token written through the MMR window and compare them against the RMA digests in the shadow map and against SEP_SEC_DISABLE_TOKEN.</p><p>Drives triple-redundant digest compares and publishes rma_sip/chiplet_token_match and security_disable_o. The RMA compares wait for fuse_sense_done_i; the security-disable compare does not. shadow_regs_o withholds the shadow map until sensing completes or security disable is set.</p><p>Encodings:</p><ul><li>SEP_SEC_DISABLE_TOKEN is the rev-cell default of the expected security-disable digest.</li><li>TOKEN_MATCH_CODE is the success encoding.</li><li>LC_STATE_INVALID encodes an invalid lifecycle value.</li></ul><p>Status outputs:</p><ul><li>token_match_fault_o flags redundancy disagreement.</li><li>sec_disable_token_o exports the security-disable token written through the MMR window.</li></ul>
+<p>Hash the RMA tokens and the security-disable token written through the MMR window and compare them against the RMA digests in the shadow map and against SEP_SEC_DISABLE_TOKEN.</p><p>Drives triple-redundant digest compares and publishes rma_sip/chiplet_token_match and security_disable_o. The RMA compares wait for fuse_sense_done_i; the security-disable compare does not. shadow_regs_o withholds the shadow map until sensing completes or security disable is set.</p><p>Encodings:</p><ul><li>SEP_SEC_DISABLE_TOKEN is the rev-cell default of the expected security-disable digest.</li><li>TOKEN_MATCH_CODE is the success encoding.</li><li>LcStateInvalid encodes an invalid lifecycle value.</li></ul><p>Status outputs:</p><ul><li>token_match_fault_o flags redundancy disagreement.</li><li>sec_disable_token_o exports the security-disable token written through the MMR window.</li></ul>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>SEP_SEC_DISABLE_TOKEN</code></td><td><code>bit [255:0]</code></td><td><code>256&#x27;b0</code></td><td>Expected SHA-256 digest of the security-disable token, built from rev cells so a metal-only ECO can change it.</td></tr>
 <tr><td><code>TOKEN_MATCH_CODE</code></td><td><code>logic [5:0]</code></td><td><code>6&#x27;b010101</code></td><td>Comparator match code that asserts security disable; must equal the comparator&#x27;s fixed 6&#x27;b010101 match code.</td></tr>
-<tr><td><code>LC_STATE_WIDTH</code></td><td><code>int unsigned</code></td><td><code>efuse_pkg::LC_STATE_RAW_WIDTH</code></td><td>Lifecycle-state field width.</td></tr>
-<tr><td><code>LC_STATE_INVALID</code></td><td><code>logic [2*LC_STATE_WIDTH-1:0]</code></td><td><code>(2*LC_STATE_WIDTH)&#x27;({{LC_STATE_WIDTH{1&#x27;b0}}, {LC_STATE_WIDTH{1&#x27;b1}}})</code></td><td>Differentially encoded lifecycle state driven on shadow_regs_o while the map is withheld.</td></tr>
+<tr><td><code>LcStateWidth</code></td><td><code>int unsigned</code></td><td><code>efuse_pkg::LcStateRawWidth</code></td><td>Lifecycle-state field width.</td></tr>
+<tr><td><code>LcStateInvalid</code></td><td><code>logic [2*LcStateWidth-1:0]</code></td><td><code>(2*LcStateWidth)&#x27;({{LcStateWidth{1&#x27;b0}}, {LcStateWidth{1&#x27;b1}}})</code></td><td>Differentially encoded lifecycle state driven on shadow_regs_o while the map is withheld.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

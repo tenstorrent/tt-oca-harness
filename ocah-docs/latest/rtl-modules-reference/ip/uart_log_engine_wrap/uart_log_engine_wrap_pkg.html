@@ -685,11 +685,11 @@
 <p>Define register-map selects and AXI-Lite typedefs for the UART plus log-engine wrap.</p><p>Defines the 32-bit csr_axil types and uart_log_engine_wrap_reg_map_e, which selects the UART, log-engine, CTRL or undefined register map.</p>
 <div class="ocah-reg-html">
 <h2 id="reg_addr_t"><code>reg_addr_t</code></h2>
-<p>Alias for <code>logic [REG_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegAddrWidth-1:0]</code></p>
 <h2 id="reg_data_t"><code>reg_data_t</code></h2>
-<p>Alias for <code>logic [REG_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegDataWidth-1:0]</code></p>
 <h2 id="reg_strb_t"><code>reg_strb_t</code></h2>
-<p>Alias for <code>logic [REG_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegStrbWidth-1:0]</code></p>
 <h2 id="csr_axil_aw_chan_t"><code>csr_axil_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-1">
@@ -750,7 +750,7 @@
 <tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
 </table>
 <h2 id="uart_log_engine_wrap_reg_map_e"><code>uart_log_engine_wrap_reg_map_e</code></h2>
-<p>Enum (<code>logic [$clog2( NUM_REG_MAPS )-1:0]</code>)</p>
+<p>Enum (<code>logic [$clog2( NumRegMaps )-1:0]</code>)</p>
 <table id="trm-table-8">
 <caption class="title"><a href="#trm-table-8">Table 8</a>. <code>uart_log_engine_wrap_reg_map_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>UART_REG_MAP</code></td><td>2&#x27;d0</td><td></td></tr>

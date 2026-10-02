@@ -715,11 +715,11 @@
 <tr><td><code>smc_external_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Response from the smc_external window.</td></tr>
 <tr><td><code>axil_smc_otp_jtag_req_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>JTAG request into the eFuse wrapper, filtered by lifecycle state.</td></tr>
 <tr><td><code>axil_smc_otp_jtag_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Response to the JTAG eFuse access path.</td></tr>
-<tr><td><code>lsio_interface_select_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>LSIO select per pad from the padring, high where a peripheral function claims the pad.</td></tr>
-<tr><td><code>pad2core_i</code></td><td>input</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Value received from each GPIO pad.</td></tr>
-<tr><td><code>core2pad_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Value driven onto each GPIO pad.</td></tr>
-<tr><td><code>pad2core_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Input enable of each GPIO pad.</td></tr>
-<tr><td><code>core2pad_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Output enable of each GPIO pad.</td></tr>
+<tr><td><code>lsio_interface_select_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>LSIO select per pad from the padring, high where a peripheral function claims the pad.</td></tr>
+<tr><td><code>pad2core_i</code></td><td>input</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Value received from each GPIO pad.</td></tr>
+<tr><td><code>core2pad_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Value driven onto each GPIO pad.</td></tr>
+<tr><td><code>pad2core_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Input enable of each GPIO pad.</td></tr>
+<tr><td><code>core2pad_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Output enable of each GPIO pad.</td></tr>
 <tr><td><code>spi_enable_i</code></td><td>input</td><td><code>logic</code></td><td>Hands the SPI pads to the external SPI host, active-high.</td></tr>
 <tr><td><code>spi_clk_i</code></td><td>input</td><td><code>logic</code></td><td>Serial clock from the external SPI host, driven onto the SPI clock pad.</td></tr>
 <tr><td><code>spi_txd_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>Transmit data from the external SPI host, one bit per data pad.</td></tr>
@@ -738,13 +738,13 @@
 <tr><td><code>spi_mem_rebar_opad_i</code></td><td>input</td><td><code>logic</code></td><td>Data driven onto the SPI DQS loopback pad.</td></tr>
 <tr><td><code>spi_mem_rebar_iepad_i</code></td><td>input</td><td><code>logic</code></td><td>Input enable for the SPI DQS loopback pad, active-high.</td></tr>
 <tr><td><code>spi_mem_rebar_ipad_o</code></td><td>output</td><td><code>logic</code></td><td>Value sampled from the SPI DQS loopback pad.</td></tr>
-<tr><td><code>telemetry_atdata_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB trace data per telemetry receiver.</td></tr>
-<tr><td><code>telemetry_atid_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB trace source ID per receiver.</td></tr>
-<tr><td><code>telemetry_atready_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB ready from each receiver.</td></tr>
-<tr><td><code>telemetry_atvalid_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB data valid per receiver.</td></tr>
-<tr><td><code>telemetry_afvalid_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB flush request from each receiver.</td></tr>
-<tr><td><code>telemetry_afready_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB flush acknowledge per receiver.</td></tr>
-<tr><td><code>lc_state_i</code></td><td>input</td><td><code>logic [2*smc_pkg::LC_STATE_WIDTH-1:0]</code></td><td>Differentially encoded lifecycle state, used by the eFuse JTAG access filter and reported in chip_config.</td></tr>
+<tr><td><code>telemetry_atdata_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB trace data per telemetry receiver.</td></tr>
+<tr><td><code>telemetry_atid_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB trace source ID per receiver.</td></tr>
+<tr><td><code>telemetry_atready_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB ready from each receiver.</td></tr>
+<tr><td><code>telemetry_atvalid_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB data valid per receiver.</td></tr>
+<tr><td><code>telemetry_afvalid_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB flush request from each receiver.</td></tr>
+<tr><td><code>telemetry_afready_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB flush acknowledge per receiver.</td></tr>
+<tr><td><code>lc_state_i</code></td><td>input</td><td><code>logic [2*smc_pkg::LcStateWidth-1:0]</code></td><td>Differentially encoded lifecycle state, used by the eFuse JTAG access filter and reported in chip_config.</td></tr>
 <tr><td><code>lc_sigint_err_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity error from the differential decode of lc_state_i, active-high.</td></tr>
 <tr><td><code>chiplet_is_primary_i</code></td><td>input</td><td><code>logic</code></td><td>Makes the system timer drive the timer sync pads when high and follow them when low.</td></tr>
 <tr><td><code>timer_count_o</code></td><td>output</td><td><code>logic [63:0]</code></td><td>Live 64-bit system timer count.</td></tr>
@@ -764,8 +764,8 @@
 <tr><td><code>fuse_reset_n_delayed_o</code></td><td>output</td><td><code>logic</code></td><td>fuse_reset_n_o after 16 SMC clock pipe stages reset by the primary reset.</td></tr>
 <tr><td><code>fuse_sense_done_o</code></td><td>output</td><td><code>logic</code></td><td>Fuse sensing done. High once shadow-register loading from the fuses completes.</td></tr>
 <tr><td><code>shadow_regs_o</code></td><td>output</td><td><code>smc_efuse_pkg::efuse_map_t</code></td><td>eFuse shadow-register contents; zero until fuse sensing completes unless sep_security_disable_i is set.</td></tr>
-<tr><td><code>ndmreset_request_i</code></td><td>input</td><td><code>logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0]</code></td><td>Asynchronous NDM reset request from each external CPU cluster; synchronized to the SMC clock and raised as a peripheral interrupt.</td></tr>
-<tr><td><code>ndmreset_process_o</code></td><td>output</td><td><code>logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0]</code></td><td>Firmware response to each cluster&#x27;s NDM reset request, from the NDMRESET_PROCESS register.</td></tr>
+<tr><td><code>ndmreset_request_i</code></td><td>input</td><td><code>logic [smc_config_pkg::CpuClusterCount-1:0]</code></td><td>Asynchronous NDM reset request from each external CPU cluster; synchronized to the SMC clock and raised as a peripheral interrupt.</td></tr>
+<tr><td><code>ndmreset_process_o</code></td><td>output</td><td><code>logic [smc_config_pkg::CpuClusterCount-1:0]</code></td><td>Firmware response to each cluster&#x27;s NDM reset request, from the NDMRESET_PROCESS register.</td></tr>
 <tr><td><code>powergood_i</code></td><td>input</td><td><code>logic</code></td><td>Powergood, active-high; while low the reset unit holds the cold, primary and warm resets.</td></tr>
 <tr><td><code>rst_cold_ni</code></td><td>input</td><td><code>logic</code></td><td>Cold reset, active-low, deglitched and extended in the reset unit.</td></tr>
 <tr><td><code>rst_cool_ni</code></td><td>input</td><td><code>logic</code></td><td>Cool reset from the pin, active-low, deglitched in the reset unit into the primary reset.</td></tr>
@@ -790,18 +790,18 @@
 <tr><td><code>sep_mailbox_interrupts_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>SEP mailbox interrupts, placed on peripheral interrupt bits 7:0.</td></tr>
 <tr><td><code>axi_hang_irq_i</code></td><td>input</td><td><code>logic</code></td><td>OR of the smc_base AXI hang detectors, placed on peripheral interrupt bit 30.</td></tr>
 <tr><td><code>peripheral_interrupts_o</code></td><td>output</td><td><code>logic [31:0]</code></td><td>Peripheral interrupt vector to the SMC interrupt controller: SEP mailbox, telemetry, NDM reset, I3C, UART, AVSBus, I2C, SEP watchdog, eFuse locked-field, GPIO and AXI hang sources.</td></tr>
-<tr><td><code>gpio_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Per-GPIO interrupt from the padring, on the SMC clock.</td></tr>
-<tr><td><code>uart_interrupt_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_UART-1:0]</code></td><td>Per-UART interrupt on the peripheral clock, without the error and log-engine sources.</td></tr>
-<tr><td><code>i3c_dat_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dat_mem_src_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Read data from each I3C device address table memory.</td></tr>
-<tr><td><code>i3c_dat_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Request to each I3C device address table memory.</td></tr>
-<tr><td><code>i3c_dct_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dct_mem_src_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Read data from each I3C device characteristics table memory.</td></tr>
-<tr><td><code>i3c_dct_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Request to each I3C device characteristics table memory.</td></tr>
-<tr><td><code>i3c_rlt_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::rlt_mem_src_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Read data from each I3C reverse-lookup table memory.</td></tr>
-<tr><td><code>i3c_rlt_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Request to each I3C reverse-lookup table memory.</td></tr>
+<tr><td><code>gpio_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Per-GPIO interrupt from the padring, on the SMC clock.</td></tr>
+<tr><td><code>uart_interrupt_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumUart-1:0]</code></td><td>Per-UART interrupt on the peripheral clock, without the error and log-engine sources.</td></tr>
+<tr><td><code>i3c_dat_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dat_mem_src_t [smc_config_pkg::NumI3c-1:0]</code></td><td>Read data from each I3C device address table memory.</td></tr>
+<tr><td><code>i3c_dat_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0]</code></td><td>Request to each I3C device address table memory.</td></tr>
+<tr><td><code>i3c_dct_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dct_mem_src_t [smc_config_pkg::NumI3c-1:0]</code></td><td>Read data from each I3C device characteristics table memory.</td></tr>
+<tr><td><code>i3c_dct_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0]</code></td><td>Request to each I3C device characteristics table memory.</td></tr>
+<tr><td><code>i3c_rlt_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::rlt_mem_src_t [smc_config_pkg::NumI3c-1:0]</code></td><td>Read data from each I3C reverse-lookup table memory.</td></tr>
+<tr><td><code>i3c_rlt_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0]</code></td><td>Request to each I3C reverse-lookup table memory.</td></tr>
 <tr><td><code>gated_clk_periph_i3c_o</code></td><td>output</td><td><code>logic</code></td><td>Gated I3C peripheral clock (same domain as i3ccore_wrapper).</td></tr>
 <tr><td><code>avsbus_cur_state_debug_o</code></td><td>output</td><td><code>logic [16:0]</code></td><td>AVSBus controller state, synchronized to the SMC clock.</td></tr>
-<tr><td><code>telemetry_debug_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][3:0]</code></td><td>telemetry receiver debug (4 bits per; see telemetry_receiver.sv for field definitions).</td></tr>
-<tr><td><code>i2c_debug_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0][3:0]</code></td><td>I2C debug (4 bits per I2C; see i2c_core.sv for field definitions).</td></tr>
+<tr><td><code>telemetry_debug_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0][3:0]</code></td><td>telemetry receiver debug (4 bits per; see telemetry_receiver.sv for field definitions).</td></tr>
+<tr><td><code>i2c_debug_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumI2c-1:0][3:0]</code></td><td>I2C debug (4 bits per I2C; see i2c_core.sv for field definitions).</td></tr>
 <tr><td><code>efuse_debug_o</code></td><td>output</td><td><code>logic [9:0]</code></td><td>eFuse controller status for the SMC debug bus: shadow-register write and read locks, program and read locks, write-setup-only, LC-state access, read and program timeouts, request error and secure-test-mode block, from bit 0 upward.</td></tr>
 </table>
 </div>

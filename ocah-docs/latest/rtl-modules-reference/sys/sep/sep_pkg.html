@@ -1927,7 +1927,7 @@
 <tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
 </table>
 <h2 id="address_remap_demux_select_e"><code>address_remap_demux_select_e</code></h2>
-<p>Enum (<code>logic [$clog2( ADDRESS_REMAP_DEMUX_PORTS )-1:0]</code>)</p>
+<p>Enum (<code>logic [$clog2( AddressRemapDemuxPorts )-1:0]</code>)</p>
 <table id="trm-table-99">
 <caption class="title"><a href="#trm-table-99">Table 99</a>. <code>address_remap_demux_select_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>SEP_EXT_TO_SMC</code></td><td>0</td><td></td></tr>
@@ -1937,7 +1937,7 @@
 <tr><td><code>SEP_LOCAL</code></td><td>4</td><td></td></tr>
 </table>
 <h2 id="outbound_filter_mux_select_e"><code>outbound_filter_mux_select_e</code></h2>
-<p>Enum (<code>logic [$clog2( OUTBOUND_FILTER_MUX_PORTS )-1:0]</code>)</p>
+<p>Enum (<code>logic [$clog2( OutboundFilterMuxPorts )-1:0]</code>)</p>
 <table id="trm-table-100">
 <caption class="title"><a href="#trm-table-100">Table 100</a>. <code>outbound_filter_mux_select_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>OUTBOUND_FILTER_LOCAL_MASTER</code></td><td>0</td><td></td></tr>
@@ -1946,12 +1946,12 @@
 </table>
 <h2 id="outbound_filter_select_t"><code>outbound_filter_select_t</code></h2>
 <p>Inbound Filter</p>
-<p>Alias for <code>logic [$clog2(OUTBOUND_FILTER_NUM_FILTERS)-1:0]</code></p>
+<p>Alias for <code>logic [$clog2(OutboundFilterNumFilters)-1:0]</code></p>
 <h2 id="inbound_filter_select_t"><code>inbound_filter_select_t</code></h2>
 <p>Mailbox</p>
-<p>Alias for <code>logic [$clog2(INBOUND_FILTER_NUM_FILTERS)-1:0]</code></p>
+<p>Alias for <code>logic [$clog2(InboundFilterNumFilters)-1:0]</code></p>
 <h2 id="system_csr_demux_select_e"><code>system_csr_demux_select_e</code></h2>
-<p>Enum (<code>logic [$clog2( SYSTEM_CSR_DEMUX_PORTS )-1:0]</code>)</p>
+<p>Enum (<code>logic [$clog2( SystemCsrDemuxPorts )-1:0]</code>)</p>
 <table id="trm-table-101">
 <caption class="title"><a href="#trm-table-101">Table 101</a>. <code>system_csr_demux_select_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>LOCAL_MASTER_ALIAS_REMAP</code></td><td>0</td><td></td></tr>

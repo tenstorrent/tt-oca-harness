@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">smu_pkg</h1>
-<p>Hold System Management Unit configuration types and defaults.</p><p>Define smu_cfg_t and DefaultCfg for JTAG feature enables, cross-trigger counts, pipeline depths, and SEP/Adams-Bridge options consumed by smu; the JTAG, cross-trigger and pipeline fields configure its DTP instance. XTRIG_NUM_INT_CT and XTRIG_NUM_CLK_STOP_REQ are the SMU-exposed counts; smu adds the SMC-reserved lanes (XTRIG_SMC_INT_CT_LANES, XTRIG_SMC_CLK_STOP_LANES) before passing them to DTP. NoSepCfg holds the same values as DefaultCfg, and SmuConfigs lists both.</p>
+<p>Hold System Management Unit configuration types and defaults.</p><p>Define smu_cfg_t and DefaultCfg for JTAG feature enables, cross-trigger counts, pipeline depths, and SEP/Adams-Bridge options consumed by smu; the JTAG, cross-trigger and pipeline fields configure its DTP instance. XTRIG_NUM_INT_CT and XTRIG_NUM_CLK_STOP_REQ are the SMU-exposed counts; smu adds the SMC-reserved lanes (XtrigSmcIntCtLanes, XtrigSmcClkStopLanes) before passing them to DTP. NoSepCfg holds the same values as DefaultCfg, and SmuConfigs lists both.</p>
 <div class="ocah-reg-html">
 <h2 id="smu_cfg_t"><code>smu_cfg_t</code></h2>
 <p>Packed struct</p>
@@ -708,7 +708,7 @@
 <tr><td><code>XTRIG_NUM_CTP</code></td><td><code>int unsigned</code></td><td></td></tr>
 <tr><td><code>XTRIG_NUM_INT_CT</code></td><td><code>int unsigned</code></td><td></td></tr>
 <tr><td><code>XTRIG_NUM_CLK_STOP_REQ</code></td><td><code>int unsigned</code></td><td></td></tr>
-<tr><td><code>XTRIG_INT_CT_MODE</code></td><td><code>logic [XTRIG_INT_CT_MODE_WIDTH-1:0]</code></td><td>Pipeline depth parameters</td></tr>
+<tr><td><code>XTRIG_INT_CT_MODE</code></td><td><code>logic [XtrigIntCtModeWidth-1:0]</code></td><td>Pipeline depth parameters</td></tr>
 <tr><td><code>SMC_OTP_RD_PL_DEPTH</code></td><td><code>logic [1:0]</code></td><td></td></tr>
 <tr><td><code>SMC_OTP_WR_PL_DEPTH</code></td><td><code>logic [1:0]</code></td><td></td></tr>
 <tr><td><code>SMC_RD_PL_DEPTH</code></td><td><code>logic [1:0]</code></td><td></td></tr>

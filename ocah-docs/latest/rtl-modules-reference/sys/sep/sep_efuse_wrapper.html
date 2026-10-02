@@ -699,7 +699,7 @@
 <tr><td><code>secure_tm_req_i</code></td><td>input</td><td><code>logic</code></td><td>Secure test mode request strap, latched into secure_tm_o.</td></tr>
 <tr><td><code>ext_boot_seq_done_i</code></td><td>input</td><td><code>logic</code></td><td>Integration boot-sequence completion (memory repair and SMC straps); gates release of sep_intermediate_reset_no.</td></tr>
 <tr><td><code>security_disable_o</code></td><td>output</td><td><code>logic</code></td><td>Security-disable status from eFuse token processing, active-high.</td></tr>
-<tr><td><code>lc_state_o</code></td><td>output</td><td><code>logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]</code></td><td>Differentially encoded lifecycle state from the eFuse shadow registers.</td></tr>
+<tr><td><code>lc_state_o</code></td><td>output</td><td><code>logic [2*sep_pkg::LcStateBitWidth-1:0]</code></td><td>Differentially encoded lifecycle state from the eFuse shadow registers.</td></tr>
 <tr><td><code>shadow_regs_o</code></td><td>output</td><td><code>sep_efuse_pkg::efuse_map_t</code></td><td>eFuse shadow register contents; secret fields read as zero in secure test mode.</td></tr>
 <tr><td><code>fuse_sense_done_o</code></td><td>output</td><td><code>logic</code></td><td>High once the shadow registers have been loaded from the fuses.</td></tr>
 <tr><td><code>secure_tm_o</code></td><td>output</td><td><code>logic</code></td><td>Latched secure test mode, active-high; captured on the second clock edge after rst_ni release when security is disabled, otherwise on the rising edge of fuse sense done.</td></tr>

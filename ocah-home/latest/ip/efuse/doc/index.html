@@ -587,7 +587,7 @@ range with a 4-bit <code>lock</code> permission field:</p>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">typedef struct packed {
-    logic [EFUSE_FIELD_MAP_IDX_WIDTH-1:0] idx;        // Field index
+    logic [EfuseFieldMapIdxWidth-1:0] idx;        // Field index
     logic [3:0]                           lock;       // Permission bits
     logic [31:0]                          start_addr; // Field start address
     logic [31:0]                          end_addr;   // Field end address
@@ -994,7 +994,7 @@ this interface.</p>
 <div class="paragraph">
 <p>The controller has no lifecycle-state input port. When <code>HAS_LC_STATE</code> is set, it takes the
 lifecycle state from the fuses: during fuse sensing it loads the low <code>LC_STATE_WIDTH</code> bits
-of shadow word <code>efuse_pkg::SHADOW_IDX_LC_STATE</code> and stores them differentially encoded in
+of shadow word <code>efuse_pkg::ShadowIdxLcState</code> and stores them differentially encoded in
 the shadow map. The shadow word index is fixed in <code>efuse_pkg</code>. <code>LC_STATE_BIT_POSITION</code> is
 used only by the guard, which derives the RMA SiP and chiplet token bit addresses from it as
 <code>LC_STATE_BIT_POSITION + 1</code> and <code>LC_STATE_BIT_POSITION + 2</code>.</p>

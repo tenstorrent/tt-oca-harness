@@ -687,11 +687,11 @@
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>SEED_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>DRBG_DEFAULT_SEED_FIFO_DEPTH</code></td><td>Number of complete packed seeds queued for CSRNG. Must be at least 1.</td></tr>
-<tr><td><code>EDN_ENDPOINT_COUNT</code></td><td><code>int unsigned</code></td><td><code>DRBG_DEFAULT_EDN_ENDPOINT_COUNT</code></td><td>Number of EDN endpoints exposed as AXI-Stream outputs. Each output carries an independent random-data stream. Must be at least 1.</td></tr>
-<tr><td><code>EDN_NATIVE_ENDPOINT_COUNT</code></td><td><code>int unsigned</code></td><td><code>DRBG_DEFAULT_EDN_NATIVE_ENDPOINT_COUNT</code></td><td>Number of native EDN req/rsp endpoints. Each exposes a raw edn_pkg bundle that bypasses the AXI-Stream FIFOs.</td></tr>
-<tr><td><code>EDN_NATIVE_PORT_WIDTH</code></td><td><code>int unsigned</code></td><td><code>(EDN_NATIVE_ENDPOINT_COUNT == 0) ? 1 : EDN_NATIVE_ENDPOINT_COUNT</code></td><td>Width of the native EDN ports, which is 1 when EDN_NATIVE_ENDPOINT_COUNT is 0. The single slot is then unused and its request should be tied off.</td></tr>
-<tr><td><code>ENDPOINT_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>DRBG_DEFAULT_ENDPOINT_FIFO_DEPTH</code></td><td>Depth of the FIFO on each AXI-Stream EDN endpoint. Must be at least 1.</td></tr>
+<tr><td><code>SEED_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>DrbgDefaultSeedFifoDepth</code></td><td>Number of complete packed seeds queued for CSRNG. Must be at least 1.</td></tr>
+<tr><td><code>EDN_ENDPOINT_COUNT</code></td><td><code>int unsigned</code></td><td><code>DrbgDefaultEdnEndpointCount</code></td><td>Number of EDN endpoints exposed as AXI-Stream outputs. Each output carries an independent random-data stream. Must be at least 1.</td></tr>
+<tr><td><code>EDN_NATIVE_ENDPOINT_COUNT</code></td><td><code>int unsigned</code></td><td><code>DrbgDefaultEdnNativeEndpointCount</code></td><td>Number of native EDN req/rsp endpoints. Each exposes a raw edn_pkg bundle that bypasses the AXI-Stream FIFOs.</td></tr>
+<tr><td><code>EdnNativePortWidth</code></td><td><code>int unsigned</code></td><td><code>(EDN_NATIVE_ENDPOINT_COUNT == 0) ? 1 : EDN_NATIVE_ENDPOINT_COUNT</code></td><td>Width of the native EDN ports, which is 1 when EDN_NATIVE_ENDPOINT_COUNT is 0. The single slot is then unused and its request should be tied off.</td></tr>
+<tr><td><code>ENDPOINT_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>DrbgDefaultEndpointFifoDepth</code></td><td>Depth of the FIFO on each AXI-Stream EDN endpoint. Must be at least 1.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -702,8 +702,8 @@
 <tr><td><code>entropy_stream_vld_i</code></td><td>input</td><td><code>logic</code></td><td>Producer entropy valid, with no back-pressure; a word offered while the packer holds a complete seed is dropped.</td></tr>
 <tr><td><code>edn_axis_o</code></td><td>output</td><td><code>drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0]</code></td><td>EDN AXI-Stream requests toward consumers; tuser carries the EDN FIPS bit of each word.</td></tr>
 <tr><td><code>edn_axis_i</code></td><td>input</td><td><code>drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0]</code></td><td>EDN AXI-Stream ready from consumers.</td></tr>
-<tr><td><code>edn_native_req_i</code></td><td>input</td><td><code>edn_pkg::edn_req_t [EDN_NATIVE_PORT_WIDTH-1:0]</code></td><td>Native EDN client requests (bypass AXI-Stream). Port width is 1 when EDN_NATIVE_ENDPOINT_COUNT is 0.</td></tr>
-<tr><td><code>edn_native_rsp_o</code></td><td>output</td><td><code>edn_pkg::edn_rsp_t [EDN_NATIVE_PORT_WIDTH-1:0]</code></td><td>Native EDN client responses.</td></tr>
+<tr><td><code>edn_native_req_i</code></td><td>input</td><td><code>edn_pkg::edn_req_t [EdnNativePortWidth-1:0]</code></td><td>Native EDN client requests (bypass AXI-Stream). Port width is 1 when EDN_NATIVE_ENDPOINT_COUNT is 0.</td></tr>
+<tr><td><code>edn_native_rsp_o</code></td><td>output</td><td><code>edn_pkg::edn_rsp_t [EdnNativePortWidth-1:0]</code></td><td>Native EDN client responses.</td></tr>
 <tr><td><code>csrng_axil_req_i</code></td><td>input</td><td><code>csrng_axil_req_t</code></td><td>CSRNG AXI-Lite CSR request.</td></tr>
 <tr><td><code>csrng_axil_rsp_o</code></td><td>output</td><td><code>csrng_axil_rsp_t</code></td><td>CSRNG AXI-Lite CSR response.</td></tr>
 <tr><td><code>edn_axil_req_i</code></td><td>input</td><td><code>edn_axil_req_t</code></td><td>EDN AXI-Lite CSR request.</td></tr>

@@ -394,7 +394,7 @@ for source assignments.</p>
 <h3 id="fips-provenance"><a class="anchor" href="#fips-provenance"></a><a class="link" href="#fips-provenance">2.1. FIPS Provenance</a></h3>
 <div class="paragraph">
 <p>The internal seed adapter attaches the provisional constant
-<code>DRBG_CSRNG_SEED_FIPS_PROVISIONAL = 1</code>. CSRNG/EDN output provenance is retained
+<code>DrbgCsrngSeedFipsProvisional = 1</code>. CSRNG/EDN output provenance is retained
 in each endpoint FIFO and forwarded through <code>tuser</code> into the native client&#8217;s
 <code>edn_fips</code>. OTBN RND checks the returned tag and can report <code>rnd_fips_chk_fail</code>.
 The external mux also attaches 1 unconditionally. Neither constant measures
@@ -574,7 +574,7 @@ and control interfaces.</p>
 <div class="sect2">
 <h3 id="seed-assembly"><a class="anchor" href="#seed-assembly"></a><a class="link" href="#seed-assembly">4.3. Seed Assembly</a></h3>
 <div class="paragraph">
-<p>The <code>drbg_csrng_seed_adapter</code> receives one 32-bit entropy word per valid cycle directly from the entropy source (there is no upstream routing or distribution FIFO) and packs the words into full CSRNG-width seeds using an OpenTitan <code>prim_packer_fifo</code>. The packed seed is pushed into a shallow FIFO (default depth 1) along with a FIPS compliance flag set to a provisional value (<code>DRBG_CSRNG_SEED_FIPS_PROVISIONAL = 1</code>). The CSRNG pulls seeds through the standard <code>entropy_src_hw_if</code> handshake: <code>es_req</code> / <code>es_ack</code> / <code>es_bits</code> / <code>es_fips</code>. Because ingress is fire-and-forget with no backpressure, the producer must supply entropy no faster than the seed adapter can pack it.</p>
+<p>The <code>drbg_csrng_seed_adapter</code> receives one 32-bit entropy word per valid cycle directly from the entropy source (there is no upstream routing or distribution FIFO) and packs the words into full CSRNG-width seeds using an OpenTitan <code>prim_packer_fifo</code>. The packed seed is pushed into a shallow FIFO (default depth 1) along with a FIPS compliance flag set to a provisional value (<code>DrbgCsrngSeedFipsProvisional = 1</code>). The CSRNG pulls seeds through the standard <code>entropy_src_hw_if</code> handshake: <code>es_req</code> / <code>es_ack</code> / <code>es_bits</code> / <code>es_fips</code>. Because ingress is fire-and-forget with no backpressure, the producer must supply entropy no faster than the seed adapter can pack it.</p>
 </div>
 </div>
 <div class="sect2">

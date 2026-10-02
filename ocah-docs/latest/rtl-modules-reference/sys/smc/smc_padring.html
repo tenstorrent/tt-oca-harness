@@ -688,7 +688,7 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>MAX_TRANS</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Maximum outstanding transactions of the demux and of each gpio interface.</td></tr>
-<tr><td><code>GPIO_INTF_BASE_ADDR</code></td><td><code>bit [gpio_pkg::ADDR_WIDTH-1:0]</code></td><td><code>32&#x27;h00000000</code></td><td>Base address of the first GPIO interface; the demux decodes NUM_GPIO_WRAPS 16-byte slots from it.</td></tr>
+<tr><td><code>GPIO_INTF_BASE_ADDR</code></td><td><code>bit [gpio_pkg::AddrWidth-1:0]</code></td><td><code>32&#x27;h00000000</code></td><td>Base address of the first GPIO interface; the demux decodes NumGpioWraps 16-byte slots from it.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -718,11 +718,11 @@
 <tr><td><code>spi_mem_rebar_opad_i</code></td><td>input</td><td><code>logic</code></td><td>Data driven onto the SPI DQS loopback pad (GPIO 54).</td></tr>
 <tr><td><code>spi_mem_rebar_iepad_i</code></td><td>input</td><td><code>logic</code></td><td>Input enable for the SPI DQS loopback pad (GPIO 54), active-high.</td></tr>
 <tr><td><code>spi_mem_rebar_ipad_o</code></td><td>output</td><td><code>logic</code></td><td>Value sampled from the SPI DQS loopback pad (GPIO 54).</td></tr>
-<tr><td><code>uart_enable_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_UART-1:0]</code></td><td>Selects each UART&#x27;s four pads, active-high, one bit per UART; UART u uses GPIO 11+4u (RX), 12+4u (TX), 13+4u (RTS) and 14+4u (CTS).</td></tr>
-<tr><td><code>uart_rx_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_UART-1:0]</code></td><td>Receive data sampled from each UART&#x27;s RX pad.</td></tr>
-<tr><td><code>uart_tx_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_UART-1:0]</code></td><td>Transmit data driven onto each UART&#x27;s TX pad.</td></tr>
-<tr><td><code>uart_rts_n_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_UART-1:0]</code></td><td>Request-to-send, active-low, driven onto each UART&#x27;s RTS pad.</td></tr>
-<tr><td><code>uart_cts_n_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_UART-1:0]</code></td><td>Clear-to-send, active-low, sampled from each UART&#x27;s CTS pad.</td></tr>
+<tr><td><code>uart_enable_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumUart-1:0]</code></td><td>Selects each UART&#x27;s four pads, active-high, one bit per UART; UART u uses GPIO 11+4u (RX), 12+4u (TX), 13+4u (RTS) and 14+4u (CTS).</td></tr>
+<tr><td><code>uart_rx_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumUart-1:0]</code></td><td>Receive data sampled from each UART&#x27;s RX pad.</td></tr>
+<tr><td><code>uart_tx_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumUart-1:0]</code></td><td>Transmit data driven onto each UART&#x27;s TX pad.</td></tr>
+<tr><td><code>uart_rts_n_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumUart-1:0]</code></td><td>Request-to-send, active-low, driven onto each UART&#x27;s RTS pad.</td></tr>
+<tr><td><code>uart_cts_n_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumUart-1:0]</code></td><td>Clear-to-send, active-low, sampled from each UART&#x27;s CTS pad.</td></tr>
 <tr><td><code>chiplet_is_primary_i</code></td><td>input</td><td><code>logic</code></td><td>Timer pad direction: high drives GPIO 55 and 56 from the timer inputs, low samples them.</td></tr>
 <tr><td><code>timer_sync_load_i</code></td><td>input</td><td><code>logic</code></td><td>System timer sync-load, driven onto GPIO 55 on the primary chiplet.</td></tr>
 <tr><td><code>timer_cnt_credit_i</code></td><td>input</td><td><code>logic</code></td><td>System timer count credit, driven onto GPIO 56 on the primary chiplet.</td></tr>
@@ -730,36 +730,36 @@
 <tr><td><code>timer_cnt_credit_o</code></td><td>output</td><td><code>logic</code></td><td>System timer count credit sampled from GPIO 56, used on a secondary chiplet.</td></tr>
 <tr><td><code>timer_gpio_enable_i</code></td><td>input</td><td><code>logic</code></td><td>Selects the system timer function on GPIO 55 and 56, active-high.</td></tr>
 <tr><td><code>boot_stall_o</code></td><td>output</td><td><code>logic</code></td><td>Boot-stall strap sampled from GPIO 57, not synchronized to clk_i.</td></tr>
-<tr><td><code>i3c_enable_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Selects each I3C instance&#x27;s SCL and SDA pads, active-high: GPIO 27-28 for instance 0, 63-64 for instance 1, and from 29 upward for the rest.</td></tr>
-<tr><td><code>i3c_scl_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_I3C-1:0]</code></td><td>SCL sampled from each I3C instance&#x27;s SCL pad.</td></tr>
-<tr><td><code>i3c_sda_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_I3C-1:0]</code></td><td>SDA sampled from each I3C instance&#x27;s SDA pad.</td></tr>
-<tr><td><code>i3c_scl_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I3C-1:0]</code></td><td>SCL value driven onto each I3C instance&#x27;s SCL pad.</td></tr>
-<tr><td><code>i3c_scl_oen_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Output enable for each SCL pad, active-low.</td></tr>
-<tr><td><code>i3c_sda_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I3C-1:0]</code></td><td>SDA value driven onto each I3C instance&#x27;s SDA pad.</td></tr>
-<tr><td><code>i3c_sda_oen_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Output enable for SDA IO pad (active low).</td></tr>
-<tr><td><code>i3c_sda_pp_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Push-pull select for each SDA pad; high enables the SDA output whatever i3c_sda_oen_i is.</td></tr>
-<tr><td><code>i2c_enable_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>Selects each I2C instance&#x27;s SCL, SDA, SMBus alert and SMBus suspend pads, active-high; instance i uses GPIO 37+4i to 40+4i.</td></tr>
-<tr><td><code>i2c_master_enable_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>Controller mode per I2C instance: the SMBus alert pad is sampled and the suspend pad driven; in target mode the directions reverse.</td></tr>
-<tr><td><code>i2c_scl_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>SCL sampled from each I2C instance&#x27;s SCL pad.</td></tr>
-<tr><td><code>i2c_sda_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>SDA sampled from each I2C instance&#x27;s SDA pad.</td></tr>
-<tr><td><code>i2c_smbus_n_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>SMBus suspend, active-low, sampled from the pad in target mode; zero in controller mode.</td></tr>
-<tr><td><code>i2c_smbus_alert_n_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>SMBus alert, active-low, sampled from the pad in controller mode; zero in target mode.</td></tr>
-<tr><td><code>i2c_scl_oen_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>Open-drain SCL control, active-low: low pulls the pad low, high releases it to the board pull-up.</td></tr>
-<tr><td><code>i2c_sda_oen_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>Open-drain SDA control, active-low: low pulls the pad low, high releases it to the board pull-up.</td></tr>
-<tr><td><code>i2c_smbus_n_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>SMBus suspend from the I2C core, active-low; in controller mode, low pulls the suspend pad low.</td></tr>
-<tr><td><code>i2c_smbus_alert_oe_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0]</code></td><td>In target mode, high pulls the SMBus alert pad low.</td></tr>
+<tr><td><code>i3c_enable_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI3c-1:0]</code></td><td>Selects each I3C instance&#x27;s SCL and SDA pads, active-high: GPIO 27-28 for instance 0, 63-64 for instance 1, and from 29 upward for the rest.</td></tr>
+<tr><td><code>i3c_scl_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumI3c-1:0]</code></td><td>SCL sampled from each I3C instance&#x27;s SCL pad.</td></tr>
+<tr><td><code>i3c_sda_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumI3c-1:0]</code></td><td>SDA sampled from each I3C instance&#x27;s SDA pad.</td></tr>
+<tr><td><code>i3c_scl_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI3c-1:0]</code></td><td>SCL value driven onto each I3C instance&#x27;s SCL pad.</td></tr>
+<tr><td><code>i3c_scl_oen_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI3c-1:0]</code></td><td>Output enable for each SCL pad, active-low.</td></tr>
+<tr><td><code>i3c_sda_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI3c-1:0]</code></td><td>SDA value driven onto each I3C instance&#x27;s SDA pad.</td></tr>
+<tr><td><code>i3c_sda_oen_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI3c-1:0]</code></td><td>Output enable for SDA IO pad (active low).</td></tr>
+<tr><td><code>i3c_sda_pp_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI3c-1:0]</code></td><td>Push-pull select for each SDA pad; high enables the SDA output whatever i3c_sda_oen_i is.</td></tr>
+<tr><td><code>i2c_enable_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>Selects each I2C instance&#x27;s SCL, SDA, SMBus alert and SMBus suspend pads, active-high; instance i uses GPIO 37+4i to 40+4i.</td></tr>
+<tr><td><code>i2c_master_enable_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>Controller mode per I2C instance: the SMBus alert pad is sampled and the suspend pad driven; in target mode the directions reverse.</td></tr>
+<tr><td><code>i2c_scl_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>SCL sampled from each I2C instance&#x27;s SCL pad.</td></tr>
+<tr><td><code>i2c_sda_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>SDA sampled from each I2C instance&#x27;s SDA pad.</td></tr>
+<tr><td><code>i2c_smbus_n_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>SMBus suspend, active-low, sampled from the pad in target mode; zero in controller mode.</td></tr>
+<tr><td><code>i2c_smbus_alert_n_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>SMBus alert, active-low, sampled from the pad in controller mode; zero in target mode.</td></tr>
+<tr><td><code>i2c_scl_oen_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>Open-drain SCL control, active-low: low pulls the pad low, high releases it to the board pull-up.</td></tr>
+<tr><td><code>i2c_sda_oen_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>Open-drain SDA control, active-low: low pulls the pad low, high releases it to the board pull-up.</td></tr>
+<tr><td><code>i2c_smbus_n_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>SMBus suspend from the I2C core, active-low; in controller mode, low pulls the suspend pad low.</td></tr>
+<tr><td><code>i2c_smbus_alert_oe_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI2c-1:0]</code></td><td>In target mode, high pulls the SMBus alert pad low.</td></tr>
 <tr><td><code>avs_enable_i</code></td><td>input</td><td><code>logic</code></td><td>Selects the AVSBus function on GPIO pads 49-51, active-high.</td></tr>
 <tr><td><code>avs_clock_i</code></td><td>input</td><td><code>logic</code></td><td>AVSBus clock from the AVSBus controller, driven onto GPIO 49.</td></tr>
 <tr><td><code>avs_mdata_i</code></td><td>input</td><td><code>logic</code></td><td>AVSBus controller-to-device data, driven onto GPIO 50.</td></tr>
 <tr><td><code>avs_sdata_o</code></td><td>output</td><td><code>logic</code></td><td>AVSBus device-to-controller data, sampled from GPIO 51.</td></tr>
 <tr><td><code>rst_cool_ni</code></td><td>input</td><td><code>logic</code></td><td>Cool reset for other chiplets, active-low; pulls GPIO 62 low while asserted and leaves it undriven otherwise.</td></tr>
 <tr><td><code>isolate_req_pin_o</code></td><td>output</td><td><code>logic</code></td><td>Isolation request sampled from GPIO 53, not synchronized to clk_i.</td></tr>
-<tr><td><code>lsio_interface_select_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>LSIO select per pad, high where a peripheral function claims the pad; also drives each gpio interface&#x27;s select.</td></tr>
-<tr><td><code>core2pad_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Data driven to each pad by its gpio interface; zero during cold reset.</td></tr>
-<tr><td><code>core2pad_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Output enable for each pad, active-high; low during cold reset.</td></tr>
-<tr><td><code>pad2core_i</code></td><td>input</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Value received from each pad, not synchronized to clk_i.</td></tr>
-<tr><td><code>pad2core_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Input enable for each pad, active-high; the pad&#x27;s default direction during cold reset.</td></tr>
-<tr><td><code>gpio_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Interrupt from each gpio interface, active-high, registered on clk_i.</td></tr>
+<tr><td><code>lsio_interface_select_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>LSIO select per pad, high where a peripheral function claims the pad; also drives each gpio interface&#x27;s select.</td></tr>
+<tr><td><code>core2pad_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Data driven to each pad by its gpio interface; zero during cold reset.</td></tr>
+<tr><td><code>core2pad_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Output enable for each pad, active-high; low during cold reset.</td></tr>
+<tr><td><code>pad2core_i</code></td><td>input</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Value received from each pad, not synchronized to clk_i.</td></tr>
+<tr><td><code>pad2core_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Input enable for each pad, active-high; the pad&#x27;s default direction during cold reset.</td></tr>
+<tr><td><code>gpio_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Interrupt from each gpio interface, active-high, registered on clk_i.</td></tr>
 </table>
 </div>
 </article>

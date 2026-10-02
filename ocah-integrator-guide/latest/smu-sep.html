@@ -1233,7 +1233,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LC_STATE_BIT_WIDTH-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LcStateBitWidth-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state output (differentially encoded). Routed to SMC and the SMU external output; debug-disable control to DTP is via <code>dbg_disable_o</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC, SMU external</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1296,7 +1296,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_mailbox_interrupt_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_MAILBOXES-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumMailboxes-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox interrupt outputs to SMC.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC interrupt aggregator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>

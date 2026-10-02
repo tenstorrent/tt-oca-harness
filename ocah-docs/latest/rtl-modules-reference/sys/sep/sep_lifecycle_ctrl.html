@@ -688,8 +688,8 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>LC_STATE_WIDTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Lifecycle state encoding width; the state decode is written for 4.</td></tr>
-<tr><td><code>DEMOTE_WIDTH</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Demote field width.</td></tr>
-<tr><td><code>DEMOTE_OUT_WIDTH</code></td><td><code>int unsigned</code></td><td><code>2 * DEMOTE_WIDTH</code></td><td>Duplicated demote output width.</td></tr>
+<tr><td><code>DemoteWidth</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Demote field width.</td></tr>
+<tr><td><code>DemoteOutWidth</code></td><td><code>int unsigned</code></td><td><code>2 * DemoteWidth</code></td><td>Duplicated demote output width.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -703,8 +703,8 @@
 <tr><td><code>dbg_disable_o</code></td><td>output</td><td><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></td><td>Per-interface debug disables for the DTP, active-high (1 = disabled); the SEP and SMC OTP JTAG-to-AXI disables are tied to 0.</td></tr>
 <tr><td><code>sep_fuse_dft_disable_o</code></td><td>output</td><td><code>logic</code></td><td>Disables the SEP fuse DFT access path, active-high; no functional consumer, provided for DFT insertion.</td></tr>
 <tr><td><code>smc_fuse_dft_disable_o</code></td><td>output</td><td><code>logic</code></td><td>Disables the SMC fuse DFT access path, active-high; no functional consumer, provided for DFT insertion.</td></tr>
-<tr><td><code>lcc_demote_state_1_o</code></td><td>output</td><td><code>logic [DEMOTE_OUT_WIDTH-1:0]</code></td><td>Differentially encoded DEMOTE_1.demote register bit, which re-opens debug feature bits [23:0] in TEST_DEV and PROD.</td></tr>
-<tr><td><code>lcc_demote_state_2_o</code></td><td>output</td><td><code>logic [DEMOTE_OUT_WIDTH-1:0]</code></td><td>Differentially encoded DEMOTE_2.demote register bit, which re-opens debug feature bits [47:24] in TEST_DEV and PROD.</td></tr>
+<tr><td><code>lcc_demote_state_1_o</code></td><td>output</td><td><code>logic [DemoteOutWidth-1:0]</code></td><td>Differentially encoded DEMOTE_1.demote register bit, which re-opens debug feature bits [23:0] in TEST_DEV and PROD.</td></tr>
+<tr><td><code>lcc_demote_state_2_o</code></td><td>output</td><td><code>logic [DemoteOutWidth-1:0]</code></td><td>Differentially encoded DEMOTE_2.demote register bit, which re-opens debug feature bits [47:24] in TEST_DEV and PROD.</td></tr>
 <tr><td><code>lc_sigint_err_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity error on the differentially encoded LC state; forces every feature enable off unless security is disabled.</td></tr>
 <tr><td><code>lifecycle_axi_req_i</code></td><td>input</td><td><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></td><td>AXI4 request to the lifecycle registers, converted to 64-bit AXI-Lite; offset bits [4:0] are decoded.</td></tr>
 <tr><td><code>lifecycle_axi_resp_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_6_12_axi_resp_t</code></td><td>AXI4 response from the lifecycle registers.</td></tr>

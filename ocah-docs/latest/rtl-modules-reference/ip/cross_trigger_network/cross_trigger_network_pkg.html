@@ -682,15 +682,15 @@
 </aside>
 <article class="doc">
 <h1 class="page">cross_trigger_network_pkg</h1>
-<p>Define defaults and AXI-Lite typedefs for the cross-trigger network.</p><p>DEFAULT_NUM_CTP, DEFAULT_NUM_INT_CT, and DEFAULT_NUM_CLK_STOP_REQ size the network. ctn_axil_req_t and ctn_axil_resp_t type the CSR subordinate port.</p>
+<p>Define defaults and AXI-Lite typedefs for the cross-trigger network.</p><p>DefaultNumCtp, DefaultNumIntCt, and DefaultNumClkStopReq size the network. ctn_axil_req_t and ctn_axil_resp_t type the CSR subordinate port.</p>
 <div class="ocah-reg-html">
 <h2 id="ctn_axil_addr_t"><code>ctn_axil_addr_t</code></h2>
 <p>AXI-Lite Type Definitions</p>
-<p>Alias for <code>logic [AXI_LITE_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiLiteAddrWidth-1:0]</code></p>
 <h2 id="ctn_axil_data_t"><code>ctn_axil_data_t</code></h2>
-<p>Alias for <code>logic [AXI_LITE_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiLiteDataWidth-1:0]</code></p>
 <h2 id="ctn_axil_strb_t"><code>ctn_axil_strb_t</code></h2>
-<p>Alias for <code>logic [AXI_LITE_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiLiteStrbWidth-1:0]</code></p>
 <h2 id="ctn_axil_aw_chan_t"><code>ctn_axil_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-1">
@@ -767,14 +767,14 @@
 </table>
 <h2 id="calc_ctm_base_addr"><code>calc_ctm_base_addr</code></h2>
 <p>Function to calculate the CTM base address (CTM is at address 0)</p>
-<p>Function returning <code>logic [AXI_LITE_ADDR_WIDTH-1:0]</code></p>
+<p>Function returning <code>logic [AxiLiteAddrWidth-1:0]</code></p>
 <table id="trm-table-10">
 <caption class="title"><a href="#trm-table-10">Table 10</a>. <code>calc_ctm_base_addr</code></caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>num_ctp</code></td><td>input</td><td><code>int unsigned</code></td><td></td></tr>
 </table>
 <h2 id="calc_ctp_base_addr"><code>calc_ctp_base_addr</code></h2>
 <p>Function to calculate CTP base address (CTPs start after CTM)</p>
-<p>Function returning <code>logic [AXI_LITE_ADDR_WIDTH-1:0]</code></p>
+<p>Function returning <code>logic [AxiLiteAddrWidth-1:0]</code></p>
 <table id="trm-table-11">
 <caption class="title"><a href="#trm-table-11">Table 11</a>. <code>calc_ctp_base_addr</code></caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>ctp_idx</code></td><td>input</td><td><code>int unsigned</code></td><td></td></tr>

@@ -687,9 +687,9 @@
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>NUM_CTP</code></td><td><code>int unsigned</code></td><td><code>DEFAULT_NUM_CTP</code></td><td>Number of external CTPs, from 1 to 32. NUM_CTP + NUM_INT_CT must equal the NUM_CT_SRC and NUM_CT_DST of the generated cross-trigger matrix.</td></tr>
-<tr><td><code>NUM_INT_CT</code></td><td><code>int unsigned</code></td><td><code>DEFAULT_NUM_INT_CT</code></td><td>Number of internal CTPs, at most 32.</td></tr>
-<tr><td><code>NUM_CLK_STOP_REQ</code></td><td><code>int unsigned</code></td><td><code>DEFAULT_NUM_CLK_STOP_REQ</code></td><td>Width of clk_stop_req_i; at least 1.</td></tr>
+<tr><td><code>NUM_CTP</code></td><td><code>int unsigned</code></td><td><code>DefaultNumCtp</code></td><td>Number of external CTPs, from 1 to 32. NUM_CTP + NUM_INT_CT must equal the NumCtSrc and NumCtDst of the generated cross-trigger matrix.</td></tr>
+<tr><td><code>NUM_INT_CT</code></td><td><code>int unsigned</code></td><td><code>DefaultNumIntCt</code></td><td>Number of internal CTPs, at most 32.</td></tr>
+<tr><td><code>NUM_CLK_STOP_REQ</code></td><td><code>int unsigned</code></td><td><code>DefaultNumClkStopReq</code></td><td>Width of clk_stop_req_i; at least 1.</td></tr>
 <tr><td><code>INT_CT_MODE</code></td><td><code>logic [NUM_INT_CT-1:0]</code></td><td><code>&#x27;0</code></td><td>Mode of each internal CTP, one bit per CTP. 0 selects wire-OR pulse sync and 1 a point-to-point four-phase handshake.</td></tr>
 </table>
 <h2>Ports</h2>

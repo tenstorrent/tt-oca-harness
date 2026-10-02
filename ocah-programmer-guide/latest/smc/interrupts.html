@@ -411,17 +411,17 @@ PLIC source ID is <code>cpu_interrupts_o</code> bit index + 1.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
-cpu_interrupts_o[NUM_EXT_INTERRUPTS+:32]        = peripheral_interrupts_i;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+32)+:32]   = mailbox_interrupts;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+1]     = cla_interrupt;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+2]     = dma_intp;
-cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+3]     = zeroer_intp;</code></pre>
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">cpu_interrupts_o[NumExtInterrupts-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
+cpu_interrupts_o[NumExtInterrupts+:32]        = peripheral_interrupts_i;
+cpu_interrupts_o[(NumExtInterrupts+32)+:32]   = mailbox_interrupts;
+cpu_interrupts_o[(NumExtInterrupts+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
+cpu_interrupts_o[(NumExtInterrupts+64)+1]     = cla_interrupt;
+cpu_interrupts_o[(NumExtInterrupts+64)+2]     = dma_intp;
+cpu_interrupts_o[(NumExtInterrupts+64)+3]     = zeroer_intp;</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p><code>NUM_EXT_INTERRUPTS = 256</code> and <code>NUM_CPU_INTERRUPTS = 328</code>.</p>
+<p><code>NumExtInterrupts = 256</code> and <code>NumCpuInterrupts = 328</code>.</p>
 </div>
 <span id="exact-indexed-map"></span>
 <div class="sect3">
@@ -456,7 +456,7 @@ names are called out in the <code>RTL trace</code> column instead.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/sys/smc/rtl/smc_base.sv</code> synchronizes <code>ext_interrupts_i</code> to <code>clk_smc</code>
 (<code>prim_sync3 u_ext_interrupts_sync3</code>; wired from <code>smc.sv</code>
 <code>smc_ext_interrupts_i</code>) and drives
-<code>cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_smc_clk</code>.</p></td>
+<code>cpu_interrupts_o[NumExtInterrupts-1:0] = ext_interrupts_smc_clk</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>256</code></p></td>
@@ -664,14 +664,14 @@ locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, lower half</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the lower half of bonded GPIO interrupt sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[28] =
-|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0]</code>.</p></td>
+|gpio_interrupt[smc_pkg::NumBondedGpio/2-1:0]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>285</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, upper half</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the upper half of bonded GPIO interrupt sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[29] =
-|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]</code>.</p></td>
+|gpio_interrupt[smc_pkg::NumBondedGpio-1:smc_pkg::NumBondedGpio/2]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>286</code></p></td>
@@ -699,7 +699,7 @@ overwritten in <code>smc_peripherals.sv</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC mailbox interrupts <code>[31:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Inbound SMC mailbox interrupt channels 31:0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives
-<code>cpu_interrupts_o[(NUM_EXT_INTERRUPTS+32)+:32] = mailbox_interrupts</code>;
+<code>cpu_interrupts_o[(NumExtInterrupts+32)+:32] = mailbox_interrupts</code>;
 <code>mailbox.sv</code> drives <code>inbound_interrupt_o[m]</code> per mailbox channel.</p></td>
 </tr>
 <tr>

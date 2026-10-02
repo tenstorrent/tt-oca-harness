@@ -690,7 +690,7 @@
 <tr><td><code>BASE_ADDR</code></td><td><code>logic [22:0]</code></td><td><code>0</code></td><td>Base address of the CLA and DST registers, passed to the DFD IP as its MMR base address.</td></tr>
 <tr><td><code>NUM_INPUT_LANES</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Number of lanes on debug_bus_i. The eight level-3 muxes always read 64 lanes: a smaller value makes their part-selects run past the top of debug_bus_i, and lanes above 64 are ignored.</td></tr>
 <tr><td><code>REF_CNT_W</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Width of the reference tick accounting counters. Bounds how far clk_gated_i may fall behind clk_ref_i before ticks are lost; 2**REF_CNT_W ref cycles of slack.</td></tr>
-<tr><td><code>LANE_WIDTH</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Width of one debug-bus lane in the mux tree and the DFD IP.</td></tr>
+<tr><td><code>LaneWidth</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Width of one debug-bus lane in the mux tree and the DFD IP.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -708,7 +708,7 @@
 <tr><td><code>tdr_dbg_ctrl_clock_stop_en_i</code></td><td>input</td><td><code>logic</code></td><td>Enables reporting a CLA halt-clock action as a clock stop.</td></tr>
 <tr><td><code>tdr_dbg_ctrl_clocks_stopped_by_cla_o</code></td><td>output</td><td><code>logic</code></td><td>High while a CLA halt-clock action, enabled by the mask and tdr_dbg_ctrl_clock_stop_en_i, is requesting a clock stop.</td></tr>
 <tr><td><code>dbg_mux_sel_csr_i</code></td><td>input</td><td><code>tt_dbm_pkg::DbgMuxSelMmr_s</code></td><td>Debug-bus mux select register, shared by every level-2 and level-3 mux.</td></tr>
-<tr><td><code>debug_bus_i</code></td><td>input</td><td><code>logic [NUM_INPUT_LANES*LANE_WIDTH-1:0]</code></td><td>Debug-bus lanes from the SMC into the level-3 mux stage.</td></tr>
+<tr><td><code>debug_bus_i</code></td><td>input</td><td><code>logic [NUM_INPUT_LANES*LaneWidth-1:0]</code></td><td>Debug-bus lanes from the SMC into the level-3 mux stage.</td></tr>
 <tr><td><code>debug_marker_o</code></td><td>output</td><td><code>logic [7:0]</code></td><td>Debug marker from the CLA.</td></tr>
 <tr><td><code>trace_mem_req_o</code></td><td>output</td><td><code>trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]</code></td><td>Requests from the DST trace sink to the trace RAMs outside this block, one per RAM instance.</td></tr>
 <tr><td><code>trace_mem_resp_i</code></td><td>input</td><td><code>trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]</code></td><td>Read data from the external trace RAMs to the DST trace sink.</td></tr>

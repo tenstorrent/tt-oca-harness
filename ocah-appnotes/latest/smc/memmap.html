@@ -1056,7 +1056,7 @@ window is integration-specific.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.<br>All bits other than those listed below have no strap assigned. Those GPIOs<br>still latch their pad value here, but no strap function consumes it.<br>GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie<br>outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).<br>Strap assignments in this range:<br>* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
+<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.<br>All bits other than those listed below have no strap assigned. Those GPIOs<br>still latch their pad value here, but no strap function consumes it.<br>GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie<br>outside this register, which ends at GPIO 60 (smc_pkg::NumBondedGpio-1).<br>Strap assignments in this range:<br>* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
 </table>
 </div>
 </div>

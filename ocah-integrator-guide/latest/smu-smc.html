@@ -279,7 +279,7 @@ section); most integrations leave all override enables deasserted.</p>
 <div class="paragraph">
 <p>Connect <code>smc_ndmreset_request_i[i]</code> to the NDM reset request from
 external CPU cluster <code>i</code>, and return <code>smc_ndmreset_process_o[i]</code> to
-that cluster. Set <code>CPU_CLUSTER_COUNT</code> in <code>smc_config_pkg</code> to the number
+that cluster. Set <code>CpuClusterCount</code> in <code>smc_config_pkg</code> to the number
 of clusters. This harness sets it to 4. The parameter sizes both ports,
 and <code>NDMRESET_CLUSTER_COUNT</code> reads that value back. The register fields
 stay 32 bits wide. Tie unused request inputs to 0.</p>
@@ -428,8 +428,8 @@ in the GPIO table.</p>
 </div>
 <div class="paragraph">
 <p>The SMC padring drives one GPIO pad per <code>u_gpio_interface</code> instance, so the
-adopter must integrate <code>smc_pkg::NUM_GPIO_WRAPS</code> pads:
-<code>smc_pkg::NUM_BONDED_GPIO</code> bonded pads plus <code>smc_pkg::NUM_UNBONDED_GPIO</code>
+adopter must integrate <code>smc_pkg::NumGpioWraps</code> pads:
+<code>smc_pkg::NumBondedGpio</code> bonded pads plus <code>smc_pkg::NumUnbondedGpio</code>
 unbonded pads. If the adopter chooses to capture configuration straps from GPIO
 pads, this can only be done from the bonded pads. The pads for the SDA and SCL
 lines of I3C[1] must be unbonded for security when transmitting OCCP traffic.
@@ -1124,8 +1124,8 @@ Do not connect an external interrupt controller to <code>sync_irq_o</code>.</p>
 <p>External interrupt sources visible to the adopter are <code>smc_ext_interrupts_i</code> (SMC
 external interrupt input vector, width <code>NUM_INT_TO_SMC</code>),
 <code>smc_ext_mailbox_interrupts_o</code> (outbound mailbox notifications, width
-<code>NUM_MAILBOXES</code>), <code>gpio_interrupt_o</code> (GPIO edge/level events, width
-<code>NUM_GPIO_WRAPS</code>), and <code>uart_interrupt_o</code> (UART TX/RX events, width <code>NUM_UART</code>).
+<code>NumMailboxes</code>), <code>gpio_interrupt_o</code> (GPIO edge/level events, width
+<code>NumGpioWraps</code>), and <code>uart_interrupt_o</code> (UART TX/RX events, width <code>NumUart</code>).
 Drive <code>smc_ext_interrupts_i</code> as an active-high level or as a pulse that stays
 high long enough to be sampled on <code>clk_smc</code>. The pin is three-flop
 synchronized; a short asynchronous pulse can be lost. There is no
@@ -1489,7 +1489,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsio_interface_select_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">LSIO interface selection for each GPIO wrap.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → GPIO wraps</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1498,7 +1498,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input data from pad ring to core.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1507,7 +1507,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output data from core to pad ring.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1516,7 +1516,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad-to-core path enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1525,7 +1525,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO core-to-pad path enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1561,7 +1561,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atdata_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_receiver_pkg::telemetry_data_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry data input array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources → Telemetry receivers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1570,7 +1570,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atid_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_receiver_pkg::atb_id_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry ID input array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources → Telemetry receivers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1579,7 +1579,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atready_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry ready output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receivers → ATB sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1588,7 +1588,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atvalid_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry valid input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources → Telemetry receivers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1597,7 +1597,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_afvalid_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB flush valid output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receivers → ATB sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1606,7 +1606,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_afready_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB flush ready input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources → Telemetry receivers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1651,7 +1651,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_interrupts_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_EXT_INTERRUPTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumExtInterrupts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is 256. Active-high level or a pulse long enough to be sampled on <code>clk_smc</code>. Synchronized to <code>clk_smc</code> (3-stage) in <code>smc_base</code>; a short asynchronous pulse can be lost.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External sources → Interrupt aggregator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
@@ -1714,7 +1714,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LC_STATE_WIDTH-1:0]</code> (8 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LcStateWidth-1:0]</code> (8 bits)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state input, differentially encoded.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle controller → SMC Internal Registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">From SEP; tie to 8&#8217;hf0 if unused (encoded TEST_DEV)</p></td>
@@ -1723,7 +1723,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_mailbox_interrupts_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_MAILBOXES-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumMailboxes-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External mailbox interrupt outputs (32 interrupts, mapped to IDs 156-187).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox controller → External targets</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1741,7 +1741,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_request_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CpuClusterCount-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NDM reset request from external CPU cluster <code>i</code> on bit <code>i</code>. Synchronized onto <code>clk_smc</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External CPU clusters → SMC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
@@ -1750,7 +1750,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_process_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CpuClusterCount-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Firmware response to external CPU cluster <code>i</code> on bit <code>i</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC → external CPU clusters</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1804,7 +1804,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_interrupt_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into <code>peripheral_interrupts_o[30:29]</code> internally.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_padring</code> → external consumers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
@@ -1813,7 +1813,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_interrupt_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_UART-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumUart-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Raw UART interrupt outputs, one bit per UART instance, in the peripheral clock domain. Already aggregated into <code>peripheral_interrupts_o[21:18]</code> internally via CDC.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_wrap</code> → external consumers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
@@ -1858,7 +1858,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_TAG_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumIcacheTagBanks-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache tag interface requests. Width depends on CPU cluster configuration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → L1 I-cache tag banks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1867,7 +1867,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_TAG_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumIcacheTagBanks-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache tag interface responses. Width depends on CPU cluster configuration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache tag banks → CPU cluster</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1876,7 +1876,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_DATA_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumIcacheDataBanks-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache data interface requests. Width depends on CPU cluster configuration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → L1 I-cache data banks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1885,7 +1885,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_DATA_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumIcacheDataBanks-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache data interface responses. Width depends on CPU cluster configuration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache data banks → CPU cluster</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1894,7 +1894,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_TAG_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumDcacheTagBanks-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache tag interface requests. Width depends on CPU cluster configuration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → L1 D-cache tag banks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1903,7 +1903,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_TAG_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumDcacheTagBanks-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache tag interface responses. Width depends on CPU cluster configuration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache tag banks → CPU cluster</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1912,7 +1912,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_DATA_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumDcacheDataBanks-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache data interface requests. Width depends on CPU cluster configuration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → L1 D-cache data banks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1921,7 +1921,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_DATA_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumDcacheDataBanks-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache data interface responses. Width depends on CPU cluster configuration</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache data banks → CPU cluster</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -1994,7 +1994,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLA halt-clock status under enable; also drives <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS+64]</code> (internal interrupt 0), bit 320.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA halt-clock status under enable; also drives <code>cpu_interrupts_o[NumExtInterrupts+64]</code> (internal interrupt 0), bit 320.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD → DTP / interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>

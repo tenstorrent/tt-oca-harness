@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">log_engine</h1>
-<p>DMA buffered log bytes to a UART under AXI-Lite CSR control.</p><p>The log region is split into NUM_LOG_ENTRIES equal slots. Each non-zero LOG_CTRL LOG_LEN requests a transfer from its slot; an arbiter tree serves one entry at a time, and LOG_LEN clears when that transfer completes. log_fetch_axil reads log words from the slot; log_write_axil writes them to LOG_WRITE_ADDR. uart_tx_ready_i paces the writes; irq_o signals fetch or write errors; FIFO_DEPTH sizes the read-data FIFO.</p>
+<p>DMA buffered log bytes to a UART under AXI-Lite CSR control.</p><p>The log region is split into NumLogEntries equal slots. Each non-zero LOG_CTRL LOG_LEN requests a transfer from its slot; an arbiter tree serves one entry at a time, and LOG_LEN clears when that transfer completes. log_fetch_axil reads log words from the slot; log_write_axil writes them to LOG_WRITE_ADDR. uart_tx_ready_i paces the writes; irq_o signals fetch or write errors; FIFO_DEPTH sizes the read-data FIFO.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">

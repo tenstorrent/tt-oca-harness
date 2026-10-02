@@ -693,11 +693,11 @@
 <tr><td><code>SHADOW_REG_WORD_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Shadow word width in bits.</td></tr>
 <tr><td><code>EFUSE_FIELDS</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>eFuse field-map entry count.</td></tr>
 <tr><td><code>REG_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>12</code></td><td>Width of the MAP window byte offset on apb_req_paddr_i.</td></tr>
-<tr><td><code>HAS_LC_STATE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Set for SEP: keeps the lifecycle state, differentially encoded, in shadow word SHADOW_IDX_LC_STATE and applies token-gated lifecycle transitions; clear for SMC.</td></tr>
+<tr><td><code>HAS_LC_STATE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Set for SEP: keeps the lifecycle state, differentially encoded, in shadow word ShadowIdxLcState and applies token-gated lifecycle transitions; clear for SMC.</td></tr>
 <tr><td><code>CLASS1_SHADOW_RANGES</code></td><td><code>efuse_pkg::shadow_word_range_map_t</code></td><td><code>&#x27;0</code></td><td>Class-1 shadow word ranges, stored in the separately named *_n0_scan array; the lifecycle-state word is always written there, so it must be covered when HAS_LC_STATE is set.</td></tr>
 <tr><td><code>SECRET_SHADOW_RANGES</code></td><td><code>efuse_pkg::shadow_word_range_map_t</code></td><td><code>&#x27;0</code></td><td>Secret shadow ranges masked under secure_tm.</td></tr>
 <tr><td><code>TOKEN_MATCH_CODE</code></td><td><code>logic [5:0]</code></td><td><code>6&#x27;b010101</code></td><td>Token-match code that permits the RMA lifecycle-state transitions.</td></tr>
-<tr><td><code>LC_STATE_WIDTH</code></td><td><code>int unsigned</code></td><td><code>efuse_pkg::LC_STATE_RAW_WIDTH</code></td><td>Lifecycle-state field width; fixed by the encoding in efuse_pkg.</td></tr>
+<tr><td><code>LcStateWidth</code></td><td><code>int unsigned</code></td><td><code>efuse_pkg::LcStateRawWidth</code></td><td>Lifecycle-state field width; fixed by the encoding in efuse_pkg.</td></tr>
 <tr><td><code>NumShadowWords</code></td><td><code>int unsigned</code></td><td><code>SHADOW_REG_BITS / SHADOW_REG_WORD_WIDTH</code></td><td>Shadow file word count.</td></tr>
 <tr><td><code>ShadowEfuseWidth</code></td><td><code>int unsigned</code></td><td><code>$clog2(NumShadowWords)</code></td><td>Shadow word index width.</td></tr>
 </table>

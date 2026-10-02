@@ -687,22 +687,22 @@
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>NUM_UARTS</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>UART instance count; 1 to MAX_NUM_UARTS.</td></tr>
+<tr><td><code>NUM_UARTS</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>UART instance count; 1 to MaxNumUarts.</td></tr>
 <tr><td><code>UART_TX_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Per-UART TX FIFO depth.</td></tr>
 <tr><td><code>UART_RX_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Per-UART RX FIFO depth.</td></tr>
 <tr><td><code>GEN_LOG_ENGINES</code></td><td><code>bit [NUM_UARTS-1:0]</code></td><td><code>{NUM_UARTS{1&#x27;b1}}</code></td><td>Bit i instantiates the log engine of UART i.</td></tr>
 <tr><td><code>LOG_ENGINE_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Entries in each log engine&#x27;s read-data FIFO.</td></tr>
-<tr><td><code>UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR</code></td><td><code>bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0]</code></td><td><code>0</code></td><td>Base of instance 0&#x27;s decode window.</td></tr>
-<tr><td><code>UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE</code></td><td><code>bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0]</code></td><td><code>0</code></td><td>Size of each instance&#x27;s decode window.</td></tr>
-<tr><td><code>UART_LOG_ENGINE_WRAP_SPACING</code></td><td><code>bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0]</code></td><td><code>0</code></td><td>Address stride between instance windows and their internal map bases.</td></tr>
-<tr><td><code>UART_REG_MAP_BASE_ADDR</code></td><td><code>bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0]</code></td><td><code>0</code></td><td>Instance 0&#x27;s UART register-map base.</td></tr>
-<tr><td><code>UART_REG_MAP_SIZE</code></td><td><code>bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0]</code></td><td><code>0</code></td><td>Per-instance UART register-map size.</td></tr>
-<tr><td><code>LOG_ENGINE_REG_MAP_BASE_ADDR</code></td><td><code>bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0]</code></td><td><code>0</code></td><td>Instance 0&#x27;s log-engine register-map base.</td></tr>
-<tr><td><code>LOG_ENGINE_REG_MAP_SIZE</code></td><td><code>bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0]</code></td><td><code>0</code></td><td>Per-instance log-engine register-map size.</td></tr>
-<tr><td><code>UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR</code></td><td><code>bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0]</code></td><td><code>0</code></td><td>Instance 0&#x27;s CTRL register-map base.</td></tr>
-<tr><td><code>UART_LOG_ENGINE_CTRL_REG_MAP_SIZE</code></td><td><code>bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0]</code></td><td><code>0</code></td><td>Per-instance CTRL register-map size.</td></tr>
-<tr><td><code>NUM_REG_MAPS</code></td><td><code>int unsigned</code></td><td><code>NUM_UARTS + 1</code></td><td>+1 for error slave.</td></tr>
-<tr><td><code>UNDEFINED_REG_MAP</code></td><td><code>uart_wrap_reg_map_select_t</code></td><td><code>uart_wrap_reg_map_select_t&#x27;(NUM_REG_MAPS - 1)</code></td><td>Unmapped address sink select.</td></tr>
+<tr><td><code>UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR</code></td><td><code>bit [uart_wrap_pkg::RegAddrWidth-1:0]</code></td><td><code>0</code></td><td>Base of instance 0&#x27;s decode window.</td></tr>
+<tr><td><code>UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE</code></td><td><code>bit [uart_wrap_pkg::RegAddrWidth-1:0]</code></td><td><code>0</code></td><td>Size of each instance&#x27;s decode window.</td></tr>
+<tr><td><code>UART_LOG_ENGINE_WRAP_SPACING</code></td><td><code>bit [uart_wrap_pkg::RegAddrWidth-1:0]</code></td><td><code>0</code></td><td>Address stride between instance windows and their internal map bases.</td></tr>
+<tr><td><code>UART_REG_MAP_BASE_ADDR</code></td><td><code>bit [uart_wrap_pkg::RegAddrWidth-1:0]</code></td><td><code>0</code></td><td>Instance 0&#x27;s UART register-map base.</td></tr>
+<tr><td><code>UART_REG_MAP_SIZE</code></td><td><code>bit [uart_wrap_pkg::RegAddrWidth-1:0]</code></td><td><code>0</code></td><td>Per-instance UART register-map size.</td></tr>
+<tr><td><code>LOG_ENGINE_REG_MAP_BASE_ADDR</code></td><td><code>bit [uart_wrap_pkg::RegAddrWidth-1:0]</code></td><td><code>0</code></td><td>Instance 0&#x27;s log-engine register-map base.</td></tr>
+<tr><td><code>LOG_ENGINE_REG_MAP_SIZE</code></td><td><code>bit [uart_wrap_pkg::RegAddrWidth-1:0]</code></td><td><code>0</code></td><td>Per-instance log-engine register-map size.</td></tr>
+<tr><td><code>UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR</code></td><td><code>bit [uart_wrap_pkg::RegAddrWidth-1:0]</code></td><td><code>0</code></td><td>Instance 0&#x27;s CTRL register-map base.</td></tr>
+<tr><td><code>UART_LOG_ENGINE_CTRL_REG_MAP_SIZE</code></td><td><code>bit [uart_wrap_pkg::RegAddrWidth-1:0]</code></td><td><code>0</code></td><td>Per-instance CTRL register-map size.</td></tr>
+<tr><td><code>NumRegMaps</code></td><td><code>int unsigned</code></td><td><code>NUM_UARTS + 1</code></td><td>+1 for error slave.</td></tr>
+<tr><td><code>UndefinedRegMap</code></td><td><code>uart_wrap_reg_map_select_t</code></td><td><code>uart_wrap_reg_map_select_t&#x27;(NumRegMaps - 1)</code></td><td>Unmapped address sink select.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

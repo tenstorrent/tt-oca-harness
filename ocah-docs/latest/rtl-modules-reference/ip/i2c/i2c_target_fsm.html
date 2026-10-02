@@ -688,7 +688,7 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>TARGET_RX_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>ACQ FIFO depth.</td></tr>
-<tr><td><code>TARGET_RX_FIFO_DEPTH_WIDTH</code></td><td><code>int unsigned</code></td><td><code>$clog2(TARGET_RX_FIFO_DEPTH+1)</code></td><td>clog2(depth+1) for ACQ fill.</td></tr>
+<tr><td><code>TargetRxFifoDepthWidth</code></td><td><code>int unsigned</code></td><td><code>$clog2(TARGET_RX_FIFO_DEPTH+1)</code></td><td>clog2(depth+1) for ACQ fill.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -708,7 +708,7 @@
 <tr><td><code>tx_fifo_rdata_i</code></td><td>input</td><td><code>logic [TARGET_TX_FIFO_WIDTH-1:0]</code></td><td>Byte in TX FIFO to send to the host.</td></tr>
 <tr><td><code>acq_fifo_wvalid_o</code></td><td>output</td><td><code>logic</code></td><td>Push valid data into the ACQ FIFO.</td></tr>
 <tr><td><code>acq_fifo_wdata_o</code></td><td>output</td><td><code>logic [TARGET_RX_FIFO_WIDTH-1:0]</code></td><td>Data to write to the ACQ FIFO.</td></tr>
-<tr><td><code>acq_fifo_depth_i</code></td><td>input</td><td><code>logic [TARGET_RX_FIFO_DEPTH_WIDTH-1:0]</code></td><td>Fill level of the ACQ FIFO.</td></tr>
+<tr><td><code>acq_fifo_depth_i</code></td><td>input</td><td><code>logic [TargetRxFifoDepthWidth-1:0]</code></td><td>Fill level of the ACQ FIFO.</td></tr>
 <tr><td><code>acq_fifo_full_o</code></td><td>output</td><td><code>logic</code></td><td>High while two or fewer ACQ FIFO entries are free.</td></tr>
 <tr><td><code>acq_fifo_rdata_i</code></td><td>input</td><td><code>logic [TARGET_RX_FIFO_WIDTH-1:0]</code></td><td>ACQ peek used only for assertions.</td></tr>
 <tr><td><code>target_idle_o</code></td><td>output</td><td><code>logic</code></td><td>Target is idle.</td></tr>

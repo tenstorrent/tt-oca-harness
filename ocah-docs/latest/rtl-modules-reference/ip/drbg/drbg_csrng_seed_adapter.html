@@ -687,7 +687,7 @@
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
-<tr><td><code>SEED_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>DRBG_DEFAULT_SEED_FIFO_DEPTH</code></td><td>Number of complete seeds that can be queued.</td></tr>
+<tr><td><code>SEED_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>DrbgDefaultSeedFifoDepth</code></td><td>Number of complete seeds that can be queued.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -701,7 +701,7 @@
 <tr><td><code>entropy_src_hw_if_rsp_o</code></td><td>output</td><td><code>entropy_src_pkg::entropy_src_hw_if_rsp_t</code></td><td>CSRNG seed response with bits and fips; es_ack is combinational, high when es_req is high and a seed is queued.</td></tr>
 <tr><td><code>seed_queue_valid_o</code></td><td>output</td><td><code>logic</code></td><td>Seed FIFO not empty.</td></tr>
 <tr><td><code>seed_queue_bits_o</code></td><td>output</td><td><code>logic [383:0]</code></td><td>Next queued 384-bit seed; zero when the FIFO is empty.</td></tr>
-<tr><td><code>seed_queue_fips_o</code></td><td>output</td><td><code>logic</code></td><td>FIPS flag for the next seed, the provisional policy constant DRBG_CSRNG_SEED_FIPS_PROVISIONAL; zero when the FIFO is empty.</td></tr>
+<tr><td><code>seed_queue_fips_o</code></td><td>output</td><td><code>logic</code></td><td>FIPS flag for the next seed, the provisional policy constant DrbgCsrngSeedFipsProvisional; zero when the FIFO is empty.</td></tr>
 <tr><td><code>seed_push_o</code></td><td>output</td><td><code>logic</code></td><td>Pulse when a seed is pushed.</td></tr>
 <tr><td><code>packer_word_count_o</code></td><td>output</td><td><code>logic [4:0]</code></td><td>Words accumulated in the packer, 0 to 12.</td></tr>
 <tr><td><code>seed_queue_depth_o</code></td><td>output</td><td><code>logic [$clog2(SEED_FIFO_DEPTH + 1)-1:0]</code></td><td>Current seed-FIFO fill.</td></tr>

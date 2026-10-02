@@ -690,8 +690,8 @@
 <caption class="title"><a href="#trm-table-1">Table 1</a>. <code>scratch_ram_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>clk</code></td><td><code>logic</code></td><td></td></tr>
 <tr><td><code>en</code></td><td><code>logic</code></td><td></td></tr>
-<tr><td><code>addr</code></td><td><code>logic [SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH-1:0]</code></td><td></td></tr>
-<tr><td><code>wdata</code></td><td><code>logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0]</code></td><td></td></tr>
+<tr><td><code>addr</code></td><td><code>logic [Smc4coreScratchRamAddrWidth-1:0]</code></td><td></td></tr>
+<tr><td><code>wdata</code></td><td><code>logic [Smc4coreScratchRamDataWidth-1:0]</code></td><td></td></tr>
 <tr><td><code>wmode</code></td><td><code>logic</code></td><td></td></tr>
 <tr><td><code>wmask</code></td><td><code>logic [1-1:0]</code></td><td></td></tr>
 </table>
@@ -699,7 +699,7 @@
 <p>Packed struct</p>
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. <code>scratch_ram_rsp_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
-<tr><td><code>rdata</code></td><td><code>logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0]</code></td><td></td></tr>
+<tr><td><code>rdata</code></td><td><code>logic [Smc4coreScratchRamDataWidth-1:0]</code></td><td></td></tr>
 </table>
 <h2 id="l1_icache_tag_req_t"><code>l1_icache_tag_req_t</code></h2>
 <p>Packed struct</p>

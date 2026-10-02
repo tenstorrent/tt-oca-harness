@@ -688,10 +688,10 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>NO_ADDR_REMAP</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Removes the output fabric&#x27;s M-mode and Xvisor output remap when the integration map is fixed, replacing it with an ID-width converter, which reduces area. The input fabric&#x27;s alias remap remains.</td></tr>
-<tr><td><code>SYS_IN_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>9</code></td><td>Unused; the input fabric takes the system input ID width from smc_pkg::SYS_IN_ID_WIDTH.</td></tr>
+<tr><td><code>SYS_IN_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>9</code></td><td>Unused; the input fabric takes the system input ID width from smc_pkg::SysInIdWidth.</td></tr>
 <tr><td><code>NUM_INBOUND_FILTERS</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of filter entries on the system AXI input; sizes the inbound filter CSR arrays and the input fabric hit-index outputs.</td></tr>
 <tr><td><code>NUM_OUTBOUND_FILTERS</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>Number of filter entries on the system AXI output; sizes the outbound filter CSR arrays and the output fabric hit-index outputs.</td></tr>
-<tr><td><code>MAX_TRANS</code></td><td><code>int unsigned</code></td><td><code>smc_pkg::FABRIC_MAX_TRANS</code></td><td>Outstanding transactions per ID bucket tracked by the output fabric remap demux and mux; unused when NO_ADDR_REMAP is set.</td></tr>
+<tr><td><code>MAX_TRANS</code></td><td><code>int unsigned</code></td><td><code>smc_pkg::FabricMaxTrans</code></td><td>Outstanding transactions per ID bucket tracked by the output fabric remap demux and mux; unused when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>FILTER_REQ_PIPELINE_ENABLE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the request channels at the inbound and outbound filter boundaries, trading a cycle of latency for easier timing closure.</td></tr>
 <tr><td><code>FILTER_RSP_PIPELINE_ENABLE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Adds spill registers on the response channels at the inbound and outbound filter boundaries, trading a cycle of latency for easier timing closure.</td></tr>
 </table>

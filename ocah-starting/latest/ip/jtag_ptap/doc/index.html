@@ -395,7 +395,7 @@ which they are instantiated.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ic_reset_reg</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IC_RESET control register (2*(NUM_SMC_IC_RESET+NUM_SEP_IC_RESET+NUM_EXT_IC_RESET)+1 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IC_RESET control register (2*(NumSmcIcReset+NumSepIcReset+NumExtIcReset)+1 bits)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">When any of <code>IC_RESET_SMC_ENABLE</code>, <code>IC_RESET_SEP_ENABLE</code>, <code>IC_RESET_EXT_ENABLE</code> is 1</p></td>
 </tr>
 <tr>
@@ -1201,8 +1201,8 @@ that interleaved bus and unpacks the outputs back into structured form. The TDR 
 the external slice, followed by the single <code>reset_hold</code> bit.</p>
 </div>
 <div class="paragraph">
-<p>The total length is <code>2 * (NUM_SMC_IC_RESET + NUM_SEP_IC_RESET<br>
-NUM_EXT_IC_RESET) + 1</code> bits, where each <code>NUM_*_IC_RESET</code> is half the width of
+<p>The total length is <code>2 * (NumSmcIcReset + NumSepIcReset<br>
+NumExtIcReset) + 1</code> bits, where each <code>NUM_*_IC_RESET</code> is half the width of
 its corresponding struct type when the matching enable parameter is set
 (otherwise 0).</p>
 </div>

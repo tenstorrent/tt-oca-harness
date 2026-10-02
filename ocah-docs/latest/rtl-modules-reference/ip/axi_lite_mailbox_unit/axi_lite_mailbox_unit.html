@@ -694,7 +694,7 @@
 <tr><td><code>MAILBOX_SIZE</code></td><td><code>bit [31:0]</code></td><td><code>32&#x27;h800</code></td><td>Byte span per mailbox port. Register space of one port of an axi_lite_mailbox; a mailbox spans twice this. Must be a power of two.</td></tr>
 <tr><td><code>ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>AXI-Lite address width.</td></tr>
 <tr><td><code>DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>AXI-Lite data width.</td></tr>
-<tr><td><code>STRB_WIDTH</code></td><td><code>int unsigned</code></td><td><code>DATA_WIDTH / 8</code></td><td>Write-strobe width.</td></tr>
+<tr><td><code>StrbWidth</code></td><td><code>int unsigned</code></td><td><code>DATA_WIDTH / 8</code></td><td>Write-strobe width.</td></tr>
 <tr><td><code>MailboxSizeW</code></td><td><code>int unsigned</code></td><td><code>$clog2(MAILBOX_SIZE)</code></td><td>Lowest address bit of the port select.</td></tr>
 </table>
 <h2>Ports</h2>

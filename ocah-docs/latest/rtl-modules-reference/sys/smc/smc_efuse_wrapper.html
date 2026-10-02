@@ -695,7 +695,7 @@
 <tr><td><code>axil_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Functional AXI4-Lite slave (from SMC peripherals xbar) response.</td></tr>
 <tr><td><code>axil_smc_otp_jtag_req_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>JTAG AXI4-Lite slave request.</td></tr>
 <tr><td><code>axil_smc_otp_jtag_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>JTAG AXI4-Lite slave response.</td></tr>
-<tr><td><code>lc_state_i</code></td><td>input</td><td><code>logic [2*smc_pkg::LC_STATE_WIDTH-1:0]</code></td><td>LC state from SEP (differentially encoded); PROD and RMA_SiP restrict JTAG access.</td></tr>
+<tr><td><code>lc_state_i</code></td><td>input</td><td><code>logic [2*smc_pkg::LcStateWidth-1:0]</code></td><td>LC state from SEP (differentially encoded); PROD and RMA_SiP restrict JTAG access.</td></tr>
 <tr><td><code>lc_sigint_err_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity error from the differential decode of lc_state_i, active-high; also blocks JTAG access.</td></tr>
 <tr><td><code>fuse_bank_ctrl_req_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>eFuse SHIM CSR AXI4-Lite request.</td></tr>
 <tr><td><code>fuse_bank_ctrl_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>eFuse SHIM CSR AXI4-Lite response.</td></tr>

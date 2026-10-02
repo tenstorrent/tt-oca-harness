@@ -685,30 +685,30 @@
 <p>Share SMC types, address-map helpers, and fabric typedefs.</p><p>Packages AXI, AXI-Lite and APB request/response types used across the SMC hierarchy. Holds mailbox counts, GPIO wrap counts, and other constants the top-level and fabrics share, the M-mode and Xvisor remap windows taken from smc_top_addrmap_pkg, the JTAG reset-control override type, and the address-width adjustment assignment macros.</p>
 <div class="ocah-reg-html">
 <h2 id="xtrigger_t"><code>xtrigger_t</code></h2>
-<p>Alias for <code>logic [XTRIGGER_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [XtriggerWidth-1:0]</code></p>
 <h2 id="smc_axi_addr_t"><code>smc_axi_addr_t</code></h2>
 <p>///////////////</p>
-<p>Alias for <code>logic [AXI_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiAddrWidth-1:0]</code></p>
 <h2 id="smc_axi_local_addr_t"><code>smc_axi_local_addr_t</code></h2>
-<p>Alias for <code>logic [SMC_LOCAL_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcLocalAddrWidth-1:0]</code></p>
 <h2 id="smc_axi_data_t"><code>smc_axi_data_t</code></h2>
-<p>Alias for <code>logic [AXI_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiDataWidth-1:0]</code></p>
 <h2 id="smc_axi_strb_t"><code>smc_axi_strb_t</code></h2>
-<p>Alias for <code>logic [AXI_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiStrbWidth-1:0]</code></p>
 <h2 id="smc_axi_user_t"><code>smc_axi_user_t</code></h2>
-<p>Alias for <code>logic [AXI_USER_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiUserWidth-1:0]</code></p>
 <h2 id="smc_axi_32_data_t"><code>smc_axi_32_data_t</code></h2>
-<p>Alias for <code>logic [AXI_32_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [Axi32DataWidth-1:0]</code></p>
 <h2 id="smc_axi_32_strb_t"><code>smc_axi_32_strb_t</code></h2>
 <p>SMC System Inputs</p>
-<p>Alias for <code>logic [AXI_32_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [Axi32StrbWidth-1:0]</code></p>
 <h2 id="smc_sys_in_id_t"><code>smc_sys_in_id_t</code></h2>
 <p>SMC System Inputs</p>
-<p>Alias for <code>logic [SYS_IN_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SysInIdWidth-1:0]</code></p>
 <h2 id="smc_jtag_id_t"><code>smc_jtag_id_t</code></h2>
-<p>Alias for <code>logic [JTAG_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [JtagIdWidth-1:0]</code></p>
 <h2 id="smc_sep_in_id_t"><code>smc_sep_in_id_t</code></h2>
-<p>Alias for <code>logic [SEP_IN_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SepInIdWidth-1:0]</code></p>
 <h2 id="smc_sys_in_56_64_6_12_axi_aw_chan_t"><code>smc_sys_in_56_64_6_12_axi_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-1">
@@ -966,7 +966,7 @@
 </table>
 <h2 id="smc_sys_out_id_t"><code>smc_sys_out_id_t</code></h2>
 <p>SMC System Outputs</p>
-<p>Alias for <code>logic [SYS_OUT_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SysOutIdWidth-1:0]</code></p>
 <h2 id="smc_sys_out_56_64_8_12_axi_aw_chan_t"><code>smc_sys_out_56_64_8_12_axi_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-22">
@@ -1054,7 +1054,7 @@
 </table>
 <h2 id="smc_input_fabric_slave_id_t"><code>smc_input_fabric_slave_id_t</code></h2>
 <p>Input Fabric Inputs</p>
-<p>Alias for <code>logic [SMC_INPUT_FABRIC_SLAVE_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcInputFabricSlaveIdWidth-1:0]</code></p>
 <h2 id="smc_input_fabric_56_64_4_12_axi_aw_chan_t"><code>smc_input_fabric_56_64_4_12_axi_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-29">
@@ -1142,7 +1142,7 @@
 </table>
 <h2 id="smc_local_output_fabric_slave_id_t"><code>smc_local_output_fabric_slave_id_t</code></h2>
 <p>Input to Local Fabric/Output Fabric</p>
-<p>Alias for <code>logic [SMC_LOCAL_OUTPUT_FABRIC_SLAVE_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcLocalOutputFabricSlaveIdWidth-1:0]</code></p>
 <h2 id="smc_56_64_6_12_axi_aw_chan_t"><code>smc_56_64_6_12_axi_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-36">
@@ -1315,7 +1315,7 @@
 </table>
 <h2 id="smc_local_fabric_xbar_master_id_t"><code>smc_local_fabric_xbar_master_id_t</code></h2>
 <p>one 64bit and one 32bit data version for internal and external peripherals</p>
-<p>Alias for <code>logic [SMC_LOCAL_FABRIC_XBAR_MASTER_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcLocalFabricXbarMasterIdWidth-1:0]</code></p>
 <h2 id="smc_local_32_64_8_12_axi_aw_chan_t"><code>smc_local_32_64_8_12_axi_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-50">
@@ -1488,7 +1488,7 @@
 </table>
 <h2 id="smc_output_fabric_master_id_t"><code>smc_output_fabric_master_id_t</code></h2>
 <p>Output Fabric Output</p>
-<p>Alias for <code>logic [SMC_OUTPUT_FABRIC_MASTER_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcOutputFabricMasterIdWidth-1:0]</code></p>
 <h2 id="smc_output_56_64_8_12_axi_aw_chan_t"><code>smc_output_56_64_8_12_axi_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-64">
@@ -1576,7 +1576,7 @@
 </table>
 <h2 id="smc_cpu_mmio_axi_id_t"><code>smc_cpu_mmio_axi_id_t</code></h2>
 <p>MMIO AXI types</p>
-<p>Alias for <code>logic [SMC_CPU_MMIO_AXI_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcCpuMmioAxiIdWidth-1:0]</code></p>
 <h2 id="smc_cpu_mmio_axi_aw_chan_t"><code>smc_cpu_mmio_axi_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-71">
@@ -1664,7 +1664,7 @@
 </table>
 <h2 id="smc_cpu_l2_frontend_axi_id_t"><code>smc_cpu_l2_frontend_axi_id_t</code></h2>
 <p>L2 Frontend Bus AXI types</p>
-<p>Alias for <code>logic [SMC_CPU_L2_FRONTEND_AXI_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcCpuL2FrontendAxiIdWidth-1:0]</code></p>
 <h2 id="smc_cpu_l2_frontend_axi_aw_chan_t"><code>smc_cpu_l2_frontend_axi_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-78">
@@ -1752,17 +1752,17 @@
 </table>
 <h2 id="smc_axi_lite_56_addr_t"><code>smc_axi_lite_56_addr_t</code></h2>
 <p>AXI-Lite Typedefs</p>
-<p>Alias for <code>logic [AXI_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiAddrWidth-1:0]</code></p>
 <h2 id="smc_axi_lite_32_addr_t"><code>smc_axi_lite_32_addr_t</code></h2>
-<p>Alias for <code>logic [SMC_LOCAL_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcLocalAddrWidth-1:0]</code></p>
 <h2 id="smc_axi_lite_64_data_t"><code>smc_axi_lite_64_data_t</code></h2>
-<p>Alias for <code>logic [AXI_LITE_64_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiLite64DataWidth-1:0]</code></p>
 <h2 id="smc_axi_lite_32_data_t"><code>smc_axi_lite_32_data_t</code></h2>
-<p>Alias for <code>logic [AXI_LITE_32_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [AxiLite32DataWidth-1:0]</code></p>
 <h2 id="smc_axi_lite_64_strb_t"><code>smc_axi_lite_64_strb_t</code></h2>
-<p>Alias for <code>logic [AXI_LITE_64_DATA_WIDTH/8-1:0]</code></p>
+<p>Alias for <code>logic [AxiLite64DataWidth/8-1:0]</code></p>
 <h2 id="smc_axi_lite_32_strb_t"><code>smc_axi_lite_32_strb_t</code></h2>
-<p>Alias for <code>logic [AXI_LITE_32_DATA_WIDTH/8-1:0]</code></p>
+<p>Alias for <code>logic [AxiLite32DataWidth/8-1:0]</code></p>
 <h2 id="smc_axil_56_64_aw_chan_t"><code>smc_axil_56_64_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-85">
@@ -1941,11 +1941,11 @@
 <tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
 </table>
 <h2 id="cpu_debug_apb_addr_t"><code>cpu_debug_apb_addr_t</code></h2>
-<p>Alias for <code>logic [CPU_DEBUG_APB_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [CpuDebugApbAddrWidth-1:0]</code></p>
 <h2 id="cpu_debug_apb_data_t"><code>cpu_debug_apb_data_t</code></h2>
-<p>Alias for <code>logic [CPU_DEBUG_APB_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [CpuDebugApbDataWidth-1:0]</code></p>
 <h2 id="cpu_debug_apb_strb_t"><code>cpu_debug_apb_strb_t</code></h2>
-<p>Alias for <code>logic [CPU_DEBUG_APB_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [CpuDebugApbStrbWidth-1:0]</code></p>
 <h2 id="cpu_debug_apb_req_t"><code>cpu_debug_apb_req_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-106">
@@ -1967,11 +1967,11 @@
 <tr><td><code>pslverr</code></td><td><code>logic</code></td><td></td></tr>
 </table>
 <h2 id="smc_dfd_apb_addr_t"><code>smc_dfd_apb_addr_t</code></h2>
-<p>Alias for <code>logic [SMC_DFD_APB_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcDfdApbAddrWidth-1:0]</code></p>
 <h2 id="smc_dfd_apb_data_t"><code>smc_dfd_apb_data_t</code></h2>
-<p>Alias for <code>logic [SMC_DFD_APB_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcDfdApbDataWidth-1:0]</code></p>
 <h2 id="smc_dfd_apb_strb_t"><code>smc_dfd_apb_strb_t</code></h2>
-<p>Alias for <code>logic [SMC_DFD_APB_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [SmcDfdApbStrbWidth-1:0]</code></p>
 <h2 id="smc_dfd_apb_req_t"><code>smc_dfd_apb_req_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-108">
@@ -2004,9 +2004,9 @@
 <p>Packed struct</p>
 <table id="trm-table-111">
 <caption class="title"><a href="#trm-table-111">Table 111</a>. <code>remap_region_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
-<tr><td><code>region_start</code></td><td><code>logic [AXI_ADDR_WIDTH-1:0]</code></td><td></td></tr>
-<tr><td><code>region_end</code></td><td><code>logic [AXI_ADDR_WIDTH-1:0]</code></td><td></td></tr>
-<tr><td><code>offset</code></td><td><code>logic [AXI_ADDR_WIDTH-1:0]</code></td><td></td></tr>
+<tr><td><code>region_start</code></td><td><code>logic [AxiAddrWidth-1:0]</code></td><td></td></tr>
+<tr><td><code>region_end</code></td><td><code>logic [AxiAddrWidth-1:0]</code></td><td></td></tr>
+<tr><td><code>offset</code></td><td><code>logic [AxiAddrWidth-1:0]</code></td><td></td></tr>
 <tr><td><code>cacheable</code></td><td><code>axi_pkg::cache_t</code></td><td></td></tr>
 <tr><td><code>region_valid</code></td><td><code>logic</code></td><td></td></tr>
 </table>
@@ -2061,12 +2061,12 @@
 <tr><td><code>filter</code></td><td><code>smc_56_64_6_12_axi_resp_t</code></td><td></td></tr>
 </table>
 <h2 id="ext_reg_addr_t"><code>ext_reg_addr_t</code></h2>
-<p>Alias for <code>logic [EXT_REG_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [ExtRegAddrWidth-1:0]</code></p>
 <h2 id="ext_reg_data_t"><code>ext_reg_data_t</code></h2>
-<p>Alias for <code>logic [EXT_REG_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [ExtRegDataWidth-1:0]</code></p>
 <h2 id="ext_reg_strb_t"><code>ext_reg_strb_t</code></h2>
 <p>Source ID Parameters</p>
-<p>Alias for <code>logic [EXT_REG_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [ExtRegStrbWidth-1:0]</code></p>
 <h2 id="data_accelerator_type_e"><code>data_accelerator_type_e</code></h2>
 <p>Enum (<code>logic</code>)</p>
 <table id="trm-table-118">
@@ -2075,7 +2075,7 @@
 <tr><td><code>ZEROER</code></td><td>1</td><td></td></tr>
 </table>
 <h2 id="smc_dma_ctrl_addr_t"><code>smc_dma_ctrl_addr_t</code></h2>
-<p>Alias for <code>logic [DMA_CTRL_ADDR_W-1:0]</code></p>
+<p>Alias for <code>logic [DmaCtrlAddrW-1:0]</code></p>
 <h2 id="smc_dma_ctrl_9_64_8_12_axi_aw_chan_t"><code>smc_dma_ctrl_9_64_8_12_axi_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-119">
@@ -2162,7 +2162,7 @@
 <tr><td><code>r</code></td><td><code>smc_dma_ctrl_9_64_8_12_axi_r_chan_t</code></td><td></td></tr>
 </table>
 <h2 id="smc_zeroer_ctrl_addr_t"><code>smc_zeroer_ctrl_addr_t</code></h2>
-<p>Alias for <code>logic [ZEROER_CTRL_ADDR_W-1:0]</code></p>
+<p>Alias for <code>logic [ZeroerCtrlAddrW-1:0]</code></p>
 <h2 id="smc_zeroer_ctrl_axil_5_64_aw_chan_t"><code>smc_zeroer_ctrl_axil_5_64_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-126">
@@ -2342,7 +2342,7 @@
 </table>
 <h2 id="cg_hyster_t"><code>cg_hyster_t</code></h2>
 <p>CPU Specific Parameters</p>
-<p>Alias for <code>logic [CG_HYSTERESIS_W-1:0]</code></p>
+<p>Alias for <code>logic [CgHysteresisW-1:0]</code></p>
 <h2 id="jtag_smc_reset_ctrl_ovrd_t"><code>jtag_smc_reset_ctrl_ovrd_t</code></h2>
 <p>smc_4core_cpu_pkg.</p>
 <p>Packed struct</p>

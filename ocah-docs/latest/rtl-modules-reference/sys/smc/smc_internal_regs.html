@@ -719,8 +719,8 @@
 <tr><td><code>axil_mailbox_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_64_resp_t</code></td><td>Response for the mailbox window.</td></tr>
 <tr><td><code>axil_dfx_csr_req_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_64_req_t</code></td><td>Request from the internal CSR crossbar for the DFX control window.</td></tr>
 <tr><td><code>axil_dfx_csr_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_64_resp_t</code></td><td>Response for the DFX control window.</td></tr>
-<tr><td><code>inbound_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_MAILBOXES-1:0]</code></td><td>Per-mailbox inbound data interrupt; smc_base routes it to the SMC CPU.</td></tr>
-<tr><td><code>outbound_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_MAILBOXES-1:0]</code></td><td>Per-mailbox outbound data interrupt; smc_base drives it out of the SMC.</td></tr>
+<tr><td><code>inbound_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NumMailboxes-1:0]</code></td><td>Per-mailbox inbound data interrupt; smc_base routes it to the SMC CPU.</td></tr>
+<tr><td><code>outbound_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NumMailboxes-1:0]</code></td><td>Per-mailbox outbound data interrupt; smc_base drives it out of the SMC.</td></tr>
 <tr><td><code>axil_smc_base_config_req_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_64_req_t</code></td><td>Request from the internal CSR crossbar for the base-config window.</td></tr>
 <tr><td><code>axil_smc_base_config_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_64_resp_t</code></td><td>Response for the base-config window.</td></tr>
 <tr><td><code>smc_global_base_o</code></td><td>output</td><td><code>smc_pkg::smc_axi_addr_t</code></td><td>SMC global base address from GLOBAL_BASE.</td></tr>

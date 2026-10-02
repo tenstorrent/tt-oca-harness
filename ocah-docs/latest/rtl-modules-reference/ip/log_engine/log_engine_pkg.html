@@ -685,11 +685,11 @@
 <p>Define AXI-Lite typedefs and constants for the log engine.</p><p>Types the CSR port (register-block minimum address width, 32-bit data), the log-fetch port (56-bit address, 64-bit data) and the log-write port (32-bit address and data). Also defines the 16-entry log ring, the 512 KiB maximum log region and its alignment, the derived length, index and counter types, and the fetch and write FSM states.</p>
 <div class="ocah-reg-html">
 <h2 id="reg_addr_t"><code>reg_addr_t</code></h2>
-<p>Alias for <code>logic [REG_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegAddrWidth-1:0]</code></p>
 <h2 id="reg_data_t"><code>reg_data_t</code></h2>
-<p>Alias for <code>logic [REG_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegDataWidth-1:0]</code></p>
 <h2 id="reg_strb_t"><code>reg_strb_t</code></h2>
-<p>Alias for <code>logic [REG_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegStrbWidth-1:0]</code></p>
 <h2 id="csr_axil_aw_chan_t"><code>csr_axil_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-1">
@@ -750,11 +750,11 @@
 <tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
 </table>
 <h2 id="log_fetch_addr_t"><code>log_fetch_addr_t</code></h2>
-<p>Alias for <code>logic [LOG_FETCH_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogFetchAddrWidth-1:0]</code></p>
 <h2 id="log_fetch_data_t"><code>log_fetch_data_t</code></h2>
-<p>Alias for <code>logic [LOG_FETCH_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogFetchDataWidth-1:0]</code></p>
 <h2 id="log_fetch_strb_t"><code>log_fetch_strb_t</code></h2>
-<p>Alias for <code>logic [LOG_FETCH_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogFetchStrbWidth-1:0]</code></p>
 <h2 id="log_fetch_axil_aw_chan_t"><code>log_fetch_axil_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-8">
@@ -815,11 +815,11 @@
 <tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
 </table>
 <h2 id="log_write_addr_t"><code>log_write_addr_t</code></h2>
-<p>Alias for <code>logic [LOG_WRITE_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogWriteAddrWidth-1:0]</code></p>
 <h2 id="log_write_data_t"><code>log_write_data_t</code></h2>
-<p>Alias for <code>logic [LOG_WRITE_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogWriteDataWidth-1:0]</code></p>
 <h2 id="log_write_strb_t"><code>log_write_strb_t</code></h2>
-<p>Alias for <code>logic [LOG_WRITE_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogWriteStrbWidth-1:0]</code></p>
 <h2 id="log_write_axil_aw_chan_t"><code>log_write_axil_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-15">
@@ -880,25 +880,25 @@
 <tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
 </table>
 <h2 id="log_region_size_t"><code>log_region_size_t</code></h2>
-<p>Alias for <code>logic [LOG_REGION_SIZE_W-1:0]</code></p>
+<p>Alias for <code>logic [LogRegionSizeW-1:0]</code></p>
 <h2 id="log_len_t"><code>log_len_t</code></h2>
-<p>Alias for <code>logic [LOG_LEN_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogLenWidth-1:0]</code></p>
 <h2 id="log_index_t"><code>log_index_t</code></h2>
 <p>Log fetch parameters</p>
-<p>Alias for <code>logic [LOG_INDEX_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogIndexWidth-1:0]</code></p>
 <h2 id="byte_t"><code>byte_t</code></h2>
 <p>Log fetch parameters</p>
 <p>Alias for <code>logic [7:0]</code></p>
 <h2 id="log_word_t"><code>log_word_t</code></h2>
-<p>Alias for <code>byte_t [LOG_WORD_SIZE-1:0]</code></p>
+<p>Alias for <code>byte_t [LogWordSize-1:0]</code></p>
 <h2 id="log_word_byte_ptr_t"><code>log_word_byte_ptr_t</code></h2>
-<p>Alias for <code>logic [LOG_WORD_BYTE_PTR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogWordBytePtrWidth-1:0]</code></p>
 <h2 id="log_words_fetched_cnt_t"><code>log_words_fetched_cnt_t</code></h2>
 <p>Log write parameters</p>
-<p>Alias for <code>logic [LOG_WORDS_FETCHED_CNT_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogWordsFetchedCntWidth-1:0]</code></p>
 <h2 id="log_bytes_written_cnt_t"><code>log_bytes_written_cnt_t</code></h2>
 <p>//////////////////</p>
-<p>Alias for <code>logic [LOG_BYTES_WRITTEN_CNT_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [LogBytesWrittenCntWidth-1:0]</code></p>
 <h2 id="log_fetch_fsm_state_e"><code>log_fetch_fsm_state_e</code></h2>
 <p>//////////////////</p>
 <p>Enum (<code>logic [1:0]</code>)</p>

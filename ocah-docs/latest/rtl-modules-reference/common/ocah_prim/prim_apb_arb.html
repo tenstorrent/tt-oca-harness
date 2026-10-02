@@ -692,7 +692,7 @@
 <tr><td><code>MASTER_NUM</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Number of APB master ports.</td></tr>
 <tr><td><code>SLAVE_ADDR_START</code></td><td><code>bit [31:0]</code></td><td><code>32&#x27;h0000</code></td><td>Declared but unused; no address decoding.</td></tr>
 <tr><td><code>SLAVE_ADDR_END</code></td><td><code>bit [31:0]</code></td><td><code>32&#x27;h1000</code></td><td>Declared but unused; addresses reach the slave port unchecked.</td></tr>
-<tr><td><code>DATA_STRB_WIDTH</code></td><td><code>int unsigned</code></td><td><code>DATA_WIDTH / 8</code></td><td>Write-strobe width from DATA_WIDTH.</td></tr>
+<tr><td><code>DataStrbWidth</code></td><td><code>int unsigned</code></td><td><code>DATA_WIDTH / 8</code></td><td>Write-strobe width from DATA_WIDTH.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -704,7 +704,7 @@
 <tr><td><code>mst_paddr_i</code></td><td>input</td><td><code>logic [MASTER_NUM-1:0][ADDR_WIDTH -1:0]</code></td><td>APB master PADDRs.</td></tr>
 <tr><td><code>mst_pwrite_i</code></td><td>input</td><td><code>logic [MASTER_NUM-1:0]</code></td><td>APB master PWRITEs.</td></tr>
 <tr><td><code>mst_pwdata_i</code></td><td>input</td><td><code>logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]</code></td><td>APB master PWDATAs.</td></tr>
-<tr><td><code>mst_pstrb_i</code></td><td>input</td><td><code>logic [MASTER_NUM-1:0][DATA_STRB_WIDTH -1:0]</code></td><td>APB master PSTRBs.</td></tr>
+<tr><td><code>mst_pstrb_i</code></td><td>input</td><td><code>logic [MASTER_NUM-1:0][DataStrbWidth -1:0]</code></td><td>APB master PSTRBs.</td></tr>
 <tr><td><code>mst_prdata_o</code></td><td>output</td><td><code>logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]</code></td><td>APB master PRDATAs.</td></tr>
 <tr><td><code>mst_pready_o</code></td><td>output</td><td><code>logic [MASTER_NUM-1:0]</code></td><td>APB master PREADYs.</td></tr>
 <tr><td><code>mst_pslverr_o</code></td><td>output</td><td><code>logic [MASTER_NUM-1:0]</code></td><td>APB master PSLVERRs.</td></tr>
@@ -713,7 +713,7 @@
 <tr><td><code>slv_paddr_o</code></td><td>output</td><td><code>logic [ADDR_WIDTH -1:0]</code></td><td>APB slave PADDR.</td></tr>
 <tr><td><code>slv_pwrite_o</code></td><td>output</td><td><code>logic</code></td><td>APB slave PWRITE.</td></tr>
 <tr><td><code>slv_pwdata_o</code></td><td>output</td><td><code>logic [DATA_WIDTH -1:0]</code></td><td>APB slave PWDATA.</td></tr>
-<tr><td><code>slv_pstrb_o</code></td><td>output</td><td><code>logic [DATA_STRB_WIDTH -1:0]</code></td><td>APB slave PSTRB.</td></tr>
+<tr><td><code>slv_pstrb_o</code></td><td>output</td><td><code>logic [DataStrbWidth -1:0]</code></td><td>APB slave PSTRB.</td></tr>
 <tr><td><code>slv_prdata_i</code></td><td>input</td><td><code>logic [DATA_WIDTH -1:0]</code></td><td>APB slave PRDATA.</td></tr>
 <tr><td><code>slv_pready_i</code></td><td>input</td><td><code>logic</code></td><td>APB slave PREADY.</td></tr>
 <tr><td><code>slv_pslverr_i</code></td><td>input</td><td><code>logic</code></td><td>APB slave PSLVERR.</td></tr>

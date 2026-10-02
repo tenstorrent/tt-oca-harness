@@ -692,13 +692,13 @@
 <tr><td><code>is_primary_i</code></td><td>input</td><td><code>logic</code></td><td>Runtime primary/secondary mode select; 1 selects primary.</td></tr>
 <tr><td><code>reg_start_i</code></td><td>input</td><td><code>logic</code></td><td>Software start pulse; in primary mode loads the preset and emits timer_sync_load_o.</td></tr>
 <tr><td><code>reg_credit_val_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>Credit period in cycles for a primary and count advance per credit pulse for a secondary; must exceed the pulse width.</td></tr>
-<tr><td><code>reg_preset_lo_i</code></td><td>input</td><td><code>logic [DATA_WIDTH-1:0]</code></td><td>Preset count low half.</td></tr>
-<tr><td><code>reg_preset_hi_i</code></td><td>input</td><td><code>logic [DATA_WIDTH-1:0]</code></td><td>Preset count high half.</td></tr>
+<tr><td><code>reg_preset_lo_i</code></td><td>input</td><td><code>logic [DataWidth-1:0]</code></td><td>Preset count low half.</td></tr>
+<tr><td><code>reg_preset_hi_i</code></td><td>input</td><td><code>logic [DataWidth-1:0]</code></td><td>Preset count high half.</td></tr>
 <tr><td><code>reg_pulse_width_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>Sync/credit pulse width in clk_i cycles; zero acts as one.</td></tr>
 <tr><td><code>reg_mode_o</code></td><td>output</td><td><code>logic</code></td><td>Reports mode: 0 for primary, 1 for secondary.</td></tr>
 <tr><td><code>reg_running_o</code></td><td>output</td><td><code>logic</code></td><td>Timer is started and its count is nonzero.</td></tr>
-<tr><td><code>reg_count_lo_o</code></td><td>output</td><td><code>logic [DATA_WIDTH-1:0]</code></td><td>Count low half.</td></tr>
-<tr><td><code>reg_count_hi_o</code></td><td>output</td><td><code>logic [DATA_WIDTH-1:0]</code></td><td>Count high half.</td></tr>
+<tr><td><code>reg_count_lo_o</code></td><td>output</td><td><code>logic [DataWidth-1:0]</code></td><td>Count low half.</td></tr>
+<tr><td><code>reg_count_hi_o</code></td><td>output</td><td><code>logic [DataWidth-1:0]</code></td><td>Count high half.</td></tr>
 <tr><td><code>timer_sync_load_i</code></td><td>input</td><td><code>logic</code></td><td>Inbound sync-load pulse; ignored in primary mode.</td></tr>
 <tr><td><code>timer_cnt_credit_i</code></td><td>input</td><td><code>logic</code></td><td>Inbound credit pulse; ignored in primary mode.</td></tr>
 <tr><td><code>timer_sync_load_o</code></td><td>output</td><td><code>logic</code></td><td>Outbound sync-load pulse; low in secondary mode.</td></tr>

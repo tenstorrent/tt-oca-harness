@@ -688,13 +688,13 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>NO_ADDR_REMAP</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Reported by cpu_ctrl in SMC_ATTRIBUTES.no_output_remap; no other effect in this module.</td></tr>
-<tr><td><code>NUM_CPU_CORES</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NUM_CPU_CORES</code></td><td>Number of cores in the cluster, from smc_4core_cpu_pkg; sizes the per-core PC and watchdog ports.</td></tr>
-<tr><td><code>NUM_CPU_INTERRUPTS</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS</code></td><td>Number of interrupt lines into the cluster, from smc_4core_cpu_pkg.</td></tr>
-<tr><td><code>NUM_SRAM_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_SRAM_BANKS</code></td><td>Number of scratch RAM banks; sizes the scratch RAM port arrays.</td></tr>
-<tr><td><code>NUM_ICACHE_TAG_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS</code></td><td>Number of instruction-cache tag banks; sizes the instruction-cache tag port arrays.</td></tr>
-<tr><td><code>NUM_ICACHE_DATA_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS</code></td><td>Number of instruction-cache data banks; sizes the instruction-cache data port arrays.</td></tr>
-<tr><td><code>NUM_DCACHE_TAG_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS</code></td><td>Number of data-cache tag banks; sizes the data-cache tag port arrays.</td></tr>
-<tr><td><code>NUM_DCACHE_DATA_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS</code></td><td>Number of data-cache data banks; sizes the data-cache data port arrays.</td></tr>
+<tr><td><code>NumCpuCores</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NumCpuCores</code></td><td>Number of cores in the cluster, from smc_4core_cpu_pkg; sizes the per-core PC and watchdog ports.</td></tr>
+<tr><td><code>NumCpuInterrupts</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NumCpuInterrupts</code></td><td>Number of interrupt lines into the cluster, from smc_4core_cpu_pkg.</td></tr>
+<tr><td><code>NumSramBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumSramBanks</code></td><td>Number of scratch RAM banks; sizes the scratch RAM port arrays.</td></tr>
+<tr><td><code>NumIcacheTagBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumIcacheTagBanks</code></td><td>Number of instruction-cache tag banks; sizes the instruction-cache tag port arrays.</td></tr>
+<tr><td><code>NumIcacheDataBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumIcacheDataBanks</code></td><td>Number of instruction-cache data banks; sizes the instruction-cache data port arrays.</td></tr>
+<tr><td><code>NumDcacheTagBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumDcacheTagBanks</code></td><td>Number of data-cache tag banks; sizes the data-cache tag port arrays.</td></tr>
+<tr><td><code>NumDcacheDataBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumDcacheDataBanks</code></td><td>Number of data-cache data banks; sizes the data-cache data port arrays.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -711,9 +711,9 @@
 <tr><td><code>axi_front_port_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_local_32_64_8_12_axi_resp_t</code></td><td>Front-port AXI response to the local fabric.</td></tr>
 <tr><td><code>axi_mmio_port_req_o</code></td><td>output</td><td><code>smc_pkg::smc_cpu_mmio_axi_req_t</code></td><td>Cluster MMIO AXI master request to the smc_fabric input fabric.</td></tr>
 <tr><td><code>axi_mmio_port_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_cpu_mmio_axi_resp_t</code></td><td>Cluster MMIO AXI master response from the smc_fabric input fabric.</td></tr>
-<tr><td><code>interrupts_i</code></td><td>input</td><td><code>logic [NUM_CPU_INTERRUPTS-1:0]</code></td><td>Interrupt vector from smc_base, passed unchanged to the cluster.</td></tr>
-<tr><td><code>wb_reg_pc_o</code></td><td>output</td><td><code>logic [NUM_CPU_CORES-1:0][57:0]</code></td><td>Per-core writeback program counter from the cluster, zero while the cluster boundary is isolated.</td></tr>
-<tr><td><code>wdt_timeout_cluster_o</code></td><td>output</td><td><code>logic [NUM_CPU_CORES-1:0]</code></td><td>Per-core first-stage watchdog timeout from the cluster, low while the cluster boundary is isolated.</td></tr>
+<tr><td><code>interrupts_i</code></td><td>input</td><td><code>logic [NumCpuInterrupts-1:0]</code></td><td>Interrupt vector from smc_base, passed unchanged to the cluster.</td></tr>
+<tr><td><code>wb_reg_pc_o</code></td><td>output</td><td><code>logic [NumCpuCores-1:0][57:0]</code></td><td>Per-core writeback program counter from the cluster, zero while the cluster boundary is isolated.</td></tr>
+<tr><td><code>wdt_timeout_cluster_o</code></td><td>output</td><td><code>logic [NumCpuCores-1:0]</code></td><td>Per-core first-stage watchdog timeout from the cluster, low while the cluster boundary is isolated.</td></tr>
 <tr><td><code>wdt_second_timeout_o</code></td><td>output</td><td><code>logic</code></td><td>Second-stage watchdog timeout from cpu_ctrl, registered on clk_i.</td></tr>
 <tr><td><code>cluster_ded_o</code></td><td>output</td><td><code>logic</code></td><td>Registered OR of the cluster&#x27;s uncorrectable-error flags, cleared while the cluster uncore reset is asserted.</td></tr>
 <tr><td><code>rom_intf_req_o</code></td><td>output</td><td><code>rom_req_t</code></td><td>Boot ROM read request from the TileLink-to-ROM bridge, clocked by clk_i, with the write fields tied to zero.</td></tr>

@@ -688,14 +688,14 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>BUFFER_DEPTH</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Completed-message FIFO depth; must be a power of two and &gt;= 2.</td></tr>
-<tr><td><code>MAX_NUM_COUNTERS_PER_MESSAGE</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Counters allowed per message; only the first NUM_COUNTER_REGS are readable.</td></tr>
-<tr><td><code>MAX_NUM_BLOCKS_PER_MESSAGE</code></td><td><code>int unsigned</code></td><td><code>1 + (TELEMETRY_COUNTER_WIDTH / TELEMETRY_DATA_WIDTH) * MAX_NUM_COUNTERS_PER_MESSAGE</code></td><td>Packet blocks spanning one message: one header block plus one block per counter byte.</td></tr>
-<tr><td><code>MAX_NUM_PACKETS_PER_MESSAGE</code></td><td><code>int unsigned</code></td><td><code>MAX_NUM_BLOCKS_PER_MESSAGE % NUM_BLOCKS_PER_PACKET == 0 ? MAX_NUM_BLOCKS_PER_MESSAGE / NUM_BLOCKS_PER_PACKET : MAX_NUM_BLOCKS_PER_MESSAGE / NUM_BLOCKS_PER_PACKET + 1</code></td><td>ATB packets spanning one message.</td></tr>
-<tr><td><code>PACKET_INDEX_WIDTH</code></td><td><code>int unsigned</code></td><td><code>$clog2(MAX_NUM_PACKETS_PER_MESSAGE)</code></td><td>Packet-index counter width.</td></tr>
-<tr><td><code>BLOCK_INDEX_WIDTH</code></td><td><code>int unsigned</code></td><td><code>$clog2(NUM_BLOCKS_PER_PACKET)</code></td><td>Block-index counter width.</td></tr>
-<tr><td><code>ASSEMBLY_BUFFER_DEPTH</code></td><td><code>int unsigned</code></td><td><code>(TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH) * MAX_NUM_PACKETS_PER_MESSAGE</code></td><td>Assembly-buffer depth in beats.</td></tr>
-<tr><td><code>ASSEMBLY_BUFFER_PTR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>$clog2(ASSEMBLY_BUFFER_DEPTH)</code></td><td>Assembly-buffer pointer width.</td></tr>
-<tr><td><code>MESSAGE_BUFFER_PTR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>$clog2(BUFFER_DEPTH) + 1</code></td><td>Message-FIFO pointer width.</td></tr>
+<tr><td><code>MAX_NUM_COUNTERS_PER_MESSAGE</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Counters allowed per message; only the first NumCounterRegs are readable.</td></tr>
+<tr><td><code>MaxNumBlocksPerMessage</code></td><td><code>int unsigned</code></td><td><code>1 + (TelemetryCounterWidth / TelemetryDataWidth) * MAX_NUM_COUNTERS_PER_MESSAGE</code></td><td>Packet blocks spanning one message: one header block plus one block per counter byte.</td></tr>
+<tr><td><code>MaxNumPacketsPerMessage</code></td><td><code>int unsigned</code></td><td><code>MaxNumBlocksPerMessage % NumBlocksPerPacket == 0 ? MaxNumBlocksPerMessage / NumBlocksPerPacket : MaxNumBlocksPerMessage / NumBlocksPerPacket + 1</code></td><td>ATB packets spanning one message.</td></tr>
+<tr><td><code>PacketIndexWidth</code></td><td><code>int unsigned</code></td><td><code>$clog2(MaxNumPacketsPerMessage)</code></td><td>Packet-index counter width.</td></tr>
+<tr><td><code>BlockIndexWidth</code></td><td><code>int unsigned</code></td><td><code>$clog2(NumBlocksPerPacket)</code></td><td>Block-index counter width.</td></tr>
+<tr><td><code>AssemblyBufferDepth</code></td><td><code>int unsigned</code></td><td><code>(TelemetryPacketWidth / TelemetryDataWidth) * MaxNumPacketsPerMessage</code></td><td>Assembly-buffer depth in beats.</td></tr>
+<tr><td><code>AssemblyBufferPtrWidth</code></td><td><code>int unsigned</code></td><td><code>$clog2(AssemblyBufferDepth)</code></td><td>Assembly-buffer pointer width.</td></tr>
+<tr><td><code>MessageBufferPtrWidth</code></td><td><code>int unsigned</code></td><td><code>$clog2(BUFFER_DEPTH) + 1</code></td><td>Message-FIFO pointer width.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">

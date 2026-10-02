@@ -697,7 +697,7 @@
 <tr><td><code>D_REQ_DEPTH</code></td><td><code>bit [N*4-1:0]</code></td><td><code>{N{4&#x27;h1}}</code></td><td>Packed per-device request FIFO depths.</td></tr>
 <tr><td><code>D_RSP_DEPTH</code></td><td><code>bit [N*4-1:0]</code></td><td><code>{N{4&#x27;h1}}</code></td><td>Packed per-device response FIFO depths.</td></tr>
 <tr><td><code>EXPLICIT_ERRS</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Widen select so N can request an error.</td></tr>
-<tr><td><code>NWD</code></td><td><code>int unsigned</code></td><td><code>$clog2(EXPLICIT_ERRS ? N+1 : N)</code></td><td>Width of dev_select_i.</td></tr>
+<tr><td><code>Nwd</code></td><td><code>int unsigned</code></td><td><code>$clog2(EXPLICIT_ERRS ? N+1 : N)</code></td><td>Width of dev_select_i.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -708,7 +708,7 @@
 <tr><td><code>tl_h_o</code></td><td>output</td><td><code>tlul_pkg::tl_d2h_t</code></td><td>Host-side TL-UL response.</td></tr>
 <tr><td><code>tl_d_o</code></td><td>output</td><td><code>tlul_pkg::tl_h2d_t</code></td><td>Per-device TL-UL requests.</td></tr>
 <tr><td><code>tl_d_i</code></td><td>input</td><td><code>tlul_pkg::tl_d2h_t</code></td><td>Per-device TL-UL responses.</td></tr>
-<tr><td><code>dev_select_i</code></td><td>input</td><td><code>[NWD-1:0]</code></td><td>Device index; N and above return an error.</td></tr>
+<tr><td><code>dev_select_i</code></td><td>input</td><td><code>[Nwd-1:0]</code></td><td>Device index; N and above return an error.</td></tr>
 </table>
 </div>
 </article>

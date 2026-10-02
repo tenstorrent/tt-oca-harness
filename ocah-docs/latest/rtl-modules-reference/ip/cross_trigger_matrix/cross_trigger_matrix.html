@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">cross_trigger_matrix</h1>
-<p>Route cross-trigger pulses from CT_Dst inputs onto CT_Src outputs through programmable OR masks.</p><p>NUM_CT_SRC and NUM_CT_DST are localparams from the RDL package so the map addresses every select bit; they are not module parameters. Past 32 destinations the RDL widens the select field across both register words; decode still sees one value. AXI-Lite CSRs program per-source selects; each CT_Src path registers its OR result.</p>
+<p>Route cross-trigger pulses from CT_Dst inputs onto CT_Src outputs through programmable OR masks.</p><p>NumCtSrc and NumCtDst are localparams from the RDL package so the map addresses every select bit; they are not module parameters. Past 32 destinations the RDL widens the select field across both register words; decode still sees one value. AXI-Lite CSRs program per-source selects; each CT_Src path registers its OR result.</p>
 <div class="ocah-reg-html">
 <h2>Ports</h2>
 <table id="trm-table-1">
@@ -691,8 +691,8 @@
 <tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low asynchronous system reset.</td></tr>
 <tr><td><code>axil_req_i</code></td><td>input</td><td><code>axil_req_t</code></td><td>AXI-Lite CSR request that programs the per-source routing masks; only the address bits the register map spans are decoded.</td></tr>
 <tr><td><code>axil_resp_o</code></td><td>output</td><td><code>axil_resp_t</code></td><td>AXI-Lite CSR response.</td></tr>
-<tr><td><code>ct_dst_i</code></td><td>input</td><td><code>logic [NUM_CT_DST-1:0]</code></td><td>Cross-trigger pulses into the routing matrix, one bit per CT_Dst port.</td></tr>
-<tr><td><code>ct_src_o</code></td><td>output</td><td><code>logic [NUM_CT_SRC-1:0]</code></td><td>Routed cross-trigger pulses, one registered bit per CT_Src port.</td></tr>
+<tr><td><code>ct_dst_i</code></td><td>input</td><td><code>logic [NumCtDst-1:0]</code></td><td>Cross-trigger pulses into the routing matrix, one bit per CT_Dst port.</td></tr>
+<tr><td><code>ct_src_o</code></td><td>output</td><td><code>logic [NumCtSrc-1:0]</code></td><td>Routed cross-trigger pulses, one registered bit per CT_Src port.</td></tr>
 </table>
 </div>
 </article>

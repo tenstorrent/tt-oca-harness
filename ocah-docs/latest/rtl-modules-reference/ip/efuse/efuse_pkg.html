@@ -685,14 +685,14 @@
 <p>Define shared eFuse field-map rules, shadow range maps, and bus typedef helpers.</p><p>Provides rule_t, shadow_word_range_map_t, and related constants imported by the controller, guard, shadow regs, and token processing. Also defines the lifecycle-state encoding, fuse commands, and address-decode selects, and includes the AXI, APB, and fuse-command typedef macros used by interface blocks.</p>
 <div class="ocah-reg-html">
 <h2 id="efuse_req_decode_select_e"><code>efuse_req_decode_select_e</code></h2>
-<p>Enum (<code>logic [$clog2( NUM_END_POINTS_DECODE )-1:0]</code>)</p>
+<p>Enum (<code>logic [$clog2( NumEndPointsDecode )-1:0]</code>)</p>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. <code>efuse_req_decode_select_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>INTERFACE_SEL</code></td><td>1&#x27;d0</td><td></td></tr>
 <tr><td><code>SHIM_SEL</code></td><td>1&#x27;d1</td><td></td></tr>
 </table>
 <h2 id="efuse_reg_map_e"><code>efuse_reg_map_e</code></h2>
-<p>Enum (<code>logic [$clog2( NUM_END_POINTS_REG )-1:0]</code>)</p>
+<p>Enum (<code>logic [$clog2( NumEndPointsReg )-1:0]</code>)</p>
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. <code>efuse_reg_map_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>SHADOW_REG_MAP</code></td><td>2&#x27;d0</td><td></td></tr>
@@ -702,9 +702,9 @@
 </table>
 <h2 id="tdr_t"><code>tdr_t</code></h2>
 <p>///////////////////////////</p>
-<p>Alias for <code>logic [TDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [TdrWidth-1:0]</code></p>
 <h2 id="lc_state_raw_e"><code>lc_state_raw_e</code></h2>
-<p>Enum (<code>logic [LC_STATE_RAW_WIDTH-1:0]</code>)</p>
+<p>Enum (<code>logic [LcStateRawWidth-1:0]</code>)</p>
 <table id="trm-table-3">
 <caption class="title"><a href="#trm-table-3">Table 3</a>. <code>lc_state_raw_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
 <tr><td><code>LC_TEST_DEV</code></td><td>4&#x27;b0000</td><td></td></tr>
@@ -724,7 +724,7 @@
 <tr><td><code>last_word</code></td><td><code>logic [31:0]</code></td><td></td></tr>
 </table>
 <h2 id="shadow_word_range_map_t"><code>shadow_word_range_map_t</code></h2>
-<p>Alias for <code>shadow_word_range_t [MAX_CLASS1_SHADOW_RANGES-1:0]</code></p>
+<p>Alias for <code>shadow_word_range_t [MaxClass1ShadowRanges-1:0]</code></p>
 <h2 id="fuse_command_e"><code>fuse_command_e</code></h2>
 <p>///////////////////////////</p>
 <p>Enum (<code>logic [1:0]</code>)</p>
@@ -738,7 +738,7 @@
 <p>Packed struct</p>
 <table id="trm-table-6">
 <caption class="title"><a href="#trm-table-6">Table 6</a>. <code>rule_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
-<tr><td><code>idx</code></td><td><code>logic [EFUSE_FIELD_MAP_IDX_WIDTH - 1:0]</code></td><td></td></tr>
+<tr><td><code>idx</code></td><td><code>logic [EfuseFieldMapIdxWidth - 1:0]</code></td><td></td></tr>
 <tr><td><code>lock</code></td><td><code>logic [3:0]</code></td><td></td></tr>
 <tr><td><code>start_addr</code></td><td><code>logic [31:0]</code></td><td></td></tr>
 <tr><td><code>end_addr</code></td><td><code>logic [31:0]</code></td><td></td></tr>
@@ -748,7 +748,7 @@
 <p>Function returning <code>logic</code></p>
 <table id="trm-table-7">
 <caption class="title"><a href="#trm-table-7">Table 7</a>. <code>is_invalid_lc_state</code></caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
-<tr><td><code>s</code></td><td>input</td><td><code>logic [LC_STATE_RAW_WIDTH-1:0]</code></td><td></td></tr>
+<tr><td><code>s</code></td><td>input</td><td><code>logic [LcStateRawWidth-1:0]</code></td><td></td></tr>
 </table>
 <h2 id="make_shadow_word_range"><code>make_shadow_word_range</code></h2>
 <p>Function returning <code>shadow_word_range_t</code></p>

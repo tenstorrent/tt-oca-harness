@@ -694,21 +694,21 @@
 <tr><td><code>SEP</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Non-zero includes the Secure Execution Processor and the SMU AXI crossbar, and sets the DTP JTAG_IC_RESET_SEP_ENABLE and JTAG_SEP_DBG_ENABLE. Zero ties the SEP ports off and connects the SMC to the external AXI ports through ID-width converters. The type is int unsigned so that SpyGlass elaborate -param SEP=0 can override it; -gfile cannot override a bit parameter.</td></tr>
 <tr><td><code>SEP_SEC_DISABLE_TOKEN</code></td><td><code>bit [255:0]</code></td><td><code>256&#x27;b0</code></td><td>SEP security-disable token digest, forwarded to the SEP; synthesis replaces it with the netlist digest.</td></tr>
 <tr><td><code>EXT_TRNG_NUM_AXIS</code></td><td><code>int unsigned</code></td><td><code>3</code></td><td>External-TRNG AXI-stream endpoint count between SEP crypto and TRNG; forwarded to the SEP EXT_TRNG_NUM_AXIS.</td></tr>
-<tr><td><code>NUM_CPU_CORES</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NUM_CPU_CORES</code></td><td>SMC CPU core count.</td></tr>
-<tr><td><code>NUM_CPU_INTERRUPTS</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS</code></td><td>Per-core CPU interrupt count.</td></tr>
-<tr><td><code>NUM_EXT_INTERRUPTS</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS</code></td><td>External interrupt count into the SMC.</td></tr>
-<tr><td><code>NUM_SRAM_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_SRAM_BANKS</code></td><td>SMC scratch-RAM bank count.</td></tr>
-<tr><td><code>NUM_ICACHE_TAG_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS</code></td><td>SMC L1 I-cache tag bank count.</td></tr>
-<tr><td><code>NUM_ICACHE_DATA_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS</code></td><td>SMC L1 I-cache data bank count.</td></tr>
-<tr><td><code>NUM_DCACHE_TAG_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS</code></td><td>SMC L1 D-cache tag bank count.</td></tr>
-<tr><td><code>NUM_DCACHE_DATA_BANKS</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS</code></td><td>SMC L1 D-cache data bank count.</td></tr>
-<tr><td><code>XTRIG_NUM_CTP</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_CTP</code></td><td>External cross-trigger port count from CFG, forwarded to the DTP XTRIG_NUM_CTP.</td></tr>
-<tr><td><code>XTRIG_NUM_INT_CT</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_INT_CT</code></td><td>SMU-exposed internal CT lane count from CFG.</td></tr>
-<tr><td><code>XTRIG_NUM_CLK_STOP_REQ</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_CLK_STOP_REQ</code></td><td>SMU-exposed clock-stop request count from CFG.</td></tr>
-<tr><td><code>DTP_XTRIG_NUM_INT_CT</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_INT_CT + smu_pkg::XTRIG_SMC_INT_CT_LANES</code></td><td>Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.</td></tr>
-<tr><td><code>DTP_XTRIG_NUM_CLK_STOP_REQ</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_CLK_STOP_REQ + smu_pkg::XTRIG_SMC_CLK_STOP_LANES</code></td><td>Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.</td></tr>
-<tr><td><code>JTAG_NUM_EXTRA_STAP_PORTS</code></td><td><code>int unsigned</code></td><td><code>(CFG.JTAG_NUM_EXTRA_STAPS &gt; 0) ? CFG.JTAG_NUM_EXTRA_STAPS : 1</code></td><td>Extra STAP port count; at least one for tie-off.</td></tr>
-<tr><td><code>DTP_XTRIG_INT_CT_MODE</code></td><td><code>logic [DTP_XTRIG_NUM_INT_CT-1:0]</code></td><td><code>{CFG.XTRIG_INT_CT_MODE[XTRIG_NUM_INT_CT-1:0], {smu_pkg::XTRIG_SMC_INT_CT_LANES{1&#x27;b0}}}</code></td><td>Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.</td></tr>
+<tr><td><code>NumCpuCores</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NumCpuCores</code></td><td>SMC CPU core count.</td></tr>
+<tr><td><code>NumCpuInterrupts</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NumCpuInterrupts</code></td><td>Per-core CPU interrupt count.</td></tr>
+<tr><td><code>NumExtInterrupts</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NumExtInterrupts</code></td><td>External interrupt count into the SMC.</td></tr>
+<tr><td><code>NumSramBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumSramBanks</code></td><td>SMC scratch-RAM bank count.</td></tr>
+<tr><td><code>NumIcacheTagBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumIcacheTagBanks</code></td><td>SMC L1 I-cache tag bank count.</td></tr>
+<tr><td><code>NumIcacheDataBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumIcacheDataBanks</code></td><td>SMC L1 I-cache data bank count.</td></tr>
+<tr><td><code>NumDcacheTagBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumDcacheTagBanks</code></td><td>SMC L1 D-cache tag bank count.</td></tr>
+<tr><td><code>NumDcacheDataBanks</code></td><td><code>int unsigned</code></td><td><code>chipyard_4core_mem_pkg::NumDcacheDataBanks</code></td><td>SMC L1 D-cache data bank count.</td></tr>
+<tr><td><code>XtrigNumCtp</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_CTP</code></td><td>External cross-trigger port count from CFG, forwarded to the DTP XTRIG_NUM_CTP.</td></tr>
+<tr><td><code>XtrigNumIntCt</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_INT_CT</code></td><td>SMU-exposed internal CT lane count from CFG.</td></tr>
+<tr><td><code>XtrigNumClkStopReq</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_CLK_STOP_REQ</code></td><td>SMU-exposed clock-stop request count from CFG.</td></tr>
+<tr><td><code>DtpXtrigNumIntCt</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_INT_CT + smu_pkg::XtrigSmcIntCtLanes</code></td><td>Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.</td></tr>
+<tr><td><code>DtpXtrigNumClkStopReq</code></td><td><code>int unsigned</code></td><td><code>CFG.XTRIG_NUM_CLK_STOP_REQ + smu_pkg::XtrigSmcClkStopLanes</code></td><td>Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.</td></tr>
+<tr><td><code>JtagNumExtraStapPorts</code></td><td><code>int unsigned</code></td><td><code>(CFG.JTAG_NUM_EXTRA_STAPS &gt; 0) ? CFG.JTAG_NUM_EXTRA_STAPS : 1</code></td><td>Extra STAP port count; at least one for tie-off.</td></tr>
+<tr><td><code>DtpXtrigIntCtMode</code></td><td><code>logic [DtpXtrigNumIntCt-1:0]</code></td><td><code>{CFG.XTRIG_INT_CT_MODE[XtrigNumIntCt-1:0], {smu_pkg::XtrigSmcIntCtLanes{1&#x27;b0}}}</code></td><td>Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -750,27 +750,27 @@
 <tr><td><code>jtag_ptap_state_o</code></td><td>output</td><td><code>jtag_tap_pkg::tap_state_e</code></td><td>Primary TAP FSM state.</td></tr>
 <tr><td><code>jtag_ptap_inst_decoded_o</code></td><td>output</td><td><code>jtag_inst_reg_pkg::jtag_instruction_decoded_e</code></td><td>Decoded primary TAP instruction.</td></tr>
 <tr><td><code>jtag_ic_reset_ext_o</code></td><td>output</td><td><code>ic_reset_ext_t</code></td><td>External IC_RESET TDR slice toward the integrator, a typed packed struct with .ovrd and .val halves.</td></tr>
-<tr><td><code>xtrig_ctm_src_req_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_INT_CT-1:0]</code></td><td>CTM source requests toward sinks; the SMC-reserved lanes stay inside the SMU.</td></tr>
-<tr><td><code>xtrig_ctm_src_ack_i</code></td><td>input</td><td><code>logic [XTRIG_NUM_INT_CT-1:0]</code></td><td>CTM source acknowledges from sinks.</td></tr>
-<tr><td><code>xtrig_ctm_dst_req_i</code></td><td>input</td><td><code>logic [XTRIG_NUM_INT_CT-1:0]</code></td><td>CTM destination requests from sources.</td></tr>
-<tr><td><code>xtrig_ctm_dst_ack_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_INT_CT-1:0]</code></td><td>CTM destination acknowledges toward sources.</td></tr>
-<tr><td><code>xtrig_clk_stop_req_i</code></td><td>input</td><td><code>logic [XTRIG_NUM_CLK_STOP_REQ-1:0]</code></td><td>Per-lane clock-stop requests into the CTN; the SMC-reserved lane stays inside the SMU.</td></tr>
-<tr><td><code>xtrig_ctp_req_out_dout_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP req-out pad data.</td></tr>
-<tr><td><code>xtrig_ctp_req_out_dout_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP req-out pad output enable.</td></tr>
-<tr><td><code>xtrig_ctp_req_out_din_i</code></td><td>input</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP req-out pad input.</td></tr>
-<tr><td><code>xtrig_ctp_req_out_din_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP req-out pad input enable.</td></tr>
-<tr><td><code>xtrig_ctp_req_in_dout_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP req-in pad data.</td></tr>
-<tr><td><code>xtrig_ctp_req_in_dout_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP req-in pad output enable.</td></tr>
-<tr><td><code>xtrig_ctp_req_in_din_i</code></td><td>input</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP req-in pad input.</td></tr>
-<tr><td><code>xtrig_ctp_req_in_din_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP req-in pad input enable.</td></tr>
-<tr><td><code>xtrig_ctp_ack_in_dout_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-in pad data.</td></tr>
-<tr><td><code>xtrig_ctp_ack_in_dout_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-in pad output enable.</td></tr>
-<tr><td><code>xtrig_ctp_ack_in_din_i</code></td><td>input</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-in pad input.</td></tr>
-<tr><td><code>xtrig_ctp_ack_in_din_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-in pad input enable.</td></tr>
-<tr><td><code>xtrig_ctp_ack_out_dout_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-out pad data.</td></tr>
-<tr><td><code>xtrig_ctp_ack_out_dout_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-out pad output enable.</td></tr>
-<tr><td><code>xtrig_ctp_ack_out_din_i</code></td><td>input</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-out pad input.</td></tr>
-<tr><td><code>xtrig_ctp_ack_out_din_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-out pad input enable.</td></tr>
+<tr><td><code>xtrig_ctm_src_req_o</code></td><td>output</td><td><code>logic [XtrigNumIntCt-1:0]</code></td><td>CTM source requests toward sinks; the SMC-reserved lanes stay inside the SMU.</td></tr>
+<tr><td><code>xtrig_ctm_src_ack_i</code></td><td>input</td><td><code>logic [XtrigNumIntCt-1:0]</code></td><td>CTM source acknowledges from sinks.</td></tr>
+<tr><td><code>xtrig_ctm_dst_req_i</code></td><td>input</td><td><code>logic [XtrigNumIntCt-1:0]</code></td><td>CTM destination requests from sources.</td></tr>
+<tr><td><code>xtrig_ctm_dst_ack_o</code></td><td>output</td><td><code>logic [XtrigNumIntCt-1:0]</code></td><td>CTM destination acknowledges toward sources.</td></tr>
+<tr><td><code>xtrig_clk_stop_req_i</code></td><td>input</td><td><code>logic [XtrigNumClkStopReq-1:0]</code></td><td>Per-lane clock-stop requests into the CTN; the SMC-reserved lane stays inside the SMU.</td></tr>
+<tr><td><code>xtrig_ctp_req_out_dout_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP req-out pad data.</td></tr>
+<tr><td><code>xtrig_ctp_req_out_dout_en_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP req-out pad output enable.</td></tr>
+<tr><td><code>xtrig_ctp_req_out_din_i</code></td><td>input</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP req-out pad input.</td></tr>
+<tr><td><code>xtrig_ctp_req_out_din_en_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP req-out pad input enable.</td></tr>
+<tr><td><code>xtrig_ctp_req_in_dout_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP req-in pad data.</td></tr>
+<tr><td><code>xtrig_ctp_req_in_dout_en_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP req-in pad output enable.</td></tr>
+<tr><td><code>xtrig_ctp_req_in_din_i</code></td><td>input</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP req-in pad input.</td></tr>
+<tr><td><code>xtrig_ctp_req_in_din_en_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP req-in pad input enable.</td></tr>
+<tr><td><code>xtrig_ctp_ack_in_dout_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP ack-in pad data.</td></tr>
+<tr><td><code>xtrig_ctp_ack_in_dout_en_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP ack-in pad output enable.</td></tr>
+<tr><td><code>xtrig_ctp_ack_in_din_i</code></td><td>input</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP ack-in pad input.</td></tr>
+<tr><td><code>xtrig_ctp_ack_in_din_en_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP ack-in pad input enable.</td></tr>
+<tr><td><code>xtrig_ctp_ack_out_dout_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP ack-out pad data.</td></tr>
+<tr><td><code>xtrig_ctp_ack_out_dout_en_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP ack-out pad output enable.</td></tr>
+<tr><td><code>xtrig_ctp_ack_out_din_i</code></td><td>input</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP ack-out pad input.</td></tr>
+<tr><td><code>xtrig_ctp_ack_out_din_en_o</code></td><td>output</td><td><code>logic [XtrigNumCtp-1:0]</code></td><td>CTP ack-out pad input enable.</td></tr>
 <tr><td><code>rst_primary_ref_clk_no</code></td><td>output</td><td><code>logic</code></td><td>Primary reset, active-low, synchronized to clk_ref_i.</td></tr>
 <tr><td><code>rst_primary_smc_clk_no</code></td><td>output</td><td><code>logic</code></td><td>Primary reset, active-low, synchronized to clk_smu_i; it also resets the DTP, the SEP and the SMU AXI crossbar.</td></tr>
 <tr><td><code>rst_primary_periph_clk_no</code></td><td>output</td><td><code>logic</code></td><td>Primary reset, active-low, synchronized to clk_periph_i.</td></tr>
@@ -785,20 +785,20 @@
 <tr><td><code>smc_efuse_shim_command_req_o</code></td><td>output</td><td><code>smc_efuse_pkg::fuse_command_req_t</code></td><td>SMC eFuse shim command request.</td></tr>
 <tr><td><code>smc_efuse_shim_command_resp_i</code></td><td>input</td><td><code>smc_efuse_pkg::fuse_command_resp_t</code></td><td>SMC eFuse shim command response.</td></tr>
 <tr><td><code>smc_shadow_regs_o</code></td><td>output</td><td><code>smc_efuse_pkg::efuse_map_t</code></td><td>SMC eFuse shadow-register map.</td></tr>
-<tr><td><code>lsio_interface_select_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Per-GPIO-wrap LSIO interface select.</td></tr>
-<tr><td><code>pad2core_i</code></td><td>input</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>GPIO pad-to-core data.</td></tr>
-<tr><td><code>core2pad_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>GPIO core-to-pad data.</td></tr>
-<tr><td><code>pad2core_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>GPIO pad-to-core input enables.</td></tr>
-<tr><td><code>core2pad_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>GPIO core-to-pad output enables.</td></tr>
+<tr><td><code>lsio_interface_select_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>Per-GPIO-wrap LSIO interface select.</td></tr>
+<tr><td><code>pad2core_i</code></td><td>input</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>GPIO pad-to-core data.</td></tr>
+<tr><td><code>core2pad_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>GPIO core-to-pad data.</td></tr>
+<tr><td><code>pad2core_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>GPIO pad-to-core input enables.</td></tr>
+<tr><td><code>core2pad_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>GPIO core-to-pad output enables.</td></tr>
 <tr><td><code>rst_cool_n_from_pin_i</code></td><td>input</td><td><code>logic</code></td><td>Cool reset from the package pin, active-low.</td></tr>
 <tr><td><code>clk_telemetry_i</code></td><td>input</td><td><code>logic</code></td><td>ATB telemetry clock.</td></tr>
 <tr><td><code>rst_telemetry_ni</code></td><td>input</td><td><code>logic</code></td><td>ATB telemetry reset, active-low.</td></tr>
-<tr><td><code>telemetry_atdata_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB telemetry data from receivers.</td></tr>
-<tr><td><code>telemetry_atid_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB telemetry IDs from receivers.</td></tr>
-<tr><td><code>telemetry_atready_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB ready toward telemetry sources.</td></tr>
-<tr><td><code>telemetry_atvalid_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB valid from telemetry sources.</td></tr>
-<tr><td><code>telemetry_afvalid_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB flush valid toward telemetry sources.</td></tr>
-<tr><td><code>telemetry_afready_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB flush ready from telemetry sources.</td></tr>
+<tr><td><code>telemetry_atdata_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB telemetry data from receivers.</td></tr>
+<tr><td><code>telemetry_atid_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB telemetry IDs from receivers.</td></tr>
+<tr><td><code>telemetry_atready_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB ready toward telemetry sources.</td></tr>
+<tr><td><code>telemetry_atvalid_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB valid from telemetry sources.</td></tr>
+<tr><td><code>telemetry_afvalid_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB flush valid toward telemetry sources.</td></tr>
+<tr><td><code>telemetry_afready_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0]</code></td><td>ATB flush ready from telemetry sources.</td></tr>
 <tr><td><code>smc_cluster_ded_o</code></td><td>output</td><td><code>logic</code></td><td>SMC CPU cluster uncorrectable (double-error-detected) memory error.</td></tr>
 <tr><td><code>smc_wdt_first_timeout_o</code></td><td>output</td><td><code>logic</code></td><td>SMC first-stage watchdog timeout, the OR of the per-core CPU watchdog timeouts.</td></tr>
 <tr><td><code>smc_wdt_second_timeout_o</code></td><td>output</td><td><code>logic</code></td><td>SMC second-stage watchdog timeout, which also asserts the SMC watchdog reset.</td></tr>
@@ -806,16 +806,16 @@
 <tr><td><code>smc_region_size_o</code></td><td>output</td><td><code>logic [31:0]</code></td><td>SMC aperture size in bytes from the SMC REGION_SIZE register; it also sets the SMC aperture of the SMU crossbar.</td></tr>
 <tr><td><code>sep_global_base_o</code></td><td>output</td><td><code>logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]</code></td><td>SEP aperture base from the SEP_GLOBAL_BASE_ADDR register for external decoders; it also sets the SEP aperture of the SMU crossbar. Tied to 0 when SEP is 0.</td></tr>
 <tr><td><code>sep_region_size_o</code></td><td>output</td><td><code>logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]</code></td><td>SEP aperture size in bytes from the zero-extended SEP_REGION_SIZE register; the SMU crossbar uses its low 32 bits. Tied to 0 when SEP is 0.</td></tr>
-<tr><td><code>smc_ext_interrupts_i</code></td><td>input</td><td><code>logic [CFG.NUM_INT_TO_SMC-1:0]</code></td><td>External interrupts into the SMC, zero-extended to the SMC&#x27;s NUM_EXT_INTERRUPTS inputs.</td></tr>
+<tr><td><code>smc_ext_interrupts_i</code></td><td>input</td><td><code>logic [CFG.NUM_INT_TO_SMC-1:0]</code></td><td>External interrupts into the SMC, zero-extended to the SMC&#x27;s NumExtInterrupts inputs.</td></tr>
 <tr><td><code>smc_fuse_sense_done_o</code></td><td>output</td><td><code>logic</code></td><td>SMC fuse sense complete.</td></tr>
 <tr><td><code>smc_fuse_reset_n_delayed_o</code></td><td>output</td><td><code>logic</code></td><td>Fuse-released SMC reset, active-low, delayed by 16 SMC clock stages and held low while boot stall is asserted.</td></tr>
 <tr><td><code>skip_mem_repair_o</code></td><td>output</td><td><code>logic</code></td><td>Skip memory repair during boot.</td></tr>
 <tr><td><code>ext_boot_seq_done_i</code></td><td>input</td><td><code>logic</code></td><td>External boot sequence complete.</td></tr>
-<tr><td><code>lc_state_o</code></td><td>output</td><td><code>logic [2*smc_pkg::LC_STATE_WIDTH-1:0]</code></td><td>Lifecycle state driven by the SEP; fixed at 8&#x27;hF0 when SEP is 0.</td></tr>
+<tr><td><code>lc_state_o</code></td><td>output</td><td><code>logic [2*smc_pkg::LcStateWidth-1:0]</code></td><td>Lifecycle state driven by the SEP; fixed at 8&#x27;hF0 when SEP is 0.</td></tr>
 <tr><td><code>lc_sigint_err_o</code></td><td>output</td><td><code>logic</code></td><td>Lifecycle signal-integrity error, the OR of the SEP and SMC eFuse differential-encoding errors.</td></tr>
-<tr><td><code>smc_ndmreset_request_i</code></td><td>input</td><td><code>logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]</code></td><td>Per-cluster NDM reset requests.</td></tr>
-<tr><td><code>smc_ndmreset_process_o</code></td><td>output</td><td><code>logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]</code></td><td>Per-cluster NDM reset in-progress.</td></tr>
-<tr><td><code>smc_ext_mailbox_interrupts_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_MAILBOXES-1:0]</code></td><td>Mailbox interrupts toward the SMC.</td></tr>
+<tr><td><code>smc_ndmreset_request_i</code></td><td>input</td><td><code>logic [smc_config_pkg::CpuClusterCount - 1:0]</code></td><td>Per-cluster NDM reset requests.</td></tr>
+<tr><td><code>smc_ndmreset_process_o</code></td><td>output</td><td><code>logic [smc_config_pkg::CpuClusterCount - 1:0]</code></td><td>Per-cluster NDM reset in-progress.</td></tr>
+<tr><td><code>smc_ext_mailbox_interrupts_o</code></td><td>output</td><td><code>logic [smc_pkg::NumMailboxes-1:0]</code></td><td>Mailbox interrupts toward the SMC.</td></tr>
 <tr><td><code>cfg_flr_pf_active_i</code></td><td>input</td><td><code>logic</code></td><td>Function-level reset / PF-active configuration.</td></tr>
 <tr><td><code>isolate_req_o</code></td><td>output</td><td><code>logic [31:0]</code></td><td>Per-subsystem isolate requests.</td></tr>
 <tr><td><code>ss_reset_complete_i</code></td><td>input</td><td><code>logic [31:0]</code></td><td>Per-subsystem reset-complete status.</td></tr>
@@ -888,16 +888,16 @@
 <tr><td><code>sep_fuse_sense_done_o</code></td><td>output</td><td><code>logic</code></td><td>SEP fuse sense complete.</td></tr>
 <tr><td><code>clk_sep_wdt_i</code></td><td>input</td><td><code>logic</code></td><td>SEP watchdog timer clock.</td></tr>
 <tr><td><code>secure_tm_req_i</code></td><td>input</td><td><code>logic</code></td><td>SEP secure test-mode request strap.</td></tr>
-<tr><td><code>i3c_dat_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dat_mem_src_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>I3C DAT memory source interfaces.</td></tr>
-<tr><td><code>i3c_dat_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>I3C DAT memory sink interfaces.</td></tr>
-<tr><td><code>i3c_dct_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dct_mem_src_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>I3C DCT memory source interfaces.</td></tr>
-<tr><td><code>i3c_dct_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>I3C DCT memory sink interfaces.</td></tr>
-<tr><td><code>i3c_rlt_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::rlt_mem_src_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>I3C RLT memory source interfaces.</td></tr>
-<tr><td><code>i3c_rlt_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>I3C RLT memory sink interfaces.</td></tr>
+<tr><td><code>i3c_dat_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dat_mem_src_t [smc_config_pkg::NumI3c-1:0]</code></td><td>I3C DAT memory source interfaces.</td></tr>
+<tr><td><code>i3c_dat_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0]</code></td><td>I3C DAT memory sink interfaces.</td></tr>
+<tr><td><code>i3c_dct_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dct_mem_src_t [smc_config_pkg::NumI3c-1:0]</code></td><td>I3C DCT memory source interfaces.</td></tr>
+<tr><td><code>i3c_dct_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0]</code></td><td>I3C DCT memory sink interfaces.</td></tr>
+<tr><td><code>i3c_rlt_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::rlt_mem_src_t [smc_config_pkg::NumI3c-1:0]</code></td><td>I3C RLT memory source interfaces.</td></tr>
+<tr><td><code>i3c_rlt_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0]</code></td><td>I3C RLT memory sink interfaces.</td></tr>
 <tr><td><code>gated_clk_periph_i3c_o</code></td><td>output</td><td><code>logic</code></td><td>Gated peripheral clock for I3C.</td></tr>
 <tr><td><code>ext_debug_bus_i</code></td><td>input</td><td><code>logic [127:0]</code></td><td>External debug bus; the SMC receives it above the 384-bit SEP debug bus, which is zero when SEP is 0. Signals must be 16-bit aligned within it.</td></tr>
-<tr><td><code>gpio_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>GPIO wrap interrupt outputs.</td></tr>
-<tr><td><code>uart_interrupt_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_UART-1:0]</code></td><td>UART interrupt outputs.</td></tr>
+<tr><td><code>gpio_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NumGpioWraps-1:0]</code></td><td>GPIO wrap interrupt outputs.</td></tr>
+<tr><td><code>uart_interrupt_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NumUart-1:0]</code></td><td>UART interrupt outputs.</td></tr>
 </table>
 </div>
 </article>

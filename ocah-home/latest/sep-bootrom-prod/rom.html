@@ -782,7 +782,7 @@ CHIPLET_PUBK_REVOKE, BL1_VERSION, fuse-key digests, and the LOCKS read-lock regi
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan SPI host</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10B00000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Boot-flash transport option A: command/FIFO reads (PIO or
+<td class="tableblock halign-left valign-top"><p class="tableblock">Default boot-flash transport: command/FIFO reads (PIO or
 secure-DMA drain), no XIP (<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>).</p></td>
 </tr>
 <tr>
@@ -817,8 +817,9 @@ by BL0.</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The SMC is reached through the SEP outbound window at <code>0x40000000</code> (<a href="#sec:memory_map">Memory Map</a>);
-the STDOUT mailbox used for DV PASS/FAIL signalling is at <code>0x80000000</code>.</p>
+<p>The SMC is reached through the SEP outbound window at <code>0x40000000</code> (<a href="#sec:memory_map">Memory Map</a>); the
+ROM opens no other outbound window and reports exclusively through <code>cold_scratch</code>
+(<a href="#sec:status">Status and POST Codes</a>).</p>
 </div>
 </div>
 </div>
@@ -974,13 +975,6 @@ boot decisions.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP view of the SMC (<code>SEP_SMC_GLOBAL_BASE</code>); the crossbar routes
 <code>[0x4000_0000, 0xC000_0000)</code> outbound. See <a href="#tbl:smc_window">SMC resources accessed by the SEP ROM</a>.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">STDOUT mailbox</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x80000000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DV PASS/FAIL magic words and mailbox character output.
-Only egress window opened at cold boot.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ICCM</p></td>
@@ -1165,7 +1159,7 @@ that follow a validated manifest.</p>
 </div>
 <div id="fig:sep_boot_flow_manifest" class="imageblock kroki">
 <div class="content">
-<img src="_images/sep-rom-boot-flow-2-manifest-d44d6f4f0fb557be965b9e3f78c90a4950af6c0f.svg" alt="Boot flow, 2 of 3: boot source and the manifest retry loop ([S21]-[S24])">
+<img src="_images/sep-rom-boot-flow-2-manifest-d9b2b952c498b0a2662f1d667bc78694a3726081.svg" alt="Boot flow, 2 of 3: boot source and the manifest retry loop ([S21]-[S24])">
 </div>
 <div class="title">Figure 2. Boot flow, 2 of 3: boot source and the manifest retry loop ([S21]-[S24])</div>
 </div>
@@ -1475,10 +1469,8 @@ writable by the content the ROM is still deciding whether to trust.</p>
 </li>
 <li>
 <p><strong>Outbound AXI filter.</strong> <a id="req-SEP-ROM-CPU-040"></a><strong>[SEP-ROM-CPU-040]</strong> The SEP outbound AXI
-filter shall block all egress by default; the ROM shall open only the windows it needs.
-At cold boot the stub programs filter 0 to the 4-byte STDOUT mailbox window
-(<code>START=0x8000_0000</code>, <code>END=0x8000_0003</code>, <code>CONFIG=0x0000_0001_0100_0013</code>), writing <code>CONFIG</code>
-last (after a <code>fence w,w</code>) so the range is committed before the filter is enabled.</p>
+filter shall block all egress by default; the ROM shall open no outbound window at all. All
+ROM status and verdict reporting stays on <code>cold_scratch</code>.</p>
 </li>
 <li>
 <p>The debug status word for "entered <code>_start`" is written to `cold_scratch[1]</code>.</p>
@@ -1515,7 +1507,7 @@ assigned by <code>AT&gt; rom</code>) to its DCCM run address, and <code>.bss</co
 </div>
 <div id="fig:cpu_init" class="imageblock kroki">
 <div class="content">
-<img src="_images/cpu-init-578e7efae1e16736f34f1cb9616f0d4270e07fc4.svg" alt="Reset stub sequence (cold boot)">
+<img src="_images/cpu-init-0b738770076411245274df95c093a9dad6d50c6c.svg" alt="Reset stub sequence (cold boot)">
 </div>
 <div class="title">Figure 4. Reset stub sequence (cold boot)</div>
 </div>
@@ -1531,8 +1523,8 @@ fatal error (<code>ROM_ERR_RUNTIME_INIT_FAILED</code>, <code>0xB001</code>).</p>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-CPU-070"></a><strong>[SEP-ROM-CPU-070]</strong> Any trap taken during ROM execution is fatal: the
 trap vector shall capture <code>mcause</code>/<code>mepc</code>/<code>mtval</code>/<code>mstatus</code>, report them through the debug
-console, signal FAIL through the STDOUT mailbox (magic <code>0xA5A55A5A</code> followed by <code>0xDEADBEEF</code>),
-and hang in <code>wfi</code>. The ROM shall never attempt to resume from a trap.</p>
+console, encode an <code>ERROR</code> status into <code>cold_scratch[1]</code> and the FAIL verdict (<code>0xDEADBEEF</code>)
+into <code>cold_scratch[0]</code>, and hang in <code>wfi</code>. The ROM shall never attempt to resume from a trap.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1777,8 +1769,9 @@ still resident. The warm-reset path returns control to BL1 with minimal disturba
 <p><strong>BL1 side (contract):</strong> before arming the WDT, BL1 writes the address of its warm-reset
 handler to <code>cold_scratch[7]</code>. The handler must lie in a permitted BL1 execution region&#8201;&#8212;&#8201;the same set <code>BL1_SRAM_EXEC_ENABLE</code> governs, because accepting a warm handler where the
 cold path would refuse to boot would let a warm reset re-enter code the ROM would never
-have launched. BL1 re-arms
-this value as needed; a value of zero means "no warm handler — treat any reset as cold".</p>
+have launched. The ROM writes 0 to the slot before every jump
+(<a href="#req-SEP-ROM-CPU-130">SEP-ROM-CPU-130</a>), so BL1 must re-arm <code>cold_scratch[7]</code> every time
+it enters the handler; a value of zero means "no warm handler — treat any reset as cold".</p>
 </div>
 <div class="paragraph">
 <p><strong>ROM side:</strong></p>
@@ -1878,7 +1871,7 @@ granted only at hand-off, after the pre-hand-off self-check passes.</p>
 </li>
 <li>
 <p><a id="req-SEP-ROM-PMP-040"></a><strong>[SEP-ROM-PMP-040]</strong> Data windows shall be limited to the regions
-the ROM demonstrably needs: DCCM (<code>RW</code>), the STDOUT mailbox, the SEP peripheral block
+the ROM demonstrably needs: DCCM (<code>RW</code>), the SEP peripheral block
 (<code>0x1080_0000</code>–<code>0x10BF_FFFF</code>: DMA, scratch, crypto, lifecycle, efuse, SPI hosts), the
 XIP flash controller registers and XIP window (when fitted), the SMC window (<code>0x4000_0000</code>),
 SEP SRAM and ICCM (<code>RW</code>, for staging). Everything else shall have no PMP grant.</p>
@@ -1943,7 +1936,7 @@ shall manifest as a precise trap (fatal per SEP-ROM-CPU-070), never as silent ac
 </li>
 <li>
 <p>The locked rule set implements <a href="#tbl:pmp_regions">Reference PMP region set (as currently programmed)</a> as amended by the fence policy: ROM
-<code>R-X</code>; DCCM, mailbox, peripheral block, SMC window, XIP controller registers and XIP
+<code>R-X</code>; DCCM, peripheral block, SMC window, XIP controller registers and XIP
 window <code>RW-</code>; SEP SRAM and ICCM <code>RW-</code> (no execute) until hand-off.</p>
 </li>
 </ol>
@@ -2024,7 +2017,7 @@ literal CSR values.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10040000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">R-X</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x04017FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x04011FFF</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL0 itself</p></td>
 </tr>
 <tr>
@@ -2038,22 +2031,22 @@ literal CSR values.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x80000000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RW-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x200007FF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">STDOUT mailbox window</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unused</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP SRAM</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10000000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RWX</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0401FFFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">manifest/payload staging; a BL1 launch
-region when <code>BL1_SRAM_EXEC_ENABLE</code> permits — <strong>this specification requires RW- until hand-off</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x04007FFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">manifest/payload staging; changed to
+RWX at hand-off when <code>BL1_SRAM_EXEC_ENABLE</code> permits and BL1 targets SRAM</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
@@ -2061,7 +2054,7 @@ region when <code>BL1_SRAM_EXEC_ENABLE</code> permits — <strong>this specifica
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10800000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0421FFFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0427FFFF</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA, scratch, crypto, lifecycle,
 efuse, SPI hosts</p></td>
 </tr>
@@ -2070,27 +2063,27 @@ efuse, SPI hosts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ICCM</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC0000000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RWX</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x30007FFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">the secure BL1 code region, always a
-launch target — <strong>this specification
-requires RW- until hand-off</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">changed to RWX at hand-off when BL1
+targets ICCM</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC/local window</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC0000000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">256 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC boot aperture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x40000000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x31FFFFFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">overlaps entries 1/5; the
-lower-numbered entry takes precedence for its sub-range</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x100FFFFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC registers and SRAM used
+by BL0; does not grant the separate SMU aperture</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p><code>pmpcfg0</code> = <code>0x1F1B1B1D</code> and <code>pmpcfg1</code> = <code>0x001B1F1B</code> (with <code>PMP_LOCK=1</code>, the same values
-with <code>L</code> set: <code>0x9F9B9B9D</code> / <code>0x009B9F9B</code>). Entry 7 is unused.</p>
+<p>The locked cold values are <code>pmpcfg0 = 0x9B009B9D</code> and
+<code>pmpcfg1 = 0x009B9B9B</code>. Entries 2 and 7 are unused. <code>vector.S</code> sets
+<code>mseccfg.RLB</code> before these rules and <code>mseccfg.MMWP</code> after their readback.</p>
 </div>
 <div class="admonitionblock warning">
 <table>
@@ -2100,32 +2093,12 @@ with <code>L</code> set: <code>0x9F9B9B9D</code> / <code>0x009B9F9B</code>). Ent
 </td>
 <td class="content">
 <div class="paragraph">
-<p><strong>IMPLEMENTATION GAP</strong> — the current region set does not yet implement the normative fence
-policy:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Entries 3 (SEP SRAM) and 5 (ICCM) are <code>RWX</code> from cold boot, so next-stage regions are
-executable throughout validation (violates SEP-ROM-PMP-010/-030).</p>
-</li>
-<li>
-<p><code>PMP_LOCK</code> defaults to 0, and unlocked entries do not constrain machine mode — as
-programmed, the PMP fences the ROM against nothing (violates SEP-ROM-PMP-020). The
-ratified Smepmp sequence (<a href="#sec:pmp_mechanism">Fence Binding and Release Mechanism (Smepmp)</a>: RLB → locked rules → MMWP, release by
-rule rewrite) is not yet implemented; <code>mseccfg</code> is never written.</p>
-</li>
-<li>
-<p>Entry 6&#8217;s covered range (<code>0xC000_0000</code>–<code>0xCFFF_FFFF</code>) does not match the actual SMC window
-at <code>0x4000_0000</code>; the XIP window (<code>0x3000_0000</code>) and SMC window have no entry. This
-is currently masked by the entries being unlocked (M-mode unconstrained), but must be fixed
-before the fences can bind (SEP-ROM-PMP-040).</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The pre-hand-off <strong>software</strong> self-check (gate ledger) is implemented but not yet on <code>main</code>;
-the PMP release step it gates is not yet implemented.</p>
+<p><strong>IMPLEMENTATION GAP</strong> — the default OpenTitan-SPI build has a complete cold allowlist and
+releases only the selected BL1 destination. The XIP build still requires entries for the
+<code>0x3000_0000</code> flash window and its integrator-defined controller registers before it can run
+under <code>MMWP</code>. The full pre-hand-off gate ledger is also not yet wired into <code>main</code>; the release
+currently follows the checks implemented by the boot flow, including the final stack-canary
+check.</p>
 </div>
 </td>
 </tr>
@@ -2734,7 +2707,7 @@ no bank retry.</p></td>
 </table>
 <div id="fig:boot_mode_branch" class="imageblock kroki">
 <div class="content">
-<img src="_images/boot-mode-branch-7f99038641c57e40602ae763933c87ac1c70232b.svg" alt="Boot-source branch">
+<img src="_images/boot-mode-branch-e14a342b0787a19ac76b38a30f7d9e9e33a0f803.svg" alt="Boot-source branch">
 </div>
 <div class="title">Figure 8. Boot-source branch</div>
 </div>
@@ -2779,7 +2752,7 @@ controller-agnostic: it speaks in <strong>flash byte offsets</strong> only.</p>
 <p><a id="req-SEP-ROM-SPI-010"></a><strong>[SEP-ROM-SPI-010]</strong> All flash access from the boot path shall go
 through the transport shim (<code>boot_flash.h</code>): <code>boot_flash_init()</code>, <code>boot_flash_read(dst,
 flash_off, len)</code>, <code>boot_flash_reinit()</code>, <code>boot_flash_bounds_ok()</code>. Boot logic shall not
-depend on which controller is fitted.</p>
+depend on which transport is fitted.</p>
 </div>
 <div class="sect2">
 <h3 id="flash-layout"><a class="anchor" href="#flash-layout"></a><a class="link" href="#flash-layout">12.1. Flash Layout</a></h3>
@@ -2839,7 +2812,9 @@ manifest+payload cannot exceed what SRAM can hold. <code>PRIMARY_MANIFEST_OFFSET
 <code>BACKUP_MANIFEST_OFFSET</code> are derived from that size in <code>include/boot_flash.h</code>
 (slot index × <code>BOOT_SLOT_SIZE</code>, plus the manifest&#8217;s offset within a slot), so the stride
 above is a consequence of the slot size rather than an independent constant. The ROM&#8217;s
-readable window for a slot runs from its manifest to the end of that slot.</p>
+readable window for a slot runs from its manifest to the end of that slot.
+On both transports, the payload that a manifest&#8217;s <code>payload_offset</code> locates must also lie
+in that window, so a slot cannot name the other slot&#8217;s payload (<code>OCA_FAIL_PAYLOAD_LOCATION</code>).</p>
 </div>
 <div class="paragraph">
 <p>The OCA combined-image configs place the backup manifest at <code>0x41000</code>, matching the offsets
@@ -2906,7 +2881,8 @@ the OpenTitan SPI Bootcode Driver spec (<code>specs/001-ot-spi-bootcode-driver/<
 <h3 id="memory-mapped-xip-path"><a class="anchor" href="#memory-mapped-xip-path"></a><a class="link" href="#memory-mapped-xip-path">12.4. Memory-Mapped (XIP) Path</a></h3>
 <div class="paragraph">
 <p>An XIP controller exposes flash as a memory-mapped window at <code>0x3000_0000</code>
-(<code>SEP_SPI_BASE</code>); a "read" is a secure-DMA copy from <code>SEP_SPI_BASE + offset</code> into SRAM.
+(<code>SEP_SPI_BASE</code>); a "read" is a secure-DMA copy from <code>SEP_SPI_BASE + offset</code> into SRAM, under
+the same per-slot bounds gate as the OpenTitan path.
 Bring-up belongs to the controller&#8217;s driver. The open ROM links only the weak stubs in
 <code>src/sep_spi.c</code>, whose <code>spi_init()</code> reports that no controller is fitted; a build that fits one
 supplies a driver that overrides them and applies the slot&#8217;s configuration TLV. The
@@ -2916,7 +2892,7 @@ failed slot, backup-slot fallback re-runs bring-up against the backup TLV throug
 </div>
 <div id="fig:spi_transfer" class="imageblock kroki">
 <div class="content">
-<img src="_images/spi-transfer-99be7a8758f913c75ff86a71fa1b83f3300d1c43.svg" alt="Manifest transfer through the transport shim">
+<img src="_images/spi-transfer-392f30260cd951445daf37f37d11ccd7470d517d.svg" alt="Manifest transfer through the transport shim">
 </div>
 <div class="title">Figure 9. Manifest transfer through the transport shim</div>
 </div>
@@ -4925,7 +4901,7 @@ never leave a half-applied device-state change behind.</p>
 </div>
 <div id="fig:retry_backup_sm" class="imageblock kroki">
 <div class="content">
-<img src="_images/retry-backup-sm-ddc7ec71be525f7fe6586b1e202ae1eaf07af471.svg" alt="Slot retry state machine (`BOOT_MODE_SPI`)">
+<img src="_images/retry-backup-sm-9befd28a4abd07cfb90aacc185c9fb5c1ff42e69.svg" alt="Slot retry state machine (`BOOT_MODE_SPI`)">
 </div>
 <div class="title">Figure 17. Slot retry state machine (<code>BOOT_MODE_SPI</code>)</div>
 </div>
@@ -4936,7 +4912,7 @@ never leave a half-applied device-state change behind.</p>
 <p><a id="req-SEP-ROM-RETRY-050"></a><strong>[SEP-ROM-RETRY-050]</strong> Every fatal path in the ROM shall converge in
 a single failure routine (<code>rom_err_fail</code>) that (a) records the error code in
 <code>bl0_state.error_code</code>, (b) writes the encoded <code>ERROR</code> status to <code>cold_scratch[1]</code>,
-(c) emits the FAIL magic and code through the STDOUT mailbox, and (d) parks in <code>wfi</code>. The
+(c) writes the FAIL verdict (<code>0xDEADBEEF</code>) to <code>cold_scratch[0]</code>, and (d) parks in <code>wfi</code>. The
 ROM never silently resets or falls through on failure; recovery from a fully failed boot is
 the platform&#8217;s job (recovery strap, <a href="#sec:straps">Primary / Secondary Strap Handling</a>).</p>
 </div>
@@ -5048,15 +5024,10 @@ the last value identifies the current/failing stage.</p></td>
 SMC and forwarded to the platform (OCCP). Strap- and hand-shake-gated (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">STDOUT mailbox</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x80000000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DV signalling: magic <code>0xA5A55A5A</code> then <code>0xCAFEBABE</code> (PASS) or
-<code>0xDEADBEEF</code> (FAIL) followed by the error code.</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Progress scratch</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Boot markers (<code>'COLD'</code>) and DV pass/fail codes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot markers (<code>'COLD'</code>) and DV pass/fail codes
+(<code>0xACAFACA1</code> PASS, <code>0xDEADBEEF</code> FAIL).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Virtual console</p></td>
@@ -5905,7 +5876,7 @@ regions, or the DMA copy of BL1 or its ICCM pad failed.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_BOOT_ERR_READ_OUT_OF_BOUNDS</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00030106</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">A storage read was refused by the bounds gate
-(the boot slot on the OpenTitan build, the XIP window on the XIP build); reported as
+(the boot slot on both builds, or a source below the XIP window on the XIP build); reported as
 <code>IMAGE_OOB</code>.</p></td>
 </tr>
 <tr>
@@ -5950,7 +5921,7 @@ denotes a following 16-bit payload word.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">vector.S entry</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>BOOTROM_START</code> (DEBUG, scratch-only)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">trap → mailbox FAIL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">trap → <code>cold_scratch[0]</code> FAIL</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PMP programmed</p></td>
@@ -6128,8 +6099,8 @@ never completed), then the caller&#8217;s error</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PASS (DV builds)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">none from the ROM&#8201;&#8212;&#8201;BL1 signals it. <code>rom_handoff_bl1()</code> does not
-return, so BL0 has no post-handoff path; in DV <code>bl1_pass_test</code> writes the <code>MAGIC0</code><br>
-<code>PASS</code> words to the STDOUT mailbox itself once it is running</p></td>
+return, so BL0 has no post-handoff path; in DV <code>bl1_pass_test</code> reports PASS through
+<code>cold_scratch[0]</code> itself once it is running</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
 </tr>
 </tbody>
@@ -6489,19 +6460,19 @@ encrypted-payload path was exercised in RTL, where the block never reported idle
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PMP fence policy</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>gap</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM/ICCM are RWX from cold boot; entries unlocked (don&#8217;t bind
-M-mode); release-at-hand-off unimplemented; window set doesn&#8217;t match data-window needs.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>partial</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The OpenTitan-SPI build grants the required cold data windows,
+keeps SRAM/ICCM non-executable during validation and releases only the selected BL1 region.
+The integrator-defined XIP-controller aperture remains open.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp">Physical Memory Protection and Execution Fencing</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PMP binding/release mechanism</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>ratified, not implemented</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Smepmp ratified 2026-07-23
-(<a href="#sec:pmp_mechanism">Fence Binding and Release Mechanism (Smepmp)</a>): RLB → locked rules → MMWP at cold boot; release = one rule rewrite
-at hand-off (SEP-ROM-PMP-060/-070/-080). Code writes neither <code>mseccfg</code> nor lock bits yet.
-RLB disposition at the jump is a deferred sub-decision (BL1 spec); <code>MML</code> deferred as
-optional hardening.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>partial</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The ROM programs RLB → locked rules → MMWP at
+cold boot and adds execute permission to one BL1 rule at hand-off
+(SEP-ROM-PMP-060/-070/-080). RLB disposition at the jump is a deferred sub-decision
+(BL1 spec); <code>MML</code> and the full hand-off gate ledger remain deferred.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:pmp_mechanism">Fence Binding and Release Mechanism (Smepmp)</a></p></td>
 </tr>
 <tr>
@@ -6736,8 +6707,7 @@ evaluation (research R13); boot never depends on programmed fuses.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-CPU-040">SEP-ROM-CPU-040</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound filter default-deny; open only needed
-windows</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outbound filter default-deny; ROM opens no window</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
 </tr>
 <tr>

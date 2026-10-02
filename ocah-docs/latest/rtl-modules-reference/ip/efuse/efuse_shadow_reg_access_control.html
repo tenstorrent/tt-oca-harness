@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">efuse_shadow_reg_access_control</h1>
-<p>Enforce per-field read and write locks on APB accesses to the shadow map.</p><p>Filter APB requests using efuse_field_map_i and locks_i before they reach the shadow regs.</p><p>LOCK_VECTOR_BITS is 2*(EFUSE_FIELDS-1), with write-lock at 2n and read-lock at 2n+1 per real field. The LOCKS meta-field uses sentinel idx all-ones and is excluded from hw-lock checks.</p><p>Report write_locked_o, read_locked_o, write_setup_only_o, and lc_state_access_o. locked_field_access_interrupt_o signals locked-field hits.</p>
+<p>Enforce per-field read and write locks on APB accesses to the shadow map.</p><p>Filter APB requests using efuse_field_map_i and locks_i before they reach the shadow regs.</p><p>LockVectorBits is 2*(EFUSE_FIELDS-1), with write-lock at 2n and read-lock at 2n+1 per real field. The LOCKS meta-field uses sentinel idx all-ones and is excluded from hw-lock checks.</p><p>Report write_locked_o, read_locked_o, write_setup_only_o, and lc_state_access_o. locked_field_access_interrupt_o signals locked-field hits.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
@@ -690,7 +690,7 @@
 <tr><td><code>EFUSE_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>12</code></td><td>Width of the MAP window byte offset on apb_req_paddr_i.</td></tr>
 <tr><td><code>EFUSE_FIELDS</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>eFuse field-map entry count.</td></tr>
 <tr><td><code>HAS_LC_STATE</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>Set for SEP: field index 0 is the lifecycle-state field, exempt from hardware locks and reported on lc_state_access_o.</td></tr>
-<tr><td><code>LOCK_VECTOR_BITS</code></td><td><code>int unsigned</code></td><td><code>2 * (EFUSE_FIELDS - 1)</code></td><td>Hardware lock bits: a write and a read lock per field, excluding the LOCKS meta-field.</td></tr>
+<tr><td><code>LockVectorBits</code></td><td><code>int unsigned</code></td><td><code>2 * (EFUSE_FIELDS - 1)</code></td><td>Hardware lock bits: a write and a read lock per field, excluding the LOCKS meta-field.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -713,7 +713,7 @@
 <tr><td><code>write_setup_only_o</code></td><td>output</td><td><code>logic</code></td><td>High when the addressed field is set-only: writes may set bits but not clear them; low when its hardware write lock is set.</td></tr>
 <tr><td><code>lc_state_access_o</code></td><td>output</td><td><code>logic</code></td><td>High when the address falls in the lifecycle-state field.</td></tr>
 <tr><td><code>read_locked_o</code></td><td>output</td><td><code>logic</code></td><td>High when the addressed field is read locked by its hardware or software lock bit.</td></tr>
-<tr><td><code>locks_i</code></td><td>input</td><td><code>logic [LOCK_VECTOR_BITS-1:0]</code></td><td>Hardware lock bits from the shadow LOCKS words: write lock at 2n, read lock at 2n+1 for field n.</td></tr>
+<tr><td><code>locks_i</code></td><td>input</td><td><code>logic [LockVectorBits-1:0]</code></td><td>Hardware lock bits from the shadow LOCKS words: write lock at 2n, read lock at 2n+1 for field n.</td></tr>
 <tr><td><code>locked_field_access_interrupt_o</code></td><td>output</td><td><code>logic</code></td><td>High during an APB access that a lock blocks.</td></tr>
 </table>
 </div>

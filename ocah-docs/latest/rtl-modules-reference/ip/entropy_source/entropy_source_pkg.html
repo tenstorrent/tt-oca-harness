@@ -682,14 +682,14 @@
 </aside>
 <article class="doc">
 <h1 class="page">entropy_source_pkg</h1>
-<p>Define entropy-source register widths, type aliases, lane count, and the error aggregation bus.</p><p>REG_ADDR_WIDTH/REG_DATA_WIDTH/REG_STRB_WIDTH and reg_addr_t/reg_data_t/reg_strb_t serve register access; NRINGS is the generator-lane count. entropy_source_err_bus_t collects every error and fault that drives INTR_STATUS sticky bits; irq_o is the single OR of those bits masked by INTR_ENABLE.</p>
+<p>Define entropy-source register widths, type aliases, lane count, and the error aggregation bus.</p><p>RegAddrWidth/RegDataWidth/RegStrbWidth and reg_addr_t/reg_data_t/reg_strb_t serve register access; NRings is the generator-lane count. entropy_source_err_bus_t collects every error and fault that drives INTR_STATUS sticky bits; irq_o is the single OR of those bits masked by INTR_ENABLE.</p>
 <div class="ocah-reg-html">
 <h2 id="reg_addr_t"><code>reg_addr_t</code></h2>
-<p>Alias for <code>logic [REG_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegAddrWidth-1:0]</code></p>
 <h2 id="reg_data_t"><code>reg_data_t</code></h2>
-<p>Alias for <code>logic [REG_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegDataWidth-1:0]</code></p>
 <h2 id="reg_strb_t"><code>reg_strb_t</code></h2>
-<p>Alias for <code>logic [REG_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegStrbWidth-1:0]</code></p>
 <h2 id="entropy_source_err_bus_t"><code>entropy_source_err_bus_t</code></h2>
 <p>------------------------------------------------------------------------</p>
 <p>Packed struct</p>

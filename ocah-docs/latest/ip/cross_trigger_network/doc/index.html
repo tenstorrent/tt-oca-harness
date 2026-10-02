@@ -1142,7 +1142,7 @@ connections used for external and internal CTPs.</p>
 <div class="paragraph">
 <p>Internal CTPs reuse the cross_trigger_port_core GPIO interface but connect to
 logical signals rather than physical pads. The <code>INT_CT_MODE</code> parameter bits are
-inverted before use: <code>MODE_WIRE_OR = ~INT_CT_MODE[i]</code>. This means
+inverted before use: <code>ModeWireOr = ~INT_CT_MODE[i]</code>. This means
 <code>INT_CT_MODE[i]=0</code> selects Wire-OR mode, while <code>INT_CT_MODE[i]=1</code> selects
 Point-to-Point mode.</p>
 </div>
@@ -1153,7 +1153,7 @@ network therefore inverts <code>ctm_dst_req_i[i]</code> before <code>ct_req_out_
 internal CTP receives a cross trigger on the rising edge of the CLA request.</p>
 </div>
 <div class="paragraph">
-<p><strong>Wire-OR Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):</strong></p>
+<p><strong>Wire-OR Mode (INT_CT_MODE[i]=0, internal ModeWireOr=1):</strong></p>
 </div>
 <div class="paragraph">
 <p><a href="#internal-ctp-wire-or-connections-table">Table 4</a> maps the CTP core signals to internal
@@ -1189,7 +1189,7 @@ connections in wire-OR mode.</p>
 </table>
 </div>
 <div class="paragraph">
-<p><strong>Point-to-Point Mode (INT_CT_MODE[i]=1, internal MODE_WIRE_OR=0):</strong></p>
+<p><strong>Point-to-Point Mode (INT_CT_MODE[i]=1, internal ModeWireOr=0):</strong></p>
 </div>
 <div class="paragraph">
 <p><a href="#internal-ctp-point-to-point-connections-table">Table 5</a> maps the CTP core signals to internal

@@ -355,7 +355,7 @@ DCCM scrub, and runtime initialization complete.</p>
 </div>
 <div class="imageblock kroki">
 <div class="content">
-<img src="_images/diag-3f477f9867ff2d73ef8ce2773b0c10439bdff418.svg" alt="Cold and warm boot flow">
+<img src="_images/diag-f3324ed9f3a3570e6af844088cb1b11b0bfa3906.svg" alt="Cold and warm boot flow">
 </div>
 <div class="title">Figure 1. Cold and warm boot flow</div>
 </div>
@@ -516,16 +516,15 @@ later firmware status traffic and programs PMP regions for the Boot ROM, DCCM,
 status mailbox, SEP SRAM, SEP peripherals, and ICCM.</p>
 </div>
 <div class="paragraph">
-<p>The current <code>vector.S</code> labels PMP entry 6 as SMC MMIO, but programs
-<code>0xC000_0000</code> through <code>0xCFFF_FFFF</code>. SEP actually accesses SMC through
-<code>0x4000_0000</code>, so this entry does not protect the SEP-visible SMC aperture. The
-PMP table must be corrected before it can be treated as the final SMC access
-policy.</p>
+<p>The cold policy grants the SEP-visible SMC boot aperture at <code>0x4000_0000</code>
+through <code>0x407F_FFFF</code>. This covers every SMC register and SRAM location the ROM
+uses without granting the separate SMU aperture.</p>
 </div>
 <div class="paragraph">
-<p><code>PMP_ENABLE</code> controls whether these entries are programmed. <code>PMP_LOCK</code> controls
-their lock bits. The production Makefile defaults to PMP enabled and unlocked;
-an integrator must select the final lock policy for the immutable image.</p>
+<p><code>PMP_ENABLE</code> controls whether these entries are programmed. Enabled entries are
+locked, bound to machine mode with Smepmp <code>MMWP</code>, and remain non-executable
+except for the Boot ROM until the selected BL1 destination is released at
+hand-off.</p>
 </div>
 </div>
 <div class="sect2">
@@ -561,12 +560,14 @@ policy.</p>
 </div>
 <div class="paragraph">
 <p>ICCM is initialized through the secure DMA because the CPU load/store path
-cannot write it. <code>ROM_ICCM_CLEAR_ENABLE</code> defaults to zero to control simulation
-cost. A release configuration should enable it so all ICCM fetch words have
-valid ECC, including words adjacent to the end of BL1, but the current Makefile
-does not define or enforce a release mode. <code>ROM_ICCM_CLEAR_ENABLE</code> is also
-absent from its build-flags stamp, so changing the variable requires a clean
-build to ensure <code>rom_main.c</code> is recompiled.</p>
+cannot write it. <code>ROM_ICCM_CLEAR_ENABLE</code> defaults to one. With
+<code>ROM_ICCM_CLEAR_FULL=0</code>, the BL1 copy establishes ECC for the image and the
+handoff clears a bounded pad beyond it so adjacent instruction fetches are
+valid. Setting <code>ROM_ICCM_CLEAR_FULL=1</code> clears the entire ICCM before handoff.
+<code>BUILD_TYPE=release</code> selects release keys and output paths but does not change
+these two defaults; a release policy that requires clearing all ICCM residue
+must set <code>ROM_ICCM_CLEAR_FULL=1</code>. Both variables are part of the build-flags
+stamp, so changing either rebuilds the affected objects.</p>
 </div>
 </div>
 <div class="sect2">
@@ -619,10 +620,10 @@ later, immediately before boot-source processing.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL0 code, metadata, read-only data, and the load image of <code>.data</code>.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPI XIP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External XIP window</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x3000_0000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 MiB aperture</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memory-mapped flash source for the default controller path.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory-mapped external flash window; an accepted secure-DMA source, and the boot-flash source when built with <code>BOOT_SPI_CONTROLLER_OT=0</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC SRAM</p></td>
@@ -790,16 +791,16 @@ loader. <code>BOOT_SPI_CONTROLLER_OT</code> selects the implementation at build 
 <div class="ulist">
 <ul>
 <li>
-<p>The default path uses a memory-mapped SPI XIP aperture and the secure DMA.
-The open <code>src/sep_spi.c</code> implementation is a weak unavailable-device stub so
-an adopter can supply the controller integration when producing the final
-image.</p>
+<p>The default (<code>BOOT_SPI_CONTROLLER_OT=1</code>) uses the OpenTitan SPI host. It issues
+command/FIFO transfers and drains its receive FIFO through the secure DMA
+(<code>BOOT_OT_SPI_USE_PIO=0</code>). The <code>pio-toolchain-images</code> profile selects CPU
+programmed I/O (<code>BOOT_OT_SPI_USE_PIO=1</code>) and writes its ROM to <code>build_pio/</code>.</p>
 </li>
 <li>
-<p>The OpenTitan SPI host issues command/FIFO transfers. Its receive FIFO can
-drain through the secure DMA (<code>BOOT_OT_SPI_USE_PIO=0</code>) or CPU programmed I/O
-(<code>BOOT_OT_SPI_USE_PIO=1</code>). These are separate ROM build variants over the
-same packed flash bytes.</p>
+<p><code>BOOT_SPI_CONTROLLER_OT=0</code> reads memory-mapped flash through the external XIP
+window with the secure DMA. Controller bring-up is the weak hook set in
+<code>src/sep_spi.c</code>, which reports the controller as absent; an integrator
+overrides it with a real driver through <code>OCAH_FW_OVERLAY_SOURCES_sep</code>.</p>
 </li>
 </ul>
 </div>
@@ -938,7 +939,7 @@ entropy-chain initialization.</p>
 </div>
 <div class="paragraph">
 <p>The DMA and PIO receive paths are covered separately because they are separate
-datapaths. <code>sep_rom_ot_pio_boot_test</code> runs the <code>build_ot_pio</code> image, which does
+datapaths. <code>sep_rom_ot_pio_boot_test</code> runs the <code>build_pio</code> image, which does
 not link <code>ot_spi_flash_read_dma</code> at all, so passing one of the two proves
 nothing about the other. <code>hw/sys/sep/dv/testlists/rom_fw.toml</code> lists the whole
 ROM regression; the cases named here are the ones that bear directly on
@@ -1307,8 +1308,8 @@ BL0 reads the slot before setting a stack or touching DCCM:</p>
 <p>zero selects a cold boot, after which BL0 poisons the slot with <code>-1</code>;</p>
 </li>
 <li>
-<p>an address inside ICCM transfers directly to the handler and remains in the
-slot for subsequent watchdog resets; and</p>
+<p>an address inside ICCM makes BL0 clear the slot to 0 and transfer control to
+the handler, so BL1 must re-arm the slot on every handler entry; and</p>
 </li>
 <li>
 <p>any other nonzero value reports an invalid target and stops.</p>

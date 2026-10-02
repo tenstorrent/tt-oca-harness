@@ -460,7 +460,7 @@ connections.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tap_ctrl_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JtagNumExtraStapPorts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TAP control array. <code>.tck</code> remains driven when the STAP generate is off. Default: TMS/TRST idle if <code>JTAG_NUM_EXTRA_STAPS=0</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
 </tr>
@@ -468,7 +468,7 @@ connections.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdi_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JtagNumExtraStapPorts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TDI array. Default: Tie to '0 if unused.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
 </tr>
@@ -476,7 +476,7 @@ connections.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JtagNumExtraStapPorts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TDO array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
 </tr>
@@ -484,7 +484,7 @@ connections.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_oen_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JtagNumExtraStapPorts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TDO output enable array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
 </tr>

@@ -772,14 +772,14 @@
 <tr><td><code>lcc_demote_state_2_o</code></td><td>output</td><td><code>logic [1:0]</code></td><td>Differentially encoded DEMOTE_2.demote bit, which re-opens debug feature bits [47:24] in TEST_DEV and PROD; to the SMC.</td></tr>
 <tr><td><code>sep_io_spi_req_o</code></td><td>output</td><td><code>sep_io_pkg::sep_io_spi_req_t</code></td><td>SPI pad outputs (clock, chip select, 4 data lanes and their output enables), plus the SPI interrupt and DMA trigger.</td></tr>
 <tr><td><code>sep_io_spi_rsp_i</code></td><td>input</td><td><code>sep_io_pkg::sep_io_spi_rsp_t</code></td><td>SPI data-lane inputs from the pads.</td></tr>
-<tr><td><code>lc_state_o</code></td><td>output</td><td><code>logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]</code></td><td>Differentially encoded lifecycle state from the eFuse shadow registers.</td></tr>
+<tr><td><code>lc_state_o</code></td><td>output</td><td><code>logic [2*sep_pkg::LcStateBitWidth-1:0]</code></td><td>Differentially encoded lifecycle state from the eFuse shadow registers.</td></tr>
 <tr><td><code>dbg_disable_o</code></td><td>output</td><td><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></td><td>Per-interface debug disables for the DTP, active-high (1 = disabled).</td></tr>
 <tr><td><code>sep_fuse_dft_disable_o</code></td><td>output</td><td><code>logic</code></td><td>Disables the SEP fuse DFT access path, active-high; no functional consumer, provided for DFT insertion.</td></tr>
 <tr><td><code>smc_fuse_dft_disable_o</code></td><td>output</td><td><code>logic</code></td><td>Disables the SMC fuse DFT access path, active-high; no functional consumer, provided for DFT insertion.</td></tr>
 <tr><td><code>lc_sigint_err_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity error on the differentially encoded LC state; forces every feature enable off unless security is disabled.</td></tr>
 <tr><td><code>security_disable_o</code></td><td>output</td><td><code>logic</code></td><td>Security-disable status from eFuse token processing, active-high.</td></tr>
 <tr><td><code>secure_tm_o</code></td><td>output</td><td><code>logic</code></td><td>Latched secure test mode, active-high; captured on the second clock edge after rst_ni release when security is disabled, otherwise when fuse sensing finishes.</td></tr>
-<tr><td><code>smc_mailbox_interrupt_o</code></td><td>output</td><td><code>logic [sep_pkg::NUM_MAILBOXES-1:0]</code></td><td>Per-mailbox outbound-data interrupts to the SMC.</td></tr>
+<tr><td><code>smc_mailbox_interrupt_o</code></td><td>output</td><td><code>logic [sep_pkg::NumMailboxes-1:0]</code></td><td>Per-mailbox outbound-data interrupts to the SMC.</td></tr>
 <tr><td><code>smc_fuse_sense_done_i</code></td><td>input</td><td><code>logic</code></td><td>SMC fuse sense completion, reflected in SMC_FUSE_SENSE_STATUS; requests to the SMC hang while it is low.</td></tr>
 <tr><td><code>sep_fuse_sense_done_o</code></td><td>output</td><td><code>logic</code></td><td>High once the SEP eFuse shadow registers have been loaded from the fuses.</td></tr>
 <tr><td><code>secure_tm_req_i</code></td><td>input</td><td><code>logic</code></td><td>Secure test mode request strap, latched into secure_tm_o.</td></tr>

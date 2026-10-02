@@ -688,9 +688,9 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>NO_ADDR_REMAP</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Removes the M-mode and Xvisor output remap from the output fabric, leaving only its AXI ID conversion; the input-fabric alias remap is unaffected.</td></tr>
-<tr><td><code>NUM_CPU_CORES</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NUM_CPU_CORES</code></td><td>Number of cores in the SMC CPU cluster, from smc_4core_cpu_pkg; sizes the per-core PC and watchdog ports.</td></tr>
-<tr><td><code>NUM_CPU_INTERRUPTS</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS</code></td><td>Number of interrupt lines into the CPU cluster: external, peripheral, mailbox and internal.</td></tr>
-<tr><td><code>NUM_EXT_INTERRUPTS</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS</code></td><td>Number of external interrupt lines on ext_interrupts_i; they occupy the lowest cpu_interrupts_o bits.</td></tr>
+<tr><td><code>NumCpuCores</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NumCpuCores</code></td><td>Number of cores in the SMC CPU cluster, from smc_4core_cpu_pkg; sizes the per-core PC and watchdog ports.</td></tr>
+<tr><td><code>NumCpuInterrupts</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NumCpuInterrupts</code></td><td>Number of interrupt lines into the CPU cluster: external, peripheral, mailbox and internal.</td></tr>
+<tr><td><code>NumExtInterrupts</code></td><td><code>int unsigned</code></td><td><code>smc_4core_cpu_pkg::NumExtInterrupts</code></td><td>Number of external interrupt lines on ext_interrupts_i; they occupy the lowest cpu_interrupts_o bits.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -711,16 +711,16 @@
 <tr><td><code>axil_peripherals_req_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>Consolidated AXI-Lite interface for all peripherals request.</td></tr>
 <tr><td><code>axil_peripherals_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Consolidated AXI-Lite interface for all peripherals response.</td></tr>
 <tr><td><code>wdt_first_timeout_o</code></td><td>output</td><td><code>logic</code></td><td>First-stage watchdog timeout: OR of the per-core CPU watchdog timeouts.</td></tr>
-<tr><td><code>ext_mailbox_interrupts_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_MAILBOXES-1:0]</code></td><td>Outbound interrupts of the internal mailboxes, one per mailbox.</td></tr>
-<tr><td><code>ext_interrupts_i</code></td><td>input</td><td><code>logic [NUM_EXT_INTERRUPTS-1:0]</code></td><td>External interrupts, synchronized to clk_smc_i onto the lowest cpu_interrupts_o bits.</td></tr>
+<tr><td><code>ext_mailbox_interrupts_o</code></td><td>output</td><td><code>logic [smc_pkg::NumMailboxes-1:0]</code></td><td>Outbound interrupts of the internal mailboxes, one per mailbox.</td></tr>
+<tr><td><code>ext_interrupts_i</code></td><td>input</td><td><code>logic [NumExtInterrupts-1:0]</code></td><td>External interrupts, synchronized to clk_smc_i onto the lowest cpu_interrupts_o bits.</td></tr>
 <tr><td><code>peripheral_interrupts_i</code></td><td>input</td><td><code>logic [31:0]</code></td><td>Interrupts from the SMC peripherals, placed on cpu_interrupts_o after the external interrupts.</td></tr>
 <tr><td><code>cpu_axi_front_port_req_o</code></td><td>output</td><td><code>smc_pkg::smc_local_32_64_8_12_axi_req_t</code></td><td>Local-fabric AXI request to smc_cpu_wrapper for the cluster L2 frontend and cpu_ctrl windows.</td></tr>
 <tr><td><code>cpu_axi_front_port_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_local_32_64_8_12_axi_resp_t</code></td><td>AXI response from smc_cpu_wrapper to the local fabric.</td></tr>
-<tr><td><code>cpu_interrupts_o</code></td><td>output</td><td><code>logic [NUM_CPU_INTERRUPTS-1:0]</code></td><td>Interrupt vector to the CPU cluster: synchronized external, 32 peripheral, 32 inbound mailbox, then CLA clock stop, CLA, DMA and zeroer; upper bits are zero.</td></tr>
+<tr><td><code>cpu_interrupts_o</code></td><td>output</td><td><code>logic [NumCpuInterrupts-1:0]</code></td><td>Interrupt vector to the CPU cluster: synchronized external, 32 peripheral, 32 inbound mailbox, then CLA clock stop, CLA, DMA and zeroer; upper bits are zero.</td></tr>
 <tr><td><code>cpu_axi_mmio_port_req_i</code></td><td>input</td><td><code>smc_pkg::smc_cpu_mmio_axi_req_t</code></td><td>CPU cluster MMIO AXI request from smc_cpu_wrapper; alias-remapped and routed to SMC local targets or output_axi_req_o.</td></tr>
 <tr><td><code>cpu_axi_mmio_port_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_cpu_mmio_axi_resp_t</code></td><td>CPU cluster MMIO AXI response to smc_cpu_wrapper.</td></tr>
-<tr><td><code>cpu_wb_reg_pc_i</code></td><td>input</td><td><code>logic [NUM_CPU_CORES-1:0][57:0]</code></td><td>Per-core writeback program counter from smc_cpu_wrapper; the low 32 bits go onto the debug bus.</td></tr>
-<tr><td><code>cpu_wdt_timeout_cluster_i</code></td><td>input</td><td><code>logic [NUM_CPU_CORES-1:0]</code></td><td>Per-core first-stage watchdog timeout from smc_cpu_wrapper, ORed onto wdt_first_timeout_o.</td></tr>
+<tr><td><code>cpu_wb_reg_pc_i</code></td><td>input</td><td><code>logic [NumCpuCores-1:0][57:0]</code></td><td>Per-core writeback program counter from smc_cpu_wrapper; the low 32 bits go onto the debug bus.</td></tr>
+<tr><td><code>cpu_wdt_timeout_cluster_i</code></td><td>input</td><td><code>logic [NumCpuCores-1:0]</code></td><td>Per-core first-stage watchdog timeout from smc_cpu_wrapper, ORed onto wdt_first_timeout_o.</td></tr>
 <tr><td><code>cpu_cluster_ded_i</code></td><td>input</td><td><code>logic</code></td><td>Uncorrectable memory error from the CPU cluster, placed on the debug bus.</td></tr>
 <tr><td><code>wdt_second_timeout_i</code></td><td>input</td><td><code>logic</code></td><td>Second-stage watchdog timeout from the CPU control block, placed on the debug bus.</td></tr>
 <tr><td><code>smc_global_base_o</code></td><td>output</td><td><code>smc_pkg::smc_axi_addr_t</code></td><td>SMC global base address from the GLOBAL_BASE register, also used by the fabric address decode.</td></tr>
@@ -734,8 +734,8 @@
 <tr><td><code>avsbus_cur_state_debug_i</code></td><td>input</td><td><code>logic [16:0]</code></td><td>AVS bus controller state from the SMC peripherals; the low 16 bits go onto the debug bus.</td></tr>
 <tr><td><code>system_timer_octs_credits_debug_i</code></td><td>input</td><td><code>logic [8:0]</code></td><td>OCTS credit count from the system timer, placed on the debug bus.</td></tr>
 <tr><td><code>system_timer_octs_credits_left_debug_i</code></td><td>input</td><td><code>logic</code></td><td>OCTS credits-left status from the system timer, placed on the debug bus.</td></tr>
-<tr><td><code>telemetry_debug_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][3:0]</code></td><td>Debug status from each telemetry receiver in the SMC peripherals, placed on the debug bus.</td></tr>
-<tr><td><code>i2c_debug_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0][3:0]</code></td><td>Debug status from each I2C controller in the SMC peripherals, placed on the debug bus.</td></tr>
+<tr><td><code>telemetry_debug_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumTelemetryReceivers-1:0][3:0]</code></td><td>Debug status from each telemetry receiver in the SMC peripherals, placed on the debug bus.</td></tr>
+<tr><td><code>i2c_debug_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NumI2c-1:0][3:0]</code></td><td>Debug status from each I2C controller in the SMC peripherals, placed on the debug bus.</td></tr>
 <tr><td><code>efuse_debug_i</code></td><td>input</td><td><code>logic [9:0]</code></td><td>eFuse controller debug status from the SMC peripherals, placed on the debug bus.</td></tr>
 <tr><td><code>cla_ext_action_custom_o</code></td><td>output</td><td><code>logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]</code></td><td>Custom CLA external-action outputs from the DFD block, one bit per custom action.</td></tr>
 <tr><td><code>xtrigger_ss_o</code></td><td>output</td><td><code>smc_pkg::xtrigger_t</code></td><td>Cross-trigger lanes from the SMC core logic analyzer to the subsystem cross-trigger matrix, masked by the clock-halt trigger mask.</td></tr>

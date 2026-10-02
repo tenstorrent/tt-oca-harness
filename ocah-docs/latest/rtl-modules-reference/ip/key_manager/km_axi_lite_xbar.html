@@ -710,7 +710,7 @@
 <tr><td><code>hmac_resp_i</code></td><td>input</td><td><code>axil_resp_t</code></td><td>Master port response from HMAC.</td></tr>
 <tr><td><code>abr_req_o</code></td><td>output</td><td><code>axil_req_t</code></td><td>External crypto engine master port request to Adams Bridge.</td></tr>
 <tr><td><code>abr_resp_i</code></td><td>input</td><td><code>axil_resp_t</code></td><td>Master port response from Adams Bridge.</td></tr>
-<tr><td><code>otp_req_o</code></td><td>output</td><td><code>axil_req_t</code></td><td>OTP/eFuse pass-through port request (index 8, OTP_BASE_ADDR-OTP_END_ADDR). Addresses are forwarded unchanged; key_manager.sv refuses offsets outside the eFuse register maps and applies the OTP_EFUSE_REMAP_BASE remap before driving efuse_req_o.</td></tr>
+<tr><td><code>otp_req_o</code></td><td>output</td><td><code>axil_req_t</code></td><td>OTP/eFuse pass-through port request (index 8, OtpBaseAddr-OtpEndAddr). Addresses are forwarded unchanged; key_manager.sv refuses offsets outside the eFuse register maps and applies the OTP_EFUSE_REMAP_BASE remap before driving efuse_req_o.</td></tr>
 <tr><td><code>otp_resp_i</code></td><td>input</td><td><code>axil_resp_t</code></td><td>OTP/eFuse pass-through port response.</td></tr>
 </table>
 </div>

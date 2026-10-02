@@ -682,20 +682,20 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_zero_counter</h1>
-<p>Count leading or trailing zeros in in_i.</p><p>COUNT_LEADING of 1 counts leading zeros; 0 counts trailing zeros. empty_o is high when every bit of in_i is zero. CNT_WIDTH is clog2(WIDTH) and must not be overwritten.</p>
+<p>Count leading or trailing zeros in in_i.</p><p>COUNT_LEADING of 1 counts leading zeros; 0 counts trailing zeros. empty_o is high when every bit of in_i is zero. CntWidth is clog2(WIDTH) and must not be overwritten.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>WIDTH</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Width of the input vector.</td></tr>
 <tr><td><code>COUNT_LEADING</code></td><td><code>bit</code></td><td><code>1&#x27;b0</code></td><td>0 counts trailing zeros; 1 counts leading zeros.</td></tr>
-<tr><td><code>CNT_WIDTH</code></td><td><code>int unsigned</code></td><td><code>WIDTH &gt; 1 ? $clog2(WIDTH) : 1</code></td><td>Width of count_o; dependent, do not change.</td></tr>
+<tr><td><code>CntWidth</code></td><td><code>int unsigned</code></td><td><code>WIDTH &gt; 1 ? $clog2(WIDTH) : 1</code></td><td>Width of count_o; dependent, do not change.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>in_i</code></td><td>input</td><td><code>logic [WIDTH-1:0]</code></td><td>Vector whose zeros are counted.</td></tr>
-<tr><td><code>count_o</code></td><td>output</td><td><code>logic [CNT_WIDTH-1:0]</code></td><td>Leading or trailing zero count.</td></tr>
+<tr><td><code>count_o</code></td><td>output</td><td><code>logic [CntWidth-1:0]</code></td><td>Leading or trailing zero count.</td></tr>
 <tr><td><code>empty_o</code></td><td>output</td><td><code>logic</code></td><td>High when every bit of in_i is zero.</td></tr>
 </table>
 </div>

@@ -700,8 +700,8 @@
 <tr><td><code>reg_axi_lite_req_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>Request from the peripheral crossbar for the misc map.</td></tr>
 <tr><td><code>reg_axi_lite_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Response to the peripheral crossbar.</td></tr>
 <tr><td><code>lc_state_i</code></td><td>input</td><td><code>logic [LC_STATE_WIDTH-1:0]</code></td><td>Lifecycle state, reported through the chip_config LC_STATE register.</td></tr>
-<tr><td><code>ndmreset_request_i</code></td><td>input</td><td><code>logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0]</code></td><td>NDM reset request per CPU cluster, synchronized to the SMC core clock and readable in the NDMRESET_REQUEST register.</td></tr>
-<tr><td><code>ndmreset_process_o</code></td><td>output</td><td><code>logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0]</code></td><td>Firmware response to each cluster&#x27;s NDM reset request, from the NDMRESET_PROCESS register.</td></tr>
+<tr><td><code>ndmreset_request_i</code></td><td>input</td><td><code>logic [smc_config_pkg::CpuClusterCount-1:0]</code></td><td>NDM reset request per CPU cluster, synchronized to the SMC core clock and readable in the NDMRESET_REQUEST register.</td></tr>
+<tr><td><code>ndmreset_process_o</code></td><td>output</td><td><code>logic [smc_config_pkg::CpuClusterCount-1:0]</code></td><td>Firmware response to each cluster&#x27;s NDM reset request, from the NDMRESET_PROCESS register.</td></tr>
 </table>
 </div>
 </article>

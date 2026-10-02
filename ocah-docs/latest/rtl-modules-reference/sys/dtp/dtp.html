@@ -706,10 +706,10 @@
 <tr><td><code>JTAG_IDCODE_PART_NUM</code></td><td><code>logic [15:0]</code></td><td><code>16&#x27;h0000</code></td><td>JTAG IDCODE part number.</td></tr>
 <tr><td><code>JTAG_IDCODE_SI_REV</code></td><td><code>logic [3:0]</code></td><td><code>4&#x27;h0</code></td><td>JTAG IDCODE silicon revision.</td></tr>
 <tr><td><code>JTAG_OCH_VER</code></td><td><code>logic [7:0]</code></td><td><code>8&#x27;h00</code></td><td>DTP IP major version number reported in JTAG_CAPS.</td></tr>
-<tr><td><code>JTAG_NUM_EXTRA_STAP_PORTS</code></td><td><code>int unsigned</code></td><td><code>(JTAG_NUM_EXTRA_STAPS &gt; 0) ? JTAG_NUM_EXTRA_STAPS : 1</code></td><td>Extra STAP port count; at least one for tie-off.</td></tr>
-<tr><td><code>XTRIG_NUM_CTP</code></td><td><code>int unsigned</code></td><td><code>dtp_pkg::DEFAULT_NUM_CTP</code></td><td>Number of external cross-trigger ports.</td></tr>
-<tr><td><code>XTRIG_NUM_INT_CT</code></td><td><code>int unsigned</code></td><td><code>dtp_pkg::DEFAULT_NUM_INT_CT</code></td><td>Number of internal cross-trigger interfaces.</td></tr>
-<tr><td><code>XTRIG_NUM_CLK_STOP_REQ</code></td><td><code>int unsigned</code></td><td><code>dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ</code></td><td>Number of clock-stop request inputs.</td></tr>
+<tr><td><code>JtagNumExtraStapPorts</code></td><td><code>int unsigned</code></td><td><code>(JTAG_NUM_EXTRA_STAPS &gt; 0) ? JTAG_NUM_EXTRA_STAPS : 1</code></td><td>Extra STAP port count; at least one for tie-off.</td></tr>
+<tr><td><code>XTRIG_NUM_CTP</code></td><td><code>int unsigned</code></td><td><code>dtp_pkg::DefaultNumCtp</code></td><td>Number of external cross-trigger ports.</td></tr>
+<tr><td><code>XTRIG_NUM_INT_CT</code></td><td><code>int unsigned</code></td><td><code>dtp_pkg::DefaultNumIntCt</code></td><td>Number of internal cross-trigger interfaces.</td></tr>
+<tr><td><code>XTRIG_NUM_CLK_STOP_REQ</code></td><td><code>int unsigned</code></td><td><code>dtp_pkg::DefaultNumClkStopReq</code></td><td>Number of clock-stop request inputs.</td></tr>
 <tr><td><code>XTRIG_INT_CT_MODE</code></td><td><code>logic [XTRIG_NUM_INT_CT-1:0]</code></td><td><code>&#x27;0</code></td><td>Per-lane CTM protocol: 0 = pulse sync (ack unused), 1 = req/ack handshake.</td></tr>
 <tr><td><code>SMC_OTP_RD_PL_DEPTH</code></td><td><code>logic [1:0]</code></td><td><code>2&#x27;h3</code></td><td>SMC OTP read pipeline depth; 0 = single outstanding.</td></tr>
 <tr><td><code>SMC_OTP_WR_PL_DEPTH</code></td><td><code>logic [1:0]</code></td><td><code>2&#x27;h3</code></td><td>SMC OTP write pipeline depth; 0 = single outstanding.</td></tr>

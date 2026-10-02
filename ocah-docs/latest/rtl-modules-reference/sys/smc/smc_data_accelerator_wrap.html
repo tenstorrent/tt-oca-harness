@@ -697,7 +697,7 @@
 <tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>Scan test mode enable, active-high; forwarded to the DMA, the zeroer, and the AXI demux and mux.</td></tr>
 <tr><td><code>dma_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Enables idle clock gating of the DMA front end when high; while low its clock runs continuously.</td></tr>
 <tr><td><code>zeroer_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Enables idle clock gating of the zeroer datapath when high; while low its clock runs continuously.</td></tr>
-<tr><td><code>cg_hysteresis_i</code></td><td>input</td><td><code>logic [smc_pkg::CG_HYSTERESIS_W-1:0]</code></td><td>Idle SMC core clock cycles the DMA and zeroer clock gates wait after going idle before stopping their clocks.</td></tr>
+<tr><td><code>cg_hysteresis_i</code></td><td>input</td><td><code>logic [smc_pkg::CgHysteresisW-1:0]</code></td><td>Idle SMC core clock cycles the DMA and zeroer clock gates wait after going idle before stopping their clocks.</td></tr>
 <tr><td><code>ctrl_axi_req_i</code></td><td>input</td><td><code>smc_pkg::smc_local_32_64_8_12_axi_req_t</code></td><td>Control request from the local crossbar for the DMA and zeroer register windows.</td></tr>
 <tr><td><code>ctrl_axi_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_local_32_64_8_12_axi_resp_t</code></td><td>Control response to the local crossbar.</td></tr>
 <tr><td><code>mst_axi_req_o</code></td><td>output</td><td><code>smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t</code></td><td>Transfer request from the DMA or zeroer into the input fabric.</td></tr>

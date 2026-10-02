@@ -688,7 +688,7 @@
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>CONTROLLER_TX_FIFO_DEPTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>FMT FIFO depth.</td></tr>
-<tr><td><code>CONTROLLER_TX_FIFO_DEPTH_WIDTH</code></td><td><code>int unsigned</code></td><td><code>$clog2(CONTROLLER_TX_FIFO_DEPTH + 1)</code></td><td>clog2(depth+1) for FMT fill.</td></tr>
+<tr><td><code>ControllerTxFifoDepthWidth</code></td><td><code>int unsigned</code></td><td><code>$clog2(CONTROLLER_TX_FIFO_DEPTH + 1)</code></td><td>clog2(depth+1) for FMT fill.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
@@ -704,7 +704,7 @@
 <tr><td><code>host_enable_i</code></td><td>input</td><td><code>logic</code></td><td>Host/controller enable.</td></tr>
 <tr><td><code>halt_controller_i</code></td><td>input</td><td><code>logic</code></td><td>Halt the controller FSM in IDLE.</td></tr>
 <tr><td><code>fmt_fifo_rvalid_i</code></td><td>input</td><td><code>logic</code></td><td>FMT FIFO has valid data.</td></tr>
-<tr><td><code>fmt_fifo_depth_i</code></td><td>input</td><td><code>logic [CONTROLLER_TX_FIFO_DEPTH_WIDTH-1:0]</code></td><td>FMT FIFO fill level.</td></tr>
+<tr><td><code>fmt_fifo_depth_i</code></td><td>input</td><td><code>logic [ControllerTxFifoDepthWidth-1:0]</code></td><td>FMT FIFO fill level.</td></tr>
 <tr><td><code>fmt_fifo_rready_o</code></td><td>output</td><td><code>logic</code></td><td>Pop FMT FIFO.</td></tr>
 <tr><td><code>fmt_byte_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>Byte in FMT FIFO to send to the target.</td></tr>
 <tr><td><code>fmt_flag_start_before_i</code></td><td>input</td><td><code>logic</code></td><td>Issue START before sending the byte.</td></tr>

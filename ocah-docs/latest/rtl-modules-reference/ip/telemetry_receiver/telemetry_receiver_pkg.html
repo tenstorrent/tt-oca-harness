@@ -682,14 +682,14 @@
 </aside>
 <article class="doc">
 <h1 class="page">telemetry_receiver_pkg</h1>
-<p>Hold ATB telemetry widths and AXI-Lite typedefs for the receiver.</p><p>Defines packet and block sizes and the axil_req_t / axil_resp_t used by telemetry_receiver. A 64-bit packet holds a last_packet bit above seven 9-bit blocks, each a valid bit and a data byte. The AXI-Lite address width is the register block&#x27;s minimum, data is 32 bits, and NUM_COUNTER_REGS is 32.</p>
+<p>Hold ATB telemetry widths and AXI-Lite typedefs for the receiver.</p><p>Defines packet and block sizes and the axil_req_t / axil_resp_t used by telemetry_receiver. A 64-bit packet holds a last_packet bit above seven 9-bit blocks, each a valid bit and a data byte. The AXI-Lite address width is the register block&#x27;s minimum, data is 32 bits, and NumCounterRegs is 32.</p>
 <div class="ocah-reg-html">
 <h2 id="reg_addr_t"><code>reg_addr_t</code></h2>
-<p>Alias for <code>logic [REG_ADDR_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegAddrWidth-1:0]</code></p>
 <h2 id="reg_data_t"><code>reg_data_t</code></h2>
-<p>Alias for <code>logic [REG_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegDataWidth-1:0]</code></p>
 <h2 id="reg_strb_t"><code>reg_strb_t</code></h2>
-<p>Alias for <code>logic [REG_STRB_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [RegStrbWidth-1:0]</code></p>
 <h2 id="axil_aw_chan_t"><code>axil_aw_chan_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-1">
@@ -750,13 +750,13 @@
 <tr><td><code>r_valid</code></td><td><code>logic</code></td><td></td></tr>
 </table>
 <h2 id="telemetry_data_t"><code>telemetry_data_t</code></h2>
-<p>Alias for <code>logic [TELEMETRY_DATA_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [TelemetryDataWidth-1:0]</code></p>
 <h2 id="atb_id_t"><code>atb_id_t</code></h2>
 <p>Fixed by ATB Standard.</p>
 <p>Alias for <code>logic [6:0]</code></p>
 <h2 id="telemetry_probe_id_t"><code>telemetry_probe_id_t</code></h2>
 <p>General</p>
-<p>Alias for <code>logic [TELEMETRY_PROBE_ID_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [TelemetryProbeIdWidth-1:0]</code></p>
 <h2 id="telemetry_block_t"><code>telemetry_block_t</code></h2>
 <p>Telemetry message decoding</p>
 <p>Packed struct</p>
@@ -770,10 +770,10 @@
 <table id="trm-table-9">
 <caption class="title"><a href="#trm-table-9">Table 9</a>. <code>telemetry_packet_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>last_packet</code></td><td><code>logic</code></td><td></td></tr>
-<tr><td><code>blocks</code></td><td><code>telemetry_block_t [NUM_BLOCKS_PER_PACKET-1:0]</code></td><td></td></tr>
+<tr><td><code>blocks</code></td><td><code>telemetry_block_t [NumBlocksPerPacket-1:0]</code></td><td></td></tr>
 </table>
 <h2 id="telemetry_counter_val_t"><code>telemetry_counter_val_t</code></h2>
-<p>Alias for <code>logic [TELEMETRY_COUNTER_WIDTH-1:0]</code></p>
+<p>Alias for <code>logic [TelemetryCounterWidth-1:0]</code></p>
 <h2 id="telemetry_counter_t"><code>telemetry_counter_t</code></h2>
 <p>Packed struct</p>
 <table id="trm-table-10">

@@ -685,7 +685,7 @@
 <p>Define typedefs and parameters for the SEP cryptographic subsystem.</p><p>Covers the sep_crypto_axi_interconnect address rules and port enum, ABR memory structs, external TRNG AXI-Stream types, OTBN IMEM and DMEM structs, and EDN endpoint and client counts.</p>
 <div class="ocah-reg-html">
 <h2 id="sep_crypto_axi_port_e"><code>sep_crypto_axi_port_e</code></h2>
-<p>Highest enum value must equal SEP_CRYPTO_NUM_AXI_MST - 1.</p>
+<p>Highest enum value must equal SepCryptoNumAxiMst - 1.</p>
 <p>Enum (<code>int unsigned</code>)</p>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. <code>sep_crypto_axi_port_e</code></caption><tr><th>Value</th><th>Number</th><th>Description</th></tr>
@@ -827,8 +827,8 @@
 <table id="trm-table-10">
 <caption class="title"><a href="#trm-table-10">Table 10</a>. <code>ext_trng_axis_req_t</code></caption><tr><th>Field</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>tvalid</code></td><td><code>logic</code></td><td></td></tr>
-<tr><td><code>tdata</code></td><td><code>logic [EXT_TRNG_AXIS_DATA_WIDTH-1:0]</code></td><td></td></tr>
-<tr><td><code>tstrb</code></td><td><code>logic [EXT_TRNG_AXIS_STRB_WIDTH-1:0]</code></td><td></td></tr>
+<tr><td><code>tdata</code></td><td><code>logic [ExtTrngAxisDataWidth-1:0]</code></td><td></td></tr>
+<tr><td><code>tstrb</code></td><td><code>logic [ExtTrngAxisStrbWidth-1:0]</code></td><td></td></tr>
 </table>
 <h2 id="ext_trng_axis_rsp_t"><code>ext_trng_axis_rsp_t</code></h2>
 <p>Packed struct</p>

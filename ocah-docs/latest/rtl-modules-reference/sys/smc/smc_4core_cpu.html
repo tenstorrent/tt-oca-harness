@@ -691,13 +691,13 @@
 <tr><td><code>rst_isolate_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low reset for the L2-frontend and MMIO AXI isolate modules.</td></tr>
 <tr><td><code>mem_init_reset_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low reset for the scratch RAM zero-fill sequencer; its release starts the zero-fill.</td></tr>
 <tr><td><code>rst_uncore_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low cluster uncore reset; while low, the cluster boundary stays isolated and cluster_ded_o is cleared.</td></tr>
-<tr><td><code>rst_core_ni</code></td><td>input</td><td><code>logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]</code></td><td>Active-low per-core reset; the core also stays in reset until the scratch RAM zero-fill completes and while the cluster requests a hart reset.</td></tr>
+<tr><td><code>rst_core_ni</code></td><td>input</td><td><code>logic [smc_4core_cpu_pkg::NumCpuCores-1:0]</code></td><td>Active-low per-core reset; the core also stays in reset until the scratch RAM zero-fill completes and while the cluster requests a hart reset.</td></tr>
 <tr><td><code>rst_debug_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low reset for the debug module and its clock-gate enable.</td></tr>
 <tr><td><code>isolate_req_i</code></td><td>input</td><td><code>logic</code></td><td>Drain request for a software reset; while high, the cluster boundary is isolated and the status outputs are clamped.</td></tr>
 <tr><td><code>drained_o</code></td><td>output</td><td><code>logic</code></td><td>High once both the L2-frontend and MMIO AXI isolate modules report isolated.</td></tr>
 <tr><td><code>isolate_flush_i</code></td><td>input</td><td><code>logic</code></td><td>Flush request to both AXI isolate modules, latched until de-isolation; clears their outstanding-transaction state so isolation can complete.</td></tr>
-<tr><td><code>reset_vector_i</code></td><td>input</td><td><code>logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0]</code></td><td>Per-core boot address into the cluster.</td></tr>
-<tr><td><code>interrupts_i</code></td><td>input</td><td><code>logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0]</code></td><td>Cluster interrupt lines, passed unchanged to DigitalTop.</td></tr>
+<tr><td><code>reset_vector_i</code></td><td>input</td><td><code>logic [smc_4core_cpu_pkg::NumCpuCores-1:0][55:0]</code></td><td>Per-core boot address into the cluster.</td></tr>
+<tr><td><code>interrupts_i</code></td><td>input</td><td><code>logic [smc_4core_cpu_pkg::NumCpuInterrupts-1:0]</code></td><td>Cluster interrupt lines, passed unchanged to DigitalTop.</td></tr>
 <tr><td><code>mmio_axi_req_o</code></td><td>output</td><td><code>smc_pkg::smc_cpu_mmio_axi_req_t</code></td><td>Cluster MMIO AXI master request through the MMIO isolate module, with AxCACHE modifiable forced set; while isolated, the module answers the cluster with SLVERR.</td></tr>
 <tr><td><code>mmio_axi_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_cpu_mmio_axi_resp_t</code></td><td>Cluster MMIO AXI master response from the fabric.</td></tr>
 <tr><td><code>l2_frontend_axi_req_i</code></td><td>input</td><td><code>smc_pkg::smc_cpu_l2_frontend_axi_req_t</code></td><td>AXI request into the cluster L2 frontend bus through its isolate module, which blocks rather than terminates while isolated.</td></tr>
@@ -711,9 +711,9 @@
 <tr><td><code>smc_cpu_jtag_part_number_i</code></td><td>input</td><td><code>logic [15:0]</code></td><td>Part number reported in the cluster JTAG IDCODE.</td></tr>
 <tr><td><code>smc_cpu_jtag_version_i</code></td><td>input</td><td><code>logic [3:0]</code></td><td>Version reported in the cluster JTAG IDCODE.</td></tr>
 <tr><td><code>cluster_ded_o</code></td><td>output</td><td><code>logic</code></td><td>Registered OR of the cluster&#x27;s uncorrectable-error flags.</td></tr>
-<tr><td><code>wb_pc_valid_o</code></td><td>output</td><td><code>logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0]</code></td><td>Per-core qualifier for wb_reg_pc_o, forced low while the cluster boundary is isolated.</td></tr>
-<tr><td><code>wb_reg_pc_o</code></td><td>output</td><td><code>logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0]</code></td><td>Per-core writeback program counter, forced to zero while the cluster boundary is isolated.</td></tr>
-<tr><td><code>wdt_reset_o</code></td><td>output</td><td><code>logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]</code></td><td>Per-core watchdog timeout from the cluster, forced low while the cluster boundary is isolated.</td></tr>
+<tr><td><code>wb_pc_valid_o</code></td><td>output</td><td><code>logic [smc_4core_cpu_pkg::NumCpuCores-1:0][1-1:0]</code></td><td>Per-core qualifier for wb_reg_pc_o, forced low while the cluster boundary is isolated.</td></tr>
+<tr><td><code>wb_reg_pc_o</code></td><td>output</td><td><code>logic [smc_4core_cpu_pkg::NumCpuCores-1:0][58-1:0]</code></td><td>Per-core writeback program counter, forced to zero while the cluster boundary is isolated.</td></tr>
+<tr><td><code>wdt_reset_o</code></td><td>output</td><td><code>logic [smc_4core_cpu_pkg::NumCpuCores-1:0]</code></td><td>Per-core watchdog timeout from the cluster, forced low while the cluster boundary is isolated.</td></tr>
 <tr><td><code>rom_intf_req_o</code></td><td>output</td><td><code>chipyard_4core_mem_pkg::rom_tilelink_req_t</code></td><td>TileLink A-channel request, D-channel ready, clock and reset from the cluster boot ROM port.</td></tr>
 <tr><td><code>rom_intf_rsp_i</code></td><td>input</td><td><code>chipyard_4core_mem_pkg::rom_tilelink_rsp_t</code></td><td>TileLink A-channel ready and D-channel response to the cluster boot ROM port.</td></tr>
 <tr><td><code>scratch_ram_intf_req_o</code></td><td>output</td><td><code>chipyard_4core_mem_pkg::scratch_ram_req_t</code></td><td>Scratch RAM bank requests, driven by the zero-fill sequencer until the zero-fill completes.</td></tr>

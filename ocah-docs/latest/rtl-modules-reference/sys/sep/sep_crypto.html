@@ -690,7 +690,7 @@
 <tr><td><code>LATCHED_MEM_RDATA</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>1 if the Key Manager ROM and SRAM macros latch read data for look-ahead.</td></tr>
 <tr><td><code>MASKING_EN</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Enables 2-share DOM masking in the Adams Bridge engine.</td></tr>
 <tr><td><code>SRAM_LATENCY</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Adams Bridge SRAM read latency in cycles.</td></tr>
-<tr><td><code>EXT_TRNG_NUM_AXIS</code></td><td><code>int unsigned</code></td><td><code>3</code></td><td>Number of external TRNG AXI-Stream ports and entropy muxes; must equal SEP_CRYPTO_EDN_ENDPOINT_COUNT (3).</td></tr>
+<tr><td><code>EXT_TRNG_NUM_AXIS</code></td><td><code>int unsigned</code></td><td><code>3</code></td><td>Number of external TRNG AXI-Stream ports and entropy muxes; must equal SepCryptoEdnEndpointCount (3).</td></tr>
 <tr><td><code>SEP_SEC_DISABLE_TOKEN</code></td><td><code>bit [255:0]</code></td><td><code>256&#x27;b0</code></td><td>Netlist-embedded secure-disable token digest; replace at synthesis.</td></tr>
 </table>
 <h2>Ports</h2>
@@ -724,7 +724,7 @@
 <tr><td><code>secure_tm_req_i</code></td><td>input</td><td><code>logic</code></td><td>Secure test mode request strap, latched into secure_tm_o.</td></tr>
 <tr><td><code>ext_boot_seq_done_i</code></td><td>input</td><td><code>logic</code></td><td>Integration boot-sequence completion (memory repair and SMC straps); gates release of sep_intermediate_reset_no.</td></tr>
 <tr><td><code>security_disable_o</code></td><td>output</td><td><code>logic</code></td><td>Security-disable status from eFuse token processing, active-high; exported to the SMC.</td></tr>
-<tr><td><code>lc_state_o</code></td><td>output</td><td><code>logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]</code></td><td>Differentially encoded lifecycle state from the eFuse shadow registers; exported to the SMC.</td></tr>
+<tr><td><code>lc_state_o</code></td><td>output</td><td><code>logic [2*sep_pkg::LcStateBitWidth-1:0]</code></td><td>Differentially encoded lifecycle state from the eFuse shadow registers; exported to the SMC.</td></tr>
 <tr><td><code>feat_ctrl_o</code></td><td>output</td><td><code>sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t</code></td><td>Per-feature enable vector (1 = enabled) derived from the LC state, the SiP and system disable fuses, and the DEMOTE registers; all ones while security is disabled, otherwise all zeros on an LC-state integrity error.</td></tr>
 <tr><td><code>dbg_disable_o</code></td><td>output</td><td><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></td><td>Per-interface debug disables for the DTP, active-high (1 = disabled).</td></tr>
 <tr><td><code>sep_fuse_dft_disable_o</code></td><td>output</td><td><code>logic</code></td><td>Disables the SEP fuse DFT access path, active-high; no functional consumer, provided for DFT insertion.</td></tr>

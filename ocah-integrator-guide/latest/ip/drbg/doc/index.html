@@ -314,7 +314,7 @@ and control interfaces.</p>
 <h2 id="seed-assembly"><a class="anchor" href="#seed-assembly"></a><a class="link" href="#seed-assembly">3. Seed Assembly</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The <code>drbg_csrng_seed_adapter</code> receives one 32-bit entropy word per valid cycle directly from the entropy source (there is no upstream routing or distribution FIFO) and packs the words into full CSRNG-width seeds using an OpenTitan <code>prim_packer_fifo</code>. The packed seed is pushed into a shallow FIFO (default depth 1) along with a FIPS compliance flag set to a provisional value (<code>DRBG_CSRNG_SEED_FIPS_PROVISIONAL = 1</code>). The CSRNG pulls seeds through the standard <code>entropy_src_hw_if</code> handshake: <code>es_req</code> / <code>es_ack</code> / <code>es_bits</code> / <code>es_fips</code>. Because ingress is fire-and-forget with no backpressure, the producer must supply entropy no faster than the seed adapter can pack it.</p>
+<p>The <code>drbg_csrng_seed_adapter</code> receives one 32-bit entropy word per valid cycle directly from the entropy source (there is no upstream routing or distribution FIFO) and packs the words into full CSRNG-width seeds using an OpenTitan <code>prim_packer_fifo</code>. The packed seed is pushed into a shallow FIFO (default depth 1) along with a FIPS compliance flag set to a provisional value (<code>DrbgCsrngSeedFipsProvisional = 1</code>). The CSRNG pulls seeds through the standard <code>entropy_src_hw_if</code> handshake: <code>es_req</code> / <code>es_ack</code> / <code>es_bits</code> / <code>es_fips</code>. Because ingress is fire-and-forget with no backpressure, the producer must supply entropy no faster than the seed adapter can pack it.</p>
 </div>
 </div>
 </div>

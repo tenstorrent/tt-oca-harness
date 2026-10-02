@@ -796,14 +796,14 @@ Type parameters are set internally based on SMC package types.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_NUM_INT_CT</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CFG + <code>XTRIG_SMC_INT_CT_LANES</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CFG + <code>XtrigSmcIntCtLanes</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU-exposed count; DTP adds the SMC-reserved lanes</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_NUM_CLK_STOP_REQ</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CFG + <code>XTRIG_SMC_CLK_STOP_LANES</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CFG + <code>XtrigSmcClkStopLanes</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU-exposed count; DTP adds the SMC-reserved lane</p></td>
 </tr>
@@ -1252,25 +1252,25 @@ wired internally within the SMU.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tap_ctrl_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t[JtagNumExtraStapPorts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdi_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[JtagNumExtraStapPorts-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[JtagNumExtraStapPorts-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_oen_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[JtagNumExtraStapPorts-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 </tbody>
@@ -1701,31 +1701,31 @@ with DECERR to all transactions.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_src_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_INT_CT-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumIntCt-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC-reserved DTP lanes stay inside the SMU; remaining lanes are the SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_src_ack_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_INT_CT-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumIntCt-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC-reserved DTP lanes tied off; remaining lanes are the SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_dst_req_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_INT_CT-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumIntCt-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC-reserved DTP lanes from SMC <code>xtrigger_ss_o</code>; remaining lanes are the SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_dst_ack_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_INT_CT-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumIntCt-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC-reserved DTP lanes unused; remaining lanes are the SMU external port</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The low <code>smu_pkg::XTRIG_SMC_INT_CT_LANES</code> DTP internal-CT lanes are reserved for
+<p>The low <code>smu_pkg::XtrigSmcIntCtLanes</code> DTP internal-CT lanes are reserved for
 SMC (both bits of <code>xtrigger_ss_o</code>). The SMU exposes the remaining DTP lanes, so
 the SMU <code>XTRIG_NUM_INT_CT</code> field is that many less than DTP&#8217;s. The SMC uses
 pulse-synchronization mode, so ack signals for the reserved lanes are unused:
@@ -1757,7 +1757,7 @@ handshaking), the ack must be connected to the cross trigger endpoint.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_clk_stop_req_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CLK_STOP_REQ-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumClkStopReq-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTP lane 0: SMC <code>tdr_dbg_ctrl_clocks_stopped_by_cla_o</code>; remaining DTP lanes are the SMU external port</p></td>
 </tr>
 </tbody>
@@ -1765,7 +1765,7 @@ handshaking), the ack must be connected to the cross trigger endpoint.</p>
 <div class="paragraph">
 <p>Clock-stop request lane 0 is reserved for SMC. The SMU exposes the remaining
 DTP lanes, so the SMU <code>XTRIG_NUM_CLK_STOP_REQ</code> field is
-<code>smu_pkg::XTRIG_SMC_CLK_STOP_LANES</code> less than DTP&#8217;s.</p>
+<code>smu_pkg::XtrigSmcClkStopLanes</code> less than DTP&#8217;s.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1795,97 +1795,97 @@ present in the wrapper itself. Widths follow <code>CFG.XTRIG_NUM_CTP</code> (def
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[XTRIG_NUM_CTP-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[XtrigNumCtp-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port; connect to GPIO pad logic</p></td>
 </tr>
 </tbody>
@@ -2287,31 +2287,31 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsio_interface_select_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_GPIO_WRAPS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumGpioWraps-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_GPIO_WRAPS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumGpioWraps-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_GPIO_WRAPS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumGpioWraps-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_GPIO_WRAPS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumGpioWraps-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_GPIO_WRAPS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumGpioWraps-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 </tbody>
@@ -2377,37 +2377,37 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atdata_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_data_t[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_data_t[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atid_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>atb_id_t[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>atb_id_t[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atready_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_TELEMETRY_RECEIVERS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumTelemetryReceivers-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atvalid_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_TELEMETRY_RECEIVERS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumTelemetryReceivers-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_afvalid_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_TELEMETRY_RECEIVERS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumTelemetryReceivers-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_afready_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_TELEMETRY_RECEIVERS-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumTelemetryReceivers-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 </tbody>
@@ -2611,7 +2611,7 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[2*LC_STATE_WIDTH-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[2*LcStateWidth-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP lifecycle state when <code>SEP=1</code>, else <code>8&#8217;hf0</code>; ported through SMU</p></td>
 </tr>
 <tr>
@@ -2644,7 +2644,7 @@ the SEP-to-SMC dedicated AXI connection.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_mailbox_interrupts_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_MAILBOXES-1:0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[NumMailboxes-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 </tbody>
@@ -3137,17 +3137,17 @@ SMC within the SMU. These connections are not visible on the SMU boundary.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cross Trigger reserved lanes</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_dst_req_i[XTRIG_SMC_INT_CT_LANES-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_dst_req_i[XtrigSmcIntCtLanes-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_ss_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC &#8594; DTP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_pkg::XTRIG_SMC_INT_CT_LANES</code> DTP lanes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_pkg::XtrigSmcIntCtLanes</code> DTP lanes</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Clock Stop reserved lane</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_clk_stop_req_i[0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>tdr_dbg_ctrl_clocks_stopped_by_cla_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC &#8594; DTP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_pkg::XTRIG_SMC_CLK_STOP_LANES</code> DTP lane</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_pkg::XtrigSmcClkStopLanes</code> DTP lane</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot Stall</p></td>
@@ -3235,7 +3235,7 @@ depends on the module parameter <code>SEP</code>.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_src_ack_i[XTRIG_SMC_INT_CT_LANES-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_src_ack_i[XtrigSmcIntCtLanes-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>'0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC uses pulse-sync mode</p></td>
 </tr>
@@ -3437,7 +3437,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tap_ctrl_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_jtag_pkg::jtag_tap_ctrl_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JtagNumExtraStapPorts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TAP control array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
@@ -3446,7 +3446,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdi_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JtagNumExtraStapPorts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TDI array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
@@ -3455,7 +3455,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JtagNumExtraStapPorts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TDO array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3464,7 +3464,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_oen_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JtagNumExtraStapPorts-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TDO output enable array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3617,8 +3617,8 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_src_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_INT_CT-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger source requests. The SMU exposes DTP lanes above the SMC reservation (<code>smu_pkg::XTRIG_SMC_INT_CT_LANES</code>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumIntCt-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger source requests. The SMU exposes DTP lanes above the SMC reservation (<code>smu_pkg::XtrigSmcIntCtLanes</code>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger network</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
@@ -3626,7 +3626,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_src_ack_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_INT_CT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumIntCt-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger network</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 in pulse-sync mode</p></td>
@@ -3635,7 +3635,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_dst_req_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_INT_CT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumIntCt-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger destination requests. The SMU exposes DTP lanes above the SMC reservation.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger network</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
@@ -3644,7 +3644,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_dst_ack_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_INT_CT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumIntCt-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger destination acknowledges. Unused in pulse-sync mode.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger network</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3653,8 +3653,8 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_clk_stop_req_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CLK_STOP_REQ-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock stop requests. The SMU exposes DTP lanes above the SMC reservation (<code>smu_pkg::XTRIG_SMC_CLK_STOP_LANES</code>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumClkStopReq-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock stop requests. The SMU exposes DTP lanes above the SMC reservation (<code>smu_pkg::XtrigSmcClkStopLanes</code>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Clock stop requesters</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
@@ -3662,7 +3662,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-out data output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3671,7 +3671,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-out data output enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3680,7 +3680,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-out data input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
@@ -3689,7 +3689,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-out data input enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3698,7 +3698,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-in data output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3707,7 +3707,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-in data output enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3716,7 +3716,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-in data input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
@@ -3725,7 +3725,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-in data input enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3734,7 +3734,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-in data output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3743,7 +3743,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-in data output enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3752,7 +3752,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-in data input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
@@ -3761,7 +3761,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-in data input enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3770,7 +3770,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_dout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-out data output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3779,7 +3779,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_dout_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-out data output enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3788,7 +3788,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_din_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-out data input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
@@ -3797,7 +3797,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_din_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XtrigNumCtp-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-out data input enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3968,7 +3968,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsio_interface_select_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">LSIO interface selection.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3977,7 +3977,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input data from pad ring to core.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → SMU</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3986,7 +3986,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output data from core to pad ring.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -3995,7 +3995,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad-to-core path enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4004,7 +4004,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO core-to-pad path enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU → GPIO padring</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4040,7 +4040,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atdata_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_receiver_pkg::telemetry_data_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry data input array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4049,7 +4049,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atid_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_receiver_pkg::atb_id_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry ID input array.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4058,7 +4058,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atready_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry ready output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4067,7 +4067,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atvalid_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry valid input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4076,7 +4076,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_afvalid_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB flush valid output.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4085,7 +4085,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_afready_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumTelemetryReceivers-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB flush ready input.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4175,7 +4175,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LC_STATE_WIDTH-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LcStateWidth-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state output (driven by SEP when <code>SEP=1</code>, else <code>8&#8217;hf0</code>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External systems</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4193,7 +4193,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_request_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CpuClusterCount-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NDM reset request from external CPU cluster <code>i</code> on bit <code>i</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External CPU clusters</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
@@ -4202,7 +4202,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_process_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CpuClusterCount-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Firmware response to external CPU cluster <code>i</code> on bit <code>i</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC → external CPU clusters</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4211,7 +4211,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_mailbox_interrupts_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_MAILBOXES-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumMailboxes-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External mailbox interrupt outputs.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External targets</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
@@ -4274,7 +4274,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_interrupt_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumGpioWraps-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Passed through from SMC. Software reads GPIO status registers to identify the interrupt source.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC → external consumers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
@@ -4283,7 +4283,7 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_interrupt_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_UART-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NumUart-1:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Raw UART interrupt outputs, one bit per UART instance, in the peripheral clock domain. Passed through from SMC.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC → external consumers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>

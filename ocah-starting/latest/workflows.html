@@ -502,13 +502,12 @@ See <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/
 the full target list, build variables, key provisioning, and boot flow.</p>
 </div>
 <div class="paragraph">
-<p>The ROM supports two SPI transports selected at build time by <code>BOOT_SPI_CONTROLLER_OT</code>; the unused driver is dropped by <code>--gc-sections</code> at link time.
-The open-source OpenTitan SPI host (<code>BOOT_SPI_CONTROLLER_OT=1</code>) is the recommended transport and the one to use from the open tree.
-A proprietary memory-mapped SPI controller (<code>BOOT_SPI_CONTROLLER_OT=0</code>) is also supported via the SEP extension port but is not available in the open tree.
-The flag defaults to <code>0</code> in the Makefile; the named targets <code>ot-toolchain-images</code> and <code>ot-pio-toolchain-images</code> set it to <code>1</code> for you.</p>
+<p>The ROM supports two flash transports selected at build time by <code>BOOT_SPI_CONTROLLER_OT</code>; the unused driver is dropped by <code>--gc-sections</code> at link time.
+The default (<code>BOOT_SPI_CONTROLLER_OT=1</code>) uses the OpenTitan SPI host, and <code>BOOT_OT_SPI_USE_PIO</code> selects its RX-drain method (secure DMA by default, or CPU-programmed I/O).
+<code>BOOT_SPI_CONTROLLER_OT=0</code> reads memory-mapped flash through the external XIP window; its controller driver is optional from the open tree&#8217;s perspective and is supplied by an integrator through the weak hooks in <code>src/sep_spi.c</code>.</p>
 </div>
 <div class="paragraph">
-<p>The DV <code>sep</code> testbench has no SPI flash, so the ROM stubs SPI (<code>src/sep_spi.c</code>) and boots instead from the SMC-SRAM manifest path; <code>make oca-images</code> builds and packs the matching manifest+BL1 image (<code>build/smc_mem.hex</code>).</p>
+<p>The DV <code>sep</code> testbench has no SPI flash, so it boots instead from the SMC-SRAM manifest path: <code>oca-images</code> packs the non-secure boot-manifest image rebased to the SMC-SRAM base (<code>build/oca_smc_mem.hex</code>).</p>
 </div>
 <div class="paragraph">
 <p>The build splits into two halves so each can run in the correct environment:</p>
@@ -516,11 +515,11 @@ The flag defaults to <code>0</code> in the Makefile; the named targets <code>ot-
 <div class="ulist">
 <ul>
 <li>
-<p><code>ot-toolchain-images</code> — RISC-V/picolibc compilation with the OpenTitan SPI host; use the container when <code>RISCV_TOOLCHAIN</code> is unset.</p>
+<p><code>toolchain-images</code> — RISC-V/picolibc compilation; use the container when <code>RISCV_TOOLCHAIN</code> is unset.</p>
 </li>
 <li>
 <p><code>key-digests</code> and <code>oca-images</code> — pure Python via <code>uv</code>, which the container carries; can run in the container or on the host.
-<code>oca-images</code> is transport-agnostic: the same manifest+BL1 payload works with all three ROM variants, so no extra flags are needed after <code>ot-toolchain-images</code>.</p>
+<code>oca-images</code> is transport-agnostic: the same manifest+BL1 payload works with every ROM build profile, so no extra flags are needed after <code>toolchain-images</code>.</p>
 </li>
 </ul>
 </div>
@@ -539,16 +538,16 @@ The flag defaults to <code>0</code> in the Makefile; the named targets <code>ot-
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Recommended: compile with the OpenTitan SPI host (outputs to build_ot/):
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># OpenTitan SPI-host build (outputs to build/):
 # - Prefix with `scripts/docker-run.sh run-here` to run in the container
-make -C hw/sys/sep/bootrom/prod ot-toolchain-images
+make -C hw/sys/sep/bootrom/prod toolchain-images
 
 # Pack all OCA test images (signed, encrypted, per-ROM-key, and negative cases):
 make -C hw/sys/sep/bootrom/prod oca-images</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>ROM images land under <code>build_ot/</code> (the OpenTitan variant&#8217;s build directory):</p>
+<p>Outputs land under <code>hw/sys/sep/bootrom/prod/build/</code>:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -556,25 +555,21 @@ make -C hw/sys/sep/bootrom/prod oca-images</code></pre>
 <p><code>boot_rom.vmem</code> — 64-bit VMEM for the Boot ROM responder.</p>
 </li>
 <li>
-<p><code>boot_rom.itcm.hex</code> — ROM <code>.text</code> as ICCM-relative byte hex.</p>
+<p><code>boot_rom.itcm.hex</code> — ROM read-only sections as ICCM-relative byte hex.</p>
 </li>
 <li>
-<p><code>boot_rom.dtcm.hex</code> — <code>.data</code>/<code>.bss</code> initial image as DCCM-relative byte hex.</p>
+<p><code>boot_rom.dtcm.hex</code> — DCCM <code>.data</code>/<code>.bss</code> initial image as DCCM-relative byte hex.</p>
+</li>
+<li>
+<p><code>oca_*.bin</code> / <code>oca_*.spi_preload</code> — OCA boot-manifest images, one per validator path (<code>OCA_IMAGES</code> in the Makefile).</p>
+</li>
+<li>
+<p><code>oca_smc_mem.hex</code> — the non-secure image rebased to the SMC-SRAM base, for the DV testbench.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>Packed flash images from <code>oca-images</code> always land under <code>build/</code>, regardless of which ROM variant was compiled:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>smc_mem.hex</code> — packed manifest+BL1 image rebased to the SMC-SRAM base, for the DV testbench.</p>
-</li>
-<li>
-<p><code>secure_boot.spi_preload</code> / <code>encrypted_boot.spi_preload</code> — signed and AES-encrypted SPI flash preload images.</p>
-</li>
-</ul>
+<p>The <code>pio-toolchain-images</code> target builds the CPU-PIO drain ROM into <code>build_pio/</code>; the packed images stay under <code>build/</code>.</p>
 </div>
 </div>
 <div class="sect2">

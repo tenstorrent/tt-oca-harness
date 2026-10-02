@@ -692,22 +692,22 @@
 <tr><td><code>SEP_SEC_DISABLE_TOKEN</code></td><td><code>bit [255:0]</code></td><td><code>256&#x27;b0</code></td><td>Expected SHA-256 digest of the security-disable token, used by token processing when HAS_LC_STATE is set.</td></tr>
 <tr><td><code>EFUSE_MAP_REG_MAP_BASE_ADDR</code></td><td><code>bit [31:0]</code></td><td><code>32&#x27;h0</code></td><td>Base address of the MAP window holding the shadow registers.</td></tr>
 <tr><td><code>EFUSE_MAP_REG_MAP_SIZE</code></td><td><code>bit [31:0]</code></td><td><code>32&#x27;h1000</code></td><td>Size of the MAP window in bytes.</td></tr>
-<tr><td><code>EFUSE_MAP_REG_MAP_END_ADDR</code></td><td><code>bit [31:0]</code></td><td><code>EFUSE_MAP_REG_MAP_BASE_ADDR + EFUSE_MAP_REG_MAP_SIZE - 32&#x27;d1</code></td><td>Last byte address of the MAP window.</td></tr>
-<tr><td><code>EFUSE_MAP_REG_MAP_WIDTH</code></td><td><code>bit [31:0]</code></td><td><code>$clog2(EFUSE_MAP_REG_MAP_SIZE)</code></td><td>Offset address width of the MAP window.</td></tr>
+<tr><td><code>EfuseMapRegMapEndAddr</code></td><td><code>bit [31:0]</code></td><td><code>EFUSE_MAP_REG_MAP_BASE_ADDR + EFUSE_MAP_REG_MAP_SIZE - 32&#x27;d1</code></td><td>Last byte address of the MAP window.</td></tr>
+<tr><td><code>EfuseMapRegMapWidth</code></td><td><code>bit [31:0]</code></td><td><code>$clog2(EFUSE_MAP_REG_MAP_SIZE)</code></td><td>Offset address width of the MAP window.</td></tr>
 <tr><td><code>EFUSE_CTRL_REG_MAP_BASE_ADDR</code></td><td><code>bit [31:0]</code></td><td><code>32&#x27;h1000</code></td><td>Base address of the CTRL window holding the interface control registers.</td></tr>
 <tr><td><code>EFUSE_CTRL_REG_MAP_SIZE</code></td><td><code>bit [31:0]</code></td><td><code>32&#x27;h1000</code></td><td>Size of the CTRL window in bytes.</td></tr>
-<tr><td><code>EFUSE_CTRL_REG_MAP_END_ADDR</code></td><td><code>bit [31:0]</code></td><td><code>EFUSE_CTRL_REG_MAP_BASE_ADDR + EFUSE_CTRL_REG_MAP_SIZE - 32&#x27;d1</code></td><td>Last byte address of the CTRL window.</td></tr>
+<tr><td><code>EfuseCtrlRegMapEndAddr</code></td><td><code>bit [31:0]</code></td><td><code>EFUSE_CTRL_REG_MAP_BASE_ADDR + EFUSE_CTRL_REG_MAP_SIZE - 32&#x27;d1</code></td><td>Last byte address of the CTRL window.</td></tr>
 <tr><td><code>EFUSE_MMR_REG_MAP_BASE_ADDR</code></td><td><code>bit [31:0]</code></td><td><code>32&#x27;h2000</code></td><td>Base address of the MMR window holding the token registers; decoded only when HAS_LC_STATE is set.</td></tr>
 <tr><td><code>EFUSE_MMR_REG_MAP_SIZE</code></td><td><code>bit [31:0]</code></td><td><code>32&#x27;h1000</code></td><td>Size of the MMR window in bytes.</td></tr>
-<tr><td><code>EFUSE_MMR_REG_MAP_END_ADDR</code></td><td><code>bit [31:0]</code></td><td><code>EFUSE_MMR_REG_MAP_BASE_ADDR + EFUSE_MMR_REG_MAP_SIZE - 32&#x27;d1</code></td><td>Last byte address of the MMR window.</td></tr>
+<tr><td><code>EfuseMmrRegMapEndAddr</code></td><td><code>bit [31:0]</code></td><td><code>EFUSE_MMR_REG_MAP_BASE_ADDR + EFUSE_MMR_REG_MAP_SIZE - 32&#x27;d1</code></td><td>Last byte address of the MMR window.</td></tr>
 <tr><td><code>SHADOW_REG_BITS</code></td><td><code>int unsigned</code></td><td><code>8192</code></td><td>Shadow register file size in bits; program and read CSR bit addresses at or above it are rejected as out of bounds.</td></tr>
-<tr><td><code>SHADOW_REG_BYTES</code></td><td><code>int unsigned</code></td><td><code>SHADOW_REG_BITS / 8</code></td><td>Shadow register file size in bytes.</td></tr>
+<tr><td><code>ShadowRegBytes</code></td><td><code>int unsigned</code></td><td><code>SHADOW_REG_BITS / 8</code></td><td>Shadow register file size in bytes.</td></tr>
 <tr><td><code>EFUSE_MACRO_WORD_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Macro word width in bits.</td></tr>
 <tr><td><code>EFUSE_FIELDS</code></td><td><code>int unsigned</code></td><td><code>16</code></td><td>eFuse field-map entry count.</td></tr>
 <tr><td><code>HAS_LC_STATE</code></td><td><code>bit</code></td><td><code>1&#x27;b1</code></td><td>Set for SEP: adds the MMR window with token processing, the lifecycle state and the RMA token gates; clear for SMC, where MMR accesses return an error.</td></tr>
 <tr><td><code>CLASS1_SHADOW_RANGES</code></td><td><code>efuse_pkg::shadow_word_range_map_t</code></td><td><code>&#x27;0</code></td><td>Class-1 shadow word ranges, kept in separately named storage for scan exclusion.</td></tr>
 <tr><td><code>SECRET_SHADOW_RANGES</code></td><td><code>efuse_pkg::shadow_word_range_map_t</code></td><td><code>&#x27;0</code></td><td>Secret shadow ranges masked under secure_tm.</td></tr>
-<tr><td><code>LC_STATE_WIDTH</code></td><td><code>int unsigned</code></td><td><code>efuse_pkg::LC_STATE_RAW_WIDTH</code></td><td>Lifecycle-state field width.</td></tr>
+<tr><td><code>LcStateWidth</code></td><td><code>int unsigned</code></td><td><code>efuse_pkg::LcStateRawWidth</code></td><td>Lifecycle-state field width.</td></tr>
 <tr><td><code>LC_STATE_BIT_POSITION</code></td><td><code>int unsigned</code></td><td><code>0</code></td><td>Bit address of the lifecycle-state field.</td></tr>
 </table>
 <h2>Ports</h2>
