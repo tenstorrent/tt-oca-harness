@@ -979,6 +979,22 @@ and *Pass Criteria*. *Test Coverage* is one line — the cells or path walked.
 *Pass Criteria* is that every named checker PASSes and `UVM_ERROR` is 0.
 The checker table is the fail-able contract.
 
+Some records come from shared bring-up code and the shared sequences, and a
+card does not repeat them. Each one fails the leaf that runs it:
+
+* `CHK-FW-IDENTITY` (every firmware leaf): the loaded TCM images carry the
+  `FW-BUILD-ID` of the firmware source at the run's commit.
+* `CHK-FW-CONSOLE` (every firmware leaf): the firmware mailbox reports
+  completion with the PASS magic.
+* `CHK-ALERTS-ZERO` (leaves that bring up real entropy): CSRNG and EDN
+  `ERR_CODE` and `RECOV_ALERT` read 0 at the end of the run.
+* `CHK-NOISE-FORCE` (leaves that hold the ESRC noise constant):
+  `+esrc_noise_force` routes `esrc_noise_ext_i` to lane 0, shown by driving
+  both values.
+* `CHK-DONE-RW1C` and `CHK-ERR` (every KMAC operation of the KMAC sequence):
+  `INTR_STATE.kmac_done` sets after absorb and clears by W1C, and `ERR_CODE`
+  and `INTR_STATE.kmac_err` read 0.
+
 ==== Phase 1 procedures
 
 [[sep_axi_smoke_test]]
@@ -3018,6 +3034,8 @@ scored (`rom_main` KM). This test uses golden routing.
 |CHK5_km_sram
 |The word the Key Manager firmware stored to KM SRAM equals the word the DUT delivered on the AXIS endpoint. `km_rom_entropy.S` reads one DRBG-sampler DATA word and stores exactly that word to KM SRAM base + 0, so a wrong-word store, a dropped store, or a store to the wrong offset fails here — where a non-zero-only liveness poll would pass. The stored value is a genbits word and so differs per run; only the invariant is claimed.
 |===
+*Evidence*: CHK5_km_sram is logged as `CHK-KM-SRAM`.
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Scope limit*: `km_rom_entropy.S` reads one DRBG-sampler DATA word and stores
@@ -3150,6 +3168,8 @@ releases. Both mux directions are graded.
 |CHK-EDN-HOLD-KEEP
 |The word URND had staged when the unrelated engine was reset must be the word URND is acknowledged with, within a bounded recovery window. The acknowledge may be the reset-edge cycle itself.
 |===
+*Evidence*: `CHK-HMAC-DRAIN-OPEN`, `CHK-KMAC-DRAIN-OPEN` and `CHK-ABR-DRAIN-OPEN` record the opening clause of CHK-DRAIN-ORDER, CHK-KMAC-DRAIN-ORDER and CHK-ABR-DRAIN-ORDER: when the reset request is issued, the host isolate bit is 0 and the gated reset is still released.
+
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Not claimed*: the JTAG `IC_RESET` override of OTBN, AES or KMAC. It bypasses the endpoint cancel along with the isolation sequencing, so the EDN checks above take their resets from `SW_RESET_N` only. A word committed to an endpoint in the cycle its cancel rises is not targeted at SoC level: the software-reset write outlasts one engine seed. The adapter waives the arbiter request checks only on the first cycle of an endpoint flush; `AxisEdnCancelledEndpointIdle_A` and `AxisEdnReqStableUnlessEndpointCancelled_A` are the per-endpoint cancel and request-stability checks, enabled for all four crypto endpoints. Every assertion-based contract here needs VCS -- `prim_assert.sv` withholds `OCAH_OT_INC_ASSERT` when `VERILATOR` is defined, so the arbiter and adapter assertions do not exist in the default Verilator build.
