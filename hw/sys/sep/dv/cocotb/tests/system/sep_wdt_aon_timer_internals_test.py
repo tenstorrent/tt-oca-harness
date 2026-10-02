@@ -211,16 +211,14 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
 
         # CHK-REFCNT-LOAD is deliberately NOT claimed here. A software load of
-        # this counter is lost whenever clk_i runs far faster than clk_ref_i: at
-        # a 4 ns core period against the 40 ns reference the written value never
-        # reaches the counter, while 8 ns and 16 ns both take it. The update
+        # this counter can be lost when clk_i runs far faster than clk_ref_i.
+        # This bench drives clk_i at 1.25 ns and clk_ref_i at 10 ns. The update
         # crosses on a depth-1 async FIFO whose own source comment says an
         # update that arrives before the previous one has crossed is "dropped
         # with no error indication", and the guard assertion in that primitive
         # (CntUpdateAccepted_A) is compiled out of this build by
         # COMMON_CELLS_ASSERTS_OFF, so the loss is silent. Claiming the load
-        # would be claiming a contract this elaboration does not honour at every
-        # clock ratio the environment generates.
+        # needs a measurement at this ratio.
 
     async def _chk_wkup_count(self) -> None:
         """CHK-WKUP-COUNT: WKUP_COUNT advances on clk_wdt with a high (non-expiring) thold."""
@@ -347,6 +345,24 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         assert cause & WKUP_CAUSE_BIT, f"WKUP_CAUSE.cause not set after wkup expiry (0x{cause:08x})"
         await self.wdt.write(WKUP_COUNT_HI, 0)  # remove the wakeup condition
         await self.wdt.write(WKUP_COUNT_LO, 0)
+        # The COUNT writes are AON-domain too. Read COUNT back below the threshold
+        # first, so the cause read below samples the AON state after the condition
+        # is gone, not before the write crossed.
+        clear_budget = 100 * self._tick
+        low, cnt_lo = await self._poll_at_most(
+            WKUP_COUNT_LO,
+            self.cfg_wdt.wkup_thold - 1,
+            timeout_cycles=clear_budget,
+            step=4 * self._tick,
+        )
+        cnt_hi = await self.wdt.read(WKUP_COUNT_HI)
+        assert low and cnt_hi == 0, (
+            f"WKUP_COUNT did not read back below WKUP_THOLD={self.cfg_wdt.wkup_thold} "
+            f"after the reset write (HI=0x{cnt_hi:08x} LO=0x{cnt_lo:08x})"
+        )
+        # Hold for the same budget the write-0 clear below is given. A level-only
+        # cause would drop within it, as the write-0 clear must.
+        await ClockCycles(cocotb.top.clk_i, clear_budget)
         # Sticky: dropping the count must leave the cause set, otherwise the write-0
         # below cannot be blamed for the clear.
         cause_held = await self.wdt.read(WKUP_CAUSE)
@@ -359,7 +375,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         # WKUP_CAUSE is AON-domain (clk_aon=clk_wdt): the clear settles over a few clk_wdt
         # cycles via the register CDC, so poll rather than read back immediately.
         ccleared, cpost = await self._poll_bit_clear(
-            WKUP_CAUSE, WKUP_CAUSE_LSB, timeout_cycles=100 * self._tick, step=4 * self._tick
+            WKUP_CAUSE, WKUP_CAUSE_LSB, timeout_cycles=clear_budget, step=4 * self._tick
         )
         assert ccleared, (
             f"WKUP_CAUSE.cause not cleared after condition removal + write 0 (0x{cpost:08x})"

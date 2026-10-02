@@ -25,7 +25,7 @@
 `include "ocah_fcov_macros.svh"
 
 module smc_reset_fcov #(
-  parameter int unsigned CpuClusterCount = 4
+  parameter int unsigned CPU_CLUSTER_COUNT = 4
 ) (
   input wire clk_ref_i,
   input wire clk_smc_i,
@@ -36,7 +36,7 @@ module smc_reset_fcov #(
   input wire rst_cool_ni,
   input wire sep_wdt_reset_ni,
   input wire cfg_flr_pf_active_i,
-  input wire [CpuClusterCount-1:0] ndmreset_request_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
 
   // Reset observables (DUT -> TB).
   input wire powergood_stable_i,
@@ -48,7 +48,7 @@ module smc_reset_fcov #(
   input wire rst_cool_from_flr_ni,
   input wire fuse_reset_ni,
   input wire ss0_warm_reset_ni,
-  input wire [CpuClusterCount-1:0] ndmreset_process_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_process_i,
   input wire ndmreset_irq_i
 );
 
@@ -156,6 +156,15 @@ module smc_reset_fcov #(
       bins all_held = {4'b0000};
       bins all_released = {4'b1111};
       bins partial[] = {[4'b0001 : 4'b1110]};
+      // The vector is {powergood, cold_stable_ref, primary_ref, primary_smc}.
+      // powergood low holds the cold-stable reset and every primary derives
+      // from it, so no lower bit rises while powergood is low.
+      ignore_bins powergood_low = {[4'b0001 : 4'b0111]};
+      // The ref-domain primary derives from the ref-domain cold-stable reset.
+      ignore_bins primary_ref_before_cold = {4'b1010, 4'b1011};
+      // Both primaries synchronise one request; the ref-domain copy, on the
+      // slower clock, releases after the smc-domain copy.
+      ignore_bins primary_ref_before_smc = {4'b1110};
     }
   endgroup
 
@@ -163,13 +172,22 @@ module smc_reset_fcov #(
       logic cold, logic cool, logic wdt, logic warm, logic ndm, logic flr
   );
     option.per_instance = 1;
-    cp_cold: coverpoint cold;
+    cp_cold: coverpoint cold {bins released = {1'b0}; bins asserted = {1'b1};}
     cp_cool: coverpoint cool;
     cp_wdt: coverpoint wdt;
-    cp_warm: coverpoint warm;
+    cp_warm: coverpoint warm {bins released = {1'b0}; bins asserted = {1'b1};}
     cp_ndm: coverpoint ndm;
     cp_flr: coverpoint flr;
-    x_cold_warm: cross cp_cold, cp_warm;
+    // The group samples on clk_smc_i, which tb_top binds to the PLL output
+    // clock. Design fact, for design-engineering review: cold reset asserts
+    // warm reset in the same timestep through the fuse-reset path. fuse_reset_ni falls with cold,
+    // because u_ext_boot_seq_done_qual is asynchronously reset by the raw cold
+    // pin (hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv), so the
+    // cold-without-warm state never holds. Retired by a design change that
+    // sequences warm after cold, or by a specification stating the ordering.
+    x_cold_warm: cross cp_cold, cp_warm{
+      ignore_bins cold_without_warm = binsof (cp_cold.asserted) && binsof (cp_warm.released);
+    }
   endgroup
 
   cg_reset_state u_cg_reset_state = new();

@@ -142,6 +142,11 @@ args = [
 # ACQ-full auto-stretch and its release by ACQ reset. The stretch is a duration
 # on SCL no register reports; the image parks at two markers and the bench
 # samples the target's own SCL pull in each window before acknowledging.
+# The simulated time is set by the 70-byte standard-mode write that fills ACQ,
+# about 7 ms timed by the periph clock, and nothing in it depends on the seed.
+# +pll_sys_period_ns=10 runs clk_smc_i at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span; the periph clock that times I2C stays at 200 MHz.
 name = "smc_fw_i2c_acq_fifo_stretch_reset_test"
 module = "smc_fw_i2c_acq_fifo_stretch_reset_test"
 seed = 1
@@ -153,13 +158,14 @@ args = [
     "+smc_hold_cpu_boot",
     "+smc_scratch_ram_hex=i2c_acq_fifo_stretch_reset.ecc.hex",
     "+smc_i2c_shared_bus",
+    "+pll_sys_period_ns=10",
 ]
 
 [[tests]]
 name = "smc_fw_i2c_p1_fifo_depth_xfer_test"
 module = "smc_fw_i2c_p1_fifo_depth_xfer_test"
 seed = 1
-timeout_sec = 3600
+timeout_sec = 7200
 tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_p1_fifo_depth_xfer"
@@ -255,6 +261,22 @@ args = [
     "+smc_scratch_ram_hex=uart_log_engine_fetch_err.ecc.hex",
 ]
 
+[[tests]]
+# Word stores into the half of a 64-bit register word whose fields they do not
+# address. The core replicates the word onto the fields' lanes with the strobes
+# clear, a case SEP_IN cannot make because its master zero-fills those lanes.
+name = "smc_fw_narrow_store_lane_test"
+module = "smc_fw_narrow_store_lane_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "register"]
+run_modes = ["smoke"]
+firmware = "narrow_store_lane"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=narrow_store_lane.ecc.hex",
+]
+
 [[groups]]
 name = "fw"
 tests = [
@@ -266,6 +288,7 @@ tests = [
     "smc_fw_i2c_sanity_test",
     "smc_fw_i2c_target_sanity_test",
     "smc_fw_i2c_tx_stretch_timeout_recovery_test",
+    "smc_fw_narrow_store_lane_test",
     "smc_fw_octs_p0_primary_test",
     "smc_fw_plic_claim_test",
     "smc_fw_uart_log_engine_boundary_backpressure_test",
@@ -273,4 +296,4 @@ tests = [
     "smc_fw_uart_log_engine_fetch_err_test",
     "smc_fw_uart_log_engine_single_entry_test",
 ]
-expected_count = 14
+expected_count = 15

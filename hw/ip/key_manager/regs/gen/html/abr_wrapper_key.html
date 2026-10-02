@@ -6,35 +6,100 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: abr_wrapper_key</h2>
+<h2 id="regmap-abr_wrapper_key">Adams Bridge Key Sideload Registers</h2>
+<p>Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge.<br>Contains four dual-share secret-seed inputs and one shared-key output.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
-<li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
+<li><strong>MLDSA_SEED.KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>MLDSA_SEED.KEY_SHARE1[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
+<li><strong>MLKEM_SEED_D.KEY_SHARE0[8]</strong>: 8 registers, base 0x100, stride 0x4</li>
+<li><strong>MLKEM_SEED_D.KEY_SHARE1[8]</strong>: 8 registers, base 0x120, stride 0x4</li>
+<li><strong>MLKEM_SEED_Z.KEY_SHARE0[8]</strong>: 8 registers, base 0x200, stride 0x4</li>
+<li><strong>MLKEM_SEED_Z.KEY_SHARE1[8]</strong>: 8 registers, base 0x220, stride 0x4</li>
+<li><strong>MLKEM_MSG.KEY_SHARE0[8]</strong>: 8 registers, base 0x300, stride 0x4</li>
+<li><strong>MLKEM_MSG.KEY_SHARE1[8]</strong>: 8 registers, base 0x320, stride 0x4</li>
 <li><strong>KEY[8]</strong>: 8 registers, base 0x400, stride 0x4</li>
 </ul>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
-<tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
-<tr><td>0x40</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#MLDSA_SEED.KEY_SHARE0_8_">MLDSA_SEED.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x20 - 0x3C</td><td><a href="#MLDSA_SEED.KEY_SHARE1_8_">MLDSA_SEED.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x40</td><td><a href="#MLDSA_SEED.KEY_CTRL">MLDSA_SEED.KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
+<tr><td>0x100 - 0x11C</td><td><a href="#MLKEM_SEED_D.KEY_SHARE0_8_">MLKEM_SEED_D.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x120 - 0x13C</td><td><a href="#MLKEM_SEED_D.KEY_SHARE1_8_">MLKEM_SEED_D.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x140</td><td><a href="#MLKEM_SEED_D.KEY_CTRL">MLKEM_SEED_D.KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
+<tr><td>0x200 - 0x21C</td><td><a href="#MLKEM_SEED_Z.KEY_SHARE0_8_">MLKEM_SEED_Z.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x220 - 0x23C</td><td><a href="#MLKEM_SEED_Z.KEY_SHARE1_8_">MLKEM_SEED_Z.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x240</td><td><a href="#MLKEM_SEED_Z.KEY_CTRL">MLKEM_SEED_Z.KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
+<tr><td>0x300 - 0x31C</td><td><a href="#MLKEM_MSG.KEY_SHARE0_8_">MLKEM_MSG.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x320 - 0x33C</td><td><a href="#MLKEM_MSG.KEY_SHARE1_8_">MLKEM_MSG.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x340</td><td><a href="#MLKEM_MSG.KEY_CTRL">MLKEM_MSG.KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
 <tr><td>0x400 - 0x41C</td><td><a href="#KEY_8_">KEY[8]</a></td><td>R</td><td>One 32-bit word of ML-KEM shared key output. Written by hardware<br>when key is ready; read by KM firmware to consume. Hardware clears<br>all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).</td></tr>
+<tr><td>0x420</td><td><a href="#MLKEM_SHARED_KEY.KEY_CTRL">MLKEM_SHARED_KEY.KEY_CTRL</a></td><td>RW</td><td>Shared-key control. HW sets KEY_VALID when a new key is ready.<br>Firmware writes 0 to clear (consume and zeroize).</td></tr>
 <tr><td>0x424</td><td><a href="#IRQ_STATUS">IRQ_STATUS</a></td><td>RW</td><td>Interrupt status for ML-KEM shared key. Sticky bit set by<br>hardware when a new shared key becomes valid; cleared by writing 1.</td></tr>
 <tr><td>0x428</td><td><a href="#IRQ_ENABLE">IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable for ML-KEM shared key. Mask for the<br>PicoRV32 IRQ vector bit driven by the shared-key-valid event.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
+<h3 id="MLDSA_SEED.KEY_SHARE0_8_">MLDSA_SEED.KEY_SHARE0[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
 </table>
-<h3 id="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
+<h3 id="MLDSA_SEED.KEY_SHARE1_8_">MLDSA_SEED.KEY_SHARE1[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
 </table>
-<h3 id="KEY_CTRL">KEY_CTRL</h3>
+<h3 id="MLDSA_SEED.KEY_CTRL">MLDSA_SEED.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.<br>Write 0 to invalidate and allow a new seed to be written.</td></tr>
+</table>
+<h3 id="MLKEM_SEED_D.KEY_SHARE0_8_">MLKEM_SEED_D.KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="MLKEM_SEED_D.KEY_SHARE1_8_">MLKEM_SEED_D.KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="MLKEM_SEED_D.KEY_CTRL">MLKEM_SEED_D.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.<br>Write 0 to invalidate and allow a new seed to be written.</td></tr>
+</table>
+<h3 id="MLKEM_SEED_Z.KEY_SHARE0_8_">MLKEM_SEED_Z.KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="MLKEM_SEED_Z.KEY_SHARE1_8_">MLKEM_SEED_Z.KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="MLKEM_SEED_Z.KEY_CTRL">MLKEM_SEED_Z.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.<br>Write 0 to invalidate and allow a new seed to be written.</td></tr>
+</table>
+<h3 id="MLKEM_MSG.KEY_SHARE0_8_">MLKEM_MSG.KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="MLKEM_MSG.KEY_SHARE1_8_">MLKEM_MSG.KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="MLKEM_MSG.KEY_CTRL">MLKEM_MSG.KEY_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
@@ -45,11 +110,17 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>32-bit shared-key word. Hardware writes on key-ready event;<br>hardware clears to 0 on key-consume event (KEY_VALID cleared).</td></tr>
 </table>
+<h3 id="MLKEM_SHARED_KEY.KEY_CTRL">MLKEM_SHARED_KEY.KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW0C</td><td>0x0</td><td>1 = shared key is valid and ready for firmware consumption.<br>Hardware sets this bit on key-ready event. Write 0 to clear;<br>write 1 has no effect (software cannot set this bit).</td></tr>
+</table>
 <h3 id="IRQ_STATUS">IRQ_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>ML-KEM shared key valid. Sticky, write 1 to clear.</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW1C</td><td>0x0</td><td>ML-KEM shared key valid. Sticky, write 1 to clear.</td></tr>
 </table>
 <h3 id="IRQ_ENABLE">IRQ_ENABLE</h3>
 <table>

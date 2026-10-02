@@ -178,17 +178,38 @@ int rsa_3072_verify(const uint8_t *digest, const uint8_t *signature, const uint8
         return rc;
     }
 
-    // 6-7. Read the result back and verify PKCS#1 v1.5 padding and digest match.
+    // 6. Read the result back from OTBN DMEM.
+    uint32_t result[RSA_3072_NUM_WORDS];
+    uint32_t *rp = result;
+    otbn_dmem_read(DMEM_INOUT_OFFSET, rp, RSA_3072_NUM_WORDS);
+
+    // 7. The result shares `inout` with the signature, so a modexp that did not
+    //    happen leaves the caller's own signature bytes in `result`, and a
+    //    signature authored as a well-formed PKCS#1 v1.5 block would verify
+    //    against itself. sig^e mod n cannot equal sig for a value that also
+    //    parses as that block, so an unchanged buffer means no modexp ran.
+    //    otbn_execute() already rejects a command that never started; this is
+    //    the same conclusion drawn from the data rather than from the block.
+    //
+    //    Both operands are public, so the fold is not for secrecy. It is one
+    //    exit instead of a return per word, leaving no early branch for a fault
+    //    to skip.
+    uint32_t diff = 0;
+    for (int i = 0; i < RSA_3072_NUM_WORDS; ++i) {
+        diff |= result[i] ^ sig_words[i];
+    }
+    if (diff == 0u) {
+        simputs("RSA_INOUT_UNCHANGED\n");
+        return -1;
+    }
+
+    // 8. Verify PKCS#1 v1.5 padding and digest match.
     //
     // This comparison decides the whole chain of trust: the modexp result can
     // only be forged by a fault that reproduces a valid PKCS#1 structure, but a
     // fault on the comparison turns any signature into a pass. So it is
     // evaluated twice over an independent DMEM read, over laundered operands so
     // the two evaluations cannot be merged, and rejects on disagreement.
-    uint32_t result[RSA_3072_NUM_WORDS];
-    uint32_t *rp = result;
-
-    otbn_dmem_read(DMEM_INOUT_OFFSET, rp, RSA_3072_NUM_WORDS);
     const uint32_t cmp1 = verify_pkcs1_v15(rp, digest, PKCS1_PASS_TOKEN_A);
     simputs("RSA_CMP1\n");
 

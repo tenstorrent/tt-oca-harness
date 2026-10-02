@@ -39,8 +39,8 @@ AMBER = "#f6c343"
 RED = "#C55050"
 GREY = "#9f9f9f"
 
-PASS_AT = 95.0
-WARN_AT = 70.0
+PASS_AT = 98.0
+WARN_AT = 85.0
 
 # Statuses reporting no verdict, banded grey rather than as a failure.
 UNMEASURED = {"", "SKIP", "NOTRUN"}
@@ -149,7 +149,7 @@ def badges_for(
     """
     status = str(dut.get("status") or "").upper()
     rate = percent(dut.get("pass_rate"))
-    total = percent((coverage or {}).get("total_percent"))
+    total = percent(coverage.get("total_percent") if isinstance(coverage, dict) else None)
 
     tests = dut.get("tests_total")
     if isinstance(tests, int) and not isinstance(tests, bool) and tests == 0:
@@ -194,6 +194,10 @@ def main() -> int:
         summary = json.loads(args.source.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         print(f"error: cannot read {args.source}: {error}", file=sys.stderr)
+        return 1
+
+    if not isinstance(summary, dict):
+        print(f"error: {args.source} is not a JSON object", file=sys.stderr)
         return 1
 
     coverage_by_series = {

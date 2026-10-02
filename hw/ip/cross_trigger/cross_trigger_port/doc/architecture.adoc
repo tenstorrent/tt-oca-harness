@@ -9,12 +9,31 @@ runtime configuration, while the `cross_trigger_port_core` module provides the
 core functionality without registers, allowing instantiation for internal
 cross-trigger connections without AXI-Lite overhead.
 
-image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
+<<ctp-module-structure-figure>> shows the Cross Trigger Port logic and its pad
+interfaces.
+
+[[ctp-module-structure-figure]]
+.CTP module structure
+image::ctp-module-structure.svg["Gate-level structure of the Cross Trigger Port: the u_reg CSR block and the u_core pulse stretcher, handshake controller, synchronisers and pad-control muxes and registers",width=100%,pdfwidth=100%]
+
+The figure is read from the core side on the left to the four GPIO pads on the
+right. Every 2:1 mux is selected by `mode_wire_or_i`, and the numbers inside
+it mark which input each select value takes. Input 1, drawn upper, passes in
+wire-OR mode, when `mode_wire_or_i` is high because `CONFIG.MODE` is 0; input 0,
+drawn lower, passes in point-to-point mode. Italic names are nets driven by
+`u_reg` from the named CSR fields. Every pad control and both core-side outputs, `ct_dst_o` and `busy_o`,
+leave the port through a register on `clk_i`. Each pad input passes through two
+synchroniser registers and an XOR with `invert_i` and, on the handshake inputs, an
+AND with `p2p_din_valid` before any logic uses it. The
+`STATUS` read-back from the core to `u_reg` is not drawn.
 
 === Submodule Hierarchy
 
 The CTP core instantiates four specialized submodules for different aspects of
 cross-trigger operation:
+
+<<ctp-submodules-table>> identifies the submodules that implement synchronization and
+cross-trigger operation.
 
 ifdef::backend-html5[]
 ++++
@@ -22,7 +41,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[ctp-submodules-table]]
 [cols="<34,<66",options="header",role="port-reference"]
+.CTP submodules
 |===
 |Module |Purpose
 
@@ -33,7 +54,7 @@ endif::backend-html5[]
 |Extends source pulse duration for Wire-OR mode transmission, with configurable stretch multiplier (0-65535 cycles)
 
 |`ctp_edge_detector`
-|Detects positive edges on synchronized ct_req_in signal for Point-to-Point mode receiver operation
+|Detects positive edges on the synchronized ct_req_in signal; its output is not connected, because the receiver state machine works on the ct_req_in level
 
 |`ctp_handshake_ctrl`
 |Implements sender and receiver state machines for Point-to-Point mode four-phase handshaking protocol
@@ -81,12 +102,29 @@ configured I/O pad. For I/O pads that do have explicit open-drain control, the
 request data signal should connect to the output-enable control pin of the I/O
 pad, and the output data signal of the I/O pin should be driven statically low.
 
-image::ctp_wireor_diagram.png[CTP Wire-OR Mode Diagram,scaledwidth=90.0%]
+<<ctp-wire-or-behavior-figure>> shows the open-drain request path and pulse-stretching
+logic used in wire-OR mode. It is <<ctp-module-structure-figure>> with every mux
+resolved to its wire-OR input. The CT_Req_out pad drives the constant
+`invert_i`, so its output enable, the stretched pulse, decides when the pad pulls
+the wire. The CTP receives a cross trigger on the falling edge of the
+synchronised wire: the register marked _prev_ holds the previous level and the
+AND gate fires when the previous level is high and the current one low. The
+CTP disables the buffers of the other three pads in this mode, so they are not
+drawn.
+
+[[ctp-wire-or-behavior-figure]]
+.CTP wire-OR behavior
+image::ctp-wire-or-mode.svg["Cross Trigger Port in wire-OR mode: pulse stretcher driving the CT_Req_out pad output enable and a falling-edge detector on the pad input",width=100%,pdfwidth=100%]
 
 Any number of chiplets may have their _CT_Req_out_ pads interconnected as shown
-in the following example diagram:
+in <<ctp-wire-or-chiplet-connections-figure>>. In each chiplet the CLAs reach the
+CTM through the internal CTPs of the Cross Trigger Network, and the CTM reaches
+the external CTP through its _CT_Src_ and _CT_Dst_ signals. The shared wire also
+reaches a package pin.
 
-image::sip_wireor_diagram.png[SiP Wire-OR Cross Trigger Diagram,scaledwidth=90.0%]
+[[ctp-wire-or-chiplet-connections-figure]]
+.CTP wire-OR chiplet connections
+image::ctp-sip-wire-or.svg["Three chiplets whose wire-OR CTPs share one open-drain CT_Req_out wire that also reaches a package pin",width=100%,pdfwidth=100%]
 
 === Point-to-Point Mode
 
@@ -97,12 +135,26 @@ for each chiplet-to-chiplet interconnection, and each CTP requires four I/O pads
 for bi-directional communication, or two pads for unidirectional communication.
 All output pads are configured for push-pull operation.
 
-image::ctp_p2p_diagram.png[CTP Point-to-Point Mode Diagram,scaledwidth=90.0%]
+<<ctp-point-to-point-behavior-figure>> shows the request and acknowledge paths used for
+point-to-point handshaking. It is <<ctp-module-structure-figure>> with every mux
+resolved to its point-to-point input. The output enables of CT_Req_out and
+CT_Ack_out and the input enables of CT_Ack_in and CT_Req_in are registered 1s.
+The input enable of the CT_Req_out pad is 0 in this mode, so only its output
+buffer is drawn, and the pulse stretcher and falling-edge detector are unused.
+
+[[ctp-point-to-point-behavior-figure]]
+.CTP point-to-point behavior
+image::ctp-point-to-point-mode.svg["Cross Trigger Port in point-to-point mode: handshake controller driving CT_Req_out and CT_Ack_out and reading the synchronised CT_Ack_in and CT_Req_in pads",width=100%,pdfwidth=100%]
 
 Any two chiplets may have their four cross trigger pads cross-coupled as shown
-in the following example diagram:
+in <<ctp-point-to-point-chiplet-connections-figure>>. Each CTP lists its pads on
+the side that faces its partner, in the order that keeps every wire straight, so
+each request output meets a request input and each acknowledge output an
+acknowledge input.
 
-image::sip_p2p_diagram.png[SiP Point-to-Point Cross Trigger Diagram,scaledwidth=90.0%]
+[[ctp-point-to-point-chiplet-connections-figure]]
+.CTP point-to-point chiplet connections
+image::ctp-sip-point-to-point.svg["Two chiplets whose point-to-point CTPs are cross-coupled by request and acknowledge wires in both directions",width=100%,pdfwidth=100%]
 
 On the sender side, the receiver's _CT_Ack_out_ is connected to the sender's
 _CT_Ack_in_ pad. _CT_Req_out_ asserts whenever _CT_Src_ asserts. _CT_Req_out_
@@ -113,8 +165,10 @@ _CT_Req_in_ pad. On any positive edge of _CT_Req_in_, the receiver generates a
 pulse on _CT_Dst_ and asserts _CT_Ack_out_. Deassertion proceeds in exactly the
 same sequence.
 
-The timing of the request/acknowledge handshake is shown in the diagram below:
+The timing of the request/acknowledge handshake is shown in <<ctp-request-acknowledge-timing-figure>>:
 
+[[ctp-request-acknowledge-timing-figure]]
+.CTP request-acknowledge timing
 image::p2p_timing_diagram.svg[Point-to-Point Request/Acknowledge Timing,scaledwidth=90.0%]
 
 ==== Synchronization and CDC Handling
@@ -124,13 +178,18 @@ require synchronization to prevent metastability. The `ctp_synchronizer` module
 implements three independent 2-FF synchronizer chains using the
 `prim_flop_2sync` primitive:
 
+<<ctp-signal-synchronization-table>> identifies the incoming signals synchronized in
+each operating mode.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTP signal synchronization" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctp-signal-synchronization-table]]
 [cols="<28,<20,<52",options="header",role="port-reference"]
+.CTP signal synchronization
 |===
 |Signal |Used In Mode |Synchronization Purpose
 
@@ -167,7 +226,20 @@ state machine controls outgoing cross-trigger requests, while the receiver state
 machine handles incoming requests. Both state machines operate synchronously in
 the system clock domain on synchronized GPIO inputs.
 
+The state machines run only in point-to-point mode. While wire-OR mode is
+selected, `cross_trigger_port_core` holds the sender in SENDER_IDLE with
+`ct_req_out=0` and blocks `ct_src_i` from reaching it. The `CT_Req_in` and
+`CT_Ack_in` pad inputs are disabled in wire-OR mode, and after point-to-point
+mode is selected their synchronizers hold the disabled pad level for two
+cycles. The core presents both synchronized inputs to the state machines as
+deasserted until the delayed input enable shows the synchronizers carry pad
+data. Neither a trigger raised in wire-OR mode nor the level of a disabled pad
+reaches the point-to-point pads when the mode changes.
+
 *Sender State Machine:*
+
+<<ctp-sender-state-transitions-table>> lists the sender handshake states, transition
+conditions, and output actions.
 
 ifdef::backend-html5[]
 ++++
@@ -175,7 +247,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[ctp-sender-state-transitions-table]]
 [cols="<28,<22,<28,<22",options="header",role="port-reference"]
+.CTP sender state transitions
 |===
 |Current State |Condition |Next State |Output Actions
 
@@ -198,6 +272,11 @@ endif::backend-html5[]
 |`reset_i` asserted
 |SENDER_IDLE
 |Force `ct_req_out=0`
+
+|Any state
+|Wire-OR mode selected
+|SENDER_IDLE
+|Force `ct_req_out=0`
 |===
 
 ifdef::backend-html5[]
@@ -208,13 +287,18 @@ endif::backend-html5[]
 
 *Receiver State Machine:*
 
+<<ctp-receiver-state-transitions-table>> lists the receiver handshake states, transition
+conditions, and output actions.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTP receiver state transitions" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctp-receiver-state-transitions-table]]
 [cols="<27,<20,<27,<26",options="header",role="port-reference"]
+.CTP receiver state transitions
 |===
 |Current State |Condition |Next State |Output Actions
 
@@ -246,6 +330,11 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 The `ct_dst` output pulse is generated for a single clock cycle when the
-receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is
-asserted whenever either state machine is not in its IDLE state, indicating an
-active cross-trigger transfer.
+receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal
+indicates an active cross-trigger transfer: it reflects either state machine
+being outside its IDLE state. It is registered once in `ctp_handshake_ctrl` and
+again in `cross_trigger_port_core`, so `busy_o` and `STATUS.BUSY` rise two
+`clk_i` cycles after a state machine leaves IDLE and fall two `clk_i` cycles
+after both state machines return to IDLE. Logic that samples `busy_o` within two
+cycles of a trigger on `ct_src_i`, or of the end of a handshake, sees the
+previous value.

@@ -25,7 +25,7 @@ from pathlib import Path
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import CHeaderRegBlock, ot_c_header, sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_hash_test")
@@ -33,6 +33,9 @@ _ITCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.dtcm.hex")
 
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
+# CFG_REGWEN reads its RDL reset (MUBI4 TRUE, unlocked) before any DMA
+# configuration; the value comes from the generated secure_dma C header.
+_CFG_REGWEN_RESET = CHeaderRegBlock("SECURE_DMA", ot_c_header("secure_dma")).reset("CFG_REGWEN")
 # DMA copy + inline SHA-256 + a software SHA-256 over 256 bytes; the run loop
 # early-exits on fw_done, so this is just an upper bound.
 _MAX_RUN_CYCLES = 3_000_000
@@ -91,7 +94,7 @@ class sep_dma_hash_test(sep_base_test):
         # instead of hiding behind the PASS magic.
         for needle, chk, what in (
             (
-                "CFG_REGWEN = 0x6 (expected 0x6 for unlocked)",
+                f"CFG_REGWEN = 0x{_CFG_REGWEN_RESET:x} (expected 0x{_CFG_REGWEN_RESET:x} for unlocked)",
                 "CHK-CFG",
                 "CFG_REGWEN readable and unlocked before configuration",
             ),

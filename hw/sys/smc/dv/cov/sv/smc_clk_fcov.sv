@@ -21,7 +21,7 @@
 
 module smc_clk_fcov #(
   // Ref-clock cycles per measurement window for the domain-ratio points.
-  parameter int unsigned WindowCycles = 1024
+  parameter int unsigned WINDOW_CYCLES = 1024
 ) (
   input wire clk_ref_i,
   input wire clk_smc_i,
@@ -69,8 +69,8 @@ module smc_clk_fcov #(
   // so a read landing on an increment only shifts a ratio by one count.
   // ------------------------------------------------------------------
   localparam int unsigned CntWidth = 32;
-  localparam int unsigned WinWidth = $clog2(WindowCycles);
-  localparam logic [WinWidth-1:0] WindowLast = WinWidth'(WindowCycles - 1);
+  localparam int unsigned WinWidth = $clog2(WINDOW_CYCLES);
+  localparam logic [WinWidth-1:0] WindowLast = WinWidth'(WINDOW_CYCLES - 1);
 
   // Every register here carries a reset branch. Without one a 4-state
   // simulator holds the counters at X for the whole run, the window never
@@ -95,7 +95,7 @@ module smc_clk_fcov #(
   end
 
   // The deltas are registered at the closing edge against the base captured
-  // when the window opened, so they span WindowCycles ref edges. Reading
+  // when the window opened, so they span WINDOW_CYCLES ref edges. Reading
   // live counters against a base loaded on the same edge would measure a
   // single cycle instead.
   logic [WinWidth-1:0] win_cnt_q;
@@ -132,12 +132,15 @@ module smc_clk_fcov #(
   wire [CntWidth-1:0] d_smc = d_smc_q;
   wire [CntWidth-1:0] d_periph = d_periph_q;
 
-  // A window in which a domain produced no edge at all while ref ran is the
-  // liveness hole worth naming.
+`ifdef SMC_FCOV_PHASE2
+  // Phase 2 (SMC_FCOV.adoc): a window in which a domain produced no edge at
+  // all while ref ran. clk_rst.adoc gives each input clock a domain, and
+  // clk_periph_i a 100 MHz minimum, but defines no mode in which one stops.
   wire smc_stalled_e = window_tick_q && (d_ref != '0) && (d_smc == '0);
   wire periph_stalled_e = window_tick_q && (d_ref != '0) && (d_periph == '0);
   `OCAH_FCOV_COVER(c_clk_smc_stalled_window, smc_stalled_e, clk_ref_i, in_reset)
   `OCAH_FCOV_COVER(c_clk_periph_stalled_window, periph_stalled_e, clk_ref_i, in_reset)
+`endif
 
   wire smc_faster_e = window_tick_q && (d_smc > d_ref);
   wire smc_equal_e = window_tick_q && (d_smc == d_ref) && (d_ref != '0);
@@ -213,16 +216,25 @@ module smc_clk_fcov #(
   // never observed with its downstream clock moving is not proof the gate
   // works; these two points separate the enable from its effect.
   // ------------------------------------------------------------------
+  // A gated clock is observed through a flop it toggles itself. Sampling the
+  // clock net on the edge of the clock it is gated from reads the same level
+  // every cycle whether it runs or not; the flop changes between two samples
+  // exactly when the gated clock had an edge.
+  logic dma_clk_div_q, zeroer_axi_div_q, zeroer_reg_div_q;
+  always_ff @(posedge dma_gated_clk_i) dma_clk_div_q <= (dma_clk_div_q !== 1'b1);
+  always_ff @(posedge zeroer_gated_axi_clk_i) zeroer_axi_div_q <= (zeroer_axi_div_q !== 1'b1);
+  always_ff @(posedge zeroer_gated_reg_clk_i) zeroer_reg_div_q <= (zeroer_reg_div_q !== 1'b1);
+
   logic dma_gated_clk_q, zeroer_axi_clk_q, zeroer_reg_clk_q;
   always_ff @(posedge clk_smc_i) begin
-    dma_gated_clk_q <= dma_gated_clk_i;
-    zeroer_axi_clk_q <= zeroer_gated_axi_clk_i;
-    zeroer_reg_clk_q <= zeroer_gated_reg_clk_i;
+    dma_gated_clk_q <= dma_clk_div_q;
+    zeroer_axi_clk_q <= zeroer_axi_div_q;
+    zeroer_reg_clk_q <= zeroer_reg_div_q;
   end
 
-  wire dma_clk_toggling = (dma_gated_clk_i !== dma_gated_clk_q);
-  wire zeroer_axi_clk_toggling = (zeroer_gated_axi_clk_i !== zeroer_axi_clk_q);
-  wire zeroer_reg_clk_toggling = (zeroer_gated_reg_clk_i !== zeroer_reg_clk_q);
+  wire dma_clk_toggling = (dma_clk_div_q !== dma_gated_clk_q);
+  wire zeroer_axi_clk_toggling = (zeroer_axi_div_q !== zeroer_axi_clk_q);
+  wire zeroer_reg_clk_toggling = (zeroer_reg_div_q !== zeroer_reg_clk_q);
 
   // The held points inherit the open-seen qualifier through *_cg_closed_e.
   // The reg clock is gated by the AXI-Lite snoop rather than by
@@ -383,35 +395,59 @@ module smc_clk_fcov #(
 `ifndef VERILATOR
   // ------------------------------------------------------------------
   // Commercial-simulator covergroups: the crosses a flat cover-property
-  // list cannot express, plus a real bucketed view of the domain ratios.
+  // list cannot express, plus a bucketed view of the domain ratios. A bucket
+  // is the domain's edge count per reference edge in quarters; the classes
+  // are the relations the clock tree distinguishes (a stalled, slower, equal,
+  // faster or much faster domain), not the ratio values themselves. Values
+  // above eight times the reference fall in the default bin and are not
+  // graded.
   // ------------------------------------------------------------------
   covergroup cg_clk_ratio with function sample (
       logic [31:0] ref_edges, logic [31:0] smc_edges, logic [31:0] periph_edges
   );
     option.per_instance = 1;
+    // The bench drives ref / smc / periph at 10 / 1.25 / 5 ns, or a 10 ns SMC
+    // clock under +pll_sys_period_ns=10, so the default run lands in the SMC
+    // much_faster by periph faster cell. The smc_clk_* ratio leaves in
+    // testlists/clock.toml pin the other periods, one leaf per cell of the
+    // cross below, so every slower, same, faster and much_faster bin of both
+    // coverpoints and every cell of their cross has a driver and is graded.
+    // The stalled bins are out: clk_rst.adoc defines no mode in which an input
+    // clock stops (the stalled-window cover points are Phase 2), and a clock
+    // the clock gates stop is the cg_clk_gate group's subject.
     cp_smc_bucket: coverpoint (smc_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
       bins slower = {[1 : 3]};
       bins same = {4};
-      bins faster[] = {[5 : 32]};
-      bins much_faster = default;
+      bins faster = {[5 : 8]};
+      bins much_faster = {[9 : 32]};
+      bins beyond = default;
+      ignore_bins smc_stalled = {0};
     }
     cp_periph_bucket: coverpoint (periph_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
       bins slower = {[1 : 3]};
       bins same = {4};
-      bins faster[] = {[5 : 32]};
-      bins much_faster = default;
+      bins faster = {[5 : 8]};
+      bins much_faster = {[9 : 32]};
+      bins beyond = default;
+      ignore_bins periph_stalled = {0};
     }
     x_smc_periph: cross cp_smc_bucket, cp_periph_bucket;
   endgroup
 
   covergroup cg_clk_gate with function sample (logic cg_en, logic busy, logic clk_toggling);
     option.per_instance = 1;
-    cp_cg_en: coverpoint cg_en;
-    cp_busy: coverpoint busy;
-    cp_toggling: coverpoint clk_toggling;
-    x_gate_contract: cross cp_cg_en, cp_busy, cp_toggling;
+    cp_cg_en: coverpoint cg_en {bins bypassed = {1'b0}; bins gating = {1'b1};}
+    cp_busy: coverpoint busy {bins idle = {1'b0}; bins busy = {1'b1};}
+    cp_toggling: coverpoint clk_toggling {bins held = {1'b0}; bins running = {1'b1};}
+    // cg_enable_i low bypasses the gate and a busy block keeps its clock
+    // (dma.adoc and zeroer.adoc, Clock Gating), so the clock is not held while
+    // either holds.
+    x_gate_contract: cross cp_cg_en, cp_busy, cp_toggling{
+      ignore_bins held_while_bypassed = binsof (cp_cg_en.bypassed) && binsof (cp_toggling.held);
+      ignore_bins held_while_busy = binsof (cp_busy.busy) && binsof (cp_toggling.held);
+    }
   endgroup
 
   cg_clk_ratio u_cg_clk_ratio = new();
@@ -422,10 +458,20 @@ module smc_clk_fcov #(
     if (window_tick_q && !in_reset) u_cg_clk_ratio.sample(d_ref, d_smc, d_periph);
   end
 
+  // A clock movement seen at one sample is the gated edge of the previous
+  // cycle, so the gate terms are crossed one sample late.
+  logic gate_dma_cg_en_q, gate_dma_busy_q, gate_zeroer_cg_en_q, gate_zeroer_busy_q;
+  always_ff @(posedge clk_smc_i) begin
+    gate_dma_cg_en_q <= dma_cg_en_i;
+    gate_dma_busy_q <= dma_gater_busy_i;
+    gate_zeroer_cg_en_q <= zeroer_cg_en_i;
+    gate_zeroer_busy_q <= zeroer_busy_i;
+  end
+
   always_ff @(posedge clk_smc_i) begin
     if (!in_reset) begin
-      u_cg_dma_gate.sample(dma_cg_en_i, dma_gater_busy_i, dma_clk_toggling);
-      u_cg_zeroer_gate.sample(zeroer_cg_en_i, zeroer_busy_i, zeroer_axi_clk_toggling);
+      u_cg_dma_gate.sample(gate_dma_cg_en_q, gate_dma_busy_q, dma_clk_toggling);
+      u_cg_zeroer_gate.sample(gate_zeroer_cg_en_q, gate_zeroer_busy_q, zeroer_axi_clk_toggling);
     end
   end
 `endif

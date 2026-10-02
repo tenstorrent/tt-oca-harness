@@ -38,6 +38,9 @@ CANDIDATE_ADDRS = (
 SETTLE_CYCLES = 32
 PROBE_ARID = 0x2A
 PROBE_AWID = 0x15
+# Every bit of the 8-bit ext_in AWID set, so the crossbar has to carry the
+# widest ID value the port admits back on B.
+PROBE_AWID_ALL_ONES = 0xFF
 OUTBOUND_TAPS = (
     "smu_axi_out_write_count_o",
     "smu_axi_out_read_count_o",
@@ -138,6 +141,25 @@ class smu_xbar_connectivity_matrix_seq:
             evidence="CHK-SMU-XBAR-CONN-S7",
         )
         sb.expect_eq("DECERR write carries the issued AWID", bid, PROBE_AWID)
+
+        bresp, awid, bid = await axi_write32_resp_ids(
+            master,
+            addr & ADDR_MASK,
+            0x5A5A_A5A5,
+            awid=PROBE_AWID_ALL_ONES,
+            timeout_ns=200_000,
+            label="ext_in_unmatched_write_id_all_ones",
+        )
+        self.log.info(
+            "ext_in write (all-ones ID): bresp=%s awid=0x%x bid=0x%x", resp_name(bresp), awid, bid
+        )
+        sb.expect_eq(
+            "unmatched ext_in write with the all-ones AWID answered with DECERR",
+            bresp,
+            RESP_DECERR,
+            evidence="CHK-SMU-XBAR-CONN-S7",
+        )
+        sb.expect_eq("DECERR write carries the all-ones AWID", bid, PROBE_AWID_ALL_ONES)
 
         await ClockCycles(dut.clk_smu_i, SETTLE_CYCLES)
         after = self._outbound_snapshot()

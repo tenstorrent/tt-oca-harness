@@ -7,7 +7,10 @@ cells, first with DIS=0, then one PROD compose cell that closes
 ``sep_fuse_dbg`` / ``smc_fuse_dbg`` while the DTP cases stay open, then a
 seed-extended pinned DIS pair. ``feat_ctrl`` is checked against the
 spec-derived golden. One live inbound filter probe per cell follows
-``sep_debug`` (DECERR when 0, OKAY when 1). The two DFT-inserted fuse-path
+``sep_debug`` (DECERR when 0, OKAY when 1); that rule is the specification
+contract recorded in ``seq_lib/sep_lcc_inbound_filter_gating_seq.py``
+(``lifecycle_controller.adoc``, ``fabric.adoc`` sep-traffic-filter-decode,
+``hw/ip/axi_filter/doc/index.adoc`` axi-traffic-filter-blocked). The two DFT-inserted fuse-path
 disable ports follow the same FEAT_CTRL.
 
 The stitch test stays the LC->feat_ctrl e2e. This test owns the product.
@@ -150,7 +153,12 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
             sec_dis=0,
         )
         ctl = SepLccFeatCtrlCheckSeq(feat)
+        mark = self.sb_mark()
         await self.start_seq(ctl)
+        self.assert_sb_judged(mark, f"CHK-FEAT-CTRL {tag}")
+        assert ctl.feat_ctrl == feat, (
+            f"CHK-FEAT-CTRL FAIL: {tag} FEAT_CTRL=0x{ctl.feat_ctrl:016x} != golden 0x{feat:016x}"
+        )
         assert ctl.sep_debug == (feat & 1), (
             f"{tag}: sep_debug={ctl.sep_debug} != FEAT_CTRL[0] of 0x{feat:016x}"
         )

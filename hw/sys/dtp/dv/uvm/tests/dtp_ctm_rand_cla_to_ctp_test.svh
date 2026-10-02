@@ -14,6 +14,7 @@ class dtp_ctm_rand_cla_to_ctp_test extends dtp_xtrig_base_test;
   virtual function ocah_sequence create_scenario_seq();
     dtp_ctm_route_test_seq seq = dtp_ctm_route_test_seq::type_id::create("seq");
     seq.scenario = "ctm_rand_cla_to_ctp";
+    seq.total_passes = loop_count(specific_loops_knob(), group_loops_knob(), default_loops());
     return seq;
   endfunction
 

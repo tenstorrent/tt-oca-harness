@@ -11,8 +11,8 @@ triage-ready evidence without weakening the native runner's PASS authority.
 ====
 This is the normative, DUT-neutral contract. Concrete register maps, opcodes,
 hierarchy, scenario suites, and test names belong in each adopter's DV tree;
-captured qualification results belong in the adopter's tracker and retained CI
-artifacts.
+captured qualification results belong in external qualification records and
+retained CI artifacts.
 ====
 
 [[shared-checker-evidence]]
@@ -292,7 +292,7 @@ the structured test result remains green.
 [[shared-checker-expected-errors]]
 === Expected-Error Credits
 
-A protocol error the scenario provokes on purpose (an error response to an
+A protocol error expected by the scenario (an error response to an
 unmapped address, a refused command, a bad frame) earns PASS evidence only
 through a credit the test arms from its own intent, never from the
 observation:
@@ -848,10 +848,9 @@ result controls CI.
 [[shared-checker-fixed-contract-example]]
 === Example: Fixed Register Contract
 
-Use a direct checker when the specification provides a fixed expected value and
-no transformation model is needed. The sequence declares all required intent,
-collects values from completed protocol transactions, checks stability and
-fields, then finalizes once:
+Use a direct checker when the specification provides a fixed expected value.
+The sequence declares all required intent, collects values from completed
+protocol transactions, checks stability and fields, then finalizes once:
 
 [source,python]
 ----
@@ -1077,9 +1076,8 @@ required identifier no scenario records, so finalization reports `missing=1`:
 --items ocah_jtag_idcode_test --tool verilator`
 
 |Evidence core (SV-UVM)
-|`python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --tool vcs
---items ocah_jtag_idcode_test --skip-unimplemented
---plusarg=+OCAH_CHECKER_SELFTEST_NEGATIVE`
+|`python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm
+--items ocah_jtag_idcode_test --plusarg=+OCAH_CHECKER_SELFTEST_NEGATIVE`
 
 |AXI
 |`uv run --locked --group dv python
@@ -1136,13 +1134,13 @@ path. Qualification requires all of the following:
 * log summary reports `TESTS=1 PASS=1 FAIL=0 SKIP=0`;
 * required `CHK-*` lines and `CHECKER_SUMMARY` are present.
 
-Do not commit generated `build/runs/` artifacts; retain the CI artifact and
-cite it from the qualification record.
+Do not commit generated `build/runs/` artifacts; retain the CI artifact in the
+external qualification record.
 
 [[shared-checker-qualification-record]]
 === Qualification Record
 
-Every adopter keeps a compact, reproducible record in its tracker:
+Every adopter keeps a compact, reproducible external qualification record:
 
 [cols="<3,<7",options="header"]
 |===
@@ -1209,7 +1207,7 @@ mode, and finalization follow
 
 |Monitor integration
 |Callback failure is retained and finalization occurs outside the callback.
-|A deliberately bad monitored item fails the owning test at finalization.
+|An injected invalid monitored item fails the owning test at finalization.
 
 |Timeout
 |Normal timeout fails. An expected timeout is bounded and explicitly required

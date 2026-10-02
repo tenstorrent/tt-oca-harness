@@ -4,43 +4,199 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-axil_mailbox_sep_wrap]
-== Address Map: axil_mailbox_sep_wrap
+== SEP AXI-Lite Mailbox Wrapper Address Map
+
+SEP-side wrapper instantiating the AXI-Lite mailbox pairs.
+Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+bidirectional mailbox and shares a single pair of FIFOs: data written through
+WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+The outbound/inbound naming reflects intended use, not an access restriction.
 
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-WRITE_DATA,WRITE_DATA>> | W a| -
-| 0x8 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-READ_DATA,READ_DATA>> | R a| -
-| 0x10 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-STATUS,STATUS>> | R a| -
-| 0x18 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-ERROR_FLAGS,ERROR_FLAGS>> | R a| -
-| 0x20 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-WIRQT,WIRQT>> | RW a| -
-| 0x28 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-RIRQT,RIRQT>> | RW a| -
-| 0x30 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-IRQS,IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
-| 0x38 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-IRQEN,IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
-| 0x40 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-IRQP,IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
-| 0x48 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-CTRL,CTRL>> | W a| -
+| 0x0 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-WRITE_DATA,outbound_mailbox_0.WRITE_DATA>> | W a| -
+| 0x8 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-READ_DATA,outbound_mailbox_0.READ_DATA>> | R a| -
+| 0x10 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-STATUS,outbound_mailbox_0.STATUS>> | R a| -
+| 0x18 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-ERROR_FLAGS,outbound_mailbox_0.ERROR_FLAGS>> | R a| -
+| 0x20 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-WIRQT,outbound_mailbox_0.WIRQT>> | RW a| -
+| 0x28 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-RIRQT,outbound_mailbox_0.RIRQT>> | RW a| -
+| 0x30 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-IRQS,outbound_mailbox_0.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x38 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-IRQEN,outbound_mailbox_0.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x40 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-IRQP,outbound_mailbox_0.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x48 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-CTRL,outbound_mailbox_0.CTRL>> | W a| -
+| 0x800 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-WRITE_DATA,inbound_mailbox_0.WRITE_DATA>> | W a| -
+| 0x808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-READ_DATA,inbound_mailbox_0.READ_DATA>> | R a| -
+| 0x810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-STATUS,inbound_mailbox_0.STATUS>> | R a| -
+| 0x818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-ERROR_FLAGS,inbound_mailbox_0.ERROR_FLAGS>> | R a| -
+| 0x820 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-WIRQT,inbound_mailbox_0.WIRQT>> | RW a| -
+| 0x828 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-RIRQT,inbound_mailbox_0.RIRQT>> | RW a| -
+| 0x830 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-IRQS,inbound_mailbox_0.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x838 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-IRQEN,inbound_mailbox_0.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x840 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-IRQP,inbound_mailbox_0.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x848 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-CTRL,inbound_mailbox_0.CTRL>> | W a| -
+| 0x1000 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-WRITE_DATA,outbound_mailbox_1.WRITE_DATA>> | W a| -
+| 0x1008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-READ_DATA,outbound_mailbox_1.READ_DATA>> | R a| -
+| 0x1010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-STATUS,outbound_mailbox_1.STATUS>> | R a| -
+| 0x1018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-ERROR_FLAGS,outbound_mailbox_1.ERROR_FLAGS>> | R a| -
+| 0x1020 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-WIRQT,outbound_mailbox_1.WIRQT>> | RW a| -
+| 0x1028 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-RIRQT,outbound_mailbox_1.RIRQT>> | RW a| -
+| 0x1030 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-IRQS,outbound_mailbox_1.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x1038 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-IRQEN,outbound_mailbox_1.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x1040 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-IRQP,outbound_mailbox_1.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x1048 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-CTRL,outbound_mailbox_1.CTRL>> | W a| -
+| 0x1800 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-WRITE_DATA,inbound_mailbox_1.WRITE_DATA>> | W a| -
+| 0x1808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-READ_DATA,inbound_mailbox_1.READ_DATA>> | R a| -
+| 0x1810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-STATUS,inbound_mailbox_1.STATUS>> | R a| -
+| 0x1818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-ERROR_FLAGS,inbound_mailbox_1.ERROR_FLAGS>> | R a| -
+| 0x1820 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-WIRQT,inbound_mailbox_1.WIRQT>> | RW a| -
+| 0x1828 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-RIRQT,inbound_mailbox_1.RIRQT>> | RW a| -
+| 0x1830 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-IRQS,inbound_mailbox_1.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x1838 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-IRQEN,inbound_mailbox_1.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x1840 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-IRQP,inbound_mailbox_1.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x1848 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-CTRL,inbound_mailbox_1.CTRL>> | W a| -
+| 0x2000 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-WRITE_DATA,outbound_mailbox_2.WRITE_DATA>> | W a| -
+| 0x2008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-READ_DATA,outbound_mailbox_2.READ_DATA>> | R a| -
+| 0x2010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-STATUS,outbound_mailbox_2.STATUS>> | R a| -
+| 0x2018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-ERROR_FLAGS,outbound_mailbox_2.ERROR_FLAGS>> | R a| -
+| 0x2020 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-WIRQT,outbound_mailbox_2.WIRQT>> | RW a| -
+| 0x2028 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-RIRQT,outbound_mailbox_2.RIRQT>> | RW a| -
+| 0x2030 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-IRQS,outbound_mailbox_2.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x2038 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-IRQEN,outbound_mailbox_2.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x2040 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-IRQP,outbound_mailbox_2.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x2048 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-CTRL,outbound_mailbox_2.CTRL>> | W a| -
+| 0x2800 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-WRITE_DATA,inbound_mailbox_2.WRITE_DATA>> | W a| -
+| 0x2808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-READ_DATA,inbound_mailbox_2.READ_DATA>> | R a| -
+| 0x2810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-STATUS,inbound_mailbox_2.STATUS>> | R a| -
+| 0x2818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-ERROR_FLAGS,inbound_mailbox_2.ERROR_FLAGS>> | R a| -
+| 0x2820 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-WIRQT,inbound_mailbox_2.WIRQT>> | RW a| -
+| 0x2828 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-RIRQT,inbound_mailbox_2.RIRQT>> | RW a| -
+| 0x2830 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-IRQS,inbound_mailbox_2.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x2838 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-IRQEN,inbound_mailbox_2.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x2840 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-IRQP,inbound_mailbox_2.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x2848 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-CTRL,inbound_mailbox_2.CTRL>> | W a| -
+| 0x3000 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-WRITE_DATA,outbound_mailbox_3.WRITE_DATA>> | W a| -
+| 0x3008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-READ_DATA,outbound_mailbox_3.READ_DATA>> | R a| -
+| 0x3010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-STATUS,outbound_mailbox_3.STATUS>> | R a| -
+| 0x3018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-ERROR_FLAGS,outbound_mailbox_3.ERROR_FLAGS>> | R a| -
+| 0x3020 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-WIRQT,outbound_mailbox_3.WIRQT>> | RW a| -
+| 0x3028 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-RIRQT,outbound_mailbox_3.RIRQT>> | RW a| -
+| 0x3030 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-IRQS,outbound_mailbox_3.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x3038 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-IRQEN,outbound_mailbox_3.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x3040 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-IRQP,outbound_mailbox_3.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x3048 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-CTRL,outbound_mailbox_3.CTRL>> | W a| -
+| 0x3800 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-WRITE_DATA,inbound_mailbox_3.WRITE_DATA>> | W a| -
+| 0x3808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-READ_DATA,inbound_mailbox_3.READ_DATA>> | R a| -
+| 0x3810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-STATUS,inbound_mailbox_3.STATUS>> | R a| -
+| 0x3818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-ERROR_FLAGS,inbound_mailbox_3.ERROR_FLAGS>> | R a| -
+| 0x3820 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-WIRQT,inbound_mailbox_3.WIRQT>> | RW a| -
+| 0x3828 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-RIRQT,inbound_mailbox_3.RIRQT>> | RW a| -
+| 0x3830 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-IRQS,inbound_mailbox_3.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x3838 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-IRQEN,inbound_mailbox_3.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x3840 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-IRQP,inbound_mailbox_3.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x3848 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-CTRL,inbound_mailbox_3.CTRL>> | W a| -
+| 0x4000 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-WRITE_DATA,outbound_mailbox_4.WRITE_DATA>> | W a| -
+| 0x4008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-READ_DATA,outbound_mailbox_4.READ_DATA>> | R a| -
+| 0x4010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-STATUS,outbound_mailbox_4.STATUS>> | R a| -
+| 0x4018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-ERROR_FLAGS,outbound_mailbox_4.ERROR_FLAGS>> | R a| -
+| 0x4020 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-WIRQT,outbound_mailbox_4.WIRQT>> | RW a| -
+| 0x4028 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-RIRQT,outbound_mailbox_4.RIRQT>> | RW a| -
+| 0x4030 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-IRQS,outbound_mailbox_4.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x4038 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-IRQEN,outbound_mailbox_4.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x4040 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-IRQP,outbound_mailbox_4.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x4048 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-CTRL,outbound_mailbox_4.CTRL>> | W a| -
+| 0x4800 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-WRITE_DATA,inbound_mailbox_4.WRITE_DATA>> | W a| -
+| 0x4808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-READ_DATA,inbound_mailbox_4.READ_DATA>> | R a| -
+| 0x4810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-STATUS,inbound_mailbox_4.STATUS>> | R a| -
+| 0x4818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-ERROR_FLAGS,inbound_mailbox_4.ERROR_FLAGS>> | R a| -
+| 0x4820 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-WIRQT,inbound_mailbox_4.WIRQT>> | RW a| -
+| 0x4828 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-RIRQT,inbound_mailbox_4.RIRQT>> | RW a| -
+| 0x4830 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-IRQS,inbound_mailbox_4.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x4838 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-IRQEN,inbound_mailbox_4.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x4840 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-IRQP,inbound_mailbox_4.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x4848 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-CTRL,inbound_mailbox_4.CTRL>> | W a| -
+| 0x5000 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-WRITE_DATA,outbound_mailbox_5.WRITE_DATA>> | W a| -
+| 0x5008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-READ_DATA,outbound_mailbox_5.READ_DATA>> | R a| -
+| 0x5010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-STATUS,outbound_mailbox_5.STATUS>> | R a| -
+| 0x5018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-ERROR_FLAGS,outbound_mailbox_5.ERROR_FLAGS>> | R a| -
+| 0x5020 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-WIRQT,outbound_mailbox_5.WIRQT>> | RW a| -
+| 0x5028 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-RIRQT,outbound_mailbox_5.RIRQT>> | RW a| -
+| 0x5030 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-IRQS,outbound_mailbox_5.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x5038 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-IRQEN,outbound_mailbox_5.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x5040 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-IRQP,outbound_mailbox_5.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x5048 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-CTRL,outbound_mailbox_5.CTRL>> | W a| -
+| 0x5800 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-WRITE_DATA,inbound_mailbox_5.WRITE_DATA>> | W a| -
+| 0x5808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-READ_DATA,inbound_mailbox_5.READ_DATA>> | R a| -
+| 0x5810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-STATUS,inbound_mailbox_5.STATUS>> | R a| -
+| 0x5818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-ERROR_FLAGS,inbound_mailbox_5.ERROR_FLAGS>> | R a| -
+| 0x5820 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-WIRQT,inbound_mailbox_5.WIRQT>> | RW a| -
+| 0x5828 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-RIRQT,inbound_mailbox_5.RIRQT>> | RW a| -
+| 0x5830 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-IRQS,inbound_mailbox_5.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x5838 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-IRQEN,inbound_mailbox_5.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x5840 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-IRQP,inbound_mailbox_5.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x5848 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-CTRL,inbound_mailbox_5.CTRL>> | W a| -
+| 0x6000 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-WRITE_DATA,outbound_mailbox_6.WRITE_DATA>> | W a| -
+| 0x6008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-READ_DATA,outbound_mailbox_6.READ_DATA>> | R a| -
+| 0x6010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-STATUS,outbound_mailbox_6.STATUS>> | R a| -
+| 0x6018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-ERROR_FLAGS,outbound_mailbox_6.ERROR_FLAGS>> | R a| -
+| 0x6020 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-WIRQT,outbound_mailbox_6.WIRQT>> | RW a| -
+| 0x6028 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-RIRQT,outbound_mailbox_6.RIRQT>> | RW a| -
+| 0x6030 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-IRQS,outbound_mailbox_6.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x6038 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-IRQEN,outbound_mailbox_6.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x6040 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-IRQP,outbound_mailbox_6.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x6048 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-CTRL,outbound_mailbox_6.CTRL>> | W a| -
+| 0x6800 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-WRITE_DATA,inbound_mailbox_6.WRITE_DATA>> | W a| -
+| 0x6808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-READ_DATA,inbound_mailbox_6.READ_DATA>> | R a| -
+| 0x6810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-STATUS,inbound_mailbox_6.STATUS>> | R a| -
+| 0x6818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-ERROR_FLAGS,inbound_mailbox_6.ERROR_FLAGS>> | R a| -
+| 0x6820 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-WIRQT,inbound_mailbox_6.WIRQT>> | RW a| -
+| 0x6828 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-RIRQT,inbound_mailbox_6.RIRQT>> | RW a| -
+| 0x6830 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-IRQS,inbound_mailbox_6.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x6838 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-IRQEN,inbound_mailbox_6.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x6840 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-IRQP,inbound_mailbox_6.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x6848 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-CTRL,inbound_mailbox_6.CTRL>> | W a| -
+| 0x7000 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-WRITE_DATA,outbound_mailbox_7.WRITE_DATA>> | W a| -
+| 0x7008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-READ_DATA,outbound_mailbox_7.READ_DATA>> | R a| -
+| 0x7010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-STATUS,outbound_mailbox_7.STATUS>> | R a| -
+| 0x7018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-ERROR_FLAGS,outbound_mailbox_7.ERROR_FLAGS>> | R a| -
+| 0x7020 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-WIRQT,outbound_mailbox_7.WIRQT>> | RW a| -
+| 0x7028 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-RIRQT,outbound_mailbox_7.RIRQT>> | RW a| -
+| 0x7030 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-IRQS,outbound_mailbox_7.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x7038 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-IRQEN,outbound_mailbox_7.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x7040 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-IRQP,outbound_mailbox_7.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x7048 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-CTRL,outbound_mailbox_7.CTRL>> | W a| -
+| 0x7800 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-WRITE_DATA,inbound_mailbox_7.WRITE_DATA>> | W a| -
+| 0x7808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-READ_DATA,inbound_mailbox_7.READ_DATA>> | R a| -
+| 0x7810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-STATUS,inbound_mailbox_7.STATUS>> | R a| -
+| 0x7818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-ERROR_FLAGS,inbound_mailbox_7.ERROR_FLAGS>> | R a| -
+| 0x7820 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-WIRQT,inbound_mailbox_7.WIRQT>> | RW a| -
+| 0x7828 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-RIRQT,inbound_mailbox_7.RIRQT>> | RW a| -
+| 0x7830 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-IRQS,inbound_mailbox_7.IRQS>> | RW a| This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.
+| 0x7838 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-IRQEN,inbound_mailbox_7.IRQEN>> | RW a| This register is used to enable and disable which interrupts are sent to the CPU.
+| 0x7840 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-IRQP,inbound_mailbox_7.IRQP>> | R a| This register is used to read the current status of the interrupts sent to the CPU.
+| 0x7848 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-CTRL,inbound_mailbox_7.CTRL>> | W a| -
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-WRITE_DATA]
-=== WRITE_DATA
+=== outbound_mailbox_0.WRITE_DATA
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-READ_DATA]
-=== READ_DATA
+=== outbound_mailbox_0.READ_DATA
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-STATUS]
-=== STATUS
+=== outbound_mailbox_0.STATUS
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -53,18 +209,18 @@
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-ERROR_FLAGS]
-=== ERROR_FLAGS
+=== outbound_mailbox_0.ERROR_FLAGS
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-WIRQT]
-=== WIRQT
+=== outbound_mailbox_0.WIRQT
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -74,7 +230,7 @@
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-RIRQT]
-=== RIRQT
+=== outbound_mailbox_0.RIRQT
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -84,25 +240,25 @@
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-IRQS]
-=== IRQS
+=== outbound_mailbox_0.IRQS
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -111,7 +267,7 @@ On write:
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-IRQEN]
-=== IRQEN
+=== outbound_mailbox_0.IRQEN
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -126,7 +282,7 @@ On write:
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-IRQP]
-=== IRQP
+=== outbound_mailbox_0.IRQP
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -141,12 +297,1962 @@ On write:
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-CTRL]
-=== CTRL
+=== outbound_mailbox_0.CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-WRITE_DATA]
+=== inbound_mailbox_0.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-READ_DATA]
+=== inbound_mailbox_0.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-STATUS]
+=== inbound_mailbox_0.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-ERROR_FLAGS]
+=== inbound_mailbox_0.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-WIRQT]
+=== inbound_mailbox_0.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-RIRQT]
+=== inbound_mailbox_0.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-IRQS]
+=== inbound_mailbox_0.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-IRQEN]
+=== inbound_mailbox_0.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-IRQP]
+=== inbound_mailbox_0.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-CTRL]
+=== inbound_mailbox_0.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-WRITE_DATA]
+=== outbound_mailbox_1.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-READ_DATA]
+=== outbound_mailbox_1.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-STATUS]
+=== outbound_mailbox_1.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-ERROR_FLAGS]
+=== outbound_mailbox_1.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-WIRQT]
+=== outbound_mailbox_1.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-RIRQT]
+=== outbound_mailbox_1.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-IRQS]
+=== outbound_mailbox_1.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-IRQEN]
+=== outbound_mailbox_1.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-IRQP]
+=== outbound_mailbox_1.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-CTRL]
+=== outbound_mailbox_1.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-WRITE_DATA]
+=== inbound_mailbox_1.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-READ_DATA]
+=== inbound_mailbox_1.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-STATUS]
+=== inbound_mailbox_1.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-ERROR_FLAGS]
+=== inbound_mailbox_1.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-WIRQT]
+=== inbound_mailbox_1.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-RIRQT]
+=== inbound_mailbox_1.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-IRQS]
+=== inbound_mailbox_1.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-IRQEN]
+=== inbound_mailbox_1.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-IRQP]
+=== inbound_mailbox_1.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-CTRL]
+=== inbound_mailbox_1.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-WRITE_DATA]
+=== outbound_mailbox_2.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-READ_DATA]
+=== outbound_mailbox_2.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-STATUS]
+=== outbound_mailbox_2.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-ERROR_FLAGS]
+=== outbound_mailbox_2.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-WIRQT]
+=== outbound_mailbox_2.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-RIRQT]
+=== outbound_mailbox_2.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-IRQS]
+=== outbound_mailbox_2.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-IRQEN]
+=== outbound_mailbox_2.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-IRQP]
+=== outbound_mailbox_2.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-CTRL]
+=== outbound_mailbox_2.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-WRITE_DATA]
+=== inbound_mailbox_2.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-READ_DATA]
+=== inbound_mailbox_2.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-STATUS]
+=== inbound_mailbox_2.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-ERROR_FLAGS]
+=== inbound_mailbox_2.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-WIRQT]
+=== inbound_mailbox_2.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-RIRQT]
+=== inbound_mailbox_2.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-IRQS]
+=== inbound_mailbox_2.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-IRQEN]
+=== inbound_mailbox_2.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-IRQP]
+=== inbound_mailbox_2.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-CTRL]
+=== inbound_mailbox_2.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-WRITE_DATA]
+=== outbound_mailbox_3.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-READ_DATA]
+=== outbound_mailbox_3.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-STATUS]
+=== outbound_mailbox_3.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-ERROR_FLAGS]
+=== outbound_mailbox_3.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-WIRQT]
+=== outbound_mailbox_3.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-RIRQT]
+=== outbound_mailbox_3.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-IRQS]
+=== outbound_mailbox_3.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-IRQEN]
+=== outbound_mailbox_3.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-IRQP]
+=== outbound_mailbox_3.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-CTRL]
+=== outbound_mailbox_3.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-WRITE_DATA]
+=== inbound_mailbox_3.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-READ_DATA]
+=== inbound_mailbox_3.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-STATUS]
+=== inbound_mailbox_3.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-ERROR_FLAGS]
+=== inbound_mailbox_3.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-WIRQT]
+=== inbound_mailbox_3.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-RIRQT]
+=== inbound_mailbox_3.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-IRQS]
+=== inbound_mailbox_3.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-IRQEN]
+=== inbound_mailbox_3.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-IRQP]
+=== inbound_mailbox_3.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-CTRL]
+=== inbound_mailbox_3.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-WRITE_DATA]
+=== outbound_mailbox_4.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-READ_DATA]
+=== outbound_mailbox_4.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-STATUS]
+=== outbound_mailbox_4.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-ERROR_FLAGS]
+=== outbound_mailbox_4.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-WIRQT]
+=== outbound_mailbox_4.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-RIRQT]
+=== outbound_mailbox_4.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-IRQS]
+=== outbound_mailbox_4.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-IRQEN]
+=== outbound_mailbox_4.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-IRQP]
+=== outbound_mailbox_4.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-CTRL]
+=== outbound_mailbox_4.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-WRITE_DATA]
+=== inbound_mailbox_4.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-READ_DATA]
+=== inbound_mailbox_4.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-STATUS]
+=== inbound_mailbox_4.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-ERROR_FLAGS]
+=== inbound_mailbox_4.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-WIRQT]
+=== inbound_mailbox_4.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-RIRQT]
+=== inbound_mailbox_4.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-IRQS]
+=== inbound_mailbox_4.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-IRQEN]
+=== inbound_mailbox_4.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-IRQP]
+=== inbound_mailbox_4.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-CTRL]
+=== inbound_mailbox_4.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-WRITE_DATA]
+=== outbound_mailbox_5.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-READ_DATA]
+=== outbound_mailbox_5.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-STATUS]
+=== outbound_mailbox_5.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-ERROR_FLAGS]
+=== outbound_mailbox_5.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-WIRQT]
+=== outbound_mailbox_5.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-RIRQT]
+=== outbound_mailbox_5.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-IRQS]
+=== outbound_mailbox_5.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-IRQEN]
+=== outbound_mailbox_5.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-IRQP]
+=== outbound_mailbox_5.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-CTRL]
+=== outbound_mailbox_5.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-WRITE_DATA]
+=== inbound_mailbox_5.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-READ_DATA]
+=== inbound_mailbox_5.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-STATUS]
+=== inbound_mailbox_5.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-ERROR_FLAGS]
+=== inbound_mailbox_5.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-WIRQT]
+=== inbound_mailbox_5.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-RIRQT]
+=== inbound_mailbox_5.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-IRQS]
+=== inbound_mailbox_5.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-IRQEN]
+=== inbound_mailbox_5.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-IRQP]
+=== inbound_mailbox_5.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-CTRL]
+=== inbound_mailbox_5.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-WRITE_DATA]
+=== outbound_mailbox_6.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-READ_DATA]
+=== outbound_mailbox_6.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-STATUS]
+=== outbound_mailbox_6.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-ERROR_FLAGS]
+=== outbound_mailbox_6.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-WIRQT]
+=== outbound_mailbox_6.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-RIRQT]
+=== outbound_mailbox_6.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-IRQS]
+=== outbound_mailbox_6.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-IRQEN]
+=== outbound_mailbox_6.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-IRQP]
+=== outbound_mailbox_6.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-CTRL]
+=== outbound_mailbox_6.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-WRITE_DATA]
+=== inbound_mailbox_6.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-READ_DATA]
+=== inbound_mailbox_6.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-STATUS]
+=== inbound_mailbox_6.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-ERROR_FLAGS]
+=== inbound_mailbox_6.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-WIRQT]
+=== inbound_mailbox_6.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-RIRQT]
+=== inbound_mailbox_6.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-IRQS]
+=== inbound_mailbox_6.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-IRQEN]
+=== inbound_mailbox_6.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-IRQP]
+=== inbound_mailbox_6.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-CTRL]
+=== inbound_mailbox_6.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-WRITE_DATA]
+=== outbound_mailbox_7.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-READ_DATA]
+=== outbound_mailbox_7.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-STATUS]
+=== outbound_mailbox_7.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-ERROR_FLAGS]
+=== outbound_mailbox_7.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-WIRQT]
+=== outbound_mailbox_7.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-RIRQT]
+=== outbound_mailbox_7.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-IRQS]
+=== outbound_mailbox_7.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-IRQEN]
+=== outbound_mailbox_7.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-IRQP]
+=== outbound_mailbox_7.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-CTRL]
+=== outbound_mailbox_7.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-WRITE_DATA]
+=== inbound_mailbox_7.WRITE_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-READ_DATA]
+=== inbound_mailbox_7.READ_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-STATUS]
+=== inbound_mailbox_7.STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:4 | `Reserved` | - | - a| Reserved
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
+| 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-ERROR_FLAGS]
+=== inbound_mailbox_7.ERROR_FLAGS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-WIRQT]
+=== inbound_mailbox_7.WIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-RIRQT]
+=== inbound_mailbox_7.RIRQT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-IRQS]
+=== inbound_mailbox_7.IRQS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Error on mailbox access
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in read mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
+[0]: No interrupt request
+[1]: Usage level threshold in write mailbox exceeded
+On write:
+[0]: No acknowledge
+[1]: Acknowledge and clear interrupt request
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-IRQEN]
+=== inbound_mailbox_7.IRQEN
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | RW | 0x0 a| [0]: Error IRQ disabled
+[1]: Error IRQ enabled
+| 1 | `rtirq` | RW | 0x0 a| [0]: Read threshold IRQ disabled
+[1]: Read threshold IRQ enabled
+| 0 | `wtirq` | RW | 0x0 a| [0]: Write threshold IRQ disabled
+[1]: Write threshold IRQ enabled
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-IRQP]
+=== inbound_mailbox_7.IRQP
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:3 | `Reserved` | - | - a| Reserved
+| 2 | `eirq` | R | 0x0 a| [0]: No error IRQ pending
+[1]: Error IRQ pending
+| 1 | `rtirq` | R | 0x0 a| [0]: No read threshold IRQ pending
+[1]: Read threshold IRQ pending
+| 0 | `wtirq` | R | 0x0 a| [0]: No write threshold IRQ pending
+[1]: Write threshold IRQ pending
+|===
+
+[#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-CTRL]
+=== inbound_mailbox_7.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===

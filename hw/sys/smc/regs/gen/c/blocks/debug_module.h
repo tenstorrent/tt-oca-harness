@@ -13,386 +13,77 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
-// reg - debug_module::abstractdata
-#define DEBUG_MODULE__ABSTRACTDATA__DATA_bm 0xffffffff
-#define DEBUG_MODULE__ABSTRACTDATA__DATA_bp 0
-#define DEBUG_MODULE__ABSTRACTDATA__DATA_bw 32
-#define DEBUG_MODULE__ABSTRACTDATA__DATA_reset 0x0
+// reg - debug_module::HALTED
+#define DEBUG_MODULE__HALTED__HARTID_bm 0x3ff
+#define DEBUG_MODULE__HALTED__HARTID_bp 0
+#define DEBUG_MODULE__HALTED__HARTID_bw 10
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t data :32;
+        uint32_t hartid :10;
+        uint32_t :22;
     } f;
     uint32_t w;
-} debug_module__abstractdata_t;
+} debug_module__HALTED_t;
 
-// reg - debug_module::dmcontrol
-#define DEBUG_MODULE__DMCONTROL__DMACTIVE_bm 0x1
-#define DEBUG_MODULE__DMCONTROL__DMACTIVE_bp 0
-#define DEBUG_MODULE__DMCONTROL__DMACTIVE_bw 1
-#define DEBUG_MODULE__DMCONTROL__DMACTIVE_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__NDMRESET_bm 0x2
-#define DEBUG_MODULE__DMCONTROL__NDMRESET_bp 1
-#define DEBUG_MODULE__DMCONTROL__NDMRESET_bw 1
-#define DEBUG_MODULE__DMCONTROL__NDMRESET_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__CLRRESETHALTREQ_bm 0x4
-#define DEBUG_MODULE__DMCONTROL__CLRRESETHALTREQ_bp 2
-#define DEBUG_MODULE__DMCONTROL__CLRRESETHALTREQ_bw 1
-#define DEBUG_MODULE__DMCONTROL__CLRRESETHALTREQ_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__SETRESETHALTREQ_bm 0x8
-#define DEBUG_MODULE__DMCONTROL__SETRESETHALTREQ_bp 3
-#define DEBUG_MODULE__DMCONTROL__SETRESETHALTREQ_bw 1
-#define DEBUG_MODULE__DMCONTROL__SETRESETHALTREQ_reset 0x0
-#define DEBUG_MODULE__DMCONTROL___RESERVED_5_4_bm 0x30
-#define DEBUG_MODULE__DMCONTROL___RESERVED_5_4_bp 4
-#define DEBUG_MODULE__DMCONTROL___RESERVED_5_4_bw 2
-#define DEBUG_MODULE__DMCONTROL___RESERVED_5_4_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__HARTSELHI_bm 0xffc0
-#define DEBUG_MODULE__DMCONTROL__HARTSELHI_bp 6
-#define DEBUG_MODULE__DMCONTROL__HARTSELHI_bw 10
-#define DEBUG_MODULE__DMCONTROL__HARTSELHI_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__HARTSELLO_bm 0x3ff0000
-#define DEBUG_MODULE__DMCONTROL__HARTSELLO_bp 16
-#define DEBUG_MODULE__DMCONTROL__HARTSELLO_bw 10
-#define DEBUG_MODULE__DMCONTROL__HARTSELLO_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__HASEL_bm 0x4000000
-#define DEBUG_MODULE__DMCONTROL__HASEL_bp 26
-#define DEBUG_MODULE__DMCONTROL__HASEL_bw 1
-#define DEBUG_MODULE__DMCONTROL__HASEL_reset 0x0
-#define DEBUG_MODULE__DMCONTROL___RESERVED_27_bm 0x8000000
-#define DEBUG_MODULE__DMCONTROL___RESERVED_27_bp 27
-#define DEBUG_MODULE__DMCONTROL___RESERVED_27_bw 1
-#define DEBUG_MODULE__DMCONTROL___RESERVED_27_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__ACKHAVERESET_bm 0x10000000
-#define DEBUG_MODULE__DMCONTROL__ACKHAVERESET_bp 28
-#define DEBUG_MODULE__DMCONTROL__ACKHAVERESET_bw 1
-#define DEBUG_MODULE__DMCONTROL__ACKHAVERESET_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__HARTRESET_bm 0x20000000
-#define DEBUG_MODULE__DMCONTROL__HARTRESET_bp 29
-#define DEBUG_MODULE__DMCONTROL__HARTRESET_bw 1
-#define DEBUG_MODULE__DMCONTROL__HARTRESET_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__RESUMEREQ_bm 0x40000000
-#define DEBUG_MODULE__DMCONTROL__RESUMEREQ_bp 30
-#define DEBUG_MODULE__DMCONTROL__RESUMEREQ_bw 1
-#define DEBUG_MODULE__DMCONTROL__RESUMEREQ_reset 0x0
-#define DEBUG_MODULE__DMCONTROL__HALTREQ_bm 0x80000000
-#define DEBUG_MODULE__DMCONTROL__HALTREQ_bp 31
-#define DEBUG_MODULE__DMCONTROL__HALTREQ_bw 1
-#define DEBUG_MODULE__DMCONTROL__HALTREQ_reset 0x0
+// reg - debug_module::GOING
+#define DEBUG_MODULE__GOING__HARTID_bm 0x3ff
+#define DEBUG_MODULE__GOING__HARTID_bp 0
+#define DEBUG_MODULE__GOING__HARTID_bw 10
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t dmactive :1;
-        uint32_t ndmreset :1;
-        uint32_t clrresethaltreq :1;
-        uint32_t setresethaltreq :1;
-        uint32_t _reserved_5_4 :2;
-        uint32_t hartselhi :10;
-        uint32_t hartsello :10;
-        uint32_t hasel :1;
-        uint32_t _reserved_27 :1;
-        uint32_t ackhavereset :1;
-        uint32_t hartreset :1;
-        uint32_t resumereq :1;
-        uint32_t haltreq :1;
+        uint32_t hartid :10;
+        uint32_t :22;
     } f;
     uint32_t w;
-} debug_module__dmcontrol_t;
+} debug_module__GOING_t;
 
-// reg - debug_module::dmstatus
-#define DEBUG_MODULE__DMSTATUS__VERSION_bm 0xf
-#define DEBUG_MODULE__DMSTATUS__VERSION_bp 0
-#define DEBUG_MODULE__DMSTATUS__VERSION_bw 4
-#define DEBUG_MODULE__DMSTATUS__VERSION_reset 0x2
-#define DEBUG_MODULE__DMSTATUS__CONFSTRPTRVALID_bm 0x10
-#define DEBUG_MODULE__DMSTATUS__CONFSTRPTRVALID_bp 4
-#define DEBUG_MODULE__DMSTATUS__CONFSTRPTRVALID_bw 1
-#define DEBUG_MODULE__DMSTATUS__CONFSTRPTRVALID_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__HASRESETHALTREQ_bm 0x20
-#define DEBUG_MODULE__DMSTATUS__HASRESETHALTREQ_bp 5
-#define DEBUG_MODULE__DMSTATUS__HASRESETHALTREQ_bw 1
-#define DEBUG_MODULE__DMSTATUS__HASRESETHALTREQ_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__AUTHBUSY_bm 0x40
-#define DEBUG_MODULE__DMSTATUS__AUTHBUSY_bp 6
-#define DEBUG_MODULE__DMSTATUS__AUTHBUSY_bw 1
-#define DEBUG_MODULE__DMSTATUS__AUTHBUSY_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__AUTHENTICATED_bm 0x80
-#define DEBUG_MODULE__DMSTATUS__AUTHENTICATED_bp 7
-#define DEBUG_MODULE__DMSTATUS__AUTHENTICATED_bw 1
-#define DEBUG_MODULE__DMSTATUS__AUTHENTICATED_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ANYHALTED_bm 0x100
-#define DEBUG_MODULE__DMSTATUS__ANYHALTED_bp 8
-#define DEBUG_MODULE__DMSTATUS__ANYHALTED_bw 1
-#define DEBUG_MODULE__DMSTATUS__ANYHALTED_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ALLHALTED_bm 0x200
-#define DEBUG_MODULE__DMSTATUS__ALLHALTED_bp 9
-#define DEBUG_MODULE__DMSTATUS__ALLHALTED_bw 1
-#define DEBUG_MODULE__DMSTATUS__ALLHALTED_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ANYRUNNING_bm 0x400
-#define DEBUG_MODULE__DMSTATUS__ANYRUNNING_bp 10
-#define DEBUG_MODULE__DMSTATUS__ANYRUNNING_bw 1
-#define DEBUG_MODULE__DMSTATUS__ANYRUNNING_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ALLRUNNING_bm 0x800
-#define DEBUG_MODULE__DMSTATUS__ALLRUNNING_bp 11
-#define DEBUG_MODULE__DMSTATUS__ALLRUNNING_bw 1
-#define DEBUG_MODULE__DMSTATUS__ALLRUNNING_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ANYUNAVAIL_bm 0x1000
-#define DEBUG_MODULE__DMSTATUS__ANYUNAVAIL_bp 12
-#define DEBUG_MODULE__DMSTATUS__ANYUNAVAIL_bw 1
-#define DEBUG_MODULE__DMSTATUS__ANYUNAVAIL_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ALLUNAVAIL_bm 0x2000
-#define DEBUG_MODULE__DMSTATUS__ALLUNAVAIL_bp 13
-#define DEBUG_MODULE__DMSTATUS__ALLUNAVAIL_bw 1
-#define DEBUG_MODULE__DMSTATUS__ALLUNAVAIL_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ANYNONEXISTENT_bm 0x4000
-#define DEBUG_MODULE__DMSTATUS__ANYNONEXISTENT_bp 14
-#define DEBUG_MODULE__DMSTATUS__ANYNONEXISTENT_bw 1
-#define DEBUG_MODULE__DMSTATUS__ANYNONEXISTENT_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ALLNONEXISTENT_bm 0x8000
-#define DEBUG_MODULE__DMSTATUS__ALLNONEXISTENT_bp 15
-#define DEBUG_MODULE__DMSTATUS__ALLNONEXISTENT_bw 1
-#define DEBUG_MODULE__DMSTATUS__ALLNONEXISTENT_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ANYRESUMEACK_bm 0x10000
-#define DEBUG_MODULE__DMSTATUS__ANYRESUMEACK_bp 16
-#define DEBUG_MODULE__DMSTATUS__ANYRESUMEACK_bw 1
-#define DEBUG_MODULE__DMSTATUS__ANYRESUMEACK_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ALLRESUMEACK_bm 0x20000
-#define DEBUG_MODULE__DMSTATUS__ALLRESUMEACK_bp 17
-#define DEBUG_MODULE__DMSTATUS__ALLRESUMEACK_bw 1
-#define DEBUG_MODULE__DMSTATUS__ALLRESUMEACK_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ANYHAVERESET_bm 0x40000
-#define DEBUG_MODULE__DMSTATUS__ANYHAVERESET_bp 18
-#define DEBUG_MODULE__DMSTATUS__ANYHAVERESET_bw 1
-#define DEBUG_MODULE__DMSTATUS__ANYHAVERESET_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__ALLHAVERESET_bm 0x80000
-#define DEBUG_MODULE__DMSTATUS__ALLHAVERESET_bp 19
-#define DEBUG_MODULE__DMSTATUS__ALLHAVERESET_bw 1
-#define DEBUG_MODULE__DMSTATUS__ALLHAVERESET_reset 0x0
-#define DEBUG_MODULE__DMSTATUS___RESERVED_21_20_bm 0x300000
-#define DEBUG_MODULE__DMSTATUS___RESERVED_21_20_bp 20
-#define DEBUG_MODULE__DMSTATUS___RESERVED_21_20_bw 2
-#define DEBUG_MODULE__DMSTATUS___RESERVED_21_20_reset 0x0
-#define DEBUG_MODULE__DMSTATUS__IMPEBREAK_bm 0x400000
-#define DEBUG_MODULE__DMSTATUS__IMPEBREAK_bp 22
-#define DEBUG_MODULE__DMSTATUS__IMPEBREAK_bw 1
-#define DEBUG_MODULE__DMSTATUS__IMPEBREAK_reset 0x0
-#define DEBUG_MODULE__DMSTATUS___RESERVED_31_23_bm 0xff800000
-#define DEBUG_MODULE__DMSTATUS___RESERVED_31_23_bp 23
-#define DEBUG_MODULE__DMSTATUS___RESERVED_31_23_bw 9
-#define DEBUG_MODULE__DMSTATUS___RESERVED_31_23_reset 0x0
+// reg - debug_module::RESUMING
+#define DEBUG_MODULE__RESUMING__HARTID_bm 0x3ff
+#define DEBUG_MODULE__RESUMING__HARTID_bp 0
+#define DEBUG_MODULE__RESUMING__HARTID_bw 10
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t version :4;
-        uint32_t confstrptrvalid :1;
-        uint32_t hasresethaltreq :1;
-        uint32_t authbusy :1;
-        uint32_t authenticated :1;
-        uint32_t anyhalted :1;
-        uint32_t allhalted :1;
-        uint32_t anyrunning :1;
-        uint32_t allrunning :1;
-        uint32_t anyunavail :1;
-        uint32_t allunavail :1;
-        uint32_t anynonexistent :1;
-        uint32_t allnonexistent :1;
-        uint32_t anyresumeack :1;
-        uint32_t allresumeack :1;
-        uint32_t anyhavereset :1;
-        uint32_t allhavereset :1;
-        uint32_t _reserved_21_20 :2;
-        uint32_t impebreak :1;
-        uint32_t _reserved_31_23 :9;
+        uint32_t hartid :10;
+        uint32_t :22;
     } f;
     uint32_t w;
-} debug_module__dmstatus_t;
+} debug_module__RESUMING_t;
 
-// reg - debug_module::hartinfo
-#define DEBUG_MODULE__HARTINFO__DATAADDR_bm 0xfff
-#define DEBUG_MODULE__HARTINFO__DATAADDR_bp 0
-#define DEBUG_MODULE__HARTINFO__DATAADDR_bw 12
-#define DEBUG_MODULE__HARTINFO__DATAADDR_reset 0x0
-#define DEBUG_MODULE__HARTINFO__DATASIZE_bm 0xf000
-#define DEBUG_MODULE__HARTINFO__DATASIZE_bp 12
-#define DEBUG_MODULE__HARTINFO__DATASIZE_bw 4
-#define DEBUG_MODULE__HARTINFO__DATASIZE_reset 0x0
-#define DEBUG_MODULE__HARTINFO__DATAACCESS_bm 0x10000
-#define DEBUG_MODULE__HARTINFO__DATAACCESS_bp 16
-#define DEBUG_MODULE__HARTINFO__DATAACCESS_bw 1
-#define DEBUG_MODULE__HARTINFO__DATAACCESS_reset 0x0
-#define DEBUG_MODULE__HARTINFO___RESERVED_19_17_bm 0xe0000
-#define DEBUG_MODULE__HARTINFO___RESERVED_19_17_bp 17
-#define DEBUG_MODULE__HARTINFO___RESERVED_19_17_bw 3
-#define DEBUG_MODULE__HARTINFO___RESERVED_19_17_reset 0x0
-#define DEBUG_MODULE__HARTINFO__NSCRATCH_bm 0xf00000
-#define DEBUG_MODULE__HARTINFO__NSCRATCH_bp 20
-#define DEBUG_MODULE__HARTINFO__NSCRATCH_bw 4
-#define DEBUG_MODULE__HARTINFO__NSCRATCH_reset 0x0
-#define DEBUG_MODULE__HARTINFO___RESERVED_31_24_bm 0xff000000
-#define DEBUG_MODULE__HARTINFO___RESERVED_31_24_bp 24
-#define DEBUG_MODULE__HARTINFO___RESERVED_31_24_bw 8
-#define DEBUG_MODULE__HARTINFO___RESERVED_31_24_reset 0x0
+// reg - debug_module::EXCEPTION
+#define DEBUG_MODULE__EXCEPTION__HARTID_bm 0x3ff
+#define DEBUG_MODULE__EXCEPTION__HARTID_bp 0
+#define DEBUG_MODULE__EXCEPTION__HARTID_bw 10
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t dataaddr :12;
-        uint32_t datasize :4;
-        uint32_t dataaccess :1;
-        uint32_t _reserved_19_17 :3;
-        uint32_t nscratch :4;
-        uint32_t _reserved_31_24 :8;
+        uint32_t hartid :10;
+        uint32_t :22;
     } f;
     uint32_t w;
-} debug_module__hartinfo_t;
+} debug_module__EXCEPTION_t;
 
-// reg - debug_module::haltsum1
-#define DEBUG_MODULE__HALTSUM1__HALTSUM1_bm 0xffffffff
-#define DEBUG_MODULE__HALTSUM1__HALTSUM1_bp 0
-#define DEBUG_MODULE__HALTSUM1__HALTSUM1_bw 32
-#define DEBUG_MODULE__HALTSUM1__HALTSUM1_reset 0x0
+// reg - debug_module::WHERETO
+#define DEBUG_MODULE__WHERETO__INSTR_bm 0xffffffff
+#define DEBUG_MODULE__WHERETO__INSTR_bp 0
+#define DEBUG_MODULE__WHERETO__INSTR_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t haltsum1 :32;
+        uint32_t instr :32;
     } f;
     uint32_t w;
-} debug_module__haltsum1_t;
+} debug_module__WHERETO_t;
 
-// reg - debug_module::hawindowsel
-#define DEBUG_MODULE__HAWINDOWSEL__HAWINDOWSEL_bm 0x7fff
-#define DEBUG_MODULE__HAWINDOWSEL__HAWINDOWSEL_bp 0
-#define DEBUG_MODULE__HAWINDOWSEL__HAWINDOWSEL_bw 15
-#define DEBUG_MODULE__HAWINDOWSEL__HAWINDOWSEL_reset 0x0
-#define DEBUG_MODULE__HAWINDOWSEL___RESERVED_31_15_bm 0xffff8000
-#define DEBUG_MODULE__HAWINDOWSEL___RESERVED_31_15_bp 15
-#define DEBUG_MODULE__HAWINDOWSEL___RESERVED_31_15_bw 17
-#define DEBUG_MODULE__HAWINDOWSEL___RESERVED_31_15_reset 0x0
+// reg - debug_module::ABSTRACT
+#define DEBUG_MODULE__ABSTRACT__INSTR_bm 0xffffffff
+#define DEBUG_MODULE__ABSTRACT__INSTR_bp 0
+#define DEBUG_MODULE__ABSTRACT__INSTR_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t hawindowsel :15;
-        uint32_t _reserved_31_15 :17;
+        uint32_t instr :32;
     } f;
     uint32_t w;
-} debug_module__hawindowsel_t;
+} debug_module__ABSTRACT_t;
 
-// reg - debug_module::hawindow
-#define DEBUG_MODULE__HAWINDOW__MASKDATA_bm 0xffffffff
-#define DEBUG_MODULE__HAWINDOW__MASKDATA_bp 0
-#define DEBUG_MODULE__HAWINDOW__MASKDATA_bw 32
-#define DEBUG_MODULE__HAWINDOW__MASKDATA_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t maskdata :32;
-    } f;
-    uint32_t w;
-} debug_module__hawindow_t;
-
-// reg - debug_module::abstractcs
-#define DEBUG_MODULE__ABSTRACTCS__DATACOUNT_bm 0xf
-#define DEBUG_MODULE__ABSTRACTCS__DATACOUNT_bp 0
-#define DEBUG_MODULE__ABSTRACTCS__DATACOUNT_bw 4
-#define DEBUG_MODULE__ABSTRACTCS__DATACOUNT_reset 0x0
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_7_4_bm 0xf0
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_7_4_bp 4
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_7_4_bw 4
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_7_4_reset 0x0
-#define DEBUG_MODULE__ABSTRACTCS__CMDERR_bm 0x700
-#define DEBUG_MODULE__ABSTRACTCS__CMDERR_bp 8
-#define DEBUG_MODULE__ABSTRACTCS__CMDERR_bw 3
-#define DEBUG_MODULE__ABSTRACTCS__CMDERR_reset 0x0
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_11_bm 0x800
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_11_bp 11
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_11_bw 1
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_11_reset 0x0
-#define DEBUG_MODULE__ABSTRACTCS__BUSY_bm 0x1000
-#define DEBUG_MODULE__ABSTRACTCS__BUSY_bp 12
-#define DEBUG_MODULE__ABSTRACTCS__BUSY_bw 1
-#define DEBUG_MODULE__ABSTRACTCS__BUSY_reset 0x0
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_23_13_bm 0xffe000
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_23_13_bp 13
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_23_13_bw 11
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_23_13_reset 0x0
-#define DEBUG_MODULE__ABSTRACTCS__PROGBUFSIZE_bm 0x1f000000
-#define DEBUG_MODULE__ABSTRACTCS__PROGBUFSIZE_bp 24
-#define DEBUG_MODULE__ABSTRACTCS__PROGBUFSIZE_bw 5
-#define DEBUG_MODULE__ABSTRACTCS__PROGBUFSIZE_reset 0x0
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_31_29_bm 0xe0000000
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_31_29_bp 29
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_31_29_bw 3
-#define DEBUG_MODULE__ABSTRACTCS___RESERVED_31_29_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t datacount :4;
-        uint32_t _reserved_7_4 :4;
-        uint32_t cmderr :3;
-        uint32_t _reserved_11 :1;
-        uint32_t busy :1;
-        uint32_t _reserved_23_13 :11;
-        uint32_t progbufsize :5;
-        uint32_t _reserved_31_29 :3;
-    } f;
-    uint32_t w;
-} debug_module__abstractcs_t;
-
-// reg - debug_module::command
-#define DEBUG_MODULE__COMMAND__CONTROL_bm 0xffffff
-#define DEBUG_MODULE__COMMAND__CONTROL_bp 0
-#define DEBUG_MODULE__COMMAND__CONTROL_bw 24
-#define DEBUG_MODULE__COMMAND__CONTROL_reset 0x0
-#define DEBUG_MODULE__COMMAND__CMDTYPE_bm 0xff000000
-#define DEBUG_MODULE__COMMAND__CMDTYPE_bp 24
-#define DEBUG_MODULE__COMMAND__CMDTYPE_bw 8
-#define DEBUG_MODULE__COMMAND__CMDTYPE_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t control :24;
-        uint32_t cmdtype :8;
-    } f;
-    uint32_t w;
-} debug_module__command_t;
-
-// reg - debug_module::abstractauto
-#define DEBUG_MODULE__ABSTRACTAUTO__AUTOEXECDATA_bm 0xfff
-#define DEBUG_MODULE__ABSTRACTAUTO__AUTOEXECDATA_bp 0
-#define DEBUG_MODULE__ABSTRACTAUTO__AUTOEXECDATA_bw 12
-#define DEBUG_MODULE__ABSTRACTAUTO__AUTOEXECDATA_reset 0x0
-#define DEBUG_MODULE__ABSTRACTAUTO___RESERVED_15_12_bm 0xf000
-#define DEBUG_MODULE__ABSTRACTAUTO___RESERVED_15_12_bp 12
-#define DEBUG_MODULE__ABSTRACTAUTO___RESERVED_15_12_bw 4
-#define DEBUG_MODULE__ABSTRACTAUTO___RESERVED_15_12_reset 0x0
-#define DEBUG_MODULE__ABSTRACTAUTO__AUTOEXECPROGBUF_bm 0xffff0000
-#define DEBUG_MODULE__ABSTRACTAUTO__AUTOEXECPROGBUF_bp 16
-#define DEBUG_MODULE__ABSTRACTAUTO__AUTOEXECPROGBUF_bw 16
-#define DEBUG_MODULE__ABSTRACTAUTO__AUTOEXECPROGBUF_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t autoexecdata :12;
-        uint32_t _reserved_15_12 :4;
-        uint32_t autoexecprogbuf :16;
-    } f;
-    uint32_t w;
-} debug_module__abstractauto_t;
-
-// reg - debug_module::confstrptr
-#define DEBUG_MODULE__CONFSTRPTR__ADDR_bm 0xffffffff
-#define DEBUG_MODULE__CONFSTRPTR__ADDR_bp 0
-#define DEBUG_MODULE__CONFSTRPTR__ADDR_bw 32
-#define DEBUG_MODULE__CONFSTRPTR__ADDR_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t addr :32;
-    } f;
-    uint32_t w;
-} debug_module__confstrptr_t;
-
-// reg - debug_module::nextdm
-#define DEBUG_MODULE__NEXTDM__ADDR_bm 0xffffffff
-#define DEBUG_MODULE__NEXTDM__ADDR_bp 0
-#define DEBUG_MODULE__NEXTDM__ADDR_bw 32
-#define DEBUG_MODULE__NEXTDM__ADDR_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t addr :32;
-    } f;
-    uint32_t w;
-} debug_module__nextdm_t;
-
-// reg - debug_module::progbuf
+// reg - debug_module::PROGBUF
 #define DEBUG_MODULE__PROGBUF__DATA_bm 0xffffffff
 #define DEBUG_MODULE__PROGBUF__DATA_bp 0
 #define DEBUG_MODULE__PROGBUF__DATA_bw 32
@@ -402,276 +93,88 @@ typedef union {
         uint32_t data :32;
     } f;
     uint32_t w;
-} debug_module__progbuf_t;
+} debug_module__PROGBUF_t;
 
-// reg - debug_module::authdata
-#define DEBUG_MODULE__AUTHDATA__DATA_bm 0xffffffff
-#define DEBUG_MODULE__AUTHDATA__DATA_bp 0
-#define DEBUG_MODULE__AUTHDATA__DATA_bw 32
-#define DEBUG_MODULE__AUTHDATA__DATA_reset 0x0
+// reg - debug_module::IMPEBREAK
+#define DEBUG_MODULE__IMPEBREAK__INSTR_bm 0xffffffff
+#define DEBUG_MODULE__IMPEBREAK__INSTR_bp 0
+#define DEBUG_MODULE__IMPEBREAK__INSTR_bw 32
+#define DEBUG_MODULE__IMPEBREAK__INSTR_reset 0x100073
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t instr :32;
+    } f;
+    uint32_t w;
+} debug_module__IMPEBREAK_t;
+
+// reg - debug_module::DATA
+#define DEBUG_MODULE__DATA__DATA_bm 0xffffffff
+#define DEBUG_MODULE__DATA__DATA_bp 0
+#define DEBUG_MODULE__DATA__DATA_bw 32
+#define DEBUG_MODULE__DATA__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t data :32;
     } f;
     uint32_t w;
-} debug_module__authdata_t;
+} debug_module__DATA_t;
 
-// reg - debug_module::haltsum2
-#define DEBUG_MODULE__HALTSUM2__HALTSUM2_bm 0xffffffff
-#define DEBUG_MODULE__HALTSUM2__HALTSUM2_bp 0
-#define DEBUG_MODULE__HALTSUM2__HALTSUM2_bw 32
-#define DEBUG_MODULE__HALTSUM2__HALTSUM2_reset 0x0
+// reg - debug_module::FLAGS
+#define DEBUG_MODULE__FLAGS__FLAGS_0_bm 0xff
+#define DEBUG_MODULE__FLAGS__FLAGS_0_bp 0
+#define DEBUG_MODULE__FLAGS__FLAGS_0_bw 8
+#define DEBUG_MODULE__FLAGS__FLAGS_1_bm 0xff00
+#define DEBUG_MODULE__FLAGS__FLAGS_1_bp 8
+#define DEBUG_MODULE__FLAGS__FLAGS_1_bw 8
+#define DEBUG_MODULE__FLAGS__FLAGS_2_bm 0xff0000
+#define DEBUG_MODULE__FLAGS__FLAGS_2_bp 16
+#define DEBUG_MODULE__FLAGS__FLAGS_2_bw 8
+#define DEBUG_MODULE__FLAGS__FLAGS_3_bm 0xff000000
+#define DEBUG_MODULE__FLAGS__FLAGS_3_bp 24
+#define DEBUG_MODULE__FLAGS__FLAGS_3_bw 8
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t haltsum2 :32;
+        uint32_t flags_0 :8;
+        uint32_t flags_1 :8;
+        uint32_t flags_2 :8;
+        uint32_t flags_3 :8;
     } f;
     uint32_t w;
-} debug_module__haltsum2_t;
+} debug_module__FLAGS_t;
 
-// reg - debug_module::haltsum3
-#define DEBUG_MODULE__HALTSUM3__HALTSUM3_bm 0xffffffff
-#define DEBUG_MODULE__HALTSUM3__HALTSUM3_bp 0
-#define DEBUG_MODULE__HALTSUM3__HALTSUM3_bw 32
-#define DEBUG_MODULE__HALTSUM3__HALTSUM3_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t haltsum3 :32;
-    } f;
-    uint32_t w;
-} debug_module__haltsum3_t;
-
-// reg - debug_module::sbaddress3
-#define DEBUG_MODULE__SBADDRESS3__ADDRESS_bm 0xffffffff
-#define DEBUG_MODULE__SBADDRESS3__ADDRESS_bp 0
-#define DEBUG_MODULE__SBADDRESS3__ADDRESS_bw 32
-#define DEBUG_MODULE__SBADDRESS3__ADDRESS_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t address :32;
-    } f;
-    uint32_t w;
-} debug_module__sbaddress3_t;
-
-// reg - debug_module::sbcs
-#define DEBUG_MODULE__SBCS__SBACCESS8_bm 0x1
-#define DEBUG_MODULE__SBCS__SBACCESS8_bp 0
-#define DEBUG_MODULE__SBCS__SBACCESS8_bw 1
-#define DEBUG_MODULE__SBCS__SBACCESS8_reset 0x0
-#define DEBUG_MODULE__SBCS__SBACCESS16_bm 0x2
-#define DEBUG_MODULE__SBCS__SBACCESS16_bp 1
-#define DEBUG_MODULE__SBCS__SBACCESS16_bw 1
-#define DEBUG_MODULE__SBCS__SBACCESS16_reset 0x0
-#define DEBUG_MODULE__SBCS__SBACCESS32_bm 0x4
-#define DEBUG_MODULE__SBCS__SBACCESS32_bp 2
-#define DEBUG_MODULE__SBCS__SBACCESS32_bw 1
-#define DEBUG_MODULE__SBCS__SBACCESS32_reset 0x0
-#define DEBUG_MODULE__SBCS__SBACCESS64_bm 0x8
-#define DEBUG_MODULE__SBCS__SBACCESS64_bp 3
-#define DEBUG_MODULE__SBCS__SBACCESS64_bw 1
-#define DEBUG_MODULE__SBCS__SBACCESS64_reset 0x0
-#define DEBUG_MODULE__SBCS__SBACCESS128_bm 0x10
-#define DEBUG_MODULE__SBCS__SBACCESS128_bp 4
-#define DEBUG_MODULE__SBCS__SBACCESS128_bw 1
-#define DEBUG_MODULE__SBCS__SBACCESS128_reset 0x0
-#define DEBUG_MODULE__SBCS__SBASIZE_bm 0x1e0
-#define DEBUG_MODULE__SBCS__SBASIZE_bp 5
-#define DEBUG_MODULE__SBCS__SBASIZE_bw 4
-#define DEBUG_MODULE__SBCS__SBASIZE_reset 0x0
-#define DEBUG_MODULE__SBCS__SBERROR_bm 0xe00
-#define DEBUG_MODULE__SBCS__SBERROR_bp 9
-#define DEBUG_MODULE__SBCS__SBERROR_bw 3
-#define DEBUG_MODULE__SBCS__SBERROR_reset 0x0
-#define DEBUG_MODULE__SBCS___RESERVED_14_12_bm 0x7000
-#define DEBUG_MODULE__SBCS___RESERVED_14_12_bp 12
-#define DEBUG_MODULE__SBCS___RESERVED_14_12_bw 3
-#define DEBUG_MODULE__SBCS___RESERVED_14_12_reset 0x0
-#define DEBUG_MODULE__SBCS__SBREADONDATA_bm 0x8000
-#define DEBUG_MODULE__SBCS__SBREADONDATA_bp 15
-#define DEBUG_MODULE__SBCS__SBREADONDATA_bw 1
-#define DEBUG_MODULE__SBCS__SBREADONDATA_reset 0x0
-#define DEBUG_MODULE__SBCS__SBAUTOINCREMENT_bm 0x10000
-#define DEBUG_MODULE__SBCS__SBAUTOINCREMENT_bp 16
-#define DEBUG_MODULE__SBCS__SBAUTOINCREMENT_bw 1
-#define DEBUG_MODULE__SBCS__SBAUTOINCREMENT_reset 0x0
-#define DEBUG_MODULE__SBCS__SBACCESS_bm 0xe0000
-#define DEBUG_MODULE__SBCS__SBACCESS_bp 17
-#define DEBUG_MODULE__SBCS__SBACCESS_bw 3
-#define DEBUG_MODULE__SBCS__SBACCESS_reset 0x2
-#define DEBUG_MODULE__SBCS__SBREADONADDR_bm 0x100000
-#define DEBUG_MODULE__SBCS__SBREADONADDR_bp 20
-#define DEBUG_MODULE__SBCS__SBREADONADDR_bw 1
-#define DEBUG_MODULE__SBCS__SBREADONADDR_reset 0x0
-#define DEBUG_MODULE__SBCS__SBBUSY_bm 0x200000
-#define DEBUG_MODULE__SBCS__SBBUSY_bp 21
-#define DEBUG_MODULE__SBCS__SBBUSY_bw 1
-#define DEBUG_MODULE__SBCS__SBBUSY_reset 0x0
-#define DEBUG_MODULE__SBCS__SBBUSYERROR_bm 0x400000
-#define DEBUG_MODULE__SBCS__SBBUSYERROR_bp 22
-#define DEBUG_MODULE__SBCS__SBBUSYERROR_bw 1
-#define DEBUG_MODULE__SBCS__SBBUSYERROR_reset 0x0
-#define DEBUG_MODULE__SBCS___RESERVED_28_23_bm 0x1f800000
-#define DEBUG_MODULE__SBCS___RESERVED_28_23_bp 23
-#define DEBUG_MODULE__SBCS___RESERVED_28_23_bw 6
-#define DEBUG_MODULE__SBCS___RESERVED_28_23_reset 0x0
-#define DEBUG_MODULE__SBCS__SBVERSION_bm 0xe0000000
-#define DEBUG_MODULE__SBCS__SBVERSION_bp 29
-#define DEBUG_MODULE__SBCS__SBVERSION_bw 3
-#define DEBUG_MODULE__SBCS__SBVERSION_reset 0x1
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t sbaccess8 :1;
-        uint32_t sbaccess16 :1;
-        uint32_t sbaccess32 :1;
-        uint32_t sbaccess64 :1;
-        uint32_t sbaccess128 :1;
-        uint32_t sbasize :4;
-        uint32_t sberror :3;
-        uint32_t _reserved_14_12 :3;
-        uint32_t sbreadondata :1;
-        uint32_t sbautoincrement :1;
-        uint32_t sbaccess :3;
-        uint32_t sbreadonaddr :1;
-        uint32_t sbbusy :1;
-        uint32_t sbbusyerror :1;
-        uint32_t _reserved_28_23 :6;
-        uint32_t sbversion :3;
-    } f;
-    uint32_t w;
-} debug_module__sbcs_t;
-
-// reg - debug_module::sbaddress0
-#define DEBUG_MODULE__SBADDRESS0__ADDRESS_bm 0xffffffff
-#define DEBUG_MODULE__SBADDRESS0__ADDRESS_bp 0
-#define DEBUG_MODULE__SBADDRESS0__ADDRESS_bw 32
-#define DEBUG_MODULE__SBADDRESS0__ADDRESS_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t address :32;
-    } f;
-    uint32_t w;
-} debug_module__sbaddress0_t;
-
-// reg - debug_module::sbaddress1
-#define DEBUG_MODULE__SBADDRESS1__ADDRESS_bm 0xffffffff
-#define DEBUG_MODULE__SBADDRESS1__ADDRESS_bp 0
-#define DEBUG_MODULE__SBADDRESS1__ADDRESS_bw 32
-#define DEBUG_MODULE__SBADDRESS1__ADDRESS_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t address :32;
-    } f;
-    uint32_t w;
-} debug_module__sbaddress1_t;
-
-// reg - debug_module::sbaddress2
-#define DEBUG_MODULE__SBADDRESS2__ADDRESS_bm 0xffffffff
-#define DEBUG_MODULE__SBADDRESS2__ADDRESS_bp 0
-#define DEBUG_MODULE__SBADDRESS2__ADDRESS_bw 32
-#define DEBUG_MODULE__SBADDRESS2__ADDRESS_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t address :32;
-    } f;
-    uint32_t w;
-} debug_module__sbaddress2_t;
-
-// reg - debug_module::sbdata0
-#define DEBUG_MODULE__SBDATA0__DATA_bm 0xffffffff
-#define DEBUG_MODULE__SBDATA0__DATA_bp 0
-#define DEBUG_MODULE__SBDATA0__DATA_bw 32
-#define DEBUG_MODULE__SBDATA0__DATA_reset 0x0
+// reg - debug_module::ROM
+#define DEBUG_MODULE__ROM__DATA_bm 0xffffffff
+#define DEBUG_MODULE__ROM__DATA_bp 0
+#define DEBUG_MODULE__ROM__DATA_bw 32
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t data :32;
     } f;
     uint32_t w;
-} debug_module__sbdata0_t;
-
-// reg - debug_module::sbdata1
-#define DEBUG_MODULE__SBDATA1__DATA_bm 0xffffffff
-#define DEBUG_MODULE__SBDATA1__DATA_bp 0
-#define DEBUG_MODULE__SBDATA1__DATA_bw 32
-#define DEBUG_MODULE__SBDATA1__DATA_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t data :32;
-    } f;
-    uint32_t w;
-} debug_module__sbdata1_t;
-
-// reg - debug_module::sbdata2
-#define DEBUG_MODULE__SBDATA2__DATA_bm 0xffffffff
-#define DEBUG_MODULE__SBDATA2__DATA_bp 0
-#define DEBUG_MODULE__SBDATA2__DATA_bw 32
-#define DEBUG_MODULE__SBDATA2__DATA_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t data :32;
-    } f;
-    uint32_t w;
-} debug_module__sbdata2_t;
-
-// reg - debug_module::sbdata3
-#define DEBUG_MODULE__SBDATA3__DATA_bm 0xffffffff
-#define DEBUG_MODULE__SBDATA3__DATA_bp 0
-#define DEBUG_MODULE__SBDATA3__DATA_bw 32
-#define DEBUG_MODULE__SBDATA3__DATA_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t data :32;
-    } f;
-    uint32_t w;
-} debug_module__sbdata3_t;
-
-// reg - debug_module::haltsum0
-#define DEBUG_MODULE__HALTSUM0__HALTSUM0_bm 0xffffffff
-#define DEBUG_MODULE__HALTSUM0__HALTSUM0_bp 0
-#define DEBUG_MODULE__HALTSUM0__HALTSUM0_bw 32
-#define DEBUG_MODULE__HALTSUM0__HALTSUM0_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t haltsum0 :32;
-    } f;
-    uint32_t w;
-} debug_module__haltsum0_t;
+} debug_module__ROM_t;
 
 // addrmap - debug_module
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t RESERVED_0_f[0x10];
-    debug_module__abstractdata_t abstractdata[12];
-    debug_module__dmcontrol_t dmcontrol;
-    debug_module__dmstatus_t dmstatus;
-    debug_module__hartinfo_t hartinfo;
-    debug_module__haltsum1_t haltsum1;
-    debug_module__hawindowsel_t hawindowsel;
-    debug_module__hawindow_t hawindow;
-    debug_module__abstractcs_t abstractcs;
-    debug_module__command_t command;
-    debug_module__abstractauto_t abstractauto;
-    debug_module__confstrptr_t confstrptr[3];
-    uint8_t RESERVED_70_73[0x4];
-    debug_module__nextdm_t nextdm;
-    uint8_t RESERVED_78_7f[0x8];
-    debug_module__progbuf_t progbuf[16];
-    debug_module__authdata_t authdata;
-    uint8_t RESERVED_c4_cf[0xc];
-    debug_module__haltsum2_t haltsum2;
-    debug_module__haltsum3_t haltsum3;
-    uint8_t RESERVED_d8_db[0x4];
-    debug_module__sbaddress3_t sbaddress3;
-    debug_module__sbcs_t sbcs;
-    debug_module__sbaddress0_t sbaddress0;
-    debug_module__sbaddress1_t sbaddress1;
-    debug_module__sbaddress2_t sbaddress2;
-    debug_module__sbdata0_t sbdata0;
-    debug_module__sbdata1_t sbdata1;
-    debug_module__sbdata2_t sbdata2;
-    debug_module__sbdata3_t sbdata3;
-    debug_module__haltsum0_t haltsum0;
+    uint8_t RESERVED_0_ff[0x100];
+    debug_module__HALTED_t HALTED;
+    debug_module__GOING_t GOING;
+    debug_module__RESUMING_t RESUMING;
+    debug_module__EXCEPTION_t EXCEPTION;
+    uint8_t RESERVED_110_2ff[0x1f0];
+    debug_module__WHERETO_t WHERETO;
+    uint8_t RESERVED_304_327[0x24];
+    debug_module__ABSTRACT_t ABSTRACT[5];
+    debug_module__PROGBUF_t PROGBUF[16];
+    debug_module__IMPEBREAK_t IMPEBREAK;
+    debug_module__DATA_t DATA[4];
+    uint8_t RESERVED_390_3ff[0x70];
+    debug_module__FLAGS_t FLAGS;
+    uint8_t RESERVED_404_7ff[0x3fc];
+    debug_module__ROM_t ROM[26];
 } debug_module_t;
 
 
-static_assert(sizeof(debug_module_t) == 0x104, "Packing error");
+static_assert(sizeof(debug_module_t) == 0x868, "Packing error");
 
 #ifdef __cplusplus
 }

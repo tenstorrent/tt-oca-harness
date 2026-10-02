@@ -14,17 +14,18 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_gpio_filter_access_sep_test(smc_base_test):
-    """GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write)."""
+    """GPIO0/1 ACCESS_FILTER: only the AxPROT equal to the requirement passes (read + write)."""
 
     required_evidence = (
         "CHK-GPIO-FILTER-GPIO1",
         "CHK-GPIO-FILTER-PRE",
         "CHK-GPIO-FILTER-PRIV",
         "CHK-GPIO-FILTER-SCOREBOARD",
+        "CHK-GPIO-FILTER-SWEEP",
         "CHK-GPIO-FILTER-UNPRIV",
         "CHK-GPIO-FILTER-WR-DENY",
     )
-    min_evidence = 6
+    min_evidence = 7
 
     auto_protocol_vip = False
 
@@ -45,7 +46,9 @@ class smc_gpio_filter_access_sep_test(smc_base_test):
         # lost its `expected=`, or an analysis port that came unbound, drops the
         # delta below the floor and fails here while every sequence-side assert
         # still passes.
-        _EXPECTED_VALUE_CHECKS = 4  # GPIO0 pre / priv / priv-write readback, GPIO1 priv
+        # GPIO0 pre / priv / priv-write readback, GPIO1 priv, and per requirement
+        # value of the sweep one admitted read and one readback, plus the relock.
+        _EXPECTED_VALUE_CHECKS = 4 + 8 * 2 + 1
         measured = sb.sys_axi_value_checks_seen - before
         assert measured >= _EXPECTED_VALUE_CHECKS, (
             f"scoreboard booked only {measured} SEP_IN AXI exact-value compares "

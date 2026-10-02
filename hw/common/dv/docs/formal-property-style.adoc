@@ -8,8 +8,8 @@ This chapter fixes how formal properties are written, attached, labelled and
 placed so that one property file elaborates on the open-source path and on the
 licensed backends alike. The open-source path is SymbiYosys (`sby`) driving
 Yosys with the yosys-slang frontend (`read_slang`). Licensed backends run from
-the `nonfree` companion and read the same property files. The DTP DV root is
-the adopter of this style; no other DUT DV root carries formal collateral.
+separate integrations and read the same property files. The DTP DV root is the
+adopter of this style; no other DUT DV root carries formal collateral.
 
 [IMPORTANT]
 ====
@@ -238,7 +238,7 @@ code belongs to the design's property module. The checker files join the formal 
 report: sby prints `Assert failed in <top>: <instance path>.ast_...` and
 writes the same path as the JUnit `id`; licensed backends report the same
 hierarchical name. Every `ast_` whose antecedent is not trivially reachable
-has a companion `cov_` on the antecedent, and every `asm_` carries a one-line
+has a paired `cov_` on the antecedent, and every `asm_` carries a one-line
 rationale naming the protocol or design fact that makes it legal.
 
 [[formal-style-reset]]
@@ -316,8 +316,8 @@ before it is unconstrained.
 
 `<app>` names the check the tasks implement: `fpv` for property checking; the
 connectivity, register, unreachability and X-propagation apps follow the same
-shape. The `nonfree` companion mirrors the path for licensed backends:
-`<dut-dv-root>/formal/<app>/<tool>/` there holds that tool's script, which reads
+shape. Optional backend integrations mirror the path under
+`<dut-dv-root>/formal/<app>/<tool>/`; each tool script reads
 the same `props/` files from the open tree. `formal/build/` falls under the
 repository's `**/build/` ignore rule.
 
@@ -367,11 +367,11 @@ tops in the same shape.
   five consecutive `tms`-high cycles reach Test-Logic-Reset from any state,
   the entry and hold conditions of the reset, idle, shift and update states,
   the exclusivity of the DR and IR scan selects, and the Moore and
-  negedge-clocked scan-control flags following the state. Enum states come
+  negedge-clocked scan-control flags following the state. A helper flop in
+  the module counts the consecutive `tms`-high cycles. Enum states come
   from `jtag_tap_pkg`.
 * `props/dtp_tap_bind.sv`: binds the module to `jtag_tap_ctrlr` and connects
-  the TAP control struct, the state, the `tms` counter and the scan-control
-  struct members.
+  the TAP control struct, the state and the scan-control struct members.
 * `props/dtp_jtag_fv_bind.sv`: binds the shared JTAG checker to `dtp` on the
   primary TAP, the host's phase rule assumed and the TAP's rules asserted;
   `dtp_jtag2axi_axi_fv_bind.sv` and `dtp_ctn_axi_fv_bind.sv` do the same with

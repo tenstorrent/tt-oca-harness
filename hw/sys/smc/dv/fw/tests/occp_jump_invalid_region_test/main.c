@@ -2,13 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Jump Invalid Region Test
- *
- * This test verifies that the JUMP command properly handles addresses in the
- * protected region (SMC_SRAM_BASE_ADDR to OCCP_TEST_BASE_ADDR) for unsecure mode only.
- * The ROM should log an error for invalid addresses and not jump to them.
- * After the invalid command, additional commands are sent to verify the ROM
- * is still responsive and in the OCCP processing loop.
+ * In non-secure mode, issues JUMPs into the protected SRAM region below OCCP_TEST_BASE_ADDR,
+ * checks each is rejected with INVALID_ADDRESS and a JUMP_READ_FAILED status entry, and that
+ * the ROM still answers afterwards.
  */
 
 #include "occp_test_common.h"
@@ -57,15 +53,12 @@ static void run_jump_invalid_region_test(test_context_t *ctx) {
     int retval;
     uint32_t status_data = 0;
 
-    // Protected region boundaries for unsecure mode
     uint64_t protected_region_base = SMC_SRAM_BASE_ADDR;
     uint64_t protected_region_upper = OCCP_TEST_BASE_ADDR;
 
-    // Execute some random OCCP commands first for baseline
     simputs("=== Random OCCP Commands (5 commands) ===\n");
     execute_random_commands(ctx, 5);
 
-    // re-latch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -75,7 +68,6 @@ static void run_jump_invalid_region_test(test_context_t *ctx) {
 
     simputs("=== Test 1: Jump to protected region base address ===\n");
 
-    // Test 1: Jump to exact base of protected region
     uint64_t jump_addr_base = protected_region_base;
     simputshex64("Attempting JUMP to protected region base: 0x", jump_addr_base);
     simputshex64("Protected region is: 0x", protected_region_base);
@@ -97,7 +89,6 @@ static void run_jump_invalid_region_test(test_context_t *ctx) {
 
     simputs("=== Test 2: Jump to protected region upper boundary ===\n");
 
-    // Test 2: Jump to upper boundary of protected region
     uint64_t jump_addr_upper = (protected_region_upper - 4) & 0xfffffffc;
     simputshex64("Attempting JUMP to protected region upper boundary: 0x", jump_addr_upper);
 
@@ -114,7 +105,7 @@ static void run_jump_invalid_region_test(test_context_t *ctx) {
     exp_num_jump_security_errors++;
     simputs("PASS: JUMP command issued successfully (upper boundary)\n");
 
-    // re-latch to recover
+    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -125,7 +116,6 @@ static void run_jump_invalid_region_test(test_context_t *ctx) {
     simputs("=== Test 3: Jump to random offsets in protected region ===\n");
 
     for (int i = 0; i < 4; i++) {
-        // Test 3: Jump to random offset within protected region
         uint64_t region_size = protected_region_upper - protected_region_base;
         uint64_t random_offset = (get_random_int() % region_size) & 0xfffffffc;
         uint64_t jump_addr_random1 = protected_region_base + random_offset;
@@ -143,7 +133,6 @@ static void run_jump_invalid_region_test(test_context_t *ctx) {
         exp_num_jump_security_errors++;
     }
 
-    // re-latch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -151,10 +140,8 @@ static void run_jump_invalid_region_test(test_context_t *ctx) {
     }
     increment_cmd_count(ctx);
 
-    // Read and validate the status buffer
     read_and_validate_smc_status_buffer(ctx);
 
-    // Execute more commands to verify ROM is still responsive
     simputs("=== Random OCCP Commands (10 commands after invalid jump tests) ===\n");
     execute_random_commands(ctx, 5);
 
@@ -162,7 +149,6 @@ static void run_jump_invalid_region_test(test_context_t *ctx) {
 }
 
 static void finalize_test_results(test_context_t *ctx) {
-    // Signal completion to cocotb by writing to the master's scratchpad
     if (ctx->overall_result) {
         simputs("\nJUMP INVALID REGION C-TEST PASSED! Signaling cocotb.\n");
         test_pass(0);
@@ -182,17 +168,14 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context
-    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;                     // Start of valid range
-    test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR; // End of valid range
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
+    test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     test_ctx.overall_result = true;
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the test
     run_jump_invalid_region_test(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");

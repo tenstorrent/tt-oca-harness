@@ -1,10 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Constants for the dual-SMC OCCP unsecure-boot flow.
-
-Every value here is a contract with firmware or RTL elsewhere in the tree, named
-at its definition. Nothing is invented for the convenience of the test.
-"""
+"""Constants and helpers shared by the dual-SMC OCCP cocotb tests."""
 
 from __future__ import annotations
 
@@ -14,7 +10,7 @@ from pathlib import Path
 
 import cocotb
 
-# Generated PeakRDL map, same hookup as the single-instance cocotb tree.
+# The generated register map is not an installed package.
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
     sys.path.insert(0, str(_SMC_REG_PY))
@@ -31,15 +27,19 @@ from smc_reg import (  # noqa: E402
     SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_1__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_3__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_4__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_5__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_6__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_7__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_8__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_9__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_10__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_11__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_12__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_13__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_15__REG_ADDR,
 )
 
-# --------------------------------------------------------------------------
-# CPU control: reset vectors and the release sequence
-# --------------------------------------------------------------------------
 CPU_CTRL_RESET_VECTOR = (
     SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR,
     SMC_CPU_CTRL_RESET_VECTOR_1__REG_ADDR,
@@ -49,115 +49,117 @@ CPU_CTRL_RESET_VECTOR = (
 CPU_CTRL_RESET_CTRL = SMC_CPU_CTRL_RESET_CTRL_REG_ADDR
 CPU_CTRL_RESET_TIMEOUT = SMC_CPU_CTRL_RESET_TIMEOUT_REG_ADDR
 
-# ROM window base; both images in this flow are entered from ROM.
 CPU_RESET_VECTOR_ROM = CPU_CTRL_RESET_VECTOR_REG_DEFAULT & 0xFFFF_FFFF
 CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
-# Hold all four cores in reset while bit 8 keeps the uncore out of it. Same
-# value as smc_cpu_vip_utils.CPU_RESET_CTRL_HOLD_CORES.
-#
-# Not usable for staging over AXI: the cluster boundary only opens when every
-# core is out of reset, so holding any core leaves the boundary isolated and AXI
-# into the scratch window never answers at all.
+# Holds all four cores; AXI into the scratch window never answers while any core is held.
 CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
-# timeout_mode=1 so the reset is force-applied if the cluster never drains
-# (same value smc_cpu_vip_utils.CPU_RESET_TIMEOUT_FORCE uses).
 CPU_RESET_TIMEOUT_FORCE = 0x0001_0020
 
-# --------------------------------------------------------------------------
-# Scratch registers
-# --------------------------------------------------------------------------
-# Target side. Index 0/1 are the ROM's SIM pass-fail and POST code
-# (hw/sys/smc/bootrom/prod/lib/include/smc_scratchpad.h).
+# Pulsing core reset is the only way to relatch RESET_VECTOR once boot_stall is low.
+CPU_RESET_CTRL_PULSE_CORES = 0x0000_00F0
+
 SCRATCH_PASS_FAIL = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
 SCRATCH_POST_CODE = SMC_CPU_CTRL_SCRATCH_1__REG_ADDR
 
-# Controller side, the firmware RNG seed (SEED_REG in the DV firmware's
-# smc_test.h). init_test() loads it into the LFSR at the start of main(), so it
-# has to be written before the controller's cores are released.
-#
-# Leaving it 0 is not neutral: 0 is a fixed point of that LFSR, so every
-# get_random_int() returns 0 forever. That pins two protocol choices for the
-# whole run -- no body CRC on any OCCP WRITE, and I3C channel 0 every time,
-# leaving channels 1 and 3 wired in the testbench but never exercised.
+# Write before releasing the cores; 0 is an LFSR fixed point that pins every random choice.
 SCRATCH_FW_SEED = SMC_CPU_CTRL_SCRATCH_3__REG_ADDR
 
-# Controller side: the OCCP unsecure-boot host protocol, read by the DV
-# occp_unsecure_boot_test firmware.
 SCRATCH_BOOTCODE_ADDR = SMC_CPU_CTRL_SCRATCH_5__REG_ADDR
 SCRATCH_BOOTCODE_SIZE = SMC_CPU_CTRL_SCRATCH_6__REG_ADDR
 SCRATCH_TARGET_ADDR = SMC_CPU_CTRL_SCRATCH_7__REG_ADDR
 SCRATCH_ENTRY_OFFSET = SMC_CPU_CTRL_SCRATCH_8__REG_ADDR
 
-# Proof that the transferred image ran rests on the target's scratch 0, which is
-# the same source the reference environment uses. Nothing else in this flow can
-# write it: the transferred payload's whole body is test_pass(0), and the
-# production boot ROM's own scratch pass/fail setter has no call sites anywhere
-# in the tree. The test also asserts scratch 0 does not already hold TEST_PASS
-# before the transfer, and separately requires the target's retired PC to land
-# inside the transferred image.
-#
-# TEST_PASS comes from the DV firmware's smc_test.h, and is the same value the
-# production ROM calls SMC_SCRATCHPAD_SIM_PASS_CODE.
+# The status buffer address is an offset from SMC_SRAM_BASE, not an absolute address.
+SCRATCH_STATUS_TO_SEP = SMC_CPU_CTRL_SCRATCH_9__REG_ADDR
+SCRATCH_STATUS_BUFFER_ADDR = SMC_CPU_CTRL_SCRATCH_11__REG_ADDR
+
+# Controller only: on the target these two indices carry ROM status.
+SCRATCH_SEP_RB_READY = SMC_CPU_CTRL_SCRATCH_10__REG_ADDR
+SCRATCH_SEP_RB_COUNT = SMC_CPU_CTRL_SCRATCH_12__REG_ADDR
+
+# Firmware sets this around GET_SEP_STATUS; leave the shadow buffer alone while it is set.
+SCRATCH_SEP_RB_GUARD = SMC_CPU_CTRL_SCRATCH_13__REG_ADDR
+
+# Controller only: the two OCCP I2C target addresses, one byte per channel in channel order.
+SCRATCH_I2C_TARGET_IDS = SMC_CPU_CTRL_SCRATCH_4__REG_ADDR
+
+# Target side: write the entry offset first; the controller proceeds once the base is non-zero.
+SCRATCH_JUMP_BASE = SMC_CPU_CTRL_SCRATCH_4__REG_ADDR
+SCRATCH_JUMP_ENTRY_OFFSET = SMC_CPU_CTRL_SCRATCH_5__REG_ADDR
+
+# The ROM echoes the manifest address as an offset from SMC_SRAM_BASE, not absolute.
+SCRATCH_MANIFEST_ADDR = SMC_CPU_CTRL_SCRATCH_8__REG_ADDR
+SEP_STATUS_MANIFEST_READY_BIT = 1
+
+SCRATCH_MBIST_STATUS = SMC_CPU_CTRL_SCRATCH_15__REG_ADDR
+
+# Also the ROM's SIM pass code; the pass proof holds only while the payload alone writes it.
 TEST_PASS = 0xACAF_ACA1
 TEST_FAIL = 0xFFFF_FFFF
 
-# --------------------------------------------------------------------------
-# Memory map
-# --------------------------------------------------------------------------
-# Physical SRAM base (SMC_SRAM_BASE in smc_rom_defs.h) and the start of the
-# OCCP-writable window (SMC_SRAM_BASE_ADDR = SMC_ROM_STACK_END). The production
-# ROM rejects OCCP writes below the latter.
+# The ROM rejects OCCP writes below OCCP_SRAM_BASE.
 SMC_SRAM_BASE = 0xC006_0000
 OCCP_SRAM_BASE = 0xC006_6400
 
-# --------------------------------------------------------------------------
-# Pads
-# --------------------------------------------------------------------------
-# SMC_STATUS_GPIO. The controller firmware's wait_for_target_up_gpio() spins on
-# this pad forever from inside initialize_interface(), which runs before scratch
-# 5-8 are read. Holding it low is therefore the testbench's only lever for
-# "controller running, but not yet looking at the host protocol", which is
-# exactly the window the payload has to be staged in: staging needs all four
-# cores out of reset (see CPU_RESET_CTRL_HOLD_CORES) yet must complete before the
-# firmware reads scratch 5-8.
-#
-# In normal operation the TARGET drives this pad from set_gpio_status() on the
-# success path of its OCCP init. The dual top resolves the undriven value low,
-# so a target that never asserts readiness leaves the controller waiting, as it
-# would in silicon.
+# Controller firmware waits on this pad before reading scratch 5-8; low holds it off.
 CTRL_TARGET_READY_PAD = 58
 
-# Upper bound of the standardised OCCP test window, from the firmware's own
-# occp_test_common.h.
+STRAP_BOOT_I2C = 18
+STRAP_PRIMARY_CHIPLET = 25
+# Keyed by plusarg name; BOOT_I2C is controller-only and handled separately.
+STRAP_BITS = {
+    "MEM_REPAIR_BYPASS": 13,
+    "TEST_EN": 14,
+    "BOOT_RECOVERY": 19,
+    "BL0_PLLCLK": 20,
+    "STATUS_RPT_DISABLE": 21,
+    "SPI_USE_FUSED_CONFIG": 22,
+    "SRAM_AUTO_ZERO_DISABLE": 26,
+    "MEM_BIST_BYPASS": 54,
+    "ROTATE_UPDATE": 58,
+}
+
+STRAP_CHIP_ID_BITS = (23, 15, 12, 11)
+
+I2C_ADDR_MIN = 0x08
+I2C_ADDR_MAX = 0x77
+I2C_ADDR_FALLBACK = 0x55
+
+
+def chip_id_straps(chip_id: int) -> int:
+    value = 0
+    for bit, gpio in enumerate(STRAP_CHIP_ID_BITS):
+        if (chip_id >> bit) & 1:
+            value |= 1 << gpio
+    return value
+
+
+# Valid only while the target's eFuse I2C address slot is unprogrammed.
+def occp_i2c_address(chip_id: int, chip_config_id: int = 0) -> int:
+    addr = (chip_id & 0xF) | ((chip_config_id & 0x3) << 5)
+    if addr < I2C_ADDR_MIN or addr > I2C_ADDR_MAX:
+        return I2C_ADDR_FALLBACK
+    return addr
+
+
+STRAPS_LO_ADDR = 0xC040_5800
+STRAPS_HI_ADDR = 0xC040_5804
+STRAPS_LO_BIT_COUNT = 32
+
+
+def strap_reg_addr(bit: int) -> tuple[int, int]:
+    if bit < STRAPS_LO_BIT_COUNT:
+        return STRAPS_LO_ADDR, bit
+    return STRAPS_HI_ADDR, bit - STRAPS_LO_BIT_COUNT
+
+
 OCCP_SRAM_UPPER = 0xC016_0000
 
-# Floor for staging inside the CONTROLLER's SRAM. Unlike the target address,
-# this one cannot use the whole window: it has to clear the controller image's
-# own .data/.bss/stack, or the payload would be overwritten by the firmware that
-# is supposed to read it. The image's symbol map puts the top of its stack at
-# 0xC0070E30, rounded up here to the next 4 KB.
-#
-# The reference environment stages from the bottom of the full window,
-# overlapping that region.
+# Must clear the controller image's .data/.bss/stack, or the firmware overwrites the payload.
 BFM_STAGING_FLOOR = 0xC007_1000
 
 
 def pick_payload_addresses(seed: int, payload_size: int) -> tuple[int, int]:
-    """Draw this run's staging and target addresses, 8-byte aligned.
-
-    A fixed target address of OCCP_SRAM_BASE -- which is also SMC_ROM_STACK_END,
-    the first address the ROM will accept -- makes two behaviours
-    indistinguishable: a ROM that reads the OCCP WRITE command's address field,
-    and a ROM that ignores it and always writes from the bottom of the window.
-    Drawing the address per run is what tells them apart.
-
-    The transferred image does not have to be linked at the address it lands on.
-    The JUMP enters `main`, which is position independent: it materialises both
-    the scratch address and TEST_PASS from immediates and parks in a relative
-    branch. Only crt0 would care about the link base, and the JUMP skips it.
-
-    Deterministic in `seed` so a failure is reproducible from the run's log.
-    """
     rng = random.Random(seed)
 
     def draw(low: int, high: int) -> int:
@@ -168,16 +170,12 @@ def pick_payload_addresses(seed: int, payload_size: int) -> tuple[int, int]:
             )
         return rng.randint(low, top) & ~0x7
 
-    # Target: the whole OCCP-writable window. This is the address under test.
+    # The payload's main() must be position independent: the target address varies per run.
     target = draw(OCCP_SRAM_BASE, OCCP_SRAM_UPPER)
-    # Controller: above its own image (see BFM_STAGING_FLOOR).
     staging = draw(BFM_STAGING_FLOOR, OCCP_SRAM_UPPER)
     return staging, target
 
 
-# --------------------------------------------------------------------------
-# POST code (target boot ROM progress); see smc_post_code.h.
-# --------------------------------------------------------------------------
 POST_CODE_BOOT_PHASE_SHIFT = 28
 POST_CODE_BOOT_PHASE_MASK = 0xF
 POST_CODE_ERROR_SHIFT = 16
@@ -224,19 +222,39 @@ def describe_post_code(word: int) -> str:
     )
 
 
-# --------------------------------------------------------------------------
-# Shared I3C channels wired between the two instances, in the order the
-# SMC_DUAL half of tb_top.sv lists them in SharedI3cIdx. Both firmware halves
-# select from exactly this set.
-# --------------------------------------------------------------------------
+# I3C channels the dual top cross-wires; must match the testbench wiring.
 SHARED_I3C_CHANNELS = (0, 1, 3)
 
 
-# --------------------------------------------------------------------------
-# Helpers shared by every dual-instance OCCP test.
-# --------------------------------------------------------------------------
+# The JUMP enters main(), not _enter: rerunning crt0 would corrupt the live boot ROM's state.
+PAYLOAD_ENTRY_SYMBOL = "main"
+# Must be the ELF entry point, i.e. byte 0 of the .bin.
+PAYLOAD_LOAD_SYMBOL = "_enter"
+
+
+def payload_entry_offset(sym_path: str) -> int:
+    addrs: dict[str, int] = {}
+    # Expects `nm -B -n` lines: "<addr> <type> <name>".
+    for line in Path(sym_path).read_text().splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[2] in (PAYLOAD_ENTRY_SYMBOL, PAYLOAD_LOAD_SYMBOL):
+            addrs[parts[2]] = int(parts[0], 16)
+    for want in (PAYLOAD_LOAD_SYMBOL, PAYLOAD_ENTRY_SYMBOL):
+        if want not in addrs:
+            raise AssertionError(
+                f"no {want} symbol in {sym_path}; cannot derive the OCCP JUMP entry offset"
+            )
+    offset = addrs[PAYLOAD_ENTRY_SYMBOL] - addrs[PAYLOAD_LOAD_SYMBOL]
+    if offset < 0:
+        raise AssertionError(
+            f"{PAYLOAD_ENTRY_SYMBOL} ({addrs[PAYLOAD_ENTRY_SYMBOL]:#x}) is below "
+            f"{PAYLOAD_LOAD_SYMBOL} ({addrs[PAYLOAD_LOAD_SYMBOL]:#x}); the entry "
+            "point is not inside the image"
+        )
+    return offset
+
+
 def required_plusarg(name: str, test_name: str) -> str:
-    """Fetch a mandatory plusarg, or fail with which test needed it."""
     value = cocotb.plusargs.get(name)
     if value is None:
         raise AssertionError(f"{test_name} requires +{name}=")
@@ -244,16 +262,10 @@ def required_plusarg(name: str, test_name: str) -> str:
 
 
 def bus_activity(dut) -> list[tuple[int, int, int]]:
-    """(channel, scl_falls, starts) for each cross-wired I3C channel.
-
-    Flat scalars, not an unpacked-array handle: cocotb reads every element of
-    the latter as element 0, which silently mis-attributes every per-channel
-    count. The instance number comes from the TB too (tb_i3c_channel_id_N), so
-    the label cannot drift from what is being counted -- do not substitute
-    SHARED_I3C_CHANNELS here, which would reintroduce that drift.
-    """
+    # Flat scalars: cocotb reads every unpacked-array element as element 0.
     return [
         (
+            # Label from the TB, not SHARED_I3C_CHANNELS, so it matches what was counted.
             int(getattr(dut, f"tb_i3c_channel_id_{pos}").value),
             int(getattr(dut, f"tb_i3c_scl_fall_count_{pos}").value),
             int(getattr(dut, f"tb_i3c_start_count_{pos}").value),
@@ -262,7 +274,23 @@ def bus_activity(dut) -> list[tuple[int, int, int]]:
     ]
 
 
-def format_activity(activity) -> str:
-    return ", ".join(
-        f"I3C{ch}: scl_falls={falls} starts={starts}" for ch, falls, starts in activity
-    )
+# The I2C channels the dual top cross-wires, in the order their counters appear.
+SHARED_I2C_CHANNELS = (0, 1)
+
+
+def i2c_bus_activity(dut) -> list[tuple[int, int, int]]:
+    return [
+        (
+            ch,
+            int(getattr(dut, f"tb_i2c_scl_fall_count_{pos}").value),
+            int(getattr(dut, f"tb_i2c_start_count_{pos}").value),
+        )
+        for pos, ch in enumerate(SHARED_I2C_CHANNELS)
+    ]
+
+
+def format_activity(activity, i2c=None) -> str:
+    parts = [f"I3C{ch}: scl_falls={falls} starts={starts}" for ch, falls, starts in activity]
+    if i2c is not None:
+        parts += [f"I2C{ch}: scl_falls={falls} starts={starts}" for ch, falls, starts in i2c]
+    return ", ".join(parts)

@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-hmac]
-== Address Map: hmac
+== HMAC Accelerator
+
+Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function
 
 [NOTE]
 ======
@@ -26,8 +28,8 @@
 | 0x18 | <<reg-{regmap-instance}-hmac-STATUS,STATUS>> | R a| -
 | 0x1C | <<reg-{regmap-instance}-hmac-ERR_CODE,ERR_CODE>> | R a| -
 | 0x20 | <<reg-{regmap-instance}-hmac-WIPE_SECRET,WIPE_SECRET>> | W a| -
-| 0x24 - 0xA0 | <<reg-{regmap-instance}-hmac-KEY-0-,KEY[32]>> | W a| -
-| 0xA4 - 0xE0 | <<reg-{regmap-instance}-hmac-DIGEST-0-,DIGEST[16]>> | RW a| -
+| 0x24 - 0xA0 | <<reg-{regmap-instance}-hmac-KEY-,KEY[32]>> | W a| -
+| 0xA4 - 0xE0 | <<reg-{regmap-instance}-hmac-DIGEST-,DIGEST[16]>> | RW a| -
 | 0xE4 | <<reg-{regmap-instance}-hmac-MSG_LENGTH_LOWER,MSG_LENGTH_LOWER>> | RW a| -
 | 0xE8 | <<reg-{regmap-instance}-hmac-MSG_LENGTH_UPPER,MSG_LENGTH_UPPER>> | RW a| -
 |===
@@ -39,14 +41,14 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2 | `hmac_err` | RW | 0x0 a| HMAC error has occurred. ERR_CODE register shows which error occurred.
+| 2 | `hmac_err` | RW1C | 0x0 a| HMAC error has occurred. ERR_CODE register shows which error occurred.
 | 1 | `fifo_empty` | R | 0x0 a| The message FIFO is empty.
 This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:
 i) The HMAC block is not running in HMAC mode and performing the second round of computing the final hash of the outer key as well as the result of the first round using the inner key.
 ii) Software has not yet written the Process or Stop command to finish the hashing operation.
 For the interrupt to be raised, the message FIFO must also have been full previously.
 Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.
-| 0 | `hmac_done` | RW | 0x0 a| HMAC/SHA-2 has completed.
+| 0 | `hmac_done` | RW1C | 0x0 a| HMAC/SHA-2 has completed.
 |===
 
 [#reg-{regmap-instance}-hmac-INTR_ENABLE]
@@ -136,12 +138,12 @@ If this bit is 1, HMAC operates when `hash_start` toggles.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3 | `hash_continue` | W | - a| When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.
-| 2 | `hash_stop` | W | - a| When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.
+| 3 | `hash_continue` | W1C | - a| When 1 is written to this field, SHA-2 or HMAC will continue hashing based on the current hash in the digest registers and the message length, which both have to be restored to switch context.
+| 2 | `hash_stop` | W1C | - a| When 1 is written to this field, SHA-2 or HMAC will afterwards set the `hmac_done` interrupt as soon as the current block has been hashed.
 The hash can then be read from the registers !!DIGEST_0 to !!DIGEST_15.
 Together with the message length in !!MSG_LENGTH_LOWER and !!MSG_LENGTH_UPPER, this forms the information that has to be saved before switching context.
-| 1 | `hash_process` | W | - a| If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.
-| 0 | `hash_start` | W | - a| If 1 is written into this field, SHA-2 or HMAC begins its operation.
+| 1 | `hash_process` | W1C | - a| If 1 is written to this field, SHA-2 or HMAC calculates the digest or signing based on currently received message.
+| 0 | `hash_start` | W1C | - a| If 1 is written into this field, SHA-2 or HMAC begins its operation.
 CPU must configure relative information first, such as the digest size, secret key and the key length.
 |===
 
@@ -179,7 +181,7 @@ Please take a look at `hw/ip/prim/rtl/prim_sha2_pkg.sv:err_code_e enum type.
 | 31:0 | `secret` | W | - a| Secret value
 |===
 
-[#reg-{regmap-instance}-hmac-KEY-0-]
+[#reg-{regmap-instance}-hmac-KEY-]
 === KEY[32]
 
 [cols="1,3,1,1,6", options="header"]
@@ -188,7 +190,7 @@ Please take a look at `hw/ip/prim/rtl/prim_sha2_pkg.sv:err_code_e enum type.
 | 31:0 | `key_0` | W | - a| 32-bit chunk of 1024-bit secret key
 |===
 
-[#reg-{regmap-instance}-hmac-DIGEST-0-]
+[#reg-{regmap-instance}-hmac-DIGEST-]
 === DIGEST[16]
 
 [cols="1,3,1,1,6", options="header"]

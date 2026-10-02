@@ -14,8 +14,8 @@
 //                   every phase
 //   reset           per-CTP config-reset recovery from a deadlocked P2P
 //                   handshake, then a system reset landing on an active
-//                   inverted wire-OR pulse: reset window, CSR defaults,
-//                   fresh route
+//                   inverted wire-OR pulse and a held P2P receive: reset
+//                   window, CSR defaults, fresh route
 //   random          seeded CTP configuration mix (mode/invert/stretch)
 //                   proving route, isolation, width, and pad polarity per
 //                   draw
@@ -36,6 +36,7 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
   virtual task dispatch_scenario();
     case (scenario)
       "wire_or":        run_wire_or();
+      "wire_or_bus":    run_wire_or_bus();
       "p2p":            run_p2p();
       "reset":          run_reset();
       "random":         run_random();
@@ -67,27 +68,116 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
       program_route(int_port, 32'd1 << ctp_port, $sformatf("wire_or.stretch%0d", stretch));
       run_wire_or_pulse(ctp_idx, int_idx, stretch);
     end
-    `uvm_info(get_type_name(), "Drive external CT_Req_out input and expect internal CT delivery",
-              UVM_LOW)
+    for (int unsigned invert = 0; invert < 2; invert++) begin
+      `uvm_info(
+          get_type_name(), $sformatf(
+          "A chiplet pulls the CTP's shared wire (INVERT=%0d) and the internal CT delivers", invert
+          ), UVM_LOW)
+      program_ctp(ctp_idx, CtpModeWireOr, bit'(invert), 1'b0, 16'd0);
+      program_route(ctp_port, 32'd1 << int_port, $sformatf(
+                    "wire_or.external_to_internal.inv%0d", invert));
+      run_route_window(32'd1 << ctp_port, 32'd1 << int_port, CtpModeWireOr, $sformatf(
+                       "wire_or.external_sync.inv%0d", invert));
+    end
     program_ctp(ctp_idx, CtpModeWireOr, 1'b0, 1'b0, 16'd0);
-    program_route(ctp_port, 32'd1 << int_port, "wire_or.external_to_internal");
-    drive_input_port(ctp_port, CtpModeWireOr);
-    wait_signal_mask("xtrig_ctm_src_req", 32'd1 << int_idx, 32'd1 << int_idx, 60,
-                     "wire_or.external_sync");
   endtask
 
-  // One stretched pulse: enable and busy widths, aligned rise, BUSY over the
-  // CSR, then clear.
+  // Several CTPs on one shared wire-OR wire: the transmitter's own pull, a
+  // chiplet's pull, and the two merged reach every member once.
+  protected task run_wire_or_bus();
+    int unsigned members[$];
+    int unsigned ints[$];
+    int unsigned int_outs[$];
+    int unsigned int_src, tx, puller;
+    bit invert;
+    bit [15:0] stretch;
+    bit [31:0] member_ports = '0;
+    bit [31:0] listener_outputs = '0;
+    bit [31:0] transmit_predicted, transmit_intent;
+    `uvm_info(get_type_name(), "XTRIG CTPs on one shared wire-OR wire", UVM_LOW)
+    // Seeded per pass: the members of the wire, their common sense and
+    // stretch, the transmitter, the internal source that triggers it, and
+    // one internal output per member.
+    pick_distinct(XtrigNumCtp, $urandom_range(4, 2), members);
+    invert = bit'($urandom_range(1));
+    stretch = 16'($urandom_range(7));
+    pick_distinct(XtrigNumIntCt, members.size() + 1, ints);
+    int_src = ints.pop_front();
+    int_outs = ints;
+    tx = members[0];
+    puller = members[$];
+    foreach (members[i]) member_ports |= 32'd1 << external_ctp_port(members[i]);
+    foreach (int_outs[i]) listener_outputs |= 32'd1 << internal_ct_port(int_outs[i]);
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "shared wire: CTPs %p (INVERT=%0d, STRETCH_MULT=%0d), transmitter CTP[%0d] from internal CT[%0d], listeners to internal CTs %p",
+            members, invert, stretch, tx, int_src, int_outs), UVM_LOW)
+    foreach (members[i]) program_ctp(members[i], CtpModeWireOr, invert, 1'b0, stretch);
+    share_wire(member_ports, invert);
+    clear_ctm_routes();
+    program_ctm_src(external_ctp_port(tx), 32'd1 << internal_ct_port(int_src));
+    foreach (members[i])
+      program_ctm_src(internal_ct_port(int_outs[i]), 32'd1 << external_ctp_port(members[i]));
+    transmit_predicted = ctm_model.route(32'd1 << internal_ct_port(int_src))
+        | ctm_model.route(member_ports);
+    transmit_intent = (32'd1 << external_ctp_port(tx)) | listener_outputs;
+
+    `uvm_info(
+        get_type_name(),
+        "Step 1: the transmitter pulls the wire: every member, itself included, receives once",
+        UVM_LOW)
+    open_route_window();
+    pulse_ctm_dst_req(32'd1 << int_src, 1);
+    check_output_mask(transmit_intent, CtpModeWireOr, transmit_predicted, "wire_or_bus.transmit",
+                      IsolationTailCycles + stretch, 32'd1 << internal_ct_port(int_src));
+    check_shared_wire_receive(members, "xtrig_ctp_req_out_dout_en", tx, "wire_or_bus.transmit");
+
+    `uvm_info(get_type_name(), "Step 2: a chiplet pulls the wire: every member receives once",
+              UVM_LOW)
+    open_route_window();
+    pull_ctp_wire(puller, $urandom_range(5, 1));
+    check_output_mask(listener_outputs, CtpModeWireOr, ctm_model.route(member_ports),
+                      "wire_or_bus.chiplet");
+    check_shared_wire_receive(members, "xtrig_ctp_wire_ext_assert", puller, "wire_or_bus.chiplet");
+
+    `uvm_info(get_type_name(),
+              "Step 3: the transmitter pulls while a chiplet holds the wire: one merged assertion",
+              UVM_LOW)
+    open_route_window();
+    xtrig_vif.xtrig_ctp_wire_ext_assert <= XtrigNumCtp'(32'd1 << puller);
+    wait_sys_cycles($urandom_range(3, 1));
+    pulse_ctm_dst_req(32'd1 << int_src, 1);
+    // The chiplet keeps the wire asserted until the transmitter has released it.
+    wait_signal_mask("xtrig_ctp_req_out_dout_en", 32'd1 << tx, 32'd1 << tx, 60,
+                     "wire_or_bus.merged.tx_pulls");
+    wait_signal_mask("xtrig_ctp_req_out_dout_en", 32'd1 << tx, '0, 60,
+                     "wire_or_bus.merged.tx_releases");
+    wait_sys_cycles(2);
+    xtrig_vif.xtrig_ctp_wire_ext_assert <= '0;
+    check_output_mask(transmit_intent, CtpModeWireOr, transmit_predicted, "wire_or_bus.merged",
+                      IsolationTailCycles + stretch, '0, 1'b0);
+    check_shared_wire_receive(members, "xtrig_ctp_wire_ext_assert", puller, "wire_or_bus.merged");
+
+    share_wire('0, 1'b0);
+    clear_ctm_routes();
+  endtask
+
+  // One stretched pulse after the internal request: enable and busy widths,
+  // aligned rise, BUSY over the CSR, then clear.
   protected task run_wire_or_pulse(int unsigned ctp_idx, int unsigned int_idx, bit [15:0] stretch);
     string label = $sformatf("wire_or.stretch%0d", stretch);
     bit [31:0] mask = 32'd1 << ctp_idx;
-    string watched[$] = {"xtrig_ctp_req_out_dout_en", "xtrig_ctp_busy"};
-    int unsigned width, busy_width;
+    string watched[$] = {"xtrig_ctp_req_out_dout_en", "xtrig_ctp_busy", "xtrig_ctm_dst_req"};
+    int unsigned width, pulses, busy_width, busy_pulses;
+    int requested_at, enabled_at;
     idle_inputs();
     start_activity_window_on(watched);
     fork
-      measure_mask_width("xtrig_ctp_req_out_dout_en", mask, width);
-      measure_mask_width("xtrig_ctp_busy", mask, busy_width);
+      measure_mask_width(.name("xtrig_ctp_req_out_dout_en"), .mask(mask), .width(width),
+                         .pulses(pulses));
+      measure_mask_width(.name("xtrig_ctp_busy"), .mask(mask), .width(busy_width),
+                         .pulses(busy_pulses));
       begin
         pulse_ctm_dst_req(32'd1 << int_idx, 1);
         wait_signal_mask("xtrig_ctp_req_out_dout_en", mask, mask, 60, {label, ".active"});
@@ -95,11 +185,18 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
       end
     join
     stop_activity_window();
+    requested_at = window_first_rise("xtrig_ctm_dst_req", int_idx);
+    enabled_at   = window_first_rise("xtrig_ctp_req_out_dout_en", ctp_idx);
     check_evidence(ChkStretch, {label, ".width"}, 64'(width), 64'(stretch) + 64'd1);
+    check_evidence(ChkStretch, {label, ".pulses"}, 64'(pulses), 64'd1);
     check_evidence(ChkStretch, {label, ".busy_width"}, 64'(busy_width), 64'(stretch) + 64'd1);
+    check_evidence(ChkStretch, {label, ".busy_pulses"}, 64'(busy_pulses), 64'd1);
+    check_evidence(ChkSignal, {label, ".after_input"},
+                   64'(requested_at >= 0 && requested_at < enabled_at), 64'd1, $sformatf(
+                   "request@%0d enable@%0d", requested_at, enabled_at));
+    check_evidence(ChkSignal, {label, ".enable_seen"}, 64'(enabled_at >= 0), 64'd1);
     check_evidence(ChkSignal, {label, ".busy_rise"}, 64'(window_first_rise("xtrig_ctp_busy", ctp_idx
-                   )), 64'(window_first_rise("xtrig_ctp_req_out_dout_en", ctp_idx)),
-                   "busy rises with the output enable");
+                   )), 64'(enabled_at), "busy rises with the output enable");
     check_status(ctp_idx, {label, ".cleared"}, .busy(0));
     check_evidence(ChkSignal, {label, ".busy_flop_cleared"}, 64'(xtrig_pin("xtrig_ctp_busy"
                    ) & mask), 64'd0);
@@ -111,6 +208,9 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     int unsigned ctp_port = external_ctp_port(ctp_idx);
     int unsigned int_port = internal_ct_port(int_idx);
     bit [31:0] mask = 32'd1 << ctp_idx;
+    bit [31:0] inverted, req_out_active;
+    string req_out_names[$] = {"xtrig_ctp_req_out_dout"};
+    string delivery_names[$] = {"xtrig_ctm_src_req"};
     `uvm_info(get_type_name(), "XTRIG CTP point-to-point handshakes", UVM_LOW)
     // Seeded per-pass port pair: each loop proves the P2P handshakes on
     // a different CTP/internal combination.
@@ -120,45 +220,80 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
               "Step 1: internal trigger asserts CT_Req_out and BUSY until CT_Ack_in", UVM_LOW)
     program_route(int_port, 32'd1 << ctp_port, "p2p.internal_to_ctp");
     idle_inputs();
+    log_xtrig_sample("p2p.before_request");
+    check_evidence(ChkSignal, "p2p.req_out_idle_before", 64'(xtrig_pin("xtrig_ctp_req_out_dout"
+                   ) & mask), 64'(pad_level(mask, 1'b0)));
     pulse_ctm_dst_req(32'd1 << int_idx, 2);
     wait_signal_mask("xtrig_ctp_req_out_dout", mask, pad_level(mask, 1'b1), 60, "p2p.req_out");
-    check_status(ctp_idx, "p2p.request", .busy(1), .req_out(1));
+    check_status(ctp_idx, "p2p.request", .busy(1), .req_out(1), .ack_in(0), .req_in(0),
+                 .ack_out(0));
     drive_p2p_ack_in(ctp_idx, 1'b1);
-    wait_signal_mask("xtrig_ctp_req_out_dout", mask, pad_level(mask, 1'b0), 60,
+    wait_signal_mask("xtrig_ctp_req_out_dout", mask, pad_level(mask, 1'b0), P2pPhaseMaxCycles,
                      "p2p.req_out_clear");
-    check_status(ctp_idx, "p2p.acknowledged", .ack_in(1), .req_out(0), .busy(1));
+    check_status(ctp_idx, "p2p.acknowledged", .busy(1), .req_out(0), .ack_in(1), .req_in(0),
+                 .ack_out(0));
+    // CT_Req_out stays idle from the acknowledge release until STATUS reads
+    // the port idle.
+    start_activity_window_on(req_out_names);
     drive_p2p_ack_in(ctp_idx, 1'b0);
     wait_signal_mask("xtrig_ctp_busy", mask, '0, 60, "p2p.request_done");
-    check_status(ctp_idx, "p2p.request_done", .busy(0), .ack_in(0));
+    wait_signal_mask("xtrig_ctp_req_out_dout", mask, pad_level(mask, 1'b0), 60, "p2p.req_out_idle");
+    check_status(ctp_idx, "p2p.request_done", .busy(0), .req_out(0), .ack_in(0), .req_in(0),
+                 .ack_out(0));
+    stop_activity_window();
+    inverted = p_sequencer.m_xtrig_ctp_shadow.invert_mask();
+    req_out_active = ((window_activity["xtrig_ctp_req_out_dout"] & ~inverted) |
+                      (~window_hold["xtrig_ctp_req_out_dout"] & inverted)) & mask;
+    check_evidence(ChkSignal, "p2p.request_done.req_out_idle", 64'(req_out_active), 64'd0,
+                   $sformatf("cycles=%0d", window_cycles));
 
     `uvm_info(get_type_name(),
               "Step 2: external CT_Req_in asserts CT_Ack_out, delivers the trigger, then idles",
               UVM_LOW)
     program_route(ctp_port, 32'd1 << int_port, "p2p.ctp_to_internal");
+    log_xtrig_sample("p2p.before_response");
+    check_evidence(ChkSignal, "p2p.internal_idle_before", 64'(xtrig_pin("xtrig_ctm_src_req"
+                   ) & (32'd1 << int_idx)), 64'd0);
+    check_evidence(ChkSignal, "p2p.ack_out_idle_before", 64'(xtrig_pin("xtrig_ctp_ack_out_dout"
+                   ) & mask), 64'(pad_level(mask, 1'b0)));
+    start_activity_window_on(delivery_names);
     drive_p2p_req_in(ctp_idx, 1'b1);
     wait_signal_mask("xtrig_ctp_ack_out_dout", mask, pad_level(mask, 1'b1), 60, "p2p.ack_out");
     wait_signal_mask("xtrig_ctm_src_req", 32'd1 << int_idx, 32'd1 << int_idx, 60,
                      "p2p.internal_delivery");
-    check_status(ctp_idx, "p2p.response", .req_in(1), .ack_out(1), .busy(1));
+    wait_signal_mask("xtrig_ctm_src_req", 32'd1 << int_idx, '0, 60, "p2p.internal_released");
+    check_status(ctp_idx, "p2p.response", .busy(1), .req_out(0), .ack_in(0), .req_in(1),
+                 .ack_out(1));
     drive_p2p_req_in(ctp_idx, 1'b0);
-    wait_signal_mask("xtrig_ctp_ack_out_dout", mask, pad_level(mask, 1'b0), 60,
+    wait_signal_mask("xtrig_ctp_ack_out_dout", mask, pad_level(mask, 1'b0), P2pPhaseMaxCycles,
                      "p2p.ack_out_clear");
     wait_signal_mask("xtrig_ctp_busy", mask, '0, 60, "p2p.response_done");
-    check_status(ctp_idx, "p2p.response_done", .busy(0), .req_in(0), .ack_out(0));
+    check_status(ctp_idx, "p2p.response_done", .busy(0), .req_out(0), .ack_in(0), .req_in(0),
+                 .ack_out(0));
+    // One CT_Req_in assertion delivers one pulse, to the routed destination
+    // only.
+    stop_activity_window();
+    check_evidence(ChkSignal, "p2p.internal_delivery.pulses", 64'(window_rise_count(
+                   "xtrig_ctm_src_req", int_idx)), 64'd1, $sformatf("cycles=%0d", window_cycles));
+    check_evidence(ChkSignal, "p2p.internal_delivery.isolated",
+                   64'(window_activity["xtrig_ctm_src_req"] & ~(32'd1 << int_idx)), 64'd0,
+                   $sformatf("cycles=%0d", window_cycles));
   endtask
 
   protected task run_reset();
     int unsigned ctp_idx = $urandom_range(XtrigNumCtp - 1);
     int unsigned int_idx = $urandom_range(XtrigNumIntCt - 1);
-    int unsigned ctp_b, int_b;
+    int unsigned ctp_b, int_b, int_c;
     int unsigned ctp_port = external_ctp_port(ctp_idx);
     int unsigned int_port = internal_ct_port(int_idx);
     bit [31:0] mask = 32'd1 << ctp_idx;
+    string held[$] = {"xtrig_ctp_req_out_dout", "xtrig_ctp_ack_out_dout", "xtrig_ctp_busy"};
     `uvm_info(get_type_name(), "XTRIG CTP reset recovery", UVM_LOW)
     // Seeded per-pass ports: each loop deadlocks and recovers a
     // different CTP, and system-resets a different second CTP.
     do ctp_b = $urandom_range(XtrigNumCtp - 1); while (ctp_b == ctp_idx);
     do int_b = $urandom_range(XtrigNumIntCt - 1); while (int_b == int_idx);
+    do int_c = $urandom_range(XtrigNumIntCt - 1); while (int_c inside {int_idx, int_b});
 
     `uvm_info(get_type_name(),
               "Step 1: stall the acknowledge of a P2P handshake and recover through CONFIG.RESET",
@@ -173,19 +308,35 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
     wait_signal_mask("xtrig_ctp_req_out_dout", mask, pad_level(mask, 1'b0), 60,
                      "reset.config_reset_clear");
     check_status(ctp_idx, "reset.config_reset", .busy(0), .req_out(0));
+    // The window opens once STATUS has read BUSY=0, because the registered
+    // busy flop clears a cycle after RESET forces the sender idle.
+    start_activity_window_on(held);
     program_ctp(ctp_idx, CtpModeP2p, 1'b0, 1'b0);
+    wait_sys_cycles(IsolationTailCycles);
+    stop_activity_window();
+    foreach (held[i])
+      check_evidence(ChkQuiet, $sformatf("reset.config_reset.%s", held[i]),
+                     64'(window_activity[held[i]][ctp_idx]), 64'd0, $sformatf(
+                     "cycles=%0d", window_cycles));
     verify_route(int_port, 32'd1 << ctp_port, CtpModeP2p, "reset.post_config_reset");
 
-    `uvm_info(get_type_name(),
-              "Step 2: system reset while an inverted wire-OR pulse is active on a second CTP",
-              UVM_LOW)
+    `uvm_info(
+        get_type_name(),
+        "Step 2: system reset while an inverted wire-OR pulse and a P2P receive are active on two CTPs and an internal CT has pulsed",
+        UVM_LOW)
+    start_live_window(reset_signals);
     program_ctp(ctp_b, CtpModeWireOr, 1'b1, 1'b0, ResetHoldStretch);
     program_ctm_src(ctp_b, 32'd1 << internal_ct_port(int_b));
+    program_ctm_src(internal_ct_port(int_c), 32'd1 << internal_ct_port(int_b));
     idle_inputs();
     pulse_ctm_dst_req(32'd1 << int_b, 1);
     wait_signal_mask("xtrig_ctp_req_out_dout_en", 32'd1 << ctp_b, 32'd1 << ctp_b, 60,
                      "reset.active_before");
-    reset_window("xtrig_reset");
+    wait_window_fired("xtrig_ctm_src_req", 32'd1 << int_c, 60, "reset.internal_active", 1'b1);
+    drive_p2p_req_in(ctp_idx, 1'b1);
+    wait_signal_mask("xtrig_ctp_ack_out_dout", mask, pad_level(mask, 1'b1), 60,
+                     "reset.rx_ack_held");
+    reset_window("xtrig_reset", reset_signals);
     check_ctp_defaults("reset.system");
     check_all_ctm_cleared("reset.system");
     verify_route(internal_ct_port(int_b), 32'd1 << external_ctp_port(ctp_b), CtpModeWireOr,
@@ -215,10 +366,6 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
                 ), UVM_LOW)
       if (mode == CtpModeWireOr) begin
         verify_wire_or_pulse(ctp_idx, int_idx, stretch, invert, label);
-        // The pad data of a wire-OR port is the static level INVERT
-        // selects while its enable pulses.
-        wait_signal_mask("xtrig_ctp_req_out_dout", 32'd1 << ctp_idx,
-                         invert ? (32'd1 << ctp_idx) : '0, 60, {label, ".wire_polarity"});
         continue;
       end
       csr_write(ctp_config_addr(ctp_idx), pack_ctp_config(mode, invert, 1'b1), 4'hF, $sformatf(

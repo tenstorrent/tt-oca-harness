@@ -16,7 +16,7 @@ loader. `BOOT_SPI_CONTROLLER_OT` selects the implementation at build time:
 * `BOOT_SPI_CONTROLLER_OT=0` reads memory-mapped flash through the external XIP
   window with the secure DMA. Controller bring-up is the weak hook set in
   `src/sep_spi.c`, which reports the controller as absent; an integrator
-  overrides it with a real driver through `NONFREE_BOOTCODE_SOURCES`.
+  overrides it with a real driver through `OCAH_FW_OVERLAY_SOURCES_sep`.
 
 Controller initialization receives the clock selected earlier in the boot.
 Failure is not immediately terminal because the loader can proceed to another

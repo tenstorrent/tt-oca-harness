@@ -1,40 +1,56 @@
-//-----------------------------------------------------------------------------
-// I2C Bus Monitor
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Monitor SCL and SDA for START/STOP, bus-free, and active/inactive timeouts.
 //
-// Description: I2C bus idle and timeout monitoring, plus Start/Stop
-// detection.
+// The monitor runs while controller, multi-controller or target mode is enabled. A START or
+// STOP is reported once SCL has stayed high for thd_dat_i cycles after the SDA edge.
+// thd_dat_i is the data hold time (< 200 ns, < thd_sta).
+// t_buf_i is the bus free time (< 5 us).
+// bus_active_timeout_i covers SCL held low (~25 ms); bus_inactive_timeout_i covers SCL
+// held high with SDA stable (~50 us), and zero disables it.
 
 module i2c_bus_monitor
   import i2c_pkg::*;
 (
-  input  logic        clk_i,
-  input  logic        rst_ni,
+  input  logic        clk_i,                                // System clock.
+  input  logic        rst_ni,                               // Async reset, active-low.
 
-  input  logic        scl_i,
-  input  logic        sda_i,
+  input  logic        scl_i,                                // SCL pad input.
+  input  logic        sda_i,                                // SDA pad input.
 
-  input  logic        controller_enable_i,
-  input  logic        multi_controller_enable_i,
-  input  logic        target_enable_i,
-  input  logic        target_idle_i,
-  input  logic [12:0] thd_dat_i,                   // Data hold time(< 200 ns, < thd_sta)
-  input  logic [12:0] t_buf_i,                     // Bus free time (< 5 us)
-  input  logic [29:0] bus_active_timeout_i,        // SCL held low  (~25 ms)
-  input  logic        bus_active_timeout_en_i,
-  input  logic [30:0] bus_inactive_timeout_i,      // SCL held high (~50 us)
+  input  logic        controller_enable_i,                  // Controller mode enabled.
+  input  logic        multi_controller_enable_i,            // Multi-controller mode enabled; the
+                                                            // bus starts busy and bus_free_o is
+                                                            // high only in the free state.
+  input  logic        target_enable_i,                      // Target mode enabled.
+  input  logic        target_idle_i,                        // Target FSM is idle; suppresses
+                                                            // event_host_timeout_o.
+  input  logic [12:0] thd_dat_i,                            // Data hold time in clocks (< 200 ns, <
+                                                            // thd_sta); also the START and STOP
+                                                            // qualification delay.
+  input  logic [12:0] t_buf_i,                              // Bus free time in clocks (< 5 us),
+                                                            // counted after a STOP.
+  input  logic [29:0] bus_active_timeout_i,                 // SCL-low timeout threshold in clocks
+                                                            // (~25 ms).
+  input  logic        bus_active_timeout_en_i,              // Enable SCL-low timeout.
+  input  logic [30:0] bus_inactive_timeout_i,               // SCL-high timeout threshold in clocks
+                                                            // (~50 us); zero disables it.
 
-  output logic        bus_free_o,
-  output logic        start_detect_o,
-  output logic        stop_detect_o,
+  output logic        bus_free_o,                           // Bus free for a new transfer; outside
+                                                            // multi-controller mode low only during
+                                                            // the t_buf_i wait after a STOP.
+  output logic        start_detect_o,                       // One-cycle pulse on a qualified START
+                                                            // or repeated START.
+  output logic        stop_detect_o,                        // One-cycle pulse on a qualified STOP.
 
-  output logic        event_bus_active_timeout_o,
-  output logic        event_host_timeout_o
+  output logic        event_bus_active_timeout_o,           // One-cycle pulse when SCL is held low
+                                                            // past the threshold while
+                                                            // bus_active_timeout_en_i is set.
+  output logic        event_host_timeout_o                  // Pulse when SCL is held high past the
+                                                            // threshold while the target is not
+                                                            // idle.
 );
 
   `include "prim_assert.sv"
@@ -181,13 +197,13 @@ module i2c_bus_monitor
 
   typedef enum logic [1:0] {
     // Bus is currently free. Can transmit.
-    StBusFree,
+    ST_BUS_FREE,
     // Bus is busy and not held with SCL high.
-    StBusBusyLow,
+    ST_BUS_BUSY_LOW,
     // Bus is currently busy, but SCL is held high.
-    StBusBusyHigh,
+    ST_BUS_BUSY_HIGH,
     // Bus is currently busy, but saw a Stop. Count down to Bus Free.
-    StBusBusyStop
+    ST_BUS_BUSY_STOP
   } bus_state_e;
 
   bus_state_e state_q, state_d;
@@ -201,25 +217,25 @@ module i2c_bus_monitor
     bus_active_timeout_det_d = bus_active_timeout_det_q;
 
     unique case (state_q)
-      StBusFree: begin
+      ST_BUS_FREE: begin
         bus_active_timeout_det_d = 1'b0;
 
         if (!scl_i || !sda_i) begin
-          state_d = StBusBusyLow;
+          state_d = ST_BUS_BUSY_LOW;
           bus_release_cnt_load = 1'b1;
           bus_release_cnt_sel = 31'(bus_active_timeout_i);
         end
       end
 
-      StBusBusyLow: begin
+      ST_BUS_BUSY_LOW: begin
         bus_release_cnt_dec = !scl_i;
 
         if (stop_det) begin
-          state_d = StBusBusyStop;
+          state_d = ST_BUS_BUSY_STOP;
           bus_release_cnt_load = 1'b1;
           bus_release_cnt_sel = 31'(t_buf_i);
         end else if (bus_idling && bus_inactive_timeout_en) begin
-          state_d = StBusBusyHigh;
+          state_d = ST_BUS_BUSY_HIGH;
           bus_release_cnt_load = 1'b1;
           bus_release_cnt_sel = bus_inactive_timeout_i;
         end else if (scl_i) begin
@@ -227,7 +243,7 @@ module i2c_bus_monitor
           bus_release_cnt_sel = 31'(bus_active_timeout_i);
           if (bus_active_timeout_det_q) begin
             // SCL was released due to the bus timeout, so go to BusFree.
-            state_d = StBusFree;
+            state_d = ST_BUS_FREE;
           end
         end else if (bus_release_cnt == 31'd1) begin
           // The active timeout occurs when SCL has been held continuously low
@@ -238,58 +254,58 @@ module i2c_bus_monitor
         end
       end
 
-      StBusBusyHigh: begin
+      ST_BUS_BUSY_HIGH: begin
         bus_release_cnt_dec = 1'b1;
 
         if (stop_det) begin
-          state_d = StBusBusyStop;
+          state_d = ST_BUS_BUSY_STOP;
           bus_release_cnt_load = 1'b1;
           bus_release_cnt_sel = 31'(t_buf_i);
         end else if (!bus_idling) begin
-          state_d = StBusBusyLow;
+          state_d = ST_BUS_BUSY_LOW;
           bus_release_cnt_load = 1'b1;
           bus_release_cnt_sel = 31'(bus_active_timeout_i);
         end else if (bus_release_cnt == 31'd1) begin
           // The host_timeout interrupt occurs regardless of which value of
-          // SDA was present, but only transition to StBusFree if we entered
+          // SDA was present, but only transition to ST_BUS_FREE if we entered
           // this state with SDA high. If SDA is low, a change to SCL will
-          // cause a transition back to StBusBusyLow. If SDA changes from low
-          // to high, we get a Stop condition and transition to StBusBusyStop.
+          // cause a transition back to ST_BUS_BUSY_LOW. If SDA changes from low
+          // to high, we get a Stop condition and transition to ST_BUS_BUSY_STOP.
           bus_inactive_timeout_det = bus_inactive_timeout_en;
           if (sda_i) begin
-            state_d = StBusFree;
+            state_d = ST_BUS_FREE;
           end
         end
       end
 
-      StBusBusyStop: begin
+      ST_BUS_BUSY_STOP: begin
         bus_release_cnt_dec = 1'b1;
 
         if (!scl_i || !sda_i) begin
-          state_d = StBusBusyLow;
+          state_d = ST_BUS_BUSY_LOW;
         end else if (bus_release_cnt == 31'd1) begin
-          state_d = StBusFree;
+          state_d = ST_BUS_FREE;
         end
       end
 
       default: begin
-        state_d = StBusFree;
+        state_d = ST_BUS_FREE;
       end
     endcase
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
-      state_q <= StBusFree;
+      state_q <= ST_BUS_FREE;
     end else if (!monitor_enable) begin
-      state_q <= StBusFree;
+      state_q <= ST_BUS_FREE;
     end else if (monitor_enable && !monitor_enable_q) begin
       if (multi_controller_enable_i) begin
         // For the multi-controller case, wait until the bus isn't busy before
         // transmitting.
-        state_q <= StBusBusyHigh;
+        state_q <= ST_BUS_BUSY_HIGH;
       end else begin
-        state_q <= StBusFree;
+        state_q <= ST_BUS_FREE;
       end
     end else begin
       state_q <= state_d;
@@ -298,12 +314,12 @@ module i2c_bus_monitor
 
   always_comb begin
     if (multi_controller_enable_i) begin
-      bus_free_o = (state_q == StBusFree);
+      bus_free_o = (state_q == ST_BUS_FREE);
     end else begin
       // For single-controller cases, the bus is only "busy" while waiting for the "bus free"
       // time after a Stop condition. In other words, that is the only time our controller
       // can't continue to the next transaction.
-      bus_free_o = (state_q != StBusBusyStop);
+      bus_free_o = (state_q != ST_BUS_BUSY_STOP);
     end
   end
 

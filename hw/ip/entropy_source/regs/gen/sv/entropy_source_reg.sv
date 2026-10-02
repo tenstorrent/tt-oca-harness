@@ -1312,7 +1312,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.DEBUG_CTRL.SELECT_SIGNAL.value;
         load_next_c = '0;
-        if(decoded_reg_strb.DEBUG_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.DEBUG_CTRL && decoded_req_is_wr && !(hwif_in.DEBUG_CTRL.SELECT_SIGNAL.swwel)) begin // SW write
             next_c = (field_storage.DEBUG_CTRL.SELECT_SIGNAL.value & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
             load_next_c = '1;
         end
@@ -1335,7 +1335,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.DEBUG_CTRL.SELECT_FREQ_DIV.value;
         load_next_c = '0;
-        if(decoded_reg_strb.DEBUG_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.DEBUG_CTRL && decoded_req_is_wr && !(hwif_in.DEBUG_CTRL.SELECT_FREQ_DIV.swwel)) begin // SW write
             next_c = (field_storage.DEBUG_CTRL.SELECT_FREQ_DIV.value & ~decoded_wr_biten[10:8]) | (decoded_wr_data[10:8] & decoded_wr_biten[10:8]);
             load_next_c = '1;
         end
@@ -3108,7 +3108,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.BIW_OBS_CTRL.RAW_ENABLE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.BIW_OBS_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.BIW_OBS_CTRL && decoded_req_is_wr && !(hwif_in.BIW_OBS_CTRL.RAW_ENABLE.swwel)) begin // SW write
             next_c = (field_storage.BIW_OBS_CTRL.RAW_ENABLE.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
@@ -3135,7 +3135,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.NOISE_OBS_CTRL.RAW_ENABLE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.NOISE_OBS_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.NOISE_OBS_CTRL && decoded_req_is_wr && !(hwif_in.NOISE_OBS_CTRL.RAW_ENABLE.swwel)) begin // SW write
             next_c = (field_storage.NOISE_OBS_CTRL.RAW_ENABLE.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end

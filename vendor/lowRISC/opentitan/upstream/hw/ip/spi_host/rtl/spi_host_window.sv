@@ -52,9 +52,9 @@ module spi_host_window
   assign rx_access_error = rx_we;
 
   tlul_adapter_reg #(
-    .RegAw             ( AW                       ),
-    .RegDw             ( DW                       ),
-    .EnableDataIntgGen ( 0                        )
+    .REG_AW               ( AW                    ),
+    .REG_DW               ( DW                    ),
+    .ENABLE_DATA_INTG_GEN ( 0                     )
   ) u_adapter_rx (
     .clk_i,
     .rst_ni,
@@ -84,12 +84,12 @@ module spi_host_window
 
   // Only support writes to the data TX fifo window
   tlul_adapter_sram #(
-    .SramAw(AW),
-    .SramDw(DW),
-    .Outstanding(1),
-    .ByteAccess(1),
-    .ErrOnWrite(0),
-    .ErrOnRead(1)
+    .SRAM_AW(AW),
+    .SRAM_DW(DW),
+    .OUTSTANDING(1),
+    .BYTE_ACCESS(1),
+    .ERR_ON_WRITE(0),
+    .ERR_ON_READ(1)
   ) u_adapter_tx (
     .clk_i,
     .rst_ni,

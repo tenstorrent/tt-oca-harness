@@ -112,8 +112,8 @@ class DtpJtagDriver(uvm_driver):
         self.logger.debug("drove %s", item)
 
     async def _drive_tms_step(self, item: DtpJtagItem) -> None:
-        """Drive one IEEE 1149.1 TMS cycle and sample the DUT TAP state."""
-        await self.jtag.step_tms(item.tms)
+        """Drive one IEEE 1149.1 TMS cycle with the item's TDI and sample the DUT TAP state."""
+        await self.jtag.step(item.tms, item.tdi)
         await ReadOnly()
         item.result = self.tb_if.sample("jtag_ptap_state")
         await NextTimeStep()
@@ -185,6 +185,7 @@ class DtpJtagDriver(uvm_driver):
             "jtag_bsr_run_test_idle",
             "jtag_bsr_test_logic_reset",
             "jtag_bsr_runbist",
+            "jtag_bsr_chrst_n",
             "jtag_dft_secure_select",
             "jtag_dft_secure_shift_en",
             "jtag_dft_secure_capture_en",

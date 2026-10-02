@@ -1,30 +1,58 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Derive feature, debug, and DFT disables from eFuse shadow lifecycle state.
+//
+// Consumes shadow_regs_i and security_disable_i. Publishes feat_ctrl, dbg_disable, SEP/SMC
+// fuse DFT disables, demote state, and LC integrity error.
+// security_disable_i takes precedence: while it is high every feature enable is 1, even on
+// an LC-state integrity error. The FEAT_CTRL, DEMOTE_1 and DEMOTE_2 registers sit behind a
+// 64-bit AXI4 slave; each DEMOTE bit is writable only while its lock bit is 0.
+
 module sep_lifecycle_ctrl #(
-  parameter int unsigned LC_STATE_WIDTH    = 4,
-  localparam int unsigned DEMOTE_WIDTH     = 1,
-  localparam int unsigned DEMOTE_OUT_WIDTH = 2 * DEMOTE_WIDTH
+  parameter int unsigned LC_STATE_WIDTH    = 4,  // Lifecycle state encoding width; the state decode
+                                                 // is written for 4.
+  localparam int unsigned DEMOTE_WIDTH     = 1,  // Demote field width.
+  localparam int unsigned DEMOTE_OUT_WIDTH = 2 * DEMOTE_WIDTH  // Duplicated demote output width.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,                          // System clock.
+  input logic rst_ni,                         // Active-low reset.
 
-  input logic test_en_i,
+  input logic test_en_i,                      // DFT test-enable (scan-enable).
 
-  input logic security_disable_i,
+  input logic security_disable_i,             // Security-disable status from the eFuse wrapper;
+                                              // forces every feature enable on.
 
-  input sep_efuse_pkg::efuse_map_t shadow_regs_i,
+  input sep_efuse_pkg::efuse_map_t shadow_regs_i,  // eFuse shadow registers; supply the LC state
+                                                   // and the SiP and system disable fields.
 
-  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
-  output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,
-  output logic sep_fuse_dft_disable_o,
-  output logic smc_fuse_dft_disable_o,
-  output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_1_o,
-  output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_2_o,
-  output logic lc_sigint_err_o,
+  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,  // Per-feature enable vector (1 = enabled) derived from the LC state, the SiP and
+                                                                     // system disable fuses, and the DEMOTE registers; all ones while security is
+                                                                     // disabled, otherwise all zeros on an LC-state integrity error.
+  output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // Per-interface debug disables for the DTP, active-high (1 = disabled); the SEP
+                                                                       // and SMC OTP JTAG-to-AXI disables are tied to 0.
+  output logic sep_fuse_dft_disable_o,        // Disables the SEP fuse DFT access path, active-high;
+                                              // no functional consumer, provided for DFT insertion.
+  output logic smc_fuse_dft_disable_o,        // Disables the SMC fuse DFT access path, active-high;
+                                              // no functional consumer, provided for DFT insertion.
+  output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_1_o,  // Differentially encoded
+                                                             // DEMOTE_1.demote register bit, which
+                                                             // re-opens debug feature bits [23:0]
+                                                             // in TEST_DEV and PROD.
+  output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_2_o,  // Differentially encoded
+                                                             // DEMOTE_2.demote register bit, which
+                                                             // re-opens debug feature bits [47:24]
+                                                             // in TEST_DEV and PROD.
+  output logic lc_sigint_err_o,               // Integrity error on the differentially encoded LC
+                                              // state; forces every feature enable off unless
+                                              // security is disabled.
 
-  input sep_pkg::sep_32_64_6_12_axi_req_t lifecycle_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t lifecycle_axi_resp_o
+  input sep_pkg::sep_32_64_6_12_axi_req_t lifecycle_axi_req_i,  // AXI4 request to the lifecycle
+                                                                // registers, converted to 64-bit
+                                                                // AXI-Lite; offset bits [4:0] are
+                                                                // decoded.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t lifecycle_axi_resp_o  // AXI4 response from the
+                                                                  // lifecycle registers.
 );
 
   // debug/test/func feature control
@@ -41,7 +69,7 @@ module sep_lifecycle_ctrl #(
 
   // Differential encode/decode for DEMOTE_1
   prim_diff_encode_multi #(
-    .Width(DEMOTE_WIDTH)
+    .WIDTH(DEMOTE_WIDTH)
   ) u_demote_1_diff_enc (
     .clk_i,
     .rst_ni  (rst_ni),
@@ -51,7 +79,7 @@ module sep_lifecycle_ctrl #(
 
   // Differential encode/decode for DEMOTE_2
   prim_diff_encode_multi #(
-    .Width(DEMOTE_WIDTH)
+    .WIDTH(DEMOTE_WIDTH)
   ) u_demote_2_diff_enc (
     .clk_i,
     .rst_ni  (rst_ni),
@@ -61,7 +89,7 @@ module sep_lifecycle_ctrl #(
 
   // Differential decode for LC_STATE
   prim_diff_decode_multi #(
-    .Width(LC_STATE_WIDTH)
+    .WIDTH(LC_STATE_WIDTH)
   ) u_lc_state_dec (
     .clk_i,
     .rst_ni  (rst_ni),

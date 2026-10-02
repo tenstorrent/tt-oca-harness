@@ -18,8 +18,10 @@
     ((2u << SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bp) | \
      (2u << SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_bp) | \
      (2u << SPI_CONTROLLER__CONFIGOPTS__CSNLEAD_bp))
-#define SPI_CFG_CLKDIV9_CSN (SPI_CFG_CSN_TIMING | 9u)
-#define SPI_CFG_CSN(clkdiv) (SPI_CFG_CSN_TIMING | ((uint32_t)(clkdiv)&0xFFFFu))
+#define SPI_CFG_CSN(clkdiv) \
+    (SPI_CFG_CSN_TIMING | (((uint32_t)(clkdiv) << SPI_CONTROLLER__CONFIGOPTS__CLKDIV_bp) & \
+                           SPI_CONTROLLER__CONFIGOPTS__CLKDIV_bm))
+#define SPI_CFG_CLKDIV9_CSN SPI_CFG_CSN(9u)
 
 // CMD.DIRECTION encodings (not named in PeakRDL).
 #define SPI_CMD_DIR_RX 1u
@@ -68,8 +70,7 @@ static inline void spi_wr(uint32_t addr, uint32_t value) {
 static inline int spi_wait_ready(int timeout) {
     /* Bounded so a wedged host surfaces as a firmware timeout. */
     while (timeout-- > 0) {
-        if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
-            SPI_CONTROLLER__STATUS__READY_bm) {
+        if (spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) & SPI_CONTROLLER__STATUS__READY_bm) {
             return 0;
         }
     }
@@ -79,7 +80,7 @@ static inline int spi_wait_ready(int timeout) {
 // Spin until the controller is idle (no active segment).
 static inline int spi_wait_idle(int timeout) {
     while (timeout-- > 0) {
-        if (!(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+        if (!(spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
               SPI_CONTROLLER__STATUS__ACTIVE_bm)) {
             return 0;
         }

@@ -1,20 +1,23 @@
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Respond to unmapped or rejected TL-UL requests with an error.
 //
-// TL-UL error responder module, used by tlul_socket_1n to help response
-// to requests to no correct address space. Responses are always one cycle
-// after request with no stalling unless response is stuck on the way out.
+// Accept one A-channel request at a time and present its D-channel response from the
+// next cycle until d_ready. a_ready is low while a response is pending, so requests are
+// accepted at most every other cycle. By default return d_error set with
+// DATA_WHEN_INSTR_ERROR for instruction fetches and DATA_WHEN_ERROR otherwise. When
+// RETURN_BLANK_RESP is set, return all-zero data without setting d_error. Response and data
+// integrity are generated in either mode.
 
 module tlul_err_resp #(
-  // By default, we return a proper bus error. In some cases, we need to return a blank all-zero
-  // response without setting the error bit, and for those cases ReturnBlankResp can be set to 1.
-  parameter bit ReturnBlankResp = 0
+  parameter bit RETURN_BLANK_RESP = 0  // When set, return zeros without asserting d_error.
 ) (
-  input                     clk_i,
-  input                     rst_ni,
-  input  tlul_pkg::tl_h2d_t tl_h_i,
-  output tlul_pkg::tl_d2h_t tl_h_o
+  input                     clk_i,   // System clock.
+  input                     rst_ni,  // Active-low reset.
+  input  tlul_pkg::tl_h2d_t tl_h_i,  // Host-facing TL-UL request.
+  output tlul_pkg::tl_d2h_t tl_h_o   // Host-facing TL-UL error response.
 );
   import tlul_pkg::*;
   import prim_mubi_pkg::*;
@@ -27,8 +30,8 @@ module tlul_err_resp #(
   tlul_pkg::tl_d2h_t                 tl_h_o_int;
 
   tlul_rsp_intg_gen #(
-    .EnableRspIntgGen(1),
-    .EnableDataIntgGen(1)
+    .ENABLE_RSP_INTG_GEN(1),
+    .ENABLE_DATA_INTG_GEN(1)
   ) u_intg_gen (
     .tl_i(tl_h_o_int),
     .tl_o(tl_h_o)
@@ -38,7 +41,7 @@ module tlul_err_resp #(
     if (!rst_ni) begin
       err_rsp_pending <= 1'b0;
       err_source      <= {top_pkg::TL_AIW{1'b0}};
-      err_opcode      <= Get;
+      err_opcode      <= GET;
       err_size        <= '0;
       err_instr_type  <= MuBi4False;
     end else if (err_rsp_pending && tl_h_i.d_ready) begin
@@ -54,20 +57,20 @@ module tlul_err_resp #(
 
   assign tl_h_o_int.a_ready  = ~err_rsp_pending;
   assign tl_h_o_int.d_valid  = err_rsp_pending;
-  if (ReturnBlankResp) begin : gen_zero_resp
+  if (RETURN_BLANK_RESP) begin : gen_zero_resp
     assign tl_h_o_int.d_data = '0;
   end else begin : gen_err_resp
     assign tl_h_o_int.d_data = (mubi4_test_true_strict(
         err_instr_type
-    )) ? DataWhenInstrError : DataWhenError;
+    )) ? DATA_WHEN_INSTR_ERROR : DATA_WHEN_ERROR;
   end
   assign tl_h_o_int.d_source = err_source;
   assign tl_h_o_int.d_sink   = '0;
   assign tl_h_o_int.d_param  = '0;
   assign tl_h_o_int.d_size   = err_size;
-  assign tl_h_o_int.d_opcode = (err_opcode == Get) ? AccessAckData : AccessAck;
+  assign tl_h_o_int.d_opcode = (err_opcode == GET) ? ACCESS_ACK_DATA : ACCESS_ACK;
   assign tl_h_o_int.d_user   = '0;
-  assign tl_h_o_int.d_error  = ~ReturnBlankResp;
+  assign tl_h_o_int.d_error  = ~RETURN_BLANK_RESP;
 
   // Waive unused bits of tl_h_i
   logic unused_tl_h;

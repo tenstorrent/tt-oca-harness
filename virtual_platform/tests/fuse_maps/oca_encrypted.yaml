@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# CLASS_KEY provisioned to match configs/oca_encrypted_boot_test.yaml's
+# encryption_secret, so the ROM's KDF derives the same AES key the producer used.
+#
+# The secret is the 32 bytes 00 01 02 ... 1f. class_key is 8 x 32-bit words with
+# word[0] holding bits[31:0], i.e. each word is four consecutive secret bytes
+# read little-endian:
+#
+#   bytes 00 01 02 03 -> 0x03020100
+#   bytes 04 05 06 07 -> 0x07060504   ... and so on
+#
+# Get the word order wrong and the derivation still "succeeds" -- it just yields
+# a different key, the payload decrypts to garbage, and the failure surfaces as
+# PAYLOAD_HASH_CHAIN rather than anything mentioning keys.
+#
+# lc_state is TEST_DEV and sboot_dis 0; the manifest's own secure_boot_control
+# bit is what puts secure boot in force, so this map only has to avoid
+# contradicting it.
+lc_state: TEST_DEV
+sboot_dis: 0
+class_key:
+  - 0x03020100
+  - 0x07060504
+  - 0x0b0a0908
+  - 0x0f0e0d0c
+  - 0x13121110
+  - 0x17161514
+  - 0x1b1a1918
+  - 0x1f1e1d1c

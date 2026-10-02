@@ -2,21 +2,19 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-
-/**
- * Tile-Link UL command integrity check
- */
+// Check TL-UL A-channel command and data integrity.
+//
+// Decode the command fields (address, opcode, mask, instruction type) against
+// a_user.cmd_intg and a_data against a_user.data_intg, and raise err_o combinationally
+// while a_valid is high and either check fails. err_o is not latched.
 
 module tlul_cmd_intg_chk
   import tlul_pkg::*;
 (
-  // TL-UL interface
-  input  tl_h2d_t tl_i,
+  input  tl_h2d_t tl_i,  // A-channel request whose command integrity is checked.
 
-  // error output
-  output logic err_o
+  output logic err_o     // High when command or data integrity fails.
 );
-
   `include "prim_assert.sv"
 
   logic [1:0] err;
@@ -25,14 +23,14 @@ module tlul_cmd_intg_chk
   assign cmd = extract_h2d_cmd_intg(tl_i);
 
   prim_secded_inv_64_57_dec u_chk (
-    .data_i({tl_i.a_user.cmd_intg, H2DCmdMaxWidth'(cmd)}),
+    .data_i({tl_i.a_user.cmd_intg, H2D_CMD_MAX_WIDTH'(cmd)}),
     .data_o(),
     .syndrome_o(),
     .err_o(err)
   );
 
   tlul_data_integ_dec u_tlul_data_integ_dec (
-    .data_intg_i({tl_i.a_user.data_intg, DataMaxWidth'(tl_i.a_data)}),
+    .data_intg_i({tl_i.a_user.data_intg, DATA_MAX_WIDTH'(tl_i.a_data)}),
     .data_err_o(data_err)
   );
 
@@ -51,6 +49,6 @@ module tlul_cmd_intg_chk
   logic unused_tl;
   assign unused_tl = |tl_i;
 
-  `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_h2d_cmd_intg_t) <= H2DCmdMaxWidth)
+  `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_h2d_cmd_intg_t) <= H2D_CMD_MAX_WIDTH)
 
 endmodule  // tlul_payload_chk

@@ -56,7 +56,7 @@ On VCS the scope is applied at compile time by `cov/config/vcs/dtp_cov_scope.hie
 (`-cm_hier` with `-cm_common_hier`): the code-coverage families grade the DUT
 instance `dtp_uvm_top.u_dut` with everything it instantiates, the vendored
 cells included, and assertion coverage grades the DUT, the `cov/sv/` modules
-and the shared protocol checker instances under the bench top. Nets a
+and the protocol checker instances under the bench top. Nets a
 constant drives leave the toggle denominator (`-cm_noconst`,
 `-cm_seqnoconst`) and continuous assignments count as lines
 (`-cm_line contassign`); condition coverage is URG's `basic` mode. The
@@ -79,8 +79,8 @@ covergroups are unaffected by the scope file.
 |Capability TDRs |`caps_tdr_cg` |`dtp_debug_tdr_fcov` (`c_caps_*`)
 |STAP / 3DCR |`stap_3dcr_cg` |`dtp_scan_fcov` (`c_stap_*`, `c_3dcr_*`)
 |iJTAG SIBs |`ijtag_sib_cg` |`dtp_scan_fcov` (`c_sib_*`, `c_instrument_*`)
-|Cross-trigger CTP |`ctp_cg` |`dtp_xtrig_fcov` (`c_ctp_*`)
-|Cross-trigger CTM |`ctm_cg` |`dtp_xtrig_fcov` (`c_ctm_*`)
+|Cross-trigger CTP |`ctp_cg`, `ctp_wire_or_rx_cg` |`dtp_xtrig_fcov` (`c_ctp_*`)
+|Cross-trigger CTM |`ctm_cg`, `ctm_route_cg` |`dtp_xtrig_fcov` (`c_ctm_*`; `cg_ctm_route` on the commercial simulator)
 |Debug-disable gating |`dbg_disable_cg` |Checker-gated 22-cell Python ledger in the two `dbg_disable` matrix tests, mirrored by `dtp_scan_fcov` field-value points
 |===
 
@@ -203,7 +203,7 @@ per-target recovery history.
 [cols=",",options="header",]
 |===
 |Coverpoint |Bins
-|TMP persistence |reset/off, CLAMP_HOLD/on, chip-reset preserved, BYPASS_ESCAPE release
+|TMP persistence |reset/off, CLAMP_HOLD/on, system-reset preserved, BYPASS_ESCAPE release
 |TMP read shift value |zero, persistence bit set, escape-arm bit set (the first two shifted TDO bits)
 |BYPASS escape |unarmed, armed, BYPASS double-load escape observed
 |IC_RESET slice |SMC, SEP, External
@@ -236,7 +236,7 @@ first two TDO bits of each TMP_STATUS read; the `+dtp_jtag_tmp_status_*+` and
 `dtp_debug_tdr_fcov` samples these bins from the boot-stall and clock-stop
 outputs plus the DEBUG_CONTROL stop contributions; the
 `+dtp_dbg_ctrl_clk_stop_*+` and `dtp_dbg_ctrl_boot_stall_test` scenarios
-drive them. `stop_clks_o` checking polls across synchronizer/output latency.
+drive them. `stop_clks_o` is a `clk_i` register, so its checks poll until it settles.
 
 ==== `caps_tdr_cg`
 
@@ -300,6 +300,26 @@ capture events.
 |P2P state |idle, request phase, acknowledge phase, reset recovery
 |===
 
+The mode and inversion bins sample the CONFIG writes that strobe byte 0 and the
+stretch bins the STRETCH_MULT writes that strobe both field bytes, a write
+counting toward the register whose word holds its address. The P2P state bins
+follow the request and acknowledge pads of the point-to-point ports at the
+`CONFIG.INVERT` polarity each port's pads apply; the acknowledge phase is a
+request and its acknowledge asserted on the same port, and reset recovery is a
+request rising after a `CONFIG.RESET` write.
+
+==== `ctp_wire_or_rx_cg`
+
+*Description*: Covers the wire-OR receive of the CTP ports: a port in wire-OR
+mode delivering a trigger from its shared wire.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|Sense |normal (INVERT=0, the wire pulled low), inverted (INVERT=1, the wire pulled high)
+|Listeners |one port, a shared wire (two or more ports delivering in the same cycle)
+|===
+
 ==== `ctm_cg`
 
 *Description*: Covers CTM source-to-destination routing.
@@ -312,6 +332,27 @@ capture events.
 |Routing fanout |none, single destination, multicast
 |Source index |all configured source ports (26 default: 16 CTP {plus} 10 internal CT)
 |Destination index |all configured destination ports (26 default)
+|===
+
+==== `ctm_route_cg`
+
+*Description*: Covers the routes the matrix carried. A destination rise is
+credited to the one source that rose within the preceding 32 system clocks and
+that the destination's `CT_SRC` `CONFIG_0` `CT_DST_SELECT` mask, shadowed from
+the CSR writes to its word under their byte strobes, selects; a rise with two
+such sources credits no route. A source event is a CTP delivering a trigger into
+the matrix (`ct_dst`, either mode) or a CLA request; a destination event is a
+CTP starting to assert `CT_Req_out` or the matrix requesting a CLA. A CTP
+asserts by driving its wire in wire-OR mode and by driving the request level,
+high unless `CONFIG.INVERT` is set, in point-to-point mode. The CLA-to-CTP and
+CTP-to-CLA random mixes drive every route of their class alone within one test,
+so each of their seeds closes its cross.
+
+[cols=",",options="header",]
+|===
+|Cross |Bins
+|CLA source x CTP destination |10 internal CT sources x 16 CTP destinations
+|CTP source x CLA destination |16 CTP sources x 10 internal CT destinations
 |===
 
 ==== `dbg_disable_cg`
@@ -421,10 +462,10 @@ actionable hole without a tracker link.
 ==== Waiver fields
 
 Every `pass:[[[holes]]]` entry carries `id`, `title`, `category`, `disposition`,
-`status`, `confidence`, `rationale`, `owner`, `reviewer`, `date`, and at
-least one `pass:[[[holes.native]]]` selector (`tool`, `metric_family`,
-`hierarchy`); an accepted entry also carries `expires` and, where the
-selector is a pattern, `expected_matches`. The rationale states the design
+`status`, `confidence`, `rationale`, `owner`, `reviewer`, and at least one
+`pass:[[[holes.native]]]` selector (`tool`, `metric_family`, `hierarchy`); an
+entry whose selector is a pattern also carries `expected_matches`. The
+rationale states the design
 or bench fact that makes the point unreachable, in words the reviewer of a
 later design or bench change can recognize; a rationale that restates the
 point's name is not one. `issues` carries the tracker link of the defect or
@@ -439,13 +480,11 @@ takes design review; a `fix_model` or `cover` entry takes DV review; a
 review. Every entry change is graded against a named finished run with the
 runner's `--waive` re-grade.
 
-==== Expiry and reopen triggers
+==== Reopen triggers
 
-Every accepted waiver carries an `expires` date. Past it the waiver grades
-as open, its point returns to the effective denominator, the report carries
-a lapsed-waiver warning, and the entry is either renewed by a fresh review
-or closed by the scenario that fires the point. A waiver also reopens, by
-the entry's status returning to `open` or the entry being removed, when:
+An accepted waiver stays accepted until the policy changes; the calendar does
+not reopen it. It reopens, by the entry's status returning to `open` or the
+entry being removed, when:
 
 * the runner rejects it because its selector matches a covered point;
 * the policy's `scope_epoch` changes, which restarts every dashboard
@@ -474,10 +513,10 @@ re-grade of its run tree.
 `cov/config/vcs/dtp_unreachable.el` is the URG exclusion list of the
 code-coverage points that a formal unreachability analysis proves no stimulus
 reaches in the bench's environment: the DTP at the bench configuration, the
-DFT ports at their functional values, the boundary-scan and extended STAP
-chains looped back, and every other input free, the resets included. The
-analysis starts from the merged database of the commercial-path `all`
-regression (<<dtp-fcov-evidence-paths>>), so it targets the points that
+DFT ports at their functional values, the boundary-scan chain looped back,
+and every other input free, the extended STAP host scan-in and the resets
+included. The analysis starts from the merged database of the commercial-path
+`all` regression (<<dtp-fcov-evidence-paths>>), so it targets the points that
 regression left uncovered, and it runs in the checkout that produced that
 database, because the formal model and the seed must describe one RTL. The
 analysis is the `dtp_cov_vcf` item of the runner's formal mode in the
@@ -516,7 +555,7 @@ changes, and the review accepts no entry that stimulus can reach.
 |`dtp_scan_dbg_disable_matrix_test` |`dbg_disable_cg` scan-side cells (8 fields)
 |`dtp_jtag2axi_dbg_disable_matrix_test` |`dbg_disable_cg` bridge cells (3 fields)
 |`dbg_disable` group |Complete 22-cell `dbg_disable_cg` closure
-|CTP / CTM scenarios |`ctp_cg`, `ctm_cg`
+|CTP / CTM scenarios |`ctp_cg`, `ctp_wire_or_rx_cg`, `ctm_cg`, `ctm_route_cg`
 |===
 
 === Collection Strategy

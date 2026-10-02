@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG TMP Status Register
+// Implement the TMP status TDR for persistence mode and bypass-escape enable.
 //
-//-----------------------------------------------------------------------------
+// Captures persistence_mode_i into bit 1 and the current bypass-escape value into bit 0, the
+// bit nearest TDO, and updates bypass_escape_bit_o on the falling TCK edge of Update-DR.
+// bypass_escape_bit_o resets low on the scan-control reset.
+// bypass_escape_bit_o feeds jtag_tmp so BYPASS can leave persistence-on when set.
 
 module jtag_tmp_status_reg
   import prim_jtag_pkg::*;
 (
   /* verilator lint_off UNUSEDSIGNAL */
-  // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t  scan_ctrl_i,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
   /* verilator lint_on UNUSEDSIGNAL */
-  input  logic             scan_in_i,
-  output logic             scan_out_o,
+  input  logic             scan_in_i,   // Scan data in (TDI).
+  output logic             scan_out_o,  // Scan data out (TDO).
 
-  // TMP controller state input
-  input  logic             persistence_mode_i,    // TMP controller persistence mode
+  input  logic             persistence_mode_i,  // TMP controller persistence mode, captured into
+                                                // bit 1.
 
-  // TMP status output
-  output logic             bypass_escape_bit_o     // Bypass escape enable bit
+  output logic             bypass_escape_bit_o  // Bypass escape enable bit; bit 0 of the update
+                                                // register, reset low.
 );
 
   //--------------------------------------------------------------------------
@@ -43,7 +44,7 @@ module jtag_tmp_status_reg
   // On capture: TMP-status captures persistence_mode_i, bypass-escape retains its value
   prim_jtag_scan_reg #(
     .WIDTH(REG_WIDTH),
-    .RESET_VAL(2'b10),  // Default: bypass_escape=1, persistence=0
+    .RESET_VAL(2'b10),  // bypass_escape (bit 0) resets to 0; bit 1 is overwritten at Capture-DR
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_tmp_status_scan_reg (
     .scan_ctrl_i   (scan_ctrl_i),

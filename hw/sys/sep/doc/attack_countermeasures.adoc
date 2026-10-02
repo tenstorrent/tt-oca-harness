@@ -99,7 +99,7 @@ distribution logic that retains key, seed, random, digest-working, or round-key
 state. Classifying complete instances deliberately includes their control
 flops and avoids fragile per-register marking.
 
-The current SEP implementation has exactly 10 Class 2a RTL scan roots:
+The current SEP implementation has exactly 11 Class 2a RTL scan roots:
 
 * `u_sep_crypto.u_hmac_wrapper_s3c_scan`
 * `u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan`
@@ -109,6 +109,7 @@ The current SEP implementation has exactly 10 Class 2a RTL scan roots:
 * `u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan`
 * `u_sep_crypto.u_sep_trng.u_drbg_s3c_scan`
 * `u_sep_crypto.u_axis_edn_crypto_s3c_scan`
+* `u_sep_crypto.u_axis_edn_pool_s3c_scan`
 * `u_sep_crypto.u_key_manager_s3c_scan`
 * `u_trng_wrapper_s3c_scan`
 

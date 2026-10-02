@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: i2c</h2>
+<h2 id="regmap-i2c">I2C Address Map</h2>
+<p>Interrupt status, enable, and test registers for a single I2C controller and target.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -49,23 +50,23 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19</td><td>TARGET_RX_FIFO_ERROR</td><td>RW</td><td>0x0</td><td>Target Mode interrupt: asserted when the Target RX FIFO has a parity error.<br>Write `1` to clear.</td></tr>
-<tr><td>18</td><td>TARGET_TX_FIFO_ERROR</td><td>RW</td><td>0x0</td><td>Target Mode interrupt: asserted when the Target TX FIFO has a parity error.<br>Write `1` to clear.</td></tr>
-<tr><td>17</td><td>CONTROLLER_RX_FIFO_ERROR</td><td>RW</td><td>0x0</td><td>Controller Mode interrupt: asserted when the Controller RX FIFO has a parity<br>error. Write `1` to clear.</td></tr>
-<tr><td>16</td><td>CONTROLLER_TX_FIFO_ERROR</td><td>RW</td><td>0x0</td><td>Controller Mode interrupt: asserted when the Controller TX FIFO has a parity<br>error. Write `1` to clear.</td></tr>
-<tr><td>15</td><td>SMBALERT</td><td>RW</td><td>0x0</td><td>Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`<br>to clear.</td></tr>
-<tr><td>14</td><td>HOST_TIMEOUT</td><td>RW</td><td>0x0</td><td>Target Mode interrupt: asserted when the controller stops generating the clock<br>longer than `HOST_TIMEOUT_CTRL.VAL`. Write `1` to clear.</td></tr>
-<tr><td>13</td><td>UNEXP_STOP</td><td>RW</td><td>0x0</td><td>Target Mode interrupt: asserted when the controller sends this target a STOP<br>before this target NACKs. Write `1` to clear.</td></tr>
+<tr><td>19</td><td>TARGET_RX_FIFO_ERROR</td><td>RW1C</td><td>0x0</td><td>Target Mode interrupt: asserted when the Target RX FIFO has a parity error.<br>Write `1` to clear.</td></tr>
+<tr><td>18</td><td>TARGET_TX_FIFO_ERROR</td><td>RW1C</td><td>0x0</td><td>Target Mode interrupt: asserted when the Target TX FIFO has a parity error.<br>Write `1` to clear.</td></tr>
+<tr><td>17</td><td>CONTROLLER_RX_FIFO_ERROR</td><td>RW1C</td><td>0x0</td><td>Controller Mode interrupt: asserted when the Controller RX FIFO has a parity<br>error. Write `1` to clear.</td></tr>
+<tr><td>16</td><td>CONTROLLER_TX_FIFO_ERROR</td><td>RW1C</td><td>0x0</td><td>Controller Mode interrupt: asserted when the Controller TX FIFO has a parity<br>error. Write `1` to clear.</td></tr>
+<tr><td>15</td><td>SMBALERT</td><td>RW1C</td><td>0x0</td><td>Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`<br>to clear.</td></tr>
+<tr><td>14</td><td>HOST_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>Target Mode interrupt: asserted when the controller stops generating the clock<br>longer than `HOST_TIMEOUT_CTRL.VAL`. Write `1` to clear.</td></tr>
+<tr><td>13</td><td>UNEXP_STOP</td><td>RW1C</td><td>0x0</td><td>Target Mode interrupt: asserted when the controller sends this target a STOP<br>before this target NACKs. Write `1` to clear.</td></tr>
 <tr><td>12</td><td>ACQ_STRETCH</td><td>R</td><td>0x0</td><td>Target Mode interrupt: remains asserted while the target is stretching the clock<br>because 1) the Target RX FIFO is full or 2) the `TARGET_ACK_CTRL.NBYTES` count<br>has reached `0` (only if `CTRL.ACK_CTRL_EN = 1`).</td></tr>
 <tr><td>11</td><td>TX_THRESHOLD</td><td>R</td><td>0x0</td><td>Target Mode interrupt: remains asserted while the Target TX FIFO level is less<br>than `TARGET_FIFO_CONFIG.TX_THRESH`.</td></tr>
 <tr><td>10</td><td>TX_STRETCH</td><td>R</td><td>0x0</td><td>Target Mode interrupt: remains asserted while this target is stretching the<br>clock or has halted. The flags in the `TARGET_EVENTS` register explain the<br>reason(s) for clock stretching/halting. Clearing the `TARGET_EVENTS` flags<br>clears this interrupt.</td></tr>
-<tr><td>9</td><td>CMD_COMPLETE</td><td>RW</td><td>0x0</td><td>Controller/Target Mode interrupt: asserted when this/the controller finishes<br>generating a STOP or repeated START. Write `1` to clear.</td></tr>
-<tr><td>8</td><td>SDA_UNSTABLE</td><td>RW</td><td>0x0</td><td>Controller Mode interrupt: asserted when the target fails to keep SDA stable<br>during a transmission. Write `1` to clear.</td></tr>
-<tr><td>7</td><td>STRETCH_TIMEOUT</td><td>RW</td><td>0x0</td><td>Controller Mode interrupt: asserted when the target stretches the clock longer<br>than `TIMEOUT_CTRL.VAL` (valid only when `TIMEOUT_CTRL.MODE = 0`). Write `1` to<br>clear.</td></tr>
-<tr><td>6</td><td>SDA_INTERFERENCE</td><td>RW</td><td>0x0</td><td>Controller Mode interrupt: asserted when SDA is unexpectedly pulled LOW by<br>another controller. Write `1` to clear.</td></tr>
-<tr><td>5</td><td>SCL_INTERFERENCE</td><td>RW</td><td>0x0</td><td>Controller Mode interrupt: asserted when SCL is unexpectedly pulled LOW by<br>another controller. Write `1` to clear.</td></tr>
+<tr><td>9</td><td>CMD_COMPLETE</td><td>RW1C</td><td>0x0</td><td>Controller/Target Mode interrupt: asserted when this/the controller finishes<br>generating a STOP or repeated START. Write `1` to clear.</td></tr>
+<tr><td>8</td><td>SDA_UNSTABLE</td><td>RW1C</td><td>0x0</td><td>Controller Mode interrupt: asserted when the target fails to keep SDA stable<br>during a transmission. Write `1` to clear.</td></tr>
+<tr><td>7</td><td>STRETCH_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>Controller Mode interrupt: asserted when the target stretches the clock longer<br>than `TIMEOUT_CTRL.VAL` (valid only when `TIMEOUT_CTRL.MODE = 0`). Write `1` to<br>clear.</td></tr>
+<tr><td>6</td><td>SDA_INTERFERENCE</td><td>RW1C</td><td>0x0</td><td>Controller Mode interrupt: asserted when SDA is unexpectedly pulled LOW by<br>another controller. Write `1` to clear.</td></tr>
+<tr><td>5</td><td>SCL_INTERFERENCE</td><td>RW1C</td><td>0x0</td><td>Controller Mode interrupt: asserted when SCL is unexpectedly pulled LOW by<br>another controller. Write `1` to clear.</td></tr>
 <tr><td>4</td><td>CONTROLLER_HALT</td><td>R</td><td>0x0</td><td>Controller Mode interrupt: remains asserted while this controller halts. The<br>flags in the `CONTROLLER_EVENTS` register explain the reason(s) for the<br>halting. Clearing the `CONTROLLER_EVENTS` flags clears this interrupt.</td></tr>
-<tr><td>3</td><td>RX_OVERFLOW</td><td>RW</td><td>0x0</td><td>Controller Mode interrupt: asserted when the Controller RX FIFO overflows.<br>Write `1` to clear.</td></tr>
+<tr><td>3</td><td>RX_OVERFLOW</td><td>RW1C</td><td>0x0</td><td>Controller Mode interrupt: asserted when the Controller RX FIFO overflows.<br>Write `1` to clear.</td></tr>
 <tr><td>2</td><td>ACQ_THRESHOLD</td><td>R</td><td>0x0</td><td>Target Mode interrupt: remains asserted while the Target RX FIFO level is<br>greater than `TARGET_FIFO_CONFIG.ACQ_THRESH`.</td></tr>
 <tr><td>1</td><td>RX_THRESHOLD</td><td>R</td><td>0x0</td><td>Controller Mode interrupt: remains asserted while the Controller RX FIFO level<br>is greater than `HOST_FIFO_CONFIG.RX_THRESH`.</td></tr>
 <tr><td>0</td><td>FMT_THRESHOLD</td><td>R</td><td>0x0</td><td>Controller Mode interrupt: remains asserted while the Controller TX FIFO level<br>is less than `HOST_FIFO_CONFIG.FMT_THRESH`.</td></tr>
@@ -99,23 +100,23 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19</td><td>TARGET_RX_FIFO_ERROR</td><td>W</td><td>0x0</td><td>Writing `1` forces the `TARGET_RX_FIFO_ERROR` interrupt.</td></tr>
-<tr><td>18</td><td>TARGET_TX_FIFO_ERROR</td><td>W</td><td>0x0</td><td>Writing `1` forces the `TARGET_TX_FIFO_ERROR` interrupt.</td></tr>
-<tr><td>17</td><td>CONTROLLER_RX_FIFO_ERROR</td><td>W</td><td>0x0</td><td>Writing `1` forces the `CONTROLLER_RX_FIFO_ERROR` interrupt.</td></tr>
-<tr><td>16</td><td>CONTROLLER_TX_FIFO_ERROR</td><td>W</td><td>0x0</td><td>Writing `1` forces the `CONTROLLER_TX_FIFO_ERROR` interrupt.</td></tr>
-<tr><td>15</td><td>SMBALERT</td><td>W</td><td>0x0</td><td>Writing `1` forces the `SMBALERT` interrupt.</td></tr>
-<tr><td>14</td><td>HOST_TIMEOUT</td><td>W</td><td>0x0</td><td>Writing `1` forces the `HOST_TIMEOUT` interrupt.</td></tr>
-<tr><td>13</td><td>UNEXP_STOP</td><td>W</td><td>0x0</td><td>Writing `1` forces the `UNEXP_STOP` interrupt.</td></tr>
+<tr><td>19</td><td>TARGET_RX_FIFO_ERROR</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `TARGET_RX_FIFO_ERROR` interrupt.</td></tr>
+<tr><td>18</td><td>TARGET_TX_FIFO_ERROR</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `TARGET_TX_FIFO_ERROR` interrupt.</td></tr>
+<tr><td>17</td><td>CONTROLLER_RX_FIFO_ERROR</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `CONTROLLER_RX_FIFO_ERROR` interrupt.</td></tr>
+<tr><td>16</td><td>CONTROLLER_TX_FIFO_ERROR</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `CONTROLLER_TX_FIFO_ERROR` interrupt.</td></tr>
+<tr><td>15</td><td>SMBALERT</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `SMBALERT` interrupt.</td></tr>
+<tr><td>14</td><td>HOST_TIMEOUT</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `HOST_TIMEOUT` interrupt.</td></tr>
+<tr><td>13</td><td>UNEXP_STOP</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `UNEXP_STOP` interrupt.</td></tr>
 <tr><td>12</td><td>ACQ_STRETCH</td><td>RW</td><td>0x0</td><td>Writing `1` forces the `ACQ_STRETCH` interrupt. Writing `0` releases it.</td></tr>
 <tr><td>11</td><td>TX_THRESHOLD</td><td>RW</td><td>0x0</td><td>Writing `1` forces the `TX_THRESHOLD` interrupt. Writing `0` releases it.</td></tr>
 <tr><td>10</td><td>TX_STRETCH</td><td>RW</td><td>0x0</td><td>Writing `1` forces the `TX_STRETCH` interrupt. Writing a `0` releases it.</td></tr>
-<tr><td>9</td><td>CMD_COMPLETE</td><td>W</td><td>0x0</td><td>Writing `1` forces the `CMD_COMPLETE` interrupt.</td></tr>
-<tr><td>8</td><td>SDA_UNSTABLE</td><td>W</td><td>0x0</td><td>Writing `1` forces the `SDA_UNSTABLE` interrupt.</td></tr>
-<tr><td>7</td><td>STRETCH_TIMEOUT</td><td>W</td><td>0x0</td><td>Writing `1` forces the `STRETCH_TIMEOUT` interrupt.</td></tr>
-<tr><td>6</td><td>SDA_INTERFERENCE</td><td>W</td><td>0x0</td><td>Writing `1` forces the `SDA_INTERFERENCE` interrupt.</td></tr>
-<tr><td>5</td><td>SCL_INTERFERENCE</td><td>W</td><td>0x0</td><td>Writing `1` forces the `SCL_INTERFERENCE` interrupt.</td></tr>
+<tr><td>9</td><td>CMD_COMPLETE</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `CMD_COMPLETE` interrupt.</td></tr>
+<tr><td>8</td><td>SDA_UNSTABLE</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `SDA_UNSTABLE` interrupt.</td></tr>
+<tr><td>7</td><td>STRETCH_TIMEOUT</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `STRETCH_TIMEOUT` interrupt.</td></tr>
+<tr><td>6</td><td>SDA_INTERFERENCE</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `SDA_INTERFERENCE` interrupt.</td></tr>
+<tr><td>5</td><td>SCL_INTERFERENCE</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `SCL_INTERFERENCE` interrupt.</td></tr>
 <tr><td>4</td><td>CONTROLLER_HALT</td><td>RW</td><td>0x0</td><td>Writing `1` forces the `CONTROLLER_HALT` interrupt. Writing `0` releases it.</td></tr>
-<tr><td>3</td><td>RX_OVERFLOW</td><td>W</td><td>0x0</td><td>Writing `1` forces the `RX_OVERFLOW` interrupt.</td></tr>
+<tr><td>3</td><td>RX_OVERFLOW</td><td>W 1P</td><td>0x0</td><td>Writing `1` forces the `RX_OVERFLOW` interrupt.</td></tr>
 <tr><td>2</td><td>ACQ_THRESHOLD</td><td>RW</td><td>0x0</td><td>Writing `1` forces the `ACQ_THRESHOLD` interrupt. Writing `0` releases it.</td></tr>
 <tr><td>1</td><td>RX_THRESHOLD</td><td>RW</td><td>0x0</td><td>Writing `1` forces the `RX_THRESHOLD` interrupt. Writing `0` releases it.</td></tr>
 <tr><td>0</td><td>FMT_THRESHOLD</td><td>RW</td><td>0x0</td><td>Writing `1` forces the `FMT_THRESHOLD` interrupt. Writing `0` releases it.</td></tr>
@@ -132,7 +133,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACQ_START_STOP_EN</td><td>RW</td><td>0x0</td><td>ACQ FIFO Start/Stop Enable (Target Mode only):<br>* `0` - Start/Stop symbols are NOT written into the ACQ FIFO. The firmware<br>should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`<br>flags to detect Start/Stop events.<br>* `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).<br>When a START (or repeated START) is detected, an `AcqStart` or `AcqRestart`<br>entry is written. When a STOP is detected, an `AcqStop` or `AcqNackStop`<br>entry is written.</td></tr>
+<tr><td>7</td><td>ACQ_START_STOP_EN</td><td>RW</td><td>0x0</td><td>ACQ FIFO Start/Stop Enable (Target Mode only):<br>* `0` - Start/Stop symbols are NOT written into the ACQ FIFO. The firmware<br>should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`<br>flags to detect Start/Stop events.<br>* `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).<br>When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`<br>entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`<br>entry is written.</td></tr>
 <tr><td>6</td><td>TX_STRETCH_CTRL_EN</td><td>RW</td><td>0x0</td><td>Target mode control: enables the Software TX Stretch Control Mechanism. If this<br>bit is:<br>* `0` - Automatic TX Stretch: When this target receives a READ address<br>byte, it only stretches the clock if the TX FIFO is empty; otherwise,<br>it pops the FIFO and transmits the data byte. The target never sets<br>the `TARGET_EVENTS` register flags in this mode.<br>* `1` - Software TX Stretch Mode: When this target receives a READ address,<br>it always stretches the clock and sets the `TARGET_EVENTS.TX_PENDING`<br>flag. The software can:<br>1. confirm the release and transmission of the TX FIFO data by<br>writing a 1 to clear the `TARGET_EVENTS.TX_PENDING` flag; or<br>2. reset the TX FIFO by writing 1 to `FIFO_CTRL.TXRST` and load in<br>new data via the `TXDATA` register--useful whenthe READ address<br>is targeting a different function of the target.<br>In this mode, the target always sets the `TARGET_EVENTS` register<br>flags.</td></tr>
 <tr><td>5</td><td>MULTI_CONTROLLER_MONITOR_EN</td><td>RW</td><td>0x0</td><td>Global control: enables the Bus Monitor. Set this bit to `1`<br>only in a multi-controller environment.<br><br>If a `0`-&gt;`1` transition happens while `ENABLEHOST` and `ENABLETARGET` are both<br>`0`, the Bus Monitor will enable and begin in the &#x27;Bus Busy&#x27; state. To<br>transition to a &#x27;Bus Free&#x27; state, `HOST_TIMEOUT_CTRL` must be nonzero so the<br>Bus Monitor may count out idle cycles to confirm the freedom to transmit. In<br>addition, the Bus Monitor will track whether the bus is free based on the<br>enabled timeouts and detected STOP symbols. For Multi-Controller Mode, ensure<br>`MULTI_CONTROLLER_MONITOR_EN` becomes `1` no later than `ENABLEHOST` or<br>`ENABLETARGET`. This bit can be set at the same time as either or both of the<br>other two, though.<br><br>Note that if `MULTI_CONTROLLER_MONITOR_EN` is set after `ENABLEHOST` or<br>`ENABLETARGET`, the Bus Monitor will begin in the &#x27;Bus Free&#x27; state instead.<br>This would violate the proper protocol for a controller to join a multi-controller<br>environment. However, if this controller is known to be the first to join, this<br>ordering will enable skipping the idle wait.<br><br>When `0`, the bus monitor will report that the bus is always free, so the<br>Controller FSM is never blocked from transmitting.</td></tr>
 <tr><td>4</td><td>ACK_CTRL_EN</td><td>RW</td><td>0x0</td><td>Target Mode control: enables the Software ACK Control Mechanism. If this bit is:<br>* `0` - This target ACKs a data byte whenever the ACQ FIFO has space.<br>* `1` - This target ACKs the first `TARGET_ACK_CTRL.NBYTES` bytes. If another<br>byte arrives, this target stretches the clock and awaits software<br>intervention (and asserts `STATUS.ACK_CTRL_STRETCH`). The software can<br>1. accept the new byte(s) by reloading the `TARGET_ACK_CTRL.NBYTES`<br>counter; or<br>2. reject the new byte(s) by writing `1` to `TARGET_ACK_CTRL.NACK`<br>(useful for SMBus).</td></tr>
@@ -161,7 +162,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>DATA</td><td>R</td><td>0x0</td><td>Reading this register pops the Controller RX FIFO.</td></tr>
+<tr><td>7:0</td><td>DATA</td><td>R RMOD</td><td>0x0</td><td>Reading this register pops the Controller RX FIFO.</td></tr>
 </table>
 <h3 id="FDATA">FDATA</h3>
 <table>
@@ -172,17 +173,17 @@
 <tr><td>10</td><td>READB</td><td>W</td><td>0x0</td><td>Read/write:<br>* `0` - Issue WRITE transaction<br>* `1` - Issue READ transaction</td></tr>
 <tr><td>9</td><td>STOP</td><td>W</td><td>0x0</td><td>Generate a STOP condition on the bus after sending the byte.</td></tr>
 <tr><td>8</td><td>START</td><td>W</td><td>0x0</td><td>Generate a START condition on the bus before sending the byte.</td></tr>
-<tr><td>7:0</td><td>FBYTE</td><td>W</td><td>0x0</td><td>Writing to this register pushes an entry into the Controller TX FIFO. The<br>meaning of this field depends on the value of the `READB` field:<br>* `READB = 0` - This field is the WRITE data byte.<br>* `READB = 1` - This field specifies the number of bytes to read from the<br>target. Setting this field to 0 reads 256 bytes.</td></tr>
+<tr><td>7:0</td><td>FBYTE</td><td>W WMOD</td><td>0x0</td><td>Writing to this register pushes an entry into the Controller TX FIFO. The<br>meaning of this field depends on the value of the `READB` field:<br>* `READB = 0` - This field is the WRITE data byte.<br>* `READB = 1` - This field specifies the number of bytes to read from the<br>target. Setting this field to 0 reads 256 bytes.</td></tr>
 </table>
 <h3 id="FIFO_CTRL">FIFO_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>8</td><td>TXRST</td><td>W</td><td>0x0</td><td>Target Mode control: writing `1` resets the Target TX FIFO.</td></tr>
-<tr><td>7</td><td>ACQRST</td><td>W</td><td>0x0</td><td>Target Mode control: writing `1` resets the Target RX FIFO.</td></tr>
+<tr><td>8</td><td>TXRST</td><td>W 1P</td><td>0x0</td><td>Target Mode control: writing `1` resets the Target TX FIFO.</td></tr>
+<tr><td>7</td><td>ACQRST</td><td>W 1P</td><td>0x0</td><td>Target Mode control: writing `1` resets the Target RX FIFO.</td></tr>
 <tr><td>6:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>FMTRST</td><td>W</td><td>0x0</td><td>Controller Mode control: writing `1` resets the Controller TX FIFO.</td></tr>
-<tr><td>0</td><td>RXRST</td><td>W</td><td>0x0</td><td>Controller Mode control: writing `1` resets the Controller RX FIFO.</td></tr>
+<tr><td>1</td><td>FMTRST</td><td>W 1P</td><td>0x0</td><td>Controller Mode control: writing `1` resets the Controller TX FIFO.</td></tr>
+<tr><td>0</td><td>RXRST</td><td>W 1P</td><td>0x0</td><td>Controller Mode control: writing `1` resets the Controller RX FIFO.</td></tr>
 </table>
 <h3 id="HOST_FIFO_CONFIG">HOST_FIFO_CONFIG</h3>
 <table>
@@ -291,13 +292,13 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>10:8</td><td>SIGNAL</td><td>R</td><td>0x0</td><td>This field indicates if this FIFO entry represents/is associated with control<br>signal(s):<br>* `0x0` - The entry is an ordinary data byte that has been ACKed.<br>* `0x1` - The entry is an address byte preceded by a START.<br>* `0x2` - The entry is a STOP condition following ACKed data bytes.<br>* `0x3` - The entry is an address byte preceded by a repeated START.<br>* `0x4` - The entry is a NACKed data byte.<br>* `0x5` - The entry is an address byte preceded by a (repeated) START.<br>However, the data bytes that followed this address byte were<br>NACKed.<br>* `0x6` - Error. A transaction preceding ended abnormally, for example, due to<br>an unexpected STOP condition, a Bus or Stretch Timeout, a software<br>NACK, or a lost arbitration.<br><br>If the FIFO does not have enough space to record a complete transaction, an<br>Error (`0x6`) entry may appear alone.</td></tr>
-<tr><td>7:0</td><td>ABYTE</td><td>R</td><td>0x0</td><td>Reading this register pops the ACQ FIFO. The meaning of this field depends on<br>`SIGNAL`:<br>* `SIGNAL = 0x0`, `0x1`, `0x3`, `0x4`, or `0x5` - This field contains an<br>address or data byte sent by the controller.<br>* `SIGNAL = 0x2`, `0x6` - This field is meaningless.</td></tr>
+<tr><td>7:0</td><td>ABYTE</td><td>R RMOD</td><td>0x0</td><td>Reading this register pops the ACQ FIFO. The meaning of this field depends on<br>`SIGNAL`:<br>* `SIGNAL = 0x0`, `0x1`, `0x3`, `0x4`, or `0x5` - This field contains an<br>address or data byte sent by the controller.<br>* `SIGNAL = 0x2`, `0x6` - This field is meaningless.</td></tr>
 </table>
 <h3 id="TXDATA">TXDATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>DATA</td><td>W</td><td>0x0</td><td>Writing to this register pushes data into the Target TX FIFO. The controller<br>reads data from this FIFO during a READ transaction.</td></tr>
+<tr><td>7:0</td><td>DATA</td><td>W WMOD</td><td>0x0</td><td>Writing to this register pushes data into the Target TX FIFO. The controller<br>reads data from this FIFO during a READ transaction.</td></tr>
 </table>
 <h3 id="HOST_TIMEOUT_CTRL">HOST_TIMEOUT_CTRL</h3>
 <table>
@@ -315,12 +316,12 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>TARGET_NACK_COUNT</td><td>RW</td><td>0x0</td><td>Indicates the number of transactions NACKed by this target since the last read<br>of this register, saturating at 255. This field can be used to track how many<br>transactions were missed when the Target RX FIFO is full.</td></tr>
+<tr><td>7:0</td><td>TARGET_NACK_COUNT</td><td>RW RC</td><td>0x0</td><td>Indicates the number of transactions NACKed by this target since the last read<br>of this register, saturating at 255. This field can be used to track how many<br>transactions were missed when the Target RX FIFO is full.</td></tr>
 </table>
 <h3 id="TARGET_ACK_CTRL">TARGET_ACK_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>NACK</td><td>W</td><td>0x0</td><td>When `STATUS.ACK_CTRL_STRETCH = 1`, writing `1` to this field causes this<br>target to NACK all bytes of the transaction. Effective only when<br>`CTRL.ACK_CTRL_EN = 1`.</td></tr>
+<tr><td>31</td><td>NACK</td><td>W 1P</td><td>0x0</td><td>When `STATUS.ACK_CTRL_STRETCH = 1`, writing `1` to this field causes this<br>target to NACK all bytes of the transaction. Effective only when<br>`CTRL.ACK_CTRL_EN = 1`.</td></tr>
 <tr><td>30:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8:0</td><td>NBYTES</td><td>RW</td><td>0x0</td><td>When `STATUS.ACK_CTRL_STRETCH = 1`, writing to this register specifies the<br>number of bytes this target should ACK. The count decrements per byte ACKed.<br>Effective only when `CTRL.ACK_CTRL_EN = 1`. See `CTRL.ACK_CTRL_EN` for details.<br><br>This control field is used to implement SMBus&#x27;s mid-transfer (N)ACK responses.</td></tr>
 </table>
@@ -340,20 +341,20 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>ARBITRATION_LOST</td><td>RW</td><td>0x0</td><td>Indicates that the controller has halted due to it losing an arbitration<br>against another controller. This bit triggers the `CONTROLLER_HALT` interrupt.<br>Writing `1` clears this bit.</td></tr>
-<tr><td>2</td><td>BUS_TIMEOUT</td><td>RW</td><td>0x0</td><td>Indicates that this controller has halted due to a Bus Timeout. See<br>`TIMEOUT_CTRL` for details. This bit triggers the `CONTROLLER_HALT` interrupt.<br>Writing `1` clears this bit.</td></tr>
-<tr><td>1</td><td>UNHANDLED_NACK_TIMEOUT</td><td>RW</td><td>0x0</td><td>Indicates that this controller has halted due to a Controller NACK Timeout. See<br>`HOST_NACK_HANDLER_TIMEOUT` for details. This bit triggers the<br>`CONTROLLER_HALT` interrupt. Writing `1` clears this bit.</td></tr>
-<tr><td>0</td><td>NACK</td><td>RW</td><td>0x0</td><td>Indicates that this controller has halted due to an unexpected NACK sent by<br>the target. This behavior can be disabled by writing `1` to `FDATA.NAKOK`. This<br>bit triggers the `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.</td></tr>
+<tr><td>3</td><td>ARBITRATION_LOST</td><td>RW1C</td><td>0x0</td><td>Indicates that the controller has halted due to it losing an arbitration<br>against another controller. This bit triggers the `CONTROLLER_HALT` interrupt.<br>Writing `1` clears this bit.</td></tr>
+<tr><td>2</td><td>BUS_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>Indicates that this controller has halted due to a Bus Timeout. See<br>`TIMEOUT_CTRL` for details. This bit triggers the `CONTROLLER_HALT` interrupt.<br>Writing `1` clears this bit.</td></tr>
+<tr><td>1</td><td>UNHANDLED_NACK_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>Indicates that this controller has halted due to a Controller NACK Timeout. See<br>`HOST_NACK_HANDLER_TIMEOUT` for details. This bit triggers the<br>`CONTROLLER_HALT` interrupt. Writing `1` clears this bit.</td></tr>
+<tr><td>0</td><td>NACK</td><td>RW1C</td><td>0x0</td><td>Indicates that this controller has halted due to an unexpected NACK sent by<br>the target. This behavior can be disabled by writing `1` to `FDATA.NAKOK`. This<br>bit triggers the `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.</td></tr>
 </table>
 <h3 id="TARGET_EVENTS">TARGET_EVENTS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>STOP_DETECT</td><td>RW</td><td>0x0</td><td>Stop Detect Flag (Target Mode only). Set to 1 by hardware when a STOP is<br>detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</td></tr>
-<tr><td>3</td><td>START_DETECT</td><td>RW</td><td>0x0</td><td>Start Detect Flag (Target Mode only). Set to 1 by hardware when a START<br>(or repeated START) is detected while `CTRL.ENABLETARGET = 1`. Cleared when<br>software writes 1.</td></tr>
-<tr><td>2</td><td>ARBITRATION_LOST</td><td>RW</td><td>0x0</td><td>Indicates that a controller has lost arbitration, causing a READ<br>transaction to end. This bit triggers the `TX_STRETCH` interrupt. Writing `1`<br>clears this bit.</td></tr>
-<tr><td>1</td><td>BUS_TIMEOUT</td><td>RW</td><td>0x0</td><td>Indicates that this target has halted due a Bus Timeout terminating a READ<br>transaction. See `TIMEOUT_CTRL` for details. This bit triggers the `TX_STRETCH`<br>interrupt. Writing `1` clears this bit.</td></tr>
-<tr><td>0</td><td>TX_PENDING</td><td>RW</td><td>0x0</td><td>Indicates that the target is stretching the clock due to receiving a READ<br>address byte and waiting for software to confirm the release of the Target<br>TX FIFO data. Valid only if `CTRL.TX_STRETCH_CTRL_EN = 1`. See<br>`CTRL.TX_STRETCH_CTRL_EN` for details. This bit triggers the `TX_STRETCH`<br>interrupt. Writing `1` clears this bit.</td></tr>
+<tr><td>4</td><td>STOP_DETECT</td><td>RW1C</td><td>0x0</td><td>Stop Detect Flag (Target Mode only). Set to 1 by hardware when a STOP is<br>detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</td></tr>
+<tr><td>3</td><td>START_DETECT</td><td>RW1C</td><td>0x0</td><td>Start Detect Flag (Target Mode only). Set to 1 by hardware when a START<br>(or repeated START) is detected while `CTRL.ENABLETARGET = 1`. Cleared when<br>software writes 1.</td></tr>
+<tr><td>2</td><td>ARBITRATION_LOST</td><td>RW1C</td><td>0x0</td><td>Indicates that a controller has lost arbitration, causing a READ<br>transaction to end. This bit triggers the `TX_STRETCH` interrupt. Writing `1`<br>clears this bit.</td></tr>
+<tr><td>1</td><td>BUS_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>Indicates that this target has halted due a Bus Timeout terminating a READ<br>transaction. See `TIMEOUT_CTRL` for details. This bit triggers the `TX_STRETCH`<br>interrupt. Writing `1` clears this bit.</td></tr>
+<tr><td>0</td><td>TX_PENDING</td><td>RW1C</td><td>0x0</td><td>Indicates that the target is stretching the clock due to receiving a READ<br>address byte and waiting for software to confirm the release of the Target<br>TX FIFO data. Valid only if `CTRL.TX_STRETCH_CTRL_EN = 1`. See<br>`CTRL.TX_STRETCH_CTRL_EN` for details. This bit triggers the `TX_STRETCH`<br>interrupt. Writing `1` clears this bit.</td></tr>
 </table>
 <h3 id="SMBUS_STATUS">SMBUS_STATUS</h3>
 <table>

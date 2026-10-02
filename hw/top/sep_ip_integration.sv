@@ -127,10 +127,10 @@ module sep_ip_integration
   );
 
   efuse_bank_model #(
-    .NumFuseByteWidth (sep_efuse_pkg::NumFuseByteWidth),
-    .IsSmcInstance    (1'b0),
-    .efuse_apb_req_t  (sep_efuse_pkg::efuse_apb_req_t),
-    .efuse_apb_resp_t (sep_efuse_pkg::efuse_apb_resp_t)
+    .NUM_FUSE_BYTE_WIDTH (sep_efuse_pkg::NumFuseByteWidth),
+    .IS_SMC_INSTANCE     (1'b0),
+    .efuse_apb_req_t     (sep_efuse_pkg::efuse_apb_req_t),
+    .efuse_apb_resp_t    (sep_efuse_pkg::efuse_apb_resp_t)
   ) u_efuse_bank_model (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -138,7 +138,7 @@ module sep_ip_integration
     .apb_req_i  (efuse_model_otp_req),
     .apb_resp_o (efuse_model_otp_resp),
 
-    .hwif_out ()
+    .hwif_out_o ()
   );
 
   //////////////////////////
@@ -197,9 +197,11 @@ module sep_ip_integration
   // ROM External Module //
   /////////////////////////
 
-  localparam int unsigned ROM_N_ENTRIES = 16384;  // 16K entries * 8B = 128KB
-  localparam int unsigned ROM_ADDR_WIDTH = $clog2(ROM_N_ENTRIES);
   localparam int unsigned ROM_DATA_WIDTH = 64;
+  localparam int unsigned ROM_N_ENTRIES = int'(
+      sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE / (ROM_DATA_WIDTH / 8)
+  );
+  localparam int unsigned ROM_ADDR_WIDTH = $clog2(ROM_N_ENTRIES);
 
   logic                      rom_macro_req;
   logic [ROM_ADDR_WIDTH-1:0] rom_macro_addr;

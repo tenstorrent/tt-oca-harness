@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: csrng</h2>
+<h2 id="regmap-csrng">Cryptographically Secure Random Number Generator</h2>
+<p>Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -40,10 +41,10 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW</td><td>0x0</td><td>Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.</td></tr>
-<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW</td><td>0x0</td><td>Asserted when a hardware-attached CSRNG instance encounters a command exception</td></tr>
-<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW</td><td>0x0</td><td>Asserted when a request for entropy has been made.</td></tr>
-<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW</td><td>0x0</td><td>Asserted when a command request is completed.</td></tr>
+<tr><td>3</td><td>CS_FATAL_ERR</td><td>RW1C</td><td>0x0</td><td>Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.</td></tr>
+<tr><td>2</td><td>CS_HW_INST_EXC</td><td>RW1C</td><td>0x0</td><td>Asserted when a hardware-attached CSRNG instance encounters a command exception</td></tr>
+<tr><td>1</td><td>CS_ENTROPY_REQ</td><td>RW1C</td><td>0x0</td><td>Asserted when a request for entropy has been made.</td></tr>
+<tr><td>0</td><td>CS_CMD_REQ_DONE</td><td>RW1C</td><td>0x0</td><td>Asserted when a command request is completed.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
@@ -74,7 +75,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>REGWEN</td><td>RW</td><td>0x1</td><td>When true, all writeable registers can be modified.<br>When false, they become read-only.</td></tr>
+<tr><td>0</td><td>REGWEN</td><td>RW0C</td><td>0x1</td><td>When true, all writeable registers can be modified.<br>When false, they become read-only.</td></tr>
 </table>
 <h3 id="CTRL">CTRL</h3>
 <table>
@@ -141,7 +142,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>INT_STATE_READ_ENABLE_REGWEN</td><td>RW</td><td>0x1</td><td>INT_STATE_READ_ENABLE register configuration enable bit.<br>If this is cleared to 0, the INT_STATE_READ_ENABLE register cannot be written anymore.</td></tr>
+<tr><td>0</td><td>INT_STATE_READ_ENABLE_REGWEN</td><td>RW0C</td><td>0x1</td><td>INT_STATE_READ_ENABLE register configuration enable bit.<br>If this is cleared to 0, the INT_STATE_READ_ENABLE register cannot be written anymore.</td></tr>
 </table>
 <h3 id="INT_STATE_NUM">INT_STATE_NUM</h3>
 <table>
@@ -164,22 +165,22 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>HW_EXC_STS</td><td>RW</td><td>0x0</td><td>Reading this register indicates whether one of the CSRNG HW instances has<br>encountered an exception.  Each bit corresponds to a particular hardware<br>instance, with bit 0 corresponding to instance HW0, bit 1 corresponding<br>to instance HW1, and so forth. (To monitor the status of requests made<br>to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this register<br>resets the status bits.</td></tr>
+<tr><td>15:0</td><td>HW_EXC_STS</td><td>RW0C</td><td>0x0</td><td>Reading this register indicates whether one of the CSRNG HW instances has<br>encountered an exception.  Each bit corresponds to a particular hardware<br>instance, with bit 0 corresponding to instance HW0, bit 1 corresponding<br>to instance HW1, and so forth. (To monitor the status of requests made<br>to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this register<br>resets the status bits.</td></tr>
 </table>
 <h3 id="RECOV_ALERT_STS">RECOV_ALERT_STS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15</td><td>CMD_STAGE_RESEED_CNT_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the maximum number of generate requests between reseeds is<br>exceeded.<br>The invalid generate command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>14</td><td>CMD_STAGE_INVALID_CMD_SEQ_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when an out of order command is received by the main state machine.<br>This happens when an instantiate command is sent for a state that was already<br>instantiated or when any command other than instantiate is sent for a state that<br>wasn&#x27;t instantiated yet.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>13</td><td>CMD_STAGE_INVALID_ACMD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when an unsupported/illegal CSRNG command is received by the<br>main state machine.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>12</td><td>CS_BUS_CMP_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the software application port genbits bus value is equal<br>to the prior valid value on the bus, indicating a possible attack.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>15</td><td>CMD_STAGE_RESEED_CNT_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the maximum number of generate requests between reseeds is<br>exceeded.<br>The invalid generate command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>14</td><td>CMD_STAGE_INVALID_CMD_SEQ_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when an out of order command is received by the main state machine.<br>This happens when an instantiate command is sent for a state that was already<br>instantiated or when any command other than instantiate is sent for a state that<br>wasn&#x27;t instantiated yet.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>13</td><td>CMD_STAGE_INVALID_ACMD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when an unsupported/illegal CSRNG command is received by the<br>main state machine.<br>The invalid command is ignored and CSRNG continues to operate.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>12</td><td>CS_BUS_CMP_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the software application port genbits bus value is equal<br>to the prior valid value on the bus, indicating a possible attack.<br>Writing a zero resets this status bit.</td></tr>
 <tr><td>11:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>ACMD_FLAG0_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the FLAG0 field in the Application Command is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>3</td><td>FIPS_FORCE_ENABLE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>2</td><td>READ_INT_STATE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the READ_INT_STATE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>1</td><td>SW_APP_ENABLE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>0</td><td>ENABLE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>4</td><td>ACMD_FLAG0_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the FLAG0 field in the Application Command is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>3</td><td>FIPS_FORCE_ENABLE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>2</td><td>READ_INT_STATE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the READ_INT_STATE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>1</td><td>SW_APP_ENABLE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>0</td><td>ENABLE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the ENABLE field in the !!CTRL register is set to<br>a value other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
 </table>
 <h3 id="ERR_CODE">ERR_CODE</h3>
 <table>

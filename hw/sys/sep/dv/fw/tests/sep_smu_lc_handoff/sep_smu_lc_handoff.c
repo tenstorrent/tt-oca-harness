@@ -67,7 +67,7 @@ static int run_lc_handoff(void) {
         return -12;
     }
 
-    lc = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR) & 0xFFu;
+    lc = READ_REG(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR) & 0xFFu;
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(9), lc);
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC_HANDOFF_ARMED);
     lc_handoff_blocked_window();
@@ -78,8 +78,8 @@ static int run_lc_handoff(void) {
         return -15;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, LC_HANDOFF_DEMOTE_RAW);
-    rb = READ_REG(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR) & 0x3u;
+    WRITE_REG(SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, LC_HANDOFF_DEMOTE_RAW);
+    rb = READ_REG(SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR) & 0x3u;
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(10), rb);
     if ((rb & 0x1u) == 0u) {
         sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC_HANDOFF_S0_FAIL);

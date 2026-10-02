@@ -203,8 +203,18 @@ def normalised(document: Any) -> Any:
     return document
 
 
+def final_leaves(leaves: tuple[Leaf, ...]) -> list[Leaf]:
+    """The attempt each (test, seed) leaf is graded on: its highest."""
+    final: dict[tuple[str, int], Leaf] = {}
+    for leaf in leaves:
+        kept = final.get((leaf.item, leaf.seed))
+        if kept is None or leaf.attempt > kept.attempt:
+            final[(leaf.item, leaf.seed)] = leaf
+    return list(final.values())
+
+
 def test_row(leaf: Leaf) -> dict[str, Any]:
-    """The tests.json row the site shows for one attempt."""
+    """The tests.json row the site shows for one leaf's final attempt."""
     return {
         "name": leaf.item,
         "status": leaf.status,
@@ -224,19 +234,31 @@ def expected_site_data(
     failed_tests: int = 0,
     flaky_tests: int = 0,
     coverage_status: str = "SKIP",
+    coverage_total_percent: float | None = None,
     effective_metrics: dict[str, float] | None = None,
 ) -> dict[str, Any]:
-    """The three trimmed documents for one run of the fixture DUT."""
+    """The three trimmed documents for one run of the fixture DUT.
+
+    Every entry carries the series identity, and the block pages read one
+    ``results`` entry per series with its test rows.
+    """
     effective_metrics = {} if effective_metrics is None else effective_metrics
     return {
         "summary": {
             "generated_at": GENERATED_AT,
-            "dut_status": [{**SERIES, "tests_total": tests_total, "pass_rate": pass_rate}],
+            "dut_status": [
+                {
+                    **SERIES,
+                    "tests_total": tests_total,
+                    "pass_rate": pass_rate,
+                    "coverage_total_percent": coverage_total_percent,
+                }
+            ],
             "results": [{**SERIES, "coverage": {"effective_metrics": effective_metrics}}],
         },
         "tests": {
             "generated_at": GENERATED_AT,
-            "flows": {"fixture": [test_row(leaf) for leaf in leaves]},
+            "results": [{**SERIES, "tests": [test_row(leaf) for leaf in final_leaves(leaves)]}],
         },
         "history": {
             "points": [
@@ -336,11 +358,13 @@ class SiteDataCase(unittest.TestCase):
             json.dumps(COVERAGE_MANIFEST), encoding="utf-8"
         )
 
-    def publish(self) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    def publish(
+        self, *, all_attempts: bool = False
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
         """Collect, aggregate and trim the run; return record, summary, history and trimmed."""
         bundle = self.root / "bundle"
         bundle.mkdir()
-        record = collect_flow_result(self.root, self.flow, self.run_dir)
+        record = collect_flow_result(self.root, self.flow, self.run_dir, all_attempts=all_attempts)
         stage_coverage_artifacts(self.root, record, bundle / "fixture.result.json")
         self.assertEqual(record["schema_version"], SCHEMA_VERSION)
         self.assertIn(record["status"], {"PASS", "FAIL", "UNKNOWN"})
@@ -395,6 +419,7 @@ class TrimmedSiteData(SiteDataCase):
                 pass_rate=100.0,
                 flow_pass_rate=100.0,
                 coverage_status="PASS",
+                coverage_total_percent=COVERAGE_SUMMARY["overall_percent"],
                 effective_metrics=EFFECTIVE_METRICS,
             ),
         )
@@ -415,6 +440,17 @@ class TrimmedSiteData(SiteDataCase):
             ),
         )
         self.assert_trim_terms_present(summary, history)
+
+    def test_categories_count_each_leaf_once(self):
+        self.write_run(RETRIED)
+        _, summary, _, _ = self.publish()
+        self.assertEqual(
+            [
+                (c["category"], c["total"], c["passing"], c["failing"])
+                for c in summary["categories"]
+            ],
+            [("fixture", 3, 2, 1)],
+        )
 
     def test_interrupted_run(self):
         self.write_run(STARTED, interrupted=True)
@@ -443,9 +479,21 @@ class SiblingStagingReaders(SiteDataCase):
         self.assertEqual(badges["tests"][:2], (f"tests{series}", "100.0 %"))
         self.assertEqual(badges["coverage"][:2], (f"coverage{series}", "47.5 %"))
 
-    def test_test_history_reads_every_attempt_with_its_reason(self):
+    def test_test_history_reads_the_final_attempt_by_default(self):
         self.write_run(RETRIED)
         record, _, _, _ = self.publish()
+        self.assertEqual(
+            aggregate_test_history.tally(record),
+            {
+                "t_alpha": [{"seed": 11}],
+                "t_beta": [{"seed": 12}],
+                "t_gamma": [{"seed": 13, "reason": "timeout waiting for done"}],
+            },
+        )
+
+    def test_test_history_reads_every_attempt_with_its_reason(self):
+        self.write_run(RETRIED)
+        record, _, _, _ = self.publish(all_attempts=True)
         self.assertEqual(
             aggregate_test_history.tally(record),
             {

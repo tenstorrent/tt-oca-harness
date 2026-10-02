@@ -2,10 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Register Access Test - Non-secure external register writes
- *
- * Write random data via OCCP WRITE to selected external SMC registers and
- * read back via OCCP READ to verify correctness. Runs in non-secure mode.
+ * Writes random data to selected external SMC registers over OCCP WRITE and checks the
+ * OCCP READ readback. Runs in non-secure mode only.
  */
 
 #include "occp_test_common.h"
@@ -84,14 +82,12 @@ static bool write_readback_reg64(test_context_t *ctx, uint64_t addr, uint64_t da
 static void run_test_suite(test_context_t *ctx) {
     ctx->overall_result = true;
 
-    // Ensure we're running intended mode
     if (is_secure_mode()) {
         simputs("Test requires non-secure mode\n");
         ctx->overall_result = false;
         return;
     }
 
-    // Test 64-bit registers (dummy rom)
     for (int i = 0; i < 4; i++) {
         uint64_t addr = SMC_CPU_CTRL_DUMMY_ROM_0_REG_ADDR + (uint64_t)(i * 8);
         uint64_t data =
@@ -101,7 +97,6 @@ static void run_test_suite(test_context_t *ctx) {
         }
     }
 
-    // Test writing to global base register
     {
         uint64_t addr = SMC_CPU_CTRL_GLOBAL_BASE_REG_ADDR;
         uint64_t data =
@@ -112,7 +107,6 @@ static void run_test_suite(test_context_t *ctx) {
         }
     }
 
-    // Test COLD scratch 0..7
     for (int i = 0; i < 8; i++) {
         uint64_t addr = SMC_MISC_WRAP_SCRATCH_COLD_REG_MAP_BASE_ADDR + (uint64_t)(i * 4);
         uint32_t data = (uint32_t)get_random_int();
@@ -121,7 +115,6 @@ static void run_test_suite(test_context_t *ctx) {
         }
     }
 
-    // Test CPU CTRL SCRATCH 3..7 with 64-bit OCCP writes/reads
     for (int i = 3; i < 8; i++) {
         uint64_t addr = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR + (uint64_t)(i * 8);
         uint32_t data = (uint32_t)get_random_int();
@@ -130,7 +123,6 @@ static void run_test_suite(test_context_t *ctx) {
         }
     }
 
-    // Test RESET UNIT FLR counter value register
     {
         uint64_t addr = SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_REG_ADDR;
         uint32_t data = (uint32_t)get_random_int();

@@ -32,8 +32,7 @@ class sep_spi_flash_jedec_smoke_test(sep_base_test):
         await flash.start()
         try:
             await self.bring_up_no_cpu()
-            # No pad-mux step: this DUT drives the OT SPI host onto the pads
-            # directly.
+            # No select step: the OT SPI host drives the pads directly.
             seq = sep_spi_flash_jedec_seq("spi_flash_jedec_seq")
             await self.start_seq(seq)
             transactions = flash.get_transactions()

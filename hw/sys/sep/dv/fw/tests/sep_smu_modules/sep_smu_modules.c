@@ -9,7 +9,7 @@
  *   - clock/reset/fabric/sram/bootrom
  *   - dma/wdt/aes/hmac/kmac/otbn
  *   - lcc(key lifecycle ctrl)/km mailbox/efuse
- *   - OpenTitan SPI host. The open DUT has no pad mux.
+ *   - OpenTitan SPI host. No select steers it, so the image programs none.
  *
  * Completion is signaled by pass/fail loops for cocotb PC classification.
  */
@@ -51,56 +51,52 @@ static int rw_check32(uint32_t addr, uint32_t val) {
 }
 
 static int stage_clock_reset(void) {
-    g_sink ^= READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR);
-    g_sink ^= READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_REFERENCE_COUNTER_BASE_ADDR);
-    g_sink ^= READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_VERSION_ID_BASE_ADDR);
+    g_sink ^= READ_REG(SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR);
+    g_sink ^= READ_REG(SEP_TOP_SEP_CPU_CTRL_REFERENCE_COUNTER_BASE_ADDR);
+    g_sink ^= READ_REG(SEP_TOP_SEP_CPU_CTRL_SEP_VERSION_ID_BASE_ADDR);
 
-    if (rw_check32(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_SW_DEBUG_BASE_ADDR, 0x5A5AA5A5u) != 0) return -1;
+    if (rw_check32(SEP_TOP_SEP_CPU_CTRL_SEP_SW_DEBUG_BASE_ADDR, 0x5A5AA5A5u) != 0) return -1;
 
-    uint32_t sw_reset_n = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    uint32_t sw_reset_n = READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     g_sink ^= sw_reset_n;
     return 0;
 }
 
 static int stage_fabric(void) {
-    if (rw_check32(OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_START_BASE_ADDR(0),
+    if (rw_check32(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_START_BASE_ADDR(0),
                    0xC0000000u) != 0) {
         return -1;
     }
-    if (rw_check32(OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(0),
+    if (rw_check32(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(0),
                    0xCFFFFFFFu) != 0) {
         return -1;
     }
-    if (rw_check32(OCH_SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
+    if (rw_check32(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
                    0x00000003u) != 0) {
         return -1;
     }
-    if (rw_check32(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
-                   0x00000001u) != 0)
+    if (rw_check32(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0x00000001u) != 0)
         return -1;
-    if (rw_check32(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0),
-                   0x00000001u) != 0)
-        return -1;
-
-    if (rw_check32(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
-        return -1;
-    if (rw_check32(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
-        return -1;
-    if (rw_check32(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0)
+    if (rw_check32(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0x00000001u) !=
+        0)
         return -1;
 
-    if (rw_check32(OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
+    if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
         return -1;
-    if (rw_check32(OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
+    if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
         return -1;
-    if (rw_check32(OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0)
+    if (rw_check32(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0) return -1;
+
+    if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0), 0x00000003u) != 0)
         return -1;
+    if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0), 0x00000000u) != 0)
+        return -1;
+    if (rw_check32(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0), 0xFFFFFFFFu) != 0) return -1;
     return 0;
 }
 
 static int stage_sram_bootrom(void) {
-    volatile uint32_t *sram =
-        (volatile uint32_t *)(uintptr_t)(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x200u);
+    volatile uint32_t *sram = (volatile uint32_t *)(uintptr_t)(SEP_TOP_SEP_SRAM_BASE_ADDR + 0x200u);
     uint32_t pat = 0x1234ABCDu;
     *sram = pat;
     __asm__ volatile("fence" ::: "memory");
@@ -110,27 +106,26 @@ static int stage_sram_bootrom(void) {
 }
 
 static int stage_dma_regs(void) {
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00000000u) != 0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00000000u) != 0)
         return -1;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu) != 0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu) != 0)
         return -1;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) !=
-        0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u) != 0) return -1;
+    if (rw_check32(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR) != 0)
         return -1;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
-                   OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000u) != 0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
+                   SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000u) != 0)
         return -1;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, 0x100u) != 0) return -1;
+    if (rw_check32(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, 0x100u) != 0) return -1;
     return 0;
 }
 
 static int stage_wdt_regs(void) {
-    if (rw_check32(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0x200u) != 0) return -1;
-    if (rw_check32(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x400u) != 0) return -1;
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0u);
-    g_sink ^= READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    if (rw_check32(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0u) != 0) return -1;
+    if (rw_check32(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0x200u) != 0) return -1;
+    if (rw_check32(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0x400u) != 0) return -1;
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0u);
+    g_sink ^= READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     return 0;
 }
 
@@ -157,11 +152,11 @@ static int stage_aes_smoke(void) {
 static int hmac_wait_done_or_idle(void) {
     int t = HMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.hmac_done || sts.f.hmac_idle) {
             hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
-            WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+            WRITE_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
             return 0;
         }
     }
@@ -170,7 +165,7 @@ static int hmac_wait_done_or_idle(void) {
 
 static int hmac_sha256_abc(uint8_t digest[32]) {
     hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en = 0;
@@ -178,18 +173,18 @@ static int hmac_sha256_abc(uint8_t digest[32]) {
     cfg.f.endian_swap = 0;
     cfg.f.digest_swap = 0;
     cfg.f.digest_size = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     const char *msg = "abc";
     for (int i = 0; i < 3; i++) {
         int spins = 0;
         hmac__STATUS_t s;
         do {
-            s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+            s.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR);
             if (++spins > 10000) return -1;
         } while (s.f.fifo_full);
         *fifo8 = (uint8_t)msg[i];
@@ -197,19 +192,19 @@ static int hmac_sha256_abc(uint8_t digest[32]) {
 
     cmd.w = 0;
     cmd.f.hash_process = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     if (hmac_wait_done_or_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (i * 4));
+        uint32_t raw = READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (i * 4));
         ((uint32_t *)digest)[i] = bswap32(raw);
     }
 
-    cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
+    cfg.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR);
     cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
     return 0;
 }
 
@@ -233,7 +228,7 @@ static const uint32_t sha3_256_abc_ref[8] = {0x3a985da7u, 0x4fe225b2u, 0x045c172
 static int kmac_wait_idle(void) {
     int t = KMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     return -1;
@@ -242,9 +237,9 @@ static int kmac_wait_idle(void) {
 static int kmac_wait_done(void) {
     int t = KMAC_TIMEOUT_ITERS;
     while (t-- > 0) {
-        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+        uint32_t intr = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & 0x1u) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1u);
+            WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0x1u);
             return 0;
         }
     }
@@ -262,39 +257,38 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     cfg.f.msg_endianness = 0;
     cfg.f.state_endianness = 0;
     cfg.f.entropy_ready = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     cfg.f.entropy_ready = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + i);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    for (int i = 0; i < 6; i++) WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + i);
 
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = KMAC_CMD_START;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     {
-        volatile uint8_t *fifo8 =
-            (volatile uint8_t *)(uintptr_t)(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
+        volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
         fifo8[0] = 'a';
         fifo8[0] = 'b';
         fifo8[0] = 'c';
     }
 
     cmd.f.cmd = KMAC_CMD_PROCESS;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     if (kmac_wait_done() != 0) return -1;
 
     uint32_t share0[8], share1[8];
     for (int i = 0; i < 8; i++) {
-        share0[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
-        share1[i] = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
+        share0[i] = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4));
+        share1[i] = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + 0x100 + (i * 4));
         digest_be[i] = bswap32(share0[i] ^ share1[i]);
     }
 
     cmd.f.cmd = KMAC_CMD_DONE;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     return 0;
 }
 
@@ -308,19 +302,19 @@ static int stage_kmac(void) {
 }
 
 static int stage_efuse(void) {
-    if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
+    if (rw_check32(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
         return -1;
         /*
          * EFUSE_TIMING_CTRL_7 exists only in register maps that generate the wide
          * shim block; this map's shim block exposes only EFUSE_BANK_INIT_TIME, so
          * the check is compiled only where the register exists.
          */
-#ifdef OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
-    if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
+#ifdef SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
+    if (rw_check32(SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
                    0x0000ABCDu) != 0)
         return -1;
 #endif
-    g_sink ^= READ_REG(OCH_SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);
+    g_sink ^= READ_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);
     return 0;
 }
 

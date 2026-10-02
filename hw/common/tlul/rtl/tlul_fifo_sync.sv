@@ -1,38 +1,42 @@
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Buffer a TL-UL link with synchronous request and response FIFOs.
 //
-// TL-UL fifo, used to add elasticity or an asynchronous clock crossing
-// to an TL-UL bus.  This instantiates two FIFOs, one for the request side,
-// and one for the response side.
+// Instantiate separate request and response FIFOs to add elasticity on a TL-UL bus. The
+// response FIFO stores d_data as zero for any opcode other than ACCESS_ACK_DATA.
+// REQ_PASS and RSP_PASS allow fall-through when the corresponding FIFO is empty. SPARE_REQ_W
+// and SPARE_RSP_W carry optional sideband bits alongside each channel.
 
 module tlul_fifo_sync #(
-  parameter bit          ReqPass = 1'b1,
-  parameter bit          RspPass = 1'b1,
-  parameter int unsigned ReqDepth = 2,
-  parameter int unsigned RspDepth = 2,
-  parameter int unsigned SpareReqW = 1,
-  parameter int unsigned SpareRspW = 1
+  parameter bit          REQ_PASS = 1'b1,    // Allow A-channel fall-through when empty.
+  parameter bit          RSP_PASS = 1'b1,    // Allow D-channel fall-through when empty.
+  parameter int unsigned REQ_DEPTH = 2,      // Depth of the host-to-device request FIFO;
+                                             // 0 bypasses it and requires REQ_PASS.
+  parameter int unsigned RSP_DEPTH = 2,      // Depth of the device-to-host response FIFO;
+                                             // 0 bypasses it and requires RSP_PASS.
+  parameter int unsigned SPARE_REQ_W = 1,    // Width of spare bits with each request.
+  parameter int unsigned SPARE_RSP_W = 1     // Width of spare bits with each response.
 ) (
-  input                     clk_i,
-  input                     rst_ni,
-  input  tlul_pkg::tl_h2d_t tl_h_i,
-  output tlul_pkg::tl_d2h_t tl_h_o,
-  output tlul_pkg::tl_h2d_t tl_d_o,
-  input  tlul_pkg::tl_d2h_t tl_d_i,
-  input  [SpareReqW-1:0]    spare_req_i,
-  output [SpareReqW-1:0]    spare_req_o,
-  input  [SpareRspW-1:0]    spare_rsp_i,
-  output [SpareRspW-1:0]    spare_rsp_o
+  input                     clk_i,        // System clock.
+  input                     rst_ni,       // Active-low reset.
+  input  tlul_pkg::tl_h2d_t tl_h_i,       // Host-side TL-UL request.
+  output tlul_pkg::tl_d2h_t tl_h_o,       // Host-side TL-UL response.
+  output tlul_pkg::tl_h2d_t tl_d_o,       // Device-side TL-UL request.
+  input  tlul_pkg::tl_d2h_t tl_d_i,       // Device-side TL-UL response.
+  input  [SPARE_REQ_W-1:0]  spare_req_i,  // Spare request bits entering with tl_h_i.
+  output [SPARE_REQ_W-1:0]  spare_req_o,  // Spare request bits leaving with tl_d_o.
+  input  [SPARE_RSP_W-1:0]  spare_rsp_i,  // Spare response bits entering with tl_d_i.
+  output [SPARE_RSP_W-1:0]  spare_rsp_o   // Spare response bits leaving with tl_h_o.
 );
-
   // Put everything on the request side into one FIFO
-  localparam int unsigned REQFIFO_WIDTH = $bits(tlul_pkg::tl_h2d_t) - 2 + SpareReqW;
+  localparam int unsigned REQFIFO_WIDTH = $bits(tlul_pkg::tl_h2d_t) - 2 + SPARE_REQ_W;
 
   prim_fifo_sync #(
     .Width(REQFIFO_WIDTH),
-    .Pass(ReqPass),
-    .Depth(ReqDepth)
+    .Pass(REQ_PASS),
+    .Depth(REQ_DEPTH)
   ) u_reqfifo (
     .clk_i,
     .rst_ni,
@@ -66,12 +70,12 @@ module tlul_fifo_sync #(
 
   // Put everything on the response side into the other FIFO
 
-  localparam int unsigned RSPFIFO_WIDTH = $bits(tlul_pkg::tl_d2h_t) - 2 + SpareRspW;
+  localparam int unsigned RSPFIFO_WIDTH = $bits(tlul_pkg::tl_d2h_t) - 2 + SPARE_RSP_W;
 
   prim_fifo_sync #(
     .Width(RSPFIFO_WIDTH),
-    .Pass(RspPass),
-    .Depth(RspDepth)
+    .Pass(RSP_PASS),
+    .Depth(RSP_DEPTH)
   ) u_rspfifo (
     .clk_i,
     .rst_ni,
@@ -83,7 +87,7 @@ module tlul_fifo_sync #(
                      tl_d_i.d_size  ,
                      tl_d_i.d_source,
                      tl_d_i.d_sink  ,
-                     (tl_d_i.d_opcode == tlul_pkg::AccessAckData) ? tl_d_i.d_data :
+                     (tl_d_i.d_opcode == tlul_pkg::ACCESS_ACK_DATA) ? tl_d_i.d_data :
                                                                     {top_pkg::TL_DW{1'b0}} ,
                      tl_d_i.d_user  ,
                      tl_d_i.d_error ,

@@ -32,7 +32,7 @@ uint16_t pll_init(bool bl0_pll_clk_strap) {
 
     // Read sysclk frequency: 11-bit fuse field indicates configured sysclk PLL frequency in MHz.
     // If 0 (fuses blank), fall back to REF_CLK.
-    uint32_t sysclk_fuse = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR);
+    uint32_t sysclk_fuse = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR);
     uint16_t pll_freq_mhz =
         (uint16_t)((sysclk_fuse & SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bm) >>
                    SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bp);
@@ -43,7 +43,10 @@ uint16_t pll_init(bool bl0_pll_clk_strap) {
         return (uint16_t)SMU_REF_CLK_FREQ_MHZ;
     }
 
-    // Poll PLL lock detect (CGM_0_STATUS.lock_detect, bit 0).
+    // Poll PLL lock detect (CGM_0_STATUS.lock_detect, bit 0). Unbounded
+    // ([SEP-ROM-CPU-080]), so the wait is announced on the status channel
+    // first: a part that never locks is left showing this status.
+    report_status(STATUS_TYPE_INFO, SEP_MSG_WAIT_FOR_PLL_LOCK);
     simputs("PLL_WAIT_LOCK\n");
     const uint32_t pll_status_addr = smc_base + PLL_CGM_0_STATUS_OFFSET;
     while ((mmio_read32(pll_status_addr) & PLL_CGM_LOCK_DETECT_MASK) == 0u) {

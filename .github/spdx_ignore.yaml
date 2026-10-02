@@ -8,7 +8,14 @@
 ignore:
   perform_check: false
   include:
-    - vendor/
+    # Third-party vendored snapshots keep their upstream license; TT does not
+    # claim copyright on them, so they stay out of the SPDX check.
+    - vendor/chipsalliance/
+    - vendor/lowRISC/
+    - vendor/pulp-platform/
+    - vendor/tenstorrent/aou/
+    - vendor/tenstorrent/tt-picorv32/
+    - vendor/tenstorrent/tt-hw-debug/patches/
     - build/
     - __pycache__/
     - .pytest_cache/
@@ -19,7 +26,7 @@ ignore:
     - .bender-kg/
     # Foreign IP blocks (lowRISC/OpenTitan and SiFive Metal SDK) — OSPO policy:
     # keep the upstream license, do not claim TT copyright on third-party code.
-    - hw/common/och_prim_generic/rtl/
+    - hw/common/ocah_prim_generic/rtl/
     - hw/common/ot_pkg/rtl/
     - hw/common/tlul/rtl/
     - hw/ip/i2c/rtl/

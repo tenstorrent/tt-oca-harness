@@ -65,15 +65,15 @@ def assert_rom_sram_bounds() -> tuple[int, int]:
     # A resized SRAM would silently make the refused size legal; the C and Python bounds must agree.
     text = _SEP_ADDR_H.read_text()
     found = {}
-    for name in ("OCH_SEP_TOP_SEP_SRAM_BASE_ADDR", "OCH_SEP_TOP_SEP_SRAM_SIZE"):
+    for name in ("SEP_TOP_SEP_SRAM_BASE_ADDR", "SEP_TOP_SEP_SRAM_SIZE"):
         hit = re.search(rf"^#define\s+{name}\s+(0x[0-9a-fA-F]+)\s*$", text, re.MULTILINE)
         assert hit, (
             f"{name} is not defined in {_SEP_ADDR_H}; every payload size bound in "
             f"this module is then an unverified number"
         )
         found[name] = int(hit.group(1), 16)
-    base = found["OCH_SEP_TOP_SEP_SRAM_BASE_ADDR"]
-    size = found["OCH_SEP_TOP_SEP_SRAM_SIZE"]
+    base = found["SEP_TOP_SEP_SRAM_BASE_ADDR"]
+    size = found["SEP_TOP_SEP_SRAM_SIZE"]
     assert (base, size) == (SEP_SRAM_BASE, SEP_SRAM_SIZE), (
         f"{_SEP_ADDR_H} gives SEP SRAM base 0x{base:08x} size 0x{size:08x}, but the "
         f"generated Python map gives 0x{SEP_SRAM_BASE:08x}/0x{SEP_SRAM_SIZE:08x}. "

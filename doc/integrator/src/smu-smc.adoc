@@ -1,0 +1,738 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smc-integration]]
+= System Management Controller (SMC) Integration
+
+The System Management Controller (SMC) is a subsystem responsible for power
+management, clock control, reset sequencing, and peripheral interface
+coordination. The `smc.sv` module exposes logic-level interfaces; all
+technology-specific components (PLLs, PVT sensors, eFuses, memory macros,
+GPIO padrings) are instantiated externally by the adopter. See the
+ifdef::backend-html5[]
+  xref:smu-composition.adoc#smu-module-variants[SMU Module Variants]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  _SMU Module Variants_
+endif::backend-pdf[]
+section for how the reference wrappers demonstrate this integration.
+
+For detailed architectural documentation about the SMC internal design, refer to
+`hw/sys/smc/doc/`. The public integration examples are
+`hw/top/smc_wrapper.sv` and `hw/top/smc_ip_integration.sv`.
+
+[[smc-integration-clk-rst]]
+== Clock and Reset
+
+The SMC requires three external clock inputs: `clk_smc_i` (primary system clock
+driving the CPU cluster, fabric, and peripherals), `clk_periph_i` (peripheral clock
+driving the peripherals), and `clk_ref_i` (reference
+clock for timing-sensitive operations). All must be generated externally by the
+adopter's PLL infrastructure; the SMC provides AXI-Lite control outputs for PLL
+configuration (see <<smc-peripheral-connections>>). The peripheral clock is used
+to drive the I3C interface, I2C interface, UART interface, and AVSBus interface.
+
+Hold `rst_cold_ni` asserted (low) while power supplies and clocks stabilize.
+Assert `powergood_i` once supplies reach nominal, then deassert `rst_cold_ni`
+(drive high) to start the boot sequence.
+
+The SMC generates AASD (async-assert / sync-deassert) reset outputs: `rst_primary_smc_clk_no` for the
+main clock domain, `rst_primary_periph_clk_no` for the peripheral clock domain, and `rst_primary_ref_clk_no` for the reference clock domain.
+These ensure clean reset release without metastability across the system
+hierarchy.
+
+Reset domain overrides are delivered through a single typed input,
+`jtag_reset_ctrl_i` (`smc_pkg::jtag_smc_reset_ctrl_t`), which carries all
+SMC reset override enables and active-low values. The DTP drives this input
+through the JTAG IC_RESET mechanism (see the
+ifdef::backend-html5[]
+xref:smu-composition.adoc#smc-dtp-interconnection[SMC-DTP Internal Interconnection]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_SMC-DTP Internal Interconnection_
+endif::backend-pdf[]
+section); most integrations leave all override enables deasserted.
+
+[[smc-ndm-cluster-reset]]
+== External CPU cluster NDM reset
+
+Connect `smc_ndmreset_request_i[i]` to the NDM reset request from
+external CPU cluster `i`, and return `smc_ndmreset_process_o[i]` to
+that cluster. Set `CPU_CLUSTER_COUNT` in `smc_config_pkg` to the number
+of clusters. This harness sets it to 4. The parameter sizes both ports,
+and `NDMRESET_CLUSTER_COUNT` reads that value back. The register fields
+stay 32 bits wide. Tie unused request inputs to 0.
+
+[[smc-address-map-integration]]
+== Address Map and Aperture
+
+The SMC has a chiplet-visible aperture and an internal local address
+view. Internally, the SMC uses a fixed local base address of
+`0xC000_0000` and a fixed local window size of 16 MiB. SMC-local
+addresses (registers, memories, remapped regions) are defined as offsets
+from that base. The chiplet-visible aperture is adopter-defined: the
+chiplet or SoC address map assigns the global base and size that
+external masters can use to reach SMC through the SMU crossbar.
+
+When integrating the SMC into a chiplet or SoC, the adopter assigns a
+system base address and reserved size for the SMC window. The system
+base (e.g. `0x0800_0000` in a chiplet address map) may be different from
+the SMC-local base `0xC000_0000`. Firmware programs the SMC
+`GLOBAL_BASE` / `REGION_SIZE` CSRs during early boot to match that
+assignment. The adopter's fabric or address decoder must route the
+reserved system range to the SMC block so that offsets are preserved:
+system base + offset maps to SMC-local `0xC000_0000` + offset.
+
+.Address Base Mapping
+[width="100%",cols="30%,30%,40%",options="header"]
+|=======================================================================
+|View |Base Address |Description
+|SMC-local (internal) |`0xC000_0000` |Local alias address (fixed).
+Used by SMC CPU, firmware, and fabric.
+|System (adopter) |Adopter-defined |Base of the chiplet/SoC aperture
+assigned to SMC.
+|=======================================================================
+
+The SMC routes bus transactions from inside the SMU to either be local
+(accessing something inside the SMC) or global. This routing is configured by
+three of the SMC base configuration registers:
+
+* `LOCAL_BASE` (read-only, fixed at `0xC000_0000`): The local alias
+  base. Together with `REGION_SIZE`, this is the address space the SMC
+  CPU and internal fabric use to access SMC resources.
+* `GLOBAL_BASE` (read-write, defaults to `0x4000_0000`): The
+  system-level base address. Firmware must program this during early boot
+  to match the adopter's system address assignment, enabling the SMC to
+  issue outbound transactions using global system addresses.
+* `REGION_SIZE` (read-write, resets to `0x0100_0000` / 16 MiB): The size
+  of both the local alias window and the global aperture. It sizes the
+  SMC input fabric's local/global split as well as SMU-level routing and
+  SEP-to-SMC decode. Firmware must not program it to zero, and must keep
+  `LOCAL_BASE + REGION_SIZE` inside the 32-bit SMC-local address space.
+
+For full details on alias remapping and outbound routing, see the SMC
+Fabric documentation (`hw/sys/smc/doc/fabric.adoc`).
+
+For a detailed breakdown of all components within the SMC local map,
+refer to the SMC Memory Map documentation (`hw/sys/smc/doc/memmap.adoc`).
+
+== AXI Interface Configuration
+
+The SMC provides three distinct AXI interface groups serving different access
+paths. The `sys_axi_in` interface accepts requests from external system masters
+requiring access to SMC-managed resources. This interface uses a 56-bit address
+space with 64-bit data width and 6-bit transaction IDs. Connect this interface
+to your system fabric for normal operational access from application processors
+or DMA controllers.
+
+The `sep_axi_in` interface provides dedicated access from the Security Processor
+(SEP) subsystem. This interface shares the same sizing parameters as the system
+input but operates independently to maintain security domain separation. Use
+this interface only when integrating alongside the SEP subsystem. The interface
+may remain unconnected if your integration does not include SEP.
+
+The `output_axi` interface carries filtered and remapped requests from the SMC
+to external system resources. This interface uses an 8-bit transaction ID field
+to accommodate merged traffic from multiple input paths. Connect this interface
+to your system interconnect to allow SMC components access to external memory
+and peripherals. An AXI VIP or equivalent BFM is a suitable stand-in during
+integration verification before the real system fabric is available.
+
+The `jtag_axi_in` interface provides debug access through JTAG mechanisms. This
+interface uses reduced 2-bit transaction IDs and connects to your JTAG debug
+infrastructure.
+
+[[gpio-pad-integration]]
+== GPIO Pad Integration
+
+GPIO pad integration requires careful attention to function assignment and pull
+requirements. The GPIO table below lists each pad's index, function, recommended
+pull, and integration notes. Default input/output direction is defined by
+`smc_padring_pkg::DefaultDirectionMap`, not by the table.
+
+The public `hw/top/smc_wrapper.sv` and `hw/top/smc_ip_integration.sv` examples
+show the pad connections. For bi-directional pins, implement proper tri-state
+buffers controlled by the `core2pad_en_o` signals. Connect multiplexed UART,
+I2C, I3C, and SPI pins to external devices according to the function assignments
+in the GPIO table.
+
+The SMC padring drives one GPIO pad per `u_gpio_interface` instance, so the
+adopter must integrate `smc_pkg::NUM_GPIO_WRAPS` pads:
+`smc_pkg::NUM_BONDED_GPIO` bonded pads plus `smc_pkg::NUM_UNBONDED_GPIO`
+unbonded pads. If the adopter chooses to capture configuration straps from GPIO
+pads, this can only be done from the bonded pads. The pads for the SDA and SCL
+lines of I3C[1] must be unbonded for security when transmitting OCCP traffic.
+The pads for Cool Reset In/Out must also be unbonded as they are meant only to
+interface with other chiplets within a package. All of these pads must be
+bi-directional, except for Cool Reset In which must use an input-only pad.
+
+The adopter must instantiate 10 additional pads to support the JTAG PTAP and
+STAP. This consists of two groups of TCK, TRSTN, TDI, TDO, and TMS -- one group
+for the PTAP and one for the STAP. The TDO for both the PTAP and STAP must use
+tri-state capable bi-directional pads. The TDI for both the STAP and PTAP must
+use input-only pads. The remaining PTAP pads must be capable of input, and the
+remaining STAP pads must be capable of output.
+
+The adopter must connect every cross trigger port (CTP) that `smu` exposes. A
+CTP that leaves the chiplet must instantiate a group of 4 pads (request out,
+request in, acknowledge in, acknowledge out). The two inputs must use input-only
+pads and the two outputs must use bi-directional pads capable of open-drain
+drive to conform with the cross-trigger methodology described in
+ifdef::backend-html5[]
+xref:ocah-docs:ip:cross_trigger_port/doc/index.adoc[Cross-Trigger Port].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the _Cross-Trigger Port_ section of the Technical Reference Manual.
+endif::backend-pdf[]
+
+See
+ifdef::backend-html5[]
+xref:smu-composition.adoc#xtrig-ctp-gpio-interface[Cross Trigger Port GPIO Interface]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Cross Trigger Port GPIO Interface_
+endif::backend-pdf[]
+for the SMU-level ports.
+
+OCAH also requires a reference clock, a cold reset, and a powergood indication
+(`clk_ref_i`, `rst_cold_ni`, and `powergood_i` on `smu`). These must be driven,
+but not necessarily from pads. The adopter may source them from dedicated pads
+as the GPIO table shows, or from another stable source.
+
+The adopter may choose to instantiate additional pads (with or without
+supporting instances of the OCAH `gpio` module) to support custom features.
+
+Configuration straps are captured separately from the GPIO table. Establish them
+before cold reset deassertion and keep them stable during capture. The
+`STRAPS_LO` and `STRAPS_HI` registers in the adopter peripheral window (see
+<<smc-external-supplementary>>) define the decoded bit assignments, including
+`BYPASS_SRAM_REPAIR` at `STRAPS_LO[13]` and `TEST_EN` at `STRAPS_LO[14]`.
+
+[[smc-peripheral-connections]]
+== Peripheral Interface Connections
+
+The SMC exposes logic-level interfaces to several technology-specific
+subsystem components that the adopter instantiates externally. The
+subsections below describe each connection in turn.
+
+[[smc-external-connection]]
+=== Adopter Peripheral Window
+
+The `smc_external_req_o` and `smc_external_resp_i` signals form a 32-bit
+AXI-Lite interface to the adopter's own peripheral register maps. Any
+technology- or product-specific block that SMC firmware needs to reach sits
+behind this window rather than on a dedicated per-peripheral port.
+
+The window is the recommended home for the control/status registers of logic
+that the SMC must configure or monitor but that the SMC itself does not
+implement -- padring configuration logic, clock generation, on-die sensors,
+memory-technology SHIMs, and similar adopter-owned blocks are typical examples.
+For example, runtime reconfiguration of pin directions, pull settings, and peripheral
+multiplexing is expected to be reachable here. The SMC decodes the aperture and
+forwards the transaction; what lives behind it is entirely adopter-defined.
+
+The window occupies `BASE + 0x040_0000` to `BASE + 0x07F_FFFF` (4 MiB; with
+`LOCAL_BASE`, `0xC040_0000` to `0xC07F_FFFF`). The SMC forwards every access
+in this range to `smc_external_req_o` except the eFuse SHIM range at its base
+(see <<smc-external-mandatory>>); the adopter decodes everything else. The
+generated SMC memory map reports the window as one opaque aperture.
+
+The window is split into two regions. Apart from the eFuse SHIM control block
+needed for security reasons, hardware treats both identically -- the split is
+organizational only:
+
+* *Mandatory* (`BASE + 0x040_0000`):
+  Blocks every integration must implement. OCAH specifications dictate their
+  function, but their implementation, register layout and placement within the
+  region are technology- and vendor-specific.
+
+* *Supplementary* (`BASE + 0x040_4000`):
+  Any additional memory-mapped devices the adopter chooses to expose, plus the
+  captured strap registers.
+
+[[smc-external-mandatory]]
+==== Mandatory Region
+
+[cols="2,5",options="header"]
+|=======================================================================
+|Block |Purpose
+|eFuse SHIM control |Technology-specific eFuse bank control, such as the time
+the OTP macro needs to initialize before sensing
+|PLL clock-observation pad interface |Register-driven pad data and direction,
+per-field override enables, and an AXI PROT access filter
+|PLL clock-observation pad control |Drive strength, pull enable and select, and
+Schmitt select
+|PVT clock-observation pad interface |As the PLL clock-observation pad interface
+|PVT clock-observation pad control |As the PLL clock-observation pad control
+|POC/PBIAS pad control |Pad supply-voltage level selection and retention
+enable, with an access filter
+|Reference-clock pad control |Drive strength, pull and Schmitt settings for the
+reference-clock pad
+|Per-pad GPIO control |One control block per pad: pad electrical settings, the
+value captured at reset deassertion, and the secondary hardware function
+override
+|PLL wrapper |Control and status of the adopter's clock-generation block
+|PVT wrapper |Control and status of the adopter's process, voltage and
+temperature sensors
+|=======================================================================
+
+The eFuse SHIM control CSRs must sit at the base of the mandatory region.
+In each subsystem, the internal fabric routes the first `*_EFUSE_SHIM_SIZE`
+bytes of the window into the eFuse controller, so the controller's lifecycle
+access control applies to them. The accesses then leave on the dedicated eFuse
+bank port, `smc_efuse_bank_ctrl_req_o` or `sep_efuse_bank_ctrl_req_o`, instead
+of `smc_external_req_o` or `sep_external_req_o`. See <<efuse-bank-ctrl-window>>.
+
+[[smc-external-supplementary]]
+==== Supplementary Region
+
+[cols="2,5",options="header"]
+|=======================================================================
+|Block |Purpose
+|Adopter devices |Optional memory-mapped devices. The reference integration
+places its vendor I3C controllers here
+|Captured straps |Pad values latched at cold reset, one bit per GPIO, read by
+boot firmware
+|=======================================================================
+
+[[smc-external-straps]]
+The captured straps are read-only. The generated `straps` register
+descriptions define the decoded bit assignments.
+
+[[smc-efuse-connection]]
+=== eFuse Interface
+
+[NOTE]
+====
+This guide uses *eFuse* and *OTP* interchangeably for the same one-time
+programmable bank and the SHIM that fronts it. Port names mix both
+(`efuse_*`, `*_otp_*`); they refer to the same interface.
+====
+
+The eFuse interface consists of two parts:
+
+* `efuse_bank_ctrl` -- a 32-bit AXI-Lite interface used to access the SHIM
+control CSRs (for example, foundry-specific bank timing such as the
+initialization delay before sensing can begin). Firmware reaches these CSRs
+through the base of the adopter external window; see
+<<efuse-bank-ctrl-window>>.
+* `efuse_shim_command` -- the custom fuse command interface used to issue
+read, program, and program/read-back operations to the eFuse bank.
+
+*Adopter responsibility.* The `efuse_shim_command` interface is intentionally
+generic and technology-neutral. The adopter must implement an Interface SHIM
+that converts these generic commands into the hardware signals required by
+their OTP macro. The conversion is driven by the adopter's own read and
+program state machines inside the SHIM; OCAH only defines the command/response
+contract, not the macro-side signaling.
+
+The SMC and the SEP each contain their own eFuse controller, so the `smu.sv`
+boundary carries two independent copies of the interface, one with an `smc_`
+prefix and one with a `sep_` prefix. The adopter places *two separate SHIM and
+macro instances*, one per controller, each fronting its own 8 Kbit bank. The
+banks are never shared. Each controller also drives its own sense-done output
+to the `smu.sv` boundary, `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o`,
+and holds the sensed bank in its own shadow registers.
+<<efuse-smu-instances-fig>> shows these connections. When the SMU is built with
+`SEP = 0`, only the SMC instance is needed.
+
+[[efuse-smu-instances-fig]]
+.eFuse connections at the smu.sv boundary
+image::efuse_smu_instances.svg[eFuse connections at the smu.sv boundary,scaledwidth=95%]
+
+<<efuse-shim-contract-fig>> shows the contract for one of those instances.
+Everything above the dashed line is provided by OCAH; everything below it is
+the adopter's. Only the two interfaces that cross the line are fixed.
+
+[[efuse-shim-contract-fig]]
+.eFuse controller to Interface SHIM contract
+image::efuse_shim_contract.svg[eFuse controller to Interface SHIM contract,scaledwidth=95%]
+
+The reference SHIM, `hw/ip/efuse/rtl/efuse_interface_shim.sv`, drives an
+APB-based behavioral bank model. Use it as a worked example of the read and
+program state machines, not as a template for macro-side timing.
+
+[[efuse-bank-ctrl-window]]
+*SHIM control address window.* The SHIM control CSRs are defined by the
+adopter, but their addresses sit at the base of the subsystem's adopter
+external window. The fabric carves that block off the window and routes it
+to the eFuse controller instead of the external port. The controller does not
+decode it; it forwards every access outside its own register blocks to
+`efuse_bank_ctrl` unchanged. The rest of the external window leaves on the
+subsystem's external port as usual.
+
+.SHIM control address window
+[width="100%",cols="12%,30%,23%,35%",options="header"]
+|=======================================================================
+|Subsystem |Window base |Size parameter (SMU default) |Rest of the window
+|SMC |`smc_external` base, SMC-local `0xC040_0000` |`SMC_EFUSE_SHIM_SIZE` (`0x4`)
+|`smc_external_req_o` / `smc_external_resp_i`
+|SEP |`sep_external` base, SEP-local `0x2000_0000` |`SEP_EFUSE_SHIM_SIZE` (`0x4`)
+|`sep_external_req_o` / `sep_external_resp_i`
+|=======================================================================
+
+The SHIM must follow these rules for this window:
+
+* *Fit the window.* Size the parameter to cover every SHIM control register.
+Accesses past it go to the external port and never reach the SHIM.
+* *Describe the registers in the external map.* Place the SHIM control block
+at offset `0x0` of the adopter's `smc_external` and `sep_external` register
+maps. The open SMC map reserves the whole window as opaque memory. SEP takes
+the window base from the `efuse_shim_ctrl` instance in `sep_external`, so an
+adopter map that replaces it must keep an instance of that name at offset
+`0x0`.
+
+The reference register block is `efuse_shim_ctrl`
+(`hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl`), which holds a single
+`EFUSE_BANK_INIT_TIME` register.
+
+The command and response payloads are exchanged as packed structs:
+
+[source,sourceCode,systemverilog]
+----
+// Controller -> SHIM
+typedef struct packed {
+    addr_t                address;             // Target address (in bits)
+    logic                 program_data;        // Data to program (when programming)
+    access_length_words_t access_length_words; // Number of WORD_WIDTH words to access
+    command_t             command;             // READ / PROGRAM / PROGRAM_READ_BACK
+    logic                 valid;               // Request valid
+} fuse_command_req_t;
+
+// SHIM -> Controller
+typedef struct packed {
+    data_t data;   // Read data (one WORD_WIDTH word)
+    logic  status; // Operation status (0 = OK, 1 = error)
+    logic  valid;  // Response valid (qualifies `data` for one cycle)
+} fuse_command_resp_t;
+----
+
+`command` is `efuse_pkg::fuse_command_e`: `FUSE_COMMAND_READ` (`+2'b00+`),
+`FUSE_COMMAND_PROGRAM` (`+2'b01+`) and `FUSE_COMMAND_PROGRAM_READ_BACK`
+(`+2'b10+`).
+
+The SHIM implements two operations, reads and programs:
+
+* *Reads.* If a request has `command` set to `FUSE_COMMAND_READ` and
+`access_length_words` set to _N_, respond with _N_ `valid` strobes, each
+carrying one `WORD_WIDTH` word in `data`, reading consecutive words starting
+at `address`. Firmware reads set _N_ to one; fuse sensing sets it to the whole
+bank, as described below.
+* *Programs.* If a request has `command` set to `FUSE_COMMAND_PROGRAM`, program
+the single bit at `address` and respond with one `valid` strobe when the macro
+finishes. `program_data` is always 1 and `access_length_words` is always 1.
+For `FUSE_COMMAND_PROGRAM_READ_BACK`, also read the word back, return it in
+`data`, and set `status` if the programmed bit did not stick.
+
+Both operations follow these rules:
+
+* *Bit addressing.* `address` is a bit address. Convert it to whatever word or
+byte addressing the macro uses; the reference SHIM shifts it right by three.
+* *One command at a time.* `valid` is a level, not a strobe. The controller
+holds `valid` and the whole request payload stable from the cycle it issues a
+command until it has received the response, so the SHIM may sample the payload
+at any point while the command runs.
+* *When `valid` falls.* After a firmware read or program, `valid` falls in the
+cycle after the response strobe. After sensing it stays high until
+`fuse_sense_done` moves the arbiter to the firmware path, two cycles after the
+last strobe; do not treat that still-asserted request as a second read. The
+controller also withdraws `valid` without waiting for a response in these
+cases, and the SHIM must abandon the command it had started:
+** a firmware read or program timeout expires{asterisk}
+** firmware changes the read or program enable, where program takes priority
+over read{asterisk}
+* *Errors.* Setting `status` ends a firmware read or program command with an
+error. The sense FSM counts only `valid` strobes, so a sensing error must still
+be followed by the remaining strobes.
+* *No access control.* The eFuse guard zeroes requests to locked fields, and
+every request while the SEP is in secure test mode, in the same cycle the
+request is issued. A blocked request therefore never reaches the SHIM:
+`valid` does not rise, and no response is expected. Secure test mode is
+latched once per cold boot, before any firmware command can be issued, so it
+cannot begin in the middle of a command. The SMC controller has no secure test mode.
+
+{asterisk} These scenarios will be fixed in a future release so that the
+controller never withdraws `valid` before the response.
+
+[IMPORTANT]
+====
+Fuse sensing happens *once per cold boot*, when the eFuse controller's primary
+reset is released. It runs in *both* eFuse controller instances, SMC and SEP,
+each against its own bank. CPU and warm resets do not repeat it.
+
+The adopter must provide *8 Kbit of fuses (8192 bits, 256 32-bit words) for
+each instance*: one bank behind the SMC SHIM and a second, separate bank
+behind the SEP SHIM. For both, `NumShadowWords` is 256.
+====
+
+*Fuse sensing protocol.* During automatic sensing the controller issues a
+single read with `access_length_words` set to the entire bank:
+`NumShadowWords`, which is `SHADOW_REG_BITS / WORD_WIDTH`. The SHIM is expected
+to stream the bank back one `WORD_WIDTH` word at a time: for each OTP access it
+drives the read `data` onto `efuse_shim_command_resp_i.data` and asserts
+`valid` for *exactly one cycle*. The controller consumes one word per cycle
+that `valid` is high, advancing to the next eFuse word on each assertion.
+
+<<efuse-sense-timing-fig>> shows the stream for the 256-word bank. The sense FSM
+leaves `ST_READ` after one cycle and waits in `ST_WAIT`. Each `valid` strobe
+stores `data` into shadow word `words_received_q` and increments the count one
+cycle later. Gaps between strobes are allowed, as between cycles 2 and 4, and
+so are strobes on consecutive cycles, as in cycles 4 and 5, provided each
+cycle carries a new word. `data` is sampled only while `valid` is high. The
+strobe for word 255 (`NumShadowWords - 1`) stores the last word and moves the
+FSM to `ST_FINISHED` without incrementing. `fuse_sense_done` rises one cycle
+after that.
+
+[[efuse-sense-timing-fig]]
+.eFuse sensing response stream
+image::efuse_sense_timing.svg[eFuse sensing response stream,scaledwidth=95%]
+
+[WARNING]
+====
+`valid` must be asserted for only a single cycle per returned word. If the
+SHIM holds `valid` high for two cycles, the controller will sample the same
+`data` value a second time and count it as the data for the *next* eFuse word,
+shifting all subsequent words and corrupting the sensed shadow contents. The
+adopter's SHIM FSM is responsible for producing a clean one-cycle `valid`
+strobe per `WORD_WIDTH` access.
+====
+
+During cold boot the SMC and SEP each sense their own bank into their own
+shadow registers. `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o` indicate
+when each sensing operation completes.
+
+The `smc_shadow_regs_o` output gives adopter read-only access to the
+sensed SMC bank. The SMU has no equivalent SEP output: the SEP bank holds
+secrets such as the class key and device UIDs, so its shadow registers stay
+inside SEP.
+
+== Memory Subsystem Integration
+
+The SMC includes an embedded RISC-V CPU cluster with associated memory
+interfaces. See
+ifdef::backend-html5[]
+xref:smu-rom-fw.adoc#immutable-rom-fw-integration[Immutable ROM FW Integration]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Immutable ROM FW Integration_
+endif::backend-pdf[]
+for the ROM FW integration contract.
+
+[[smc-sram-cache-integration]]
+=== SRAM and Cache Array Integration
+
+Scratch RAM interfaces (`smc_scratch_ram_intf_req_o` and `smc_scratch_ram_intf_rsp_i`)
+connect to 32 independent RAM banks totaling the scratchpad memory space. Cache
+memory interfaces for L1 instruction and data caches (`smc_l1_icache_*` and
+`smc_l1_dcache_*`) connect to tag and data RAM banks as specified in the port table.
+
+The `smc_disable_sram_auto_init_i` input controls automatic memory initialization
+behavior. When deasserted, the SMC automatically zeroes all SRAM contents during
+bring-up. The `smc_init_mem_done_o` output indicates completion of this
+initialization sequence. The `SRAM_AUTO_ZERO_DISABLE` strap
+(`STRAPS_LO[26]`) can
+disable this automatic zeroing behavior if your integration requires preserved
+SRAM contents across resets.
+
+== Memory Repair Integration
+
+The SMC implements Built-In Redundancy Analysis (BIRA) memory repair to address
+manufacturing defects in SRAM arrays. Repair uses redundant memory elements
+configured with data stored in eFuse memory, replacing defective cells detected
+during manufacturing test.
+
+Memory repair executes automatically during boot after eFuse sensing completes
+and before MBIST operations. The process must complete successfully before the
+CPU cluster can safely access SRAM arrays. Repair is required on every cold
+reset but can be bypassed during Function Level Reset (FLR) operations for
+faster recovery.
+
+=== Control Signals
+
+* `smc_fuse_sense_done_o`: eFuse controller output indicating fuse sensing
+completion.
+  External DFT logic monitors this signal to trigger repair operations.
+
+* `skip_mem_repair_o`: Reset unit output indicating repair should be bypassed. It
+  is driven by the isolation request inputs (`isolate_req_pin_sync_smc` or the
+  SMC isolation register), not directly by the strap. When asserted, external
+  repair logic should skip operations and immediately assert completion status.
+
+* `ext_boot_seq_done_i`: External input indicating the boot sequence (memory
+  repair and shadow register override) is complete. Hold low to pause reset release
+  until external logic gives the go-ahead; required before the system can continue
+  its boot sequence.
+
+=== Repair Data
+
+The SMC fuse map does not allocate storage for repair data. Your external memory
+repair controller must source it from wherever your manufacturing flow keeps it
+and apply it to SRAM arrays according to your memory architecture.
+
+=== Status Monitoring
+
+Repair completion and success are reported through
+`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
+indicates completion regardless of success, while `mem_repair_success` indicates
+successful repair. Both bits are set by the external repair controller. The SMC
+ROM FW monitors these bits during initialization to verify repair
+completion.
+
+=== Bypass Configuration
+
+The `BYPASS_SRAM_REPAIR` configuration strap (`STRAPS_LO[13]`) is captured into
+the strap registers in the adopter peripheral window. Keep these three mechanisms distinct:
+
+* No RTL path drives `skip_mem_repair_o` from this strap directly.
+  `skip_mem_repair_o` is driven from the isolation request path.
+* Production ROM reads the strap and, when asserted, skips repair-status
+  validation and writes `MBIST_STATUS_MEM_REPAIR_BYPASSED` to scratchpad
+  register 15 (`SMC_SCRATCH_MBIST_STATUS`, `0xC003_90F8`). It does not
+  cause the external repair controller to skip physical repair.
+* External repair logic independently honors `skip_mem_repair_o` to decide
+  whether to bypass physical repair operations.
+
+Use bypass mode only when SRAM arrays are guaranteed defect-free, such as
+during development or with known-good components.
+
+=== Integration Requirements
+
+Provide an external memory repair controller that monitors
+`smc_fuse_sense_done_o` to initiate repair, respects `skip_mem_repair_o` for
+bypass control, reads repair data from eFuse shadow registers, applies repair
+configuration to SRAM arrays, asserts `ext_boot_seq_done_i` and updates
+`DFX_CTRL_STATUS` with completion status. The controller operates independently
+of the SMC core and must complete before the CPU cluster accesses SRAM.
+
+Note: For a standalone SEP, the adopter must synchronize `ext_boot_seq_done_i` to
+the system clock and ensure the signal is held until next cold reset.
+
+For direct access to the eFuse not through the SHIM, i.e. from a DFT fuse
+controller, adopters must ensure the integrated logic will not interfere with
+accesses from the OCAH's efuse interface.
+
+The isolation request path asserts `skip_mem_repair_o` during Function Level
+Reset (FLR) operations to bypass repair for rapid reset sequences. Normal cold
+reset sequences always execute repair unless isolation is already asserted.
+
+== Interrupt Integration
+
+The SMC aggregates interrupts from multiple sources into `cpu_interrupts_o`, which feeds
+the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
+`hw/sys/smc/rtl/smc_base.sv` and
+`hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`. The authoritative
+bit-level map (RTL trace and PLIC source ID note) is
+maintained in a single place:
+
+ifdef::backend-html5[]
+xref:smc:interrupts.adoc#cpu-interrupt-vector-map[SMC CPU interrupt vector map]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+See the _SMC CPU interrupt vector map_ in the Technical Reference Manual.
+endif::backend-pdf[]
+
+The SMC PLIC and CPU interrupt vector are internal. `sync_irq_o` is *not* the
+interrupt aggregate -- it is the software-controlled `SYNC_REG.sync` global
+synchronization bit in the reset unit, unrelated to PLIC interrupt delivery.
+Do not connect an external interrupt controller to `sync_irq_o`.
+
+External interrupt sources visible to the adopter are `smc_ext_interrupts_i` (SMC
+external interrupt input vector, width `NUM_INT_TO_SMC`),
+`smc_ext_mailbox_interrupts_o` (outbound mailbox notifications, width
+`NUM_MAILBOXES`), `gpio_interrupt_o` (GPIO edge/level events, width
+`NUM_GPIO_WRAPS`), and `uart_interrupt_o` (UART TX/RX events, width `NUM_UART`).
+Drive `smc_ext_interrupts_i` as an active-high level or as a pulse that stays
+high long enough to be sampled on `clk_smc`. The pin is three-flop
+synchronized; a short asynchronous pulse can be lost. There is no
+edge-triggered mode. For the full PLIC source map see the SMC Technical
+Reference Manual.
+
+== Telemetry and Debug Integration
+
+For system-level debug and telemetry, the SMC implements ATB (Advanced Trace Bus) receiver
+interfaces. The telemetry interface group (`telemetry_atdata_i`, `telemetry_atid_i`,
+`telemetry_atvalid_i`, `telemetry_atready_o`) operates in a dedicated `clk_telemetry_i`
+clock domain with separate `rst_telemetry_ni` reset. Connect these signals to ATB trace
+sources for debug data collection.
+
+At the SMC boundary, `ext_debug_bus_i` is 512 bits wide; the SMU concatenates
+the adopter-visible 128-bit input with the SEP's internal 384-bit bus before
+driving SMC. The typed `xtrigger_ss_i` / `xtrigger_ss_o` ports are the only
+cross-trigger signals at the SMC boundary. The adopter-visible SMU cross-trigger
+interfaces are `xtrig_ctm_*`, `xtrig_clk_stop_req_i`, and the CTP groups.
+
+Trace memory interfaces (`trace_mem_req_o` and `trace_mem_resp_i`) connect to trace RAM
+instances for storing captured debug data. `smc_ip_integration.sv` shows an example set of
+RAM instances that can be adapted to your debug requirements.
+
+== Bring-Up Sequence
+
+The recommended bring-up sequence begins with asserting `rst_cold_ni` while stabilizing
+power supplies and clocks. Once all supplies reach nominal voltages, deassert `rst_cold_ni`
+to initiate the SMC boot sequence. The SMC immediately begins fuse sensing to read configuration
+values and security credentials.
+
+Monitor the `smc_fuse_sense_done_o` signal to detect completion of fuse sensing. Configuration
+straps sampled during this phase determine boot modes and operational settings. After fuse
+sensing completes, the SMC releases internal subsystem resets based on the programmed reset
+sequencing configuration.
+
+The CPU cluster begins executing the ROM FW after reset release. The ROM FW
+performs additional initialization including peripheral configuration, memory
+testing (unless disabled), and system health checks. The `smc_init_mem_done_o`
+signal indicates completion of memory initialization if automatic SRAM zeroing
+is enabled.
+
+To support Function Level Reset (FLR), assert `cfg_flr_pf_active_i` to trigger a
+warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
+subsystem indices. The adopter's power controller drives `ss_reset_complete_i`
+high once the subsystem reset is complete; the SMC synchronizes this into the
+readable `SS_RESET_COMPLETE` register. Isolation remains asserted until cleared
+by software: SMC firmware must poll `SS_RESET_COMPLETE` and then write
+`ISOLATE_REQ_SMC_REG` to clear the FLR isolation latch. Do not assume isolation
+releases automatically on `ss_reset_complete_i`.
+
+See `hw/top/smu_wrapper.sv` and `hw/top/smc_ip_integration.sv` for reference
+bring-up wiring examples covering clock, reset, strap, and peripheral connections.
+
+== SMC Port Interface
+
+The SMC exposes a comprehensive set of interfaces for system integration. The following
+table defines all SMC top-level ports including clocks, resets, AXI interfaces, peripheral
+connections, and control signals. Refer to the detailed SMC documentation for internal
+signal descriptions and timing requirements.
+
+ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
+include::partial$hw/smc/doc/port_table.adoc[]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../hw/sys/smc/doc/port_table.adoc[]
+endif::backend-pdf[]
+
+== GPIO Pin Requirements
+
+The SMC provides GPIO functionality with multiplexed peripheral functions and
+test interfaces. The following table lists each pad's index, assigned
+function, recommended pull, and GPIO-specific notes. It does not define
+default direction or decode configuration straps; use
+`smc_padring_pkg::DefaultDirectionMap` and the `STRAPS_LO` and `STRAPS_HI`
+register descriptions (see <<smc-external-supplementary>>) for those.
+
+ifdef::backend-html5[]
+include::partial$meta/ocah_gpio_table.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../meta/ocah_gpio_table.adoc[]
+endif::backend-pdf[]
+
+For multi-chiplet systems, the `PRIMARY_CHIPLET` strap (`STRAPS_LO[25]`)
+determines whether the chiplet operates as primary or secondary. The primary
+chiplet's System Timer OCTS (Open Chiplet Time Synchronization) generates
+synchronization pulses (`timer_sync_load_o`, `timer_cnt_credit_o`) that
+secondary chiplets receive to maintain coherent timestamps across the system.
+

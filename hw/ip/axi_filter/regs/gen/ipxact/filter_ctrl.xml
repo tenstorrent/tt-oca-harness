@@ -12,7 +12,8 @@
       <ipxact:name>filter_ctrl_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>filter_ctrl</ipxact:name>
-        <ipxact:description>Filter control registers. One per filter</ipxact:description>
+        <ipxact:displayName>AXI Filter Control Address Map</ipxact:displayName>
+        <ipxact:description>Per-filter access-control registers defining permitted address ranges and transaction attributes.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h18</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -128,7 +129,11 @@ to that granule.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>locked</ipxact:name>
-            <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+            <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
             <ipxact:bitOffset>63</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

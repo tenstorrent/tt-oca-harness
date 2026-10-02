@@ -34,7 +34,7 @@ module smu_rst_fcov #(
   // ties sep_fuse_sense_done_o to 0 and the bench ties the two block
   // resets off, so the points that read them are dropped rather than
   // carried unhittable.
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_ref_i,
   input wire clk_smu_i,
@@ -70,6 +70,9 @@ module smu_rst_fcov #(
 );
 
   localparam logic [31:0] PtapTestLogicReset = 32'(jtag_tap_pkg::TEST_LOGIC_RESET);
+  // `port_table.adoc`, `rst_cold_ni`: assertion is de-glitched for 32 clk_ref
+  // cycles.
+  localparam logic [5:0] ColdDeglitchCycles = 6'd32;
 
   wire not_powered = (powergood_i !== 1'b1);
 
@@ -77,28 +80,32 @@ module smu_rst_fcov #(
   // Cold reset pin against the stable ref-clock output, on clk_ref.
   // ------------------------------------------------------------------
   logic cold_ni_q, cold_ni_qq, cold_stable_q, primary_ref_q;
+  logic [5:0] cold_low_cnt_q;
   always_ff @(posedge clk_ref_i) begin
     if (not_powered) begin
       cold_ni_q <= 1'b0;
       cold_ni_qq <= 1'b0;
       cold_stable_q <= 1'b0;
       primary_ref_q <= 1'b0;
+      cold_low_cnt_q <= '0;
     end else begin
       cold_ni_q <= rst_cold_ni;
       cold_ni_qq <= cold_ni_q;
       cold_stable_q <= rst_cold_stable_ref_clk_ni;
       primary_ref_q <= rst_primary_ref_clk_ni;
+      if (rst_cold_ni !== 1'b0) cold_low_cnt_q <= '0;
+      else if (cold_low_cnt_q != ColdDeglitchCycles) cold_low_cnt_q <= cold_low_cnt_q + 6'd1;
     end
   end
 
-  wire cold_pin_fell_e = (rst_cold_ni === 1'b0) && (cold_ni_q === 1'b1);
   wire cold_stable_fell_e = (rst_cold_stable_ref_clk_ni === 1'b0) && (cold_stable_q === 1'b1);
   wire cold_stable_rose_e = (rst_cold_stable_ref_clk_ni === 1'b1) && (cold_stable_q === 1'b0);
   wire primary_ref_rose_e = (rst_primary_ref_clk_ni === 1'b1) && (primary_ref_q === 1'b0);
 
-  // Assertion reached the output inside the same clk_ref period the pin fell
-  // in: no clock edge was needed between the two.
-  wire cold_reset_async_assert_without_clock_e = cold_pin_fell_e && cold_stable_fell_e;
+  // Assertion reached the output only after the pin had been sampled low on
+  // ColdDeglitchCycles consecutive clk_ref edges.
+  wire cold_reset_deglitched_assert_e =
+      cold_stable_fell_e && (cold_low_cnt_q == ColdDeglitchCycles);
   // Release reached the output at least one full clk_ref period after the pin
   // rose; two periods is the synchronizer depth.
   wire cold_reset_sync_deassert_e = cold_stable_rose_e && (cold_ni_q === 1'b1);
@@ -108,8 +115,8 @@ module smu_rst_fcov #(
   wire cold_stable_ref_clk_active_low_e = cold_stable_fell_e && (rst_cold_ni === 1'b0);
   wire primary_ref_reset_synchronized_to_clk_ref_e =
       primary_ref_rose_e && (cold_ni_q === 1'b1) && (cold_ni_qq === 1'b1);
-  `OCAH_FCOV_COVER(c_cold_reset_async_assert_without_clock,
-                   cold_reset_async_assert_without_clock_e, clk_ref_i, not_powered)
+  `OCAH_FCOV_COVER(c_cold_reset_deglitched_assert, cold_reset_deglitched_assert_e, clk_ref_i,
+                   not_powered)
   `OCAH_FCOV_COVER(c_cold_reset_sync_deassert, cold_reset_sync_deassert_e, clk_ref_i, not_powered)
   `OCAH_FCOV_COVER(c_cold_stable_ref_clk_synchronized, cold_stable_ref_clk_synchronized_e,
                    clk_ref_i, not_powered)
@@ -195,7 +202,7 @@ module smu_rst_fcov #(
   // asserting. Only elaborated with SEP present -- both blocks live in
   // smu.sv's gen_sep branch and the pin is tied to 0 without it.
   // ------------------------------------------------------------------
-  if (SepPresent) begin : g_sep
+  if (SEP_PRESENT) begin : g_sep
     logic sep_rst_q, xbar_rst_q, sep_fuse_sense_q;
     always_ff @(posedge clk_smu_i) begin
       if (not_powered) begin
@@ -261,10 +268,15 @@ module smu_rst_fcov #(
       logic smc_rst, logic dtp_rst, logic sep_rst, logic xbar_rst
   );
     option.per_instance = 1;
-    cp_smc: coverpoint smc_rst;
-    cp_dtp: coverpoint dtp_rst;
-    cp_sep: coverpoint sep_rst;
-    cp_xbar: coverpoint xbar_rst;
+    // Sampled at the primary SMC reset's release edge. The block resets
+    // release ahead of the primary, so every one of them reads released
+    // at that edge.
+    cp_smc: coverpoint smc_rst {
+      ignore_bins held_at_primary_release = {1'b0};
+    }
+    cp_dtp: coverpoint dtp_rst {ignore_bins held_at_primary_release = {1'b0};}
+    cp_sep: coverpoint sep_rst {ignore_bins held_at_primary_release = {1'b0};}
+    cp_xbar: coverpoint xbar_rst {ignore_bins held_at_primary_release = {1'b0};}
     x_blocks: cross cp_smc, cp_dtp, cp_sep, cp_xbar;
   endgroup
 

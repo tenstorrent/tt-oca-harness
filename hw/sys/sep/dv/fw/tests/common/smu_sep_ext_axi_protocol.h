@@ -32,13 +32,13 @@
  *     scratch7  SMC_GO           local 0xC00390B8  ext_in-global 0x020390B8
  *     scratch8  route data       local 0xC00390C0  ext_in-global 0x020390C0
  *     scratch9  ROUTE_DONE_SMC   local 0xC00390C8  ext_in-global 0x020390C8
- *     scratch10 SMU016_SMC_PASS  local 0xC00390D0  (0x000390D0 is the SMU
+ *     scratch10 EXTAXI_SMC_PASS  local 0xC00390D0  (0x000390D0 is the SMU
  *               post-remap monitor form of the same register; the SMC firmware
  *               writes its LOCAL register 0xC00390D0 per smc_top_regs.h.)
  *   SEP cold scratch (SEP-local base 0x10802000, 8-byte stride). The ext_in-global form is
  *   sep_global_base + local (0x04000000 + 0x108020xx = 0x148020xx); the SEP inbound
  *   axi_window_remap (target_base=0) subtracts sep_global_base back to the local register.
- *   (cold6 SMU016_SEP_PASS is SEP-local only -- the SEP writes it, DV reads it backdoor --
+ *   (cold6 EXTAXI_SEP_PASS is SEP-local only -- the SEP writes it, DV reads it backdoor --
  *    so it needs no ext_in-global form.):
  *     cold0     route data       local 0x10802000  ext_in-global 0x14802000
  *     cold4     SEP_READY        local 0x10802020  ext_in-global 0x14802020
@@ -130,11 +130,11 @@
 #define EXTAXI_SMC_SCRATCH9_LOCAL 0xC00390C8 /* SMC_CPU_CTRL_SCRATCH_9__REG_ADDR */
 #define EXTAXI_SMC_SCRATCH10_LOCAL \
     0xC00390D0 /* SMC_CPU_CTRL_SCRATCH_10__REG_ADDR (not 0x000390D0) */
-#ifdef OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
-#define EXTAXI_SEP_COLD4_LOCAL OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)
-#define EXTAXI_SEP_COLD5_LOCAL OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)
-#define EXTAXI_SEP_COLD6_LOCAL OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)
-#define EXTAXI_SEP_COLD7_LOCAL OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
+#ifdef SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
+#define EXTAXI_SEP_COLD4_LOCAL SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)
+#define EXTAXI_SEP_COLD5_LOCAL SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)
+#define EXTAXI_SEP_COLD6_LOCAL SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)
+#define EXTAXI_SEP_COLD7_LOCAL SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
 #else
 #define EXTAXI_SEP_COLD4_LOCAL 0x10802020
 #define EXTAXI_SEP_COLD5_LOCAL 0x10802028
@@ -169,24 +169,24 @@ _Static_assert(EXTAXI_SMC_SCRATCH9_GLOBAL ==
                "SMC scratch9 global address drift");
 #endif
 
-#if defined(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR)
+#if defined(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR)
 _Static_assert(EXTAXI_SEP_COLD0_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)),
+                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)),
                "SEP cold scratch0 global address drift");
 _Static_assert(EXTAXI_SEP_COLD4_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)),
+                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4)),
                "SEP cold scratch4 global address drift");
 _Static_assert(EXTAXI_SEP_COLD5_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)),
+                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5)),
                "SEP cold scratch5 global address drift");
 _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
-                   (EXTAXI_SEP_GLOBAL_BASE + OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)),
+                   (EXTAXI_SEP_GLOBAL_BASE + SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)),
                "SEP cold scratch7 global address drift");
 #endif
 
 /* ---- Filter config words (axi_filter FILTER_CONFIG; only bits 0/1/4/8/24 used) ----
  * read_allowed[0] | write_allowed[1] | entry_enabled[4] | allow_ns[8] | allow_burst[24].
- * allow_ns is an EXACT match on AxPROT[1] gated by EnNsFilter (traffic_filter.sv:54)
+ * allow_ns is an EXACT match on AxPROT[1] gated by EN_NS_FILTER (traffic_filter.sv:54)
  * -> program a SECURE rule (allow_ns=0) AND an NS rule (allow_ns=1) over the same
  * range so the leg passes regardless of the initiator's security level.  src_id and
  * group_id are left 0 (ignored: !(|cfg) passes any initiator). */
@@ -196,17 +196,15 @@ _Static_assert(EXTAXI_SEP_COLD7_GLOBAL ==
  * map; the hex else-branch stays for the SMC translation unit, which cannot
  * include sep.h. The asserts bind the generated offsets to that hex so an RDL
  * layout change fails the SEP firmware build instead of the SMC interop write. */
-#ifdef OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR
+#ifdef SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR
 #define EXTAXI_FILTER_CFG_OFF \
-    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
-     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+    (SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
+     SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
 #define EXTAXI_FILTER_START_OFF \
-    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0) - \
-     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+    (SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0) - SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
 #define EXTAXI_FILTER_END_OFF \
-    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - \
-     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
-#define EXTAXI_FILTER_STRIDE OCH_SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
+    (SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define EXTAXI_FILTER_STRIDE SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
 _Static_assert(EXTAXI_FILTER_CFG_OFF == 0x0u, "inbound filter CFG offset drift");
 _Static_assert(EXTAXI_FILTER_START_OFF == 0x8u, "inbound filter START offset drift");
 _Static_assert(EXTAXI_FILTER_END_OFF == 0x10u, "inbound filter END offset drift");

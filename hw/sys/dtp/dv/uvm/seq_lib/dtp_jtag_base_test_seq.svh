@@ -8,7 +8,9 @@
 // reads, and the scan-control windows (the env dtp_scan_window_monitor
 // counts high samples of named dtp_scan_if observables once per TCK cycle
 // across one DR scan, so a scenario proves which host chain the loaded
-// instruction selects and that the TAP's strobes reach it). Every family
+// instruction selects and that the TAP's strobes reach it; a selected
+// chain's select is high on every sample whose exported TAP state is
+// Capture-DR through Update-DR). Every family
 // helper records named CHK-* evidence through a per-pass ocah_jtag_checker
 // instead of bare asserts; finalize_family_checker() rejects a pass with
 // zero checks or a missing required ID, and cross-checks the Shift-x
@@ -229,11 +231,11 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   endfunction
 
   // End the window; return the TCK-cycle count and per-signal high counts.
-  function void stop_scan_window(output int unsigned edges, output int unsigned counts[string]);
+  task stop_scan_window(output int unsigned edges, output int unsigned counts[string]);
     if (scan_window == null)
       `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
-    scan_window.stop_window(edges, counts);
-  endfunction
+    scan_window.close_window(edges, counts);
+  endtask
 
   // The four host scan-control observables of one chain prefix.
   static function void scan_ctrl_signals(string prefix, ref string signals[$]);
@@ -279,16 +281,27 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   // Judge one chain's control counts across a `width`-bit DR scan. The scan
   // enters Shift-DR before its first bit, so the TAP's strobes pulse capture
   // once, shift `width` times, and update once; a gated host shows none of
-  // them. Select is high only for the chain's own instruction.
+  // them. The DUT's exported TAP state spends width + 3 samples in
+  // Capture-DR through Update-DR whatever the host does. A selected chain's
+  // select is high on each of those samples; any other chain's select stays
+  // low across the whole window.
   function void check_scan_ctrl_counts(string prefix, int unsigned counts[string],
                                        int unsigned width, dtp_scan_ctrl_expect_e mode,
                                        string context_s);
     string select_id, ctrl_id;
+    string select = {prefix, "_select"};
     bit strobes = (mode != DTP_SCAN_CTRL_GATED);
     string ctx = {mode.name(), " ", context_s};
+    if (scan_window == null)
+      `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
     scan_ctrl_check_ids(prefix, select_id, ctrl_id);
-    family_check(select_id, {prefix, "_select asserted"}, 64'(counts[{prefix, "_select"}] > 0),
-                 64'(mode == DTP_SCAN_CTRL_SELECTED), ctx);
+    family_check(ctrl_id, "Capture-DR..Update-DR samples", 64'(scan_window.last_dr_scan_edges()),
+                 64'(width + 3), ctx);
+    if (mode == DTP_SCAN_CTRL_SELECTED)
+      family_check(select_id, {select, " high at every Capture-DR..Update-DR sample"},
+                   64'(scan_window.last_dr_scan_count(select)),
+                   64'(scan_window.last_dr_scan_edges()), ctx);
+    else family_check(select_id, {select, " high samples"}, 64'(counts[select]), 64'd0, ctx);
     family_check(ctrl_id, {prefix, "_capture_en pulses"}, 64'(counts[{prefix, "_capture_en"}]),
                  64'(strobes), ctx);
     family_check(ctrl_id, {prefix, "_shift_en pulses"}, 64'(counts[{prefix, "_shift_en"}]),
@@ -304,6 +317,22 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     check_window_shifted(check_id, $sformatf("%s edges=%0d", context_s, edges));
     foreach (counts[name])
     family_check(check_id, {name, " quiet"}, 64'(counts[name]), 64'd0, context_s);
+  endfunction
+
+  // Judge a Run-Test/Idle decode across the DR scan of the last window: low
+  // on every sample whose exported TAP state is not Run-Test/Idle, and high
+  // on the window's final sample, the scan's return to Run-Test/Idle.
+  function void check_run_test_idle_window(string check_id, string signal,
+                                           int unsigned counts[string], string context_s);
+    bit returned;
+    if (scan_window == null)
+      `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
+    returned = (scan_window.last_final_state() === RUN_TEST_IDLE);
+    family_check(check_id, {signal, " high outside Run-Test/Idle"},
+                 64'(counts[signal] - scan_window.last_rti_count(signal)), 64'd0, context_s);
+    family_check(check_id, {signal, " high on the return to Run-Test/Idle"},
+                 64'(returned && scan_window.last_final_high(signal)), 64'd1, $sformatf(
+                 "%s last_state=0x%04h", context_s, scan_window.last_final_state()));
   endfunction
 
   // Load an instruction and judge its DR scan under a boundary-scan control
@@ -434,7 +463,10 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   // ------------------------------------------------------------------
 
   // CHK-BSR-LOOPBACK: the looped-back chain returns the pattern retimed by
-  // one TCK (dtp_scan_model.py loopback_expected).
+  // one TCK (dtp_scan_model.py loopback_expected). That is also the one-bit
+  // bypass register's TDO, so this proves the data path only; chain
+  // selection is CHK-BSR-SELECT under a scan-control window
+  // (check_bsr_scan_ctrl).
   task check_loopback_scan(input bit [IrWidth-1:0] instr, input bit [63:0] pattern,
                            input int unsigned width = DtpBsrModelLen);
     bit [63:0] observed;
@@ -456,6 +488,14 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   // ------------------------------------------------------------------
   // Random single-operation helpers (cocotb cmd-lib parity).
   // ------------------------------------------------------------------
+
+  // A seeded instruction other than IDCODE (BYPASS 0x00, BYPASS 0x3F, or
+  // SAMPLE/PRELOAD), which a TAP reset or a power-on reset must replace with
+  // IDCODE (cocotb NON_IDCODE_PRELOADS).
+  function bit [IrWidth-1:0] random_non_idcode_preload();
+    bit [IrWidth-1:0] preloads[3] = '{BYPASS_ALT_INSTR, BYPASS_INSTR, SAMPLE_PRELOAD_INSTR};
+    return preloads[$urandom_range(2)];
+  endfunction
 
   task random_bypass_scan(output bit [63:0] pattern, input bit [IrWidth-1:0] instr = BYPASS_INSTR,
                           input int unsigned width = 64);

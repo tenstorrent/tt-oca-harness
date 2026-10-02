@@ -19,14 +19,14 @@
 `include "ocah_fcov_macros.svh"
 
 module smc_int_fcov #(
-  parameter int unsigned CpuInterruptCount = 328,
-  parameter int unsigned ExtInterruptCount = 256,
-  parameter int unsigned CpuClusterCount = 4
+  parameter int unsigned CPU_INTERRUPT_COUNT = 328,
+  parameter int unsigned EXT_INTERRUPT_COUNT = 256,
+  parameter int unsigned CPU_CLUSTER_COUNT = 4
 ) (
   input wire clk_smc_i,
   input wire rst_cold_ni,
 
-  input wire [CpuInterruptCount-1:0] cpu_interrupts_i,
+  input wire [CPU_INTERRUPT_COUNT-1:0] cpu_interrupts_i,
 
   // AXI hang detector legs, whose OR is the peripheral bit.
   input wire hang_sys_i,
@@ -43,11 +43,11 @@ module smc_int_fcov #(
   input wire [8:0] plic_maxdev0_i,
   input wire [2:0] plic_threshold0_i,
   input wire [6:0] plic_enables0_i,
-  input wire [CpuClusterCount-1:0] plic_meip_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] plic_meip_i,
 
   // NDM reset request, before and after the synchronizer.
-  input wire [CpuClusterCount-1:0] ndmreset_request_i,
-  input wire [CpuClusterCount-1:0] ndmreset_request_sync_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_request_sync_i,
 
   // SYNC_REG.sync reflected on sync_irq_o.
   input wire sync_irq_i
@@ -55,9 +55,9 @@ module smc_int_fcov #(
 
   wire in_reset = (rst_cold_ni !== 1'b1);
 
-  localparam int unsigned HangBit = ExtInterruptCount + 30;
-  localparam int unsigned NdmBit = ExtInterruptCount + 11;
-  localparam int unsigned ZeroerBit = ExtInterruptCount + 64 + 3;
+  localparam int unsigned HangBit = EXT_INTERRUPT_COUNT + 30;
+  localparam int unsigned NdmBit = EXT_INTERRUPT_COUNT + 11;
+  localparam int unsigned ZeroerBit = EXT_INTERRUPT_COUNT + 64 + 3;
 
   // ------------------------------------------------------------------
   // The AXI hang OR on its vector bit. The bit alone is the OR output; the
@@ -73,13 +73,18 @@ module smc_int_fcov #(
   // bit N is asserted is the relationship the chapter states.
   // ------------------------------------------------------------------
   // The zeroer completion is a one-cycle pulse on the raw vector and the PLIC
-  // gateway latches it on the following edge, so the raw half is held until
-  // the pending bit is claimed away.
-  logic zeroer_bit_seen_q;
+  // gateway latches it some cycles later, so the raw half is held from the
+  // pulse until the pending bit it raised falls again.
+  logic zeroer_bit_seen_q, pending_324_q;
   always_ff @(posedge clk_smc_i) begin
-    if (in_reset) zeroer_bit_seen_q <= 1'b0;
-    else if (cpu_interrupts_i[ZeroerBit] === 1'b1) zeroer_bit_seen_q <= 1'b1;
-    else if (plic_pending_324_i === 1'b0) zeroer_bit_seen_q <= 1'b0;
+    if (in_reset) begin
+      zeroer_bit_seen_q <= 1'b0;
+      pending_324_q <= 1'b0;
+    end else begin
+      pending_324_q <= (plic_pending_324_i === 1'b1);
+      if (cpu_interrupts_i[ZeroerBit] === 1'b1) zeroer_bit_seen_q <= 1'b1;
+      else if (pending_324_q && (plic_pending_324_i === 1'b0)) zeroer_bit_seen_q <= 1'b0;
+    end
   end
 
   wire bit0_source1_e = (cpu_interrupts_i[0] === 1'b1) && (plic_pending_low_i[0] === 1'b1);
@@ -158,7 +163,13 @@ module smc_int_fcov #(
       bins out_of_range = default;
     }
     cp_threshold: coverpoint threshold;
-    x_claim: cross cp_dev, cp_threshold;
+    x_claim: cross cp_dev, cp_threshold{
+      // Priorities are three bits wide, so threshold 7 passes no source and
+      // the only claim it can pair with is the idle one.
+      ignore_bins masked_all = binsof (cp_threshold) intersect {7} && !binsof (cp_dev) intersect {
+        0
+      };
+    }
   endgroup
 
   cg_plic_claim u_cg_plic_claim = new();

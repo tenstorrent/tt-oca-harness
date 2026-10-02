@@ -4,19 +4,23 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-misc_wrap]
-== Address Map: misc_wrap
+== SMC Miscellaneous Wrapper Address Map
+
+Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.
 
 [NOTE]
 ======
 *Register Arrays:*
 
-* *SCRATCH[8]*: 8 registers, base 0x0, stride 0x4
+* *scratch_cold.SCRATCH[8]*: 8 registers, base 0x0, stride 0x4
+* *scratch_cold_warm.SCRATCH[8]*: 8 registers, base 0x80, stride 0x4
 ======
 
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x1C | <<reg-{regmap-instance}-misc_wrap-scratch_cold-SCRATCH-0-,SCRATCH[8]>> | RW a| -
+| 0x0 - 0x1C | <<reg-{regmap-instance}-misc_wrap-scratch_cold-SCRATCH-,scratch_cold.SCRATCH[8]>> | RW a| -
+| 0x80 - 0x9C | <<reg-{regmap-instance}-misc_wrap-scratch_cold_warm-SCRATCH-,scratch_cold_warm.SCRATCH[8]>> | RW a| -
 | 0x100 | <<reg-{regmap-instance}-misc_wrap-chip_config-VERSION_LO,VERSION_LO>> | R a| -
 | 0x104 | <<reg-{regmap-instance}-misc_wrap-chip_config-VERSION_HI,VERSION_HI>> | R a| -
 | 0x108 | <<reg-{regmap-instance}-misc_wrap-chip_config-CHIP_ID,CHIP_ID>> | R a| -
@@ -26,8 +30,17 @@
 | 0x208 | <<reg-{regmap-instance}-misc_wrap-ndm_reset-NDMRESET_CLUSTER_COUNT,NDMRESET_CLUSTER_COUNT>> | R a| -
 |===
 
-[#reg-{regmap-instance}-misc_wrap-scratch_cold-SCRATCH-0-]
-=== SCRATCH[8]
+[#reg-{regmap-instance}-misc_wrap-scratch_cold-SCRATCH-]
+=== scratch_cold.SCRATCH[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | 0x0 a| Scratch register
+|===
+
+[#reg-{regmap-instance}-misc_wrap-scratch_cold_warm-SCRATCH-]
+=== scratch_cold_warm.SCRATCH[8]
 
 [cols="1,3,1,1,6", options="header"]
 |===

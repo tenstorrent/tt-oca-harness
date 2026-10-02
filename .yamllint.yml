@@ -20,6 +20,11 @@ ignore: |
   hw/ip/i3ccore_wrap/dv/tb/yaml/
   # Submodule: another repo's YAML, fixable only by a PR there.
   hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/
+  virtual_platform/tt-oca-harness-model/
+  # Third-party sources and prefixes the VP build fetches and installs into.
+  virtual_platform/downloads/
+  virtual_platform/local/
+  virtual_platform/local-ctr/
 
 rules:
   # Disabled like Ruff's E501: several long lines here are single tokens

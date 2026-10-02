@@ -11,8 +11,12 @@ import, so a lock added or dropped in the RDL fails here instead of silently
 leaving the walk short. Continuous
 knobs (which legal pre-lock value and which rejected poke) come from the
 run seed. ``SepEsrcFipsLockCfg`` is the SSOT for both programming and
-the post-lock golden. Observe FIFOs stay writable. Retired ``CTRL[0]``
-is RAZ/WI; the shared TRNG reset and ``rst_ni`` clear the lock.
+the post-lock golden. The observe-tap enables and the debug-pin mux are also
+frozen by the lock; the raw/BIW observe enables are single-bit, so their lock is
+proven by ``CHK-OBS-ENABLE-LOCKED`` rather than the two-value walk, and the
+debug-pin fields are excluded as observation access outside the certified-config
+scope. Reserved ``CTRL.RSVD0`` is RAZ/WI; the shared TRNG reset and ``rst_ni``
+clear the lock.
 """
 
 from __future__ import annotations
@@ -49,6 +53,7 @@ from seq_lib.sep_esrc_bringup_seq import (
 LOCK_BIT = ENTROPY_SOURCE.fields("FIPS_LOCK")["LOCK"]["bm"]
 OBS_ENABLE_BIT = ENTROPY_SOURCE.fields("BIW_OBS_CTRL")["RAW_ENABLE"]["bm"]
 SHA256_BIT = ENTROPY_SOURCE.fields("CTRL")["SHA256_WHITENING_ENABLE"]["bm"]
+CTRL_RSVD0_BIT = ENTROPY_SOURCE.fields("CTRL")["RSVD0"]["bm"]
 CHURN_BIT = ENTROPY_SOURCE.fields("FIFO_CTRL")["ENTROPY_CHURN_ENABLE"]["bm"]
 WINDOW_MASK = ENTROPY_SOURCE.fields("HEALTH_TEST_WINDOW_SIZE")["SIZE"]["bm"]
 WINDOW_RESET = ENTROPY_SOURCE.reset("HEALTH_TEST_WINDOW_SIZE")
@@ -113,6 +118,22 @@ _WALK_EXCLUDED: dict[tuple[str, str], str] = {
     ("CTRL", "MODULE_ENABLE"): (
         "clearing it idles the main state machine for the rest of the walk; its "
         "lock is proven by the reset-recovery vehicle instead"
+    ),
+    ("BIW_OBS_CTRL", "RAW_ENABLE"): (
+        "single-bit observe-tap enable; the two-distinct-value walk cannot move a "
+        "lone 1-bit field to a second off-reset value. Its lock is proven by "
+        "CHK-OBS-ENABLE-LOCKED instead"
+    ),
+    ("NOISE_OBS_CTRL", "RAW_ENABLE"): (
+        "single-bit observe-tap enable on the same swwel path as "
+        "BIW_OBS_CTRL.RAW_ENABLE, whose lock CHK-OBS-ENABLE-LOCKED proves"
+    ),
+    ("DEBUG_CTRL", "SELECT_SIGNAL"): (
+        "debug observation-pin mux, not certified noise-source configuration; "
+        "locked for observation-access control, outside this certified-config walk"
+    ),
+    ("DEBUG_CTRL", "SELECT_FREQ_DIV"): (
+        "debug observation-pin divider; same scope as DEBUG_CTRL.SELECT_SIGNAL"
     ),
 }
 
@@ -228,18 +249,22 @@ class SepEsrcFipsLockCfg:
             "SAMPLE_CLK_ENABLE"
         ]["bm"] | ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0, SAMPLE_CLK_ENABLE=ring_clk_pre)
         ring_poke = RING_OSC_RESET
+        detune_pre = 1 << rng.randrange(12)
+        sample_detune_pre = 1 << rng.randrange(12)
+        detune_poke = rng.choice(tuple(1 << i for i in range(12) if (1 << i) != detune_pre))
+        sample_detune_poke = rng.choice(
+            tuple(1 << i for i in range(12) if (1 << i) != sample_detune_pre)
+        )
         tune_pre = ENTROPY_SOURCE.value(
             "RING_OSC_TUNE",
-            DETUNE=1 << rng.randrange(12),
-            SAMPLE_CLK_DETUNE=1 << rng.randrange(12),
+            DETUNE=detune_pre,
+            SAMPLE_CLK_DETUNE=sample_detune_pre,
         )
         tune_poke = ENTROPY_SOURCE.value(
             "RING_OSC_TUNE",
-            DETUNE=1 << rng.randrange(12),
-            SAMPLE_CLK_DETUNE=1 << rng.randrange(12),
+            DETUNE=detune_poke,
+            SAMPLE_CLK_DETUNE=sample_detune_poke,
         )
-        if tune_poke == tune_pre:
-            tune_poke ^= 0x2
         # Both HEALTH_TEST_CTRL fields must move off reset, or the lock on
         # REPETITION_LIMIT is never attempted. Reset is 25.
         _REP_RESET = ENTROPY_SOURCE.fields("HEALTH_TEST_CTRL")["REPETITION_LIMIT"]["reset"]
@@ -415,7 +440,7 @@ class SepEsrcFipsLock(SepAxiRegDriver):
 
     async def poke_reserved_ctrl_bit(self) -> tuple[int, int]:
         cur = await self._rd(ESRC_CTRL)
-        await self._wr(ESRC_CTRL, cur | 0x1)
+        await self._wr(ESRC_CTRL, cur | CTRL_RSVD0_BIT)
         return cur, await self._rd(ESRC_CTRL)
 
     async def write_obs_enable(self, enable: int) -> None:

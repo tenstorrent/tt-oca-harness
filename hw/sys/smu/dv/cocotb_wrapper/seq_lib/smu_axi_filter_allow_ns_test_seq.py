@@ -5,7 +5,7 @@
 Honest SEP=1 scope (no sep_in_master, no Force):
   S1  allow_ns=0  — secure prot OKAY, nonsecure DECERR on VERSION_LO window
   S2  dual-slot   — inst0 secure + inst1 NS overlap admits both prot[1]
-  S3  clear       — BlockByDefault DECERR for both
+  S3  clear       — BLOCK_BY_DEFAULT DECERR for both
 
 The FAB_SMC_026 outbound/S4/S5 matrix needs a peer master and is not covered.
 """
@@ -283,7 +283,7 @@ class smu_axi_filter_allow_ns_test_seq:
         self.dual_ok = True
         self._log("CHK-SMU-ALLOW-NS-S2: dual-slot admits secure and NS prot on VERSION_LO")
 
-        # ---- S3: clear → BlockByDefault ----
+        # ---- S3: clear → BLOCK_BY_DEFAULT ----
         await self._disable_inst(jtag, 1)
         await self._disable_inst(jtag, 0)
         clear_resps: list[tuple[str, str]] = []

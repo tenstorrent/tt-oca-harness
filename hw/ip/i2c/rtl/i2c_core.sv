@@ -1,59 +1,93 @@
-//-----------------------------------------------------------------------------
-// I2C Core
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Bind I2C register outs to the controller, target, and bus-monitor FSMs.
 //
-// Description: I2C core module
+// Exposes SMBus sideband, DMA ready levels, a combined irq_o, and a four-bit debug bus.
+// SCL and SDA outputs are registered; the SCL, SDA, SMBus SUS and SMBus ALERT inputs are
+// synchronized to clk_i.
+// debug_o[0] is SDA and [1] is SCL, each sampled once by clk_i, [2] is target_idle, and [3]
+// is the unextended OR of the controller error events.
 
 module i2c_core
   import i2c_pkg::*;
 #(
-  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,
-  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,
-  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,
-  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,
-  parameter int unsigned INPUT_DELAY_CYCLES       = 0
+  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,     // Entries in the controller format
+                                                            // (FMT) FIFO; 1 to 4095.
+  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,     // Entries in the controller receive
+                                                            // (RX) FIFO; 1 to 4095.
+  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,     // Entries in the target transmit (TX)
+                                                            // FIFO; 1 to 4095.
+  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,    // Entries in the target acquisition
+                                                            // (ACQ) FIFO; 1 to 4095.
+  parameter int unsigned INPUT_DELAY_CYCLES       = 0       // External SCL/SDA input delay in clk_i
+                                                            // cycles; lengthens the
+                                                            // interference-detection blanking
+                                                            // window after each output change.
 ) (
-  // Global Interface
-  input                                    clk_i,
-  input                                    rst_ni,
+  input                                    clk_i,           // System clock.
+  input                                    rst_ni,          // Async reset, active-low.
 
-  // Register Interface
-  input  i2c_reg_pkg::i2c__out_t           reg_out_i,
-  output i2c_reg_pkg::i2c__in_t            reg_in_o,
+  input  i2c_reg_pkg::i2c__out_t           reg_out_i,       // Register-block outputs into the core.
+  output i2c_reg_pkg::i2c__in_t            reg_in_o,        // Register-block inputs from the core.
 
-  // I2C Interface
-  input                                    scl_i,
-  output logic                             scl_o,
-  input                                    sda_i,
-  output logic                             sda_o,
+  input                                    scl_i,           // SCL pad input, synchronized to clk_i
+                                                            // by a two-flop synchronizer.
+  output logic                             scl_o,           // SCL pad output, registered AND of the
+                                                            // controller and target FSM drives, or
+                                                            // OVRD.SCLVAL under OVRD.TXOVRDEN; 0
+                                                            // pulls the line low, 1 releases it.
+  input                                    sda_i,           // SDA pad input, synchronized to clk_i
+                                                            // by a two-flop synchronizer.
+  output logic                             sda_o,           // SDA pad output, registered AND of the
+                                                            // controller and target FSM drives, or
+                                                            // OVRD.SDAVAL under OVRD.TXOVRDEN; 0
+                                                            // pulls the line low, 1 releases it.
 
-  // SMBus Interface
-  input  logic                             smbus_en_i,
-  input  logic                             smbsus_ni,
-  output logic                             smbsus_no,
-  input  logic                             smbalert_ni,
-  output logic                             smbalert_no,
+  input  logic                             smbus_en_i,      // When low, masks smbalert_ni so SMBus
+                                                            // ALERT reads as deasserted.
+  input  logic                             smbsus_ni,       // SMBus SUS pin in, active-low;
+                                                            // synchronized and reported in
+                                                            // SMBUS_STATUS.
+  output logic                             smbsus_no,       // SMBus SUS pin out, active-low; driven
+                                                            // from SMBUS_CTRL.SMBSUS in host mode
+                                                            // without line loopback, high
+                                                            // otherwise.
+  input  logic                             smbalert_ni,     // SMBus ALERT pin in, active-low;
+                                                            // synchronized, reported in
+                                                            // SMBUS_STATUS and raises the SMBALERT
+                                                            // interrupt.
+  output logic                             smbalert_no,     // SMBus ALERT pin out, active-low;
+                                                            // driven from SMBUS_CTRL.SMBALERT in
+                                                            // target mode without loopback, high
+                                                            // otherwise.
 
-  // DMA Interface
-  output logic                             controller_tx_ready_o,
-  output logic                             controller_rx_ready_o,
-  output logic                             target_tx_ready_o,
-  output logic                             target_rx_ready_o,
+  output logic                             controller_tx_ready_o, // Controller TX DMA ready; drops
+                                                                  // when the FMT FIFO fills and
+                                                                  // returns once its level falls
+                                                                  // below the FMT threshold.
+  output logic                             controller_rx_ready_o, // Controller RX DMA ready; rises
+                                                                  // when the RX level exceeds the
+                                                                  // RX threshold and stays high
+                                                                  // until the FIFO empties.
+  output logic                             target_tx_ready_o, // Target TX DMA ready; drops when the
+                                                              // TX FIFO fills and returns once its
+                                                              // level falls below the TX threshold.
+  output logic                             target_rx_ready_o, // Target RX DMA ready; rises when the
+                                                              // ACQ level exceeds the ACQ threshold
+                                                              // and stays high until the FIFO
+                                                              // empties.
 
-  // Interrupt Interface
-  output logic                             irq_o,
+  output logic                             irq_o,           // Level interrupt; OR of the INTR_STATE
+                                                            // sources masked by INTR_ENABLE.
 
-  // Debug Interface
-  // [0]: sda_i             - raw SDA line
-  // [1]: scl_i             - raw SCL line
-  // [2]: target_idle       - target FSM idle
-  // [3]: any_error_sticky  - any error event pulse-extended ~256 cycles
-  output logic [3:0]                       debug_o
+  output logic [3:0]                       debug_o          // [0] SDA and [1] SCL, each sampled
+                                                            // once by clk_i; [2] target_idle; [3]
+                                                            // OR of the NACK, arbitration-lost,
+                                                            // interference, timeout and
+                                                            // SDA-unstable controller events, not
+                                                            // stretched.
 );
 
   `include "prim_assert.sv"
@@ -340,9 +374,9 @@ module i2c_core
 
   assign bus_active_timeout           = reg_out_i.TIMEOUT_CTRL.VAL.value;
   assign stretch_timeout_enable       = reg_out_i.TIMEOUT_CTRL.EN.value &&
-                                          reg_out_i.TIMEOUT_CTRL.MODE.value == StretchTimeoutMode;
+                                          reg_out_i.TIMEOUT_CTRL.MODE.value == STRETCH_TIMEOUT_MODE;
   assign bus_timeout_enable           = reg_out_i.TIMEOUT_CTRL.EN.value &&
-                                          reg_out_i.TIMEOUT_CTRL.MODE.value == BusTimeoutMode;
+                                          reg_out_i.TIMEOUT_CTRL.MODE.value == BUS_TIMEOUT_MODE;
   assign host_timeout                 = reg_out_i.HOST_TIMEOUT_CTRL.VAL.value;
   assign nack_timeout                 = reg_out_i.TARGET_TIMEOUT_CTRL.VAL.value;
   assign nack_timeout_en              = reg_out_i.TARGET_TIMEOUT_CTRL.EN.value;
@@ -377,7 +411,12 @@ module i2c_core
   // When all qe bits are asserted, fdata is injected into the fifo.
   assign reg_in_o.FDATA.wr_ack = reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr;
   assign fmt_fifo_wvalid       = reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr &&
-                                   |reg_out_i.FDATA.wr_biten;
+                                   (|{reg_out_i.FDATA.wr_biten.NAKOK,
+                                      reg_out_i.FDATA.wr_biten.RCONT,
+                                      reg_out_i.FDATA.wr_biten.READB,
+                                      reg_out_i.FDATA.wr_biten.STOP,
+                                      reg_out_i.FDATA.wr_biten.START,
+                                      reg_out_i.FDATA.wr_biten.FBYTE});
   assign fmt_fifo_wdata[7:0]   = reg_out_i.FDATA.wr_data.FBYTE  & reg_out_i.FDATA.wr_biten.FBYTE;
   assign fmt_fifo_wdata[8]     = reg_out_i.FDATA.wr_data.START && reg_out_i.FDATA.wr_biten.START;
   assign fmt_fifo_wdata[9]     = reg_out_i.FDATA.wr_data.STOP  && reg_out_i.FDATA.wr_biten.STOP;
@@ -402,12 +441,12 @@ module i2c_core
   assign unhandled_unexp_nak = reg_out_i.CONTROLLER_EVENTS.NACK.value;
 
   prim_fifo_sync_parity #(
-    .Width             (CONTROLLER_TX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (CONTROLLER_TX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (CONTROLLER_TX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (CONTROLLER_TX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_controller_tx_fifo (
     .clk_i,
     .rst_ni,
@@ -424,12 +463,12 @@ module i2c_core
   );
 
   prim_fifo_sync_parity #(
-    .Width             (CONTROLLER_RX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (CONTROLLER_RX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (CONTROLLER_RX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (CONTROLLER_RX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_controller_rx_fifo (
     .clk_i,
     .rst_ni,
@@ -446,12 +485,12 @@ module i2c_core
   );
 
   prim_fifo_sync_parity #(
-    .Width             (TARGET_TX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (TARGET_TX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (TARGET_TX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (TARGET_TX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_target_tx_fifo (
     .clk_i,
     .rst_ni,
@@ -468,12 +507,12 @@ module i2c_core
   );
 
   prim_fifo_sync_parity #(
-    .Width             (TARGET_RX_FIFO_WIDTH),
-    .Pass              (1'b1),
-    .Depth             (TARGET_RX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)
+    .WIDTH                (TARGET_RX_FIFO_WIDTH),
+    .PASS                 (1'b1),
+    .DEPTH                (TARGET_RX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)
   ) u_target_rx_fifo (
     .clk_i,
     .rst_ni,
@@ -542,14 +581,14 @@ module i2c_core
 
   assign acq_type = i2c_acq_byte_id_e'(acq_fifo_rdata[TARGET_RX_FIFO_WIDTH-1:8]);
 
-  assign valid_target_lb_wr = target_enable && acq_type == AcqData;
+  assign valid_target_lb_wr = target_enable && acq_type == ACQ_DATA;
 
   // only write into tx fifo if it's payload
   assign reg_in_o.TXDATA.wr_ack = reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr;
   assign tx_fifo_wvalid         = target_loopback ? acq_fifo_rvalid && valid_target_lb_wr :
                                                        reg_out_i.TXDATA.req &&
                                                        reg_out_i.TXDATA.req_is_wr &&
-                                                      |reg_out_i.TXDATA.wr_biten;
+                                                      |reg_out_i.TXDATA.wr_biten.DATA;
   assign tx_fifo_wdata          = target_loopback ? acq_fifo_rdata[7:0] :
                                                       reg_out_i.TXDATA.wr_data.DATA;
 
@@ -558,7 +597,7 @@ module i2c_core
   // is not data payload.
   assign reg_in_o.ACQDATA.rd_ack = reg_out_i.ACQDATA.req && !reg_out_i.ACQDATA.req_is_wr;
   assign acq_fifo_rready         = reg_out_i.ACQDATA.req && !reg_out_i.ACQDATA.req_is_wr ||
-                                     target_loopback && (tx_fifo_wready || acq_type != AcqData);
+                                     target_loopback && (tx_fifo_wready || acq_type != ACQ_DATA);
 
   // sync the incoming SCL and SDA signals
   prim_flop_2sync #(
@@ -1113,7 +1152,7 @@ module i2c_core
   // Debug //
   ///////////
 
-  // Pulse-extend any error event for 256 cycles so it is observable on the debug bus.
+  // OR the error events into one debug bus bit, high only in the cycle of each event.
   logic any_error_event;
 
   assign any_error_event = event_nak

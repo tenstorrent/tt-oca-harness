@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-telemetry_receiver]
-== Address Map: telemetry_receiver
+== Telemetry Receiver Address Map
+
+Configuration, status, and data-buffer registers for a single telemetry receiver channel.
 
 [NOTE]
 ======
@@ -23,7 +25,7 @@
 | 0x10 | <<reg-{regmap-instance}-telemetry_receiver-INTR_TEST,INTR_TEST>> | RW a| Interrupt Test Register
 | 0x14 | <<reg-{regmap-instance}-telemetry_receiver-TELEMETRY_PROBE_ID,TELEMETRY_PROBE_ID>> | R a| Telemetry Probe ID Register
 | 0x18 | <<reg-{regmap-instance}-telemetry_receiver-TELEMETRY_COUNTER_VLDS,TELEMETRY_COUNTER_VLDS>> | R a| Telemetry Counter Valid Bits Register
-| 0x80 - 0xFC | <<reg-{regmap-instance}-telemetry_receiver-TELEMETRY_COUNTER-0-,TELEMETRY_COUNTER[32]>> | R a| Telemetry Counter Register
+| 0x80 - 0xFC | <<reg-{regmap-instance}-telemetry_receiver-TELEMETRY_COUNTER-,TELEMETRY_COUNTER[32]>> | R a| Telemetry Counter Register
 |===
 
 [#reg-{regmap-instance}-telemetry_receiver-CTRL]
@@ -40,10 +42,12 @@ asserted when the number of entries in the buffer is greater than this value.
 transmitter. The flushing is done via the ATB AF interface. This bit clears
 itself after the flush completes.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `TELEMETRY_RX_FLUSH` | W | 0x0 a| Telemetry Receiver Flush. Writing `1` flushes the Telemetry Receiver Buffer and
-all other storage elements in the Telemetry Receiver.
+| 4 | `TELEMETRY_RX_FLUSH` | W 1P | 0x0 a| Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+pointer. Stored payload bytes are not cleared. In particular, a later short
+message can retain trailing counter values and validity from an earlier
+message. This operation does not erase storage.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `BUFFER_POP` | W | 0x0 a| Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
+| 0 | `BUFFER_POP` | W 1P | 0x0 a| Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
 Writing `1` pops the buffer and thus updates the data in the
 `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`
 registers.
@@ -72,7 +76,7 @@ registers.
 telemetry messages in the Telemetry Message Buffer is greater than
 `CTRL.BUFFER_THRESHOLD`.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `MISSING_LAST` | RW | 0x0 a| Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
+| 0 | `MISSING_LAST` | RW1C | 0x0 a| Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
 received a Last Packet flag when the maximum number of packets a message can
 consist of has been received.
 |===
@@ -99,7 +103,7 @@ consist of has been received.
 | 4 | `BUFFER_THRESHOLD` | RW | 0x0 a| Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the
 interrupt and writing `0` releases it.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `MISSING_LAST` | W | 0x0 a| Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
+| 0 | `MISSING_LAST` | W 1P | 0x0 a| Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
 |===
 
 [#reg-{regmap-instance}-telemetry_receiver-TELEMETRY_PROBE_ID]
@@ -124,7 +128,7 @@ message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for
 the `i`-th counter.
 |===
 
-[#reg-{regmap-instance}-telemetry_receiver-TELEMETRY_COUNTER-0-]
+[#reg-{regmap-instance}-telemetry_receiver-TELEMETRY_COUNTER-]
 === TELEMETRY_COUNTER[32]
 
 [cols="1,3,1,1,6", options="header"]

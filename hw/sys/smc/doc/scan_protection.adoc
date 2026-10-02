@@ -21,6 +21,10 @@ Protection_. This section records how they apply to the SMC eFuse controller.
 
 == SMC eFuse Asset Classification
 
+<<smc-efuse-shadow-register-classification-table>> relates the SMC fuse contents to
+their security class and scan policy.
+
+[[smc-efuse-shadow-register-classification-table]]
 .SMC eFuse shadow register classification
 [width="100%",cols="20%,25%,55%",options="header",]
 |=======================================================================
@@ -85,14 +89,18 @@ localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
 `LOCKS` sits at fuse-map offset `0x0` and is 64 bits wide, so this resolves to
 shadow words 0 and 1.
 
+<<smc-shadow-word-allocation-table>> maps fuse fields to their shadow-register word
+ranges.
+
+[[smc-shadow-word-allocation-table]]
 .SMC shadow word allocation
 [width="100%",cols="55%,45%",options="header",]
 |=================================================================
 |Quantity |Value
 
-|Fuse map size |3 KB (24576 bits, 768 x 32-bit words)
+|Fuse map size |1 KB (8192 bits, 256 x 32-bit words)
 |Class 1 words (`shadow_efuse_values_n0_scan`) |2 (words 0-1, `LOCKS`)
-|Class 3 words (`shadow_efuse_values`) |766
+|Class 3 words (`shadow_efuse_values`) |254
 |=================================================================
 
 Three `ASSERT_INIT` checks in `efuse_shadow_regs` verify at elaboration that the

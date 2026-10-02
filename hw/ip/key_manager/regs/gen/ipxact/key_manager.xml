@@ -548,7 +548,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>otp_efuse_map</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>SEP eFuse Map Address Map</ipxact:displayName>
+        <ipxact:description>Per-field write-lock and read-lock registers for the SEP eFuse map.</ipxact:description>
         <ipxact:baseAddress>'h11000</ipxact:baseAddress>
         <ipxact:range>'h400</ipxact:range>
         <ipxact:width>256</ipxact:width>
@@ -2725,6 +2726,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>otp_efuse_ctrl</ipxact:name>
+        <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
+        <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
         <ipxact:baseAddress>'h11400</ipxact:baseAddress>
         <ipxact:range>'h1c</ipxact:range>
         <ipxact:width>32</ipxact:width>
@@ -3109,6 +3112,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>otp_efuse_mmr</ipxact:name>
+        <ipxact:displayName>eFuse Token Registers Address Map</ipxact:displayName>
+        <ipxact:description>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</ipxact:description>
         <ipxact:baseAddress>'h11500</ipxact:baseAddress>
         <ipxact:range>'h74</ipxact:range>
         <ipxact:width>32</ipxact:width>
@@ -7240,7 +7245,7 @@ slot's material can be destroyed but its slot never reused.</ipxact:description>
           <ipxact:field>
             <ipxact:name>count_good</ipxact:name>
             <ipxact:displayName>COUNT_GOOD</ipxact:displayName>
-            <ipxact:description>Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</ipxact:description>
+            <ipxact:description>Counts only reads completed through ST_RESPOND, excluding prefetched words. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

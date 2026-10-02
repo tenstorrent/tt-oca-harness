@@ -8,15 +8,26 @@ schema_version = 1
 
 [[tests]]
 name = "sep_efuse_sense_test"
-module = "efuse.sep_efuse_sense_test"
+module = { cocotb = "efuse.sep_efuse_sense_test", uvm = "sep_efuse_sense_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "efuse", "ci"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
 # Pin the committed default preload (bare +sep_efuse_preload, no path) so the two
 # tests cover both sources: preload+backdoor here vs random+AXI in the image test.
+[tests.overrides.cocotb]
 args = ["+sep_efuse_preload"]
+
+# The eFuse bank model loads the same committed preload; the sequence compares
+# the sensed shadow with its committed expected shadow
+# (cocotb/env/sep_efuse_default_shadow.py writes it).
+[tests.overrides.uvm]
+args = [
+  "+sep_efuse_hex={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_default.hex",
+  "+sep_efuse_shadow_hex={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/sep_efuse_default.shadow.hex",
+]
 
 [[tests]]
 name = "sep_efuse_image_test"
@@ -79,13 +90,13 @@ run_modes = ["cpu"]
 
 [[tests]]
 # eFuse program x write-lock on every legal spare field (never LC_STATE).
-# RAND-REP: unlocked program + write-lock reject on SPARE0..SPARE7 every seed;
+# RAND-REP: unlocked program + write-lock reject on SPARE0..SPARE8 every seed;
 # the seed selects only the bit offsets inside each spare. Real fuse sense.
 # Clear-after-program.
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
 seed = 1
-# No reseed: the walk visits SPARE0..SPARE7 every run, so slot coverage does not
+# No reseed: the walk visits SPARE0..SPARE8 every run, so slot coverage does not
 # depend on how many seeds CI draws. Only the bit offsets within each spare are
 # seed-selected.
 timeout_sec = 1800
@@ -121,14 +132,40 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # SEC_DIS token-match override. RAND-NONE. Real fuse sense. tb_top binds
-# SEP_SEC_DISABLE_TOKEN to SHA-256 of the all-zero token. The first match
-# is before sense-done and must leave the sense-gated reset held. After
-# sense, zero opens FEAT_CTRL; token=1 mismatches and restores fail-closed
-# PROD.
-# Does not force sec_dis.
+# SEP_SEC_DISABLE_TOKEN to SHA-256 of the all-zero token. Before any match
+# the sep_reset_n override releases the sense-gated reset and leaves
+# FEAT_CTRL closed. The match is before sense-done: the reset stays held and
+# FEAT_CTRL opens. The override then releases that reset again, and clearing
+# it holds the reset. A LC_STATE shadow-map read in that window must return
+# AXI OKAY. The match stops the sense. A rst_ni pulse keeps the token
+# digest, so SEC_DIS stays active, sense stays stopped, the map stays open
+# and the override still releases the reset. token=1 drops SEC_DIS and a
+# second pulse runs a full sense, which must finish inside the stuck window.
+# After sense, zero opens FEAT_CTRL; token=1 mismatches and restores
+# fail-closed PROD. Does not force sec_dis. Clearing the override resets
+# the crypto engines without isolation, so the crypto EDN request-hold
+# checks are off.
 name = "sep_sec_dis_override_test"
 module = "efuse.sep_sec_dis_override_test"
 seed = 1
+args = ["+sep_edn_jtag_reset_waive"]
+timeout_sec = 1800
+tags = ["efuse", "lcc", "sec_dis", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# SEP reachable through the IC_RESET TDR before sense finishes. RAND-NONE.
+# Real fuse sense. No token. The TDR is jtag_ic_reset_reg sized to the SEP
+# slice. Override pins stay 0. SW_RESET_N returns its reset default once the
+# TDR releases sep_reset_n. Restoring the TDR enable holds the reset again, and
+# sense-done releases it. FEAT_CTRL stays the withheld profile before sense and
+# reads the PROD golden after it. The TDR re-hold resets the crypto engines
+# without isolation, so the crypto EDN request-hold checks are off.
+name = "sep_sec_dis_reset_reach_test"
+module = "efuse.sep_sec_dis_reset_reach_test"
+seed = 1
+args = ["+sep_edn_jtag_reset_waive"]
 timeout_sec = 1800
 tags = ["efuse", "lcc", "sec_dis", "subsystem"]
 run_modes = ["no_cpu"]
@@ -160,7 +197,7 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # Locked-field shadow access pulses sep_internal_interrupts[33]. RAND-REP:
-# write-lock and read-lock every seed. RANDCFG: which SPARE0..7 fields carry
+# write-lock and read-lock every seed. RANDCFG: which SPARE0..8 fields carry
 # write-lock, read-lock, and the unlocked contrast. Real fuse sense, LC_PROD.
 # Shadow aperture, not OTP program. Pulse-only combinational IRQ. no_cpu.
 name = "sep_locked_field_access_irq_path_test"
@@ -171,6 +208,22 @@ timeout_sec = 1800
 tags = ["efuse", "interrupt", "lock", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+
+[[tests]]
+# KM public-ID OTP readout. RANDCFG: the three SEP_*_ID values and which one
+# carries its eFuse read lock. Real fuse sense, LC_PROD. The KM ROM image copies
+# the KMCSR OTP_SEP_*_ID words to KM SRAM, sets the KM-side OTP_READ_LOCK bits
+# and copies them again. no_cpu.
+name = "sep_efuse_km_public_id_test"
+module = "efuse.sep_efuse_km_public_id_test"
+firmware = { name = "km_rom_otp_id", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["efuse", "km", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+km_rom_hex=km_rom_otp_id.parhex"]
 
 [[tests]]
 # SECURE_TM shadow-write lock. The field map marks LOCKS/LOCKS_SPARE, LC_STATE,
@@ -224,7 +277,7 @@ target = "lsu_stub_all_live"
 # the seed; the cells within a leaf are fixed, so no contract is seed-selected.
 # Real fuse sense, no_cpu.
 #
-# The six sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of one
+# The seven sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of one
 # module, sep_lcc_lc_state_transition_matrix_test: +lc_start=N picks the start
 # state, so none of them ends the module name. See Naming Rules in
 # docs/SEP_VPLAN.adoc.
@@ -283,7 +336,9 @@ args = ["+lc_start=6"]
 
 [[tests]]
 # PROD_END: every reachable set lands outside the named encodings, which is the
-# chapter's "the only permitted transition is to INVALID".
+# chapter's "the only permitted transition is to INVALID". One sensed start
+# allows one exit, so the two exits are two leaves: the ungated bit 0 here,
+# the RMA_SIP-matched bit 1 in the next entry.
 name = "sep_lcc_lc_state_w1s_prod_end_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
@@ -292,7 +347,20 @@ timeout_sec = 1800
 tags = ["lcc", "efuse", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+lc_start=8"]
+args = ["+lc_start=8", "+lc_prod_end_exit=bit0"]
+
+[[tests]]
+# PROD_END, RMA exit: an RMA_SIP token match then a write of bit 1 must still
+# land on INVALID, never on a named RMA state.
+name = "sep_lcc_lc_state_w1s_prod_end_rma_test"
+module = "lcc.sep_lcc_lc_state_transition_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["lcc", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+lc_start=8", "+lc_prod_end_exit=rma_sip"]
 
 [[tests]]
 # Transient RMA from PROD_END: the same W1S and token rules apply on a path with

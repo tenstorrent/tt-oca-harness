@@ -9,6 +9,7 @@ on:
     paths:
       - 'doc/**'
       - 'hw/**/*.adoc'
+      - 'hw/**/*.sv'
       - 'hw/**/*.md'
       - 'antora-playbook.yml'
       - 'antora-*-playbook.yml'
@@ -21,6 +22,7 @@ on:
     paths:
       - 'doc/**'
       - 'hw/**/*.adoc'
+      - 'hw/**/*.sv'
       - 'hw/**/*.md'
       - 'antora-playbook.yml'
       - 'antora-*-playbook.yml'
@@ -28,6 +30,8 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/doc.yml'
+  # Publishers outside this repository dispatch the workflow on main after
+  # pushing dashboard data, so the site reflects their latest run.
   workflow_dispatch:
   # Republish after each dashboard data publication so the verification
   # dashboard reflects the latest nightly.
@@ -53,12 +57,16 @@ jobs:
           git submodule update --init --recursive
 
       - name: Setup system dependencies
+        # default-jre-headless runs the PlantUML jar that asciidoctor-diagram
+        # bundles, which the programmer guide's PDF build uses to render its
+        # PlantUML diagram.
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             texlive-latex-recommended \
             texlive-fonts-recommended \
-            texlive-latex-extra
+            texlive-latex-extra \
+            default-jre-headless
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -73,8 +81,10 @@ jobs:
           rubygems: '3.3.26'
 
       - name: Install Asciidoctor
+        # asciidoctor-diagram renders the PlantUML diagrams in the integrator and
+        # programmer guides during their PDF builds.
         run: |
-          gem install asciidoctor:2.0.26 asciidoctor-pdf:2.3.9
+          gem install asciidoctor:2.0.26 asciidoctor-pdf:2.3.9 asciidoctor-diagram:2.3.1
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -91,15 +101,25 @@ jobs:
           make ocah-doc-combined-html OCAH_DOC_SITE_URL=/tt-oca-harness
 
       - name: Build PDF documentation
+        # Each PDF product builds independently: one product's build failure must
+        # not skip the others (a single `set -e` block would abort on the first
+        # failure). A missing PDF degrades gracefully at the staging step, so a
+        # failed build is a warning here, not a deploy failure.
         run: |
-          make ocah-doc-trm-pdf
-          make ocah-doc-integrator-pdf
-        continue-on-error: true
+          for product in trm integrator programmer appnotes datasheets; do
+            echo "::group::make ocah-doc-$product-pdf"
+            if ! make "ocah-doc-$product-pdf"; then
+              echo "::warning title=PDF build failed::ocah-doc-$product-pdf did not complete; its Downloads link will 404 until fixed"
+            fi
+            echo "::endgroup::"
+          done
 
-      # Only a successful dashboard run redeploys.
+      # A push to main, a dispatch on main, or a successful dashboard run
+      # deploys.
       - name: Deploy to GitHub Pages
         if: >-
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
           (github.event_name == 'workflow_run' &&
            github.event.workflow_run.conclusion == 'success')
         run: |

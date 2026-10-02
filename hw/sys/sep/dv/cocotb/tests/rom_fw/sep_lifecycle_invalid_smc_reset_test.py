@@ -134,7 +134,7 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
             f"Status sequence: {[hex(v) for v in status_seq]}"
         )
         self.logger.info(
-            "CHK-LC-INVALID: ROM reported ERROR+LIFECYCLE_INVALID for raw 0x%x",
+            "CHK-LC-INVALID PASS: ROM reported ERROR+LIFECYCLE_INVALID for raw 0x%x",
             lc,
         )
 
@@ -148,7 +148,7 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
             f"simulation log for the offending addresses."
         )
         self.logger.info(
-            "CHK-SMC-RST-ADDR: smc_addr_violations_o == 0 -- every SEP->SMC "
+            "CHK-SMC-RST-ADDR PASS: smc_addr_violations_o == 0 -- every SEP->SMC "
             "access, the reset-control write included, hit an implemented window",
         )
 
@@ -161,7 +161,7 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
             f"releases reset, the opposite of the mitigation's intent"
         )
         self.logger.info(
-            "CHK-SMC-RST-POL: ROM wrote 0x%08x, core reset_n bits [3:0] clear "
+            "CHK-SMC-RST-POL PASS: ROM wrote 0x%08x, core reset_n bits [3:0] clear "
             "-- active-low reset asserted",
             rst,
         )
@@ -183,7 +183,7 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
             f"halting. PCs: {sorted(hex(p) for p in post_pcs)}"
         )
         self.logger.info(
-            "CHK-LC-TERMINAL: terminal verdict reached and the PC stayed within "
+            "CHK-LC-TERMINAL PASS: terminal verdict reached and the PC stayed within "
             "0x%x bytes over %d addresses -- the boot stopped",
             post_span,
             len(post_pcs),

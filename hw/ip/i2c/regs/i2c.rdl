@@ -5,6 +5,8 @@
 `define I2C_RDL
 
 addrmap i2c {
+    name = "I2C Address Map";
+    desc = "Interrupt status, enable, and test registers for a single I2C controller and target.";
 
     //////////////////////////
     // Register Definitions //
@@ -574,8 +576,8 @@ addrmap i2c {
                              should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
                              flags to detect Start/Stop events.
                      * `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
-                             When a START (or repeated START) is detected, an `AcqStart` or `AcqRestart`
-                             entry is written. When a STOP is detected, an `AcqStop` or `AcqNackStop`
+                             When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`
+                             entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`
                              entry is written.";
         } ACQ_START_STOP_EN[7:7] = 0x0;
     };

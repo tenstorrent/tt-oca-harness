@@ -11,15 +11,15 @@ of one parameter read at the wrapper and at the instance that consumes it.
 
 No specification in this tree states the packed layout of the build
 configuration struct or the token parameter's default value. The per-field
-`Cfg` decode compares and the token-is-zero compare are drift checks on the
+`CFG` decode compares and the token-is-zero compare are drift checks on the
 elaboration and carry no evidence token.
 
 On the `--dut smu` production wrapper (compile_smu_chiplet, +expected_sep=1):
 reads the 256-bit SEP_SEC_DISABLE_TOKEN at the wrapper, at `smu` and at the
 SEP eFuse controller that consumes it, the DTP's fixed SEP OTP pipeline
-depths, the one security_disable net from the SEP consumer through the `smu`
-wire into the SMC input, and each DTP and port parameter the build
-configuration sizes, at the instance that consumes it.
+depths and each DTP and port parameter the build configuration sizes, at the
+instance that consumes it, and records the security_disable net at the SEP
+eFuse controller that drives it, the `smu` wire and the SMC input.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_composition_parameter_test \\
@@ -35,7 +35,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_composition_parameter_test(smu_base_test):
-    """Token, OTP depth, security_disable and Cfg plumbing on the wrapper profile."""
+    """Token, OTP depth, security_disable and CFG plumbing on the wrapper profile."""
 
     use_shared_env = True
 

@@ -34,13 +34,18 @@ Two inter-chiplet signalling schemes are supported:
 The CTP has no build-time parameters. All operational settings are
 programmed at runtime through the AXI-Lite CSR interface:
 
+<<ctp-configuration-registers-table>> summarises the runtime controls exposed through
+the CTP CSR interface.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTP configuration registers" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctp-configuration-registers-table]]
 [cols="<28,<72",options="header",role="port-reference"]
+.CTP configuration registers
 |===
 |Register |Description
 |`MODE` |Select wire-OR (0) or point-to-point (1) signalling.
@@ -65,6 +70,16 @@ endif::backend-pdf[]
 for the full CTP register layout and field descriptions. The CTN decodes the
 AXI-Lite CSR window and presents each CTP's registers at a 16-byte stride
 starting at offset 0x0200.
+
+Program `MODE` and `INVERT` once per boot, in a single write, before any CTM
+route selects or targets the port. The
+ifdef::backend-html5[]
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-programming[CTN Programming]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ctn-programming,CTN Programming>>
+endif::backend-pdf[]
+section gives the full sequence, reconfiguration, and deadlock recovery.
 
 ifdef::backend-pdf[]
 :imagesdir: assets

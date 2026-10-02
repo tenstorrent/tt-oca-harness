@@ -37,6 +37,7 @@ asciidoc:
     kroki-fetch-diagram: true
   extensions:
     - asciidoctor-kroki
+    - ./tools/doc/block-captions.js
 runtime:
   log:
     # See antora-playbook.yml for why this is raised from the default.
@@ -46,5 +47,9 @@ ui:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
     snapshot: true
   supplemental_files: ./doc/ui-supplemental
+antora:
+  extensions:
+    - ./tools/doc/block-indexes.js
+    - ./tools/doc/preserve-smn-fragments.js
 output:
   dir: ./doc/trm/_build/html_antora

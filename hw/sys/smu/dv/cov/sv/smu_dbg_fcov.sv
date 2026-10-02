@@ -35,7 +35,7 @@ module smu_dbg_fcov #(
   // with an AXI-Lite DECERR error slave. Points that need the gate asserted
   // or an OKAY response from the SEP OTP bridge are dropped rather than
   // carried unhittable.
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_smu_i,
   input wire rst_primary_smc_clk_ni,
@@ -112,7 +112,7 @@ module smu_dbg_fcov #(
   // constant '0 and the SEP OTP target is a DECERR error slave, so the gate
   // never rises and no OKAY ever comes back from that bridge.
   // ------------------------------------------------------------------
-  if (SepPresent) begin : g_sep
+  if (SEP_PRESENT) begin : g_sep
     wire sep_otp_write_response_returned_e = sep_otp_b_hs && (sep_otp_bresp_i == RespOkay);
     wire sep_otp_read_response_returned_e = sep_otp_r_hs && (sep_otp_rresp_i == RespOkay);
     `OCAH_FCOV_COVER(c_sep_otp_write_response_returned, sep_otp_write_response_returned_e,
@@ -179,8 +179,12 @@ module smu_dbg_fcov #(
   covergroup cg_dbg_disable_slice with function sample (logic fabric, logic smc_otp, logic sep_otp);
     option.per_instance = 1;
     cp_fabric: coverpoint fabric;
-    cp_smc_otp: coverpoint smc_otp;
-    cp_sep_otp: coverpoint sep_otp;
+    // sep_lifecycle_ctrl ties both OTP debug-disable terms low, so neither
+    // bridge can be disabled by the lifecycle controller in this design.
+    cp_smc_otp: coverpoint smc_otp {
+      ignore_bins tied_low = {1'b1};
+    }
+    cp_sep_otp: coverpoint sep_otp {ignore_bins tied_low = {1'b1};}
     x_slice: cross cp_fabric, cp_smc_otp, cp_sep_otp;
   endgroup
 

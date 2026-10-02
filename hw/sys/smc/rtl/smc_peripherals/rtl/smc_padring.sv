@@ -1,105 +1,211 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC Padring
+// Mux SMC peripheral digital I/O onto chiplet pads.
+//
+// Instantiates one gpio interface per pad behind an AXI-Lite demux whose error target
+// returns DECERR with data 0xBADCAB1E outside the GPIO window. Assigns fixed pads to SPI,
+// UART, I3C, I2C, AVSBus, the system timer, and the isolate-request, boot-stall and
+// cool-reset pins; each function's enable drives the pad's LSIO select, which the gpio
+// registers can disable. The pad mapping is combinational.
 
 module smc_padring #(
-  parameter int unsigned                   MAX_TRANS                 = 1,
-  parameter bit [gpio_pkg::ADDR_WIDTH-1:0] ADDRESS_MAP_SIZE_PER_GPIO = 32'h00000010,  // Size per GPIO instance (32 bytes)
-  parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_INTF_BASE_ADDR       = 32'h00000000  // Base address for all GPIO intfs
+  parameter int unsigned                   MAX_TRANS                 = 1,  // Maximum outstanding
+                                                                           // transactions of the
+                                                                           // demux and of each
+                                                                           // gpio interface.
+  parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_INTF_BASE_ADDR       = 32'h00000000  // Base address of the
+                                                                                     // first GPIO interface;
+                                                                                     // the demux decodes
+                                                                                     // NUM_GPIO_WRAPS
+                                                                                     // 16-byte slots from it.
 
 ) (
-  input  logic clk_i,
-  input  logic rst_primary_ni,
-  input  logic rst_cold_stable_smc_clk_ni,
+  input  logic clk_i,                   // SMC core clock for the GPIO register demux and
+                                        // the GPIO interfaces.
+  input  logic rst_primary_ni,          // Primary reset, active-low, synchronized to
+                                        // clk_i; resets the demux and GPIO registers.
+  input  logic rst_cold_stable_smc_clk_ni,  // Stable cold reset, active-low,
+                                            // synchronized to clk_i; while low, every
+                                            // GPIO pad is held in its default direction
+                                            // with the output disabled.
 
-  // Test Interface
-  input  logic test_en_i,
-  input  logic scan_rst_ni,
+  input  logic test_en_i,               // DFT test-mode enable, active-high, passed to
+                                        // the demux and the gpio interfaces.
+  input  logic scan_rst_ni,             // DFT scan reset, active-low; unused.
 
-  // AXI-Lite Register Interface
-  input  gpio_pkg::gpio_axil_req_t  axil_req_i,
-  output gpio_pkg::gpio_axil_resp_t axil_resp_o,
+  input  gpio_pkg::gpio_axil_req_t  axil_req_i,  // AXI-Lite Register Interface request.
+  output gpio_pkg::gpio_axil_resp_t axil_resp_o,  // AXI-Lite Register Interface response.
 
-  // SPI
-  input  logic       spi_enable_i,
-  input  logic       spi_clk_i,  // Serial bir-rate clock
-  input  logic [7:0] spi_txd_i,  // Transmit Data Signal
-  input  logic       spi_cs_n_i,  // Chip Select Signal
-  input  logic       spi_cs_oe_n_i,  // chip select output enable
-  input  logic       spi_cs_ie_n_i,
-  input  logic       spi_clk_ie_n_i,
-  input  logic       spi_clk_oe_n_i,
-  input  logic       spi_dqs_ie_n_i,
-  input  logic       spi_dqs_oe_n_i,
-  input  logic [7:0] spi_dq_ie_n_i,
-  input  logic [7:0] spi_dq_oe_n_i,
-  output logic [7:0] spi_rxd_o,  // Receive Data Signal
-  output logic       spi_rxds_o,  // Read Data strobe in DDR mode of operation
-  input  logic       spi_mem_rebar_oepad_i,
-  input  logic       spi_mem_rebar_opad_i,
-  input  logic       spi_mem_rebar_iepad_i,
-  output logic       spi_mem_rebar_ipad_o,
+  input  logic       spi_enable_i,      // Selects the SPI function on GPIO pads 0-10 and
+                                        // 54, active-high.
+  input  logic       spi_clk_i,         // Serial bit-rate clock driven onto GPIO 9.
+  input  logic [7:0] spi_txd_i,         // Transmit data driven onto GPIO 0-7, one bit
+                                        // per pad.
+  input  logic       spi_cs_n_i,        // Chip select, active-low, driven onto GPIO 8.
+  input  logic       spi_cs_oe_n_i,     // Output enable for the chip-select pad (GPIO 8),
+                                        // active-low.
+  input  logic       spi_cs_ie_n_i,     // Input enable for the chip-select pad (GPIO 8),
+                                        // active-low.
+  input  logic       spi_clk_ie_n_i,    // Input enable for the SPI clock pad (GPIO 9),
+                                        // active-low.
+  input  logic       spi_clk_oe_n_i,    // Output enable for the SPI clock pad (GPIO 9),
+                                        // active-low.
+  input  logic       spi_dqs_ie_n_i,    // Input enable for the data-strobe pad (GPIO 10),
+                                        // active-low.
+  input  logic       spi_dqs_oe_n_i,    // Output enable for the data-strobe pad (GPIO 10),
+                                        // active-low; the pad drives zero when enabled.
+  input  logic [7:0] spi_dq_ie_n_i,     // Input enables for the data pads (GPIO 0-7),
+                                        // active-low.
+  input  logic [7:0] spi_dq_oe_n_i,     // Output enables for the data pads (GPIO 0-7),
+                                        // active-low.
+  output logic [7:0] spi_rxd_o,         // Receive data sampled from GPIO 0-7.
+  output logic       spi_rxds_o,        // Read data strobe sampled from GPIO 10, used in
+                                        // DDR mode.
+  input  logic       spi_mem_rebar_oepad_i,  // Output enable for the SPI DQS loopback
+                                             // pad (GPIO 54), active-high.
+  input  logic       spi_mem_rebar_opad_i,  // Data driven onto the SPI DQS loopback pad
+                                            // (GPIO 54).
+  input  logic       spi_mem_rebar_iepad_i,  // Input enable for the SPI DQS loopback pad
+                                             // (GPIO 54), active-high.
+  output logic       spi_mem_rebar_ipad_o,  // Value sampled from the SPI DQS loopback
+                                            // pad (GPIO 54).
 
-  // UART
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_i,
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_rx_o,
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_tx_i,
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_rts_n_i,
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_cts_n_o,
+  input  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_i,  // Selects each UART's
+                                                              // four pads, active-high,
+                                                              // one bit per UART; UART u
+                                                              // uses GPIO 11+4u (RX),
+                                                              // 12+4u (TX), 13+4u (RTS)
+                                                              // and 14+4u (CTS).
+  output logic [smc_config_pkg::NUM_UART-1:0] uart_rx_o,  // Receive data sampled from
+                                                          // each UART's RX pad.
+  input  logic [smc_config_pkg::NUM_UART-1:0] uart_tx_i,  // Transmit data driven onto
+                                                          // each UART's TX pad.
+  input  logic [smc_config_pkg::NUM_UART-1:0] uart_rts_n_i,  // Request-to-send,
+                                                             // active-low, driven onto
+                                                             // each UART's RTS pad.
+  output logic [smc_config_pkg::NUM_UART-1:0] uart_cts_n_o,  // Clear-to-send,
+                                                             // active-low, sampled from
+                                                             // each UART's CTS pad.
 
-  // System Timer OCTS
-  input  logic chiplet_is_primary_i,
-  input  logic timer_sync_load_i,
-  input  logic timer_cnt_credit_i,
-  output logic timer_sync_load_o,
-  output logic timer_cnt_credit_o,
-  input  logic timer_gpio_enable_i,
+  input  logic chiplet_is_primary_i,    // Timer pad direction: high drives GPIO 55 and
+                                        // 56 from the timer inputs, low samples them.
+  input  logic timer_sync_load_i,       // System timer sync-load, driven onto GPIO 55 on
+                                        // the primary chiplet.
+  input  logic timer_cnt_credit_i,      // System timer count credit, driven onto GPIO 56
+                                        // on the primary chiplet.
+  output logic timer_sync_load_o,       // System timer sync-load sampled from GPIO 55,
+                                        // used on a secondary chiplet.
+  output logic timer_cnt_credit_o,      // System timer count credit sampled from GPIO
+                                        // 56, used on a secondary chiplet.
+  input  logic timer_gpio_enable_i,     // Selects the system timer function on GPIO 55
+                                        // and 56, active-high.
 
-  // Boot Stall
-  output logic boot_stall_o,
+  output logic boot_stall_o,            // Boot-stall strap sampled from GPIO 57, not
+                                        // synchronized to clk_i.
 
-  // I3C
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_enable_i,
-  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_o,
-  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_o,
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_i,
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_oen_i,
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_i,
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_oen_i,  // Output enable for SDA IO pad (active low)
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_pp_i,  // Push-pull - output enable for SDA IO pad
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_enable_i,  // Selects each I3C
+                                                            // instance's SCL and SDA
+                                                            // pads, active-high:
+                                                            // GPIO 27-28 for instance 0,
+                                                            // 63-64 for instance 1, and
+                                                            // from 29 upward for the
+                                                            // rest.
+  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_o,  // SCL sampled from each I3C
+                                                         // instance's SCL pad.
+  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_o,  // SDA sampled from each I3C
+                                                         // instance's SDA pad.
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_i,  // SCL value driven onto each
+                                                         // I3C instance's SCL pad.
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_scl_oen_i,  // Output enable for each
+                                                             // SCL pad, active-low.
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_i,  // SDA value driven onto each
+                                                         // I3C instance's SDA pad.
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_oen_i,  // Output enable for SDA IO
+                                                             // pad (active low).
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_sda_pp_i,  // Push-pull select for each
+                                                            // SDA pad; high enables the
+                                                            // SDA output whatever
+                                                            // i3c_sda_oen_i is.
 
-  // I2C
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_master_enable_i,
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_o,
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_o,
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_n_o,
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_alert_n_o,
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_oen_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_oen_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_n_i,
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_alert_oe_i,
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_i,  // Selects each I2C
+                                                            // instance's SCL, SDA, SMBus
+                                                            // alert and SMBus suspend
+                                                            // pads, active-high; instance
+                                                            // i uses GPIO 37+4i to 40+4i.
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_master_enable_i,  // Controller mode per
+                                                                   // I2C instance: the SMBus
+                                                                   // alert pad is sampled and
+                                                                   // the suspend pad driven;
+                                                                   // in target mode the
+                                                                   // directions reverse.
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_o,  // SCL sampled from each I2C
+                                                         // instance's SCL pad.
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_o,  // SDA sampled from each I2C
+                                                         // instance's SDA pad.
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_n_o,  // SMBus suspend, active-low,
+                                                             // sampled from the pad in
+                                                             // target mode; zero in
+                                                             // controller mode.
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_alert_n_o,  // SMBus alert,
+                                                                   // active-low, sampled
+                                                                   // from the pad in
+                                                                   // controller mode; zero
+                                                                   // in target mode.
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_scl_oen_i,  // Open-drain SCL control,
+                                                             // active-low: low pulls the
+                                                             // pad low, high releases it
+                                                             // to the board pull-up.
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_sda_oen_i,  // Open-drain SDA control,
+                                                             // active-low: low pulls the
+                                                             // pad low, high releases it
+                                                             // to the board pull-up.
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_n_i,  // SMBus suspend from the
+                                                             // I2C core, active-low; in
+                                                             // controller mode, low pulls
+                                                             // the suspend pad low.
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_smbus_alert_oe_i,  // In target mode,
+                                                                    // high pulls the SMBus
+                                                                    // alert pad low.
 
-  // AVS
-  input  logic avs_enable_i,
-  input  logic avs_clock_i,
-  input  logic avs_mdata_i,
-  output logic avs_sdata_o,
+  input  logic avs_enable_i,            // Selects the AVSBus function on GPIO pads
+                                        // 49-51, active-high.
+  input  logic avs_clock_i,             // AVSBus clock from the AVSBus controller, driven
+                                        // onto GPIO 49.
+  input  logic avs_mdata_i,             // AVSBus controller-to-device data, driven onto
+                                        // GPIO 50.
+  output logic avs_sdata_o,             // AVSBus device-to-controller data, sampled from
+                                        // GPIO 51.
 
-  // Reset Unit signals
-  input  logic rst_cool_ni,
-  output logic isolate_req_pin_o,
+  input  logic rst_cool_ni,             // Cool reset for other chiplets, active-low;
+                                        // pulls GPIO 62 low while asserted and leaves it
+                                        // undriven otherwise.
+  output logic isolate_req_pin_o,       // Isolation request sampled from GPIO 53, not
+                                        // synchronized to clk_i.
 
-  // GPIO Data Signals (to external GPIO macros via gpio_shim instances)
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select_o,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_o,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en_o,
-  input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_i,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en_o,
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select_o,  // LSIO select per pad,
+                                                                       // high where a
+                                                                       // peripheral function
+                                                                       // claims the pad; also
+                                                                       // drives each gpio
+                                                                       // interface's select.
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_o,  // Data driven to each pad by
+                                                          // its gpio interface; zero
+                                                          // during cold reset.
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en_o,  // Output enable for each
+                                                             // pad, active-high; low
+                                                             // during cold reset.
+  input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_i,  // Value received from each
+                                                          // pad, not synchronized to
+                                                          // clk_i.
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en_o,  // Input enable for each
+                                                             // pad, active-high; the
+                                                             // pad's default direction
+                                                             // during cold reset.
 
-  // GPIO Interrupts - only bonded GPIOs can be used for interrupts
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_interrupt_o
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_interrupt_o  // Interrupt from each gpio
+                                                               // interface, active-high,
+                                                               // registered on clk_i.
 
 );
 
@@ -258,7 +364,7 @@ module smc_padring #(
     lsio_pad2core_en_n[28]      = smc_padring_pkg::ENABLED;
     i3c_sda_o[0]                = lsio_pad2core_data[28];
 
-    // I3C 2 - 5 (I3C[1] is fully unbonded at GPIO[66,67])
+    // I3C 2 - 5 (I3C[1] is fully unbonded at GPIO[63,64])
     for (integer i = 0; i < (smc_config_pkg::NUM_I3C - 2); i = i + 1) begin : gen_i3c_connections
       lsio_interface_select_o[29+(2*i)] = i3c_enable_i[2+i];
       lsio_core2pad_en_n[29+(2*i)]      = i3c_scl_oen_i[2+i];
@@ -362,10 +468,6 @@ module smc_padring #(
     lsio_pad2core_en_n[51]      = smc_padring_pkg::ENABLED;
     avs_sdata_o                 = lsio_pad2core_data[51];
 
-    // CAT THERM (GPIO 52) is driven in smc_ip_integration: it is the PRIMARY
-    // function, force-selected on a thermal event (force_primary) so it
-    // preempts the xtrigger 2nd-HW override. No LSIO drive from the core here.
-
     // Isolate Request Pin
     lsio_interface_select_o[53] = 1'b1;
     lsio_core2pad_en_n[53]      = smc_padring_pkg::DISABLED;
@@ -380,7 +482,7 @@ module smc_padring #(
     lsio_pad2core_en_n[54]      = ~spi_mem_rebar_iepad_i;
     spi_mem_rebar_ipad_o        = lsio_pad2core_data[54];
 
-    // System Timer OCTS (old 58/59, now 55/56 after the 68->65 GPIO shrink)
+    // System Timer OCTS
     // Primary: drive sync load and credit cnt signals to pad
     // Secondary: receive sync load and credit cnt signals from pad
     lsio_interface_select_o[55] = timer_gpio_enable_i;
@@ -395,26 +497,26 @@ module smc_padring #(
     lsio_pad2core_en_n[56]      = chiplet_is_primary_i ? smc_padring_pkg::DISABLED : smc_padring_pkg::ENABLED;
     timer_cnt_credit_o          = lsio_pad2core_data[56];
 
-    // Boot Stall (old 60, now 57)
+    // Boot Stall
     lsio_interface_select_o[57]   = 1'b1;
     lsio_core2pad_en_n[57]        = smc_padring_pkg::DISABLED;
     lsio_core2pad_data[57]        = '0;
     lsio_pad2core_en_n[57]        = smc_padring_pkg::ENABLED;
     boot_stall_o                  = lsio_pad2core_data[57];
 
-    // ROTATE_UPDATE strap pad; also the OCCP interface software GPIO (old 61, now 58)
+    // OCCP interface software GPIO
     lsio_interface_select_o[58] = '0;
     lsio_core2pad_en_n[58]      = smc_padring_pkg::DISABLED;
     lsio_core2pad_data[58]      = '0;
     lsio_pad2core_en_n[58]      = smc_padring_pkg::DISABLED;
 
-    // Cool Reset In (Dont drive here, just set pullup) (old 64, now 61)
+    // Cool Reset In
     lsio_interface_select_o[61] = '0;
     lsio_core2pad_en_n[61]      = smc_padring_pkg::DISABLED;
     lsio_core2pad_data[61]      = '0;
     lsio_pad2core_en_n[61]      = smc_padring_pkg::DISABLED;
 
-    // Cool Reset Out (old 65, now 62)
+    // Cool Reset Out
     lsio_interface_select_o[62] = 1'b1;
     lsio_core2pad_en_n[62]      = rst_cool_ni;
     lsio_core2pad_data[62]      = 1'b0;
@@ -442,9 +544,7 @@ module smc_padring #(
       .MAX_TRANS                  (MAX_TRANS),
       .INPUT_BY_DEFAULT           (INPUT_BY_DEFAULT),
 
-      .GPIO_INTF_REG_MAP_BASE_ADDR(GPIO_INTF_BASE_ADDR + (i * ADDRESS_MAP_SIZE_PER_GPIO)),
-      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE)),
-      .ADDRESS_MAP_SIZE_PER_GPIO  (ADDRESS_MAP_SIZE_PER_GPIO)
+      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE))
     ) u_gpio_interface (
       .clk_i                  (clk_i),
       .rst_primary_ni         (rst_primary_ni),

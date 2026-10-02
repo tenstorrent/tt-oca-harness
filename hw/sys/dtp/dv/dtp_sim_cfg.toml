@@ -38,7 +38,7 @@ common_bender_targets = [
 # DUT and simulation targets.
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/common/assert"]
-# The bench configuration package, the shared TB interfaces, the shared
+# The bench configuration package, the shared TB interfaces, the
 # protocol SVA checkers, and the flow-shared functional-coverage modules
 # (cov/sv/): this list feeds the cocotb/Verilator filelist; the
 # [frameworks.uvm.build] sources list (which replaces this one) takes the VIP
@@ -46,10 +46,13 @@ incdirs = ["hw/common/assert"]
 sources = [
   "hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv",
   "hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv",
+  "hw/sys/dtp/dv/tb/dtp_stap_host_sva.sv",
+  "hw/sys/dtp/dv/tb/dtp_axi_data_known_sva.sv",
   "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
   "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
@@ -59,6 +62,12 @@ sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
 ]
+
+# The cocotb bench needs read and write access, which keeps VCS optimizing the DUT,
+# rather than the debug access to every object cocotb's Vcs runner grants. A run that
+# dumps waves keeps cocotb's access.
+[build.vcs]
+cocotb_access = ["-debug_access+r+w"]
 
 [frameworks.cocotb]
 # Uniform flow-first layout: cocotb env/seq_lib/tests live under cocotb/.
@@ -133,7 +142,7 @@ flags = [
 # Instrument line/branch (--coverage-line), expression, and SVL user coverage
 # (the dtp_fcov cover-property points); toggle instrumentation stays off to
 # keep per-test databases lean. Replaces the simulator-default `--coverage`
-# (which enables all forms including toggle). Matches the sep/smu DUT configs.
+# (which enables all forms including toggle).
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a
 # coverage-instrumented model one group can become a translation unit of
@@ -209,11 +218,14 @@ incdirs = [
 sources = [
   "hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv",
   "hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv",
+  "hw/sys/dtp/dv/tb/dtp_stap_host_sva.sv",
+  "hw/sys/dtp/dv/tb/dtp_axi_data_known_sva.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
+  "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
   "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",

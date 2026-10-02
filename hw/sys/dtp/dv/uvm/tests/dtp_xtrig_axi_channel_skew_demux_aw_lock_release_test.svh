@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test — skewed writes across CTP and CTM registers proving the demux AW lock releases
-// (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test — skewed write pairs across CTP and CTM
+// registers proving the demux holds the second AW until the first W passes (looped runner with
+// per-pass CHK-XTRIG-* evidence, 16-pass floor).
 
 class dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test)

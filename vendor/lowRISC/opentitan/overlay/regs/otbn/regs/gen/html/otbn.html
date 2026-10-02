@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: otbn</h2>
+<h2 id="regmap-otbn">OpenTitan Big Number Accelerator</h2>
+<p>Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -27,7 +28,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>done</td><td>RW</td><td>0x0</td><td>OTBN has completed the operation.</td></tr>
+<tr><td>0</td><td>done</td><td>RW1C</td><td>0x0</td><td>OTBN has completed the operation.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>

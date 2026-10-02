@@ -107,13 +107,14 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
 
     def test_rtl_decode_matches_canonical_maps(self):
         sep_crypto = (ROOT / "hw/sys/sep/rtl/sep_crypto_pkg.sv").read_text()
-        sep_xbar = (ROOT / "hw/sys/sep/rtl/sep_local_axi_xbar_pkg.sv").read_text()
-        smc_xbar = (ROOT / "hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv").read_text()
+        sep_addrmap = (ROOT / "hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv").read_text()
+        smc_addrmap = (ROOT / "hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv").read_text()
+        smc_xbar = (ROOT / "hw/sys/smc/rtl/crossbars/smc_local_xbar.sv").read_text()
         smc_periph_xbar = (
-            ROOT / "hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar_pkg.sv"
+            ROOT / "hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv"
         ).read_text()
         smc_internal_xbar = (
-            ROOT / "hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv"
+            ROOT / "hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar.sv"
         ).read_text()
         km_intf = (ROOT / "hw/ip/key_manager/rtl/km_intf_pkg.sv").read_text()
 
@@ -125,10 +126,12 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
             )
         )
         self.assertEqual(sep["main:trng"].base, sv_hex(sep_crypto, "TRNG_BASE_ADDR"))
-        self.assertEqual(sep["main:abr"].base, sv_hex(sep_crypto, "ABR_REG_MAP_BASE_ADDR"))
+        self.assertEqual(sep["main:abr"].base, sv_hex(sep_addrmap, "SEP_TOP_ABR_BASE_ADDR"))
+        self.assertEqual(sep["main:abr"].occupied_size, sv_hex(sep_addrmap, "SEP_TOP_ABR_SIZE"))
+        self.assertIn("SEP_TOP_ABR_SIZE", sep_crypto)
         self.assertEqual(
             sep["main:entropy_pool"].base,
-            sv_hex(sep_xbar, "ENTROPY_FIFO_MAIN_BASE"),
+            sv_hex(sep_addrmap, "SEP_TOP_ENTROPY_POOL_BASE_ADDR"),
         )
 
         smc = rows_by_key(
@@ -144,36 +147,42 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         )
         self.assertEqual(
             smc["main:smc_avsbus_controller"].base,
-            sv_hex(smc_periph_xbar, "APB2AVSBUS_APB2AVSBUS_BASE"),
+            sv_hex(smc_addrmap, "SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR"),
         )
+        self.assertIn("SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR", smc_periph_xbar)
         self.assertEqual(
             smc["main:smc_cpu_ctrl"].base,
-            sv_hex(smc_xbar, "FRONT_PORT_CPU_CTRL_BASE"),
+            sv_hex(smc_addrmap, "SMC_TOP_SMC_CPU_CTRL_BASE_ADDR"),
         )
+        self.assertIn("SMC_TOP_SMC_CPU_CTRL_BASE_ADDR", smc_xbar)
         self.assertEqual(
             smc["main:oca_i3c_wrap"].base,
-            sv_hex(smc_xbar, "PERIPH_REG_OCA_I3C_BASE"),
+            sv_hex(smc_addrmap, "SMC_TOP_OCA_I3C_WRAP_BASE_ADDR"),
         )
+        self.assertIn("SMC_TOP_OCA_I3C_WRAP_BASE_ADDR", smc_xbar)
         self.assertEqual(
             smc["main:smc_mailbox"].base,
-            sv_hex(smc_internal_xbar, "MAILBOX_MAILBOX_BASE"),
+            sv_hex(smc_addrmap, "SMC_TOP_SMC_MAILBOX_BASE_ADDR"),
         )
+        self.assertIn("SMC_TOP_SMC_MAILBOX_BASE_ADDR", smc_internal_xbar)
         self.assertEqual(
-            smc["main:smc_mailbox"].aperture_size,
-            sv_hex(smc_internal_xbar, "MAILBOX_MAILBOX_SIZE"),
+            smc["main:smc_mailbox"].occupied_size,
+            sv_hex(smc_addrmap, "SMC_TOP_SMC_MAILBOX_SIZE"),
         )
         self.assertEqual(
             smc["main:smc_cluster_plic"].base,
-            sv_hex(smc_xbar, "FRONT_PORT_PLIC_BASE"),
+            sv_hex(smc_addrmap, "SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR"),
         )
+        self.assertIn("SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR", smc_xbar)
         self.assertEqual(
-            smc["main:smc_cluster_plic"].aperture_size,
-            sv_hex(smc_xbar, "FRONT_PORT_PLIC_SIZE"),
+            smc["main:smc_cluster_plic"].occupied_size,
+            sv_hex(smc_addrmap, "SMC_TOP_SMC_CLUSTER_PLIC_SIZE"),
         )
         self.assertEqual(
             smc["main:smc_cluster_clint"].base,
-            sv_hex(smc_xbar, "FRONT_PORT_CLINT_BEU_BASE"),
+            sv_hex(smc_addrmap, "SMC_TOP_SMC_CLUSTER_CLINT_BASE_ADDR"),
         )
+        self.assertIn("SMC_TOP_SMC_CLUSTER_CLINT_BASE_ADDR", smc_xbar)
 
         km = rows_by_key(
             one_view(
@@ -187,6 +196,50 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
             end = sv_hex(km_intf, f"{prefix}_END_ADDR")
             self.assertEqual(km[f"main:{node}"].base, base)
             self.assertEqual(km[f"main:{node}"].aperture_size, end - base + 1)
+
+    def test_response_cells(self):
+        def hole(row):
+            ((_label, response),) = row.hole_responses
+            return response.text
+
+        km_view = one_view(
+            "hw/ip/key_manager/regs/key_manager.rdl",
+            "hw/ip/key_manager/doc/memmap.toml",
+            "key_manager",
+        )
+        km = rows_by_key(km_view)
+        self.assertEqual(hole(km["main:kmcsr"]), "SLVERR, 0x0 / SLVERR")
+        self.assertEqual(km["main:mailbox_km"].past_response.text, "SLVERR, 0x0 / SLVERR")
+        reserved = [row for row in km_view.rows if row.kind == "reserved"]
+        self.assertTrue(reserved)
+        for row in reserved:
+            self.assertEqual(hole(row), "DECERR, 0xBADCAB1E / DECERR")
+
+        sep = rows_by_key(
+            next(
+                view
+                for view in configured_views("hw/sys/sep/doc/memmap.toml")
+                if view.name == "sep-components"
+            )
+        )
+        self.assertEqual(
+            sep["main:km_mailbox_sep"].past_response.text, "DECERR, 0xBADCAB1E / DECERR"
+        )
+
+        smc = rows_by_key(
+            next(
+                view
+                for view in configured_views(
+                    "hw/sys/smc/doc/memmap.toml",
+                    "hw/sys/smc/regs/smc.rdl",
+                    "smc_top",
+                )
+                if view.name == "smc-components"
+            )
+        )
+        self.assertEqual(hole(smc["main:smc_external"]), "Adopter-defined")
+        self.assertEqual(hole(smc["main:mmode_region"]), "Forwarded")
+        self.assertEqual(hole(smc["main:ecam_region"]), "DECERR, 0xBADCAB1E / DECERR")
 
 
 if __name__ == "__main__":

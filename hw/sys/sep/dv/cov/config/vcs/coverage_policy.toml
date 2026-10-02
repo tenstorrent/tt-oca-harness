@@ -16,7 +16,7 @@
 
 schema_version = 1
 dut = "sep"
-scope_epoch = "sep-code-cov-v2"
+scope_epoch = "sep-code-cov-v2b"
 
 # Report-page pruning only. `urg -hier` drops rows from the report but scores
 # the whole database regardless, so this entry keeps the pages aligned with the
@@ -52,5 +52,26 @@ args = ["-elfile", "{path}"]
 tool = "vcs"
 role = "exclude"
 path = "sep_ext_trng_payload_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Structurally tied inputs on the TT-owned SEP DMA wrapper. Each entry names
+# the RTL tie. Stimulus gaps stay in the denominator. Checksums come from
+# `urg -dump full_exclusions tgl` on the merged VDB, never by hand.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_unreachable_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# AXI request fields that a single internal master ties to a constant: the
+# VeeR IFU, LSU and debug masters and the secure DMA host port. Only ports that
+# exactly one of those masters drives are listed, and only fields no leaf moved.
+# Checksums come from `urg -dump full_exclusions tgl` on the merged VDB.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_master_tie_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]

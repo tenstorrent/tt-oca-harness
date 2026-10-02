@@ -61,6 +61,9 @@ class sep_backup_manifest_fail_base(sep_base_test):
     expected_error: int = 0
     # Committed OTP preload this scenario needs.
     efuse_preload: Path | None = None
+    # Raw LC_STATE that preload must carry. PROD, unless the scenario is another
+    # lifecycle posture that enforces secure boot.
+    expected_lc_raw: int = 0x1
     # Extra markers that must not appear, on top of the shared list.
     extra_forbidden: tuple[str, ...] = ()
     # ROM error code the primary must be rejected with; set it when overriding corrupt_primary().
@@ -99,9 +102,9 @@ class sep_backup_manifest_fail_base(sep_base_test):
 
         image = self.select_efuse_image(default_preload=self.efuse_preload)
         lc = image.lc_raw()
-        assert lc == 0x1, (
-            f"LC_STATE raw is 0x{lc:x}, expected 0x1 (PROD): secure boot must be "
-            f"enforced or the crypto verdict under test is never reached"
+        assert lc == self.expected_lc_raw, (
+            f"LC_STATE raw is 0x{lc:x}, expected 0x{self.expected_lc_raw:x}: secure "
+            f"boot must be enforced or the crypto verdict under test is never reached"
         )
         assert image.field_int("SBOOT_DIS") & 0x1 == 0, (
             "SBOOT_DIS is set, which disables the entire crypto chain"

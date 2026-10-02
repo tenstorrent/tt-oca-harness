@@ -21,7 +21,6 @@
 
 #include "oca_platform.h"
 
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -225,7 +224,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
     }
 
     uint8_t secret[OCA_CLASS_KEY_BYTES];
-    fuse_read_bytes(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, secret, OCA_CLASS_KEY_BYTES);
+    fuse_read_bytes(SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, secret, OCA_CLASS_KEY_BYTES);
 
     // An erased CLASS_KEY bank is all zeroes. Deriving from it would produce a
     // deterministic key and "successfully" decrypt to garbage, which then fails
@@ -309,10 +308,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 // nothing here verifies a PQC signature, so authorizing one would hand a key to
 // a verifier that cannot check it.
 //
-// NOTE the addresses are the generated symbols, not the previous ROM's
-// CHIPLET_PUBK_REVOKE_BASE + 0x100 / + 0x120 arithmetic, which landed on
-// SPI_PHY_DLL_SLAVE and the middle of CHIPLET_PUBK_HASH0. That path was never
-// exercised -- only ROM slot 0 is used by any test -- so the bug sat latent.
+// The fuse-bank addresses are the generated SEP_TOP_SEP_EFUSE_MAP_* symbols.
 // The RDL's description text spans the full octets, [7:0] and [15:8]. This ROM
 // narrows each: the top two slots of both ROM octets are reserved, so the
 // classical band is [5:0] and the PQC band is [13:8]. The narrowing lives here
@@ -328,8 +324,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 
 // Low 32 flags of a 16-byte OCA flag field, for the console echoes below.
 static uint32_t oca_flags_low32(const uint8_t *f) {
-    return (uint32_t)f[0] | ((uint32_t)f[1] << 8) | ((uint32_t)f[2] << 16) |
-           ((uint32_t)f[3] << 24);
+    return (uint32_t)f[0] | ((uint32_t)f[1] << 8) | ((uint32_t)f[2] << 16) | ((uint32_t)f[3] << 24);
 }
 
 // Resolve a classical OTP key slot to its digest bank. Returns false for a slot
@@ -337,23 +332,23 @@ static uint32_t oca_flags_low32(const uint8_t *f) {
 static bool otp_key_digest_addr(uint32_t slot, uint32_t *out_addr) {
     switch (slot) {
     case 16u:
-        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR;
+        *out_addr = SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR;
         return true;
     case 17u:
-        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR;
+        *out_addr = SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR;
         return true;
     case 20u:
-        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_BASE_ADDR;
+        *out_addr = SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_BASE_ADDR;
         return true;
     case 22u:
-        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR;
+        *out_addr = SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR;
         return true;
     // SIP_PUBK_HASH1 is a real bank in the RDL (@0x260) but the VP eFuse model
     // has no register there yet, so a run selecting slot 24 reads reserved space
     // rather than a provisioned digest. Mapped for correctness against silicon;
     // not exercisable on sep-vp until the model is re-synced.
     case 24u:
-        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_BASE_ADDR;
+        *out_addr = SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_BASE_ADDR;
         return true;
     default:
         return false;
@@ -510,13 +505,13 @@ static oca_hw_result_t plat_get_identity_bytes(oca_id_kind_t field, uint8_t out[
     }
     switch (field) {
     case OCA_ID_CHIPLET:
-        base = OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_BASE_ADDR;
+        base = SEP_TOP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_BASE_ADDR;
         break;
     case OCA_ID_PACKAGE:
-        base = OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SIP_ID_BASE_ADDR;
+        base = SEP_TOP_SEP_EFUSE_MAP_SEP_SIP_ID_BASE_ADDR;
         break;
     case OCA_ID_SYSTEM:
-        base = OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SYS_ID_BASE_ADDR;
+        base = SEP_TOP_SEP_EFUSE_MAP_SEP_SYS_ID_BASE_ADDR;
         break;
     default:
         return OCA_HW_ERROR;
@@ -565,8 +560,6 @@ static oca_hw_result_t plat_get_lifecycle_state(oca_lifecycle_level_t level,
         *out_state = OCA_LIFECYCLE_RMA_SIP;
         break;
     case LC_STATE_RMA_CHIPLET_LO:
-    case 0x5u:
-    case 0x6u:
     case LC_STATE_RMA_CHIPLET_HI:
         *out_state = OCA_LIFECYCLE_RMA_CHIPLET;
         break;
@@ -599,12 +592,30 @@ static oca_hw_result_t plat_get_version(oca_version_level_t level, uint16_t *out
 
 static oca_secure_bool_t plat_is_secure_boot_active(void) {
     uint32_t lc = lc_read_state();
-    return lc_state_enforces_secure_boot(lc) ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
+    if (lc_state_enforces_secure_boot(lc)) {
+        return OCA_SECURE_TRUE;
+    }
+    // A TEST_DEV part with chiplet debug disabled enforces secure boot, so a
+    // locked debug posture cannot be bypassed by loading unsigned code. The RMA
+    // states stay manifest-optional whatever the disable vectors say.
+    //
+    // Latched at [S18] so the answer cannot move under the validator's re-checks.
+    if (lc == LC_STATE_TEST_DEV && chiplet_debug_disabled()) {
+        return OCA_SECURE_TRUE;
+    }
+    return OCA_SECURE_FALSE;
 }
 
 static oca_secure_bool_t plat_is_secure_boot_disabled(void) {
-    // Read directly so the result does not depend on callback invocation order.
-    return lc_read_sboot_dis() ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
+    // The value [S18] latched, not a fresh read of the shadow. rsvd[31:1] is
+    // driven from the fuse array, so a whole-word test here would let any of 31
+    // bits disable enforcement while bl0_state and the boot measurement -- which
+    // mask -- recorded that it had not been disabled.
+    //
+    // Latched rather than re-read so this answer cannot move mid-validation:
+    // the library rejects a determination that changes under it, and the [S18]
+    // sample is the one taken before any untrusted input was staged.
+    return sboot_dis_disabled() ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
 }
 
 // -- device-stored secure-boot state (reads only) ---------------------------
@@ -625,7 +636,7 @@ static oca_result_t plat_get_root_key_revocation(oca_key_algorithm_t algo, uint8
     // CHIPLET_PUBK_REVOKE is a single 32-bit bank (next base is 4 bytes on), so
     // only the low 32 of the 128 revocation bits are backed by fuses here. The
     // rest stay zero.
-    fuse_read_bytes(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR, out, 4u);
+    fuse_read_bytes(SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR, out, 4u);
     simputshex32("PUBK_REVOKE=", oca_flags_low32(out));
     return OCA_OK;
 }
@@ -642,7 +653,7 @@ static oca_result_t plat_get_security_version(uint8_t out[16]) {
     // BL1_VERSION is a 32-byte bank; only its low 16 bytes map onto OCA's
     // 128-bit field. Anything set above bit 127 cannot be expressed and is not
     // read.
-    fuse_read_bytes(OCH_SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR, out, 16u);
+    fuse_read_bytes(SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR, out, 16u);
 
     // The device's side of the rollback comparison. The verdict is a single
     // result code, so which flags the device holds is not recoverable from it.

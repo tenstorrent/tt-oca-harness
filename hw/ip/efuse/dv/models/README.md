@@ -23,7 +23,7 @@ Beyond the bank storage itself, it adds three simulation-only conveniences:
   (`+{sep,smc}_efuse_prog_fail_count=<N>`) or ~N% of writes at random
   (`+{sep,smc}_efuse_prog_fail_percent=<N>`, seeded by
   `+{sep,smc}_efuse_prog_fail_seed`).
-- **`IsSmcInstance` parameter**: selects the `sep_`/`smc_` plusarg prefix and
+- **`IS_SMC_INSTANCE` parameter**: selects the `sep_`/`smc_` plusarg prefix and
   log tag above so one model serves either macro instance; the bank itself is
   otherwise identical for both.
 

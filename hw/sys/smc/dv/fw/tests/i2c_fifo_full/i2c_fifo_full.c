@@ -70,8 +70,8 @@
  * the 64-entry depth on purpose -- see the scope note in the file header. */
 #define RX_READ_LEN 8u
 #define ACQ_WRITE_LEN 8u
-/* With CTRL.ACQ_START_STOP_EN set the target FSM pushes an AcqStart entry
- * carrying the address byte and an AcqStop entry around the payload, so a write
+/* With CTRL.ACQ_START_STOP_EN set the target FSM pushes an ACQ_START entry
+ * carrying the address byte and an ACQ_STOP entry around the payload, so a write
  * of N bytes lands N + 2 entries (same accounting as i2c_p0_fifo.c:65). */
 #define ACQ_EXPECTED_ENTRIES (1u + ACQ_WRITE_LEN + 1u)
 
@@ -84,13 +84,14 @@
 /* Poll bounds, in loop iterations.
  *
  * Sized from measured cost, not guessed. A single-register poll iteration costs
- * 0.44-1.15 us of simulation in this testbench (the measurement recorded on
- * I2C_TIMEOUT_DEFAULT in i2c_opentitan.h:88-105). Standard mode off a 10 ns core
+ * 0.44-1.15 us of simulation at a 5 ns core clock (the measurement recorded on
+ * I2C_TIMEOUT_DEFAULT in i2c_opentitan.h:88-105), so 0.11-0.29 us at the
+ * 1.25 ns core clock the bench runs. Standard mode off the 5 ns peripheral
  * clock puts SCL at 100 kHz, i.e. ~10 us per bit and ~90 us per byte, so the
  * longest wait below -- an 8-byte transfer plus its address and STOP -- is
  * ~0.9 ms.
  *
- * 4000 iterations is ~1.8-4.6 ms: 2-5x that worst case, and it expires well
+ * 16000 iterations is ~1.8-4.6 ms: 2-5x that worst case, and it expires well
  * inside the testbench's 20 ms completion bound
  * (tb_wrap_cocotb/tests/smc_i2c_fifo_full.py:97), so the diagnostics behind
  * these bounds are reachable instead of being preempted by the harness.
@@ -99,8 +100,8 @@
  * (~90-230 ms), an order of magnitude past the harness bound, so a failure
  * branch guarded by it can never print.
  */
-#define XFER_POLL_BOUND 4000u
-#define IDLE_POLL_BOUND 4000u
+#define XFER_POLL_BOUND 16000u
+#define IDLE_POLL_BOUND 16000u
 
 /**
  * @brief Enable I2C Wrapper Control (LEVEL 1)
@@ -194,7 +195,7 @@ static int test_fmt_fifo_full_empty(uint32_t idx) {
     /* Stop the controller FSM before filling, so the FMT FIFO has exactly one
      * producer and no consumer and every level below is the store count.
      *
-     * The FSM leaves Idle as soon as the FMT FIFO is non-empty and the bus is
+     * The FSM leaves IDLE as soon as the FMT FIFO is non-empty and the bus is
      * free (i2c_controller_fsm.sv:672-676) -- a START flag is not required -- so
      * with the controller enabled it starts clocking these filler bytes onto the
      * bus and pops entries out from under the fill. It only failed to race the
@@ -304,7 +305,7 @@ static int test_fmt_fifo_full_empty(uint32_t idx) {
  * @brief Start a controller read without popping RDATA.
  *
  * Both FMT entries are written back-to-back, as i2c_controller_read() does
- * (i2c_opentitan.c:846-870): the OpenTitan controller FSM drops back to Idle
+ * (i2c_opentitan.c:846-870): the OpenTitan controller FSM drops back to IDLE
  * when fmt_fifo_depth_i == 1 (i2c_controller_fsm.sv:960-961), so the READ entry
  * has to be queued behind the address entry before the FSM pops the first one.
  *
@@ -676,7 +677,7 @@ static int test_acq_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
     i2c__CTRL_t target_ctrl = {.w = read_reg(I2C_REG(tgt_idx, CTRL))};
     if (!target_ctrl.f.ACQ_START_STOP_EN) {
         simputs("  ERROR: CTRL.ACQ_START_STOP_EN is 0 -- the entry count below assumes the\n");
-        simputs("         AcqStart and AcqStop entries are pushed\n");
+        simputs("         ACQ_START and ACQ_STOP entries are pushed\n");
         return I2C_ERROR;
     }
 
@@ -744,7 +745,7 @@ static int test_acq_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
     /* Both sides must be finished before the reset, for the same reason as the RX
      * leg: with the controller still clocking bytes into the target, "ACQLVL is 0
      * after ACQRST" would be a race against the next entry rather than a property
-     * of ACQRST. The AcqStop entry counted above already says the STOP reached
+     * of ACQRST. The ACQ_STOP entry counted above already says the STOP reached
      * the target, so these two waits are short; they also catch a controller that
      * halted instead of completing the transaction. */
     ret = i2c_controller_wait_idle(ctrl_idx, IDLE_POLL_BOUND);
@@ -823,7 +824,7 @@ int main(void) {
 
     // Compute timing parameters
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};

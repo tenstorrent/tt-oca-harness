@@ -19,7 +19,8 @@ LINT_PATH ?= $(OCAH_VERIBLE_PATHS)
 FORMAT_PATH ?= $(OCAH_VERIBLE_PATHS)
 endif
 
-# parameter-name-style is deferred to issue #1051. line-length is disabled
+# parameter-name-style checks parameter names only; localparam naming is
+# deferred to issue #1051. line-length is disabled
 # outright: the port/parameter/net alignment mode below (preserve) never
 # wraps an aligned declaration regardless of its width, and Verible never
 # reflows comment text, so most violations are structurally unfixable; the
@@ -36,7 +37,7 @@ endif
 # sep_no_tcm_preload, ...), which is exactly what $test$plusargs is for -
 # none of them extract a value, so the rule's suggested $value$plusargs
 # would be wrong for all of them.
-OCAH_LINT_VERIBLE_RULES ?= -parameter-name-style,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
+OCAH_LINT_VERIBLE_RULES ?= parameter-name-style=parameter_style:ALL_CAPS;localparam_style:,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
 OCAH_VERIBLE_EMPTY :=
 OCAH_VERIBLE_SPACE := $(OCAH_VERIBLE_EMPTY) $(OCAH_VERIBLE_EMPTY)
 OCAH_VERIBLE_COMMA := ,
@@ -53,9 +54,9 @@ OCAH_SV_DECLARATION_SPACING_CHECK := $(OCAH_ROOT)/scripts/ci/check_sv_declaratio
 OCAH_VERIBLE_CONTEXT_EXCLUDES := \
 	hw/common/axi/axi_lite_to_tlul.sv \
 	hw/common/axi/tlul_to_axi_lite.sv \
-	hw/common/och_prim/rtl/prim_jtag_scan_reg.sv \
-	hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv \
-	hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv \
+	hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv \
+	hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext.sv \
+	hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv \
 	hw/common/tlul/rtl/tlul_adapter_host.sv \
 	hw/common/tlul/rtl/tlul_adapter_reg.sv \
 	hw/common/tlul/rtl/tlul_adapter_sram.sv \
@@ -71,17 +72,16 @@ OCAH_VERIBLE_CONTEXT_EXCLUDES := \
 # formatter cannot process or reparse reliably. Slang compilation remains
 # authoritative for their syntax.
 OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
-	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
 	hw/sys/dtp/dv/tb/tb_top.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/smc/dv/tb/tb_top.sv \
+	hw/sys/smu/dv/tb/tb_wrapper_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv \
 	hw/top/smc_ip_integration.sv
 
 # Lint parses these three conditional-header/integration files even though the
 # formatter's output reparse does not. Keep their lint findings visible.
 OCAH_VERIBLE_LINT_PARSER_EXCLUDES := \
-	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv
 
@@ -140,8 +140,8 @@ ocah_verible_check_files = @$(call ocah_verible_find,$(1),$(2)) -print -quit 2>/
 ## Lint SystemVerilog style with verible-verilog-lint (no autofix; hand-fix
 ## reported violations). Requires `verible-verilog-lint` on PATH; otherwise
 ## install it or run via `./scripts/docker-run.sh run-here make lint-sv-verible`.
-## parameter-name-style is deferred to issue #1051; line-length is disabled
-## outright (see OCAH_LINT_VERIBLE_RULES above).
+## parameter-name-style leaves localparam naming to issue #1051; line-length
+## is disabled outright (see OCAH_LINT_VERIBLE_RULES above).
 ## @param LINT_PATH=hw/sys/smu Optional path(s) to scope the lint; default hw vendor
 ## @param BLOCK=smu Shorthand for the above (LINT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-lint-sv-verible

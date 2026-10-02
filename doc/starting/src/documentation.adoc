@@ -46,6 +46,26 @@ section, or section deeper than the contents or bookmark limit fails the build.
 Include new maps under their owning block and keep integration reference models
 labelled as such.
 
+The TRM builds linked lists of figures and tables, including generated
+register tables. Prefer an explicit block title and stable anchor for each
+authored figure or table, and reference that anchor where the explanatory text needs it.
+Use automatic cross-reference text instead of hard-coded figure or table
+numbers. Untitled figures use their alternative text; untitled tables use
+their containing section and, for register tables, the table's purpose.
+Do not add automatic section-local figure/table lists or prose that only repeats
+a caption. Keep useful explanations and explicit cross-references.
+
+End each block reference with "Memory Map and Register Reference", containing
+"Memory Map" (address placement and access rules) and "Detailed Register Map"
+(register definitions or links to the owning blocks). Keep subsystem summaries
+and peripheral register ownership distinct.
+
+`tools/doc/block_catalog.rb` numbers and indexes blocks across the PDF book.
+The Antora extensions `tools/doc/block-captions.js` and
+`tools/doc/block-indexes.js` number blocks within each TRM topic and assemble
+the HTML indexes. Keep these extensions enabled in both the standalone and
+combined playbooks. Other documentation products retain their own captions.
+
 === Updating documentation
 
 Document updates are made by pushing changes to `main`.
@@ -56,7 +76,7 @@ The CI process deploys to the published site on all pushes to `main` (see `.gith
 
 Documentation may also be built locally for development. Follow the instructions xref:setup.adoc#package-dependencies[here] to install Asciidoctor and Antora.
 
-Alternatively, to avoid the need to install local tools, the toolchain is available as container images - install `podman` or `docker` as described xref:setup.adoc#containers[here].
+Alternatively, to avoid the need to install local tools, the toolchain is available as container images - install `podman` or `docker` as described xref:setup.adoc#container-engine-setup[here].
 
 The two commands below may be executed from the root of the checked out repository.
 They generate the built material in subfolders under each book.
@@ -68,7 +88,7 @@ make doc-all-pdf
 
 # OR Container workflow
 scripts/docker-run.sh doc-html all    # HTML site → doc/XXXX/_build/html_antora/
-scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/XXXX/dist/ocah-trm.pdf
+scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/XXXX/_build/latex/ocah-trm.pdf
 ```
 
 Once the documents are built they can be staged with the command below.

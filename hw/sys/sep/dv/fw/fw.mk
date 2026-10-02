@@ -12,7 +12,9 @@ SEP_BOOTROM_DIR := $(abspath $(FW_DIR)/../../bootrom/prod)
 include $(FW_DIR)/../../../../common/dv/fw/preamble.mk
 
 # Runtime sources. Tests supply their own main() and link against libsep.a.
-FW_C_SRCS   := $(wildcard $(FW_DIR)/drivers/*.c)
+# fw_build_id.c is outside drivers/. Keep it explicit so the same source
+# inventory works with the companion checkout.
+FW_C_SRCS   := $(wildcard $(FW_DIR)/drivers/*.c) $(FW_DIR)/fw_build_id.c
 FW_ASM_SRCS := $(wildcard $(FW_DIR)/startup/*.s $(FW_DIR)/startup/*.S $(FW_DIR)/drivers/*.S)
 FW_INCLUDES := -I$(FW_DIR)/include
 
@@ -41,45 +43,33 @@ FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c
 # lives here and each app is produced by a recursive make on common_otbn's
 # otbn_app.mk - the same entry point upstream uses for its own multi-app test.
 FW_BUILD_DIR    ?= $(FW_DIR)/build
+
+# Build identity. fw_src_digest.py hashes every source directory the images can
+# draw from and writes the digest to fw_build_id.h, touching the header only
+# when the digest changes. fw_build_id.c compiles it into each image as
+# "FW-BUILD-ID:<digest>"; sep_base_test reads it back out of the loaded TCM
+# image and compares it with the digest of the committed tree
+# (CHK-FW-IDENTITY), so an image built from other source fails a logged check.
+FW_BUILD_ID_H := $(FW_BUILD_DIR)/fw_build_id.h
+FW_SRC_DIGEST := $(shell python3 "$(FW_DIR)/fw_src_digest.py" --write-header "$(FW_BUILD_ID_H)" "$(OCAH_ROOT)")
+ifeq ($(strip $(FW_SRC_DIGEST)),)
+$(error fw_src_digest.py produced no digest; the firmware build identity is required)
+endif
+FW_INCLUDES += -I$(FW_BUILD_DIR)
+
 OTBN_APP_MK     := $(FW_DIR)/tests/common_otbn/otbn_app.mk
 OTBN_BUILD_ROOT := $(FW_BUILD_DIR)/otbn
 
-# Per app: the test directory whose otbn_src/ holds the sources, and the
-# sources themselves. Sources present in otbn_src/ but absent here are not
-# linked (the p256 SCA variants, the RSA keygen entry points).
-OTBN_APP_DIR_otbn_smoke            := otbn_smoke_test
-OTBN_APP_SRCS_otbn_smoke           := otbn_smoke.s
-OTBN_APP_DIR_otbn_loops            := otbn_loops_test
-OTBN_APP_SRCS_otbn_loops           := otbn_loops.s
-OTBN_APP_DIR_otbn_sep_integration  := otbn_sep_integration_test
-OTBN_APP_SRCS_otbn_sep_integration := otbn_sep_integration.s
-OTBN_APP_DIR_p256_ecdsa            := otbn_p256_verify_test
-OTBN_APP_SRCS_p256_ecdsa           := p256_base.s p256_isoncurve.s p256_shared_key.s \
-                                      p256_sign.s p256_verify.s run_p256.s
+# The RSA app remains open because the production boot ROM consumes it.
 OTBN_APP_DIR_rsa_3072_app          := otbn_rsa_3072_verify_test
 OTBN_APP_SRCS_rsa_3072_app         := gcd.s modexp.s montmul.s mul.s rsa_keygen.s \
                                       rsa_modinv_f4.s rsa_primality.s run_rsa_mem.s run_rsa.s
-# The software-error test needs one app per error class, each a single source.
-OTBN_ERROR_APPS := bad_data_addr bad_insn_addr call_stack illegal_insn loop_error
-$(foreach a,$(OTBN_ERROR_APPS),$(eval OTBN_APP_DIR_$(a) := otbn_sw_error_test))
-$(foreach a,$(OTBN_ERROR_APPS),$(eval OTBN_APP_SRCS_$(a) := $(a).s))
 
-OTBN_APPS := otbn_smoke otbn_loops otbn_sep_integration p256_ecdsa rsa_3072_app \
-             $(OTBN_ERROR_APPS)
+OTBN_APPS := rsa_3072_app
 
-# Which apps each test links. otbn_fw_control_test drives the same smoke image
-# as otbn_smoke_test; otbn_plic_test uses none.
-OTBN_TEST_APPS_otbn_smoke_test           := otbn_smoke
-OTBN_TEST_APPS_otbn_fw_control_test      := otbn_smoke
-OTBN_TEST_APPS_otbn_loops_test           := otbn_loops
-OTBN_TEST_APPS_otbn_sep_integration_test := otbn_sep_integration
-OTBN_TEST_APPS_otbn_p256_verify_test     := p256_ecdsa
 OTBN_TEST_APPS_otbn_rsa_3072_verify_test := rsa_3072_app
-OTBN_TEST_APPS_otbn_sw_error_test        := $(OTBN_ERROR_APPS)
 
-OTBN_TESTS := otbn_smoke_test otbn_fw_control_test otbn_loops_test \
-              otbn_sep_integration_test otbn_p256_verify_test \
-              otbn_rsa_3072_verify_test otbn_sw_error_test
+OTBN_TESTS := otbn_rsa_3072_verify_test
 
 ocah_otbn_app_c   = $(OTBN_BUILD_ROOT)/$(1)/$(1)_otbn.c
 ocah_otbn_app_h   = $(OTBN_BUILD_ROOT)/$(1)/$(1)_otbn.h
@@ -99,18 +89,8 @@ FW_TEST_EXTRA_CFLAGS += \
 # Zb*-free FW_ARCH default, because GCC emits sh2add/rev8 from plain C and those
 # trap as illegal instructions on this EL2 config.
 FW_TEST_BITMANIP := \
-  ap_stee_output_remap_test bl1_pass_test hello_world \
-  nmi_sanity_test \
-  otbn_fw_control_test otbn_loops_test otbn_p256_verify_test otbn_plic_test \
-  otbn_rsa_3072_verify_test otbn_sep_integration_test otbn_smoke_test \
-  otbn_sw_error_test rom_no_tcm_preload_mem_init sep_aes_back_to_back_test \
-  sep_inbound_filter_decerr sep_smc_notify \
-  sram_perf_test uart \
-  wdt_bark_bite_order_test wdt_bite_before_bark_test wdt_cdc_sync_test \
-  wdt_cfg_lock_test wdt_count_overflow_test wdt_intr_clear_test wdt_intr_test \
-  wdt_lc_escalate_test wdt_pause_sleep_test wdt_pet_reset_test \
-  wdt_poll_consistency_test wdt_sanity_test wdt_stress_all_test \
-  wdt_threshold_jump_test wdt_wkup_timer_test
+  bl1_pass_test hello_world nmi_sanity_test otbn_rsa_3072_verify_test \
+  rom_no_tcm_preload_mem_init sep_smc_notify uart
 # Deferred: toolchain.mk, which defines FW_ARCH_BITMANIP, is included later.
 $(foreach t,$(FW_TEST_BITMANIP), \
   $(eval FW_TEST_IMAGE_CFLAGS_$(t) += -march=$$(FW_ARCH_BITMANIP)))
@@ -171,7 +151,7 @@ include $(OCAH_ROOT)/hw/common/dv/fw/compile.mk
 # both the .c and the .h.
 define ocah_otbn_app_rule
 $(call ocah_otbn_app_c,$(1)) $(call ocah_otbn_app_h,$(1)) &: \
-    $(call ocah_otbn_app_src,$(1)) $(OTBN_APP_MK) \
+    $(call ocah_otbn_app_src,$(1)) $(OTBN_APP_MK) $(FW_BUILD_ID_H) \
     $(FW_DIR)/tests/common_otbn/generate_otbn_c.py \
     $(FW_DIR)/tests/common_otbn/otbn_app.ld
 	+$$(MAKE) -f $(OTBN_APP_MK) \
@@ -184,6 +164,14 @@ $(call ocah_otbn_app_c,$(1)) $(call ocah_otbn_app_h,$(1)) &: \
 	  otbn-app
 endef
 $(foreach a,$(OTBN_APPS),$(eval $(call ocah_otbn_app_rule,$(a))))
+
+# Every object depends on the identity header, which changes exactly when the
+# source digest does. A source change therefore rebuilds all of them -- also an
+# edit whose timestamp make cannot see -- so the digest in an image never sits
+# beside an object compiled from other source.
+$(FW_LIB_OBJS) $(FW_ENTRY_OBJS) \
+$(foreach t,$(FW_TEST_NAMES),$(foreach i,$(call ocah_fw_test_images,$(t)),$(FW_TEST_OBJS_$(i)))): \
+    $(FW_BUILD_ID_H)
 
 # The test's own translation unit includes the generated header, and on a clean
 # build there is no depfile yet to say so; without this a parallel build can

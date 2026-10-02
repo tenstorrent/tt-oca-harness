@@ -67,6 +67,8 @@ DMI_OP_NOP = 0
 DMI_OP_READ = 1
 DMI_OP_WRITE = 2
 DMI_STATUS_OK = 0
+# RISC-V Debug Specification 0.13, "Debug Module Registers": dmcontrol at 0x10
+# with dmactive in bit 0, and dmstatus at 0x11 with version in bits 3:0.
 DMCONTROL_ADDR = 0x10
 DMCONTROL_DMACTIVE = 0x1
 DMSTATUS_ADDR = 0x11
@@ -144,6 +146,7 @@ class smu_dtp_sep_dm_dmi_test_seq:
         self.s2_ok = False
         self.s3_ok = False
         self.dmstatus = 0
+        self.jtag: OcahJtagMasterSequence | None = None
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -240,6 +243,7 @@ class smu_dtp_sep_dm_dmi_test_seq:
         await self._require_debug_open(sb)
         raw = make_smu_jtag_tap(self.dut, self.cfg.jtag_period_ns)
         jtag = OcahJtagMasterSequence(raw)
+        self.jtag = jtag
         await jtag.reset_to_tlr()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
@@ -307,7 +311,7 @@ class smu_dtp_sep_dm_dmi_test_seq:
         _, data, status = unpack_dmi(captured)
         version = data & 0xF
         self._log(
-            f"CHK-SEP-DMI-DMSTATUS dmi=0x{captured:x} dmstatus=0x{data:08x} "
+            f"CHK-SEP-DMI-DMSTATUS observed dmi=0x{captured:x} dmstatus=0x{data:08x} "
             f"status={status} version={version}"
         )
         sb.expect_eq(

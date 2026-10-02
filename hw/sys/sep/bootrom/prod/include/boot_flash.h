@@ -5,14 +5,13 @@
  * Boot flash transport shim.
  *
  * The manifest loader reads the manifest and payload from flash without caring
- * which controller is fitted. This header selects the transport at build time
- * (BOOT_SPI_CONTROLLER_OT) and presents one small interface in flash-offset
+ * which SPI controller is fitted. This header selects the controller at build
+ * time (BOOT_SPI_CONTROLLER_OT) and presents one small interface in flash-offset
  * terms:
  *   - OpenTitan SPI host (default): no memory-mapped window; a read is a
  *     command/FIFO transfer that streams into SRAM.
- *   - Memory-mapped flash (XIP window): a read is a secure-DMA copy from
- *     SEP_XIP_BASE + offset. The controller bring-up is the sep_spi.h hooks,
- *     which an integrator overrides.
+ *   - XIP controller: flash is memory-mapped; a read is a DMA copy from
+ *     SEP_SPI_BASE + offset.
  *
  * Freestanding ROM: no libc, no heap.
  */
@@ -23,7 +22,7 @@
 #include <stdint.h>
 
 #include "boot_straps.h"
-#include "sep.h"    /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
+#include "sep.h"    /* SEP_TOP_SEP_SRAM_BASE_ADDR / SEP_TOP_SEP_SRAM_SIZE   */
 #include "harden.h" /* fault-injection value launder (harden_u32)  */
 
 /*
@@ -33,15 +32,13 @@
  * Flash carries two independent boot slots, so a primary that fails validation
  * -- bad signature, revoked key, corrupt payload -- can be recovered from a
  * complete second copy. The `rotate_update` strap swaps which is tried first.
- * Each manifest begins at offset 0x1000 within its slot. The preceding bytes
- * are reserved for transport metadata; a memory-mapped controller's driver can
- * read a flash controller configuration record there, while the OpenTitan host
- * ignores them.
- * The manifest's payload_offset field locates the payload after the manifest.
+ * A slot opens with the SPI configuration TLV an XIP controller driver reads
+ * during bring-up; the manifest follows it, and the manifest's own
+ * payload_offset field locates the payload after that.
  *
- *   slot 0   +0x00000  reserved (controller configuration record)
+ *   slot 0   +0x00000  SPI configuration TLV
  *            +0x01000  manifest, then payload   <- PRIMARY_MANIFEST_OFFSET
- *   slot 1   +0x00000  reserved (controller configuration record)
+ *   slot 1   +0x00000  SPI configuration TLV
  *            +0x01000  manifest, then payload   <- BACKUP_MANIFEST_OFFSET
  *
  * BOOT_SLOT_SIZE is the knob. It is the stride from one slot to the next, and
@@ -50,9 +47,10 @@
  * slots on a smaller part.
  *
  * Its ceiling is SEP SRAM: the ROM stages a slot's manifest and payload into
- * SRAM to authenticate them, so a slot bigger than OCH_SEP_TOP_SEP_SRAM_SIZE
- * has space the ROM can never consume. The default 0x40000-byte slot takes that
- * ceiling exactly. The assertions below are the hard constraints.
+ * SRAM to authenticate them, so a slot bigger than SEP_TOP_SEP_SRAM_SIZE
+ * has space the ROM can never consume. The default takes that ceiling exactly,
+ * which is the reasoning behind the historical 0x40000 stride. The assertions
+ * below are the only hard constraints; everything else is policy.
  *
  * Changing this moves no image by itself. The producer places the bundles --
  * configs/oca_*_image.yaml, keys manifest_offset / payload_offset / total_size
@@ -67,7 +65,7 @@
 #define BOOT_SLOT_MANIFEST_OFFSET 0x1000u
 #endif
 
-_Static_assert(BOOT_SLOT_SIZE <= (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE,
+_Static_assert(BOOT_SLOT_SIZE <= (uint32_t)SEP_TOP_SEP_SRAM_SIZE,
                "BOOT_SLOT_SIZE exceeds SEP SRAM; the ROM stages manifest+payload into SRAM, so "
                "a slot cannot usefully be larger than it");
 _Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
@@ -82,18 +80,22 @@ _Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
 
 #if BOOT_SPI_CONTROLLER_OT
 #include "sep_ot_spi.h"
-/* RX-FIFO drain method: 0 = secure DMA (default), 1 = CPU programmed I/O.
- * Selected at build time. */
+/* RX-FIFO drain method for the OpenTitan controller: 0 = secure DMA (default),
+ * 1 = CPU programmed I/O. Selected at build time. */
 #ifndef BOOT_OT_SPI_USE_PIO
 #define BOOT_OT_SPI_USE_PIO 0
 #endif
 #else
 #include "sep_spi.h"
 #include "sep_dma.h"
-/* Memory-mapped external flash (XIP) window, matching sep_dma.c. */
-#define SEP_XIP_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
-#define SEP_XIP_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
-_Static_assert(2u * BOOT_SLOT_SIZE <= SEP_XIP_SIZE,
+/* XIP window (memory-mapped flash), matching sep_dma.c. */
+#ifndef SEP_SPI_BASE
+#define SEP_SPI_BASE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
+#endif
+#ifndef SEP_SPI_MAX_SIZE
+#define SEP_SPI_MAX_SIZE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
+#endif
+_Static_assert(2u * BOOT_SLOT_SIZE <= SEP_SPI_MAX_SIZE,
                "both boot slots must fit in the XIP window");
 #endif
 
@@ -130,16 +132,16 @@ static inline uint32_t boot_flash_init(const struct boot_straps *straps, uint16_
  * Returns 0 on success or a transport status code. */
 static inline uint32_t boot_flash_read(uint32_t dst, uint32_t flash_off, uint32_t len) {
 #if BOOT_SPI_CONTROLLER_OT
-    /* The RX FIFO drains either with the secure DMA (BOOT_OT_SPI_USE_PIO=0,
-     * default) or by CPU programmed I/O. Both read the same bytes; the choice
-     * trades DMA offload against a simpler CPU-driven copy. */
+    /* The OpenTitan controller can drain the RX FIFO either with the secure DMA
+     * (BOOT_OT_SPI_USE_PIO=0, default) or by CPU programmed I/O. Both read the
+     * same bytes; the choice trades DMA offload against a simpler CPU-driven copy. */
 #if BOOT_OT_SPI_USE_PIO
     return ot_spi_flash_read(flash_off, dst, len);
 #else
     return ot_spi_flash_read_dma(flash_off, dst, len);
 #endif
 #else
-    return sep_dma_copy(dst, SEP_XIP_BASE + flash_off, len);
+    return sep_dma_copy(dst, (uint32_t)SEP_SPI_BASE + flash_off, len);
 #endif
 }
 
@@ -168,8 +170,8 @@ static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32
      * ever be reduced; the two are equal at the default geometry, where a slot is
      * exactly one SRAM in size. */
     const uint32_t slot_span = (uint32_t)BOOT_SLOT_SIZE - (uint32_t)BOOT_SLOT_MANIFEST_OFFSET;
-    const uint32_t sram_base = (uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
-    const uint32_t sram_size = (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE;
+    const uint32_t sram_base = (uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR;
+    const uint32_t sram_size = (uint32_t)SEP_TOP_SEP_SRAM_SIZE;
 
     bool flash_ok_1 =
         boot_flash_range_within(flash_off, len, (uint32_t)PRIMARY_MANIFEST_OFFSET, slot_span) ||

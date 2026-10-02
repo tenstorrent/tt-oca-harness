@@ -1,46 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//----------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
-// drbg_axil64_lane_adapter
-//
-// 64-bit AXI-Lite single-lane adapter used by the DRBG wrapper.
-//----------------------------------------------------------
 
-/**
- * @file drbg_axil64_lane_adapter.sv
- * @brief 64-bit AXI-Lite single-lane adapter used by the DRBG wrapper.
- *
- * @details Filters 64-bit AXI-Lite accesses down to supported aligned
- *          single-lane 32-bit semantics before forwarding them into the
- *          existing 32-bit AXI-Lite to TL-UL bridge. Unsupported multi-lane or
- *          unaligned accesses return AXI `SLVERR` and emit no downstream
- *          request.
- */
+// Filter 64-bit AXI-Lite traffic down to aligned single-lane 32-bit accesses.
+//
+// Forwards supported beats into the existing 32-bit AXI-Lite to TL-UL bridge, one
+// transaction at a time; a read accepted in the same cycle as a write is served first,
+// and no read is accepted while write address or data is held. A read must be
+// 4-byte aligned and returns the addressed 32-bit lane with the other lane zero; a write
+// must be 4-byte aligned with WSTRB exactly 0x0F for the lower lane or 0xF0 for the upper
+// lane, selected by address bit 2. Unsupported accesses return AXI SLVERR and emit no
+// downstream request.
+
 module drbg_axil64_lane_adapter
   import drbg_pkg::*;
   import axi_pkg::*;
 #(
-  parameter type axil64_req_t = drbg_axil64_req_t,
-  parameter type axil64_rsp_t = drbg_axil64_resp_t,
-  parameter type axil32_req_t = drbg_axil32_req_t,
-  parameter type axil32_rsp_t = drbg_axil32_resp_t
+  parameter type axil64_req_t = drbg_axil64_req_t,          // 64-bit AXI-Lite request type.
+  parameter type axil64_rsp_t = drbg_axil64_resp_t,         // 64-bit AXI-Lite response type.
+  parameter type axil32_req_t = drbg_axil32_req_t,          // 32-bit AXI-Lite request type.
+  parameter type axil32_rsp_t = drbg_axil32_resp_t          // 32-bit AXI-Lite response type.
 ) (
-  // `wire` is fine on scalar logic; omit it on type-parameter ports
-  // (Xcelium *E,SVNSTP rejects `wire` + type parameters).
-  input  wire logic   clk_i,
-  input  wire logic   rst_ni,
+  input  wire logic   clk_i,                                // System clock.
+  input  wire logic   rst_ni,                               // Async reset, active-low.
 
-  input  axil64_req_t axil64_req_i,
-  output axil64_rsp_t axil64_rsp_o,
+  input  axil64_req_t axil64_req_i,                         // 64-bit AXI-Lite request in.
+  output axil64_rsp_t axil64_rsp_o,                         // 64-bit AXI-Lite response out.
 
-  output axil32_req_t axil32_req_o,
-  input  axil32_rsp_t axil32_rsp_i,
+  output axil32_req_t axil32_req_o,                         // Forwarded 32-bit AXI-Lite request.
+  input  axil32_rsp_t axil32_rsp_i,                         // 32-bit AXI-Lite response from the
+                                                            // bridge.
 
-  output logic        unsupported_access_pulse_o,
-  output logic        forwarded_read_pulse_o,
-  output logic        forwarded_write_pulse_o
+  output logic        unsupported_access_pulse_o,           // One-cycle pulse when an unsupported
+                                                            // access is rejected with SLVERR; a
+                                                            // SLVERR returned by the bridge does
+                                                            // not pulse it.
+  output logic        forwarded_read_pulse_o,               // Pulse when a read is forwarded.
+  output logic        forwarded_write_pulse_o               // Pulse when a write is forwarded.
 );
 
   `include "prim_assert.sv"
@@ -49,13 +45,13 @@ module drbg_axil64_lane_adapter
   localparam logic [1:0] AXI_RESP_SLVERR = 2'b10;
 
   typedef enum logic [2:0] {
-    StIdle,
-    StReadReq,
-    StReadWait,
-    StReadResp,
-    StWriteReq,
-    StWriteWait,
-    StWriteResp
+    ST_IDLE,
+    ST_READ_REQ,
+    ST_READ_WAIT,
+    ST_READ_RESP,
+    ST_WRITE_REQ,
+    ST_WRITE_WAIT,
+    ST_WRITE_RESP
   } state_e;
 
   state_e state_q, state_d;
@@ -100,7 +96,7 @@ module drbg_axil64_lane_adapter
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      state_q      <= StIdle;
+      state_q      <= ST_IDLE;
       aw_pending_q <= 1'b0;
       w_pending_q  <= 1'b0;
       aw_addr_q    <= '0;
@@ -179,7 +175,7 @@ module drbg_axil64_lane_adapter
     w_strb_next = w_strb_q;
 
     case (state_q)
-      StIdle: begin
+      ST_IDLE: begin
         axil64_rsp_o.aw_ready = !aw_pending_q;
         axil64_rsp_o.w_ready  = !w_pending_q;
         axil64_rsp_o.ar_ready = !aw_pending_q && !w_pending_q;
@@ -212,12 +208,12 @@ module drbg_axil64_lane_adapter
           req_prot_d = axil64_req_i.ar.prot;
           req_lane_d = axil64_req_i.ar.addr[2];
           if (read_supported(axil64_req_i.ar.addr)) begin
-            state_d = StReadReq;
+            state_d = ST_READ_REQ;
           end else begin
             resp_rdata_d = '0;
             resp_code_d = AXI_RESP_SLVERR;
             unsupported_access_pulse_o = 1'b1;
-            state_d = StReadResp;
+            state_d = ST_READ_RESP;
           end
         end else if (aw_pending_next && w_pending_next) begin
           req_addr_d = aw_addr_next;
@@ -228,44 +224,44 @@ module drbg_axil64_lane_adapter
           aw_pending_d = 1'b0;
           w_pending_d = 1'b0;
           if (write_supported(aw_addr_next, w_strb_next)) begin
-            state_d = StWriteReq;
+            state_d = ST_WRITE_REQ;
           end else begin
             resp_code_d = AXI_RESP_SLVERR;
             unsupported_access_pulse_o = 1'b1;
-            state_d = StWriteResp;
+            state_d = ST_WRITE_RESP;
           end
         end
       end
 
-      StReadReq: begin
+      ST_READ_REQ: begin
         axil32_req_o.ar_valid = 1'b1;
         axil32_req_o.ar.addr = req_addr_q;
         axil32_req_o.ar.prot = req_prot_q;
         if (axil32_rsp_i.ar_ready) begin
           forwarded_read_pulse_o = 1'b1;
-          state_d = StReadWait;
+          state_d = ST_READ_WAIT;
         end
       end
 
-      StReadWait: begin
+      ST_READ_WAIT: begin
         axil32_req_o.r_ready = 1'b1;
         if (axil32_rsp_i.r_valid) begin
           resp_rdata_d = axil32_rsp_i.r.data;
           resp_code_d = axil32_rsp_i.r.resp;
-          state_d = StReadResp;
+          state_d = ST_READ_RESP;
         end
       end
 
-      StReadResp: begin
+      ST_READ_RESP: begin
         axil64_rsp_o.r_valid = 1'b1;
         axil64_rsp_o.r.data = req_lane_q ? {resp_rdata_q, 32'h0} : {32'h0, resp_rdata_q};
         axil64_rsp_o.r.resp = resp_code_q;
         if (axil64_req_i.r_ready) begin
-          state_d = StIdle;
+          state_d = ST_IDLE;
         end
       end
 
-      StWriteReq: begin
+      ST_WRITE_REQ: begin
         axil32_req_o.aw_valid = 1'b1;
         axil32_req_o.aw.addr = req_addr_q;
         axil32_req_o.aw.prot = req_prot_q;
@@ -274,27 +270,27 @@ module drbg_axil64_lane_adapter
         axil32_req_o.w.strb = req_wstrb_q;
         if (axil32_rsp_i.aw_ready && axil32_rsp_i.w_ready) begin
           forwarded_write_pulse_o = 1'b1;
-          state_d = StWriteWait;
+          state_d = ST_WRITE_WAIT;
         end
       end
 
-      StWriteWait: begin
+      ST_WRITE_WAIT: begin
         axil32_req_o.b_ready = 1'b1;
         if (axil32_rsp_i.b_valid) begin
           resp_code_d = axil32_rsp_i.b.resp;
-          state_d = StWriteResp;
+          state_d = ST_WRITE_RESP;
         end
       end
 
-      StWriteResp: begin
+      ST_WRITE_RESP: begin
         axil64_rsp_o.b_valid = 1'b1;
         axil64_rsp_o.b.resp = resp_code_q;
         if (axil64_req_i.b_ready) begin
-          state_d = StIdle;
+          state_d = ST_IDLE;
         end
       end
 
-      default: state_d = StIdle;
+      default: state_d = ST_IDLE;
     endcase
   end
 
@@ -305,16 +301,17 @@ module drbg_axil64_lane_adapter
   `OCAH_OT_ASSERT(
       UnsupportedBlocksForwarding_A,
       unsupported_access_pulse_o |-> !(forwarded_read_pulse_o || forwarded_write_pulse_o))
-  `OCAH_OT_ASSERT(ReadForwardingSinglePulse_A, forwarded_read_pulse_o |-> state_q == StReadReq)
-  `OCAH_OT_ASSERT(WriteForwardingSinglePulse_A, forwarded_write_pulse_o |-> state_q == StWriteReq)
-  `OCAH_OT_ASSERT(StIdleAwReady_A, (state_q == StIdle) |-> (axil64_rsp_o.aw_ready == !aw_pending_q))
-  `OCAH_OT_ASSERT(StIdleWReady_A, (state_q == StIdle) |-> (axil64_rsp_o.w_ready == !w_pending_q))
+  `OCAH_OT_ASSERT(ReadForwardingSinglePulse_A, forwarded_read_pulse_o |-> state_q == ST_READ_REQ)
+  `OCAH_OT_ASSERT(WriteForwardingSinglePulse_A, forwarded_write_pulse_o |-> state_q == ST_WRITE_REQ)
+  `OCAH_OT_ASSERT(StIdleAwReady_A,
+                  (state_q == ST_IDLE) |-> (axil64_rsp_o.aw_ready == !aw_pending_q))
+  `OCAH_OT_ASSERT(StIdleWReady_A, (state_q == ST_IDLE) |-> (axil64_rsp_o.w_ready == !w_pending_q))
   `OCAH_OT_ASSERT(
       StIdleArReady_A,
-      (state_q == StIdle) |-> (axil64_rsp_o.ar_ready == (!aw_pending_q && !w_pending_q)))
+      (state_q == ST_IDLE) |-> (axil64_rsp_o.ar_ready == (!aw_pending_q && !w_pending_q)))
   `OCAH_OT_ASSERT(
       BusyHoldsChannelReadyLow_A,
-      (state_q != StIdle) |-> (!axil64_rsp_o.aw_ready && !axil64_rsp_o.w_ready && !axil64_rsp_o.ar_ready))
+      (state_q != ST_IDLE) |-> (!axil64_rsp_o.aw_ready && !axil64_rsp_o.w_ready && !axil64_rsp_o.ar_ready))
   `OCAH_OT_ASSERT_KNOWN(Axil64AwReadyKnown_A, axil64_rsp_o.aw_ready)
   `OCAH_OT_ASSERT_KNOWN(Axil64WReadyKnown_A, axil64_rsp_o.w_ready)
   `OCAH_OT_ASSERT_KNOWN(Axil64BValidKnown_A, axil64_rsp_o.b_valid)

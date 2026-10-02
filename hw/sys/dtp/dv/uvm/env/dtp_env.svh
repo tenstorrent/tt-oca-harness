@@ -18,8 +18,9 @@
 //     scoreboard, evidence; monitor-only on the XTRIG CSR port, whose
 //     volatile status and reset-cleared selects the memory-shadow model
 //     cannot describe: the DTP scoreboard's xtrig_csr feature owns that),
-//     each bridge port's stream also feeding a dtp_axi_read_history the
-//     JTAG2AXI sequences compare SINGLE_OP captures against;
+//     each bridge port's stream also feeding a dtp_axi_port_history that
+//     counts the port's completed transactions and keeps the newest of each
+//     direction for the JTAG2AXI sequences;
 //   * one ocah_jtag_slave_agent per STAP host port as the downstream TAP the
 //     tests may splice behind it (dtp_scan_if.stap_<x>_ds_en; default keeps
 //     the wire loopback), with the device map from dtp_types;
@@ -74,8 +75,8 @@ class dtp_env extends ocah_env;
   ocah_axi_config               m_xtrig_axi_cfg;
   ocah_axi_env                  m_xtrig_axi_env;
 
-  // Observed-read history per bridge port, keyed by target name.
-  dtp_axi_read_history          m_axi_read_history[string];
+  // Completed-transaction history per bridge port, keyed by target name.
+  dtp_axi_port_history          m_axi_port_history[string];
 
   // Active shared-VIP AXI master: the XTRIG CSR AXI-Lite initiator.
   ocah_axi_master_config        m_xtrig_master_cfg;
@@ -128,8 +129,8 @@ class dtp_env extends ocah_env;
             vif_key: "smc_otp_axil_vif",
             name_tag: "dtp_smc_otp_axil",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         },
         cfg.axi_policy_for(
@@ -142,8 +143,8 @@ class dtp_env extends ocah_env;
             vif_key: "sep_otp_axil_vif",
             name_tag: "dtp_sep_otp_axil",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         },
         cfg.axi_policy_for(
@@ -156,9 +157,9 @@ class dtp_env extends ocah_env;
             vif_key: "m_axi_vif",
             name_tag: "dtp_smc_axi",
             protocol: OCAH_AXI_PROTO_AXI4,
-            addr_width: 56,
-            data_width: 64,
-            id_width: 2
+            addr_width: dtp_dv_cfg_pkg::SmcAxiAddrWidth,
+            data_width: dtp_dv_cfg_pkg::SmcAxiDataWidth,
+            id_width: dtp_dv_cfg_pkg::SmcAxiIdWidth
         },
         cfg.axi_policy_for(
             "smc_axi")
@@ -193,8 +194,8 @@ class dtp_env extends ocah_env;
             vif_key: "smc_otp_slave_vif",
             name_tag: "dtp_smc_otp_slave",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         }
     );
@@ -205,8 +206,8 @@ class dtp_env extends ocah_env;
             vif_key: "sep_otp_slave_vif",
             name_tag: "dtp_sep_otp_slave",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         }
     );
@@ -217,9 +218,9 @@ class dtp_env extends ocah_env;
             vif_key: "smc_axi_slave_vif",
             name_tag: "dtp_smc_axi_slave",
             protocol: OCAH_AXI_PROTO_AXI4,
-            addr_width: 56,
-            data_width: 64,
-            id_width: 2
+            addr_width: dtp_dv_cfg_pkg::SmcAxiAddrWidth,
+            data_width: dtp_dv_cfg_pkg::SmcAxiDataWidth,
+            id_width: dtp_dv_cfg_pkg::SmcAxiIdWidth
         }
     );
     m_smc_axi_slave_agent = ocah_axi_slave_agent::type_id::create("m_smc_axi_slave_agent", this);
@@ -286,6 +287,7 @@ class dtp_env extends ocah_env;
     m_scan_window = dtp_scan_window_monitor::type_id::create("m_scan_window", this);
     m_scan_window.scan_vif = scan_vif;
     m_scan_window.tb_vif   = tb_vif;
+    m_scan_window.jtag_vif = m_jtag_cfg.vif;
 
     begin
       dtp_jtag_scan_builder builder = dtp_jtag_scan_builder::type_id::create(
@@ -295,12 +297,12 @@ class dtp_env extends ocah_env;
       m_scan_builder = builder;
     end
 
-    m_axi_read_history["smc_otp"] =
-        dtp_axi_read_history::type_id::create("m_smc_otp_read_history", this);
-    m_axi_read_history["sep_otp"] =
-        dtp_axi_read_history::type_id::create("m_sep_otp_read_history", this);
-    m_axi_read_history["smc_axi"] =
-        dtp_axi_read_history::type_id::create("m_smc_axi_read_history", this);
+    m_axi_port_history["smc_otp"] =
+        dtp_axi_port_history::type_id::create("m_smc_otp_port_history", this);
+    m_axi_port_history["sep_otp"] =
+        dtp_axi_port_history::type_id::create("m_sep_otp_port_history", this);
+    m_axi_port_history["smc_axi"] =
+        dtp_axi_port_history::type_id::create("m_smc_axi_port_history", this);
   endfunction
 
   // One reference model per scoreboard feature; each reads the TB
@@ -375,10 +377,11 @@ class dtp_env extends ocah_env;
     string source = port_env.m_monitor.get_full_name();
     m_jtag2axi_req_ref_model.bind_port(target, source);
     m_jtag2axi_status_ref_model.bind_port(target, source);
+    m_scoreboard.bind_port(target, source);
     port_env.item_ap.connect(m_jtag2axi_req_ref_model.axi_export);
     port_env.item_ap.connect(m_jtag2axi_status_ref_model.axi_export);
     port_env.item_ap.connect(m_scoreboard.jtag2axi_req_observed_export);
-    port_env.item_ap.connect(m_axi_read_history[target].analysis_export);
+    port_env.item_ap.connect(m_axi_port_history[target].analysis_export);
   endfunction
 
   // One passive shared-VIP AXI observer: geometry, identity, evidence

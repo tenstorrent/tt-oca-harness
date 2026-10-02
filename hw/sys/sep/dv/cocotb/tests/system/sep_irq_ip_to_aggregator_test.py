@@ -73,24 +73,13 @@ from seq_lib.sep_irq_aggregator_seq import (
 class sep_irq_ip_to_aggregator_test(sep_base_test):
     """CSRNG/EDN INTR_TEST -> sep_internal_interrupts aggregator (no_cpu)."""
 
-    async def _sample_agg(self) -> int:
-        """Sample the whole aggregate vector once (one clock edge + ReadOnly).
-
-        Returns the probe value so callers can test any number of bits from
-        a single settled sample -- never await ReadOnly more than once per timestep.
-        """
-        await RisingEdge(cocotb.top.clk_i)
-        await ReadOnly()
-        return self.rd(cocotb.top.sep_internal_interrupts_probe_o)
-
     async def _sample_agg_known(self, mask: int) -> int:
         """Sample the vector, requiring the bits in ``mask`` to be 0 or 1.
 
-        For a compare whose passing branch is zero. ``rd`` resolves an unknown
-        bit to 0, so ``bit == 0`` would also hold for a bit nothing drives --
-        which is the whole risk on bit [41], a source this leaf never raises.
-        Only the named bits are required to be known; the rest of the vector may
-        legitimately be X.
+        One clock edge + ReadOnly per call. ``rd`` raises on an X/Z bit inside
+        ``mask``, so ``bit == 0`` cannot hold for a bit nothing drives -- the
+        risk on bit [41], a source this leaf never raises. Only the named bits
+        are required to be known; the rest of the vector may legitimately be X.
         """
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()

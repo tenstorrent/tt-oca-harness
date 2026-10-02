@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: aes</h2>
+<h2 id="regmap-aes">AES Accelerator</h2>
+<p>AES encryption and decryption engine with SCA and FI countermeasures</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x4, stride 0x4</li>
@@ -86,7 +87,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>CTRL_AUX_REGWEN</td><td>RW</td><td>0x1</td><td>Auxiliary Control Register configuration enable bit.<br>If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.</td></tr>
+<tr><td>0</td><td>CTRL_AUX_REGWEN</td><td>RW0C</td><td>0x1</td><td>Auxiliary Control Register configuration enable bit.<br>If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.</td></tr>
 </table>
 <h3 id="TRIGGER">TRIGGER</h3>
 <table>

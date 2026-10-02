@@ -134,7 +134,45 @@ module sep_uvm_top
     sep_efuse_pkg::efuse_axil_req_t   j_axil_req_drive;
     sep_efuse_pkg::efuse_axil_resp_t  j_axil_resp_w;
     sep_pkg::jtag_sep_reset_ctrl_t   jtag_sep_reset_ctrl_drive;
+    // IC_RESET TDR storage for the SEP slice. Width is the integrator SEP-slice
+    // table: 8 ports when SEP=1 (doc/integrator/src/smu.adoc). The TAP
+    // instruction that selects the TDR is outside this DUT. tdr_en selects
+    // the register; otherwise the per-port pins drive the same struct.
+    localparam int unsigned SEP_IC_RESET_PORTS = 8;
+    prim_jtag_pkg::jtag_scan_ctrl_t ic_reset_scan_ctrl;
+    prim_jtag_pkg::jtag_tap_ctrl_t  ic_reset_tap_ctrl;
+    logic [SEP_IC_RESET_PORTS-1:0]  ic_reset_ovrd_w;
+    logic [SEP_IC_RESET_PORTS-1:0]  ic_reset_ctrl_n_w;
+    sep_pkg::jtag_sep_reset_ctrl_t  ic_reset_sep_packed;
     always_comb begin
+        ic_reset_scan_ctrl         = '0;
+        ic_reset_scan_ctrl.tck     = jtag_ic_reset_tck_i;
+        ic_reset_scan_ctrl.select  = jtag_ic_reset_select_i;
+        ic_reset_scan_ctrl.capture_en = jtag_ic_reset_capture_en_i;
+        ic_reset_scan_ctrl.shift_en   = jtag_ic_reset_shift_en_i;
+        ic_reset_scan_ctrl.update_en  = jtag_ic_reset_update_en_i;
+        ic_reset_scan_ctrl.rst_n  = jtag_ic_reset_rst_n_i;
+        ic_reset_scan_ctrl.chrst_n = 1'b1;
+        ic_reset_tap_ctrl          = '0;
+        ic_reset_tap_ctrl.trst_n   = jtag_ic_reset_trst_n_i;
+        ic_reset_tap_ctrl.tck      = jtag_ic_reset_tck_i;
+    end
+    jtag_ic_reset_reg #(
+        .NUM_IC_RESET_PORTS(SEP_IC_RESET_PORTS)
+    ) u_ic_reset_sep (
+        .scan_ctrl_i      (ic_reset_scan_ctrl),
+        .scan_in_i        (jtag_ic_reset_tdi_i),
+        .scan_out_o       (jtag_ic_reset_tdo_o),
+        .tap_ctrl_i       (ic_reset_tap_ctrl),
+        .ic_reset_ovrd_o  (ic_reset_ovrd_w),
+        .ic_reset_ctrl_n_o(ic_reset_ctrl_n_w)
+    );
+    assign ic_reset_sep_packed.ovrd = ic_reset_ovrd_w;
+    assign ic_reset_sep_packed.val  = ic_reset_ctrl_n_w;
+    always_comb begin
+        if (jtag_ic_reset_tdr_en_i === 1'b1) begin
+            jtag_sep_reset_ctrl_drive = ic_reset_sep_packed;
+        end else begin
         jtag_sep_reset_ctrl_drive = '0;
         // Ports are Z until cocotb drive_idle_defaults. Treat only 1 as hold.
         jtag_sep_reset_ctrl_drive.ovrd.otbn_jtag_rst_n_ovrd =
@@ -149,6 +187,11 @@ module sep_uvm_top
             (jtag_trng_rst_hold_i === 1'b1);
         jtag_sep_reset_ctrl_drive.ovrd.abr_jtag_rst_n_ovrd =
             (jtag_abr_rst_hold_i === 1'b1);
+        jtag_sep_reset_ctrl_drive.ovrd.sep_reset_n_ovrd =
+            (jtag_sep_reset_n_ovrd_i === 1'b1);
+        jtag_sep_reset_ctrl_drive.val.sep_reset_n_val =
+            (jtag_sep_reset_n_val_i === 1'b1);
+        end
     end
 
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
@@ -198,8 +241,9 @@ module sep_uvm_top
     //
     // Scope is by subtree because these are generate-loop instances with no single
     // name to target, which also disables every other assertion under those three
-    // blocks. The contracts re-armed by name are the crypto EDN arbiter
-    // hold-until-grant assume, its lock assert, and FipsWindowFloor_A.
+    // blocks. The contracts re-armed by name are the EDN arbiter hold-until-grant
+    // assume and lock assert, the crypto EDN adapter's clear and per-endpoint
+    // cancel contracts, and FipsWindowFloor_A.
 `ifndef VERILATOR
     initial begin
         // Scope-level $assertoff: these instances have no clock or reset for
@@ -208,8 +252,10 @@ module sep_uvm_top
         $assertoff(0, `SEP_ESRC);
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan);
-        // req_chk_i gates these two. The adapter scope stays off because
-        // AxisEdnEndpointCount_A is an immediate assert with no reset.
+        // The adapter waives the arbiter's request checks only on the first
+        // cycle of an endpoint flush, so these two stay live for every other
+        // request. The adapter scope stays off because AxisEdnEndpointCount_A
+        // is an immediate assert with no reset.
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .u_arbiter.ReqStaysHighUntilGranted0_M);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
@@ -232,12 +278,48 @@ module sep_uvm_top
             .gen_ep[2].AxisEdnNoAckDuringClear_A);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .gen_ep[3].AxisEdnNoAckDuringClear_A);
-        // req_chk_i changed on this instance too, so its arbiter contracts
+        // Per-endpoint cancel contracts. A cancelled endpoint neither requests,
+        // takes a word, nor acknowledges, and an ungranted request only drops
+        // under a flush of that endpoint.
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+        // The pool adapter shares the same arbiter, so its arbiter contracts
         // must be live for the same reason.
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
             .u_arbiter.ReqStaysHighUntilGranted0_M);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
             .u_arbiter.LockArbDecision_A);
+        // A JTAG reset override skips isolation, so an engine can drop an
+        // ungranted EDN request with no cancel; no word is lost or misrouted.
+        if ($test$plusargs("sep_edn_jtag_reset_waive")) begin
+            $display("[tb] crypto EDN request-hold checks off (+sep_edn_jtag_reset_waive)");
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .u_arbiter.ReqStaysHighUntilGranted0_M);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .u_arbiter.LockArbDecision_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+        end
         // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
         // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
         // out-of-spec window must fail rather than be swept up by the line above.
@@ -644,28 +726,41 @@ module sep_uvm_top
     // ROM presents, so a wrong SEP<->SMC offset is invisible to the boot flow
     // -- the testbench seeds the wrong address too and every test stays
     // green. This checker supplies the one property a flat memory lacks: an
-    // access outside a register window that exists is an ERROR. The windows
-    // below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen as
-    // 0x4000_XXXX from SEP, the identity mapping this tb configures via
-    // smc_global_base_addr_i). Keep them in step with that header; when the
-    // ROM needs a new block, add its authoritative base/size here rather than
-    // widening an existing window.
+    // access outside a register window that exists is an ERROR. Block bases
+    // and sizes come from the generated SMC address map (smc_top_addrmap_pkg,
+    // hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv). The package gives SMC-local
+    // addresses (0xC000_XXXX); SEP sees them at 0x4000_XXXX, the identity
+    // mapping this tb configures via smc_global_base_addr_i. When the ROM needs
+    // a new block, add its generated base/size here rather than widening an
+    // existing window.
+    localparam logic [63:0] SmcLocalBase = 64'hC000_0000;
+    localparam logic [63:0] SmcSepViewBase = 64'h4000_0000;
     localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
     localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
-        56'h4000_2000,  // SMC_RESET_UNIT
-        56'h4000_2900,  // SMC_MISC_WRAP_CHIP_CONFIG (CHIP_ID, LC_STATE)
-        56'h4000_7000,  // SMC_EFUSE_MAP             (chiplet/package ID)
-        56'h4000_B800,  // DFX_CTRL                  (STATUS_SMU)
-        56'h4003_9000,  // SMC_CPU_CTRL              (scratch[0..15] at +0x80)
-        56'h4006_0000,  // SPM_MEMORY                (manifest + BL1)
-        SmcStrapsLoAddr // SMC_EXTERNAL straps      (STRAPS_LO/HI)
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_MISC_WRAP_CHIP_CONFIG: CHIP_ID, LC_STATE
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR - SmcLocalBase +
+            SmcSepViewBase),
+        // SMC_EFUSE_MAP: chiplet/package ID
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // DFX_CTRL: STATUS_SMU
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_CPU_CTRL: scratch[0..15] at +0x80
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SPM_MEMORY: manifest + BL1
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        SmcStrapsLoAddr  // SMC_EXTERNAL straps (STRAPS_LO/HI)
     };
     localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
-        56'h0000_00CC, 56'h0000_0014, 56'h0000_0C00,
-        56'h0000_0018, 56'h0000_02C0, 56'h0010_0000,
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE),
         56'h0000_0008
     };
 
@@ -770,7 +865,11 @@ module sep_uvm_top
     initial begin : backdoor_default_fill_zero
         for (int i = 0; i < 32768; i++)
             `SEP_IPI.u_sep_sram.gen_ram_inst[0].u_mem.mem[i] = 64'h0;
-        for (int i = 0; i < 16384; i++)
+        for (
+            int i = 0;
+            i < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE / 8;
+            i++
+        )
             `SEP_IPI.u_sep_boot_rom.mem[i] = 64'h0;
         for (int r = 0; r < 16384; r++) begin
             `BD_ICCM(0)[r] = 39'h0; `BD_ICCM(1)[r] = 39'h0;
@@ -1084,6 +1183,57 @@ module sep_uvm_top
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
     // map to bits [23:26], EDN to [27:28] (sep.sv:548-553).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
+
+    // CPU/DMA SRAM contention. BUSY is a job-level status and does not prove
+    // that both masters requested the SRAM together; no CSR mirrors per-cycle
+    // crossbar arbitration. Count cycles
+    // where both local-crossbar inputs present the same SRAM address channel.
+    // This monitor observes requests only and drives no DUT signal.
+    logic cpu_lsu_sram_aw_pending;
+    logic cpu_lsu_sram_ar_pending;
+    logic dma_sram_aw_pending;
+    logic dma_sram_ar_pending;
+    logic dma_cpu_sram_overlap;
+    assign cpu_lsu_sram_aw_pending =
+        `SEP_CORE.lsu_xbar_axi_req.aw_valid &&
+        (`SEP_CORE.lsu_xbar_axi_req.aw.addr >=
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+        (`SEP_CORE.lsu_xbar_axi_req.aw.addr <
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
+    assign cpu_lsu_sram_ar_pending =
+        `SEP_CORE.lsu_xbar_axi_req.ar_valid &&
+        (`SEP_CORE.lsu_xbar_axi_req.ar.addr >=
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+        (`SEP_CORE.lsu_xbar_axi_req.ar.addr <
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
+    assign dma_sram_aw_pending =
+        `SEP_CORE.dma_axi_req.aw_valid &&
+        (`SEP_CORE.dma_axi_req.aw.addr >=
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+        (`SEP_CORE.dma_axi_req.aw.addr <
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
+    assign dma_sram_ar_pending =
+        `SEP_CORE.dma_axi_req.ar_valid &&
+        (`SEP_CORE.dma_axi_req.ar.addr >=
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+        (`SEP_CORE.dma_axi_req.ar.addr <
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
+    assign dma_cpu_sram_overlap =
+        (cpu_lsu_sram_aw_pending && dma_sram_aw_pending) ||
+        (cpu_lsu_sram_ar_pending && dma_sram_ar_pending);
+
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            dma_cpu_sram_overlap_count_o <= '0;
+        end else if (dma_cpu_sram_overlap && !(&dma_cpu_sram_overlap_count_o)) begin
+            dma_cpu_sram_overlap_count_o <= dma_cpu_sram_overlap_count_o + 1'b1;
+        end
+    end
+
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
@@ -1105,6 +1255,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
     assign hmac_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
+    assign hmac_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_hmac;
 
     // KMAC per-IP gated reset and its two isolate-completion bits.
     assign kmac_gated_rst_n_probe_o =
@@ -1113,6 +1265,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_kmac;
     assign kmac_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_kmac;
+    assign kmac_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_kmac;
 
     // Adams Bridge per-IP gated reset and the two isolate-completion bits its
     // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
@@ -1123,6 +1277,16 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
     assign abr_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
+    assign abr_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_abr;
+
+    // AES and OTBN per-IP gated resets. A software reset of either cancels its
+    // crypto EDN endpoints before this reset asserts; the isolation test times
+    // that cancel against these. Read-only XMR, same class as the KMAC probe.
+    assign aes_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.aes;
+    assign otbn_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.otbn;
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
@@ -1146,6 +1310,13 @@ module sep_uvm_top
     // top-level probe port; word i occupies bits [32*i +: 32], matching values[i].
     assign efuse_shadow_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_efuse_o;
+
+    assign km_otp_sep_chiplet_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_chiplet_id;
+    assign km_otp_sep_sip_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_sip_id;
+    assign km_otp_sep_sys_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_sys_id;
 
     // SEP scratch-cold CSR words [0..7], each `data.value` [31:0]. Explicit
     // per-index assigns avoid a cross-hierarchy indexed XMR (same style as the
@@ -1382,9 +1553,13 @@ module sep_uvm_top
     // landed; it is not fail-closed evidence. After release the recovered
     // encoding must be a legal idle/wait value (DUT-driven). Command
     // withdraw and the error/done/busy/data terms are claimed only on the
-    // in-flight leg. Owner: sep_efuse_illegal_state_fail_closed_test. Review
-    // at the next change to the state encoding in efuse_read_interface.sv or
-    // efuse_program_interface.sv.
+    // in-flight leg. Accepted claim: the legal encodings 2'b01 idle and
+    // 2'b10 wait are taken from the design's state encoding, because no
+    // document names them; this leaf grades recovery against that set and
+    // injects its complement. Owner: sep_efuse_illegal_state_fail_closed_test.
+    // Approved against ad4ae87ec, the commit that set both encodings.
+    // Review at the next change to the state encoding in
+    // efuse_read_interface.sv or efuse_program_interface.sv.
     //
     // The registers are enum-typed and the injected encodings are, by
     // construction, not members of those enums -- that is the property under
@@ -1423,8 +1598,8 @@ module sep_uvm_top
     // command user code -- the engine always emits a matching pair. When
     // dma_host_intg_inject_i=1, force the host-adapter checker input
     // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
-    // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
-    // frontdoor or the aggregate interrupt probe. Re-issue every clock
+    // err_o. err_o stays gated on a_valid. STATUS / PIC source 42 (vector
+    // bit [41]) / CLEAR stay frontdoor or the aggregate interrupt probe. Re-issue every clock
     // (Verilator snapshots a force RHS). Release when the port drops.
     // Default 0; outside the AXI ready/valid cones.
 `define DMA_HOST_CMD_INTG_DI \
@@ -1438,6 +1613,47 @@ module sep_uvm_top
         end
     end
 `undef DMA_HOST_CMD_INTG_DI
+
+    // ------------------------------------------------------------------
+    // HMAC message-FIFO drain stall.
+    // ------------------------------------------------------------------
+    // hmac_fifo_drain_stall_i=1 holds the message FIFO's rready low, so the hash
+    // engine stops consuming and the FIFO fills: the wedge the ROM's bounded
+    // FIFO waits must turn into a hash failure. fifo_rready is the hmac-local
+    // net that drives the FIFO's read side. Re-issued every clock for Verilator,
+    // released when the port drops.
+`define HMAC_FIFO_RREADY `SEP_CORE.u_sep_crypto.u_hmac_wrapper_s3c_scan.u_tt_hmac.fifo_rready
+    always @(posedge clk_i) begin
+        if (hmac_fifo_drain_stall_i === 1'b1) begin
+            force `HMAC_FIFO_RREADY = 1'b0;
+        end else begin
+            release `HMAC_FIFO_RREADY;
+        end
+    end
+`undef HMAC_FIFO_RREADY
+
+    // ------------------------------------------------------------------
+    // DMA host-port stall.
+    // ------------------------------------------------------------------
+    // +sep_dma_host_stall holds the host TL-UL response idle -- a_ready and
+    // d_valid both 0 -- so the secure DMA can neither issue a request nor see a
+    // response: it stays busy and reports neither DONE nor ERROR, which is the
+    // wedge the ROM's bounded completion poll must turn into an error. The whole
+    // struct is forced, since d_valid=0 keeps its integrity fields unchecked.
+    // The force targets the wrapper-local net the adapter drives, not the
+    // engine's input port. Re-issued every clock for Verilator, as above.
+    logic dma_host_stall_on;
+    initial begin
+        dma_host_stall_on = $test$plusargs("sep_dma_host_stall");
+        if (dma_host_stall_on) begin
+            $display("[tb] +sep_dma_host_stall: secure DMA host port held idle");
+        end
+    end
+`define DMA_HOST_RSP `SEP_CORE.u_sep_dma_wrap.host_tl_h_i
+    always @(posedge clk_i) begin
+        if (dma_host_stall_on) force `DMA_HOST_RSP = '0;
+    end
+`undef DMA_HOST_RSP
 
     // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
@@ -1535,6 +1751,36 @@ module sep_uvm_top
 `undef OTBN_URND_RSP
 `undef OTBN_RND_REQ
 `undef OTBN_URND_REQ
+
+    // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
+    // every command write, leaving the block powered, idle and error-free while
+    // no program ever runs.
+    //
+    // This is the "the CMD store never landed" case: what an instruction-skip
+    // glitch on the store produces deliberately, and what clock or reset
+    // mis-sequencing produces by accident. It is worth injecting because the
+    // block is indistinguishable from a completed run on the two registers the
+    // ROM used to consult -- STATUS reads IDLE (the state it was already in) and
+    // ERR_BITS reads 0 (nothing ran to fail). INTR_STATE.done is the only signal
+    // that separates them, which is what otbn_execute() now requires.
+    logic otbn_cmd_drop_on;
+    initial begin
+        otbn_cmd_drop_on = $test$plusargs("sep_otbn_cmd_drop");
+        if (otbn_cmd_drop_on) begin
+            $display("[tb] *** FAULT INJECTION: +sep_otbn_cmd_drop -- OTBN command writes");
+            $display("[tb] *** are dropped; no OTBN program will execute.");
+        end
+    end
+
+// reg2hw.cmd.qe is the write-enable otbn.sv decodes CmdExecute from
+// (otbn.sv:852-854), so holding it low drops commands without disturbing
+// anything else the block reports.
+`define OTBN_CMD_QE \
+    `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.reg2hw.cmd.qe
+    always @(posedge clk_i) begin
+        if (otbn_cmd_drop_on) force `OTBN_CMD_QE = 1'b0;
+    end
+`undef OTBN_CMD_QE
 
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
@@ -1639,7 +1885,7 @@ module sep_uvm_top
     assign tbadp_r_valid_o = tbadp_rsp.r_valid;
     assign tbadp_r_data_o  = tbadp_rsp.r.data;
     // The response CODES, not just the valids. An access the adapter rejects
-    // as unsupported answers SLVERR from StIdle without forwarding anything,
+    // as unsupported answers SLVERR from ST_IDLE without forwarding anything,
     // and retires just as promptly as a real one -- so a control that only
     // watched the valid could not tell a live forwarding path from a rejected
     // access.
@@ -1775,6 +2021,134 @@ module sep_uvm_top
     // word0 compare in sep_km_mem_smoke_test fails.
     assign km_sram_word0_o =
         u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[0][31:0];
+
+    localparam int unsigned KmSramProbeWords = $bits(km_sram_probe_o) / 32;
+    for (genvar i = 0; i < KmSramProbeWords; i++) begin : g_km_sram_probe
+        assign km_sram_probe_o[32*i +: 32] =
+            u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[i][31:0];
+    end
+
+    // KM SRAM read-response timing at the wrapper port (km_sram_mem_req/rsp,
+    // after the KM scrambler). km_sram_interface descrambles a response with
+    // the address it loaded on the accepting edge, so a response must arrive
+    // exactly one cycle after its accepted read. Counts:
+    //   rd_accept   accepted reads (req && !we && gnt)
+    //   rd_lat1     rvalid one cycle after an accepted read
+    //   rd_lat_err  rvalid with no accept one cycle earlier, or an accept one
+    //               cycle earlier with no rvalid (same-cycle, late or lost)
+    //   rd_b2b_diff rvalid in the same cycle as a new accepted read of a
+    //               different physical address (pipelined back-to-back reads)
+    //   scr_rd      accepted reads while the KMCSR SRAM scrambler is enabled
+    // Observation-only: continuous reads of the wrapper nets and of the KM
+    // scrambler enable; drives nothing; outside the tb s_axi / m_axi
+    // ready/valid cones. Reset to 0 by rst_n_int, so every leaf sees 0 or a
+    // count, never X.
+    logic km_sram_rd_acc, km_sram_rd_acc_q, km_sram_rvalid;
+    logic [km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH-1:0] km_sram_rd_addr_q;
+    logic [31:0] km_sram_rd_acc_cnt_q, km_sram_rd_lat1_cnt_q, km_sram_rd_lat_err_cnt_q;
+    logic [31:0] km_sram_rd_b2b_diff_cnt_q, km_sram_scr_rd_cnt_q;
+    assign km_sram_rd_acc = (u_dut.km_sram_mem_req.req === 1'b1) &&
+                            (u_dut.km_sram_mem_req.we === 1'b0) &&
+                            (u_dut.km_sram_mem_rsp.gnt === 1'b1);
+    assign km_sram_rvalid = (u_dut.km_sram_mem_rsp.rvalid === 1'b1);
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_sram_rd_acc_q          <= 1'b0;
+            km_sram_rd_addr_q         <= '0;
+            km_sram_rd_acc_cnt_q      <= '0;
+            km_sram_rd_lat1_cnt_q     <= '0;
+            km_sram_rd_lat_err_cnt_q  <= '0;
+            km_sram_rd_b2b_diff_cnt_q <= '0;
+            km_sram_scr_rd_cnt_q      <= '0;
+        end else begin
+            km_sram_rd_acc_q <= km_sram_rd_acc;
+            if (km_sram_rd_acc) begin
+                km_sram_rd_addr_q    <= u_dut.km_sram_mem_req.addr;
+                km_sram_rd_acc_cnt_q <= km_sram_rd_acc_cnt_q + 32'd1;
+                if (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.scrambler_enable === 1'b1)
+                    km_sram_scr_rd_cnt_q <= km_sram_scr_rd_cnt_q + 32'd1;
+            end
+            if (km_sram_rvalid && km_sram_rd_acc_q)
+                km_sram_rd_lat1_cnt_q <= km_sram_rd_lat1_cnt_q + 32'd1;
+            if (km_sram_rvalid != km_sram_rd_acc_q)
+                km_sram_rd_lat_err_cnt_q <= km_sram_rd_lat_err_cnt_q + 32'd1;
+            if (km_sram_rvalid && km_sram_rd_acc &&
+                (u_dut.km_sram_mem_req.addr != km_sram_rd_addr_q))
+                km_sram_rd_b2b_diff_cnt_q <= km_sram_rd_b2b_diff_cnt_q + 32'd1;
+        end
+    end
+    assign km_sram_rd_accept_count_o   = km_sram_rd_acc_cnt_q;
+    assign km_sram_rd_lat1_count_o     = km_sram_rd_lat1_cnt_q;
+    assign km_sram_rd_lat_err_count_o  = km_sram_rd_lat_err_cnt_q;
+    assign km_sram_rd_b2b_diff_count_o = km_sram_rd_b2b_diff_cnt_q;
+    assign km_sram_scr_rd_count_o      = km_sram_scr_rd_cnt_q;
+
+    // KM SRAM writes accepted while the KM scrambler is enabled, at the same
+    // wrapper port. The scrambler moves the address as well as the data, so a
+    // scrambled store lands on a physical row the firmware cannot name. This
+    // keeps the physical word address and the wrapper write data of the first
+    // KmSramScrWrSlots such writes, and reads the macro array word at each kept
+    // address. Observation-only: continuous reads of the wrapper nets, the KM
+    // scrambler enable and the macro array; drives nothing; outside the tb
+    // s_axi / m_axi ready/valid cones. Reset to 0 by rst_n_int.
+    localparam int unsigned KmSramScrWrSlots = 4;
+    localparam int unsigned KmSramAw = km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH;
+    logic km_sram_scr_wr;
+    logic [31:0] km_sram_scr_wr_cnt_q;
+    logic [KmSramAw-1:0] km_sram_scr_wr_addr_q [KmSramScrWrSlots];
+    logic [31:0] km_sram_scr_wr_data_q [KmSramScrWrSlots];
+    assign km_sram_scr_wr = (u_dut.km_sram_mem_req.req === 1'b1) &&
+                            (u_dut.km_sram_mem_req.we === 1'b1) &&
+                            (u_dut.km_sram_mem_rsp.gnt === 1'b1) &&
+                            (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.scrambler_enable === 1'b1);
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_sram_scr_wr_cnt_q <= '0;
+            for (int i = 0; i < KmSramScrWrSlots; i++) begin
+                km_sram_scr_wr_addr_q[i] <= '0;
+                km_sram_scr_wr_data_q[i] <= '0;
+            end
+        end else if (km_sram_scr_wr) begin
+            km_sram_scr_wr_cnt_q <= km_sram_scr_wr_cnt_q + 32'd1;
+            for (int i = 0; i < KmSramScrWrSlots; i++) begin
+                if (km_sram_scr_wr_cnt_q == 32'(i)) begin
+                    km_sram_scr_wr_addr_q[i] <= u_dut.km_sram_mem_req.addr;
+                    km_sram_scr_wr_data_q[i] <= u_dut.km_sram_mem_req.wdata;
+                end
+            end
+        end
+    end
+    assign km_sram_scr_wr_count_o = km_sram_scr_wr_cnt_q;
+    for (genvar i = 0; i < KmSramScrWrSlots; i++) begin : g_km_sram_scr_wr
+        assign km_sram_scr_wr_addr_o[KmSramAw*i +: KmSramAw] = km_sram_scr_wr_addr_q[i];
+        assign km_sram_scr_wr_data_o[32*i +: 32] = km_sram_scr_wr_data_q[i];
+        assign km_sram_scr_wr_cell_o[32*i +: 32] =
+            u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[km_sram_scr_wr_addr_q[i]][31:0];
+    end
+
+    // SEP-side KM mailbox register block (km_mailbox_sep_reg, PeakRDL
+    // --err-if-bad-addr): count the write requests its own address decode
+    // refuses, and keep the 5-bit block offset of the last one. The single
+    // BRESP of a split 64-bit beat cannot say which half, or which block,
+    // refused it; this names the block and the offset. Observation-only
+    // continuous read of the regblock decode; drives nothing; outside the tb
+    // s_axi / m_axi ready/valid cones. Reset to 0 by rst_n_int.
+    `define KM_MBOX_SEP_REGS `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_mailbox.u_sep_regs
+    logic [31:0] km_mbox_sep_wr_err_cnt_q;
+    logic [4:0]  km_mbox_sep_wr_err_addr_q;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_mbox_sep_wr_err_cnt_q  <= '0;
+            km_mbox_sep_wr_err_addr_q <= '0;
+        end else if ((`KM_MBOX_SEP_REGS.decoded_err === 1'b1) &&
+                     (`KM_MBOX_SEP_REGS.decoded_req_is_wr === 1'b1)) begin
+            km_mbox_sep_wr_err_cnt_q  <= km_mbox_sep_wr_err_cnt_q + 32'd1;
+            km_mbox_sep_wr_err_addr_q <= `KM_MBOX_SEP_REGS.decoded_addr;
+        end
+    end
+    `undef KM_MBOX_SEP_REGS
+    assign km_mbox_sep_wr_err_count_o = km_mbox_sep_wr_err_cnt_q;
+    assign km_mbox_sep_wr_err_addr_o  = km_mbox_sep_wr_err_addr_q;
 
     // Outbound mailbox responder + firmware-console/PASS-magic monitor.
     sep_outbound_mbx u_mbx (
@@ -2011,8 +2385,8 @@ module sep_uvm_top
     sep_tb_if u_tb_if ();
 
     // Four free-running clocks with the periods the env publishes on
-    // sep_tb_if from the seeded test cfg (cocotb SepEnvCfg parity: sys
-    // 4..20 ns, WDT 5000 ns, entropy sample 3 ns, reference 40 ns).
+    // sep_tb_if (cocotb SepEnvCfg parity: sys 1.25 ns, WDT 5000 ns,
+    // entropy sample 3 ns, reference 10 ns).
     initial begin
         clk_i                     = 1'b0;
         clk_wdt_i                 = 1'b0;
@@ -2046,6 +2420,28 @@ module sep_uvm_top
     logic [31:0] rst_assert_count = '0;
     always @(negedge rst_ni) rst_assert_count <= rst_assert_count + 32'd1;
     assign u_tb_if.rst_assert_count = rst_assert_count;
+
+    // Observation probes the sequences read through sep_tb_if.
+    assign u_tb_if.sep_internal_interrupts   = sep_internal_interrupts_probe_o;
+    assign u_tb_if.efuse_shadow              = efuse_shadow_probe_o;
+    assign u_tb_if.otbn_imem_req_count       = otbn_imem_req_count_o;
+    assign u_tb_if.otbn_imem_write_count     = otbn_imem_write_count_o;
+    assign u_tb_if.otbn_dmem_req_count       = otbn_dmem_req_count_o;
+    assign u_tb_if.otbn_dmem_write_count     = otbn_dmem_write_count_o;
+    assign u_tb_if.km_rom_req_count          = km_rom_req_count_o;
+    assign u_tb_if.km_sram_probe             = km_sram_probe_o;
+    assign u_tb_if.km_sram_rd_accept_count   = km_sram_rd_accept_count_o;
+    assign u_tb_if.km_sram_rd_b2b_diff_count = km_sram_rd_b2b_diff_count_o;
+    assign u_tb_if.km_sram_rd_lat1_count     = km_sram_rd_lat1_count_o;
+    assign u_tb_if.km_sram_rd_lat_err_count  = km_sram_rd_lat_err_count_o;
+    assign u_tb_if.km_sram_req_count         = km_sram_req_count_o;
+    assign u_tb_if.km_sram_scr_rd_count      = km_sram_scr_rd_count_o;
+    assign u_tb_if.km_sram_scr_wr_addr       = km_sram_scr_wr_addr_o;
+    assign u_tb_if.km_sram_scr_wr_cell       = km_sram_scr_wr_cell_o;
+    assign u_tb_if.km_sram_scr_wr_count      = km_sram_scr_wr_count_o;
+    assign u_tb_if.km_sram_scr_wr_data       = km_sram_scr_wr_data_o;
+    assign u_tb_if.km_sram_word0             = km_sram_word0_o;
+    assign u_tb_if.km_sram_write_count       = km_sram_write_count_o;
 
     // CPU-LSU initiator: the shared ocah_axi_vip UVM master agent drives the
     // s_axi_* request side (the agent's driver procedurally drives the
@@ -2213,11 +2609,23 @@ module sep_uvm_top
     assign jtag_hmac_rst_hold_i     = 1'b0;
     assign jtag_kmac_rst_hold_i     = 1'b0;
     assign jtag_trng_rst_hold_i     = 1'b0;
+    assign jtag_sep_reset_n_ovrd_i  = 1'b0;
+    assign jtag_sep_reset_n_val_i   = 1'b0;
+    assign jtag_ic_reset_tdr_en_i   = 1'b0;
+    assign jtag_ic_reset_tck_i      = 1'b0;
+    assign jtag_ic_reset_select_i   = 1'b0;
+    assign jtag_ic_reset_capture_en_i = 1'b0;
+    assign jtag_ic_reset_shift_en_i = 1'b0;
+    assign jtag_ic_reset_update_en_i = 1'b0;
+    assign jtag_ic_reset_rst_n_i    = 1'b1;
+    assign jtag_ic_reset_trst_n_i   = 1'b1;
+    assign jtag_ic_reset_tdi_i      = 1'b0;
     assign lc_sigint_inject_i       = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
     assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
+    assign hmac_fifo_drain_stall_i  = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;
@@ -2335,7 +2743,10 @@ module sep_uvm_top
         .demote_2_i            (lcc_demote_state_2_probe_o),
         .cpu_reset_n_i         (sep_cpu_reset_n_o),
         .spi_cs_n_i            (spi_cs_n_o),
-        .spi_sck_i             (spi_sck_o)
+        .spi_sck_i             (spi_sck_o),
+        // Values SEP receives, after the pin-or-TDR mux.
+        .jtag_sep_reset_n_ovrd_i (jtag_sep_reset_ctrl_drive.ovrd.sep_reset_n_ovrd),
+        .jtag_sep_reset_n_val_i  (jtag_sep_reset_ctrl_drive.val.sep_reset_n_val)
     );
 `endif
 

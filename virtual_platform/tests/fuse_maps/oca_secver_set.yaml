@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# BL1_VERSION with one flag burned. The test images carry
+# manifest_security_version = 0, so any device bit makes them a rollback:
+# the check is a bit-superset test, manifest & device == device.
+#
+# eFuse bits only ever go 0 -> 1, which is what makes the raw fuse image a valid
+# monotone flag set for that comparison -- see plat_get_security_version().
+# Only the low 16 bytes of this 32-byte bank map onto OCA's 128-bit field.
+lc_state: TEST_DEV
+sboot_dis: 0
+bl1_version: [0x00000001, 0, 0, 0, 0, 0, 0, 0]

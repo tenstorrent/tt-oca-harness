@@ -9,24 +9,24 @@
  * ... from this input file:
  *       sep.rdl
  * ... using this as the target address space:
- *       och_sep_top
+ *       sep_top
  *
  * This file should not be modified by hand.
  *
  ******************************************************************************/
 
-`ifndef OCH_SEP_TOP_REG_SVH
-`define OCH_SEP_TOP_REG_SVH
+`ifndef SEP_TOP_REG_SVH
+`define SEP_TOP_REG_SVH
 
 
 
 //==============================================================================
-// Addresses for Address Map: och_sep_top
+// Addresses for Address Map: sep_top
 //==============================================================================
 
 
-localparam int unsigned OCH_SEP_TOP_REG_MAP_BASE_ADDR                                                             = 32'h10000000;
-localparam int unsigned OCH_SEP_TOP_REG_MAP_SIZE                                                                  = 32'hB0085400;
+localparam int unsigned SEP_TOP_REG_MAP_BASE_ADDR                                                                 = 32'h10000000;
+localparam int unsigned SEP_TOP_REG_MAP_SIZE                                                                      = 32'hB0085400;
 
 
 
@@ -6802,7 +6802,7 @@ localparam longint unsigned EL2_PIC_MEIGWCLR_REG_DEFAULT                        
 
 
 //==============================================================================
-// Bit Fields for Address Map: och_sep_top
+// Bit Fields for Address Map: sep_top
 //==============================================================================
 
 localparam longint unsigned SEP_SRAM_MEM_WORD_DATA_MASK                                                           = 64'hFFFFFFFFFFFFFFFF;
@@ -9025,14 +9025,17 @@ localparam     int unsigned REMAP_REGION_REGION_END_END_ADDR_SHIFT              
 localparam longint unsigned REMAP_REGION_REGION_ATTRS_OFFSET_MASK                                                 = 64'hFFFFFFFFFFF000;
 localparam     int unsigned REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT                                                = 12;
 
-localparam longint unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_MASK                                              = 64'h4000000000000000;
-localparam     int unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_SHIFT                                             = 62;
+localparam longint unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_MASK                                              = 64'hF00000000000000;
+localparam     int unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_SHIFT                                             = 56;
 
 localparam longint unsigned REMAP_REGION_REGION_ATTRS_VALID_MASK                                                  = 64'h8000000000000000;
 localparam     int unsigned REMAP_REGION_REGION_ATTRS_VALID_SHIFT                                                 = 63;
 
 localparam longint unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK                                          = 64'hFFFFFFFFFFFFFF;
 localparam     int unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT                                         = 0;
+
+localparam longint unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK                                           = 64'h8000000000000000;
+localparam     int unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_SHIFT                                          = 63;
 
 localparam longint unsigned FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_MASK                                           = 64'h1;
 localparam     int unsigned FILTER_CTRL_FILTER_CONFIG_READ_ALLOWED_SHIFT                                          = 0;
@@ -12173,8 +12176,8 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   valid ;
-    logic [0:0]   cacheable ;
-    logic [5:0]   rsvd_1 ;
+    logic [2:0]   rsvd_1 ;
+    logic [3:0]   cacheable ;
     logic [43:0]   offset ;
     logic [11:0]   rsvd_0 ;
 } remap_region_region_attrs_reg_t;
@@ -12182,6 +12185,8 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   valid ;
+    logic [6:0]   rsvd_0 ;
     logic [55:0]   offset ;
 } output_remap_region_region_attrs_reg_t;
 

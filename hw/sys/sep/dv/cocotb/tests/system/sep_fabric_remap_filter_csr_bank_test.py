@@ -41,14 +41,16 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     DBW_MASK,
     DBW_RO_VAL,
     FILTER_CONFIG,
+    FILTER_END_ADDR,
     FILTER_RW_MASK,
+    FILTER_START_ADDR,
     FILTER_STRIDE,
     INFILT_BASE,
     OUTFILT_BASE,
     REMAP_ATTRS,
     REMAP_STRIDE,
+    RESP_DECERR,
     RESP_OKAY,
-    RESP_SLVERR,
     STEE_BASE,
     WOSET_HI_BIT,
     SepFabricCsrBank,
@@ -95,10 +97,14 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         """
         count, mismatches = await self.fab.bank_field_walk()
         # The expected total is the plan's number, written out: a walk that
-        # covered fewer words would otherwise pass on whatever it reached.
+        # covered fewer words would otherwise pass on whatever it reached. The
+        # entry counts (16 alias, 16 + 32 filter) come from the register export;
+        # the words per entry are the walk's own choice of R/W words, not an RDL
+        # count: REGION_START lo/hi, REGION_END lo, REGION_ATTRS lo/hi per alias
+        # region, and FILTER_CONFIG lo, START_ADDR lo, END_ADDR lo per filter.
         assert count == 224, (
             f"CHK-BANK-INDEP FAIL: the walk covered {count} words, not the 224 "
-            f"the address map declares (16 alias x 5 + 48 filter entries x 3)"
+            f"it plans (16 alias x 5 words + 48 filter entries x 3 words)"
         )
         assert not mismatches, (
             f"CHK-BANK-INDEP FAIL: {len(mismatches)} of {count} bank words did not "
@@ -172,9 +178,9 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         ):
             r = base + region * REMAP_STRIDE
             lo, hi = r + REMAP_ATTRS, r + REMAP_ATTRS + 4
-            rb = await self.fab.rw_readback(lo, plo)  # offset [31:20], 1MB-aligned
+            rb = await self.fab.rw_readback(lo, plo)  # offset lo word
             assert rb == plo, f"{name} r{region} remap ATTRS_lo R/W: 0x{rb:08x} != 0x{plo:08x}"
-            rb = await self.fab.rw_readback(hi, phi)  # offset [55:32] = hi[23:0]
+            rb = await self.fab.rw_readback(hi, phi)  # offset hi word
             assert rb == phi, f"{name} r{region} remap ATTRS_hi R/W: 0x{rb:08x} != 0x{phi:08x}"
         self.logger.info(
             "CHK-AP-STEE-RW PASS: AP r%d + STEE r%d output-remap CSRs R/W (64-bit)",
@@ -235,23 +241,54 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
 
         # CHK-WOSET: inbound + outbound filter FILTER_CONFIG[63] locked is write-once-set
         # (seeded lock entry, DISTINCT from the field-R/W entry; the lock is permanent so
-        # this is last). The set sticks AND the clear-attempt write is actively REJECTED
-        # with SLVERR by the lock (stronger than a silently-ignored clear) -- bit stays 1.
+        # this is last). The set sticks, the clear-attempt write completes DECERR and the
+        # bit stays 1. While the lock is set, a write to the entry's START_ADDR and
+        # END_ADDR also completes DECERR and leaves the word unchanged. Source:
+        # filter_ctrl.rdl FILTER_CONFIG.locked and hw/ip/axi_filter/doc/index.adoc
+        # ("Locking a Filter Entry").
+        # Every locked write runs and is logged before any code is graded, so a
+        # wrong code on one register does not hide the response of the others.
+        fails: list[str] = []
         for name, base, entry in (
             ("INFILT", INFILT_BASE, cfg.infilt_lock_entry),
             ("OUTFILT", OUTFILT_BASE, cfg.outfilt_lock_entry),
         ):
-            cfg_hi = base + entry * FILTER_STRIDE + FILTER_CONFIG + 4
+            entry_base = base + entry * FILTER_STRIDE
+            cfg_hi = entry_base + FILTER_CONFIG + 4
             s, c, r = await self.fab.woset_probe(cfg_hi, WOSET_HI_BIT)
             assert s == 1 and c == 1, (
                 f"{name} e{entry} FILTER_CONFIG locked woset: after_set={s} after_clear={c} (want 1/1)"
             )
-            assert r == RESP_SLVERR, (
-                f"{name} e{entry} locked clear-attempt resp={r}, expected SLVERR (lock rejects)"
-            )
-            self.logger.info(
-                "CHK-WOSET PASS (%s e%d locked): set sticks, clear-attempt rejected with SLVERR "
-                "(write-once-set, lock active)",
-                name,
-                entry,
-            )
+            resps = [("FILTER_CONFIG", r)]
+            for reg, off in (("START_ADDR", FILTER_START_ADDR), ("END_ADDR", FILTER_END_ADDR)):
+                # Flip 4 KB-aligned address bits: START/END store them for any
+                # granule, so an accepted write would read back changed.
+                before, after, wr = await self.fab.locked_write_probe(entry_base + off, 0x0000_F000)
+                resps.append((reg, wr))
+                if after != before:
+                    fails.append(
+                        f"{name} e{entry} locked {reg} moved: 0x{before:08x} -> 0x{after:08x}"
+                    )
+            for reg, code in resps:
+                self.logger.info(
+                    "CHK-WOSET %s e%d locked %s write resp=%d (spec DECERR=%d)",
+                    name,
+                    entry,
+                    reg,
+                    code,
+                    RESP_DECERR,
+                )
+                if code != RESP_DECERR:
+                    fails.append(
+                        f"{name} e{entry} locked {reg} write resp={code}, expected DECERR "
+                        f"({RESP_DECERR}): a write to a locked entry goes to the AXI error "
+                        "subordinate"
+                    )
+        assert not fails, "CHK-WOSET FAIL: " + "; ".join(fails)
+        self.logger.info(
+            "CHK-WOSET PASS (INFILT e%d, OUTFILT e%d locked): set sticks; writes to "
+            "FILTER_CONFIG, START_ADDR and END_ADDR complete DECERR and leave the entry "
+            "unchanged",
+            cfg.infilt_lock_entry,
+            cfg.outfilt_lock_entry,
+        )

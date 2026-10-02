@@ -2,19 +2,34 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-/**
- * Tile-Link UL adapter for SRAM-like devices
- *
- * - Intentionally omitted BaseAddr in case of multiple memory maps are used in a SoC,
- *   it means that aliasing can happen if target device size in TL-UL crossbar is bigger
- *   than SRAM size
- * - At most one of EnableDataIntgGen / EnableDataIntgPt can be enabled. However it
- *   possible for both to be disabled.
- *   A module can neither generate an integrity response nor pass through any pre-existing
- *   integrity.  This might be the case for non-security critical memories where there is
- *   no stored integrity AND another entity upstream is already generating returning integrity.
- *   There is however no case where EnableDataIntgGen and EnableDataIntgPt are both true.
- */
+// Adapt TL-UL device traffic onto an SRAM-like memory port.
+//
+// Translate Get/Put into req/we/addr/wdata/wmask transactions and track outstanding
+// responses. Responses return in request order: a write responds once accepted, a read
+// once rvalid_i returns its data, and a rejected request without an SRAM access.
+//
+// BaseAddr is intentionally omitted so multiple memory maps may be used in an SoC.
+// Aliasing can happen if the TL-UL crossbar target size is bigger than the SRAM.
+//
+// At most one of ENABLE_DATA_INTG_GEN and ENABLE_DATA_INTG_PT may be enabled; there is no legal
+// case where both are true. Both may be disabled when a non-security-critical memory has
+// no stored integrity and an upstream entity already returns integrity. SRAM_DW must be a
+// multiple of the TL width.
+//
+// The remaining parameters select optional features:
+//
+// - BYTE_ACCESS enables sub-word writes and results in read-modify-write for integrity
+//   regeneration when ENABLE_DATA_INTG_PT is set and ERR_ON_WRITE is clear.
+// - ERR_ON_WRITE and ERR_ON_READ automatically error disallowed accesses.
+// - CMD_INTG_CHECK enables command and A-channel data integrity checking.
+// - ENABLE_RSP_INTG_GEN and ENABLE_DATA_INTG_GEN generate response and data integrity.
+// - ENABLE_DATA_INTG_PT passes write data integrity to the SRAM and returns the stored
+//   integrity with read data.
+// - SEC_FIFO_PTR uses redundant FIFO pointers.
+// - ENABLE_READBACK reads back and checks written or read data.
+// - DATA_XOR_ADDR removes an address XOR that the memory applied to read data, so a faulted
+//   read address shows up as an integrity error; it takes effect only with ENABLE_DATA_INTG_PT.
+// - SRAM_BUS_BANK_AW is the SRAM bank address width, used only when DATA_XOR_ADDR is set.
 
 module tlul_adapter_sram
   import tlul_pkg::*;
@@ -22,58 +37,56 @@ module tlul_adapter_sram
   `include "prim_assert.sv"
   import prim_mubi_pkg::mubi4_t;
 #(
-  parameter int SramAw            = 12,
-  parameter int SramDw            = 32, // Must be multiple of the TL width
-  parameter int Outstanding       = 1,  // Only one request is accepted
-  parameter int SramBusBankAW     = 12, // SRAM bus address width of the SRAM bank. Only used
-                                        // when DataXorAddr=1.
-  parameter bit ByteAccess        = 1,  // 1: Enables sub-word write transactions. Note that this
-                                        //    results in read-modify-write operations for integrity
-                                        //    re-generation if EnableDataIntgPt is set to 1.
-  parameter bit ErrOnWrite        = 0,  // 1: Writes not allowed, automatically error
-  parameter bit ErrOnRead         = 0,  // 1: Reads not allowed, automatically error
-  parameter bit CmdIntgCheck      = 0,  // 1: Enable command integrity check
-  parameter bit EnableRspIntgGen  = 0,  // 1: Generate response integrity
-  parameter bit EnableDataIntgGen = 0,  // 1: Generate response data integrity
-  parameter bit EnableDataIntgPt  = 0,  // 1: Passthrough command/response data integrity
-  parameter bit SecFifoPtr        = 0,  // 1: Duplicated fifo pointers
-  parameter bit EnableReadback    = 0,  // 1: Readback and check written/read data.
-  parameter bit DataXorAddr       = 0,  // 1: XOR data and address for address protection
-  localparam int WidthMult        = SramDw / top_pkg::TL_DW,
-  localparam int IntgWidth        = tlul_pkg::DataIntgWidth * WidthMult,
-  localparam int DataOutW         = EnableDataIntgPt ? SramDw + IntgWidth : SramDw
+  parameter int SRAM_AW              = 12,  // SRAM word-address width.
+  parameter int SRAM_DW              = 32,  // SRAM data width; must be a multiple of TL_DW.
+  parameter int OUTSTANDING          = 1,   // Maximum outstanding SRAM transactions.
+  parameter int SRAM_BUS_BANK_AW     = 12,  // SRAM bank address width; used when DATA_XOR_ADDR=1.
+  parameter bit BYTE_ACCESS          = 1,   // Allow sub-word writes; may RMW if
+                                            // ENABLE_DATA_INTG_PT.
+  parameter bit ERR_ON_WRITE         = 0,   // Reject writes with a bus error.
+  parameter bit ERR_ON_READ          = 0,   // Reject reads with a bus error.
+  parameter bit CMD_INTG_CHECK       = 0,   // Check A-channel command and data integrity.
+  parameter bit ENABLE_RSP_INTG_GEN  = 0,   // Generate D-channel response integrity.
+  parameter bit ENABLE_DATA_INTG_GEN = 0,   // Generate D-channel data integrity.
+  parameter bit ENABLE_DATA_INTG_PT  = 0,   // Pass data integrity through to the SRAM port.
+  parameter bit SEC_FIFO_PTR         = 0,   // Use redundant pointers in all three FIFOs.
+  parameter bit ENABLE_READBACK      = 0,   // Read back and check written or read data.
+  parameter bit DATA_XOR_ADDR        = 0,   // XOR read data with the SRAM bank address.
+  localparam int WidthMult           = SRAM_DW / top_pkg::TL_DW,  // TL beats packed per SRAM word.
+  localparam int IntgWidth           = tlul_pkg::DATA_INTG_WIDTH * WidthMult,  // Integrity bits per SRAM word with PT.
+  localparam int DataOutW            = ENABLE_DATA_INTG_PT ? SRAM_DW + IntgWidth : SRAM_DW  // Width of wdata_o, wmask_o and rdata_i.
 ) (
-  input   clk_i,
-  input   rst_ni,
+  input   clk_i,                             // System clock.
+  input   rst_ni,                            // Active-low reset.
 
-  // TL-UL interface
-  input   tl_h2d_t          tl_i,
-  output  tl_d2h_t          tl_o,
+  input   tl_h2d_t          tl_i,            // TL-UL host-to-device request.
+  output  tl_d2h_t          tl_o,            // TL-UL device-to-host response.
 
-  // control interface
-  input   mubi4_t en_ifetch_i,
+  input   mubi4_t en_ifetch_i,               // MuBi4True allows instruction-fetch Gets.
 
-  // SRAM interface
-  output logic                 req_o,
-  output mubi4_t               req_type_o,
-  input                        gnt_i,
-  output logic                 we_o,
-  output logic [SramAw-1:0]    addr_o,
-  output logic [DataOutW-1:0]  wdata_o,
-  output logic [DataOutW-1:0]  wmask_o,
-  output logic                 intg_error_o,
-  output logic [RsvdWidth-1:0] user_rsvd_o,
-  input        [DataOutW-1:0]  rdata_i,
-  input                        rvalid_i,
-  input        [1:0]           rerror_i, // 2 bit error [1]: Uncorrectable, [0]: Correctable
-  output logic                 compound_txn_in_progress_o,
-  input  mubi4_t               readback_en_i,
-  output logic                 readback_error_o,
-  input  logic                 wr_collision_i,
-  input  logic                 write_pending_i
+  output logic                  req_o,       // SRAM request valid.
+  output mubi4_t                req_type_o,  // A_USER.INSTR_TYPE of the request.
+  input                         gnt_i,       // SRAM grant.
+  output logic                  we_o,        // SRAM write enable.
+  output logic [SRAM_AW-1:0]    addr_o,      // SRAM word address.
+  output logic [DataOutW-1:0]   wdata_o,     // SRAM write data (and optional integrity).
+  output logic [DataOutW-1:0]   wmask_o,     // SRAM write mask (and optional integrity).
+  output logic                  intg_error_o,// Integrity or FIFO pointer error; sticky.
+  output logic [RSVD_WIDTH-1:0] user_rsvd_o, // Reserved user bits toward the SRAM side.
+  input        [DataOutW-1:0]   rdata_i,     // SRAM read data (and optional integrity).
+  input                         rvalid_i,    // SRAM read-data valid.
+  input        [1:0]            rerror_i,    // [1] uncorrectable, sets D_ERROR; [0] unused.
+  output logic                  compound_txn_in_progress_o,  // RMW write or readback request
+                                                             // driven.
+  input  mubi4_t                readback_en_i,               // MuBi4 readback enable; needs
+                                                             // ENABLE_READBACK.
+  output logic                  readback_error_o,            // Readback failure; sticky until
+                                                             // reset.
+  input  logic                  wr_collision_i,              // SRAM write collision; assertions
+                                                             // only.
+  input  logic                  write_pending_i              // SRAM write pending; assertions only.
 );
-
-  localparam int SramByte = SramDw/8;
+  localparam int SramByte = SRAM_DW/8;
   localparam int DataBitWidth = prim_util_pkg::vbits(SramByte);
   localparam int WoffsetWidth = (SramByte == top_pkg::TL_DBW) ? 1 :
                                 DataBitWidth - prim_util_pkg::vbits(top_pkg::TL_DBW);
@@ -94,7 +107,7 @@ module tlul_adapter_sram
 
   // readback check
   logic readback_error_q;
-  if (EnableReadback) begin : gen_cmd_readback_check
+  if (ENABLE_READBACK) begin : gen_cmd_readback_check
     assign readback_error = sram_byte_readback_error;
     // permanently latch readback error until reset
     always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -116,7 +129,7 @@ module tlul_adapter_sram
   assign readback_error_o = readback_error | readback_error_q;
 
   // integrity check
-  if (CmdIntgCheck) begin : gen_cmd_intg_check
+  if (CMD_INTG_CHECK) begin : gen_cmd_intg_check
     tlul_cmd_intg_chk u_cmd_intg_chk (
       .tl_i(tl_i),
       .err_o (intg_error)
@@ -141,9 +154,9 @@ module tlul_adapter_sram
       reqfifo_error | intg_error_q;
 
   // wr_attr_error is true if this is a PUT with an unsupported request size or mask. This is only
-  // possible if ByteAccess is not allowed.
-  assign wr_attr_error = (ByteAccess == 0) &&
-                         (tl_i.a_opcode == PutFullData || tl_i.a_opcode == PutPartialData) &&
+  // possible if BYTE_ACCESS is not allowed.
+  assign wr_attr_error = (BYTE_ACCESS == 0) &&
+                         (tl_i.a_opcode == PUT_FULL_DATA || tl_i.a_opcode == PUT_PARTIAL_DATA) &&
                          (tl_i.a_mask != '1 || tl_i.a_size != 2'h2);
 
   // An instruction type transaction is only valid if en_ifetch is enabled
@@ -152,14 +165,14 @@ module tlul_adapter_sram
                        (prim_mubi_pkg::mubi4_test_true_strict(tl_i.a_user.instr_type) &
                         prim_mubi_pkg::mubi4_test_false_loose(en_ifetch_i));
 
-  if (ErrOnWrite == 1) begin : gen_no_writes
-    assign wr_vld_error = tl_i.a_opcode != Get;
+  if (ERR_ON_WRITE == 1) begin : gen_no_writes
+    assign wr_vld_error = tl_i.a_opcode != GET;
   end else begin : gen_writes_allowed
     assign wr_vld_error = 1'b0;
   end
 
-  if (ErrOnRead == 1) begin: gen_no_reads
-    assign rd_vld_error = tl_i.a_opcode == Get;
+  if (ERR_ON_READ == 1) begin: gen_no_reads
+    assign rd_vld_error = tl_i.a_opcode == GET;
   end else begin : gen_reads_allowed
     assign rd_vld_error = 1'b0;
   end
@@ -188,9 +201,9 @@ module tlul_adapter_sram
   assign unused_tl_i_int = ^tl_i_int;
 
   tlul_rsp_intg_gen #(
-    .EnableRspIntgGen(EnableRspIntgGen),
-    .EnableDataIntgGen(EnableDataIntgGen),
-    .RspIntgInIsZero(1'b1)
+    .ENABLE_RSP_INTG_GEN(ENABLE_RSP_INTG_GEN),
+    .ENABLE_DATA_INTG_GEN(ENABLE_DATA_INTG_GEN),
+    .RSP_INTG_IN_IS_ZERO(1'b1)
   ) u_rsp_gen (
     .tl_i(tl_out),
     .tl_o
@@ -198,9 +211,9 @@ module tlul_adapter_sram
 
   // byte handling for integrity
   tlul_sram_byte #(
-    .EnableIntg(ByteAccess & EnableDataIntgPt & !ErrOnWrite),
-    .Outstanding(Outstanding),
-    .EnableReadback(EnableReadback)
+    .ENABLE_INTG(BYTE_ACCESS & ENABLE_DATA_INTG_PT & !ERR_ON_WRITE),
+    .OUTSTANDING(OUTSTANDING),
+    .ENABLE_READBACK(ENABLE_READBACK)
   ) u_sram_byte (
     .clk_i,
     .rst_ni,
@@ -223,7 +236,7 @@ module tlul_adapter_sram
   } sram_req_t ;
 
   typedef struct packed {
-    logic [SramBusBankAW-1:0] addr; // Address of the request going to the memory.
+    logic [SRAM_BUS_BANK_AW-1:0] addr; // Address of the request going to the memory.
   } sram_req_addr_t ;
 
   typedef struct packed {
@@ -235,13 +248,13 @@ module tlul_adapter_sram
   } req_t ;
 
   typedef struct packed {
-    logic [top_pkg::TL_DW-1:0] data ;
-    logic [DataIntgWidth-1:0]  data_intg ;
-    logic                      error ;
+    logic [top_pkg::TL_DW-1:0]  data ;
+    logic [DATA_INTG_WIDTH-1:0] data_intg ;
+    logic                       error ;
   } rsp_t ;
 
   localparam int SramReqWidth = $bits(sram_req_t);
-  localparam int SramReqFifoWidth = SramReqWidth + (DataXorAddr ? SramBusBankAW : 0);
+  localparam int SramReqFifoWidth = SramReqWidth + (DATA_XOR_ADDR ? SRAM_BUS_BANK_AW : 0);
   localparam int ReqFifoWidth = $bits(req_t) ;
   localparam int RspFifoWidth = $bits(rsp_t) ;
 
@@ -256,14 +269,14 @@ module tlul_adapter_sram
   logic sramreqfifo_wvalid, sramreqfifo_wready;
   logic sramreqfifo_rready;
 
-  // An item in u_sramreqfifo is the request itself, together (if DataXorAddr is nonzero) with some
-  // bits of the request address. These values are in sram_req_*data and sram_addr_*data, which get
-  // combined to fifo items in sramreqfifo_*data.
+  // An item in u_sramreqfifo is the request itself, together (if DATA_XOR_ADDR is nonzero) with
+  // some bits of the request address. These values are in sram_req_*data and sram_addr_*data, which
+  // get combined to fifo items in sramreqfifo_*data.
   sram_req_t                   sram_req_wdata, sram_req_rdata;
-  logic [SramBusBankAW-1:0]    sram_addr_wdata, sram_addr_rdata;
+  logic [SRAM_BUS_BANK_AW-1:0] sram_addr_wdata, sram_addr_rdata;
   logic [SramReqFifoWidth-1:0] sramreqfifo_wdata, sramreqfifo_rdata;
 
-  if (DataXorAddr) begin : gen_combine_with_addr
+  if (DATA_XOR_ADDR) begin : gen_combine_with_addr
     assign sramreqfifo_wdata = {sram_addr_wdata, sram_req_wdata};
     assign {sram_addr_rdata, sram_req_rdata} = sramreqfifo_rdata;
   end else begin : gen_combine_without_addr
@@ -322,24 +335,24 @@ module tlul_adapter_sram
   // by whether the current transaction is an instruction fetch or a regular read operation.
   logic [top_pkg::TL_DW-1:0] error_blanking_data;
   assign error_blanking_data = (prim_mubi_pkg::mubi4_test_true_strict(reqfifo_rdata.instr_type)) ?
-                                 DataWhenInstrError :
-                                 DataWhenError;
+                                 DATA_WHEN_INSTR_ERROR :
+                                 DATA_WHEN_ERROR;
 
-  // Since DataWhenInstrError and DataWhenError can be arbitrary parameters
+  // Since DATA_WHEN_INSTR_ERROR and DATA_WHEN_ERROR can be arbitrary parameters
   // we statically calculate the correct integrity values for these parameters here so that
   // they do not have to be supplied externally.
   logic [top_pkg::TL_DW-1:0] unused_instr, unused_data;
-  logic [DataIntgWidth-1:0] error_instr_integ, error_data_integ;
+  logic [DATA_INTG_WIDTH-1:0] error_instr_integ, error_data_integ;
   tlul_data_integ_enc u_tlul_data_integ_enc_instr (
-    .data_i(DataMaxWidth'(DataWhenInstrError)),
+    .data_i(DATA_MAX_WIDTH'(DATA_WHEN_INSTR_ERROR)),
     .data_intg_o({error_instr_integ, unused_instr})
   );
   tlul_data_integ_enc u_tlul_data_integ_enc_data (
-    .data_i(DataMaxWidth'(DataWhenError)),
+    .data_i(DATA_MAX_WIDTH'(DATA_WHEN_ERROR)),
     .data_intg_o({error_data_integ, unused_data})
   );
 
-  logic [DataIntgWidth-1:0] error_blanking_integ;
+  logic [DATA_INTG_WIDTH-1:0] error_blanking_integ;
   assign error_blanking_integ = (prim_mubi_pkg::mubi4_test_true_strict(reqfifo_rdata.instr_type)) ?
                                  error_instr_integ :
                                  error_data_integ;
@@ -350,7 +363,7 @@ module tlul_adapter_sram
 
   // If this a write response with data fields set to 0, we have to set all ECC bits correctly
   // since we are using an inverted Hsiao code.
-  logic [DataIntgWidth-1:0] data_intg;
+  logic [DATA_INTG_WIDTH-1:0] data_intg;
   assign data_intg = (reqfifo_rdata.error) ? error_blanking_integ    : // TL-UL error
                      (vld_rd_rsp)          ? rspfifo_rdata.data_intg : // valid read
                      prim_secded_pkg::SecdedInv3932ZeroEcc;            // valid write
@@ -375,7 +388,7 @@ module tlul_adapter_sram
 
   assign tl_o_int = '{
       d_valid  : d_valid ,
-      d_opcode : (d_valid && !reqfifo_rdata.is_read) ? AccessAck : AccessAckData,
+      d_opcode : (d_valid && !reqfifo_rdata.is_read) ? ACCESS_ACK : ACCESS_ACK_DATA,
       d_param  : '0,
       d_size   : (d_valid) ? reqfifo_rdata.size : '0,
       d_source : (d_valid) ? reqfifo_rdata.source : '0,
@@ -395,15 +408,16 @@ module tlul_adapter_sram
   //    In this case, it is assumed the request is granted (may cause ordering issue later?)
   assign req_o       = tl_i_int.a_valid & reqfifo_wready & ~error_internal;
   assign req_type_o  = tl_i_int.a_user.instr_type;
-  assign we_o        = tl_i_int.a_valid & (tl_i_int.a_opcode inside {PutFullData, PutPartialData});
-  assign addr_o      = (tl_i_int.a_valid) ? tl_i_int.a_address[DataBitWidth+:SramAw] : '0;
+  assign we_o        = tl_i_int.a_valid &
+                       (tl_i_int.a_opcode inside {PUT_FULL_DATA, PUT_PARTIAL_DATA});
+  assign addr_o      = (tl_i_int.a_valid) ? tl_i_int.a_address[DataBitWidth+:SRAM_AW] : '0;
   assign user_rsvd_o = (tl_i_int.a_valid) ? tl_i_int.a_user.rsvd : '0;
 
   // Support SRAMs wider than the TL-UL word width by mapping the parts of the
   // TL-UL address which are more fine-granular than the SRAM width to the
   // SRAM write mask.
   logic [WoffsetWidth-1:0] woffset;
-  if (top_pkg::TL_DW != SramDw) begin : gen_wordwidthadapt
+  if (top_pkg::TL_DW != SRAM_DW) begin : gen_wordwidthadapt
     assign woffset = tl_i_int.a_address[DataBitWidth-1:prim_util_pkg::vbits(top_pkg::TL_DBW)];
   end else begin : gen_no_wordwidthadapt
     assign woffset = '0;
@@ -412,7 +426,8 @@ module tlul_adapter_sram
   // The size of the data/wmask depends on whether passthrough integrity is enabled.
   // If passthrough integrity is enabled, the data is concatenated with the integrity passed through
   // the user bits.  Otherwise, it is the data only.
-  localparam int DataWidth = EnableDataIntgPt ? top_pkg::TL_DW + DataIntgWidth : top_pkg::TL_DW;
+  localparam int DataWidth = ENABLE_DATA_INTG_PT ? top_pkg::TL_DW + DATA_INTG_WIDTH :
+                                                   top_pkg::TL_DW;
 
   // Final combined wmask / wdata
   logic [WidthMult-1:0][DataWidth-1:0] wmask_combined;
@@ -423,8 +438,8 @@ module tlul_adapter_sram
   logic [WidthMult-1:0][top_pkg::TL_DW-1:0] wdata_int;
 
   // Integrity portion
-  logic [WidthMult-1:0][DataIntgWidth-1:0] wmask_intg;
-  logic [WidthMult-1:0][DataIntgWidth-1:0] wdata_intg;
+  logic [WidthMult-1:0][DATA_INTG_WIDTH-1:0] wmask_intg;
+  logic [WidthMult-1:0][DATA_INTG_WIDTH-1:0] wdata_intg;
 
   always_comb begin
     wmask_int = '0;
@@ -443,13 +458,13 @@ module tlul_adapter_sram
     wdata_intg  = '0;
 
     if (tl_i_int.a_valid) begin
-      wmask_intg[woffset] = {DataIntgWidth{1'b1}};
+      wmask_intg[woffset] = {DATA_INTG_WIDTH{1'b1}};
       wdata_intg[woffset] = tl_i_int.a_user.data_intg;
     end
   end
 
   for (genvar i = 0; i < WidthMult; i++) begin : gen_write_output
-    if (EnableDataIntgPt) begin : gen_combined_output
+    if (ENABLE_DATA_INTG_PT) begin : gen_combined_output
       assign wmask_combined[i] = {wmask_intg[i], wmask_int[i]};
       assign wdata_combined[i] = {wdata_intg[i], wdata_int[i]};
     end else begin : gen_ft_output
@@ -465,7 +480,7 @@ module tlul_adapter_sram
 
   assign reqfifo_wvalid = a_ack ; // Push to FIFO only when granted
   assign reqfifo_wdata  = '{
-    is_read: tl_i_int.a_opcode == Get,
+    is_read: tl_i_int.a_opcode == GET,
     error:  error_internal,
     instr_type: tl_i_int.a_user.instr_type,
     size:   tl_i_int.a_size,
@@ -483,7 +498,7 @@ module tlul_adapter_sram
 
   assign rspfifo_wvalid = rvalid_i & reqfifo_rvalid;
 
-  assign sram_addr_wdata = tl_i_int.a_address[DataBitWidth+:SramBusBankAW];
+  assign sram_addr_wdata = tl_i_int.a_address[DataBitWidth+:SRAM_BUS_BANK_AW];
 
   // Make sure only requested bytes are forwarded
   logic [WidthMult-1:0][DataWidth-1:0] rdata_reshaped;
@@ -492,7 +507,7 @@ module tlul_adapter_sram
   // This just changes the array format so that the correct word can be selected by indexing.
   assign rdata_reshaped = rdata_i;
 
-  if (EnableDataIntgPt) begin : gen_no_rmask
+  if (ENABLE_DATA_INTG_PT) begin : gen_no_rmask
     always_comb begin
       // If the read mask is set to zero, all read data is zeroed out by the mask.
       // We have to set the ECC bits accordingly since we are using an inverted Hsiao code.
@@ -502,16 +517,16 @@ module tlul_adapter_sram
       // will not calculate correctly.
       if (|sram_req_rdata.mask) begin
         // Select correct word.
-        if (DataXorAddr) begin : gen_data_xor_addr
-          // When DataXorAddr is enabled, on a read, the address is XORed with the data fetched from
-          // the memory in the underlying memory controller (e.g., flash controller). At this point,
-          // the address is again removed. If the address in the read transaction has been modified,
-          // e.g., due to a fault, rdata now contains faulty data, which is detected by the
-          // integrity mechanism.
+        if (DATA_XOR_ADDR) begin : gen_data_xor_addr
+          // When DATA_XOR_ADDR is enabled, on a read, the address is XORed with the data fetched
+          // from the memory in the underlying memory controller (e.g., flash controller). At this
+          // point, the address is again removed. If the address in the read transaction has been
+          // modified, e.g., due to a fault, rdata now contains faulty data, which is detected by
+          // the integrity mechanism.
           rdata_tlword = {
               rdata_reshaped[sram_req_rdata.woffset][DataWidth-1:top_pkg::TL_DW],
               rdata_reshaped[sram_req_rdata.woffset][top_pkg::TL_DW-1:0] ^
-                  {{(top_pkg::TL_DW-SramBusBankAW){1'b0}}, sram_addr_rdata}
+                  {{(top_pkg::TL_DW-SRAM_BUS_BANK_AW){1'b0}}, sram_addr_rdata}
           };
         end else begin: gen_no_data_xor_addr
           rdata_tlword = rdata_reshaped[sram_req_rdata.woffset];
@@ -532,7 +547,7 @@ module tlul_adapter_sram
 
   assign rspfifo_wdata  = '{
     data      : rdata_tlword[top_pkg::TL_DW-1:0],
-    data_intg : EnableDataIntgPt ? rdata_tlword[DataWidth-1 -: DataIntgWidth] : '0,
+    data_intg : ENABLE_DATA_INTG_PT ? rdata_tlword[DataWidth-1 -: DATA_INTG_WIDTH] : '0,
     error     : rerror_i[1] // Only care for Uncorrectable error
   };
   assign rspfifo_rready = reqfifo_rdata.is_read & ~reqfifo_rdata.error & reqfifo_rready;
@@ -554,9 +569,9 @@ module tlul_adapter_sram
   prim_fifo_sync #(
     .Width       (ReqFifoWidth),
     .Pass        (1'b0),
-    .Depth       (Outstanding),
+    .Depth       (OUTSTANDING),
     .NeverClears (1'b1),
-    .Secure      (SecFifoPtr)
+    .Secure      (SEC_FIFO_PTR)
   ) u_reqfifo (
     .clk_i,
     .rst_ni,
@@ -579,9 +594,9 @@ module tlul_adapter_sram
   prim_fifo_sync #(
     .Width             (SramReqFifoWidth),
     .Pass              (1'b0),
-    .Depth             (Outstanding),
+    .Depth             (OUTSTANDING),
     .NeverClears       (1'b1),
-    .Secure            (SecFifoPtr),
+    .Secure            (SEC_FIFO_PTR),
     .OutputZeroIfEmpty (1)
   ) u_sramreqfifo (
     .clk_i,
@@ -598,14 +613,14 @@ module tlul_adapter_sram
     .err_o   (sramreqfifo_error)
   );
 
-  if (!DataXorAddr) begin : gen_no_data_xor_addr_fifo
+  if (!DATA_XOR_ADDR) begin : gen_no_data_xor_addr_fifo
     // If u_sramreqfifo doesn't contain any address data, nothing will be reading sram_addr_wdata or
     // sram_addr_rdata. Tie them off with an unused signal.
     logic unused_sram_addresses;
     assign unused_sram_addresses = ^{sram_addr_wdata, sram_addr_rdata};
   end
 
-  // Rationale having #Outstanding depth in response FIFO.
+  // Rationale having #OUTSTANDING depth in response FIFO.
   //    In normal case, if the host or the crossbar accepts the response data,
   //    response FIFO isn't needed. But if in any case it has a chance to be
   //    back pressured, the response FIFO should store the returned data not to
@@ -614,9 +629,9 @@ module tlul_adapter_sram
   prim_fifo_sync #(
     .Width       (RspFifoWidth),
     .Pass        (1'b1),
-    .Depth       (Outstanding),
+    .Depth       (OUTSTANDING),
     .NeverClears (1'b1),
-    .Secure      (SecFifoPtr)
+    .Secure      (SEC_FIFO_PTR)
   ) u_rspfifo (
     .clk_i,
     .rst_ni,
@@ -639,14 +654,14 @@ module tlul_adapter_sram
   // even though the RspFifo is full)
   `OCAH_OT_ASSERT(rvalidHighWhenRspFifoFull, rvalid_i |-> rspfifo_wready)
 
-  // If both ErrOnWrite and ErrOnRead are set, this block is useless
-  `OCAH_OT_ASSERT_INIT(adapterNoReadOrWrite, (ErrOnWrite & ErrOnRead) == 0)
+  // If both ERR_ON_WRITE and ERR_ON_READ are set, this block is useless
+  `OCAH_OT_ASSERT_INIT(adapterNoReadOrWrite, (ERR_ON_WRITE & ERR_ON_READ) == 0)
 
-  `OCAH_OT_ASSERT_INIT(SramDwHasByteGranularity_A, SramDw % 8 == 0)
-  `OCAH_OT_ASSERT_INIT(SramDwIsMultipleOfTlulWidth_A, SramDw % top_pkg::TL_DW == 0)
+  `OCAH_OT_ASSERT_INIT(SramDwHasByteGranularity_A, SRAM_DW % 8 == 0)
+  `OCAH_OT_ASSERT_INIT(SramDwIsMultipleOfTlulWidth_A, SRAM_DW % top_pkg::TL_DW == 0)
 
   // These parameter options cannot both be true at the same time
-  `OCAH_OT_ASSERT_INIT(DataIntgOptions_A, ~(EnableDataIntgGen & EnableDataIntgPt))
+  `OCAH_OT_ASSERT_INIT(DataIntgOptions_A, ~(ENABLE_DATA_INTG_GEN & ENABLE_DATA_INTG_PT))
 
   // Make sure that outputs are defined (a special case for tl_o is explained separately below)
   `OCAH_OT_ASSERT_KNOWN(ReqOutKnown_A,   req_o  )

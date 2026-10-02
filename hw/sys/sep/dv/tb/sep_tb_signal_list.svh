@@ -53,6 +53,25 @@
 `SEP_TB_IN(logic, jtag_kmac_rst_hold_i)
 `SEP_TB_IN(logic, jtag_trng_rst_hold_i)
 `SEP_TB_IN(logic, jtag_abr_rst_hold_i)
+// JTAG sep_reset_n override (frontdoor jtag_sep_reset_ctrl_i). ovrd=0 selects
+// sep_intermediate_reset_n, which stays low until fuse sense completes. ovrd=1
+// selects val. Default 0 on both, so every other leaf keeps the sense-gated reset.
+`SEP_TB_IN(logic, jtag_sep_reset_n_ovrd_i)
+`SEP_TB_IN(logic, jtag_sep_reset_n_val_i)
+// IC_RESET TDR for the SEP slice. tdr_en=0 keeps the per-port pins above.
+// tdr_en=1 selects jtag_ic_reset_reg, sized to jtag_sep_reset_ctrl_t and
+// packed the way jtag_ptap packs the SEP slice. Scan controls idle, and
+// rst_n/trst_n stay released, so the register holds override-off.
+`SEP_TB_IN(logic, jtag_ic_reset_tdr_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_tck_i)
+`SEP_TB_IN(logic, jtag_ic_reset_select_i)
+`SEP_TB_IN(logic, jtag_ic_reset_capture_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_shift_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_update_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_rst_n_i)
+`SEP_TB_IN(logic, jtag_ic_reset_trst_n_i)
+`SEP_TB_IN(logic, jtag_ic_reset_tdi_i)
+`SEP_TB_OUT(logic, jtag_ic_reset_tdo_o)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
 // pair onto the LCC decoder input (no legal OTP image can present one). See
 // the force block below.
@@ -90,6 +109,11 @@
 // still gates on a_valid, so a DMA-issued command is required. See the
 // force block below.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
+// HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
+// side idle so the hash engine stops consuming and the FIFO fills. A port rather
+// than a plusarg so a test can raise it after the ROM's short self-test hash.
+// See the force block below.
+`SEP_TB_IN(logic, hmac_fifo_drain_stall_i)
 
 // ------------------------------------------------------------------
 // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -276,6 +300,11 @@
 // pattern as every other observable above. Default backdoor data-compare
 // path; one eFuse test uses the AXI front door instead.
 `SEP_TB_OUT(logic [sep_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
+// The three public-ID fields of the Key Manager's OTP input, taken at the KM
+// instance's otp_data_i port. Each is the 512-bit dual-rail word {~id, id}.
+`SEP_TB_OUT(logic [511:0], km_otp_sep_chiplet_id_o)
+`SEP_TB_OUT(logic [511:0], km_otp_sep_sip_id_o)
+`SEP_TB_OUT(logic [511:0], km_otp_sep_sys_id_o)
 // SEP scratch-cold CSR array (8 words x 32b), surfaced as a top-level probe so
 // the dual-CPU eFuse-mux coexistence test can read the EL2 firmware's measured
 // summary (host loop count + KM-contention error counters) with no AXI master
@@ -300,6 +329,27 @@
 `SEP_TB_OUT(logic [31:0], km_sram_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_write_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_word0_o)
+// KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
+// for km_rom_otp_id.S, which writes its results to those words.
+`SEP_TB_OUT(logic [98*32-1:0], km_sram_probe_o)
+// KM SRAM read-response timing counters at the wrapper port; see the monitor
+// in tb_top. Observation-only.
+`SEP_TB_OUT(logic [31:0], km_sram_rd_accept_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_lat1_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_lat_err_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_b2b_diff_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_scr_rd_count_o)
+// KM SRAM writes accepted while the KM scrambler is enabled, at the wrapper
+// port: count, and the physical word address and data of the first four, with
+// the macro array word at each of those addresses. Observation-only.
+`SEP_TB_OUT(logic [31:0], km_sram_scr_wr_count_o)
+`SEP_TB_OUT(logic [4*13-1:0], km_sram_scr_wr_addr_o)
+`SEP_TB_OUT(logic [4*32-1:0], km_sram_scr_wr_data_o)
+`SEP_TB_OUT(logic [4*32-1:0], km_sram_scr_wr_cell_o)
+// SEP-side KM mailbox regblock address-decode write refusals: count and the
+// block offset of the last one. Observation-only.
+`SEP_TB_OUT(logic [31:0], km_mbox_sep_wr_err_count_o)
+`SEP_TB_OUT(logic [4:0], km_mbox_sep_wr_err_addr_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)
@@ -421,18 +471,31 @@
 `SEP_TB_OUT(logic, hmac_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, hmac_host_isolated_probe_o)
 `SEP_TB_OUT(logic, hmac_km_isolated_probe_o)
+// Host-path isolate request, high from the software reset request until
+// release. See "Crypto reset-sequencer probes" in
+// hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc.
+`SEP_TB_OUT(logic, hmac_host_isolate_req_probe_o)
 `SEP_TB_OUT(logic, kmac_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, kmac_host_isolated_probe_o)
 `SEP_TB_OUT(logic, kmac_km_isolated_probe_o)
+`SEP_TB_OUT(logic, kmac_host_isolate_req_probe_o)
 `SEP_TB_OUT(logic, abr_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, abr_host_isolated_probe_o)
 `SEP_TB_OUT(logic, abr_km_isolated_probe_o)
-// IP-interrupt aggregator: observation-only mirror of the 34-bit
+`SEP_TB_OUT(logic, abr_host_isolate_req_probe_o)
+// AES and OTBN gated resets, for timing the crypto EDN endpoint cancel against
+// the reset it precedes.
+`SEP_TB_OUT(logic, aes_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, otbn_gated_rst_n_probe_o)
+// IP-interrupt aggregator: observation-only mirror of the NUM_INTERNAL_IRQS-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
 // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
 // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
 `SEP_TB_OUT(logic [sep_pkg::NUM_INTERNAL_IRQS-1:0], sep_internal_interrupts_probe_o)
+// Saturating count of cycles where CPU-LSU and DMA simultaneously present an
+// SRAM request on the same local-crossbar address channel.
+`SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
 `SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)

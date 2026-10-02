@@ -19,7 +19,6 @@ module dtp_tap_props
   input logic       trst_ni,
   input logic       tms_i,
   input tap_state_e state_i,             // current_state_o
-  input logic [2:0] tms_high_count_i,    // tms_reset_counter_q
   input logic       tdo_oen_i,           // tdo_oen_o
   input logic       dr_select_i,         // host_dr_scan_ctrl_o.select
   input logic       dr_update_en_i,      // host_dr_scan_ctrl_o.update_en
@@ -34,6 +33,17 @@ module dtp_tap_props
   input logic       test_logic_reset_i   // host_dr_scan_ctrl_o.test_logic_reset
 );
 
+  logic [2:0] tms_high_count_q;
+  always_ff @(posedge tck_i or negedge trst_ni) begin
+    if (!trst_ni) begin
+      tms_high_count_q <= 3'd0;
+    end else if (!tms_i) begin
+      tms_high_count_q <= 3'd0;
+    end else if (tms_high_count_q != 3'd5) begin
+      tms_high_count_q <= tms_high_count_q + 3'd1;
+    end
+  end
+
   // verilog_format: off
   `OCAH_FV_INITIAL_RESET(tck_i, trst_ni)
 
@@ -42,7 +52,7 @@ module dtp_tap_props
 
   // IEEE 1149.1: five consecutive tck cycles with tms high reach Test-Logic-Reset from any state.
   `OCAH_FV_ASSERT(ast_tap_five_tms_high_reach_tlr,
-                  `OCAH_FV_IMPLIES(tms_high_count_i == 3'd5, state_i == TEST_LOGIC_RESET),
+                  `OCAH_FV_IMPLIES(tms_high_count_q == 3'd5, state_i == TEST_LOGIC_RESET),
                   tck_i, trst_ni)
 
   // ---- Transitions --------------------------------------------------------------------------
@@ -101,7 +111,7 @@ module dtp_tap_props
   `OCAH_FV_COVER(cov_tap_update_ir_from_exit1,
                  state_i == UPDATE_IR && $past(state_i) == EXIT1_IR, tck_i, trst_ni)
   `OCAH_FV_COVER(cov_tap_tlr_from_five_tms_high,
-                 tms_high_count_i == 3'd5 && $past(tms_high_count_i) == 3'd4 &&
+                 tms_high_count_q == 3'd5 && $past(tms_high_count_q) == 3'd4 &&
                  $past(state_i) != TEST_LOGIC_RESET,
                  tck_i, trst_ni)
   `OCAH_FV_COVER(cov_tap_tdo_driven, tdo_oen_i, tck_i, trst_ni)

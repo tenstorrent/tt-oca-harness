@@ -12,7 +12,8 @@
       <ipxact:name>zeroer_ctrl_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>zeroer_ctrl</ipxact:name>
-        <ipxact:description>AXI zeroer control register</ipxact:description>
+        <ipxact:displayName>Zeroer Control Address Map</ipxact:displayName>
+        <ipxact:description>Control and status registers for the AXI memory-zeroing engine.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h18</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -52,7 +53,7 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>CTRL_STATUS</ipxact:name>
-          <ipxact:description>Writing this register will trigger start of zeroer</ipxact:description>
+          <ipxact:description>Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.</ipxact:description>
           <ipxact:addressOffset>'h10</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>

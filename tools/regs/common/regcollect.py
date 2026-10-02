@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from systemrdl import RDLListener
 from systemrdl.node import SignalNode
 
+from .fieldprops import extract_field_props
+
 
 @dataclass
 class FieldInfo:
@@ -156,35 +158,17 @@ class FieldCollector(RDLListener):
 
     def enter_Field(self, node):
         if self.under_target:
-            reset = node.get_property("reset")
-            onwrite = node.get_property("onwrite", default=None)
-            if onwrite is None:
-                onwrite = (
-                    "woset"
-                    if node.get_property("woset")
-                    else ("woclr" if node.get_property("woclr") else "")
-                )
-            else:
-                onwrite = onwrite.name
-            onread = node.get_property("onread", default=None)
-            if onread is None:
-                onread = (
-                    "rset"
-                    if node.get_property("rset")
-                    else ("rclr" if node.get_property("rclr") else "")
-                )
-            else:
-                onread = onread.name
+            props = extract_field_props(node)
             self.curr_reg_fields.append(
                 FieldInfo(
                     name=node.get_path_segment(array_suffix="_{index:d}_"),
                     high=node.high,
                     low=node.low,
-                    reset=0 if reset is None else reset,
-                    sw=node.get_property("sw").name,
-                    onwrite=onwrite,
-                    onread=onread,
-                    singlepulse=bool(node.get_property("singlepulse")),
+                    reset=0 if props.reset is None else props.reset,
+                    sw=props.sw,
+                    onwrite=props.onwrite,
+                    onread=props.onread,
+                    singlepulse=props.singlepulse,
                 )
             )
 

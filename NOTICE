@@ -24,13 +24,22 @@ This project incorporates code from the following third-party sources:
    Licensed under the Apache License, Version 2.0
    Project: https://github.com/lowRISC/opentitan
    Vendored under vendor/lowRISC/opentitan/upstream/
+   Includes core reference figures used by the SEP documentation.
 
 2. PULP Platform
    Copyright (c) ETH Zurich, University of Bologna and contributors
-   Licensed under the Apache License, Version 2.0 and/or Solderpad Hardware License v0.51
+   Licensed under the Apache License, Version 2.0 and/or Solderpad Hardware License
+   v0.51 or v2.1. The Solderpad Hardware License permits use under the Apache License,
+   Version 2.0, and Tenstorrent distributes this material under Apache-2.0.
    Packages: axi, apb, axi_stream, common_cells, common_verification, idma, obi,
    register_interface, unbent
    Vendored under vendor/pulp-platform/
+   Individual files outside vendor/:
+   hw/common/sync.sv (Copyright 2018 ETH Zurich and University of Bologna;
+   Antonio Pullini; Solderpad Hardware License v0.51)
+   Individual files inside vendor/:
+   vendor/pulp-platform/common_cells/upstream/src/read.sv (Copyright 2022 EPFL;
+   Solderpad Hardware License v2.1, tagged "Apache-2.0 WITH SHL-2.1")
 
 3. VeeR-EL2 (CHIPS Alliance)
    Copyright (c) Antmicro and contributors
@@ -50,10 +59,11 @@ This project incorporates code from the following third-party sources:
    Vendored under scripts/ci/slang_to_rdjson.py
 
 6. Adams Bridge
-   Copyright CHIPS Alliance contributors
+   Copyright CHIPS Alliance and Adams Bridge contributors
    Licensed under the Apache License, Version 2.0
    Project: https://github.com/chipsalliance/adams-bridge
    Vendored under vendor/chipsalliance/adams-bridge/upstream/
+   Includes core reference figures used by the SEP documentation.
 
 7. Caliptra RTL
    Copyright CHIPS Alliance contributors
@@ -85,6 +95,9 @@ This project incorporates code from the following third-party sources:
 11. Freedom Metal
     Copyright (c) 2017-2018 SiFive Inc.
     Distributed under the FreeBSD License terms retained in the source file.
+    Files that combine these terms with Tenstorrent's Apache-2.0 header, such as
+    hw/sys/smc/bootrom/prod/boot/crt0.S and hw/sys/smc/dv/fw/startup/crt0.S, are
+    distributed under both Apache-2.0 and the BSD terms.
     Sources: hw/sys/smc/dv/fw/include/metal/,
     hw/sys/smc/dv/fw/drivers/, hw/sys/smc/dv/fw/startup/, and
     hw/sys/smc/bootrom/prod/
@@ -94,12 +107,15 @@ This project incorporates code from the following third-party sources:
     Licensed under the Apache License, Version 2.0
     Source: hw/sys/smc/dv/fw/tests/coremark/
 
-13. Rocket Chip plusarg reader
-    Copyright 2016-2017 SiFive, Inc.
+13. Rocket Chip and Chipyard
+    Copyright 2016-2017 SiFive, Inc. and Rocket Chip contributors
     Licensed under the Apache License, Version 2.0
     Project: https://github.com/chipsalliance/rocket-chip
     Source:
     hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/plusarg_reader.v
+    The 274 generated files under
+    hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/ are CIRCT output
+    generated from Rocket Chip sources and contain material derived from them.
 
 14. Antora default UI and Antora Lunr Extension
     Copyright their respective contributors
@@ -137,3 +153,12 @@ This project incorporates code from the following third-party sources:
     Project: https://github.com/mathjax/MathJax
     The unmodified es5/tex-svg.js bundle and LICENSE from mathjax@3.2.2
     are vendored under doc/ui-supplemental/js/vendor/mathjax/.
+
+================================================================================
+
+19. OpenTitan OTBN RSA-3072 modular multiplication (dcrypto)
+    Copyright lowRISC Contributors; Copyright 2016 The Chromium OS Authors
+    Licensed under the BSD 3-Clause License (LICENSE.dcrypto in the upstream source)
+    Derived from
+    https://chromium.googlesource.com/chromiumos/platform/ec/+/refs/heads/cr50_stab/chip/g/dcrypto/dcrypto_bn.c
+    Source: hw/sys/sep/dv/fw/tests/otbn_rsa_3072_verify_test/otbn_src/montmul.s

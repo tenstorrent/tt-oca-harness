@@ -25,6 +25,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     collect.add_argument("--run-dir")
     collect.add_argument("--output")
+    collect.add_argument(
+        "--all-attempts",
+        action="store_true",
+        help="keep every attempt of a retried leaf in tests_detail (default: its final attempt)",
+    )
 
     report = subparsers.add_parser("report", help="generate one per-flow HTML report")
     report.add_argument("--result", required=True)
@@ -57,6 +62,7 @@ def main(argv: list[str] | None = None) -> int:
                 *(["--framework", args.framework] if args.framework else []),
                 *(["--run-dir", args.run_dir] if args.run_dir else []),
                 *(["--output", args.output] if args.output else []),
+                *(["--all-attempts"] if args.all_attempts else []),
             ]
         )
     if args.cmd == "report":

@@ -10,8 +10,9 @@
 
 
 addrmap misc_wrap {
-    desc = "Top-level addrmap for SMC misc registers including scratch and chip config";
-
+    name = "SMC Miscellaneous Wrapper Address Map";
+    desc = "Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.";
+    
     /////////////////
     // Address Map //
     /////////////////
@@ -21,6 +22,9 @@ addrmap misc_wrap {
     chip_config     chip_config          @0x000_0100;
     ndm_reset       ndm_reset            @0x000_0200;
 
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+`endif
 };
 
 `endif

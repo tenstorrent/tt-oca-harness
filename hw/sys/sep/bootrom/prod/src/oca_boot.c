@@ -44,8 +44,8 @@
 #include "status_values.h"
 
 // SEP EXT SRAM: staging area for the manifest body and its payload.
-#define SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10000000
-#define SRAM_SIZE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
+#define SRAM_BASE ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10000000
+#define SRAM_SIZE ((uint32_t)SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
 
 // Staged state, valid only after a successful rom_manifest_boot().
 static const uint8_t *g_body;
@@ -94,9 +94,9 @@ uint32_t rom_oca_demotion_control(void) {
 // Storage transport
 // ---------------------------------------------------------------------------
 
-// With the OpenTitan host, a flash `src` is a byte offset read through the host.
-// Otherwise `src` is an absolute address (XIP window or SMC SRAM) copied by the
-// secure DMA.
+// For the OpenTitan controller the flash is not memory-mapped, so `src` is a
+// flash byte offset read through the SPI host; otherwise `src` is an absolute
+// address (XIP window or SMC SRAM) copied by the secure DMA.
 static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool from_spi) {
     // Every storage read on the boot path goes through the transport shim's
     // bounds gate first (SEP-ROM-SPI-010). It is the only check that the SOURCE
@@ -106,38 +106,46 @@ static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool
     // with. The gate is fault-injection hardened (doubled, laundered evaluation)
     // and defaults to reject.
     //
-    // The gate speaks flash byte offsets. Through the XIP window `src` is an
-    // absolute address, so the window base is taken back off; a source below
-    // the window has no offset and is refused rather than wrapped. Non-SPI
-    // sources (a manifest the SMC staged in its SRAM) are not flash and are
-    // bounded by their own region, so the gate does not apply.
+    // It speaks flash byte offsets on both controllers. The OpenTitan path
+    // already carries one; the XIP path carries an absolute window address, so
+    // the base the caller added is taken back off here. A source below the
+    // window has no offset representation at all, so it is refused rather than
+    // wrapped. Non-SPI sources (a manifest the SMC staged in its SRAM) are not
+    // flash and are bounded by their own region, so the gate does not apply.
     if (from_spi) {
 #if BOOT_SPI_CONTROLLER_OT
         const uint32_t flash_off = src;
 #else
-        if (src < SEP_XIP_BASE) {
+        if (src < (uint32_t)SEP_SPI_BASE) {
+            report_status(STATUS_TYPE_WARN, SEP_MSG_IMAGE_OOB);
             simputs("FLASH_READ_OOB\n");
             return OCA_BOOT_ERR_READ_OUT_OF_BOUNDS;
         }
-        const uint32_t flash_off = src - SEP_XIP_BASE;
+        const uint32_t flash_off = src - (uint32_t)SEP_SPI_BASE;
 #endif
         if (!boot_flash_bounds_ok(flash_off, len, dst, len)) {
+            report_status(STATUS_TYPE_WARN, SEP_MSG_IMAGE_OOB);
             simputs("FLASH_READ_OOB\n");
             return OCA_BOOT_ERR_READ_OUT_OF_BOUNDS;
         }
     }
 
-    uint32_t rc;
+    // The flash and DMA drivers report their failures in their own code spaces;
+    // fold each into this module's, so a caller can tell a refused read from a
+    // failed flash transfer from a failed DMA without decoding three schemes.
 #if BOOT_SPI_CONTROLLER_OT
     if (from_spi) {
-        rc = boot_flash_read(dst, src, len);
-    } else {
-        rc = sep_dma_copy(dst, src, len);
+        const uint32_t rc = boot_flash_read(dst, src, len);
+        if (rc != 0u) {
+            // The OpenTitan driver returns a SEP_MSG_SPI_OT_* code and reports
+            // nothing itself.
+            report_status(STATUS_TYPE_WARN, (uint16_t)rc);
+            return OCA_BOOT_ERR_FLASH_READ;
+        }
+        return 0u;
     }
-#else
-    rc = sep_dma_copy(dst, src, len);
 #endif
-    return (rc == 0u) ? 0u : OCA_BOOT_ERR_DMA;
+    return (sep_dma_copy(dst, src, len) != 0u) ? OCA_BOOT_ERR_DMA : 0u;
 }
 
 // Zero SEP SRAM between retry attempts so a partially staged bad slot cannot be
@@ -237,10 +245,10 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     // The head has to be in RAM before the library sees it: on the OpenTitan
     // path storage is not memory-mapped at all, so "peek in place" in the
     // reference CLI becomes "read the first cache line, then peek".
-    uint32_t peek_err =
+    uint32_t rd =
         manifest_src_read((uint32_t)(uintptr_t)body, src_addr, OCA_MANIFEST_PEEK_MIN, from_spi);
-    if (peek_err != 0u) {
-        return peek_err;
+    if (rd != 0u) {
+        return rd;
     }
 
     oca_manifest_peek_t pk;
@@ -251,15 +259,16 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     }
     simputshex32("OCA_BODY=", (uint32_t)pk.body_size);
 
-    if (pk.body_size > SRAM_SIZE) {
+    // SEP_SRAM_USABLE_SIZE, not SRAM_SIZE: the top of SRAM holds sep_dma_zero()'s
+    // fill word, which the CPU rewrites before every fill.
+    if (pk.body_size > SEP_SRAM_USABLE_SIZE) {
         return OCA_BOOT_ERR_STAGE_OVERFLOW;
     }
 
     // -- body ---------------------------------------------------------------
-    uint32_t body_err =
-        manifest_src_read((uint32_t)(uintptr_t)body, src_addr, (uint32_t)pk.body_size, from_spi);
-    if (body_err != 0u) {
-        return body_err;
+    rd = manifest_src_read((uint32_t)(uintptr_t)body, src_addr, (uint32_t)pk.body_size, from_spi);
+    if (rd != 0u) {
+        return rd;
     }
 
     // The manifest's CLAIMED security-version flags, before anything has
@@ -332,17 +341,16 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
 
     // Stage the payload immediately after the body, 8-byte aligned.
     uint32_t payload_off = ((uint32_t)pk.body_size + 7u) & ~7u;
-    if (payload_span > (size_t)(SRAM_SIZE - payload_off)) {
+    if (payload_span > (size_t)(SEP_SRAM_USABLE_SIZE - payload_off)) {
         simputs("PAYLOAD_TOO_LARGE\n");
         return OCA_BOOT_ERR_STAGE_OVERFLOW;
     }
     uint8_t *const payload = body + payload_off;
 
-    uint32_t payload_err = manifest_src_read((uint32_t)(uintptr_t)payload,
-                                              (uint32_t)payload_addr, (uint32_t)payload_span,
-                                              from_spi);
-    if (payload_err != 0u) {
-        return payload_err;
+    rd = manifest_src_read((uint32_t)(uintptr_t)payload, (uint32_t)payload_addr,
+                           (uint32_t)payload_span, from_spi);
+    if (rd != 0u) {
+        return rd;
     }
 
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_START_PAYLOAD_VALIDATION);
@@ -438,7 +446,7 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
 #if BOOT_SPI_CONTROLLER_OT
             manifest_src = offset;
 #else
-            manifest_src = SEP_XIP_BASE + offset;
+            manifest_src = SEP_SPI_BASE + offset;
 #endif
             // The slot's own window, so its payload_offset cannot reach the other slot.
             region_base = (int64_t)manifest_src;

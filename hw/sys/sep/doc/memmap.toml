@@ -6,7 +6,7 @@ version = 1
 [[sources]]
 name = "main"
 rdl = "hw/sys/sep/regs/sep.rdl"
-top = "och_sep_top"
+top = "sep_top"
 
 [[sources]]
 name = "logical"
@@ -49,4 +49,4 @@ include_all = true
 derive_gaps = true
 bounds_source = "logical"
 bounds_selector = "sep_local"
-columns = ["base", "end", "size", "occupied_size", "label", "description"]
+columns = ["base", "end", "size", "occupied_size", "label", "description", "hole_resp", "past_resp"]

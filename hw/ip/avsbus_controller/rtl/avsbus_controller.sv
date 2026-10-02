@@ -1,41 +1,95 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// APB2AVSBus V1.3.1 Controller
+// Bridge AXI-Lite CSR traffic onto an AVSBus V1.3.1 serial link.
+//
+// AXI-Lite requests reach the register block through axi_lite_to_apb. Command and readback
+// FIFOs cross between the register clock (clk_reg_i) and the AVS clock, which a programmable
+// divider derives from clk_reg_i or clk_ref_i.
+// Release rst_clk_div_ni before the rest of the AVS logic so the generated avs_clock_o is
+// stable before transactions begin.
+// rst_reg_ni is synchronized internally into clk_reg_i, the pre-divider clock and the AVS
+// clock. rst_reg_ni and rst_ref_ni also reset the clock-source mux directly, so each must
+// assert asynchronously and deassert synchronously to its own clock.
 
 `begin_keywords "1800-2005"
 
-
 module avsbus_controller #(
-  parameter int unsigned COMMAND_FIFO_DEPTH = 8,
-  parameter int unsigned READBACK_FIFO_DEPTH = 8
+  parameter int unsigned COMMAND_FIFO_DEPTH = 8,            // Depth of the AVS command FIFO.
+                                                            // In entries; must be a power of two.
+                                                            // Depths of 16 or more can overflow the
+                                                            // 4-bit AVS_FIFOS_STATUS slot counts.
+  parameter int unsigned READBACK_FIFO_DEPTH = 8            // Depth of the AVS readback FIFO.
+                                                            // In entries; must be a power of two.
+                                                            // Depths of 16 or more can overflow the
+                                                            // 4-bit AVS_FIFOS_STATUS slot counts.
 ) (
-  // Global interface
-  input  logic            clk_reg_i,
-  input  logic            clk_ref_i,
-  input  logic            rst_ref_ni,     // async reset, deasserted synchronously to clk_ref_i
-  input  logic            rst_reg_ni,     // async reset, deasserted synchronously to clk_reg_i
-  input  logic            rst_clk_div_ni, // clock divider needs to be taken out of reset before rest of AVS logic
+  input  logic            clk_reg_i,                        // Register-domain clock.
+                                                            // Also selectable as the AVS clock
+                                                            // source.
+  input  logic            clk_ref_i,                        // Reference clock.
+                                                            // The alternative AVS clock source;
+                                                            // the clock-source mux selects it
+                                                            // during reset.
+  input  logic            rst_ref_ni,                       // Active-low. Async assert; deassert
+                                                            // synchronously to clk_ref_i. Resets
+                                                            // the clk_ref_i leg of the anti-glitch
+                                                            // clock source mux.
+  input  logic            rst_reg_ni,                       // Active-low. Async assert; deassert
+                                                            // synchronously to clk_reg_i. Resets
+                                                            // the clk_reg_i leg of the clock-source
+                                                            // mux and, through reset synchronizers,
+                                                            // the rest of the controller.
+  input  logic            rst_clk_div_ni,                   // Active-low clock-divider reset.
+                                                            // Release before the rest of the AVS
+                                                            // logic. Asynchronous; resets the
+                                                            // programmable clock divider.
 
-  // AVSBus Interface
-  input  logic            avs_sdata_i,
-  output logic            avs_mdata_o,
-  output logic            avs_clock_o,
-  output logic            avs_gpio_enable_o,
+  input  logic            avs_sdata_i,                      // AVS slave data in.
+                                                            // Serial response from the target
+                                                            // device, sampled on the falling edge
+                                                            // of the AVS clock.
+  output logic            avs_mdata_o,                      // AVS master data out.
+                                                            // Serial command transmission, driven
+                                                            // on the rising edge of the AVS clock;
+                                                            // high when idle and during reset.
+  output logic            avs_clock_o,                      // AVS serial clock out.
+                                                            // The divided AVS clock through a clock
+                                                            // gate, closed while idle when
+                                                            // STOP_AVS_CLOCK_ON_IDLE is set.
+  output logic            avs_gpio_enable_o,                // AVS_CONFIG.AVS_GPIO_ENABLE value.
+                                                            // Output enable for the avs_clock and
+                                                            // avs_mdata pads and input enable for
+                                                            // the avs_sdata pad.
 
-  input  avsbus_controller_pkg::avsbus_axil_req_t              axil_req_i,
-  output avsbus_controller_pkg::avsbus_axil_resp_t             axil_resp_o,
+  input  avsbus_controller_pkg::avsbus_axil_req_t              axil_req_i, // AXI-Lite CSR request.
+                                                                           // 32-bit address, 32-bit
+                                                                           // data, 4-bit strobe.
+  output avsbus_controller_pkg::avsbus_axil_resp_t             axil_resp_o, // AXI-Lite CSR response.
 
-  // Interrupt interface
-  output logic interrupt_o,
+  output logic interrupt_o,                                 // Controller interrupt.
+                                                            // Level-sensitive, active high; the OR
+                                                            // of the unmasked AVS_INTERRUPT bits.
 
-  // DFT interface
-  input logic scan_rst_ni,
-  input logic test_en_i,
-  input logic clk_test_i,
+  input logic scan_rst_ni,                                  // DFT scan reset, active-low.
+                                                            // Replaces the synchronized resets
+                                                            // while test_en_i is high and resets
+                                                            // the clock divider in test mode.
+  input logic test_en_i,                                    // DFT test enable.
+                                                            // Active high. Selects clk_test_i,
+                                                            // forces the clock source muxes to
+                                                            // their test setting and enables the
+                                                            // clock-gate test inputs, and selects
+                                                            // scan_rst_ni in place of the
+                                                            // synchronized resets.
+  input logic clk_test_i,                                   // DFT test clock.
+                                                            // Replaces the pre-divider clock while
+                                                            // test_en_i is high.
 
-  // Debug interface
-  output logic [16:0] cur_state_debug_o
+  output logic [16:0] cur_state_debug_o                     // FSM state debug bus.
+                                                            // One-hot protocol FSM state,
+                                                            // resynchronized from the AVS clock to
+                                                            // clk_reg_i.
 );
 
   localparam int unsigned SlaveResyncCycles = 34;
@@ -83,9 +137,6 @@ module avsbus_controller #(
   logic [0:0] R_avs_normal_status_F_readback_fifo_full;
   logic [0:0] R_avs_normal_status_F_cmd_fifo_full;
   logic [0:0] R_avs_normal_status_F_cmd_fifo_empty;
-  logic [0:0] R_avs_normal_status_F_avs_master_is_retrying;
-  logic [0:0] R_avs_normal_status_F_avs_bus_is_idle;
-  logic [0:0] R_avs_normal_status_F_avs_slave_is_in_resync;
   logic [0:0] R_avs_interrupt_F_readback_overflow_int;
   logic [0:0] R_avs_interrupt_F_readback_underflow_int;
   logic [0:0] R_avs_interrupt_F_cmd_fifo_overflow_int;
@@ -217,25 +268,25 @@ module avsbus_controller #(
 
   // AVS_Mdata (master subframe) field enums for waving, debug:
   typedef enum logic [1:0] {
-    CommitWrite = 2'b00,
-    HoldWrite   = 2'b01,
-    Read        = 2'b11
+    COMMIT_WRITE = 2'b00,
+    HOLD_WRITE   = 2'b01,
+    READ         = 2'b11
   } cmd_type_t;
 
   typedef enum logic {
-    AvsBus = 1'b0,
-    ManufacturerSpec = 1'b1
+    AVS_BUS = 1'b0,
+    MANUFACTURER_SPEC = 1'b1
   } cmd_group_t;
 
   typedef enum logic [3:0] {
-    Voltage     = 4'b0000,
-    Transition  = 4'b0001,
-    Current     = 4'b0010,
-    Temperature = 4'b0011,
-    ResetVolt   = 4'b0100,
-    PowerMode   = 4'b0101,
-    Status      = 4'b1110,
-    Version     = 4'b1111
+    VOLTAGE     = 4'b0000,
+    TRANSITION  = 4'b0001,
+    CURRENT     = 4'b0010,
+    TEMPERATURE = 4'b0011,
+    RESET_VOLT  = 4'b0100,
+    POWER_MODE  = 4'b0101,
+    STATUS      = 4'b1110,
+    VERSION     = 4'b1111
   } cmd_data_type_t;
 
   logic [1:0] CmdPreamble;
@@ -257,10 +308,10 @@ module avsbus_controller #(
 
   // AVS_Sdata (slave subframe) field enums:
   typedef enum logic [1:0] {
-    SlaveAckActionPerformed     = 2'b00,
-    SlaveAckResourceUnavailable = 2'b01,
-    SlaveAckBadCRC              = 2'b10,
-    SlaveAckBadDataOrSelector   = 2'b11
+    SLAVE_ACK_ACTION_PERFORMED     = 2'b00,
+    SLAVE_ACK_RESOURCE_UNAVAILABLE = 2'b01,
+    SLAVE_ACK_BAD_CRC              = 2'b10,
+    SLAVE_ACK_BAD_DATA_OR_SELECTOR = 2'b11
   } slave_ack_t;
   slave_ack_t slave_ack;
   assign slave_ack = slave_ack_t'(avs_sdata_capture[31:30]);
@@ -427,15 +478,15 @@ module avsbus_controller #(
 
 
   // AVS bus clock gate:
-  prim_clkgater u_avs_bus_clkgate (
+  prim_clock_gating u_avs_bus_clkgate (
     .clk_i (avs_clk),
     .en_i  (avs_clk_enable),
-    .te_i (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o(avs_clock_o)
   );
 
   prim_ag_clk_mux #(
-    .SelectOnReset(1'b1)
+    .SELECT_ON_RESET(1'b1)
   ) u_refclk_apbclk_mux (
     .rst_clk0_ni(rst_reg_ni),
     .rst_clk1_ni(rst_ref_ni),
@@ -458,18 +509,18 @@ module avsbus_controller #(
   assign prediv_mux_sel = R_avs_cfg_1_F_avs_clock_select[1] & ~test_en_i;
 
   // apb_clk clock gate:
-  prim_clkgater u_apbclk_clkgate (
+  prim_clock_gating u_apbclk_clkgate (
     .clk_i (clk_reg_i),
     .en_i  (~R_avs_cfg_1_F_turn_off_all_premux_clocks),
-    .te_i (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o(apb_clk_gated)
   );
 
   // refclk clock gate:
-  prim_clkgater u_refclk_clkgate (
+  prim_clock_gating u_refclk_clkgate (
     .clk_i (clk_ref_i),
     .en_i  (~R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk),
-    .te_i (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o(refclk_gated)
   );
 
@@ -679,6 +730,38 @@ module avsbus_controller #(
     .data_o(R_avs_normal_status_F_total_retries)
   );
 
+  // Resync avs_clk-domain registers: AVS_SLAVE_STATUS, AVS_LATEST_SLAVE_SUBFRAME
+  // Share one autohs so they stay coherent with each other
+  logic [1:0]  R_avs_slave_status_F_avs_slave_ack_RS_apb_clk;
+  logic [4:0]  R_avs_slave_status_F_avs_slave_status_response_RS_apb_clk;
+  logic [31:0] R_avs_latest_slave_subframe_F_avs_slave_subframe_RS_apb_clk;
+
+  prim_sync_data_autohs #(
+    .WIDTH($size(R_avs_slave_status_F_avs_slave_ack) + $size(R_avs_slave_status_F_avs_slave_status_response)),
+    .DEPTH(3)
+  ) u_slave_status_resync (
+    .clk_src_i(avs_clk),
+    .rst_src_ni(reset_n_avs_clk_syncd),
+    .data_i({R_avs_slave_status_F_avs_slave_ack,
+               R_avs_slave_status_F_avs_slave_status_response}),
+    .clk_dst_i(clk_reg_i),
+    .rst_dst_ni(reset_n_apb_clk_syncd),
+    .data_o({R_avs_slave_status_F_avs_slave_ack_RS_apb_clk,
+               R_avs_slave_status_F_avs_slave_status_response_RS_apb_clk})
+  );
+
+  prim_sync_data_autohs #(
+    .WIDTH($size(R_avs_latest_slave_subframe_F_avs_slave_subframe)),
+    .DEPTH(3)
+  ) u_latest_subframe_resync (
+    .clk_src_i(avs_clk),
+    .rst_src_ni(reset_n_avs_clk_syncd),
+    .data_i(R_avs_latest_slave_subframe_F_avs_slave_subframe),
+    .clk_dst_i(clk_reg_i),
+    .rst_dst_ni(reset_n_apb_clk_syncd),
+    .data_o(R_avs_latest_slave_subframe_F_avs_slave_subframe_RS_apb_clk)
+  );
+
   prim_sync_data_autohs #(
     .WIDTH($size(R_avs_cfg_0_F_max_retries)),
     .DEPTH(3)
@@ -710,16 +793,12 @@ module avsbus_controller #(
     data_for_crc_calc = '0;
     data_for_crc_check = '0;
     push_avs_readback_en = 1'b0;
-    R_avs_normal_status_F_avs_master_is_retrying = 1'b0;
-    R_avs_normal_status_F_avs_bus_is_idle = 1'b0;
-    R_avs_normal_status_F_avs_slave_is_in_resync = 1'b0;
     avs_max_retries_attempted = 1'b0;
     unique case (cur_state)
       AVS_RESET: begin
         next_state = AVS_SLAVE_RESYNC;
       end
       AVS_SLAVE_RESYNC: begin
-        R_avs_normal_status_F_avs_slave_is_in_resync = 1'b1;
         if (slave_resync_counter == SlaveResyncCycles) begin
           if (fifos_ready_to_launch_frame_rb_en_b) begin
             next_state = AVS_LAUNCH_FRAME_POST_RESYNC;
@@ -731,7 +810,6 @@ module avsbus_controller #(
         end
       end
       AVS_IDLE: begin
-        R_avs_normal_status_F_avs_bus_is_idle = 1'b1;
         if (fifos_ready_to_launch_frame_rb_en_b) begin
           if (R_avs_cfg_1_F_stop_avs_clock_on_idle_RS_avs_clk) begin
             // Always do a resync after initially restarting the clock:
@@ -827,8 +905,10 @@ module avsbus_controller #(
             next_state = AVS_RETRY_SHIFT_XMIT_SUBFRAME;
             data_for_crc_calc = {avs_mdata_prev_transmit_frame[31:3], 3'b000};
             push_avs_readback_en = 1'b0;
+          end else if (fifos_ready_to_launch_frame_rb_en) begin
+            next_state = AVS_SHIFT_1ST_SUBFRAME;
+            data_for_crc_calc = {MasterSubframePreamble, avs_cmd_from_fifo[29:3], 3'b000};
           end else begin
-            // No retries allowed - got to idle:
             next_state = AVS_IDLE;
           end
         end else if (fifos_ready_to_launch_frame_rb_en) begin
@@ -839,7 +919,6 @@ module avsbus_controller #(
         end
       end
       AVS_RETRY_SHIFT_XMIT_AND_RECV_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         if (avs_subframe_bit_index == 0) begin
           next_state = AVS_RETRY_END_XMIT_AND_RECV_SUBFRAME;
         end else begin
@@ -853,12 +932,10 @@ module avsbus_controller #(
         // can push it to the readback fifo *after* the outcome of the retries has been pushed to the readback fifo. We
         // need to do this in order to maintain the proper sequence of readback data that corresponds to the order that
         // the commands were written to the cmd fifo from APB.
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         push_avs_readback_en = 1'b0;
         next_state = AVS_RETRY_SHIFT_RECV_SUBFRAME;
       end
       AVS_RETRY_SHIFT_XMIT_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         if (avs_subframe_bit_index == 0) begin
           next_state = AVS_RETRY_END_XMIT_SUBFRAME;
         end else begin
@@ -866,11 +943,9 @@ module avsbus_controller #(
         end
       end
       AVS_RETRY_END_XMIT_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         next_state = AVS_RETRY_SHIFT_RECV_SUBFRAME;
       end
       AVS_RETRY_SHIFT_RECV_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         if (avs_subframe_bit_index == 0) begin
           next_state = AVS_RETRY_END_RECV_SUBFRAME;
         end else begin
@@ -878,7 +953,6 @@ module avsbus_controller #(
         end
       end
       AVS_RETRY_END_RECV_SUBFRAME: begin
-        R_avs_normal_status_F_avs_master_is_retrying = 1'b1;
         data_for_crc_check = avs_sdata_capture;
         push_avs_readback_en = 1'b1;
         if (avs_retry_condition_detected && avs_retry_countdown > 0) begin
@@ -1238,7 +1312,7 @@ module avsbus_controller #(
 
   assign hwif_in.AVS_DEBUG_READBACK.AVS_SLAVE_SUBFRAME.next = R_avs_debug_readback_F_avs_slave_subframe;
 
-  assign hwif_in.AVS_LATEST_SLAVE_SUBFRAME.AVS_SLAVE_SUBFRAME.next = R_avs_latest_slave_subframe_F_avs_slave_subframe;
+  assign hwif_in.AVS_LATEST_SLAVE_SUBFRAME.AVS_SLAVE_SUBFRAME.next = R_avs_latest_slave_subframe_F_avs_slave_subframe_RS_apb_clk;
 
   assign hwif_in.AVS_INTERRUPT.MAX_RETRIES_ATTEMPTED_INT.next = R_avs_interrupt_F_max_retries_attempted_int;
   assign hwif_in.AVS_INTERRUPT.SLAVE_UNRESPONSIVE_INT.next = R_avs_interrupt_F_slave_unresponsive_int;
@@ -1247,12 +1321,21 @@ module avsbus_controller #(
   assign hwif_in.AVS_NORMAL_STATUS.READBACK_FIFO_FULL.next = R_avs_normal_status_F_readback_fifo_full;
   assign hwif_in.AVS_NORMAL_STATUS.CMD_FIFO_FULL.next = R_avs_normal_status_F_cmd_fifo_full;
   assign hwif_in.AVS_NORMAL_STATUS.CMD_FIFO_EMPTY.next = R_avs_normal_status_F_cmd_fifo_empty;
-  assign hwif_in.AVS_NORMAL_STATUS.AVS_MASTER_IS_RETRYING.next = R_avs_normal_status_F_avs_master_is_retrying;
-  assign hwif_in.AVS_NORMAL_STATUS.AVS_BUS_IS_IDLE.next = R_avs_normal_status_F_avs_bus_is_idle;
-  assign hwif_in.AVS_NORMAL_STATUS.AVS_SLAVE_IS_IN_RESYNC.next = R_avs_normal_status_F_avs_slave_is_in_resync;
+  // Decoded from the APB-domain resynchronized FSM state (u_cur_state_resync)
+  // rather than raw cur_state: these CSR fields are storageless passthrough
+  // reads, so the decode must not sample avs_clk-domain state directly.
+  assign hwif_in.AVS_NORMAL_STATUS.AVS_MASTER_IS_RETRYING.next =
+      cur_state_RS_apb_clk inside {AVS_RETRY_SHIFT_XMIT_AND_RECV_SUBFRAME,
+                                   AVS_RETRY_END_XMIT_AND_RECV_SUBFRAME,
+                                   AVS_RETRY_SHIFT_XMIT_SUBFRAME,
+                                   AVS_RETRY_END_XMIT_SUBFRAME,
+                                   AVS_RETRY_SHIFT_RECV_SUBFRAME,
+                                   AVS_RETRY_END_RECV_SUBFRAME};
+  assign hwif_in.AVS_NORMAL_STATUS.AVS_BUS_IS_IDLE.next = (cur_state_RS_apb_clk == AVS_IDLE);
+  assign hwif_in.AVS_NORMAL_STATUS.AVS_SLAVE_IS_IN_RESYNC.next = (cur_state_RS_apb_clk == AVS_SLAVE_RESYNC);
 
-  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_ACK.next    = R_avs_slave_status_F_avs_slave_ack;
-  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_STATUS_RESPONSE.next    = R_avs_slave_status_F_avs_slave_status_response;
+  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_ACK.next    = R_avs_slave_status_F_avs_slave_ack_RS_apb_clk;
+  assign hwif_in.AVS_SLAVE_STATUS.AVS_SLAVE_STATUS_RESPONSE.next    = R_avs_slave_status_F_avs_slave_status_response_RS_apb_clk;
 
   assign hwif_in.AVS_FIFOS_STATUS.READBACK_FIFO_VACANT_SLOTS.next   = R_avs_fifos_status_F_readback_fifo_vacant_slots;
   assign hwif_in.AVS_FIFOS_STATUS.READBACK_FIFO_OCCUPIED_SLOTS.next = R_avs_fifos_status_F_readback_fifo_occupied_slots;
@@ -1577,8 +1660,8 @@ module avsbus_controller #(
         cur_state == AVS_PROCESS_PREVIOUS_SDATA )
     begin
       avs_retry_condition_detected = ~crc_check_good ||
-                                      slave_ack == SlaveAckResourceUnavailable ||
-                                      slave_ack == SlaveAckBadCRC ||
+                                      slave_ack == SLAVE_ACK_RESOURCE_UNAVAILABLE ||
+                                      slave_ack == SLAVE_ACK_BAD_CRC ||
                                       avs_sdata_capture[SdataValidFrameBit] == 1'b1 ;
     end else begin
       avs_retry_condition_detected = 1'b0;

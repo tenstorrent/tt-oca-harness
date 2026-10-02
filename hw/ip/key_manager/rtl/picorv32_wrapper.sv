@@ -2,145 +2,146 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file picorv32_wrapper.sv
- * @brief PicoRV32 CPU wrapper with ROM/SRAM direct connections and AXI adapter.
- *
- * @details Instantiates the PicoRV32 core (RV32EMC: 16 registers, M extension,
- *          compressed ISA) and provides address-based routing of the native
- *          memory interface to three targets:
- *          - ROM (read-only, via km_rom_interface with parity checking).
- *          - SRAM (read/write, via km_sram_interface with scrambling, parity,
- *            and write-lock enforcement).
- *          - Peripherals (via picorv32_axi_adapter to an AXI4-Lite master).
- *
- *          A virtual ROM region (testbench-only) is exposed for simulation.
- *
- *          Two external IRQ sources connect to the PicoRV32 as non-latched
- *          level-sensitive inputs:
- *            - Bit 3: KMCSR aggregated interrupt (sticky error sources).
- *            - Bit 4: Mailbox inbound data available (direct level).
- *
- *          AXI bus errors (SLVERR, DECERR) on the write and read response
- *          channels are detected and reported as pulse outputs to KMCSR.
- *
- *          An execute-permission whitelist is enforced on committed instruction
- *          fetches (mem_instr).  Allowed regions are selected by sram_exec_mode_i
- *          (from KMCSR SRAM_EXEC_MODE.enable) and by the ROM lockout:
- *            - 0 (ROM mode): ROM and VROM only.
- *            - 1 (SRAM mode): VROM and write-locked SRAM regions, plus the ROM
- *              until the lockout engages (see ROM Lockout below).
- *          Any fetch outside the whitelist pulses exec_violation_o, except a
- *          blocked ROM access, which pulses rom_access_violation_o instead.
- *
- * @param axil_req_t        AXI-Lite request struct type for peripheral port.
- * @param axil_resp_t       AXI-Lite response struct type for peripheral port.
- * @param ROM_ADDR_WIDTH    ROM word-address width.
- * @param SRAM_ADDR_WIDTH   SRAM word-address width.
- * @param LATCHED_MEM_RDATA Set to 1 if ROM/SRAM latch read data.
- */
+// Run the PicoRV32 core and route its native memory interface to ROM, SRAM and an
+// AXI4-Lite peripheral master.
+//
+// Instantiates the PicoRV32 core (RV32EMC: 16 registers, M extension, compressed ISA) and
+// routes the native memory interface by address to three targets:
+//
+// - ROM (read-only, via km_rom_interface with parity checking).
+// - SRAM (read/write, via km_sram_interface with scrambling, parity, and write-lock
+//   enforcement).
+// - Peripherals: every other address, via picorv32_axi_adapter to an AXI4-Lite master.
+//
+// With OCAH_KM_VROM defined, the virtual ROM window (VROM_BASE_ADDR to VROM_END_ADDR) is
+// decoded to the vrom_mem_* nets instead, which complete an access only when the simulation
+// drives vrom_mem_ready. The define is simulation-only: elaboration fails when SYNTHESIS or
+// EMULATION is also defined. Without it the window is a peripheral address.
+//
+// Three external IRQ sources connect to the PicoRV32 as non-latched level-sensitive
+// inputs:
+//
+// - Bit 3: KMCSR aggregated interrupt (sticky error sources).
+// - Bit 4: Mailbox interrupt (level); in key_manager the mailbox's aggregated KM-side IRQ.
+// - Bit 5: Adams Bridge ML-KEM shared-key valid.
+//
+// AXI bus errors (SLVERR, DECERR) on the write and read response channels are detected
+// and reported as pulse outputs to KMCSR.
+//
+// An execute-permission whitelist is enforced on committed instruction fetches
+// (mem_instr). Allowed regions are selected by sram_exec_mode_i (from KMCSR
+// SRAM_EXEC_MODE.enable) and by the ROM lockout:
+//
+// - 0 (ROM mode): ROM only.
+// - 1 (SRAM mode): write-locked SRAM regions, plus the ROM until the lockout engages on
+//   the first fetch from a write-locked SRAM region. The lockout holds until rst_sync_ni;
+//   afterwards ROM fetches and data reads complete at once with zero data.
+//
+// Under OCAH_KM_VROM, the virtual ROM window is executable in both modes and exempt from
+// the lockout.
+//
+// Any fetch outside the whitelist pulses exec_violation_o, except a blocked ROM access,
+// which pulses rom_access_violation_o instead.
+//
+// LATCHED_MEM_RDATA is 1 when ROM/SRAM latch read data, so it stays valid after the
+// request deasserts, and 0 when read data is valid only while rvalid is asserted. Setting
+// it makes the core use mem_rdata directly instead of its own capture register.
 
 module picorv32_wrapper
   import km_intf_pkg::*;
   import axi_pkg::*;
 #(
-  // AXI-Lite interface types (for peripherals)
-  parameter type axil_req_t  = km_axil_req_t,
-  parameter type axil_resp_t = km_axil_resp_t,
-  // Address widths for memory interfaces
-  parameter int unsigned ROM_ADDR_WIDTH = km_intf_pkg::KM_ROM_MEM_ADDR_WIDTH,
-  parameter int unsigned SRAM_ADDR_WIDTH = km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH,
-  // PicoRV32 memory interface configuration
-  // LATCHED_MEM_RDATA: Set to 1 if ROM/SRAM latch read data (data stays valid after request deasserts)
-  //                    Set to 0 if memory read data is only valid when rvalid is asserted
-  //                    This allows the CPU to use look-ahead optimization when supported by memory
-  parameter bit LATCHED_MEM_RDATA = 1'b0
+  parameter type axil_req_t  = km_axil_req_t,                                    // Peripheral-port AXI-Lite
+                                                                                 // request type.
+  parameter type axil_resp_t = km_axil_resp_t,                                   // Peripheral-port AXI-Lite
+                                                                                 // response type.
+  parameter int unsigned ROM_ADDR_WIDTH = km_intf_pkg::KM_ROM_MEM_ADDR_WIDTH,    // ROM word-address width.
+  parameter int unsigned SRAM_ADDR_WIDTH = km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH,  // SRAM word-address width.
+  parameter bit LATCHED_MEM_RDATA = 1'b0                                         // 1 if ROM/SRAM latch read data.
 ) (
-  // Clock and Reset
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic rst_sync_ni,
+  input  logic clk_i,        // System clock.
+  input  logic rst_ni,       // Active-low async reset for the memory interfaces, PCPI CRC,
+                             // read-data select and AXI error logic.
+  input  logic rst_sync_ni,  // Active-low synchronous reset for the PicoRV32 core, the AXI
+                             // adapter and the ROM lockout latch.
 
-  // ROM Interface (with parity checking)
-  output km_rom_mem_req_t rom_mem_req_o,
-  input  km_rom_mem_rsp_t rom_mem_rsp_i,
-  output logic            rom_parity_err_o,
-  output logic            rom_write_err_o,  // ROM write attempt detected (pulse)
+  output km_rom_mem_req_t rom_mem_req_o,     // ROM interface request (with parity checking).
+  input  km_rom_mem_rsp_t rom_mem_rsp_i,     // ROM interface response.
+  output logic            rom_parity_err_o,  // ROM parity error detected (pulse).
+  output logic            rom_write_err_o,   // ROM write attempt detected (pulse).
 
-  // SRAM Interface (with scrambling and parity checking)
-  output km_sram_mem_req_t sram_mem_req_o,
-  input  km_sram_mem_rsp_t sram_mem_rsp_i,
-  output logic             sram_parity_err_o,
+  output km_sram_mem_req_t sram_mem_req_o,     // SRAM interface request (with scrambling and
+                                               // parity checking).
+  input  km_sram_mem_rsp_t sram_mem_rsp_i,     // SRAM interface response.
+  output logic             sram_parity_err_o,  // SRAM parity error detected (pulse).
 
-  // Scrambler control (from KMCSR, passed through to SRAM interface)
-  input  logic [31:0] scrambler_key_i,
-  input  logic   scrambler_en_i,
+  input  logic [31:0] scrambler_key_i,  // Scrambler key from KMCSR, passed through to the
+                                        // SRAM interface.
+  input  logic   scrambler_en_i,        // Scrambler enable from KMCSR, passed through to the
+                                        // SRAM interface.
 
-  // SRAM write-lock (from KMCSR): bit[i]=1 locks region i
-  input  logic [31:0] sram_lock_bits_i,
+  input  logic [31:0] sram_lock_bits_i,  // SRAM write-lock (KMCSR): bit[i]=1 locks region i.
 
-  // SRAM write-lock violation (to KMCSR): one-hot region that had attempted write while locked
-  output logic [31:0] sram_write_lock_violation_region_o,
+  output logic [31:0] sram_write_lock_violation_region_o,  // SRAM write-lock violation to
+                                                           // KMCSR: one-hot region that had
+                                                           // an attempted write while locked.
 
-  // Execute-permission whitelist mode (from KMCSR): 0=ROM-only, 1=write-locked-SRAM
-  input  logic   sram_exec_mode_i,
-  // Execute-permission whitelist violation (to KMCSR): pulse on committed fetch outside whitelist
-  output logic        exec_violation_o,
-  // ROM lockout violation (to KMCSR): pulse on ROM fetch or data read after lockout engages
-  output logic        rom_access_violation_o,
+  input  logic   sram_exec_mode_i,             // Execute-permission whitelist mode from
+                                               // KMCSR: 0=ROM-only, 1=write-locked-SRAM.
+  output logic        exec_violation_o,        // Execute-permission whitelist violation to
+                                               // KMCSR: pulse on a committed fetch outside
+                                               // the whitelist.
+  output logic        rom_access_violation_o,  // ROM lockout violation to KMCSR: pulse on a
+                                               // ROM fetch or data read after lockout engages.
 
-  // AXI4-Lite Master Interface (for peripherals via crossbar)
-  output axil_req_t  axi_mst_req_o,
-  input  axil_resp_t axi_mst_resp_i,
+  output axil_req_t  axi_mst_req_o,   // AXI4-Lite master request to the peripherals via the
+                                      // crossbar.
+  input  axil_resp_t axi_mst_resp_i,  // AXI4-Lite master response from the crossbar.
 
-  // Interrupt Inputs
-  input  logic irq_i,                 // KMCSR aggregated interrupt (sticky error sources)
-  input  logic mbox_irq_i,            // Mailbox inbound data available (level-sensitive)
-  input  logic abr_sharedkey_irq_i,   // ML-KEM shared-key valid (level-sensitive)
+  input  logic irq_i,                // KMCSR aggregated interrupt (sticky error sources).
+  input  logic mbox_irq_i,           // Mailbox interrupt (level-sensitive).
+  input  logic abr_sharedkey_irq_i,  // ML-KEM shared-key valid (level-sensitive).
 
-  // Runtime IRQ handler entry PC (from KMCSR; reset default 0x0000_0010)
-  input  logic [31:0] irq_entry_addr_i,
+  input  logic [31:0] irq_entry_addr_i,  // Runtime IRQ handler entry PC from KMCSR (reset
+                                         // default 0x0000_0010).
 
-  // Trap Output (for debugging)
-  output logic trap_o,
+  output logic trap_o,  // PicoRV32 trap output; in key_manager it wipes the KPV and drives
+                        // unrecoverable_err_o.
 
-  // AXI Bus Error Outputs (for KMCSR IRQ)
-  output logic axi_slverr_o,  // AXI SLVERR error detected (pulse)
-  output logic axi_decerr_o   // AXI DECERR error detected (pulse)
+  output logic axi_slverr_o,  // AXI SLVERR error detected (pulse to KMCSR IRQ).
+  output logic axi_decerr_o   // AXI DECERR error detected (pulse to KMCSR IRQ).
 );
 
   //=========================================================================
   // Local Parameters
   //=========================================================================
 
-  /**
-     * @brief PicoRV32 IRQ configuration.
-     *
-     * @details Bits 0-2 are internal (timer, ebreak, buserror) and latched
-     *          since they fire as single-cycle pulses.  Bits 3-5 are external
-     *          and non-latched — PicoRV32 tracks the live level directly:
-     *            - Bit 3: KMCSR aggregated (sticky error sources, sustained level)
-     *            - Bit 4: Mailbox inbound (level while FIFO has data)
-     *            - Bit 5: ABR ML-KEM shared key (level while IRQ_STATUS & IRQ_ENABLE)
-     *          MASKED_IRQ: 1 = always masked. Only bits 0-5 are used; mask 6-31.
-     *          LATCHED_IRQ: bits 0-2 latched; bits 3-5 level-sensitive.
-     */
+  // PicoRV32 IRQ configuration.
+  //
+  // Bits 0-2 are internal (timer, ebreak, buserror) and latched since they fire as
+  // single-cycle pulses. Bits 3-5 are external and non-latched; PicoRV32 tracks the live
+  // level directly:
+  // - Bit 3: KMCSR aggregated (sticky error sources, sustained level)
+  // - Bit 4: Mailbox inbound (level while FIFO has data)
+  // - Bit 5: ABR ML-KEM shared key (level while IRQ_STATUS & IRQ_ENABLE)
+  // MASKED_IRQ: 1 = always masked. Only bits 0-5 are used; mask 6-31.
+  // LATCHED_IRQ: bits 0-2 latched; bits 3-5 level-sensitive.
   localparam logic [31:0] PICORV32_MASKED_IRQ = 32'hFFFF_FFC0;
   localparam logic [31:0] PICORV32_LATCHED_IRQ = 32'h0000_0007;
 
-  /** @brief PicoRV32 boot address. */
+  // PicoRV32 boot address.
   localparam logic [31:0] PICORV32_PROGADDR_RESET = km_intf_pkg::ROM_BASE_ADDR;
 
-  /** @brief Initial stack pointer (top of SRAM, word-aligned). */
+  // Initial stack pointer (top of SRAM, word-aligned).
   localparam logic [31:0] PICORV32_STACKADDR = km_intf_pkg::SRAM_END_ADDR - 3;
 
-  /** @brief IRQ vector geometry. */
+  // IRQ vector geometry.
   localparam int unsigned PICORV32_IRQ_VECTOR_WIDTH = 32;
   localparam int unsigned PICORV32_KMCSR_IRQ_BIT = 3;
   localparam int unsigned PICORV32_MBOX_IRQ_BIT = 4;
   localparam int unsigned PICORV32_ABR_SHAREDKEY_IRQ_BIT = 5;
 
-  /** @brief Local copies of address-map bounds for CPU memory routing. */
+  // Local copies of address-map bounds for CPU memory routing.
   localparam logic [31:0] ROM_BASE = km_intf_pkg::ROM_BASE_ADDR;
   localparam logic [31:0] ROM_END = km_intf_pkg::ROM_END_ADDR;
   localparam logic [31:0] SRAM_BASE = km_intf_pkg::SRAM_BASE_ADDR;
@@ -310,14 +311,39 @@ module picorv32_wrapper
   logic is_rom_addr, is_sram_addr, is_vrom_addr, is_periph_addr;
   assign is_rom_addr   = (mem_addr >= ROM_BASE)   && (mem_addr <= ROM_END);
   assign is_sram_addr  = (mem_addr >= SRAM_BASE)  && (mem_addr <= SRAM_END);
-  assign is_vrom_addr  = (mem_addr >= VROM_BASE)  && (mem_addr <= VROM_END);
   assign is_periph_addr = !is_rom_addr && !is_sram_addr && !is_vrom_addr;
 
   // Look-ahead address qualification
   logic is_la_rom_addr, is_la_sram_addr, is_la_vrom_addr;
   assign is_la_rom_addr  = (mem_la_addr >= ROM_BASE)  && (mem_la_addr <= ROM_END);
   assign is_la_sram_addr = (mem_la_addr >= SRAM_BASE) && (mem_la_addr <= SRAM_END);
+
+  // The virtual ROM window completes an access only when the simulation drives
+  // vrom_mem_ready, so an implementation or emulation build must not decode it.
+`ifdef OCAH_KM_VROM
+`ifdef SYNTHESIS
+  if (1) begin : gen_km_vrom_requires_simulation_view
+    $error(
+        "OCAH_KM_VROM is set with SYNTHESIS: every KM CPU access to the virtual ROM ",
+        "window would stall, because nothing drives vrom_mem_ready outside simulation. ",
+        "Leave OCAH_KM_VROM undefined outside simulation."
+    );
+  end
+`elsif EMULATION
+  if (1) begin : gen_km_vrom_requires_simulation_view
+    $error(
+        "OCAH_KM_VROM is set with EMULATION: every KM CPU access to the virtual ROM ",
+        "window would stall, because nothing drives vrom_mem_ready outside simulation. ",
+        "Leave OCAH_KM_VROM undefined outside simulation."
+    );
+  end
+`endif
+  assign is_vrom_addr    = (mem_addr >= VROM_BASE) && (mem_addr <= VROM_END);
   assign is_la_vrom_addr = (mem_la_addr >= VROM_BASE) && (mem_la_addr <= VROM_END);
+`else
+  assign is_vrom_addr    = 1'b0;
+  assign is_la_vrom_addr = 1'b0;
+`endif
 
   //=========================================================================
   // Execute-Permission Whitelist Check
@@ -328,15 +354,14 @@ module picorv32_wrapper
   // the ROM lockout instead pulses rom_access_violation_o.
   //
   // Whitelist (controlled by SRAM_EXEC_MODE.enable from KMCSR):
-  //   enable == 0 (ROM mode): ROM and VROM only.
-  //   enable == 1 (SRAM mode): VROM and write-locked SRAM regions
+  //   enable == 0 (ROM mode): ROM only.
+  //   enable == 1 (SRAM mode): write-locked SRAM regions
   //                            (SRAM_LOCK.lock_bits[region] == 1), plus the ROM
   //                            until the lockout engages below.
   //
-  // VROM is the testbench virtual ROM (0x1000_0000); it is always executable
-  // because block-TB firmware runs .text from VROM (km_exec_from_vrom.ld).
-  // VROM does not exist in production silicon, so it carries no security
-  // requirement and is exempt from the ROM lockout as well.
+  // is_vrom_addr is constant 0 unless OCAH_KM_VROM is defined. Under the define
+  // the virtual ROM is executable in both modes and exempt from the lockout;
+  // it exists only in simulation, so it carries no security requirement.
   //
   // Region index: SRAM_LOCK_REGION_BYTES-sized regions within the SRAM.  The
   // SRAM base is naturally aligned to its own size, so the index is a plain
@@ -396,14 +421,12 @@ module picorv32_wrapper
   logic        sram_mem_ready;
   logic [31:0] sram_mem_rdata;
 
-  // Virtual ROM interface signals (testbench only)
-  // These signals are exposed for testbench to probe and drive directly
-  // Testbench will attach to mem_* signals when is_vrom_addr is true
+  // Virtual ROM response. Under OCAH_KM_VROM the simulation drives these nets;
+  // they are declared in every build so that its hierarchical references resolve.
   logic        vrom_mem_ready;
   logic [31:0] vrom_mem_rdata;
 
-  // Virtual ROM memory bus signals (exposed for testbench)
-  // Testbench can probe these to detect virtual ROM accesses and drive responses
+  // Virtual ROM request, qualified by is_vrom_addr
   logic        vrom_mem_valid;
   logic        vrom_mem_instr;
   logic [31:0] vrom_mem_addr;
@@ -428,7 +451,6 @@ module picorv32_wrapper
   assign axi_adapter_mem_wdata = mem_wdata;
   assign axi_adapter_mem_wstrb = mem_wstrb;
 
-  // Expose virtual ROM memory bus signals for testbench
   assign vrom_mem_valid = mem_valid && is_vrom_addr;
   assign vrom_mem_instr = mem_instr;
   assign vrom_mem_addr  = mem_addr;
@@ -449,10 +471,10 @@ module picorv32_wrapper
   // Hold the last completed read target so the selected data source stays stable after the
   // transfer. Whether the value itself remains valid is still determined by the target memory.
   typedef enum logic [1:0] {
-    MemRdataSelRom,
-    MemRdataSelSram,
-    MemRdataSelVrom,
-    MemRdataSelPeriph
+    MEM_RDATA_SEL_ROM,
+    MEM_RDATA_SEL_SRAM,
+    MEM_RDATA_SEL_VROM,
+    MEM_RDATA_SEL_PERIPH
   } mem_rdata_sel_e;
 
   logic          current_read_complete;
@@ -463,16 +485,16 @@ module picorv32_wrapper
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      mem_rdata_sel_q <= MemRdataSelRom;
+      mem_rdata_sel_q <= MEM_RDATA_SEL_ROM;
     end else if (current_read_complete) begin
       if (is_rom_addr) begin
-        mem_rdata_sel_q <= MemRdataSelRom;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_ROM;
       end else if (is_sram_addr) begin
-        mem_rdata_sel_q <= MemRdataSelSram;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_SRAM;
       end else if (is_vrom_addr) begin
-        mem_rdata_sel_q <= MemRdataSelVrom;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_VROM;
       end else begin
-        mem_rdata_sel_q <= MemRdataSelPeriph;
+        mem_rdata_sel_q <= MEM_RDATA_SEL_PERIPH;
       end
     end
   end
@@ -480,13 +502,13 @@ module picorv32_wrapper
   always_comb begin
     if (current_read_complete) begin
       if (is_rom_addr) begin
-        mem_rdata_sel = MemRdataSelRom;
+        mem_rdata_sel = MEM_RDATA_SEL_ROM;
       end else if (is_sram_addr) begin
-        mem_rdata_sel = MemRdataSelSram;
+        mem_rdata_sel = MEM_RDATA_SEL_SRAM;
       end else if (is_vrom_addr) begin
-        mem_rdata_sel = MemRdataSelVrom;
+        mem_rdata_sel = MEM_RDATA_SEL_VROM;
       end else begin
-        mem_rdata_sel = MemRdataSelPeriph;
+        mem_rdata_sel = MEM_RDATA_SEL_PERIPH;
       end
     end else begin
       mem_rdata_sel = mem_rdata_sel_q;
@@ -500,10 +522,10 @@ module picorv32_wrapper
 
   always_comb begin
     unique case (mem_rdata_sel)
-      MemRdataSelRom:    mem_rdata = rom_mem_rdata_gated;
-      MemRdataSelSram:   mem_rdata = sram_mem_rdata;
-      MemRdataSelVrom:   mem_rdata = vrom_mem_rdata;
-      MemRdataSelPeriph: mem_rdata = axi_adapter_mem_rdata;
+      MEM_RDATA_SEL_ROM:    mem_rdata = rom_mem_rdata_gated;
+      MEM_RDATA_SEL_SRAM:   mem_rdata = sram_mem_rdata;
+      MEM_RDATA_SEL_VROM:   mem_rdata = vrom_mem_rdata;
+      MEM_RDATA_SEL_PERIPH: mem_rdata = axi_adapter_mem_rdata;
       default:           mem_rdata = axi_adapter_mem_rdata;
     endcase
   end
@@ -568,11 +590,10 @@ module picorv32_wrapper
   );
 
   //=========================================================================
-  // Virtual ROM Interface (testbench only)
+  // Virtual ROM Interface
   //=========================================================================
-  // Virtual ROM memory bus is exposed directly to testbench
-  // Testbench will probe vrom_mem_* signals and drive vrom_mem_ready/vrom_mem_rdata
-  // Tie off to safe defaults - testbench will drive these via force
+  // An access to the window completes only when the simulation overrides
+  // vrom_mem_ready; is_vrom_addr keeps it out of every other build.
   assign vrom_mem_ready = 1'b0;
   assign vrom_mem_rdata = '0;
 

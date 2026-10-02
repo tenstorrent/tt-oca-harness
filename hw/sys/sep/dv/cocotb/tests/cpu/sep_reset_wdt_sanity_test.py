@@ -5,7 +5,8 @@
 Reset-controller CSR and watchdog sanity.
 Boots the VeeR EL2 core and runs the reset_wdt_sanity firmware, which:
   * verifies SW_RESET_N default 0x7E and that pulsing each crypto/TRNG/ABR reset bit
-    clears the corresponding probe CSRs;
+    clears the corresponding probe CSRs, and that each probe is writable again after
+    the release;
   * proves a write + a read to an unmapped fabric gap each raise a D-bus-error
     NMI (count == 2);
   * exercises the WDT bark -> NMI, pet, disable-freeze, and re-bark; then lets the
@@ -51,6 +52,9 @@ _PROGRESS_EVERY = 5_000
 _BADADDR_LINE = "reset_ctrl bad-address NMI count == 2 OK"
 _SWRST_DEFAULT_NEEDLE = "PASS: SW_RESET_N default"
 _RESET_WIRE_IPS = ("otbn", "aes", "hmac", "kmac", "abr", "esrc", "csrng", "edn")
+# The firmware prints this after "<ip>" only once the probe, rewritten after the
+# release, reads back its non-reset value.
+_WRITABLE_SUFFIX = " reset wire OK, writable after release"
 _BANNER = "SEP reset+WDT sanity test"
 # After the firmware PASSes (2nd bark), the WDT runs on to BITE. At ~5 us/tick and
 # a few ticks of bark->bite margin, give generous headroom for the reset request.
@@ -109,6 +113,18 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             "CHK-SWRST-WIRE PASS: %d reset domains each returned their probe and left "
             "the neighbour untouched",
             len(wired),
+        )
+        writable = [ip for ip in _RESET_WIRE_IPS if f"{ip}{_WRITABLE_SUFFIX}" in console]
+        assert len(writable) == len(_RESET_WIRE_IPS), (
+            f"firmware console reports a post-release write/readback for "
+            f"{sorted(writable)}, expected all {sorted(_RESET_WIRE_IPS)}; a missing "
+            f"domain was never shown writable after its reset release. "
+            f"Console was:\n{console}"
+        )
+        self.logger.info(
+            "CHK-SWRST-WRITABLE PASS: %d reset domains each read back a non-reset "
+            "probe value written after the release",
+            len(writable),
         )
         assert _SWRST_DEFAULT_NEEDLE in console, (
             f"firmware console has no {_SWRST_DEFAULT_NEEDLE!r} in its verdict line, so "

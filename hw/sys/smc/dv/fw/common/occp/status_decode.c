@@ -1,11 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/*
- * Status Decoding and Ring Buffer Utilities
- *
- * Functions for decoding status messages and dumping ring buffer contents
- */
+/* Decodes OCCP status messages and dumps a status ring buffer. */
 
 #include "occp_test_common.h"
 
@@ -111,7 +107,7 @@ void print_status_message(uint32_t status) {
     simputs(" - ");
     simputs(decode_status_code(msg_value));
 
-    // Print additional data for certain error codes
+    // Decode the extra data that some codes carry.
     if ((msg_value & 0xFF0) == (SMC_OCCP_ERROR_CMD_UNKNOWN & 0xFF0)) {
         simputs(" (cmd=0x");
         simputshex16("", msg_value & 0xFF);
@@ -154,7 +150,6 @@ void dump_ring_buffer_status(test_context_t *ctx, uint64_t slave_addr, const cha
     int count = 0;
     int max_entries = 512; // Ring buffer size
 
-    // Keep reading until we get 0 (empty) or hit max entries
     while (count < max_entries) {
         int result = get_status_func(ctx, slave_addr, &status);
         if (result != 0) {

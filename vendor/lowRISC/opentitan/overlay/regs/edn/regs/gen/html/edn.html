@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: edn</h2>
+<h2 id="regmap-edn">Entropy Distribution Network</h2>
+<p>Distributes random numbers produced by CSRNG to hardware blocks</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -34,8 +35,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>edn_fatal_err</td><td>RW</td><td>0x0</td><td>Asserted when a FIFO error occurs.</td></tr>
-<tr><td>0</td><td>edn_cmd_req_done</td><td>RW</td><td>0x0</td><td>Asserted when a software CSRNG request has completed.</td></tr>
+<tr><td>1</td><td>edn_fatal_err</td><td>RW1C</td><td>0x0</td><td>Asserted when a FIFO error occurs.</td></tr>
+<tr><td>0</td><td>edn_cmd_req_done</td><td>RW1C</td><td>0x0</td><td>Asserted when a software CSRNG request has completed.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
@@ -62,7 +63,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>REGWEN</td><td>RW</td><td>0x1</td><td>When true, the CTRL can be written by software.<br>When false, this field read-only. Defaults true, write zero to clear.<br>Note that this needs to be cleared after initial configuration at boot in order to<br>lock in the listed register settings.</td></tr>
+<tr><td>0</td><td>REGWEN</td><td>RW0C</td><td>0x1</td><td>When true, the CTRL can be written by software.<br>When false, this field read-only. Defaults true, write zero to clear.<br>Note that this needs to be cleared after initial configuration at boot in order to<br>lock in the listed register settings.</td></tr>
 </table>
 <h3 id="CTRL">CTRL</h3>
 <table>
@@ -126,13 +127,13 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>CSRNG_ACK_ERR</td><td>RW</td><td>0x0</td><td>This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>12</td><td>EDN_BUS_CMP_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the interal entropy bus value is equal to the prior<br>valid value on the bus, indicating a possible attack.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>13</td><td>CSRNG_ACK_ERR</td><td>RW0C</td><td>0x0</td><td>This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>12</td><td>EDN_BUS_CMP_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the interal entropy bus value is equal to the prior<br>valid value on the bus, indicating a possible attack.<br>Writing a zero resets this status bit.</td></tr>
 <tr><td>11:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>CMD_FIFO_RST_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the CMD_FIFO_RST field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>2</td><td>AUTO_REQ_MODE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>1</td><td>BOOT_REQ_MODE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the BOOT_REQ_MODE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
-<tr><td>0</td><td>EDN_ENABLE_FIELD_ALERT</td><td>RW</td><td>0x0</td><td>This bit is set when the EDN_ENABLE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>3</td><td>CMD_FIFO_RST_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the CMD_FIFO_RST field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>2</td><td>AUTO_REQ_MODE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>1</td><td>BOOT_REQ_MODE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the BOOT_REQ_MODE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
+<tr><td>0</td><td>EDN_ENABLE_FIELD_ALERT</td><td>RW0C</td><td>0x0</td><td>This bit is set when the EDN_ENABLE field is set to an illegal value,<br>something other than kMultiBitBool4True or kMultiBitBool4False.<br>Writing a zero resets this status bit.</td></tr>
 </table>
 <h3 id="ERR_CODE">ERR_CODE</h3>
 <table>

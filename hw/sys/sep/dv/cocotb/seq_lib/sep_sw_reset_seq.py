@@ -73,10 +73,10 @@ class SepSwReset:
     async def park(self, *engines: str) -> None:
         """Hold engines in SW reset.
 
-        A reset of AES, KMAC, or OTBN pulses the shared crypto EDN adapter
-        clear for one cycle. That clear drops every endpoint's staged word,
-        not only the engine being parked. The arbiter hold-until-grant
-        assumption is a separate check, and this write does not grade it."""
+        A reset of AES, KMAC, or OTBN cancels only that engine's crypto EDN
+        endpoints, from one cycle before its gated reset until the reset
+        releases. The other endpoints keep their staged words. This write
+        does not grade that cancel."""
         for eng in engines:
             self.value &= ~(1 << SW_RESET_N_BIT[eng])
         await self._write()

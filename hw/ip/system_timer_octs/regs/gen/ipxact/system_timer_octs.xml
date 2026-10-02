@@ -12,6 +12,7 @@
       <ipxact:name>system_timer_octs_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>system_timer_octs</ipxact:name>
+        <ipxact:displayName>OCTS System Timer Address Map</ipxact:displayName>
         <ipxact:description>Open Chiplet Time Synchronization (OCTS) System Timer Registers</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h24</ipxact:range>
@@ -85,7 +86,7 @@ both primary and secondary are out of reset.</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>MODE</ipxact:name>
-            <ipxact:description>Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)</ipxact:description>
+            <ipxact:description>Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

@@ -30,8 +30,12 @@ Checks:
     CHK-PROGRAM/CHK-READ : WREN+PP writes the words; READ returns them.
     CHK-ERASE            : sector ERASE -> READ returns all 0xFF.
     CHK-WEL-AUTOCLR      : the erase CONSUMED the write-enable latch (WEL clear).
-    CHK-WP-PP            : a PAGE PROGRAM issued with WEL clear does not land --
-                           the sector still reads 0xFF.
+    CHK-WP-PP            : the controller completes the third PAGE PROGRAM, the
+                           one issued with WEL clear. WEL is state of the flash
+                           device model, not of SEP: the model refuses any PAGE
+                           PROGRAM while WEL is clear, whatever the controller
+                           drives, so the refusal (the sector still reads 0xFF) is
+                           device-model behaviour and takes no SEP feature credit.
     CHK-RDSR2            : opcode 0x35 returns the seeded SR2 while SR1 reads
                            0x02, so a 0x35 folded onto 0x05 fails, and so does a
                            receive path that returns an all-zero byte.
@@ -53,8 +57,11 @@ Checks:
     - the PAGE PROGRAM (0x02) landed at the random addr with the random data;
     - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards)
       and left the neighbour 4 KiB sector intact;
-    - CHK-WP-PP/BFM: the WEL-clear PAGE PROGRAM took no payload at the device and
-      the page is still 0xFF after it.
+    - CHK-WP-PP/BFM: the controller delivered the third PAGE PROGRAM to the
+      device, with the full address phase at the random addr. This is the part
+      of CHK-WP-PP that SEP can fail.
+    - device-model self-check (no SEP feature credit): the model took no payload
+      from the WEL-clear PAGE PROGRAM, and its stored array at addr is still 0xFF.
 
 main() returns the error count; start.S emits PASS (0xCAFEBABE) / FAIL
 (0xDEADBEEF) magic, which the boot scoreboard gates on (+ banner + ICCM exec).
@@ -119,7 +126,7 @@ class SepSpiFlashCmdCfg:
     # JEDEC, WRDI, RDSR, WREN, RDSR, then WREN/PP/READ (primary), FAST_READ,
     # WREN/PP/READ (neighbour), WREN/ERASE/READ (primary), READ (neighbour),
     # then the protect/status breadth -- RDSR (post-erase WIP+WEL), the PAGE
-    # PROGRAM the device must IGNORE because WEL is clear, its READ, WREN,
+    # PROGRAM the device model ignores because WEL is clear, its READ, WREN,
     # RDSR2, WRDI -- and finally the JEDEC that proves the host recovered from
     # the three ERROR_STATUS injections. The injections themselves put nothing on
     # the bus: the host disables its core the cycle the error latches, and the
@@ -166,7 +173,10 @@ class SepSpiFlashCmdCfg:
     @classmethod
     def from_seed(cls, seed: int) -> "SepSpiFlashCmdCfg":
         rng = SepSeededRng(seed)
-        sector = rng.randrange(0, 32)
+        # Sector 0 is not drawn: the flash model records address 0 for a frame
+        # that ends before its address phase completes, so a draw of address 0
+        # cannot tell a truncated WEL-clear PAGE PROGRAM from a complete one.
+        sector = rng.randrange(1, 32)
         page = rng.randrange(0, _SECTOR_SIZE // _PAGE_SIZE)
         addr = sector * _SECTOR_SIZE + page * _PAGE_SIZE
         nwords = rng.randrange(1, _MAX_WORDS + 1)
@@ -307,10 +317,14 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 "SPI flash command breadth golden: neighbour PAGE PROGRAM mismatch"
             )
 
-        # The write-protect PAGE PROGRAM. Locate it by position among the PAGE
-        # PROGRAMs rather than by a fixed index into every transaction: an added
-        # or reordered command elsewhere in the walk would silently move a raw
-        # index onto a different opcode.
+        # CHK-WP-PP, the part SEP can fail: the controller delivered the
+        # WEL-clear PAGE PROGRAM to the device. Locate it by position among the
+        # PAGE PROGRAMs rather than by a fixed index into every transaction: an
+        # added or reordered command elsewhere in the walk would silently move a
+        # raw index onto a different opcode. The model decodes the address phase
+        # of a refused program, and records 0 only when the controller ends the
+        # frame before the address is complete, so the address compare fails on
+        # a truncated or corrupted command.
         pp_txns = [t for t in txns if t.get("opcode") == 0x02]
         if len(pp_txns) < cfg.WP_PP_NTH:
             raise AssertionError(
@@ -319,28 +333,39 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 f"saw {len(pp_txns)}"
             )
         wp_pp = pp_txns[cfg.WP_PP_NTH - 1]
-        # The device must have taken NO payload from it. Note what this can and
-        # cannot show: on WEL=0 the model drains to CS-high without decoding the
-        # address phase, so a refused program records addr=0 and "the controller
-        # truncated the command" is NOT distinguishable here. The memory compare
-        # below carries the real weight.
+        if wp_pp.get("addr") != cfg.addr:
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: WEL-clear PAGE PROGRAM "
+                "addr=0x%06x at the device vs exp addr=0x%06x",
+                wp_pp.get("addr", 0),
+                cfg.addr,
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: the controller did not deliver the "
+                "WEL-clear PAGE PROGRAM address phase"
+            )
+
+        # Device-model self-check, no SEP feature credit. WEL is state of the
+        # flash device model: while WEL is clear the model drops any PAGE
+        # PROGRAM, whatever the controller drives, so neither check below can
+        # fail on SEP RTL. They catch a change in the model.
         wp_taken = bytes(wp_pp.get("data_in") or b"")
         if wp_taken:
             self.logger.error(
-                "SPI flash command breadth GOLDEN FAIL: the WEL-clear PAGE PROGRAM was "
-                "accepted, device took %d payload byte(s): %s",
+                "SPI flash command breadth MODEL SELF-CHECK FAIL: the device model "
+                "accepted the WEL-clear PAGE PROGRAM, took %d payload byte(s): %s",
                 len(wp_taken),
                 wp_taken.hex(),
             )
             raise AssertionError(
-                "SPI flash command breadth golden: PAGE PROGRAM landed with WEL clear"
+                "SPI flash command breadth model self-check: the device model took a "
+                "PAGE PROGRAM payload with WEL clear"
             )
 
-        # Read back after BOTH the sector erase and the WEL-clear PAGE PROGRAM
-        # that followed it. This reads the device model's stored array DIRECTLY,
-        # not over SPI, so it is independent of the read datapath the firmware
-        # CHK-WP-PP used: a program that landed while the read path returned a
-        # stuck 0xFF passes the firmware check and fails here.
+        # Read the device model's stored array directly, after the sector erase
+        # and the WEL-clear PAGE PROGRAM that followed it. The erase half of this
+        # compare is SEP behaviour (CHK-ERASE); the no-landing half is the model
+        # self-check above.
         erased = flash.read_memory(cfg.addr, cfg.nwords * 4)
         if erased != b"\xff" * (cfg.nwords * 4):
             self.logger.error(
@@ -350,7 +375,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             )
             raise AssertionError(
                 "SPI flash command breadth golden: sector erase did not wipe the page, "
-                "or the WEL-clear PAGE PROGRAM re-wrote it"
+                "or the device model stored the WEL-clear PAGE PROGRAM"
             )
         neigh_left = flash.read_memory(cfg.neigh_addr, cfg.nwords * 4)
         if neigh_left != neigh_bytes:
@@ -364,8 +389,10 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 "SPI flash command breadth golden: sector erase wiped the neighbour"
             )
         self.logger.info(
-            "CHK-WP-PP/BFM PASS: the WEL-clear PAGE PROGRAM took no payload and the "
-            "device array at 0x%06x is still erased (checked off the SPI read path)",
+            "CHK-WP-PP/BFM PASS: the controller delivered PAGE PROGRAM #%d (WEL clear) "
+            "to the device at addr 0x%06x; device-model self-check: the model took no "
+            "payload and its array is still erased (model behaviour, no SEP credit)",
+            cfg.WP_PP_NTH,
             cfg.addr,
         )
         self.logger.info(

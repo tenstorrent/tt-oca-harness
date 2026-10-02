@@ -11,13 +11,11 @@ include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 # default) scopes to the whole repo. tomllint takes no config file (there is
 # nothing to ignore by), so exclusions live in this find call rather than in
 # a sibling config, unlike yamllint's .yamllint.yml.
-TOML_PATH ?=
-
-ocah_toml_root := $(if $(TOML_PATH),$(OCAH_ROOT)/$(TOML_PATH),$(OCAH_ROOT))
+TOML_PATH ?= .
 
 # .toml files under TOML_PATH, excluding vendor/nonfree, build output, and the
 # local uv venv (which vendors its own third-party Cargo.toml resources).
-ocah_toml_files = $(shell find $(ocah_toml_root) -name '*.toml' \
+ocah_toml_files = $(shell cd $(OCAH_ROOT) && find $(TOML_PATH) -name '*.toml' \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
 	-not -path '*/build/*' -not -path '*/build_pio/*' \
 	-not -path '*/.venv/*' 2>/dev/null)

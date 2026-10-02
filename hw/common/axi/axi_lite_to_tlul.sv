@@ -3,8 +3,8 @@
 //
 // AXI4-Lite slave to TL-UL host protocol converter.
 //
-// AckZeroStrobeWrite: a write with WSTRB == 0 is a legal AXI no-op (no byte is
-// written), but forwarding it as a TL-UL PutPartialData with an all-zero mask
+// ACK_ZERO_STROBE_WRITE: a write with WSTRB == 0 is a legal AXI no-op (no byte is
+// written), but forwarding it as a TL-UL PUT_PARTIAL_DATA with an all-zero mask
 // makes OpenTitan register files return d_error, which surfaces as SLVERR. Such
 // beats are not issued by software; they are produced by an AXI data-width
 // downsizer splitting a wider master's beat, where the lanes outside the
@@ -25,9 +25,9 @@ module axi_lite_to_tlul
 		parameter int unsigned AXI_USER_WIDTH    = 1,
 		parameter type         axi_lite_req_t    = logic,
 		parameter type         axi_lite_rsp_t    = logic,
-		parameter bit          EnableCmdIntgGen   = 1'b1,  // Generate command integrity
-		parameter bit          EnableDataIntgGen  = 1'b1,  // Generate data integrity
-		parameter bit          AckZeroStrobeWrite = 1'b0   // WSTRB==0 writes: OKAY, no TL-UL Put
+		parameter bit          ENABLE_CMD_INTG_GEN   = 1'b1,  // Generate command integrity
+		parameter bit          ENABLE_DATA_INTG_GEN  = 1'b1,  // Generate data integrity
+		parameter bit          ACK_ZERO_STROBE_WRITE = 1'b0   // WSTRB==0 writes: OKAY, no TL-UL Put
 	) (
 		input  logic      clk_i,
 		input  logic      rst_ni,
@@ -68,20 +68,20 @@ module axi_lite_to_tlul
 	state_e state_q, state_d;
 
 	// Latched transaction details
-	logic [AXI_ADDR_WIDTH-1:0]   req_addr_q, req_addr_d;
-	logic [AXI_DATA_WIDTH-1:0]   req_data_q, req_data_d;
-	logic [AXI_DATA_WIDTH/8-1:0] req_strb_q, req_strb_d;
+	logic [AXI_ADDR_WIDTH-1:0]     req_addr_q, req_addr_d;
+	logic [AXI_DATA_WIDTH-1:0]     req_data_q, req_data_d;
+	logic [AXI_DATA_WIDTH/8-1:0]   req_strb_q, req_strb_d;
 
 	// Response tracking
-	logic [AXI_DATA_WIDTH-1:0]   resp_data_q, resp_data_d;
-	logic                        req_error_q, req_error_d;
+	logic [AXI_DATA_WIDTH-1:0]     resp_data_q, resp_data_d;
+	logic                          req_error_q, req_error_d;
 
 	// Sticky error tracking
-	logic                        sticky_err_q, sticky_err_d;
+	logic                          sticky_err_q, sticky_err_d;
 
 	// Integrity signals
-	logic [H2DCmdIntgWidth-1:0]  cmd_intg;
-	logic [DataIntgWidth-1:0]    data_intg;
+	logic [H2D_CMD_INTG_WIDTH-1:0] cmd_intg;
+	logic [DATA_INTG_WIDTH-1:0]    data_intg;
 
 	// --------------------------------------------------
 	// FSM Sequential Logic
@@ -155,7 +155,7 @@ module axi_lite_to_tlul
 					req_addr_d = axi_lite_req_i.aw.addr;
 					req_data_d = axi_lite_req_i.w.data;
 					req_strb_d = axi_lite_req_i.w.strb;
-					if (AckZeroStrobeWrite && (axi_lite_req_i.w.strb == '0)) begin
+					if (ACK_ZERO_STROBE_WRITE && (axi_lite_req_i.w.strb == '0)) begin
 						// No byte to write: complete with OKAY, skip the TL-UL Put.
 						req_error_d = 1'b0;
 						state_d     = AXI_B_RESP;
@@ -170,7 +170,7 @@ module axi_lite_to_tlul
 			// ==========================================
 			TL_GET_REQ: begin
 				tl_o.a_valid   = 1'b1;
-				tl_o.a_opcode  = tlul_pkg::Get;
+				tl_o.a_opcode  = tlul_pkg::GET;
 				tl_o.a_address = req_addr_q;
 				tl_o.a_mask    = {(AXI_DATA_WIDTH/8){1'b1}};
 
@@ -210,9 +210,9 @@ module axi_lite_to_tlul
 
 				// Determine opcode based on write strobe
 				if (req_strb_q == {(AXI_DATA_WIDTH/8){1'b1}}) begin
-					tl_o.a_opcode = tlul_pkg::PutFullData;
+					tl_o.a_opcode = tlul_pkg::PUT_FULL_DATA;
 				end else begin
-					tl_o.a_opcode = tlul_pkg::PutPartialData;
+					tl_o.a_opcode = tlul_pkg::PUT_PARTIAL_DATA;
 				end
 
 				if (tl_i.a_ready) begin
@@ -248,9 +248,9 @@ module axi_lite_to_tlul
 	// --------------------------------------------------
 	always_comb begin
 		// Generate command integrity (SECDED ECC for address, opcode, mask, instr_type)
-		if (EnableCmdIntgGen) begin
+		if (ENABLE_CMD_INTG_GEN) begin
 			automatic tl_h2d_cmd_intg_t cmd;
-			automatic logic [H2DCmdMaxWidth-1:0] unused_cmd_payload;
+			automatic logic [H2D_CMD_MAX_WIDTH-1:0] unused_cmd_payload;
 
 			cmd.addr = tl_o.a_address;
 			cmd.opcode = tl_o.a_opcode;
@@ -258,19 +258,19 @@ module axi_lite_to_tlul
 			cmd.instr_type = tl_o.a_user.instr_type;
 
 			{cmd_intg, unused_cmd_payload} =
-				prim_secded_pkg::prim_secded_inv_64_57_enc(H2DCmdMaxWidth'(cmd));
+				prim_secded_pkg::prim_secded_inv_64_57_enc(H2D_CMD_MAX_WIDTH'(cmd));
 		end else begin
-			cmd_intg = {H2DCmdIntgWidth{1'b1}};
+			cmd_intg = {H2D_CMD_INTG_WIDTH{1'b1}};
 		end
 
 		// Generate data integrity (SECDED ECC for data)
-		if (EnableDataIntgGen) begin
-			automatic logic [DataMaxWidth-1:0] unused_data;
+		if (ENABLE_DATA_INTG_GEN) begin
+			automatic logic [DATA_MAX_WIDTH-1:0] unused_data;
 
 			{data_intg, unused_data} =
-				prim_secded_pkg::prim_secded_inv_39_32_enc(DataMaxWidth'(tl_o.a_data));
+				prim_secded_pkg::prim_secded_inv_39_32_enc(DATA_MAX_WIDTH'(tl_o.a_data));
 		end else begin
-			data_intg = {DataIntgWidth{1'b1}};
+			data_intg = {DATA_INTG_WIDTH{1'b1}};
 		end
 	end
 

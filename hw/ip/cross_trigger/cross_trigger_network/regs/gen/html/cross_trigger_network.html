@@ -6,18 +6,22 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: cross_trigger_network</h2>
+<h2 id="regmap-cross_trigger_network">Cross Trigger Network Address Map</h2>
+<p>Cross trigger matrix and externally visible cross trigger ports</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>CT_SRC[26].CONFIG_0</strong>: 26 registers, base 0x0, stride 0x8</li>
+<li><strong>ctp[16].CONFIG</strong>: 16 registers, base 0x200, stride 0x10</li>
+<li><strong>ctp[16].STATUS</strong>: 16 registers, base 0x204, stride 0x10</li>
+<li><strong>ctp[16].STRETCH_MULT</strong>: 16 registers, base 0x208, stride 0x10</li>
 </ul>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0xC8</td><td><a href="#CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
-<tr><td>0x200</td><td><a href="#CONFIG">CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x204</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
-<tr><td>0x208</td><td><a href="#STRETCH_MULT">STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x200 - 0x2F0</td><td><a href="#ctp_16_.CONFIG">ctp[16].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x204 - 0x2F4</td><td><a href="#ctp_16_.STATUS">ctp[16].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
+<tr><td>0x208 - 0x2F8</td><td><a href="#ctp_16_.STRETCH_MULT">ctp[16].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
@@ -26,26 +30,26 @@
 <tr><td>31:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>25:0</td><td>CT_DST_SELECT</td><td>RW</td><td>0x0</td><td>Selects the CT_Dst port(s) to forward on the CT_Src output<br>at this array index. Each bit corresponds to one CT_Dst<br>port, from CT_Dst[0] at bit 0 upwards. Multiple ports may<br>be selected as a trigger source. All selected source ports<br>are then OR&#x27;d together to produce the CT_Src output. Set<br>this register to all-zero to disable that output.</td></tr>
 </table>
-<h3 id="CONFIG">CONFIG</h3>
+<h3 id="ctp_16_.CONFIG">ctp[16].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
-<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
-<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>While set, holds the outgoing point-to-point handshake idle with CT_Req_out deasserted and discards core-side cross trigger pulses for transmission. The incoming handshake keeps running. Set and then clear it to recover a handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package&#x27;s cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.</td></tr>
 </table>
-<h3 id="STATUS">STATUS</h3>
+<h3 id="ctp_16_.STATUS">ctp[16].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
-<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
-<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="STRETCH_MULT">STRETCH_MULT</h3>
+<h3 id="ctp_16_.STRETCH_MULT">ctp[16].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>

@@ -114,9 +114,9 @@ ocah_jtag_vip/
   interface/
     ocah_jtag_if.sv      - shared pin-level IEEE 1149.1 interface (JTAG pins only)
   cov/
-    ocah_jtag_cov.sv     - covergroup interface (commercial simulators only)
+    ocah_jtag_cov.sv     - covergroup interface for optional backends
   sva/
-    ocah_jtag_sva.sv     - clean-room IEEE 1149.1 protocol assertions
+    ocah_jtag_sva.sv     - protocol assertions derived from IEEE 1149.1
     ocah_jtag_fv.sv      - the TAP state, TDO and phase rules in the boolean
                            subset formal environments bind; both checkers assert
                            or assume each side by parameter
@@ -129,7 +129,7 @@ ocah_jtag_vip/
                            python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items smoke
                            python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items all --cov
                            python3 tools/dv/run_dv.py --dut ocah_jtag_vip \
-                               --framework uvm --tool vcs --items smoke --skip-unimplemented
+                               --framework uvm --items smoke
 ```
 
 ## SV-UVM Agent (`uvm/`)
@@ -149,7 +149,7 @@ ocah_jtag_vip/
 | `ocah_jtag_cov` | Optional coverage subscriber (`cfg.en_cov`): samples `cov/ocah_jtag_cov.sv` covergroups from the step stream; `scan_export` accepts a scan builder's items |
 | `ocah_jtag_master_sequencer` | `uvm_sequencer #(ocah_jtag_item)` |
 | `ocah_jtag_master_agent` | Standard bundle; monitor when `en_monitor`, driver/sequencer when active |
-| `ocah_jtag_master_env` | VIP-level env: what DUTs instantiate and commercial integrations override |
+| `ocah_jtag_master_env` | VIP-level env: what DUTs instantiate and optional backend integrations override |
 | `ocah_jtag_slave_config` | Slave device configuration: IDCODE, IR width, register map (`add_reg`), `drive_tdo_oen` |
 | `ocah_jtag_slave_driver` | Reactive TAP device responder: capture/shift/update per IEEE 1149.1, Update-DR latches recorded in `updates` |
 | `ocah_jtag_slave_monitor` | Slave-side passive observer (same `ocah_jtag_event` stream as the master monitor) |
@@ -182,8 +182,8 @@ the DTP SV-UVM flow's (`--dut dtp --framework uvm`) `dtp_sanity_test`, which req
 `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO`,
 `CHK-TAP-TLR-IDCODE`, `CHK-IDCODE-RAW/STABLE/MARKER`, `CHK-BYPASS-LATENCY`,
 and `CHK-SCAN-IR-LEN/DR-LEN`, and arms the must-FAIL negative validation via
-`+DTP_JTAG_TAP_CHECKER_NEGATIVE`. SV-UVM collateral compiles on commercial
-simulators (e.g. VCS) and is excluded from Verilator builds.
+`+DTP_JTAG_TAP_CHECKER_NEGATIVE`. SV-UVM collateral compiles on the optional
+backends reported for that framework and is excluded from Verilator builds.
 
 ## Slave Side (Reactive TAP Device)
 
@@ -207,12 +207,11 @@ one slave device behind each `jtag_stap_*_host` port (cocotb
 selection, gating, and recovery through `check_last_update`,
 `check_update_count`, `check_register`, and `check_state`.
 
-## Template Contract (per-protocol VIPs and commercial plug-ins)
+## Template Contract (per-protocol VIPs and optional backends)
 
-This VIP is the TEMPLATE for OCAH SV-UVM VIPs. DUT environments instantiate
-`ocah_<proto>_env` — the VIP-level environment is the reuse AND override
-unit, matching the delivery granularity of commercial VIPs (a commercial VIP
-ships a system env, not a bare agent). Its frozen surface is:
+This VIP is the template for OCAH SV-UVM VIPs. DUT environments instantiate
+`ocah_<proto>_env`; the VIP-level environment is the reuse and override unit.
+Its frozen surface is:
 
 | Surface | Role |
 |---|---|
@@ -223,50 +222,27 @@ ships a system env, not a bare agent). Its frozen surface is:
 Everything above that surface (DUT sequences, tests, checkers, testlists)
 depends only on the item and event types, never on driver/monitor internals.
 
-**Using a commercial VIP is a companion-implemented integration.** The open
-tree carries only the hooks — the opaque `vendor_cfg` extension, the
+The open tree carries the opaque `vendor_cfg` extension, the
 `cfg.en_monitor` knob, the guarded vendor-interface nest, and the
-factory-overridable env — and every implementation built on them lives in
-the proprietary `nonfree/` companion repository (see the top-level
-AGENTS.md), never here. The dependency is strictly one-way: the companion
-subclasses these types and overlays this flow, while the open tree never
-references companion paths and builds, runs, and passes without it. The
-template does not hide the integration work; it gives it exactly one home
-per protocol:
+factory-overridable environment. An optional backend integration follows
+these rules:
 
-1. **Inherit the env (and agent if needed).** Subclass `ocah_<proto>_env`;
-   build the vendor system env (its system configuration object travels in
-   `cfg.vendor_cfg`) instead of the OCAH agent path. Select it with a single
-   factory override:
-   `ocah_jtag_master_env::type_id::set_type_override(<vendor>_jtag_env::get_type())`.
-2. **Implement the API wrapper.** The vendor env owns all driving and
-   monitoring. The integration implements translation (WR/RD-style tasks or
-   a translator driver): convert each incoming `ocah_<proto>_item` into the
-   vendor's transaction type, start them on
-   the vendor sequencer, and fill the item's response fields before
-   `item_done`. The OCAH driver's protocol tasks are `virtual` for
-   fine-grained reuse where helpful.
-3. **Close the OCAH monitor.** Set `cfg.en_monitor = 0`: the vendor env's
-   monitors/protocol checkers take over observation, and the OCAH agent
-   builds no monitor. Subscribers keyed to `ocah_<proto>_event` (FSM
-   checkers, scoreboards) must be re-pointed to vendor analysis streams or
-   fed by an adapter subscriber — part of the integration.
-4. **Nest the vendor interface inside `ocah_<proto>_if`.** The vendor VIP
-   brings its own SV interface; the OCAH interface carries a guarded hook
-   (`` `ifdef OCAH_<PROTO>_VENDOR_IF `` around
-   `` `include "ocah_<proto>_vendor_if.svh" ``) that instantiates it INSIDE
-   the OCAH interface. The integration supplies that `.svh` on an overlay
-   incdir — the OSS tree ships no copy — wiring the vendor interface from
-   the OCAH interface's boundary signals and publishing the nested instance
-   with one `uvm_config_db::set`. DUT tb_tops never touch vendor collateral.
-5. **Flow.** Everything above rides one adopter overlay config
-   (`run_dv.py --overlay <path>`, see the runner manual's "Adopter overlay
-   layer"): the vendor package's sources/incdirs (`[build]`), the
-   `OCAH_<PROTO>_VENDOR_IF` gate define and the vendor package's simulator
-   flags in the target tables, and the factory override
-   (`+uvm_set_type_override=ocah_<proto>_master_env,<vendor>_env`) in
-   `[sim].args` — no checked-in config changes; license-env gating is
-   part of the commercial profile contract.
+1. **Inherit the environment.** Subclass `ocah_<proto>_env`, carry the
+   backend configuration object through `cfg.vendor_cfg`, and select the
+   subclass with one factory override.
+2. **Implement the API wrapper.** Convert incoming `ocah_<proto>_item`
+   objects into backend operations and fill the item response fields before
+   `item_done`. Keep the public item and result surfaces unchanged.
+3. **Select one observation path.** Set `cfg.en_monitor = 0` when the backend
+   owns monitoring. Feed `ocah_<proto>_event` subscribers through an adapter
+   so DUT scoreboards remain backend-independent.
+4. **Bind the vendor interface.** Supply the guarded interface include from
+   an adopter overlay, wire it from the OCAH interface boundary signals, and
+   publish the nested instance through `uvm_config_db`. DUT tops remain
+   backend-neutral.
+5. **Keep deployment external.** The adopter overlay carries backend sources,
+   include directories, defines, simulator flags, and factory overrides.
+   The open tree remains runnable without the overlay.
 
 ## Quick Start
 
@@ -376,11 +352,11 @@ DTP, SMC, and SMU consumers:
 ```bash
 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items smoke --tool verilator
 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items all --tool verilator --cov
-python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --items smoke --skip-unimplemented --tool vcs --cov
+python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --items smoke --cov
 python3 tools/dv/run_dv.py --doctor --dut dtp
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test dtp_jtag_idcode_test dtp_jtag_bypass_test --tool verilator
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator --cov
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented --tool vcs
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut smc --items smc_jtag_dmi_smoke_test smc_ijtag_basic_test --tool verilator
 python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag_smoke_test smu_jtag_chain_enhanced_test --tool verilator
 ```
@@ -392,12 +368,12 @@ Must-fail checks; each command exits non-zero:
 # walk (cocotb) or a wrong expected IDCODE is armed (SV-UVM).
 OCAH_JTAG_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items ocah_jtag_tap_reset_test --tool verilator
 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --items ocah_jtag_idcode_test \
-    --skip-unimplemented --tool vcs --plusarg=+OCAH_JTAG_SELFTEST_NEGATIVE
+    --plusarg=+OCAH_JTAG_SELFTEST_NEGATIVE
 # cocotb: the TAP reference model is desynchronized, so CHK-TAP-STATE fails.
 DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_tlr_reset_test --tool verilator
 # SV-UVM: a wrong expected IDCODE is armed, so CHK-TAP-TLR-IDCODE fails.
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag_tlr_reset_test \
-    --skip-unimplemented --tool vcs --plusarg=+DTP_JTAG_TAP_CHECKER_NEGATIVE
+    --plusarg=+DTP_JTAG_TAP_CHECKER_NEGATIVE
 ```
 
 The reactive slave device is judged by the master-side model without a
@@ -419,8 +395,8 @@ PYTHONPATH=hw/common/dv/vip python3 hw/common/dv/vip/ocah_jtag_vip/cocotb/exampl
 | Errors and evidence | Monitors hold callback exceptions and re-raise them; `OcahJtagChecker.finalize()` fails on a held error, a failed check, zero checks, or a missing required ID; every harness selftest carries an in-band negative probe (cocotb), and `OCAH_JTAG_SELFTEST_NEGATIVE` (harness) or `DTP_JTAG_TAP_CHECKER_NEGATIVE` (DTP bench) forces a failing run in both flows | — |
 | Slave side | Reactive TAP device with IDCODE, BYPASS, undefined instructions as BYPASS, and a register map that latches on Update-DR, holding its shift registers across Pause-x and latching the captured value on a scan with no Shift-x cycle; simulator-free selftest | A DUT-specific register decode beyond the map |
 | Protocol checking | `sva/ocah_jtag_sva.sv` (TDO falling-edge timing, TLR via TMS and TRST, one-hot state legality with an exported state, X-hygiene on four-state simulators), bound in the `dv/` harness (state rules from the device's mirrored state in the cocotb shape, pin rules in the SV-UVM shape) and in the DTP, SMU, and SMC benches; `sva/ocah_jtag_fv.sv` carries the state, TDO and phase rules in the boolean subset a formal environment binds, the host side and the TAP side each asserted or assumed by parameter | State rules in the SV-UVM harness shape, where the device state stays inside the slave driver |
-| Coverage | `cov/ocah_jtag_cov.sv` covergroups through the SV-UVM `ocah_jtag_cov` subscriber (`en_cov`), sampled by the SV-UVM harness (`--dut ocah_jtag_vip --framework uvm --tool vcs --cov`); SVA cover properties on four-state simulators; Verilator line and branch coverage of the SVA through `--dut ocah_jtag_vip --cov`, graded by `dv/cov/config/verilator/coverage_policy.toml`, and through the DTP bench | Covergroups on Verilator |
-| Simulators | Verilator, VCS, and Xcelium (cocotb: the `dv/` harness; Verilator also the DTP, SMC, and SMU benches) and VCS (SV-UVM: the `dv/` harness and the DTP and SMU benches) | SV-UVM on Xcelium (the runner's SV-UVM flow is VCS-only) |
+| Coverage | `cov/ocah_jtag_cov.sv` covergroups through the SV-UVM `ocah_jtag_cov` subscriber (`en_cov`), sampled by the SV-UVM harness (`--dut ocah_jtag_vip --framework uvm --cov`); SVA cover properties on four-state simulators; Verilator line and branch coverage of the SVA through `--dut ocah_jtag_vip --cov`, graded by `dv/cov/config/verilator/coverage_policy.toml`, and through the DTP bench | Covergroups on Verilator |
+| Simulators | Verilator and the optional backends reported by `run_dv.py --list` | Backends outside the selected framework's allowlist |
 
 ## Scope
 

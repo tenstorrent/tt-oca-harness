@@ -2,23 +2,20 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-
-/**
- * Tile-Link UL response integrity check
- */
+// Check TL-UL D-channel response integrity.
+//
+// Recompute the response checksum over tl_i and raise err_o on mismatch. When
+// ENABLE_RSP_DATA_INTG_CHECK is set, also check returned data integrity.
 
 module tlul_rsp_intg_chk
   import tlul_pkg::*;
 #(
-  parameter bit EnableRspDataIntgCheck = 0
+  parameter bit ENABLE_RSP_DATA_INTG_CHECK = 0  // When set, also check D-channel data integrity.
 ) (
-  // TL-UL interface
-  input  tl_d2h_t tl_i,
+  input  tl_d2h_t tl_i,  // D-channel response under check.
 
-  // error output
-  output logic err_o
+  output logic err_o     // High when response integrity fails.
 );
-
   `include "prim_assert.sv"
 
   logic [1:0] rsp_err;
@@ -26,16 +23,16 @@ module tlul_rsp_intg_chk
   assign rsp = extract_d2h_rsp_intg(tl_i);
 
   prim_secded_inv_64_57_dec u_chk (
-    .data_i({tl_i.d_user.rsp_intg, D2HRspMaxWidth'(rsp)}),
+    .data_i({tl_i.d_user.rsp_intg, D2H_RSP_MAX_WIDTH'(rsp)}),
     .data_o(),
     .syndrome_o(),
     .err_o(rsp_err)
   );
 
   logic rsp_data_err;
-  if (EnableRspDataIntgCheck) begin : gen_rsp_data_intg_check
+  if (ENABLE_RSP_DATA_INTG_CHECK) begin : gen_rsp_data_intg_check
     tlul_data_integ_dec u_tlul_data_integ_dec (
-      .data_intg_i({tl_i.d_user.data_intg, DataMaxWidth'(tl_i.d_data)}),
+      .data_intg_i({tl_i.d_user.data_intg, DATA_MAX_WIDTH'(tl_i.d_data)}),
       .data_err_o(rsp_data_err)
     );
   end else begin : gen_no_rsp_data_intg_check
@@ -52,6 +49,6 @@ module tlul_rsp_intg_chk
   logic unused_tl;
   assign unused_tl = |tl_i;
 
-  `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_d2h_rsp_intg_t) <= D2HRspMaxWidth)
+  `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_d2h_rsp_intg_t) <= D2H_RSP_MAX_WIDTH)
 
 endmodule  // tlul_rsp_intg_chk

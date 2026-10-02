@@ -50,10 +50,10 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test(sep_base_test):
     async def _check_reset(self, sig, name: str, expected: int, chk_id: str) -> None:
         """Assert a reset observable equals an exact value.
 
-        A compare whose passing branch is 0 reads through ``rd_known`` so an
-        unknown bit cannot satisfy it.
+        ``rd`` raises on an X/Z bit, so an unknown observable cannot satisfy
+        either expectation.
         """
-        val = self.rd_known(sig) if expected == 0 else self.rd(sig)
+        val = self.rd(sig)
         if val != expected:
             raise AssertionError(f"{name}: expected {expected}, got {val}")
         self.logger.info("%s PASS: %s == %d", chk_id, name, expected)

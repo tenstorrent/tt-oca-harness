@@ -64,7 +64,13 @@ module smc_dma_fcov (
   wire next_id_nonzero_e = next_id_read_e && (next_id_i !== 32'd0) && (^next_id_i !== 1'bx);
   wire next_id_zero_e = next_id_read_e && (next_id_i === 32'd0);
   `OCAH_FCOV_COVER(c_next_id_0_nonzero_on_valid_setup, next_id_nonzero_e, clk_smc_i, in_reset)
+`ifdef SMC_FCOV_PHASE2
+  // Phase 2 (SMC_FCOV.adoc): dma_ctrl.rdl and dma.adoc have NEXT_ID return 0
+  // for a command that was not set up correctly, and the stream-0 frontend
+  // returns the transfer-id generator unconditionally; the point waits on a
+  // ruling between the two.
   `OCAH_FCOV_COVER(c_next_id_0_zero_on_invalid_setup, next_id_zero_e, clk_smc_i, in_reset)
+`endif
 
   // The read reaches the frontend as an accepted request. The read strobe
   // alone would be covered by a read of an unconfigured DMA.
@@ -105,11 +111,13 @@ module smc_dma_fcov (
 
   wire status0_busy_e = transfer_in_flight_q && (status0_i !== 10'h3FF) && (^status0_i !== 1'bx);
   wire done0_set_e = (done_id_i !== done_id_q) && (done_id_i !== 32'd0) && (^done_id_q !== 1'bx);
-  wire done0_cleared_e = done_seen_q && (done_id_re_i === 1'b1) && (done_id_q !== 32'd0)
-      && (done_id_i === 32'd0);
+  // dma_ctrl.rdl DONE: "Holds the cumulative number of completed transfers", so
+  // a read after a completion returns the retired count and leaves it in place.
+  wire done0_holds_e = done_seen_q && (done_id_re_i === 1'b1) && (done_id_q !== 32'd0)
+      && (done_id_i === done_id_q);
   `OCAH_FCOV_COVER(c_status0_busy_during, status0_busy_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_done0_set_on_completion, done0_set_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_done0_cleared_after_read, done0_cleared_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_done0_holds_after_read, done0_holds_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
   // Programmed length against what the master moved. The byte counter sums
@@ -175,6 +183,14 @@ module smc_dma_fcov (
   // Clock gating. Both gated clocks are sampled for movement; "gated
   // together" is both held in the same sample, after both were seen moving.
   // ------------------------------------------------------------------
+  // A gated clock is observed through a flop it toggles itself. Sampling the
+  // clock net on the edge of the clock it is gated from reads the same level
+  // every cycle whether it runs or not; the flop changes between two samples
+  // exactly when the gated clock had an edge.
+  logic gated_clk_div_q, frontend_clk_div_q;
+  always_ff @(posedge gated_clk_i) gated_clk_div_q <= (gated_clk_div_q !== 1'b1);
+  always_ff @(posedge frontend_gated_clk_i) frontend_clk_div_q <= (frontend_clk_div_q !== 1'b1);
+
   logic gated_clk_q, frontend_clk_q;
   logic gated_clk_moved_q, frontend_clk_moved_q;
   always_ff @(posedge clk_smc_i) begin
@@ -184,15 +200,15 @@ module smc_dma_fcov (
       gated_clk_moved_q <= 1'b0;
       frontend_clk_moved_q <= 1'b0;
     end else begin
-      gated_clk_q <= gated_clk_i;
-      frontend_clk_q <= frontend_gated_clk_i;
-      if (gated_clk_i !== gated_clk_q) gated_clk_moved_q <= 1'b1;
-      if (frontend_gated_clk_i !== frontend_clk_q) frontend_clk_moved_q <= 1'b1;
+      gated_clk_q <= gated_clk_div_q;
+      frontend_clk_q <= frontend_clk_div_q;
+      if (gated_clk_div_q !== gated_clk_q) gated_clk_moved_q <= 1'b1;
+      if (frontend_clk_div_q !== frontend_clk_q) frontend_clk_moved_q <= 1'b1;
     end
   end
 
-  wire gated_clk_toggling = (gated_clk_i !== gated_clk_q);
-  wire frontend_clk_toggling = (frontend_gated_clk_i !== frontend_clk_q);
+  wire gated_clk_toggling = (gated_clk_div_q !== gated_clk_q);
+  wire frontend_clk_toggling = (frontend_clk_div_q !== frontend_clk_q);
   wire all_blocks_gated_e = gated_clk_moved_q && frontend_clk_moved_q && !gated_clk_toggling
       && !frontend_clk_toggling;
   `OCAH_FCOV_COVER(c_all_three_blocks_gated_together, all_blocks_gated_e, clk_smc_i, in_reset)
@@ -224,7 +240,12 @@ module smc_dma_fcov (
     cp_awlen: coverpoint awlen {
       bins single = {0}; bins short_burst = {[1 : 7]}; bins long_burst = {[8 : 255]};
     }
-    cp_strb: coverpoint strb_count {bins partial = {[1 : 7]}; bins full = {8}; bins none = {0};}
+    // Every write beat of a transfer carries at least one of its bytes: the
+    // length is non-zero (dma.adoc, zero-length transfers are rejected) and
+    // the backend writes only the bytes of the programmed range.
+    cp_strb: coverpoint strb_count {
+      bins partial = {[1 : 7]}; bins full = {8}; ignore_bins no_byte = {0};
+    }
     x_shape: cross cp_awlen, cp_strb;
   endgroup
 
@@ -235,18 +256,34 @@ module smc_dma_fcov (
     cp_cg_en: coverpoint cg_en;
     cp_wakeup: coverpoint wakeup;
     cp_backend: coverpoint backend;
-    cp_fe_clk: coverpoint fe_clk_moving;
-    cp_be_clk: coverpoint be_clk_moving;
-    x_gaters: cross cp_fe_clk, cp_be_clk;
+    cp_fe_clk: coverpoint fe_clk_moving {bins held = {1'b0}; bins running = {1'b1};}
+    cp_be_clk: coverpoint be_clk_moving {bins held = {1'b0}; bins running = {1'b1};}
+    // dma.adoc (SMC DMA Clock Gating Configuration): the backend clock runs
+    // while the frontend or backend is busy, and the frontend clock runs then
+    // too and also while the control port has a transaction outstanding, with
+    // the same hysteresis, so the frontend clock is never held while the
+    // backend clock runs.
+    x_gaters: cross cp_fe_clk, cp_be_clk{
+      ignore_bins frontend_held_backend_running = binsof (cp_fe_clk.held) &&
+          binsof (cp_be_clk.running);
+    }
     x_sources: cross cp_wakeup, cp_backend;
   endgroup
 
   cg_dma_burst u_cg_dma_burst = new();
   cg_dma_gates u_cg_dma_gates = new();
 
+  // The strobes live on the W channel, so the shape is sampled per accepted
+  // write beat with the length of the burst that beat belongs to.
+  logic [7:0] burst_awlen_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (aw_acc) burst_awlen_q <= mst_awlen_i;
+  end
+  wire [7:0] beat_awlen = aw_acc ? mst_awlen_i : burst_awlen_q;
+
   always_ff @(posedge clk_smc_i) begin
     if (!in_reset) begin
-      if (aw_acc) u_cg_dma_burst.sample(mst_awlen_i, strb_ones);
+      if (w_acc) u_cg_dma_burst.sample(beat_awlen, strb_ones);
       u_cg_dma_gates.sample(cg_en_i, frontend_wakeup_i, backend_busy_i, frontend_clk_toggling,
                             gated_clk_toggling);
     end

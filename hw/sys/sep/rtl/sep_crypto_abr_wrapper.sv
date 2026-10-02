@@ -1,34 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP <-> Caliptra Adams Bridge (PQC) integration wrapper
-// -----------------------------------------------------------------------------
-// Brings the Caliptra Adams Bridge engine (ML-DSA-87 / ML-KEM-1024) into the
-// SEP crypto subsystem as a dedicated PQC block. Two integration seams:
+// Integrate Caliptra Adams Bridge into the SEP crypto subsystem as the PQC engine.
 //
-//   1. Control/status path : sep_crypto 64-bit AXI -> reused VeeR axi4_to_ahb
-//                            (deps/el2/design/lib/axi4_to_ahb.sv) -> abr_top AHB.
-//                            AB's AHB slave is 64b data / 32b addr, which matches
-//                            axi4_to_ahb exactly (no data-width conversion).
-//   2. Key path            : KM private 32-bit AXI4-Lite key bus terminates on the
-//                            abr_wrapper_key_reg CSR block instantiated *here*
-//                            (mirroring aes_wrapper/otbn-wrapper), whose decoded
-//                            hardware interface feeds sep_abr_kv_shim. The shim
-//                            presents AB's Caliptra Key-Vault ports (kv_read /
-//                            kv_rd_resp / kv_write / kv_wr_resp).
+// Convert host AXI (64-bit) to 32-bit AXI to AXI4-Lite to axi_lite_to_ahb for abr_top AHB
+// (64-bit data / 32-bit addr), one transfer on the AHB at a time. The AXCACHE modifiable
+// bit is forced so 64-bit beats can be split; only full-word writes reach abr_top, and
+// writes with all byte strobes low complete with OKAY without an AHB transfer.
+// abr_top has no entropy port and its scan-mode zeroize input is tied low.
 //
-// Technology-dependent SRAM macros are NOT instantiated here. The ABR memory is
-// exposed as packed req/rsp structs (abr_mem_req_t / abr_mem_rsp_t) threaded up
-// to sep_ip_integration (the home for all macros / 3rd-party IP), mirroring the
-// OTBN otbn_imem/dmem_sram pattern. Word-write channels are we/re/addr/data;
-// sig_z and pk also carry one-bit-per-byte wstrobe. A local abr_mem_if + comb
-// pack/unpack adapter bridges abr_top's interface port to the struct ports.
+// Terminate the Key Manager private 32-bit AXI4-Lite key bus on abr_wrapper_key_reg here;
+// sep_abr_kv_shim turns that hwif into Caliptra KV ports. The shim serves:
 //
-// The shim serves the ML-DSA seed on kv_read[0], the ML-KEM seed (D||Z) on
-// kv_read[1] and the ML-KEM msg on kv_read[2], and implements the ML-KEM
-// kv_write -> MLKEM_SHARED_KEY writeback (+ key_valid / IRQ_STATUS hwset);
-// mlkem_sharedkey_irq_o exposes the resulting gated interrupt for the Key
-// Manager. ML-KEM has no engine driver yet, so its lanes are DV-stimulus-only.
+// - ML-DSA seed on kv_read[0].
+// - ML-KEM seed D||Z on kv_read[1].
+// - ML-KEM msg on kv_read[2].
+//
+// The shim also implements ML-KEM kv_write into MLKEM_SHARED_KEY with key_valid /
+// IRQ_STATUS hwset. mlkem_sharedkey_irq_o exposes the gated interrupt. ML-KEM has no
+// engine driver yet, so its lanes are DV-stimulus-only.
+//
+// Technology SRAM macros are not instantiated here. abr_mem_req_t / abr_mem_rsp_t thread
+// to sep_ip_integration. Word-write channels are we/re/addr/data; sig_z and pk also carry
+// one-bit-per-byte wstrobe.
 
 module sep_crypto_abr_wrapper
   import sep_pkg::*;
@@ -37,45 +31,119 @@ module sep_crypto_abr_wrapper
   import abr_params_pkg::*;
   import abr_wrapper_key_reg_pkg::*;
 #(
-  parameter bit          MASKING_EN   = 1,  // 2-share DOM masking (ship for SCA)
-  parameter int unsigned SRAM_LATENCY = 1
+  parameter bit          MASKING_EN   = 1,    // Enables 2-share DOM masking in abr_top.
+  parameter int unsigned SRAM_LATENCY = 1     // Read latency of the external Adams Bridge SRAMs in
+                                              // cycles, passed to abr_top.
 ) (
-  input  wire logic clk_i,
-  input  wire logic rst_ni,
+  input  wire logic clk_i,                    // System clock; also forwarded to the SRAM macros in
+                                              // abr_mem_req_o.
+  input  wire logic rst_ni,                   // Active-low reset.
 
-  // ---- Control/status path: 64-bit AXI from the sep_crypto demux ----
-  input  wire sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_i,
-  output      sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_resp_o,
+  input  wire sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_i,  // Host 64-bit AXI4 control/status
+                                                                 // request, bridged to the abr_top
+                                                                 // AHB slave; in sep_crypto the
+                                                                 // demux rejects bursts before this
+                                                                 // port.
+  output      sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_resp_o,  // Response on the host
+                                                                  // control/status port.
 
-  // ---- Key path: KM private 32-bit AXI4-Lite key bus ----
-  // Terminates on the internal abr_wrapper_key_reg CSR block (u_abr_key_csr),
-  // matching the aes/otbn wrapper convention (raw AXI4-Lite in, not a decoded
-  // hwif struct).
-  input  wire km_intf_pkg::km_axil_req_t  abr_key_axil_req_i,
-  output      km_intf_pkg::km_axil_resp_t abr_key_axil_resp_o,
+  input  wire km_intf_pkg::km_axil_req_t  abr_key_axil_req_i,  // Key Manager private 32-bit
+                                                               // AXI4-Lite key bus; terminates on
+                                                               // the internal abr_wrapper_key_reg
+                                                               // CSR block (u_abr_key_csr).
+  output      km_intf_pkg::km_axil_resp_t abr_key_axil_resp_o,  // Response from the Adams Bridge
+                                                                // key CSR block to the Key Manager.
 
-  // ---- AB internal SRAMs: technology macros live in sep_ip_integration. ----
-  // Packed req/rsp structs (OTBN convention). abr_top is the memory requester;
-  // a local abr_mem_if + comb adapter packs its requests into abr_mem_req_o and
-  // unpacks abr_mem_rsp_i back onto the interface read-data signals.
-  output      abr_mem_req_t abr_mem_req_o,
-  input       abr_mem_rsp_t abr_mem_rsp_i,
+  output      abr_mem_req_t abr_mem_req_o,    // abr_top requests to its external SRAM macros, which
+                                              // live in sep_ip_integration, packed into one struct
+                                              // together with the macro clock.
+  input       abr_mem_rsp_t abr_mem_rsp_i,    // Read data from the external Adams Bridge SRAM
+                                              // macros.
 
-  // ---- DFT ----
-  input  wire logic scan_mode_i,
+  input  wire logic scan_mode_i,              // DFT scan mode; drives only the test input of the
+                                              // AXI-to-AXI-Lite converter.
 
-  // ---- Interrupts + status ----
-  output      logic mlkem_sharedkey_irq_o,  // ML-KEM shared-key ready (gated)
-  output      logic error_intr_o,
-  output      logic notif_intr_o,
-  output      logic busy_o
+  output      logic mlkem_sharedkey_irq_o,    // Level ML-KEM shared-key-ready interrupt:
+                                              // IRQ_STATUS.key_valid gated by
+                                              // IRQ_ENABLE.key_valid_en.
+  output      logic error_intr_o,             // Adams Bridge global error interrupt, from the
+                                              // abr_top interrupt block.
+  output      logic notif_intr_o,             // Adams Bridge global notification interrupt; set on
+                                              // command completion.
+  output      logic busy_o                    // High while the Adams Bridge engine is not idle.
 );
 
   `include "prim_assert.sv"
 
   // =========================================================================
-  // AXI4 (64b) -> AHB-lite (64b/32a) : reuse the verified VeeR bridge
+  // AXI4 (64b) -> AXI4 (32b) -> AXI4-Lite -> AHB-lite (64b/32a)
   // =========================================================================
+  // Every ABR register is 32 bits wide, so the path narrows to 32 bits first: a
+  // 64-bit beat becomes a len=1 burst of words, which axi_to_axi_lite splits
+  // into single accesses. AXI permits splitting only a modifiable transaction,
+  // so the modifiable bit is forced here. The sep_crypto demux has already
+  // refused every AxLEN != 0 request.
+  localparam int unsigned ABR_AXI_MAX_TXNS = 4;
+
+  sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_cache_forced;
+  sep_pkg::sep_32_32_6_12_axi_req_t  abr_axi32_req;
+  sep_pkg::sep_32_32_6_12_axi_resp_t abr_axi32_resp;
+  sep_pkg::sep_32_32_axil_req_t      abr_axil_req;
+  sep_pkg::sep_32_32_axil_resp_t     abr_axil_resp;
+
+  always_comb begin
+    abr_axi_req_cache_forced          = abr_axi_req_i;
+    abr_axi_req_cache_forced.aw.cache = abr_axi_req_i.aw.cache | axi_pkg::CACHE_MODIFIABLE;
+    abr_axi_req_cache_forced.ar.cache = abr_axi_req_i.ar.cache | axi_pkg::CACHE_MODIFIABLE;
+  end
+
+  axi_dw_converter #(
+    .AxiMaxReads         (ABR_AXI_MAX_TXNS),
+    .AxiSlvPortDataWidth (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+    .AxiMstPortDataWidth (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .AxiAddrWidth        (sep_pkg::SEP_32_64_6_12_ADDR_WIDTH),
+    .AxiIdWidth          (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .aw_chan_t           (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
+    .mst_w_chan_t        (sep_pkg::sep_32_32_6_12_axi_w_chan_t),
+    .slv_w_chan_t        (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
+    .b_chan_t            (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
+    .ar_chan_t           (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
+    .mst_r_chan_t        (sep_pkg::sep_32_32_6_12_axi_r_chan_t),
+    .slv_r_chan_t        (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
+    .axi_mst_req_t       (sep_pkg::sep_32_32_6_12_axi_req_t),
+    .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),
+    .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)
+  ) u_abr_axi_dw_converter (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (abr_axi_req_cache_forced),
+    .slv_resp_o (abr_axi_resp_o),
+    .mst_req_o  (abr_axi32_req),
+    .mst_resp_i (abr_axi32_resp)
+  );
+
+  axi_to_axi_lite #(
+    .AxiAddrWidth    (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AxiDataWidth    (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .AxiIdWidth      (sep_pkg::SEP_32_32_6_12_ID_WIDTH),
+    .AxiUserWidth    (sep_pkg::SEP_32_32_6_12_USER_WIDTH),
+    .AxiMaxWriteTxns (ABR_AXI_MAX_TXNS),
+    .AxiMaxReadTxns  (ABR_AXI_MAX_TXNS),
+    .full_req_t      (sep_pkg::sep_32_32_6_12_axi_req_t),
+    .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
+    .lite_req_t      (sep_pkg::sep_32_32_axil_req_t),
+    .lite_resp_t     (sep_pkg::sep_32_32_axil_resp_t)
+  ) u_abr_axi_to_axi_lite (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (scan_mode_i),
+    .slv_req_i  (abr_axi32_req),
+    .slv_resp_o (abr_axi32_resp),
+    .mst_req_o  (abr_axil_req),
+    .mst_resp_i (abr_axil_resp)
+  );
+
   logic [31:0] ab_haddr;
   logic [63:0] ab_hwdata;
   logic [63:0] ab_hrdata;
@@ -88,68 +156,38 @@ module sep_crypto_abr_wrapper
   logic        ab_hreadyout;  // abr_top.hreadyout_o (single-slave global hready)
   logic        ab_hresp;
 
-  axi4_to_ahb #(
-    .TAG(sep_pkg::SEP_32_64_6_12_ID_WIDTH)  // carry the 6-bit SEP AXI ID
-  ) u_axi4_to_ahb (
-    .clk                (clk_i),
-    .free_clk           (clk_i),
-    .rst_l              (rst_ni),
-    .scan_mode          (scan_mode_i),
-    .bus_clk_en         (1'b1),
-    .clk_override       (1'b0),
-    .dec_tlu_force_halt (1'b0),
+  // abr_top ties the register block's write bit-enables high and the AHB slave
+  // zero-extends a sub-word write from the low byte lane, so only full-word
+  // writes are issued. Zero-strobe beats are the downsizer's untouched half of
+  // a 64-bit write.
+  axi_lite_to_ahb #(
+    .AXI_ADDR_WIDTH        (sep_pkg::SEP_32_32_6_12_ADDR_WIDTH),
+    .AXI_DATA_WIDTH        (sep_pkg::SEP_32_32_6_12_DATA_WIDTH),
+    .AHB_DATA_WIDTH        (64),
+    .axi_lite_req_t        (sep_pkg::sep_32_32_axil_req_t),
+    .axi_lite_rsp_t        (sep_pkg::sep_32_32_axil_resp_t),
+    .ALLOW_SUB_WORD_WRITE  (1'b0),
+    .ACK_ZERO_STROBE_WRITE (1'b1)
+  ) u_axi_lite_to_ahb (
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
 
-    // AXI slave (struct -> flat). Single-beat MMIO from the RV32 CPU, so the
-    // bridge's lack of awlen/arlen is fine (len == 0).
-    .axi_awvalid (abr_axi_req_i.aw_valid),
-    .axi_awready (abr_axi_resp_o.aw_ready),
-    .axi_awid    (abr_axi_req_i.aw.id),
-    .axi_awaddr  (abr_axi_req_i.aw.addr),
-    .axi_awsize  (abr_axi_req_i.aw.size),
-    .axi_awprot  (abr_axi_req_i.aw.prot),
-
-    .axi_wvalid  (abr_axi_req_i.w_valid),
-    .axi_wready  (abr_axi_resp_o.w_ready),
-    .axi_wdata   (abr_axi_req_i.w.data),
-    .axi_wstrb   (abr_axi_req_i.w.strb),
-    .axi_wlast   (abr_axi_req_i.w.last),
-
-    .axi_bvalid  (abr_axi_resp_o.b_valid),
-    .axi_bready  (abr_axi_req_i.b_ready),
-    .axi_bresp   (abr_axi_resp_o.b.resp),
-    .axi_bid     (abr_axi_resp_o.b.id),
-
-    .axi_arvalid (abr_axi_req_i.ar_valid),
-    .axi_arready (abr_axi_resp_o.ar_ready),
-    .axi_arid    (abr_axi_req_i.ar.id),
-    .axi_araddr  (abr_axi_req_i.ar.addr),
-    .axi_arsize  (abr_axi_req_i.ar.size),
-    .axi_arprot  (abr_axi_req_i.ar.prot),
-
-    .axi_rvalid  (abr_axi_resp_o.r_valid),
-    .axi_rready  (abr_axi_req_i.r_ready),
-    .axi_rid     (abr_axi_resp_o.r.id),
-    .axi_rdata   (abr_axi_resp_o.r.data),
-    .axi_rresp   (abr_axi_resp_o.r.resp),
-    .axi_rlast   (abr_axi_resp_o.r.last),
+    .axi_lite_req_i  (abr_axil_req),
+    .axi_lite_rsp_o  (abr_axil_resp),
 
     // AHB master -> abr_top slave
-    .ahb_haddr     (ab_haddr),
-    .ahb_hburst    (ab_hburst),
-    .ahb_hmastlock (ab_hmastlock),
-    .ahb_hprot     (ab_hprot),
-    .ahb_hsize     (ab_hsize),
-    .ahb_htrans    (ab_htrans),
-    .ahb_hwrite    (ab_hwrite),
-    .ahb_hwdata    (ab_hwdata),
-    .ahb_hrdata    (ab_hrdata),
-    .ahb_hready    (ab_hreadyout),  // single slave: bus hready == slave hreadyout
-    .ahb_hresp     (ab_hresp)
+    .ahb_haddr_o     (ab_haddr),
+    .ahb_hburst_o    (ab_hburst),
+    .ahb_hmastlock_o (ab_hmastlock),
+    .ahb_hprot_o     (ab_hprot),
+    .ahb_hsize_o     (ab_hsize),
+    .ahb_htrans_o    (ab_htrans),
+    .ahb_hwrite_o    (ab_hwrite),
+    .ahb_hwdata_o    (ab_hwdata),
+    .ahb_hrdata_i    (ab_hrdata),
+    .ahb_hready_i    (ab_hreadyout),  // single slave: bus hready == slave hreadyout
+    .ahb_hresp_i     (ab_hresp)
   );
-
-  // axi4_to_ahb has no AXI USER ports
-  assign abr_axi_resp_o.b.user = '0;
-  assign abr_axi_resp_o.r.user = '0;
 
   // =========================================================================
   // Key CSR register block : KM AXI4-Lite key bus -> abr_wrapper_key_reg

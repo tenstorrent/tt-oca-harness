@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 module generic_dff_staging #(parameter WIDTH=8,
                 parameter DEPTH=2,
                 parameter RESET_VALUE=0)

@@ -55,13 +55,12 @@ static inline uint32_t sep_get_smc_base(void) {
 // seeded at whatever address the ROM reads, so any offset "works" in simulation.
 #define SMC_SCRATCH_BASE_OFFSET 0x39080u
 
-// CPU_CTRL reset control — holds the four SMC cores in reset.
-//
-// 0x39020 is SMC_TOP_SMC_CPU_CTRL_RESET_CTRL_BASE_ADDR (smc_addr.h), 0xC0039020
-// SMC-local. It is in the same 0x39000 CPU_CTRL block as the scratch registers.
-// Core reset_n bits [3:0] are active low: clear them to hold the cores in reset.
+// CPU_CTRL.RESET_CTRL: 0x39020 is SMC_TOP_SMC_CPU_CTRL_RESET_CTRL_BASE_ADDR
+// (smc_addr.h), 0xC0039020 SMC-local. A 64-bit register; the per-core resets
+// core0..3_reset_n_n0_scan are bits [3:0] of the low word, active low with reset
+// value 1, so clearing a bit holds that core in reset.
 #define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x39020u
-#define SMC_CPU_CTRL_RESET_CTRL_CORE_MASK 0xFu
+#define SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK 0xFu
 
 // Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE).
 #define SMC_CHIP_ID_OFFSET 0x2908u
@@ -97,8 +96,8 @@ static inline uint32_t sep_get_smc_base(void) {
 // returning 0 would halt every boot with mem_repair_success clear.
 //
 // A SEP->SMC address remap cannot account for the difference: output_remap.sv
-// substitutes only bits [55:IdxStart] and passes [IdxStart-1:0] through
-// unchanged, with IdxStart = 19 (sep_pkg.sv, 512 KB granularity). Both 0xF800
+// substitutes only bits [55:IDX_START] and passes [IDX_START-1:0] through
+// unchanged, with IDX_START = 19 (sep_pkg.sv, 512 KB granularity). Both 0xF800
 // and 0xB800 lie inside those preserved low bits.
 #define SMC_DFX_CTRL_STATUS_SMU_OFFSET 0xB800u
 
@@ -213,7 +212,7 @@ static inline uint32_t smc_read_dft_status(void) {
 // secure boot is optional, so an early lifecycle read fails open. Polled without
 // timeout -- the hang is the accepted failure mode ([SEP-ROM-CPU-080]).
 static inline void smc_wait_fuse_sense(void) {
-    while ((mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR) &
+    while ((mmio_read32(SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR) &
             SMC_FUSE_SENSE_DONE_MASK) == 0u) {
         // spin
     }

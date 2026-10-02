@@ -8,7 +8,7 @@ schema_version = 1
 
 [[tests]]
 name = "sep_otbn_mem_smoke_test"
-module = "otbn.sep_otbn_mem_smoke_test"
+module = { cocotb = "otbn.sep_otbn_mem_smoke_test", uvm = "sep_otbn_mem_smoke_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "otbn", "crypto", "memory"]
@@ -35,6 +35,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 [[tests]]
 name = "sep_esrc_e2e_smoke_test"
 module = "system.sep_esrc_e2e_smoke_test"
+firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "entropy", "crypto"]
@@ -90,6 +91,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # assume one open command.
 name = "sep_drbg_gen_segmentation_test"
 module = "crypto.sep_drbg_gen_segmentation_test"
+firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
 tags = ["drbg", "entropy", "crypto", "subsystem"]
@@ -228,6 +230,25 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Reads of one ABR register from the SMN inbound master at increasing numbers of
+# reads in flight. Every read targets the same read-only register, so every
+# response must carry the same value with an OKAY response; a bridge that drops
+# HADDR[2:0] on streamed reads answers zero from the third read in flight.
+#
+# Driven from m_axi deliberately. The CPU-LSU splice stands in for the VeeR LSU,
+# which serialises MMIO loads, so pipelining there would be stimulus the port
+# cannot carry in the real design. The inbound port is a real SoC master under no
+# such restriction.
+name = "sep_abr_pipelined_read_test"
+module = "crypto.sep_abr_pipelined_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Adams Bridge ML-DSA-87 sigGen and sigVer NIST KAT on the same aperture.
 # MLDSA_CTRL.CTRL SIGNING (0x2) and VERIFYING (0x3), external-mu ACVP groups.
 # Deterministic signing, so the signature is compared word-for-word against the
@@ -264,3 +285,80 @@ tags = ["crypto", "abr", "mlkem", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge pipelined reads: several in flight, each returns its own word.
+# Concurrent single-beat reads of MLDSA_VERSION1 at depths 1/2/3/4/8, one ARID
+# each, on m_axi (through an inbound-filter read window) and on s_axi; the
+# ML-DSA identity words in several orders and on one ARID; both masters at
+# once. Every R beat is graded by its RID, and the AR/R handshakes on the pins
+# must show the reads overlapped. A bridge that drops HADDR[2:0] on streamed
+# reads fails from depth 3. RAND-NONE: the depths and orders are the cells.
+# no_cpu; +skip_fuse_sense.
+name = "sep_abr_pipelined_read_matrix_test"
+module = "crypto.sep_abr_pipelined_read_matrix_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge access sizes and write strobes, the [[abr-access-size]] rules in
+# hw/sys/sep/doc/adams_bridge.adoc. 64-bit reads return {high word, low word}
+# of the two identity registers they cover; AxSIZE=3 at addr[2]=1 and byte /
+# halfword reads return the addressed bytes. On the global_intr_en_r /
+# error_intr_en_r pair and the 32-bit error-interrupt counter: full-strobe
+# 64-bit writes land both words, WSTRB 0x0F / 0xF0 land one word and leave the
+# other, every partial-word strobe answers SLVERR with the register unchanged,
+# and a 64-bit beat with one whole and one partial word writes the whole word
+# and answers SLVERR. Past the register map every access answers as the SEP
+# memory map states (the crypto demux refuses it) and moves no register.
+# RANDCFG: data values and two dead words from the run seed; every size, offset
+# and strobe is walked. no_cpu; +skip_fuse_sense.
+name = "sep_abr_access_size_test"
+module = "crypto.sep_abr_access_size_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge concurrent reads and writes from s_axi and m_axi at once, several
+# outstanding on each, RREADY and BREADY throttled from the master side. Each
+# read-write register has one writing master on one AWID; reads are graded
+# against the owner's write window, identity words exactly, partial writes must
+# answer SLVERR, and every register must end at its owner's last write.
+# RANDCFG: op mix, data, depths and throttle patterns from the run seed.
+# no_cpu; +skip_fuse_sense.
+name = "sep_abr_concurrent_rw_test"
+module = "crypto.sep_abr_concurrent_rw_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge compiled out (lsu_stub_abr_absent model, SEP_ABR_EN not
+# defined): host reads and writes of the ABR aperture answer DECERR, and KM
+# CPU stores and loads of the ABR wrapper key aperture set AXI_DECERR, with
+# live HMAC controls on both paths. no_cpu; +skip_fuse_sense.
+# Pinned to Verilator: VCS coverage runs elaborate one target, `default`,
+# which keeps Adams Bridge, so this leaf cannot run there. The checks grade
+# response codes, which the two-state simulator observes.
+name = "sep_abr_absent_decerr_test"
+module = "crypto.sep_abr_absent_decerr_test"
+firmware = { name = "km_rom_abr_absent", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "km", "subsystem"]
+tools = ["verilator"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_abr_absent"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_abr_absent.parhex"]

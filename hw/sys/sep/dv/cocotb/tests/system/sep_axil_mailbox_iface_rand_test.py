@@ -75,6 +75,14 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             f"(tx={self.gold.tx} wirqt={self.gold.wirqt} STATUS=0x{st:08x})"
         )
 
+    async def _check_wtirq(self, where: str) -> None:
+        irqs = await self.mb.rd_csr(IRQS)
+        assert bool(irqs & IRQ_WTIRQ) == self.gold.wtirq(), (
+            f"[{where}] IRQS.wtirq={bool(irqs & IRQ_WTIRQ)} but golden expects "
+            f"{self.gold.wtirq()} at tx={self.gold.tx} wirqt={self.gold.wirqt} "
+            f"(IRQS=0x{irqs:08x})"
+        )
+
     async def run_scenario(self) -> None:
         self.cfg_mb = SepMboxCfg(self.random_seed())
         self.gold = SepMboxGolden(self.cfg_mb)
@@ -127,6 +135,9 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         assert err & ERR_READ, f"ERROR_FLAGS.read_error not set after read-empty (0x{err:08x})"
         err2 = await self.mb.rd_csr(ERROR_FLAGS)  # read again -> cleared
         assert (err2 & ERR_READ) == 0, f"ERROR_FLAGS.read_error not read-cleared (0x{err2:08x})"
+        assert (err2 & ERR_WRITE) == 0, (
+            f"ERROR_FLAGS.write_error set with no write to a full FIFO (0x{err2:08x})"
+        )
         self.logger.info(
             "CHK-ERR-RD PASS: read-empty -> SLVERR + 0xFEEDDEAD + ERROR_FLAGS.read_error (read-clear)"
         )
@@ -145,6 +156,10 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         64-bit). The exact 64-bit value is carried per push and the FIFO fills 1
         entry per beat, proving the 64-bit WRITE_DATA data path."""
         await self.mb.wr_csr(IRQEN, IRQ_WTIRQ)
+        # tx=0 here, so the golden expects wtirq clear. The per-push compare
+        # below then grades the clear side at every tx <= WIRQT and the set
+        # side from the first push above it.
+        await self._check_wtirq("pre-push")
         # Phase 1 -- push a RANDOM first batch (seeded message length) that crosses WIRQT,
         # with RANDOM 64-bit payloads. STATUS tracks the golden TX depth after each push.
         for i in range(self.cfg_mb.first_batch):
@@ -155,6 +170,7 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             # _check_status below is what compares the model against the DUT.
             self.gold.push()
             await self._check_status("push64")
+            await self._check_wtirq("push64")
         # CHK-WIRQT: tx = first_batch > WIRQT -> wtirq set; IRQP gated by IRQEN; level-held.
         irqs = await self.mb.rd_csr(IRQS)
         # SepMboxCfg draws first_batch from [wirqt+1, depth], so tx > wirqt holds for
@@ -209,7 +225,18 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
 
     async def _chk_write_full_error(self) -> None:
         """CHK-ERR-WR: a push to the full TX FIFO -> SLVERR +
-        ERROR_FLAGS.write_error + IRQS.eirq W1C."""
+        ERROR_FLAGS.write_error + IRQS.eirq W1C.
+
+        write_error and eirq are both read 0 before the overflow push, so the
+        set seen after it is caused by that push."""
+        pre_err = await self.mb.rd_csr(ERROR_FLAGS)
+        assert (pre_err & ERR_WRITE) == 0, (
+            f"ERROR_FLAGS.write_error already set before the write-to-full (0x{pre_err:08x})"
+        )
+        pre_irqs = await self.mb.rd_csr(IRQS)
+        assert (pre_irqs & IRQ_EIRQ) == 0, (
+            f"IRQS.eirq already set before the write-to-full (0x{pre_irqs:08x})"
+        )
         resp = await self.mb.push64(self.cfg_mb.payloads[self.cfg_mb.depth], expect_error=True)
         assert resp == RESP_SLVERR, f"write-to-full resp={resp}, expected SLVERR"
         err = await self.mb.rd_csr(ERROR_FLAGS)

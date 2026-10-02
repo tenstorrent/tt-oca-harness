@@ -38,14 +38,18 @@ ocah_vale_root := $(if $(VALE_PATH),$(OCAH_ROOT)/$(VALE_PATH),$(OCAH_ROOT))
 # [tool.codespell]'s skip list), the doc/*/modules/ Antora staging copies
 # (gitignored build output of doc/stage-docs.sh, not source -- linting them
 # would just double-report every finding under a second path), the
-# tt-oca-manifest submodule (another repo's prose, fixable only by a PR there,
-# so a finding in it cannot gate this repo -- same reasoning as vendor/), and
-# the local uv/node_modules caches.
+# two submodules, tt-oca-manifest and tt-oca-harness-model (another repo's
+# prose, fixable only by a PR there, so a finding in it cannot gate this repo
+# -- same reasoning as vendor/), and the local uv/node_modules caches.
+# tt-oca-harness-model also carries a filename with a space in it, which this
+# unquoted $(shell find) list cannot represent: without the exclusion vale is
+# handed half a path and the whole run dies rather than reporting findings.
 ocah_vale_files = $(shell find $(ocah_vale_root) \( -name '*.adoc' -o -name '*.md' \) \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
 	-not -path '*/build/*' -not -path '*/build_pio/*' \
 	-not -path '*/regs/gen/*' -not -path '*/doc/*/modules/*' \
 	-not -path '*/tools/tt-oca-manifest/*' \
+	-not -path '*/tt-oca-harness-model/*' \
 	-not -path '*/.venv/*' -not -path '*/node_modules/*' 2>/dev/null)
 
 ocah_vale_check_files = @[ -n "$(strip $(ocah_vale_files))" ] || { echo "error: no .adoc/.md files under $(if $(VALE_PATH),$(VALE_PATH),repo root)" >&2; exit 1; }

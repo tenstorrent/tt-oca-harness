@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-reset_unit]
-== Address Map: reset_unit
+== Reset Unit Address Map
+
+Subsystem reset control, hold and isolation controls, and reset-sequencing status registers.
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -46,7 +48,7 @@ Usage is integration-specific; see the adopter chiplet specification.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `config_lock` | RW | 0x0 a| Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config
+| 31:0 | `config_lock` | RW1S | 0x0 a| Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config
 cannot be written to again
 |===
 
@@ -123,7 +125,7 @@ Bitwise write 1 to clear
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `cold_reset_lock` | RW | 0x0 a| Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset
+| 31:0 | `cold_reset_lock` | RW1S | 0x0 a| Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset
 cannot be written to again
 |===
 

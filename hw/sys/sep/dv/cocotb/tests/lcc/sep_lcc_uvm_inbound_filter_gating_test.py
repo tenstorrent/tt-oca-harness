@@ -4,11 +4,15 @@
 
 Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
 external AXI is BLOCKED in PROD (sep_debug=0, filter active) and ALLOWED in
-PROD_DBG_1 (sep_debug=1, filter skipped). Datapath
-(``sep.sv``: ``inbound_filter_skip_i = feat_ctrl.sep_debug``):
+PROD_DBG_1 (sep_debug=1, filter bypassed). The allow/refuse rule and the DECERR
+response come from the specification, as set out in the contract of
+``seq_lib/sep_lcc_inbound_filter_gating_seq.py`` (``lifecycle_controller.adoc``
+feature-control-vector-definition for SEP_DBG = FEAT_CTRL[0]; ``fabric.adoc``
+sep-traffic-filter-decode for the bypass; ``hw/ip/axi_filter/doc/index.adoc``
+axi-traffic-filter-blocked for DECERR):
 
-    eFuse OTP (LC_STATE=PROD) --sense--> LCC --feat_ctrl[0]=sep_debug-->
-        u_inbound_filter.filter_skip_i --gates--> smn_inbound external AXI
+    eFuse OTP (LC_STATE=PROD) --sense--> LCC --FEAT_CTRL[0]=SEP_DBG-->
+        inbound filter bypass --gates--> smn_inbound external AXI
 
 Run mode: ``no_cpu`` with REAL fuse sense (no ``+skip_fuse_sense``). A custom OTP
 image with LC_STATE constrained to PROD (random elsewhere, distinct non-zero
@@ -35,6 +39,17 @@ Checkers (each logs positive evidence):
     frontdoor (FEAT_CTRL[0]) identity with the filter skip.
   * CHK-NONVAC     both block and allow outcomes observed (the A->B transition is
     real, not a single stuck state).
+  * CHK-DBG-REACH  with the filter bypassed, an external write and read-back of a
+    Scratch SRAM word return OKAY and the written value, and the control bus
+    reads the same value: the port reaches a unit the connectivity matrix
+    connects to it.
+  * CHK-DBG-UNREACHABLE with the filter still bypassed, an external read and
+    write of the first and last word of the Boot ROM, Reset Ctrl, ICCM, DCCM,
+    PIC, AP remap and STEE remap regions each return DECERR, and the refused
+    write to SW_RESET_N leaves it unchanged on the control bus. The filter is
+    not in the path, so the refusal is the fabric's: ``fabric.adoc``
+    [[sep-axi-connectivity]] gives the System Interface initiator no path to
+    these units.
 
 FEAT_CTRL is read frontdoor against the 64-bit lifecycle golden. A blocked
 external read must return DECERR; an allowed external read must return the
@@ -46,6 +61,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
+from env.sep_axi_agent import SepAxiOp
 from env.sep_lcc_golden import (
     DBG1_MASK,
     DBG2_MASK,
@@ -54,13 +70,18 @@ from env.sep_lcc_golden import (
     lc_state_name,
 )
 from sep_base_test import sep_base_test
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_inbound_filter_rule_seq import ext_read_seq, ext_write_seq
 from seq_lib.sep_lcc_inbound_filter_gating_seq import (
+    INBOUND_REACHABLE_SRAM,
+    INBOUND_UNREACHABLE,
     LCC_FEAT_CTRL,
     RESP_DECERR,
     SepExtAxiProbeSeq,
     SepLccDemoteSeq,
     SepLccFeatCtrlCheckSeq,
 )
+from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N, SW_RESET_N_BIT
 
 _MAX_SENSE_CYCLES = 20_000
 
@@ -75,10 +96,91 @@ _MAX_SENSE_CYCLES = 20_000
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0C
 _SYS_DIS = 0x00FF_00FF_00FF_00FC
 
+# Distinctive Scratch SRAM pattern for the reachable control: neither zero (the
+# power-up fill) nor all-ones.
+_SRAM_PATTERN = 0xA5C3_3C5A
+
 
 @pyuvm.test()
 class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
     """sep_debug gates the SEP inbound filter: external AXI blocked/allowed."""
+
+    async def _ctl_read(self, addr: int) -> int:
+        seq = SepAxiAccessSeq("ctl_rd", op=SepAxiOp.READ, addr=addr, length=4, size=2)
+        await self.start_seq(seq)
+        assert seq.resp_code == 0 and not seq.timed_out, (
+            f"control-bus read 0x{addr:08x} resp={seq.resp_code} timed_out={seq.timed_out}"
+        )
+        return seq.rdata & 0xFFFF_FFFF
+
+    async def _check_dbg_reach(self) -> None:
+        """CHK-DBG-REACH / CHK-DBG-UNREACHABLE at sep_debug=1 (filter bypassed)."""
+        # ---- CHK-DBG-REACH: a connected unit answers on the same port ----
+        wr = ext_write_seq(INBOUND_REACHABLE_SRAM, _SRAM_PATTERN)
+        await self.start_ext_seq(wr)
+        rd = ext_read_seq(INBOUND_REACHABLE_SRAM)
+        await self.start_ext_seq(rd)
+        ctl = await self._ctl_read(INBOUND_REACHABLE_SRAM)
+        assert (
+            wr.resp_code == 0
+            and rd.resp_code == 0
+            and (rd.rdata & 0xFFFF_FFFF) == _SRAM_PATTERN
+            and ctl == _SRAM_PATTERN
+        ), (
+            f"CHK-DBG-REACH FAIL: external write/read of Scratch SRAM 0x"
+            f"{INBOUND_REACHABLE_SRAM:08x} answered wr={wr.resp_code} rd={rd.resp_code} "
+            f"rdata=0x{rd.rdata & 0xFFFF_FFFF:08x}, control bus reads 0x{ctl:08x}; "
+            f"expected OKAY and 0x{_SRAM_PATTERN:08x}"
+        )
+        self.logger.info(
+            "CHK-DBG-REACH PASS: external write+read of Scratch SRAM 0x%08x OKAY, "
+            "0x%08x read back on both the external port and the control bus",
+            INBOUND_REACHABLE_SRAM,
+            _SRAM_PATTERN,
+        )
+
+        # ---- CHK-DBG-UNREACHABLE: units with no inbound path ----
+        rst_before = await self._ctl_read(SEP_RESET_CTRL_SW_RESET_N)
+        # Toggle the OTBN reset bit: a write that lands moves the readback.
+        rst_poke = rst_before ^ (1 << SW_RESET_N_BIT["otbn"])
+        fails: list[str] = []
+        for unit, addr in INBOUND_UNREACHABLE:
+            rd = ext_read_seq(addr)
+            await self.start_ext_seq(rd)
+            wdata = rst_poke if addr == SEP_RESET_CTRL_SW_RESET_N else _SRAM_PATTERN
+            wr = ext_write_seq(addr, wdata)
+            await self.start_ext_seq(wr)
+            self.logger.info(
+                "INBOUND-UNREACHABLE %s 0x%08x: read resp=%d rdata=0x%08x, write resp=%d",
+                unit,
+                addr,
+                rd.resp_code,
+                rd.rdata & 0xFFFF_FFFF,
+                wr.resp_code,
+            )
+            if rd.resp_code != RESP_DECERR or rd.timed_out:
+                fails.append(f"{unit} read 0x{addr:08x} resp={rd.resp_code}")
+            if wr.resp_code != RESP_DECERR or wr.timed_out:
+                fails.append(f"{unit} write 0x{addr:08x} resp={wr.resp_code}")
+        rst_after = await self._ctl_read(SEP_RESET_CTRL_SW_RESET_N)
+        if rst_after != rst_before:
+            fails.append(
+                f"refused external write moved SW_RESET_N 0x{rst_before:08x}->0x{rst_after:08x}"
+            )
+        assert not fails, (
+            "CHK-DBG-UNREACHABLE FAIL: with the inbound filter bypassed, the SMN inbound "
+            "port must get DECERR at every unit fabric.adoc [[sep-axi-connectivity]] "
+            "does not connect to it: " + "; ".join(fails)
+        )
+        self.logger.info(
+            "CHK-DBG-UNREACHABLE PASS: %d external reads and %d writes over %d units "
+            "(%s) returned DECERR with the filter bypassed; SW_RESET_N held 0x%08x",
+            len(INBOUND_UNREACHABLE),
+            len(INBOUND_UNREACHABLE),
+            len({u for u, _a in INBOUND_UNREACHABLE}),
+            ", ".join(dict.fromkeys(u for u, _a in INBOUND_UNREACHABLE)),
+            rst_before,
+        )
 
     async def run_scenario(self) -> None:
         # Real-sense a PROD OTP image (random elsewhere, pinned disable vectors).
@@ -88,6 +190,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         assert image.lc_raw() == LC_PROD, "test bug: image LC_STATE is not PROD"
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        # Every scoreboard judgment from here on backs the closing PASS line.
+        scenario_mark = self.sb_mark()
         self.logger.info(
             "sensed OTP LC_STATE=%s; SIP_DIS=0x%016x SYS_DIS=0x%016x",
             lc_state_name(image.lc_raw()),
@@ -105,7 +209,12 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         # ---- PROD: sep_debug=0, inbound filter active -> external blocked ----
         feat_prod = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         ctl_prod = SepLccFeatCtrlCheckSeq(feat_prod)
+        mark = self.sb_mark()
         await self.start_seq(ctl_prod)
+        self.assert_sb_judged(mark, "CHK-PROD-FEAT")
+        assert ctl_prod.feat_ctrl == feat_prod, (
+            f"CHK-PROD-FEAT FAIL: FEAT_CTRL=0x{ctl_prod.feat_ctrl:016x} != golden 0x{feat_prod:016x}"
+        )
         assert ctl_prod.sep_debug == 0, (
             f"PROD sep_debug must be 0, got {ctl_prod.sep_debug} "
             f"(FEAT_CTRL=0x{ctl_prod.feat_ctrl:016x})"
@@ -115,10 +224,10 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             ctl_prod.feat_ctrl,
         )
 
-        # allow_timeout=False: a blocked access must return the SPECIFIC DECERR
-        # the inbound filter's axi_err_slv emits (axi_filter_wrap.sv RESP_DECERR),
-        # NOT a timeout (which would be a wedge) and NOT SLVERR. A timeout raises
-        # in the driver and fails the test.
+        # allow_timeout=False: a blocked access must return DECERR, the response
+        # the specification assigns to a blocked transaction (axi_filter
+        # index.adoc, axi-traffic-filter-blocked) -- not a timeout (a wedge) and
+        # not SLVERR. A timeout raises in the driver and fails the test.
         probe_prod = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
         await self.start_ext_seq(probe_prod)
         assert not probe_prod.resp_ok, (
@@ -146,14 +255,18 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         # be blocked, which is a second, independent consequence of the same
         # property.
         demote2 = SepLccDemoteSeq(group=2)
+        mark = self.sb_mark()
         await self.start_seq(demote2)
+        self.assert_sb_judged(mark, "CHK-DEMOTE-INDEP DEMOTE_2 readback")
         assert demote2.demote == 1, f"DEMOTE_2.demote read back {demote2.demote}, expected 1"
 
         feat_d2 = feat_ctrl_expected(
             LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, demote_2=1, sec_dis=sec_dis
         )
         ctl_d2 = SepLccFeatCtrlCheckSeq(feat_d2)
+        mark = self.sb_mark()
         await self.start_seq(ctl_d2)
+        self.assert_sb_judged(mark, "CHK-DEMOTE-INDEP")
         assert ctl_d2.sep_debug == 0, (
             f"DEMOTE_2 alone must NOT open sep_debug (a DBG_1 bit), got "
             f"{ctl_d2.sep_debug} (FEAT_CTRL=0x{ctl_d2.feat_ctrl:016x}) -- the two demote "
@@ -185,7 +298,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
 
         # ---- flip PROD -> PROD_DBG_1 via DEMOTE_1 ----
         demote = SepLccDemoteSeq(group=1)
+        mark = self.sb_mark()
         await self.start_seq(demote)
+        self.assert_sb_judged(mark, "CHK-DEMOTE")
         assert demote.demote == 1, f"DEMOTE_1.demote read back {demote.demote}, expected 1"
         self.logger.info("CHK-DEMOTE PASS: DEMOTE_1.demote write -> read-back == 1")
 
@@ -195,7 +310,12 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=1, demote_2=1, sec_dis=sec_dis
         )
         ctl_dbg = SepLccFeatCtrlCheckSeq(feat_dbg)
+        mark = self.sb_mark()
         await self.start_seq(ctl_dbg)
+        self.assert_sb_judged(mark, "CHK-DBG-FEAT")
+        assert ctl_dbg.feat_ctrl == feat_dbg, (
+            f"CHK-DBG-FEAT FAIL: FEAT_CTRL=0x{ctl_dbg.feat_ctrl:016x} != golden 0x{feat_dbg:016x}"
+        )
         assert ctl_dbg.sep_debug == 1, (
             f"PROD_DBG_1 sep_debug must be 1, got {ctl_dbg.sep_debug} "
             f"(FEAT_CTRL=0x{ctl_dbg.feat_ctrl:016x})"
@@ -235,17 +355,20 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             exp_lo,
         )
 
-        # ---- filter_skip_i identity + non-vacuity ----
+        await self._check_dbg_reach()
+
+        # ---- SEP_DBG identity + non-vacuity ----
         assert (not probe_prod.resp_ok) and probe_lo.resp_ok, (
             "CHK-NONVAC: did not observe BOTH a blocked (PROD, DECERR) and an "
             "allowed (PROD_DBG_1, OKAY) external access"
         )
         self.logger.info(
-            # Do not name filter_skip_i here: nothing in this test samples that
-            # signal. The evidence is the external access flipping from DECERR to
-            # OKAY across the sep_debug change, which is a behavioural claim.
+            # The evidence is the external access flipping from DECERR to OKAY
+            # across the sep_debug change, a behavioural claim; no internal
+            # filter net is sampled.
             "CHK-IDENTITY PASS: external inbound access follows feat_ctrl.sep_debug "
             "(blocked@sep_debug=0 -> allowed@sep_debug=1)"
         )
         self.logger.info("CHK-NONVAC PASS: PROD blocked + PROD_DBG_1 allowed both observed")
+        self.assert_sb_judged(scenario_mark, "SEP LCC inbound-filter-gating")
         self.logger.info("SEP LCC inbound-filter-gating test PASS")

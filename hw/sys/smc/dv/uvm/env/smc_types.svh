@@ -119,14 +119,14 @@ endfunction
 
 // ---------------------------------------------------------------------------
 // CSR reset epoch: the value every CSR reference model re-baselines its
-// shadow on. Both the cold reset and a de-glitched cool reset drop
-// rst_primary_smc_clk_n, and that is the reset of every CSR block reached
-// over SEP_IN -- smc_peripherals.sv:1077 wires smc_misc_wrap.rst_ni to it
-// (so BOTH scratch windows clear: smc_misc_wrap.sv:106-108 resets
-// SCRATCH_COLD on rst_ni alone and :133 resets SCRATCH_COLD_WARM on
-// rst_ni && rst_warm_ni), and smc_subsystem_resets.sv clocks its external
-// registers on it. A model that watched only the cold counter would keep
-// predicting pre-cool-reset values.
+// shadow on. Both the cold reset and a de-glitched cool reset are terms of
+// the primary reset (clk_rst.adoc "Primary and Warm Reset": rst_primary_n =
+// stable_cold_rst_n AND stable_cool_rst_n AND rst_cool_from_flr_n), and
+// "Primary reset covers the main SMC functional fabric, peripheral control
+// and configuration paths" -- every CSR block reached over SEP_IN, both
+// scratch windows included (misc_wrap.rdl:20-21; the warm reset equation
+// takes rst_primary_n as a term). A model that watched only the cold counter
+// would keep predicting pre-cool-reset values.
 //
 // SPM memory is deliberately NOT on this epoch: it is an SRAM, and nothing
 // in this bench establishes that a reset clears its contents.
@@ -144,18 +144,18 @@ endfunction
 // together. The three access kinds mirror the cocotb
 // seq_lib/smc_csr_field_catalog.py SmcCsrAccessKind:
 //
-//   SmcRegKindRwRestore  RDL `sw=rw` (hw=r or hw=na): software owns the
-//                        storage, so it holds its reset value until software
-//                        writes it. Compared, and a write updates the shadow.
-//   SmcRegKindRoStatic   RDL `sw=r; hw=w` where the hardware side is an
-//                        integration constant or a TB tie-off, so the read is
-//                        deterministic in this bench. Compared; a write can
-//                        never change it, so the shadow ignores writes.
-//   SmcRegKindRoStatus   RDL `sw=r; hw=w` from live state or from a value the
-//                        harness drives to something other than the RDL
-//                        default. DECODE-ONLY: `has_default` is 0, no expected
-//                        item is published, and only the OKAY response and the
-//                        access count are evidence.
+//   SMC_REG_KIND_RW_RESTORE  RDL `sw=rw` (hw=r or hw=na): software owns the
+//                            storage, so it holds its reset value until software
+//                            writes it. Compared, and a write updates the shadow.
+//   SMC_REG_KIND_RO_STATIC   RDL `sw=r; hw=w` where the hardware side is an
+//                            integration constant or a TB tie-off, so the read is
+//                            deterministic in this bench. Compared; a write can
+//                            never change it, so the shadow ignores writes.
+//   SMC_REG_KIND_RO_STATUS   RDL `sw=r; hw=w` from live state or from a value the
+//                            harness drives to something other than the RDL
+//                            default. DECODE-ONLY: `has_default` is 0, no expected
+//                            item is published, and only the OKAY response and the
+//                            access count are evidence.
 //
 // A register whose read has a side effect must NOT appear here (CPU_CTRL
 // MUTEX acquires on read, so its second read legitimately differs from its
@@ -163,9 +163,9 @@ endfunction
 // ---------------------------------------------------------------------------
 
 typedef enum int unsigned {
-  SmcRegKindRwRestore,
-  SmcRegKindRoStatic,
-  SmcRegKindRoStatus
+  SMC_REG_KIND_RW_RESTORE,
+  SMC_REG_KIND_RO_STATIC,
+  SMC_REG_KIND_RO_STATUS
 } smc_reg_kind_e;
 
 typedef struct {
@@ -181,14 +181,14 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
   entries.delete();
 
   // --- scratch.rdl: `sw=rw; hw=na`, pure software storage, 8 instances. ---
-  entries.push_back('{"SCRATCH_COLD_0", smc_scratch_cold_addr(0), SmcRegKindRwRestore, 1'b1,
+  entries.push_back('{"SCRATCH_COLD_0", smc_scratch_cold_addr(0), SMC_REG_KIND_RW_RESTORE, 1'b1,
                     32'(SCRATCH_SCRATCH_REG_DEFAULT), "scratch.rdl sw=rw hw=na"});
-  entries.push_back('{"SCRATCH_COLD_7", smc_scratch_cold_addr(7), SmcRegKindRwRestore, 1'b1,
+  entries.push_back('{"SCRATCH_COLD_7", smc_scratch_cold_addr(7), SMC_REG_KIND_RW_RESTORE, 1'b1,
                     32'(SCRATCH_SCRATCH_REG_DEFAULT), "scratch.rdl sw=rw hw=na (window top)"});
-  entries.push_back('{"SCRATCH_COLD_WARM_0", smc_scratch_cold_warm_addr(0), SmcRegKindRwRestore,
+  entries.push_back('{"SCRATCH_COLD_WARM_0", smc_scratch_cold_warm_addr(0), SMC_REG_KIND_RW_RESTORE,
                     1'b1, 32'(SCRATCH_SCRATCH_REG_DEFAULT),
                     "scratch.rdl sw=rw hw=na, warm reset domain"});
-  entries.push_back('{"SCRATCH_COLD_WARM_7", smc_scratch_cold_warm_addr(7), SmcRegKindRwRestore,
+  entries.push_back('{"SCRATCH_COLD_WARM_7", smc_scratch_cold_warm_addr(7), SMC_REG_KIND_RW_RESTORE,
                     1'b1, 32'(SCRATCH_SCRATCH_REG_DEFAULT),
                     "scratch.rdl sw=rw hw=na, warm domain window top"});
 
@@ -202,23 +202,23 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
   entries.push_back(
       '{"CHIP_CONFIG_VERSION_LO",
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR),
-      SmcRegKindRoStatic, 1'b1, 32'(CHIP_CONFIG_VERSION_LO_REG_DEFAULT),
+      SMC_REG_KIND_RO_STATIC, 1'b1, 32'(CHIP_CONFIG_VERSION_LO_REG_DEFAULT),
       "chip_config.rdl sw=r hw=w from integration constant (non-zero default)"});
   entries.push_back(
       '{"CHIP_CONFIG_VERSION_HI",
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR),
-      SmcRegKindRoStatic, 1'b1, 32'(CHIP_CONFIG_VERSION_HI_REG_DEFAULT),
+      SMC_REG_KIND_RO_STATIC, 1'b1, 32'(CHIP_CONFIG_VERSION_HI_REG_DEFAULT),
       "chip_config.rdl sw=r hw=w from integration constant"});
   entries.push_back('{"CHIP_CONFIG_CHIP_ID",
                     64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR),
-                    SmcRegKindRoStatic, 1'b1, 32'(CHIP_CONFIG_CHIP_ID_REG_DEFAULT),
+                    SMC_REG_KIND_RO_STATIC, 1'b1, 32'(CHIP_CONFIG_CHIP_ID_REG_DEFAULT),
                     "chip_config.rdl sw=r hw=w from the CHIP_ID module parameter"});
   // LC_STATE is `sw=r; hw=w` and the UVM harness drives tb_lc_state with the
   // complementary TEST_DEV encoding rather than the RDL default, so its read
   // is an integration value with no default contract: decode-only.
   entries.push_back('{"CHIP_CONFIG_LC_STATE",
                     64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR),
-                    SmcRegKindRoStatus, 1'b0, 32'h0,
+                    SMC_REG_KIND_RO_STATUS, 1'b0, 32'h0,
                     "chip_config.rdl sw=r hw=w; harness drives tb_lc_state, not the RDL default"});
 
   // --- ndm_reset.rdl ---
@@ -228,12 +228,12 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
   entries.push_back(
       '{"NDM_RESET_NDMRESET_REQUEST",
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR),
-      SmcRegKindRoStatic, 1'b1, 32'(NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT),
+      SMC_REG_KIND_RO_STATIC, 1'b1, 32'(NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT),
       "ndm_reset.rdl sw=r hw=w; harness ties tb_ndmreset_request to '0"});
   entries.push_back(
       '{"NDM_RESET_NDMRESET_PROCESS",
       64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR),
-      SmcRegKindRwRestore, 1'b1, 32'(NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT),
+      SMC_REG_KIND_RW_RESTORE, 1'b1, 32'(NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT),
       "ndm_reset.rdl sw=rw hw=r"});
   // CLUSTER_COUNT is `sw=r; hw=w` from a design-side count this bench does not
   // establish: decode-only.
@@ -243,22 +243,22 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
                     smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR
                     // verilog_format: on
                     ),
-                    SmcRegKindRoStatus, 1'b0, 32'h0,
+                    SMC_REG_KIND_RO_STATUS, 1'b0, 32'h0,
                     "ndm_reset.rdl sw=r hw=w from a design-side count"});
 
   // --- reset_unit.rdl ---
   // SS_WARM_RESET_N is a plain PeakRDL-internal `sw=rw; hw=r` register
-  // (smc_subsystem_resets.sv:58 only reads hwif_out), so a write lands
+  // that no lock description in reset_unit.rdl names, so a write lands
   // unfiltered and the shadow rule above describes it. Its default is all
   // ones, the second non-zero expectation in this catalogue.
   entries.push_back('{"RESET_UNIT_SS_WARM_RESET_N",
                     64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR),
-                    SmcRegKindRwRestore, 1'b1, 32'(RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT),
+                    SMC_REG_KIND_RW_RESTORE, 1'b1, 32'(RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT),
                     "reset_unit.rdl:44-49 sw=rw hw=r, default 0xFFFFFFFF (non-zero)"});
   // SS_CONFIG, SS_CONFIG_LOCK and SS_COLD_RESET_N belong to the lock_csr
   // feature, not here: the two locks are `onwrite=woset` (a written 0 is
-  // inert) and the two guarded registers take lock-filtered write bit-enables
-  // (smc_subsystem_resets.sv:81, :100), so the plain shadow rule of this
+  // inert) and a locked bit of either guarded register "cannot be written to
+  // again" (reset_unit.rdl:20-27, :89-96), so the plain shadow rule of this
   // catalogue would mispredict them the moment anything wrote them. Their
   // reset values are 0, so they would add no discriminating power here
   // either. One feature owns one set of semantics.
@@ -290,18 +290,15 @@ endfunction
 // ---------------------------------------------------------------------------
 // lock_csr: the reset unit's two write-once lock registers and the register
 // each one guards. Both locks are declared `sw=rw; hw=r; onwrite=woset;` with
-// reset 0 and one bit per subsystem (reset_unit.rdl:18-26 and :87-95), and
-// both guarded registers are PeakRDL EXTERNAL registers whose storage and
-// read data live in smc_subsystem_resets.sv: the lock filters the write
-// bit-enables before they reach the flop
-//
-//   config_filtered_wr_mask    = (~ss_config_lock)     & ss_config_wr_mask       (:81)
-//   cold_reset_filtered_wr_mask = (~ss_cold_reset_lock) & ss_cold_reset_n_wr_mask (:100)
-//   ss_config_o <= (wr_data & filtered) | (ss_config_o & ~filtered)              (:88)
-//
-// so a locked bit keeps its value on read-back, and that is the property the
-// lock_csr feature predicts. Both guarded flops reset to '0 on rst_primary_ni,
-// which is also the reset value the generated *_REG_DEFAULT declares.
+// reset 0 and one bit per subsystem, and each lock's RDL description names
+// its guarded register and the per-bit rule: SS_CONFIG_LOCK "lock[s] down SS
+// config. If bit 0 is written, then bit 0 of other SS config cannot be
+// written to again" (reset_unit.rdl:20-27); SS_COLD_RESET_LOCK the same for
+// SS cold reset (reset_unit.rdl:89-96). So a write to the guarded register
+// lands only on the bits that are strobed and unlocked, and a locked bit
+// keeps its value on read-back: that is the property the lock_csr feature
+// predicts. Both guarded registers reset to 0, the value the generated
+// *_REG_DEFAULT declares.
 // ---------------------------------------------------------------------------
 
 typedef struct {
@@ -316,10 +313,10 @@ function automatic void smc_lock_pairs(ref smc_lock_pair_t pairs[$]);
   pairs.push_back('{"COLD_RESET",
                   64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR),
                   64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR),
-                  "reset_unit.rdl:87-95, smc_subsystem_resets.sv:100"});
+                  "reset_unit.rdl:89-96 (SS_COLD_RESET_LOCK guards SS cold reset)"});
   pairs.push_back('{"CONFIG", 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR),
                   64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_LOCK_BASE_ADDR),
-                  "reset_unit.rdl:18-26, smc_subsystem_resets.sv:81"});
+                  "reset_unit.rdl:20-27 (SS_CONFIG_LOCK guards SS config)"});
 endfunction
 
 // Locate `word_addr` in the lock-pair table; `is_lock` tells the two roles

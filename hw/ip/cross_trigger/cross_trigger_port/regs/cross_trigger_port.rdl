@@ -18,22 +18,22 @@ addrmap cross_trigger_port {
         field {
             sw = rw;
             hw = r;
-            desc = "Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point";
+            desc = "Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point. Program it once, in the same write as INVERT, from the package's cross trigger topology, before any cross trigger matrix route selects or targets this port. While wire-OR is selected the point-to-point handshake is held idle with its request deasserted; after point-to-point is selected, the handshake ignores the CT_Req_in and CT_Ack_in pads until their synchronized levels are valid.";
         } MODE[0:0] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.";
+            desc = "Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling. Write it in the same access as MODE.";
         } INVERT[1:1] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.";
+            desc = "While set, holds the outgoing point-to-point handshake idle with CT_Req_out deasserted and discards core-side cross trigger pulses for transmission. The incoming handshake keeps running. Set and then clear it to recover a handshake deadlock.";
         } RESET[2:2] = 0x0;
     };
 
     reg STATUS {
-        desc = "Cross Trigger Port Status";
+        desc = "Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.";
         field {
             sw = r;
             hw = w;
@@ -42,22 +42,22 @@ addrmap cross_trigger_port {
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current CT_Req_out signal value.";
+            desc = "Readout of the current CT_Req_out level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity. Reads 0 in wire-OR mode.";
         } REQ_OUT[4:4] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current synchronized CT_Ack_in signal value.";
+            desc = "Readout of the current synchronized CT_Ack_in level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity.";
         } ACK_IN[5:5] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current synchronized CT_Req_in signal value.";
+            desc = "Readout of the current synchronized CT_Req_in level with CONFIG.INVERT undone, so 1 means the request is asserted whatever the pad polarity.";
         } REQ_IN[6:6] = 0x0;
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current CT_Ack_out signal value.";
+            desc = "Readout of the current CT_Ack_out level with CONFIG.INVERT undone, so 1 means the acknowledge is asserted whatever the pad polarity. Reads 0 in wire-OR mode.";
         } ACK_OUT[7:7] = 0x0;
     };
 

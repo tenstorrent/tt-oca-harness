@@ -1,0 +1,145 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Direct Memory Access (DMA)
+
+[[sep-dma]]
+
+ifdef::backend-html5[]
+++++
+<span id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"></span>
+++++
+endif::backend-html5[]
+
+The SEP DMA copies data between addressable memories and peripheral registers,
+with optional inline SHA-256, SHA-384 or SHA-512 hashing. It uses the
+https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller]
+inside an AXI wrapper. The integration below defines which upstream ports
+and hardware triggers are available in SEP.
+
+Source and destination addresses independently support incrementing, fixed
+address and wrap-at-chunk-boundary operation. Use incrementing addresses for
+memory and a fixed address for a peripheral FIFO. Transfers use 1-, 2- or
+4-byte accesses; inline hashing requires 4-byte transfers. The core issues
+individual TL-UL transactions, so the AXI wrapper does not turn a copy into
+a burst transfer. Hash results are read from the DMA digest registers.
+
+[[sep-dma-reference-diagram]]
+.OpenTitan DMA core and inline hashing reference architecture
+image::opentitan_dma.svg[alt="OpenTitan DMA core and inline hashing reference architecture",width=100%,pdfwidth=100%]
+
+<<sep-dma-reference-diagram>> shows the upstream DMA core. SEP adapts the host register interface
+to its AXI fabric as described below.
+
+[[och-modifications]]
+== OCAH Modifications
+
+<<sep-dma-integration-figure>> shows how `sep_dma_wrap` connects the DMA core
+to the SEP local crossbar. The register path runs left to right along the top
+and the host path right to left along the bottom; green boxes are converters,
+and the dashed ports are tied off.
+
+[[sep-dma-integration-figure]]
+.SEP secure DMA integration
+image::sep-dma.svg[alt="sep_dma_wrap with the secure_dma core, its register-path and host-path converters, the local alias remap and the tied-off CTN and SYS ports",width=100%,pdfwidth=100%]
+
+The wrapper exposes separate AXI4 register-slave and DMA-master interfaces,
+both with 32-bit addresses and 64-bit data. Internally, the register path
+converts AXI4 to 32-bit AXI4-Lite and then TL-UL; the data path converts the
+core's TL-UL host port back to AXI4. A local-alias remapper precedes the SEP
+crossbar and leaves the CPU TCM backdoor range available to DMA.
+
+Use source and destination address-space ID `0x7` (the core's internal host
+port), with both high address registers zero. The upstream SoC control and
+system ports are tied off in this wrapper; their ASIDs do not provide
+additional SEP routes. Reachability is governed by the SEP fabric and filters.
+
+The master path leaves AxUSER at zero. The register and host bridges latch
+faults on `dma_reg_bus_err_o` and `dma_host_intg_err_o`, cleared through
+`DMA_BUS_ERR_CLEAR`; local alert receivers aggregate the core alerts into
+`dma_alert_o`. Selecting the tied-off CTN or SYS address space does not complete.
+
+Only handshake input 0 is connected, to the SPI host's LSIO trigger.
+All other trigger inputs are tied low; SEP does not wire UART or I3C handshake paths.
+This does not prevent software-initiated accesses to reachable peripheral registers.
+
+[[sep-dma-programming]]
+=== Programming a Copy
+
+For one contiguous memory-to-memory copy:
+
+. Wait until the previous operation has finished and configuration is writable
+  (`CFG_REGWEN`). Configure a valid enabled-memory base/limit pair and set
+  `RANGE_VALID` before starting; observe `RANGE_REGWEN` if firmware has locked
+  that configuration.
+. Write `SRC_ADDR_LO` and `DST_ADDR_LO`, clear both high address registers,
+  and select `0x7` for both fields in `ADDR_SPACE_ID` (`0x77` combined).
+. Set `TRANSFER_WIDTH` to 0, 1 or 2 for 1, 2 or 4 bytes respectively. Align
+  both addresses to that width. Enable `INCREMENT` and clear `WRAP` in both
+  `SRC_CONFIG` and `DST_CONFIG`.
+. Set `CHUNK_DATA_SIZE` and `TOTAL_DATA_SIZE` to the same nonzero byte count.
+. Write `CONTROL` with `OPCODE=0` (copy), `HARDWARE_HANDSHAKE_ENABLE=0`,
+  `INITIAL_TRANSFER=1` and `GO=1`.
+. Check `STATUS.ERROR` and `ERROR_CODE` while waiting for `STATUS.DONE`.
+  Use a bounded wait in firmware. For interrupt-driven operation, enable
+  the required completion/error sources and acknowledge `INTR_STATE`.
+
+The core reports transaction completion, chunk completion and error separately.
+Chunk completion applies to multi-chunk transfers without hardware handshake;
+it is not a per-trigger interrupt in handshake mode. Status completion/error
+bits are write-one-to-clear; the detailed register map defines each bit.
+
+For hashing, select opcode 1, 2 or 3 for SHA-256, SHA-384 or SHA-512 and use
+4-byte transfers. Set `INITIAL_TRANSFER` on the first transfer of the message;
+read the digest only when `STATUS.SHA2_DIGEST_VALID` is set. `DIGEST_SWAP`
+controls byte order within each digest register, not register order.
+
+For SPI handshake operation, select trigger 0 in `HANDSHAKE_INTR_ENABLE`,
+configure the peripheral FIFO and chunk size, and enable hardware handshake.
+A chunk consumes the configured number of bytes per service operation.
+Firmware must clear `GO` when stopping handshake operation. To abort an active
+operation, request `CONTROL.ABORT` and wait for `STATUS.ABORTED` before reusing
+its buffers or configuration. For a peripheral requiring an explicit trigger-clear
+write, configure `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`, `INTR_SRC_ADDR` and
+`INTR_SRC_WR_VAL` for the connected host port (`CLEAR_INTR_BUS` bit 0 = 1);
+otherwise leave that source
+unselected in `CLEAR_INTR_SRC`.
+
+[[future-enhancements]]
+== Future Enhancements
+
+The following are proposals, not capabilities of the current SEP integration:
+
+* Inline AES encryption or decryption (with/without inline hashing)
+* Inline hashing with only digest written to target slave
+* Optimize implementation by using cryptographic resources (AES,
+HMAC-SHA2) engines inside the cryptographic subsystem and adding
+streaming interfaces
+
+* Replace the FSM controller with a microsequencer or simple CPU, potentially
+  shared with the Key Manager
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$secure_dma/regs/gen/html/secure_dma.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc[leveloffset=+2]
+endif::backend-pdf[]

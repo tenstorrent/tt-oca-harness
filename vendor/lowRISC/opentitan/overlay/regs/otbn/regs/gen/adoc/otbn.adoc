@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-otbn]
-== Address Map: otbn
+== OpenTitan Big Number Accelerator
+
+Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -29,7 +31,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `done` | RW | 0x0 a| OTBN has completed the operation.
+| 0 | `done` | RW1C | 0x0 a| OTBN has completed the operation.
 |===
 
 [#reg-{regmap-instance}-otbn-INTR_ENABLE]

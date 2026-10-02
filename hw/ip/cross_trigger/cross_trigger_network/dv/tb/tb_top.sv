@@ -13,6 +13,14 @@
 // Internal CTP mode split: the lower half of the internal CT ports runs in
 // wire-OR (pulse) mode and the upper half in point-to-point (handshake)
 // mode, so both internal signal shapes are exercised in one build.
+//
+// Every CT_Req_out pad sits on an open-drain shared wire (ocah_open_drain_bus).
+// A pad outside ctp_wire_group has a private wire with one bench-side chiplet
+// driver; the pads inside the group share one wire, together with their
+// chiplet drivers. cocotb sets each wire's pull and the drivers and observes
+// the resolved wires, and each port's receive pulse is exposed for cycle
+// checks. In point-to-point mode a pad is push-pull and the core ignores the
+// pad input, so the wire model has no effect there.
 
 `timescale 1ns / 1ps
 
@@ -59,11 +67,22 @@ module cross_trigger_network_tb_top
   input  wire [DEFAULT_NUM_INT_CT-1:0]       ctm_dst_req,
   output wire [DEFAULT_NUM_INT_CT-1:0]       ctm_dst_ack,
 
-  // External CTP GPIO pad interface - CT_Req_out
+  // External CTP GPIO pad interface - CT_Req_out, and the shared wires the
+  // pads sit on (pull per private wire, chiplet driver per pad, group mask
+  // and group pull, resolved wire per pad, pull-mismatch flag per pad)
   output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_dout,
   output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_dout_en,
-  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_din,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_din,
   output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_din_en,
+  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_wire_pull,
+  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_wire_ext_assert,
+  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_wire_group,
+  input  wire                                ctp_wire_group_pull,
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_wire_mismatch,
+
+  // Receive pulses of the external and internal ports inside the DUT
+  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ct_dst,
+  output wire [DEFAULT_NUM_INT_CT-1:0]       int_ct_dst,
 
   // External CTP GPIO pad interface - CT_Req_in
   output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_in_dout,
@@ -94,6 +113,42 @@ module cross_trigger_network_tb_top
   ctn_axil_req_t  axil_req;
   ctn_axil_resp_t axil_resp;
 
+  // Shared wires: one private wire per pad, one wire for the group. A chiplet
+  // driver pulls towards the level opposite its wire's pull.
+  logic [DEFAULT_NUM_CTP-1:0] private_wire;
+  logic [DEFAULT_NUM_CTP-1:0] private_mismatch;
+  logic                       group_wire;
+  logic                       group_mismatch;
+
+  for (genvar i = 0; i < DEFAULT_NUM_CTP; i++) begin : gen_private_wire
+    ocah_open_drain_bus #(
+      .NUM_DRIVERS(2)
+    ) u_wire (
+      .pull_i     (ctp_wire_pull[i]),
+      .dout_i     ({~ctp_wire_pull[i], ctp_req_out_dout[i]}),
+      .dout_en_i  ({ctp_wire_ext_assert[i], ctp_req_out_dout_en[i]} & {2{~ctp_wire_group[i]}}),
+      .wire_o     (private_wire[i]),
+      .mismatch_o (private_mismatch[i])
+    );
+    assign ctp_req_out_din[i]   = ctp_wire_group[i] ? group_wire : private_wire[i];
+    assign ctp_wire_mismatch[i] = ctp_wire_group[i] ? group_mismatch : private_mismatch[i];
+    assign ctp_ct_dst[i]        = u_dut.gen_ext_ctp[i].u_ctp.ct_dst_o;
+  end
+
+  ocah_open_drain_bus #(
+    .NUM_DRIVERS(2 * DEFAULT_NUM_CTP)
+  ) u_group_wire (
+    .pull_i     (ctp_wire_group_pull),
+    .dout_i     ({{DEFAULT_NUM_CTP{~ctp_wire_group_pull}}, ctp_req_out_dout}),
+    .dout_en_i  ({ctp_wire_ext_assert & ctp_wire_group, ctp_req_out_dout_en & ctp_wire_group}),
+    .wire_o     (group_wire),
+    .mismatch_o (group_mismatch)
+  );
+
+  for (genvar i = 0; i < DEFAULT_NUM_INT_CT; i++) begin : gen_int_ct_dst
+    assign int_ct_dst[i] = u_dut.gen_int_ctp[i].u_int_ctp_core.ct_dst_o;
+  end
+
   assign axil_req.aw_valid = axil_awvalid;
   assign axil_req.aw.addr  = axil_awaddr;
   assign axil_req.aw.prot  = axil_awprot;
@@ -123,6 +178,7 @@ module cross_trigger_network_tb_top
   ) u_dut (
     .clk_i                 (clk),
     .rst_ni                (rst_n),
+    .test_en_i             (1'b0),
 
     .axil_req_i            (axil_req),
     .axil_resp_o           (axil_resp),

@@ -1,188 +1,266 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP Cryptographic Subsystem
+// Integrate SEP cryptographic accelerators, Key Manager, eFuse, lifecycle, and entropy
+// paths.
+//
+// Hosts OTBN, AES, HMAC, KMAC, Adams Bridge (only when SEP_ABR_EN is defined; otherwise its
+// apertures answer DECERR), Key Manager, eFuse, lifecycle, and the internal TRNG behind the
+// local-crossbar slave and isolation handshake with sep_reset_ctrl.
+// Three 2:1 muxes, one per ext_trng_src_sel_i bit, choose between external TRNG stream i and
+// internal DRBG stream i: leg 0 feeds the Key Manager, leg 1 the AES, KMAC and OTBN EDN
+// clients, and leg 2 the entropy pool. The unselected DRBG stream is held (tready low) and
+// the unselected external stream is drained (tready high).
+// The native EDN client for sep_entropy_fifo is served by u_axis_edn_pool_s3c_scan from
+// the muxed pool AXI-Stream leg so the pool draws from either the internal DRBG or the
+// external TRNG. trng_entropy_clear_o clears the fabric entropy pool while the internal
+// TRNG reset is active.
+// Each *_bus_err_o is set by a TL-UL error response on that block's register bridge; in sep
+// they are ORed onto one PIC source (see sep_pkg::periph_bus_err_e).
+// SEP_SEC_DISABLE_TOKEN is replaced at synthesis with the netlist-embedded token digest.
+// External TRNG AXI-Lite/Stream and eFuse shim interfaces leave for sep_ip_integration.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
+`include "ocah_assert.svh"
 
 module sep_crypto #(
-  parameter bit LATCHED_MEM_RDATA = 1'b1,
-  parameter bit MASKING_EN = 1'b1,
-  parameter int unsigned SRAM_LATENCY = 1,
-  parameter int unsigned EXT_TRNG_NUM_AXIS = 3,
-  // During synthesis, to be replaced with the actual token digest embedded in the netlist
-  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
+  parameter bit LATCHED_MEM_RDATA = 1'b1,     // 1 if the Key Manager ROM and SRAM macros latch read
+                                              // data for look-ahead.
+  parameter bit MASKING_EN = 1'b1,            // Enables 2-share DOM masking in the Adams Bridge
+                                              // engine.
+  parameter int unsigned SRAM_LATENCY = 1,    // Adams Bridge SRAM read latency in cycles.
+  parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports and
+                                                 // entropy muxes; must equal
+                                                 // SEP_CRYPTO_EDN_ENDPOINT_COUNT (3).
+  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
+                                                        // digest; replace at synthesis.
 ) (
-  input logic                           clk_i,
-  input logic                           rst_ni,
+  input logic                           clk_i,  // System clock.
+  input logic                           rst_ni,  // Active-low power-on reset for the interconnect,
+                                                 // eFuse, lifecycle, alert receivers and post-mux
+                                                 // EDN adapters.
 
-  // Ring-oscillator sample clock for entropy_source
-  input logic                           entropy_rosc_sample_clk_i,
+  input logic                           entropy_rosc_sample_clk_i,  // Ring-oscillator sample clock for entropy_source; asynchronous to clk_i.
 
-  // OTP debug AXI-Lite manager interface
-  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,
-  output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
+  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager interface.
+  output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,  // Response from the eFuse wrapper to the OTP debug manager.
 
-  // Full AXI4 slave from local crossbar
-  input  sep_pkg::sep_32_64_6_12_axi_req_t        sep_crypto_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t       sep_crypto_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t        sep_crypto_axi_req_i,  // Full AXI4 slave from local crossbar.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t       sep_crypto_axi_resp_o,  // Response from the crypto interconnect to the local crossbar.
 
-  // eFuse shim CSR leg, split out of the sep_external crossbar window
-  input  sep_pkg::sep_32_64_6_12_axi_req_t        efuse_shim_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t       efuse_shim_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t        efuse_shim_axi_req_i,  // eFuse shim CSR leg, split out of the sep_external crossbar window.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t       efuse_shim_axi_resp_o,  // Response to the eFuse shim CSR leg, from the eFuse wrapper through the shim
+                                                                          // merge mux.
 
-  // Entropy source interrupt
-  output logic                               entropy_source_irq_o,
+  output logic                               entropy_source_irq_o,  // Entropy source interrupt.
 
-  // External TRNG AXI-Lite passthrough (to sep_ip_integration)
-  output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,
-  input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,
+  output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // External TRNG AXI-Lite
+                                                                   // passthrough (to
+                                                                   // sep_ip_integration).
+  input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,  // Response from the external TRNG register interface.
 
-  // External TRNG AXI-Stream inputs (from sep_ip_integration)
-  input  sep_crypto_pkg::ext_trng_axis_req_t  ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
-  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
+  input  sep_crypto_pkg::ext_trng_axis_req_t  ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-Stream inputs (from sep_ip_integration).
+  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],  // tready to each external TRNG stream: the consumer's tready when selected,
+                                                                                           // held high to drain the stream when not.
 
-  // Native EDN client of the SEP entropy-pool FIFO (sep_entropy_fifo) that
-  // refills the pool. Served by u_axis_edn_pool_s3c_scan from the muxed pool AXI-Stream
-  // leg, so the pool draws from either the internal DRBG or the external TRNG.
-  input  edn_pkg::edn_req_t                  entropy_pool_edn_req_i,
-  output edn_pkg::edn_rsp_t                  entropy_pool_edn_rsp_o,
-  // Clears the fabric entropy pool while the internal TRNG reset is active.
-  output logic                               trng_entropy_clear_o,
+  input  edn_pkg::edn_req_t                  entropy_pool_edn_req_i,  // Native EDN client of the SEP entropy-pool FIFO (sep_entropy_fifo) that
+                                                                      // refills the pool. Served by u_axis_edn_pool_s3c_scan from the muxed pool AXI-Stream
+                                                                      // leg, so the pool draws from either the internal DRBG or the external TRNG.
+  output edn_pkg::edn_rsp_t                  entropy_pool_edn_rsp_o,  // Entropy response to the pool's native EDN client, carrying the FIPS bit from
+                                                                      // the selected leg-2 stream.
+  output logic                               trng_entropy_clear_o,  // Clears the fabric entropy pool while the internal TRNG reset is active;
+                                                                    // synchronized to clk_i and high during power-on reset.
 
-  // Efuse Interface to SHIM CSR
-  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,
-  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,
-  // Efuse Command Interface - custom interface for SHIM
-  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,
-  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,
+  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,  // eFuse wrapper AXI-Lite requests to the eFuse shim CSRs.
+  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,  // Response from the eFuse shim CSRs.
+  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,  // eFuse read and program commands on the custom shim command interface.
+  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,  // Shim response to the eFuse commands.
 
-  // DFT
-  input logic                                test_en_i,
-  input logic                                scan_rst_ni,
+  input logic                                test_en_i,  // DFT test-enable (scan-enable).
+  input logic                                scan_rst_ni,  // DFT scan reset, active-low; bypasses
+                                                           // the reset synchronizer.
 
-  // Efuse release reset
-  input logic                                sep_reset_ni,
-  // Efuse intermediate reset
-  output logic           sep_intermediate_reset_no,
-  // Efuse signals
-  input  logic                              secure_tm_req_i,
-  input  logic                               ext_boot_seq_done_i,
-  output logic                               security_disable_o,       // To SMC
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
-  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
-  output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP
-  output logic                               sep_fuse_dft_disable_o,   // To DFT insertion
-  output logic                               smc_fuse_dft_disable_o,   // To DFT insertion
-  output logic                               lc_sigint_err_o,
-  output sep_efuse_pkg::efuse_map_t      shadow_regs_o,
-  output logic                               fuse_sense_done_o,
-  output logic                               secure_tm_o,
+  input logic                                sep_reset_ni,  // Active-low SEP reset after the JTAG
+                                                            // override, from sep_reset_ctrl; cold
+                                                            // reset for the Key Manager.
+  output logic           sep_intermediate_reset_no,  // Active-low SEP reset, synchronized to clk_i
+                                                     // and released once fuse sense and the
+                                                     // external boot sequence are done; to
+                                                     // sep_reset_ctrl before the JTAG override.
+  input  logic                              secure_tm_req_i,  // Secure test mode request strap,
+                                                              // latched into secure_tm_o.
+  input  logic                               ext_boot_seq_done_i,  // Integration boot-sequence
+                                                                   // completion (memory repair and
+                                                                   // SMC straps); gates release of
+                                                                   // sep_intermediate_reset_no.
+  output logic                               security_disable_o,  // Security-disable status from
+                                                                  // eFuse token processing,
+                                                                  // active-high; exported to the
+                                                                  // SMC.
+  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,  // Differentially encoded lifecycle state from the eFuse shadow registers; exported
+                                                                    // to the SMC.
+  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,  // Per-feature enable vector (1 = enabled) derived from the LC state, the SiP and
+                                                                     // system disable fuses, and the DEMOTE registers; all ones while security is
+                                                                     // disabled, otherwise all zeros on an LC-state integrity error.
+  output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // Per-interface debug disables for the DTP, active-high (1 = disabled).
+  output logic                               sep_fuse_dft_disable_o,  // Disables the SEP fuse DFT access path, active-high; no functional consumer,
+                                                                      // provided for DFT insertion.
+  output logic                               smc_fuse_dft_disable_o,  // Disables the SMC fuse DFT access path, active-high; no functional consumer,
+                                                                      // provided for DFT insertion.
+  output logic                               lc_sigint_err_o,  // Integrity error on the
+                                                               // differentially encoded LC state;
+                                                               // forces every feature enable off
+                                                               // unless security is disabled.
+  output sep_efuse_pkg::efuse_map_t      shadow_regs_o,  // eFuse shadow register contents; secret
+                                                         // fields read as zero in secure test mode.
+  output logic                               fuse_sense_done_o,  // High once the shadow registers
+                                                                 // have been loaded from the fuses.
+  output logic                               secure_tm_o,  // Latched secure test mode, active-high;
+                                                           // captured on the second clock edge
+                                                           // after rst_ni release when security is
+                                                           // disabled, otherwise on the rising edge
+                                                           // of fuse sense done.
 
-  //=========================================================================
-  // Key Manager Interfaces (exposed from sep_crypto)
-  //=========================================================================
+  output km_intf_pkg::km_rom_mem_req_t       km_rom_mem_req_o,  // Key Manager request to its 16 KiB
+                                                                // ROM hard macro, instantiated at
+                                                                // integration level.
+  input  km_intf_pkg::km_rom_mem_rsp_t       km_rom_mem_rsp_i,  // Read data from the Key Manager
+                                                                // ROM hard macro to the Key
+                                                                // Manager.
 
-  // KM ROM memory interface (hard macro at integration level)
-  output km_intf_pkg::km_rom_mem_req_t       km_rom_mem_req_o,
-  input  km_intf_pkg::km_rom_mem_rsp_t       km_rom_mem_rsp_i,
+  output km_intf_pkg::km_sram_mem_req_t      km_sram_mem_req_o,  // Key Manager request to its 32
+                                                                 // KiB SRAM hard macro,
+                                                                 // instantiated at integration
+                                                                 // level.
+  input  km_intf_pkg::km_sram_mem_rsp_t      km_sram_mem_rsp_i,  // Read data from the Key Manager
+                                                                 // SRAM hard macro to the Key
+                                                                 // Manager.
 
-  // KM SRAM memory interface (hard macro at integration level)
-  output km_intf_pkg::km_sram_mem_req_t      km_sram_mem_req_o,
-  input  km_intf_pkg::km_sram_mem_rsp_t      km_sram_mem_rsp_i,
+  output logic                               km_mbox_irq_to_sep_o,  // Key Manager mailbox interrupt to the SEP host.
 
-  // KM Mailbox interrupt to SEP host
-  output logic                               km_mbox_irq_to_sep_o,
+  output logic                               km_unrecoverable_err_o,  // Key Manager unrecoverable fault, active-high: its CPU is in the trap state and no
+                                                                      // longer executing.
+  output logic                               km_recoverable_err_o,  // Key Manager recoverable-fault indication, from its KMCSR register bit.
 
-  // KM error signals
-  output logic                               km_unrecoverable_err_o,
-  output logic                               km_recoverable_err_o,
+  input  sep_pkg::sep_crypto_isolate_t       isolate_req_i,  // Per-path isolation requests from
+                                                             // sep_reset_ctrl, active-high.
+  output sep_pkg::sep_crypto_isolate_t       isolated_o,  // Per-path isolation acknowledge to
+                                                          // sep_reset_ctrl, same layout as
+                                                          // isolate_req_i; a bit is high once that
+                                                          // path is isolated and its outstanding
+                                                          // transactions have drained.
+  input  sep_pkg::sep_sw_rst_t               gated_rst_ni,  // Isolation-sequenced software resets
+                                                            // from sep_reset_ctrl (active-low).
 
-  // Isolation handshake with sep_reset_ctrl
-  input  sep_pkg::sep_crypto_isolate_t       isolate_req_i,
-  output sep_pkg::sep_crypto_isolate_t       isolated_o,
-  // Isolation-sequenced software resets from sep_reset_ctrl (active-low)
-  input  sep_pkg::sep_sw_rst_t               gated_rst_ni,
+  output logic [1:0]                         lcc_demote_state_1_o,  // Differentially encoded DEMOTE_1.demote register bit, which re-opens debug
+                                                                    // feature bits [23:0] in TEST_DEV and PROD.
+                                                                    // Exported to the SMC.
 
-  output logic [1:0]                         lcc_demote_state_1_o, // To SMC
+  output logic [1:0]                         lcc_demote_state_2_o,  // Differentially encoded DEMOTE_2.demote register bit, which re-opens debug
+                                                                    // feature bits [47:24] in TEST_DEV and PROD.
+                                                                    // Exported to the SMC.
 
-  output logic [1:0]                         lcc_demote_state_2_o, // To SMC
+  input  logic [EXT_TRNG_NUM_AXIS-1:0]       ext_trng_src_sel_i,  // Per-leg entropy source select:
+                                                                  // 1 selects external TRNG stream
+                                                                  // i, 0 the internal DRBG stream i
+                                                                  // (from sep_cpu_ctrl via
+                                                                  // sep_system_csr).
+  input  logic                               km_wipe_state_i,  // Key Manager emergency wipe
+                                                               // control; a rising edge zeroes the
+                                                               // Key Manager key state (from
+                                                               // sep_cpu_ctrl via sep_system_csr).
 
-  // External TRNG source selection (from sep_cpu_ctrl via sep_system_csr)
-  input  logic [EXT_TRNG_NUM_AXIS-1:0]       ext_trng_src_sel_i,
-  // Key Manager emergency wipe control (from sep_cpu_ctrl via sep_system_csr)
-  input  logic                               km_wipe_state_i,
-  //=========================================================================
-  // Crypto Subsystem Interrupts (exposed to SEP PIC)
-  //=========================================================================
+  output logic                               intr_hmac_done_o,  // HMAC done interrupt, to the SEP
+                                                                // PIC.
+  output logic                               intr_hmac_fifo_empty_o,  // HMAC message FIFO empty interrupt.
+  output logic                               intr_hmac_err_o,  // HMAC error interrupt.
 
-  // HMAC interrupts
-  output logic                               intr_hmac_done_o,
-  output logic                               intr_hmac_fifo_empty_o,
-  output logic                               intr_hmac_err_o,
+  output logic                               intr_kmac_done_o,  // KMAC done interrupt, to the SEP
+                                                                // PIC.
+  output logic                               intr_kmac_fifo_empty_o,  // KMAC message FIFO empty interrupt.
+  output logic                               intr_kmac_err_o,  // KMAC error interrupt.
 
-  // KMAC interrupts
-  output logic                               intr_kmac_done_o,
-  output logic                               intr_kmac_fifo_empty_o,
-  output logic                               intr_kmac_err_o,
+  output logic                               intr_cs_cmd_req_done_o,  // CSRNG command-request-done interrupt.
+  output logic                               intr_cs_entropy_req_o,  // CSRNG entropy-request interrupt.
+  output logic                               intr_cs_hw_inst_exc_o,  // CSRNG hardware-instance exception interrupt.
+  output logic                               intr_cs_fatal_err_o,  // CSRNG fatal-error interrupt.
 
-  // CSRNG interrupts
-  output logic                               intr_cs_cmd_req_done_o,
-  output logic                               intr_cs_entropy_req_o,
-  output logic                               intr_cs_hw_inst_exc_o,
-  output logic                               intr_cs_fatal_err_o,
+  output logic                               intr_edn_cmd_req_done_o,  // EDN command-request-done interrupt.
+  output logic                               intr_edn_fatal_err_o,  // EDN fatal-error interrupt.
 
-  // EDN interrupts
-  output logic                               intr_edn_cmd_req_done_o,
-  output logic                               intr_edn_fatal_err_o,
+  output logic                               intr_otbn_done_o,  // OTBN done interrupt.
 
-  // OTBN interrupt
-  output logic                               intr_otbn_done_o,
+  output logic                               intr_abr_error_o,  // Adams Bridge (PQC) error
+                                                                // interrupt; held low when the
+                                                                // engine is compiled out.
+  output logic                               intr_abr_notif_o,  // Adams Bridge notification
+                                                                // interrupt, set on command
+                                                                // completion; held low when the
+                                                                // engine is compiled out.
 
-  // Adams Bridge (PQC) interrupts. Held low when the engine is compiled out.
-  output logic                               intr_abr_error_o,
-  output logic                               intr_abr_notif_o,
+  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t      sep_crypto_pka_imem_sram_req_o,  // OTBN instruction-memory request to the external IMEM SRAM.
+  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t      sep_crypto_pka_imem_sram_rsp_i,  // Read data from the external OTBN IMEM SRAM.
+  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t      sep_crypto_pka_dmem_sram_req_o,  // OTBN data-memory request to the external DMEM SRAM.
+  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t      sep_crypto_pka_dmem_sram_rsp_i,  // Read data from the external OTBN DMEM SRAM.
 
-  // OTBN external SRAM interfaces
-  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t      sep_crypto_pka_imem_sram_req_o,
-  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t      sep_crypto_pka_imem_sram_rsp_i,
-  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t      sep_crypto_pka_dmem_sram_req_o,
-  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t      sep_crypto_pka_dmem_sram_rsp_i,
+  output sep_crypto_pkg::abr_mem_req_t                       abr_mem_req_o,  // Adams Bridge (PQC) requests to its external SRAMs, whose macros live in
+                                                                             // sep_ip_integration; tied to zero when the engine is compiled out.
+  input  sep_crypto_pkg::abr_mem_rsp_t                       abr_mem_rsp_i,  // Read data from the Adams Bridge external SRAMs.
 
-  // Adams Bridge (PQC) external SRAM interface -- behavioral/tech macros live in
-  // sep_ip_integration (tech-macro home). Packed struct req/rsp (OTBN pattern).
-  output sep_crypto_pkg::abr_mem_req_t                       abr_mem_req_o,
-  input  sep_crypto_pkg::abr_mem_rsp_t                       abr_mem_rsp_i,
+  output logic                               crypto_alert_o,  // Aggregated crypto alert: OR of the
+                                                              // alert pulses and integrity failures
+                                                              // of the 11 OpenTitan alert receivers
+                                                              // (HMAC, OTBN, AES, KMAC, CSRNG,
+                                                              // EDN).
 
-  // Aggregated crypto alert (OR of all OpenTitan alert channels)
-  output logic                               crypto_alert_o,
+  output logic [9:0]                         sep_efuse_debug_o,  // eFuse controller debug flags:
+                                                                 // [0] shadow write locked, [1]
+                                                                 // shadow read locked, [2] program
+                                                                 // locked, [3] read locked, [4]
+                                                                 // write set-only, [5] LC-state
+                                                                 // access, [6] read timeout, [7]
+                                                                 // program timeout, [8] request
+                                                                 // error, [9] secure TM blocked.
+  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,  // RMA SiP token match status code; 6'b010101 indicates a match.
+  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,  // RMA chiplet token match status code; 6'b010101 indicates a match.
 
-  // Debug signals
-  output logic [9:0]                         sep_efuse_debug_o,
-  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,
-  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,
+  output logic                               locked_field_access_interrupt_o,  // Interrupt raised when an access targets a locked eFuse field.
 
-  // Locked Field Access Interrupt
-  output logic                               locked_field_access_interrupt_o,
+  output logic                               token_match_fault_o,  // Token Comparator Redundancy
+                                                                   // Fault Interrupt.
 
-  // Token Comparator Redundancy Fault Interrupt
-  output logic                               token_match_fault_o,
-
-  // Per-block register bridge faults (sticky, held until the matching clear).
-  // Aggregated onto one PIC source in sep.sv; see sep_pkg::periph_bus_err_e.
-  output logic                               aes_bus_err_o,
-  output logic                               hmac_bus_err_o,
-  output logic                               kmac_bus_err_o,
-  output logic                               otbn_bus_err_o,
-  output logic                               csrng_bus_err_o,
-  output logic                               edn_bus_err_o,
-  input  logic                               aes_bus_err_clr_i,
-  input  logic                               hmac_bus_err_clr_i,
-  input  logic                               kmac_bus_err_clr_i,
-  input  logic                               otbn_bus_err_clr_i,
-  input  logic                               csrng_bus_err_clr_i,
-  input  logic                               edn_bus_err_clr_i
+  output logic                               aes_bus_err_o,  // Sticky AES register-bridge fault;
+                                                             // held until aes_bus_err_clr_i.
+  output logic                               hmac_bus_err_o,  // Sticky HMAC register-bridge fault;
+                                                              // held until hmac_bus_err_clr_i.
+  output logic                               kmac_bus_err_o,  // Sticky KMAC register-bridge fault;
+                                                              // held until kmac_bus_err_clr_i.
+  output logic                               otbn_bus_err_o,  // Sticky OTBN register-bridge fault;
+                                                              // held until otbn_bus_err_clr_i.
+  output logic                               csrng_bus_err_o,  // Sticky CSRNG register-bridge
+                                                               // fault; held until
+                                                               // csrng_bus_err_clr_i.
+  output logic                               edn_bus_err_o,  // Sticky EDN register-bridge fault;
+                                                             // held until edn_bus_err_clr_i.
+  input  logic                               aes_bus_err_clr_i,  // Single-cycle clear for
+                                                                 // aes_bus_err_o, pulsed by
+                                                                 // PERIPH_BUS_ERR_CLEAR.aes.
+  input  logic                               hmac_bus_err_clr_i,  // Single-cycle clear for
+                                                                  // hmac_bus_err_o, pulsed by
+                                                                  // PERIPH_BUS_ERR_CLEAR.hmac.
+  input  logic                               kmac_bus_err_clr_i,  // Single-cycle clear for
+                                                                  // kmac_bus_err_o, pulsed by
+                                                                  // PERIPH_BUS_ERR_CLEAR.kmac.
+  input  logic                               otbn_bus_err_clr_i,  // Single-cycle clear for
+                                                                  // otbn_bus_err_o, pulsed by
+                                                                  // PERIPH_BUS_ERR_CLEAR.otbn.
+  input  logic                               csrng_bus_err_clr_i,  // Single-cycle clear for
+                                                                   // csrng_bus_err_o, pulsed by
+                                                                   // PERIPH_BUS_ERR_CLEAR.csrng.
+  input  logic                               edn_bus_err_clr_i  // Single-cycle clear for
+                                                                // edn_bus_err_o, pulsed by
+                                                                // PERIPH_BUS_ERR_CLEAR.edn.
 );
 
   /////////////////////////
@@ -252,7 +330,7 @@ module sep_crypto #(
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_req;
   drbg_pkg::drbg_axis_rsp_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_rsp;
   logic trng_reset_active;
-  logic [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_endpoint_rst_n;
+  logic [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_endpoint_cancel;
 
   // Muxed AXI-Stream outputs (one per mux)
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] entropy_muxed_req;
@@ -769,10 +847,10 @@ module sep_crypto #(
   assign km_otp_data.demotion_state_2 = lcc_demote_state_2_o;
 
   // Dual-rail encode every 256-bit KM-routed OTP field.
-  // OutputFlop=0: purely combinational encode (no pipeline latency).
+  // OUTPUT_FLOP=0: purely combinational encode (no pipeline latency).
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_chiplet_uid_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -781,8 +859,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_class_key_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -791,8 +869,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sip_uid_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -801,8 +879,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sys_uid_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -811,8 +889,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sep_chiplet_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -821,8 +899,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sep_sip_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -831,8 +909,8 @@ module sep_crypto #(
   );
 
   prim_diff_encode_multi #(
-    .Width      (256),
-    .OutputFlop (1'b0)
+    .WIDTH       (256),
+    .OUTPUT_FLOP (1'b0)
   ) u_sep_sys_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -883,22 +961,29 @@ module sep_crypto #(
   // These post-mux adapters also serve the external source, so they remain in
   // the POR reset domain. An internal-TRNG reset synchronously clears buffered
   // entropy and handshake state without exporting a generated reset domain.
-  // Client resets cancel only their own endpoint. OTBN owns both RND and URND.
-  assign crypto_edn_endpoint_rst_n = {
-    gated_rst_ni.otbn, gated_rst_ni.otbn, gated_rst_ni.kmac, gated_rst_ni.aes
+  // An engine reset cancels only that engine's endpoints. The engine reset
+  // asserts the cycle after its isolation completes and releases with the
+  // isolation request, so isolated-and-requested cancels the endpoint a cycle
+  // ahead of the reset and holds it throughout, while EDN keeps serving the
+  // engine during the drain. OTBN owns both RND and URND.
+  assign crypto_edn_endpoint_cancel = {
+    isolate_req_i.host_otbn & isolated_o.host_otbn & isolated_o.km_otbn,
+    isolate_req_i.host_otbn & isolated_o.host_otbn & isolated_o.km_otbn,
+    isolate_req_i.host_kmac & isolated_o.host_kmac & isolated_o.km_kmac,
+    isolate_req_i.host_aes & isolated_o.host_aes & isolated_o.km_aes
   };
 
   drbg_axis_edn_adapter #(
     .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT)
   ) u_axis_edn_crypto_s3c_scan (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_ni),
-    .endpoint_rst_ni (crypto_edn_endpoint_rst_n),
-    .clear_i         (trng_reset_active),
-    .axis_req_i      (entropy_muxed_req[1]),
-    .axis_rsp_o      (entropy_muxed_rsp[1]),
-    .edn_req_i       (crypto_edn_req),
-    .edn_rsp_o       (crypto_edn_rsp)
+    .clk_i              (clk_i),
+    .rst_ni             (rst_ni),
+    .endpoint_cancel_i  (crypto_edn_endpoint_cancel),
+    .clear_i            (trng_reset_active),
+    .axis_req_i         (entropy_muxed_req[1]),
+    .axis_rsp_o         (entropy_muxed_rsp[1]),
+    .edn_req_i          (crypto_edn_req),
+    .edn_rsp_o          (crypto_edn_rsp)
   );
 
   //=========================================================================
@@ -915,14 +1000,14 @@ module sep_crypto #(
   drbg_axis_edn_adapter #(
     .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT)
   ) u_axis_edn_pool_s3c_scan (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_ni),
-    .endpoint_rst_ni ({sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT{rst_ni}}),
-    .clear_i         (trng_reset_active),
-    .axis_req_i      (entropy_muxed_req[2]),
-    .axis_rsp_o      (entropy_muxed_rsp[2]),
-    .edn_req_i       (pool_edn_req),
-    .edn_rsp_o       (pool_edn_rsp)
+    .clk_i              (clk_i),
+    .rst_ni             (rst_ni),
+    .endpoint_cancel_i  ('0),
+    .clear_i            (trng_reset_active),
+    .axis_req_i         (entropy_muxed_req[2]),
+    .axis_rsp_o         (entropy_muxed_rsp[2]),
+    .edn_req_i          (pool_edn_req),
+    .edn_rsp_o          (pool_edn_rsp)
   );
 
   //=========================================================================
@@ -940,7 +1025,7 @@ module sep_crypto #(
     .SRAM_SIZE_BYTES      (32768),
     .MAILBOX_DEPTH        (16),
     .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
-    .OTP_EFUSE_REMAP_BASE (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR))
+    .OTP_EFUSE_REMAP_BASE (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR))
   ) u_key_manager_s3c_scan (
     .clk_i              (clk_i),
     // Cold reset: SEP system cold reset (AASD) resets the entire KM.
@@ -1008,13 +1093,13 @@ module sep_crypto #(
   // all live inside these structs, any width change shows up in the total
   // $bits of the req/resp.
   // =========================================================================
-`ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
+`ifdef OCAH_DEBUG_LIVE  // elaboration-time width checks; excluded from synthesis
   initial begin : gen_km_efuse_axil_type_assertions
     assert ($bits(km_intf_pkg::km_axil_req_t) == $bits(sep_efuse_pkg::efuse_axil_req_t))
     else $fatal(1, "KM_EFUSE_AXIL req width mismatch: km_axil_req_t != efuse_axil_req_t");
     assert ($bits(km_intf_pkg::km_axil_resp_t) == $bits(sep_efuse_pkg::efuse_axil_resp_t))
     else $fatal(1, "KM_EFUSE_AXIL resp width mismatch: km_axil_resp_t != efuse_axil_resp_t");
   end
-`endif  // SYNTHESIS
+`endif  // OCAH_DEBUG_LIVE
 
 endmodule

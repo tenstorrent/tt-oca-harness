@@ -1,30 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Reset sequencing FSM for one software-resettable domain. On a software
-// reset request, requests isolation of the domain's AXI paths, waits until
-// all of them report isolated, then asserts the domain reset. Isolation is
-// held until the software reset request is released.
+// Sequence isolation then reset for one software-resettable AXI domain.
+//
+// On a software reset request, request isolation of the domain's AXI paths, wait until all
+// report isolated, then assert the domain reset.
+// Hold isolation until the software reset request is released.
+// Out of rst_ni the domain starts in reset with isolation requested, and leaves it on the
+// first clock edge at which sw_rst_req_ni is high.
 
 `include "ocah_assert.svh"
 
 module sep_isolate_rst_seq (
-  input  logic clk_i,
-  input  logic rst_ni,
-  // Software reset request (active low)
-  input  logic sw_rst_req_ni,
-  // All of the domain's isolate units report isolated
-  input  logic isolated_i,
-  // Isolation request to the domain's isolate units
-  output logic isolate_req_o,
-  // Sequenced reset to the domain (active low)
-  output logic gated_rst_no
+  input  logic clk_i,                         // System clock.
+  input  logic rst_ni,                        // Active-low reset.
+  input  logic sw_rst_req_ni,                 // Software reset request (active low).
+  input  logic isolated_i,                    // All of the domain's isolate units report isolated.
+  output logic isolate_req_o,                 // Isolation request to the domain's isolate units,
+                                              // active-high; high whenever the domain is draining
+                                              // or in reset.
+  output logic gated_rst_no                   // Registered sequenced reset to the domain (active
+                                              // low); asserted while rst_ni is asserted and only
+                                              // after isolated_i.
 );
 
   typedef enum logic [1:0] {
-    StReset,  // domain in reset, paths isolated
-    StDrain,  // isolation requested, waiting for in-flight drain
-    StRun  // normal operation
+    ST_RESET,  // domain in reset, paths isolated
+    ST_DRAIN,  // isolation requested, waiting for in-flight drain
+    ST_RUN  // normal operation
   } isolate_state_e;
 
   isolate_state_e state_q, state_d;
@@ -34,31 +37,31 @@ module sep_isolate_rst_seq (
     state_d = state_q;
 
     unique case (state_q)
-      StRun: begin
+      ST_RUN: begin
         if (~sw_rst_req_ni) begin
-          state_d = StDrain;
+          state_d = ST_DRAIN;
         end
       end
-      StDrain: begin
+      ST_DRAIN: begin
         if (isolated_i) begin
-          state_d = StReset;
+          state_d = ST_RESET;
         end
       end
-      StReset: begin
+      ST_RESET: begin
         if (sw_rst_req_ni) begin
-          state_d = StRun;
+          state_d = ST_RUN;
         end
       end
-      default: state_d = StReset;
+      default: state_d = ST_RESET;
     endcase
   end
 
-  assign isolate_req_o = (state_q != StRun);  // Isolation requested when not in normal operation
-  assign gated_rst_d   = (state_d == StReset);  // Domain reset asserted when in reset state
+  assign isolate_req_o = (state_q != ST_RUN);  // Isolation requested when not in normal operation
+  assign gated_rst_d   = (state_d == ST_RESET);  // Domain reset asserted when in reset state
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin
-      state_q <= StReset;
+      state_q <= ST_RESET;
     end else begin
       state_q <= state_d;
     end

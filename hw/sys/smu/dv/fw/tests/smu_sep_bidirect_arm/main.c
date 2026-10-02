@@ -24,7 +24,7 @@
 // Addresses: SMC scratch is at 0xC003_9080 locally (stride 8) and appears to the
 // SEP at 0x4003_9080 through the SMC aperture; SEP cold scratch0 is 0x1080_2020,
 // inside the aperture the SEP programs for itself. The SMC output fabric is
-// BlockByDefault=0, so this side needs no filter programming of its own.
+// BLOCK_BY_DEFAULT=0, so this side needs no filter programming of its own.
 
 #include <stdint.h>
 
@@ -33,7 +33,7 @@
 #define SMC_SCRATCH(n) (SMC_SCRATCH_BASE + ((n)*SMC_SCRATCH_STRIDE))
 
 #define SMC_SCRATCH12 SMC_SCRATCH(12)
-// OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(n) = 0x10802000 + n*8.
+// SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(n) = 0x10802000 + n*8.
 #define SEP_COLD_SCRATCH0 ((uintptr_t)0x10802000u)
 
 #define SEP_READY_PATTERN 0x51EAD001u

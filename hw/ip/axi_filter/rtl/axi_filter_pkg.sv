@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// AXI Filter Package
+// Hold shared types and helpers for the AXI traffic filter.
 //
-//-----------------------------------------------------------------------------
+// Defines filter_debug_t, which packs 4-bit write-path and read-path filter hit indices; no
+// module in the open tree references it.
 
 package axi_filter_pkg;
 

@@ -23,7 +23,7 @@
  *        - a sample at ACQLVL == N with the interrupt deasserted, and
  *        - the interrupt asserted only at ACQLVL > N.
  *   3. Assert the *entry* count exactly: with ACQ_START_STOP_EN set the FSM
- *      pushes an AcqStart entry (i2c_target_fsm.sv:434) and an AcqStop entry
+ *      pushes an ACQ_START entry (i2c_target_fsm.sv:434) and an ACQ_STOP entry
  *      (:644) around the payload, so 5 data bytes produce 7 entries -- and the
  *      interrupt therefore fires on the 5th data byte (level 6), not on the
  *      Nth byte of payload.
@@ -63,7 +63,7 @@
 #define RX_FIRST_DATA_BYTE 0xAAu
 /* START entry + payload + STOP entry (ACQ_START_STOP_EN is set in main). */
 #define RX_EXPECTED_ACQ_ENTRIES (1u + RX_BYTE_COUNT + 1u)
-/* The AcqStart entry carries the address byte the FSM shifted in, i.e. the
+/* The ACQ_START entry carries the address byte the FSM shifted in, i.e. the
  * 7-bit address with the R/W bit appended (i2c_target_fsm.sv:434). */
 #define RX_START_ACQ_BYTE ((TARGET_ADDR << 1) | 0u)
 
@@ -75,25 +75,27 @@
 
 /* Poll bounds, in loop iterations.
  *
- * Sized from measured cost, not guessed. A single-register poll iteration in
- * this testbench costs 0.44-1.15 us of simulation (the measurement recorded on
- * I2C_TIMEOUT_DEFAULT in i2c_opentitan.h); the loops below read two registers
- * per pass, so ~0.9-2.3 us each.
+ * Sized from measured cost, not guessed, at the corner the bench can draw. A
+ * single-register poll iteration costs 0.23 us at the 4 ns core clock the bench
+ * can pick (measured in i2c_fifo_full) and ~0.34 us at 6 ns; the loops below
+ * read two registers per pass, so ~0.46-0.68 us each.
  *
  * The longest legitimate wait in this test is the VIP's 5-byte write at 100 kHz,
- * which took 1.10 ms in the reference run (1783040 ns -> 2888040 ns). The
+ * which took 1.10 ms in the reference run (1783040 ns -> 2888040 ns) and takes
+ * up to 1.5x that when the bench draws the 12 ns peripheral clock. The
  * outermost bound in the stack is the testbench's 20 ms completion wait
  * (tb_wrap_cocotb/tests/smc_i2c_p0_fifo.py). Every bound here must therefore
  * expire well inside 20 ms, or its failure branch is unreachable code and the
  * diagnostics behind it can never print.
  *
- *   4000 iterations ~= 3.5-9.2 ms : 3-8x the 1.10 ms transaction, under 20 ms.
- *   2000 iterations ~= 1.8-4.6 ms : the STOP entry lands about one byte period
- *                                   (90 us at 100 kHz) after the last data byte.
- *    500 iterations ~= 0.45-1.2 ms: a TXDATA store reaches TXLVL in a few cycles.
+ *  12000 iterations ~= 5.5-8.2 ms : 3.3x the 1.65 ms worst-corner transaction,
+ *                                   under 20 ms.
+ *   6000 iterations ~= 2.8-4.1 ms : the STOP entry lands about one byte period
+ *                                   (90-135 us) after the last data byte.
+ *    500 iterations ~= 0.23-0.34 ms: a TXDATA store reaches TXLVL in a few cycles.
  */
-#define RX_INTR_POLL_BOUND 4000u
-#define RX_ENTRIES_POLL_BOUND 2000u
+#define RX_INTR_POLL_BOUND 12000u
+#define RX_ENTRIES_POLL_BOUND 6000u
 #define TX_LEVEL_POLL_BOUND 500u
 
 /**
@@ -387,8 +389,8 @@ static int rx_observe(uint32_t idx, uint32_t threshold_n) {
             expected_signal = I2C_ACQ_SIGNAL_DATA;
             expected_byte = (RX_FIRST_DATA_BYTE + (i - 1)) & 0xFFu;
         } else {
-            /* The AcqStop entry carries whatever byte was last shifted in
-             * (i2c_target_fsm.sv:644 writes {AcqStop, input_byte}), so only the
+            /* The ACQ_STOP entry carries whatever byte was last shifted in
+             * (i2c_target_fsm.sv:644 writes {ACQ_STOP, input_byte}), so only the
              * signal field is specified. */
             expected_signal = I2C_ACQ_SIGNAL_STOP;
             expected_byte = 0;
@@ -622,7 +624,7 @@ int main(void) {
 
     // Compute timing parameters
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};

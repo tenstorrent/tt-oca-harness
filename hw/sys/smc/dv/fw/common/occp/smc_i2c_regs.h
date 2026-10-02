@@ -2,13 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * I2C wrapper register definitions for the OCCP DV firmware.
- *
- * The I2C wrapper has no generated block header under
- * hw/sys/smc/regs/gen/c/blocks; this file carries the SMC_I2C_WRAP_* defines
- * and I2C_*_reg_{t,u} typedefs extracted from
- * hw/sys/smc/bootrom/prod/registers/smc_top_regs.h, whose I3C register types
- * collide with headers the OCCP firmware already includes.
+ * I2C wrapper registers for the OCCP DV firmware. The SMC block headers do not cover the I2C
+ * wrapper, and the boot ROM's smc_top_regs.h, the source of this subset, has I3C register types
+ * that collide with headers this firmware already includes.
  */
 
 #ifndef SMC_I2C_REGS_H

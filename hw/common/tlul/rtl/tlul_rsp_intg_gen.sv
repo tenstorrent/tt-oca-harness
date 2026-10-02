@@ -2,64 +2,60 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-
-/*
-
- Tile-Link UL response integrity generator
-
- This generates integrity bits that get stored in the rsp_intg and data_intg fields of tl_o.d_user.
-
- If EnableRspIntgGen is true then the rsp_intg field is generated from the opcode, d_size and
- d_error fields of the response (extracted with tlul_pkg::extract_d2h_rsp_intg). If it is false then
- the rsp_intg field either comes from the same field in the tl_i input (if UserInIsZero is false) or
- is wired to zero (if UserInIsZero is true).
-
- If EnableDataIntgGen is true then the data_intg field is generated from the d_data field of the
- response. If it is false then the rsp_intg field either comes from the same field in the tl_i input
- (if UserInIsZero is false) or is wired to zero (if UserInIsZero is true).
-
-*/
+// Generate TL-UL D-channel response integrity bits.
+//
+// Fill rsp_intg and data_intg in tl_o.d_user:
+//
+// - When ENABLE_RSP_INTG_GEN is true, generate rsp_intg from the opcode, d_size, and d_error
+//   fields via tlul_pkg::extract_d2h_rsp_intg.
+// - When ENABLE_DATA_INTG_GEN is true, generate data_intg from d_data.
+//
+// When ENABLE_RSP_INTG_GEN is false, rsp_intg is zero if RSP_INTG_IN_IS_ZERO is set and taken
+// from tl_i otherwise. When ENABLE_DATA_INTG_GEN is false, data_intg is zero if USER_IN_IS_ZERO
+// is set and taken from tl_i otherwise.
 
 module tlul_rsp_intg_gen
   import tlul_pkg::*;
 #(
-  parameter bit EnableRspIntgGen = 1'b1,
-  parameter bit EnableDataIntgGen = 1'b1,
-  parameter bit UserInIsZero = 1'b0,
-  parameter bit RspIntgInIsZero = UserInIsZero
+  parameter bit ENABLE_RSP_INTG_GEN = 1'b1,               // Generate rsp_intg from
+                                                          // opcode/size/error.
+  parameter bit ENABLE_DATA_INTG_GEN = 1'b1,              // Generate data_intg from d_data.
+  parameter bit USER_IN_IS_ZERO = 1'b0,                   // Zero data_intg when not generated;
+                                                          // simulation asserts d_user is zero.
+  parameter bit RSP_INTG_IN_IS_ZERO = USER_IN_IS_ZERO     // Zero rsp_intg when not generated;
+                                                          // simulation asserts it is zero.
 ) (
-  // TL-UL interface
-  input  tl_d2h_t tl_i,
-  output tl_d2h_t tl_o
+  input  tl_d2h_t tl_i,  // D-channel response before integrity insertion.
+  output tl_d2h_t tl_o   // D-channel response with integrity fields filled.
 );
-
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
-  logic [D2HRspIntgWidth-1:0] rsp_intg;
-  if (EnableRspIntgGen) begin : gen_rsp_intg
+  logic [D2H_RSP_INTG_WIDTH-1:0] rsp_intg;
+  if (ENABLE_RSP_INTG_GEN) begin : gen_rsp_intg
     tl_d2h_rsp_intg_t rsp;
-    logic [D2HRspMaxWidth-1:0] unused_payload;
+    logic [D2H_RSP_MAX_WIDTH-1:0] unused_payload;
 
     assign rsp = extract_d2h_rsp_intg(tl_i);
 
     prim_secded_inv_64_57_enc u_rsp_gen (
-      .data_i(D2HRspMaxWidth'(rsp)),
+      .data_i(D2H_RSP_MAX_WIDTH'(rsp)),
       .data_o({rsp_intg, unused_payload})
     );
-  end else if (RspIntgInIsZero) begin : gen_zero_rsp_intg
+  end else if (RSP_INTG_IN_IS_ZERO) begin : gen_zero_rsp_intg
     assign rsp_intg = 0;
   end else begin : gen_passthrough_rsp_intg
     assign rsp_intg = tl_i.d_user.rsp_intg;
   end
 
-  logic [DataIntgWidth-1:0] data_intg;
-  if (EnableDataIntgGen) begin : gen_data_intg
-    logic [DataMaxWidth-1:0] unused_data;
+  logic [DATA_INTG_WIDTH-1:0] data_intg;
+  if (ENABLE_DATA_INTG_GEN) begin : gen_data_intg
+    logic [DATA_MAX_WIDTH-1:0] unused_data;
     tlul_data_integ_enc u_tlul_data_integ_enc (
-      .data_i(DataMaxWidth'(tl_i.d_data)),
+      .data_i(DATA_MAX_WIDTH'(tl_i.d_data)),
       .data_intg_o({data_intg, unused_data})
     );
-  end else if (UserInIsZero) begin : gen_zero_data_intg
+  end else if (USER_IN_IS_ZERO) begin : gen_zero_data_intg
     assign data_intg = 0;
   end else begin : gen_passthrough_data_intg
     assign data_intg = tl_i.d_user.data_intg;
@@ -75,15 +71,15 @@ module tlul_rsp_intg_gen
   assign unused_tl = ^tl_i;
 
 
-  `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_d2h_rsp_intg_t) <= D2HRspMaxWidth)
-  `OCAH_OT_ASSERT_INIT(DataWidthCheck_A, $bits(tl_i.d_data) <= DataMaxWidth)
+  `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_d2h_rsp_intg_t) <= D2H_RSP_MAX_WIDTH)
+  `OCAH_OT_ASSERT_INIT(DataWidthCheck_A, $bits(tl_i.d_data) <= DATA_MAX_WIDTH)
 
   // the code below is not meant to be synthesized,
-  // but it is intended to be used in simulation and FPV
-`ifndef SYNTHESIS
+  // but it is intended to be used in simulation, emulation and FPV
+`ifdef OCAH_DEBUG_LIVE
   always @(tl_i) begin
-    `OCAH_OT_ASSERT_I(RspZero_A, tl_i.d_valid & RspIntgInIsZero -> ~|tl_i.d_user.rsp_intg)
-    `OCAH_OT_ASSERT_I(UserZero_A, tl_i.d_valid & UserInIsZero -> ~|tl_i.d_user)
+    `OCAH_OT_ASSERT_I(RspZero_A, tl_i.d_valid & RSP_INTG_IN_IS_ZERO -> ~|tl_i.d_user.rsp_intg)
+    `OCAH_OT_ASSERT_I(UserZero_A, tl_i.d_valid & USER_IN_IS_ZERO -> ~|tl_i.d_user)
   end
 `endif
 

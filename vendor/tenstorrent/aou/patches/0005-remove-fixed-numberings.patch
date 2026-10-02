@@ -1,0 +1,1401 @@
+diff --git a/DOC/MAS/architecture.adoc b/DOC/MAS/architecture.adoc
+index 3804ffd4d..d55c6dfe2 100644
+--- a/DOC/MAS/architecture.adoc
++++ b/DOC/MAS/architecture.adoc
+@@ -9,13 +9,13 @@ ifndef::aou-integration-xref[]
+ :aou-integration-xref: ../integration_guide/integrator.adoc
+ endif::[]
+ 
+-[[aou-3-architecture]]
+-== 3. Architecture
++[[aou-architecture]]
++== Architecture
+ 
+ This section describes the block diagram of AOU_CORE.
+ 
+-[[aou-31-block-diagram]]
+-=== 3.1. Block diagram
++[[aou-block-diagram]]
++=== Block diagram
+ 
+ [caption=""]
+ .Figure 2. Architecture of AOU_CORE
+@@ -26,10 +26,10 @@ xref:figure-2[] shows block diagram of current AOU_CORE. The AXI interface suppo
+ 
+ Inside AXI4MUX_3X1_TOP, AXI aggregator is added for improving bus utilization. AXI aggregator combines narrow read & write data and send it to BUS. This functionality may modify AXI Len & Size. For example, AXI AR with 256-bit size & 16 burst length may transfer into 1024-bit size & 4 burst length. This operation can be controlled via SFR setting.
+ 
+-AOU_CORE provides a parameterizable FDI interface; the data-path width is selected by [.monospaced]#++FDI_CONFIG++# ([.monospaced]#++FDI_CFG_SP_32B++# / [.monospaced]#++FDI_CFG_SP_64B++# / [.monospaced]#++FDI_CFG_SP_128B++# for single-PHY, [.monospaced]#++FDI_CFG_TP_32B_64B++# / [.monospaced]#++FDI_CFG_TP_64B_128B++# for two-PHY). See xref:{aou-integration-xref}#aou-ig-parameter-list[Section 2] for the full table of [.monospaced]#++FDI_CONFIG++# values and resulting per-PHY widths.
++AOU_CORE provides a parameterizable FDI interface; the data-path width is selected by [.monospaced]#++FDI_CONFIG++# ([.monospaced]#++FDI_CFG_SP_32B++# / [.monospaced]#++FDI_CFG_SP_64B++# / [.monospaced]#++FDI_CFG_SP_128B++# for single-PHY, [.monospaced]#++FDI_CFG_TP_32B_64B++# / [.monospaced]#++FDI_CFG_TP_64B_128B++# for two-PHY). See xref:{aou-integration-xref}#aou-ig-parameter-list[the Integrator Guide] for the full table of [.monospaced]#++FDI_CONFIG++# values and resulting per-PHY widths.
+ 
+-[[aou-32-tx_core]]
+-=== 3.2. TX_CORE
++[[aou-tx_core]]
++=== TX_CORE
+ 
+ [caption=""]
+ .Figure 3. Block Diagram of Single RP AOU_TX_CORE
+@@ -38,8 +38,8 @@ image::image3.png[Figure 3. Block Diagram of Single RP AOU_TX_CORE]
+ 
+ xref:figure-3[] shows the simplified block diagram of single RP AOU_TX_CORE. The module receives AXI messages for Remote Die. AOU_TX_AXI_BUFFER captures AXI messages from the system bus. When AOU_TX_CORE obtains sufficient credit from AOU_CRD_CTRL, it packs the AXI message into an AOU message and stores it in the ring buffer. Once there is enough space to hold all messages, messages are stored to the ring buffer in parallel. The ring buffer subsequently performs handshake operations with the FDI interface.
+ 
+-[[aou-321-tx_core-qos-scheme]]
+-==== 3.2.1. TX_CORE QoS Scheme
++[[aou-tx_core-qos-scheme]]
++==== TX_CORE QoS Scheme
+ 
+ <<figure-4>> shows the arbitration path used to select among resource-plane requests.
+ 
+@@ -83,8 +83,8 @@ image::image6.png[Figure 6. Port QoS arbitration example]
+ [[figure-7]]
+ image::image7.png[Figure 7. AXI QoS arbitration example]
+ 
+-[[aou-33-rx_core]]
+-=== 3.3. RX_CORE
++[[aou-rx_core]]
++=== RX_CORE
+ 
+ [caption=""]
+ .Figure 8. Block Diagram of AOU_RX_CORE
+@@ -108,8 +108,8 @@ xref:figure-9[] shows the architecture of the Chunk Decoder which is central sub
+ 
+ For example, a B message has a size of 1 granule and can therefore be decoded immediately once a valid chunk is received from RX_FDI_IF. In contrast, Rdata or Wdata, which have a data width of 1024 bits, require 27-30 granules, and thus cannot be decoded immediately. Instead, they are decoded after approximately three cycles. Because messages of 27-30 granules may span up to four flits during transmission.
+ 
+-[[aou-34-message-fifo]]
+-=== 3.4. Message FIFO
++[[aou-message-fifo]]
++=== Message FIFO
+ 
+ <<figure-10>> shows the data FIFO organization.
+ 
+@@ -141,15 +141,15 @@ If the data received from the remote die has sdlen of 0(256bit data), the messag
+ 
+ In addition, the depth of the Data FIFO is not 44. The depth has been determined under the assumption that the current bus data width is 512 bits. When the bus data width is 512 bits, a W message occupies 15 granules. Since the decoder in RX_CORE can decode 12 granules per cycle, the maximum W message can reach the FIFO once every 1.25 cycles (15G ÷ 12G/cycle = 1.25 cycles). Furthermore, as mentioned above, when the bus data width is 512 bits, each message is stored across two FIFO entries. Therefore, if the maximum turnaround time (TAT) to be covered is 50 ns (50 cycles), the depth can be set to 80 (50 / 1.25 x 2 = 80). Regarding the margin, Data FIFOpass:[']s depth is set to 88.
+ 
+-When [.monospaced]#++FDI_CONFIG++# selects a 1024b (128B) FDI interface ([.monospaced]#++FDI_CFG_SP_128B++# or [.monospaced]#++FDI_CFG_TP_64B_128B++#), the per-chunk granule rate roughly doubles, so the per-RP [.monospaced]#++RP*_RX_W_FIFO_DEPTH++# / [.monospaced]#++RP*_RX_R_FIFO_DEPTH++# parameter defaults are bumped to 140 entries to keep the same effective TAT margin. See xref:{aou-integration-xref}#aou-ig-parameter-list[Section 2] for the parameter defaults.
++When [.monospaced]#++FDI_CONFIG++# selects a 1024b (128B) FDI interface ([.monospaced]#++FDI_CFG_SP_128B++# or [.monospaced]#++FDI_CFG_TP_64B_128B++#), the per-chunk granule rate roughly doubles, so the per-RP [.monospaced]#++RP*_RX_W_FIFO_DEPTH++# / [.monospaced]#++RP*_RX_R_FIFO_DEPTH++# parameter defaults are bumped to 140 entries to keep the same effective TAT margin. See xref:{aou-integration-xref}#aou-ig-parameter-list[the Integrator Guide] for the parameter defaults.
+ 
+ FIFOs are allocated for each RP, and the depth of the FIFOs for each RP is configurable.
+ 
+-[[aou-35-data-width-converter]]
+-=== 3.5. Data width converter
++[[aou-data-width-converter]]
++=== Data width converter
+ 
+-[[aou-351-overview]]
+-==== 3.5.1. Overview
++[[aou-overview]]
++==== Overview
+ 
+ [caption=""]
+ .Figure 12. AXI4MUX_3X1_TOP
+@@ -160,8 +160,8 @@ According to the AoU specification, even if the data width differs between chips
+ 
+ Within AOU_CORE_TOP, the [.monospaced]#++AOU_AXI4MUX_3X1_TOP++# module performs this function. xref:figure-12[] shows how the structure of the Bypass, AXI Downsizer, and AXI Upsizer varies depending on the AXI data width of the local die.
+ 
+-[[aou-352-width-adaptation-paths]]
+-==== 3.5.2. Width Adaptation Paths
++[[aou-width-adaptation-paths]]
++==== Width Adaptation Paths
+ 
+ Three slave channel slots correspond to three possible remote data widths: 256 bits, 512 bits, and 1024 bits. Which slot uses an upsizer, bypass, or downsizer depends on the local diepass:[']s [.monospaced]#++AXI_DATA_WD++# parameter. A dedicated variant of the width-adapter module is instantiated for each supported local width:
+ 
+@@ -184,8 +184,8 @@ path for each local and remote data width.
+ 
+ The upsizer ([.monospaced]#++AOU_AXI_UP++#) packs multiple narrow beats into a single wider beat, recalculating [.monospaced]#++AWLEN++#/[.monospaced]#++ARLEN++# accordingly. The downsizer ([.monospaced]#++AOU_AXI_DOWN++#) splits a single wide beat into multiple narrower beats. Both modules regenerate [.monospaced]#++WLAST++# internally using a beat counter that compares the current W beat count against the recalculated burst length.
+ 
+-[[aou-353-wlast-regeneration]]
+-==== 3.5.3. WLAST Regeneration
++[[aou-wlast-regeneration]]
++==== WLAST Regeneration
+ 
+ The AoU Write Data message does not carry a [.monospaced]#++WLAST++# signal. The [.monospaced]#++AOU_AXI_WLAST_GEN++# module regenerates [.monospaced]#++WLAST++# by aligning the phases of WriteReq and Write Data messages. It operates upstream of the width adapters in the RX-to-AXI path within [.monospaced]#++AOU_CORE_RP++#.
+ 
+@@ -196,24 +196,24 @@ The module uses [.monospaced]#++I_S_WDLENGTH++# (derived from the [.monospaced]#
+ 
+ In addition to [.monospaced]#++AOU_AXI_WLAST_GEN++#, the upsizer and downsizer modules ([.monospaced]#++AOU_AXI_UP++# and [.monospaced]#++AOU_AXI_DOWN++#) each contain their own WLAST generation logic to account for the changed burst length after width conversion.
+ 
+-[[aou-36-axi-transaction-splitter]]
+-=== 3.6. AXI Transaction Splitter
++[[aou-axi-transaction-splitter]]
++=== AXI Transaction Splitter
+ 
+-[[aou-361-overview]]
+-==== 3.6.1. Overview
++[[aou-overview]]
++==== Overview
+ 
+ In the AoU specification, the AXI LEN field is fixed at 8 bits, allowing the remote die to issue burst transactions up to the maximum supported by an 8-bit AXI LEN. However, because the local diepass:[']s bus may not support the full 8-bit burst length, inbound AXI transactions must be split into bursts that the local bus can handle and then reassembled to match the original request.
+ 
+ Even if the burst length increases as a result of data-width conversion, the AXI transactions are always split to ensure they do not exceed the maximum burst length supported by the local bus.
+ 
+-The splitter ([.monospaced]#++AOU_AXI_SPLIT_TR++#) sits between the 3:1 arbitration mux and the xref:aou-38-axi-aggregator[AXI Aggregator] inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP, and the maximum burst length can be configured independently for each RP through the [.monospaced]#++AOU_SPLIT_TR_RPn++# SFRs.
++The splitter ([.monospaced]#++AOU_AXI_SPLIT_TR++#) sits between the 3:1 arbitration mux and the xref:aou-axi-aggregator[AXI Aggregator] inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP, and the maximum burst length can be configured independently for each RP through the [.monospaced]#++AOU_SPLIT_TR_RPn++# SFRs.
+ 
+ ______________________________________________________________________________________________________________________________________________________________________________________________
+ *Note:* The [.monospaced]#++AOU_CON0.AXI_SPLIT_TR_EN++# field exists in the SFR but is currently tied to [.monospaced]#++1'b0++# in [.monospaced]#++AOU_CORE_RP++#, making the splitter always active. The enable bit is reserved for future use.
+ ______________________________________________________________________________________________________________________________________________________________________________________________
+ 
+-[[aou-362-burst-splitting]]
+-==== 3.6.2. Burst Splitting
++[[aou-burst-splitting]]
++==== Burst Splitting
+ 
+ The splitter uses internal address-generator submodules ([.monospaced]#++aou_axi_split_addrgen_ar++# for reads, [.monospaced]#++aou_axi_split_addrgen_aw++# for writes) to decompose a single long burst into multiple sub-bursts, each no longer than [.monospaced]#++MAX_AxBURSTLEN + 1++# beats. Addresses for each sub-burst are computed from the original base address, burst type, and size.
+ 
+@@ -240,17 +240,17 @@ and resulting beat counts.
+ 
+ *ID width:* The splitter reserves 2 bits from the AXI ID for internal sub-burst tracking. Master-side IDs are therefore [.monospaced]#++ID_WD - 2++# bits wide. The 2 extra bits allow the splitter to correlate responses from up to 4 outstanding sub-bursts per original transaction.
+ 
+-[[aou-363-response-reassembly]]
+-==== 3.6.3. Response Reassembly
++[[aou-response-reassembly]]
++==== Response Reassembly
+ 
+ *Read path:* The [.monospaced]#++aou_split_tr_arch++# reorder buffer tracks the sub-burst sequence for each outstanding read. Slave-side [.monospaced]#++RLAST++# is asserted only when the final beat of the last sub-burst is received, reconstructing the original burst boundary. Intermediate [.monospaced]#++RLAST++# signals from the master side are consumed internally.
+ 
+ *Write path:* B responses from sub-bursts are merged. The splitter tracks outstanding write sub-bursts with [.monospaced]#++r_wr_pending_cnt++# and returns a single B response to the slave side once all sub-bursts have completed. If any sub-burst returns an error ([.monospaced]#++|I_M_BRESP_RS++#), the merged [.monospaced]#++BRESP_ERR++# flag is set, propagating the error to the slave-side response.
+ 
+-*ID mismatch detection:* The splitter exports [.monospaced]#++DEST_TABLE_RID_ERR++# and [.monospaced]#++DEST_TABLE_BID_ERR++# signals that flag responses with IDs not matching any outstanding transaction. These feed the xref:aou-4-interrupt[INT_MI0_ID_MISMATCH] interrupt source via [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#.
++*ID mismatch detection:* The splitter exports [.monospaced]#++DEST_TABLE_RID_ERR++# and [.monospaced]#++DEST_TABLE_BID_ERR++# signals that flag responses with IDs not matching any outstanding transaction. These feed the xref:aou-interrupt[INT_MI0_ID_MISMATCH] interrupt source via [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#.
+ 
+-[[aou-364-sfr-configuration]]
+-==== 3.6.4. SFR Configuration
++[[aou-sfr-configuration]]
++==== SFR Configuration
+ 
+ <<aou-burst-splitter-sfr-controls-table>> identifies the SFR fields associated with
+ burst splitting.
+@@ -270,11 +270,11 @@ burst splitting.
+ 
+ These SFRs must be configured before activation and must not be changed during normal operation.
+ 
+-[[aou-37-write-early-response-controller]]
+-=== 3.7. Write Early Response Controller
++[[aou-write-early-response-controller]]
++=== Write Early Response Controller
+ 
+-[[aou-371-overview]]
+-==== 3.7.1. Overview
++[[aou-overview]]
++==== Overview
+ 
+ The [.monospaced]#++AOU_EARLY_BRESP_CTRL_AWCACHE++# module sits between the local AXI subordinate interface and the AOU TX datapath. One instance exists per RP and can be independently enabled or disabled via the per-RP [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.EARLY_BRESP_EN++# SFR.
+ 
+@@ -282,8 +282,8 @@ When enabled, the module returns an early B response ([.monospaced]#++BRESP = OK
+ 
+ Early response applies only to *bufferable* writes ([.monospaced]#++AWCACHE[0] = 1++#). Non-bufferable writes ([.monospaced]#++AWCACHE[0] = 0++#) pass through the module unchanged: the AW, W, and B channels are forwarded directly between the local AXI interface and the AOU TX datapath with no early response generated, and the actual BRESP from the remote die is returned to the local AXI manager as normal.
+ 
+-[[aou-372-transaction-flow----normal-case]]
+-==== 3.7.2. Transaction Flow \-- Normal Case
++[[aou-transaction-flow----normal-case]]
++==== Transaction Flow \-- Normal Case
+ 
+ <<aou-successful-early-write-response-figure>> shows the message flow for a bufferable write when the remote die returns a successful response.
+ 
+@@ -293,8 +293,8 @@ image::early-response-normal-flow.svg[Message flow for a bufferable write with a
+ 
+ When the actual B response arrives from the remote die for a transaction that already received an early response, the controller consumes it internally: [.monospaced]#++O_AXI_S_BVALID++# is held low (the local AXI manager sees no second response) while [.monospaced]#++O_AXI_M_BREADY++# is asserted high (the response is drained from the AOU RX path).
+ 
+-[[aou-373-transaction-flow----error-case]]
+-==== 3.7.3. Transaction Flow \-- Error Case
++[[aou-transaction-flow----error-case]]
++==== Transaction Flow \-- Error Case
+ 
+ If the actual B response from the remote die carries an error ([.monospaced]#++BRESP[1] = 1++#, indicating SLVERR or DECERR), the error cannot be reported via the AXI B channel because the early OKAY response was already returned to the local AXI manager. Instead, the error is reported via interrupt and SFR capture.
+ 
+@@ -311,8 +311,8 @@ The interrupt fires when the consumed response has [.monospaced]#++BRESP[1] = 1+
+ 2.  Read [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_ERR_TYPE_INFO++# to identify the error type (SLVERR or DECERR).
+ 3.  Write 1 to [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_ERR++# (W1C) to clear the interrupt.
+ 
+-[[aou-374-id-ordering]]
+-==== 3.7.4. ID Ordering
++[[aou-id-ordering]]
++==== ID Ordering
+ 
+ The [.monospaced]#++AOU_EARLY_TABLE++# inside the controller maintains a tracking table with [.monospaced]#++WR_MO_CNT++# entries (matching the subordinate write outstanding count). Each entry records:
+ 
+@@ -334,8 +334,8 @@ outstanding write.
+ 
+ The [.monospaced]#++early_go++# flag ensures that for transactions sharing the same AXI ID, early responses are issued strictly in order. A later bufferable transaction with the same ID waits until all prior same-ID transactions have been responded to (either via early response or actual remote BRESP). This preserves AXI ID ordering even when bufferable and non-bufferable writes with the same ID are interleaved.
+ 
+-[[aou-375-write-outstanding-queue-backpressure]]
+-==== 3.7.5. Write-Outstanding Queue Backpressure
++[[aou-write-outstanding-queue-backpressure]]
++==== Write-Outstanding Queue Backpressure
+ 
+ The backpressure mechanism described in this section is only active when the early response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#). When disabled, the module is a transparent pass-through: all AW, W, and B signals are wired directly between the subordinate and manager interfaces with no outstanding-count gating, and write depth is bounded only by whatever the downstream AOU TX datapath can accept.
+ 
+@@ -354,8 +354,8 @@ and draining as tracking entries become available.
+ .AoU write-outstanding backpressure
+ image::write-outstanding-backpressure.svg["Write-outstanding queue filling, stalling, and draining as early-table entries free up"]
+ 
+-[[aou-376-mixed-ordering----bufferable-before-non-bufferable-same-id]]
+-==== 3.7.6. Mixed Ordering \-- Bufferable Before Non-Bufferable (Same ID)
++[[aou-mixed-ordering----bufferable-before-non-bufferable-same-id]]
++==== Mixed Ordering \-- Bufferable Before Non-Bufferable (Same ID)
+ 
+ When a bufferable write (TXN0) is followed by a non-bufferable write (TXN1) on the same AWID, the controller handles them as follows:
+ 
+@@ -375,8 +375,8 @@ bufferable write precedes a non-bufferable write on the same AXI ID.
+ .AoU bufferable then non-bufferable writes
+ image::mixed-order-bufferable-first.svg[Mixed-ordering flow with a bufferable write followed by a non-bufferable write on the same AXI ID]
+ 
+-[[aou-377-mixed-ordering----non-bufferable-before-bufferable-same-id]]
+-==== 3.7.7. Mixed Ordering \-- Non-Bufferable Before Bufferable (Same ID)
++[[aou-mixed-ordering----non-bufferable-before-bufferable-same-id]]
++==== Mixed Ordering \-- Non-Bufferable Before Bufferable (Same ID)
+ 
+ When a non-bufferable write (TXN0) is followed by a bufferable write (TXN1) on the same AWID, the early response for TXN1 is *delayed* until TXN0pass:[']s actual B has been received.
+ 
+@@ -394,8 +394,8 @@ non-bufferable write precedes a bufferable write on the same AXI ID.
+ .AoU non-bufferable then bufferable writes
+ image::mixed-order-nonbufferable-first.svg[Mixed-ordering flow with a non-bufferable write followed by a bufferable write on the same AXI ID]
+ 
+-[[aou-378-enabledisable-procedure]]
+-==== 3.7.8. Enable/Disable Procedure
++[[aou-enabledisable-procedure]]
++==== Enable/Disable Procedure
+ 
+ The [.monospaced]#++EARLY_BRESP_EN++# SFR may be written at any time, but the internal enable ([.monospaced]#++r_early_bresp_en++#) only transitions when it is safe to do so:
+ 
+@@ -403,8 +403,8 @@ The [.monospaced]#++EARLY_BRESP_EN++# SFR may be written at any time, but the in
+ 2.  Set or clear [.monospaced]#++EARLY_BRESP_EN++# via APB write.
+ 3.  The internal register transitions on the next clock edge where [.monospaced]#++O_BRESP_DONE++# is asserted and no AW handshake is in progress. This guarantees that the mode change does not occur mid-transaction.
+ 
+-[[aou-379-sfr-fields]]
+-==== 3.7.9. SFR Fields
++[[aou-sfr-fields]]
++==== SFR Fields
+ 
+ The [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++# register (one per RP: RP0 at [.monospaced]#++0x0028++#, RP1 at [.monospaced]#++0x0040++#, RP2 at [.monospaced]#++0x0058++#, RP3 at [.monospaced]#++0x0070++#) contains:
+ 
+@@ -423,22 +423,22 @@ controls.
+ |WRITE_RESP_DONE |[14] |RO |1 when no write transactions are pending ([.monospaced]#++r_aw_cnt == 0++#).
+ |==============================================================================================
+ 
+-See the full register map in Section 7.1 for the complete SFR listing.
++See the xref:software-operation.adoc#aou-sfr-setting[full register map] for the complete SFR listing.
+ 
+-[[aou-38-axi-aggregator]]
+-=== 3.8. AXI Aggregator
++[[aou-axi-aggregator]]
++=== AXI Aggregator
+ 
+-[[aou-381-overview]]
+-==== 3.8.1. Overview
++[[aou-overview]]
++==== Overview
+ 
+-The AXI Aggregator ([.monospaced]#++AOU_AGGREGATOR++#) combines narrow read and write data into full-width bus beats to improve bus utilization. It sits downstream of the xref:aou-36-axi-transaction-splitter[AXI Transaction Splitter] and is the last processing stage before the AXI manager port inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP.
++The AXI Aggregator ([.monospaced]#++AOU_AGGREGATOR++#) combines narrow read and write data into full-width bus beats to improve bus utilization. It sits downstream of the xref:aou-axi-transaction-splitter[AXI Transaction Splitter] and is the last processing stage before the AXI manager port inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP.
+ 
+ When enabled, the aggregator promotes [.monospaced]#++AWSIZE++#/[.monospaced]#++ARSIZE++# to the full bus width and recalculates [.monospaced]#++AWLEN++#/[.monospaced]#++ARLEN++# accordingly. For example, an incoming AR with size 256 bits and burst length 16 is converted to size 1024 bits and burst length 4, then issued on the AXI manager interface. When R data returns, it is split to restore the original format. The same principle applies to writes.
+ 
+ When disabled via the per-RP [.monospaced]#++AOU_CON0.RPn_AXI_AGGREGATOR_EN++# SFR, all master-side signals bypass the aggregator entirely and flow directly to the AXI manager port without modification.
+ 
+-[[aou-382-write-aggregation]]
+-==== 3.8.2. Write Aggregation
++[[aou-write-aggregation]]
++==== Write Aggregation
+ 
+ Write aggregation is activated when *both* conditions are met:
+ 
+@@ -461,15 +461,15 @@ A depth-16 synchronous FIFO decouples the AW and W channels. The AW is issued on
+ [[figure-13]]
+ image::write-aggregation.svg[Figure 13. Write Aggregation -- Narrow-to-Wide Beat Merging]
+ 
+-[[aou-383-read-aggregation]]
+-==== 3.8.3. Read Aggregation
++[[aou-read-aggregation]]
++==== Read Aggregation
+ 
+ Read aggregation follows the same size-promotion logic as writes. [.monospaced]#++ARSIZE++# and [.monospaced]#++ARLEN++# are promoted to the full bus width, and [.monospaced]#++ARBURST++# is passed through (the aggregator does not restrict burst type to INCR).
+ 
+ The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR transactions. For each issued AR, it records the original burst geometry (size, length) so that when wide R data returns from the manager side, the module can regenerate the correct slave-side [.monospaced]#++RLAST++# at the original burst boundaries. Wide R beats are presented to the slave side multiple times (once per original narrow beat) with the appropriate byte-lane selection.
+ 
+-[[aou-384-sfr-fields]]
+-==== 3.8.4. SFR Fields
++[[aou-sfr-fields]]
++==== SFR Fields
+ 
+ <<aou-aggregation-sfr-fields-table>> identifies the resource-plane aggregation enables.
+ 
+@@ -486,8 +486,8 @@ The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR trans
+ 
+ These fields must be configured before activation and must not be changed during normal operation.
+ 
+-[[aou-39-credit-controller]]
+-=== 3.9. Credit Controller
++[[aou-credit-controller]]
++=== Credit Controller
+ 
+ [caption=""]
+ .Figure 14. Block Diagram of AOU_CRD_CTRL
+@@ -606,17 +606,17 @@ Upon receipt of an ActivateReq from the remote die, AOU_CORE_TOP responds with a
+ * The Tx Credit is increased immediately upon receipt of a credit message from the Rx Core, within the updated value taking effect in the following cycle. Credit is decremented when the Tx Core packs a message and places it into the ring buffer. The consumption point is defined at the time of insertion into the per-RP Tx FIFO.
+ * The AOU_RX_CRD_CTRL exchanges credit messages (PLP protocol header MsgCredit field, dedicated Misc message) with the Tx core through valid/ready signaling. Tx core asserts CRDTGRANT_READY when the Tx core can pack a Misc Credit Message or asserts MSGCREDIT_CRED_READY when a protocol header is required to be transmitted. A credit is considered advertised at the point when the credit message handshake (valid and ready both asserted) occurs. At that instant, the advertised credits are treated as already reserved for the RX FIFO. Accordingly, a credit is not considered returned when a message leaves the RX Core, but only when data is actually dequeued from the RX FIFO, releasing the previously reserved credit.
+ 
+-[[aou-310-rp-remapping]]
+-=== 3.10. RP Remapping
++[[aou-rp-remapping]]
++=== RP Remapping
+ 
+-[[aou-3101-configuration-rules]]
+-==== 3.10.1. Configuration Rules
++[[aou-configuration-rules]]
++==== Configuration Rules
+ 
+ The Resource Plane (RP) operates based on the smaller RP count between the local and remote dies and follows a strict one-to-one mapping. RP assignments are configured through the *DEST_RP* SFR. The values of [.monospaced]#++RP3_DEST++#, [.monospaced]#++RP2_DEST++#, [.monospaced]#++RP1_DEST++#, and [.monospaced]#++RP0_DEST++# must be unique, and for any RP that is utilized, the configuration on the local and remote dies must be symmetrical.
+ 
+ This configuration must remain static and must be programmed before activation. It must not be altered during normal operation.
+ 
+-When the local and remote dies have different [.monospaced]#++RP_COUNT++# values, the effective RP count is the smaller of the two. Unused RP slots in the [.monospaced]#++DEST_RP++# register are functionally donpass:[']t-care but should be set to non-overlapping values for clean credit routing (see xref:aou-3103-misconfiguration-behavior[Section 3.10.3]).
++When the local and remote dies have different [.monospaced]#++RP_COUNT++# values, the effective RP count is the smaller of the two. Unused RP slots in the [.monospaced]#++DEST_RP++# register are functionally donpass:[']t-care but should be set to non-overlapping values for clean credit routing (see xref:aou-misconfiguration-behavior[AOU Misconfiguration Behaviour]).
+ 
+ <<figure-17>> shows how resource-plane identifiers are remapped across the link.
+ 
+@@ -625,22 +625,22 @@ When the local and remote dies have different [.monospaced]#++RP_COUNT++# values
+ [[figure-17]]
+ image::image16.png[Figure 17. Resource Plane Remapping]
+ 
+-[[aou-3102-header-encoding]]
+-==== 3.10.2. Header Encoding
++[[aou-header-encoding]]
++==== Header Encoding
+ 
+ For AXI messages (WriteReq, WriteData, ReadReq), the TX path ([.monospaced]#++AOU_TX_AXI_BUFFER++#) embeds the [.monospaced]#++DEST_RP++# field from the SFR into the destination RP field of every outgoing message header. The remote die uses this field to route the received message to the correct RP for processing.
+ 
+ For credit grant messages, [.monospaced]#++AOU_TX_CRD_CTRL++# encodes the _local_ RP index (not the [.monospaced]#++DEST_RP++# value) so that the remote die can route returned credits to the correct local RPpass:[']s credit counter. This asymmetry \-- destination RP in data messages, source RP in credit messages \-- is fundamental to the RP remapping scheme.
+ 
+-[[aou-3103-misconfiguration-behavior]]
+-==== 3.10.3. Misconfiguration Behavior
++[[aou-misconfiguration-behavior]]
++==== Misconfiguration Behavior
+ 
+ No hardware duplicate-detection logic exists for the [.monospaced]#++DEST_RP++# register. If [.monospaced]#++DEST_RP++# values are configured with overlapping (duplicate) entries, the credit routing logic in [.monospaced]#++AOU_TX_CRD_CTRL++# \-- which uses a [.monospaced]#++unique case++# statement on [.monospaced]#++I_RP_DEST_RP[i]++# \-- will fall through to the [.monospaced]#++default++# case, mapping to the RP0 credit view. This results in silent credit accounting errors rather than a flagged interrupt or error condition.
+ 
+ Software is responsible for ensuring uniqueness and symmetry of the [.monospaced]#++DEST_RP++# configuration on both link partners before initiating activation.
+ 
+-[[aou-311-ucie-flit-cancel-mechanism]]
+-=== 3.11. UCIe Flit cancel mechanism
++[[aou-ucie-flit-cancel-mechanism]]
++=== UCIe Flit cancel mechanism
+ 
+ AOU_CORE supports all UCIe flit cancel mechanisms. The three cases \-- retransmit, flit partially valid, and full flit cancel \-- are handled by the [.monospaced]#++AOU_RX_FDI_IF++# submodule within RX_CORE.
+ 
+@@ -665,8 +665,8 @@ image::image18.png[Figure 19. UCIe Flit Cancel - Flit Partially Valid case]
+ [[figure-20]]
+ image::image19.png[Figure 20. UCIe Flit Cancel - Full Flit Cancel case]
+ 
+-[[aou-3111-cancel-cases]]
+-==== 3.11.1. Cancel Cases
++[[aou-cancel-cases]]
++==== Cancel Cases
+ 
+ The [.monospaced]#++AOU_RX_FDI_IF++# module uses the FDI [.monospaced]#++pl_valid++# and [.monospaced]#++pl_flit_cancel++# signals to determine how to handle each incoming chunk. Three cases are distinguished:
+ 
+@@ -682,8 +682,8 @@ The [.monospaced]#++AOU_RX_FDI_IF++# module uses the FDI [.monospaced]#++pl_vali
+ |0 |1 |*Full Flit Cancel*: Phase counter decrements by 2. Staging buffer entries are cleared. This is the strongest rollback, discarding the entire in-progress half-flit.
+ |=============================================================================================================================================================================================================================================
+ 
+-[[aou-3112-rx_fdi_if-buffering]]
+-==== 3.11.2. RX_FDI_IF Buffering
++[[aou-rx_fdi_if-buffering]]
++==== RX_FDI_IF Buffering
+ 
+ The [.monospaced]#++AOU_RX_FDI_IF++# module maintains a staging buffer ([.monospaced]#++r_data++#) that is [.monospaced]#++HF_PHASE_CNT++# entries deep, where [.monospaced]#++HF_PHASE_CNT = PHASE_CNT / 2++#. For the default 512-bit FDI data width, [.monospaced]#++PHASE_CNT = 4++# and [.monospaced]#++HF_PHASE_CNT = 2++#, so the staging buffer holds 2 chunk entries \-- one half-flit of data.
+ 
+@@ -695,8 +695,8 @@ rx_chunk_data_valid = r_data_valid[1] && !pl_flit_cancel
+ 
+ This ensures that chunk presentation is suppressed whenever [.monospaced]#++pl_flit_cancel++# is asserted, even if valid data exists in the staging buffer. Downstream, [.monospaced]#++AOU_RX_CORE++# advances its phase counter ([.monospaced]#++r_aou_rx_phase++#) only when [.monospaced]#++rx_chunk_data_valid++# is high, so cancel-suppressed cycles stall the RX phase progression without data loss.
+ 
+-[[aou-3113-timing]]
+-==== 3.11.3. Timing
++[[aou-timing]]
++==== Timing
+ 
+ Cancel handling is purely combinational on the same clock edge as the FDI input signals. No additional pipeline stages are introduced beyond the 2-entry staging buffer and the phase FSM. The latency from FDI input to valid chunk presentation at RX_CORE is therefore determined solely by the half-flit fill time under normal operation.
+ 
+diff --git a/DOC/MAS/interrupts-errors.adoc b/DOC/MAS/interrupts-errors.adoc
+index eab0803d2..fdde8f55a 100644
+--- a/DOC/MAS/interrupts-errors.adoc
++++ b/DOC/MAS/interrupts-errors.adoc
+@@ -10,7 +10,7 @@ ifndef::aou-software-xref[]
+ endif::[]
+ 
+ [[aou-4-interrupt]]
+-== 4. Interrupt
++== Interrupt
+ 
+ <<table-4>> lists the interrupt names, access behavior, and triggering conditions.
+ 
+@@ -31,35 +31,35 @@ endif::[]
+ 
+ * *INT_ACTIVATE_START*
+ 
+-An interrupt that occurs when activation of the AoU Protocol layer is required. The interrupt can be cleared by writing pass:[']1pass:['] to the AOU_CORE.AOU_INIT.INT_ACTIVATE_START SFR. For details, please refer to the Interrupt description in xref:{aou-software-xref}#aou-73-activation-deactivation-flow[Section 7.3] "Activation & Deactivation Flow".
++An interrupt that occurs when activation of the AoU Protocol layer is required. The interrupt can be cleared by writing pass:[']1pass:['] to the AOU_CORE.AOU_INIT.INT_ACTIVATE_START SFR. For details, please refer to the Interrupt description in xref:{aou-software-xref}#aou-73-activation-deactivation-flow[Activation & Deactivation Flow].
+ 
+ * *INT_DEACTIVATE_START*
+ 
+-An interrupt that occurs when deactivation of the AoU Protocol layer is required. The interrupt can be cleared by writing pass:[']1pass:['] to the AOU_CORE.AOU_INIT.INT_DEACTIVATE_START SFR. For details, please refer to the Interrupt description in xref:{aou-software-xref}#aou-73-activation-deactivation-flow[Section 7.3] "Activation & Deactivation Flow".
++An interrupt that occurs when deactivation of the AoU Protocol layer is required. The interrupt can be cleared by writing pass:[']1pass:['] to the AOU_CORE.AOU_INIT.INT_DEACTIVATE_START SFR. For details, please refer to the Interrupt description in xref:{aou-software-xref}#aou-73-activation-deactivation-flow[Activation & Deactivation Flow].
+ 
+ * *INT_SI0_ID_MISMATCH*
+ 
+-An interrupt that occurs on the AXI Subordinate Interface when a B or R channel response is received with an ID that was not previously issued as a request. For details on ID mismatch detection, see xref:aou-374-id-ordering[Section 3.7.4].
++An interrupt that occurs on the AXI Subordinate Interface when a B or R channel response is received with an ID that was not previously issued as a request. For details on ID mismatch detection, see xref:aou-id-ordering[].
+ 
+ Software can check the mismatched AXI ID by reading [.monospaced]#++AOU_CORE.AXI_SLV_ID_MISMATCH_ERR++# SFR. The interrupt can be cleared by writing pass:[']1pass:['] to [.monospaced]#++AOU_CORE.AXI_SLV_ID_MISMATCH_ERR.SLV_BRESP_ERR++# / [.monospaced]#++SLV_RRESP_ERR++#.
+ 
+ * *INT_MI0_ID_MISMATCH*
+ 
+-An interrupt that occurs on the AXI Manager Interface when a B or R channel response is received with an ID that was not previously issued as a request. This is detected by the xref:aou-36-axi-transaction-splitter[AXI Transaction Splitter] destination table.
++An interrupt that occurs on the AXI Manager Interface when a B or R channel response is received with an ID that was not previously issued as a request. This is detected by the xref:aou-axi-transaction-splitter[] destination table.
+ 
+ Software can check the mismatched AXI ID by reading [.monospaced]#++AOU_CORE.ERROR_INFO++# SFR. The interrupt can be cleared by writing pass:[']1pass:['] to [.monospaced]#++AOU_CORE.ERROR_INFO.SPLIT_BID_MISMATCH_ERR++# / [.monospaced]#++SPLIT_RID_MISMATCH_ERR++#.
+ 
+ * *INT_EARLY_RESP_ERR*
+ 
+-An interrupt that occurs when, due to the xref:aou-37-write-early-response-controller[Write Early Response] feature, a B response has already been sent through the AXI Subordinate Interface, and a subsequent actual B response arrives with an error. For details, see xref:aou-373-transaction-flow----error-case[Section 3.7.3].
++An interrupt that occurs when, due to the xref:aou-write-early-response-controller[] feature, a B response has already been sent through the AXI Subordinate Interface, and a subsequent actual B response arrives with an error. For details, see xref:aou-transaction-flow----error-case[].
+ 
+ Software can check the ID and error type of the transaction in which the error occurred by reading [.monospaced]#++AOU_CORE.WRITE_EARLY_RESPONSE++# SFR. The interrupt can be cleared by writing pass:[']1pass:['] to [.monospaced]#++AOU_CORE.WRITE_EARLY_RESPONSE.WRITE_RESP_ERR++#.
+ 
+ * *INT_REQ_LINKRESET*
+ 
+-An interrupt that occurs when AOU_CORE receives an AoU protocol violation. Refer to xref:{aou-software-xref}#aou-723-linkreset-error-reporting[Section 7.2.3] LinkReset Error Reporting. When AOU_CORE receives a protocol violation, software must perform a software reset of AOU_CORE and re-enter the activation sequence.
++An interrupt that occurs when AOU_CORE receives an AoU protocol violation. Refer to xref:{aou-software-xref}#aou-linkreset-error-reporting[LinkReset Error Reporting]. When AOU_CORE receives a protocol violation, software must perform a software reset of AOU_CORE and re-enter the activation sequence.
+ 
+ [[aou-5-error]]
+-== 5. Error
++== Error
+ 
+ *TBD*
+diff --git a/DOC/MAS/overview.adoc b/DOC/MAS/overview.adoc
+index a55b7bd48..37a65ab33 100644
+--- a/DOC/MAS/overview.adoc
++++ b/DOC/MAS/overview.adoc
+@@ -14,17 +14,17 @@ AOU_CORE Microarchitecture specification +
+ Version 1.00, Feb.27 2026 +
+ BOS Semiconductors
+ 
+-[[aou-1-introduction]]
+-== 1. Introduction
++[[aou-introduction]]
++== Introduction
+ 
+ This microarchitecture specification includes detailed functional description of AOU_CORE.
+ 
+ The contents of this document are given as follows. Section 1 is for overview. Section 2 is for features, implementation specific features, and assumptions. In Section 3, the architecture and operation of AoU IP are given. Section 4 covers interrupt sources. Section 5 covers error handling. Section 6 includes the integration guidelines such as clocks, resets, and I/O descriptions. Section 7 includes the software operation guide including the register map and activation flows. Section 8 includes performance, power, and area information.
+ 
+-[[aou-11-overview]]
+-=== 1.1. Overview
++[[aou-overview]]
++=== Overview
+ 
+-The AOU_CORE is a bridge between AXI interface and the UCIe FDI interface, defined in AoU standard v0.7 spec. To achieve low latency, AOU_CORE directly handles signals related to the UCIe FDI interface data flow control and processes data in 32-byte, 64-byte, or 128-byte chunks (selected at integration time via the [.monospaced]#++FDI_CONFIG++# parameter; see xref:{aou-integration-xref}#aou-ig-parameter-list[Section 2]) in a cut-through manner, without converting them to 256-byte flit data. It receives AXI messages from its own AXI subordinate interface, packs them into chunks of the configured FDI width, and transmits these chunks to the remote AoU device via UCIe. The remote AoU receives the chunks from the UCIe FDI interface, unpacks them into AXI messages, and delivers the data through its AXI manager interface. The one-way AoU latency, measured from the AXI input of the local device to the AXI output of the remote device over a back-to-back connection in a single clock domain, is 7 cycles for read requests, 8 cycles for read data, 9 cycles for write requests, 9 cycles for write data, and 6 cycles for write responses. For applications using UCIe, including those with some CDC domains, the round-trip time (RTT) latency from an AXI read request to the corresponding AXI read response through this AoU IP over UCIe is approximately 45 cycles, excluding the memory latency of the remote device.
++The AOU_CORE is a bridge between AXI interface and the UCIe FDI interface, defined in AoU standard v0.7 spec. To achieve low latency, AOU_CORE directly handles signals related to the UCIe FDI interface data flow control and processes data in 32-byte, 64-byte, or 128-byte chunks (selected at integration time via the [.monospaced]#++FDI_CONFIG++# parameter; see xref:{aou-integration-xref}#aou-ig-parameter-list[the Integrator guide]) in a cut-through manner, without converting them to 256-byte flit data. It receives AXI messages from its own AXI subordinate interface, packs them into chunks of the configured FDI width, and transmits these chunks to the remote AoU device via UCIe. The remote AoU receives the chunks from the UCIe FDI interface, unpacks them into AXI messages, and delivers the data through its AXI manager interface. The one-way AoU latency, measured from the AXI input of the local device to the AXI output of the remote device over a back-to-back connection in a single clock domain, is 7 cycles for read requests, 8 cycles for read data, 9 cycles for write requests, 9 cycles for write data, and 6 cycles for write responses. For applications using UCIe, including those with some CDC domains, the round-trip time (RTT) latency from an AXI read request to the corresponding AXI read response through this AoU IP over UCIe is approximately 45 cycles, excluding the memory latency of the remote device.
+ 
+ To achieve high efficiency, all TX requests and data messages are packed in a compact format, ensuring that no AoU payload slots are wasted. The current payload is even updated when the UCIe stalls the current chunk and space remains available. As a result, the throughput matches the values defined in the AoU specification. In each cycle, the RX can process the maximum number of messages defined in the AoU standard: 4 read requests, 4 write requests, 2 read data, 2 write data, and 12 write responses, respectively.
+ 
+@@ -32,10 +32,10 @@ It supports flow control for all exceptional cases defined in the UCIe standard.
+ 
+ AOU_CORE supports a configurable number of Resource Plane(RPs), with both the number of RPs and each RPpass:[']s AXI data width fully parameterizable. A dedicated field in the SFR allows software to configure the target RP, enabling flexible RP mapping. For each RP, the AW, W and AR channel support three arbitration modes: Round Robin, AXI QoS scheme, and Port QoS scheme. Additionally, a starvation-prevention mechanism is implemented to ensure fair arbitration across all RP channels.
+ 
+-The operating frequency of AOU_CORE targets 1 GHz and meets timing requirements without relying on multi-cycle paths. The TX buffer is configured with a minimal number of FIFO entries, while the RX Data buffer default depth is FDI-config aware: default 140 entries when [.monospaced]#++FDI_CONFIG++# selects a 1024b (128B) FDI interface ([.monospaced]#++FDI_CFG_SP_128B++# or [.monospaced]#++FDI_CFG_TP_64B_128B++#), and default 88 entries otherwise. The entry size takes into account the round-trip latency for credit consumption and return, and matches the per-RP [.monospaced]#++RP*_RX_W_FIFO_DEPTH++# / [.monospaced]#++RP*_RX_R_FIFO_DEPTH++# parameter defaults documented in xref:{aou-integration-xref}#aou-ig-parameter-list[Section 2].
++The operating frequency of AOU_CORE targets 1 GHz and meets timing requirements without relying on multi-cycle paths. The TX buffer is configured with a minimal number of FIFO entries, while the RX Data buffer default depth is FDI-config aware: default 140 entries when [.monospaced]#++FDI_CONFIG++# selects a 1024b (128B) FDI interface ([.monospaced]#++FDI_CFG_SP_128B++# or [.monospaced]#++FDI_CFG_TP_64B_128B++#), and default 88 entries otherwise. The entry size takes into account the round-trip latency for credit consumption and return, and matches the per-RP [.monospaced]#++RP*_RX_W_FIFO_DEPTH++# / [.monospaced]#++RP*_RX_R_FIFO_DEPTH++# parameter defaults documented in xref:{aou-integration-xref}#aou-ig-parameter-list[the Integrator guide].
+ 
+-[[aou-2-features]]
+-== 2. Features
++[[aou-features]]
++== Features
+ 
+ <<figure-1>> shows the AXI-to-UCIe bridge functions and their relationships.
+ 
+@@ -44,8 +44,8 @@ The operating frequency of AOU_CORE targets 1 GHz and meets timing requirements
+ [[figure-1]]
+ image::image1.png[Figure 1. Block Diagram of AOU_CORE and function description]
+ 
+-[[aou-21-basic-features]]
+-=== 2.1. Basic features
++[[aou-basic-features]]
++=== Basic features
+ 
+ * Single APB subordinate interface
+ ** Configuration/control/status register access
+@@ -55,7 +55,7 @@ image::image1.png[Figure 1. Block Diagram of AOU_CORE and function description]
+ * UCIe 256B latency-optimized flit(Format 6) support only
+ * Message packing and unpacking are handled in a unit of 32, 64, or 128 bytes, corresponding to the configured FDI data width (32B@1 GHz, 64B@1 GHz, or 128B@1 GHz).
+ * Selectable Early response by setting SFR
+-* Selectable 32B / 64B / 128B single-PHY and 32B+64B / 64B+128B two-PHY FDI configurations, selected via the [.monospaced]#++FDI_CONFIG++# parameter (see xref:{aou-integration-xref}#aou-ig-parameter-list[Section 2]). Two-PHY variants additionally require the [.monospaced]#pass:c[+define+TWO_PHY]# build flag so the second-PHY ports physically exist.
++* Selectable 32B / 64B / 128B single-PHY and 32B+64B / 64B+128B two-PHY FDI configurations, selected via the [.monospaced]#++FDI_CONFIG++# parameter (see xref:{aou-integration-xref}#aou-ig-parameter-list[the Integrator guide]). Two-PHY variants additionally require the [.monospaced]#pass:c[+define+TWO_PHY]# build flag so the second-PHY ports physically exist.
+ * Configurable number of Resource Plane and each RPpass:[']s AXI data width
+ * RP Remapping
+ * QoS scheme between RP with AW, W, AR channel
+diff --git a/DOC/MAS/ppa-appendices.adoc b/DOC/MAS/ppa-appendices.adoc
+index a382d51a4..a765c99ec 100644
+--- a/DOC/MAS/ppa-appendices.adoc
++++ b/DOC/MAS/ppa-appendices.adoc
+@@ -6,11 +6,11 @@ ifdef::aou-imagesdir[]
+ :imagesdir: {aou-imagesdir}
+ endif::[]
+ 
+-[[aou-8-ppa]]
+-== 8. PPA
++[[aou-ppa]]
++== PPA
+ 
+-[[aou-81-performance]]
+-=== 8.1. Performance
++[[aou-performance]]
++=== Performance
+ 
+ Performance evaluation is conducted in both 512-bit local die and 512-bit remote die environments. The initial latency is measured from the AXI input of the local AOU_CORE to the AXI output of the remote AOU_CORE.
+ 
+@@ -120,13 +120,13 @@ a|66.7%
+ 
+ * 0.4% performance drop is not from IP, but just from transfer data size. If the transfer data size is the multiples of 6 burst such 132 beats, it shows the same performance number with the limit in AoU spec. Everything is the same case. Note that the efficiency is measured with 128/(cycle_from_1st_valid_to_last_valid + 1), where 1 is the hidden bubble right before the first valid. It is indispensable since AoU data message size can not covered in a single 64B chunk, unlike local AXI bus.
+ 
+-[[aou-82-power]]
+-=== 8.2. Power
++[[aou-power]]
++=== Power
+ 
+ TBD
+ 
+-[[aou-83-area]]
+-=== 8.3. Area
++[[aou-area]]
++=== Area
+ 
+ <<figure-31>> shows the area contribution of each submodule in a single-resource-plane
+ AoU.
+diff --git a/DOC/MAS/software-operation.adoc b/DOC/MAS/software-operation.adoc
+index c778223b7..dc16eee67 100644
+--- a/DOC/MAS/software-operation.adoc
++++ b/DOC/MAS/software-operation.adoc
+@@ -9,13 +9,13 @@ ifndef::aou-architecture-xref[]
+ :aou-architecture-xref: architecture.adoc
+ endif::[]
+ 
+-[[aou-7-software-operation-guide]]
+-== 7. Software operation guide
++[[aou-software-operation-guide]]
++== Software operation guide
+ 
+ This section gives information about operation guide for the AOU_CORE.
+ 
+-[[aou-71-sfr-setting]]
+-=== 7.1. SFR setting
++[[aou-sfr-setting]]
++=== SFR setting
+ 
+ [[table-7]]
+ 
+@@ -213,7 +213,7 @@ _Table 7. Register Map_
+ 
+ *ERR SET is restricted to change the value while the system is running*
+ 
+-For details on the ACTIVATE and DEACTIVATE SFRs, please refer to xref:aou-73-activation-deactivation-flow[Section 7.3]: Activation & Deactivation Flow.
++For details on the ACTIVATE and DEACTIVATE SFRs, please refer to xref:aou-activation-deactivation-flow[Activation & Deactivation Flow].
+ 
+ *AOU_INIT.ACTIVATE_START*
+ 
+@@ -272,11 +272,11 @@ image::image21.png[Figure 22. Bubble inserted when Transmitter de-assert LP_VALI
+ 
+ * Default value is 0. AOU_CORE always sends messages to FDI for lowering latency
+ 
+-[[aou-72-debugging-features]]
+-=== 7.2. Debugging Features
++[[aou-debugging-features]]
++=== Debugging Features
+ 
+-[[aou-721-overview]]
+-==== 7.2.1. Overview
++[[aou-overview]]
++==== Overview
+ 
+ AOU_CORE provides several error-detection and debug features, each with a dedicated interrupt output and a per-feature mask bit in the [.monospaced]#++AOU_INTERRUPT_MASK++# register (0x000C). The table below summarises the mask bits and corresponding interrupt signals.
+ 
+@@ -294,8 +294,8 @@ AOU_CORE provides several error-detection and debug features, each with a dedica
+ 
+ Setting a mask bit to 1 masks (disables) the corresponding interrupt.
+ 
+-[[aou-722-axi-id-mismatch-error]]
+-==== 7.2.2. AXI ID Mismatch Error
++[[aou-axi-id-mismatch-error]]
++==== AXI ID Mismatch Error
+ 
+ AOU_CORE can detect AXI ID mismatches on both the manager and subordinate interfaces. A mismatch occurs when a B or R response arrives with an AXI ID that does not correspond to any outstanding request.
+ 
+@@ -307,8 +307,8 @@ AOU_CORE can detect AXI ID mismatches on both the manager and subordinate interf
+ 
+ *Subordinate side.* An analogous pending-ID table exists in [.monospaced]#++AOU_SLV_AXI_INFO++#, with SFR fields in [.monospaced]#++AXI_SLV_ID_MISMATCH_ERR_RPn++# (RP0 at 0x0034, RP1 at 0x004C, RP2 at 0x0064, RP3 at 0x007C). However, the subordinate-side mismatch outputs are currently tied to 0 in RTL; the SFR fields are allocated but will always read 0. The aggregate interrupt [.monospaced]#++INT_SI0_ID_MISMATCH++# will therefore never fire in the current implementation.
+ 
+-[[aou-723-linkreset-error-reporting]]
+-==== 7.2.3. LinkReset Error Reporting
++[[aou-linkreset-error-reporting]]
++==== LinkReset Error Reporting
+ 
+ When AOU_CORE detects a protocol-level error during activation or deactivation, it asserts [.monospaced]#++O_AOU_REQ_LINKRESET++# (to FDI) and [.monospaced]#++INT_REQ_LINKRESET++# (to SW). Both signals share the same net and are the logical OR of the four sub-conditions below. After handling the interrupt, SW must perform a LinkReset sequence.
+ 
+@@ -320,8 +320,8 @@ All LinkReset-related SFR fields reside in [.monospaced]#++LP_LINKRESET++# (0x00
+ 
+ *MsgCredit Timeout.* After the local die receives ActivateAck, it expects a CreditGrant message from the remote die indicating the number of resource planes. If no CreditGrant arrives within 2^([.monospaced]#++MSGCREDIT_TIME_OUT_VALUE++# + 18) core clock cycles, [.monospaced]#++MSGCREDIT_ERR++# [0] is set. [.monospaced]#++MSGCREDIT_TIME_OUT_VALUE++# [10:8] defaults to 4. Clear via W1C.
+ 
+-[[aou-724-rb-response-error-debug-fifo]]
+-==== 7.2.4. R/B Response Error Debug FIFO
++[[aou-rb-response-error-debug-fifo]]
++==== R/B Response Error Debug FIFO
+ 
+ When the manager interface receives an AXI B or R response with a non-OKAY status (SLVERR or DECERR), AOU_CORE captures the error details in a dedicated per-RP FIFO so that the remote die can retrieve them via AXI read.
+ 
+@@ -355,15 +355,15 @@ The typical access sequence is: read the head entry, then pop it, and repeat unt
+ [[figure-23]]
+ image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Access Sequence]
+ 
+-[[aou-725-write-early-response-error]]
+-==== 7.2.5. Write Early Response Error
++[[aou-write-early-response-error]]
++==== Write Early Response Error
+ 
+ When the early write-response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#) and the actual BRESP from the remote die carries an error for a transaction that already received an early OKAY, the error is reported via the [.monospaced]#++INT_EARLY_RESP_ERR++# interrupt. The failing transactionpass:[']s AXI ID and BRESP type are captured in [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++#. SW clears the error by writing 1 to [.monospaced]#++WRITE_RESP_ERR++# (W1C).
+ 
+-For a detailed description of the early response error flow, see xref:{aou-architecture-xref}#aou-373-transaction-flow----error-case[section 3.7.3 (Transaction Flow \-- Error Case)] and xref:{aou-architecture-xref}#aou-379-sfr-fields[section 3.7.9 (SFR Fields)].
++For a detailed description of the early response error flow, see xref:{aou-architecture-xref}#aou-transaction-flow----error-case[Transaction Flow \-- Error Case] and xref:{aou-architecture-xref}#aou-sfr-fields[SFR Fields].
+ 
+-[[aou-73-activation-deactivation-flow]]
+-=== 7.3. Activation & Deactivation Flow
++[[aou-activation-deactivation-flow]]
++=== Activation & Deactivation Flow
+ 
+ The Activation of AOU_CORE begins after the UCIe Link-up process has been successfully completed. The completion of UCIe link-up is indicated by the *I_INT_FSM_IN_ACTIVE* signal of the *AOU_CORE_TOP*.
+ 
+@@ -376,8 +376,8 @@ image::image23.png[Figure 24. Independent Activation Flow]
+ 
+ Regardless of its own activation state, a die must send an ActivateAck in response to an ActivateReq from the other die, to acknowledge receipt of the request.
+ 
+-[[aou-731-credit-management-type]]
+-==== 7.3.1. Credit Management Type
++[[aou-credit-management-type]]
++==== Credit Management Type
+ 
+ There are two types of Credit Management Type. Since current AOU_SPEC cannot resolve pending AXI response without Activate again. When Credit Management type is set to 1, During Deactivate state, AOU_CORE can resolve pending AXI response itself. It can be configured through AOU_CON0.CREDIT_MANAGE, and the default value is 0.
+ 
+@@ -394,8 +394,8 @@ There are two types of Credit Management Type. Since current AOU_SPEC cannot res
+ ** Credits for RDATA, WRESP messages must be sent after the DeactivateAck message is sent.
+ ** The Deactivate interrupt only provides a hint indicating that the remote die has started activate/deactivate.
+ 
+-[[aou-732-activation-start]]
+-==== 7.3.2. Activation start
++[[aou-activation-start]]
++==== Activation start
+ 
+ Activation can be initiated by setting ACTIVATE_START SFR: In the current implementation, credits are granted based on the depth of the RX FIFO, so it is required to ensure that all messages in the RX FIFO have been popped before sending the ActivateReq message.
+ 
+@@ -405,8 +405,8 @@ Activation START(via SFR AOU_INIT.ACTIVATE_START SFR)
+ * Activation does not proceed until I_INT_FSM_IN_ACTIVE is asserted, since no flits can be transmitted beforehand. Therefore, it is allowed to set the ACTIVATE_START SFR before I_INT_FSM_IN_ACTIVE is asserted. If it is set before the assertion, the activation process will automatically proceed after I_INT_FSM_IN_ACTIVE becomes asserted.
+ * AOU_INIT.ACTIVATE_START SFR is automatically cleared to 0 once the activation is completed and AOU_ACTIVATE_STATE transitions to ENABLED.
+ 
+-[[aou-733-deactivation-start]]
+-==== 7.3.3. Deactivation start
++[[aou-deactivation-start]]
++==== Deactivation start
+ 
+ Deactivation is initiated by setting the AOU_INIT.DEACTIVATE_START register. Setting this register does not immediately trigger sending a DeactivateReq message. The detailed conditions and sequence for deactivation can be found in the *Deactivation Sequence Flow* section. This section will only describe AOU_INIT.DEACTIVATE_TIME_OUT_VALUE SFR.
+ 
+@@ -424,8 +424,8 @@ The ACTIVATION_OP field encodes deactivation messages as follows:
+ [[figure-25]]
+ image::image24.png[Figure 25. Deactivation sequence with DEACTIVATE_START]
+ 
+-[[aou-734-deactivation-sequence-flow]]
+-==== 7.3.4. Deactivation Sequence Flow
++[[aou-deactivation-sequence-flow]]
++==== Deactivation Sequence Flow
+ 
+ Once the local die issues a DeactivateReq, it can no longer provide responses to transactions initiated by the remote die. If the remote die continues to send requests or waits for responses without being notified, it may enter a hang state. To manage this safely, the remote die must take explicit action upon receiving a DeactivateReq: 1. Immediately generate an interrupt to the CPU to inform the system software that a DeactivateReq has been received and that it must set the DEACTIVATE_START SFR.
+ 
+@@ -456,8 +456,8 @@ Before sending a new ActivateReq, the Rx FIFO must be completely emptied - that
+ 
+ To meet satisfy the condition in the local diepass:[']s sequence 10.1, no backpressure must occur on the local diepass:[']s MI AW/AR/W channels.
+ 
+-[[aou-735-activationdeactivation-interrupt]]
+-==== 7.3.5. Activation/Deactivation Interrupt
++[[aou-activationdeactivation-interrupt]]
++==== Activation/Deactivation Interrupt
+ 
+ *INT_ACTIVATE_START*
+ 
+@@ -478,8 +478,8 @@ To meet satisfy the condition in the local diepass:[']s sequence 10.1, no backpr
+ * When AOU_INIT.ACTIVATE_STATE_DISABLED becomes 1, write 1 to clear the AOU_INIT.INT_DEACTIVATE_START W1C SFR.
+ * An interrupt is asserted when AOU_INIT.DEACTIVATE_START SFR is not set and the local die receives a DeactivateReq message from the remote die.
+ 
+-[[aou-736-pm-entry--linkreset--linkdisabled-sequence]]
+-==== 7.3.6. PM entry / LinkReset / LinkDisabled sequence
++[[aou-pm-entry--linkreset--linkdisabled-sequence]]
++==== PM entry / LinkReset / LinkDisabled sequence
+ 
+ For PM entry / LinkReset / LinkDisable entry sequence, UCIE_CORE check AOU_CORE state and try to change state. For this sequence, resolving pending AXI transactions is necessary.
+ 
+diff --git a/DOC/integration_guide/integrator.adoc b/DOC/integration_guide/integrator.adoc
+index e011a36c0..76a32cd52 100644
+--- a/DOC/integration_guide/integrator.adoc
++++ b/DOC/integration_guide/integrator.adoc
+@@ -46,7 +46,7 @@ state machine |Must be handled externally |[.monospaced]#++I_INT_FSM_IN_ACTIVE++
+ ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+ *Note:* All AXI, APB, FDI datapath, interrupt, and DFT interfaces are
+ identical between [.monospaced]#++AOU_TOP++# and [.monospaced]#++AOU_CORE_TOP++#. The sections below that
+-document these interfaces (Sections 2-8) apply to both modules unless
++document these interfaces apply to both modules unless
+ otherwise noted.
+ ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+ 
+@@ -57,10 +57,10 @@ refer to the _AOU_CORE Micro-Architecture Specification_
+ 
+ 
+ [[aou-ig-module-overview]]
+-== 1. Module Overview
++== Module Overview
+ 
+ [[aou-ig-aou_top]]
+-=== 1.1 AOU_TOP
++=== AOU_TOP
+ 
+ [.monospaced]#++AOU_TOP++# is the recommended top-level integration module. It
+ instantiates two submodules:
+@@ -70,31 +70,31 @@ the four FDI handshake pairs (wake, clock, state negotiation, RX
+ activation) required to bring the FDI link from RESET to ACTIVE and
+ handle teardown, LinkError recovery, Retrain, and L1 entry/exit.
+ * *[.monospaced]#++AOU_CORE_TOP++#* -- The AXI-over-UCIe protocol engine described in
+-xref:aou-ig-aou_core_top[Section 1.2].
++xref:aou-ig-aou_core_top[].
+ 
+ The bringup controller drives [.monospaced]#++I_INT_FSM_IN_ACTIVE++# into the protocol
+ engine internally, so this signal is not exposed as a top-level port on
+ [.monospaced]#++AOU_TOP++#. Instead, [.monospaced]#++AOU_TOP++# exposes:
+ 
+ * FDI bringup control ports for the physical layer handshakes
+-(xref:aou-ig-fdi-bringup-control-interface-aou_top-only[Section 3.14])
++(xref:aou-ig-fdi-bringup-control-interface-aou_top-only[])
+ * Software bringup control pins
+-(xref:aou-ig-fdi-bringup-software-control-aou_top-only[Section 3.15])
++(xref:aou-ig-fdi-bringup-software-control-aou_top-only[])
+ * Bringup status outputs
+-(xref:aou-ig-fdi-bringup-status-aou_top-only[Section 3.16])
++(xref:aou-ig-fdi-bringup-status-aou_top-only[])
+ 
+ The FDI bringup flow is described in
+-xref:aou-ig-fdi-bringup-flow-aou_top-only[Section 6.6].
++xref:aou-ig-fdi-bringup-flow-aou_top-only[].
+ 
+ [[aou-ig-aou_core_top]]
+-=== 1.2 AOU_CORE_TOP
++=== AOU_CORE_TOP
+ 
+ Figure 1 shows high level block diagram of AOU CORE TOP.
+ 
+ image::block_diagram.png[Figure 1 - AOU Core Top]
+ 
+ [[aou-ig-purpose-and-function]]
+-==== 1.2.1 Purpose and Function
++==== Purpose and Function
+ 
+ The AOU_CORE_TOP is a bridge between AXI interface and the UCIe FDI
+ interface, defined in AoU standard, AXI over UCIe Protocol Specification
+@@ -168,10 +168,10 @@ core clock.
+ When using [.monospaced]#++AOU_CORE_TOP++# directly, the integrator must provide an
+ external FDI state machine that drives [.monospaced]#++I_INT_FSM_IN_ACTIVE++# and the
+ associated control/status signals listed in
+-xref:aou-ig-ucie-external-control-and-status[Section 3.12].
++xref:aou-ig-ucie-external-control-and-status[].
+ 
+ [[aou-ig-key-features]]
+-==== 1.2.2 Key Features
++==== Key Features
+ 
+ * Single APB interface Configuration/control/status register access
+ * Multiple AXI master & slave interface
+@@ -185,7 +185,7 @@ FIFO Depth
+ * Selectable Early response by setting SFR8
+ * Selectable 32B / 64B / 128B single-PHY and 32B+64B / 64B+128B two-PHY
+ FDI configurations via the [.monospaced]#++FDI_CONFIG++# parameter (see
+-xref:aou-ig-parameter-list[Section 2]). Two-PHY variants additionally
++xref:aou-ig-parameter-list[]). Two-PHY variants additionally
+ require the [.monospaced]#pass:c[+define+TWO_PHY]# build flag so the second-PHY ports
+ physically exist.
+ * Parameterized number of Resource Plane and each RP’s AXI data width
+@@ -198,7 +198,7 @@ specification
+ 
+ 
+ [[aou-ig-parameter-list]]
+-== 2. Parameter List
++== Parameter List
+ 
+ [width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+ |=======================================================================
+@@ -358,10 +358,10 @@ supported by the design: [.monospaced]#++AOU_RX_CORE_IN_MUX++# requires
+ 
+ 
+ [[aou-ig-interface-signals]]
+-== 3. Interface Signals
++== Interface Signals
+ 
+ [[aou-ig-clock-and-reset]]
+-=== 3.1 Clock and Reset
++=== Clock and Reset
+ 
+ [cols="<,<,<,<",options="header",]
+ |==============================================================
+@@ -373,7 +373,7 @@ supported by the design: [.monospaced]#++AOU_RX_CORE_IN_MUX++# requires
+ |==============================================================
+ 
+ [[aou-ig-apb-slave-interface]]
+-=== 3.2 APB Slave Interface
++=== APB Slave Interface
+ 
+ [cols="<,<,<,<",options="header",]
+ |=========================================================
+@@ -389,7 +389,7 @@ supported by the design: [.monospaced]#++AOU_RX_CORE_IN_MUX++# requires
+ |=========================================================
+ 
+ [[aou-ig-axi-master-rx-ar-channel]]
+-=== 3.3 AXI Master (RX) – AR Channel
++=== AXI Master (RX) – AR Channel
+ 
+ [cols="<,<,<,<",options="header",]
+ |=======================================================================
+@@ -421,7 +421,7 @@ length.
+ |=======================================================================
+ 
+ [[aou-ig-axi-master-rx-r-channel]]
+-=== 3.4 AXI Master (RX) – R Channel
++=== AXI Master (RX) – R Channel
+ 
+ [width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+ |=======================================================================
+@@ -441,7 +441,7 @@ length.
+ |=======================================================================
+ 
+ [[aou-ig-axi-master-rx-aw-channel]]
+-=== 3.5 AXI Master (RX) – AW Channel
++=== AXI Master (RX) – AW Channel
+ 
+ [cols="<,<,<,<",options="header",]
+ |=======================================================================
+@@ -473,7 +473,7 @@ length.
+ |=======================================================================
+ 
+ [[aou-ig-axi-master-rx-w-and-b-channels]]
+-=== 3.6 AXI Master (RX) – W and B Channels
++=== AXI Master (RX) – W and B Channels
+ 
+ [width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+ |=======================================================================
+@@ -501,7 +501,7 @@ response ID.
+ |=======================================================================
+ 
+ [[aou-ig-axi-slave-tx-ar-channel]]
+-=== 3.7 AXI Slave (TX) – AR Channel
++=== AXI Slave (TX) – AR Channel
+ 
+ [cols="<,<,<,<",options="header",]
+ |=======================================================================
+@@ -533,7 +533,7 @@ length.
+ |=======================================================================
+ 
+ [[aou-ig-axi-slave-tx-r-channel]]
+-=== 3.8 AXI Slave (TX) – R Channel
++=== AXI Slave (TX) – R Channel
+ 
+ [width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+ |=======================================================================
+@@ -554,7 +554,7 @@ ID.
+ |=======================================================================
+ 
+ [[aou-ig-axi-slave-tx-aw-w-b-channels]]
+-=== 3.9 AXI Slave (TX) – AW, W, B Channels
++=== AXI Slave (TX) – AW, W, B Channels
+ 
+ [width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+ |=======================================================================
+@@ -607,12 +607,12 @@ response ID.
+ |=======================================================================
+ 
+ [[aou-ig-phy-and-fdi-flit-data-interface]]
+-=== 3.10 PHY and FDI (Flit Data Interface)
++=== PHY and FDI (Flit Data Interface)
+ 
+ The FDI port set is split into two banks: PHY0 (always present) and PHY1
+ (present only when the design is built with [.monospaced]#pass:c[+define+TWO_PHY]#). Both
+ banks use the parameterized widths derived from [.monospaced]#++FDI_CONFIG++# (see
+-xref:aou-ig-fdi_config-values[Section 2 - FDI_CONFIG values]).
++xref:aou-ig-fdi_config-values[]).
+ 
+ [width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+ |=======================================================================
+@@ -672,11 +672,11 @@ xref:aou-ig-fdi_config-values[Section 2 - FDI_CONFIG values]).
+ |=======================================================================
+ |Signal |Direction |Width |Description
+ |I_PHY_TYPE |input |1 |PHY selector for state-status / stall-request
+-multiplexing: 0 = PHY0, 1 = PHY1. See xref:aou-ig-phy-type-mux[Section 6.6.4].
++multiplexing: 0 = PHY0, 1 = PHY1. See xref:aou-ig-phy-type-mux[].
+ |=======================================================================
+ 
+ [[aou-ig-interrupt-and-error-to-error-handler]]
+-=== 3.11 Interrupt and Error (to Error Handler)
++=== Interrupt and Error (to Error Handler)
+ 
+ [cols="<,<,<,<",options="header",]
+ |=============================================================
+@@ -690,14 +690,14 @@ multiplexing: 0 = PHY0, 1 = PHY1. See xref:aou-ig-phy-type-mux[Section 6.6.4].
+ |=============================================================
+ 
+ [[aou-ig-ucie-external-control-and-status]]
+-=== 3.12 UCIe / External Control and Status
++=== UCIe / External Control and Status
+ 
+ ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+ *AOU_TOP users:* The signals in this table are present on [.monospaced]#++AOU_CORE_TOP++#
+ only. When integrating via [.monospaced]#++AOU_TOP++#, these signals are
+ consumed/generated internally by [.monospaced]#++AOU_FDI_BRINGUP_CTRL++# and are not
+ exposed as top-level ports. See
+-xref:aou-ig-aou_core_top-only-ports-not-on-aou_top[Section 3.17].
++xref:aou-ig-aou_core_top-only-ports-not-on-aou_top[].
+ ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+ 
+ [width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+@@ -741,7 +741,7 @@ is asserted to notify the UCIE_CORE.
+ violation, to notify the UCIE_CORE.
+ 
+ [[aou-ig-dft]]
+-=== 3.13 DFT
++=== DFT
+ 
+ [width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+ |=======================================================================
+@@ -752,7 +752,7 @@ and capture.
+ |=======================================================================
+ 
+ [[aou-ig-tiel_dft_modescan-usage]]
+-==== 3.13.1 TIEL_DFT_MODESCAN Usage
++==== TIEL_DFT_MODESCAN Usage
+ 
+ [.monospaced]#++TIEL_DFT_MODESCAN++# controls a glitch-free mux ([.monospaced]#++u_sw_reset_mux++#,
+ instance of [.monospaced]#++AOU_SOC_GFMUX_LVT++#) that selects the reset source for
+@@ -784,13 +784,13 @@ or observability.
+ 
+ The [.monospaced]#++AOU_SOC_BUF++# instance exists solely to prevent the synthesis tool
+ from optimizing away the tied-low constant; it must be preserved as a
+-persistent buffer (see xref:aou-ig-library-cell-replacement[Section 8.7]).
++persistent buffer (see xref:aou-ig-library-cell-replacement[]).
+ 
+ The SDC file ([.monospaced]#++INTEG/constraints/aou_core_top.sdc++#) constrains this pin
+ with [.monospaced]#++set_case_analysis 0++# in functional timing mode.
+ 
+ [[aou-ig-integrator-dft-responsibilities]]
+-==== 3.13.2 Integrator DFT Responsibilities
++==== Integrator DFT Responsibilities
+ 
+ The design provides internal DFT muxing only for the software-controlled
+ reset path ([.monospaced]#++w_DFTED_sw_resetn++#). The two primary hardware resets and
+@@ -820,12 +820,12 @@ scan constraints) to prevent unintended activity on external buses.
+ 
+ |*CDC synchronizer handling* |The [.monospaced]#++AOU_SOC_SYNCHSR++# instances in the
+ [.monospaced]#++ASYNC_APB_BRIDGE++# require scan-safe treatment. See
+-xref:aou-ig-library-cell-replacement[Section 8.7] for replacement cell
++xref:aou-ig-library-cell-replacement[] for replacement cell
+ requirements.
+ |=======================================================================
+ 
+ [[aou-ig-fdi-bringup-control-interface-aou_top-only]]
+-=== 3.14 FDI Bringup Control Interface (AOU_TOP only)
++=== FDI Bringup Control Interface (AOU_TOP only)
+ 
+ These signals connect [.monospaced]#++AOU_TOP++# to the D2D adapterpass:[']s physical layer for
+ FDI bringup control. They are not present on [.monospaced]#++AOU_CORE_TOP++#.
+@@ -874,7 +874,7 @@ activation
+ |=======================================================================
+ 
+ [[aou-ig-fdi-bringup-software-control-aou_top-only]]
+-=== 3.15 FDI Bringup Software Control (AOU_TOP only)
++=== FDI Bringup Software Control (AOU_TOP only)
+ 
+ These top-level ports provide direct software control over the FDI
+ bringup FSM. They are *not SFR-mapped*; the integrator must drive them
+@@ -896,7 +896,7 @@ state for debug/test.
+ |=======================================================================
+ 
+ [[aou-ig-fdi-bringup-status-aou_top-only]]
+-=== 3.16 FDI Bringup Status (AOU_TOP only)
++=== FDI Bringup Status (AOU_TOP only)
+ 
+ [width="100%",cols="<25%,<25%,<25%,<25%",options="header",]
+ |=======================================================================
+@@ -910,7 +910,7 @@ ACTIVE state.
+ |=======================================================================
+ 
+ [[aou-ig-aou_core_top-only-ports-not-on-aou_top]]
+-=== 3.17 AOU_CORE_TOP-only Ports (not on AOU_TOP)
++=== AOU_CORE_TOP-only Ports (not on AOU_TOP)
+ 
+ The following signals are present on [.monospaced]#++AOU_CORE_TOP++# but are *not*
+ exposed on [.monospaced]#++AOU_TOP++#. In [.monospaced]#++AOU_TOP++#, they are consumed or generated
+@@ -934,12 +934,12 @@ to bringup FSM.
+ 
+ 
+ [[aou-ig-software-operation-guide]]
+-== 4. Software operation Guide
++== Software operation Guide
+ 
+ This section gives information about operation guide for the AOU_CORE.
+ 
+ [[aou-ig-register-map]]
+-=== 4.1 Register Map
++=== Register Map
+ 
+ The complete register map — address offsets, field definitions, access
+ types, and reset values — is generated from the SystemRDL source and
+@@ -952,7 +952,7 @@ To regenerate after editing the RDL source, see
+ link:../csr/README.md[DOC/csr/README.md].
+ 
+ [[aou-ig-interrupts]]
+-== 5. Interrupts
++== Interrupts
+ 
+ * *INT_ACTIVATE_START* An interrupt that occurs when activation of the
+ AoU Protocol layer is required. The interrupt can be cleared by writing
+@@ -985,14 +985,14 @@ When AOU_CORE receives a protocol violation, SW needs to do SW reset
+ AOU_CORE and re-enter the activation sequence.
+ 
+ [[aou-ig-activation-flow]]
+-== 6. Activation Flow
++== Activation Flow
+ 
+ ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+ *AOU_TOP users:* When using [.monospaced]#++AOU_TOP++#, FDI bringup (RESET to ACTIVE) is
+ handled by [.monospaced]#++AOU_FDI_BRINGUP_CTRL++# before protocol-level activation
+ begins. The protocol activation described in this section occurs after
+ [.monospaced]#++O_FDI_LINK_UP++# is asserted. See
+-xref:aou-ig-fdi-bringup-flow-aou_top-only[Section 6.6] for the FDI bringup
++xref:aou-ig-fdi-bringup-flow-aou_top-only[] for the FDI bringup
+ sequence.
+ ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+ 
+@@ -1010,7 +1010,7 @@ in response to an ActivateReq from the other die, to acknowledge receipt
+ of the request.
+ 
+ [[aou-ig-credit-management-type]]
+-=== 6.1 Credit Management Type
++=== Credit Management Type
+ 
+ There are two types of Credit Management Type. Since current AOU_SPEC
+ cannot resolve pending AXI response without Activate again. When Credit
+@@ -1045,7 +1045,7 @@ indicating that the remote die has started to activate / deactivate.
+ |=======================================================================
+ 
+ [[aou-ig-activation-start]]
+-=== 6.2 Activation Start
++=== Activation Start
+ 
+ Activation can be initiated by setting ACTIVATE_START SFR: In the
+ current implementation, credits are granted based on the depth of the RX
+@@ -1064,7 +1064,7 @@ automatically proceed after I_INT_FSM_IN_ACTIVE becomes asserted.
+ activation is completed and AOU_ACTIVATE_STATE transitions to ENABLED.
+ 
+ [[aou-ig-deactivation-start]]
+-=== 6.3 Deactivation Start
++=== Deactivation Start
+ 
+ Deactivation is initiated by setting the AOU_INIT.DEACTIVATE_START
+ register. Setting this register does not immediately trigger sending a
+@@ -1088,7 +1088,7 @@ The ACTIVATION_OP field encodes deactivation messages as follows:
+ * 3= DeactivateAck
+ 
+ [[aou-ig-deactivation-sequence-flow]]
+-==== 6.3.1 Deactivation Sequence Flow
++==== Deactivation Sequence Flow
+ 
+ Once the local die issues a DeactivateReq, it can no longer provide
+ responses to transactions initiated by the remote die. If the remote die
+@@ -1142,7 +1142,7 @@ To meet satisfy the condition in the local die’s sequence 10.1, no
+ backpressure must occur on the local die’s MI AW/AR/W channels.
+ 
+ [[aou-ig-activationdeactivation-interrupt]]
+-=== 6.4 Activation/Deactivation Interrupt
++=== Activation/Deactivation Interrupt
+ 
+ [width="100%",cols="50%,50%",options="header",]
+ |=======================================================================
+@@ -1182,7 +1182,7 @@ remote die.
+ [[section]]
+ 
+ [[aou-ig-pm-entry-linkreset-linkdisabled-sequence]]
+-=== 6.5 PM Entry / LinkReset / LinkDisabled Sequence
++=== PM Entry / LinkReset / LinkDisabled Sequence
+ 
+ For PM entry / LinkReset / LinkDisable entry sequence, UCIE_CORE should
+ check AOU_CORE state and try to change state. For this sequence,
+@@ -1194,7 +1194,7 @@ AOU_SPEC. For this case, SW needs to check whether there is pending AXI
+ transaction.
+ 
+ [[aou-ig-pm-entry-sw-sequence]]
+-==== 6.5.1 PM Entry SW Sequence
++==== PM Entry SW Sequence
+ 
+ 1.  Write AOU_INIT.DEACTIVATE_START to 1.
+ 2.  Polling AOU_INIT.ACTIVATE_STATE_DISABLED and
+@@ -1210,7 +1210,7 @@ AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE.
+ image::pm_entry.png[Figure 4 - PM Entry Sequence]
+ 
+ [[aou-ig-link-disable-sw-sequence]]
+-==== 6.5.2 Link Disable SW Sequence
++==== Link Disable SW Sequence
+ 
+ Same as PM entry, before doing UCIe state transition, AOU_CORE needs to
+ be Disabled properly.
+@@ -1227,7 +1227,7 @@ AOU_INIT.SLV_TR_COMPLETE & AOU_INIT.MST_TR_COMPLETE.
+ 4.  Do LinkReset / LinkDisable Sequence on UCIE_CORE.
+ 
+ [[aou-ig-link-reset-sw-sequence]]
+-==== 6.5.3 Link Reset SW Sequence
++==== Link Reset SW Sequence
+ 
+ If AOU_CORE faces an uncorrectable error (ex. AOU SPEC violation),
+ AOU_CORE sends LinkReset to CPU and D2D adapter. LinkReset indicates
+@@ -1237,7 +1237,7 @@ While handling LinkReset, SW needs to do AOU_CORE SW reset by setting
+ AOU_CON0.AOU_SW_RESET.
+ 
+ [[aou-ig-fdi-bringup-flow-aou_top-only]]
+-=== 6.6 FDI Bringup Flow (AOU_TOP only)
++=== FDI Bringup Flow (AOU_TOP only)
+ 
+ ____________________________________________________________________________________________________________________________________________________________________
+ This section applies *only* when integrating via [.monospaced]#++AOU_TOP++#. If you are
+@@ -1246,7 +1246,7 @@ state machine externally.
+ ____________________________________________________________________________________________________________________________________________________________________
+ 
+ [[aou-ig-overview]]
+-==== 6.6.1 Overview
++==== Overview
+ 
+ [.monospaced]#++AOU_FDI_BRINGUP_CTRL++# manages the UCIe 3.0 FDI state machine, handling
+ the four handshake pairs required to bring the FDI link from RESET to
+@@ -1259,10 +1259,10 @@ UCIe 3.0 FDI state encoding.
+ 
+ Once the bringup FSM reaches ACTIVE, it asserts [.monospaced]#++O_INT_FSM_IN_ACTIVE++#
+ into [.monospaced]#++AOU_CORE_TOP++#, which enables protocol-level activation as
+-described in xref:aou-ig-activation-flow[Section 6].
++described in xref:aou-ig-activation-flow[].
+ 
+ [[aou-ig-bringup-sequence]]
+-==== 6.6.2 Bringup Sequence
++==== Bringup Sequence
+ 
+ The normal (happy-path) bringup from cold reset proceeds as follows:
+ 
+@@ -1286,10 +1286,10 @@ trigger. The trigger can be:
+ [.monospaced]#++pl_rx_active_req = 1++#.
+ 5.  *ACTIVE*: The FDI link is up. [.monospaced]#++O_FDI_LINK_UP++# and
+ [.monospaced]#++O_INT_FSM_IN_ACTIVE++# are asserted. Protocol-level activation
+-(xref:aou-ig-activation-flow[Section 6]) can now proceed.
++(xref:aou-ig-activation-flow[]) can now proceed.
+ 
+ [[aou-ig-supported-state-transitions]]
+-==== 6.6.3 Supported State Transitions
++==== Supported State Transitions
+ 
+ [width="100%",cols="<34%,<33%,<33%",options="header",]
+ |=======================================================================
+@@ -1321,7 +1321,7 @@ or [.monospaced]#++I_SW_LINKERROR_INJECT++#
+ |=======================================================================
+ 
+ [[aou-ig-phy-type-mux]]
+-==== 6.6.4 PHY Type Mux
++==== PHY Type Mux
+ 
+ ___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+ *Note:* This PHY-type multiplexer is only present in builds compiled
+@@ -1347,7 +1347,7 @@ to [.monospaced]#++AOU_CORE_TOP++# unchanged -- the corepass:[']s [.monospaced]#
+ [.monospaced]#++AOU_RX_FDI_IF++# handle per-PHY data-path switching internally.
+ 
+ [[aou-ig-software-bringup-control]]
+-==== 6.6.5 Software Bringup Control
++==== Software Bringup Control
+ 
+ The [.monospaced]#++I_SW_ACTIVATE_START++# and [.monospaced]#++I_SW_DEACTIVATE_START++# ports on [.monospaced]#++AOU_TOP++#
+ are *not SFR-mapped*. They are top-level pins that must be driven by
+@@ -1365,7 +1365,7 @@ for PL to drive [.monospaced]#++pl_clk_req++#.
+ _________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+ 
+ [[aou-ig-known-limitations]]
+-==== 6.6.6 Known Limitations
++==== Known Limitations
+ 
+ The current implementation covers the core FDI bringup happy path. The
+ following limitations apply (see [.monospaced]#++RTL/fdi-bringup-todo.md++# for the full
+@@ -1389,7 +1389,7 @@ bringup FSM.
+ |=======================================================================
+ 
+ [[aou-ig-verification-testbench]]
+-== 7 Verification Testbench
++== Verification Testbench
+ 
+ The verification flow is built on https://www.cocotb.org/[cocotb] and
+ https://github.com/alexforencich/cocotbext-axi[[.monospaced]#++cocotbext-axi++#]. All
+@@ -1414,7 +1414,7 @@ link:../../VERIF/README.md[[.monospaced]#++VERIF/README.md++#] for setup, watchd
+ the test list.
+ 
+ [[aou-ig-architecture]]
+-=== 7.1 Architecture
++=== Architecture
+ 
+ [ditaa, target=gen_aou_dataflow.png]
+ ....
+@@ -1464,7 +1464,7 @@ at runtime by [.monospaced]#++systemrdl-compiler++#, so the check self-updates w
+ the RDL changes and surfaces RDL ↔ RTL drift on every run.
+ 
+ [[aou-ig-components]]
+-=== 7.2 Components
++=== Components
+ 
+ [width="100%",cols="<34%,<33%,<33%",options="header",]
+ |=======================================================================
+@@ -1515,7 +1515,7 @@ slaves.
+ |=======================================================================
+ 
+ [[aou-ig-running-the-testbench]]
+-=== 7.3 Running the Testbench
++=== Running the Testbench
+ 
+ From the repository root, set up the Python environment once and then
+ invoke the testbench:
+@@ -1549,7 +1549,7 @@ SIM=vcs pytest -v               # force Synopsys VCS
+ ----
+ 
+ [[aou-ig-ip-integration-collateral]]
+-== 8. IP Integration Collateral
++== IP Integration Collateral
+ 
+ Machine-readable integration collateral is generated from the SystemRDL
+ register source ([.monospaced]#++csr/aou-core.rdl++#) using PeakRDL. This section
+@@ -1557,7 +1557,7 @@ describes the available outputs, the single-source workflow, and
+ regeneration instructions.
+ 
+ [[aou-ig-generated-outputs-phase-1]]
+-=== 8.1 Generated Outputs (Phase 1)
++=== Generated Outputs (Phase 1)
+ 
+ [width="100%",cols="<34%,<33%,<33%",options="header",]
+ |=======================================================================
+@@ -1576,17 +1576,17 @@ only -- [.monospaced]#++memoryMaps++# element)
+ (UVM [.monospaced]#++uvm_reg_block++# package) -- drop into your UVM envpass:[']s RAL tier.
+ 
+ |Markdown register docs |[.monospaced]#++DOC/csr/aou-core-csrs.md++# |Quick reference
+-(also linked from xref:aou-ig-register-map[Section 4.1])
++(also linked from xref:aou-ig-register-map[])
+ |=======================================================================
+ 
+-Note: the in-repo cocotb testbench (Section 7) does not consume the
++Note: the xref:aou-ig-verification-testbench[in-repo cocotb testbench] does not consume the
+ generated UVM package -- it parses [.monospaced]#++csr/aou-core.rdl++# directly via
+ [.monospaced]#++systemrdl-compiler++# at runtime. The UVM package is shipped as
+ collateral for integrators whose own verification environments are
+ UVM-based.
+ 
+ [[aou-ig-single-source-of-truth]]
+-=== 8.2 Single Source of Truth
++=== Single Source of Truth
+ 
+ All register information lives in the SystemRDL source file
+ [.monospaced]#++csr/aou-core.rdl++#. Every output listed above is derived from this
+@@ -1609,7 +1609,7 @@ IMPORTANT: RTL is not generated from RDL so any modification to RDL
+ files will not be reflected in the design.
+ 
+ [[aou-ig-regeneration]]
+-=== 8.3 Regeneration
++=== Regeneration
+ 
+ From the repository root, activate the Python virtual environment and
+ run the generation script:
+@@ -1637,7 +1637,7 @@ output file and the top-level link:../../README.md[README.md] for
+ virtual-environment setup.
+ 
+ [[aou-ig-planned-full-ip-xact-component-phase-2]]
+-=== 8.4 Planned: Full IP-XACT Component (Phase 2)
++=== Planned: Full IP-XACT Component (Phase 2)
+ 
+ The Phase 1 IP-XACT output contains the [.monospaced]#++<memoryMaps>++# element only
+ (registers, fields, access types, reset values). A full IP-XACT
+@@ -1653,7 +1653,7 @@ generated by merging the PeakRDL register map into a hand-authored
+ component template via [.monospaced]#++scripts/merge_ipxact.py++#.
+ 
+ [[aou-ig-timing-constraints-sdc]]
+-=== 8.5 Timing Constraints (SDC)
++=== Timing Constraints (SDC)
+ 
+ Constraint files are located in [.monospaced]#++INTEG/constraints/++#.
+ 
+@@ -1669,7 +1669,7 @@ budget variables are declared at the top of the file and can be
+ overridden by the integrating project.
+ 
+ [[aou-ig-clock-definitions]]
+-==== 8.5.1 Clock Definitions
++==== Clock Definitions
+ 
+ [cols=",,,",options="header",]
+ |=======================================
+@@ -1684,7 +1684,7 @@ integrating design. The DFT scan-mode pin ([.monospaced]#++TIEL_DFT_MODESCAN++#)
+ at 0 via [.monospaced]#++set_case_analysis++# in functional mode.
+ 
+ [[aou-ig-io-delay-budgeting-strategy]]
+-==== 8.5.2 I/O Delay Budgeting Strategy
++==== I/O Delay Budgeting Strategy
+ 
+ Two budgeting categories are used, based on whether the path between the
+ I/O port and the nearest internal flop is combinational or registered:
+@@ -1719,7 +1719,7 @@ mux. [.monospaced]#++FLIT_CANCEL++# drives both sequential and combinational log
+ * *Interrupt/control signals*: Combinational.
+ 
+ [[aou-ig-clock-domain-crossings]]
+-==== 8.5.3 Clock Domain Crossings
++==== Clock Domain Crossings
+ 
+ The only CDC in AOU_CORE_TOP is between [.monospaced]#++clk_core++# and [.monospaced]#++clk_apb++#,
+ handled by the [.monospaced]#++ASYNC_APB_BRIDGE++# module which uses [.monospaced]#++AOU_SOC_SYNCHSR++#
+@@ -1727,7 +1727,7 @@ handled by the [.monospaced]#++ASYNC_APB_BRIDGE++# module which uses [.monospace
+ exclude cross-domain paths from STA.
+ 
+ [[aou-ig-upf-power-intent]]
+-=== 8.6 UPF Power Intent
++=== UPF Power Intent
+ 
+ The current UPF defines a single always-on power domain ([.monospaced]#++PD_AOU_TOP++#)
+ covering the integration scope (the [.monospaced]#++AOU_TOP++# instance, which includes
+@@ -1740,7 +1740,7 @@ with [.monospaced]#++create_power_domain++# for each switchable domain, along wi
+ appropriate isolation and retention strategies.
+ 
+ [[aou-ig-library-cell-replacement]]
+-=== 8.7 Library Cell Replacement
++=== Library Cell Replacement
+ 
+ The [.monospaced]#++RTL/LIB/++# directory contains three behavioral reference models that
+ are used by the design for reset infrastructure and clock-domain
+@@ -1797,7 +1797,7 @@ via a [.monospaced]#++dont_touch++# or equivalent attribute).
+ functional equivalence of the replacements.
+ 
+ [[aou-ig-scan-friendly-cell-requirements]]
+-==== 8.7.1 Scan-Friendly Cell Requirements
++==== Scan-Friendly Cell Requirements
+ 
+ Beyond functional correctness, each replacement cell must be compatible
+ with ATPG scan insertion and pattern generation. The behavioral models
+@@ -1828,7 +1828,7 @@ are pre-characterized for both metastability MTBF and scan testability.
+ *[.monospaced]#++AOU_SOC_GFMUX_LVT++# -- Clock/reset mux recognition*
+ 
+ This cell sits on the scan-mode reset mux path (see
+-xref:aou-ig-tiel_dft_modescan-usage[Section 3.13.1]). The replacement
++xref:aou-ig-tiel_dft_modescan-usage[]). The replacement
+ must be recognized by the ATPG tool as a *clock or reset mux cell*, not
+ a generic data mux. If the tool treats it as a regular mux, it may
+ toggle [.monospaced]#++I_SEL++# during scan patterns, causing reset glitches that corrupt

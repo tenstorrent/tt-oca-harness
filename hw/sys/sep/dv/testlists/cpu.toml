@@ -181,7 +181,8 @@ args = ["+skip_fuse_sense"]
 # Firmware arms the source and presents a SEC_DISABLE token; the host injects
 # a collapse on that comparator (tb port). Proves claim id 40, the
 # SEC_DISABLE sticky bit, and that masking meie[40] stops re-entry.
-# +skip_fuse_sense: the SEC_DISABLE compare is not fuse-gated.
+# Real fuse sense on a blank OTP image; the SEC_DISABLE compare is not
+# fuse-gated.
 name = "sep_efuse_token_match_fault_pic_test"
 module = "efuse.sep_efuse_token_match_fault_pic_test"
 firmware = "token_match_fault_pic_test"
@@ -189,4 +190,3 @@ seed = 1
 timeout_sec = 1800
 tags = ["boot", "cpu", "interrupt", "pic", "efuse", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]

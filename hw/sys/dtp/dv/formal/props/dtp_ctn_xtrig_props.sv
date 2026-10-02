@@ -34,6 +34,7 @@ module dtp_ctn_xtrig_props #(
   input logic                  req_in_sync_i,     // u_core.ct_req_in_din_sync_inv
   input logic                  ack_in_sync_i,     // u_core.ct_ack_in_din_sync_inv
   // External port 0: wire-OR receive path and pad control
+  input logic                  req_out_din_raw_sync_i,  // u_core.ct_req_out_din_sync
   input logic                  req_out_din_sync_i,  // u_core.ct_req_out_din_sync_inv
   input logic                  req_out_din_prev_i,  // u_core.wire_or_req_out_prev
   input logic                  ct_dst_i,            // u_core.ct_dst_q
@@ -125,9 +126,7 @@ module dtp_ctn_xtrig_props #(
                                    !hs_ack_out_i),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_dst_is_one_pulse,
-                  `OCAH_FV_IMPLIES($past(rst_ni) && hs_dst_i && $past(hs_dst_i),
-                                   $past(receiver_state_i) == R_ACK_ASSERTED &&
-                                   !$past(req_in_sync_i)) &&
+                  !($past(rst_ni) && hs_dst_i && $past(hs_dst_i)) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && `OCAH_FV_ROSE(hs_dst_i),
                                    $past(receiver_state_i) == R_IDLE && $past(req_in_sync_i)),
                   clk_i, rst_ni)
@@ -154,12 +153,20 @@ module dtp_ctn_xtrig_props #(
                                    ($past(mode_wire_or_i) ? $past(stretch_active_i) : 1'b1)) &&
                   int_mode_wire_or_i == '1 && ctm_src_req_i == int_req_out_dout_en_i,
                   clk_i, rst_ni)
+  // The optional inversion sits after the synchronizer: INVERT=0 senses the raw wire, INVERT=1
+  // its complement, so the sensed wire rests at 1 and reads 0 while asserted in either sense.
+  `OCAH_FV_ASSERT(ast_ctp_wire_or_sense,
+                  req_out_din_sync_i == (invert_i ? !req_out_din_raw_sync_i
+                                                  : req_out_din_raw_sync_i),
+                  clk_i, rst_ni)
+  // A wire-OR trigger is the sensed wire moving from rest to asserted: the falling edge of the
+  // raw wire for INVERT=0, its rising edge for INVERT=1; the release edge yields nothing.
   `OCAH_FV_ASSERT(ast_ctp_wire_or_edge_pulse,
                   `OCAH_FV_IMPLIES($past(rst_ni),
                                    req_out_din_prev_i == $past(req_out_din_sync_i) &&
                                    ct_dst_i == ($past(mode_wire_or_i)
-                                                ? ($past(req_out_din_sync_i) &&
-                                                   !$past(req_out_din_prev_i))
+                                                ? (!$past(req_out_din_sync_i) &&
+                                                   $past(req_out_din_prev_i))
                                                 : $past(hs_dst_i))),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_stretch_width,
@@ -180,10 +187,11 @@ module dtp_ctn_xtrig_props #(
   `OCAH_FV_ASSERT(ast_ctp_status_reflects_pins,
                   status_req_in_i == req_in_sync_i && status_ack_in_i == ack_in_sync_i &&
                   status_req_out_i == (invert_i ? !req_out_dout_i : req_out_dout_i) &&
-                  status_ack_out_i == (invert_i ? !ack_out_dout_i : ack_out_dout_i) &&
+                  status_ack_out_i == (!mode_wire_or_i &&
+                                       (invert_i ? !ack_out_dout_i : ack_out_dout_i)) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && $past(mode_wire_or_i) &&
                                    invert_i == $past(invert_i),
-                                   !status_req_out_i && status_ack_out_i == invert_i),
+                                   !status_req_out_i),
                   clk_i, rst_ni)
 
   // ---- Covers -------------------------------------------------------------------------------
@@ -195,6 +203,10 @@ module dtp_ctn_xtrig_props #(
                  clk_i, rst_ni)
   `OCAH_FV_COVER(cov_stretch_max_width,
                  mode_wire_or_i && $past(ct_src_i) && stretch_count_i == 16'd4, clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_wire_or_receive_normal, mode_wire_or_i && !invert_i && ct_dst_i,
+                 clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_wire_or_receive_inverted, mode_wire_or_i && invert_i && ct_dst_i,
+                 clk_i, rst_ni)
   `OCAH_FV_COVER(cov_route_internal_to_external,
                  ct_src_i && |(ctm_select_i >> 16), clk_i, rst_ni)
   `OCAH_FV_COVER(cov_route_external_to_internal, |ctm_src_req_i, clk_i, rst_ni)
