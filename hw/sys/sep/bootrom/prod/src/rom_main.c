@@ -141,10 +141,11 @@ static volatile uint32_t g_bss_zero;
 #define ROM_ICCM_SIZE_BYTES ((uint32_t)SEP_TOP_SEP_ICCM_SIZE)
 #endif
 
-// MUST be 1 for release. Off here only because the clear costs ~1.84M cycles in
-// simulation; the Makefile carries the full reasoning and the residual risk.
 #ifndef ROM_ICCM_CLEAR_ENABLE
-#define ROM_ICCM_CLEAR_ENABLE 0
+#error "ROM_ICCM_CLEAR_ENABLE must come from the Makefile"
+#endif
+#ifndef ROM_ICCM_CLEAR_FULL
+#error "ROM_ICCM_CLEAR_FULL must come from the Makefile"
 #endif
 
 // Stack canary for the [S28] stack health check.

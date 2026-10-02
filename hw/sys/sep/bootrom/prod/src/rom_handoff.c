@@ -37,6 +37,13 @@
 #include "sep_helpers.h"
 #include "status_values.h"
 
+#ifndef ROM_ICCM_CLEAR_ENABLE
+#error "ROM_ICCM_CLEAR_ENABLE must come from the Makefile"
+#endif
+#ifndef ROM_ICCM_CLEAR_FULL
+#error "ROM_ICCM_CLEAR_FULL must come from the Makefile"
+#endif
+
 // The image type BL1 is published under. 16 ASCII bytes: bytes[15:8] are a
 // vendor string, bytes[7:0] the spec's recommended label (boot-manifest.adoc,
 // "Payload TOC entry"). Matched in full rather than on the label alone so an
