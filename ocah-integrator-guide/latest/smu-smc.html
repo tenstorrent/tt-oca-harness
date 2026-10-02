@@ -360,7 +360,10 @@ issue outbound transactions using global system addresses.</p>
 of both the local alias window and the global aperture. It sizes the
 SMC input fabric&#8217;s local/global split as well as SMU-level routing and
 SEP-to-SMC decode. Firmware must not program it to zero, and must keep
-<code>LOCAL_BASE + REGION_SIZE</code> inside the 32-bit SMC-local address space.</p>
+<code>LOCAL_BASE + REGION_SIZE</code> inside the 32-bit SMC-local address space.
+SMC units whose window extends past <code>REGION_SIZE</code> answer <code>DECERR</code> to the SMU
+and the SEP. At the reset value these are the PLIC, CLINT and bus-error units,
+so firmware must widen <code>REGION_SIZE</code> to cover them before either accesses them.</p>
 </li>
 </ul>
 </div>
