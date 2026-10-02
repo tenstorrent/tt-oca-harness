@@ -310,8 +310,7 @@ pio-toolchain-images:
 # Split by tool dependency so callers can run each half in the right environment:
 # toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
 # container). oca-images and key-digests are pure Python and run via uv, which
-# the container carries. The companion's SEP firmware build script drives the
-# two halves this way.
+# the container carries.
 #
 # Direct `make toolchain-images` uses only an explicit RISCV_TOOLCHAIN on the
 # host. Otherwise it runs the compiler-dependent half in the OCAH container.
