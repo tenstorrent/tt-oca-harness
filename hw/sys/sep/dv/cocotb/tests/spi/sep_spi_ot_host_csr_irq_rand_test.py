@@ -41,8 +41,8 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
   CHK-WATERMARK : STATUS.TXWM moves as the TX FIFO occupancy crosses TX_WATERMARK
                   (occupancy proven by STATUS.TXQD), for one threshold from
                   each half of the draw range.
-  CHK-ENABLE    : SPIEN=0 holds a queued TX command off (FIFO not drained);
-                  SPIEN=1 lets it execute (FIFO drains).
+  CHK-ENABLE    : SPIEN=0 with OUTPUT_EN=1 holds a queued TX command off (FIFO
+                  not drained); setting SPIEN alone lets it execute (FIFO drains).
   CHK-NONVAC    : every walked reg reads back different from its observed pre-write
                   value, so no entry in the walk is a no-op against a tied-off decode.
   CHK-ZERO-STRB : a 64-bit beat that enables only the CONTROL half returns OKAY,
@@ -549,7 +549,15 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         window = max(_NEG_WINDOW_MARGIN * calib, _NEG_WINDOW_FLOOR)
 
         # Negative leg: same stimulus, SPIEN=0, held for the calibrated window.
+        # OUTPUT_EN only enables the pad buffers, and SPIEN alone gates
+        # transactions, so the hold window runs with OUTPUT_EN=1: a device that
+        # gated commands on OUTPUT_EN instead of SPIEN would execute here.
         await self._queue_one_tx()  # _sw_rst_pulse leaves SPIEN=0
+        await self.spi.wr(CONTROL, CTRL_RESET | CTRL_OUTPUT_EN)
+        ctrl_hold = await self.spi.rd(CONTROL)
+        assert (ctrl_hold & (CTRL_SPIEN | CTRL_OUTPUT_EN)) == CTRL_OUTPUT_EN, (
+            f"CHK-ENABLE: hold-window CONTROL 0x{ctrl_hold:08x} is not SPIEN=0 OUTPUT_EN=1"
+        )
         assert not await self._poll_drain(window), (
             f"CHK-ENABLE: command executed while SPIEN=0 (drained within {window} "
             f"polls, {_NEG_WINDOW_MARGIN}x the {calib}-poll enabled drain)"
@@ -563,16 +571,25 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"CHK-ENABLE: TXEMPTY set while SPIEN=0 held the command (0x{st_held:08x})"
         )
 
-        # Positive leg: enabling the core releases that same queued command.
-        await self.spi.wr(CONTROL, CTRL_RESET | CTRL_SPIEN | CTRL_OUTPUT_EN)
+        # Positive leg: setting SPIEN, and changing no other bit, releases that
+        # same queued command.
+        await self.spi.wr(CONTROL, ctrl_hold | CTRL_SPIEN)
+        ctrl_rel = await self.spi.rd(CONTROL)
+        assert ctrl_rel ^ ctrl_hold == CTRL_SPIEN, (
+            f"CHK-ENABLE: release CONTROL 0x{ctrl_rel:08x} differs from the hold value "
+            f"0x{ctrl_hold:08x} in more than SPIEN"
+        )
         released = await self._poll_drain(_ENABLED_POLLS)
         assert released, "CHK-ENABLE: command did not execute after SPIEN=1"
         self.logger.info(
-            "CHK-ENABLE PASS: SPIEN=0 held the command for %d polls (%dx the %d-poll "
-            "enabled drain, TXQD stayed 1); SPIEN=1 drained it in %d",
+            "CHK-ENABLE PASS: CONTROL=0x%08x (SPIEN=0, OUTPUT_EN=1) held the command for "
+            "%d polls (%dx the %d-poll enabled drain, TXQD stayed 1); CONTROL=0x%08x "
+            "(SPIEN only changed) drained it in %d",
+            ctrl_hold,
             window,
             _NEG_WINDOW_MARGIN,
             calib,
+            ctrl_rel,
             released,
         )
         await self._sw_rst_pulse()

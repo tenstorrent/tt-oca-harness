@@ -4633,7 +4633,7 @@ feature-scorecard hole.
 . Drive each interrupt source: Event latch and Status force first with the enable clear, then raise `INTR_ENABLE` and sample aggregator bit 13.
 . Induce each of the five claimed error conditions in turn and write-one-to-clear it.
 . For one transmit watermark from 2-4 and one from 5-8, in seeded order, fill the transmit FIFO across the programmed watermark.
-. Measure the enabled command drain, then hold the same command off with the core disabled for a multiple of that measurement.
+. Measure the enabled command drain, then hold the same command off with `SPIEN=0` and `OUTPUT_EN=1` for a multiple of that measurement, then set `SPIEN` alone to release it.
 
 *Checkers*:
 
@@ -4653,7 +4653,7 @@ feature-scorecard hole.
 |CHK-WATERMARK
 |`STATUS.TXWM` follows the documented polarity (upstream `spi_host` `STATUS.TXWM`: set while TXQD is below `CONTROL.TX_WATERMARK`): set while empty and at occupancy `wm-1`, clear at the exact watermark and after filling past it, with `TXQD` read at each step. Graded for one watermark from each half of the 2-8 draw range on every seed.
 |CHK-ENABLE
-|Clearing the enable holds the queued command off; setting it drains the transmit FIFO. The negative window is not a constant: the test first measures how many polls the same one-word command takes to drain with the core ENABLED, then requires the disabled command to survive a fixed multiple of that measurement, with `TXQD` still 1 and `TXEMPTY` clear at the end of it. A device that ignored the enable but merely executed slowly would pass a hand-picked window; it cannot pass a calibrated one.
+|`CONTROL.SPIEN` alone gates command execution: with `SPIEN=0` and `OUTPUT_EN=1` (pad buffers on, which is legal) the queued command is held off, and a write that changes only `SPIEN` to 1 drains the transmit FIFO. Both `CONTROL` values are read back and logged, so a device that gated commands on `OUTPUT_EN` instead fails the hold leg. The negative window is not a constant: the test first measures how many polls the same one-word command takes to drain with the core ENABLED, then requires the disabled command to survive a fixed multiple of that measurement, with `TXQD` still 1 and `TXEMPTY` clear at the end of it. A device that ignored the enable but merely executed slowly would pass a hand-picked window; it cannot pass a calibrated one.
 |CHK-ZERO-STRB
 |A 64-bit beat (`AxSIZE=3`) that writes only the 4-byte CONTROL half returns OKAY, the CONTROL readback matches the written value, and `ERROR_STATUS` stays 0. The empty STATUS half is the neighbour the 64-to-32 downsizer presents with `WSTRB==0`; without the wrapper ack that beat is SLVERR from the upstream register file.
 |===
