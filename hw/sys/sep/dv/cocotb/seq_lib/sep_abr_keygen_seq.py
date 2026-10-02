@@ -82,7 +82,13 @@ IRQ_ABR_NOTIF = agg_from_pic("Adams Bridge notification")
 INTR_ERROR_EN = abr_field_mask("global_intr_en_r", "error_en")
 INTR_NOTIF_EN = abr_field_mask("global_intr_en_r", "notif_en")
 INTR_GLOBAL_BOTH = INTR_ERROR_EN | INTR_NOTIF_EN
-INTR_EVENT_EN = abr_field_mask("error_intr_en_r", "error_internal_en")
+# Each interrupt register takes the mask of its own RDL field, so a field that
+# moves inside its register moves the write and the readback compare with it.
+ERROR_INTERNAL_EN = abr_field_mask("error_intr_en_r", "error_internal_en")
+NOTIF_CMD_DONE_EN = abr_field_mask("notif_intr_en_r", "notif_cmd_done_en")
+ERROR_INTERNAL_TRIG = abr_field_mask("error_intr_trig_r", "error_internal_trig")
+ERROR_INTERNAL_STS = abr_field_mask("error_internal_intr_r", "error_internal_sts")
+NOTIF_CMD_DONE_STS = abr_field_mask("notif_internal_intr_r", "notif_cmd_done_sts")
 
 
 class SepAbrKeygenCfg:
@@ -129,28 +135,30 @@ class SepAbr(SepAxiRegDriver):
 
     async def enable_notif(self) -> None:
         await self.wr32(ABR_GLOBAL_INTR_EN, INTR_GLOBAL_BOTH)
-        await self.wr32(ABR_ERROR_INTR_EN, INTR_EVENT_EN)
-        await self.wr32(ABR_NOTIF_INTR_EN, INTR_EVENT_EN)
+        await self.wr32(ABR_ERROR_INTR_EN, ERROR_INTERNAL_EN)
+        await self.wr32(ABR_NOTIF_INTR_EN, NOTIF_CMD_DONE_EN)
 
     async def trigger_error(self) -> None:
         """Pulse error_intr_trig (single-cycle W1S) to set error_internal_sts."""
-        await self.wr32(ABR_ERROR_TRIG, INTR_EVENT_EN)
+        await self.wr32(ABR_ERROR_TRIG, ERROR_INTERNAL_TRIG)
 
     async def error_state(self) -> int:
-        return await self.rd32(ABR_ERROR_INTR)
+        """Read error_internal_intr_r; return the error_internal_sts field, in place."""
+        return await self.rd32(ABR_ERROR_INTR) & ERROR_INTERNAL_STS
 
     async def w1c_error(self) -> int:
-        """W1C error_internal_sts; return the post-clear readback."""
-        await self.wr32(ABR_ERROR_INTR, INTR_EVENT_EN)
-        return await self.rd32(ABR_ERROR_INTR)
+        """W1C error_internal_sts; return that field of the post-clear readback."""
+        await self.wr32(ABR_ERROR_INTR, ERROR_INTERNAL_STS)
+        return await self.rd32(ABR_ERROR_INTR) & ERROR_INTERNAL_STS
 
     async def notif_state(self) -> int:
-        return await self.rd32(ABR_NOTIF_INTR)
+        """Read notif_internal_intr_r; return the notif_cmd_done_sts field, in place."""
+        return await self.rd32(ABR_NOTIF_INTR) & NOTIF_CMD_DONE_STS
 
     async def w1c_notif(self) -> int:
-        """W1C notif_cmd_done_sts; return the post-clear readback."""
-        await self.wr32(ABR_NOTIF_INTR, INTR_EVENT_EN)
-        return await self.rd32(ABR_NOTIF_INTR)
+        """W1C notif_cmd_done_sts; return that field of the post-clear readback."""
+        await self.wr32(ABR_NOTIF_INTR, NOTIF_CMD_DONE_STS)
+        return await self.rd32(ABR_NOTIF_INTR) & NOTIF_CMD_DONE_STS
 
 
 def _selftest() -> None:

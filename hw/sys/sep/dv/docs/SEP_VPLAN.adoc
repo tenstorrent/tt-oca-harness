@@ -3369,11 +3369,11 @@ is why they are asserted from Python probes rather than left to the SVA.
 |CHK-STATUS-VALID
 |Completion STATUS is VALID with ERROR=0.
 |CHK-PIC-ERROR
-|Aggregate `[34]` traverses `0 -> 1` via `error_intr_trig`, then `W1C` readback 0, before the KAT. A stuck-low probe fails this row; the later `[34]=0` at completion is then a live observation.
+|Aggregate `[34]` traverses `0 -> 1` via `error_intr_trig` with `error_internal_sts` set, then the `W1C` reads that field back 0 and drops `[34]`, before the KAT. The field masks come from `abr_reg.rdl`. A stuck-low probe fails this row; the later `[34]=0` at completion is then a live observation.
 |CHK-PIC-NOTIF
 |Aggregate `[35]` high and `[34]` low at completion.
 |CHK-PIC-NOTIF-W1C
-|`notif_internal_sts` W1C clears `[35]`.
+|`notif_cmd_done_sts` reads set after keyGen; its `W1C` reads that field back 0 and clears `[35]`. The field mask comes from `abr_reg.rdl`.
 |CHK-ZEROIZE
 |`ZEROIZE` drops VALID and every word of the pubkey window then reads zero. `MLDSA_STATUS.READY` is low through the `ABR_ZEROIZE` walk (`abr_ready = (abr_prog_cntr == ABR_RESET)`), so a READY-high wait would hang rather than pass vacuously. Scope: the pubkey read port is gated on `mldsa_valid_reg`, so a zero window proves the key is no longer readable, *not* that the RAM was wiped. The memory walk is not claimed; proving it needs a probe on the pubkey RAM or on `zeroize_mem_done`.
 |CHK-SENSITIVITY
@@ -3445,7 +3445,7 @@ with `error_intr_trig`, then clear `error_internal_sts` by W1C.
 |===
 |Checker |Contract
 |CHK-PIC-ERROR
-|PIC `[34]` reads 0 before the trigger, 1 after `error_intr_trig` with `error_internal_sts` bit 0 set, and 0 again after the W1C with the status bit clear. An X or Z on the bit is a failure, not a low. This is the positive control for the PIC `[34]`-low clause in CHK-SIGN.
+|PIC `[34]` reads 0 before the trigger, 1 after `error_intr_trig` with the `error_internal_sts` field set, and 0 again after the W1C with that field clear. The field mask comes from `abr_reg.rdl`. An X or Z on the bit is a failure, not a low. This is the positive control for the PIC `[34]`-low clause in CHK-SIGN.
 |CHK-SIGN
 |The 1157-word `MLDSA_SIGNATURE` window matches the vendored ACVP sigGen vector
 word-for-word, with STATUS VALID and ERROR=0, and PIC `[34]` low.

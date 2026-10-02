@@ -59,6 +59,7 @@ from seq_lib.sep_abr_keygen_seq import (
     CMD_VERIFY,
     CTRL_EXTERNAL_MU,
     CTRL_ZEROIZE,
+    ERROR_INTERNAL_STS,
     IRQ_ABR_ERROR,
     SIG_WORDS,
     ST_ERROR,
@@ -150,13 +151,16 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
             "(probe stuck-low / enable missed)"
         )
         err_st = await abr.error_state()
-        assert err_st & 1, f"error_internal_sts=0x{err_st:x} after trigger"
-        err_st = await abr.w1c_error()
-        assert (err_st & 1) == 0, f"error_internal_sts=0x{err_st:x} after W1C"
+        assert err_st == ERROR_INTERNAL_STS, f"error_internal_sts=0x{err_st:x} after trigger"
+        err_clr = await abr.w1c_error()
+        assert err_clr == 0, f"error_internal_sts=0x{err_clr:x} after W1C"
         await self._assert_irq_low(IRQ_ABR_ERROR, what="after error_internal_sts W1C")
         self.logger.info(
-            "CHK-PIC-ERROR PASS: [%d] 0->1 via error_intr_trig, W1C readback 0",
+            "CHK-PIC-ERROR PASS: [%d] 0->1 via error_intr_trig, error_internal_sts=0x%x "
+            "after trigger, 0x%x after W1C",
             IRQ_ABR_ERROR,
+            err_st,
+            err_clr,
         )
 
         # --- CHK-SIGN ---------------------------------------------------------
