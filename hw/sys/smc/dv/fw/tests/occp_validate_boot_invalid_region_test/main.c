@@ -3,12 +3,12 @@
 
 /*
  * Checks that the ROM rejects VALIDATE_AND_BOOT outside the OCCP window with Invalid_address,
- * logs one VALIDATE_ADDRESS_FAILED status record per rejection, and keeps serving commands.
+ * logs one address-validation failure status per rejection, and keeps serving commands.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
-#include <string.h>
+
 int exp_num_validate_security_errors = 0;
 
 static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
@@ -244,6 +244,4 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }

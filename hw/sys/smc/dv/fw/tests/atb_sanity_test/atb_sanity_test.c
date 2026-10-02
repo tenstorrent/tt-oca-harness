@@ -2,36 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
- * @brief Telemetry Sanity Basic Test - Register Read/Write Verification
+ * @brief Telemetry Sanity Basic Test - Register Reset Values
  *
- * This test performs basic register read/write operations on Telemetry
- * Receiver registers to ensure the IP is accessible and functioning correctly.
- *
- * Test Flow:
- * 1. System initialization
- * 2. Read Telemetry CTRL register
- * 3. Read Telemetry STATUS register
- * 4. Read Telemetry PROBE_ID register
- * 5. Read Telemetry COUNTER_VLDS register
- * 6. Read telemetry counter values
- *
- * =============================================================================
- * Telemetry Receiver Register Map (Receiver 0)
- * =============================================================================
- *
- * Offset  | Register Name           | Purpose
- * --------|-------------------------|--------------------------------------------------
- * 0x0000  | CTRL                    | Control register
- * 0x0004  | STATUS                  | Status register
- * 0x0008  | INTR_STATUS             | Interrupt status
- * 0x000C  | INTR_ENABLE             | Interrupt enable
- * 0x0010  | INTR_TEST               | Interrupt test
- * 0x0014  | TELEMETRY_PROBE_ID      | Probe identifier
- * 0x0018  | TELEMETRY_COUNTER_VLDS  | Counter valid bits (32-bit mask)
- * 0x0080+ | TELEMETRY_COUNTER[0-31] | Counter values (32 counters, each 4 bytes)
- *
- * =============================================================================
+ * Verifies that firmware can read the registers of Telemetry Receiver
+ * instance 0 and that one field of each register it reads holds its
+ * generated reset value.
  */
 
 #include <stdint.h>
@@ -40,10 +15,7 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
-/* Compare a register read against the generated reset default and fail on
- * mismatch. Expectations come from the generated reset constants in
- * smc_top_regs.h, reached through smc_io.h, so the golden is the generated map.
- */
+/* Fail the test when a register field differs from its generated reset value. */
 static void expect_field(const char *name, uint32_t got, uint32_t bm, uint32_t bp, uint32_t want) {
     uint32_t val = (got & bm) >> bp;
     simputs("  ");
@@ -53,7 +25,7 @@ static void expect_field(const char *name, uint32_t got, uint32_t bm, uint32_t b
         simputshex32("  MISMATCH: expected ", want);
         simputs("\n");
         write_scratch(0, 0xBAD00010u);
-        test_fail(0); /* noreturn */
+        test_fail(0);
     }
     simputshex32("  == generated reset ", want);
     simputs("\n");
@@ -68,13 +40,11 @@ int main(void) {
     simputs("################################################\n");
     simputs("\n");
 
-    // Step 1: System initialization complete
     test_step = 1;
     write_scratch(1, test_step);
     simputs("Step 1: System Initialization\n");
     simputs("  System ready\n");
 
-    // Step 2: Read CTRL register to verify telemetry is accessible
     test_step = 2;
     write_scratch(1, test_step);
     simputs("Step 2: Read CTRL register\n");
@@ -84,7 +54,6 @@ int main(void) {
                  TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_bp,
                  TELEMETRY_RECEIVER__CTRL__BUFFER_THRESHOLD_reset);
 
-    // Step 3: Read STATUS register
     test_step = 3;
     write_scratch(1, test_step);
     simputs("Step 3: Read STATUS register\n");
@@ -94,7 +63,6 @@ int main(void) {
                  TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_bp,
                  TELEMETRY_RECEIVER__STATUS__BUFFER_EMPTY_reset);
 
-    // Step 4: Read TELEMETRY_PROBE_ID register
     test_step = 4;
     write_scratch(1, test_step);
     simputs("Step 4: Read TELEMETRY_PROBE_ID register\n");
@@ -105,7 +73,6 @@ int main(void) {
                  TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bp,
                  TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_reset);
 
-    // Step 5: Read TELEMETRY_COUNTER_VLDS register
     test_step = 5;
     write_scratch(1, test_step);
     simputs("Step 5: Read TELEMETRY_COUNTER_VLDS register\n");
@@ -116,7 +83,6 @@ int main(void) {
                  TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_bp,
                  TELEMETRY_RECEIVER__TELEMETRY_COUNTER_VLDS__COUNTER_VLDS_reset);
 
-    // Step 6: Read telemetry counter values
     test_step = 6;
     write_scratch(1, test_step);
     simputs("Step 6: Read telemetry counter values\n");
@@ -136,7 +102,6 @@ int main(void) {
                      TELEMETRY_RECEIVER__TELEMETRY_COUNTER__COUNTER_reset);
     }
 
-    // Step 7: Test complete - all register reads done
     test_step = 7;
     write_scratch(1, test_step);
     simputs("Step 7: Test Complete\n");
@@ -160,6 +125,4 @@ int main(void) {
     // Signal test completion
     write_scratch(1, 0xEBEDEBE4);
     test_pass(0);
-
-    return 0;
 }

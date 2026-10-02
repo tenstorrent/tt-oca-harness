@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#include "metal/atomic.h"
-#include "metal/lock.h"
 #include "smc_io.h"
 #include "smc_test.h"
 
@@ -20,12 +18,12 @@
 #define GPIO_CTRL_CONTROL_OFF \
     (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0))
 
-/* Reset-default expectations for the GPIO_SANITY checks. */
+/* Reset defaults */
 #define EXP_ACCESS_FILTER 0x00010100u
 #define EXP_DATA_CTRL 0x00000000u
 #define EXP_CONTROL 0x00100002u
 
-/* LIVE pin handshake with cocotb (scratch 9=req, 11=ack). */
+/* Pad-observation request/acknowledge handshake with the testbench */
 #define LIVE_SCR_REQ 9
 #define LIVE_SCR_ACK 11
 #define LIVE_REQ_REG_OUT 0xAE600001u
@@ -36,8 +34,9 @@
 #define LIVE_ACK_BOUND 200000u
 
 /*
- * LIVE pad observation uses scratch 9/11 with the nonfree SMC TB observer.
- * The open wrap loader has no observer — wait_live_ack times out there.
+ * The pad checks need a testbench that samples the pads on request and
+ * acknowledges the result. Without one, wait_live_ack times out and the test
+ * fails.
  */
 
 static void fail_gpio(uint32_t code, const char *msg) {
@@ -71,16 +70,12 @@ static void wait_live_ack(uint32_t req) {
     fail_gpio(0xBAD00102u, "LIVE TB ack TIMEOUT (open wrap has no pad observer)");
 }
 
-/*
- * RST-DEFAULTS + INTF-BANK before mutating filters / pad loopback.
- * LIVE CHK-REG-OUT / CHK-DIR need pad-pin observation (cocotb).
- */
+/* Runs before any register is changed. */
 void test_rst_defaults(void) {
     uint32_t af;
     uint32_t dc;
     uint32_t ctrl;
 
-    /* S1 CHK-RST-AF */
     af = read_gpio(0, GPIO_INTF_ACCESS_FILTER_OFF);
     write_scratch(2, af);
     if (af != EXP_ACCESS_FILTER) {
@@ -88,7 +83,7 @@ void test_rst_defaults(void) {
     }
     simputs("  CHK-RST-AF: ACCESS_FILTER=0x00010100\n");
 
-    /* S2 CHK-RST-DC — mask pad2core (bit31); it is HW-updated from the pad. */
+    /* Ignore the pad input, which follows the pad rather than reset. */
     dc = read_gpio(0, GPIO_INTF_DATA_CTRL_OFF);
     write_scratch(2, dc);
     if ((dc & 0x7FFFFFFFu) != (EXP_DATA_CTRL & 0x7FFFFFFFu)) {
@@ -96,7 +91,7 @@ void test_rst_defaults(void) {
     }
     simputs("  CHK-RST-DC: DATA_CTRL programmable fields ok (pad2core masked)\n");
 
-    /* S3 CHK-RST-CTRL — exact default; strap capture may differ; report observed. */
+    /* The control register must hold its exact default; print the observed value on mismatch. */
     ctrl = read_gpio_shim(0, GPIO_CTRL_CONTROL_OFF);
     write_scratch(2, ctrl);
     if (ctrl != EXP_CONTROL) {
@@ -110,13 +105,13 @@ void test_rst_defaults(void) {
     simputs("  CHK-RST-CTRL: CONTROL=0x00100002\n");
 }
 
-/* S4 + LIVE CHK-REG-OUT via TB pin sample. */
+/* Drive a GPIO output from its registers and have the testbench confirm the pad. */
 void test_reg_out_program(void) {
     gpio_intf__DATA_CTRL_t dc;
 
     dc.w = read_gpio(11, GPIO_INTF_DATA_CTRL_OFF);
     dc.f.interface_enable = 1;
-    dc.f.enable_rx_tx = 1; /* 2'b01 core2pad_en */
+    dc.f.enable_rx_tx = 1; /* transmit */
     dc.f.core2pad = 1;
     write_gpio(11, GPIO_INTF_DATA_CTRL_OFF, dc.w);
 
@@ -129,14 +124,14 @@ void test_reg_out_program(void) {
     simputs("  CHK-REG-OUT: core2pad_o=1 core2pad_en=1\n");
 }
 
-/* S6 direction switch + LIVE enable observe via TB. */
+/* Switch a GPIO from receive to transmit and have the testbench confirm each direction. */
 void test_dir_switch_csr(void) {
     gpio_intf__DATA_CTRL_t dc;
     uint32_t rb;
 
     dc.w = read_gpio(11, GPIO_INTF_DATA_CTRL_OFF);
     dc.f.interface_enable = 1;
-    dc.f.enable_rx_tx = 2; /* 2'b10: pad2core_en */
+    dc.f.enable_rx_tx = 2; /* receive */
     write_gpio(11, GPIO_INTF_DATA_CTRL_OFF, dc.w);
     rb = read_gpio(11, GPIO_INTF_DATA_CTRL_OFF);
     if (((rb >> 4) & 0x3u) != 2u) {
@@ -146,7 +141,7 @@ void test_dir_switch_csr(void) {
     wait_live_ack(LIVE_REQ_DIR_10);
 
     dc.w = rb;
-    dc.f.enable_rx_tx = 1; /* 2'b01: core2pad_en */
+    dc.f.enable_rx_tx = 1; /* transmit */
     write_gpio(11, GPIO_INTF_DATA_CTRL_OFF, dc.w);
     rb = read_gpio(11, GPIO_INTF_DATA_CTRL_OFF);
     if (((rb >> 4) & 0x3u) != 1u) {
@@ -157,7 +152,7 @@ void test_dir_switch_csr(void) {
     simputs("  CHK-DIR: enable_rx_tx 10->01 live enables ok\n");
 }
 
-/* S7 intf-bank round-trip + ctrl-bank non-alias */
+/* An interface data control write reads back and leaves the control bank unchanged. */
 void test_intf_bank(void) {
     uint32_t ctrl_before;
     uint32_t ctrl_after;
@@ -196,8 +191,8 @@ void test_rw_core2pad(void) {
 
         gpio_intf.w = read_data_control;
 
-        if (gpio_num ==
-            61) { // this gpio is being used for cool_reset, use 0 as data to avoid resetting itself
+        // This GPIO triggers cool reset; leave it undriven so the walk does not reset the SMC
+        if (gpio_num == 61) {
             gpio_intf.f.core2pad = 0;
             gpio_intf.f.interface_enable = 0;
         } else {
@@ -216,7 +211,7 @@ void test_rw_core2pad(void) {
         write_scratch(1, gpio_intf.w);
         write_scratch(2, read_data_control_updated);
 
-        // bitwise and to not check bits that are HW writable
+        // Ignore the hardware-updated pad input
         if (gpio_intf.w != (read_data_control_updated & 0x7FFFFFFF)) {
             fail_gpio(0xBAD00130u, "core2pad DATA_CTRL readback mismatch");
         }
@@ -225,19 +220,18 @@ void test_rw_core2pad(void) {
 
 void test_read_filter(void) {
 
-    //// Change read permissions on GPIO 0 ////
-
+    // Read filter on GPIO 0
     gpio_intf__ACCESS_FILTER_t gpio_filter_0;
 
     gpio_filter_0.w = read_gpio(
         0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
     gpio_filter_0.f.read_filter_enable = 1;
 
-    gpio_filter_0.f.arprot_requirement = 2; // 3'b010 which is default
+    // Require the protection value the CPU's reads carry; reads must still pass
+    gpio_filter_0.f.arprot_requirement = 2;
     write_gpio(0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
-               gpio_filter_0.w); // set the new filter
+               gpio_filter_0.w);
 
-    // read back the filter to check it was written correctly
     uint32_t read_filter = read_gpio(
         0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
     if (read_filter != gpio_filter_0.w) {
@@ -252,19 +246,18 @@ void test_read_filter(void) {
         fail_gpio(0xBAD00141u, "read filter blocked allowed transaction");
     }
 
-    // Set prot to be 4
+    // Require a protection value the CPU's reads do not carry; the filter itself becomes unreadable
     gpio_filter_0.f.arprot_requirement = 4;
     write_gpio(0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
-               gpio_filter_0.w); // set the new filter
+               gpio_filter_0.w);
 
-    // read back the filter, it should not be read back as the filter is set
     read_filter = read_gpio(
         0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
     if (read_filter == gpio_filter_0.w) {
         fail_gpio(0xBAD00142u, "read filter should block filter CSR readback");
     }
 
-    // Try and read - should be blocked
+    // Data control reads are blocked too
     uint32_t read_data_blocked =
         read_gpio(0, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
     write_scratch(4, read_data_blocked);
@@ -276,8 +269,7 @@ void test_read_filter(void) {
 
 void test_write_filter(void) {
 
-    //// Change write permissions on GPIO 1 ////
-
+    // Write filter on GPIO 1
     for (int i = 0; i < 4; i++) {
         write_scratch(i, 0x22222222);
     }
@@ -293,9 +285,8 @@ void test_write_filter(void) {
     gpio_filter_1.f.awprot_requirement = 2;
 
     write_gpio(1, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
-               gpio_filter_1.w); // set the new filter with write filter enabled
+               gpio_filter_1.w);
 
-    // read back the filter to check it was written correctly
     uint32_t read_filter = read_gpio(
         1, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
     if (read_filter != gpio_filter_1.w) {
@@ -304,37 +295,37 @@ void test_write_filter(void) {
 
     gpio_intf_1.f.core2pad = 1;
     gpio_intf_1.f.interface_enable = 1;
+    // The CPU's writes carry the required protection value, so this write lands
     write_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
-               gpio_intf_1.w); // since correct prot (secure transaction), should write
+               gpio_intf_1.w);
     uint32_t read_data_allowed =
         read_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
 
-    if (read_data_allowed != gpio_intf_1.w) { // should be equal
+    if (read_data_allowed != gpio_intf_1.w) {
         write_scratch(2, gpio_intf_1.w);
         write_scratch(3, read_data_allowed);
         fail_gpio(0xBAD00151u, "write filter allowed write did not land");
     }
 
-    gpio_filter_1.f.awprot_requirement =
-        4; // only transactions with prot = 4 should be allowed to write
+    // Require a protection value the CPU's writes do not carry
+    gpio_filter_1.f.awprot_requirement = 4;
     write_gpio(1, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
-               gpio_filter_1.w); // set the new filter
+               gpio_filter_1.w);
 
-    // read back the filter to check it was written correctly
     read_filter = read_gpio(
         1, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
     if (read_filter != gpio_filter_1.w) {
         fail_gpio(0xBAD00152u, "write filter prot=4 program readback fail");
     }
 
-    gpio_intf_1.f.core2pad = 0; // try and write a 0
+    // A data control write must now be dropped
+    gpio_intf_1.f.core2pad = 0;
     write_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
                gpio_intf_1.w);
     uint32_t read_data_unchanged =
         read_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
 
-    if (read_data_unchanged ==
-        gpio_intf_1.w) { // if they are equal then the write occurred and the filter did not work
+    if (read_data_unchanged == gpio_intf_1.w) {
         write_scratch(2, gpio_intf_1.w);
         write_scratch(3, read_data_unchanged);
         fail_gpio(0xBAD00153u, "write filter failed to block write");
@@ -350,25 +341,25 @@ void test_rx_tx(void) {
         write_scratch(i, 0x33333333);
     }
 
-    /* Loopback path: GPIO11 drives core2pad → pad; GPIO24 samples pad2core. */
-    gpio_intf__DATA_CTRL_t gpio_intf_11; /* GPIO 11 */
-    gpio_intf__DATA_CTRL_t gpio_intf_24; /* GPIO 24 */
+    /* GPIO 11 drives the pad that GPIO 24 samples. */
+    gpio_intf__DATA_CTRL_t gpio_intf_11;
+    gpio_intf__DATA_CTRL_t gpio_intf_24;
 
     gpio_intf_11.w =
         read_gpio(11, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
     gpio_intf_24.w =
         read_gpio(24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
 
-    gpio_intf_24.f.enable_rx_tx = 2; /* 2'b10: TX enabled - pad2core_en */
+    gpio_intf_24.f.enable_rx_tx = 2; /* receive */
     gpio_intf_24.f.interface_enable = 1;
 
-    gpio_intf_11.f.enable_rx_tx = 1; /* 2'b01: RX enabled - core2pad_en */
+    gpio_intf_11.f.enable_rx_tx = 1; /* transmit */
     gpio_intf_11.f.interface_enable = 1;
 
     write_gpio(24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
                gpio_intf_24.w);
 
-    /* CHK-PAD-IN: pad2core must follow the driven core2pad at both levels. */
+    /* The sampled pad input must follow the driven output at both levels. */
     for (level = 0; level < 2; level++) {
         gpio_intf_11.f.core2pad = (uint32_t)level;
         write_gpio(11, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
@@ -396,19 +387,17 @@ void test_rx_tx(void) {
 
 int main(void) {
 
-    /* Contract RST first (before any mutation). */
     test_rst_defaults();
 
     /*
-     * The all-GPIO DATA_CTRL walk and the filter checks run before PAD-IN/DIR:
-     * those leave GPIO11/24 in enable_rx_tx=10, and in that mode the core2pad
-     * writeback in test_rw_core2pad does not read back.
+     * The all-GPIO walk and the filter checks run before the loopback and
+     * direction checks: those leave a GPIO in receive mode, where the walk's
+     * output write does not read back.
      */
     test_rw_core2pad();
     test_read_filter();
     test_write_filter();
 
-    /* S4-S7 producers; the LIVE REG-OUT/DIR tokens require the TB pad observer. */
     test_reg_out_program();
     test_rx_tx();
     test_dir_switch_csr();
@@ -418,15 +407,9 @@ int main(void) {
     simputs("  CHK-NONVAC: order=RST_AF<RST_DC<RST_CTRL<REG_OUT<PAD_IN<DIR<INTF_BANK\n");
 
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
 
-int other_main(int hartid) {
+int other_main(void) {
     while (true) {
         __asm__("wfi");
     }
@@ -438,6 +421,6 @@ int secondary_main(void) {
     if (hartid == 0) {
         return main();
     } else {
-        return other_main(hartid);
+        return other_main();
     }
 }

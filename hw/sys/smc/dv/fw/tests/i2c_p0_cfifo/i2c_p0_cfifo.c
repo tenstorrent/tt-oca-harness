@@ -2,14 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
- * @brief I2C P0 Controller FMT FIFO empty-threshold interrupt test
+ * @brief I2C P0 Controller FMT FIFO Threshold Interrupt Test
  *
- * Scope (FMT-only):
- * 1. Configure FMT FIFO threshold to M bytes
- * 2. With FMT empty (level 0 < M), verify fmt_threshold interrupt is asserted
- *
- * RX FIFO threshold and VIP traffic are covered by smc_i2c_p0_fifo_test.
+ * Verifies the format FIFO threshold interrupt of I2C controller 0: it is
+ * asserted while the FIFO level is below the programmed threshold and clears
+ * once the level reaches the threshold. The RX FIFO threshold is covered by
+ * i2c_p0_fifo.
  */
 
 #include <stdint.h>
@@ -41,7 +39,7 @@ static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
 }
 
 /**
- * @brief Prove FMT threshold interrupt when FIFO is empty (level < threshold).
+ * @brief Check the FMT threshold interrupt below and at the threshold.
  */
 static int test_fmt_fifo_empty_threshold(uint32_t idx, uint32_t threshold_m) {
     uint32_t base = i2c_get_base(idx);
@@ -108,18 +106,9 @@ static int test_fmt_fifo_empty_threshold(uint32_t idx, uint32_t threshold_m) {
         return I2C_ERROR;
     }
 
-    /* The other leg: fill past the threshold and require the interrupt to clear.
-     *
-     * Without this the test only ever asked the question the FIFO reset had
-     * already answered -- level 0 is always < threshold, so FMT_THRESHOLD was
-     * checked at exactly one operating point and an RTL that ties it to 1, or
-     * drops the comparator entirely, passes byte for byte. INTR_STATE.FMT_THRESHOLD
-     * is a level interrupt ("asserted while FMTLVL < FMT_THRESH", i2c.rdl), so
-     * pushing threshold_m entries must clear it.
-     *
-     * The controller is disabled first so the entries accumulate in FMT instead
-     * of being drained onto the bus.
-     */
+    /* The threshold interrupt is level-sensitive, so filling the FIFO to the
+     * threshold must clear it. The controller is disabled so the entries stay
+     * in the FIFO instead of going out on the bus. */
     i2c_controller_disable(idx);
     for (uint32_t i = 0; i < threshold_m; i++) {
         i2c__FDATA_t fdata = {.w = 0};
@@ -217,10 +206,4 @@ int main(void) {
     simputs("################################################\n");
     simputs("\n");
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }
