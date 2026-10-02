@@ -3736,8 +3736,9 @@ through the VIP result.
 . Past the register map, the five read-write registers are primed with values
 that have a set bit in every byte, then each dead word is read, word-written and
 partial-written. The map end is 4 bytes past the highest register
-`abr_reg.rdl` places, cross-checked against the `0xC018` that
-`[[abr-aperture-decode]]` names. The dead words are the first two past the end,
+`abr_reg.rdl` places, cross-checked against the ABR extent the SEP memory map
+states. Each expected response is the one the SEP memory map states for that
+word (`env/sep_decode_resp.py`). The dead words are the first two past the end,
 the last word of the window, the `+0x4000` mirror of every graded register that
 lands past the end, and two seeded words.
 . Every register written is restored to its entry value.
@@ -3774,11 +3775,11 @@ lands past the end, and two seeded words.
 |CHK-ABR-SIZE-RD-NARROW-RW
 |Byte and halfword reads of the counter return the addressed bytes of its seeded value, and every other byte lane of the R beat reads zero.
 |CHK-ABR-UNPOP-RD
-|A 32-bit read at every dead word past the register map answers OKAY with `0x0000_0000` and every byte lane of its R beat zero, while every read-write register holds a nonzero value, so an aliased read returns data. `adams_bridge.adoc` `[[abr-aperture-decode]]`: a word access to an unpopulated offset completes OKAY and a read returns zero.
+|A 32-bit read at every dead word past the register map answers the response code and read data the SEP memory map's Past Extent column states, while every read-write register holds a nonzero value, so an aliased read returns data. Where the map states OKAY, every byte lane of the R beat also reads zero. `adams_bridge.adoc` `[[abr-aperture-decode]]`: the crypto demux refuses every access past the register map.
 |CHK-ABR-UNPOP-WR
-|An all-ones word write at every dead word answers OKAY, the word reads back zero, and all five read-write registers and eight identity words read their primed or captured values afterwards. `[[abr-aperture-decode]]`: the write is discarded.
+|An all-ones word write at every dead word answers the map's write code, the word reads back as the map states, and all five read-write registers and eight identity words read their primed or captured values afterwards.
 |CHK-ABR-UNPOP-PARTIAL
-|A byte, a halfword and a three-byte write at the first dead word past the map and at the last word of the window each answer SLVERR and leave every graded register unchanged. `[[abr-aperture-decode]]`: a partial-word write is answered with SLVERR wherever it lands.
+|A byte, a halfword and a three-byte write at the first dead word past the map and at the last word of the window are each refused with the map's write code and leave every graded register unchanged. Where the map answers a word write OKAY, the write reaches ABR and the expected refusal is SLVERR (`[[abr-access-size]]`).
 |CHK-ABR-SIZE-RESTORE
 |Every register written reads back its entry value.
 |===
@@ -6446,7 +6447,7 @@ reported as such rather than counted as a pass.
 
 *BFM / Model*: ocah_axi_vip
 
-*Randomization*: RANDCFG — the twelve directed wrap offsets and six directed TRNG-window probes on every seed, plus two seed-selected dead offsets per block window.
+*Randomization*: RANDCFG — the twelve directed wrap offsets, four directed ABR probes and six directed TRNG-window probes on every seed, plus two seed-selected dead offsets per block window.
 
 *Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat. The TRNG window, forwarded whole to an adopter endpoint and terminated in the reference integration, must refuse every access and alias no neighbouring ESRC register; its response code is logged for the document owner, not graded.
 
@@ -6460,6 +6461,7 @@ reported as such rather than counted as a pass.
 . Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit.
 . A refusal that still writes the register is a failure, so every probe reads back the window's live registers as well as the response.
 . A later beat of a burst that ends past the extent is held to the same rule as a single beat.
+. The ABR window is probed every seed at the first word past the register map (read and write), at `error_intr_en_r` with offset bit 14 set, and at the last word of the window.
 . The TRNG window (`TRNG_REG_MAP_BASE_ADDR` up to the lifecycle base) allocates no SEP register. Its first, middle and last word are read and written every seed, plus two seeded offsets. The no-alias snapshot for this window is the neighbouring ESRC register set, which an access that drops address bit 12 reaches.
 
 *Checkers*:
@@ -6470,7 +6472,7 @@ reported as such rather than counted as a pass.
 |CHK-DEADSPACE-RAND
 |Stimulus precondition. Each watched window supplies its full quota of two seed-selected, word-aligned dead-offset probes. No two probes, and no probe and directed anchor, share both address and operation. A window with no dead span counts as zero of two. The probe count is the random-coverage claim, so a short window fails the leaf before bring-up and is not absorbed into a smaller probe set. The checker has no PASS line; the `deadspace config` line records the probe count per seed.
 |CHK-WINDOW-LIVE
-|Each of the eleven watched windows (secure_dma, wdt_timer, aes, otbn, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller, and trng against the neighbouring entropy_src registers) has a non-empty register snapshot and at least one register armed for the change compare, so both no-alias compares can fail. The line reports readable and armed separately: the per-probe change compare drops hardware-updating addresses, so armed is the falsifiable count, and a window with none armed fails.
+|Each of the twelve watched windows (secure_dma, wdt_timer, aes, otbn, abr, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller, and trng against the neighbouring entropy_src registers) has a non-empty register snapshot and at least one register armed for the change compare, so both no-alias compares can fail. The line reports readable and armed separately: the per-probe change compare drops hardware-updating addresses, so armed is the falsifiable count, and a window with none armed fails.
 |CHK-DEADSPACE-REFUSE
 |Every probed address past the allocated size is refused (not OKAY), including the directed wrap anchors (KM `0x10920ff8`, DMA `0x108008a8`). A single accepted probe fails the checker; there is no tolerated count.
 |CHK-DEADSPACE-NO-ALIAS
@@ -8296,8 +8298,8 @@ constraint is not an open defect.
 |TRNG unowned-offset response flavour (specification)
 |`hw/sys/sep/doc/memory_map.adoc` requires SLVERR for a TRNG-window offset that owns no register. `doc/integrator/src/smu.adoc` requires a DECERR slave when no external TRNG is connected. The reference integration terminates `ext_trng_axil` with an error slave. `sep_fabric_deadspace_decode_test` `CHK-TRNG-UNOWNED` asserts the refusal both documents require and logs the read and write response codes; which flavour is correct is for the document owner to reconcile. Do not XFAIL.
 
-|ABR unpopulated offsets complete OKAY (vendored collateral)
-|`hw/sys/sep/doc/adams_bridge.adoc` `[[abr-aperture-decode]]` documents that the vendored ABR register block has no address check: a word access past the register map (`0xC018`) completes OKAY, a read returns zero and a write is discarded, while a partial-word write answers SLVERR. `sep_abr_access_size_test` `CHK-ABR-UNPOP-RD` / `-WR` / `-PARTIAL` grade that documented behaviour, so an RTL change that refuses these accesses turns them red until the document changes with it.
+|ABR unpopulated offsets inside the register map complete OKAY (vendored collateral)
+|`hw/sys/sep/doc/adams_bridge.adoc` `[[abr-aperture-decode]]` documents that the vendored ABR register block has no address check: a word access to an unpopulated offset inside the register map completes as the SEP memory map's Hole in Extent column states, and a partial-word write there answers SLVERR. Past the register map the crypto demux refuses the access, which `sep_abr_access_size_test` `CHK-ABR-UNPOP-RD` / `-WR` / `-PARTIAL` and `sep_fabric_deadspace_decode_test` grade. Refusing the in-map offsets needs an upstream regeneration of the register block.
 
 |KMCSR extent (RDL comment)
 |`hw/ip/key_manager/regs/km_csr.rdl` says "Size: 4KB (0x1000)" in its header comment. The generated register block is `KEY_MANAGER_KMCSR_SIZE` = `0x4C0` (`hw/ip/key_manager/regs/gen/c/key_manager_addr.h`). `sep_abr_absent_decerr_test` loads `KMCSR base + 0x4C0` from the KM CPU and logs the answer: AXI_SLVERR with data 0. The 4 KB is the decode window, and the registers end at `0x4C0`. No checker grades this; the header comment is the item to correct.
