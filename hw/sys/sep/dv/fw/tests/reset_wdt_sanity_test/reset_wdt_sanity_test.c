@@ -7,8 +7,8 @@
 //   * the software reset register reads its reset default;
 //   * for each crypto IP (otbn/aes/hmac/kmac/abr) and the TRNG domain
 //     (esrc/csrng/edn), a pulse of only that IP's reset returns its probe
-//     register to its reset value, leaves a probe in another domain unchanged,
-//     and leaves the probe writable after the release;
+//     register to its reset value, leaves every probe outside that reset bit
+//     unchanged, and leaves the probe writable after the release;
 //   * the software reset register is back at its default afterwards;
 //   * a write and a read to the unmapped gap past the reset-controller window
 //     each raise a bus-error NMI; exactly two must be counted.
@@ -124,69 +124,110 @@ void nmi_handler(void) {
     __asm__ volatile("fence" ::: "memory");
 }
 
-// Checks one IP reset wire: write this IP's probe and a neighbour probe in
-// another reset domain, pulse only this IP's reset, then require this probe back
-// at its reset value and the neighbour unchanged, so a reset that hits every
-// domain fails. The probe write is then repeated and must read back, so a domain
-// left in reset fails; a second pulse returns the probe to its reset value for
-// the next check. nb_addr must be outside this IP's reset domain (esrc, csrng
-// and edn share the TRNG reset). Returns 1 on failure.
-static int check_reset_wire(const char *name, uint32_t bit_mask, uint32_t probe_addr,
-                            uint32_t write_val, uint32_t expect_after_rst, const char *nb_name,
-                            uint32_t nb_addr, uint32_t nb_val) {
-    sep_reset_wr(probe_addr, write_val);
-    if (sep_reset_rd(probe_addr) != write_val) {
+// One reset-wire probe: a CSR in the reset domain of `bit`, the value written
+// to it, and the register's reset value.
+typedef struct {
+    const char *name;
+    uint32_t bit;
+    uint32_t addr;
+    uint32_t wr;
+    uint32_t rst;
+} reset_probe_t;
+
+static const reset_probe_t k_probes[] = {
+    {"otbn", SEP_SW_RESET_N_OTBN_BIT, OTBN_INTR_ENABLE_ADDR, OTBN_INTR_ENABLE_WR,
+     OTBN_INTR_ENABLE_RST},
+    {"aes", SEP_SW_RESET_N_AES_BIT, AES_CTRL_AUX_REGWEN_ADDR, AES_CTRL_AUX_REGWEN_WR,
+     AES_CTRL_AUX_REGWEN_RST},
+    {"hmac", SEP_SW_RESET_N_HMAC_BIT, HMAC_INTR_ENABLE_ADDR, HMAC_INTR_ENABLE_WR,
+     HMAC_INTR_ENABLE_RST},
+    {"kmac", SEP_SW_RESET_N_KMAC_BIT, KMAC_INTR_ENABLE_ADDR, KMAC_INTR_ENABLE_WR,
+     KMAC_INTR_ENABLE_RST},
+    {"abr", SEP_SW_RESET_N_ABR_BIT, ABR_GLOBAL_INTR_ENABLE_ADDR, ABR_GLOBAL_INTR_ENABLE_WR,
+     ABR_GLOBAL_INTR_ENABLE_RST},
+    {"esrc", SEP_SW_RESET_N_TRNG_BIT, ESRC_DEBUG_CTRL_ADDR, ESRC_DEBUG_CTRL_WR,
+     ESRC_DEBUG_CTRL_RST},
+    {"csrng", SEP_SW_RESET_N_TRNG_BIT, CSRNG_INTR_ENABLE_ADDR, CSRNG_INTR_ENABLE_WR,
+     CSRNG_INTR_ENABLE_RST},
+    {"edn", SEP_SW_RESET_N_TRNG_BIT, EDN_INTR_ENABLE_ADDR, EDN_INTR_ENABLE_WR, EDN_INTR_ENABLE_RST},
+};
+#define NUM_PROBES (sizeof(k_probes) / sizeof(k_probes[0]))
+
+// Checks one IP reset wire: write this IP's probe and every probe outside its
+// reset bit, pulse only this IP's reset, then require this probe back at its
+// reset value and every other-domain probe unchanged, so a reset bit wired to
+// any other domain fails. The probe write is then repeated and must read back,
+// so a domain left in reset fails; a second pulse returns the probe to its reset
+// value for the next check. esrc, csrng and edn share the TRNG reset bit, so
+// none of them is a neighbour of the others. Returns 1 on failure.
+static int check_reset_wire(const reset_probe_t *p) {
+    uint32_t neighbours = 0;
+    sep_reset_wr(p->addr, p->wr);
+    if (sep_reset_rd(p->addr) != p->wr) {
         sep_mbx_puts("FAIL: probe write did not land: ");
-        sep_mbx_puts(name);
+        sep_mbx_puts(p->name);
         sep_mbx_putc('\n');
         return 1;
     }
-    // Neighbour probe, held across the pulse. Confirmed landed first, so a
-    // neighbour read of nb_val after the pulse cannot be a write that never
-    // took.
-    sep_reset_wr(nb_addr, nb_val);
-    if (sep_reset_rd(nb_addr) != nb_val) {
-        sep_mbx_puts("FAIL: neighbour probe write did not land: ");
-        sep_mbx_puts(nb_name);
-        sep_mbx_putc('\n');
-        return 1;
+    // Other-domain probes, held across the pulse. Each is confirmed landed
+    // first, so a read of its written value after the pulse cannot be a write
+    // that never took.
+    for (uint32_t j = 0; j < NUM_PROBES; j++) {
+        const reset_probe_t *nb = &k_probes[j];
+        if (nb->bit == p->bit) {
+            continue;
+        }
+        sep_reset_wr(nb->addr, nb->wr);
+        if (sep_reset_rd(nb->addr) != nb->wr) {
+            sep_mbx_puts("FAIL: neighbour probe write did not land: ");
+            sep_mbx_puts(nb->name);
+            sep_mbx_putc('\n');
+            return 1;
+        }
     }
     // Pulse only this IP's reset bit, then restore the default.
-    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, SEP_SW_RESET_N_DEFAULT & ~bit_mask);
+    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, SEP_SW_RESET_N_DEFAULT & ~p->bit);
     sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, SEP_SW_RESET_N_DEFAULT);
-    if (sep_reset_rd(probe_addr) != expect_after_rst) {
+    if (sep_reset_rd(p->addr) != p->rst) {
         sep_mbx_puts("FAIL: reset wire did not clear probe: ");
-        sep_mbx_puts(name);
+        sep_mbx_puts(p->name);
         sep_mbx_putc('\n');
         return 1;
     }
-    if (sep_reset_rd(nb_addr) != nb_val) {
-        sep_mbx_puts("FAIL: neighbour domain disturbed: ");
-        sep_mbx_puts(name);
-        sep_mbx_puts(" reset changed ");
-        sep_mbx_puts(nb_name);
-        sep_mbx_putc('\n');
-        return 1;
+    for (uint32_t j = 0; j < NUM_PROBES; j++) {
+        const reset_probe_t *nb = &k_probes[j];
+        if (nb->bit == p->bit) {
+            continue;
+        }
+        if (sep_reset_rd(nb->addr) != nb->wr) {
+            sep_mbx_puts("FAIL: neighbour domain disturbed: ");
+            sep_mbx_puts(p->name);
+            sep_mbx_puts(" reset changed ");
+            sep_mbx_puts(nb->name);
+            sep_mbx_putc('\n');
+            return 1;
+        }
+        neighbours++;
     }
-    sep_reset_wr(probe_addr, write_val);
-    if (sep_reset_rd(probe_addr) != write_val) {
+    sep_reset_wr(p->addr, p->wr);
+    if (sep_reset_rd(p->addr) != p->wr) {
         sep_mbx_puts("FAIL: probe not writable after reset release: ");
-        sep_mbx_puts(name);
+        sep_mbx_puts(p->name);
         sep_mbx_putc('\n');
         return 1;
     }
-    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, SEP_SW_RESET_N_DEFAULT & ~bit_mask);
+    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, SEP_SW_RESET_N_DEFAULT & ~p->bit);
     sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, SEP_SW_RESET_N_DEFAULT);
-    if (sep_reset_rd(probe_addr) != expect_after_rst) {
+    if (sep_reset_rd(p->addr) != p->rst) {
         sep_mbx_puts("FAIL: second reset pulse did not clear probe: ");
-        sep_mbx_puts(name);
+        sep_mbx_puts(p->name);
         sep_mbx_putc('\n');
         return 1;
     }
-    sep_mbx_puts(name);
-    sep_mbx_puts(" reset wire OK, writable after release, neighbour ");
-    sep_mbx_puts(nb_name);
-    sep_mbx_puts(" survived\n");
+    sep_mbx_puts(p->name);
+    sep_mbx_puts(" reset wire OK, writable after release, other-domain probes unchanged ");
+    sep_mbx_puthex(neighbours);
+    sep_mbx_putc('\n');
     return 0;
 }
 
@@ -209,30 +250,9 @@ int main(void) {
         errors++;
     }
 
-    errors += check_reset_wire("otbn", SEP_SW_RESET_N_OTBN_BIT, OTBN_INTR_ENABLE_ADDR,
-                               OTBN_INTR_ENABLE_WR, OTBN_INTR_ENABLE_RST, "hmac",
-                               HMAC_INTR_ENABLE_ADDR, HMAC_INTR_ENABLE_WR);
-    errors += check_reset_wire("aes", SEP_SW_RESET_N_AES_BIT, AES_CTRL_AUX_REGWEN_ADDR,
-                               AES_CTRL_AUX_REGWEN_WR, AES_CTRL_AUX_REGWEN_RST, "hmac",
-                               HMAC_INTR_ENABLE_ADDR, HMAC_INTR_ENABLE_WR);
-    errors += check_reset_wire("hmac", SEP_SW_RESET_N_HMAC_BIT, HMAC_INTR_ENABLE_ADDR,
-                               HMAC_INTR_ENABLE_WR, HMAC_INTR_ENABLE_RST, "kmac",
-                               KMAC_INTR_ENABLE_ADDR, KMAC_INTR_ENABLE_WR);
-    errors += check_reset_wire("kmac", SEP_SW_RESET_N_KMAC_BIT, KMAC_INTR_ENABLE_ADDR,
-                               KMAC_INTR_ENABLE_WR, KMAC_INTR_ENABLE_RST, "hmac",
-                               HMAC_INTR_ENABLE_ADDR, HMAC_INTR_ENABLE_WR);
-    errors += check_reset_wire("abr", SEP_SW_RESET_N_ABR_BIT, ABR_GLOBAL_INTR_ENABLE_ADDR,
-                               ABR_GLOBAL_INTR_ENABLE_WR, ABR_GLOBAL_INTR_ENABLE_RST, "hmac",
-                               HMAC_INTR_ENABLE_ADDR, HMAC_INTR_ENABLE_WR);
-    errors +=
-        check_reset_wire("esrc", SEP_SW_RESET_N_TRNG_BIT, ESRC_DEBUG_CTRL_ADDR, ESRC_DEBUG_CTRL_WR,
-                         ESRC_DEBUG_CTRL_RST, "hmac", HMAC_INTR_ENABLE_ADDR, HMAC_INTR_ENABLE_WR);
-    errors += check_reset_wire("csrng", SEP_SW_RESET_N_TRNG_BIT, CSRNG_INTR_ENABLE_ADDR,
-                               CSRNG_INTR_ENABLE_WR, CSRNG_INTR_ENABLE_RST, "hmac",
-                               HMAC_INTR_ENABLE_ADDR, HMAC_INTR_ENABLE_WR);
-    errors +=
-        check_reset_wire("edn", SEP_SW_RESET_N_TRNG_BIT, EDN_INTR_ENABLE_ADDR, EDN_INTR_ENABLE_WR,
-                         EDN_INTR_ENABLE_RST, "hmac", HMAC_INTR_ENABLE_ADDR, HMAC_INTR_ENABLE_WR);
+    for (uint32_t i = 0; i < NUM_PROBES; i++) {
+        errors += check_reset_wire(&k_probes[i]);
+    }
 
     if (sep_reset_rd(SEP_RESET_CTRL_SW_RESET_N) != SEP_SW_RESET_N_DEFAULT) {
         sep_mbx_puts("FAIL: SW_RESET_N not restored to default\n");

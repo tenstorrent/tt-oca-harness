@@ -2635,7 +2635,7 @@ reaches its wait before the interrupt fires.
 |CHK-SWRST-DEFAULT
 |The software reset register holds its specified default of `0x7E`.
 |CHK-SWRST-WIRE
-|Pulsing each per-IP bit, the shared TRNG bit and the Adams Bridge bit included, returns that domain's probe register to its reset value and leaves the neighbouring domains untouched.
+|Pulsing each per-IP bit, the shared TRNG bit and the Adams Bridge bit included, returns that domain's probe register to its reset value and leaves every probe outside that reset bit unchanged: seven probes for an OTBN, AES, HMAC, KMAC or Adams Bridge pulse and five for a TRNG pulse, since the entropy source, CSRNG and EDN share the TRNG bit. The firmware logs the count per pulse and the testbench requires those exact counts.
 |CHK-SWRST-WRITABLE
 |After each release the firmware writes the probe again and it must read back the written value, which differs from its reset value, so a domain left held in reset fails. A second pulse then returns the probe to its reset value. Probe addresses, write values and reset values come from the generated headers; the Adams Bridge interrupt-enable reset value is taken from `abr_reg.rdl` `global_intr_en_t`, which has no generated C field header.
 |===
