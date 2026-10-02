@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">sep_efuse_wrapper</h1>
-<p>Wrap efuse_interface_controller with SEP datapath conversion, JTAG policy, and secure test mode.</p><p>Downsizes the functional 64-bit AXI4 slave to 32-bit, converts it to AXI4-Lite, and muxes it with the Key Manager AXI-Lite path into the eFuse controller register port. In a restricted state (PROD / RMA_SiP, or an LC-state differential-decode integrity error), JTAG accesses outside the MMR / token register space receive DECERR with read data 0xBADCAB1E; the MMR space stays accessible for RMA_SiP token programming. secure_tm_req_i is latched into secure_tm_o on the second clock edge after rst_ni release when security is disabled, and otherwise on the rising edge of fuse sense done.</p>
+<p>Wrap efuse_interface_controller with SEP datapath conversion, JTAG policy, and secure test mode.</p><p>Downsizes the functional 64-bit AXI4 slave to 32-bit, converts it to AXI4-Lite, and muxes it with the Key Manager AXI-Lite path into the eFuse controller register port. The controller&#x27;s shim CSR port leaves through an axi_cut. In a restricted state (PROD / RMA_SiP, or an LC-state differential-decode integrity error), JTAG accesses outside the MMR / token register space receive DECERR with read data 0xBADCAB1E; the MMR space stays accessible for RMA_SiP token programming. secure_tm_req_i is latched into secure_tm_o on the second clock edge after rst_ni release when security is disabled, and otherwise on the rising edge of fuse sense done.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">

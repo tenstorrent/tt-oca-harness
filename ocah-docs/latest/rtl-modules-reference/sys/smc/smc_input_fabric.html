@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">smc_input_fabric</h1>
-<p>Route the SMC&#x27;s inbound AXI initiators toward the local and output fabrics.</p><p>Widens the JTAG and MMIO IDs and converts the log AXI-Lite port to AXI, applies the alias remap to those and the data accelerator port, muxes the four, and sends requests inside the local or global SMC window to the local output port truncated to 32 bits and all others to the global output port. System inbound AXI passes a clock-gated access filter that blocks by default; system and SEP requests outside the SMC window receive DECERR, and the rest are truncated to 32 bits for the local fabric.</p>
+<p>Route the SMC&#x27;s inbound AXI initiators toward the local and output fabrics.</p><p>Widens the JTAG and MMIO IDs and converts the log AXI-Lite port to AXI, applies the alias remap to those and the data accelerator port, muxes the four, and sends requests inside the local or global SMC window to the local output port truncated to 32 bits and all others to the global output port. System inbound AXI passes a clock-gated access filter that blocks by default; system and SEP requests outside the SMC window receive DECERR, and the rest are truncated to 32 bits for the local fabric. The JTAG, system and SEP inputs each enter through an axi_cut.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
@@ -733,7 +733,7 @@
 <tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>System inbound filter entry hit by writes; tied to zero because the filter instance disables its debug output.</td></tr>
 <tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>System inbound filter entry hit by reads; tied to zero because the filter instance disables its debug output.</td></tr>
 <tr><td><code>sys_in_filter_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system inbound filter clock runs.</td></tr>
-<tr><td><code>sys_in_filter_bus_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system AXI input has a request valid or a transaction outstanding.</td></tr>
+<tr><td><code>sys_in_filter_bus_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system inbound filter input has a request valid or a transaction outstanding.</td></tr>
 </table>
 </div>
 </article>

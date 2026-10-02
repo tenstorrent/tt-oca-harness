@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">sep</h1>
-<p>Integrate the SEP security processor CPU, crypto, IO, SMN, and lifecycle boundaries.</p><p>Exposes JTAG, DMI, memory-macro, SMN AXI, crypto SRAM, eFuse, SPI, lifecycle, mailbox, and Key Manager error interfaces to the integrator. sep_global_base_addr_o and sep_region_size_o publish the SEP aperture from sep_cpu_ctrl CSRs for the SMU AXI crossbar SEP-target rule. External-aperture requests inside the eFuse shim CSR window are diverted to the eFuse wrapper; the rest leave on sep_external_axi_req_o. PIC source i+1 is internal interrupt i for the NUM_INTERNAL_IRQS internal sources (mailbox, DMA, WDT, SPI, crypto, eFuse and bridge faults), followed by extintsrc_req_i. The WDT bark drives the CPU NMI, which jumps to SEP_NMI_VEC. When unused, tie test_en_i to 1&#x27;b0 and scan_rst_ni to 1&#x27;b1.</p>
+<p>Integrate the SEP security processor CPU, crypto, IO, SMN, and lifecycle boundaries.</p><p>Exposes JTAG, DMI, memory-macro, SMN AXI, crypto SRAM, eFuse, SPI, lifecycle, mailbox, and Key Manager error interfaces to the integrator. sep_global_base_addr_o and sep_region_size_o publish the SEP aperture from sep_cpu_ctrl CSRs for the SMU AXI crossbar SEP-target rule. External-aperture requests inside the eFuse shim CSR window are diverted to the eFuse wrapper; the rest leave on sep_external_axi_req_o through an axi_cut. PIC source i+1 is internal interrupt i for the NUM_INTERNAL_IRQS internal sources (mailbox, DMA, WDT, SPI, crypto, eFuse and bridge faults), followed by extintsrc_req_i. The WDT bark drives the CPU NMI, which jumps to SEP_NMI_VEC. When unused, tie test_en_i to 1&#x27;b0 and scan_rst_ni to 1&#x27;b1.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">

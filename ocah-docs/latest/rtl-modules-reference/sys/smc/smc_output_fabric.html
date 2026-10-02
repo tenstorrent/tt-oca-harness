@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">smc_output_fabric</h1>
-<p>Route the SMC&#x27;s outbound AXI through the output remap and filter to the system AXI port.</p><p>With NO_ADDR_REMAP clear, requests inside the M-mode or Xvisor remap window at either SMC base go through the matching output_remap, which rewrites the address and replaces AxUSER with the M-mode or the other source ID; all other requests have AxUSER replaced with the SMC source ID; a mux merges the three paths and widens the ID. With NO_ADDR_REMAP set, only the ID widening remains. A clock-gated outbound access filter, which allows traffic that hits no rule, then guards the port.</p>
+<p>Route the SMC&#x27;s outbound AXI through the output remap and filter to the system AXI port.</p><p>With NO_ADDR_REMAP clear, requests inside the M-mode or Xvisor remap window at either SMC base go through the matching output_remap, which rewrites the address and replaces AxUSER with the M-mode or the other source ID; all other requests have AxUSER replaced with the SMC source ID; a mux merges the three paths and widens the ID. With NO_ADDR_REMAP set, only the ID widening remains. A clock-gated outbound access filter, which allows traffic that hits no rule, then guards the port, which it reaches through an axi_cut.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
