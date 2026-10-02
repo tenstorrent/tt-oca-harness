@@ -1502,6 +1502,15 @@ module sep_uvm_top
     `SRAM_PL(3); `SRAM_PL(4); `SRAM_PL(5);
 `undef SRAM_PL
 
+    // Read-only XMR of the ML-KEM seed Z the Adams Bridge engine holds. See the
+    // port comment in sep_tb_signal_list.svh.
+`ifdef SEP_ABR_EN
+    assign abr_mlkem_seed_z_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_top.abr_ctrl_inst.abr_scratch_reg.mlkem_enc.seed_z;
+`else
+    assign abr_mlkem_seed_z_probe_o = '0;
+`endif
+
     // ------------------------------------------------------------------
     // Warm-reset handler seed: +sep_cold_scratch7=<hex32>
     // ------------------------------------------------------------------

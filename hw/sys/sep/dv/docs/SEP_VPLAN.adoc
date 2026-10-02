@@ -8238,7 +8238,8 @@ success.
 *Source Module*: `sep_km_sideload_share_walk_test`
 
 *BFM / Model*: ocah_axi_vip, `env/sep_aes_golden.py`, `env/sep_hmac_golden.py`,
-`env/sep_kmac_golden.py`
+`env/sep_kmac_golden.py`, the `abr_mlkem_seed_z_probe_o` observation probe
+(SEP_TB_ARCH exception list)
 
 *Objective*: every Key Manager delivery destination consumes the exact key the
 KM delivered, takes a second, different key after an engine shred, and shows
@@ -8265,12 +8266,17 @@ a different software key in the KEY CSRs (CHK-HMAC). Keyed KMAC256 with
 `CFG_SHADOWED.sideload` (CHK-KMAC). The OTBN key-dump program (CHK-OTBN). For
 ABR, `ZEROIZE`, set the KV read enable, wait for the KV status to settle, run
 the KV-fed KEYGEN or ENCAPS, then `ZEROIZE` and run the same operation on the
-same words written directly (CHK-MLDSA, CHK-MLKEM-SEED, CHK-MLKEM-MSG).
+same words written directly (CHK-MLDSA, CHK-MLKEM-SEED, CHK-MLKEM-MSG). After
+the `D` then `Z` KV read, sample the engine's `Z` through
+`abr_mlkem_seed_z_probe_o` (CHK-MLKEM-SEED).
 . `CMD_ENGINE_SHRED` with all eight destination bits. The firmware response is
 a precondition; the hardware effect is graded in the next step.
 . HMAC with a software key (CHK-HMAC-CLR); OTBN key dump (CHK-OTBN-CLR); for
 each ABR KV lane, `ZEROIZE`, set the read enable, read the KV status and the
-engine status, `ZEROIZE` (CHK-ABR-CLR).
+engine status, `ZEROIZE`. Then `CMD_KEY_TRANSFER` the round's `D` handle to
+`MLKEM_SEED_D` only and read the `D` then `Z` lane; `CMD_ENGINE_SHRED` all
+eight, transfer the `Z` handle to `MLKEM_SEED_Z` only and read the lane again;
+`CMD_ENGINE_SHRED` all eight (CHK-ABR-CLR).
 . Round 2: the same steps with a new key whose every word differs from the
 round-1 word at the same index. Compare each ABR output with round 1
 (CHK-ROUND).
@@ -8285,7 +8291,9 @@ direct-register ABR references are built from the same object. ABR seeds are
 seeded dword palindromes.
 
 *Scope*: the share words are write-only and sit on the KM-private bus, so a
-delivered value is graded at its consumer, never by readback. The KV read error
+delivered value is graded at its consumer, never by readback. The ML-KEM
+`Z` has no consumer output (the encapsulation key depends on `D` only), so it
+is graded at the engine through a read-only observation probe. The KV read error
 of a block whose `KEY_VALID` is clear is claimed here; the ML-KEM shared-key
 write lane stays on `sep_km_abr_mlkem_sideload_test`. ABR has no independent
 golden in this tree for a seed of the run's choosing, so each ABR compare is
@@ -8309,7 +8317,7 @@ read is logged, not graded.
 |CHK-MLDSA-1/2
 |The ML-DSA seed KV read completes (`VALID`, `ERROR` = `SUCCESS`) and the KEYGEN public key equals a direct-seed KEYGEN of the same words.
 |CHK-MLKEM-SEED-1/2
-|The 16-dword `D` then `Z` KV read completes and the encapsulation key equals a direct-seed KEYGEN of the same `D` and `Z`.
+|The 16-dword `D` then `Z` KV read completes, the encapsulation key equals a direct-seed KEYGEN of the same `D` and `Z`, and the `Z` the engine holds after the KV read (`abr_mlkem_seed_z_probe_o`) equals the delivered `Z`. The encapsulation key depends on `D` only and software cannot read `Z` back, so the probe grades `Z`.
 |CHK-MLKEM-MSG-1/2
 |The message KV read completes and the ENCAPS ciphertext equals a direct-message ENCAPS of the same words.
 |CHK-ROUND
@@ -8319,7 +8327,7 @@ read is logged, not graded.
 |CHK-OTBN-CLR-1/2
 |After the shred the key-dump program stops with `ERR_BITS` = `KEY_INVALID` (`doc/otbn.adoc`).
 |CHK-ABR-CLR-1/2
-|After the shred each of the three ABR KV reads reports `ERROR` = `KV_READ_FAIL` (`doc/crypto.adoc`, `km-key-delivery-summary`: "Seed read does not complete"; the encoding is the `kv_error_e` enum of `kv_def.rdl`). The engine `STATUS` is logged and not graded: no SEP document states it.
+|After the shred each of the three ABR KV reads reports `ERROR` = `KV_READ_FAIL` (`doc/crypto.adoc`, `km-key-delivery-summary`: "Seed read does not complete"; the encoding is the `kv_error_e` enum of `kv_def.rdl`). `D` and `Z` have their own `KEY_VALID` and the `D` then `Z` read fails if either is clear, so each is also graded alone: with only `D` delivered again the read reports `KV_READ_FAIL` (`Z` is clear), and after a second shred, with only `Z` delivered again, it reports `KV_READ_FAIL` (`D` is clear). The engine `STATUS` is logged and not graded: no SEP document states it.
 |CHK-KMAC-CLR
 |A keyed KMAC on the shredded delivered key raises `INTR_STATE.kmac_err` with a non-zero `ERR_CODE` (`doc/kmac.adoc`).
 |CHK-AES-CLR

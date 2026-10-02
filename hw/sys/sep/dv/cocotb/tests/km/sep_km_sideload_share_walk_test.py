@@ -31,8 +31,11 @@ Checkers (``r`` is the round, 1 or 2):
   CHK-MLDSA-r   the KV seed read completes (VALID, ERROR == SUCCESS) and the
                 KEYGEN public key equals a direct-seed KEYGEN of the same words
   CHK-MLKEM-SEED-r
-                the D||Z KV read completes and the encapsulation key equals a
-                direct-seed KEYGEN of the same D and Z
+                the D||Z KV read completes, the encapsulation key equals a
+                direct-seed KEYGEN of the same D and Z, and the Z the engine
+                holds (abr_mlkem_seed_z_probe_o) equals the delivered Z. The
+                encapsulation key depends on D only, and software cannot read
+                Z back, so the probe is what grades Z
   CHK-MLKEM-MSG-r
                 the message KV read completes and the ENCAPS ciphertext equals
                 a direct-message ENCAPS of the same words
@@ -47,8 +50,13 @@ Checkers (``r`` is the round, 1 or 2):
                 ERR_BITS.KEY_INVALID and stops the program (doc/otbn.adoc)
   CHK-ABR-CLR-r each ABR KV read on a shredded block fails: kv status ERROR ==
                 KV_READ_FAIL (doc/crypto.adoc km-key-delivery-summary, "Seed
-                read does not complete"; encoding from kv_def.rdl). The engine
-                STATUS is logged, not graded: no SEP document states it
+                read does not complete"; encoding from kv_def.rdl). D and Z
+                have their own KEY_VALID and the D||Z read fails if either is
+                clear, so each is graded alone: after the shred only D is
+                delivered again and the read must fail (Z is clear); after a
+                second shred only Z is delivered again and the read must fail
+                (D is clear). The engine STATUS is logged, not graded: no SEP
+                document states it
   CHK-KMAC-CLR  a keyed operation on the delivered key with KEY_VALID clear
                 raises kmac_err with a non-zero ERR_CODE (doc/kmac.adoc). Last
                 KMAC operation: the engine is left in its error state
@@ -392,6 +400,11 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         assert any(w != 0 for w in ct), f"{what} FAIL: the ciphertext is all zero"
         return ct
 
+    def _seed_z_probe(self) -> list[int]:
+        """The eight Z words the ABR engine holds, word i at bits [32*i +: 32]."""
+        v = self.rd_known(cocotb.top.abr_mlkem_seed_z_probe_o)
+        return [(v >> (32 * i)) & 0xFFFF_FFFF for i in range(DEST_WORDS[KM_DEST_ABR_MLKEM_SEED_Z])]
+
     @staticmethod
     def _same(got: list[int], exp: list[int], *, chk: str, what: str) -> None:
         assert len(got) == len(exp), f"{chk} FAIL: {what} is {len(got)} words, expected {len(exp)}"
@@ -402,19 +415,24 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         )
 
     # ------------------------------------------------------------- rounds --
+    async def _transfer(self, r: int, handle: int, dest: int) -> None:
+        rc, arg = await self.km.key_transfer(handle=handle, dest=dest)
+        assert rc == KM_RC_SUCCESS, (
+            f"precondition FAIL (round {r + 1}): CMD_KEY_TRANSFER dest=0x{dest:02x} "
+            f"({DEST_NAME[dest]}) rc={rc}"
+        )
+        assert (arg & 0xFF) == handle and ((arg >> 8) & 0xFF) == dest, (
+            f"precondition FAIL (round {r + 1}): RETURN_ARG 0x{arg:08x} does not echo "
+            f"handle 0x{handle:02x} and dest 0x{dest:02x}"
+        )
+
     async def _load_all(self, r: int) -> None:
+        self.handles[r] = {}
         for dest in DEST_WORDS:
             words = self.walk.keys[r][dest]
             handle = await self.km.key_load(key_words=list(words), dest=dest)
-            rc, arg = await self.km.key_transfer(handle=handle, dest=dest)
-            assert rc == KM_RC_SUCCESS, (
-                f"precondition FAIL (round {r + 1}): CMD_KEY_TRANSFER dest=0x{dest:02x} "
-                f"({DEST_NAME[dest]}) rc={rc}"
-            )
-            assert (arg & 0xFF) == handle and ((arg >> 8) & 0xFF) == dest, (
-                f"precondition FAIL (round {r + 1}): RETURN_ARG 0x{arg:08x} does not echo "
-                f"handle 0x{handle:02x} and dest 0x{dest:02x}"
-            )
+            self.handles[r][dest] = handle
+            await self._transfer(r, handle, dest)
         self.logger.info(
             "STEP round %d: CMD_KEY_LOAD + CMD_KEY_TRANSFER rc=0 for all %d destinations",
             r + 1,
@@ -536,17 +554,27 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             MLKEM_KV_SEED_RD_CTRL, MLKEM_KV_SEED_RD_STATUS, what=f"CHK-MLKEM-SEED-{tag}"
         )
         self._kv_ok(st, err, chk=f"CHK-MLKEM-SEED-{tag}")
+        z_kv = self._seed_z_probe()
         ek_kv = await self._mlkem_keygen(None, None, what=f"CHK-MLKEM-SEED-{tag} KV")
         await self._mlkem_zeroize(what=f"CHK-MLKEM-SEED-{tag} pre-ref")
         ek_ref = await self._mlkem_keygen(d, z, what=f"CHK-MLKEM-SEED-{tag} ref")
         self._same(ek_kv, ek_ref, chk=f"CHK-MLKEM-SEED-{tag}", what="the KV-seed encaps key")
+        # Z is a dword palindrome, so this compare holds for either dword order.
+        self._same(
+            z_kv,
+            z,
+            chk=f"CHK-MLKEM-SEED-{tag}",
+            what="the engine's Z after the KV read (the encapsulation key matched)",
+        )
         self.logger.info(
             "CHK-MLKEM-SEED-%d PASS: KV seed read status 0x%08x; EK == direct-seed EK "
-            "(%d words, ek[0]=0x%08x)",
+            "(%d words, ek[0]=0x%08x); engine Z == delivered Z z[0]=0x%08x z[3]=0x%08x",
             tag,
             st,
             KEM_EK_WORDS,
             ek_kv[0],
+            z_kv[0],
+            z_kv[3],
         )
         out["mlkem_seed"] = ek_kv
 
@@ -659,6 +687,38 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             )
             await zeroize(what=f"CHK-ABR-CLR-{tag} {name} recover")
 
+        # D and Z one at a time: deliver one of them again, so the D||Z read
+        # can only fail on the other one's KEY_VALID.
+        for again, other in (
+            (KM_DEST_ABR_MLKEM_SEED_D, "Z"),
+            (KM_DEST_ABR_MLKEM_SEED_Z, "D"),
+        ):
+            if again == KM_DEST_ABR_MLKEM_SEED_Z:
+                await self._shred_all(r)
+            await self._transfer(r, self.handles[r][again], again)
+            await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} pre")
+            st, err = await self._kv_read(
+                MLKEM_KV_SEED_RD_CTRL,
+                MLKEM_KV_SEED_RD_STATUS,
+                what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]}",
+            )
+            assert err == KV_READ_FAIL, (
+                f"CHK-ABR-CLR-{tag} FAIL: with only {DEST_NAME[again]} delivered again after "
+                f"the shred, the D||Z KV read reports ERROR={err} (status 0x{st:08x}), "
+                f"expected KV_READ_FAIL={KV_READ_FAIL}: the shred left {other} KEY_VALID set"
+            )
+            self.logger.info(
+                "CHK-ABR-CLR-%d PASS: only %s delivered again, D||Z KV read status 0x%08x "
+                "(ERROR=KV_READ_FAIL): the shred cleared %s",
+                tag,
+                DEST_NAME[again],
+                st,
+                other,
+            )
+            await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} recover")
+        # Leave every destination shredded, as the round expects.
+        await self._shred_all(r)
+
     async def _cleared_final(self) -> None:
         intr, err = await self.kmac.start_sideload_keyed_err(_KMAC_ERR_POLLS)
         assert intr & KMAC_INTR_KMAC_ERR, (
@@ -692,6 +752,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
     # --------------------------------------------------------------- main --
     async def run_scenario(self) -> None:
         self.walk = SepKmShareWalkCfg(self.random_seed())
+        self.handles: list[dict[int, int]] = [{} for _ in range(ROUNDS)]
         self.logger.info("RANDCFG: %s", self.walk.summary())
 
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD

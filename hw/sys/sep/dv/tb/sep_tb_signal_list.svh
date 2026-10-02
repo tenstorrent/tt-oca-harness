@@ -317,6 +317,12 @@
 // the AXI ready/valid combinational cones.
 `SEP_TB_OUT(logic [63:0], sram_word0_probe_o)
 `SEP_TB_OUT(logic [383:0], sram_payload_probe_o)
+// The ML-KEM seed Z words inside the Adams Bridge engine (the scratch copy the
+// ML-KEM KEYGEN reads). Software cannot read Z back, and after a KV seed read
+// the decapsulation key reads as zero, so this read-only XMR is the only view of
+// the Z a KV read delivered. Word i occupies bits [32*i +: 32]. Zero in a build
+// without Adams Bridge. Owner: sep_km_sideload_share_walk_test.
+`SEP_TB_OUT(logic [255:0], abr_mlkem_seed_z_probe_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this
 // design does not implement -- see the SMC address decode check in tb_top.
