@@ -70,11 +70,9 @@ serialized and never cancel one another.
 
 === Capacity
 
-Every row runs on the GitHub-hosted `ubuntu-latest` image. The container
-jobs default to `ubuntu-latest-16-cores`; `LARGE_RUNNER` overrides that
-label and is not read by these rows. Each row's duration is on its job in the Actions
-run; a row that approaches the cap is a pull request that names a smaller
-group. The coverage-instrumented
+Every row runs on the GitHub-hosted `ubuntu-latest` image. Each row's
+duration is on its job in the Actions run; a row that approaches the cap is
+a pull request that names a smaller group. The coverage-instrumented
 Verilator models of `dtp`, `sep`, and `smu` do not fit a hosted job; the
 coverage regression runs on the licensed simulator flow outside hosted CI.
 
@@ -289,19 +287,6 @@ workflow owners: revert the publication commit, which touches `latest/`,
 directories are untouched. Never force-push the
 branch; the other publishers rebase onto it.
 
-=== A container job queues and never starts
-
-The container jobs default to `ubuntu-latest-16-cores`. `LARGE_RUNNER`
-overrides that label, and a name the organization has no runner for queues
-until GitHub gives it up, since the job's `timeout-minutes` budget applies
-only once a runner has started the job. Clear the variable to return to the
-16-core default:
-
-[source,bash]
-----
-gh variable delete LARGE_RUNNER
-----
-
 === The `sep` rows fail before the runner starts
 
 The step `Check out the tt-oca-manifest submodule` fails when the
@@ -486,9 +471,6 @@ publishes, which is the recovery for a dispatched or missed weekly.
   `result.json` is the only record of the release that ran.
 * The `sep` rows depend on a repository secret for a private submodule; a
   public fork cannot run them.
-* Hosted DV rows run on `ubuntu-latest`. The container jobs default to
-  `ubuntu-latest-16-cores`. `LARGE_RUNNER` overrides that label; a wrong
-  label stalls those jobs until GitHub gives them up.
 * Hosted CI runs Verilator only, collects no coverage, and runs no formal
   job (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
 * The branch keeps 90 history points and 90 archives per series and no

@@ -80,8 +80,7 @@ jobs:
         #
         # runner: the label this DUT's job runs on, and the only knob that sets
         # build parallelism (--build-jobs "$(nproc)" follows it). Every row
-        # uses ubuntu-latest. The container jobs default to
-        # ubuntu-latest-16-cores; this workflow does not read LARGE_RUNNER.
+        # uses ubuntu-latest.
         include:
           - dut: dtp
             runner: ubuntu-latest
