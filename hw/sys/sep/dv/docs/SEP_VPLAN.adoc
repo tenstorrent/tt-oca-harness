@@ -1904,8 +1904,9 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 [arabic]
 . Release the watchdog reset input; confirm the CPU reset is released and the main reset is high.
 . Assert the watchdog reset input; after a few clocks confirm the CPU reset asserted.
-. In the same window, confirm the main SEP reset is unaffected.
+. From the assert edge through the release settle, sample the main SEP reset on every clock and watch it for any value change; confirm it reads 1 throughout.
 . Release the input again; confirm the CPU reset returns high.
+. Assert the main reset; confirm the main SEP reset reads 0.
 
 *Checkers*:
 
