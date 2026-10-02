@@ -44,10 +44,8 @@ module prim_carry_select_adder #(
   assign c_o = carry[NUM_CHUNKS-1];
 
   // Assertion to make sure NUM_CHUNKS divides DATA_WIDTH without remainder
-  generate
-    if (DATA_WIDTH % NUM_CHUNKS != 0) begin : gen_error
-      $error("DATA_WIDTH must be a multiple of NUM_CHUNKS");
-    end
-  endgenerate
+  if (DATA_WIDTH % NUM_CHUNKS != 0) begin : gen_error
+    $error("DATA_WIDTH must be a multiple of NUM_CHUNKS");
+  end
 
 endmodule
