@@ -686,7 +686,7 @@ void rom_main(void) {
     // the word matter or about when it was sampled. Terminal on a reserved bit.
     rom_sboot_dis_policy();
     // CHIPLET_DBG from SIP_DIS / SYS_DIS, latched the same way. It makes a
-    // TEST_DEV part enforce secure boot, and SBOOT_DIS overrides it.
+    // TEST_DEV or RMA_SiP part enforce secure boot, and SBOOT_DIS overrides it.
     rom_chiplet_dbg_policy(lc_state);
 
     // ── [S19] Stack canary write ──

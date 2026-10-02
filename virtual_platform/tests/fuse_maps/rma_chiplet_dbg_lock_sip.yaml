@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# RMA_CHIPLET, secure boot not disabled, CHIPLET_DBG (bit 1) set in SIP_DIS only.
+# The chiplet debug lock does not apply in RMA_CHIPLET (SEP-ROM-SB-025), so the
+# part stays manifest-optional.
+lc_state: RMA_CHIPLET
+sboot_dis: 0
+locks_lo: 0xA800
+sip_dis_lo: 0x2
