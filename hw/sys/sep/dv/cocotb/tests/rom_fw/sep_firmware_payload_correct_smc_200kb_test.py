@@ -9,7 +9,6 @@ This is the largest accepted size, 52 KiB under the SEP SRAM bound that
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw import sep_payload_size_base as psb
 
 _PAYLOAD_BYTES = 200 * 1024

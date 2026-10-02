@@ -12,6 +12,8 @@ RULE = re.compile(r"^[-=*_]{3,}$")
 _COMMENT_ONLY = re.compile(r"^\s*//")
 _ASSIGN = re.compile(r"(?<![=!<>])=(?!=)")
 _SPDX = re.compile(r"^(SPDX-|Copyright\b)")
+_TYPEDEF_OPEN = re.compile(r"^\s*typedef\s+(struct|union)\b[^{]*\{")
+_TYPEDEF_CLOSE = re.compile(r"^\s*\}\s*([A-Za-z_][\w$]*)")
 
 
 def rtl_sources(rtl: Path) -> list:
@@ -108,3 +110,27 @@ def clause(lines, i: int):
         parts.append(lines[j].split("//", 1)[1].strip())
         j += 1
     return " ".join(p for p in parts if p), j
+
+
+def struct_field_clauses(lines) -> dict:
+    """{typedef: {field: clause}} for the struct and union fields with a same-line // clause."""
+    found = {}
+    fields = None
+    i = 0
+    while i < len(lines):
+        code = lines[i].split("//", 1)[0]
+        if fields is None:
+            if _TYPEDEF_OPEN.match(code) and "}" not in code:
+                fields = {}
+        elif end := _TYPEDEF_CLOSE.match(code):
+            found[end.group(1)] = fields
+            fields = None
+        elif code.strip() and "//" in lines[i]:
+            text, nxt = clause(lines, i)
+            text = DESC.sub("", text).strip()
+            if text:
+                fields[declared_name(code)] = text
+            i = nxt
+            continue
+        i += 1
+    return found

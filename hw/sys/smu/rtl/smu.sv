@@ -5,93 +5,23 @@
 //
 // Bring up clocks and cold reset, host the primary JTAG/DTP path, route the SMU AXI
 // crossbar toward SMN, and expose SMC and SEP memory, eFuse, GPIO, telemetry, reset-unit,
-// and debug interfaces to the integrator. When SEP is 0, SEP apertures and SEP-gated
+// and debug interfaces to the integrator. When CFG.SEP is 0, SEP apertures and SEP-gated
 // ports are tied off, and the SMC connects to the external AXI ports through ID-width
 // converters instead of the crossbar.
 
 module smu #(
-  parameter int unsigned MAX_TRANS = 2,         // Maximum outstanding AXI-Lite transactions in the
-                                                // SMC pad-ring GPIO demux and GPIO blocks;
-                                                // forwarded to the SMC MAX_TRANS.
-  parameter int unsigned SEP_EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the vendor eFuse shim CSR
-                                                     // block in the SEP external window; forwarded
-                                                     // to the SEP EFUSE_SHIM_SIZE.
-  parameter int unsigned SMC_EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the vendor eFuse shim CSR
-                                                     // block carved off the base of the SMC
-                                                     // smc_external window; forwarded to the SMC
-                                                     // EFUSE_SHIM_SIZE.
-  parameter smu_pkg::smu_cfg_t CFG = smu_pkg::DefaultCfg,  // SMU feature configuration. Each JTAG_*
-                                                           // field is forwarded to the DTP
-                                                           // parameter of the same name, except
-                                                           // JTAG_IC_RESET_ENABLE, which drives the
-                                                           // DTP JTAG_IC_RESET_EXT_ENABLE and so
-                                                           // enables only the external IC_RESET
-                                                           // slice. JTAG_BSR_ENABLE enables the
-                                                           // mandatory boundary-scan instructions,
-                                                           // the other JTAG_*_ENABLE fields enable
-                                                           // the named optional instruction, the
-                                                           // TMP controller, the SMC debug
-                                                           // interface or the I/O STAP, and
-                                                           // JTAG_NUM_EXTRA_STAPS counts the
-                                                           // additional STAPs. JTAG_IDCODE_MFR_ID,
-                                                           // JTAG_IDCODE_PART_NUM and
-                                                           // JTAG_IDCODE_SI_REV also set the SMC
-                                                           // CPU and SEP JTAG ID codes, and
-                                                           // JTAG_OCH_VER is the DTP IP major
-                                                           // version. XTRIG_NUM_CTP is forwarded to
-                                                           // the DTP XTRIG_NUM_CTP.
-                                                           // XTRIG_NUM_INT_CT and
-                                                           // XTRIG_NUM_CLK_STOP_REQ count the
-                                                           // SMU-exposed lanes; the DTP
-                                                           // XTRIG_NUM_INT_CT and
-                                                           // XTRIG_NUM_CLK_STOP_REQ add the
-                                                           // SMC-reserved lanes below them. The low
-                                                           // XTRIG_NUM_INT_CT bits of the 32-bit
-                                                           // XTRIG_INT_CT_MODE select each exposed
-                                                           // lane's protocol, 0 for pulse sync and
-                                                           // 1 for req/ack, and form the DTP
-                                                           // XTRIG_INT_CT_MODE above zeroed SMC
-                                                           // lanes, so XTRIG_NUM_INT_CT must be at
-                                                           // most 32. SMC_OTP_RD_PL_DEPTH,
-                                                           // SMC_OTP_WR_PL_DEPTH, SMC_RD_PL_DEPTH
-                                                           // and SMC_WR_PL_DEPTH are forwarded to
-                                                           // the DTP parameters of the same name.
-                                                           // NUM_INT_TO_SMC sets the width of
-                                                           // smc_ext_interrupts_i.
-                                                           // SEP_KM_LATCHED_MEM_RDATA,
-                                                           // SEP_ABR_MASKING_EN and
-                                                           // SEP_ABR_SRAM_LATENCY are forwarded to
-                                                           // the SEP KM_LATCHED_MEM_RDATA,
-                                                           // ABR_MASKING_EN and ABR_SRAM_LATENCY
-                                                           // and are unused when SEP is 0.
-                                                           // DefaultCfg enables every JTAG feature
-                                                           // with one extra STAP and zero ID
-                                                           // fields, and sets 16 CTPs, 8 exposed
-                                                           // internal CT lanes, 8 exposed
-                                                           // clock-stop requests, all lanes in
-                                                           // pulse-sync mode, pipeline depths of 3,
-                                                           // 256 SMC interrupts, Adams Bridge
-                                                           // masking on and an Adams Bridge SRAM
-                                                           // latency of one cycle.
-
-  parameter int unsigned  SEP                   = 1,  // Non-zero includes the Secure Execution
-                                                      // Processor and the SMU AXI crossbar, and
-                                                      // sets the DTP JTAG_IC_RESET_SEP_ENABLE and
-                                                      // JTAG_SEP_DBG_ENABLE. Zero ties the SEP
-                                                      // ports off and connects the SMC to the
-                                                      // external AXI ports through ID-width
-                                                      // converters. The type is int unsigned so
-                                                      // that SpyGlass elaborate -param SEP=0 can
-                                                      // override it; -gfile cannot override a bit
-                                                      // parameter.
-
-  parameter bit [255:0]   SEP_SEC_DISABLE_TOKEN = 256'b0,  // SEP security-disable token digest,
-                                                           // forwarded to the SEP; synthesis
-                                                           // replaces it with the netlist digest.
-
-  parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,  // External-TRNG AXI-stream endpoint count
-                                                      // between SEP crypto and TRNG; forwarded to
-                                                      // the SEP EXT_TRNG_NUM_AXIS.
+  parameter int unsigned CFG_IDX = 0,  // Selects the smu_pkg::SmuConfigs preset that CFG
+                                       // defaults to, 0 for DefaultCfg and 1 for NoSepCfg; a
+                                       // CFG set directly takes precedence. The type is int
+                                       // unsigned so that SpyGlass elaborate -param can
+                                       // override it; -param cannot set a struct.
+  parameter smu_pkg::smu_cfg_t CFG = smu_pkg::SmuConfigs[CFG_IDX],  // SMU configuration; set
+                                                                    // directly, it takes
+                                                                    // precedence over CFG_IDX.
+                                                                    // The smu_cfg_t field
+                                                                    // clauses give each
+                                                                    // field's meaning and
+                                                                    // limits.
 
   parameter  type         smc_rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,  // SMC ROM request type (cannot live in a packed struct).
   parameter  type         smc_rom_rsp_t             = chipyard_4core_mem_pkg::rom_rsp_t,  // SMC ROM response type.
@@ -125,13 +55,11 @@ module smu #(
                                                                         // forwarded to the DTP XTRIG_NUM_CTP.
   localparam int unsigned  XtrigNumIntCt       = CFG.XTRIG_NUM_INT_CT,  // SMU-exposed internal CT lane count from CFG.
   localparam int unsigned  XtrigNumClkStopReq  = CFG.XTRIG_NUM_CLK_STOP_REQ,  // SMU-exposed clock-stop request count from CFG.
-  localparam int unsigned  DtpXtrigNumIntCt =  // Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.
-      CFG.XTRIG_NUM_INT_CT + smu_pkg::XtrigSmcIntCtLanes,
-  localparam int unsigned  DtpXtrigNumClkStopReq =  // Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.
-      CFG.XTRIG_NUM_CLK_STOP_REQ + smu_pkg::XtrigSmcClkStopLanes,
-  localparam int unsigned  JtagNumExtraStapPorts = (CFG.JTAG_NUM_EXTRA_STAPS > 0) ? CFG.JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
+  localparam int unsigned  DtpXtrigNumIntCt = smu_pkg::dtp_xtrig_num_int_ct(CFG),  // Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.
+  localparam int unsigned  DtpXtrigNumClkStopReq = smu_pkg::dtp_xtrig_num_clk_stop_req(CFG),  // Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.
+  localparam int unsigned  JtagNumExtraStapPorts = smu_pkg::jtag_num_extra_stap_ports(CFG),  // Extra STAP port count; at least one for tie-off.
   localparam logic [DtpXtrigNumIntCt-1:0]  DtpXtrigIntCtMode =  // Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.
-      {CFG.XTRIG_INT_CT_MODE[XtrigNumIntCt-1:0], {smu_pkg::XtrigSmcIntCtLanes{1'b0}}}
+      smu_pkg::dtp_xtrig_int_ct_mode(CFG)[DtpXtrigNumIntCt-1:0]
 ) (
   input  logic  clk_smu_i,                      // SMU clock; clocks the SMC core, the SEP, the DTP
                                                 // and the SMU AXI crossbar.
@@ -237,17 +165,17 @@ module smu #(
                                                                 // SMU. The crossbar routes it to
                                                                 // the SEP or SMC aperture and
                                                                 // returns a decode error for any
-                                                                // other address; when SEP is 0 it
-                                                                // goes to the SMC through an
+                                                                // other address; when CFG.SEP is 0
+                                                                // it goes to the SMC through an
                                                                 // ID-width converter.
   output smu_axi_xbar_pkg::axi_56_64_resp_t  smu_axi_in_resp_o,  // External AXI response from the
                                                                  // SMU.
   output smu_axi_xbar_pkg::axi_out_req_t      smu_axi_out_req_o,  // Outbound AXI request toward the
                                                                   // external system, carrying SEP
                                                                   // and SMC requests that match
-                                                                  // neither aperture; when SEP is 0
-                                                                  // it carries every SMC outbound
-                                                                  // request.
+                                                                  // neither aperture; when CFG.SEP
+                                                                  // is 0 it carries every SMC
+                                                                  // outbound request.
   input  smu_axi_xbar_pkg::axi_out_resp_t     smu_axi_out_resp_i,  // External system response to
                                                                    // smu_axi_out_req_o.
 
@@ -297,11 +225,11 @@ module smu #(
                                                                                        // SEP_GLOBAL_BASE_ADDR register for
                                                                                        // external decoders; it also sets the SEP
                                                                                        // aperture of the SMU crossbar. Tied to 0
-                                                                                       // when SEP is 0.
+                                                                                       // when CFG.SEP is 0.
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,  // SEP aperture size in bytes from the
                                                                                        // zero-extended SEP_REGION_SIZE register;
                                                                                        // the SMU crossbar uses its low 32 bits.
-                                                                                       // Tied to 0 when SEP is 0.
+                                                                                       // Tied to 0 when CFG.SEP is 0.
 
   input  logic [CFG.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,  // External interrupts into the SMC,
                                                                 // zero-extended to the SMC's
@@ -315,8 +243,8 @@ module smu #(
   output logic  skip_mem_repair_o,              // Skip memory repair during boot.
   input  logic  ext_boot_seq_done_i,            // External boot sequence complete.
 
-  output logic [2*smc_pkg::LcStateWidth-1:0]  lc_state_o,    // Lifecycle state driven by the SEP;
-                                                             // fixed at 8'hF0 when SEP is 0.
+  output logic [2*smc_pkg::LcStateWidth-1:0]  lc_state_o,  // Lifecycle state driven by the SEP;
+                                                           // fixed at 8'hF0 when CFG.SEP is 0.
   output logic                                  lc_sigint_err_o,  // Lifecycle signal-integrity
                                                                   // error, the OR of the SEP and
                                                                   // SMC eFuse differential-encoding
@@ -400,8 +328,8 @@ module smu #(
   output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // External TRNG AXI-Lite
                                                                    // request.
   input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,  // External TRNG AXI-Lite response.
-  input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-stream requests.
-  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-stream responses.
+  input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [CFG.EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-stream requests.
+  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [CFG.EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-stream responses.
   input  logic                               ext_trng_irq_i,  // External TRNG interrupt.
 
   input  logic                               entropy_rosc_sample_clk_i,  // Ring-oscillator sample clock for the SEP
@@ -423,7 +351,7 @@ module smu #(
   input  sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i,  // SEP lockstep control.
   output sep_pkg::sep_lockstep_status_t sep_lockstep_status_o,  // SEP CPU lockstep
                                                                 // corruption-detected status; zero
-                                                                // when SEP is 0 or the core is
+                                                                // when CFG.SEP is 0 or the core is
                                                                 // built without lockstep.
 
   input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_ext_interrupts_i,  // External interrupts into the SEP.
@@ -431,14 +359,14 @@ module smu #(
   output logic [1:0]  lcc_demote_state_1_o,     // Lifecycle demote state 1.
   output logic [1:0]  lcc_demote_state_2_o,     // Lifecycle demote state 2.
   output logic secure_tm_o,                     // Secure test-mode indication from the SEP; low
-                                                // when SEP is 0.
+                                                // when CFG.SEP is 0.
 
   output logic sep_fuse_dft_disable_o,          // Gate for DFT-inserted SEP OTP access paths,
-                                                // active-high and held high when SEP is 0.
+                                                // active-high and held high when CFG.SEP is 0.
                                                 // Unconnected in the functional design; DFT
                                                 // insertion connects it.
   output logic smc_fuse_dft_disable_o,          // Gate for DFT-inserted SMC OTP access paths,
-                                                // active-high and held high when SEP is 0.
+                                                // active-high and held high when CFG.SEP is 0.
                                                 // Unconnected in the functional design; DFT
                                                 // insertion connects it.
 
@@ -457,8 +385,8 @@ module smu #(
   output logic                                                  gated_clk_periph_i3c_o,  // Gated peripheral clock for I3C.
 
   input  logic [127:0]  ext_debug_bus_i,        // External debug bus; the SMC receives it above the
-                                                // 384-bit SEP debug bus, which is zero when SEP is
-                                                // 0. Signals must be 16-bit aligned within it.
+                                                // 384-bit SEP debug bus, which is zero when CFG.SEP
+                                                // is 0. Signals must be 16-bit aligned within it.
 
   output logic [smc_pkg::NumGpioWraps-1:0]   gpio_interrupt_o,  // GPIO wrap interrupt outputs.
   output logic [smc_config_pkg::NumUart-1:0] uart_interrupt_o  // UART interrupt outputs.
@@ -552,7 +480,7 @@ module smu #(
   logic  sep_wdt_timer_rst_req;
   logic  rst_wdt_n;
 
-  // SEP SPI (sourced from SEP when SEP, else tied off)
+  // SEP SPI (sourced from SEP when CFG.SEP, else tied off)
   sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req;
   sep_io_pkg::sep_io_spi_rsp_t  sep_io_spi_rsp;
 
@@ -636,10 +564,10 @@ module smu #(
     // The SMC / SEP IC_RESET slices are always enabled; the external slice follows the SMU
     // `JTAG_IC_RESET_ENABLE` CFG bit.
     .JTAG_IC_RESET_SMC_ENABLE (1'b1),
-    .JTAG_IC_RESET_SEP_ENABLE (SEP),
+    .JTAG_IC_RESET_SEP_ENABLE (CFG.SEP),
     .JTAG_IC_RESET_EXT_ENABLE (CFG.JTAG_IC_RESET_ENABLE),
     .JTAG_SMC_DBG_ENABLE      (CFG.JTAG_SMC_DBG_ENABLE),
-    .JTAG_SEP_DBG_ENABLE      (SEP),
+    .JTAG_SEP_DBG_ENABLE      (CFG.SEP),
     .JTAG_STAP_IO_ENABLE      (CFG.JTAG_STAP_IO_ENABLE),
     .JTAG_NUM_EXTRA_STAPS      (CFG.JTAG_NUM_EXTRA_STAPS),
     .JTAG_IDCODE_MFR_ID        (CFG.JTAG_IDCODE_MFR_ID),
@@ -761,7 +689,7 @@ module smu #(
   //--------------------------------------------------------------------------
 
   smc #(
-    .MAX_TRANS(MAX_TRANS),
+    .MAX_TRANS(CFG.MAX_TRANS),
     .rom_req_t(smc_rom_req_t),
     .rom_rsp_t(smc_rom_rsp_t),
     .scratch_ram_req_t(smc_scratch_ram_req_t),
@@ -774,7 +702,7 @@ module smu #(
     .l1_dcache_tag_rsp_t(smc_l1_dcache_tag_rsp_t),
     .l1_dcache_data_req_t(smc_l1_dcache_data_req_t),
     .l1_dcache_data_rsp_t(smc_l1_dcache_data_rsp_t),
-    .EFUSE_SHIM_SIZE(SMC_EFUSE_SHIM_SIZE)
+    .EFUSE_SHIM_SIZE(CFG.SMC_EFUSE_SHIM_SIZE)
   ) u_smc (
     .clk_smc_i                           (clk_smu_i),
     .clk_ref_i                           (clk_ref_i),
@@ -926,10 +854,10 @@ module smu #(
   );
 
   //--------------------------------------------------------------------------
-  // SEP-dependent logic (if/else based on SEP)
+  // SEP-dependent logic (if/else based on CFG.SEP)
   //--------------------------------------------------------------------------
 
-  if (SEP) begin : gen_sep
+  if (CFG.SEP) begin : gen_sep
 
     // ==================================================================
     // SEP Instantiation
@@ -939,9 +867,9 @@ module smu #(
       .KM_LATCHED_MEM_RDATA  (CFG.SEP_KM_LATCHED_MEM_RDATA),
       .ABR_MASKING_EN         (CFG.SEP_ABR_MASKING_EN),
       .ABR_SRAM_LATENCY       (CFG.SEP_ABR_SRAM_LATENCY),
-      .SEP_SEC_DISABLE_TOKEN  (SEP_SEC_DISABLE_TOKEN),
-      .EXT_TRNG_NUM_AXIS      (EXT_TRNG_NUM_AXIS),
-      .EFUSE_SHIM_SIZE        (SEP_EFUSE_SHIM_SIZE)
+      .SEP_SEC_DISABLE_TOKEN  (CFG.SEP_SEC_DISABLE_TOKEN),
+      .EXT_TRNG_NUM_AXIS      (CFG.EXT_TRNG_NUM_AXIS),
+      .EFUSE_SHIM_SIZE        (CFG.SEP_EFUSE_SHIM_SIZE)
     ) u_sep (
       .clk_i                         (clk_smu_i),
       .clk_ref_i                     (clk_ref_i),
@@ -1326,7 +1254,7 @@ module smu #(
     );
 
     // ==================================================================
-    // SEP aperture tie-offs (no SEP CSR when SEP=0)
+    // SEP aperture tie-offs (no SEP CSR when CFG.SEP=0)
     // ==================================================================
     assign sep_global_base_o                = '0;
     assign sep_region_size_o                = '0;
@@ -1416,5 +1344,55 @@ module smu #(
 
   assign dtp_xtrig_clk_stop_req[DtpXtrigNumClkStopReq-1:smu_pkg::XtrigSmcClkStopLanes] =
       xtrig_clk_stop_req_i;
+
+  //--------------------------------------------------------------------------
+  // Configuration Checks
+  //--------------------------------------------------------------------------
+
+  if (CFG_IDX >= smu_pkg::NumSmuConfigs) begin : gen_cfg_idx_check
+    $error("smu: CFG_IDX must be less than smu_pkg::NumSmuConfigs");
+  end
+
+  if (CFG.NUM_INT_TO_SMC < 1 || CFG.NUM_INT_TO_SMC > NumExtInterrupts) begin : gen_num_int_to_smc_check
+    $error("smu: CFG.NUM_INT_TO_SMC must be 1 to NumExtInterrupts");
+  end
+
+  if (CFG.XTRIG_NUM_INT_CT < 1 || CFG.XTRIG_NUM_INT_CT > smu_pkg::XtrigIntCtModeWidth)
+  begin : gen_xtrig_num_int_ct_check
+    $error("smu: CFG.XTRIG_NUM_INT_CT must be 1 to XtrigIntCtModeWidth");
+  end
+
+  if (CFG.JTAG_NUM_EXTRA_STAPS > 15) begin : gen_jtag_num_extra_staps_check
+    $error("smu: CFG.JTAG_NUM_EXTRA_STAPS must be at most 15");
+  end
+
+  if (!CFG.JTAG_BSR_ENABLE &&
+      (CFG.JTAG_EXTEST_TRAIN_ENABLE || CFG.JTAG_EXTEST_PULSE_ENABLE || CFG.JTAG_INTEST_ENABLE))
+  begin : gen_jtag_bsr_check
+    $error("smu: CFG.JTAG_EXTEST_TRAIN/EXTEST_PULSE/INTEST_ENABLE need CFG.JTAG_BSR_ENABLE");
+  end
+
+  if (CFG.EXT_TRNG_NUM_AXIS != sep_crypto_pkg::SepCryptoEdnEndpointCount)
+  begin : gen_ext_trng_num_axis_check
+    $error("smu: CFG.EXT_TRNG_NUM_AXIS must equal SepCryptoEdnEndpointCount");
+  end
+
+  if (CFG.SMC_EFUSE_SHIM_SIZE == 0 ||
+      CFG.SMC_EFUSE_SHIM_SIZE >= smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE)
+  begin : gen_smc_efuse_shim_size_check
+    $error("smu: CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than smc_external");
+  end
+
+  if (CFG.SEP && (CFG.SEP_EFUSE_SHIM_SIZE == 0 ||
+      CFG.SEP_EFUSE_SHIM_SIZE >
+          sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR -
+          sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR))
+  begin : gen_sep_efuse_shim_size_check
+    $error("smu: CFG.SEP_EFUSE_SHIM_SIZE must be non-zero and end below the XIP window");
+  end
+
+  if (CFG.SEP && CFG.SEP_ABR_SRAM_LATENCY < 1) begin : gen_sep_abr_sram_latency_check
+    $error("smu: CFG.SEP_ABR_SRAM_LATENCY must be at least 1");
+  end
 
 endmodule
