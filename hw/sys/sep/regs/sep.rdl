@@ -245,7 +245,7 @@ addrmap sep_top #(
     sep_cpu_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
     sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
     spi_controller->ocah_aperture_size = 0x100000;
-    spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    spi_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
     spi_controller->desc = "External I/O SPI controller bridge.";
     sep_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
     pic->ocah_aperture_size = 0x8000;

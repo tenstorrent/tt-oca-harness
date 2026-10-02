@@ -847,7 +847,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (),
                 "hole_notes": (),
-                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "DECERR, 0xBADCAB1E / SLVERR"},
+                "past_response": {"rresp": "DECERR", "rdata": 0xCA11AB1EBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },
             {
