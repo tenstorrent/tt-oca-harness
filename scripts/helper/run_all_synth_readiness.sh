@@ -3,7 +3,39 @@
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 REPO_ROOT=$(cd -- $SCRIPT_DIR/../.. &>/dev/null && pwd)
 
-_BLOCKS="smc sep smu aou dtp"
+_ALL_BLOCKS="smc sep smu aou dtp"
+
+usage() {
+  cat <<EOF
+Usage: ${0##*/} [-h|--help] [BLOCK...]
+
+Run the Yosys structural readiness check for each block and write the output
+to local/synth_reports/<block>_readiness.log. With no BLOCK arguments, runs
+every block: $_ALL_BLOCKS.
+
+Options:
+  -h, --help   Print this help and exit
+EOF
+}
+
+case "${1:-}" in
+-h | --help)
+  usage
+  exit 0
+  ;;
+esac
+
+if (($# > 0)); then
+  _BLOCKS="$*"
+  for BLOCK in $_BLOCKS; do
+    if ! grep -qxF -- "$BLOCK" < <(tr ' ' '\n' <<<"$_ALL_BLOCKS"); then
+      echo "Unknown block '$BLOCK'. Available blocks: $_ALL_BLOCKS" >&2
+      exit 1
+    fi
+  done
+else
+  _BLOCKS=$_ALL_BLOCKS
+fi
 
 mkdir -p $REPO_ROOT/local/synth_reports
 
