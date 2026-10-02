@@ -20,7 +20,11 @@
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core0_wdt</ipxact:name>
           <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
-          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.
+
+A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</ipxact:description>
           <ipxact:addressOffset>'hc0000000</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -169,6 +173,23 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
+            <ipxact:name>COUNT_HI</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>wdogcounthi</ipxact:name>
+              <ipxact:description>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
             <ipxact:name>SCALED_COUNT</ipxact:name>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
@@ -244,7 +265,11 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core1_wdt</ipxact:name>
           <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
-          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.
+
+A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</ipxact:description>
           <ipxact:addressOffset>'hc0000400</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -393,6 +418,23 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
+            <ipxact:name>COUNT_HI</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>wdogcounthi</ipxact:name>
+              <ipxact:description>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
             <ipxact:name>SCALED_COUNT</ipxact:name>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
@@ -468,7 +510,11 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core2_wdt</ipxact:name>
           <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
-          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.
+
+A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</ipxact:description>
           <ipxact:addressOffset>'hc0000800</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -617,6 +663,23 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
+            <ipxact:name>COUNT_HI</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>wdogcounthi</ipxact:name>
+              <ipxact:description>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
             <ipxact:name>SCALED_COUNT</ipxact:name>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
@@ -692,7 +755,11 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core3_wdt</ipxact:name>
           <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
-          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.
+
+A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</ipxact:description>
           <ipxact:addressOffset>'hc0000c00</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -838,6 +905,23 @@ KEY reg must be written to before any other register in this addrmap can be writ
               </ipxact:resets>
               <ipxact:bitWidth>31</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>COUNT_HI</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>wdogcounthi</ipxact:name>
+              <ipxact:description>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
