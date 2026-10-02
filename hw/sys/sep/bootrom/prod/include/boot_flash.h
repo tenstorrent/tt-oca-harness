@@ -5,13 +5,14 @@
  * Boot flash transport shim.
  *
  * The manifest loader reads the manifest and payload from flash without caring
- * which SPI controller is fitted. This header selects the controller at build
- * time (BOOT_SPI_CONTROLLER_OT) and presents one small interface in flash-offset
+ * which controller is fitted. This header selects the transport at build time
+ * (BOOT_SPI_CONTROLLER_OT) and presents one small interface in flash-offset
  * terms:
  *   - OpenTitan SPI host (default): no memory-mapped window; a read is a
  *     command/FIFO transfer that streams into SRAM.
- *   - Cadence xSPI: flash is memory-mapped (XIP); a read is a DMA copy from
- *     SEP_SPI_BASE + offset.
+ *   - Memory-mapped flash (XIP window): a read is a secure-DMA copy from
+ *     SEP_XIP_BASE + offset. The controller bring-up is the sep_spi.h hooks,
+ *     which an integrator overrides.
  *
  * Freestanding ROM: no libc, no heap.
  */
@@ -33,13 +34,14 @@
  * -- bad signature, revoked key, corrupt payload -- can be recovered from a
  * complete second copy. The `rotate_update` strap swaps which is tried first.
  * Each manifest begins at offset 0x1000 within its slot. The preceding bytes
- * are reserved for transport metadata; the Cadence controller can consume an
- * SPI configuration TLV there, while the OpenTitan controller ignores them.
+ * are reserved for transport metadata; a memory-mapped controller's driver can
+ * read a flash controller configuration record there, while the OpenTitan host
+ * ignores them.
  * The manifest's payload_offset field locates the payload after the manifest.
  *
- *   slot 0   +0x00000  SPI configuration TLV
+ *   slot 0   +0x00000  reserved (controller configuration record)
  *            +0x01000  manifest, then payload   <- PRIMARY_MANIFEST_OFFSET
- *   slot 1   +0x00000  SPI configuration TLV
+ *   slot 1   +0x00000  reserved (controller configuration record)
  *            +0x01000  manifest, then payload   <- BACKUP_MANIFEST_OFFSET
  *
  * BOOT_SLOT_SIZE is the knob. It is the stride from one slot to the next, and
@@ -80,21 +82,19 @@ _Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
 
 #if BOOT_SPI_CONTROLLER_OT
 #include "sep_ot_spi.h"
-/* RX-FIFO drain method for the OpenTitan controller: 0 = secure DMA (default),
- * 1 = CPU programmed I/O. Selected at build time. */
+/* RX-FIFO drain method: 0 = secure DMA (default), 1 = CPU programmed I/O.
+ * Selected at build time. */
 #ifndef BOOT_OT_SPI_USE_PIO
 #define BOOT_OT_SPI_USE_PIO 0
 #endif
 #else
 #include "sep_spi.h"
 #include "sep_dma.h"
-/* Cadence xSPI XIP window (memory-mapped flash), matching sep_dma.c. */
-#ifndef SEP_SPI_BASE
-#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
-#endif
-#ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
-#endif
+/* Memory-mapped external flash (XIP) window, matching sep_dma.c. */
+#define SEP_XIP_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
+#define SEP_XIP_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
+_Static_assert(2u * BOOT_SLOT_SIZE <= SEP_XIP_SIZE,
+               "both boot slots must fit in the XIP window");
 #endif
 
 /* True iff [addr, addr+len) lies within [base, base+size), with overflow guards.
@@ -130,16 +130,16 @@ static inline uint32_t boot_flash_init(const struct boot_straps *straps, uint16_
  * Returns 0 on success or a transport status code. */
 static inline uint32_t boot_flash_read(uint32_t dst, uint32_t flash_off, uint32_t len) {
 #if BOOT_SPI_CONTROLLER_OT
-    /* The OpenTitan controller can drain the RX FIFO either with the secure DMA
-     * (BOOT_OT_SPI_USE_PIO=0, default) or by CPU programmed I/O. Both read the
-     * same bytes; the choice trades DMA offload against a simpler CPU-driven copy. */
+    /* The RX FIFO drains either with the secure DMA (BOOT_OT_SPI_USE_PIO=0,
+     * default) or by CPU programmed I/O. Both read the same bytes; the choice
+     * trades DMA offload against a simpler CPU-driven copy. */
 #if BOOT_OT_SPI_USE_PIO
     return ot_spi_flash_read(flash_off, dst, len);
 #else
     return ot_spi_flash_read_dma(flash_off, dst, len);
 #endif
 #else
-    return sep_dma_copy(dst, (uint32_t)SEP_SPI_BASE + flash_off, len);
+    return sep_dma_copy(dst, SEP_XIP_BASE + flash_off, len);
 #endif
 }
 
@@ -160,7 +160,6 @@ static inline uint32_t boot_flash_reinit(void) {
  * hardening). */
 static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32_t dst,
                                         uint32_t dst_len) {
-#if BOOT_SPI_CONTROLLER_OT
     /* Static bound: the read must stay within the boot slot it started in, and
      * the destination within SEP SRAM. The window runs from the slot's manifest
      * to the end of that slot, so it is the slot size less the manifest's offset
@@ -195,14 +194,6 @@ static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32
         return false;
     }
     return ok_first;
-#else
-    /* Cadence: flash is memory-mapped; the read source must lie within the XIP
-     * region. (Destination is checked by sep_dma_copy.) */
-    (void)dst;
-    (void)dst_len;
-    uint32_t src = (uint32_t)SEP_SPI_BASE + flash_off;
-    return boot_flash_range_within(src, len, (uint32_t)SEP_SPI_BASE, (uint32_t)SEP_SPI_MAX_SIZE);
-#endif
 }
 
 #endif /* BOOT_FLASH_H */

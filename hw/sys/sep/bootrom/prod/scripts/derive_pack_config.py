@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Write a packer config that is another config plus a named set of field overrides.
+"""Write a packer config that is a base config plus a set of field overrides.
 
-A negative boot testcase needs an image that differs from a booting image in
-exactly one manifest field. Copying the whole config and editing the field gives
-two files that drift apart, and a drifted copy still packs -- it just stops being
-the golden image's sibling, which is the property the testcase argues from. Here
-the derived config is regenerated from the base on every build, so the override
-list IS the difference.
-
-An override whose value already equals the base's is refused: that is either a
-mistyped path or a field that no longer needs overriding, and both would produce
-an image identical to the golden one under a negative testcase's name.
+An override equal to the base value, or a leaf key the base lacks, is refused
+because the derived image would then be identical to the base image.
 """
 
 from __future__ import annotations
@@ -61,7 +53,14 @@ def _apply(config, dotted: str, value) -> None:
             )
         node[index] = value
         return
-    if leaf in node and node[leaf] == value:
+    if leaf not in node:
+        print(
+            f"derive_pack_config: unknown key {dotted}: the base config has no such "
+            f"field, and a key the packer does not read leaves the image unchanged",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    if node[leaf] == value:
         raise SystemExit(
             f"derive_pack_config: '{dotted}' is already {value!r} in the base "
             f"config, so this override changes nothing and the derived image would "

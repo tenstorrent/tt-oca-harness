@@ -28,14 +28,9 @@
 #define BIT(n) (1u << (n))
 #endif
 
-// Cadence xSPI direct flash access / XIP window (OCAH address map):
-//   0x3000_0000 - 0x3FFF_FFFF (256 MiB).
-#ifndef SEP_SPI_BASE
-#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
-#endif
-#ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
-#endif
+// Memory-mapped external flash (XIP) window, a secure-DMA source.
+#define SEP_XIP_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
+#define SEP_XIP_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 
 // For OCAH, the "SEP EXT SRAM" equivalent is `sep_sram` in the address map.
 #define SEP_EXT_SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)
@@ -93,10 +88,10 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
         return SEP_MSG_OUT_OF_RANGE_ERROR;
     }
 
-    // Source can be in SPI window, SMC SRAM, or SEP SRAM.  A non-incrementing
+    // Source can be in the XIP window, SMC SRAM, or SEP SRAM.  A non-incrementing
     // source is only ever read one word wide, so that is what is range-checked.
     const uint32_t src_span = src_increment ? n : 4u;
-    if (!contains_range_u32(SEP_SPI_BASE, SEP_SPI_MAX_SIZE, src, src_span) &&
+    if (!contains_range_u32(SEP_XIP_BASE, SEP_XIP_SIZE, src, src_span) &&
         !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, src, src_span) &&
         !contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, src, src_span)) {
         return SEP_MSG_OUT_OF_RANGE_ERROR;

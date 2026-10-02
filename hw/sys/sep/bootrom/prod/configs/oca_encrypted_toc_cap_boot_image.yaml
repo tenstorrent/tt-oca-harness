@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# Full SPI image for the SEP boot ROM: the AES-256-CBC encrypted TOC-cap OCA bundle
+# at both manifest slots, primary 0x01000 and backup 0x41000, each payload 0x1000 past it.
+# The 70964 B payload ends past 0x50000 in the backup slot, so the image is 0x60000.
+manifest_format: oca-combined
+name: "OCAH SEP encrypted TOC-cap SPI image"
+
+total_size: 0x60000
+pad_byte: 0xFF
+
+combos:
+  - name: primary
+    config: configs/oca_encrypted_toc_cap_boot_test.yaml
+    manifest_offset: 0x1000
+    payload_offset: 0x2000
+
+  - name: backup
+    config: configs/oca_encrypted_toc_cap_boot_test.yaml
+    manifest_offset: 0x41000
+    payload_offset: 0x42000

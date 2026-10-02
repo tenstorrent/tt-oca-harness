@@ -108,15 +108,7 @@ __attribute__((noreturn)) void trap_handler_c(uint32_t mcause, uint32_t mepc, ui
 static volatile uint32_t g_data_init = 0x12345678u;
 static volatile uint32_t g_bss_zero;
 
-// Warm reset is handled in vector.S ([S01]):
-// - vector.S reads cold_scratch[7] early,
-//   before touching DCCM (sp/scrub/.data/.bss), to preserve BL1 state.
-// - A valid ICCM address transfers directly to the warm handler and remains
-//   intact for subsequent watchdog resets.
-// - A zero slot selects cold boot; the cold path then poisons it with -1.
-// - An invalid nonzero slot stops in vector.S.
-//
-// The SEP scratch registers used:
+// Warm reset dispatch runs in vector.S [S01], before any DCCM access.
 //   cold_scratch[7]: warm reset handler pointer (survives watchdog reset)
 //   cold_scratch[0]: terminal ROM verdict
 
@@ -200,16 +192,7 @@ __attribute__((noreturn)) static void rom_err_fail(uint32_t error_code) {
         s->error_code = error_code;
     }
 
-    // Record in cold_scratch[1] for debugger visibility (STATUS_ENCODE format).
-    //
-    // Only for codes that ARE status values. A subsystem error carries its
-    // subsystem in the upper half (manifest errors are 0x0003xxxx), and
-    // truncating one to 16 bits lands it in the SEP_MSG_* numbering space where
-    // it decodes as an unrelated message: MANIFEST_ERR 0x00030012 came out as
-    // "SEP_MSG_BL1_SIZE_INVALID" on a payload-hash failure. Every such path has
-    // already reported its own specific ERROR status, so the truncated word adds
-    // nothing and actively misleads. The full 32-bit code still reaches the
-    // mailbox below, so DV loses no information.
+    // A subsystem code (upper half set) truncated to 16 bits decodes as an unrelated SEP_MSG_*.
     if ((error_code & 0xFFFF0000u) == 0u) {
         STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_ERROR, error_code & 0xFFFF));
     }
@@ -369,8 +352,8 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
     }
 
 #if !BOOT_SPI_CONTROLLER_OT
-    // The Cadence path caches a PHY-tuning TLV whose primary slot may fail to
-    // load; the OpenTitan controller has no TLV, so this only applies there.
+    // Only the XIP-window controller reads a per-slot flash controller
+    // configuration record, and its primary copy may be unusable.
     if (spi_primary_tlv_failed()) {
         simputs("SPI_PRIMARY_TLV_FAILED\n");
     }
@@ -382,7 +365,7 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
 // Manifest load → validate → handoff sequence.
 // Loads manifest via DMA from SPI/SMC SRAM, validates structure,
 // locks fuse secrets, and hands off to BL1.
-// spi_status: result of spi_init(); non-zero skips the primary manifest retry.
+// spi_status: result of rom_spi_init(); non-zero skips the primary manifest retry.
 __attribute__((noreturn)) static void rom_manifest_validate_handoff(
     const struct boot_straps *straps, uint32_t spi_status, uint32_t lc_state) {
     // ── [S23] manifest load ──
@@ -716,15 +699,8 @@ void rom_main(void) {
     simputs("<<C9b_ICCM_CLR\n");
 
     // ── [S18] Read sboot_dis fuse ──
-    // Read the SBOOT_DIS efuse shadow register.
-    // Chicken bit to disable secure boot (bit 0 of SEP_EFUSE_MAP_SBOOT_DIS).
-    // Kept in a function-level local, not only in bl0_state: the secure-boot
-    // decision takes it as an argument so the verdict cannot depend on mutable
-    // shared state.
-    bool sboot_dis;
     {
-        uint32_t sboot_dis_reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
-        sboot_dis = (sboot_dis_reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
+        bool sboot_dis = lc_read_sboot_dis();
         get_bl0_state()->sboot_dis = sboot_dis;
         simputsdec24("FUSE: SBOOT_DIS: ", sboot_dis);
         report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SBOOT_DIS);

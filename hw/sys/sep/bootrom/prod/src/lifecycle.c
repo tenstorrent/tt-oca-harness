@@ -60,6 +60,11 @@ bool lc_state_is_valid(uint32_t lc_state) {
     }
 }
 
+bool lc_read_sboot_dis(void) {
+    uint32_t reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
+    return (reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
+}
+
 bool lc_state_enforces_secure_boot(uint32_t lc_state) {
     // PROD and PROD_END enforce secure boot.
     // TEST_DEV and RMA states do not (debug/manufacturing).

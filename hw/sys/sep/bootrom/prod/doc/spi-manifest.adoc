@@ -13,9 +13,10 @@ loader. `BOOT_SPI_CONTROLLER_OT` selects the implementation at build time:
   command/FIFO transfers and drains its receive FIFO through the secure DMA
   (`BOOT_OT_SPI_USE_PIO=0`). The `pio-toolchain-images` profile selects CPU
   programmed I/O (`BOOT_OT_SPI_USE_PIO=1`) and writes its ROM to `build_pio/`.
-* `BOOT_SPI_CONTROLLER_OT=0` selects the memory-mapped Cadence xSPI XIP aperture
-  and secure DMA. The open `src/sep_spi.c` is a weak unavailable-device
-  implementation that an integration can override.
+* `BOOT_SPI_CONTROLLER_OT=0` reads memory-mapped flash through the external XIP
+  window with the secure DMA. Controller bring-up is the weak hook set in
+  `src/sep_spi.c`, which reports the controller as absent; an integrator
+  overrides it with a real driver through `NONFREE_BOOTCODE_SOURCES`.
 
 Controller initialization receives the clock selected earlier in the boot.
 Failure is not immediately terminal because the loader can proceed to another

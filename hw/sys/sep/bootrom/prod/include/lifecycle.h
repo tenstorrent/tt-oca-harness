@@ -45,6 +45,9 @@ uint32_t lc_read_state(void);
 // Check if a decoded LC state value is valid (belongs to allowed set).
 bool lc_state_is_valid(uint32_t lc_state);
 
+// Read the SBOOT_DIS chicken bit (bit 0); the reserved bits 31:1 never disable secure boot.
+bool lc_read_sboot_dis(void);
+
 // Check if the given LC state enforces secure boot.
 // PROD and PROD_END enforce secure boot; TEST_DEV and RMA do not.
 bool lc_state_enforces_secure_boot(uint32_t lc_state);

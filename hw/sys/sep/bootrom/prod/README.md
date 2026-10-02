@@ -176,7 +176,7 @@ Common build variables include:
 | `ROM_ICCM_CLEAR_FULL` | `0` | Clear the entire ICCM before loading BL1. |
 | `PMP_ENABLE` | `1` | Program the BL0 PMP entries. |
 | `PMP_LOCK` | `0` | Lock the programmed PMP entries until reset. |
-| `BOOT_SPI_CONTROLLER_OT` | `1` | Use the OpenTitan SPI host; set to `0` for Cadence xSPI. |
+| `BOOT_SPI_CONTROLLER_OT` | `1` | Use the OpenTitan SPI host; set to `0` for memory-mapped flash through the XIP window, with an integrator-supplied controller driver. |
 | `BOOT_OT_SPI_USE_PIO` | `0` | Use CPU PIO instead of secure DMA for OpenTitan RX. |
 | `BOOT_OT_SPI_PROFILE` | `0` | Select the OpenTitan timing profile. |
 | `BUILD_TYPE` | `debug` | `debug` or `release`; see [Build types](#build-types). |

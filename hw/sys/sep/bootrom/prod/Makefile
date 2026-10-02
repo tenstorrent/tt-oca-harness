@@ -6,9 +6,10 @@ SHELL := /usr/bin/env
 #
 # SEP Boot ROM.
 #
-# The default ROM uses the OpenTitan SPI host with secure-DMA RX draining. A
-# Cadence xSPI build selects BOOT_SPI_CONTROLLER_OT=0; the open src/sep_spi.c is
-# a weak unavailable-device implementation that an integration can override.
+# Flash is reached over the OpenTitan SPI host (src/sep_ot_spi.c) by default,
+# with secure-DMA RX draining. BOOT_SPI_CONTROLLER_OT=0 instead reads
+# memory-mapped flash through the XIP window; its controller driver is supplied
+# by an integrator, and the open src/sep_spi.c reports the controller absent.
 #
 # The manifest+BL1 images the ROM boots are built entirely from source in this
 # tree: bl1_pass_test (<sep>/dv/fw/tests/bl1_pass_test) is compiled and packed by
@@ -88,9 +89,10 @@ ifeq ($(filter $(BUILD_TYPE),debug release),)
 $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Use 'debug' or 'release')
 endif
 
-# SPI flash transport selection. 0 = Cadence xSPI (memory-mapped XIP),
-# 1 = OpenTitan SPI host (default, command/FIFO transfers). The unused driver is dropped
-# by --gc-sections at link time.
+# Flash transport: 1 = OpenTitan SPI host (default, command/FIFO transfers),
+# 0 = memory-mapped flash through the XIP window, controller init supplied by an
+# override of the src/sep_spi.c hooks. The unused driver is dropped by
+# --gc-sections at link time.
 BOOT_SPI_CONTROLLER_OT ?= 1
 # OpenTitan RX-FIFO drain method (used only when BOOT_SPI_CONTROLLER_OT=1):
 # 0 = secure DMA (default), 1 = CPU programmed I/O.
@@ -215,9 +217,10 @@ OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
 OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
 # Optional extra sources injected by a nonfree overlay build (absolute .c paths).
-# Their strong symbols override the weak stubs in src/ at link time (e.g. a
-# companion-supplied SPI controller driver overriding the weak src/sep_spi.c
-# stub). Same pattern as the SMC prod ROM's NONFREE_DRIVER_SOURCES.
+# Their strong symbols override the weak stubs in src/ at link time, such as the
+# external flash controller hooks in src/sep_spi.c, or ot_spi_select_pad_mux()
+# for a wrapper whose SPI pads are shared. Same pattern as the SMC prod ROM's
+# NONFREE_DRIVER_SOURCES.
 NONFREE_BOOTCODE_SOURCES ?=
 NONFREE_BOOTCODE_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(NONFREE_BOOTCODE_SOURCES)))
 OBJS += $(NONFREE_BOOTCODE_OBJS)
@@ -593,6 +596,9 @@ OCA_IMAGES := \
 	ecdsa_boot \
 	der_boot \
 	multi_image_boot \
+	encrypted_multi_image_boot \
+	toc_cap_boot \
+	encrypted_toc_cap_boot \
 	no_bl1_boot \
 	rom_key1_boot \
 	rom_key2_boot \
@@ -649,42 +655,25 @@ $(OCA_SMC_MEM_HEX): $(BUILD_DIR)/oca_non_secure_boot.bin
 	python3 "$(BIN_TO_SPI)" "$<" "$(BUILD_DIR)/oca_smc_mem.spi_preload"
 	sed 's/@00000000/@$(SMC_SRAM_BASE)/' "$(BUILD_DIR)/oca_smc_mem.spi_preload" > "$@"
 
-# Encrypted-boot variants consumed by the decryption negative tests. The class-key
-# case leaves the primary encrypted but makes the backup unencrypted. The IV and
-# KDF cases point only the primary combo at a derived defective manifest.
+# Decryption negative image: the primary stays encrypted and the backup is unencrypted.
 DERIVE_CONFIG_PY := $(CURDIR)/scripts/derive_pack_config.py
-DERIVE_RUN := uv run --no-project --with-editable "$(TT_OCA_MANIFEST_DIR)" \
+ifneq ($(shell command -v uv 2>/dev/null),)
+DERIVE_RUN := uv run --isolated --no-cache --no-project \
+	--with-editable "$(TT_OCA_MANIFEST_DIR)" \
 	python "$(DERIVE_CONFIG_PY)"
+else
+# uv-less fallback: the script needs only ruamel.yaml, which ensure-pack-deps checks.
+DERIVE_RUN := python3 "$(DERIVE_CONFIG_PY)"
+endif
 ENCRYPTED_IMAGE_CONFIG := $(CURDIR)/configs/oca_encrypted_boot_image.yaml
-ENCRYPTED_TEST_CONFIG := $(CURDIR)/configs/oca_encrypted_boot_test.yaml
-DECRYPT_NEG_BINS := $(BUILD_DIR)/invalid_class_key.bin \
-	$(BUILD_DIR)/invalid_encryption_iv.bin \
-	$(BUILD_DIR)/invalid_kdf_input.bin
+DECRYPT_NEG_BINS := $(BUILD_DIR)/invalid_class_key.bin
 
 decrypt_negative_images: $(DECRYPT_NEG_BINS)
 
-$(BUILD_DIR)/invalid_class_key.yaml: $(DERIVE_CONFIG_PY) $(ENCRYPTED_IMAGE_CONFIG) | $(BUILD_DIR)
+$(BUILD_DIR)/invalid_class_key.yaml: $(DERIVE_CONFIG_PY) $(ENCRYPTED_IMAGE_CONFIG) \
+		| $(BUILD_DIR) ensure-pack-deps
 	$(DERIVE_RUN) --base "$(ENCRYPTED_IMAGE_CONFIG)" \
 		--set-str combos.1.config=configs/oca_secure_boot_test.yaml --out "$@"
-
-$(BUILD_DIR)/invalid_encryption_iv_test.yaml: $(DERIVE_CONFIG_PY) $(ENCRYPTED_TEST_CONFIG) | $(BUILD_DIR)
-	$(DERIVE_RUN) --base "$(ENCRYPTED_TEST_CONFIG)" \
-		--set-str packed_encryption_iv=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --out "$@"
-
-$(BUILD_DIR)/invalid_kdf_input_test.yaml: $(DERIVE_CONFIG_PY) $(ENCRYPTED_TEST_CONFIG) | $(BUILD_DIR)
-	$(DERIVE_RUN) --base "$(ENCRYPTED_TEST_CONFIG)" \
-		--set-str encryption_kdf_input=deadbeefcafebabe0123456789abcdeffedcba9876543410f0e1d2c3b4a59687deadbeefcafebabe0123456789abcdeffedcba9876543410f0e1d2c3b4a59687 \
-		--out "$@"
-
-$(BUILD_DIR)/invalid_encryption_iv.yaml: $(DERIVE_CONFIG_PY) $(ENCRYPTED_IMAGE_CONFIG) \
-		$(BUILD_DIR)/invalid_encryption_iv_test.yaml | $(BUILD_DIR)
-	$(DERIVE_RUN) --base "$(ENCRYPTED_IMAGE_CONFIG)" \
-		--set-str combos.0.config=$(BUILD_DIR)/invalid_encryption_iv_test.yaml --out "$@"
-
-$(BUILD_DIR)/invalid_kdf_input.yaml: $(DERIVE_CONFIG_PY) $(ENCRYPTED_IMAGE_CONFIG) \
-		$(BUILD_DIR)/invalid_kdf_input_test.yaml | $(BUILD_DIR)
-	$(DERIVE_RUN) --base "$(ENCRYPTED_IMAGE_CONFIG)" \
-		--set-str combos.0.config=$(BUILD_DIR)/invalid_kdf_input_test.yaml --out "$@"
 
 $(DECRYPT_NEG_BINS): $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.yaml bl1_test ensure-pack-deps
 	@test -f "$(SEP_SIGNING_KEY)" || { \

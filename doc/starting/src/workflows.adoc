@@ -176,37 +176,35 @@ make -C hw/sys/smc/bootrom/prod
 `hw/sys/sep/bootrom/prod/` is a self-contained production boot ROM for the SEP subsystem (VeeR EL2), with its own includes, drivers, and link script.
 It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly; nonfree drivers override them at link time via `NONFREE_BOOTCODE_SOURCES` (same pattern as the SMC prod ROM).
 
-The ROM supports two SPI transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
-The open-source driver uses the OpenTitan SPI host (`BOOT_SPI_CONTROLLER_OT=1`).
-A proprietary memory-mapped SPI controller is also supported, plugged via the SEP extension port (`BOOT_SPI_CONTROLLER_OT=0`), but is optional from the OCAH open tree's perspective.
+The ROM supports two flash transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
+The default (`BOOT_SPI_CONTROLLER_OT=1`) uses the OpenTitan SPI host, and `BOOT_OT_SPI_USE_PIO` selects its RX-drain method (secure DMA by default, or CPU-programmed I/O).
+`BOOT_SPI_CONTROLLER_OT=0` reads memory-mapped flash through the external XIP window; its controller driver is optional from the open tree's perspective and is supplied by an integrator through the weak hooks in `src/sep_spi.c`.
 
-The DV `sep` testbench has no SPI flash, so the ROM stubs SPI (`src/sep_spi.c`) and boots instead from the SMC-SRAM manifest path; `make pack-images` builds and packs the matching manifest+BL1 image (`build/smc_mem.hex`).
+The DV `sep` testbench has no SPI flash, so it boots instead from the SMC-SRAM manifest path: `oca-images` packs the non-secure boot-manifest image rebased to the SMC-SRAM base (`build/oca_smc_mem.hex`).
 
 The build is split into two halves so each can run in the correct environment:
 
 * `toolchain-images` — RISC-V/picolibc compilation; use the container toolchain when `RISCV_TOOLCHAIN` is unset.
-* `pack-images` — pure Python manifest packing via the `tt-oca-manifest` submodule (requires `uv`); runs on the host without the container.
+* `oca-images` — pure Python manifest packing via the `tt-oca-manifest` submodule (requires `uv`); runs on the host without the container.
 
 ```bash
 # OpenTitan SPI-host build (outputs to build/):
 # Prefix with `scripts/docker-run.sh run` to use the container toolchain
-make -C hw/sys/sep/bootrom/prod ot-toolchain-images
+make -C hw/sys/sep/bootrom/prod toolchain-images
 
-# Signed (secure boot) SPI flash image — requires the tt-oca-manifest submodule:
+# Signed boot-manifest images (secure boot, encrypted boot, and the rest of
+# OCA_IMAGES) — requires the tt-oca-manifest submodule:
 # git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
-make -C hw/sys/sep/bootrom/prod secure_boot_spi
-
-# Encrypted+signed SPI flash image (AES key derived from the CLASS_KEY fuse):
-make -C hw/sys/sep/bootrom/prod encrypted_boot_spi
+make -C hw/sys/sep/bootrom/prod oca-images
 ```
 
 Outputs land under `hw/sys/sep/bootrom/prod/build/`:
 
 * `boot_rom.vmem` — 64-bit VMEM for the Boot ROM responder.
-* `boot_rom.itcm.hex` — ROM `.text` as ICCM-relative byte hex.
-* `boot_rom.dtcm.hex` — `.data`/`.bss` initial image as DCCM-relative byte hex.
-* `smc_mem.hex` — packed manifest+BL1 image rebased to the SMC-SRAM base, for the DV testbench.
-* `secure_boot.spi_preload` / `encrypted_boot.spi_preload` — SPI flash preload images (built by the corresponding targets above).
+* `boot_rom.itcm.hex` — ROM read-only sections as ICCM-relative byte hex.
+* `boot_rom.dtcm.hex` — DCCM `.data`/`.bss` initial image as DCCM-relative byte hex.
+* `oca_*.bin` / `oca_*.spi_preload` — OCA boot-manifest images, one per validator path (`OCA_IMAGES` in the Makefile).
+* `oca_smc_mem.hex` — the non-secure image rebased to the SMC-SRAM base, for the DV testbench.
 
 === KM boot ROM
 

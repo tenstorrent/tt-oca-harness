@@ -219,10 +219,10 @@ manifest hash, payload hashes, measurements; HMAC mode is the PRF for the payloa
 CHIPLET_PUBK_REVOKE, BL1_VERSION, fuse-key digests, and the LOCKS read-lock register.
 |Lifecycle controller |`0x10918000` |`FEAT_CTRL` (64-bit feature control, read), `DEMOTE_1` /
 `DEMOTE_2` demotion registers (write + lock).
-|OpenTitan SPI host |`0x10B00000` |Boot-flash transport option A: command/FIFO reads (PIO or
+|OpenTitan SPI host |`0x10B00000` |Default boot-flash transport: command/FIFO reads (PIO or
 secure-DMA drain), no XIP (<<sec:spi>>).
-|Cadence xSPI |ctrl `0x20002000` region, XIP window `0x30000000` |Boot-flash transport option
-B: memory-mapped XIP reads (<<sec:spi>>).
+|External XIP window |`0x30000000` |Alternative boot-flash transport: memory-mapped flash read
+by secure DMA; the controller driver is integrator-supplied (<<sec:spi>>).
 |SEP scratch registers |cold `0x10802000`, warm `0x10802080` |Status reporting channel,
 virtual console, warm-reset re-entry pointer (<<sec:memory_map>>).
 |Outbound AXI filter |`0x10A20000` region |Egress gate for SEP-mastered AXI transactions;
@@ -233,8 +233,9 @@ only the warm-reset re-entry path that a WDT reset triggers (<<sec:warm_reset>>)
 by BL0.
 |===
 
-The SMC is reached through the SEP outbound window at `0x40000000` (<<sec:memory_map>>);
-the STDOUT mailbox used for DV PASS/FAIL signalling is at `0x80000000`.
+The SMC is reached through the SEP outbound window at `0x40000000` (<<sec:memory_map>>); the
+ROM opens no other outbound window and reports exclusively through `cold_scratch`
+(<<sec:status>>).
 
 [[sec:memory_map]]
 ==== Memory Map
@@ -275,15 +276,12 @@ program.
 |AXI-Lite mailboxes |`0x10A00000` |64 KiB |Inbound/outbound mailbox pairs; not used by BL0
 boot decisions.
 |Outbound AXI filter |`0x10A20000` |— |Egress filter windows (`OUTBOUND_FILTER_CTRL_n`).
-|OpenTitan SPI host |`0x10B00000` |— |Boot-flash transport option A.
-|Cadence xSPI controller |`0x20002000` region |— |Boot-flash transport option B (controller +
-PHY registers).
-|xSPI XIP window |`0x30000000` |flash-size |`SEP_SPI_BASE` — memory-mapped view of boot flash
-(Cadence path); DMA source for manifest/payload loads.
+|OpenTitan SPI host |`0x10B00000` |— |Default boot-flash transport.
+|External XIP window |`0x30000000` |256 MiB |Memory-mapped external flash window; an accepted
+secure-DMA source. The boot path reads it only when built with `BOOT_SPI_CONTROLLER_OT=0`,
+whose controller driver is integrator-supplied.
 |SMC window |`0x40000000` |— |SEP view of the SMC (`SEP_SMC_GLOBAL_BASE`); the crossbar routes
 `[0x4000_0000, 0xC000_0000)` outbound. See <<tbl:smc_window>>.
-|STDOUT mailbox |`0x80000000` |4 B |DV PASS/FAIL magic words and mailbox character output.
-Only egress window opened at cold boot.
 |ICCM |`0xC0000000` |256 KiB |Cleared by the ROM ([S16]); the secure BL1 execution
 region, always permitted (<<sec:manifest>>).
 |DCCM |`0xC0040000` |128 KiB |BL0 runtime data: `.data`, `.bss`, stack, and the `bl0_state`
@@ -450,7 +448,7 @@ partition "Manifest retry loop ([S23]-[S24])" {
   repeat while (failed and slot remains ?) is (yes: zero SRAM, reinit transport) not (no)
   if (a slot validated ?) then (no)
     :[S30] rom_err_fail
-    (bl0_state, scratch, mailbox FAIL, wfi);<<#ffe0e0>>
+    (bl0_state, scratch ERROR, wfi);<<#ffe0e0>>
     detach
   else (yes)
   endif
@@ -611,10 +609,8 @@ environment:
    where manifest and payload bytes are staged, so a stack or global placed there would be
    writable by the content the ROM is still deciding whether to trust.
 3. *Outbound AXI filter.* [[req-SEP-ROM-CPU-040]]*[SEP-ROM-CPU-040]* The SEP outbound AXI
-   filter shall block all egress by default; the ROM shall open only the windows it needs.
-   At cold boot the stub programs filter 0 to the 4-byte STDOUT mailbox window
-   (`START=0x8000_0000`, `END=0x8000_0003`, `CONFIG=0x0000_0001_0100_0013`), writing `CONFIG`
-   last (after a `fence w,w`) so the range is committed before the filter is enabled.
+   filter shall block all egress by default; the ROM shall open no outbound window at all. All
+   ROM status and verdict reporting stays on `cold_scratch`.
 4. The debug status word for "entered `_start`" is written to `cold_scratch[1]`.
 5. [[req-SEP-ROM-CPU-050]]*[SEP-ROM-CPU-050]* Interrupts shall remain disabled for the entire
    ROM execution: `mie` is cleared and `mstatus.MIE` is cleared at entry, and no ROM stage
@@ -647,8 +643,6 @@ start
 :warm-reset check (see Warm-Reset chapter);
 :clear cold_scratch[7];
 :sp = __stack_top, gp;
-:outbound filter: open 4 B mailbox window
-(CONFIG written last, after fence w,w);
 :status 'entered _start' -> cold_scratch[1];
 :disable interrupts (mie, mstatus.MIE);
 :program PMP fences;
@@ -671,8 +665,8 @@ fatal error (`ROM_ERR_RUNTIME_INIT_FAILED`, `0xB001`).
 
 [[req-SEP-ROM-CPU-070]]*[SEP-ROM-CPU-070]* Any trap taken during ROM execution is fatal: the
 trap vector shall capture `mcause`/`mepc`/`mtval`/`mstatus`, report them through the debug
-console, signal FAIL through the STDOUT mailbox (magic `0xA5A55A5A` followed by `0xDEADBEEF`),
-and hang in `wfi`. The ROM shall never attempt to resume from a trap.
+console, encode an `ERROR` status into `cold_scratch[1]` and the FAIL verdict (`0xDEADBEEF`)
+into `cold_scratch[0]`, and hang in `wfi`. The ROM shall never attempt to resume from a trap.
 
 ===== Watchdog Posture
 
@@ -754,8 +748,9 @@ still resident. The warm-reset path returns control to BL1 with minimal disturba
 handler to `cold_scratch[7]`. The handler must lie in a permitted BL1 execution region --
 the same set `BL1_SRAM_EXEC_ENABLE` governs, because accepting a warm handler where the
 cold path would refuse to boot would let a warm reset re-enter code the ROM would never
-have launched. BL1 re-arms
-this value as needed; a value of zero means "no warm handler — treat any reset as cold".
+have launched. The ROM writes 0 to the slot before every jump
+(<<req-SEP-ROM-CPU-130,SEP-ROM-CPU-130>>), so BL1 must re-arm `cold_scratch[7]` every time
+it enters the handler; a value of zero means "no warm handler — treat any reset as cold".
 
 *ROM side:*
 
@@ -843,9 +838,9 @@ execute before validation completes.
    into shall be
    granted only at hand-off, after the pre-hand-off self-check passes.
 4. [[req-SEP-ROM-PMP-040]]*[SEP-ROM-PMP-040]* Data windows shall be limited to the regions
-   the ROM demonstrably needs: DCCM (`RW`), the STDOUT mailbox, the SEP peripheral block
+   the ROM demonstrably needs: DCCM (`RW`), the SEP peripheral block
    (`0x1080_0000`–`0x10BF_FFFF`: DMA, scratch, crypto, lifecycle, efuse, SPI hosts), the
-   Cadence xSPI controller and XIP windows (when fitted), the SMC window (`0x4000_0000`),
+   external XIP window (when the boot path uses it), the SMC window (`0x4000_0000`),
    SEP SRAM and ICCM (`RW`, for staging). Everything else shall have no PMP grant.
 5. [[req-SEP-ROM-PMP-050]]*[SEP-ROM-PMP-050]* The hand-off release shall be the *last*
    security-relevant action of the ROM: no execute permission beyond ROM may exist until
@@ -914,8 +909,8 @@ Three RTL behaviors shape the programming sequence (`el2_dec_pmp_ctl.sv`,
    matching no rule faults. No catch-all entry is used; a window the rule set fails to grant
    shall manifest as a precise trap (fatal per SEP-ROM-CPU-070), never as silent access.
 3. The locked rule set implements <<tbl:pmp_regions>> as amended by the fence policy: ROM
-   `R-X`; DCCM, mailbox, peripheral block, SMC window, xSPI controller/XIP windows `RW-`;
-   SEP SRAM and ICCM `RW-` (no execute) until hand-off.
+   `R-X`; DCCM, peripheral block, SMC window, external XIP window `RW-`; SEP SRAM
+   and ICCM `RW-` (no execute) until hand-off.
 
 ====== Release at Hand-off
 
@@ -958,7 +953,7 @@ literal CSR values.
 |*Entry* |*Region* |*Base* |*Size* |*Perms (code)* |*`pmpaddr`* |*Note*
 |0 |Boot ROM |`0x10040000` |64 KiB |R-X |`0x04017FFF` |BL0 itself
 |1 |DCCM |`0xC0040000` |128 KiB |RW- |`0x30013FFF` |runtime data, stack, `bl0_state`
-|2 |Mailbox |`0x80000000` |4 KiB |RW- |`0x200007FF` |STDOUT mailbox window
+|2 |Unused | | | | |
 |3 |SEP SRAM |`0x10000000` |256 KiB |RWX |`0x0401FFFF` |manifest/payload staging; a BL1 launch
 region when `BL1_SRAM_EXEC_ENABLE` permits — *this specification requires RW- until hand-off*
 |4 |Peripherals |`0x10800000` |4 MiB |RW- |`0x0421FFFF` |DMA, scratch, crypto, lifecycle,
@@ -970,8 +965,8 @@ requires RW- until hand-off*
 lower-numbered entry takes precedence for its sub-range
 |===
 
-`pmpcfg0` = `0x1F1B1B1D` and `pmpcfg1` = `0x001B1F1B` (with `PMP_LOCK=1`, the same values
-with `L` set: `0x9F9B9B9D` / `0x009B9F9B`). Entry 7 is unused.
+`pmpcfg0` = `0x1F001B1D` and `pmpcfg1` = `0x001B1F1B` (with `PMP_LOCK=1`, the same values
+with `L` set: `0x9F009B9D` / `0x009B9F9B`). Entries 2 and 7 are unused.
 
 [WARNING]
 ====
@@ -985,7 +980,7 @@ policy:
   ratified Smepmp sequence (<<sec:pmp_mechanism>>: RLB → locked rules → MMWP, release by
   rule rewrite) is not yet implemented; `mseccfg` is never written.
 * Entry 6's covered range (`0xC000_0000`–`0xCFFF_FFFF`) does not match the actual SMC window
-  at `0x4000_0000`; the Cadence XIP window (`0x3000_0000`) and SMC window have no entry. This
+  at `0x4000_0000`; the external XIP window (`0x3000_0000`) and SMC window have no entry. This
   is currently masked by the entries being unlocked (M-mode unconstrained), but must be fixed
   before the fences can bind (SEP-ROM-PMP-040).
 
@@ -1056,9 +1051,10 @@ The 64-bit `FEAT_CTRL` register of the lifecycle controller (`0x1091_8000`) is c
 ===== Secure-Boot Chicken Bit ([S18])
 
 `SEP_EFUSE_MAP_SBOOT_DIS` (`0x1093_000C`) bit 0 (`disable_secure_boot`) is the secure-boot
-chicken bit. It is read once, recorded in `bl0_state.sboot_dis`, and consumed by the
-secure-boot decision (<<sec:secure_boot>>) and the boot measurement
-(<<sec:boot_measurement>>).
+chicken bit. `[S18]` latches it into `bl0_state.sboot_dis` for the boot measurement
+(<<sec:boot_measurement>>); the secure-boot decision (<<sec:secure_boot>>) re-reads the same
+fuse independently. Both readers decode bit 0 only through `lc_read_sboot_dis()`. Bits 31:1
+are reserved, so a reserved bit never disables secure boot.
 
 ===== Fuse Fields Touched by the ROM
 
@@ -1281,7 +1277,7 @@ start
 if (primary_chiplet ?) then (yes)
   if (boot_recovery ?) then (no)
     :BOOT_MODE_SPI;
-    :ot_spi_init() / spi_init()
+    :boot_flash_init()
     (failure is non-fatal:
     primary slot is skipped);
     :manifest from flash slots
@@ -1319,15 +1315,16 @@ manifest+payload.
 [[sec:spi]]
 ==== SPI Initialization and Manifest Transfer
 
-On a primary chiplet, mutable software is read from SPI NOR flash at fixed offsets. OCAH fits
-one of two SPI controllers; the ROM supports both behind a single transport abstraction, and
-the choice is made at build time (`BOOT_SPI_CONTROLLER_OT`). The manifest loader is
-controller-agnostic: it speaks in *flash byte offsets* only.
+On a primary chiplet, mutable software is read from SPI NOR flash at fixed offsets. The ROM
+supports two transports behind a single abstraction, selected at build time
+(`BOOT_SPI_CONTROLLER_OT`): the OpenTitan SPI host (default, `1`), or memory-mapped flash
+through the external XIP window (`0`), whose controller driver an integrator supplies. The
+manifest loader is transport-agnostic: it speaks in *flash byte offsets* only.
 
 [[req-SEP-ROM-SPI-010]]*[SEP-ROM-SPI-010]* All flash access from the boot path shall go
 through the transport shim (`boot_flash.h`): `boot_flash_init()`, `boot_flash_read(dst,
 flash_off, len)`, `boot_flash_reinit()`, `boot_flash_bounds_ok()`. Boot logic shall not
-depend on which controller is fitted.
+depend on which transport is fitted.
 
 ===== Flash Layout
 
@@ -1338,12 +1335,12 @@ depend on which controller is fitted.
 [frame=ends]
 |===
 |*Offset* |*Content* |*Notes*
-|`0x0000` |Primary SPI configuration TLV |Cadence path only: PHY tuning parameters read
-during controller bring-up.
+|`0x0000` |Reserved: primary flash controller configuration record |Read only by an
+integrator's XIP-window controller driver during bring-up; ignored on the OpenTitan path.
 |`0x1000` |*Primary manifest* (4096 B) |`PRIMARY_MANIFEST_OFFSET`.
 |`0x1000` + `payload_offset` |Primary payload |Located by the manifest's `payload_offset`
 field (payload TOC + images).
-|`0x40000` |Backup SPI configuration TLV |Cadence path only.
+|`0x40000` |Reserved: backup flash controller configuration record |As at `0x0000`.
 |`0x41000` |*Backup manifest* (4096 B) |`BACKUP_MANIFEST_OFFSET` — a complete, independent
 manifest+payload pair (<<sec:retry>>).
 |`0x41000` + `payload_offset` |Backup payload |
@@ -1355,6 +1352,8 @@ manifest+payload cannot exceed what SRAM can hold. `PRIMARY_MANIFEST_OFFSET` and
 (slot index × `BOOT_SLOT_SIZE`, plus the manifest's offset within a slot), so the stride
 above is a consequence of the slot size rather than an independent constant. The ROM's
 readable window for a slot runs from its manifest to the end of that slot.
+On both transports, the payload that a manifest's `payload_offset` locates must also lie
+in that window, so a slot cannot name the other slot's payload (`OCA_FAIL_PAYLOAD_LOCATION`).
 
 The OCA combined-image configs place the backup manifest at `0x41000`, matching the offsets
 above, and backup-slot rotation is exercised in simulation. The offsets in
@@ -1398,15 +1397,17 @@ transactions:
 Driver internals (register sequencing, watermark handling, error recovery) are specified in
 the OpenTitan SPI Bootcode Driver spec (`specs/001-ot-spi-bootcode-driver/`).
 
-===== Cadence xSPI Path
+===== Memory-Mapped Flash (XIP Window) Path
 
-The Cadence controller exposes flash as a memory-mapped XIP window at `0x3000_0000`
-(`SEP_SPI_BASE`); a "read" is a secure-DMA copy from `SEP_SPI_BASE + offset` into SRAM.
-Bring-up is a multi-phase sequence: a sweep over candidate PHY parameter sets (fuse-adjustable)
-until the flash device answers, application of the slot's configuration TLV, and optional DLL
-margining that re-reads the TLV at low/high timing margins to confirm the operating point.
-Slot rotation (`rotate_update` strap) and backup-bank fallback re-run bring-up against the
-backup TLV.
+With `BOOT_SPI_CONTROLLER_OT=0` the flash is memory-mapped through the external XIP window at
+`0x3000_0000`; a read is a secure-DMA copy from the window base plus the flash offset into SEP
+SRAM, under the same per-slot bounds gate as the OpenTitan path. Controller bring-up goes
+through the weak hooks in `include/sep_spi.h` (`spi_init()`, `spi_reinit()`,
+`spi_set_rotate()`, `spi_set_sysclk()`, `spi_primary_tlv_failed()`). The open `src/sep_spi.c`
+reports the controller as absent, so `spi_init()` fails and the primary slot is skipped; an
+integrator links a real driver through `NONFREE_BOOTCODE_SOURCES`. Such a driver may read a
+flash controller configuration record from the reserved bytes at the start of each slot, and
+re-runs bring-up against the backup record on `spi_reinit()`.
 
 [[fig:spi_transfer]]
 .Manifest transfer through the transport shim
@@ -1417,13 +1418,12 @@ skinparam ActivityBackgroundColor #f0f8e6
 skinparam ActivityDiamondBackgroundColor #fdf6e3
 start
 :boot_flash_init(straps, sysclk);
-if (controller ?) then (OpenTitan)
+if (transport ?) then (OpenTitan)
   :select profile [BOOT_OT_SPI_PROFILE];
   :CTRL/CFG/CSID bring-up;
-else (Cadence xSPI)
-  :PHY parameter sweep;
-  :read + apply slot TLV;
-  :optional DLL margining;
+else (XIP window)
+  :spi_init() hook
+  (integrator-supplied driver);
 endif
 :boot_flash_bounds_ok(off, len, dst, dst_len);
 note right
@@ -1431,11 +1431,11 @@ note right
   disagreement => reject
 end note
 if (in bounds ?) then (yes)
-  if (controller ?) then (OpenTitan)
+  if (transport ?) then (OpenTitan)
     :segmented CMD reads (<=512 B),
     RX FIFO drain via secure DMA or PIO,
     <=3 transport retries;
-  else (Cadence)
+  else (XIP window)
     :secure DMA copy from
     XIP window 0x30000000 + off;
   endif
@@ -2699,8 +2699,9 @@ hand-off — those mutate state, the check does not.
 
 [[req-SEP-ROM-RETRY-040]]*[SEP-ROM-RETRY-040]* Between attempts the ROM shall return to a
 clean state: the staged SRAM region is zeroed (no partially validated bytes survive into the
-next attempt) and the flash transport is re-initialized against the backup bank (Cadence:
-backup configuration TLV; OpenTitan: controller re-bring-up).
+next attempt) and the flash transport is re-initialized before the backup bank is read
+(OpenTitan: controller re-bring-up; XIP window: `spi_reinit()` against the backup
+configuration record).
 
 The one-shot, state-mutating stages (demotion, fuse locks, measurement, hand-off) sit
 strictly *after* the retry loop (ordering invariant 3, <<sec:overview>>): a slot failure can
@@ -2718,7 +2719,7 @@ state "attempt slot A\n(primary, or backup if rotated)" as A
 state "cleanup:\nzero staged SRAM,\nboot_flash_reinit()" as CLEAN
 state "attempt slot B" as B
 state "one-shot stages:\ndemotion, fuse locks,\nmeasurement, hand-off" as GO
-state "rom_err_fail:\nbl0_state.error_code,\ncold_scratch[1] ERROR,\nmailbox FAIL, wfi" as FAIL
+state "rom_err_fail:\nbl0_state.error_code,\ncold_scratch[1] ERROR,\ncold_scratch[0] FAIL, wfi" as FAIL
 
 [*] --> A : spi_status == 0
 [*] --> CLEAN : spi_status != 0\n(skip first slot)
@@ -2736,7 +2737,7 @@ GO --> [*]
 [[req-SEP-ROM-RETRY-050]]*[SEP-ROM-RETRY-050]* Every fatal path in the ROM shall converge in
 a single failure routine (`rom_err_fail`) that (a) records the error code in
 `bl0_state.error_code`, (b) writes the encoded `ERROR` status to `cold_scratch[1]`,
-(c) emits the FAIL magic and code through the STDOUT mailbox, and (d) parks in `wfi`. The
+(c) writes the FAIL verdict (`0xDEADBEEF`) to `cold_scratch[0]`, and (d) parks in `wfi`. The
 ROM never silently resets or falls through on failure; recovery from a fully failed boot is
 the platform's job (recovery strap, <<sec:straps>>).
 
@@ -2795,9 +2796,8 @@ implementation-specific.
 the last value identifies the current/failing stage.
 |Status ring |SMC SRAM (offset from scratch[11]) |Every non-`DEBUG` status, consumed by the
 SMC and forwarded to the platform (OCCP). Strap- and hand-shake-gated (<<sec:smc_sync>>).
-|STDOUT mailbox |`0x80000000` |DV signalling: magic `0xA5A55A5A` then `0xCAFEBABE` (PASS) or
-`0xDEADBEEF` (FAIL) followed by the error code.
-|Progress scratch |`cold_scratch[0]` |Boot markers (`'COLD'`) and DV pass/fail codes.
+|Progress scratch |`cold_scratch[0]` |Boot markers (`'COLD'`) and DV pass/fail codes
+(`0xACAFACA1` PASS, `0xDEADBEEF` FAIL).
 |Virtual console |`cold_scratch[2]` |Packed debug text (debug builds only; decoded by the DV
 monitor).
 |===
@@ -2828,8 +2828,8 @@ include::../../../doc/gen/status_values.adoc[]
 
 ===== Fatal ROM Error Codes
 
-Fatal errors reported through `rom_err_fail()` (mailbox + `bl0_state.error_code`) use a
-separate 32-bit namespace:
+Fatal errors reported through `rom_err_fail()` (`cold_scratch[1]` + `bl0_state.error_code`)
+use a separate 32-bit namespace:
 
 [[tbl:rom_err]]
 .`ROM_ERR_*` fatal codes
@@ -2883,11 +2883,11 @@ denotes a following 16-bit payload word.
 [frame=ends]
 |===
 |*Stage* |*Progress codes (scratch and/or ring)* |*Failure codes*
-|vector.S entry |`BOOTROM_START` (DEBUG, scratch-only) |trap → mailbox FAIL
+|vector.S entry |`BOOTROM_START` (DEBUG, scratch-only) |trap → `cold_scratch[0]` FAIL
 |PMP programmed |`BOOTROM_PRESTART_DONE` (DEBUG) |—
 |runtime init |`RUNTIME_INIT_OK` (DEBUG, from stub; re-reported in [S04]) |`ROM_ERR_RUNTIME_INIT_FAILED`
 |[S04] main entry |`BOOTROM_START_MAIN` (DEBUG) |—
-|[S04] SMC sanity |— |`0xA001` (mailbox)
+|[S04] SMC sanity |— |`0xA001` (`cold_scratch[1]`)
 |[S05] ROM identity |`ROM_HASH` → `INFO_EXT` ×2 (hash prefix) |—
 |[S06] straps |`DEVICE_MODE_INPUTS_CHECK` (DEBUG) |—
 |[S07] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
@@ -2928,8 +2928,8 @@ denotes a following 16-bit payload word.
 `_BL1_BAD_ADDR`
 |[S28] canary |— |`ROM_ERR_STACK_OVERFLOW`
 |PASS (DV builds) |none from the ROM -- BL1 signals it. `rom_handoff_bl1()` does not
-return, so BL0 has no post-handoff path; in DV `bl1_pass_test` writes the `MAGIC0` +
-`PASS` words to the STDOUT mailbox itself once it is running |—
+return, so BL0 has no post-handoff path; in DV `bl1_pass_test` reports PASS through
+`cold_scratch[0]` itself once it is running |—
 |===
 
 [appendix]
@@ -3169,8 +3169,8 @@ All 95 tagged requirements. Each ID links to its definition.
 |<<req-SEP-ROM-CPU-010,SEP-ROM-CPU-010>> |Only hart 0 boots; others park |<<sec:cpu_init>>
 |<<req-SEP-ROM-CPU-020,SEP-ROM-CPU-020>> |Trap vector before first MMIO |<<sec:cpu_init>>
 |<<req-SEP-ROM-CPU-030,SEP-ROM-CPU-030>> |MRAC before warm-scratch read |<<sec:cpu_init>>
-|<<req-SEP-ROM-CPU-040,SEP-ROM-CPU-040>> |Outbound filter default-deny; open only needed
-windows |<<sec:cpu_init>>
+|<<req-SEP-ROM-CPU-040,SEP-ROM-CPU-040>> |Outbound filter default-deny; ROM opens no window
+|<<sec:cpu_init>>
 |<<req-SEP-ROM-CPU-050,SEP-ROM-CPU-050>> |Interrupts disabled throughout ROM
 |<<sec:cpu_init>>
 |<<req-SEP-ROM-CPU-060,SEP-ROM-CPU-060>> |Runtime-init self-check, fatal on mismatch

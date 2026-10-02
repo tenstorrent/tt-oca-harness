@@ -603,10 +603,8 @@ static oca_secure_bool_t plat_is_secure_boot_active(void) {
 }
 
 static oca_secure_bool_t plat_is_secure_boot_disabled(void) {
-    // Same SBOOT_DIS shadow rom_main.c latches into bl0_state, read directly so
-    // this stays usable no matter the order callbacks are first invoked in.
-    uint32_t sboot_dis = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
-    return (sboot_dis != 0u) ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
+    // Read directly so the result does not depend on callback invocation order.
+    return lc_read_sboot_dis() ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
 }
 
 // -- device-stored secure-boot state (reads only) ---------------------------

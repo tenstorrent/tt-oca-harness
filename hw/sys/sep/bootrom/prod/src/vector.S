@@ -1,15 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/* OCAH SEP Boot ROM
- *
- * Code executes from Boot ROM (0x10040000) via the IFU AXI demux.
- * Data (.rodata/.data/.bss/stack) resides in DCCM (0xC0040000).
- * The C runtime signals PASS/FAIL via the STDOUT mailbox (0x80000000); this
- * file opens the outbound filter and PMP window for it but never writes it
- * itself -- see the note above the constants below.
- *
- * Build assumes RV32IM (no compressed — .option norvc).
+/* OCAH SEP Boot ROM reset entry: warm-reset dispatch, cold-boot init, then rom_main.
+ * Code runs from Boot ROM (0x10040000); data and stack live in DCCM (0xC0040000).
+ * Reports only through cold_scratch and opens no outbound window. RV32IM, no RVC.
  */
 
     .option norvc
@@ -19,13 +13,7 @@
 
 #include "sep_addr.h"
 
-/* No mailbox constants here on purpose. The DV status mailbox is at 0x80000000,
- * inside the external SMU aperture, so whether a store to it lands or takes a
- * bus error is an SoC integration property. Assembly runs on the paths that must
- * survive anything -- reset entry and the halts -- and a bus error there raises
- * NMI, turning a clean stop into a loop. These paths report through
- * cold_scratch, a SEP register that is always present. The C runtime may use the
- * mailbox; it runs later, after the outbound filter is open. */
+/* No mailbox stores: a bus error on a reset or halt path raises NMI and loops. */
 .equ SEP_COLD_SCRATCH_1, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
 
 /* DCCM base from EL2 snapshot: sadr=0xC0040000, size=128KiB → top=0xC0060000.
@@ -180,33 +168,11 @@ _start:
     csrw    0x7C0, t0
 
     /* ── [S01]: Warm reset detection ──────────────────────────────────
-     *
-     * On warm reset (WDT bark → wdt_rst_ni low):
-     *   - CPU is reset (sep_cpu_reset_n = sep_reset_n & wdt_rst_ni)
-     *   - ICCM/DCCM content preserved (not reset)
-     *   - sep_scratch_cold_scratch[] preserved (not reset) -- this is the bank
-     *     the handler slot lives in
-     *   - sep_scratch_warm_scratch[] is NOT preserved: its
-     *     arst_n = sep_reset_n & wdt_rst_ni, so a watchdog reset clears it.
-     *     The handler slot therefore lives in the cold bank; see the block
-     *     above SEP_COLD_SCRATCH_7.
-     *   - All CPU CSRs reset to defaults
-     *
-     * BL1 writes its re-entry address to cold_scratch[7] before enabling
-     * the WDT.  On warm reset, ROM reads this and jumps back to BL1.
-     *
-     * Protocol:
-     *   1. Read cold_scratch[7]
-     *   2. If zero → cold boot
-     *   3. If non-zero: range check against
-     *      SEP SRAM or ICCM (either is a legal BL1 region)
-     *   4. If valid: jump to handler, leaving the slot INTACT
-     *   5. If invalid: hang
-     *   The cold path poisons with -1, deliberately out of range, so an
-     *   unarmed warm reset lands on step 5 rather than step 2.
-     *
-     * This check happens BEFORE touching DCCM (sp/gp/scrub/.data/.bss)
-     * to preserve BL1's runtime state across warm reset.
+     * A watchdog reset keeps ICCM/DCCM and cold_scratch but clears warm_scratch,
+     * so BL1 writes its re-entry address to cold_scratch[7] before enabling the WDT.
+     * 0 -> cold boot; in SRAM or ICCM -> write 0 to the slot, then jump; else hang.
+     * The cold path writes -1, so an unarmed warm reset hangs instead of cold booting.
+     * This runs before any DCCM access (sp/gp/scrub/.data/.bss) to keep BL1 state.
      */
     li      t0, SEP_COLD_SCRATCH_7
     lw      t1, 0(t0)              /* t1 = warm handler address */
@@ -248,16 +214,9 @@ _start:
     li      t4, 0x01010068
     sw      t4, 0(t3)
 
-    /* No poison here, deliberately. The handler address is left in place, as
-     * the boot flow specification requires; only the cold path writes the slot,
-     * and it writes -1.
-     *
-     * Leaving it is the behaviour a watchdog handler needs. BL1 arms the
-     * watchdog after parking its re-entry address here, so persistence is the
-     * point: the SECOND watchdog reset must reach the handler too. Poisoning
-     * made the first one dispatch and every one after that cold boot, silently
-     * disarming watchdog recovery unless the handler rewrites the slot on every
-     * entry -- and if it does, poisoning achieves nothing. */
+    /* Poison the slot so a later reset cannot re-enter a stale handler. */
+    li      t3, SEP_COLD_SCRATCH_7
+    sw      zero, 0(t3)
 
     /* Jump to warm reset handler. BL1 sets up its own sp/mtvec/PMP as needed. */
     jr      t1
@@ -287,9 +246,6 @@ cold_boot:
      * philosophy already stated on the invalid-handler path below: an
      * unexpected handler value may indicate corruption or attack.
      *
-     * The warm path writes NOTHING -- see the accept arm above. The slot is
-     * left alone because persistence is what a watchdog handler slot is for.
-     *
      * -1 is what the specification asks for on the cold path. Writing 0 instead
      * would take the beqz early-out and cold boot silently. */
     li      t0, SEP_COLD_SCRATCH_7
@@ -307,37 +263,6 @@ cold_boot:
     la      t0, trap_vector
     csrw    mtvec, t0
 
-    /* Configure outbound filter to allow mailbox writes at 0x8000_0000.
-     *
-     * The SEP outbound filter blocks ALL AXI egress transactions by default.
-     * Without this, mailbox writes (PASS/FAIL signal, status, printf) are
-     * silently dropped and the UVM testbench never sees fw_done.
-     *
-     * Filter 0 registers (OUTBOUND_FILTER_CTRL_0 from sep_addr.h):
-     *   START_ADDR (64-bit) = 0x0000_0000_8000_0000
-     *   END_ADDR   (64-bit) = 0x0000_0000_8000_0003
-     *   CONFIG     (64-bit) = 0x0000_0001_0100_0013
-     *          (read_en | write_en | addr_mode | allow_burst)
-     * CONFIG must be written LAST so address range is set before enable.
-     */
-    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0)
-    li      t1, 0x80000000
-    sw      t1, 0(t0)           /* start_addr[31:0] */
-    sw      zero, 4(t0)         /* start_addr[63:32] = 0 */
-
-    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0)
-    li      t1, 0x80000003
-    sw      t1, 0(t0)           /* end_addr[31:0] */
-    sw      zero, 4(t0)         /* end_addr[63:32] = 0 */
-
-    fence   w, w                /* ensure START/END committed before CONFIG */
-
-    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
-    li      t1, 0x01000013
-    sw      t1, 0(t0)           /* config[31:0] */
-    li      t1, 0x00000001
-    sw      t1, 4(t0)           /* config[63:32] */
-
     /* Status: entered _start (hart0) → scratch[1]
      * STATUS_ENCODE(STATUS_TYPE_DEBUG, SEP_MSG_BOOTROM_START)
      * = (0x80 << 24) | (0x01 << 16) | 0x44 = 0x80010044 */
@@ -349,7 +274,7 @@ cold_boot:
     csrw    mie, zero
     csrci   mstatus, 0x8        /* clear MIE */
 
-    /* PMP init (Phase 1 / M3):
+    /* PMP init:
      * Program a simple region-based policy (NAPOT).
      *
      * Optional knobs:
@@ -359,7 +284,7 @@ cold_boot:
      * Regions:
      * - entry0: Boot ROM  0x1004_0000 .. 0x1004_FFFF (64KiB)  : R-X
      * - entry1: DCCM      0xC004_0000 .. 0xC005_FFFF (128KiB) : RW-
-     * - entry2: MBX       0x8000_0000 .. 0x8000_0FFF (4KiB)   : RW-
+     * - entry2: unused
      * - entry3: SRAM      0x1000_0000 .. 0x1003_FFFF (256KiB) : RWX (BL1 code+data)
      * - entry4: Periph    0x1090_0000 .. 0x10BF_FFFF (3MiB)   : RW-
      * - entry5: ICCM      0xC000_0000 .. 0xC003_FFFF (256KiB) : RWX (BL1)
@@ -372,9 +297,6 @@ cold_boot:
     /* DCCM 128KiB @ 0xC004_0000: pmpaddr1 = (0xC0040000>>2) | ((128KiB>>3)-1) = 0x3001_3FFF */
     li      t0, 0x30013fff
     csrw    pmpaddr1, t0
-    /* MBX 4KiB @ 0x8000_0000: pmpaddr2 = (0x80000000>>2) | ((4KiB/2)-1) = 0x2000_07FF */
-    li      t0, 0x200007ff
-    csrw    pmpaddr2, t0
     /* SRAM 256KiB @ 0x1000_0000: pmpaddr3 = (0x10000000>>2) | ((256KiB/2)-1) = 0x0401_FFFF */
     li      t0, 0x0401ffff
     csrw    pmpaddr3, t0
@@ -392,13 +314,13 @@ cold_boot:
      * - NAPOT=0x18; R=0x1; W=0x2; X=0x4; L=0x80
      * - entry0 ROM  R-X: 0x18|0x05 = 0x1D
      * - entry1 DCCM RW-: 0x18|0x03 = 0x1B
-     * - entry2 MBX  RW-: 0x18|0x03 = 0x1B
+     * - entry2 unused:   0x00
      * - entry3 SRAM RWX: 0x18|0x07 = 0x1F
      */
 #if PMP_LOCK
-    li      t0, 0x9f9b9b9d      /* set L bit on entries 0..3 */
+    li      t0, 0x9f009b9d      /* set L bit on entries 0,1,3; entry2 stays unused and unlocked */
 #else
-    li      t0, 0x1f1b1b1d
+    li      t0, 0x1f001b1d
 #endif
     csrw    pmpcfg0, t0
 
