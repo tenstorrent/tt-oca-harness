@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">sep_system_peripherals_xbar</h1>
-<p>Route system-peripherals AXI traffic to mailbox, system CSR, and SMN paths.</p><p>Address rules are explicit integration apertures in AddrMap below: 0x10A0_0000-0x10A0_FFFF to the mailbox, 0x10A1_0000-0x10A4_FFFF and 0x1080_2000-0x1080_20FF to the system CSRs, every other address below 0x4000_0000 to smn_inbound_from_xbar, and anything above to the axi_xbar DECERR responder. Both initiators reach every target. Initiators are full AXI4 64-bit. mailbox and system_csr targets are AXI4-Lite 64-bit; smn_inbound_from_xbar stays full AXI4, with one more ID bit than the initiators.</p>
+<p>Route system-peripherals AXI traffic to mailbox, system CSR, and SMN paths.</p><p>Address rules are explicit integration apertures in AddrMap below: 0x10A0_0000-0x10A0_FFFF to the mailbox, and each system-CSR register block&#x27;s extent from sep_top_addrmap_pkg to the system CSRs. Every other address in 0x10A1_0000-0x10A4_FFFF and 0x1080_2000-0x1080_20FF, and anything at or above 0x4000_0000, gets the axi_xbar DECERR responder; the rest of the space below 0x4000_0000 goes to smn_inbound_from_xbar. The system_csr AXI-Lite converter answers every write error with SLVERR, so a refusal in those windows has to come from this decode to read and write as DECERR. Both initiators reach every target. Initiators are full AXI4 64-bit. mailbox and system_csr targets are AXI4-Lite 64-bit; smn_inbound_from_xbar stays full AXI4, with one more ID bit than the initiators.</p>
 <div class="ocah-reg-html">
 <h2>Ports</h2>
 <table id="trm-table-1">
@@ -698,7 +698,7 @@
 <tr><td><code>smn_inbound_from_xbar_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response to smn_inbound_from_xbar_req_o.</td></tr>
 <tr><td><code>mailbox_req_o</code></td><td>output</td><td><code>axi_lite64_req_t</code></td><td>Request for 0x10A0_0000-0x10A0_FFFF, converted to AXI-Lite.</td></tr>
 <tr><td><code>mailbox_resp_i</code></td><td>input</td><td><code>axi_lite64_resp_t</code></td><td>Mailbox AXI-Lite response.</td></tr>
-<tr><td><code>system_csr_req_o</code></td><td>output</td><td><code>axi_lite64_req_t</code></td><td>Request for 0x10A1_0000-0x10A4_FFFF or 0x1080_2000-0x1080_20FF, converted to AXI-Lite.</td></tr>
+<tr><td><code>system_csr_req_o</code></td><td>output</td><td><code>axi_lite64_req_t</code></td><td>Request for a system-CSR register block extent in 0x10A1_0000-0x10A4_FFFF or 0x1080_2000-0x1080_20FF, converted to AXI-Lite.</td></tr>
 <tr><td><code>system_csr_resp_i</code></td><td>input</td><td><code>axi_lite64_resp_t</code></td><td>System CSR AXI-Lite response.</td></tr>
 </table>
 </div>

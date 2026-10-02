@@ -376,8 +376,10 @@ initiator, the <code>SEP_LOCAL</code> port of the output fabric&#8217;s route de
 masters reach the mailboxes and system CSRs through the same decode. Addresses
 outside the mailbox and system CSR windows but below <code>0x4000_0000</code> are truncated
 to 32 bits, their IDs reduced from 7 to 3 bits, and forwarded to the <code>ext</code>
-initiator of the local crossbar. The crossbar answers any other address with
-DECERR. The system CSRs program the inbound filter entries and the SEP aperture,
+initiator of the local crossbar. Inside the system CSR windows the crossbar
+decodes each register block separately and answers the addresses between them
+with DECERR on reads and writes, as it does any address at or above
+<code>0x4000_0000</code>. The system CSRs program the inbound filter entries and the SEP aperture,
 as well as the output fabric&#8217;s remaps and outbound filter.</p>
 </div>
 <div id="sep-local-fabric-diagram" class="imageblock">

@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">sep_system_peripherals_xbar_pkg</h1>
-<p>Define types and configuration for the SEP system-peripherals AXI crossbar.</p><p>Address decode rules live in sep_system_peripherals_xbar rather than this package; the named address-range constants here mirror them and are not referenced by the crossbar. Both initiators connect to all three targets.</p>
+<p>Define types and configuration for the SEP system-peripherals AXI crossbar.</p><p>Address decode rules live in sep_system_peripherals_xbar rather than this package; the named address-range constants here mirror its smn_inbound_from_xbar and mailbox rules and are not referenced by the crossbar. Its system_csr rules take each register block&#x27;s bounds from sep_top_addrmap_pkg. Both initiators connect to all three targets.</p>
 <div class="ocah-reg-html">
 <h2 id="axi64_addr_t"><code>axi64_addr_t</code></h2>
 <p>Protocol: axi64 (AXI4)</p>
