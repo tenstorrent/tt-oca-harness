@@ -64,9 +64,63 @@ output enable, which it drives only in target mode, is not used.
 
 `irq_o`, the five recovery signals and the DAT, DCT and reverse-lookup
 memory ports pass straight through to per-instance vectors on the
-`i3ccore_wrapper` boundary. In the SMC the recovery outputs are unconnected,
-`peripheral_reset_done_i` is tied low and the interrupts reach peripheral
-interrupts 12 to 17.
+`i3ccore_wrapper` boundary. In the SMC `recovery_payload_available_o`,
+`recovery_image_activated_o`, `peripheral_reset_o` and `escalated_reset_o` are
+left unconnected, `peripheral_reset_done_i` is tied low, and the interrupts
+reach peripheral interrupts 12 to 17.
+
+The register map below reproduces the upstream SystemRDL descriptions, which
+follow the MIPI I3C HCI specification. The fields listed here behave differently
+in this core, so for them the specified description is not a description of this
+implementation.
+
+These are writable and read back the value written, but reach no logic:
+
+* `PIOControl.PIO_CONTROL.ENABLE`. The PIO queues are always enabled. Writing 0
+  does not prevent software from reading or writing the queue ports.
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL.TARGET_XACT_ENABLE`. Target
+  transactions cannot be disabled through it.
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL.RSTACT_DEFBYTE_02`. The CCC engine ACKs
+  RSTACT with defining byte 0x02 whatever this field holds.
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS.RESET_TIME_PERIPHERAL`
+  and `RESET_TIME_TARGET`. A Direct GET RSTACT carrying defining byte 0x81 or
+  0x82 returns a fixed 0xFF rather than either of these values.
+* `I3C_EC.SoCMgmtIf.REC_INTF_CFG.REC_INTF_BYPASS`. The core is built with
+  `DISABLE_LOOPBACK` set, which ties the bypass select off, so the recovery
+  interface is always reached through the I3C core and direct AXI recovery
+  cannot be selected.
+
+Two more read back a value that understates or misdescribes what the core does:
+
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CAPABILITIES.DAA_ENTDAA_SUPPORT` reads 0, but
+  the CCC engine handles ENTDAA and assigns a dynamic address through it.
+* `I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL.STBY_CR_ENABLE_INIT` mode `2'b11`
+  enables active-controller operation, identically to `2'b01`, rather than the
+  Hot-Join-then-standby sequence its description gives.
+
+The upstream descriptions also leave the following unstated.
+
+* `I3C_EC.TTI.TARGET_ERR_CNT_TE3` counts parity errors on the dynamic address
+  the active controller assigns during ENTDAA, and `I3C_EC.TTI.TARGET_ERR_CNT_TE4`
+  counts reserved bytes other than `7'h7E` with R/W=1.
+* `I3C_EC.TTI.TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW` and
+  `I3C_EC.TTI.TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW` record an overflow only
+  while the matching enable in `I3C_EC.TTI.TARGET_ERR_CTRL` is set. That enable
+  gates detection rather than reporting, so an overflow arriving while it is
+  clear leaves no count and raises no interrupt.
+* The start and ready thresholds in `PIOControl.DATA_BUFFER_THLD_CTRL` test
+  opposite quantities: `RX_START_THLD` and `TX_BUF_THLD` test free space, while
+  `TX_START_THLD` and `RX_BUF_THLD` test stored entries. Each value encodes
+  `2^(N+1)` entries.
+* A `DCT.DCT_MEMORY` entry stores the first two PID bytes received during
+  ENTDAA in `PID_LO` and the next four in `PID_HI`, so `PID_LO` holds the more
+  significant half despite its name. `DYNAMIC_ADDRESS` carries the assigned
+  address in bits 7:1 and its odd parity bit in bit 0.
+* The thresholds in `PIOControl.QUEUE_THLD_CTRL` are raw entry counts.
+  `CMD_EMPTY_BUF_THLD` counts free entries in the command queue, while
+  `RESP_BUF_THLD` and `IBI_STATUS_THLD` count stored entries. Only the ready
+  thresholds of these three queues are implemented; the start-threshold
+  triggers are left unconnected.
 
 Consult the https://github.com/chipsalliance/i3c-core[i3c-core documentation]
 for the controller. The register map of this wrapper follows.
