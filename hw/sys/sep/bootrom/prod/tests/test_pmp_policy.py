@@ -7,7 +7,6 @@ import re
 import unittest
 from pathlib import Path
 
-
 PROD = Path(__file__).resolve().parents[1]
 VECTOR = PROD / "src/vector.S"
 HANDOFF = PROD / "src/rom_handoff.c"
