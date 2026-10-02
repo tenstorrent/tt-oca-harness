@@ -1967,7 +1967,7 @@ module entropy_source_reg (
         automatic logic load_next_c;
         next_c = field_storage.FIFO_CTRL.ENABLE.value;
         load_next_c = '0;
-        if(decoded_reg_strb.FIFO_CTRL && decoded_req_is_wr) begin // SW write
+        if(decoded_reg_strb.FIFO_CTRL && decoded_req_is_wr && !(hwif_in.FIFO_CTRL.ENABLE.swwel)) begin // SW write
             next_c = (field_storage.FIFO_CTRL.ENABLE.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
             load_next_c = '1;
         end
