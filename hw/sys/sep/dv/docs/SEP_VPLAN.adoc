@@ -4511,7 +4511,7 @@ poll and yields the same pass.
 *Test Procedure*:
 
 [arabic]
-. Walk the seeded length and trigger cells: DMA SRAM into the OpenTitan SPI TX FIFO, page-program the flash BFM, read the flash back and compare to the SRAM source; W1C-clear DMA done.
+. Walk the seeded length and trigger cells: DMA SRAM into the OpenTitan SPI TX FIFO, page-program the flash BFM, read the flash back and compare to the SRAM source; read the DMA status again and require done still set, then W1C-clear DMA done.
 . Write TXDATA past `STATUS.TXFULL`; expect exclusive `ERROR_STATUS.OVERFLOW`; `CONTROL.SW_RST` plus write-one-to-clear; a flash status read must complete.
 
 *Checkers*:
@@ -4524,7 +4524,7 @@ poll and yields the same pass.
 |CHK-DMA-TX
 |The flash content equals the SRAM source, compared against cocotb-seeded random data.
 |CHK-DMA-DONE
-|The DMA done bit clears on write-one-to-clear and reads back clear. Handshake mode does not raise `STATUS.chunk_done` (RTL: chunk_done is the inverse of cfg_handshake_en); that status is `sep_dma_basic_test`.
+|The DMA done bit still reads set on a second read after the poll, so a read does not clear it and it does not drop by itself; it then clears on write-one-to-clear and reads back clear. Both status values are logged. Handshake mode does not raise `STATUS.chunk_done` (RTL: chunk_done is the inverse of cfg_handshake_en); that status is `sep_dma_basic_test`.
 |CHK-SPI-IDLE
 |The SPI host returns to idle with a clean error status.
 |CHK-NONVAC

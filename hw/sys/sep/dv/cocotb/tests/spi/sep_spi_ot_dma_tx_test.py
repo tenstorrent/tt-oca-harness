@@ -26,7 +26,8 @@ Checks:
     CHK-TRIGGER   : the TX-watermark source of lsio_trigger (STATUS.TXWM) tracks
                     TXQD across TX_WATERMARK (empty->1, fill->0, SW_RST drain->1,
                     values logged). EVENT_ENABLE.TXWM is programmed.
-    CHK-DMA-DONE  : DMA STATUS.done, error==0, ERROR_CODE==0, STATUS RW1C clears.
+    CHK-DMA-DONE  : DMA STATUS.done, error==0, ERROR_CODE==0; done still set on a
+                    second read, then STATUS RW1C clears.
                     Handshake mode does not raise STATUS.chunk_done (RTL: only when
                     hardware handshake is off); that status is `dma_basic_test`.
     CHK-SPI-IDLE  : OT SPI reaches idle, ERROR_STATUS==0.
