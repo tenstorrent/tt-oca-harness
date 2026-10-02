@@ -255,8 +255,8 @@ jobs:
       fail-fast: false
       matrix:
         # sim-jobs follows the runner core count (the action's `nproc`).
-        # Every row uses ubuntu-latest. LARGE_RUNNER is read only by
-        # container.yml.
+        # Every row uses ubuntu-latest. The container build defaults to
+        # ubuntu-latest-16-cores; this workflow does not read LARGE_RUNNER.
         include:
           - dut: dtp
             items: all

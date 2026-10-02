@@ -3220,8 +3220,9 @@ SEP, and SMU do not fit a hosted job.
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
 smoke matrix, so PR cost stays bounded by the smoke group. Every hosted row
-runs on `ubuntu-latest`. The 16-core runner is `LARGE_RUNNER` in
-`container.yml` and is not read here.
+runs on `ubuntu-latest`. The container build defaults to
+`ubuntu-latest-16-cores`; `LARGE_RUNNER` overrides that label and is not
+read here.
 
 [[runner-ci-budgets]]
 === Budgets, concurrency, and retention

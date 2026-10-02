@@ -56,10 +56,9 @@ jobs:
   # Build the image with Nix and publish it to GHCR under its immutable
   # content-hash tag. skopeo streams the nix-built archive straight to the
   # registry: no `docker load`, so nothing unpacks the multi-GB image onto the
-  # runner's small root volume. This keeps the heavy build off the daemon and
-  # lets the job fit a stock ubuntu-latest. LARGE_RUNNER is read only here;
-  # sim.yml and regress.yml stay on ubuntu-latest. Set it once the label exists:
-  #   gh variable set LARGE_RUNNER --body ubuntu-latest-16-cores
+  # runner's small root volume. This keeps the heavy build off the daemon.
+  # The job defaults to the 16-core runner. LARGE_RUNNER overrides that label
+  # and is read only here; sim.yml and regress.yml stay on ubuntu-latest.
   build-and-publish:
     name: Build and publish Nix image
     # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
@@ -67,7 +66,7 @@ jobs:
     # package needs to pull. Skip rather than fail a contributor's run for
     # something they cannot fix; main republishes the image on merge.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ vars.LARGE_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ vars.LARGE_RUNNER || 'ubuntu-latest-16-cores' }}
     timeout-minutes: 240
     outputs:
       image_hash: ${{ steps.build.outputs.image_hash }}

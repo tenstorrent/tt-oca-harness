@@ -70,9 +70,9 @@ serialized and never cancel one another.
 
 === Capacity
 
-Every row runs on the GitHub-hosted `ubuntu-latest` image. The 16-core
-runner is selected by `LARGE_RUNNER` in `container.yml` and is not read by
-these rows. Each row's duration is on its job in the Actions
+Every row runs on the GitHub-hosted `ubuntu-latest` image. The container
+build defaults to `ubuntu-latest-16-cores`; `LARGE_RUNNER` overrides that
+label and is not read by these rows. Each row's duration is on its job in the Actions
 run; a row that approaches the cap is a pull request that names a smaller
 group. The coverage-instrumented
 Verilator models of `dtp`, `sep`, and `smu` do not fit a hosted job; the
@@ -291,10 +291,11 @@ branch; the other publishers rebase onto it.
 
 === A container build queues and never starts
 
-`LARGE_RUNNER` names a label the organization has no runner for. The
-container build queues until GitHub gives it up, since the job's
-`timeout-minutes` budget applies only once a runner has started the job.
-Clear the variable to fall back to `ubuntu-latest`:
+The container build defaults to `ubuntu-latest-16-cores`. `LARGE_RUNNER`
+overrides that label, and a name the organization has no runner for queues
+until GitHub gives it up, since the job's `timeout-minutes` budget applies
+only once a runner has started the job. Clear the variable to return to the
+16-core default:
 
 [source,bash]
 ----
@@ -485,9 +486,9 @@ publishes, which is the recovery for a dispatched or missed weekly.
   `result.json` is the only record of the release that ran.
 * The `sep` rows depend on a repository secret for a private submodule; a
   public fork cannot run them.
-* Hosted DV rows run on `ubuntu-latest`. `LARGE_RUNNER` is read only by
-  the container build; a wrong label stalls that job until GitHub gives it
-  up.
+* Hosted DV rows run on `ubuntu-latest`. The container build defaults to
+  `ubuntu-latest-16-cores`. `LARGE_RUNNER` overrides that label; a wrong
+  label stalls that job until GitHub gives it up.
 * Hosted CI runs Verilator only, collects no coverage, and runs no formal
   job (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
 * The branch keeps 90 history points and 90 archives per series and no
