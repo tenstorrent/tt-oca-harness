@@ -363,6 +363,72 @@ coordination.
 
 == Debug
 
+The generated memory map below describes the hart-facing Debug Module memory
+region. Only the harts of the CPU cluster reach it, over the cluster's own control
+bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
+receive DECERR at every address in the region. Debugger-facing registers such as
+`dmcontrol`, `dmstatus`, `abstractcs` and `sbcs` are accessed through the Debug
+Module Interface (DMI), not through that memory region.
+<<smc-debug-module-configuration>> describes them.
+
+Debugging is facilitated by JTAG, through the cluster's debug transport module and
+debug module, enabling
+per-core access to registers, memory, and both hardware and software
+breakpoints. These debug capabilities function independently of
+functional resets and allow override of reset vectors to support
+firmware development and diagnostics.
+
+[[smc-debug-module-configuration]]
+=== Debug Module Configuration
+
+The Debug Module implements version 0.13 of the RISC-V External Debug Support
+specification for the four harts of the CPU cluster. A debugger discovers its
+configuration by reading DMI registers.
+<<smc-debug-module-capabilities-table>> lists the fixed capability values those
+registers return, and <<smc-debug-module-dmi-registers-table>> lists which DMI
+registers are implemented.
+
+[[smc-debug-module-capabilities-table]]
+[cols="18%,32%,12%,38%",options="header"]
+.SMC Debug Module capability readbacks
+|===
+|Register |Field |Value |Meaning
+|`dmstatus` |`version` |2 |Debug Specification 0.13
+|`dmstatus` |`authenticated` |1 |No authentication is required
+|`dmstatus` |`hasresethaltreq` |1 |Halt-on-reset is supported
+|`dmstatus` |`confstrptrvalid` |0 |No configuration string
+|`dmstatus` |`impebreak` |1 |An implicit `ebreak` follows the program buffer
+|`dmcontrol` |`hartsello` |2 bits |Harts 0 to 3; `hartselhi` reads 0
+|`abstractcs` |`progbufsize` |16 |`progbuf0` to `progbuf15`
+|`abstractcs` |`datacount` |4 |`data0` to `data3`
+|`abstractauto` |`autoexecdata` |4 bits |Auto-execution from `data0` to `data3`
+|`abstractauto` |`autoexecprogbuf` |16 bits |Auto-execution from `progbuf0` to `progbuf15`
+|`sbcs` |`sbversion` |1 |System bus access as defined by Debug Specification 0.13
+|`sbcs` |`sbasize` |56 |System bus address width in bits
+|`sbcs` |`sbaccess8`, `sbaccess16`, `sbaccess32`, `sbaccess64` |1 |8-, 16-, 32- and 64-bit system bus accesses
+|`sbcs` |`sbaccess128` |0 |No 128-bit system bus access
+|===
+
+The `command` register accepts only the Access Register command (`cmdtype` 0).
+With `transfer` set, Access Register reaches the general-purpose registers `x0` to
+`x31` (`regno` 0x1000 to 0x101F) with an `aarsize` of 2 or 3 (32 or 64 bits). With
+`transfer` clear, any `regno` and size is accepted. Any other command type, and
+any transfer outside those registers and sizes, sets `abstractcs.cmderr` to 2
+(not supported). The
+debugger reaches CSRs and floating-point registers by executing instructions from
+the program buffer. Reading `command` returns the last value written.
+
+`hawindowsel` reads 0 and ignores writes, so `hawindow` bits 3:0 hold the hart
+array mask for harts 0 to 3. `setresethaltreq` and `clrresethaltreq` in
+`dmcontrol` set and clear halt-on-reset for the selected harts.
+
+DMI address 0x32 provides the halt-group fields of the `dmcs2` register, which
+later versions of the specification define. A write with `hgwrite` set,
+`hgselect` clear and `haltgroup` 0 or 1 removes the selected harts from halt
+group 1 or adds them to it. When one hart in halt group 1 halts, the Debug Module
+halts the other harts in that group. A read returns the group of the hart selected
+by `hartsel` in `haltgroup`. External trigger groups (`hgselect` set) are not
+supported.
 // Retain bookmarks for replaced tables and renamed sections.
 ifdef::backend-html5[]
 ++++
@@ -421,19 +487,40 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-The generated memory map below describes the hart-facing Debug Module memory
-region. Only the harts of the CPU cluster reach it, over the cluster's own control
-bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
-receive DECERR at every address in the region. Debugger-facing registers such as
-`dmcontrol`, `dmstatus`, `abstractcs` and `sbcs` are accessed through the Debug
-Module Interface (DMI), not through that memory region.
+DMI registers that the Debug Module does not implement read as 0 and ignore
+writes.
 
-Debugging is facilitated by JTAG, through the cluster's debug transport module and
-debug module, enabling
-per-core access to registers, memory, and both hardware and software
-breakpoints. These debug capabilities function independently of
-functional resets and allow override of reset vectors to support
-firmware development and diagnostics.
+[[smc-debug-module-dmi-registers-table]]
+[cols="18%,27%,55%",options="header"]
+.SMC Debug Module DMI register inventory
+|===
+|DMI address |Register |Implementation
+|0x04-0x07 |`data0`-`data3` |Implemented
+|0x08-0x0F |`data4`-`data11` |Not implemented
+|0x10 |`dmcontrol` |Implemented; `hartsello` bits 17:16 only, `hartselhi` reads 0
+|0x11 |`dmstatus` |Implemented
+|0x12 |`hartinfo` |Not implemented
+|0x13 |`haltsum1` |Implemented; bit 0 only
+|0x14 |`hawindowsel` |Reads 0
+|0x15 |`hawindow` |Implemented; bits 3:0 only
+|0x16 |`abstractcs` |Implemented
+|0x17 |`command` |Implemented; Access Register only
+|0x18 |`abstractauto` |Implemented; `autoexecdata` bits 3:0 only
+|0x19-0x1C |`confstrptr0`-`confstrptr3` |Not implemented
+|0x1D |`nextdm` |Not implemented; this is the only Debug Module
+|0x20-0x2F |`progbuf0`-`progbuf15` |Implemented
+|0x30 |`authdata` |Not implemented
+|0x32 |`dmcs2` |Implemented; halt groups 0 and 1 only
+|0x34 |`haltsum2` |Not implemented
+|0x35 |`haltsum3` |Not implemented
+|0x37 |`sbaddress3` |Not implemented
+|0x38 |`sbcs` |Implemented
+|0x39-0x3A |`sbaddress0`-`sbaddress1` |Implemented
+|0x3B |`sbaddress2` |Not implemented
+|0x3C-0x3D |`sbdata0`-`sbdata1` |Implemented
+|0x3E-0x3F |`sbdata2`-`sbdata3` |Not implemented
+|0x40 |`haltsum0` |Implemented; bits 3:0 only
+|===
 
 [[detailed-register-map]]
 == Memory Map and Register Reference
