@@ -6775,8 +6775,9 @@ reported as such rather than counted as a pass.
 [arabic]
 . Open inbound filter entry 0 for the ABR page. The filter denies by default; the rule is programmed from the CPU-LSU side, as every inbound test reaches these CSRs.
 . Read `MLDSA_VERSION1` once on its own through the sequencer, establishing the value the aperture holds and that it is readable at all.
-. For each depth in 1, 2, 3, 4, 8: issue that many single-beat reads of THAT SAME address with distinct `ARID`s, presenting every `AR` before consuming any `R`, then collect each response.
+. For each depth in 1, 2, 3, 4, 8: issue that many single-beat reads of THAT SAME address with distinct `ARID`s, presenting every `AR` before consuming any `R`, then collect each response. A bus watch records every `AR` and `R` handshake on the `m_axi` pins during the step.
 . Require every response at every depth to equal the control value and to carry an OKAY response.
+. Require, at every depth, that the `m_axi` pins accept all of that depth's `AR`s before the first `R` handshake, and that the recorded read count in flight reaches the depth.
 
 *Checkers*:
 
@@ -6787,6 +6788,8 @@ reported as such rather than counted as a pass.
 |The control read of `MLDSA_VERSION1` answers OKAY with a known (no X/Z, enforced by the bus monitor) and nonzero value. `abr_reg.rdl` gives the register no reset and no SEP document gives its value, so the control read alone is the comparand for the whole sweep; a control that answered zero, or errored, would let every pipelined read compare equal to it and this leaf would be green over a dead aperture. The address comes from the RDL, never a literal.
 |CHK-ABR-PIPELINED-READ
 |Every read, at every depth, returns the value the register returns when read alone, with an OKAY response. `MLDSA_VERSION1` is read-only with unconditional combinational readback, so it holds one value and any other response is wrong. An error response is recorded separately from silently wrong data. A timeout counts as a failure, not a skip.
+|CHK-ABR-PIPELINE-OVERLAP
+|At every depth N, the `AR` and `R` handshakes recorded on the `m_axi` pins show exactly N `AR`s accepted, all N before the first `R`, and N reads outstanding at once. A path that serialised the reads would still return the right values and pass CHK-ABR-PIPELINED-READ; this row fails it, so the depth sweep is a measured overlap and not only the order in which the test presented the reads.
 |===
 
 *Why the comparison cannot be explained away*: every read targets one address with one expected value, so reordering, id-to-event mis-association or per-id state reuse in the VIP could only redistribute correct values among the responses -- none of them can turn the register's value into zero. Single-beat only (`ARLEN = 0`): the crypto demux routes any `AxLEN != 0` to its error slave (`sep_crypto_axi_interconnect.sv:111-112`), which `hw/sys/sep/doc/crypto.adoc` states to software, so no burst is involved or possible.
