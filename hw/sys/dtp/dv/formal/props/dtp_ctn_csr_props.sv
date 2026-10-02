@@ -9,8 +9,8 @@
 // (hw/common/dv/docs/formal-property-style.adoc).
 //
 // The manager issues one write and one read at a time (dtp_cross_trigger_network_sby_env.sv), so
-// the address of the request a response answers is the one the helper flops recorded at the
-// last address handshake.
+// the address of the request a response answers, and of the request a crossbar master port
+// carries, is the one the helper flops recorded at the last address handshake.
 
 `include "ocah_fv_macros.svh"
 
@@ -130,14 +130,46 @@ module dtp_ctn_csr_props
     end
   end
 
-  // Every crossbar master port carries a request only while the subordinate port does, and only
-  // the port the address map names.
+  // A master port holds VALID until its subordinate accepts the request, so the pending write
+  // or read has left the crossbar once a master port drops its AW or AR. Each forwarded flag
+  // holds from the cycle after that drop until the next address or response handshake of the
+  // subordinate port.
+  logic mst_aw_valid, mst_ar_valid, mst_aw_valid_q, mst_ar_valid_q;
+  logic wr_forwarded_q, rd_forwarded_q;
+  always_comb begin
+    mst_aw_valid = 1'b0;
+    mst_ar_valid = 1'b0;
+    for (int unsigned p = 0; p < NUM_MST; p++) begin
+      mst_aw_valid |= mst_req_i[p].aw_valid;
+      mst_ar_valid |= mst_req_i[p].ar_valid;
+    end
+  end
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      mst_aw_valid_q <= 1'b0;
+      mst_ar_valid_q <= 1'b0;
+      wr_forwarded_q <= 1'b0;
+      rd_forwarded_q <= 1'b0;
+    end else begin
+      mst_aw_valid_q <= mst_aw_valid;
+      mst_ar_valid_q <= mst_ar_valid;
+      if (aw_hs || b_hs) wr_forwarded_q <= 1'b0;
+      else if (wr_pending_q && mst_aw_valid_q && !mst_aw_valid) wr_forwarded_q <= 1'b1;
+      if (ar_hs || r_hs) rd_forwarded_q <= 1'b0;
+      else if (rd_pending_q && mst_ar_valid_q && !mst_ar_valid) rd_forwarded_q <= 1'b1;
+    end
+  end
+
+  // Every crossbar master port carries a request only while the subordinate port holds an
+  // accepted request that it has not answered and that the crossbar has not forwarded, and only
+  // the port the address map names for it. The subordinate-port spill registers present an
+  // accepted request from the cycle after its handshake.
   logic aw_mapped, ar_mapped;
   int unsigned aw_port, ar_port;
-  assign aw_mapped = req_i.aw_valid && mapped(req_i.aw.addr);
-  assign ar_mapped = req_i.ar_valid && mapped(req_i.ar.addr);
-  assign aw_port   = port_of(req_i.aw.addr);
-  assign ar_port   = port_of(req_i.ar.addr);
+  assign aw_mapped = wr_pending_q && !wr_forwarded_q && mapped(wr_addr_q);
+  assign ar_mapped = rd_pending_q && !rd_forwarded_q && mapped(rd_addr_q);
+  assign aw_port   = port_of(wr_addr_q);
+  assign ar_port   = port_of(rd_addr_q);
 
   logic aw_routed_alone, ar_routed_alone;
   always_comb begin
@@ -222,6 +254,8 @@ module dtp_ctn_csr_props
   `OCAH_FV_COVER(cov_csr_masked_write,
                  $past(ctp0_stretch_write) && $past(ctp0_wr_biten_i[15:0]) != '1 &&
                  $past(ctp0_wr_biten_i[15:0]) != '0, clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_csr_wr_forwarded, wr_pending_q && wr_forwarded_q && !b_hs, clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_csr_rd_forwarded, rd_pending_q && rd_forwarded_q && !r_hs, clk_i, rst_ni)
   // verilog_format: on
 
 endmodule : dtp_ctn_csr_props
