@@ -5090,11 +5090,14 @@ sensing is reset on every early cycle and at points across the sense time.
   with its own AXI ID (3) and record the request and response handshakes on the
   `s_axi` pins. The response window is the cycle count from the last request
   handshake to the response handshake.
-. For each offset in the window (every cycle up to 24 cycles, otherwise ten
-  evenly spaced cycles with both ends): write a non-reset value to the probe
-  and read it back, start the probe access, and assert `rst_ni` on the falling
-  clock edge that many cycles after the request handshake. Hold it 20 cycles,
-  release it and wait for sense-done.
+. For each offset from 0 to two less than the window (every cycle for a
+  window up to 24 cycles, otherwise ten evenly spaced cycles with both ends):
+  write a non-reset value to the probe and read it back, start the probe
+  access, and assert `rst_ni` on the falling clock edge that many cycles after
+  the clock edge that transfers the last request beat. Offset 0 lands half a
+  cycle after that edge; the last offset lands half a cycle before the
+  response handshake shows on the pins. Hold it 20 cycles, release it and wait
+  for sense-done.
 . Read the probe, write a new value and read it back, through the SEP
   sequencer.
 . Measure the sense time. Then for every cycle 0 to 31 after the `rst_ni`
@@ -5117,7 +5120,8 @@ window is measured on the DUT rather than assumed.
 |Before each landing the probe holds a written value that is not its RDL reset,
 so CHK-RESET-VALUE fails on a path the reset did not reach.
 |CHK-MIDFLIGHT
-|At every landing the request handshake has completed. For each probe and op at
+|At every landing the request handshake has completed: the reset asserts after
+the clock edge that transfers the last request beat. For each probe and op at
 least one landing comes before the response is accepted on `s_axi`, and for
 every such landing the VIP master abandons the access (its completion carries
 no response). The watchdog response window varies with the `clk_wdt_i` phase,

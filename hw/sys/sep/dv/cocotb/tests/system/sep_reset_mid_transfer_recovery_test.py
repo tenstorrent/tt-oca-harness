@@ -16,6 +16,9 @@ each probe and each of read and write it first runs the probe access with no
 reset to measure the response window W: the cycles from the last request
 handshake to the response handshake on ``s_axi``. It then lands ``rst_ni`` at
 each offset ``reset_offsets(W)`` inside that window and grades the recovery.
+Offset 0 lands half a cycle after the clock edge that transfers the last
+request beat; the last offset lands half a cycle before the response handshake
+shows on the pins.
 
 Phase B lands ``rst_ni`` while fuse sensing runs, at every early cycle and at
 points across the measured sense time. It grades that each ``rst_ni`` returns
@@ -28,7 +31,8 @@ Checks:
                    So each probe is a real access, and its window is measured.
   CHK-ARM          before each landing the probe holds a written value that is
                    not its RDL reset, so CHK-RESET-VALUE can fail.
-  CHK-MIDFLIGHT    at every landing the request handshake has completed; at
+  CHK-MIDFLIGHT    at every landing the request handshake has completed (the
+                   reset comes after the edge that transfers the beat); at
                    least one landing per probe and op comes before the response
                    is accepted, and for each such landing the master abandons
                    the access (its completion carries no response). A landing

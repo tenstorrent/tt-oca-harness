@@ -42,8 +42,8 @@ PROBE_ID = 3
 PROBE_TIMEOUT_CYCLES = 40_000
 
 # Reset offsets per (probe, op). A window of at most DENSE_LIMIT cycles is
-# walked on every cycle; a longer one is sampled at SPREAD_POINTS evenly spaced
-# cycles, both ends included.
+# walked on every cycle it offers; a longer one is sampled at SPREAD_POINTS
+# evenly spaced cycles, both ends included.
 DENSE_LIMIT = 24
 SPREAD_POINTS = 10
 
@@ -132,12 +132,21 @@ def other_value(rng, mask: int, avoid: tuple[int, ...]) -> int:
 
 
 def reset_offsets(window: int) -> list[int]:
-    """Cycles after the last request handshake at which the reset asserts."""
-    if window <= 0:
+    """Cycles after the request transfer edge at which the reset asserts.
+
+    ``window`` is ``resp - anchor`` of a ``SepResetLandWatch``. Offset ``d``
+    lands one half-cycle after edge ``anchor + 1 + d``, so offset 0 comes after
+    the edge that transfers the last request beat and offset ``window - 2``
+    lands half a cycle before edge ``resp``, after which the response handshake
+    shows on the pins. Offset
+    ``window - 1`` would land with the response beat already visible, so it is
+    not walked.
+    """
+    if window <= 1:
         raise ValueError(f"response window {window} leaves no cycle to land a reset in")
+    last = window - 2
     if window <= DENSE_LIMIT:
-        return list(range(window))
-    last = window - 1
+        return list(range(last + 1))
     return sorted({round(i * last / (SPREAD_POINTS - 1)) for i in range(SPREAD_POINTS)})
 
 
@@ -156,10 +165,12 @@ def _id(sig) -> int | None:
 class SepResetLandWatch:
     """Handshake record of one probe access on the ``s_axi`` pins.
 
-    Cycle numbers count rising clock edges from the issue of the access.
-    ``anchor`` is the edge on which the last request handshake completed (AR for
-    a read; the later of AW and W for a write), ``resp`` the edge on which the
-    probe ID's R or B beat was accepted.
+    Cycle numbers count rising clock edges from the issue of the access, and
+    each sample is taken in ReadOnly after that edge. ``anchor`` is the cycle on
+    which the last request handshake (AR for a read; the later of AW and W for
+    a write) shows valid and ready high, so the DUT takes that beat on edge
+    ``anchor + 1``. ``resp`` is the cycle on which the probe ID's R or B beat
+    shows valid and ready high, taken on edge ``resp + 1``.
     """
 
     op: str
@@ -253,9 +264,10 @@ class SepResetProbeDriver(SepAxiRegDriver):
         """Issue one probe access and follow it on the pins.
 
         With ``land_at`` None the access runs to its response. Otherwise the
-        call returns on the falling clock edge ``land_at`` cycles after the
-        anchor edge, with the response not yet accepted unless the watch says
-        so; the caller asserts ``rst_ni`` there.
+        call returns on the falling clock edge ``land_at`` cycles after edge
+        ``anchor + 1``, the edge that transfers the last request beat, with the
+        response not yet accepted unless the watch says so; the caller asserts
+        ``rst_ni`` there.
         """
         top = cocotb.top
         watch = SepResetLandWatch(op)
@@ -266,7 +278,7 @@ class SepResetProbeDriver(SepAxiRegDriver):
             watch.sample(cycle)
             if watch.resp is not None:
                 break
-            if land_at is not None and watch.anchor is not None and cycle - watch.anchor >= land_at:
+            if land_at is not None and watch.anchor is not None and cycle - watch.anchor > land_at:
                 break
         else:
             raise AssertionError(
