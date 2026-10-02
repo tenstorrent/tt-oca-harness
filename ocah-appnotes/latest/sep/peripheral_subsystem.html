@@ -197,9 +197,12 @@ shared with SMC.</p>
 <div class="paragraph">
 <p>The figure reads from the SEP local crossbar outwards. The SPI host sits
 behind the <code>sep_io</code> target, which downsizes the 64-bit AXI4 request to 32
-bits, converts it to AXI-Lite and sends addresses outside the SPI host to a
-DECERR responder; the quad SPI signals leave for the SPI pads. Requests in the
-SMC aperture take the route demux of <code>sep_system_peripherals</code> (see
+bits and converts it to AXI-Lite; the quad SPI signals leave for the SPI pads.
+The local crossbar sends only the SPI host register extent to <code>sep_io</code> and
+answers the rest of its aperture with DECERR on reads and writes. The error
+responder in <code>sep_io</code> answers only the beats of a burst that run past the
+extent.
+Requests in the SMC aperture take the route demux of <code>sep_system_peripherals</code> (see
 <a href="fabric.html#sep-output-fabric-diagram" class="xref page">SEP output fabric</a>) onto the SMC port, which the SMU wires directly
 to the SMC&#8217;s <code>sep_axi_in</code> port with no crossbar and no clock-domain crossing.
 The SMC flow is drawn right to left. The SMC input fabric passes addresses in

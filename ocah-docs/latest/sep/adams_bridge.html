@@ -759,8 +759,8 @@ design, so its bus pipeline ends in AHB-lite rather than TL-UL.
 <code>sep_crypto_abr_wrapper</code> narrows its 64-bit AXI4 slave port to 32 bits,
 converts it to AXI4-lite, and drives <code>abr_top</code> through <code>axi_lite_to_ahb</code>, which
 issues one single AHB transfer at a time and returns its response before it
-accepts the next access. The wrapper occupies a 64 kB aperture at
-<code>0x1094_0000</code>, decoded as port <code>SEP_CRYPTO_AXI_ABR</code> of the crypto demux.</p>
+accepts the next access. The wrapper is port <code>SEP_CRYPTO_AXI_ABR</code> of the crypto
+demux and occupies a 64 kB aperture at <code>0x1094_0000</code>.</p>
 </div>
 <div id="abr-access-size" class="paragraph">
 <p>Every ABR register is 32 bits wide, and the aperture is accessed in words:</p>
@@ -796,23 +796,25 @@ of masters. They are performed one at a time, and each returns the value of the
 address it names.</p>
 </div>
 <div id="abr-aperture-decode" class="paragraph">
-<p>Inside that aperture there is no further decode. The vendored register block
-consumes all sixteen address bits and applies no address-validity or permission
-check, so the window is fully consumed but not fully populated: 24,160 of its
-65,536 bytes are defined. Objects sit at coarse offsets with the space between
-them unused&#8201;&#8212;&#8201;most on a 4 kB boundary, the interrupt block at <code>0x8100</code>,
-<code>MLKEM_MSG</code> at <code>0x9080</code> and <code>MLKEM_CIPHERTEXT</code> at <code>0xB800</code>&#8201;&#8212;&#8201;and the map ends
-at <code>0xC018</code>, leaving the last 16,360 bytes undefined.</p>
+<p>The crypto demux decodes the aperture only as far as the register map extends.
+It forwards an offset inside that extent to ABR and answers every access past
+it with DECERR itself, whatever its size or strobes.</p>
+</div>
+<div class="paragraph">
+<p>Inside the extent there is no further decode. The vendored register block
+consumes every offset bit and applies no address-validity or permission check,
+so the extent is fully consumed but not fully populated: register objects sit
+at coarse offsets with unused space between them.</p>
 </div>
 <div class="paragraph">
 <p>The <a href="memory_map.html#sep-memory-map" class="xref page">SEP memory map</a> states how a word
-access to an unpopulated offset answers.
-A partial-word write is answered with SLVERR wherever it lands
-(<a href="#abr-access-size">ABR access size</a>). ABR never drives <code>hresp</code> to error, so the AHB error
+access to an unpopulated offset answers, inside the extent and past it.
+A partial-word write inside the extent is answered with SLVERR wherever it
+lands (<a href="#abr-access-size">ABR access size</a>). ABR never drives <code>hresp</code> to error, so the AHB error
 response its slave interface implements is unreachable. A burst is answered
 with DECERR by the demux (<a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>).
 Software shall not rely on a bus error to detect a malformed ABR register
-address.</p>
+address inside the extent.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -821,7 +823,8 @@ address.</p>
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-This follows from the vendored collateral rather than a SEP decision.
+The absence of decode inside the extent follows from the vendored
+collateral rather than a SEP decision.
 <code>abr_reg.sv</code> is generated in the Adams Bridge repository, not by the OCAH
 register flow, and address-validity decode is a PeakRDL-regblock exporter option
 rather than a SystemRDL property; the committed file predates that option.

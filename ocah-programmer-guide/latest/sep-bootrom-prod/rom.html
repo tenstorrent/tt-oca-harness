@@ -292,7 +292,7 @@
 <li><a href="#flash-layout">12.1. Flash Layout</a></li>
 <li><a href="#transfer-hardening">12.2. Transfer Hardening</a></li>
 <li><a href="#opentitan-spi-host-path">12.3. OpenTitan SPI Host Path</a></li>
-<li><a href="#cadence-xspi-path">12.4. Cadence xSPI Path</a></li>
+<li><a href="#memory-mapped-xip-path">12.4. Memory-Mapped (XIP) Path</a></li>
 </ul>
 </li>
 <li><a href="#sec:manifest">13. OCA Manifest Format and Parsing</a>
@@ -780,10 +780,9 @@ CHIPLET_PUBK_REVOKE, BL1_VERSION, fuse-key digests, and the LOCKS read-lock regi
 secure-DMA drain), no XIP (<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cadence xSPI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ctrl <code>0x20002000</code> region, XIP window <code>0x30000000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Boot-flash transport option
-B: memory-mapped XIP reads (<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">XIP flash controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ctrl in SEP external region <code>0x20000000</code>, XIP window <code>0x30000000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot-flash transport option B: memory-mapped XIP reads (<a href="#sec:spi">SPI Initialization and Manifest Transfer</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP scratch registers</p></td>
@@ -950,18 +949,18 @@ boot decisions.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot-flash transport option A.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cadence xSPI controller</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x20002000</code> region</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">XIP flash controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP external region <code>0x20000000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Boot-flash transport option B (controller<br>
-PHY registers).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot-flash transport option B
+(adopter-defined controller registers).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">xSPI XIP window</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">XIP window</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x30000000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">flash-size</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_SPI_BASE</code> — memory-mapped view of boot flash
-(Cadence path); DMA source for manifest/payload loads.</p></td>
+(XIP path); DMA source for manifest/payload loads.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC window</p></td>
@@ -1644,7 +1643,7 @@ a failed manifest attempt or a terminal error rather than a hang.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S04] SMC access sanity</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Write/read-back of four patterns through SMC scratch[7] proves the
 outbound path to the SMC responds before the boot flow depends on it. Mismatch is fatal
-(<code>0xA001</code>).</p></td>
+(<code>ROM_ERR_SMC_SANITY_FAILED</code>, <code>0xA001</code>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S05] ROM identity</p></td>
@@ -1875,7 +1874,7 @@ granted only at hand-off, after the pre-hand-off self-check passes.</p>
 <p><a id="req-SEP-ROM-PMP-040"></a><strong>[SEP-ROM-PMP-040]</strong> Data windows shall be limited to the regions
 the ROM demonstrably needs: DCCM (<code>RW</code>), the STDOUT mailbox, the SEP peripheral block
 (<code>0x1080_0000</code>–<code>0x10BF_FFFF</code>: DMA, scratch, crypto, lifecycle, efuse, SPI hosts), the
-Cadence xSPI controller and XIP windows (when fitted), the SMC window (<code>0x4000_0000</code>),
+XIP flash controller registers and XIP window (when fitted), the SMC window (<code>0x4000_0000</code>),
 SEP SRAM and ICCM (<code>RW</code>, for staging). Everything else shall have no PMP grant.</p>
 </li>
 <li>
@@ -1938,8 +1937,8 @@ shall manifest as a precise trap (fatal per SEP-ROM-CPU-070), never as silent ac
 </li>
 <li>
 <p>The locked rule set implements <a href="#tbl:pmp_regions">Reference PMP region set (as currently programmed)</a> as amended by the fence policy: ROM
-<code>R-X</code>; DCCM, mailbox, peripheral block, SMC window, xSPI controller/XIP windows <code>RW-</code>;
-SEP SRAM and ICCM <code>RW-</code> (no execute) until hand-off.</p>
+<code>R-X</code>; DCCM, mailbox, peripheral block, SMC window, XIP controller registers and XIP
+window <code>RW-</code>; SEP SRAM and ICCM <code>RW-</code> (no execute) until hand-off.</p>
 </li>
 </ol>
 </div>
@@ -2112,7 +2111,7 @@ rule rewrite) is not yet implemented; <code>mseccfg</code> is never written.</p>
 </li>
 <li>
 <p>Entry 6&#8217;s covered range (<code>0xC000_0000</code>–<code>0xCFFF_FFFF</code>) does not match the actual SMC window
-at <code>0x4000_0000</code>; the Cadence XIP window (<code>0x3000_0000</code>) and SMC window have no entry. This
+at <code>0x4000_0000</code>; the XIP window (<code>0x3000_0000</code>) and SMC window have no entry. This
 is currently masked by the entries being unlocked (M-mode unconstrained), but must be fixed
 before the fences can bind (SEP-ROM-PMP-040).</p>
 </li>
@@ -2550,7 +2549,8 @@ bypassed.</p></td>
 <p>Before any protocol decision depends on the SMC, the ROM proves the outbound path works:
 four patterns (<code>0xA5A55A5A</code>, <code>0x12345678</code>, <code>0x00000000</code>, <code>0xFFFFFFFF</code>) are written to
 scratch[7] and read back. <a id="req-SEP-ROM-SMC-020"></a><strong>[SEP-ROM-SMC-020]</strong> A read-back mismatch is
-fatal (<code>0xA001</code>); the register shall be restored to zero on success.</p>
+fatal (<code>ROM_ERR_SMC_SANITY_FAILED</code>, <code>0xA001</code>); the register shall be restored to zero on
+success.</p>
 </div>
 </div>
 <div class="sect2">
@@ -2763,9 +2763,10 @@ manifest+payload.</p>
 <h2 id="sec:spi"><a class="anchor" href="#sec:spi"></a><a class="link" href="#sec:spi">12. SPI Initialization and Manifest Transfer</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>On a primary chiplet, mutable software is read from SPI NOR flash at fixed offsets. OCAH fits
-one of two SPI controllers; the ROM supports both behind a single transport abstraction, and
-the choice is made at build time (<code>BOOT_SPI_CONTROLLER_OT</code>). The manifest loader is
+<p>On a primary chiplet, mutable software is read from SPI NOR flash at fixed offsets. The ROM
+supports two SPI controller types behind a single transport abstraction, chosen at build time
+(<code>BOOT_SPI_CONTROLLER_OT</code>). The open SEP fits the OpenTitan SPI host; a memory-mapped (XIP)
+controller is fitted only by a build that supplies its driver. The manifest loader is
 controller-agnostic: it speaks in <strong>flash byte offsets</strong> only.</p>
 </div>
 <div class="paragraph">
@@ -2794,7 +2795,7 @@ depend on which controller is fitted.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Primary SPI configuration TLV</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cadence path only: PHY tuning parameters read
+<td class="tableblock halign-left valign-top"><p class="tableblock">XIP path only: driver-defined parameters read
 during controller bring-up.</p></td>
 </tr>
 <tr>
@@ -2811,7 +2812,7 @@ field (payload TOC + images).</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x40000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Backup SPI configuration TLV</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cadence path only.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">XIP path only.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x41000</code></p></td>
@@ -2896,19 +2897,20 @@ the OpenTitan SPI Bootcode Driver spec (<code>specs/001-ot-spi-bootcode-driver/<
 </div>
 </div>
 <div class="sect2">
-<h3 id="cadence-xspi-path"><a class="anchor" href="#cadence-xspi-path"></a><a class="link" href="#cadence-xspi-path">12.4. Cadence xSPI Path</a></h3>
+<h3 id="memory-mapped-xip-path"><a class="anchor" href="#memory-mapped-xip-path"></a><a class="link" href="#memory-mapped-xip-path">12.4. Memory-Mapped (XIP) Path</a></h3>
 <div class="paragraph">
-<p>The Cadence controller exposes flash as a memory-mapped XIP window at <code>0x3000_0000</code>
+<p>An XIP controller exposes flash as a memory-mapped window at <code>0x3000_0000</code>
 (<code>SEP_SPI_BASE</code>); a "read" is a secure-DMA copy from <code>SEP_SPI_BASE + offset</code> into SRAM.
-Bring-up is a multi-phase sequence: a sweep over candidate PHY parameter sets (fuse-adjustable)
-until the flash device answers, application of the slot&#8217;s configuration TLV, and optional DLL
-margining that re-reads the TLV at low/high timing margins to confirm the operating point.
-Slot rotation (<code>rotate_update</code> strap) and backup-bank fallback re-run bring-up against the
-backup TLV.</p>
+Bring-up belongs to the controller&#8217;s driver. The open ROM links only the weak stubs in
+<code>src/sep_spi.c</code>, whose <code>spi_init()</code> reports that no controller is fitted; a build that fits one
+supplies a driver that overrides them and applies the slot&#8217;s configuration TLV. The
+<code>rotate_update</code> strap reaches the driver through <code>spi_set_rotate()</code> before <code>spi_init()</code>. After a
+failed slot, backup-slot fallback re-runs bring-up against the backup TLV through <code>spi_reinit()</code>
+(<code>boot_flash_reinit()</code>).</p>
 </div>
 <div id="fig:spi_transfer" class="imageblock kroki">
 <div class="content">
-<img src="_images/spi-transfer-eb820d9d741a40b2a03ffeafdc8b2343c2e7e335.svg" alt="Manifest transfer through the transport shim">
+<img src="_images/spi-transfer-99be7a8758f913c75ff86a71fa1b83f3300d1c43.svg" alt="Manifest transfer through the transport shim">
 </div>
 <div class="title">Figure 9. Manifest transfer through the transport shim</div>
 </div>
@@ -3407,8 +3409,8 @@ unencrypted boot — shall not pay for it.</p>
 </div>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-ENT-020"></a><strong>[SEP-ROM-ENT-020]</strong> A failed bring-up shall stop the boot, reported as
-<code>SEP_MSG_ENTROPY_INIT_FAILED</code> with a console marker naming the stage that failed. It shall
-<strong>not</strong> be treated as a per-slot failure: the requirement is device-level, so the backup
+<code>SEP_MSG_ENTROPY_INIT_FAILED</code> with a console marker naming the stage that failed, and halt on
+<code>ROM_ERR_ENTROPY_INIT_FAILED</code>. It shall <strong>not</strong> be treated as a per-slot failure: the requirement is device-level, so the backup
 manifest slot carries the identical requirement and rotating to it cannot help, while
 allowing the failure to surface downstream would report it as a signature or decryption
 error and name the wrong cause.</p>
@@ -4907,7 +4909,7 @@ hand-off — those mutate state, the check does not.</p>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-RETRY-040"></a><strong>[SEP-ROM-RETRY-040]</strong> Between attempts the ROM shall return to a
 clean state: the staged SRAM region is zeroed (no partially validated bytes survive into the
-next attempt) and the flash transport is re-initialized against the backup bank (Cadence:
+next attempt) and the flash transport is re-initialized against the backup bank (XIP:
 backup configuration TLV; OpenTitan: controller re-bring-up).</p>
 </div>
 <div class="paragraph">
@@ -5085,7 +5087,7 @@ are generated from it; the table below is likewise generated — do not hand-edi
 anywhere, including here.</p>
 </div>
 <table id="tbl:sep_msg_codes" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 26. SEP_MSG_* status codes (155 defined)</caption>
+<caption class="title">Table 26. SEP_MSG_* status codes (156 defined)</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -5710,6 +5712,10 @@ anywhere, including here.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_HMAC_FIFO_TIMEOUT</code></p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x022B</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_DMA_OUT_OF_RANGE</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xFFFE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_MSG_INFO_OVERFLOW</code></p></td>
 </tr>
@@ -5723,8 +5729,12 @@ anywhere, including here.</p>
 <div class="sect2">
 <h3 id="fatal-rom-error-codes"><a class="anchor" href="#fatal-rom-error-codes"></a><a class="link" href="#fatal-rom-error-codes">21.5. Fatal ROM Error Codes</a></h3>
 <div class="paragraph">
-<p>Fatal errors reported through <code>rom_err_fail()</code> (mailbox + <code>bl0_state.error_code</code>) use a
-separate 32-bit namespace:</p>
+<p>Fatal errors reported through <code>rom_err_fail()</code> are recorded in <code>bl0_state.error_code</code>. The
+ROM core&#8217;s own codes, listed in <code>include/errors.h</code>, keep the upper half zero, so
+<code>rom_err_fail()</code> also posts them to <code>cold_scratch[1]</code> as an ERROR status; the nibble at
+<code>[15:12]</code> names the area. A subsystem&#8217;s codes carry its tag in the upper half instead&#8201;&#8212;&#8201;<code>0x0002xxxx</code> for the DMA driver, <code>0x0003xxxx</code> for the manifest module
+(<a href="#tbl:oca_boot_err">Manifest-module <code>OCA_BOOT_ERR_*</code> codes</a>)&#8201;&#8212;&#8201;and reach only <code>bl0_state.error_code</code>, since every such path has
+already reported its own status.</p>
 </div>
 <table id="tbl:rom_err" class="tableblock frame-ends grid-rows" style="width: 90%;">
 <caption class="title">Table 27. <code>ROM_ERR_*</code> fatal codes</caption>
@@ -5742,10 +5752,9 @@ separate 32-bit namespace:</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">(unnamed)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_SMC_SANITY_FAILED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xA001</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC scratch round-trip mismatch (<a href="#sec:smc_sync">SMC Synchronization</a>); the code uses the
-bare literal — a <code>ROM_ERR_</code> name should be assigned.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC scratch round-trip mismatch (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_LIFECYCLE_INVALID</code></p></td>
@@ -5795,8 +5804,8 @@ itself, SEP-ROM-STRAP-020).</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_HANDOFF_SELFCHECK_FAILED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF004</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Pre-hand-off self-check failed
-(<a href="#sec:handoff">Hand-off to BL1</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved for a pre-hand-off self-check this ROM
+does not implement.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_ROM_HASH_MISMATCH</code></p></td>
@@ -5823,6 +5832,82 @@ i.e. <code></em>bl0_state_reserve</code> in <code>link/rom.ld</code> and <code>B
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DIS.rsvd[31:1]</code> read non-zero: a fuse-integrity
 fault (<a href="#sec:fuses">Fuse and System State</a>).</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_ENTROPY_INIT_FAILED</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF009</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy bring-up failed (SEP-ROM-ENT-020).</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The manifest module&#8217;s codes are <code>OCA_BOOT_ERR_*</code> in <code>include/oca_boot.h</code>. <code>0x000300xx</code> carries a
+validation-library verdict (<code>oca_result_t</code>) in the low byte; <code>0x000301xx</code> are the module&#8217;s own
+failures, before or after the library runs. A failed storage read keeps a refused offset apart
+from a failed transfer. On the OpenTitan SPI build (<code>BOOT_SPI_CONTROLLER_OT=1</code>) a failed flash
+transfer and a failed DMA from SMC SRAM also differ; on the XIP build every storage read is
+a secure-DMA copy, so both report <code>OCA_BOOT_ERR_DMA</code>:</p>
+</div>
+<table id="tbl:oca_boot_err" class="tableblock frame-ends grid-rows" style="width: 90%;">
+<caption class="title">Table 28. Manifest-module <code>OCA_BOOT_ERR_*</code> codes</caption>
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><strong>Code</strong></th>
+<th class="tableblock halign-left valign-top"><strong>Value</strong></th>
+<th class="tableblock halign-left valign-top"><strong>Cause</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_BOOT_ERR_DMA</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00030100</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A secure-DMA copy from storage (SMC SRAM, or the XIP window
+on the XIP build) failed, timed out or was refused; the DMA reports <code>DMA_ERROR</code>,
+<code>DMA_TIMEOUT</code> or <code>DMA_OUT_OF_RANGE</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_BOOT_ERR_STAGE_OVERFLOW</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00030101</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manifest body and payload exceed SEP SRAM.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_BOOT_ERR_NO_BL1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00030102</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No BL1 image in the TOC.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_BOOT_ERR_BL1_BAD_ADDR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00030103</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL1 load or entry address outside the permitted
+regions, or the DMA copy of BL1 or its ICCM pad failed.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_BOOT_ERR_BL1_TOO_LARGE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00030104</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL1 length implausible.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_BOOT_ERR_KEY_UNTRUSTED</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00030105</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved; this ROM does not return it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_BOOT_ERR_READ_OUT_OF_BOUNDS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00030106</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A storage read was refused by the bounds gate
+(the boot slot on the OpenTitan build, the XIP window on the XIP build); reported as
+<code>IMAGE_OOB</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCA_BOOT_ERR_FLASH_READ</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00030107</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The OpenTitan SPI driver failed a read (OpenTitan
+build only); its <code>SPI_OT_*</code> code is reported as the status.</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
@@ -5838,11 +5923,11 @@ authoritative mapping is <a href="#sec:security_inventory">Security-Check Invent
 <div class="paragraph">
 <p><a href="#tbl:stage_trace">Boot stage → status code traceability</a> maps every boot stage to the status codes it emits, in emission order —
 the DV entry point for stage-by-stage checkers. Code <strong>names</strong> are authoritative here; their
-numeric values come only from the generated registry (<a href="#tbl:sep_msg_codes">SEP_MSG_* status codes (155 defined)</a>). <code>→</code> <code>INFO_EXT</code>
+numeric values come only from the generated registry (<a href="#tbl:sep_msg_codes">SEP_MSG_* status codes (156 defined)</a>). <code>→</code> <code>INFO_EXT</code>
 denotes a following 16-bit payload word.</p>
 </div>
 <table id="tbl:stage_trace" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 28. Boot stage → status code traceability</caption>
+<caption class="title">Table 29. Boot stage → status code traceability</caption>
 <colgroup>
 <col style="width: 16%;">
 <col style="width: 44%;">
@@ -5879,7 +5964,7 @@ denotes a following 16-bit payload word.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S04] SMC sanity</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xA001</code> (mailbox)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_SMC_SANITY_FAILED</code> (<code>0xA001</code>)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S05] ROM identity</p></td>
@@ -5977,8 +6062,9 @@ enforce secure boot</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S23] manifest</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>MANIFEST_LOAD_START</code> (per attempt); <code>WAIT_FOR_SMC_MANIFEST_READY</code>
 (recovery/secondary); <code>CHECK_MANIFEST_HASH</code>; <code>CHECK_USAGE_CONSTRAINTS</code>; <code>MANIFEST_VALIDATED</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INVALID_MANIFEST_HASH</code>, <code>SPI_OT_BOUNDS_ERROR</code>, <code>PAYLOAD_OVERLAPS_MANIFEST</code>,
-<code>MANIFEST_LOAD_FAILED</code> (all slots exhausted) + <code>OCA_FAIL_*</code> code</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INVALID_MANIFEST_HASH</code>, <code>PAYLOAD_OVERLAPS_MANIFEST</code>; a failed storage read (WARN):
+<code>IMAGE_OOB</code> (refused offset), <code>SPI_OT_*</code> (flash transport) or a DMA status;
+<code>MANIFEST_LOAD_FAILED</code> (all slots exhausted) + <code>OCA_FAIL_*</code> or <code>OCA_BOOT_ERR_*</code> code</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S24] crypto</p></td>
@@ -6000,8 +6086,9 @@ caller&#8217;s error</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">any secure-DMA copy or fill</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DMA_TIMEOUT</code> (WARN, a transfer that never completed), then the
-caller&#8217;s error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DMA_OUT_OF_RANGE</code> (WARN, refused before starting),
+<code>DMA_ERROR</code> (WARN, the engine reported an error) or <code>DMA_TIMEOUT</code> (WARN, a transfer that
+never completed), then the caller&#8217;s error</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S25] demotion + locks</p></td>
@@ -6053,7 +6140,7 @@ failing looks like, and the ordering constraints a verification environment must
 the governing "shall".</p>
 </div>
 <table id="tbl:security_inventory" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 29. Security-check inventory</caption>
+<caption class="title">Table 30. Security-check inventory</caption>
 <colgroup>
 <col style="width: 18%;">
 <col style="width: 20%;">
@@ -6294,7 +6381,7 @@ since been implemented and verified; they are kept rather than deleted so the re
 changed is not lost.</p>
 </div>
 <table id="tbl:impl_matrix" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 30. Specification vs implementation status</caption>
+<caption class="title">Table 31. Specification vs implementation status</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 14%;">
@@ -6612,7 +6699,7 @@ evaluation (research R13); boot never depends on programmed fuses.</p></td>
 <p>All 95 tagged requirements. Each ID links to its definition.</p>
 </div>
 <table id="tbl:req_index" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 31. Requirement index</caption>
+<caption class="title">Table 32. Requirement index</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 60%;">

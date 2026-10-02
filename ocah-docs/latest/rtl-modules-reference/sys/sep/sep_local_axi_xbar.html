@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">sep_local_axi_xbar</h1>
-<p>Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.</p><p>DMA and watchdog address bounds come from sep_top_addrmap_pkg; the remaining address rules are explicit integration apertures in AddrMap below. Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity get DECERR.</p>
+<p>Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.</p><p>DMA, watchdog and SPI controller address bounds come from sep_top_addrmap_pkg; the remaining address rules are explicit integration apertures in AddrMap below. Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity get DECERR.</p>
 <div class="ocah-reg-html">
 <h2>Ports</h2>
 <table id="trm-table-1">
@@ -714,7 +714,7 @@
 <tr><td><code>sep_crypto_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response from sep_crypto.</td></tr>
 <tr><td><code>sep_system_peripherals_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for sep_system_peripherals: scratch 0x1080_2000-0x1080_20FF, CSRs 0x10A0_0000-0x10A4_FFFF, remap window 0x1100_0000-0x11FF_FFFF, external chiplet 0x0000_0000-0x0FFF_FFFF, and SMU 0x4000_0000-0xBFFF_FFFF.</td></tr>
 <tr><td><code>sep_system_peripherals_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response from sep_system_peripherals.</td></tr>
-<tr><td><code>sep_io_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for sep_io, 0x10B0_0000-0x10BF_FFFE.</td></tr>
+<tr><td><code>sep_io_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for the SPI controller register extent from sep_top_addrmap_pkg, to sep_io.</td></tr>
 <tr><td><code>sep_io_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response from sep_io.</td></tr>
 <tr><td><code>entropy_fifo_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for the entropy pool, 0x1095_0000-0x1095_FFFF.</td></tr>
 <tr><td><code>entropy_fifo_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response from the entropy pool.</td></tr>

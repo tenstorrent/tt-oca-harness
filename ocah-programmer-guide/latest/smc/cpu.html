@@ -765,9 +765,11 @@ coordination.</p>
 <span id="debug_module-haltsum0"></span>
 <div class="paragraph">
 <p>The generated memory map below describes the hart-facing Debug Module memory
-region. Debugger-facing registers such as <code>dmcontrol</code>, <code>dmstatus</code>, <code>abstractcs</code>
-and <code>sbcs</code> are accessed through the Debug Module Interface (DMI), not through
-that memory region.</p>
+region. Only the harts of the CPU cluster reach it, over the cluster&#8217;s own control
+bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
+receive DECERR at every address in the region. Debugger-facing registers such as
+<code>dmcontrol</code>, <code>dmstatus</code>, <code>abstractcs</code> and <code>sbcs</code> are accessed through the Debug
+Module Interface (DMI), not through that memory region.</p>
 </div>
 <div class="paragraph">
 <p>Debugging is facilitated by JTAG, through the cluster&#8217;s debug transport module and
@@ -1036,7 +1038,7 @@ The detailed map below defines each register and its fields.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2 id="regmap-debug_module">Debug Module Hart Interface</h2>
-<p>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</p>
+<p>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. Only the harts of the CPU cluster reach this region; SMC bus initiators outside the cluster do not. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>ABSTRACT[5]</strong>: 5 registers, base 0x328, stride 0x4</li>

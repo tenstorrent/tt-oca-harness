@@ -482,15 +482,17 @@ raw per-generator noise bits, the compressed 32-bit entropy stream, and the
 uncompressed per-generator entropy bytes.</p>
 </div>
 <div class="paragraph">
-<p>Neither field is covered by <code>FIPS_LOCK</code>, and that is deliberate. The lock
-freezes the certified health-test configuration; it does not govern what is
-routed to an observation pin. Gating the pin is therefore an integration-time
-decision rather than a property of this block. SEP leaves <code>signal_monitor_o</code>
-unconnected and false-paths the port in synthesis, so the signal stops inside
-the block and no further gating is required there. An integration that routes
-the pin off-chip, for example muxed onto a GPIO, owns restricting <code>DEBUG_CTRL</code>
-to the lifecycle or debug-enable states in which observing pre-conditioning
-entropy is acceptable.</p>
+<p>Both fields are covered by <code>FIPS_LOCK</code>: once <code>FIPS_LOCK.LOCK</code> is set, software can
+no longer retarget the pin or change its divider, so a locked, certified part
+cannot route pre-conditioning entropy to the observation pin. The raw and BIW
+observe-FIFO capture enables (<code>NOISE_OBS_CTRL.RAW_ENABLE</code>,
+<code>BIW_OBS_CTRL.RAW_ENABLE</code>) are held under the lock the same way. SP 800-90B treats
+this pre-conditioning observation as a validation-time interface that may be
+disabled in the field, which the lock enforces. As defense in depth, SEP also
+leaves <code>signal_monitor_o</code> unconnected and false-paths the port in synthesis; an
+integration that routes the pin off-chip still owns restricting access to the
+lifecycle or debug states in which observing pre-conditioning entropy is
+acceptable.</p>
 </div>
 </div>
 </div>
@@ -522,7 +524,7 @@ The detailed map below defines each register and its fields.</p>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#entropy_source-COMPONENT_ID">COMPONENT_ID</a></td><td>R</td><td>Identifies the entropy-source register interface.</td></tr>
 <tr><td>0x4</td><td><a href="#entropy_source-CTRL">CTRL</a></td><td>RW</td><td>Controls entropy generation and conditioning.</td></tr>
-<tr><td>0xC</td><td><a href="#entropy_source-DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>Controls the external debug observation pin. These fields remain writable after FIPS_LOCK.LOCK; system integration controls access to exposed pre-conditioning entropy.</td></tr>
+<tr><td>0xC</td><td><a href="#entropy_source-DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>Controls the external debug observation pin. FIPS_LOCK.LOCK prevents software changes to the signal selection and divider.</td></tr>
 <tr><td>0x10</td><td><a href="#entropy_source-INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Reports latched interrupt status; write one to clear a bit.</td></tr>
 <tr><td>0x14</td><td><a href="#entropy_source-INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Enables individual interrupt sources.</td></tr>
 <tr><td>0x18</td><td><a href="#entropy_source-INTR_TEST">INTR_TEST</a></td><td>W</td><td>Triggers individual interrupt sources for testing.</td></tr>
@@ -618,8 +620,8 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10:8</td><td>SELECT_FREQ_DIV</td><td>RW</td><td>0x0</td><td>Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128.</td></tr>
-<tr><td>7:0</td><td>SELECT_SIGNAL</td><td>RW</td><td>0x0</td><td>Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low.</td></tr>
+<tr><td>10:8</td><td>SELECT_FREQ_DIV</td><td>RW</td><td>0x0</td><td>Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>7:0</td><td>SELECT_SIGNAL</td><td>RW</td><td>0x0</td><td>Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 </table>
 <span id="INTR_STATUS"></span><h3 id="entropy_source-INTR_STATUS" data-register-alias="INTR_STATUS">INTR_STATUS</h3>
 <table>
@@ -1043,7 +1045,7 @@ The detailed map below defines each register and its fields.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>RAW_ENABLE</td><td>RW</td><td>0x0</td><td>Enables capture after startup health testing completes. This copy-only control remains writable after FIPS_LOCK.LOCK.</td></tr>
+<tr><td>0</td><td>RAW_ENABLE</td><td>RW</td><td>0x0</td><td>Enables capture after startup health testing completes. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 </table>
 <span id="BIW_OBS_STATUS"></span><h3 id="entropy_source-BIW_OBS_STATUS" data-register-alias="BIW_OBS_STATUS">BIW_OBS_STATUS</h3>
 <table>
@@ -1067,7 +1069,7 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>7:4</td><td>LANE_SEL</td><td>RW</td><td>0x0</td><td>Selects generator lane 0 through 11; other values select lane 0. Changing lanes restarts packing and flushes buffered words.</td></tr>
 <tr><td>3:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1</td><td>FLUSH</td><td>W 1P</td><td>0x0</td><td>Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.</td></tr>
-<tr><td>0</td><td>RAW_ENABLE</td><td>RW</td><td>0x0</td><td>Enables LSB-first packing of selected-lane samples into 32-bit observe words. This copy-only control remains writable after FIPS_LOCK.LOCK.</td></tr>
+<tr><td>0</td><td>RAW_ENABLE</td><td>RW</td><td>0x0</td><td>Enables LSB-first packing of selected-lane samples into 32-bit observe words. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 </table>
 <span id="NOISE_OBS_STATUS"></span><h3 id="entropy_source-NOISE_OBS_STATUS" data-register-alias="NOISE_OBS_STATUS">NOISE_OBS_STATUS</h3>
 <table>
