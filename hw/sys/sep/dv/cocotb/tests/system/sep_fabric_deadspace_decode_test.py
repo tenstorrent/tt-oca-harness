@@ -21,9 +21,10 @@ CHK-TRNG-UNOWNED covers the TRNG window, which SEP forwards whole to an
 adopter endpoint. The reference integration connects no external TRNG, so no
 offset owns a register and every access must be refused: never OKAY, never
 the value of a neighbouring ESRC register, and no ESRC register moved.
-``memory_map.adoc`` names SLVERR for such an offset and the SMU integrator
-guide names a DECERR slave, so the response code of every TRNG probe is logged
-for the document owner and not graded.
+``memory_map.adoc`` also states the code for that case: the window ends in a
+DECERR slave, so a read answers DECERR, and the AXI4-to-AXI-Lite conversion on
+the TRNG path makes every errored write SLVERR. Each TRNG probe is graded
+against that code.
 
 CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST grade bursts in the crypto region
 only. ``memory_map.adoc`` ("Single-Beat Register Access") limits register
@@ -61,7 +62,18 @@ from seq_lib.sep_fabric_deadspace_seq import (
     in_crypto_region,
 )
 
-_RESP_NAME = {-1: "TIMEOUT", RESP_OKAY: "OKAY", 1: "EXOKAY", 2: "SLVERR", RESP_DECERR: "DECERR"}
+RESP_SLVERR = 2
+_RESP_NAME = {
+    -1: "TIMEOUT",
+    RESP_OKAY: "OKAY",
+    1: "EXOKAY",
+    RESP_SLVERR: "SLVERR",
+    RESP_DECERR: "DECERR",
+}
+
+# Response to an unowned TRNG-window offset with no external TRNG connected,
+# per channel (hw/sys/sep/doc/memory_map.adoc, TRNG aperture).
+TRNG_UNOWNED_RESP = {"r": RESP_DECERR, "w": RESP_SLVERR}
 
 
 @pyuvm.test()
@@ -260,21 +272,32 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             "CHK-DEADSPACE-NO-ALIAS PASS: no allocated register moved across any probe"
         )
 
-        # The TRNG verdicts are part of CHK-DEADSPACE-REFUSE / -NO-ALIAS above,
-        # which already raised on any OKAY, timeout or alias. This line names the
-        # window, requires both a read and a write were refused there, and gives
-        # the response codes the document owner reconciles.
+        # Refusal and no-alias of the TRNG probes are part of CHK-DEADSPACE-REFUSE
+        # / -NO-ALIAS above, which already raised on any OKAY, timeout or alias.
+        # This checker grades the code of each probe and requires a read and a
+        # write in the window.
         trng_rd = sorted({r for op, _a, r, ok in adopter_probes if op == "r" and ok})
         trng_wr = sorted({r for op, _a, r, ok in adopter_probes if op == "w" and ok})
         assert trng_rd and trng_wr, (
             f"CHK-TRNG-UNOWNED FAIL: need a refused read and a refused write in the "
             f"TRNG window, got {len(adopter_probes)} probe(s): {adopter_probes}"
         )
+        trng_bad = [
+            f"{op} 0x{addr:08x} answered {_RESP_NAME.get(r, r)}, "
+            f"memory_map.adoc states {_RESP_NAME[TRNG_UNOWNED_RESP[op]]}"
+            for op, addr, r, _ok in adopter_probes
+            if r != TRNG_UNOWNED_RESP[op]
+        ]
+        for line in trng_bad:
+            self.logger.error("CHK-TRNG-UNOWNED FAIL: %s", line)
+        assert not trng_bad, (
+            f"CHK-TRNG-UNOWNED FAIL: {len(trng_bad)} of {len(adopter_probes)} TRNG-window "
+            "probe(s) answered a code other than the one memory_map.adoc states"
+        )
         self.logger.info(
             "CHK-TRNG-UNOWNED PASS: %d TRNG-window probes refused, none OKAY, no ESRC "
-            "register aliased or moved; read resp=%s write resp=%s (flavour logged, "
-            "not graded: memory_map.adoc names SLVERR, the SMU integrator guide a "
-            "DECERR slave)",
+            "register aliased or moved; every read answered %s and every write %s, "
+            "as memory_map.adoc states with no external TRNG connected",
             len(adopter_probes),
             "/".join(_RESP_NAME[r] for r in trng_rd),
             "/".join(_RESP_NAME[r] for r in trng_wr),

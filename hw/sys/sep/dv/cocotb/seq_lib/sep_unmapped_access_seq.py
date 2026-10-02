@@ -64,7 +64,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
-from env.sep_decode_resp import Expected, expected_unbacked, sep_map_row
+from env.sep_decode_resp import Expected, expected_unbacked, logical_region, sep_map_row
 from env.sep_spec_tables import mailbox_depth
 from sep_reg_meta import (
     EFUSE_INTERFACE_CTRL,
@@ -187,8 +187,17 @@ REFUSE_GROUPS = (
     GROUP_SPI,
 )
 # Groups whose probes reach the system-CSR AXI-Lite port when the system CSR is
-# the point that refuses. The Lite handshake is logged for these.
+# the point that refuses. The Lite handshake is logged for these. The local
+# crossbar's ext initiator is watched for the same probes: an access that
+# sep_system_peripherals does not decode returns to the local crossbar there.
 LITE_WATCHED = (GROUP_SYSCSR, GROUP_RESERVED)
+
+# First word of the External row of the SEP CPU logical map. The local crossbar
+# sends it to sep_system_peripherals, whose peripheral crossbar forwards an
+# address outside the mailbox and system CSR windows to the local crossbar's
+# ext initiator (hw/sys/sep/doc/fabric.adoc). It is the ext-initiator watcher's
+# control.
+EXT_LOOPBACK_CTRL = logical_region("logical:external_region")[0]
 
 # TOKEN_MATCH_FAULT, the last RDL register of the eFuse token MMR.
 TOKEN_MATCH_FAULT = EFUSE_MMR.addr("TOKEN_MATCH_FAULT")
@@ -653,6 +662,7 @@ class ProbeResult:
     rdata: int
     timed_out: bool
     lite_reached: bool | None = None
+    ext_reached: bool | None = None
     alias: str | None = None
     changed: tuple[str, ...] = ()
 
@@ -742,6 +752,36 @@ class SepUnmappedAccess:
                 fails.append(f"{where} was not seen at the system-CSR AXI-Lite port")
         return fails
 
+    async def ext_control(self) -> list[str]:
+        """Watch one write and one read of ``EXT_LOOPBACK_CTRL``.
+
+        Each must show its handshake at the local crossbar's ext initiator, so a
+        watcher that sees nothing cannot pass CHK-SYS-RESERVED-NO-LOOPBACK. The
+        response is not graded: the contract here is the route only.
+        """
+        fails: list[str] = []
+        for op in ("w", "r"):
+            task, ext = self.test.watch_xbar_ext_in(write=op == "w")
+            try:
+                resp, _d, to = await self.access(
+                    op, EXT_LOOPBACK_CTRL, wdata=PROBE_WDATA, may_refuse=True
+                )
+            finally:
+                task.kill()
+            where = f"control {op} 0x{EXT_LOOPBACK_CTRL:08x}"
+            self.log.info(
+                "UNMAPPED-EXT-CONTROL: %s resp=%s timed_out=%s; %d handshake(s) at the ext initiator",
+                where,
+                RESP_NAME.get(resp, resp),
+                to,
+                len(ext),
+            )
+            if to:
+                fails.append(f"{where} timed out")
+            elif not any((a & ~0x7) == (EXT_LOOPBACK_CTRL & ~0x7) for a in ext):
+                fails.append(f"{where} was not seen at the local crossbar's ext initiator")
+        return fails
+
     async def program_live(self) -> list[str]:
         """Write every programmed word, then snapshot every live word.
 
@@ -813,14 +853,17 @@ class SepUnmappedAccess:
         watch = p.group in LITE_WATCHED
         if watch:
             task, lite = self.test.watch_sys_csr_lite(write=p.op == "w")
+            ext_task, ext = self.test.watch_xbar_ext_in(write=p.op == "w")
         try:
             resp, rdata, to = await self.access(p.op, p.addr, wdata=PROBE_WDATA, may_refuse=True)
         finally:
             if watch:
                 task.kill()
+                ext_task.kill()
         res = ProbeResult(p, resp, rdata, to)
         if watch:
             res.lite_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in lite)
+            res.ext_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in ext)
         if p.op == "r" and not to:
             res.alias = self.read_alias(rdata)
         if p.op == "w":
