@@ -113,12 +113,13 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
             f"{what}: STATUS mask 0x{mask:x} never 0x{expect:x} in {_POLL_ITERS} polls"
         )
 
-    async def _zeroize(self, abr: SepAbr, *, what: str) -> None:
+    async def _zeroize(self, abr: SepAbr, *, what: str) -> int:
         """VALID is sticky and READY stays low until a zeroize, so commands cannot
-        be issued back to back."""
+        be issued back to back. Returns the first STATUS read with VALID clear."""
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
-        await self._wait_status(abr, ST_VALID, 0, what=f"{what} post-zeroize VALID clear")
+        st_z = await self._wait_status(abr, ST_VALID, 0, what=f"{what} post-zeroize VALID clear")
         await self._wait_status(abr, ST_READY, ST_READY, what=f"{what} post-zeroize READY")
+        return st_z
 
     async def run_scenario(self) -> None:
         cfg = SepAbrKeygenCfg(self.random_seed())
@@ -192,7 +193,31 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
             SIG_WORDS,
         )
 
-        await self._zeroize(abr, what="after sign")
+        # --- CHK-ZEROIZE ------------------------------------------------------
+        # Read the window CHK-SIGN just read live, so the open read and the
+        # closed read are on the same signature. The signature read port is
+        # gated on the valid register and ZEROIZE also clears the signature
+        # storage, so a zero window shows the signature is no longer readable,
+        # NOT which of the two mechanisms closed it.
+        st_z = await self._zeroize(abr, what="after sign")
+        sig_z = await abr.read_words(ABR_SIGNATURE, SIG_WORDS)
+        assert len(sig_z) == SIG_WORDS, (
+            f"CHK-ZEROIZE FAIL: read {len(sig_z)} signature words after zeroize, "
+            f"window is {SIG_WORDS}"
+        )
+        live = [(i, w) for i, w in enumerate(sig_z) if w != 0]
+        assert not live, (
+            f"CHK-ZEROIZE FAIL: post-zeroize signature still live in {len(live)} of "
+            f"{SIG_WORDS} words, first at index {live[0][0]}=0x{live[0][1]:08x}"
+        )
+        self.logger.info(
+            "CHK-ZEROIZE PASS: after SIGN, STATUS=0x%08x (VALID=0) and all %d "
+            "signature words read 0, where %d of them read non-zero before the "
+            "zeroize (read-gated, not a proven RAM wipe)",
+            st_z,
+            SIG_WORDS,
+            sum(1 for w in sig if w != 0),
+        )
 
         # --- CHK-VERIFY-ACCEPT and CHK-VERIFY-REJECT --------------------------
         # Walked as a pair from one helper so the two cases cannot drift apart:
@@ -267,20 +292,4 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
             "CHK-VERIFY-REJECT FAIL: accept and reject returned the same "
             f"{VERIFY_RES_WORDS}-word MLDSA_VERIFY_RES, so the result register "
             "is not updated per command"
-        )
-
-        # --- CHK-ZEROIZE ------------------------------------------------------
-        # Same contract class and same stated limit as the keygen leaf: the
-        # signature read port is gated on the valid register, so a zero window
-        # shows the read port is closed, NOT that the RAM was wiped.
-        sig_z = await abr.read_words(ABR_SIGNATURE, SIG_WORDS)
-        live = [(i, w) for i, w in enumerate(sig_z) if w != 0]
-        assert not live, (
-            f"CHK-ZEROIZE FAIL: post-zeroize signature still live in {len(live)} of "
-            f"{SIG_WORDS} words, first at index {live[0][0]}=0x{live[0][1]:08x}"
-        )
-        self.logger.info(
-            "CHK-ZEROIZE PASS: all %d signature words read 0 after zeroize "
-            "(read-gated, not a proven RAM wipe)",
-            SIG_WORDS,
         )

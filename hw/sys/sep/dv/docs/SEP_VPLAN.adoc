@@ -3462,10 +3462,12 @@ word-for-word, with STATUS VALID and ERROR=0, and PIC `[34]` low.
 |CHK-VERIFY-REJECT
 |The ACVP case that must not verify completes VALID and `MLDSA_VERIFY_RES` is not equal to that signature's c~. An engine that copies the submitted c~ into the result register -- unconditional success -- fails this checker.
 |CHK-ZEROIZE
-|`ZEROIZE` between commands drops VALID and the signature window then reads
-zero. Same scope limit as the keyGen leaf: the read port is gated on the valid
-register, so a zero window proves the signature is no longer readable, *not*
-that the RAM was wiped.
+|The `ZEROIZE` after SIGN drops VALID, and every word of the signature window
+that CHK-SIGN just read live then reads zero, so the open read and the closed
+read are on the same signature. Same scope limit as the keyGen leaf: the read
+port is gated on the valid register, so a zero window proves the signature is
+no longer readable, *not* that the RAM was wiped. The `ZEROIZE` after each
+verify command must drop VALID and raise READY; its window is not read.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
