@@ -112,12 +112,53 @@ BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
 # reprogramming mid-sweep. None of them covers the filter CSR bank at
 # INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR: the external master must not be able
 # to rewrite the rules that gate it.
+#
+# Both bounds come from the generated register map. START is the
+# <BLOCK>_REG_MAP_BASE_ADDR of the first block in the window. END is the last
+# byte of the block span (the last block's base plus its _REG_MAP_SIZE, minus 1),
+# rounded up to the top of its 4 KB page. The page rounding is this sequence's
+# choice of a coarse window, not a filter rule. The one exception is cpu_ctrl:
+# it covers only the first 4 KB page of SEP_CPU_CTRL, which holds every
+# SEP_CPU_CTRL register the walk sweeps. The block continues into a second page
+# (SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR) that the window leaves out.
+_WINDOW_PAGE = 0x1000
+
+
+def _page_top(addr: int) -> int:
+    """Return the last byte address of the 4 KB page that holds ``addr``."""
+    return addr | (_WINDOW_PAGE - 1)
+
+
+def _block_last_byte(block: str) -> int:
+    """Return the last byte address of ``block`` in the generated register map."""
+    return sym(f"{block}_REG_MAP_BASE_ADDR") + sym(f"{block}_REG_MAP_SIZE") - 1
+
+
 M_AXI_ALLOW_WINDOWS: tuple[tuple[str, int, int], ...] = (
-    ("dma_csr+scratch", 0x1080_0000, 0x1080_2FFF),
-    ("crypto", 0x1090_0000, 0x1091_3FFF),
-    ("mailbox", 0x10A0_0000, 0x10A0_0FFF),
-    ("cpu_ctrl", 0x10A3_0000, 0x10A3_0FFF),
-    ("spi", 0x10B0_0000, 0x10B0_0FFF),
+    # SECURE_DMA, WDT_TIMER, SEP_SCRATCH_COLD and SEP_SCRATCH_WARM.
+    (
+        "dma_csr+scratch",
+        sym("SECURE_DMA_REG_MAP_BASE_ADDR"),
+        _page_top(_block_last_byte("SEP_SCRATCH_WARM")),
+    ),
+    # OTBN through KMAC.
+    ("crypto", sym("OTBN_REG_MAP_BASE_ADDR"), _page_top(_block_last_byte("KMAC"))),
+    # Outbound and inbound mailbox 0.
+    (
+        "mailbox",
+        sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR"),
+        _page_top(_block_last_byte("AXIL_MAILBOX_INBOUND_MAILBOX_0")),
+    ),
+    (
+        "cpu_ctrl",
+        sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR"),
+        _page_top(sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")),
+    ),
+    (
+        "spi",
+        sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
+        _page_top(_block_last_byte("SPI_CONTROLLER")),
+    ),
 )
 
 # A floor on the m_axi walk, set to the count the walk presents: 75 registers
