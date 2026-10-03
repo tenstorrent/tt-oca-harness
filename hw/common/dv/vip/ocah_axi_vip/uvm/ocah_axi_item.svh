@@ -69,6 +69,20 @@ class ocah_axi_item extends uvm_sequence_item;
   int unsigned        ax_stall_cycles;
   bit                 ax_stable = 1'b1;
 
+  // Pipelined operation (pipeline_result, the cocotb pipeline_result
+  // parity): `ops` are single-beat reads and writes the master driver keeps
+  // in flight together, each filled like a plain result. In an op,
+  // aw/w/ar_valid_delay count the cycles from the start of the operation
+  // before that channel's VALID may assert; on the carrier item,
+  // b_ready_delay and r_ready_delay hold BREADY and RREADY low for that many
+  // cycles after the first BVALID and RVALID, and aw/w/ar_stall_cycles count
+  // the cycles each request channel held VALID while READY was low.
+  ocah_axi_item       ops[$];
+  int unsigned        ar_valid_delay;
+  int unsigned        aw_stall_cycles;
+  int unsigned        w_stall_cycles;
+  int unsigned        ar_stall_cycles;
+
   function new(string name = "ocah_axi_item");
     super.new(name);
   endfunction
@@ -135,6 +149,7 @@ class ocah_axi_item extends uvm_sequence_item;
     w_valid_delay  = rhs_item.w_valid_delay;
     b_ready_delay  = rhs_item.b_ready_delay;
     r_ready_delay  = rhs_item.r_ready_delay;
+    ar_valid_delay = rhs_item.ar_valid_delay;
     observed_id       = rhs_item.observed_id;
     observed_id_valid = rhs_item.observed_id_valid;
     timed_out         = rhs_item.timed_out;
@@ -142,6 +157,10 @@ class ocah_axi_item extends uvm_sequence_item;
     pair              = rhs_item.pair;
     ax_stall_cycles   = rhs_item.ax_stall_cycles;
     ax_stable         = rhs_item.ax_stable;
+    ops               = rhs_item.ops;
+    aw_stall_cycles   = rhs_item.aw_stall_cycles;
+    w_stall_cycles    = rhs_item.w_stall_cycles;
+    ar_stall_cycles   = rhs_item.ar_stall_cycles;
   endfunction
 
 endclass : ocah_axi_item
