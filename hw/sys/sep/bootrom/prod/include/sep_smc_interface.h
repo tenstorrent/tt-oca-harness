@@ -64,20 +64,6 @@ static inline uint32_t sep_get_smc_base(void) {
 
 // Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE).
 #define SMC_CHIP_ID_OFFSET 0x2908u
-
-// SMC fuse map — chiplet/package ID for usage constraints ([S23]).
-// 8 × 32-bit words each. SEP reads via AXI: smc_base + offset.
-//
-// 0x7008 / 0x7028 are SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID / _PACKAGE_ID
-// (smc_addr.h), 0xC0007008 / 0xC0007028 SMC-local, inside SMC_EFUSE_MAP at
-// 0xC0007000.
-//
-// Were 0xB008 / 0xB028, which are unmapped here: that range lies between
-// DTP_CTRL_REG (0xC000B000) and DFX_CTRL (0xC000B800). Note the low 12 bits were
-// already right -- only the block base moved, 0xB000 -> 0x7000 -- which is the
-// same shape of drift as the DFX register below.
-#define SMC_FUSE_MAP_CHIPLET_ID_OFFSET 0x7008u
-#define SMC_FUSE_MAP_PACKAGE_ID_OFFSET 0x7028u
 #define SMC_LC_STATE_OFFSET 0x290Cu
 
 // SMC SRAM (SPM memory).
