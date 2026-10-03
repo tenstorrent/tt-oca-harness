@@ -669,9 +669,9 @@ assignment.
 The SMC input fabric's local/global split is sized by the same
 `REGION_SIZE` CSR used by SMU-level routing and SEP-to-SMC decode, so
 the internal local-alias window and the chiplet-facing global aperture
-stay the same size by construction. Firmware must not program
-`REGION_SIZE` to zero: doing so collapses both windows and routes SMC
-CPU accesses to its own resources out through the output fabric.
+stay the same size by construction. A `REGION_SIZE` of zero collapses
+both windows and routes SMC CPU accesses to its own resources out
+through the output fabric.
 
 After global-aperture reconfiguration, software may use global addresses
 for accesses that leave the local SMC view. Global address derivation

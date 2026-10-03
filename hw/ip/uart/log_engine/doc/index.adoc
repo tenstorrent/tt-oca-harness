@@ -22,6 +22,15 @@ A 64-bit AXI4-Lite read path fetches message data into a FIFO. A separate
 32-bit AXI4-Lite write path sends one character at a time to a fixed UART
 address, paced by `uart_tx_ready_i`. The register interface is also
 32-bit AXI4-Lite. Fetch addresses are 56 bits; UART addresses are 32 bits.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-log-engine[Log Engine section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-log-engine[Log Engine section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the configuration, submission and recovery
+procedures.
 
 [[log-engine-wrapper-diagram]]
 .SMC log-engine wrapper and data paths
@@ -76,12 +85,6 @@ ifdef::backend-pdf[]
 include::interface.adoc[]
 endif::backend-pdf[]
 
-ifdef::backend-html5[]
-include::partial$log_engine/doc/programming.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::programming.adoc[]
-endif::backend-pdf[]
 
 ifdef::backend-html5[]
 include::partial$log_engine/doc/memmap.adoc[]

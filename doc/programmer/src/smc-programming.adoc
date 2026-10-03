@@ -57,6 +57,13 @@ externally, otherwise a decode error is returned. Firmware *must* program
 `GLOBAL_BASE` and `REGION_SIZE` *before any cross-subsystem AXI traffic is
 issued*.
 
+Never program `REGION_SIZE` to zero. The same register sizes the SMC input
+fabric's local/global split, SMU-level routing and the SEP-to-SMC decode, so
+zero collapses both windows and routes SMC CPU accesses to its own resources
+out through the output fabric. After reconfiguring the global aperture, derive
+global addresses for accesses that leave the local SMC view from the
+`GLOBAL_BASE` value.
+
 [[smc-cpu]]
 ==== SMC CPU
 
@@ -118,6 +125,16 @@ See also `__metal_sram_init_early` in
 The production ROM assumes that SRAM is automatically zeroed on reset. If
 either `SRAM_AUTO_ZERO_DISABLE` or the eFuse `RESERVED_0[6]` is set, the
 Memory Zeroer is used by the production ROM.
+
+[[smc-zeroer-general-use]]
+The same sequence clears any other region the zeroer can reach. Before
+starting, validate the destination address, the length, the access permissions
+of the target and the address arithmetic: the zeroer performs no such checks.
+Set `CTRL_STATUS.INT_EN` in the start write to receive a completion pulse
+instead of polling. Completion means that every write response has arrived,
+not that every write succeeded, because the zeroer does not check `BRESP`.
+Where the clearing must be verified, read the region back or use another
+independent verification path.
 
 ==== Memory Built-In Self Test and Repair
 
@@ -206,23 +223,44 @@ kill
 @enduml
 ----
 
+[[smc-core-reset-sequence]]
 ==== Per-Core Reset
 
-ifdef::backend-html5[]
 See the
-xref:ocah-docs:smc:cpu.adoc#smc-core-reset[SMC CPU reset description]
-in the Technical Reference Manual for the hardware behavior and associated
-risks.
+ifdef::backend-html5[]
+xref:ocah-docs:smc:cpu.adoc#smc-per-core-reset[SMC CPU reset description]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-See the _SMC CPU Reset, Boot, and Initialization_ section of the Technical
-Reference Manual for the hardware behavior and associated risks.
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/cpu.html#smc-per-core-reset[SMC CPU reset description]
 endif::backend-pdf[]
+in the Technical Reference Manual for the hardware behavior, the drain
+handshake and the associated risks.
 
 [WARNING]
 ====
 Do not reset a hart while any hart is performing coherent memory accesses.
 ====
+
+A software reset through `CPU_CTRL.RESET_CTRL` is withheld until the CPU AXI
+isolation boundary drains. Holding any core in reset terminates the other
+cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until every
+core is released. To request one:
+
+. Program `CPU_CTRL.RESET_TIMEOUT`. `timeout_value` bounds, in SMC clock cycles,
+how long the request may wait for the drain; zero waits indefinitely.
+`timeout_mode` chooses the expiry behavior: `0` reports the timeout and keeps
+withholding the reset, `1` forces the reset and flushes the isolation blocks.
+. Write the core or uncore reset bit, or the core reset pulse bit, in
+`RESET_CTRL`.
+. Poll `RESET_TIMEOUT.reset_applied`, which rises once the reset is applied by a
+completed drain or a forced timeout. `RESET_TIMEOUT.reset_timeout` reports an
+expired wait in either mode and stays high until the request is removed.
+. Release the reset bit, or let the pulse complete, so the boundary reconnects.
+
+Use force mode only for recovery from an unresponsive cluster. The flush clears
+only the CPU isolation blocks: a block elsewhere in the fabric that holds a
+response can leave its route or AXI ID blocked, and must be recovered separately
+or by cold reset.
 
 A safe startup scenario, subject to the warning above, is when three of four
 harts remain parked after ROM boot and must start at a different firmware
@@ -333,7 +371,7 @@ The base address for the CLINT -- `CLINT_BASE` -- is `0xC800_0000`.
 The current value of the timer is stored in the CLINT's `MTIME` register, at
 `CLINT_BASE + 0xBFF8`. The CLINT stores a timer comparison value corresponding
 to each core of the SMC in the CLINT `MTIMECMP` register array, at
-`CLINT_BASE + 0x2000 + (0x8 * hartid)`. Both registers are 64-bits wide.
+`CLINT_BASE + 0x4000 + (0x8 * hartid)`. Both registers are 64-bits wide.
 
 A timer interrupt becomes pending for a core once `MTIME` exceeds the core's
 corresponding `MTIMECMP` value. To dismiss the interrupt, the timer interrupt
@@ -415,6 +453,7 @@ to the target core's corresponding `MSIP` register, at
 `MIE.msip` bit.
 Upon taking a software interrupt, a core may clear its software interrupt
 pending bit by writing `0` to its corresponding `MSIP` register.
+Neither timer nor software interrupts use a PLIC completion write.
 
 .Sending Software Interrupt to another core example C usage.
 [source,sourceCode,c]
@@ -449,6 +488,15 @@ endif::backend-pdf[]
 The allocation of additional interrupt IDs within the External interrupts block
 is defined by the integrator.
 
+[[smc-plic-init]]
+Before enabling delivery, initialize the PLIC priority, enable and threshold
+registers, which are not reset by hardware, and the CPU `mie` CSR, then set the
+individual enables and `mstatus.MIE`. Enable each source in the intended machine
+or supervisor context with a priority above that context's threshold. A source's
+priority is shared by every context that enables it, so changing it affects all
+of them. Source ownership and core assignment are firmware decisions; the
+hardware imposes no fixed roles.
+
 The process of determining and servicing the specific external interrupt is as
 follows, where `PLIC_BASE` = `0xC400_0000`:
 
@@ -473,6 +521,14 @@ inner-most source first (peripheral first, then PLIC), akin to popping the stack
 that narrowed in on the interrupt condition.
 ====
 
+Several PLIC sources are OR-combinations: the GPIO halves, each UART with its
+Log Engine, and the AXI hang detectors. For these, inspect every contributing
+local status that can keep the line asserted before completing. Claim and
+complete do not clear a peripheral's own sticky status, and they do not make
+short or repeated pulses lossless: DMA and zeroer completions are pulses, not
+counted queues, so track DMA retirement with `DONE_0` rather than by counting
+completion interrupts.
+
 .External Interrupt Handling Flow
 [plantuml,external-interrupt-dispatch,svg,width=90.0%,align="center"]
 ----
@@ -486,6 +542,21 @@ that narrowed in on the interrupt condition.
 kill
 @enduml
 ----
+
+[[smc-bus-error-units]]
+===== Bus Error Units
+
+Each core has a Bus Error Unit (BEU) that accumulates its bus error events.
+`ACCRUED_ENABLE` is sticky status, not an enable mask: events set its bits
+regardless of `ENABLE`, an ordinary write replaces them, and writing zero
+clears them. `ENABLE` gates capture of the first error's `CAUSE` and
+`PHYS_ADDR` while `CAUSE` is zero. `LOCAL_ENABLE` delivers accrued errors
+directly to the core, bypassing the PLIC, and `PLIC_ENABLE` selects the PLIC
+output; in machine mode, `mstatus.MIE = 0` still suppresses the local delivery.
+
+To service a BEU, capture `CAUSE`, `PHYS_ADDR` and `ACCRUED_ENABLE` first, then
+clear `ACCRUED_ENABLE` and rearm capture by writing `CAUSE` to zero. Both
+delivery paths select from the same accrued bits, so clearing them affects both.
 
 [[smc-watchdog]]
 ==== Watchdog Timers
@@ -528,13 +599,17 @@ the failure or reallocate work while the reset core is brought up again.
 
 In the event of a watchdog timer interrupt, software -- running on a core other
 than the one reset by `wdogrsten` being set -- should clear the interrupt at the
+[[smc-watchdog-clear]]
 watchdog by:
 
-. Resetting `COUNT` to be lower than `CMP`. This may not be necessary if
-`CTRL.wdogzerocmp` is also set and not enough time has passed for the interrupt
-to be reasserted.
-. Clear the latched interrupt pending bit `CTRL.wdogip0` (bit 28) by writing `0`
-to it.
+. Bringing the scaled count below `CMP`, by feeding the watchdog or by writing
+`COUNT`. Hardware sets `CTRL.wdogip0` on every cycle the scaled count is at or
+above `CMP`, so the bit cannot be cleared while that holds. This may not be
+necessary if `CTRL.wdogzerocmp` is also set and not enough time has passed for
+the interrupt to be reasserted.
+. Writing `KEY` again. Feeding or writing `COUNT` consumes the unlock, and
+feeding leaves `wdogip0` set.
+. Writing `CTRL` with `wdogip0` (bit 28) at zero and its other fields unchanged.
 
 .WDT example C definitions.
 [source,sourceCode,c]
@@ -622,6 +697,7 @@ CPU's behalf, with messages fed in from SMC memory.
 The UARTs and Log Engines sit within the UART Controller block. Within this
 block, there are 4 UART and Log Engine pairs.
 
+[[smc-uart]]
 ===== UART
 
 The UART baud rate is configured by writing the 16-byte clock divisor value
@@ -718,8 +794,8 @@ void uart_configure_nofifo(void) {
     // Write configuration to LCR, and enable DLAB to configure baud rate.
     write32(UART_REG_LCR, uart_config | UART_LCR_DLAB);
 
-    // Calculate clock divisor for the intended baud rate.
-    uint16_t divisor = div_ceil(CLOCK_FREQUENCY, 16 * TARGET_BAUD) - 1;
+    // Calculate clock divisor for the intended baud rate, rounded to nearest.
+    uint16_t divisor = (CLOCK_FREQUENCY + 8 * TARGET_BAUD) / (16 * TARGET_BAUD) - 1;
 
     // Write divisor bytes to DLL and DLM.
     write32(UART_REG_DLL, (uint32_t)((uint8_t)divisor));
@@ -770,8 +846,8 @@ void uart_configure_fifo(void) {
     // Write uart configuration to LCR, and enable DLAB to configure baud rate.
     write32(UART_REG_LCR, uart_config | UART_LCR_DLAB);
 
-    // Calculate clock divisor for the intended baud rate.
-    uint16_t divisor = div_ceil(CLOCK_FREQUENCY, 16 * TARGET_BAUD) - 1;
+    // Calculate clock divisor for the intended baud rate, rounded to nearest.
+    uint16_t divisor = (CLOCK_FREQUENCY + 8 * TARGET_BAUD) / (16 * TARGET_BAUD) - 1;
 
     // Write divisor bytes to DLL and DLM.
     write32(UART_REG_DLL, (uint32_t)((uint8_t)divisor));
@@ -799,6 +875,101 @@ void uart_write_fifo(const char *str) {
 }
 ----
 
+[[smc-uart-reconfiguration]]
+====== Reconfiguring Baud Rate and Frame
+
+. Quiesce the data path. Wait for `LSR.TEMT` if queued transmit data must
+  finish, and serialize accesses so that no other context uses `THR`, `RBR` or
+  `IER` while `DLAB` selects the divisor view.
+. Choose a supported frame format in `LCR`. Compute
+  `divisor = round(clock_frequency / (16 * baud_rate)) - 1`, and check that it is
+  in the usable range 1 to 65535. The resulting rate is
+  `clock_frequency / (16 * (divisor + 1))`.
+. Set `LCR.DLAB`, preserving the frame format.
+. Write `DLL` and then `DLM`, then clear `DLAB` before any data or `IER`
+  access. The two divisor writes are not an atomic update.
+
+At 50 MHz, 115200 baud gives divisor 26 (`0x001A`) and an actual rate of
+`50000000 / (16 * 27)`, approximately 115741 baud. Divisor zero disables both
+the transmitter and the receiver; it is not the highest-speed setting.
+
+[[smc-uart-fifo]]
+====== FIFO Control and Polled Transfers
+
+`FCR` is write-only and shares its address with the read-only `IIR`. Keep a
+software copy of the persistent `FCR` settings rather than attempting a
+read-modify-write through that address.
+
+* Changing `FCR.FIFO_ENABLE` discards buffered data.
+* Choose a receive threshold that `RX_FIFO_DEPTH` supports; an unsupported
+  selection never asserts the receive watermark.
+* Set `FCR.DMA_MODE_SELECT` only to use mode-1 DMA service indications.
+* To discard data deliberately, pulse `FCR.RCVR_FIFO_RESET` or
+  `FCR.XMIT_FIFO_RESET`, preserving the FIFO enable, DMA mode and trigger
+  settings.
+
+For conservative polled transmission, wait for `LSR.THRE`, then write no more
+than the configured transmit FIFO capacity, or one byte when FIFO mode is
+disabled. An AXI write acknowledgement does not guarantee that a full transmit
+buffer accepted the character. For reception, check `LSR.DR`, capture any line
+errors, then read `RBR`.
+
+[[smc-uart-interrupts]]
+====== Interrupt Service
+
+Program `IER` with `DLAB` clear. In the handler, read `IIR`, service its
+highest-priority source following the
+ifdef::backend-html5[]
+xref:ocah-docs:ip:uart_16550/doc/index.adoc#uart-interrupt-service-table[UART interrupt service table]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/uart_16550/doc/index.html#uart-interrupt-service-table[UART interrupt service table]
+endif::backend-pdf[]
+in the Technical Reference Manual, and repeat until `IIR.INTERRUPT_PENDING`
+reads one. Reads of `LSR` and `MSR` clear fields, and an `IIR` read acknowledges
+a `THRE` interrupt, so read each register once per pass. `MCR.OUT2` is not an
+interrupt enable in this implementation, and `IER` does not mask the receive
+timeout.
+
+[[smc-uart-flow-control]]
+====== Modem Status and Software Flow Control
+
+The UART implements no automatic flow control. The modem inputs are
+synchronized and reported in `MSR` only: the transmitter keeps sending while
+its FIFO is non-empty regardless of CTS, and the receiver never deasserts
+`rts_no` on its own. Software implements any flow control protocol.
+
+To honour CTS on the transmit side:
+
+. Enable the modem status interrupt (`IER.EDSSI`).
+. On an interrupt, read `IIR` to confirm the modem status source.
+. Read `MSR`. `MSR.CTS` reads 1 while `cts_ni` is asserted (low), that is while
+  the remote device can accept data, and `MSR.DCTS` reports a change since the
+  previous `MSR` read.
+. Stop writing `THR` while `MSR.CTS` reads 0, and resume when the next modem
+  status interrupt reports it back at 1.
+
+The four delta bits (`DCTS`, `DDSR`, `TERI`, `DDCD`) are sticky and are cleared
+by any read of `MSR`, so capture every modem input from a single read. `TERI`
+records only the trailing edge of the ring indication; the other delta bits
+record either transition. Because they are sticky, a delta bit reports a change
+even if the input has returned to its previous level by the time software reads
+it.
+
+On the receive side, throttle the remote device by clearing `MCR.RTS` (which
+drives `rts_no` high, deasserted) as the receive FIFO approaches its trigger
+level, and set it again after draining `RBR`.
+
+Both loopback modes bypass the pins, so the `MSR` level bits no longer reflect
+the modem inputs. With `MCR.LOOP` set, `MSR` is fed from the `MCR` bits (CTS from
+RTS, DSR from DTR, RI from OUT1, DCD from OUT2) and the modem outputs are
+deasserted. With `MCR.LINE_LOOPBACK` set, the modem inputs are routed straight
+back out to the modem outputs and all four `MSR` level bits read 0. With both
+bits set, the modem outputs follow line loopback while `MSR` follows system
+loopback. The delta bits and the modem status interrupt track whatever values
+are substituted.
+
+[[smc-log-engine]]
 ===== Log Engine Configuration
 
 The Log Engine is a DMA-based logging peripheral that can efficiently transfer
@@ -854,6 +1025,27 @@ See the previous section on configuring the UART.
 
 The size of memory region written to `LOG_REGION_SIZE` must be a multiple of
 128-bytes, meaning each log entry is a multiple of 8-bytes in size.
+
+[[smc-log-engine-setup]]
+The full configuration sequence is:
+
+. Start from reset or an idle engine with all pending lengths clear, and clear
+  `CTRL.EN` before changing shared configuration.
+. Allocate a readable region with an 8-byte-aligned base and a size that is a
+  multiple of 128 bytes, no larger than 512 KiB. For a 4 KiB region, each of
+  the 16 slots has 256 bytes.
+. Write `LOG_REGION_SIZE` and both halves of `LOG_REGION_ADDR`. Only address
+  bits `[55:0]` are implemented; bits `[63:56]` are reserved zero.
+. Set `LOG_WRITE_ADDR` to the UART `THR` address and configure the UART. The
+  write target is not fixed in hardware; log output reaches the UART only when
+  this register points at `THR`.
+. Clear stale error status by writing `0x11` to `INTR_STATUS`. If interrupts
+  are required, write `0x11` to `INTR_ENABLE` and configure the PLIC.
+. Set `CTRL.EN`.
+
+The CPU and the Log Engine share the UART `THR` through an arbiter with no
+hardware lock. Do not write `THR` directly while the Log Engine is active, or
+CPU writes and log output interleave on the transmit path.
 
 .Log Engine and UART example C definitions.
 [source,sourceCode,c]
@@ -927,6 +1119,23 @@ Reading from the `LOG_CTRL` register array returns the number of remaining
 bytes for each log entry. A log entry has finished transmission once reading
 the corresponding `LOG_CTRL` register returns `0`.
 
+[[smc-log-engine-submit]]
+Observe these rules when submitting:
+
+* Wait for `LOG_CTRL[i].LOG_LEN` to read zero before reusing slot `i`. Writing
+  a new length to an active slot is not a queueing operation, so assign slots
+  to producers or serialize access in software. A zero length submits nothing.
+* Keep the message within the slot capacity, and make the complete final fetch
+  word readable.
+* Make the data visible to the engine using the platform's cache-maintenance
+  and memory-ordering rules before writing the length.
+* Leave the buffer and length unchanged while pending. Poll with a timeout
+  appropriate to the UART speed and the other pending messages, or check
+  completion later from a scheduler.
+* Inspect `INTR_STATUS` before treating completion as success. A slot reaching
+  zero only means the bytes were handed to the UART, not that the serial
+  transmitter is empty, and the engine advances on bus error responses too.
+
 .Log Engine example C usage.
 [source,sourceCode,c]
 ----
@@ -967,6 +1176,27 @@ only initially block while all log entries are in-use.
 As the log engine can only feed the UART transmit FIFO, message reception and
 draining the receive FIFO remains the responsibility of the cores.
 ====
+
+[[smc-log-engine-recovery]]
+===== Log Engine Error Recovery
+
+Read `INTR_STATUS` to distinguish fetch errors (`LOG_FETCH_ERR`) from write
+errors (`LOG_WRITE_ERR`), diagnose the memory or UART path, then clear the
+handled bits by writing one to them. There is no automatic retransmission, and
+because the status is shared it does not identify which pending slot failed.
+
+If progress stops, check UART readiness and outstanding bus responses. Do not
+free pending buffers solely because `CTRL.EN` was cleared: disabling clears
+neither the pending lengths nor the outstanding bus traffic, as the
+ifdef::backend-html5[]
+xref:ocah-docs:ip:log_engine/doc/index.adoc#log-engine-reset[Log Engine reset and disable behavior]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/log_engine/doc/index.html#log-engine-reset[Log Engine reset and disable behavior]
+endif::backend-pdf[]
+in the Technical Reference Manual describes. Reconcile outstanding traffic
+before reusing buffers, and account for characters already sent, since
+restarting may duplicate output.
 
 [[smc-gpio]]
 ==== GPIO
@@ -1078,6 +1308,116 @@ void gpio_configure_interrupt(size_t pin) {
 }
 ----
 
+The examples above assume that no LSIO function claims the pin. The sequences
+below cover the general case. They use register names relative to one pad's
+interface and control banks; preserve unrelated fields when updating a
+register.
+
+[[smc-gpio-register-io]]
+===== Register-Controlled Input and Output
+
+. Confirm that the shim's secondary-function override is inactive, or arrange
+  a controlled handover with that function.
+. Set `DATA_CTRL.lsio_disable = 1` to prevent an LSIO request from taking
+  the primary data and direction path.
+. With TX disabled, program the intended output value and any required
+  electrical settings. `CONTROL.config_enable = 1` selects register-based
+  electrical settings once hardware LSIO is disabled.
+. Set `DATA_CTRL.interface_enable = 1` and select `enable_rx_tx`:
+  `00` disables both paths, `01` enables TX, `10` enables RX, and `11` enables
+  both.
+. Read `DATA_CTRL.pad2core` with RX enabled to obtain the synchronized input.
+
+For bidirectional use, coordinate the release of any external driver before
+enabling TX. Input-only mode disables TX; enabling both paths allows readback
+while driving. The pad implementation determines electrical behavior and
+settling requirements.
+
+[[smc-gpio-straps]]
+===== Reading Configuration Straps
+
+After cold reset is released, read `CONTROL.strap_valid` and
+`CONTROL.strap_value` from the control bank. A set `strap_valid` means the pad
+was configured for input by default and strap capture is supported; it does not
+indicate that reset has completed. Primary reset alone does not recapture the
+strap.
+
+[[smc-gpio-interrupts]]
+===== Enabling Interrupts
+
+. Clear `DATA_CTRL.interrupt_enable` while configuring the input.
+. Ensure the selected owner enables the pad receiver. For register control,
+  use `interface_enable = 1` and `enable_rx_tx = 10`.
+. Set `DATA_CTRL.interrupt_type` from the table above.
+. Configure the receiving interrupt controller for the GPIO request, then set
+  `DATA_CTRL.interrupt_enable = 1`.
+
+A level interrupt can assert as soon as it is enabled if the selected level is
+already present. The block has no pending-event queue or software-clear bit:
+handle or mask the condition at its source.
+
+[[smc-gpio-lsio]]
+===== Selecting and Reclaiming LSIO
+
+For hardware selection, clear `DATA_CTRL.lsio_disable`. When the peripheral
+asserts its LSIO select, its data and direction take priority over
+`interface_enable` and the per-field overrides. `DATA_CTRL.lsio_enable`
+reports this gated hardware request.
+
+For software-forced selection, clear `interface_enable` and all
+`DATA_CTRL_ENABLE.use_reg_*` bits, then set `lsio_select = 1` with
+`lsio_disable = 0`. Clear `CONTROL.config_enable` as well if LSIO should supply
+the electrical settings. Software-forced LSIO ranks below register control and
+does not set `lsio_enable`.
+
+To reclaim the primary path, set `lsio_disable = 1`, then program register data
+and direction. Setting `interface_enable` alone cannot reclaim a pad whose
+hardware request remains asserted. In the SMC this includes the pads with
+permanently selected hardware functions: the I3C pads, and the isolate-request,
+boot-stall and cool-reset-out signals.
+
+[[smc-gpio-access-filter]]
+===== Configuring Access Filtering
+
+Each pin's `ACCESS_FILTER` compares the complete three-bit AXI protection value
+of a transaction against a requirement:
+
+[cols="1,2,2",options="header"]
+.AXI protection encoding
+|===
+|Bit |0 |1
+|0 |Unprivileged |Privileged
+|1 |Secure |Non-secure
+|2 |Data |Instruction
+|===
+
+Thus `0x0` is secure unprivileged data, `0x1` secure privileged data, `0x2`
+non-secure unprivileged data, and `0x3` non-secure privileged data.
+
+. Choose `ACCESS_FILTER.awprot_requirement` and `arprot_requirement` for the
+  intended writers and readers. Both reset to `0x1`.
+. Set `write_filter_enable` and/or `read_filter_enable` to enforce those
+  requirements. The current transaction must satisfy any filter already
+  enabled.
+. Read back `ACCESS_FILTER`, using a read that satisfies the resulting policy.
+  The register definition requires this readback before relying on the new
+  settings for subsequent accesses.
+. Check that permitted accesses succeed and rejected accesses return `DECERR`.
+
+The enables reset clear, so the reset requirements do not restrict access until
+enabled. Changing the write requirement can exclude the agent making the
+change, so plan the resulting read and write policy before applying it. `PROT`
+does not identify a particular initiator, and the filter protects the interface
+bank only, not the shim's control bank. The
+ifdef::backend-html5[]
+xref:ocah-docs:ip:gpio/doc/index.adoc#gpio-access-control[Register Access Filtering]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/gpio/doc/index.html#gpio-access-control[Register Access Filtering]
+endif::backend-pdf[]
+section of the GPIO chapter in the Technical Reference Manual describes the
+filter hardware.
+
 [[smc-efuse]]
 ==== eFuse
 
@@ -1124,6 +1464,51 @@ ifdef::backend-pdf[]
 _Memory Map_ section of the eFuse chapter of the Technical Reference
 Manual.
 endif::backend-pdf[]
+
+[[smc-efuse-command-path]]
+===== Command-Path Ownership
+
+After fuse sense completes, program and read requests share one command path to
+the OTP bank, and `EFUSE_PROGRAM_CTRL.program_enable` owns it whenever it is set:
+a read issued while `program_enable` is high does not reach the bank. Firmware
+must therefore assert `program_enable` and `EFUSE_READ_CTRL.read_enable`
+exclusively, never together. Treat each enable as a mode-ownership bit rather
+than sticky configuration: after `PROGRAM_DONE`, deassert `program_enable`
+before any later read, and deassert `read_enable` before starting a program.
+Address, data and the other program fields can be left as they are.
+
+[[smc-efuse-program-sequence]]
+===== Program Sequence
+
+. Confirm `EFUSE_READ_CTRL.read_enable` is 0.
+. In `EFUSE_PROGRAM_CTRL`, set `program_enable`, write the target bit address
+  to `efuse_addr`, and set `efuse_data` to 1; only ones can be programmed.
+  Optionally set `efuse_program_read_back` to verify the bit.
+. Set `efuse_program_go`.
+. Poll until `program_busy` clears and `program_done` is set.
+. Read `program_status`: 0 is success and 1 is an error. The one-bit field does
+  not distinguish failure causes.
+. Clear `program_enable`, returning the command path so a later read can
+  proceed.
+
+[[smc-efuse-read-sequence]]
+===== Read Sequence
+
+Each read command returns one 32-bit word, and addresses are bit addresses.
+There is no read-length field: to read several words, issue one command per
+word and advance the bit address by 32 each time.
+
+. Confirm `EFUSE_PROGRAM_CTRL.program_enable` is 0.
+. In `EFUSE_READ_CTRL`, set `read_enable` and write the word's bit address to
+  `efuse_addr`.
+. Set `efuse_read_go`.
+. Poll until `read_busy` clears and `read_done` is set.
+. Check `read_status` before consuming data. A read that reaches the
+  `EFUSE_READ_REQ_TIMEOUT` bound completes with `read_done` and `read_status`
+  both set.
+. Read the word from `EFUSE_READ_INTERFACE_READ_DATA`.
+. After the last word, clear `read_enable` so a later program can own the
+  command path.
 
 .eFuse example C definitions.
 [source,sourceCode,c]
@@ -1211,3 +1596,293 @@ bool efuse_read_bit(uint16_t bit_index, bool *bit_value) {
     return success;
 }
 ----
+
+[[smc-dma]]
+==== DMA Engine
+
+The SMC DMA engine copies linear or two-dimensional (strided) regions. Only
+stream bank 0 is functional: treat `NEXT_ID_1..15` and their `STATUS` and `DONE`
+registers as reserved.
+
+A read of `NEXT_ID_0` submits a transfer. Exclude it from diagnostic register
+dumps, and note that any read whose bytes include it, such as a 64-bit read at
+`0x48`, also submits. The source, destination, length, stride, repetition and
+`CONFIG` registers are shared and have no lock, so serialize their writes and
+the submission read between software contexts. Do not assume the low and high
+32-bit halves of a 64-bit field update atomically. Program unused upper bits
+as zero: the engine truncates each field to its effective width rather than
+rejecting an out-of-range value.
+
+For a linear copy, set `CONFIG.ENABLED_ND`, `NUM_REPETITIONS_LO = 1` and
+`NUM_REPETITIONS_HI = 0`. For a 2D copy, also program the source and destination
+strides and the row count. The length must be nonzero. A command with zero
+repetitions, including one with `ENABLED_ND` clear, retires a transfer ID
+without copying any data, so a retired ID alone does not prove the copy
+happened.
+
+To run a transfer:
+
+. Establish exclusive ownership of the shared configuration, and prepare the
+  source data and destination according to the platform's memory-ordering and
+  cache-maintenance rules.
+. Program `CONFIG`, both halves of each address, the length, the strides and
+  the repetition count, checking effective widths and address bounds.
+. Make the configuration writes visible, then read `NEXT_ID_0` exactly once and
+  record the returned transfer ID. The read can be backpressured until the
+  frontend accepts the request.
+. Track retirement with `DONE_0`, the most recently retired ID. With a single
+  outstanding command, wait for its ID; with several, keep an ordered software
+  record so a later retirement does not leave an equality test on an earlier
+  ID waiting forever. IDs start at 2 (`DONE_0` resets to 1) and skip zero on
+  wrap, so comparisons must be wrap-aware.
+. Apply the platform's completion-ordering and cache rules before consuming the
+  destination. Treat a timeout as a recovery decision: there is no abort
+  register.
+
+Neither frontend readiness in `STATUS_0` nor a zero `STATUS` value indicates
+completion. The DMA interrupt (PLIC ID 323) is a pulse on the falling edge of
+the engine's busy state, not one interrupt per transfer; use it as a hint to
+poll `DONE_0`.
+
+[[smc-flr-isolation]]
+==== Function-Level Reset and Isolation
+
+The hardware behavior is described in the
+ifdef::backend-html5[]
+xref:ocah-docs:smc:clk_rst.adoc#smc-function-level-reset[Function Level Reset and Isolation]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/clk_rst.html#smc-function-level-reset[Function Level Reset and Isolation]
+endif::backend-pdf[]
+section of the Technical Reference Manual. To prepare and recover from an FLR:
+
+. Program the isolation masks (`ISOLATE_REQ_PINEN_REG`, `ISOLATE_REQ_SMCEN_REG`)
+  and both FLR timing registers before enabling requests. The counts cross to
+  the reference clock domain through handshaked synchronizers, and reading them
+  back in the SMC domain does not confirm their arrival.
+. Choose `ISOLATE_REQ_FLR_COUNTER_VALUE` for the pre-reset countdown, or zero
+  for none, and a nonzero `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` for the
+  cool-reset hold. A zero hold count disables the timed reset, but an FLR edge
+  still sets the isolation latch.
+. Coordinate FLR requests in the integration: the sequencer does not queue
+  overlapping requests.
+. After the cool reset, re-establish the affected subsystem's state and satisfy
+  its isolation-release requirements.
+. Write `ISOLATE_REQ_SMC_REG` to clear the FLR isolation latch; any write with a
+  byte strobe set clears it, whatever the data. The end of the cool reset does
+  not clear it, and clearing it does not cancel a request held by
+  `ISOLATE_REQ_REG` or by the isolation pin.
+
+To isolate subsystems without a cool reset, set their bits in `ISOLATE_REQ_REG`
+and clear them to release. Software cannot start the FLR counters, and this
+request does not assert the memory-repair skip. `ISOLATE_REQ_VIS` reports the
+synchronized pin and cool-reset levels; it does not confirm that isolation has
+completed.
+
+Before reset, isolation or a clock change, quiesce the affected block following
+its own requirements. A clock gate does not drain outstanding bus traffic. The
+I2C, UART, I3C, AVSBus and telemetry windows answer `SLVERR` with read data
+`0xBADCAB1E` while their `CLOCK_GATE_CONTROL` enable is set; other gated blocks
+wake on bus activity.
+
+[[smc-axi-hang-detectors]]
+==== AXI Hang Detectors
+
+One hang detector watches each of the `sys_axi`, `sep_axi` and `data_accel`
+masters; their interrupts are OR-combined onto one PLIC source. To arm a
+detector:
+
+. Write `HANG_DET_<master>_TIMEOUT_THRESHOLD.value` with a nonzero count that
+  exceeds the longest legitimate stall on that bus. Smaller values detect a
+  hang faster.
+. Write `HANG_DET_<master>_CTRL` with `enable` and `irq_en` set.
+
+The stall count picks up the threshold when it restarts, so a threshold write
+applies to the next stall, not the one being timed. To disable a detector,
+clear `CTRL.enable`, which takes effect at once and also silences `irq_test`;
+a zero threshold takes effect only at the next restart and leaves `irq_test`
+able to assert the interrupt. Use `irq_test` only to verify the interrupt path
+during bring-up.
+
+On the combined interrupt, read the three `HANG_DET_*_CTRL` registers to
+identify the stalled master. There is no status to clear: the interrupt drops
+when that master's bus makes progress, or when its `enable` or `irq_en` is
+cleared. The CPU AXI master is covered by the watchdog instead.
+
+[[smc-dfd-capture]]
+==== Design-for-Debug and CLA
+
+The debug bus selection and the CLA event and action model are described in the
+ifdef::backend-html5[]
+xref:ocah-docs:smc:dfd.adoc#smc-dfd-cla[Design-for-Debug chapter]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/dfd.html#smc-dfd-cla[Design-for-Debug chapter]
+endif::backend-pdf[]
+of the Technical Reference Manual. To set up a capture:
+
+. Program the debug-bus mux tree one mux at a time through `DEBUG_BUS_MUX`: for
+  each level-3 (IDs 7 to 14) and level-2 (IDs 3 to 6) mux in the path, write
+  its ID to `Dbmid` with `Dbmmode` set and its lane selects.
+. Program the CLA's own mux stage through `CDbgMuxSelLo` with `DbmId` 0.
+. Program the event/action pairs (EAPs), then enable them together, so that a
+  partially programmed pair never triggers.
+
+The CLA counter values, the timestamp fields and the sink's `trDstRamWPHigh`
+are live read/write state: software writes take priority over a simultaneous
+hardware update, and later hardware updates can advance or clear them. Account
+for this when programming or testing them.
+
+[[smc-system-timer]]
+==== System Timer (OCTS)
+
+[[smc-octs-setup]]
+===== Configure and Start
+
+. Release reset on every participating timer and establish its primary or
+  secondary role. Keep the synchronization inputs inactive during setup.
+. Program compatible `CTRL` values. Keep `CREDIT_VAL > max(PULSE_WIDTH, 1)`
+  and use a nonzero secondary `STEP`. Choose pulse widths for the receiving
+  clock domains, not just the primary clock.
+. Write both halves of each timer's preset before any load event. For a common
+  initial count, use the same preset on all timers. There is no high-word
+  commit operation; a load event samples the assembled preset.
+. Enable the GPIO LSIO path with `TIMER_GPIO_ENABLE.GPIO_ENABLE = 1` where
+  used, and establish the required pad ownership and direction.
+. Write `TIMER_START.START = 1` on the primary only. Its load pulse starts
+  the secondaries after propagation and synchronization delay.
+. Check mode and count progress with a bounded wait. Inspect `CREDIT_EXPIRED`
+  and the synchronization paths; RUNNING alone does not establish alignment.
+
+For example, `CTRL = 0x0001020A` selects STEP=1, PULSE_WIDTH=2 and
+CREDIT_VAL=10. These reset settings are an example, not a timing guarantee
+for every clock ratio. Use the subsystem memory map for each instance's base.
+
+[[smc-octs-read-count]]
+===== Read a Timestamp
+
+The count occupies two live 32-bit registers with no snapshot latch.
+For a primary counting monotonically between reads, read high, low, then
+high again; retry if the high halves differ. Do not restart it during the read.
+Use a bounded retry in software if register access can stall.
+
+[source,c]
+----
+hi1 = read32(base + 0x18);  // TIMER_COUNT_HI
+lo  = read32(base + 0x14);  // TIMER_COUNT_LO
+hi2 = read32(base + 0x18);  // TIMER_COUNT_HI
+// Accept ((uint64_t)hi1 << 32) | lo only when hi1 == hi2.
+----
+
+A secondary can correct its count at a credit boundary, including backward
+corrections. The monotonic-counter retry rule alone does not guarantee an
+atomic secondary timestamp across such a correction. Applications needing
+that guarantee require a system-level coherent capture scheme.
+
+Counts use primary clock units, not inherently nanoseconds. Convert using
+the configured clock frequency. Sequential software reads of separate timers
+also include bus-access delay and are not simultaneous measurements.
+
+[[smc-octs-monitor]]
+===== Monitor and Reconfigure
+
+Read `CREDIT_EXPIRED` to observe the largest interval spent waiting for
+credit since the last clear. Write any value to start a new observation
+window. Choose thresholds from the actual clocks and credit settings;
+a universal good/warning/error scale would be misleading.
+
+If waiting exceeds the expected interval, check primary operation, pulse
+routing, GPIO ownership and capture width. Clearing the diagnostic does not
+resynchronize the timer. A missed pulse or incompatible presets requires
+coordinated recovery.
+
+Do not treat START as stop/resume. For role, preset or timing changes that
+must preserve a common epoch, coordinate all consumers, reset the timers,
+then repeat <<smc-octs-setup>>. An uncoordinated live change can disrupt pulse
+capture or move secondary timestamps backward.
+
+[[smc-telemetry-receiver]]
+==== Telemetry Receiver
+
+[[smc-telemetry-buffer]]
+===== Buffer Management
+
+. Check `STATUS.BUFFER_EMPTY` before reading.
+. Read `TELEMETRY_PROBE_ID` and `TELEMETRY_COUNTER_VLDS`, then the required valid
+  counter registers. Unused or invalid counter positions read as zero.
+. Write a one to `CTRL.BUFFER_POP` after consuming the message.
+. Repeat while the queue is nonempty.
+
+Only one software consumer should own this sequence. Reception does not stop
+when the queue fills: a new message replaces the oldest, so incoming traffic
+can replace the head while it is being read, and these reads are not an atomic
+snapshot. Producers sharing a receiver must serialize complete messages.
+
+Preserve `CTRL.BUFFER_THRESHOLD` and any outstanding TX-flush request when
+issuing a pop or RX-flush pulse. These fields share one register; a full-word
+write containing only the pulse bit would overwrite the other writable fields.
+Serialize control-register updates between software contexts.
+
+For notification on any queued message, set the threshold to zero and enable
+`INTR_ENABLE.BUFFER_THRESHOLD`. The CSR field is 12 bits, but the core compares
+only its low `$clog2(BUFFER_DEPTH)+1` bits with occupancy, so values alias modulo
+`2 * BUFFER_DEPTH`. The interrupt asserts while occupancy is strictly greater
+than the threshold and occupancy never exceeds `BUFFER_DEPTH`, so only
+thresholds 0 to `BUFFER_DEPTH - 1` can assert it. With the default depth 8,
+writing 16 acts as 0, and 8 to 15 never assert the interrupt from occupancy.
+
+[[smc-telemetry-flush]]
+===== Flush Operations
+
+* *Local discard:* pulse `CTRL.TELEMETRY_RX_FLUSH`. This discards queued messages
+  and resets assembly position, without erasing stored bytes or flushing the
+  wrapper crossing FIFO. New traffic can make the queue nonempty again.
+* *Upstream flush:* set `CTRL.TELEMETRY_TX_FLUSH` and poll until hardware clears
+  it after acknowledgement. Choose a firmware timeout appropriate to the producer;
+  the core provides no fixed completion deadline.
+
+Neither operation makes stale trailing blocks safe: producers must still
+write the full configured message footprint and invalidate unused counters.
+
+[[smc-telemetry-interrupts]]
+===== Interrupt Handling
+
+Read `INTR_STATUS` and service the enabled sources. For `BUFFER_THRESHOLD`,
+drain until occupancy is at most the threshold; clear the threshold test bit
+if software asserted it. For `MISSING_LAST`, investigate the producer's framing
+and write one to that status bit after handling the event. A receiver flush
+alone does not acknowledge this sticky interrupt.
+
+[[smc-avsbus]]
+==== AVSBus Controller
+
+The controller starts issuing slave resync operations as soon as its resets
+are released, using a divide-by-4 AVS clock, so configuration adjusts defaults
+rather than enabling the block:
+
+. If the default AVS clock is not wanted, set
+  `AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS`, write `AVS_CLOCK_SELECT`,
+  `CLK_DIVIDER_VALUE` and `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR`, then clear
+  `TURN_OFF_ALL_PREMUX_CLOCKS`.
+. Set `AVS_CFG_0.MAX_RETRIES` and `AVS_CFG_0.RESYNC_INTERVAL`.
+. Clear the `AVS_INTERRUPT_MASK` bits for the sources of interest. The register
+  is a disable mask and resets to all ones, so every source starts masked.
+. Write commands to `AVS_CMD` and collect responses from `AVS_READBACK`.
+
+A write to a full command FIFO is dropped and completes with an error response.
+When queuing commands in a burst, check `AVS_NORMAL_STATUS.CMD_FIFO_FULL` or
+`AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS` first, or detect the drop from the
+write's error response or `CMD_FIFO_OVERFLOW_INT`. Clear an interrupt by writing
+one to the matching bit of `AVS_INTERRUPT_CLEAR`, which self-clears.
+
+[[smc-i2c]]
+==== I2C Controllers
+
+The SMC I2C controllers are OpenTitan I2C cores behind an OCAH register wrapper.
+Program them following the
+https://opentitan.org/book/hw/ip/i2c/doc/programmers_guide.html[OpenTitan I2C programmer's guide]
+and its device interface functions (DIF). In addition, set the wrapper's
+`I2C_CTRL.I2C_EN` to select the I2C function on the instance's pads, and keep
+`I2C_CTRL.I2C_CONTROLLER_MODE_EN`, which sets the direction of the SMBus alert
+and suspend pads, in agreement with the role selected by `CTRL.ENABLEHOST` or
+`CTRL.ENABLETARGET`. Neither wrapper field enables the core itself.

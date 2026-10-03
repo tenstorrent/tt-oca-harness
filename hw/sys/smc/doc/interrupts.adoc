@@ -116,7 +116,14 @@ clear them. `ENABLE` instead gates capture of the first error's `CAUSE` and
 the PLIC and the ordinary per-source `mie` bits. This is not an unconditionally
 non-maskable interrupt: in machine mode, `mstatus.MIE = 0` suppresses delivery.
 The machine interrupt is enabled while executing in lower privilege modes.
-The BEU also has a separate output selected by `PLIC_ENABLE`.
+The BEU also has a separate output selected by `PLIC_ENABLE`. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-bus-error-units[Bus Error Unit service sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-bus-error-units[Bus Error Unit service sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 == Sources and Routing
 
@@ -469,46 +476,12 @@ DMA and zeroer completion indications are busy-falling pulses, not counted queue
 
 == Software Handling
 
-=== Initialization and Core Assignment
-
 ifdef::backend-html5[]
 ++++
 <span id="multi-core-interrupt-distribution-and-load-management"></span>
 <span id="multi-tier-interrupt-classification-and-response-strategy"></span>
 <span id="smc-interrupts-multi-core-interrupt-distribution-and-load-management"></span>
 <span id="smc-interrupts-multi-tier-interrupt-classification-and-response-strategy"></span>
-++++
-endif::backend-html5[]
-
-Initialize PLIC priority, enable and threshold registers before enabling delivery;
-the implementation does not hardware-reset these configuration registers.
-Initialize the CPU `mie` CSR as well before setting individual enables and
-`mstatus.MIE`. Source ownership and core assignment are firmware decisions, not
-fixed low-latency or throughput roles imposed by the hardware.
-
-Enable each source in the intended machine or supervisor context and choose a
-priority above that context's threshold. Changing a shared source priority affects
-all contexts that enable it; per-context configuration is not complete independence.
-
-=== PLIC Service Sequence
-
-. Read the handling context's claim register. A nonzero return claims one source
-  and clears its PLIC pending state; zero means no source was claimed.
-. Service the peripheral or fault source. For an OR-combined source, inspect every
-  contributing local cause that can keep the line asserted.
-. Write the claimed ID back to that context's completion register after the source
-  is serviced. Completion releases the gateway; a still-asserted source can pend again.
-. Repeat as required by the firmware's scheduling policy. Preserve context/source
-  ownership while a claim is outstanding.
-
-Claim/complete does not clear a peripheral's own sticky status and does not make
-short or repeated pulses lossless. In particular, track DMA retirement using
-`DONE_0`, not the number of observed completion interrupts.
-
-=== Local Interrupts and Fault Handling
-
-ifdef::backend-html5[]
-++++
 <span id="fault-detection-and-recovery-architecture"></span>
 <span id="precision-timer-management-and-inter-core-coordination"></span>
 <span id="smc-interrupts-fault-detection-and-recovery-architecture"></span>
@@ -516,17 +489,23 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-For CLINT timer service, update the core's compare value so the timer condition
-is no longer asserted. For a software interrupt, clear the relevant software
-interrupt state after handling the request. Neither uses a PLIC completion write.
+The PLIC priority, enable and threshold registers are not reset by hardware. A
+source's priority is shared by every context that enables it. Completion
+releases the source's gateway, so a still-asserted source pends again; claim
+and complete do not clear a peripheral's own sticky status. CLINT timer and
+software interrupts do not use PLIC completion.
 
-For BEU service, capture the cause/address and accrued status before clearing
-or rearming capture. The direct and PLIC enable paths select from the same accrued
-errors, so clearing status affects both. Watchdog recovery and CPU reset/isolation
-ordering are described in the Watchdog Timers and CPU chapters; this routing map
-does not prescribe a system recovery policy.
-
-For CPU cluster context, see
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-interrupt-control[Interrupt Control section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-interrupt-control[Interrupt Control section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the PLIC initialization and claim/complete
+sequence, CLINT timer and software interrupt service, and Bus Error Unit
+service. Watchdog recovery and CPU reset/isolation ordering are described in
+the Watchdog Timers and CPU chapters. For CPU cluster context, see
 ifdef::backend-html5[]
 xref:smc:cpu.adoc#cpu-memory-system[CPU and Memory System].
 endif::backend-html5[]

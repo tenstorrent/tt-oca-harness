@@ -247,7 +247,14 @@ every core is released.
 
 === Drain Handshake
 
-A software reset through `CPU_CTRL.RESET_CTRL`, whether a core or uncore reset
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-core-reset-sequence[per-core reset sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-core-reset-sequence[per-core reset sequence]
+endif::backend-pdf[]
+in the Programmer's Guide gives the firmware steps. A software reset through `CPU_CTRL.RESET_CTRL`, whether a core or uncore reset
 bit or a core reset pulse, proceeds as follows:
 
 . Firmware writes `RESET_CTRL`.
