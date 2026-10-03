@@ -11,7 +11,7 @@
 // drops and why; the ANNOTATION before each class repeats the reason.
 //==================================================
 
-CHECKSUM: "2582450663 3844207666"
+CHECKSUM: "2930932474 3844207666"
 MODULE: smu_wrapper
 
 ANNOTATION: "SMU-WRAPPER-TGL-AXI-USER: AXI user sideband words on the crossbar's inbound and outbound ports. The SMU neither reads nor writes them; the crossbar carries them beside the channel unchanged, so their bits toggle only when a master or the bench varies a field nothing in the SMU consumes."

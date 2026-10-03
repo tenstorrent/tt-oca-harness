@@ -11,7 +11,7 @@
 // file states each class's fact; the ANNOTATION before each class repeats it.
 //==================================================
 
-CHECKSUM: "3632852407 1616328416"
+CHECKSUM: "3127009390 1616328416"
 MODULE: smu
 
 ANNOTATION: "SMU-TGL-MEM-MACRO: data, mask, strobe, parity and ECC words of the SMC and SEP RAM, ROM and TCM interfaces. smu.sv connects each such port of u_smc and u_sep straight to its own port, smu_wrapper.sv connects that to hw/top/smc_ip_integration.sv or hw/top/sep_ip_integration.sv, where the macros are, and no SMU logic reads or writes the words; the SMC and SEP benches grade the memories. Retired by an SMU process that reads or drives these words, or the macros moving under u_smu."
@@ -1271,7 +1271,7 @@ Toggle smc_region_size_o [31] "logic smc_region_size_o[31:0]"
 ANNOTATION: "SMU-TGL-REGISTER-WIDTH: SEP region-size bits above the register field. sep_cpu_ctrl SEP_REGION_SIZE carries its size in bits [31:0] and reserves [63:32] (the generated register description), so the 56-bit port is that field zero-extended and bits [55:32] cannot move; smu.sv hands the crossbar only [31:0]. Retired by SEP_REGION_SIZE.size widening past bit 31."
 Toggle sep_region_size_o [55:32] "logic sep_region_size_o[55:0]"
 
-CHECKSUM: "2582450663 3844207666"
+CHECKSUM: "2930932474 3844207666"
 MODULE: smu_wrapper
 
 ANNOTATION: "SMU-TGL-MEM-MACRO: data, mask, strobe, parity and ECC words of the SMC and SEP RAM, ROM and TCM interfaces. smu.sv connects each such port of u_smc and u_sep straight to its own port, smu_wrapper.sv connects that to hw/top/smc_ip_integration.sv or hw/top/sep_ip_integration.sv, where the macros are, and no SMU logic reads or writes the words; the SMC and SEP benches grade the memories. Retired by an SMU process that reads or drives these words, or the macros moving under u_smu."
@@ -2394,7 +2394,7 @@ MODULE: smu_axi_xbar
 ANNOTATION: "SMU-LINE-ZERO-APERTURE-REJECTED: the zero-size arm of the crossbar aperture rule. A zero region size forms a rule with start == end (smu_axi_xbar.sv 72-74), and the address decoder's map check accepts only start < end or end == 0 (addr_decode_dync.sv 150), so a zero-size SEP or SMC aperture cannot be programmed on this bench: the check fails the run. Retired by an aperture encoding the decoder accepts for zero size."
 Block 2 "2936951333" "aperture_rule.start_addr = '1;"
 
-CHECKSUM: "3632852407 626445231"
+CHECKSUM: "3127009390 626445231"
 MODULE: smu
 
 ANNOTATION: "SMU-CONDITION-LC-SIGINT-ENCODED: the lifecycle signal-integrity error. efuse_shadow_regs.sv (282-285, 350) keeps the raw 4-bit LC_STATE and re-encodes it with prim_diff_encode_multi, so the word the SEP exports is always a valid differential pair and the decoders in sep_lifecycle_ctrl.sv and smc_efuse_wrapper.sv fire only on corruption in flight. Retired by a fault-injection bench that corrupts the exported pair."
