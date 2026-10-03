@@ -1,38 +1,45 @@
 {
   "aggregate": {
     "flows": {
-      "failing": 1,
+      "failing": 2,
       "pass_rate": 0.0,
       "passing": 0,
-      "total": 1,
+      "total": 2,
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/history.json",
-    "history_points": 15,
+    "history_points": 16,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/summary.json",
     "tests": {
-      "failing": 10,
+      "failing": 11,
       "incomplete_runs": 0,
-      "pass_rate": 91.67,
-      "passing": 110,
+      "pass_rate": 91.2,
+      "passing": 114,
       "skipped": 0,
-      "total": 120,
+      "total": 125,
       "unknown": 0
     }
   },
   "errors": [
-    "smu: runner rc=124",
-    "smu: native status=TIMEOUT",
-    "smu: normalized status=FAIL"
+    "smu: runner rc=2",
+    "smu: native status=ERROR",
+    "smu: normalized status=FAIL",
+    "smu_uvm: runner rc=1",
+    "smu_uvm: native status=FAIL",
+    "smu_uvm: normalized status=FAIL",
+    "combined: runner rc=2",
+    "combined: collector rc=1",
+    "combined: native status=MISSING",
+    "combined: normalized status=MISSING"
   ],
-  "generated_at": "2026-10-02T16:07:18.229680+00:00",
+  "generated_at": "2026-10-03T11:47:50.338188+00:00",
   "git": {
-    "commit": "dbf89ccf8ec7ba768e42448580e8621ef0727dfb",
-    "requested_ref": "dbf89ccf8ec7ba768e42448580e8621ef0727dfb"
+    "commit": "eb252a4a6d2d28fcf63636fe9e8ee6f111d433c4",
+    "requested_ref": "eb252a4a6d2d28fcf63636fe9e8ee6f111d433c4"
   },
   "jenkins": {
-    "build_number": "27",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/dashboard/27/",
+    "build_number": "28",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/dashboard/28/",
     "job_name": "tt-oca-harness/smu/dashboard",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/dashboard/"
   },
@@ -41,14 +48,42 @@
       "collector_rc": 0,
       "framework": "cocotb",
       "group": "all",
-      "mode": "regression",
-      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs/result.json",
-      "native_status": "TIMEOUT",
-      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/result.json",
+      "mode": "views",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs/cocotb/result.json",
+      "native_status": "ERROR",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/results/cocotb/result.json",
       "normalized_status": "FAIL",
       "profile": "smu",
-      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs",
-      "runner_rc": 124,
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs/cocotb",
+      "runner_rc": 2,
+      "tool": "vcs"
+    },
+    {
+      "collector_rc": 0,
+      "framework": "uvm",
+      "group": "all",
+      "mode": "views",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs/uvm/result.json",
+      "native_status": "FAIL",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/results/uvm/result.json",
+      "normalized_status": "FAIL",
+      "profile": "smu_uvm",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs/uvm",
+      "runner_rc": 1,
+      "tool": "vcs"
+    },
+    {
+      "collector_rc": 1,
+      "framework": "",
+      "group": "combine",
+      "mode": "views",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs/combined/result.json",
+      "native_status": "MISSING",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/dashboard-data/results/combined/result.json",
+      "normalized_status": "MISSING",
+      "profile": "combined",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/dashboard/vcs/smu/runs/combined",
+      "runner_rc": 2,
       "tool": "vcs"
     }
   ],
