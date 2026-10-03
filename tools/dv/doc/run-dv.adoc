@@ -1961,6 +1961,13 @@ An edit to any file the filelist reaches, including its `-f` includes, or to
 any file a build argument names, such as a coverage scope file, therefore
 rebuilds the model on the next run.
 
+A test that runs on a model built earlier in the same run, in the run's own
+process or on a cluster host, reports the model directory and fingerprint
+that build recorded instead of computing them again on its own host, so
+every test of a run names the model it ran on and the coverage merge's
+single-fingerprint rule holds (<<runner-coverage-inputs>>). A wave-debug
+rerun computes its own, since the wave format is a build input.
+
 `[build.options]` sets the sharing policy:
 
 * `cache_enabled = true` partitions the build directory by a fingerprint of
