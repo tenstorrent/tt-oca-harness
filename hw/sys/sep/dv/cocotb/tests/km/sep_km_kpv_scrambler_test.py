@@ -29,12 +29,13 @@ Checkers:
   CHK-RT     with the scrambler re-enabled, the logical index reads back the
              exact plaintext
   CHK-KEYRD  before the lock, the key register reads back the key that was
-             written: the control that gives CHK-SWWEL its meaning
+             written
   CHK-LOCKRT the round-trip still recovers the plaintext after the lock, so the
              hardware kept the key it was using
-  CHK-SWWEL  the lock's documented contract: after it, a write of a different
-             key and a write clearing ENABLE are both refused -- the round-trip
-             still returns the plaintext and ENABLE still reads 1
+  CHK-SWWEL  after the lock, a write of a different key leaves the key the
+             hardware uses unchanged (the round-trip still returns the
+             plaintext), and a write clearing ENABLE is refused (ENABLE still
+             reads 1)
 
 Anti-vacuity. "Exactly three" is the load-bearing quantifier, not "at least
 one": a write that never landed gives zero differences and fails, a read path
@@ -51,10 +52,12 @@ fixed points, so a single index mapping to itself is legal; an identity mapping
 across three seeded indices is not.
 
 The architecture document requires only that a locked key cannot be modified.
-CHK-SWWEL grades that. CHK-KEYRD reads the same register before the lock so a
-write-only register cannot make a later refused write look like a lock.
-CHK-LOCKRT shows the hardware kept the key it was using. The post-lock
-key-register data value is not claimed.
+CHK-SWWEL grades that on the key the datapath uses. The write lock on the
+KPV_SCRAMBLER_KEY register itself is not claimed: the hardware keeps its own
+copy of the key it uses, and km_kpv.rdl does not specify what the locked
+register reads, so no frontdoor observation separates a refused register write
+from a landed one. For the same reason the ROM does not read the key register
+after the lock. CHK-LOCKRT shows the hardware kept the key it was using.
 """
 
 from __future__ import annotations
@@ -187,14 +190,14 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         )
 
         # --- CHK-SWWEL --------------------------------------------------------
-        # The documented lock: a later key write and an ENABLE-clear are both
-        # refused. A lock that froze the key but let ENABLE clear would leave
-        # the vault passing plaintext through.
+        # After the lock, a later key write must not change the key the datapath
+        # uses, and an ENABLE-clear must be refused. A lock that froze the key
+        # but let ENABLE clear would leave the vault passing plaintext through.
         assert rep.refused_round_trip == expected_pt, (
             f"CHK-SWWEL FAIL: after writing a different key and clearing ENABLE on the "
             f"locked scrambler, logical index {first_logical} read back "
             f"0x{rep.refused_round_trip:08x}, expected 0x{expected_pt:08x} -- one of "
-            "the two writes was accepted"
+            "the two writes reached the datapath"
         )
         assert rep.ctrl_after_refused & kpv_scrambler_ctrl_mask("ENABLE"), (
             f"CHK-SWWEL FAIL: KPV_SCRAMBLER_CTRL reads 0x{rep.ctrl_after_refused:08x} "
@@ -202,7 +205,9 @@ class sep_km_kpv_scrambler_test(sep_base_test):
             "be set"
         )
         self.logger.info(
-            "CHK-SWWEL PASS: locked key and ENABLE both refused their writes "
-            "(CTRL=0x%08x, round-trip intact)",
+            "CHK-SWWEL PASS: after the lock, a key write left the datapath key "
+            "unchanged (round-trip 0x%08x) and an ENABLE clear is refused "
+            "(CTRL=0x%08x); the KEY register lock itself is not observable frontdoor",
+            rep.refused_round_trip,
             rep.ctrl_after_refused,
         )

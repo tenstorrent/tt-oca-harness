@@ -39,19 +39,20 @@
 #   pass B: one {index, value} pair for the first logical index under the
 #           second key
 #   the round-trip word, the key register read back while still UNLOCKED, the
-#   same register read after the sticky lock, the post-lock round-trip word,
-#   then a round-trip taken AFTER attempting to rewrite both the key and the
-#   enable, and finally KPV_SCRAMBLER_CTRL itself
+#   post-lock round-trip word, then a round-trip taken AFTER attempting to
+#   rewrite both the key and the enable, and finally KPV_SCRAMBLER_CTRL itself
 #
-# That is 15 words on the healthy path (1 + 2*3 + 2 + 6) into a 16-deep
+# That is 14 words on the healthy path (1 + 2*3 + 2 + 5) into a 16-deep
 # outbound FIFO, and this image does not check for space before writing. The
 # margin only holds while the count is 3, so the host raises on a wrong count
 # before it drains the pair list -- see the collector in
 # cocotb/seq_lib/sep_km_kpv_scrambler_seq.py.
 #
-# The unlocked readback is the control for the documented lock: without it a
-# write-only register would make a later refused write look like a lock.
-# The post-lock key-register data value is not claimed.
+# The key register is not read after the lock. km_kpv.rdl does not specify
+# what a locked KPV_SCRAMBLER_KEY reads, and the hardware keeps its own copy of
+# the key it uses, so no frontdoor read shows whether the refused key write
+# reached the register. The lock is graded on the key the datapath uses and on
+# ENABLE.
 #
 # Build (output committed as ../km_rom_kpv_scrambler.parhex):
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_kpv_scrambler.parhex
@@ -248,8 +249,7 @@ found_b:
     sw    x5, MBOX_WRITE_SEP(x1)
     sw    x7, MBOX_WRITE_DATA(x1)           # round-trip word
 
-    # Read the key register while it is still unlocked. This is the control for
-    # the locked readback below.
+    # Read the key register while it is still unlocked.
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
     lw    x7, 0(x5)
     addi  x5, x0, 1
@@ -259,12 +259,6 @@ found_b:
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
     addi  x4, x0, (SCR_ENABLE | SCR_LOCK)  # taken last because it sticks
     sw    x4, 0(x5)
-
-    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
-    lw    x7, 0(x5)             # key register readback after the lock
-    addi  x5, x0, 1
-    sw    x5, MBOX_WRITE_SEP(x1)
-    sw    x7, MBOX_WRITE_DATA(x1)
 
     slli  x4, x11, WORD_SHIFT
     add   x4, x2, x4

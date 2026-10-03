@@ -8625,8 +8625,10 @@ relying on power-up values.
 the three logical indices, then disable and scan the whole file.
 . Repeat with the second key at the first index only.
 . Re-enable and read the first index back.
-. Take the sticky lock last, then read the key register and the first index
-again.
+. Read the key register, then take the sticky lock last and read the first
+index again.
+. Write a different key and clear ENABLE, then read the first index and
+`KPV_SCRAMBLER_CTRL`.
 
 *Randomization*: RANDCFG — two scrambler keys and three logical indices, drawn
 distinct, from the run seed.
@@ -8661,11 +8663,11 @@ known-zero. The zero fill is *setup*, not a wipe security checker.
 |CHK-RT
 |With the scrambler re-enabled, the logical index reads back the exact plaintext.
 |CHK-KEYRD
-|Before the lock, the key register reads back the key that was written. This is the control for CHK-SWWEL: without it a write-only register would make a later refused write look like a lock.
+|Before the lock, the key register reads back the key that was written.
 |CHK-LOCKRT
 |The round-trip still recovers the plaintext after the lock, so the hardware kept the key it was using.
 |CHK-SWWEL
-|The lock's documented contract: after it, a write of a different key and a write clearing ENABLE are both refused -- the round-trip still returns the plaintext and ENABLE still reads set.
+|After the lock, a write of a different key leaves the key the hardware uses unchanged (the round-trip still returns the plaintext), and a write clearing ENABLE is refused (ENABLE still reads set). The write lock on the `KPV_SCRAMBLER_KEY` register itself is not graded: see *Not claimed*.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -8686,9 +8688,13 @@ fixed points, so a single index mapping to itself is legal; an identity mapping
 across three seeded indices is not.
 
 The architecture document requires only that a locked key cannot be modified.
-CHK-SWWEL grades that contract. The register readback after lock is not claimed.
+CHK-SWWEL grades that contract on the key the datapath uses.
 
-*Not claimed*: the post-lock key-register data value, the eraser's use of the
+*Not claimed*: the write lock on the `KPV_SCRAMBLER_KEY` register itself, and
+the value a locked key register reads. The hardware keeps its own copy of the
+key it uses, and `km_kpv.rdl` does not specify the locked read value, so no
+frontdoor observation separates a refused key-register write from a landed one;
+the ROM does not read the register after the lock. Also not claimed: the eraser's use of the
 shared scrambler, the seal and retire contracts owned by the vault test, and
 the wipe security contract.
 
