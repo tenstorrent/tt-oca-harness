@@ -84,6 +84,6 @@ class sep_otbn_mem_smoke_seq(uvm_sequence):
     async def body(self) -> None:
         await self._check_mem_access_precondition()
         await self._write(OTBN_IMEM_BASE, OTBN_IMEM_SMOKE_WORD)
-        await self._read(OTBN_IMEM_BASE, OTBN_IMEM_SMOKE_WORD)
+        self.imem_rdata = await self._read(OTBN_IMEM_BASE, OTBN_IMEM_SMOKE_WORD)
         await self._write(OTBN_DMEM_BASE, OTBN_DMEM_SMOKE_WORD)
-        await self._read(OTBN_DMEM_BASE, OTBN_DMEM_SMOKE_WORD)
+        self.dmem_rdata = await self._read(OTBN_DMEM_BASE, OTBN_DMEM_SMOKE_WORD)

@@ -1389,7 +1389,7 @@ The `KM-SRAM-RD-LAT` log line is a measurement, not a checker: the count of KM S
 |CHK-PRECOND
 |OTBN is neither `LOCKED` nor executing when the memories are accessed, so a bus access to them is legal. This is an exclusion, not an exact-state check: any other `STATUS` value is acceptable. Bus access is diverted and flagged illegal only while OTBN executes.
 |===
-*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`), covers CHK-IMEM and CHK-DMEM as exact request/write counts. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`; CHK-ARRIVED and CHK-WRESP are that sequence's readback expectations, enforced by the shared scoreboard.
+*Evidence*: one aggregate record, `CHK-OTBN-MEM` (`cocotb/tests/otbn/sep_otbn_mem_smoke_test.py`). It covers CHK-ARRIVED as the exact request/write counter compare. It covers CHK-IMEM, CHK-DMEM and CHK-WRESP through the shared scoreboard: the sequence's two readbacks carry the written word as their expected value, and every write response must be `OKAY`. The record fails unless the scoreboard judged exactly those two readbacks and rejected no access since the sequence started, and its PASS line logs both readback values. CHK-PRECOND is the STATUS gate in `cocotb/seq_lib/sep_otbn_mem_smoke_seq.py`.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
