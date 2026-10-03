@@ -212,6 +212,14 @@ fails that C++ compile (`__PVT__MLKEM_SHARED_KEY` under `VM_COVERAGE=1`);
 5.050 compiles. Hosted weekly coverage (`.github/workflows/regress.yml`) is
 Verilator `--items cpu_stub` on the large runner, not this VCS number.
 
+`cov/config/vcs/coverage_policy.toml` sets no `[[thresholds]]` and no
+`[[holes]]`, and `sep_sim_cfg.toml` sets no `fail_under`: no
+code-metric family carries a floor, and a run's status comes from its tests.
+The policy names the compile-time scope file and the report-time exclusion
+lists. [`docs/SEP_COV_WAIVERS.adoc`](docs/SEP_COV_WAIVERS.adoc) states the RTL
+fact behind each list, and [`docs/SEP_FCOV.adoc`](docs/SEP_FCOV.adoc), "Closure
+Policy", states who reviews an exclusion and what reopens it.
+
 ```bash
 python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
   --target default --sim-jobs 32 --build-jobs 32

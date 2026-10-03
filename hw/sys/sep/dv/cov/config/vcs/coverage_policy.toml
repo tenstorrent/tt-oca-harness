@@ -1,9 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# SEP VCS coverage policy: scope only -- which hierarchy the code-coverage report
-# grades -- with no [[thresholds]] and no [[holes]]: a threshold without an agreed
-# score target would fail runs without saying anything true.
+# SEP VCS coverage policy: the report inputs for the database that
+# `sep_cov_scope.hier` scopes at compile time (`[coverage.vcs]` in
+# sep_sim_cfg.toml). It sets no [[thresholds]] and no [[holes]]: the runner
+# reports the family figures, a run's status comes from its tests, and a
+# threshold without an agreed score target would fail runs without saying
+# anything true. SEP_FCOV.adoc, "Closure Policy", states who reviews an
+# exclusion and what reopens it; SEP_COV_WAIVERS.adoc states the fact behind
+# each file below.
 #
 # Scope is NOT owned here. `-cm_hier` + `-cm_common_hier` at compile time decide
 # what enters the database and therefore what the number means; the entry below
@@ -35,6 +40,7 @@ args = ["-hier", "{path}", "-cm_common_hier"]
 # Point-level structural ties in the PeakRDL-generated regblocks. Hierarchy-level
 # scope lives in sep_cov_scope.hier; this file waives individual coverage objects
 # inside blocks that stay graded, which `-hier` cannot express.
+# SEP_COV_WAIVERS.adoc, "PeakRDL register blocks".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -43,11 +49,12 @@ apply_phase = "report"
 args = ["-elfile", "{path}"]
 
 # External-TRNG AXI-Stream payload. The stream has no master in this
-# elaboration -- sep_ip_integration.sv:773 ties the request struct to zero in
+# elaboration -- sep_ip_integration.sv:775 ties the request struct to zero in
 # RTL, not in the testbench -- so tvalid/tdata/tstrb cannot present a second
 # value on any of the three modules the struct crosses. The source-select mux
 # that consumes the stream is deliberately NOT in this file: its select is a
-# CSR field, so both arms stay graded.
+# CSR field, so both arms stay graded. SEP_COV_WAIVERS.adoc, "External TRNG
+# payload".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -58,6 +65,7 @@ args = ["-elfile", "{path}"]
 # Structurally tied inputs on the TT-owned SEP DMA wrapper. Each entry names
 # the RTL tie. Stimulus gaps stay in the denominator. Checksums come from
 # `urg -dump full_exclusions tgl` on the merged VDB, never by hand.
+# SEP_COV_WAIVERS.adoc, "SEP DMA tied inputs".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -69,6 +77,7 @@ args = ["-elfile", "{path}"]
 # VeeR IFU, LSU and debug masters and the secure DMA host port. Only ports that
 # exactly one of those masters drives are listed, and only fields no leaf moved.
 # Checksums come from `urg -dump full_exclusions tgl` on the merged VDB.
+# SEP_COV_WAIVERS.adoc, "Single-master AXI ties".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -80,6 +89,7 @@ args = ["-elfile", "{path}"]
 # outside every decode rule, initiator-index bits no connected initiator sets,
 # and fields every connected initiator ties. Fields the inbound SoC port drives
 # stay graded. Checksums come from `urg -dump full_exclusions tgl`.
+# SEP_COV_WAIVERS.adoc, "Crossbar and interconnect ties".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -90,6 +100,7 @@ args = ["-elfile", "{path}"]
 # RTL ties in the CPU wrapper, reset control, IO/SPI, watchdog, DMA, CPU control
 # regblock and mailbox unit: single-master demux and remap fields, constant
 # bridge response fields, and parameter-dead bridge branches.
+# SEP_COV_WAIVERS.adoc, "CPU, reset, IO, watchdog, DMA and mailbox ties".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -99,6 +110,7 @@ args = ["-elfile", "{path}"]
 
 # RTL ties inside sep_crypto: key-vault shim and AHB bridge ties, constant
 # OTBN OTP key, DRBG stream strobe, alert ping lines and constant TL-UL fields.
+# SEP_COV_WAIVERS.adoc, "sep_crypto ties".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -108,6 +120,7 @@ args = ["-elfile", "{path}"]
 
 # FSM transitions that no next-state assignment reaches with the parameters SEP
 # elaborates. Reset-in-flight, error and abort transitions stay graded.
+# SEP_COV_WAIVERS.adoc, "Unreachable FSM transitions".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -118,7 +131,7 @@ args = ["-elfile", "{path}"]
 # Condition and branch terms fixed by RTL ties and SEP elaboration parameters:
 # no-stall regblock dispatch, no-error APB decode, the KM virtual-ROM decode
 # compiled out without its define, elaboration-only functions, and parameter
-# else-arms SEP fixes.
+# else-arms SEP fixes. SEP_COV_WAIVERS.adoc, "Condition and branch ties".
 [[native_files]]
 tool = "vcs"
 role = "exclude"
