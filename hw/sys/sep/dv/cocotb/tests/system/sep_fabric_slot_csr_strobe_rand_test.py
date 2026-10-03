@@ -33,7 +33,8 @@ Checkers:
                    FILTER_CONFIG.locked; then seeded writes to FILTER_CONFIG,
                    START_ADDR and END_ADDR, each chosen to move the entry if it
                    were taken, and a write of 0 to the lock bit, leave the entry
-                   unchanged. Response codes are logged, not graded.
+                   unchanged. Each of those writes completes DECERR
+                   (filter_ctrl.rdl locked).
   CHK-SLOT-FINAL   every register of every slot still holds its model value.
 
 no_cpu / +skip_fuse_sense.

@@ -71,7 +71,7 @@ args = ["+skip_fuse_sense"]
 # against the IP-XACT field model, fill also counted at each slot's register block;
 # a write and a read outstanding together on s_axi with BREADY/RREADY held and with
 # W ahead of AW; every filter entry locked, then refused writes leave
-# it unchanged (response code logged). RANDCFG: order, sizes, data, fill and
+# it unchanged (each refused write graded DECERR). RANDCFG: order, sizes, data, fill and
 # channel delays from the run seed. no_cpu; +skip_fuse_sense.
 name = "sep_fabric_slot_csr_strobe_rand_test"
 module = "system.sep_fabric_slot_csr_strobe_rand_test"
@@ -476,10 +476,10 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # Intra-block dead-space decode on CSR windows larger than REG_MAP_SIZE
 # (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI), and the
-# adopter TRNG window, whose refusal flavour is logged, not graded.
+# adopter TRNG window, where every access is graded DECERR.
 # An access past allocated size must be refused and must not change a
-# live register; do not XFAIL. CHK-DEADSPACE-BURST asserts the same refusal
-# on a later beat of a burst that ends past the window's extent.
+# live register; do not XFAIL. CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST
+# grade bursts in the crypto region, which refuses every beat DECERR.
 # no_cpu; +skip_fuse_sense.
 name = "sep_fabric_deadspace_decode_test"
 module = "system.sep_fabric_deadspace_decode_test"
