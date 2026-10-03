@@ -12,6 +12,12 @@
 :revdate: 2026-06-11
 :title-page-background-image: image:../../trm/assets/TT_Cover_Image.png[fit=cover]
 
+[[appnotes-about]]
+== About this Guide
+
+These application notes describe how the OCA Harness subsystems work together
+in complete system scenarios, across subsystem and chiplet boundaries.
+
 ifdef::backend-html5[]
 == Available notes
 
