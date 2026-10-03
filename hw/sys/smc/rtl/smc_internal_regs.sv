@@ -423,24 +423,28 @@ module smc_internal_regs #(
     // the select is sampled with locked already set. Reads are not held.
     smc_pkg::smc_axil_32_64_req_t  gated_req;
     smc_pkg::smc_axil_32_64_resp_t gated_resp;
-    logic write_pending_q;
+    logic aw_valid, aw_ready;
     logic filter_reg_aw_select;
 
-    always_ff @(posedge outbound_filter_clk or negedge rst_primary_smc_clk_ni) begin
-      if (!rst_primary_smc_clk_ni) begin
-        write_pending_q <= 1'b0;
-      end else if (gated_req.aw_valid && gated_resp.aw_ready) begin
-        write_pending_q <= 1'b1;
-      end else if (gated_resp.b_valid && gated_req.b_ready) begin
-        write_pending_q <= 1'b0;
-      end
-    end
+    stream_throttle #(
+      .MaxNumPending (1)
+    ) u_outbound_filter_aw_throttle (
+      .clk_i       (outbound_filter_clk),
+      .rst_ni      (rst_primary_smc_clk_ni),
+      .req_valid_i (outbound_filter_axi_lite_reqs[f].aw_valid),
+      .req_valid_o (aw_valid),
+      .req_ready_i (gated_resp.aw_ready),
+      .req_ready_o (aw_ready),
+      .rsp_valid_i (gated_resp.b_valid),
+      .rsp_ready_i (outbound_filter_axi_lite_reqs[f].b_ready),
+      .credit_i    (1'b1)
+    );
 
     always_comb begin
       gated_req                                  = outbound_filter_axi_lite_reqs[f];
-      gated_req.aw_valid                         = outbound_filter_axi_lite_reqs[f].aw_valid && !write_pending_q;
+      gated_req.aw_valid                         = aw_valid;
       outbound_filter_axi_lite_resps[f]          = gated_resp;
-      outbound_filter_axi_lite_resps[f].aw_ready = gated_resp.aw_ready && !write_pending_q;
+      outbound_filter_axi_lite_resps[f].aw_ready = aw_ready;
       // If filter is locked, block writes but allow reads
       filter_reg_aw_select = outbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value
                              && (gated_req.aw_valid || gated_req.w_valid);
@@ -612,24 +616,28 @@ module smc_internal_regs #(
     // the select is sampled with locked already set. Reads are not held.
     smc_pkg::smc_axil_32_64_req_t  gated_req;
     smc_pkg::smc_axil_32_64_resp_t gated_resp;
-    logic write_pending_q;
+    logic aw_valid, aw_ready;
     logic filter_reg_aw_select;
 
-    always_ff @(posedge inbound_filter_clk or negedge rst_primary_smc_clk_ni) begin
-      if (!rst_primary_smc_clk_ni) begin
-        write_pending_q <= 1'b0;
-      end else if (gated_req.aw_valid && gated_resp.aw_ready) begin
-        write_pending_q <= 1'b1;
-      end else if (gated_resp.b_valid && gated_req.b_ready) begin
-        write_pending_q <= 1'b0;
-      end
-    end
+    stream_throttle #(
+      .MaxNumPending (1)
+    ) u_inbound_filter_aw_throttle (
+      .clk_i       (inbound_filter_clk),
+      .rst_ni      (rst_primary_smc_clk_ni),
+      .req_valid_i (inbound_filter_axi_lite_reqs[f].aw_valid),
+      .req_valid_o (aw_valid),
+      .req_ready_i (gated_resp.aw_ready),
+      .req_ready_o (aw_ready),
+      .rsp_valid_i (gated_resp.b_valid),
+      .rsp_ready_i (inbound_filter_axi_lite_reqs[f].b_ready),
+      .credit_i    (1'b1)
+    );
 
     always_comb begin
       gated_req                                 = inbound_filter_axi_lite_reqs[f];
-      gated_req.aw_valid                        = inbound_filter_axi_lite_reqs[f].aw_valid && !write_pending_q;
+      gated_req.aw_valid                        = aw_valid;
       inbound_filter_axi_lite_resps[f]          = gated_resp;
-      inbound_filter_axi_lite_resps[f].aw_ready = gated_resp.aw_ready && !write_pending_q;
+      inbound_filter_axi_lite_resps[f].aw_ready = aw_ready;
       // If filter is locked, block writes but allow reads
       filter_reg_aw_select = inbound_filter_ctrl_o[f].FILTER_CONFIG.locked.value
                              && (gated_req.aw_valid || gated_req.w_valid);
