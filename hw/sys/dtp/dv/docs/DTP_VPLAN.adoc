@@ -4655,7 +4655,7 @@ b. Configure the `ocah_axi_vip` subordinate to skew the channels: accept AW (rea
 * The JTAG2AXI state machine observed on the write path and on the read path under a prolonged stall (the `dtp_tb_if` path flags)
 * No premature timeout, abort, or status corruption while a legal stall is in progress
 * The settle point of each stalled operation: the AW+W write outlasts four status polls (the long-wait poll class), the AW-only write and the read settle within three (the short-wait class)
-* An unstalled write whose status is captured only after the bridge drops its pending flag reads OKAY on its first capture
+* A write with no READY stall whose status is captured only after the bridge drops its pending flag reads OKAY on its first capture
 
 *Test Procedure*:
 
@@ -4669,7 +4669,7 @@ c. Launch a single-op write while only AW ready is stalled for longer than the f
 . Issue read traffic through `OcahJtagMasterDriver`:
 a. Launch a single-op read while AR ready is stalled for longer than the first status poll; observe AR valid/address hold stable with the port's AR stall counter advancing (`CHK-J2A-STALL-HOLD`), the bridge FSM on the read path, and the first status capture reading Busy.
 b. Release the stall and confirm the returned data matches the reference model.
-. Issue an unstalled single-op write, step TCK in Run-Test/Idle until the bridge's pending flag clears, then capture SINGLE_OP and confirm OKAY with the written word in memory.
+. Issue a single-op write with no READY stall, step TCK in Run-Test/Idle until the bridge's pending flag clears, then capture SINGLE_OP and confirm OKAY with the written word in memory.
 . Verify the bridge does not declare a timeout or error during any legal stall and that each operation reaches its expected terminal status after release.
 
 *Checkers*:
