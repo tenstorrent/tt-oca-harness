@@ -27,20 +27,6 @@
 #define SMC_STRAPS_HI_REG_ADDR 0xC0405804
 
 /*
- * eFuse map addresses that registers/smc_top_regs.h gets wrong. That header still describes the
- * previous fuse map and its generator is missing from the tree, so every eFuse register the ROM
- * reads is defined here instead. Only LOCKS is still correct there.
- *
- * Do not reach for the header's SMC_EFUSE_MAP_CHIPLET_ID_* or SMC_EFUSE_MAP_PACKAGE_ID_*: those
- * registers no longer exist, and PACKAGE_ID's stale address now lands inside I2C_I3C_ID.
- *
- * Mirror of the generated regs/gen/c/smc_addr.h symbols SMC_TOP_SMC_EFUSE_MAP_<REG>_BASE_ADDR.
- */
-#define SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(idx) (0xC0007028 + ((idx)*8))
-#define SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR 0xC0007070
-#define SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR 0xC0007078
-
-/*
  * Strap Bit Definitions
  * From tt_smc_master_chiplet_config_pkg.sv
  */
