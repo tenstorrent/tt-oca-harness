@@ -2612,7 +2612,7 @@ reaches its wait before the interrupt fires.
 . Check the software reset register default, which is `0x7E`: the Key Manager is held and OTBN, AES, HMAC, KMAC, the TRNG and Adams Bridge come up released. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The TRNG is not parked, because it supplies entropy rather than requesting it. The firmware then probes each per-IP reset wire, including the shared TRNG bit: assert the bit, confirm the register goes to its reset value, release, confirm it is writable again.
 . Perform a bad write and a bad read of the unmapped gap, with settling in between; expect two bus-error interrupts.
 . Configure the watchdog with small bark and bite thresholds; enable.
-. On the first bark the handler clears and disables; confirm the count is frozen non-zero, pet returns it to zero, and it stays zero while disabled.
+. On the first bark the handler clears and disables. After one settle window of 40000 core cycles (`mcycle`, ten watchdog ticks at the bench clocks) for the disable to cross the register CDC, confirm the count reads the same non-zero value before and after one more window, pet returns it to zero, and it still reads zero after one more window.
 . Re-enable; confirm a second bark, then let it run on to bite.
 
 *Checkers*:
@@ -2627,7 +2627,7 @@ reaches its wait before the interrupt fires.
 |CHK-WDT-CLEAR
 |The handler clears the bark state and disables the watchdog.
 |CHK-WDT-PET
-|The count is frozen non-zero, petting returns it to zero, and it stays zero while disabled.
+|Disabled, after one 40000-cycle `mcycle` settle window, the count reads the same non-zero value across one more window, petting returns it to zero, and it still reads zero after the same window. Each window spans ten watchdog ticks, more than one refresh of the bus-side count copy through the register CDC. The line logs each count and each measured window in core cycles.
 |CHK-WDT-REBARK
 |Re-enabling fires a second bark — the mechanism is re-armable, not one-shot.
 |CHK-BITE

@@ -14,8 +14,9 @@
 //     each raise a bus-error NMI; exactly two must be counted.
 //
 // Phase B, watchdog:
-//   * the first bark fires the NMI and the handler disables the watchdog; the
-//     count is then frozen non-zero, a pet clears it, and it stays 0;
+//   * the first bark fires the NMI and the handler disables the watchdog; after
+//     one settle window the count reads the same non-zero value across
+//     WDT_HOLD_MCYCLE, a pet clears it, and it reads 0 across WDT_HOLD_MCYCLE;
 //   * after re-enable the second bark fires, and the watchdog runs on to bite,
 //     whose reset request the testbench checks.
 //
@@ -98,6 +99,31 @@
 #define WDT_BITE_SIM 10u
 
 #define NMI_WAIT_ITERS 200000
+
+// Core cycles of each watchdog hold window. The bench runs clk_i at 1.25 ns and
+// clk_wdt_i at 5000 ns (cocotb/env/sep_env_cfg.py), so one watchdog tick is
+// 4000 core cycles and this window spans ten of them. WDOG_COUNT reads return
+// a bus-side copy that the register CDC (prim_reg_cdc, DstWrReq) refreshes
+// when the counter moves, one handshake at a time, so a read can lag the
+// counter by several ticks; the window covers more than one refresh, and the
+// disable write needs the same crossing before the count stops.
+#define WDT_HOLD_MCYCLE 40000u
+
+static inline uint32_t rd_mcycle(void) {
+    uint32_t c;
+    __asm__ volatile("csrr %0, mcycle" : "=r"(c));
+    return c;
+}
+
+// Spin for at least n core cycles; returns the cycles that elapsed.
+static uint32_t wait_mcycle(uint32_t n) {
+    uint32_t start = rd_mcycle();
+    uint32_t now;
+    do {
+        now = rd_mcycle();
+    } while ((uint32_t)(now - start) < n);
+    return now - start;
+}
 
 static volatile uint32_t g_bad_addr_nmi = 0;
 static volatile uint32_t g_wdt_bark = 0;
@@ -324,30 +350,57 @@ int main(void) {
         sep_mbx_puts("CHK-WDT-CLEAR PASS: INTR_STATE.bark cleared and WDOG_CTRL disabled\n");
     }
 
-    // CHK-WDT-PET: WDT is disabled -> count is frozen non-zero; pet -> 0; stays 0.
-    uint32_t cnt = wdt_get_count();
+    // CHK-WDT-PET: WDT is disabled -> after one window for the disable and
+    // the last count refresh to cross the CDC, the count reads the same non-zero
+    // value across one more window; pet -> 0; it reads 0 across one more window.
     int pet_ok = 1;
+    uint32_t settle_cyc = wait_mcycle(WDT_HOLD_MCYCLE);
+    uint32_t cnt = wdt_get_count();
+    uint32_t frz_cyc = wait_mcycle(WDT_HOLD_MCYCLE);
+    uint32_t cnt2 = wdt_get_count();
     if (cnt == 0u) {
-        sep_mbx_puts("FAIL: WDT count 0 before pet (expected non-zero)\n");
+        sep_mbx_puts("CHK-WDT-PET FAIL: WDT count 0 before pet (expected non-zero)\n");
+        errors++;
+        pet_ok = 0;
+    } else if (cnt2 != cnt) {
+        sep_mbx_puts("CHK-WDT-PET FAIL: disabled WDT count moved ");
+        sep_mbx_puthex(cnt);
+        sep_mbx_puts(" -> ");
+        sep_mbx_puthex(cnt2);
+        sep_mbx_putc('\n');
         errors++;
         pet_ok = 0;
     }
     wdt_pet();
-    if (wdt_get_count() != 0u) {
-        sep_mbx_puts("FAIL: WDT pet did not clear count\n");
+    uint32_t pet_cnt = wdt_get_count();
+    if (pet_cnt != 0u) {
+        sep_mbx_puts("CHK-WDT-PET FAIL: WDT pet did not clear count ");
+        sep_mbx_puthex(pet_cnt);
+        sep_mbx_putc('\n');
         errors++;
         pet_ok = 0;
     }
-    for (volatile int i = 0; i < 500; i++) {
-        __asm__ volatile("nop");
-    }
-    if (wdt_get_count() != 0u) {
-        sep_mbx_puts("FAIL: disabled WDT kept counting\n");
+    uint32_t hold_cyc = wait_mcycle(WDT_HOLD_MCYCLE);
+    uint32_t hold_cnt = wdt_get_count();
+    if (hold_cnt != 0u) {
+        sep_mbx_puts("CHK-WDT-PET FAIL: disabled WDT kept counting ");
+        sep_mbx_puthex(hold_cnt);
+        sep_mbx_putc('\n');
         errors++;
         pet_ok = 0;
     }
     if (pet_ok) {
-        sep_mbx_puts("CHK-WDT-PET PASS: count frozen non-zero, pet->0, stays 0 while disabled\n");
+        sep_mbx_puts("CHK-WDT-PET PASS: disabled, after ");
+        sep_mbx_puthex(settle_cyc);
+        sep_mbx_puts(" mcycles settle, count ");
+        sep_mbx_puthex(cnt);
+        sep_mbx_puts(" == ");
+        sep_mbx_puthex(cnt2);
+        sep_mbx_puts(" across ");
+        sep_mbx_puthex(frz_cyc);
+        sep_mbx_puts(" mcycles; pet -> 0, still 0 after ");
+        sep_mbx_puthex(hold_cyc);
+        sep_mbx_puts(" mcycles\n");
     }
 
     // Re-enable and wait for the 2nd bark; then let it run on to BITE (the cocotb
