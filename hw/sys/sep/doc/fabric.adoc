@@ -212,10 +212,8 @@ After the alias remap, traffic routing is done as follows:
 
 * External or cross-subsystem traffic reaches SEP through the global
   aperture described by `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE`.
-  The current `SEP_REGION_SIZE` reset is `0x0100_0000` (16 MiB), and
-  firmware programs the runtime value during early boot to match the
-  chiplet map. Barrier is recommended between programming these routing
-  CSRs and issuing later MMIO accesses.
+  The current `SEP_REGION_SIZE` reset is `0x0100_0000` (16 MiB); the
+  runtime value is software-programmed to match the chiplet map.
 * SEP CPU local-alias traffic is an internal CPU-side view of the SEP
   map. It exists so software can use high alias addresses such as
   `0xD000_0000` for resources whose direct internal addresses begin at
@@ -224,9 +222,15 @@ After the alias remap, traffic routing is done as follows:
 * Any transaction that doesn’t get routed to local resources is directly
 routed out to the SMN.
 
-To compute global addresses for external agents, firmware needs the
-chiplet ID or chiplet BAR for the integration. Both the chiplet ID and
-chiplet BAR are available in SMC as MMRs.
+Both the chiplet ID and chiplet BAR are available in SMC as MMRs. The
+Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence]
+endif::backend-pdf[]
+.
 
 [[sep-traffic-filter-decode]]
 == Filtering and Protection
@@ -243,8 +247,17 @@ traffic, while SEP-scope debug is enabled; see
 {feature-control-vector-ref} for the `SEP_DBG` control. The
 outbound filter has no bypass and is always in effect.
 
-Firmware must not set `allow_burst` on an inbound entry that covers a
-register region ({sep-register-single-beat-ref}).
+Register regions accept single-beat accesses only
+({sep-register-single-beat-ref}), so an inbound entry covering one with
+`allow_burst` set admits bursts the target rejects. The Programmer's Guide
+gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules]
+endif::backend-pdf[]
+.
 
 The decode algorithm -- entry priority, the match conditions, the
 address range granule and its widening direction, and the response
@@ -284,19 +297,23 @@ programmed by SMC firmware and supplied to SEP/SMU integration logic.
 That aperture is independent from the SEP CPU local-alias range.
 
 Traffic not routed to local SEP or neighboring SMC resources goes to the
-SMN system NoC. Firmware selects the outbound path according to the resource:
-
-* Shared resources use AP- or STEE-controlled remappers for address translation.
-  These remappers are controlled by external software, such as the Ascalon AP.
-  Inbound filter policy must restrict the STEE remapper to STEE access.
-* External private memory and system MMIO use the direct SMN path.
+SMN system NoC, either through the AP- or STEE-controlled remappers, which
+external software such as the Ascalon AP controls, or through the direct SMN
+path.
 
 SEP outbound traffic carries a source ID in AxUSER. Both AP- and STEE-controlled
 remappers replace it with `OTHERS`. Other traffic retains the initiator's ID:
 the CPU masters drive SEP's ID, while the secure DMA master leaves AxUSER at
 zero (`OTHERS`). AxPROT, including NS, passes unchanged. The outbound filter
-checks address, NS and source ID after remapping; firmware must restrict
-`OTHERS` traffic from M-mode assets.
+checks address, NS and source ID after remapping. The Programmer's Guide
+describes how to
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[select the outbound path and restrict `OTHERS` traffic]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[select the outbound path and restrict `OTHERS` traffic]
+endif::backend-pdf[]
+.
 
 The inbound filter blocks traffic by default. Its entries reside in the system
 CSRs, reached directly by local masters and by external masters only through

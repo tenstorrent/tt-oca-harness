@@ -66,7 +66,15 @@ it. SEP firmware uses the low half at the register base offset.
 
 NOTE: This depends on the mailbox aperture staying side-effect in `mrac`.
 Clearing side-effect enables the core's load-to-load forwarding and
-speculative accesses, both of which pop entries unpredictably.
+speculative accesses, both of which pop entries unpredictably. The
+Programmer's Guide lists it among the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-mailbox-protocol[mailbox usage rules]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-mailbox-protocol[mailbox usage rules]
+endif::backend-pdf[]
+.
 
 Mailbox type is a configuration, not a hardware variant. Every mailbox is an
 identical instance of the same block; what makes one an ISS mailbox and
