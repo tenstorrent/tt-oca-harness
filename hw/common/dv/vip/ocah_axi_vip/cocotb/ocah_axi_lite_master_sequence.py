@@ -12,16 +12,22 @@ protocol-control operations (independent AW/W launch skew, deferred
 BREADY/RREADY with a response-stability check); ``write_pair_skewed_result()``
 and ``read_pair_hold_result()`` are their two-outstanding forms, which queue a
 second transaction behind the first before its response is accepted and
-report the address channel's stall cycles and stability. Tests drive the VIP
+report the address channel's stall cycles and stability.
+``pipeline_result()`` keeps any number of single-beat reads and writes in
+flight together, each beat launched on its own cycle, with BREADY and RREADY
+held after the first response. Tests drive the VIP
 through this class (or the agent's ``sequence``), never through the raw
 driver; missing operations get added here first.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any
 
 from .ocah_axi_item import (
+    OcahAxiPipelineOp,
+    OcahAxiPipelineResult,
     OcahAxiReadPairResult,
     OcahAxiReadResult,
     OcahAxiWritePairResult,
@@ -425,6 +431,70 @@ class OcahAxiLiteMasterSequence:
         self._maybe_raise("paired read from", addr_b, second.ok, second.resp, check_response)
         return OcahAxiReadPairResult(
             first=first, second=second, ar_stall_cycles=stall_cycles, ar_stable=stable
+        )
+
+    async def pipeline_result(
+        self,
+        ops: Iterable[OcahAxiPipelineOp],
+        *,
+        b_hold_cycles: int = 0,
+        r_hold_cycles: int = 0,
+        check_response: bool = True,
+        timeout_cycles: int | None = None,
+        allow_timeout: bool = False,
+    ) -> OcahAxiPipelineResult:
+        """Issue single-beat reads and writes with several in flight (UVM parity op).
+
+        Each ``OcahAxiPipelineOp`` launches its beats no earlier than its
+        channel delays, counted in cycles from the start, and no earlier than
+        the acceptance of the previous beat on the same channel, so reads and
+        writes overlap and a responder meets as many requests as it accepts.
+        BREADY and RREADY stay low until ``b_hold_cycles`` and
+        ``r_hold_cycles`` cycles after the first BVALID and RVALID. The result
+        lists one write or read result per access, in list order, with the
+        stall cycles of each request channel.
+        """
+        ops = tuple(ops)
+        cycles = self.timeout_cycles if timeout_cycles is None else int(timeout_cycles)
+        try:
+            raws, aw_stall, w_stall, ar_stall = await self.driver.pipeline(
+                ops,
+                b_hold_cycles=b_hold_cycles,
+                r_hold_cycles=r_hold_cycles,
+                timeout_cycles=cycles,
+            )
+        except TimeoutError as exc:
+            if allow_timeout:
+                return OcahAxiPipelineResult(
+                    results=tuple(
+                        self._timed_out_write(op.address)
+                        if op.direction == "write"
+                        else self._timed_out_read(op.address)
+                        for op in ops
+                    ),
+                    aw_stall_cycles=0,
+                    w_stall_cycles=0,
+                    ar_stall_cycles=0,
+                )
+            raise AssertionError(f"{self.name}: pipeline of {len(ops)} accesses timed out") from exc
+        results = []
+        for op, raw in zip(ops, raws):
+            if op.direction == "write":
+                result = self._write_result_from_raw(op.address, raw)
+                self._write_count += 1
+            else:
+                result = self._read_result_from_raw(op.address, raw)
+                self._read_count += 1
+            results.append(result)
+        for op, result in zip(ops, results):
+            self._maybe_raise(
+                f"pipelined {op.direction} at", op.address, result.ok, result.resp, check_response
+            )
+        return OcahAxiPipelineResult(
+            results=tuple(results),
+            aw_stall_cycles=aw_stall,
+            w_stall_cycles=w_stall,
+            ar_stall_cycles=ar_stall,
         )
 
     def configure(self, **kwargs: Any) -> None:

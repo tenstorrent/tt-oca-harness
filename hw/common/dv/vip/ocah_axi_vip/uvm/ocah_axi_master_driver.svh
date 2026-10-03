@@ -10,9 +10,11 @@
 // carries a `pair`, whose single-beat AW/W or AR launches as soon as the
 // first's is accepted and whose response is collected after the first's,
 // while the address channel's stall cycles and stability are sampled into
-// ax_stall_cycles / ax_stable. The item's b_ready_delay defers the BREADY
-// assert, and a nonzero r_ready_delay holds RREADY low after RVALID asserts
-// while the driver samples RDATA/RRESP stability into hold_stable.
+// ax_stall_cycles / ax_stable, or carries `ops`, single-beat reads and
+// writes that run together with each beat launched on its own cycle (see
+// do_pipeline). The item's b_ready_delay defers the BREADY assert, and a
+// nonzero r_ready_delay holds RREADY low after RVALID asserts while the
+// driver samples RDATA/RRESP stability into hold_stable.
 // cfg.protocol selects AXI4-Lite (single-beat; the driver itself ties the
 // AXI4-only request fields to the adapter contract values from ocah_axi_if's
 // header).
@@ -69,14 +71,21 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
         req.pair.source     = req.source;
         req.pair.start_time = req.start_time;
       end
-      case (req.direction)
-        OCAH_AXI_DIR_WRITE: do_write(req);
-        OCAH_AXI_DIR_READ:  do_read(req);
-        default: `uvm_error(get_type_name(), $sformatf(
-                    "unsupported direction %s", req.direction.name()))
-      endcase
+      foreach (req.ops[i]) begin
+        req.ops[i].source     = req.source;
+        req.ops[i].start_time = req.start_time;
+      end
+      if (req.ops.size() != 0) do_pipeline(req);
+      else
+        case (req.direction)
+          OCAH_AXI_DIR_WRITE: do_write(req);
+          OCAH_AXI_DIR_READ:  do_read(req);
+          default: `uvm_error(get_type_name(), $sformatf(
+                      "unsupported direction %s", req.direction.name()))
+        endcase
       req.end_time = $time;
       if (req.pair != null) req.pair.end_time = req.end_time;
+      foreach (req.ops[i]) req.ops[i].end_time = req.end_time;
       if (req.timed_out) timeout_count++;
       seq_item_port.item_done();
     end
@@ -477,6 +486,168 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       end
     join
     if (ar_timed_out || r_timed_out) flag_timeout(it, ar_timed_out ? "AR" : "R");
+  endtask
+
+  // ------------------------------------------------------------------
+  // Pipelined operation.
+  // ------------------------------------------------------------------
+
+  protected function void set_request_valid(int unsigned chan, bit value);
+    case (chan)
+      0: cfg.vif.awvalid <= value;
+      1: cfg.vif.wvalid <= value;
+      default: cfg.vif.arvalid <= value;
+    endcase
+  endfunction
+
+  protected function bit request_handshake(int unsigned chan);
+    case (chan)
+      0: return cfg.vif.mon_cb.awvalid === 1'b1 && cfg.vif.mon_cb.awready === 1'b1;
+      1: return cfg.vif.mon_cb.wvalid === 1'b1 && cfg.vif.mon_cb.wready === 1'b1;
+      default: return cfg.vif.mon_cb.arvalid === 1'b1 && cfg.vif.mon_cb.arready === 1'b1;
+    endcase
+  endfunction
+
+  // One request channel of a pipeline (0 AW, 1 W, 2 AR): each beat launches
+  // once `now`, the sampled cycles since the start, reaches its delay and the
+  // beat ahead of it has been accepted, so a due beat follows its
+  // predecessor back to back. `accepted` counts the handshakes for the
+  // response side; each READY wait is bounded by cfg.timeout_cycles.
+  protected task pipe_request(ocah_axi_item beats[$], int unsigned chan, ref int unsigned accepted,
+                              ref bit timed_out);
+    int unsigned now = 0;
+    foreach (beats[i]) begin
+      int unsigned due = (chan == 0) ? beats[i].aw_valid_delay :
+                         (chan == 1) ? beats[i].w_valid_delay : beats[i].ar_valid_delay;
+      int unsigned cycles = 0;
+      if (due > now) begin
+        set_request_valid(chan, 1'b0);
+        while (now < due) begin
+          @(cfg.vif.mon_cb);
+          now++;
+        end
+      end
+      case (chan)
+        0: drive_aw(beats[i], 1);
+        1: drive_w_beat(beats[i], 0, 1);
+        default: drive_ar(beats[i], 1);
+      endcase
+      forever begin
+        @(cfg.vif.mon_cb);
+        now++;
+        if (request_handshake(chan)) break;
+        cycles++;
+        if (cfg.timeout_cycles != 0 && cycles >= cfg.timeout_cycles) begin
+          timed_out = 1'b1;
+          set_request_valid(chan, 1'b0);
+          return;
+        end
+      end
+      accepted++;
+    end
+    set_request_valid(chan, 1'b0);
+  endtask
+
+  // BVALID or RVALID seen, bounded by cfg.timeout_cycles.
+  protected task wait_response_valid(bit is_read, output bit timed_out);
+    int unsigned cycles = 0;
+    timed_out = 1'b0;
+    forever begin
+      @(cfg.vif.mon_cb);
+      if ((is_read ? cfg.vif.mon_cb.rvalid : cfg.vif.mon_cb.bvalid) === 1'b1) return;
+      cycles++;
+      if (cfg.timeout_cycles != 0 && cycles >= cfg.timeout_cycles) begin
+        timed_out = 1'b1;
+        return;
+      end
+    end
+  endtask
+
+  // Single-beat reads and writes in flight together. Every request beat
+  // launches no earlier than its channel delay and no earlier than the
+  // acceptance of the beat ahead of it on its channel; reads and writes run
+  // independently. BREADY and RREADY stay low until it.b_ready_delay and
+  // it.r_ready_delay cycles after the first BVALID and RVALID, then the
+  // responses are collected in list order per direction. A timeout marks
+  // every op and the carrier timed out.
+  virtual task do_pipeline(ocah_axi_item it);
+    ocah_axi_item wr[$], rd[$];
+    int unsigned aw_acc, w_acc, ar_acc;
+    bit aw_to, w_to, ar_to, b_to, r_to, done;
+    foreach (it.ops[i]) begin
+      it.ops[i].resp_list.delete();
+      if (it.ops[i].direction == OCAH_AXI_DIR_WRITE) begin
+        if (it.ops[i].data_words.size() != 1) begin
+          `uvm_error(cfg.name_tag, "pipeline write carries other than one data beat")
+          return;
+        end
+        wr.push_back(it.ops[i]);
+      end else begin
+        it.ops[i].data_words.delete();
+        rd.push_back(it.ops[i]);
+      end
+    end
+    it.aw_stall_cycles = 0;
+    it.w_stall_cycles  = 0;
+    it.ar_stall_cycles = 0;
+    fork
+      begin
+        fork
+          pipe_request(wr, 0, aw_acc, aw_to);
+          pipe_request(wr, 1, w_acc, w_to);
+          pipe_request(rd, 2, ar_acc, ar_to);
+          begin : b_side
+            bit released = (it.b_ready_delay == 0);
+            cfg.vif.bready <= released;
+            foreach (wr[i]) begin
+              wait ((aw_acc > i && w_acc > i) || aw_to || w_to);
+              if (aw_to || w_to) break;
+              if (!released) begin
+                wait_response_valid(1'b0, b_to);
+                if (b_to) break;
+                repeat (it.b_ready_delay) @(cfg.vif.mon_cb);
+                cfg.vif.bready <= 1'b1;
+                released = 1'b1;
+              end
+              accept_b(wr[i], b_to);
+              if (b_to) break;
+            end
+            cfg.vif.bready <= 1'b0;
+          end
+          begin : r_side
+            bit released = (it.r_ready_delay == 0);
+            cfg.vif.rready <= released;
+            foreach (rd[i]) begin
+              wait (ar_acc > i || ar_to);
+              if (ar_to) break;
+              if (!released) begin
+                wait_response_valid(1'b1, r_to);
+                if (r_to) break;
+                repeat (it.r_ready_delay) @(cfg.vif.mon_cb);
+                cfg.vif.rready <= 1'b1;
+                released = 1'b1;
+              end
+              collect_r_beats(rd[i], r_to);
+              if (r_to) break;
+            end
+            cfg.vif.rready <= 1'b0;
+          end
+        join
+        done = 1'b1;
+      end
+      while (!done) begin
+        @(cfg.vif.mon_cb);
+        if (cfg.vif.mon_cb.awvalid === 1'b1 && cfg.vif.mon_cb.awready !== 1'b1)
+          it.aw_stall_cycles++;
+        if (cfg.vif.mon_cb.wvalid === 1'b1 && cfg.vif.mon_cb.wready !== 1'b1) it.w_stall_cycles++;
+        if (cfg.vif.mon_cb.arvalid === 1'b1 && cfg.vif.mon_cb.arready !== 1'b1)
+          it.ar_stall_cycles++;
+      end
+    join
+    if (aw_to || w_to || ar_to || b_to || r_to) begin
+      foreach (it.ops[i]) it.ops[i].timed_out = 1'b1;
+      flag_timeout(it, aw_to ? "AW" : w_to ? "W" : ar_to ? "AR" : b_to ? "B" : "R");
+    end
   endtask
 
 endclass : ocah_axi_master_driver

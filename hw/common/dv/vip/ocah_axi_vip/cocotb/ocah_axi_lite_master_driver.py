@@ -10,7 +10,9 @@ cycle-level protocol-control engines behind ``write_skewed_result`` /
 and their two-outstanding forms ``write_pair_skewed_result`` /
 ``read_pair_hold_result`` (a second transaction queued behind the first
 before its response is accepted, with the address channel's stall cycles and
-stability observed at the wires). The blocking, checked, result-returning
+stability observed at the wires), plus the scheduler behind
+``pipeline_result`` (single-beat reads and writes in flight together, each
+beat launched on its own cycle). The blocking, checked, result-returning
 API lives in `OcahAxiLiteMasterSequence`.
 """
 
@@ -77,6 +79,78 @@ class _AxChannelWatch:
         while True:
             await RisingEdge(self._clock)
             self.sample()
+
+
+class _BeatLane:
+    """Launch schedule of one request channel for ``pipeline``.
+
+    ``dues[i]`` is the earliest cycle the i-th beat may launch. In the
+    ReadOnly phase of every cycle the lane lets the backend source launch on
+    the next edge only when the next unlaunched beat is due, so a beat leaves
+    on the later of its due cycle and the acceptance of the beat ahead of it.
+    """
+
+    def __init__(self, clock, channel, valid, ready, dues: list[int]) -> None:
+        self._clock = clock
+        self._channel = channel
+        self._valid = valid
+        self._ready = ready
+        self._dues = dues
+        self.now = 0
+        self.accepted = 0
+        self.launched = 0
+        self.stall_cycles = 0
+
+    def waiting(self) -> bool:
+        """True while the next unlaunched beat is not yet due."""
+        return self.launched < len(self._dues) and self._dues[self.launched] > self.now
+
+    def arm(self) -> None:
+        self._channel.pause = not (
+            self.launched < len(self._dues) and self._dues[self.launched] <= self.now
+        )
+
+    async def run(self) -> None:
+        while True:
+            await RisingEdge(self._clock)
+            self.now += 1
+            valid = _sample_int(self._valid)
+            if valid and _sample_int(self._ready):
+                self.accepted += 1
+            elif valid:
+                self.stall_cycles += 1
+            await ReadOnly()
+            self.launched = self.accepted + _sample_int(self._valid)
+            self.arm()
+
+
+class _ReadyHold:
+    """Response-channel READY held low until ``cycles`` after the first VALID."""
+
+    def __init__(self, clock, channel, valid, cycles: int) -> None:
+        self._clock = clock
+        self._channel = channel
+        self._valid = valid
+        self._cycles = int(cycles)
+        self.counting = False
+        self.released = self._cycles == 0
+
+    def arm(self) -> None:
+        self._channel.pause = not self.released
+
+    async def run(self) -> None:
+        if self.released:
+            return
+        while True:
+            await RisingEdge(self._clock)
+            if _sample_int(self._valid):
+                break
+        self.counting = True
+        await ClockCycles(self._clock, self._cycles)
+        await ReadOnly()
+        self._channel.pause = False
+        self.counting = False
+        self.released = True
 
 
 class OcahAxiLiteMasterDriver:
@@ -538,6 +612,135 @@ class OcahAxiLiteMasterDriver:
             return event_a.data, event_b.data, hold_stable, watch.stall_cycles, watch.stable
         finally:
             r_channel.pause = False
+
+    async def pipeline(
+        self,
+        ops,
+        *,
+        b_hold_cycles: int = 0,
+        r_hold_cycles: int = 0,
+        timeout_cycles: int = 1000,
+    ):
+        """Single-beat reads and writes with several in flight; return the raw responses.
+
+        ``ops`` is a sequence of ``OcahAxiPipelineOp``. Each beat launches no
+        earlier than its channel delay, counted in cycles from the start, and
+        no earlier than the acceptance of the previous beat on its channel;
+        the read and write channels run independently. BREADY and RREADY stay
+        low until ``b_hold_cycles`` and ``r_hold_cycles`` cycles after the
+        first BVALID and RVALID, then accept every response in order. A read
+        at an unaligned address asks for the bytes up to the end of its beat.
+        Returns ``(raws, aw_stall_cycles, w_stall_cycles, ar_stall_cycles)``
+        with ``raws`` in list order. Requires idle read and write engines.
+        Raises ``TimeoutError`` after ``timeout_cycles`` cycles with no
+        handshake on any channel while no beat or READY hold is still
+        waiting on its delay.
+        """
+        write_if = self._master.write_if
+        read_if = self._master.read_if
+        if not (write_if.idle() and read_if.idle()):
+            raise RuntimeError(f"{self.name}: pipeline requires idle read and write engines")
+        if not ops:
+            raise ValueError(f"{self.name}: pipeline needs at least one access")
+        writes = []
+        reads = []
+        for index, op in enumerate(ops):
+            prot = AxiProt(int(AxiProt.NONSECURE if op.prot is None else op.prot))
+            if op.direction == "write":
+                offset, payload = self.strb_payload(op.data, op.strb)
+                address = int(op.address) + offset
+                if address % self.bytes_per_beat + len(payload) > self.bytes_per_beat:
+                    raise ValueError(
+                        f"{self.name}: pipeline write at 0x{address:X} spans two beats"
+                    )
+                writes.append((index, address, payload, prot, op))
+            elif op.direction == "read":
+                address = int(op.address)
+                length = self.bytes_per_beat - address % self.bytes_per_beat
+                reads.append((index, address, length, prot, op))
+            else:
+                raise ValueError(f"{self.name}: unknown pipeline direction {op.direction!r}")
+
+        aw_bus = self._bus.write.aw
+        w_bus = self._bus.write.w
+        b_bus = self._bus.write.b
+        ar_bus = self._bus.read.ar
+        r_bus = self._bus.read.r
+        sources = (write_if.aw_channel, write_if.w_channel, read_if.ar_channel)
+        limits = [source.queue_occupancy_limit for source in sources]
+        handshakes = (
+            (aw_bus.awvalid, aw_bus.awready),
+            (w_bus.wvalid, w_bus.wready),
+            (b_bus.bvalid, b_bus.bready),
+            (ar_bus.arvalid, ar_bus.arready),
+            (r_bus.rvalid, r_bus.rready),
+        )
+        tasks = []
+        try:
+            lanes = (
+                _BeatLane(
+                    self._clock,
+                    write_if.aw_channel,
+                    aw_bus.awvalid,
+                    aw_bus.awready,
+                    [int(op.aw_valid_delay) for *_, op in writes],
+                ),
+                _BeatLane(
+                    self._clock,
+                    write_if.w_channel,
+                    w_bus.wvalid,
+                    w_bus.wready,
+                    [int(op.w_valid_delay) for *_, op in writes],
+                ),
+                _BeatLane(
+                    self._clock,
+                    read_if.ar_channel,
+                    ar_bus.arvalid,
+                    ar_bus.arready,
+                    [int(op.ar_valid_delay) for *_, op in reads],
+                ),
+            )
+            holds = (
+                _ReadyHold(self._clock, write_if.b_channel, b_bus.bvalid, b_hold_cycles),
+                _ReadyHold(self._clock, read_if.r_channel, r_bus.rvalid, r_hold_cycles),
+            )
+            for source in sources:
+                source.queue_occupancy_limit = -1
+            for gate in (*lanes, *holds):
+                gate.arm()
+            events = [None] * len(ops)
+            for index, address, payload, prot, _ in writes:
+                events[index] = write_if.init_write(address, payload, prot=prot)
+            for index, address, length, prot, _ in reads:
+                events[index] = read_if.init_read(address, length, prot=prot)
+            tasks = [cocotb.start_soon(gate.run()) for gate in (*lanes, *holds)]
+            idle = 0
+            while not all(event.is_set() for event in events):
+                await RisingEdge(self._clock)
+                moved = any(self._sample(v) and self._sample(r) for v, r in handshakes)
+                waiting = any(lane.waiting() for lane in lanes) or any(
+                    hold.counting for hold in holds
+                )
+                idle = 0 if (moved or waiting) else idle + 1
+                if idle >= int(timeout_cycles):
+                    done = sum(event.is_set() for event in events)
+                    raise TimeoutError(
+                        f"{self.name}: pipeline stalled with {done}/{len(ops)} accesses complete"
+                    )
+            return (
+                tuple(event.data for event in events),
+                lanes[0].stall_cycles,
+                lanes[1].stall_cycles,
+                lanes[2].stall_cycles,
+            )
+        finally:
+            for task in tasks:
+                task.cancel()
+            for source, limit in zip(sources, limits):
+                source.queue_occupancy_limit = limit
+                source.pause = False
+            write_if.b_channel.pause = False
+            read_if.r_channel.pause = False
 
     async def _release_pause(self, channel, cycles: int) -> None:
         """Drop a channel's pause after ``cycles`` clock edges.
