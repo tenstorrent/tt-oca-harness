@@ -10,7 +10,8 @@
 
 /* Read the raw 8-bit differentially encoded LC_STATE register value. */
 static uint8_t smc_security_read_lc_state_raw(void) {
-    return (uint8_t)(read_reg(SMC_LC_STATE_REG_ADDR) & SMC_LC_STATE_RAW_MASK);
+    return (uint8_t)(read_reg(SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR) &
+                     CHIP_CONFIG_LC_STATE_LC_STATE_MASK);
 }
 
 /* Get the current lifecycle (LC) state from hardware */

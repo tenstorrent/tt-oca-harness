@@ -48,7 +48,8 @@ minimum_percent = 80.0
 
 # Fields urg leaves out of the wrapper's port toggle, each class with its
 # reason in the file's ANNOTATION lines. Regenerated from urg's exclusion
-# template by gen_smu_wrapper_toggle_exclusions.py; README.md lists the classes.
+# template by the companion's gen_smu_wrapper_toggle_exclusions.py; README.md
+# lists the classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -60,7 +61,7 @@ args = ["-elfile", "{path}"]
 # the condition rows and branch arms two classes name, each class with its
 # fact in the file's ANNOTATION lines. Regenerated from urg's exclusion
 # templates and the raw report of an `all` run by
-# gen_smu_cov_toggle_exclusions.py; README.md lists the classes.
+# the companion's gen_smu_cov_toggle_exclusions.py; README.md lists the classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -72,7 +73,8 @@ args = ["-elfile", "{path}"]
 # not reach covergroups, so the vendored I3C controllers' groups would otherwise
 # sit in urg's GROUP score beside the wrapper's own cov/sv covergroups.
 # Regenerated from urg's group exclusion template by
-# gen_smu_wrapper_group_exclusions.py; README.md lists the classes.
+# the companion's gen_smu_wrapper_group_exclusions.py; README.md lists the
+# classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"

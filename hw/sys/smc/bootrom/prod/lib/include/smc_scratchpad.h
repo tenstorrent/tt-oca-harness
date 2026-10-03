@@ -65,7 +65,7 @@ void smc_scratchpad_init(void);
  * @param manifest_addr Address of manifest in SRAM (must be within SRAM bounds)
  * @note Validates address range; writes 0xFFFFFFFF on invalid address
  */
-void smc_scratchpad_set_manifest_offset(uint32_t manifest_addr);
+void smc_scratchpad_set_manifest_offset(uint64_t manifest_addr);
 
 /**
  * Signal to SEP that manifest is ready

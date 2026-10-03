@@ -7,7 +7,6 @@
 
 #include "smc_efuse.h"
 #include "smc_defines.h"
-#include "smc_rom_defs.h" /* For efuse register addresses */
 
 /* Global efuse configuration structure */
 static smc_efuse_config_t g_smc_efuse = {0};
@@ -20,22 +19,15 @@ int smc_efuse_init(void) {
     /* Clear the configuration structure */
     g_smc_efuse = (smc_efuse_config_t){0};
 
-    /* Read I2C/I3C ID configuration. Each element is 64 bits and read_reg is 32, so take the
-     * low and high words separately.
-     */
-    g_smc_efuse.i3c_id_0 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(0)) |
-                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(0) + 4)) << 32);
-    g_smc_efuse.i3c_id_1 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(1)) |
-                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(1) + 4)) << 32);
-    g_smc_efuse.i3c_id_3 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(3)) |
-                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(3) + 4)) << 32);
-    g_smc_efuse.i2c_id_0 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(6)) |
-                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(6) + 4)) << 32);
-    g_smc_efuse.i2c_id_1 = read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(7)) |
-                           ((uint64_t)(read_reg(SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(7) + 4)) << 32);
+    g_smc_efuse.i3c_id_0 = read64_reg(SMC_EFUSE_MAP_I2C_I3C_ID_0__REG_ADDR);
+    g_smc_efuse.i3c_id_1 = read64_reg(SMC_EFUSE_MAP_I2C_I3C_ID_1__REG_ADDR);
+    g_smc_efuse.i3c_id_3 = read64_reg(SMC_EFUSE_MAP_I2C_I3C_ID_3__REG_ADDR);
+    g_smc_efuse.i2c_id_0 = read64_reg(SMC_EFUSE_MAP_I2C_I3C_ID_6__REG_ADDR);
+    g_smc_efuse.i2c_id_1 = read64_reg(SMC_EFUSE_MAP_I2C_I3C_ID_7__REG_ADDR);
 
     /* Timeout occupies the low word of OCCP_TRANSPORT_TIMEOUT; the high word is reserved. */
-    g_smc_efuse.transport_timeout = read_reg(SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR);
+    g_smc_efuse.transport_timeout =
+        (uint32_t)read64_reg(SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR);
 
     /* Mark as initialized */
     g_efuse_initialized = 1;

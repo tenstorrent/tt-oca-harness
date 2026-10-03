@@ -291,6 +291,4 @@ uint32_t rom_handoff_bl1(void) {
         return ROM_ERR_HANDOFF_SELFCHECK_FAILED;
     }
     jump_to_bl1(entry_addr);
-
-    return OCA_BOOT_ERR_NO_BL1; // unreachable
 }

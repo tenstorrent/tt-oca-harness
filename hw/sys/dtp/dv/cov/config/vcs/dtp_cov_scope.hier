@@ -7,12 +7,20 @@
 // reports a name that matches nothing as `VCM-HFUFR` in the compile log.
 //
 // Code coverage (line, cond, fsm, tgl, branch) grades the DUT instance with
-// everything it instantiates, the vendored cells included: the bench top, the
-// VIP interfaces, the protocol checkers and the coverage modules never enter
-// the database. `+tree` on its own restricts nothing, so the bench tree is
-// excluded first and the DUT re-admitted under it.
+// everything it instantiates, the vendored cells included, apart from the one
+// simulation-only module removed below: the bench top, the VIP interfaces, the
+// protocol checkers and the coverage modules never enter the database. `+tree`
+// on its own restricts nothing, so the bench tree is excluded first and the DUT
+// re-admitted under it.
 -tree dtp_uvm_top
 +tree dtp_uvm_top.u_dut
+
+// prim_cdc_rand_delay is the CDC jitter model that the synchronizer
+// primitives (prim_flop_2sync, prim_sync3r and their siblings) instantiate
+// only under SIMULATION; a synthesized DTP has none of it, so none of its
+// instances is graded. A compile without SIMULATION has no such module and
+// reports this line as unmatched.
+-module prim_cdc_rand_delay
 
 // Assertion coverage carries the DUT's own assertions, the `cover property`
 // points of the functional-coverage modules, and the protocol checkers

@@ -11,7 +11,23 @@ from the build filelists; regenerate it after a build and `--rebuild`, and
 fingerprinted, and VCS accepts a stale file silently.
 
     python3 tools/dv/run_dv.py --dut smu --items smoke      # any build
-    python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_scope.py
+    python3 nonfree/hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_scope.py
+
+## Generators
+
+Every `.hier` and `.el` file in this directory is generated. The generators
+are the `hw/sys/smu/dv/cov/config/vcs/` scripts of the `nonfree` companion,
+which this README names by file name: `gen_smu_cov_scope.py`,
+`gen_smu_cov_toggle_exclusions.py`, `gen_smu_wrapper_toggle_exclusions.py` and
+`gen_smu_wrapper_group_exclusions.py`. The commands in this README run them
+from the repository root with the companion at `nonfree/`. Each takes
+`--check`, which exits 1 when the committed file differs from what it would
+write. The facts stay here: the class tables below state what each class
+excludes, why, and what retires it. A reader without the companion derives
+the same files from the same merged database: urg's `-dump full_exclusions`
+templates carry every checksum and signature, the run's raw report
+(`cov/report_raw/modinfo.txt`) marks which points are uncovered where a class
+is gated on it, and the class tables say which points each class takes.
 
 ## The rule
 
@@ -108,7 +124,7 @@ run's raw report, so every checksum and signature comes from urg, and
 `--check` tells whether the committed file is stale:
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+cond+branch -report <dir>
-    python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
+    python3 nonfree/hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
         fullexclude_module.tgl <run dir>/cov/report_raw/modinfo.txt \
         --cond fullexclude_module.cond --branch fullexclude_module.branch \
         --line fullexclude_module.line
