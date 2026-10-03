@@ -15,8 +15,8 @@ Expected behaviour comes from the JTAG specification pages:
   each SIB is one bit, and an open SIB inserts its segment on the TDO side of
   its bit, the SIB bit driving the segment's scan input. The STAP chain
   hierarchy table: the I/O STAP is built with TDI lockup, the others without.
-* ``hw/ip/jtag/jtag_ptap/doc/architecture.adoc`` "Scan Path", "TDO Retiming",
-  "iJTAG Support" and "STAP selection": a TDR is selected only while its
+* ``hw/ip/jtag/jtag_ptap/doc/architecture.adoc`` "TDR Multiplexer", "TDO
+  Retiming" and "iJTAG Support": a TDR is selected only while its
   instruction is active, SELECT_IJTAG (and RUNBIST) select the iJTAG network,
   TDO is retimed on the falling edge of TCK, and with the 3DCR select set the
   STAP chain input replaces the TDR multiplexer output on IR and DR scans.
@@ -71,16 +71,18 @@ S4  I/O STAP select. Unselected, it drives no host TDO enable and holds its
     masked. Its TDO enable covers exactly the IR and DR shift TCKs, its host
     TMS follows the primary TAP on every TCK, the pad pin ``tb_stap_io_tdo``
     carries the IDCODE bits LSB first on the first 32 Shift-DR TCKs and the
-    tail after, and the extra STAP stays quiet.
+    tail and the zero fill behind it after, and the extra STAP drives no TDO
+    enable.
 
 S5  The extra STAP, the same way (run before S4). Its network IDCODE scan is
     the PTAP register, the three SIBs of the STAPs ahead of it, its bare
     return (no cell: no TDI lockup) and its own SIB: 36 cells, with the tail
     36 bits late. The pad pin ``tb_stap_extra0_tdo`` carries the three SIB
-    captures (0), then the IDCODE bits, then the tail. The selection is written with
-    Config-Hold clear in the PTAP and the STAP 3DCR, so the Test-Logic-Reset
-    S4 starts from clears it (``jtag_stap`` page, "3DCR Register"), which
-    S4's idle and "extra STAP stays quiet" checks then read.
+    captures (0), then the IDCODE bits, then the tail and the zero fill behind
+    it. The selection is written with Config-Hold clear in the PTAP and the
+    STAP 3DCR, so the Test-Logic-Reset S4 starts from clears it (``jtag_stap``
+    page, "3DCR Register"), which S4's idle check and its check that the
+    extra STAP drives no TDO enable then read.
 
 Every checked DR shift requires the PTAP TDO to be resolved on each TCK on
 which ``jtag_tdo_oen`` drives it, and the number of driven TCKs to cover the
@@ -328,6 +330,12 @@ class smu_dtp_scan_chain_boundary_seq:
             prev_tck = tck
         return counts
 
+    @staticmethod
+    def _require_window(watcher, what: str) -> None:
+        """Fail when a TCK-counting window ended before the scans it has to cover."""
+        if watcher.done():
+            raise AssertionError(f"{what}: the TCK window closed before the scan ended")
+
     async def run(self) -> None:
         dut = self.dut
         await self.cfg.reset_done.wait()
@@ -359,6 +367,7 @@ class smu_dtp_scan_chain_boundary_seq:
 
         watcher = cocotb.start_soon(self._count_selected_tcks(STAP_OBSERVE_CYCLES, pins))
         captured, expected, _ = await self._ijtag_scan(everything, 0, DR_LEN, "iJTAG SIB hold open")
+        self._require_window(watcher, "SELECT_IJTAG scan with the SIBs open")
         opened = await watcher
         self.sb.expect_eq(
             "SELECT_IJTAG scan with all three SIBs open returns the open-chain word",
@@ -382,6 +391,7 @@ class smu_dtp_scan_chain_boundary_seq:
         watcher = cocotb.start_soon(self._count_selected_tcks(2 * STAP_OBSERVE_CYCLES, pins))
         idcode = await self._checked_shift_dr(0, IDCODE_DR_WIDTH, "IDCODE with SIBs open")
         await self.jtag.shift_ir(DTP_IR_IDCODE)
+        self._require_window(watcher, "IDCODE DR scan and second IDCODE IR scan")
         counts = await watcher
         self.sb.expect_eq(
             "IDCODE reads the configured value with the iJTAG SIBs open",
@@ -494,6 +504,7 @@ class smu_dtp_scan_chain_boundary_seq:
             captured, expected, _ = await self._ijtag_scan(
                 frozenset(), 0, DR_LEN, f"iJTAG SIB capture ({label})"
             )
+            self._require_window(watcher, f"iJTAG SIB capture ({label})")
             counts = await watcher
             self.sb.expect_eq(
                 f"the scan after Update-DR returns the SIB enables and open cells ({label})",
@@ -573,7 +584,8 @@ class smu_dtp_scan_chain_boundary_seq:
         )
         self.sb.expect_eq(
             f"{STAP_TDO_PIN[name]} carries the STAP's client stream on each of the {width} "
-            f"Shift-DR TCKs: {ahead} SIB captures, the IDCODE LSB first, then the tail",
+            f"Shift-DR TCKs: {ahead} SIB captures, the IDCODE LSB first, then the tail "
+            "and the zero fill behind it",
             pad,
             expected_pad,
             evidence=checker,
@@ -599,7 +611,7 @@ class smu_dtp_scan_chain_boundary_seq:
             evidence=checker,
         )
         self.sb.expect_eq(
-            f"the {STAP_LABEL[other]} STAP beside it stays unselected",
+            f"the {STAP_LABEL[other]} STAP beside it drives no TDO enable",
             live[STAP_OEN_PIN[other]],
             0,
             evidence=checker,
@@ -651,6 +663,7 @@ class smu_dtp_scan_chain_boundary_seq:
             rise_pins=(STAP_TDO_PIN[name],),
         )
         pad = list(self.samples[STAP_TDO_PIN[name]])
+        self._require_window(watcher, f"IDCODE through the {STAP_LABEL[name]} STAP")
         return await watcher, captured, pad
 
     async def _watch_stap(

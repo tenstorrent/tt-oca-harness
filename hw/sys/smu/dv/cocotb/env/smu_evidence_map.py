@@ -389,12 +389,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-IJTAG-GATE",
             "CHK-SMU-IJTAG-GATE",
-            "under SELECT_IJTAG with all three SIBs open every host select "
-            "asserts for at least the DR shift TCKs and the scan returns "
-            "the open-chain word; from the Update-IR that loads IDCODE, "
-            "none of the three selects asserts over an IDCODE DR scan and "
-            "the IR scan of a second IDCODE load, counted on jtag_tck, and "
-            "the open-chain word returns again afterwards",
+            "under SELECT_IJTAG with all three SIBs open every host select is high on at least as "
+            "many TCKs as the scan shifts and the scan returns the open-chain word; from the "
+            "Update-IR that loads IDCODE, none of the three selects asserts over an IDCODE DR "
+            "scan and the IR scan of a second IDCODE load, counted on jtag_tck, and the "
+            "open-chain word returns again afterwards",
         ),
         (
             "CHK-SMU-IJTAG-CHAIN",
@@ -419,34 +418,29 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-STAP-IO-SELECT",
             "CHK-SMU-STAP-IO-SELECT",
-            "an unselected I/O STAP drives no TDO enable and its host TMS "
-            "holds the TMS-Hold reset value 0 on every TCK of an IDCODE "
-            "scan; selected over TAP_3DCR, a network IDCODE scan of 37 "
-            "cells (the PTAP register, the I/O STAP's TDO and TDI lockup "
-            "pair over the bare bench return, one TCK, and four SIBs) and "
-            "an 8-bit tail returns four SIB bits of 0, the masked lockup "
-            "bit, the IDCODE and the tail 37 bits late, tb_stap_io_tdo "
-            "carries the IDCODE LSB first then the tail on all 45 Shift-DR "
-            "TCKs, the enable is high on every Shift-IR and Shift-DR TCK "
-            "and low on every other TCK, read against the PTAP state, and "
-            "covers exactly the 6 + 45 shift TCKs, host TMS matches the "
-            "primary TAP on every TCK, and the extra STAP stays quiet",
+            "an unselected I/O STAP drives no TDO enable and its host TMS holds the TMS-Hold "
+            "reset value 0 on every TCK of an IDCODE scan; selected over TAP_3DCR, a network "
+            "IDCODE scan of 37 cells (the PTAP register, the I/O STAP's TDO and TDI lockup pair "
+            "over the bare bench return, one TCK, and four SIBs) and an 8-bit tail returns four "
+            "SIB bits of 0, the masked lockup bit, the IDCODE and the tail 37 bits late, "
+            "tb_stap_io_tdo carries the IDCODE LSB first then the tail and the zero fill behind "
+            "it on all 45 Shift-DR TCKs, the enable is high on every Shift-IR and Shift-DR TCK "
+            "and low on every other TCK, read against the PTAP state, and covers exactly the 6 + "
+            "45 shift TCKs, host TMS matches the primary TAP on every TCK, and the extra STAP "
+            "drives no TDO enable",
         ),
         (
             "CHK-SMU-STAP-EXTRA-SELECT",
             "CHK-SMU-STAP-EXTRA-SELECT",
-            "an unselected extra STAP drives no TDO enable and its host TMS "
-            "holds the TMS-Hold reset value 0 on every TCK of an IDCODE "
-            "scan; selected over TAP_3DCR without Config-Hold, a network "
-            "IDCODE scan of 36 cells (the PTAP register, three SIBs ahead, "
-            "the bare bench return and its own SIB) and an 8-bit tail "
-            "returns four SIB bits of 0, the IDCODE and the tail 36 bits "
-            "late, tb_stap_extra0_tdo carries three SIB captures, the "
-            "IDCODE LSB first and the tail on all 44 Shift-DR TCKs, the "
-            "enable is high on every Shift-IR and Shift-DR TCK and low on "
-            "every other TCK, read against the PTAP state, and covers "
-            "exactly the 6 + 44 shift TCKs, host TMS matches the primary "
-            "TAP on every TCK, and the I/O STAP stays quiet",
+            "an unselected extra STAP drives no TDO enable and its host TMS holds the TMS-Hold "
+            "reset value 0 on every TCK of an IDCODE scan; selected over TAP_3DCR without "
+            "Config-Hold, a network IDCODE scan of 36 cells (the PTAP register, three SIBs ahead, "
+            "the bare bench return and its own SIB) and an 8-bit tail returns four SIB bits of 0, "
+            "the IDCODE and the tail 36 bits late, tb_stap_extra0_tdo carries three SIB captures, "
+            "the IDCODE LSB first, the tail and the zero fill behind it on all 44 Shift-DR TCKs, "
+            "the enable is high on every Shift-IR and Shift-DR TCK and low on every other TCK, "
+            "read against the PTAP state, and covers exactly the 6 + 44 shift TCKs, host TMS "
+            "matches the primary TAP on every TCK, and the I/O STAP drives no TDO enable",
         ),
     ],
     "smu_dtp_bsr_ijtag_scan_test": [

@@ -5,8 +5,8 @@
 The DFD, DFT and secure-DFT iJTAG SIB hosts and the I/O and extra secondary
 TAPs leave smu_wrapper as scan_out/TDO and return as scan_in/TDI. With the
 bench closing each loop the shift path runs through those boundary pins, so
-this leaf can gate the hosts by instruction, measure the closed chain length,
-round-trip the SIB enables, and prove the extra and I/O STAP selects at
+this leaf can gate the hosts by instruction, measure the chain length with
+the SIBs open and closed, round-trip the SIB enables, and prove the extra and I/O STAP selects at
 their host pins.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
