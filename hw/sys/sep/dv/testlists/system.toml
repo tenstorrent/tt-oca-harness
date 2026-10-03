@@ -591,8 +591,9 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # AXI channel ordering, swept over the whole write-safe register inventory:
 # the three legal AW/W orderings at every register, crossed with the three
-# transfer sizes on the scratch words. Each block terminates AXI at its own
-# register adapter, so the ordering contract has to hold at each of them. An
+# transfer sizes on the scratch words. The orderings are presented at the
+# s_axi ingress and graded end to end at every register; the crossbar can
+# re-serialize a write before a block adapter sees it. An
 # adapter that latches its pending-write flag on AW accept answers OKAY while
 # dropping the data, so the cell compares the readback, not the response, and
 # a follow-on write to a second register in the block catches a stale flag

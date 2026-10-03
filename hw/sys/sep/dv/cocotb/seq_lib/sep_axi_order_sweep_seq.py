@@ -2,13 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AW/W ordering sweep across every register the export says is safe to write.
 
-A register adapter that mishandles a channel ordering does so at its own AXI
-port, and every block behind the crossbar has its own adapter, so the contract
-has to hold at each of them rather than at one scratch word. This sweep drives
-the
-three orderings at every register bit-bash already establishes as write-safe
-storage, so an adapter that only works when AW leads W is caught wherever it
-sits.
+Every block behind the crossbar has its own register adapter, so one scratch
+word does not stand for the others. This sweep presents the three orderings at
+the master port for every register bit-bash already establishes as write-safe
+storage, and grades each write end to end at that register. The crossbar can
+re-serialize a write before a block adapter sees it, so the sweep makes no
+claim about the ordering each adapter port receives.
 
 Two checks per cell, because an ordering bug has two distinct signatures:
 
