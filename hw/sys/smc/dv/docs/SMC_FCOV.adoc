@@ -49,8 +49,9 @@ response was right belongs to the checker of the leaf that reached it.
 waiver for a `user` point |`user` family of a `--dut smc --items hosted fw
 --cov` run, Verilator or VCS
 |Phase 2 functional coverage |The named set in <<smc-fcov-phase2>> |Not collected
-|Line / branch / expression |Floors in the Verilator policy (line 78.0,
-branch 75.9, expression 69.0 effective) |`--coverage-line`, `--coverage-expr`
+|Line / branch / expression |Targets, not gates: line 97.83, branch 92.58,
+expression 92.54 effective, the figures the coverage set measures. No floor
+is set |`--coverage-line`, `--coverage-expr`
 |Condition / FSM / toggle / assertion / covergroups |Commercial sign-off |VCS
 |===
 
@@ -62,12 +63,20 @@ less `rom_fw`). `hosted` alone is the toolchain-free nightly and weekly tier
 is a developer or self-hosted run. `--dut smc` already instantiates
 `smc_wrapper`; there is no second wrapper job.
 
-The numeric floors live in `cov/config/verilator/coverage_policy.toml` and
-fail `run_dv --dut smc --items hosted fw --tool verilator --cov` when unmet.
-The `user` row carries `max_unclassified_points = 0`, which fails a run on
-any point that is neither hit nor classified. The VCS policy,
-`cov/config/vcs/coverage_policy.toml`, names the exclusion files the report
-applies and grades no floor.
+`cov/config/verilator/coverage_policy.toml` carries one
+`pass:[[[thresholds]]]` row, on the `user` family, with
+`max_unclassified_points = 0`: it fails
+`run_dv --dut smc --items hosted fw --tool verilator --cov` on any point that
+is neither hit nor classified. No code-metric family carries a floor, on
+either tool. DTP and SEP each set none and say why -- a run's status comes
+from its tests, and a threshold without an agreed score target fails runs
+without saying anything true -- and the line, branch and expression
+populations here still hold unclassified vendor and generated-CPU points that
+`smc_cov_scope.vlt` cannot drop, so a floor over them would grade a
+denominator this package does not own. The figures above are what the
+coverage set measures and what a closure reading compares against. The VCS
+policy, `cov/config/vcs/coverage_policy.toml`, names the exclusion files the
+report applies and grades no floor either.
 
 Do not mix line coverage with the Phase 1 points: the line population of this
 DUT would mask them.
@@ -420,11 +429,10 @@ collector, listed in <<smc-fcov-phase2>>
 A `user` point takes no accepted waiver. A collected point the run of record
 leaves unhit is an open hole with an owner until a leaf reaches it, the point
 is corrected, or it moves to Phase 2. The code-coverage families keep their
-waivers and floors.
+waivers; they carry no floor.
 
-`\[[holes]]` and `\[[thresholds]]` are written from a measured
-`--dut smc --items hosted fw --cov` database. `expected_matches` is a hard
-count.
+`\[[holes]]` is written from a measured `--dut smc --items hosted fw --cov`
+database. `expected_matches` is a hard count.
 
 [[smc-cov-waiver]]
 ==== Waiver fields
@@ -440,9 +448,8 @@ requires:
 * `issues` when the disposition is actionable
 
 `max_unclassified_points = 0` on the `user` row is the fail-on-new-hole
-knob. line / branch / expression floors do not set that knob: those
-families still have unclassified vendor and generated-CPU points that
-`smc_cov_scope.vlt` cannot drop.
+knob, and the `user` row is the only `\[[thresholds]]` row in either policy
+(<<smc-fcov-goals>>).
 
 A waiver reaches a finished run without a simulator:
 `python3 tools/dv/run_dv.py --dut smc --run-dir <run> --waive` re-grades
@@ -554,12 +561,16 @@ environment and writes the same URG exclusion format.
 The accepted list is seeded from the merged database of the commercial-path
 `--items hosted fw` regression (<<smc-cov-paths>>), so it targets the points
 that regression left uncovered, and it runs on the RTL that produced that
-database, because the formal model and the seed must describe one RTL. A
-scheduled run of the companion's analysis seeds from the block's `smoke`
-group unless it is given a database. `smoke` is three leaves, so it leaves
-far more points uncovered than the coverage set does, and a list regenerated
-that way proves a larger exclusion set and leaves a smaller effective
-population behind it. A signoff-grade list therefore takes a hand-run
+database, because the formal model and the seed must describe one RTL.
+
+The weekly formal job re-runs the analysis, so the accepted list is
+re-validated on a schedule rather than only when someone remembers. That job
+seeds from the block's `smoke` group unless it is given a database, and
+`smoke` is three leaves: it leaves far more points uncovered than the
+coverage set does, so a list regenerated from it proves a larger exclusion
+set and leaves a smaller effective population behind it. The weekly run is
+therefore a check that an accepted entry has not become reachable, not a
+source of the accepted list. A signoff-grade list takes a hand-run
 coverage-set seed, and a list of unrecorded provenance is not one.
 
 The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
@@ -573,9 +584,10 @@ Regeneration rule: after a change to the SMC RTL file set, the list is
 regenerated from the merged database of a fresh `--items hosted fw`
 regression. Until it is, URG drops the entries of every scope whose checksum
 the change moved, and the entries of the other scopes still apply; the
-analysis's check mode over the accepted list fails when an excluded point has
-become reachable. A regenerated list takes design review before its entry
-changes, and the review accepts no entry that stimulus can reach.
+analysis's check mode over the accepted list, which the weekly formal job
+runs, fails when an excluded point has become reachable. A regenerated list
+takes design review before its entry changes, and the review accepts no entry
+that stimulus can reach.
 
 [[smc-fcov-exclusion-files]]
 === Exclusions and Limitations

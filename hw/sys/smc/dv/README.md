@@ -226,8 +226,10 @@ run as part of `occp_rom`; it still builds the harness directly, so it prints no
 
 `--cov` collects native coverage. VCS grades the SV covergroups under
 `cov/sv/` (`cov/config/vcs/`); on Verilator, `cov/config/verilator/coverage_policy.toml`
-grades the `cov/sv` cover properties in the `user` family together with line,
-branch and expression. Neither
+grades the `cov/sv` cover properties in the `user` family and reports line,
+branch and expression beside them. The `user` row is the only threshold in
+either policy: no code-metric family carries a floor, as on DTP and SEP.
+Neither
 scheduled tier collects coverage (`.github/workflows/regress.yml`): the coverage
 regression runs on the licensed flow outside hosted CI. Coverage intent, the
 VPLAN-to-FCOV traceability and the closure policy (public versus commercial
