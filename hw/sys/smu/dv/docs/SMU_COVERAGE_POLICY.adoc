@@ -33,15 +33,16 @@ targets this chapter states.
 `cov/config/verilator/smu_wrapper_coverage_policy.toml` carries no
 `\[[thresholds]]` row at all
 |Measured (Verilator, the `cov/sv` cover properties) |`all`, 120 leaves,
-Verilator 5.050: `user` 101 of 101 collected points hit
+Verilator 5.052: `user` 100 of 100 collected points hit
 (`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`, which names the commit). No
 `hosted`-only figure is recorded
 |Measured (VCS) |The run of record of epoch `smu-vcs-cov-v3`
 (`cov/config/vcs/smu_wrapper_coverage_policy.toml`) is the
-`--dut smu --tool vcs --items all --cov` run of 2026-10-02, which reports 100
-percent effective on every family it collects, the `user` cover properties
-and the code and toggle families alike. A later claim names its own run and
-quotes that run's launcher `result status=` line
+`--dut smu --tool vcs --items all --cov` run of 2026-10-02: 120 of 120 leaves
+PASS, coverage stage PASS, and every family at 100.00 percent effective with
+the policy files applied -- line 100.00, condition 100.00, branch 100.00,
+toggle 100.00, assertion 100.00, group 100.00, `user` 100.00. A later claim
+names its own run and quotes that run's launcher `result status=` line
 |===
 
 `cov/sv/` carries ten cover-property modules, 109 points in all; the counts

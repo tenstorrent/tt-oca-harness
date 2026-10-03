@@ -341,8 +341,8 @@ python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
 ## Enrollment
 
 `--dut smu` carries the regression: `all` is every entry of
-`testlists/all.toml` (101), `hosted` is the toolchain-free subset the workflows
-run (69), and the rest of `all` is the SEP firmware set.
+`testlists/all.toml` (120), `hosted` is the toolchain-free subset the workflows
+run (84), and the rest of `all` is the SEP firmware set.
 
 Every test entry of the testlist is in `all`, and every test module under
 `cocotb_wrapper/tests/` is enrolled. Names that cannot run or cannot pass on
