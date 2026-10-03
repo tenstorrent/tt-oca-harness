@@ -144,6 +144,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -172,14 +180,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -221,7 +221,11 @@ receive thresholds and a FIFO-error interrupt.</p>
 single-character operation, frame format, baud divisor and interrupt enables.
 Modem signals provide status and software-controlled outputs; CTS does not
 stop transmission and RTS does not automatically throttle reception.
-DMA-ready outputs indicate service conditions but do not themselves move data.</p>
+DMA-ready outputs indicate service conditions but do not themselves move data.
+The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-uart" class="xref page">UART section</a>
+of the Programmer&#8217;s Guide gives the configuration, interrupt service and
+flow-control procedures.</p>
 </div>
 <div id="uart-wrapper-diagram" class="imageblock">
 <div class="content">
@@ -425,7 +429,9 @@ controlled by <code>IER.EDSSI</code>.</p></td>
 </table>
 <div class="paragraph">
 <p><code>MCR.OUT2</code> does not gate <code>irq_o</code>; its modem and loopback uses are described
-in the programming section. The ITR
+in the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-uart-flow-control" class="xref page">UART modem status section</a>
+of the Programmer&#8217;s Guide. The ITR
 extension can force interrupt sources for testing. Clear test settings after
 use. Do not rely on clearing IER alone to silence the unmasked timeout source;
 use the subsystem interrupt controller when masking all delivery is required.</p>
@@ -459,7 +465,9 @@ reported in the <code>MSR</code> register in the opposite polarity (a bit reads 
 while its pin is asserted low), and a change on any of them raises the
 Modem Status Interrupt. None of them gates the datapath: this component
 implements no automatic flow control, so software must act on the
-interrupt to throttle traffic. See the Programming section.</p>
+interrupt to throttle traffic. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-uart-flow-control" class="xref page">software flow control procedure</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 </div>
 <div class="sect2">
@@ -546,145 +554,6 @@ industrial serial protocols</p>
 <p>The comprehensive interface design ensures compatibility with a wide
 range of serial communication requirements while maintaining the
 flexibility needed for diverse embedded system applications.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="uart-16550-programming"><a class="anchor" href="#uart-16550-programming"></a><a class="link" href="#uart-16550-programming">Programming</a></h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="baud-rate-and-frame-configuration"><a class="anchor" href="#baud-rate-and-frame-configuration"></a><a class="link" href="#baud-rate-and-frame-configuration">Baud Rate and Frame Configuration</a></h3>
-<span id="baud-rate-configuration"></span>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Quiesce the data path before reconfiguration; wait for <code>LSR.TEMT</code> if queued
-transmit data must finish. Serialize accesses so another context cannot use
-THR/RBR/IER while DLAB selects the divisor view.</p>
-</li>
-<li>
-<p>Choose a supported frame format in LCR. Compute
-<code>divisor = round(clock_frequency / (16 * desired_baud_rate)) - 1</code> and check
-that it is in the usable 16-bit range 1–65535.</p>
-</li>
-<li>
-<p>Set <code>LCR.DLAB=1</code> (<code>LCR</code> is at <code>0x0C</code>), preserving the selected frame format.</p>
-</li>
-<li>
-<p>Write DLL at <code>0x00</code> and DLM at <code>0x04</code>, then clear DLAB before normal data/IER
-accesses. The two divisor writes are not an atomic update.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>At 50 MHz, a requested 115200 baud gives divisor 26 (<code>0x001A</code>). The actual baud
-rate is <code>50000000 / (16 * 27)</code>, approximately 115741 baud. Divisor zero disables
-both transmitter and receiver; it is not the highest-speed setting.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="fifo-configuration"><a class="anchor" href="#fifo-configuration"></a><a class="link" href="#fifo-configuration">FIFO Configuration</a></h3>
-<div class="paragraph">
-<p><code>FCR</code> is write-only at <code>0x08</code>, sharing its address with the read-only IIR.
-Maintain a software copy of the persistent FCR settings rather than attempting
-a read-modify-write through that address.</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Set <code>FCR.FIFO_ENABLE</code> for FIFO operation; changing it discards buffered data.</p>
-</li>
-<li>
-<p>Set <code>FCR.RCVR_TRIGGER</code> and <code>ECR.RCVR_TRIGGER_MS2B</code> for the receive threshold.
-Codes 0–3 mean 1, 4, 8 and 14 characters; codes 4–11 mean 32, 64, 128, 256,
-512, 1024, 2048 and 4096. Choose a threshold supported by <code>RX_FIFO_DEPTH</code>;
-unsupported selections do not assert the receive watermark.</p>
-</li>
-<li>
-<p>Set <code>FCR.DMA_MODE_SELECT</code> if using mode-1 DMA service indications.</p>
-</li>
-<li>
-<p>When discarding data intentionally, pulse <code>FCR.RCVR_FIFO_RESET</code> or
-<code>FCR.XMIT_FIFO_RESET</code>, preserving FIFO enable, DMA mode and trigger settings.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>For conservative polled transmission, wait for <code>LSR.THRE</code>, then write no more
-than the configured FIFO capacity (one byte when FIFO mode is disabled).
-For reception, check <code>LSR.DR</code>, capture line errors and read RBR. Do not treat
-an AXI write acknowledgement as a guarantee that a full transmit buffer accepted
-a character.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="interrupt-configuration"><a class="anchor" href="#interrupt-configuration"></a><a class="link" href="#interrupt-configuration">Interrupt Configuration</a></h3>
-<div class="paragraph">
-<p>Program the required IER enables with DLAB clear. Read IIR and service its
-highest-priority source according to <a href="#uart-interrupt-service-table">UART interrupt priority and service</a>, then
-repeat until <code>INTERRUPT_PENDING</code> reads one. Take care with read-to-clear LSR/MSR
-fields and the THRE acknowledgement side effect of IIR reads. OUT2 is not an
-interrupt enable in this implementation; the receive-timeout source is not
-masked by IER.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="modem-status-and-flow-control"><a class="anchor" href="#modem-status-and-flow-control"></a><a class="link" href="#modem-status-and-flow-control">Modem Status and Flow Control</a></h3>
-<div class="paragraph">
-<p>The component does not implement automatic flow control. The <code>cts_ni</code>,
-<code>dsr_ni</code>, <code>ri_ni</code> and <code>dcd_ni</code> inputs are synchronized and reported in the
-<code>MSR</code> register only - the transmitter keeps sending while the TX FIFO is
-non-empty regardless of CTS, and the receiver never deasserts <code>rts_no</code> on
-its own. Any flow control protocol must therefore be driven by software.</p>
-</div>
-<div class="paragraph">
-<p>To use CTS-based flow control on the transmit side:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Enable the Modem Status Interrupt by setting EDSSI=1 in IER (0x04)</p>
-</li>
-<li>
-<p>On an interrupt, read IIR (0x08) to confirm the Modem Status source</p>
-</li>
-<li>
-<p>Read MSR (0x18). <code>MSR.CTS</code> reads <code>1</code> while <code>cts_ni</code> is asserted (low),
-that is, while the remote device can accept data. <code>MSR.DCTS</code> indicates
-CTS changed since the previous MSR read</p>
-</li>
-<li>
-<p>Stop writing THR while <code>MSR.CTS</code> reads <code>0</code>, and resume when the next
-Modem Status Interrupt reports it back at <code>1</code></p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>The four delta bits (DCTS, DDSR, TERI, DDCD) are sticky and are cleared by
-any read of MSR, including a read that only intended to sample one of them.
-TERI records only the trailing edge of ring indication; the other delta bits
-record either transition. A single read must therefore be used to capture the state of every modem
-input. Because they are sticky, a change is still reported even if the input
-returns to its previous level before software gets to the read - the delta
-bit records that something moved, while the level bits only show where the
-input ended up.</p>
-</div>
-<div class="paragraph">
-<p>On the receive side, software throttles the remote device by clearing
-<code>MCR.RTS</code> (which drives <code>rts_no</code> high, deasserted) when the RX FIFO
-approaches its trigger level, and setting it again after draining RBR.</p>
-</div>
-<div class="paragraph">
-<p>Both loopback modes bypass the pins, so the MSR level bits no longer reflect
-the modem inputs. With <code>MCR.LOOP</code> set, MSR is fed internally from the MCR
-bits (CTS from RTS, DSR from DTR, RI from OUT1, DCD from OUT2) and the modem
-outputs are deasserted. With <code>MCR.LINE_LOOPBACK</code> set, the modem inputs are
-routed straight back out to the modem outputs and all four MSR level bits
-read <code>0</code>. If both bits are set at once the two paths resolve priority
-differently: the modem outputs follow line loopback, while MSR follows system
-loopback. Delta bits and the Modem Status Interrupt track whatever values are
-substituted.</p>
 </div>
 </div>
 </div>

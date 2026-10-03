@@ -82,7 +82,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -101,7 +101,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -110,6 +110,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -145,14 +153,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../../../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -164,7 +164,7 @@
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="index.html">Entropy Source</a></li>
   </ul>
 </nav>
@@ -232,7 +232,10 @@ routes one of 256 internal signals to <code>signal_monitor_o</code>.</p>
 proportion and Markov tests, and the main state machine is OpenTitan&#8217;s
 <code>entropy_src_main_sm</code>. Their internal structure is described in the
 <a href="https://opentitan.org/book/hw/ip/entropy_src/">OpenTitan entropy source</a>
-documentation.</p>
+documentation.
+The Programmer&#8217;s Guide gives the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#ocah-trng-bring-up" class="xref page">programming guidance</a>
+for this block.</p>
 </div>
 <div class="paragraph">
 <p>The entropy source is designed according to guidelines set forth in the
@@ -384,7 +387,7 @@ domain and grey lines are in the <code>clk_i</code> domain or are controls.
 <p><code>HT_WATERMARK</code> is one shared register whose source and maximum/minimum direction are selected by <code>HT_WATERMARK_NUM</code>; there is no independent storage per selector. A selector write changes which counter updates the shared register but does not clear it, so changing only the selector carries the value recorded by the previous mode.</p>
 </div>
 <div class="paragraph">
-<p>The shared watermark is armed by a <code>CTRL.MODULE_ENABLE</code> 0-to-1 transition. High modes (<code>REPCNT_HI</code>, <code>APT_HI</code>, and <code>MARKOV_HI</code>) arm to <code>0x0000</code>; low modes (<code>APT_LO</code> and <code>MARKOV_LO</code>) arm to <code>0xFFFF</code>. A hardware reset restores the selector and watermark together. Software that needs a deterministic baseline must write <code>HT_WATERMARK_NUM</code> before toggling <code>MODULE_ENABLE</code>. With the reset-default <code>MODULE_ENABLE=1</code>, the power-on enable pulse performs the first mode-aware arm automatically.</p>
+<p>The shared watermark is armed by a <code>CTRL.MODULE_ENABLE</code> 0-to-1 transition. High modes (<code>REPCNT_HI</code>, <code>APT_HI</code>, and <code>MARKOV_HI</code>) arm to <code>0x0000</code>; low modes (<code>APT_LO</code> and <code>MARKOV_LO</code>) arm to <code>0xFFFF</code>. A hardware reset restores the selector and watermark together, so a deterministic baseline requires <code>HT_WATERMARK_NUM</code> to be written before the <code>MODULE_ENABLE</code> toggle. With the reset-default <code>MODULE_ENABLE=1</code>, the power-on enable pulse performs the first mode-aware arm automatically.</p>
 </div>
 </div>
 </div>
@@ -417,7 +420,7 @@ domain and grey lines are in the <code>clk_i</code> domain or are controls.
 <p>The <code>entropy_stream_data_o</code> and <code>entropy_stream_vld_o</code> top-level ports carry each word as it is written into the FIFO, not the FIFO read data, and there is no backpressure. In SEP they connect to the DRBG seed path, which distributes the generated random data to the entropy consumers.</p>
 </div>
 <div class="paragraph">
-<p>Because the FIFO holds the same words that seed the DRBG, <code>FIFO_CTRL.ENABLE</code> is covered by <code>FIPS_LOCK</code>. The field gates only the FIFO write, so the DRBG seed stream continues whatever its value. It resets to one, keeping the <code>FIFO_RDATA</code> read path live out of reset. To close that path on a locked part, software clears <code>FIFO_CTRL.ENABLE</code>, reads <code>FIFO_RDATA</code> until <code>FIFO_STATUS.LEVEL</code> is zero, and then sets <code>FIPS_LOCK.LOCK</code>. Reads remain available while writes are disabled, so words already in the FIFO stay readable until they are drained.</p>
+<p>Because the FIFO holds the same words that seed the DRBG, <code>FIFO_CTRL.ENABLE</code> is covered by <code>FIPS_LOCK</code>. The field gates only the FIFO write, so the DRBG seed stream continues whatever its value. It resets to one, keeping the <code>FIFO_RDATA</code> read path live out of reset; the TRNG bring-up sequence in the Programmer&#8217;s Guide closes it before <code>FIPS_LOCK</code>. Reads remain available while writes are disabled, so words already in the FIFO stay readable until they are drained.</p>
 </div>
 </div>
 </div>

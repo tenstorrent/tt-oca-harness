@@ -101,16 +101,25 @@
     <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -129,6 +138,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -161,14 +178,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -244,8 +253,8 @@ is used in preference to the engine&#8217;s software key registers whenever
 <div class="paragraph">
 <p>The delivered key is most-significant-bit justified in the engine&#8217;s 1024-bit
 key field, and the engine takes its key length from <code>CFG.key_length</code>, which the
-delivery path does not write. Software shall program <code>CFG.key_length</code> to the
-256-bit encoding to match the delivered key. An unset or unsupported length
+delivery path does not write; only the 256-bit encoding matches the delivered
+key. An unset or unsupported length
 raises a configuration error when hashing starts. A supported length that
 disagrees with the delivered key does not raise an error: the engine takes key
 material from the top of the 1024-bit field, so the padding below the delivered
@@ -254,7 +263,11 @@ key is mixed into the key and the resulting digest is wrong but repeatable.</p>
 <div class="paragraph">
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC
-documentation</a> for the authoritative core functionality of the IP. The
+documentation</a> for the authoritative core functionality of the IP.
+The Programmer&#8217;s Guide gives the
+<a href="../index.html#sep-hmac" class="xref page">programming guidance</a>
+for this block.
+The
 register map follows below.</p>
 </div>
 </div>

@@ -145,6 +145,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -173,14 +181,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -252,7 +252,9 @@ equals its ID, and its lane selects while <code>Dbmid</code> equals its ID and i
 is 1. Each lane select is a binary index: 0 passes input lane <em>n</em> to output
 lane <em>n</em>, and 1 to 4 select input lanes 4 to 7. The CLA&#8217;s own stage,
 programmed through <code>CDbgMuxSelLo</code> with <code>DbmId</code> 0, decodes its selects the
-same way, so 1 to 12 select CLA input lanes 4 to 15.</p>
+same way, so 1 to 12 select CLA input lanes 4 to 15. The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-dfd-capture" class="xref page">capture set-up sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 <div class="paragraph">
 <p>Bit 0 of <code>xtrig_clk_halt_mask</code> in the DFX CSRs masks the CLA cross-trigger
@@ -471,8 +473,8 @@ mux drives.</p>
 <p>The CLA counter values and timestamp fields are software-writable. Software
 writes take priority over simultaneous hardware updates; later hardware updates
 can advance or clear them according to their configured controls. The sink&#8217;s
-<code>trDstRamWPHigh</code> register likewise accepts software writes. Treat these as live
-read/write state when programming or testing them, not read-only status.</p>
+<code>trDstRamWPHigh</code> register likewise accepts software writes. These are live
+read/write state, not read-only status.</p>
 </div>
 <div class="paragraph">
 <p>The generated <code>smc_cla</code> map is the programmer view of this aperture (see

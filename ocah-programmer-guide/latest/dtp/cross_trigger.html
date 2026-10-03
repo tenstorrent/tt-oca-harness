@@ -100,16 +100,25 @@
     <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -128,6 +137,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -160,14 +177,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -207,8 +216,8 @@ provide wire-OR or point-to-point signaling at the chiplet boundary.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The CTN combines Cross-Trigger Matrices (CTMs) and Cross-Trigger Ports (CTPs).
-Configure the port modes, then the matrix routes, for the required event path before
-enabling the participating debug sources.</p>
+The port modes are configured before the matrix routes for an event path, and
+both before the participating debug sources are enabled.</p>
 </div>
 </div>
 </div>
@@ -235,11 +244,9 @@ the unified register map; its component chapters describe routing and handshakes
 <p><a href="../ip/cross_trigger_network/doc/index.html#ctn-memory-map" class="xref page">CTN Register Map</a></p>
 </div>
 <div class="paragraph">
-<p>The CTN Programming section gives the configuration sequence for the port modes
-and matrix routes referenced above.</p>
-</div>
-<div class="paragraph">
-<p><a href="../ip/cross_trigger_network/doc/index.html#ctn-programming" class="xref page">CTN Programming</a></p>
+<p>The Programmer&#8217;s Guide gives the
+<a href="../index.html#dtp-cross-trigger" class="xref page">cross-trigger programming sequence</a>
+for the port modes and matrix routes referenced above.</p>
 </div>
 </div>
 </div>

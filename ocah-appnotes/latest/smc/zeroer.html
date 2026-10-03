@@ -83,7 +83,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -102,7 +102,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -111,6 +111,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -146,14 +154,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -165,7 +165,7 @@
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="zeroer.html">Zeroer</a></li>
   </ul>
 </nav>
@@ -405,7 +405,9 @@ address issuance. AXI <code>AWREADY</code> and <code>WREADY</code> provide downs
 <p>The response channel is consumed without checking <code>BRESP</code>. Completion means
 that all responses have arrived, not that every write succeeded. The internal
 error state handles an illegal state-machine encoding, not AXI bus errors.
-Software requiring verified clearing must use an independent verification path.</p>
+The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-zeroer-general-use" class="xref page">Memory Zeroer procedure</a>
+in the Programmer&#8217;s Guide covers validating a request and verifying a clear.</p>
 </div>
 </div>
 <div class="sect2">
@@ -525,11 +527,6 @@ and start a zeroing operation.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTRL_STATUS.INT_EN</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Enables the completion pulse</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Validation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Software must validate destination, length, permissions, and
-address arithmetic before starting</p></td>
 </tr>
 </tbody>
 </table>

@@ -145,6 +145,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -173,14 +181,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -511,36 +511,12 @@ stays closed and remains a one-bit stage that captures 0, whatever is shifted
 into it.</p>
 </div>
 <div class="paragraph">
-<p>To reach a segment through the iJTAG network:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Shift SELECT_IJTAG, or RUNBIST to run BIST, into the instruction register
-using the IR-Scan sequence.</p>
-</li>
-<li>
-<p>Shift three bits into TDI using the DR-Scan sequence, starting with the least
-significant bit, to open the target SIB: 3&#8217;b100 for DFT Secure, 3&#8217;b010 for
-DFT Non-Secure or 3&#8217;b001 for DFD. The target SIB&#8217;s disable field must be
-clear.</p>
-</li>
-<li>
-<p>Shift the lengthened DR into TDI using the DR-Scan sequence, starting with
-the least significant bit, with the target SIB&#8217;s bit held at 1. With the DFT
-Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits long: bit 0 is
-the DFD SIB, bits N to 1 are the segment with the bit nearest its scan output
-at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the DFT Secure
-SIB. The contents and length of each segment are defined by the network
-attached to its ports.</p>
-</li>
-<li>
-<p>The captured contents of the same scan path shift out on TDO.</p>
-</li>
-<li>
-<p>To close the SIB, shift the same DR with the target SIB&#8217;s bit at 0.</p>
-</li>
-</ol>
+<p>With the DFT Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits
+long: bit 0 is the DFD SIB, bits N to 1 are the segment with the bit nearest its
+scan output at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the
+DFT Secure SIB. The network attached to each segment&#8217;s ports defines its
+contents and length. The Programmer&#8217;s Guide gives the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#dtp-ijtag-access" class="xref page">segment access sequence</a>.</p>
 </div>
 <div class="sect3">
 <h4 id="dft-secure-chain"><a class="anchor" href="#dft-secure-chain"></a><a class="link" href="#dft-secure-chain">DFT Secure Chain</a></h4>

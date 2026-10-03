@@ -146,6 +146,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -175,14 +183,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -438,32 +438,10 @@ configuration and read back as zero.</p></td>
 <h3 id="sending-and-receiving"><a class="anchor" href="#sending-and-receiving"></a><a class="link" href="#sending-and-receiving">3.3. Sending and Receiving</a></h3>
 <span id="integration-requirements"></span>
 <span id="mailbox-integration-requirements-table"></span>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Assign one software producer and consumer per direction, or serialize shared
-access. The register interface does not allocate FIFO ownership to clients.</p>
-</li>
-<li>
-<p>Before sending, check the aperture&#8217;s write-full status, then write <code>WRITE_DATA</code>.
-Handle <code>SLVERR</code> if another writer consumed the space in between.</p>
-</li>
-<li>
-<p>Before receiving, check read-empty status, then read <code>READ_DATA</code>. Each successful
-read consumes one word; status and data accesses are not one atomic operation.</p>
-</li>
-<li>
-<p>Read <code>ERROR_FLAGS</code> once to capture any access errors, then separately acknowledge
-<code>IRQS[2]</code> if interrupt status was set. Avoid diagnostic reads that unintentionally
-consume data or clear error information.</p>
-</li>
-</ol>
-</div>
 <div class="paragraph">
-<p>To receive an interrupt for any available data, program <code>RIRQT=0</code>, service or
-acknowledge old status, and enable <code>IRQEN[1]</code>. Drain received words before
-acknowledging <code>IRQS[1]</code>; a remaining live condition can set it again. Coordinate
-FIFO flushes with the peer because a flush discards words already queued for it.</p>
+<p>The register interface does not allocate FIFO ownership to clients, and status
+and data accesses are not one atomic operation. The Programmer&#8217;s Guide gives the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#sep-smc-mailbox-protocol" class="xref page">mailbox usage rules</a>.</p>
 </div>
 </div>
 </div>

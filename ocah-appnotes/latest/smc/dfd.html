@@ -83,7 +83,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -102,7 +102,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -111,6 +111,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -146,14 +154,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -165,7 +165,7 @@
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="dfd.html">Design-for-Debug (DFD) and Core Logic Analyzer (CLA)</a></li>
   </ul>
 </nav>
@@ -222,7 +222,9 @@ equals its ID, and its lane selects while <code>Dbmid</code> equals its ID and i
 is 1. Each lane select is a binary index: 0 passes input lane <em>n</em> to output
 lane <em>n</em>, and 1 to 4 select input lanes 4 to 7. The CLA&#8217;s own stage,
 programmed through <code>CDbgMuxSelLo</code> with <code>DbmId</code> 0, decodes its selects the
-same way, so 1 to 12 select CLA input lanes 4 to 15.</p>
+same way, so 1 to 12 select CLA input lanes 4 to 15. The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-dfd-capture" class="xref page">capture set-up sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 <div class="paragraph">
 <p>Bit 0 of <code>xtrig_clk_halt_mask</code> in the DFX CSRs masks the CLA cross-trigger
@@ -441,8 +443,8 @@ mux drives.</p>
 <p>The CLA counter values and timestamp fields are software-writable. Software
 writes take priority over simultaneous hardware updates; later hardware updates
 can advance or clear them according to their configured controls. The sink&#8217;s
-<code>trDstRamWPHigh</code> register likewise accepts software writes. Treat these as live
-read/write state when programming or testing them, not read-only status.</p>
+<code>trDstRamWPHigh</code> register likewise accepts software writes. These are live
+read/write state, not read-only status.</p>
 </div>
 <div class="paragraph">
 <p>The generated <code>smc_cla</code> map is the programmer view of this aperture (see

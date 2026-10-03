@@ -136,9 +136,6 @@
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../revision.html">Revision History</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -156,6 +153,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -188,14 +193,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -307,9 +304,9 @@ because their expected values come from OTP shadows. SEC_DIS requires only a
 valid digest: its expected value is implemented in gates, so a SEC_DIS match
 holds before fuse sensing completes. A match forces feature control on, stops
 fuse sensing, and opens eFuse shadow-map reads. It does not release SEP reset;
-use the IC_RESET <code>sep_reset_n</code> override. Present the SEC_DIS token only
-to a part whose fuse sensing fails, and apply a cold reset once the match is
-established. SEC_DIS follows the feature-control rules in the
+the IC_RESET <code>sep_reset_n</code> override does. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-sec-dis-recovery" class="xref page">SEC_DIS recovery sequence</a>
+is in the Programmer&#8217;s Guide. SEC_DIS follows the feature-control rules in the
 Lifecycle Controller chapter, with the metal-programmable enable also required.
 The design requirement is A0-only use and permanent removal by a metal-mask ECO
 in later A1/B0 revisions; this is not a software-disable mechanism. See
@@ -318,7 +315,7 @@ in later A1/B0 revisions; this is not a software-disable mechanism. See
 </div>
 </div>
 <div class="sect1">
-<h2 id="token-match-sequence"><a class="anchor" href="#token-match-sequence"></a><a class="link" href="#token-match-sequence">3. Token Match Sequence</a></h2>
+<h2 id="token-submission"><a class="anchor" href="#token-submission"></a><a class="link" href="#token-submission">3. Token Submission</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>SEP software or JTAG submits tokens through the eFuse MMR interface, subject to
@@ -356,28 +353,18 @@ its access policy. Register names and start bits are:</p>
 </tr>
 </tbody>
 </table>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Write all eight 32-bit words of the selected input array. Index 0 holds
-<code>token[31:0]</code>; index 7 holds <code>token[255:224]</code>. The hash engine consumes
-index 7 first, down to index 0, without a byte swap.</p>
-</li>
-<li>
-<p>After all writes complete, write 1 to the corresponding <code>TOKEN_EOP</code> bit.
-This generates a start pulse. Keep the array unchanged until hashing finishes;
-the engine streams the array rather than taking a complete snapshot at start.</p>
-</li>
-<li>
-<p>Poll the selected result with a bounded timeout. Only <code>0x15</code> authorizes the
-operation; idle is not success. RMA remains idle until fuse sensing completes.
-Check <code>TOKEN_MATCH_FAULT</code> as well as the current result before proceeding.</p>
-</li>
-</ol>
+<div class="paragraph">
+<p>Index 0 of an input array holds <code>token[31:0]</code> and index 7 holds
+<code>token[255:224]</code>; the hash engine consumes index 7 first, down to index 0,
+without a byte swap. A write of 1 to a <code>TOKEN_EOP</code> bit generates a start pulse,
+and the engine then streams the array rather than taking a snapshot. RMA
+results remain idle until fuse sensing completes. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-token-matching" class="xref page">token submission sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 <div class="paragraph">
-<p>Do not issue a second start while the same engine is hashing. There is no
-submission queue: the feeder accepts a new operation only while idle. Starting
+<p>There is no submission queue: the feeder accepts a new operation only while
+idle. Starting
 a hash clears retained digest validity, so comparison returns idle while the
 new digest is unavailable. The result register follows the comparator through
 a clocked output stage; writing the token words alone does not invalidate the
@@ -424,7 +411,7 @@ previous result or launch a comparison.</p>
 <p>Reset clears the registered result and sticky fault flags, but does not erase
 the input arrays, retained digest or digest-valid state. A retained digest can
 therefore produce a result again after reset once its comparison prerequisites
-hold. Reset alone must not be treated as revoking a prior token authorization.</p>
+hold, so reset alone does not revoke a prior token authorization.</p>
 </div>
 </div>
 </div>
@@ -441,17 +428,14 @@ This is not majority voting: two matching instances cannot overrule a third.</p>
 <div class="paragraph">
 <p>Each fault also sets a software-read-only flag in <code>TOKEN_MATCH_FAULT</code>: bit 0
 for SiP RMA, bit 8 for chiplet RMA and bit 16 for SEC_DIS. These flags remain
-set until reset and combine into SEP CPU PIC source 40. Firmware reads them
-to identify the affected token and masks source 40 after handling the fault;
-there is no write-one-to-clear operation to deassert the source. An unmasked
-handler will re-enter. See
+set until reset and combine into SEP CPU PIC source 40; there is no
+write-one-to-clear operation to deassert the source. See
 <a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>.</p>
 </div>
 <div class="paragraph">
 <p>The sticky flag records fault history; it does not latch the comparator into
 an error state. A later valid comparison can report match or mismatch while
-the fault flag and interrupt remain asserted. Firmware must not treat a
-successful retry as clearing the fault or establishing that operation is safe.</p>
+the fault flag and interrupt remain asserted.</p>
 </div>
 <div class="paragraph">
 <p>The detector does not cover common-mode faults. If all three instances flip

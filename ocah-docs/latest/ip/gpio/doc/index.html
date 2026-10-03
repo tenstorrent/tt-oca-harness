@@ -158,13 +158,7 @@
     <a class="nav-link" href="../../../sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../sep/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../../../sep-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../../../sep/fabric.html">Interconnect</a>
@@ -249,9 +243,6 @@
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../../key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="../../key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -275,13 +266,7 @@
     <a class="nav-link" href="../../../smc/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../smc/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../../../smc-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../../../smc/fabric.html">Interconnect</a>
@@ -385,13 +370,7 @@
     <span class="nav-text">Cross-Trigger</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="6">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="7">
-    <a class="nav-link" href="../../cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../../cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -435,9 +414,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../../../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../../../aou-software-operation.html">Appendix C. Software Operation</a>
   </li>
 </ul>
   </li>
@@ -623,6 +599,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -651,14 +635,6 @@
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -709,8 +685,10 @@ selects electrical settings and captures the strap. Each has its own
 these blocks for its pads and supplies the address mapping and LSIO wiring.</p>
 </div>
 <div class="paragraph">
-<p>The sections below explain ownership and reset behavior, list the interfaces,
-and give programming sequences. The register maps follow those sequences.</p>
+<p>The sections below explain ownership and reset behavior, list the interfaces
+and give the register maps. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-gpio" class="xref page">GPIO section</a>
+of the Programmer&#8217;s Guide gives the programming sequences.</p>
 </div>
 <span id="functional-blocks"></span>
 <span id="data-flow-architecture"></span>
@@ -960,8 +938,9 @@ disabling a filter permits that direction regardless of <code>PROT</code>.</p>
 <code>3&#8217;b001</code> (secure, privileged data), but apply only when enabled. <code>PROT</code>
 expresses transaction attributes, not initiator identity: this filter alone
 does not establish SEP-only access. It protects the interface bank, not the
-shim&#8217;s separate control bank. See <a href="#gpio-filter-programming">Section 4.5</a> for setup and
-readback requirements.</p>
+shim&#8217;s separate control bank. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-gpio-access-filter" class="xref page">GPIO access filtering procedure</a>
+in the Programmer&#8217;s Guide gives the setup and readback requirements.</p>
 </div>
 </div>
 </div>
@@ -1056,204 +1035,27 @@ event</p>
 </li>
 </ul>
 </div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="gpio-programming"><a class="anchor" href="#gpio-programming"></a><a class="link" href="#gpio-programming">4. Programming</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The sequences below use register names relative to one pad&#8217;s interface and
-control banks. Preserve unrelated fields when updating a register.</p>
-</div>
-<span id="basic-gpio-configuration"></span>
-<span id="bidirectional-operation"></span>
-<div class="sect2">
-<h3 id="gpio-output-programming"><a class="anchor" href="#gpio-output-programming"></a><a class="link" href="#gpio-output-programming">4.1. Register-Controlled Input and Output</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Confirm that the shim&#8217;s secondary-function override is inactive, or arrange
-a controlled handover with that function.</p>
-</li>
-<li>
-<p>Set <code>DATA_CTRL.lsio_disable = 1</code> to prevent an LSIO request from taking
-the primary data/direction path.</p>
-</li>
-<li>
-<p>With TX disabled, program the intended output value and any required
-electrical settings. <code>CONTROL.config_enable = 1</code> selects register-based
-electrical settings once hardware LSIO is disabled.</p>
-</li>
-<li>
-<p>Set <code>DATA_CTRL.interface_enable = 1</code> and select <code>enable_rx_tx</code>:
-<code>00</code> disables both paths, <code>01</code> enables TX, <code>10</code> enables RX, and <code>11</code> enables both.</p>
-</li>
-<li>
-<p>Read <code>DATA_CTRL.pad2core</code> with RX enabled to obtain the synchronized input.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>For bidirectional use, coordinate external-driver release before enabling
-TX. Input-only mode disables TX; enabling both paths allows readback while
-driving. The pad implementation determines electrical behavior and settling
-requirements.</p>
-</div>
-<span id="configuration-strap-capture"></span>
-</div>
-<div class="sect2">
-<h3 id="reading-configuration-straps"><a class="anchor" href="#reading-configuration-straps"></a><a class="link" href="#reading-configuration-straps">4.2. Reading Configuration Straps</a></h3>
-<div class="paragraph">
-<p>After cold reset is released, read <code>CONTROL.strap_valid</code> and
-<code>CONTROL.strap_value</code> from the control bank. A set <code>strap_valid</code> means the
-pad was configured for input by default and strap capture is supported;
-it does not indicate that reset has completed. See <a href="#gpio-reset-straps">Section 2.6</a>.</p>
-</div>
-<span id="interrupt-configuration"></span>
-</div>
-<div class="sect2">
-<h3 id="enabling-interrupts"><a class="anchor" href="#enabling-interrupts"></a><a class="link" href="#enabling-interrupts">4.3. Enabling Interrupts</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Clear <code>DATA_CTRL.interrupt_enable</code> while configuring the input.</p>
-</li>
-<li>
-<p>Ensure the selected owner enables the pad receiver. For register control,
-use <code>interface_enable = 1</code> and <code>enable_rx_tx = 10</code>.</p>
-</li>
-<li>
-<p>Set <code>DATA_CTRL.interrupt_type</code> using the mode table in <a href="#gpio-interrupt-operation">Section 2.5</a>.</p>
-</li>
-<li>
-<p>Configure the receiving interrupt controller for the GPIO request and
-set <code>DATA_CTRL.interrupt_enable = 1</code>.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>A level interrupt can assert as soon as it is enabled if the selected level
-is already present. This block has no pending-event queue or software-clear
-bit; handle or mask the condition at its source.</p>
-</div>
-<span id="lsio-interface-operation"></span>
-</div>
-<div class="sect2">
-<h3 id="gpio-lsio-programming"><a class="anchor" href="#gpio-lsio-programming"></a><a class="link" href="#gpio-lsio-programming">4.4. Selecting LSIO</a></h3>
-<div class="paragraph">
-<p>For hardware selection, clear <code>DATA_CTRL.lsio_disable</code>. When the peripheral
-asserts <code>lsio_interface_select_i</code>, its data and direction take priority over
-<code>interface_enable</code> and the per-field overrides. <code>DATA_CTRL.lsio_enable</code>
-reports this gated hardware request.</p>
-</div>
-<div class="paragraph">
-<p>For software-forced selection, clear <code>interface_enable</code> and all
-<code>DATA_CTRL_ENABLE.use_reg_*</code> bits, then set <code>lsio_select = 1</code> with
-<code>lsio_disable = 0</code>. Clear <code>CONTROL.config_enable</code> as well if LSIO should
-supply the electrical settings. Software-forced LSIO ranks below register
-control and does not set <code>lsio_enable</code>.</p>
-</div>
-<div class="paragraph">
-<p>To reclaim the primary path, set <code>lsio_disable = 1</code>, then program register
-data and direction. Setting <code>interface_enable</code> alone cannot reclaim a pad
-whose hardware request remains asserted. In SMC, this includes pads with
-permanently selected hardware functions: the I3C pads, and the isolate-request, boot-stall
-and cool-reset-out signals.</p>
-</div>
-<span id="security-configuration"></span>
-<span id="protection-bit-encoding"></span>
-<span id="filter-configuration"></span>
-<span id="filter-behavior"></span>
-</div>
-<div class="sect2">
-<h3 id="gpio-filter-programming"><a class="anchor" href="#gpio-filter-programming"></a><a class="link" href="#gpio-filter-programming">4.5. Configuring Access Filtering</a></h3>
-<div class="paragraph">
-<p>Each filter compares the complete three-bit protection value:</p>
-</div>
-<table id="trm-table-3" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. AXI protection encoding</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 40%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Bit</th>
-<th class="tableblock halign-left valign-top">0</th>
-<th class="tableblock halign-left valign-top">1</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Unprivileged</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>Thus <code>0x0</code> means secure unprivileged data, <code>0x1</code> secure privileged data,
-<code>0x2</code> non-secure unprivileged data, and <code>0x3</code> non-secure privileged data.</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Choose <code>ACCESS_FILTER.awprot_requirement</code> and <code>arprot_requirement</code> for
-the intended writers and readers. Both reset to <code>0x1</code>.</p>
-</li>
-<li>
-<p>Set <code>write_filter_enable</code> and/or <code>read_filter_enable</code> to enforce those
-requirements. The current transaction must satisfy any filter already enabled.</p>
-</li>
-<li>
-<p>Read back <code>ACCESS_FILTER</code> after writing it, using a read transaction that
-satisfies the resulting policy. The register definition requires this readback
-before relying on the new filter settings for subsequent accesses.</p>
-</li>
-<li>
-<p>Check that permitted accesses succeed and rejected accesses return <code>DECERR</code>.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>The enables reset clear, so the reset requirements do not restrict access
-until enabled. Changing the write requirement can exclude the software
-agent making the change. Plan the resulting read and write policy before
-applying it; <code>PROT</code> does not identify a particular initiator.</p>
-</div>
 <span id="address-space-organization"></span>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="gpio-memory-map"><a class="anchor" href="#gpio-memory-map"></a><a class="link" href="#gpio-memory-map">5. Memory Map and Register Reference</a></h2>
+<h2 id="gpio-memory-map"><a class="anchor" href="#gpio-memory-map"></a><a class="link" href="#gpio-memory-map">4. Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
 <span id="register-maps"></span>
 <div class="sect2">
-<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
 <div class="paragraph">
 <p>The controller&#8217;s interface bank contains <code>DATA_CTRL</code>, <code>DATA_CTRL_ENABLE</code>
 and <code>ACCESS_FILTER</code>; the shim&#8217;s control bank contains <code>CONTROL</code>.
 The generated <code>gpio_intf</code> and <code>gpio_ctrl</code> maps in
-<a href="#gpio-detailed-register-map">Section 5.2</a> define their register offsets, and <code>gpio_wrap</code>
+<a href="#gpio-detailed-register-map">Section 4.2</a> define their register offsets, and <code>gpio_wrap</code>
 defines the bank placement within the composite aperture. The enclosing
 padring determines their system addresses.</p>
 </div>
 <span id="reset-behavior"></span>
 <div class="sect3">
-<h4 id="reset-values"><a class="anchor" href="#reset-values"></a><a class="link" href="#reset-values">5.1.1. Reset Values</a></h4>
+<h4 id="reset-values"><a class="anchor" href="#reset-values"></a><a class="link" href="#reset-values">4.1.1. Reset Values</a></h4>
 <div class="paragraph">
 <p><code>ACCESS_FILTER</code> resets to <code>0x00010100</code>: read and write filters are disabled,
 with each stored protection requirement set to <code>3&#8217;b001</code>. <code>DATA_CTRL</code> and
@@ -1272,7 +1074,7 @@ captured input, so the complete value is not a single fixed reset word.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="gpio-detailed-register-map"><a class="anchor" href="#gpio-detailed-register-map"></a><a class="link" href="#gpio-detailed-register-map">5.2. Detailed Register Map</a></h3>
+<h3 id="gpio-detailed-register-map"><a class="anchor" href="#gpio-detailed-register-map"></a><a class="link" href="#gpio-detailed-register-map">4.2. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1284,8 +1086,8 @@ captured input, so the complete value is not a single fixed reset word.</p>
 <h2 id="regmap-gpio_intf">GPIO Interface Address Map</h2>
 <p>GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.</p>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-4">
-<caption class="title"><a href="#trm-table-4">Table 4</a>. GPIO Interface Address Map register list</caption>
+<table id="trm-table-3">
+<caption class="title"><a href="#trm-table-3">Table 3</a>. GPIO Interface Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#gpio_intf-DATA_CTRL">DATA_CTRL</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#gpio_intf-DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</a></td><td>RW</td><td>-</td></tr>
@@ -1293,8 +1095,8 @@ captured input, so the complete value is not a single fixed reset word.</p>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="DATA_CTRL"></span><h3 id="gpio_intf-DATA_CTRL" data-register-alias="DATA_CTRL">DATA_CTRL</h3>
-<table id="trm-table-5">
-<caption class="title"><a href="#trm-table-5">Table 5</a>. gpio_intf.DATA_CTRL fields</caption>
+<table id="trm-table-4">
+<caption class="title"><a href="#trm-table-4">Table 4</a>. gpio_intf.DATA_CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>pad2core</td><td>R</td><td>0x0</td><td>PAD2SOC Value</td></tr>
 <tr><td>30:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1311,8 +1113,8 @@ captured input, so the complete value is not a single fixed reset word.</p>
 <tr><td>0</td><td>core2pad</td><td>RW</td><td>0x0</td><td>Register-driven data to send to the pad.</td></tr>
 </table>
 <span id="DATA_CTRL_ENABLE"></span><h3 id="gpio_intf-DATA_CTRL_ENABLE" data-register-alias="DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</h3>
-<table id="trm-table-6">
-<caption class="title"><a href="#trm-table-6">Table 6</a>. gpio_intf.DATA_CTRL_ENABLE fields</caption>
+<table id="trm-table-5">
+<caption class="title"><a href="#trm-table-5">Table 5</a>. gpio_intf.DATA_CTRL_ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>use_reg_rx</td><td>RW</td><td>0x0</td><td>Per-field register override. When set, the RX direction (input enable) is taken from enable_rx_tx[1]. OR&#x27;d with interface_enable.</td></tr>
@@ -1321,8 +1123,8 @@ captured input, so the complete value is not a single fixed reset word.</p>
 <tr><td>0</td><td>use_reg_core2pad</td><td>RW</td><td>0x0</td><td>Per-field register override. When set, core2pad is register-driven. OR&#x27;d with interface_enable.</td></tr>
 </table>
 <span id="ACCESS_FILTER"></span><h3 id="gpio_intf-ACCESS_FILTER" data-register-alias="ACCESS_FILTER">ACCESS_FILTER</h3>
-<table id="trm-table-7">
-<caption class="title"><a href="#trm-table-7">Table 7</a>. gpio_intf.ACCESS_FILTER fields</caption>
+<table id="trm-table-6">
+<caption class="title"><a href="#trm-table-6">Table 6</a>. gpio_intf.ACCESS_FILTER fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>18:16</td><td>arprot_requirement</td><td>RW</td><td>0x1</td><td>When read_filter_enable is set, only allow read accesses with this prot value<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
@@ -1344,15 +1146,15 @@ captured input, so the complete value is not a single fixed reset word.</p>
 <h2 id="regmap-gpio_ctrl">GPIO Control Address Map</h2>
 <p>Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.</p>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-8">
-<caption class="title"><a href="#trm-table-8">Table 8</a>. GPIO Control Address Map register list</caption>
+<table id="trm-table-7">
+<caption class="title"><a href="#trm-table-7">Table 7</a>. GPIO Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#gpio_ctrl-CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="CONTROL"></span><h3 id="gpio_ctrl-CONTROL" data-register-alias="CONTROL">CONTROL</h3>
-<table id="trm-table-9">
-<caption class="title"><a href="#trm-table-9">Table 9</a>. gpio_ctrl.CONTROL fields</caption>
+<table id="trm-table-8">
+<caption class="title"><a href="#trm-table-8">Table 8</a>. gpio_ctrl.CONTROL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>24</td><td>hw2_ovrd</td><td>RW</td><td>0x0</td><td>Setting this register will enable the secondary HW function to override the GPIO enable and data lines.</td></tr>
@@ -1380,8 +1182,8 @@ captured input, so the complete value is not a single fixed reset word.</p>
 <h2 id="regmap-gpio_wrap">GPIO Wrapper Address Map</h2>
 <p>Top-level GPIO address map composing the interface and control register blocks.</p>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-10">
-<caption class="title"><a href="#trm-table-10">Table 10</a>. GPIO Wrapper Address Map register list</caption>
+<table id="trm-table-9">
+<caption class="title"><a href="#trm-table-9">Table 9</a>. GPIO Wrapper Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#gpio_wrap-DATA_CTRL">DATA_CTRL</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#gpio_wrap-DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</a></td><td>RW</td><td>-</td></tr>
@@ -1390,8 +1192,8 @@ captured input, so the complete value is not a single fixed reset word.</p>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="gpio_wrap-DATA_CTRL" data-register-alias="DATA_CTRL">DATA_CTRL</h3>
-<table id="trm-table-11">
-<caption class="title"><a href="#trm-table-11">Table 11</a>. gpio_wrap.DATA_CTRL fields</caption>
+<table id="trm-table-10">
+<caption class="title"><a href="#trm-table-10">Table 10</a>. gpio_wrap.DATA_CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>pad2core</td><td>R</td><td>0x0</td><td>PAD2SOC Value</td></tr>
 <tr><td>30:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1408,8 +1210,8 @@ captured input, so the complete value is not a single fixed reset word.</p>
 <tr><td>0</td><td>core2pad</td><td>RW</td><td>0x0</td><td>Register-driven data to send to the pad.</td></tr>
 </table>
 <h3 id="gpio_wrap-DATA_CTRL_ENABLE" data-register-alias="DATA_CTRL_ENABLE">DATA_CTRL_ENABLE</h3>
-<table id="trm-table-12">
-<caption class="title"><a href="#trm-table-12">Table 12</a>. gpio_wrap.DATA_CTRL_ENABLE fields</caption>
+<table id="trm-table-11">
+<caption class="title"><a href="#trm-table-11">Table 11</a>. gpio_wrap.DATA_CTRL_ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>use_reg_rx</td><td>RW</td><td>0x0</td><td>Per-field register override. When set, the RX direction (input enable) is taken from enable_rx_tx[1]. OR&#x27;d with interface_enable.</td></tr>
@@ -1418,8 +1220,8 @@ captured input, so the complete value is not a single fixed reset word.</p>
 <tr><td>0</td><td>use_reg_core2pad</td><td>RW</td><td>0x0</td><td>Per-field register override. When set, core2pad is register-driven. OR&#x27;d with interface_enable.</td></tr>
 </table>
 <h3 id="gpio_wrap-ACCESS_FILTER" data-register-alias="ACCESS_FILTER">ACCESS_FILTER</h3>
-<table id="trm-table-13">
-<caption class="title"><a href="#trm-table-13">Table 13</a>. gpio_wrap.ACCESS_FILTER fields</caption>
+<table id="trm-table-12">
+<caption class="title"><a href="#trm-table-12">Table 12</a>. gpio_wrap.ACCESS_FILTER fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>18:16</td><td>arprot_requirement</td><td>RW</td><td>0x1</td><td>When read_filter_enable is set, only allow read accesses with this prot value<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
@@ -1430,8 +1232,8 @@ captured input, so the complete value is not a single fixed reset word.</p>
 <tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 </table>
 <h3 id="gpio_wrap-CONTROL" data-register-alias="CONTROL">CONTROL</h3>
-<table id="trm-table-14">
-<caption class="title"><a href="#trm-table-14">Table 14</a>. gpio_wrap.CONTROL fields</caption>
+<table id="trm-table-13">
+<caption class="title"><a href="#trm-table-13">Table 13</a>. gpio_wrap.CONTROL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>24</td><td>hw2_ovrd</td><td>RW</td><td>0x0</td><td>Setting this register will enable the secondary HW function to override the GPIO enable and data lines.</td></tr>

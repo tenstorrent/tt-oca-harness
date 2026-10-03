@@ -135,9 +135,6 @@
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../../../cdc.html">CDC Timing Constraints</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../revision.html">Revision History</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -155,6 +152,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -187,14 +192,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -243,8 +240,11 @@ is mixed in to ensure that the same data at different address locations
 has a different scrambled value.</p>
 </div>
 <div class="paragraph">
-<p>The scrambling key is provisioned by the ROM by copying the DRBG
-register contents into the local key register.</p>
+<p>The KM ROM writes DRBG output into the key register and then enables and
+locks the scrambler; the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#memory-scrambler-provisioning" class="xref page">Memory Scrambler Provisioning</a>
+section of the Key Manager Application ROM appendix in the Programmer&#8217;s Guide
+gives the order.</p>
 </div>
 <div class="paragraph">
 <p>The scrambler IP consists of a generic top-level module (<code>scrambler</code>) and a set of pre-configured size-specific wrappers that fix the address width to match a particular SRAM depth. The generic module selects the correct address scrambling function at elaboration time through generate blocks keyed on <code>ADDR_WIDTH</code>. The <code>scrambler_addr_tweak</code> submodule expands and mixes the memory address into a 32-bit round key. All cryptographic primitives (S-boxes, permutations, and address scramble functions) are declared as <code>automatic</code> functions in <code>scrambler_pkg</code>.</p>

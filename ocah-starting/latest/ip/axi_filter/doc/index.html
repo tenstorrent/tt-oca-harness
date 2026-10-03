@@ -147,6 +147,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -176,14 +184,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -358,8 +358,8 @@ never examined, even if one of them would have permitted the access.</p>
 </div>
 <div class="paragraph">
 <p>Entry index is thus a strict priority and the first match ends the
-search, so program the most specific policy at the lowest index and the
-broader fallback policy above it.</p>
+search, so a specific policy takes effect only at a lower index than any
+broader policy that overlaps it.</p>
 </div>
 <div class="paragraph">
 <p>Writes and reads are decoded independently: the AW channel and the AR
@@ -450,15 +450,13 @@ when both land in the same granule, so reading back the first example
 above returns <code>0x1000</code> and <code>0x1FFF</code>. When the programmed range spans more
 than one granule the write-back does not fire and read-back returns the
 programmed values unchanged, even though address matching still widens
-them. Firmware must not treat read-back as the effective range; derive
-the effective range from the granule instead.</p>
+them, so read-back is not the effective range.</p>
 </div>
 <div class="paragraph">
 <p>Widening only ever enlarges a range, so a range programmed tighter than
 the granule opens more address space than the programmed numbers
-suggest. Size protected regions in whole granules, and prefer
-<code>allow_burst = 0</code> for entries that must guard an object smaller than
-4 KB.</p>
+suggest. The Programmer&#8217;s Guide gives the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#sep-smc-axi-filters" class="xref page">filter programming rules</a>.</p>
 </div>
 </div>
 </div>

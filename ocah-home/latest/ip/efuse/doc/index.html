@@ -144,6 +144,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -172,14 +180,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -295,10 +295,10 @@ development</p>
 <p>After fuse sense completes, software program and read requests share one
 command path to the OTP bank. <code>EFUSE_PROGRAM_CTRL.program_enable</code> takes
 that path in preference to <code>EFUSE_READ_CTRL.read_enable</code>, so the two
-enables must be asserted exclusively. <code>program_enable</code> is a mode-ownership
-bit: after <code>PROGRAM_DONE</code>, software deasserts <code>program_enable</code>
-before any later read. The programming sequence is in
-<a href="#smc-dv-efuse-programming">Programming</a>.</p>
+enables must be asserted exclusively; a read issued while <code>program_enable</code>
+is set does not reach the bank. The program and read sequences are in the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-efuse" class="xref page">eFuse section</a>
+of the Programmer&#8217;s Guide.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1431,9 +1431,9 @@ authentication, including RMA tokens and security disable tokens.</p>
 <div class="paragraph">
 <p>The eFuse Control CSR provides command and status registers for read, write,
 and verification operations on the eFuse array. <code>program_enable</code> and
-<code>read_enable</code> are mutually exclusive; software deasserts <code>program_enable</code>
-after <code>PROGRAM_DONE</code> before issuing a read. See
-<a href="#smc-dv-efuse-programming">Programming</a>.</p>
+<code>read_enable</code> are mutually exclusive. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-efuse-command-path" class="xref page">eFuse command-path ownership rules</a>
+in the Programmer&#8217;s Guide give the order software follows.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
@@ -1554,221 +1554,6 @@ does not appear at a fixed address in the generated OCAH map.</p>
 <tr><td>31:0</td><td>init_time</td><td>RW</td><td>0x20</td><td>Most OTP have a initialization time before sensing can be done</td></tr>
 </table>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="smc-dv-efuse-programming"><a class="anchor" href="#smc-dv-efuse-programming"></a><a class="link" href="#smc-dv-efuse-programming">Programming</a></h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="exclusive-program-and-read-enables"><a class="anchor" href="#exclusive-program-and-read-enables"></a><a class="link" href="#exclusive-program-and-read-enables">Exclusive program and read enables</a></h3>
-<div class="paragraph">
-<p><code>EFUSE_PROGRAM_CTRL.program_enable</code> and <code>EFUSE_READ_CTRL.read_enable</code> are
-mutually exclusive. After fuse sense completes, program and read share a
-single command path to the OTP bank, and <code>program_enable</code> owns that path
-whenever it is set. A read issued while <code>program_enable</code> is still high
-does not reach the bank.</p>
-</div>
-<div class="paragraph">
-<p>Treat <code>program_enable</code> as a mode-ownership bit, not sticky configuration.
-After a program completes (<code>PROGRAM_DONE</code>), deassert <code>program_enable</code>
-before any later read. Leave address, data, and the other program
-fields as they are. Deassert <code>read_enable</code> the same way before starting
-a program. The two enables are never asserted together.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="usage-examples"><a class="anchor" href="#usage-examples"></a><a class="link" href="#usage-examples">Usage Examples</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="example-1-programming-a-single-bit"><a class="anchor" href="#example-1-programming-a-single-bit"></a><a class="link" href="#example-1-programming-a-single-bit">Example 1: Programming a Single Bit</a></h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Own the program path (program_enable is bit 27). read_enable must be 0.
-EFUSE_PROGRAM_CTRL = (1 &lt;&lt; 27) | (1 &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
-
-// Trigger program
-EFUSE_PROGRAM_CTRL |= (1 &lt;&lt; 17);
-
-// Wait for completion
-while (!(EFUSE_PROGRAM_CTRL &amp; (1u &lt;&lt; 25))); // Wait for PROGRAM_DONE
-
-// Check status
-if ((EFUSE_PROGRAM_CTRL &gt;&gt; 26) &amp; 0x1) {
-    // Handle error
-}
-
-// Release program ownership before any later read
-EFUSE_PROGRAM_CTRL &amp;= ~(1 &lt;&lt; 27);</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="example-2-reading-multiple-words"><a class="anchor" href="#example-2-reading-multiple-words"></a><a class="link" href="#example-2-reading-multiple-words">Example 2: Reading Multiple Words</a></h3>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Each command reads one 32-bit word; addresses are measured in bits.
-// program_enable must already be 0.
-for (uint32_t i = 0; i &lt; num_words; ++i) {
-    uint32_t addr = bit_addr + 32u * i;
-    EFUSE_READ_CTRL = (1u &lt;&lt; 28) | (addr &amp; 0xFFFFu);
-    EFUSE_READ_CTRL |= (1u &lt;&lt; 16); // READ_GO
-    while (!(EFUSE_READ_CTRL &amp; (1u &lt;&lt; 25))); // READ_DONE
-    if (EFUSE_READ_CTRL &amp; (1u &lt;&lt; 26)) {
-        // Handle read error before consuming data.
-        break;
-    }
-    data[i] = EFUSE_READ_INTERFACE_READ_DATA;
-}
-
-// Release read ownership before any later program.
-EFUSE_READ_CTRL &amp;= ~(1u &lt;&lt; 28);</code></pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="program-operation-sequence"><a class="anchor" href="#program-operation-sequence"></a><a class="link" href="#program-operation-sequence">Program Operation Sequence</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p><strong>Setup Phase</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Confirm <code>EFUSE_READ_CTRL.read_enable</code> is 0</p>
-</li>
-<li>
-<p>Set <code>program_enable</code> = 1 in <code>EFUSE_PROGRAM_CTRL</code></p>
-</li>
-<li>
-<p>Configure <code>efuse_addr</code> with target bit address</p>
-</li>
-<li>
-<p>Set <code>efuse_data</code> = 1 (only 1s can be programmed)</p>
-</li>
-<li>
-<p>Optionally set <code>efuse_program_read_back</code> = 1 for verification</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Execute Phase</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Set <code>efuse_program_go</code> = 1 to trigger operation</p>
-</li>
-<li>
-<p>Monitor <code>program_busy</code> until it goes low</p>
-</li>
-<li>
-<p>Check <code>program_done</code> = 1 for completion</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Status Check</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Read <code>program_status</code> field:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>0: Success</p>
-</li>
-<li>
-<p>1: Error. This one-bit field does not distinguish failure causes.</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Release</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Clear <code>program_enable</code> in <code>EFUSE_PROGRAM_CTRL</code>. This returns the
-command path so a subsequent read can proceed.</p>
-</li>
-</ul>
-</div>
-</li>
-</ol>
-</div>
-</div>
-<div class="sect2">
-<h3 id="read-operation-sequence"><a class="anchor" href="#read-operation-sequence"></a><a class="link" href="#read-operation-sequence">Read Operation Sequence</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p><strong>Setup Phase</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Confirm <code>EFUSE_PROGRAM_CTRL.program_enable</code> is 0</p>
-</li>
-<li>
-<p>Set <code>read_enable</code> = 1 in <code>EFUSE_READ_CTRL</code></p>
-</li>
-<li>
-<p>Configure <code>efuse_addr</code> with target bit address</p>
-</li>
-<li>
-<p>Issue one command per 32-bit word; advance the bit address by 32 for each
-additional word. There is no software read-length field.</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Execute Phase</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Set <code>efuse_read_go</code> = 1 to trigger operation</p>
-</li>
-<li>
-<p>Monitor <code>read_busy</code> until it goes low</p>
-</li>
-<li>
-<p>Check <code>read_done</code> = 1 for completion</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Data Retrieval</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Read data from <code>EFUSE_READ_INTERFACE_READ_DATA</code></p>
-</li>
-<li>
-<p>Check <code>read_status</code> for any errors</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p><strong>Release</strong>:</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Clear <code>read_enable</code> in <code>EFUSE_READ_CTRL</code> so a subsequent program can
-own the command path.</p>
-</li>
-</ul>
-</div>
-</li>
-</ol>
 </div>
 </div>
 </div>

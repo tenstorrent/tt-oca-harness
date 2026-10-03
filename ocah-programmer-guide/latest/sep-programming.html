@@ -100,16 +100,25 @@
     <a class="nav-link" href="index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -128,6 +137,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -160,14 +177,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -296,6 +305,235 @@ vector therefore degrades to a watchdog reset rather than a silent hang, but it
 does so only after the bite interval and without running any handler.</p>
 </div>
 </div>
+<div class="sect3">
+<h4 id="sep-configuration-straps"><a class="anchor" href="#sep-configuration-straps"></a><a class="link" href="#sep-configuration-straps">1.1.4. Configuration Straps</a></h4>
+<div class="paragraph">
+<p>BL0 selects startup options, such as primary or secondary chiplet operation and
+normal or recovery boot, from configuration straps on SMC GPIO pins. The board
+and boot firmware define which option each pin carries. A strap latch follows
+its pad while cold reset is asserted and holds the level when cold reset is
+released, so read the captured levels through the GPIO control registers after
+reset release, as described in <a href="#smc-gpio-straps">[smc-gpio-straps]</a>. <code>strap_valid</code> indicates
+that a pin supports capture, not that reset has completed.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-software-reset"><a class="anchor" href="#sep-software-reset"></a><a class="link" href="#sep-software-reset">1.1.5. Software Reset of the Cryptographic Engines</a></h4>
+<div class="paragraph">
+<p><code>SEP_RESET_CTRL.SW_RESET_N</code> resets to <code>0x7E</code>: the Key Manager is held in reset
+and OTBN, AES, HMAC, KMAC, the TRNG and Adams Bridge are released. To reset one
+engine:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Make sure no operation the reset would corrupt is in flight, or accept that it
+is aborted.</p>
+</li>
+<li>
+<p>Clear the engine&#8217;s bit with a read-modify-write that preserves the other bits.
+Hardware isolates the engine&#8217;s AXI paths, drains accepted transactions, and
+only then asserts the reset; new accesses on those paths complete with SLVERR
+and read data <code>0x1501A7ED</code>.</p>
+</li>
+<li>
+<p>Set the bit again. Reset and isolation release together.</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="title">Cryptographic engine reset example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// SEP reset control register address.
+// In SEP-local address space.
+#define SEP_RESET_CTRL_REG_SW_RESET_N 0x10803000
+
+// SW_RESET_N bits; 0 holds the engine in reset.
+#define SW_RESET_N_KM   0x01
+#define SW_RESET_N_OTBN 0x02
+#define SW_RESET_N_AES  0x04
+#define SW_RESET_N_HMAC 0x08
+#define SW_RESET_N_KMAC 0x10
+#define SW_RESET_N_TRNG 0x20
+#define SW_RESET_N_ABR  0x40</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Cryptographic engine reset example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Hold the engines in `mask` in reset, preserving the other bits.
+void sep_engine_reset_assert(uint32_t mask) {
+    uint32_t val = read32(SEP_RESET_CTRL_REG_SW_RESET_N);
+    write32(SEP_RESET_CTRL_REG_SW_RESET_N, val &amp; ~mask);
+}
+
+// Release the engines in `mask`, preserving the other bits.
+void sep_engine_reset_release(uint32_t mask) {
+    uint32_t val = read32(SEP_RESET_CTRL_REG_SW_RESET_N);
+    write32(SEP_RESET_CTRL_REG_SW_RESET_N, val | mask);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Releasing the Key Manager from reset starts it; the SEP host can still reach the
+SEP-to-KM mailbox while the Key Manager is in reset, because the mailbox&#8217;s
+SEP-facing side is in the Key Manager&#8217;s cold domain. The Key Manager can also
+restart itself by writing its <code>SOFT_RST_CODE</code> register, which takes the same
+warm-reset path without isolation.</p>
+</div>
+<div class="paragraph">
+<p>The TRNG bit resets the whole internal entropy chain. Follow
+<a href="#sep-trng-recovery">Failure Handling and Recovery</a> rather than toggling it on its own.</p>
+</div>
+<div class="paragraph">
+<p>A watchdog restart resets the SEP CPU but not the cryptographic engines or
+their <code>SW_RESET_N</code> requests. Recovery firmware must account for engine state
+that survived the restart, by resetting the engines or checking their state,
+before submitting new work.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-pic"><a class="anchor" href="#sep-pic"></a><a class="link" href="#sep-pic">1.1.6. Programmable Interrupt Controller (PIC)</a></h4>
+<div class="paragraph">
+<p>The
+<a href="https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html">EL2 Programmer&#8217;s Reference Manual</a>
+defines the VeeR EL2 core and PIC programming model. The PIC numbers external
+interrupt sources from 1; source 0 does not exist. Program source <code>N</code> through the per-source arrays, each indexed at
+<code>N * 4</code> from its region base:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>meipl[N]</code> (PIC base <code>+0x0000</code>) sets its priority;</p>
+</li>
+<li>
+<p><code>meie[N]</code> (<code>+0x2000</code>) enables it;</p>
+</li>
+<li>
+<p><code>meigwctrl[N]</code> (<code>+0x4000</code>) configures its gateway; and</p>
+</li>
+<li>
+<p><code>meigwclr[N]</code> (<code>+0x5000</code>) clears its gateway&#8217;s pending state.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Pending status is the bitmap <code>meip</code> at <code>+0x1000</code>: source <code>N</code> is bit <code>N % 32</code> of
+<code>meip[N / 32]</code>. Never program entry 0 of the per-source arrays; it is reserved,
+reads as zero and discards writes. Register tests that walk the PIC map must
+skip it. The
+<a href="../../ocah-docs/latest/sep/interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>
+in the Technical Reference Manual lists the sources. Some of them need
+specific service:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP interrupt sources with specific service</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 80%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Source</th>
+<th class="tableblock halign-left valign-top">Service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">39, entropy pool pointer fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Level-sensitive with no write-one-to-clear.
+Mask the source, or scrub the pool with <code>TRNG_ENTROPY_CLEAR</code>. The source is tied
+to zero in the current configuration.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">40, token match fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stays asserted until reset, with no write-one-to-clear.
+Read <code>TOKEN_MATCH_FAULT</code> to identify the token, then mask the source; an
+unmasked handler re-enters.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">41, 42, DMA register-path and host-path faults</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write <code>DMA_BUS_ERR_CLEAR.clr</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">43, peripheral register-bridge fault</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read <code>PERIPH_BUS_ERR_STATUS</code> to identify
+the block, then clear that block&#8217;s bit in <code>PERIPH_BUS_ERR_CLEAR</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="listingblock">
+<div class="title">PIC example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// PIC register addresses, for source `n`.
+// In SEP-local address space.
+#define PIC_BASE             0xC0080000
+#define PIC_REG_MEIPL(n)     (PIC_BASE + 0x0000 + ((n) * 0x4))
+#define PIC_REG_MEIE(n)      (PIC_BASE + 0x2000 + ((n) * 0x4))
+#define PIC_REG_MEIGWCTRL(n) (PIC_BASE + 0x4000 + ((n) * 0x4))
+#define PIC_REG_MEIGWCLR(n)  (PIC_BASE + 0x5000 + ((n) * 0x4))
+
+// Register constants.
+#define PIC_MEIGWCTRL_ACTIVE_LOW 0x1
+#define PIC_MEIGWCTRL_EDGE       0x2</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">PIC example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Enable source `n` (1 or above) at `priority`. `gwctrl` selects the
+// gateway's polarity and type. The core takes the interrupt only while
+// `mie.MEIE` is set and `priority` is above the `meipt` threshold.
+void pic_enable_source(unsigned n, uint32_t priority, uint32_t gwctrl) {
+    write32(PIC_REG_MEIGWCTRL(n), gwctrl);
+    write32(PIC_REG_MEIGWCLR(n), 0);
+    write32(PIC_REG_MEIPL(n), priority);
+    write32(PIC_REG_MEIE(n), 1);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-memory-errors"><a class="anchor" href="#sep-memory-errors"></a><a class="link" href="#sep-memory-errors">1.1.7. Memory Error Handling</a></h4>
+<div class="paragraph">
+<p>Corrected ICCM and DCCM errors are counted in two counters whose request is
+delivered as <code>MCEIP</code> (<code>mcause</code> = <code>0x8000_001E</code>). Bits <code>[26:0]</code> of each counter
+are the count and bits <code>[31:27]</code> a threshold exponent: the request rises when
+the count reaches 2<sup>threshold</sup>. To use the interrupt:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Program a threshold before enabling the interrupt. Counters and thresholds
+reset to zero, and a zero threshold raises the request on the first corrected
+error.</p>
+</li>
+<li>
+<p>Set <code>mie[30]</code> (<code>MCEIE</code>), which is clear at reset; until then, corrected errors
+are counted silently.</p>
+</li>
+<li>
+<p>In the handler, read both counters to attribute the error, then write the one
+that tripped. <code>MCEIP</code> follows the comparator and has no write-one-to-clear, so
+returning without dropping the count below the threshold re-enters the handler.
+To clear the count while keeping threshold <code>N</code>, write <code>N &lt;&lt; 27</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>A low threshold reports a degrading SRAM early at the cost of an interrupt per
+error; a high one lets transient flips accumulate before firmware is told.</p>
+</div>
+<div class="paragraph">
+<p>Uncorrectable errors trap on the instruction that hit them, as an instruction,
+load or store access fault, or as an NMI on the fast-interrupt path. On an
+access fault, read <code>mscause</code> (<code>0x7FF</code>): <code>1</code> means uncorrectable ECC, which
+<code>mcause</code> alone does not distinguish from a bad pointer. Treat the error as fatal
+for the affected context. Do not resume the trapping instruction, since a retry
+re-reads the same corrupted location; reset or quarantine the affected memory
+instead.</p>
+</div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="ocah-trng-bring-up"><a class="anchor" href="#ocah-trng-bring-up"></a><a class="link" href="#ocah-trng-bring-up">1.2. OCAH TRNG Bring-up</a></h3>
@@ -368,6 +606,14 @@ sequence below applies only to streams firmware explicitly changes to 0.</p>
 <div class="sect3">
 <h4 id="internal-entropy-chain-initialization"><a class="anchor" href="#internal-entropy-chain-initialization"></a><a class="link" href="#internal-entropy-chain-initialization">1.2.2. Internal Entropy-chain Initialization</a></h4>
 <div class="paragraph">
+<p>The entropy source, CSRNG and EDN are OpenTitan IP. The
+<a href="https://opentitan.org/book/hw/ip/entropy_src/doc/programmers_guide.html">OpenTitan entropy source</a>,
+<a href="https://opentitan.org/book/hw/ip/csrng/doc/programmers_guide.html">CSRNG</a> and
+<a href="https://opentitan.org/book/hw/ip/edn/doc/programmers_guide.html">EDN</a>
+programmer&#8217;s guides give the full programming sequence for each block. The
+sequence below composes them for the OCAH chain.</p>
+</div>
+<div class="paragraph">
 <p>Use generated register definitions and named fields rather than copying complete
 register literals. Several control fields use MuBi4 encodings, for which true is
 <code>0x6</code> and false is <code>0x9</code>.</p>
@@ -402,7 +648,10 @@ policy. Program the approved sampling, health-test, FIFO, conditioning, and
 module-enable fields. In particular, the intended standards-aligned profile
 requires
 <code>CTRL.MODULE_ENABLE=1</code>, the approved health-test thresholds and window,
-entropy-compressor bypass disabled, and SHA-256 whitening enabled.</p>
+entropy-compressor bypass disabled, and SHA-256 whitening enabled. Write
+<code>HT_WATERMARK_NUM</code> before toggling <code>MODULE_ENABLE</code> when the health-test
+watermark needs a deterministic baseline: the selector does not clear the
+shared watermark, and the 0-to-1 transition re-arms it.</p>
 </li>
 <li>
 <p>Enable the CSRNG with <code>CSRNG.CTRL.ENABLE</code>. Leave <code>SW_APP_ENABLE</code>,
@@ -442,7 +691,11 @@ by itself prove that CSRNG accepted a complete seed.</p>
 passes and before exposing entropy to consumers. The lock freezes the
 certified ESRC configuration until the internal entropy chain is reset.
 <code>DEBUG_CTRL</code> intentionally remains outside this lock; the platform must
-separately restrict any externally routed debug-observation signal.</p>
+separately restrict any externally routed debug-observation signal.
+To close the <code>FIFO_RDATA</code> read path on a locked part, first clear
+<code>FIFO_CTRL.ENABLE</code>, read <code>FIFO_RDATA</code> until <code>FIFO_STATUS.LEVEL</code> is zero, and
+only then set <code>FIPS_LOCK.LOCK</code>. <code>FIFO_CTRL.ENABLE</code> gates only the FIFO write,
+so the DRBG seed stream continues either way.</p>
 </li>
 <li>
 <p>Enable EDN with <code>EDN_ENABLE=true</code>, <code>AUTO_REQ_MODE=true</code>,
@@ -490,7 +743,7 @@ Firmware must not write an undocumented bit 10 as part of entropy bring-up.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="failure-handling-and-recovery"><a class="anchor" href="#failure-handling-and-recovery"></a><a class="link" href="#failure-handling-and-recovery">1.2.3. Failure Handling and Recovery</a></h4>
+<h4 id="sep-trng-recovery"><a class="anchor" href="#sep-trng-recovery"></a><a class="link" href="#sep-trng-recovery">1.2.3. Failure Handling and Recovery</a></h4>
 <div class="paragraph">
 <p>Treat entropy initialization as a fallible operation. Every poll must have a
 platform-defined timeout, and firmware should preserve enough status to
@@ -562,6 +815,14 @@ Manager must be idle before the SEP host asserts the TRNG reset.</p>
 <div class="paragraph">
 <p>Do not try to recover only ESRC with <code>CTRL[0]</code>. A shared TRNG reset invalidates
 the entire internal chain.</p>
+</div>
+<div class="paragraph">
+<p>Changing <code>EXT_TRNG_SRC_SEL</code> takes effect immediately, with no switch-complete
+handshake and no flush of previously queued words: an unselected internal
+endpoint keeps its queued data, and an unselected external input is discarded.
+Quiesce the consumers before changing the selection, and account for the
+buffered words when choosing between a source change and a TRNG reset. Resetting
+the internal TRNG does not unlock <code>EXT_TRNG_SRC_SEL_LOCK</code>.</p>
 </div>
 </div>
 </div>
@@ -704,6 +965,387 @@ format built on top of this register interface.</p>
 </td>
 </tr>
 </table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-watchdog"><a class="anchor" href="#sep-watchdog"></a><a class="link" href="#sep-watchdog">1.3.2. Watchdog</a></h4>
+<div class="paragraph">
+<p>The SEP watchdog is an OpenTitan Always-On Timer. Program it following the
+<a href="https://opentitan.org/book/hw/ip/aon_timer/doc/programmers_guide.html">OpenTitan Always-On Timer programmer&#8217;s guide</a>,
+which gives the full watchdog initialization, servicing and locking sequence.
+The OCAH integration connects the watchdog as follows. Firmware must service it
+periodically by resetting its count, proving that the SEP CPU is still making
+progress. If the count reaches the bark threshold, the watchdog raises the NMI,
+which jumps through <code>SEP_NMI_VEC</code>; program and lock that vector first, as
+<a href="#sep-nmi-vector-programming">NMI Vector Programming</a> describes. If the count reaches the bite
+threshold, the watchdog requests a SEP CPU reset. <code>wdt_debug_sleep_mode_i</code>
+selects whether the timer keeps counting while the CPU is halted in debug.</p>
+</div>
+<div class="listingblock">
+<div class="title">Watchdog example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Watchdog register addresses.
+// In SEP-local address space.
+#define WDOG_BASE           0x10801000
+#define WDOG_REG_REGWEN     (WDOG_BASE + 0x18)
+#define WDOG_REG_CTRL       (WDOG_BASE + 0x1C)
+#define WDOG_REG_BARK_THOLD (WDOG_BASE + 0x20)
+#define WDOG_REG_BITE_THOLD (WDOG_BASE + 0x24)
+#define WDOG_REG_COUNT      (WDOG_BASE + 0x28)
+
+// Register constants.
+#define WDOG_CTRL_ENABLE 0x1</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Watchdog example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Start the watchdog and lock its configuration until reset.
+// Program and lock SEP_NMI_VEC before calling this.
+void watchdog_start(uint32_t bark_count, uint32_t bite_count) {
+    write32(WDOG_REG_CTRL, 0);
+    write32(WDOG_REG_COUNT, 0);
+    write32(WDOG_REG_BARK_THOLD, bark_count);
+    write32(WDOG_REG_BITE_THOLD, bite_count);
+    write32(WDOG_REG_CTRL, WDOG_CTRL_ENABLE);
+
+    // Writing 0 to REGWEN locks CTRL and both thresholds.
+    write32(WDOG_REG_REGWEN, 0);
+}
+
+// Service the watchdog before the count reaches the bark threshold.
+void watchdog_pet(void) {
+    write32(WDOG_REG_COUNT, 0);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-dma"><a class="anchor" href="#sep-dma"></a><a class="link" href="#sep-dma">1.3.3. DMA</a></h4>
+<div class="paragraph">
+<p>The SEP DMA is the OpenTitan DMA controller. Program it following the
+<a href="https://opentitan.org/book/hw/ip/dma/doc/programmers_guide.html">OpenTitan DMA programmer&#8217;s guide</a>,
+which gives the full programming sequence; the OCAH integration differs as
+described here. Use address-space ID <code>0x7</code>, the
+core&#8217;s internal host port, for both source and destination, with both high
+address registers zero; the other address spaces are tied off and never
+complete. Reachability is governed by the SEP fabric and filters.</p>
+</div>
+<div class="paragraph">
+<p>For one contiguous memory-to-memory copy:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Wait until the previous operation has finished and configuration is writable
+(<code>CFG_REGWEN</code>). Configure a valid enabled-memory base/limit pair and set
+<code>RANGE_VALID</code> before starting; observe <code>RANGE_REGWEN</code> if firmware has locked
+that configuration.</p>
+</li>
+<li>
+<p>Write <code>SRC_ADDR_LO</code> and <code>DST_ADDR_LO</code>, clear both high address registers,
+and select <code>0x7</code> for both fields in <code>ADDR_SPACE_ID</code> (<code>0x77</code> combined).</p>
+</li>
+<li>
+<p>Set <code>TRANSFER_WIDTH</code> to 0, 1 or 2 for 1, 2 or 4 bytes respectively. Align
+both addresses to that width. Enable <code>INCREMENT</code> and clear <code>WRAP</code> in both
+<code>SRC_CONFIG</code> and <code>DST_CONFIG</code>.</p>
+</li>
+<li>
+<p>Set <code>CHUNK_DATA_SIZE</code> and <code>TOTAL_DATA_SIZE</code> to the same nonzero byte count.</p>
+</li>
+<li>
+<p>Write <code>CONTROL</code> with <code>OPCODE=0</code> (copy), <code>HARDWARE_HANDSHAKE_ENABLE=0</code>,
+<code>INITIAL_TRANSFER=1</code> and <code>GO=1</code>.</p>
+</li>
+<li>
+<p>Check <code>STATUS.ERROR</code> and <code>ERROR_CODE</code> while waiting for <code>STATUS.DONE</code>, with a
+bounded wait. For interrupt-driven operation, enable the required completion
+and error sources and acknowledge <code>INTR_STATE</code>. The status completion and
+error bits are write-one-to-clear.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>For hashing, select opcode 1, 2 or 3 for SHA-256, SHA-384 or SHA-512 and use
+4-byte transfers. Set <code>INITIAL_TRANSFER</code> on the first transfer of the message,
+and read the digest only when <code>STATUS.SHA2_DIGEST_VALID</code> is set. <code>DIGEST_SWAP</code>
+controls byte order within each digest register, not register order.</p>
+</div>
+<div class="paragraph">
+<p>Only handshake input 0 is connected, to the SPI host&#8217;s LSIO trigger. For SPI
+handshake operation, select trigger 0 in <code>HANDSHAKE_INTR_ENABLE</code>, configure the
+peripheral FIFO and chunk size, and enable hardware handshake. Each service
+operation moves one chunk, and chunk completion is not reported per trigger in
+this mode. Clear <code>GO</code> when stopping handshake operation. For a peripheral that
+needs an explicit trigger-clear write, configure <code>CLEAR_INTR_SRC</code>,
+<code>CLEAR_INTR_BUS</code>, <code>INTR_SRC_ADDR</code> and <code>INTR_SRC_WR_VAL</code> for the connected host
+port (<code>CLEAR_INTR_BUS</code> bit 0 = 1); otherwise leave that source unselected in
+<code>CLEAR_INTR_SRC</code>.</p>
+</div>
+<div class="paragraph">
+<p>To abort an active operation, request <code>CONTROL.ABORT</code> and wait for
+<code>STATUS.ABORTED</code> before reusing its buffers or configuration.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-spi-host"><a class="anchor" href="#sep-spi-host"></a><a class="link" href="#sep-spi-host">1.3.4. SPI Host</a></h4>
+<div class="paragraph">
+<p>The SEP SPI host is the unmodified OpenTitan SPI Host. Program it following the
+<a href="https://opentitan.org/book/hw/ip/spi_host/doc/programmers_guide.html">OpenTitan SPI Host programmer&#8217;s guide</a>,
+which gives the full initialization, command and software-reset sequences. In
+the OCAH integration, its error and event interrupts share one PIC line. In the handler, read <code>INTR_STATE</code> to tell them
+apart:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>INTR_STATE.ERROR</code> is latched. Clear it by writing one to it after handling
+<code>ERROR_STATUS</code>; clearing <code>ERROR_STATUS</code> alone does not clear it.</p>
+</li>
+<li>
+<p><code>INTR_STATE.SPI_EVENT</code> follows the level of the events selected by
+<code>EVENT_ENABLE</code>; service the event condition or change <code>EVENT_ENABLE</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>INTR_ENABLE</code> gates only the interrupt line, so both state bits can be polled
+with it clear. Activity is reported only by <code>STATUS.ACTIVE</code>. Access the
+registers with 32-bit accesses: the 64-bit peripheral bus splits an 8-byte write
+into two 4-byte register writes.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-entropy-pool-access"><a class="anchor" href="#sep-entropy-pool-access"></a><a class="link" href="#sep-entropy-pool-access">1.3.5. Entropy Pool</a></h4>
+<div class="paragraph">
+<p>Read the entropy pool&#8217;s <code>DATA</code> register with a single 64-bit access; each read
+pops one conditioned 64-bit word. A read of an empty pool returns <code>SLVERR</code>
+rather than a zero word, and that error reaches the CPU as a bus error, so check
+<code>STATUS.fifo_level</code> before reading. <code>STATUS</code> and <code>IRQ_CAUSE</code> are non-destructive,
+and <code>STATUS.pool_low</code> reports the low-watermark condition. A 32-bit read of a
+register&#8217;s upper word is not decoded and, for <code>DATA</code>, does not pop the pool. The pool is read-only and accepts
+single-beat accesses only.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-cryptographic-engines"><a class="anchor" href="#sep-cryptographic-engines"></a><a class="link" href="#sep-cryptographic-engines">1.3.6. Cryptographic Engines</a></h4>
+<div class="paragraph">
+<p>AES, HMAC, KMAC and OTBN are OpenTitan IP and Adams Bridge is Caliptra IP.
+Program each engine following its upstream programmer&#8217;s guide, which gives the
+full programming sequence; the subsections below give only the OCAH
+differences. Firmware can drive the OpenTitan engines through the
+<a href="https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html">OpenTitan cryptographic library API</a>.
+The OCAH Key Manager is not the OpenTitan key manager, and its firmware
+interface is in <a href="#km-application-rom">[km-application-rom]</a>.</p>
+</div>
+<div id="sep-km-delivered-keys" class="paragraph">
+<p>The Key Manager delivers keys and seeds to the accelerators over a private
+interface, as two shares whose XOR is the value; the
+<a href="../../ocah-docs/latest/sep/crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>
+section of the Technical Reference Manual defines the format. Software on the
+SEP host configures each accelerator to consume the delivered value, as the
+subsection for each engine describes.</p>
+</div>
+<div class="sect4">
+<h5 id="sep-aes"><a class="anchor" href="#sep-aes"></a><a class="link" href="#sep-aes">AES</a></h5>
+<div class="paragraph">
+<p>Program the cipher following the
+<a href="https://opentitan.org/book/hw/ip/aes/doc/programmers_guide.html">OpenTitan AES programmer&#8217;s guide</a>.
+To use a delivered key, set <code>CTRL_SHADOWED.sideload</code>; while it is 0 the engine
+uses its software key registers and reports no error. Program
+<code>CTRL_SHADOWED.key_len</code> to the 256-bit encoding, since a shorter setting
+consumes only part of the delivered key.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="sep-hmac"><a class="anchor" href="#sep-hmac"></a><a class="link" href="#sep-hmac">HMAC</a></h5>
+<div class="paragraph">
+<p>Program the engine following the
+<a href="https://opentitan.org/book/hw/ip/hmac/doc/programmers_guide.html">OpenTitan HMAC programmer&#8217;s guide</a>.
+HMAC has no delivered-key select bit: it uses the delivered key whenever
+<code>KEY_CTRL.KEY_VALID</code> is set. Program <code>CFG.key_length</code> to the 256-bit encoding.
+An unset or unsupported length raises a configuration error, but a supported
+length that disagrees with the delivered key produces a wrong but repeatable
+digest with no error.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="sep-kmac"><a class="anchor" href="#sep-kmac"></a><a class="link" href="#sep-kmac">KMAC</a></h5>
+<div class="paragraph">
+<p>Program the engine following the
+<a href="https://opentitan.org/book/hw/ip/kmac/doc/programmers_guide.html">OpenTitan KMAC programmer&#8217;s guide</a>.
+To use a delivered key, set <code>CFG_SHADOWED.sideload</code>. The key length is applied
+automatically. Starting a keyed operation while <code>KEY_CTRL.KEY_VALID</code> is 0 raises an error.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="sep-otbn"><a class="anchor" href="#sep-otbn"></a><a class="link" href="#sep-otbn">OTBN</a></h5>
+<div class="paragraph">
+<p>Program the engine and write its programs following the
+<a href="https://opentitan.org/book/hw/ip/otbn/doc/programmers_guide.html">OpenTitan OTBN programmer&#8217;s guide</a>.
+To use a delivered key, the OTBN program reads the two shares through the
+<code>KEY_S0_L</code> / <code>KEY_S0_H</code> and <code>KEY_S1_L</code> / <code>KEY_S1_H</code> special registers and must
+XOR them itself. Reading
+a share that is not valid sets <code>ERR_BITS.KEY_INVALID</code> and stops the program.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="sep-adams-bridge"><a class="anchor" href="#sep-adams-bridge"></a><a class="link" href="#sep-adams-bridge">Adams Bridge</a></h5>
+<div class="paragraph">
+<p>Program the engine following the
+<a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge documentation</a>.
+Enable the seed read before starting an operation that consumes a delivered
+seed. The ML-KEM seed read completes only when both
+<code>MLKEM_SEED_D</code> and <code>MLKEM_SEED_Z</code> are valid. Detect completion from
+<code>STATUS.VALID</code> and issue a <code>zeroize</code> between back-to-back operations, since the
+core parks at the end state until then. A malformed register address inside
+the Adams Bridge extent does not return a bus error, so do not rely on one.</p>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-token-matching"><a class="anchor" href="#sep-token-matching"></a><a class="link" href="#sep-token-matching">1.3.7. Token Matching</a></h4>
+<div class="paragraph">
+<p>SEP software or JTAG submits RMA and SEC_DIS tokens through the eFuse MMR
+interface:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Write all eight 32-bit words of the token&#8217;s input array
+(<code>RMA_SIP_TOKEN_I</code>, <code>RMA_CHIPLET_TOKEN_I</code> or <code>SEC_DISABLE_TOKEN_I</code>). Index 0
+holds <code>token[31:0]</code> and index 7 <code>token[255:224]</code>.</p>
+</li>
+<li>
+<p>After all writes complete, write 1 to the token&#8217;s <code>TOKEN_EOP</code> bit (0, 8 or 16).
+Keep the array unchanged until hashing finishes: the engine streams the array
+rather than taking a snapshot. Do not start the same engine again while it is
+hashing; there is no submission queue.</p>
+</li>
+<li>
+<p>Poll the token&#8217;s <code>*_TOKEN_MATCH</code> result with a bounded timeout. Only <code>0x15</code>
+authorizes the operation; idle (<code>0x00</code>) is not success, and RMA stays idle
+until fuse sensing completes. Check <code>TOKEN_MATCH_FAULT</code> as well as the result.</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="title">SiP RMA token example C definitions.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// eFuse token register addresses.
+// In SEP-local address space.
+#define TOKEN_BASE                    0x10930500
+#define TOKEN_REG_RMA_SIP_TOKEN_I(i)  (TOKEN_BASE + ((i) * 0x4))
+#define TOKEN_REG_TOKEN_EOP           (TOKEN_BASE + 0x60)
+#define TOKEN_REG_RMA_SIP_TOKEN_MATCH (TOKEN_BASE + 0x64)
+#define TOKEN_REG_TOKEN_MATCH_FAULT   (TOKEN_BASE + 0x70)
+
+// Register constants.
+#define TOKEN_EOP_RMA_SIP   0x1
+#define TOKEN_MATCH_STATUS  0x3F
+#define TOKEN_MATCH_MATCHED 0x15
+#define TOKEN_FAULT_RMA_SIP 0x1</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">SiP RMA token example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Submit the SiP RMA token for the first time since reset.
+// Returns whether the token matched.
+bool rma_sip_token_submit(const uint32_t token[8], unsigned timeout) {
+    // token[0] holds bits 31:0 and token[7] bits 255:224.
+    for (unsigned i = 0; i &lt; 8; i++) {
+        write32(TOKEN_REG_RMA_SIP_TOKEN_I(i), token[i]);
+    }
+    write32(TOKEN_REG_TOKEN_EOP, TOKEN_EOP_RMA_SIP);
+
+    // Idle (0x00) is not a result; wait for the comparison to finish.
+    uint32_t status = 0;
+    while (status == 0 &amp;&amp; timeout--) {
+        status = read32(TOKEN_REG_RMA_SIP_TOKEN_MATCH) &amp; TOKEN_MATCH_STATUS;
+    }
+
+    if (read32(TOKEN_REG_TOKEN_MATCH_FAULT) &amp; TOKEN_FAULT_RMA_SIP) {
+        return false;
+    }
+    return status == TOKEN_MATCH_MATCHED;
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A fault flag in <code>TOKEN_MATCH_FAULT</code> stays set until reset and raises PIC source
+40; mask the source after handling it, as <a href="#sep-pic">Programmable Interrupt Controller (PIC)</a> describes. A later
+successful comparison does not clear the fault or show that operation is safe.
+Reset clears the result but not the input arrays or the retained digest, so
+reset does not revoke a prior token authorization.</p>
+</div>
+<div class="paragraph">
+<p>An RMA match authorizes a lifecycle change but does not burn a fuse. After the
+match, program the RMA lifecycle bits (<code>LC_STATE[1]</code> for SiP RMA, <code>LC_STATE[2]</code>
+for chiplet RMA); the fuse controller gates that programming on the match.
+Chiplet RMA additionally requires SiP RMA to be established first. For the
+shadow-state transition, either request an explicit shadow update or rely on
+<code>TRANSIENT_RMA_EN</code> for automatic updates; the
+<a href="../../ocah-docs/latest/sep/otp_fuse_controller.html#fuse-controller-otp-fuse-controller-otp" class="xref page">OTP Fuse Controller</a>
+chapter of the Technical Reference Manual gives the transition rules.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-sec-dis-recovery"><a class="anchor" href="#sep-sec-dis-recovery"></a><a class="link" href="#sep-sec-dis-recovery">1.3.8. Security Disable Recovery</a></h4>
+<div class="paragraph">
+<p>SEC_DIS recovers an A0 part whose fuse sensing fails, for debug. It is a JTAG
+procedure:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Present the SEC_DIS token through <code>SEC_DISABLE_TOKEN_I</code> following
+<a href="#sep-token-matching">Token Matching</a>, and poll <code>SEC_DISABLE_TOKEN_MATCH</code> until it reads the
+match code.</p>
+</li>
+<li>
+<p>Apply a cold reset. The token arrays and the computed digest survive it, so the
+match holds from cold-reset release: fuse sensing does not start, every shadow
+register keeps its reset value, and SEP samples the secure test-mode request
+one cycle after cold-reset release.</p>
+</li>
+<li>
+<p>Override <code>sep_reset_n</code> through the SEP slice of the IC_RESET TDR to release the
+SEP reset, which a match alone does not release.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Without the cold reset, the shadow registers keep whatever the failed sense
+loaded before the match, and the secure test-mode request is never sampled.
+Present the token only to a part whose fuse sensing fails.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-lifecycle-demotion"><a class="anchor" href="#sep-lifecycle-demotion"></a><a class="link" href="#sep-lifecycle-demotion">1.3.9. Lifecycle Demotion</a></h4>
+<div class="paragraph">
+<p>The <code>demote</code> (bit 0) and <code>lock</code> (bit 1) fields of the demotion registers are
+write-one-to-set and clear only on SEP cold reset. For each boot:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Decide whether to enable demotion for this boot.</p>
+</li>
+<li>
+<p>Set <code>demote</code> if required, then set <code>lock</code> to commit the decision. The lock
+can commit either a demoted or a non-demoted state.</p>
+</li>
+<li>
+<p>Leave <code>lock</code> clear only when a later boot stage is to decide.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The
+<a href="../../ocah-docs/latest/sep/lifecycle_controller.html#demote-lock-behavior" class="xref page">Lifecycle Controller chapter</a>
+of the Technical Reference Manual describes what demotion opens.</p>
 </div>
 </div>
 </div>

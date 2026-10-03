@@ -101,16 +101,25 @@
     <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -129,6 +138,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -161,14 +178,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -612,30 +621,21 @@ Do not assume an uninitialized pin-enable mask becomes known while that pin is h
 <h3 id="timing-and-recovery"><a class="anchor" href="#timing-and-recovery"></a><a class="link" href="#timing-and-recovery">3.2. Timing and Recovery</a></h3>
 <span id="memory-test-bypass"></span>
 <span id="programmable-reset-timing"></span>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Program the isolation masks and both FLR timing registers before enabling
-requests. The count values cross from SMC to the reference domain through
-handshaked synchronizers; readback in the SMC domain does not acknowledge
-arrival in the reference domain.</p>
-</li>
-<li>
-<p><code>ISOLATE_REQ_FLR_COUNTER_VALUE</code> selects the pre-reset countdown; zero allows
-assertion without that countdown. <code>ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</code>
-selects the cool-reset hold count and must be nonzero to start the timed flow.</p>
-</li>
-<li>
+<div class="paragraph">
+<p>The FLR count values cross from SMC to the reference domain through handshaked
+synchronizers; readback in the SMC domain does not acknowledge arrival in the
+reference domain. <code>ISOLATE_REQ_FLR_COUNTER_VALUE</code> selects the pre-reset
+countdown; zero allows assertion without that countdown.
+<code>ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</code> selects the cool-reset hold count, and
+must be nonzero to start the timed flow.</p>
+</div>
+<div class="paragraph">
 <p>On a synchronized FLR edge, the sequencer counts in reference-clock cycles,
 asserts cool reset, then releases it after the hold countdown. Destination
-reset synchronizers add their release latency. The sequencer is not a queue
-of overlapping FLR requests; coordinate requests and recovery in the integration.</p>
-</li>
-<li>
-<p>Re-establish the affected subsystem&#8217;s state and satisfy its isolation-release
-requirements before clearing the FLR isolation latch or software requests.</p>
-</li>
-</ol>
+reset synchronizers add their release latency. The sequencer is not a queue of
+overlapping FLR requests. The
+<a href="../index.html#smc-flr-isolation" class="xref page">FLR preparation and recovery sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 <div class="paragraph">
 <p>A zero hold count disables the timed reset sequence, but does not prevent the

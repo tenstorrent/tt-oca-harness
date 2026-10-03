@@ -159,13 +159,7 @@
     <a class="nav-link" href="sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="sep/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="sep-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="sep/fabric.html">Interconnect</a>
@@ -250,9 +244,6 @@
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -276,13 +267,7 @@
     <a class="nav-link" href="smc/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="smc/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="smc-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="smc/fabric.html">Interconnect</a>
@@ -386,13 +371,7 @@
     <span class="nav-text">Cross-Trigger</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="6">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="7">
-    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -436,9 +415,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="aou-referenced-documents.html">Appendix B. Referenced Documents</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="aou-software-operation.html">Appendix C. Software Operation</a>
   </li>
 </ul>
   </li>
@@ -624,6 +600,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -652,14 +636,6 @@
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -726,10 +702,11 @@ incoming address produces a decode error.</p>
 <h2 id="addressing-and-integration"><a class="anchor" href="#addressing-and-integration"></a><a class="link" href="#addressing-and-integration">2. Addressing and Integration</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>SEP and SMC firmware program their global base addresses and region sizes.
+<p>SEP and SMC global base addresses and region sizes are software-programmed.
 The surrounding system must use the same address assignments when accessing
 those subsystems. Subsystem remapping and filtering are described in their
-Interconnect chapters.</p>
+Interconnect chapters, and the Programmer&#8217;s Guide gives the
+<a href="../../ocah-programmer-guide/latest/index.html#sep-smc-address-remapping" class="xref page">aperture programming sequence</a>.</p>
 </div>
 <div class="paragraph">
 <p>This chapter describes the SMU boundary. Network topology, routing beyond that

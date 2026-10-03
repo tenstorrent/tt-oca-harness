@@ -145,6 +145,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -173,14 +181,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -252,8 +252,8 @@ interrupts: <code>done</code>, <code>fifo_empty</code>, and <code>err</code>.</p
 </div>
 <div class="paragraph">
 <p>The Key Manager delivers a 256-bit KMAC key as eight words per share, in the
-format given in <a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>. Software shall set <code>CFG_SHADOWED.sideload</code>
-to select the delivered key; while that bit is 0 the engine uses its software
+format given in <a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>. In KMAC, <code>CFG_SHADOWED.sideload</code>
+selects the delivered key; while that bit is 0 the engine uses its software
 key registers. Unlike AES and HMAC, software does not declare a key length for
 a delivered key: the engine applies the delivered key&#8217;s length automatically
 and ignores its key-length register for that operation. Beginning a keyed
@@ -263,7 +263,11 @@ error instead of producing a digest; OTBN also reports an invalid key error.</p>
 <div class="paragraph">
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC
-documentation</a> for the authoritative core functionality of the IP. The
+documentation</a> for the authoritative core functionality of the IP.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-kmac" class="xref page">programming guidance</a>
+for this block.
+The
 register map follows below.</p>
 </div>
 </div>

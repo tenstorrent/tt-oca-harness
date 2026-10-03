@@ -82,7 +82,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -101,7 +101,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -110,6 +110,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -145,14 +153,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -164,7 +164,7 @@
   <a href="../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="index.html">Application Notes</a></li>
     <li><a href="sip-secure-boot.html">System-in-Package Secure Boot</a></li>
   </ul>
@@ -278,9 +278,11 @@ management bus as a controller and distributes the secondary&#8217;s bundle.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p>SEP BL0 and SMC BL0 are the OCAH boot ROMs; the <em>SEP Production ROM Reference</em>
-and <em>SMC Production ROM Reference</em> chapters of the Programmer&#8217;s Guide cover the
-details this note summarizes. The SEP BL1 and SMC BL1 steps in this note are an
+<p>SEP BL0 and SMC BL0 are the OCAH boot ROMs; the
+<a href="../../ocah-programmer-guide/latest/index.html#sep-boot-rom" class="xref page">SEP Boot ROM</a>
+and
+<a href="../../ocah-programmer-guide/latest/index.html#smc-boot-rom" class="xref page">SMC Boot ROM</a>
+appendices of the Programmer&#8217;s Guide cover the details this note summarizes. The SEP BL1 and SMC BL1 steps in this note are an
 example integration, built on the interfaces the ROMs and the hardware provide;
 a BL1 implementation can divide the work differently.</p>
 </div>
@@ -409,7 +411,8 @@ the anchor. The slot numbers are shown in parentheses:</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p>OCAH assigns no purpose to individual ROM keys. Which of them an integrator
+<p>The two SiP slots let one SiP root remain usable after the other is revoked.
+OCAH assigns no purpose to individual ROM keys. Which of them an integrator
 keeps for development, and revokes in production through <code>CHIPLET_PUBK_REVOKE</code>,
 is that integrator&#8217;s security policy.</p>
 </div>
@@ -418,10 +421,12 @@ is that integrator&#8217;s security policy.</p>
 of the one slot the manifest selects. Any owner&#8217;s anchor can authorize a bundle
 on its own.</p>
 </div>
-<div class="paragraph">
-<p>The TRM also defines a multi-owner signing model, which the current SEP ROM does
-not implement. In that model, each chiplet&#8217;s <code>REQUIRED_SIGNERS</code> eFuse field sets
-which owners must sign the bundles its SEP ROM verifies:</p>
+<div id="sip-secure-boot-multi-owner-model" class="paragraph">
+<p>The eFuse map also reserves fields for a multi-owner signing model, which the
+current SEP ROM does not implement: BL0 does not read <code>REQUIRED_SIGNERS</code> or
+<code>REQUIRED_ALGS</code>, and does not verify a manifest&#8217;s verifier-key and co-signer
+entries. In that model, each chiplet&#8217;s <code>REQUIRED_SIGNERS</code> eFuse field sets which
+owners must sign the bundles its SEP ROM verifies:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -437,11 +442,48 @@ which owners must sign the bundles its SEP ROM verifies:</p>
 </ul>
 </div>
 <div class="paragraph">
-<p><code>REQUIRED_ALGS</code> then selects, per required owner, a classical signature (ECDSA
-P-384 or RSA), a post-quantum one (ML-DSA), or both, and post-quantum signing
-arrives with the same model. The TRM describes it in its <em>Deferred Multi-Owner
-Signing Model</em> section (part of the SEP chapter&#8217;s <em>Life Cycle Controller</em>
-section).</p>
+<p>Burning a bit adds a requirement; leaving it clear does not require that
+owner&#8217;s key to be provisioned. <code>REQUIRED_ALGS</code> then selects, per required owner,
+a classical signature (ECDSA P-384 or RSA), a post-quantum one (ML-DSA), or
+both, and post-quantum signing arrives with the same model. For each required
+owner, the manifest must carry a valid signature for every selected algorithm,
+made with a provisioned, non-revoked key; when both are selected, neither
+signature alone suffices. Signatures from owners outside the required set are
+ignored. Firmware performs these checks; the lifecycle controller does not
+inspect manifests or signatures.</p>
+</div>
+<div class="paragraph">
+<p>The fuse fields set only the initial requirement. At cold reset they reload a
+shadow policy for BL1, and in the model each authenticated stage may change the
+shadow signer set for the next manifest, adding or dropping owners. Firmware
+enforces this propagation; there is no hardware signer-policy gate. For
+example:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>With no signer bits burned, BL1 requires the chiplet creator only.</p>
+</li>
+<li>
+<p>With the SiP bit burned, BL1 requires the chiplet creator and the SiP owner,
+and an authenticated BL1 may hand off to a BL2 policy requiring only the SiP
+owner.</p>
+</li>
+<li>
+<p>An authenticated stage can add the system owner to the shadow policy for its
+successor, alone or alongside the SiP owner.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The next cold reset restores the fused requirement.</p>
+</div>
+<div class="paragraph">
+<p>Demotion authorization in the model follows the manifest&#8217;s required-signer set
+and is not tied to a particular boot stage. Both demotions use the same signing
+rules; the inter-chiplet effect of the second demotion adds no hardware signer
+check. A SiP owner can require its signature for the initial manifest and
+commit a non-demoted decision with the demotion lock.</p>
 </div>
 <div class="paragraph">
 <p>The owners need not be the same parties on each chiplet, and chiplets need not
@@ -461,7 +503,7 @@ or if the anchor&#8217;s slot bit is set in the union of <code>CHIPLET_PUBK_REVO
 manifest&#8217;s revocation bitmap. It then checks the anti-rollback posture and
 verifies the signature.</p>
 </div>
-<div class="paragraph">
+<div id="sip-secure-boot-decision" class="paragraph">
 <p>SEP BL0 decides whether secure boot is enabled separately for each manifest:</p>
 </div>
 <div class="ulist">
@@ -508,8 +550,10 @@ firmware, so that unsigned firmware can boot even on a <code>PROD</code> part, b
 lets a manifest that requests verification skip it. When secure boot is disabled
 for a manifest, the manifest gets only the integrity checks, and one that
 declares an encrypted payload is rejected, since decryption is available only
-under secure boot. The TRM describes this decision in its <em>Secure-Boot
-Enforcement</em> section, next to the signing model.</p>
+under secure boot. The
+<a href="../../ocah-programmer-guide/latest/index.html#sec:secure_boot" class="xref page">Secure Boot Decision</a>
+section of the SEP Boot ROM appendix in the Programmer&#8217;s Guide specifies this
+decision as requirements.</p>
 </div>
 <div class="paragraph">
 <p>A manifest can also request a <em>debug demotion</em>: opening debug access for the
@@ -977,8 +1021,9 @@ the SMC ROM, which serves the OCCP Base and Boot applications.</p>
 <div class="paragraph">
 <p>The SMC ROM is an OCCP <strong>target</strong> only. On every chiplet, whatever its straps, it
 starts a fixed set of its I3C and I2C interfaces in target mode and polls them
-round-robin; the <em>SMC Production ROM Reference</em> in the Programmer&#8217;s Guide lists
-the set. The distributing agent must therefore drive the bus as a controller. In
+round-robin; the
+<a href="../../ocah-programmer-guide/latest/index.html#smc-boot-rom" class="xref page">SMC Boot ROM appendix</a>
+of the Programmer&#8217;s Guide lists the set. The distributing agent must therefore drive the bus as a controller. In
 this example that agent is SMC BL1 on chiplet 0, which can run only once chiplet
 0 has authenticated itself. For the recovery variant it is a host or a board
 management controller.</p>
@@ -1111,9 +1156,9 @@ instances communicate over whatever protocol their firmware defines.</p>
 <h3 id="sip-secure-boot-smc-smc-staging"><a class="anchor" href="#sip-secure-boot-smc-smc-staging"></a><a class="link" href="#sip-secure-boot-smc-smc-staging">3.3. Staging window</a></h3>
 <div class="paragraph">
 <p>The bundle has to be staged where the target accepts it and where the SEP will
-look for it. The current SMC ROM lays out SMC SRAM as follows; the <em>SMC
-Production ROM Reference</em> in the Programmer&#8217;s Guide is the authority for these
-values:</p>
+look for it. The current SMC ROM lays out SMC SRAM as follows; the
+<a href="../../ocah-programmer-guide/latest/index.html#smc-boot-rom" class="xref page">SMC Boot ROM appendix</a>
+of the Programmer&#8217;s Guide is the authority for these values:</p>
 </div>
 <div class="ulist">
 <ul>

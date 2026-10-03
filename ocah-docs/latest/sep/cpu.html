@@ -159,13 +159,7 @@
     <a class="nav-link" href="cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="fabric.html">Interconnect</a>
@@ -250,9 +244,6 @@
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -276,13 +267,7 @@
     <a class="nav-link" href="../smc/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../smc/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../smc-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../smc/fabric.html">Interconnect</a>
@@ -386,13 +371,7 @@
     <span class="nav-text">Cross-Trigger</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="6">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="7">
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -436,9 +415,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../aou-software-operation.html">Appendix C. Software Operation</a>
   </li>
 </ul>
   </li>
@@ -624,6 +600,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -652,14 +636,6 @@
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -696,7 +672,10 @@
 security-service firmware. This chapter describes the SEP configuration,
 local memories, reset vector and debug integration. The
 <a href="https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html">EL2 Programmer&#8217;s Reference Manual</a>
-defines the core programming model.</p>
+defines the core programming model.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-pic" class="xref page">programming guidance</a>
+for this block.</p>
 </div>
 <div class="paragraph">
 <p><a href="#sep-cpu-diagram">Figure 1</a> shows the CPU subsystem and its instruction, data, and external
@@ -931,7 +910,9 @@ completion of reset. The GPIO chapter defines capture and register behavior.</p>
 <div class="paragraph">
 <p>BL0 uses platform configuration to select startup options, such as primary or
 secondary chiplet operation and normal or recovery boot. The board and boot
-firmware define the assignment of those options to pins.</p>
+firmware define the assignment of those options to pins; the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-configuration-straps" class="xref page">configuration strap section</a>
+of the Programmer&#8217;s Guide describes reading them.</p>
 </div>
 </div>
 <div class="sect2">
@@ -944,12 +925,13 @@ TAP state). With that default vector, the CPU starts in the BL0 Root-of-Trust
 code.</p>
 </div>
 <div class="paragraph">
-<p>A debugger may redirect the first instruction fetch by shifting an alternate
-address into the TDR through JTAG while the SEP CPU is held in reset. The
-TDR stores address bits [31:1]; bit 0 is zero. The programmed value persists
-until it is rewritten or the TAP is reset; CPU reset alone does not restore
-the default. This supports bring-up and
-failure analysis flows that execute from a memory other than the Boot ROM.</p>
+<p>An alternate address shifted into the TDR while the SEP CPU is held in reset
+redirects the first instruction fetch, which supports bring-up and failure
+analysis flows that execute from a memory other than the Boot ROM. The TDR
+stores address bits [31:1]; bit 0 is zero. The programmed value persists until
+it is rewritten or the TAP is reset; CPU reset alone does not restore the
+default. The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#dtp-sep-reset-vector" class="xref page">redirect procedure</a>.</p>
 </div>
 </div>
 </div>

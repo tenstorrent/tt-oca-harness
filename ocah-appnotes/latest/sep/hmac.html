@@ -83,7 +83,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -102,7 +102,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -111,6 +111,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -146,14 +154,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -165,7 +165,7 @@
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="hmac.html">HMAC-SHA2</a></li>
   </ul>
 </nav>
@@ -226,8 +226,8 @@ is used in preference to the engine&#8217;s software key registers whenever
 <div class="paragraph">
 <p>The delivered key is most-significant-bit justified in the engine&#8217;s 1024-bit
 key field, and the engine takes its key length from <code>CFG.key_length</code>, which the
-delivery path does not write. Software shall program <code>CFG.key_length</code> to the
-256-bit encoding to match the delivered key. An unset or unsupported length
+delivery path does not write; only the 256-bit encoding matches the delivered
+key. An unset or unsupported length
 raises a configuration error when hashing starts. A supported length that
 disagrees with the delivered key does not raise an error: the engine takes key
 material from the top of the 1024-bit field, so the padding below the delivered
@@ -236,7 +236,11 @@ key is mixed into the key and the resulting digest is wrong but repeatable.</p>
 <div class="paragraph">
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC
-documentation</a> for the authoritative core functionality of the IP. The
+documentation</a> for the authoritative core functionality of the IP.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-hmac" class="xref page">programming guidance</a>
+for this block.
+The
 register map follows below.</p>
 </div>
 </div>

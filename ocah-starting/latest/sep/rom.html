@@ -146,6 +146,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -175,14 +183,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -237,12 +237,10 @@ address contract.</p>
 </div>
 <div class="paragraph">
 <p>The ROM stores executable code, immutable metadata, read-only data, and the
-initial image of writable data. The production linker script,
-<code>hw/sys/sep/bootrom/prod/link/rom.ld</code>, places <code>.text</code>, <code>.metadata</code>, and
-<code>.rodata</code> in the ROM. It gives <code>.data</code> a runtime address in the 128 KiB DCCM at
-<code>0xC004_0000</code>, with its initial image in ROM; reset code copies that image and
-clears <code>.bss</code> before entering C. The stack also occupies DCCM, below a reserved
-BL0-to-BL1 state block at the top of the memory.</p>
+initial image of writable data; writable data, the stack and the BL0-to-BL1
+state run from the 128 KiB DCCM at <code>0xC004_0000</code>. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-prod-rom-memory-security" class="xref page">memory and security section</a>
+of the SEP Boot ROM appendix in the Programmer&#8217;s Guide gives the linker layout.</p>
 </div>
 <div class="paragraph">
 <p>BL0 stages the selected manifest and payload in SEP SRAM beginning at
@@ -276,59 +274,24 @@ integration&#8217;s visible hardware contract.</p>
 <p>The production BL0 firmware selects SPI flash or an SMC-staged image from the
 captured boot straps. It validates the manifest, applies the lifecycle and
 secure-boot policy, checks the payload, locks sensitive fuse reads, and
-transfers control to BL1. The production ROM firmware documentation under
-<code>hw/sys/sep/bootrom/prod/doc/</code> describes that behavior and its build artifacts
-in detail.</p>
+transfers control to BL1. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-boot-rom" class="xref page">SEP Boot ROM appendix</a>
+of the Programmer&#8217;s Guide describes that behavior and its build artifacts in
+detail.</p>
 </div>
 <div class="sect2">
 <h3 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">3.1. BL0 Secure Boot and BL1 Execution Unlock</a></h3>
 <div class="paragraph">
-<p>The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
-SEP system into a runnable state after power on reset (PoR) and running
-the first stage of external firmware AKA BL1.</p>
-</div>
-<div class="paragraph">
-<p>The complete boot flow is specified by the production ROM documentation under
-<code>hw/sys/sep/bootrom/prod/doc/</code>. It covers CPU initialization, PMP fencing,
-fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
-manifest and payload validation, secure boot, demotion, attestation and
-hand-off, with requirement identifiers and an implementation-status matrix.
-The summary below places the ROM in the context of this chapter, the definitive
-description is in  the production ROM documentation</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>SEP initialization&#8201;&#8212;&#8201;read configuration straps, determine boot options</p>
-</li>
-<li>
-<p>Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)</p>
-</li>
-<li>
-<p>Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory</p>
-</li>
-<li>
-<p>Validate it. Under secure boot this means authorizing the root key
-against a trust anchor the device holds&#8201;&#8212;&#8201;a ROM-embedded digest or an
-OTP hash bank&#8201;&#8212;&#8201;before any public-key operation, then checking
-revocation and anti-rollback, then verifying an RSA-3072 signature on
-OTBN</p>
-</li>
-<li>
-<p>Load the payload it describes, decrypting it when the manifest says so,
-and verify its hashes&#8201;&#8212;&#8201;over the ciphertext before decryption and the
-plaintext after</p>
-</li>
-<li>
-<p>Select BL1 from the payload table of contents, unlock execution in the
-CPU PMP, and jump</p>
-</li>
-<li>
-<p>Failure of any check ends the boot. A failure the backup manifest slot
-recovers from is a warning; exhausting every slot is an error, after
-which the processor enters a fail loop requiring a reset to exit</p>
-</li>
-</ul>
+<p>BL0 brings the SEP into a runnable state after power-on reset, validates a
+boot manifest and its payload, unlocks BL1 execution in the CPU PMP and jumps
+to it. Any failed check ends the boot: a failure the backup manifest slot
+recovers from is a warning, and exhausting every slot leaves the processor in a
+fail loop until reset. The ordered steps (CPU and PMP setup, fuse and
+lifecycle evaluation, SMC synchronization, boot-source selection, manifest and
+payload validation, secure boot, demotion, attestation and hand-off), their
+requirement identifiers and the implementation-status matrix are in the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-boot-rom" class="xref page">SEP Boot ROM appendix</a>
+of the Programmer&#8217;s Guide.</p>
 </div>
 </div>
 </div>
@@ -337,7 +300,9 @@ which the processor enters a fail loop requiring a reset to exit</p>
 <h2 id="firmware-reference"><a class="anchor" href="#firmware-reference"></a><a class="link" href="#firmware-reference">4. Firmware Reference</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="../sep-bootrom-prod/index.html" class="xref page">Production ROM Manual</a></p>
+<p>The production ROM firmware is documented in the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-boot-rom" class="xref page">SEP Boot ROM appendix</a>
+of the Programmer&#8217;s Guide.</p>
 </div>
 </div>
 </div>

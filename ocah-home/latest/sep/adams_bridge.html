@@ -145,6 +145,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -173,14 +181,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -330,8 +330,8 @@ A partial-word write inside the extent is answered with SLVERR wherever it
 lands (<a href="#abr-access-size">ABR access size</a>). ABR never drives <code>hresp</code> to error, so the AHB error
 response its slave interface implements is unreachable. A burst is answered
 with DECERR by the demux (<a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>).
-Software shall not rely on a bus error to detect a malformed ABR register
-address inside the extent.</p>
+A malformed ABR register address inside the extent therefore returns no bus
+error.</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -368,8 +368,8 @@ eight words per share with its own <code>KEY_CTRL.KEY_VALID</code>, in the forma
 <a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>. The ML-DSA seed and the ML-KEM message are read as single
 256-bit values. The ML-KEM seed is read as one 512-bit value formed by
 concatenating <code>MLKEM_SEED_D</code> followed by <code>MLKEM_SEED_Z</code>, so that read completes
-only when both blocks are valid. Software shall enable the seed read before
-starting an operation that consumes a delivered seed.</p>
+only when both blocks are valid. An operation consumes a delivered seed only
+once its seed read is enabled.</p>
 </div>
 <div class="paragraph">
 <p>The ML-KEM shared key travels in the opposite direction, making this the only
@@ -405,16 +405,19 @@ bus are terminated with AXI4-Lite error slaves.</p>
 <td class="content">
 Adams Bridge does not auto-return to its RESET state when an operation
 finishes. The sequencer parks at the operation&#8217;s end state with <code>STATUS.VALID</code>
-set, and <code>STATUS.READY</code> re-asserts only after a <code>zeroize</code> or a reset. Firmware
-therefore detects completion from <code>VALID</code>, and must issue a <code>zeroize</code> between
-back-to-back operations.
+set, and <code>STATUS.READY</code> re-asserts only after a <code>zeroize</code> or a reset, so
+completion is visible in <code>VALID</code> and back-to-back operations need a <code>zeroize</code>
+between them.
 </td>
 </tr>
 </table>
 </div>
 <div class="paragraph">
 <p>Consult the <a href="https://github.com/chipsalliance/adams-bridge">Adams Bridge
-documentation</a> for the authoritative core functionality of the IP. Its CSRs are
+documentation</a> for the authoritative core functionality of the IP.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-adams-bridge" class="xref page">programming guidance</a>
+for this block. Its CSRs are
 defined by the vendored Caliptra register package rather than by an OCAH PeakRDL
 source, so unlike the other accelerators they do not appear in
 <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>

@@ -158,13 +158,7 @@
     <a class="nav-link" href="sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="sep/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="sep-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="sep/fabric.html">Interconnect</a>
@@ -249,9 +243,6 @@
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -275,13 +266,7 @@
     <a class="nav-link" href="smc/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="smc/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="smc-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="smc/fabric.html">Interconnect</a>
@@ -385,13 +370,7 @@
     <span class="nav-text">Cross-Trigger</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="6">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="7">
-    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -435,9 +414,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="aou-referenced-documents.html">Appendix B. Referenced Documents</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="aou-software-operation.html">Appendix C. Software Operation</a>
   </li>
 </ul>
   </li>
@@ -623,6 +599,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -651,14 +635,6 @@
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -717,42 +693,35 @@ topic; the PDF numbers figures consecutively across the book.</p>
 <div class="sect1"><h2 id="catalog-topic-3">AoU PPA</h2><div class="sectionbody"><ul><li><a href="aou-ppa-appendices.html#figure-29">Figure 1. Initial Latency of AOU_CORE with UCIe (Cycle)</a></li>
 <li><a href="aou-ppa-appendices.html#figure-30">Figure 2. AoU Bandwidth Efficiency with Respect to UCIe FDI Latency</a></li>
 <li><a href="aou-ppa-appendices.html#figure-31">Figure 3. Area of 1 RP AOU</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-4">AoU Appendix C. Software Operation</h2><div class="sectionbody"><ul><li><a href="aou-software-operation.html#figure-22">Figure 1. Bubble inserted when Transmitter de-assert LP_VALID</a></li>
-<li><a href="aou-software-operation.html#figure-23">Figure 2. R/B Response Error Debug FIFO Access Sequence</a></li>
-<li><a href="aou-software-operation.html#figure-24">Figure 3. Independent Activation Flow</a></li>
-<li><a href="aou-software-operation.html#figure-25">Figure 4. Deactivation sequence with DEACTIVATE_START</a></li>
-<li><a href="aou-software-operation.html#figure-26">Figure 5. CREDIT_MANAGE 1 Deactivate sequence flow</a></li>
-<li><a href="aou-software-operation.html#figure-27">Figure 6. CREDIT_MANAGE 0 Deactivate sequence flow</a></li>
-<li><a href="aou-software-operation.html#figure-28">Figure 7. PM Entry Sequence</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-5">Clock Domains</h2><div class="sectionbody"><ul><li><a href="clock_domains.html#ocah-clock-domain-diagram">Figure 1. OCAH Clock-Domain Zones</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-6">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="dtp/clk_rst.html#dtp-clock-stop-diagram">Figure 1. DTP JTAG and CLA clock-stop aggregation</a></li>
+<div class="sect1"><h2 id="catalog-topic-4">Clock Domains</h2><div class="sectionbody"><ul><li><a href="clock_domains.html#ocah-clock-domain-diagram">Figure 1. OCAH Clock-Domain Zones</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-5">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="dtp/clk_rst.html#dtp-clock-stop-diagram">Figure 1. DTP JTAG and CLA clock-stop aggregation</a></li>
 <li><a href="dtp/clk_rst.html#dtp-clock-tree">Figure 2. DTP system-clock and JTAG-clock distribution</a></li>
 <li><a href="dtp/clk_rst.html#dtp-reset-tree">Figure 3. DTP system and JTAG reset distribution</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-7">JTAG Operation</h2><div class="sectionbody"><ul><li><a href="dtp/jtag.html#dtp-jtag-scan-chain-figure">Figure 1. DTP JTAG scan chain</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-8">Overview</h2><div class="sectionbody"><ul><li><a href="dtp/overview.html#dtp-internal-structure-figure">Figure 1. DTP internal structure</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-9">AVSBus Controller</h2><div class="sectionbody"><ul><li><a href="ip/avsbus_controller/doc/index.html#avsbus-controller-diagram">Figure 1. AVSBus controller block diagram</a></li>
+<div class="sect1"><h2 id="catalog-topic-6">JTAG Operation</h2><div class="sectionbody"><ul><li><a href="dtp/jtag.html#dtp-jtag-scan-chain-figure">Figure 1. DTP JTAG scan chain</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-7">Overview</h2><div class="sectionbody"><ul><li><a href="dtp/overview.html#dtp-internal-structure-figure">Figure 1. DTP internal structure</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-8">AVSBus Controller</h2><div class="sectionbody"><ul><li><a href="ip/avsbus_controller/doc/index.html#avsbus-controller-diagram">Figure 1. AVSBus controller block diagram</a></li>
 <li><a href="ip/avsbus_controller/doc/index.html#avsbus-protocol-fsm-diagram">Figure 2. AVSBus protocol state machine</a></li>
 <li><a href="ip/avsbus_controller/doc/index.html#avsbus-clock-select-diagram">Figure 3. AVSBus clock selection</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-10">Mailbox Unit</h2><div class="sectionbody"><ul><li><a href="ip/axi_lite_mailbox_unit/doc/index.html#mailbox-wrapper-diagram">Figure 1. SMC mailbox wrapper and interrupt routing</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-11">Cross-Trigger Matrix</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_matrix/doc/index.html#ctm-routing-structure-figure">Figure 1. CTM routing structure</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-12">Cross-Trigger Network</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_network/doc/index.html#sip-cross-trigger-topology-figure">Figure 1. SiP cross-trigger topology</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-13">Cross-Trigger Port</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_port/doc/index.html#ctp-module-structure-figure">Figure 1. CTP module structure</a></li>
+<div class="sect1"><h2 id="catalog-topic-9">Mailbox Unit</h2><div class="sectionbody"><ul><li><a href="ip/axi_lite_mailbox_unit/doc/index.html#mailbox-wrapper-diagram">Figure 1. SMC mailbox wrapper and interrupt routing</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-10">Cross-Trigger Matrix</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_matrix/doc/index.html#ctm-routing-structure-figure">Figure 1. CTM routing structure</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-11">Cross-Trigger Network</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_network/doc/index.html#sip-cross-trigger-topology-figure">Figure 1. SiP cross-trigger topology</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-12">Cross-Trigger Port</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_port/doc/index.html#ctp-module-structure-figure">Figure 1. CTP module structure</a></li>
 <li><a href="ip/cross_trigger_port/doc/index.html#ctp-wire-or-behavior-figure">Figure 2. CTP wire-OR behavior</a></li>
 <li><a href="ip/cross_trigger_port/doc/index.html#ctp-wire-or-chiplet-connections-figure">Figure 3. CTP wire-OR chiplet connections</a></li>
 <li><a href="ip/cross_trigger_port/doc/index.html#ctp-point-to-point-behavior-figure">Figure 4. CTP point-to-point behavior</a></li>
 <li><a href="ip/cross_trigger_port/doc/index.html#ctp-point-to-point-chiplet-connections-figure">Figure 5. CTP point-to-point chiplet connections</a></li>
 <li><a href="ip/cross_trigger_port/doc/index.html#ctp-request-acknowledge-timing-figure">Figure 6. CTP request-acknowledge timing</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-14">Entropy Source</h2><div class="sectionbody"><ul><li><a href="ip/entropy_source/doc/index.html#entropy-source-diagram">Figure 1. Entropy source microarchitecture</a></li>
+<div class="sect1"><h2 id="catalog-topic-13">Entropy Source</h2><div class="sectionbody"><ul><li><a href="ip/entropy_source/doc/index.html#entropy-source-diagram">Figure 1. Entropy source microarchitecture</a></li>
 <li><a href="ip/entropy_source/doc/index.html#entropy-rosc-diagram">Figure 2. Entropy source ring-oscillator complex</a></li>
 <li><a href="ip/entropy_source/doc/index.html#entropy-decorrelator-diagram">Figure 3. Entropy source decorrelator</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-15">GPIO Peripheral</h2><div class="sectionbody"><ul><li><a href="ip/gpio/doc/index.html#gpio-interface-diagram">Figure 1. GPIO controller, interface shim, LSIO mux and strap-capture path</a></li>
+<div class="sect1"><h2 id="catalog-topic-14">GPIO Peripheral</h2><div class="sectionbody"><ul><li><a href="ip/gpio/doc/index.html#gpio-interface-diagram">Figure 1. GPIO controller, interface shim, LSIO mux and strap-capture path</a></li>
 <li><a href="ip/gpio/doc/index.html#gpio-padring-diagram">Figure 2. SMC pad ring GPIO interfaces and adopter pad shims</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-16">I2C Controller</h2><div class="sectionbody"><ul><li><a href="ip/i2c/doc/index.html#i2c-core-diagram">Figure 1. OpenTitan I2C core reference architecture</a></li>
+<div class="sect1"><h2 id="catalog-topic-15">I2C Controller</h2><div class="sectionbody"><ul><li><a href="ip/i2c/doc/index.html#i2c-core-diagram">Figure 1. OpenTitan I2C core reference architecture</a></li>
 <li><a href="ip/i2c/doc/index.html#i2c-wrapper-diagram">Figure 2. OCAH I2C wrapper and generated register interface</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-17">I3C Controller</h2><div class="sectionbody"><ul><li><a href="ip/i3ccore_wrap/doc/index.html#i3c-core-diagram">Figure 1. CHIPS Alliance i3c-core reference architecture</a></li>
+<div class="sect1"><h2 id="catalog-topic-16">I3C Controller</h2><div class="sectionbody"><ul><li><a href="ip/i3ccore_wrap/doc/index.html#i3c-core-diagram">Figure 1. CHIPS Alliance i3c-core reference architecture</a></li>
 <li><a href="ip/i3ccore_wrap/doc/index.html#i3c-wrapper-diagram">Figure 2. OCAH I3C wrapper</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-18">JTAG Interface Unit</h2><div class="sectionbody"><ul><li><a href="ip/jtag_intf_unit/doc/index.html#jtag-interface-unit-scan-chain-figure">Figure 1. JTAG Interface Unit scan chain</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-19">JTAG PTAP</h2><div class="sectionbody"><ul><li><a href="ip/jtag_ptap/doc/index.html#ptap-module-architecture-figure">Figure 1. PTAP module architecture</a></li>
+<div class="sect1"><h2 id="catalog-topic-17">JTAG Interface Unit</h2><div class="sectionbody"><ul><li><a href="ip/jtag_intf_unit/doc/index.html#jtag-interface-unit-scan-chain-figure">Figure 1. JTAG Interface Unit scan chain</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-18">JTAG PTAP</h2><div class="sectionbody"><ul><li><a href="ip/jtag_ptap/doc/index.html#ptap-module-architecture-figure">Figure 1. PTAP module architecture</a></li>
 <li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-single-operation-layout-figure">Figure 2. JTAG2AXI single-operation layout</a></li>
 <li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-series-control-layout-figure">Figure 3. JTAG2AXI series-control layout</a></li>
 <li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-incrementing-data-layout-for-size-0-figure">Figure 4. JTAG2AXI incrementing data layout for effective size 0</a></li>
@@ -767,87 +736,65 @@ topic; the PDF numbers figures consecutively across the book.</p>
 <li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-error-status-data-layout-for-size-1-figure">Figure 13. JTAG2AXI error-status data layout for effective size 1</a></li>
 <li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-error-status-data-layout-for-size-2-figure">Figure 14. JTAG2AXI error-status data layout for effective size 2</a></li>
 <li><a href="ip/jtag_ptap/doc/index.html#jtag2axi-error-status-data-layout-for-size-3-figure">Figure 15. JTAG2AXI error-status data layout for effective size 3</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-20">JTAG STAP</h2><div class="sectionbody"><ul><li><a href="ip/jtag_stap/doc/index.html#stap-scan-and-control-paths-figure">Figure 1. STAP scan and control paths</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-21">Key Manager (KM)</h2><div class="sectionbody"><ul><li><a href="ip/key_manager/doc/index.html#key-manager-architecture-figure">Figure 1. Key Manager architecture</a></li>
+<div class="sect1"><h2 id="catalog-topic-19">JTAG STAP</h2><div class="sectionbody"><ul><li><a href="ip/jtag_stap/doc/index.html#stap-scan-and-control-paths-figure">Figure 1. STAP scan and control paths</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-20">Key Manager (KM)</h2><div class="sectionbody"><ul><li><a href="ip/key_manager/doc/index.html#key-manager-architecture-figure">Figure 1. Key Manager architecture</a></li>
 <li><a href="ip/key_manager/doc/index.html#key-manager-reset-diagram">Figure 2. Key Manager cold and warm reset conditioning</a></li>
 <li><a href="ip/key_manager/doc/index.html#key-manager-mailbox-transport-figure">Figure 3. Key Manager mailbox transport</a></li>
 <li><a href="ip/key_manager/doc/index.html#key-manager-accelerator-key-path-figure">Figure 4. Key Manager accelerator key path</a></li>
 <li><a href="ip/key_manager/doc/index.html#key-manager-coordination-diagram">Figure 5. SEP host and Key Manager key-load and key-transfer sequence</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-22">Log Engine</h2><div class="sectionbody"><ul><li><a href="ip/log_engine/doc/index.html#log-engine-wrapper-diagram">Figure 1. SMC log-engine wrapper and data paths</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-23">SRAM Scrambling</h2><div class="sectionbody"><ul><li><a href="ip/scrambler/doc/index.html#sram-scrambler-datapath-figure">Figure 1. SRAM scrambler datapath</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-24">System Timer OCTS</h2><div class="sectionbody"><ul><li><a href="ip/system_timer_octs/doc/index.html#system-timer-octs-diagram">Figure 1. System Timer OCTS primary/secondary synchronization and credit CDC</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-25">UART 16550</h2><div class="sectionbody"><ul><li><a href="ip/uart_16550/doc/index.html#uart-wrapper-diagram">Figure 1. SMC UART wrapper</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-26">Platform Overview</h2><div class="sectionbody"><ul><li><a href="overview.html#ocah-top-level-diagram">Figure 1. OCAH Top-Level Block Diagram</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-27">SEP Production ROM</h2><div class="sectionbody"><ul><li><a href="sep-bootrom-prod/index.html#trm-figure-1">Figure 1. Cold and warm boot flow</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-28">SEP ROM Boot Architecture</h2><div class="sectionbody"><ul><li><a href="sep-bootrom-prod/rom.html#fig:sep_boot_flow_reset">Figure 1. Boot flow, 1 of 3: reset entry and platform initialization ([S01]-[S20])</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:sep_boot_flow_manifest">Figure 2. Boot flow, 2 of 3: boot source and the manifest retry loop ([S21]-[S24])</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:sep_boot_flow_handoff">Figure 3. Boot flow, 3 of 3: one-shot state and the BL1 hand-off ([S25]-[S30])</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:cpu_init">Figure 4. Reset stub sequence (cold boot)</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:warm_cold_decision">Figure 5. Warm/cold reset decision</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:pmp_regions">Figure 6. PMP fence lifecycle (Smepmp)</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:smc_sep_sync">Figure 7. SEP↔SMC synchronization (cold boot)</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:boot_mode_branch">Figure 8. Boot-source branch</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:spi_transfer">Figure 9. Manifest transfer through the transport shim</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:manifest_validate_order">Figure 10. Canonical manifest validation order</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:secure_boot_decision">Figure 11. Secure-boot decision</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:key_select_revoke">Figure 12. Key authorization, revocation, and verification</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:demotion">Figure 13. Demotion decision flow</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:payload_pipeline">Figure 14. Payload verification pipeline</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:measurement_compose">Figure 15. Measurement enrollment and PCRV hand-over</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:handoff_selfcheck">Figure 16. Pre-hand-off self-check and jump</a></li>
-<li><a href="sep-bootrom-prod/rom.html#fig:retry_backup_sm">Figure 17. Slot retry state machine (<code>BOOT_MODE_SPI</code>)</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-29">Adams Bridge (ABR)</h2><div class="sectionbody"><ul><li><a href="sep/adams_bridge.html#sep-abr-mldsa-diagram">Figure 1. Adams Bridge ML-DSA reference architecture</a></li>
+<div class="sect1"><h2 id="catalog-topic-21">Log Engine</h2><div class="sectionbody"><ul><li><a href="ip/log_engine/doc/index.html#log-engine-wrapper-diagram">Figure 1. SMC log-engine wrapper and data paths</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-22">SRAM Scrambling</h2><div class="sectionbody"><ul><li><a href="ip/scrambler/doc/index.html#sram-scrambler-datapath-figure">Figure 1. SRAM scrambler datapath</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-23">System Timer OCTS</h2><div class="sectionbody"><ul><li><a href="ip/system_timer_octs/doc/index.html#system-timer-octs-diagram">Figure 1. System Timer OCTS primary/secondary synchronization and credit CDC</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-24">UART 16550</h2><div class="sectionbody"><ul><li><a href="ip/uart_16550/doc/index.html#uart-wrapper-diagram">Figure 1. SMC UART wrapper</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-25">Platform Overview</h2><div class="sectionbody"><ul><li><a href="overview.html#ocah-top-level-diagram">Figure 1. OCAH Top-Level Block Diagram</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-26">Adams Bridge (ABR)</h2><div class="sectionbody"><ul><li><a href="sep/adams_bridge.html#sep-abr-mldsa-diagram">Figure 1. Adams Bridge ML-DSA reference architecture</a></li>
 <li><a href="sep/adams_bridge.html#sep-abr-mlkem-diagram">Figure 2. Adams Bridge ML-KEM reference architecture</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-30">AES Cipher</h2><div class="sectionbody"><ul><li><a href="sep/aes.html#sep-aes-reference-diagram">Figure 1. OpenTitan AES core reference architecture</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-31">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="sep/clk_rst.html#sep-clock-tree">Figure 1. SEP clock tree and clock domains</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-32">CPU</h2><div class="sectionbody"><ul><li><a href="sep/cpu.html#sep-cpu-diagram">Figure 1. SEP VeeR EL2 CPU subsystem and memory interfaces</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-33">Cryptographic Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/crypto.html#sep-crypto-diagram">Figure 1. SEP cryptographic subsystem and external memory interfaces</a></li>
+<div class="sect1"><h2 id="catalog-topic-27">AES Cipher</h2><div class="sectionbody"><ul><li><a href="sep/aes.html#sep-aes-reference-diagram">Figure 1. OpenTitan AES core reference architecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-28">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="sep/clk_rst.html#sep-clock-tree">Figure 1. SEP clock tree and clock domains</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-29">CPU</h2><div class="sectionbody"><ul><li><a href="sep/cpu.html#sep-cpu-diagram">Figure 1. SEP VeeR EL2 CPU subsystem and memory interfaces</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-30">Cryptographic Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/crypto.html#sep-crypto-diagram">Figure 1. SEP cryptographic subsystem and external memory interfaces</a></li>
 <li><a href="sep/crypto.html#sep-crypto-reset-diagram">Figure 2. SEP cryptographic subsystem resets</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-34">Direct Memory Access (DMA)</h2><div class="sectionbody"><ul><li><a href="sep/dma.html#sep-dma-reference-diagram">Figure 1. OpenTitan DMA core and inline hashing reference architecture</a></li>
+<div class="sect1"><h2 id="catalog-topic-31">Direct Memory Access (DMA)</h2><div class="sectionbody"><ul><li><a href="sep/dma.html#sep-dma-reference-diagram">Figure 1. OpenTitan DMA core and inline hashing reference architecture</a></li>
 <li><a href="sep/dma.html#sep-dma-integration-figure">Figure 2. SEP secure DMA integration</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-35">Interconnect</h2><div class="sectionbody"><ul><li><a href="sep/fabric.html#sep-axi-connectivity">Figure 1. SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.</a></li>
+<div class="sect1"><h2 id="catalog-topic-32">Interconnect</h2><div class="sectionbody"><ul><li><a href="sep/fabric.html#sep-axi-connectivity">Figure 1. SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.</a></li>
 <li><a href="sep/fabric.html#sep-input-fabric-diagram">Figure 2. SEP input fabric</a></li>
 <li><a href="sep/fabric.html#sep-local-fabric-diagram">Figure 3. SEP local fabric</a></li>
 <li><a href="sep/fabric.html#sep-output-fabric-diagram">Figure 4. SEP output fabric</a></li>
 <li><a href="sep/fabric.html#sep-system-peripheral-traffic-management-figure">Figure 5. SEP system-peripheral traffic management</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-36">HMAC-SHA2</h2><div class="sectionbody"><ul><li><a href="sep/hmac.html#sep-hmac-reference-diagram">Figure 1. OpenTitan HMAC core reference architecture</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-37">KMAC-SHA3</h2><div class="sectionbody"><ul><li><a href="sep/kmac.html#sep-kmac-reference-diagram">Figure 1. OpenTitan KMAC core reference architecture</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-38">Life Cycle Controller (LCC)</h2><div class="sectionbody"><ul><li><a href="sep/lifecycle_controller.html#sep-lifecycle-controller-figure">Figure 1. SEP lifecycle controller</a></li>
+<div class="sect1"><h2 id="catalog-topic-33">HMAC-SHA2</h2><div class="sectionbody"><ul><li><a href="sep/hmac.html#sep-hmac-reference-diagram">Figure 1. OpenTitan HMAC core reference architecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-34">KMAC-SHA3</h2><div class="sectionbody"><ul><li><a href="sep/kmac.html#sep-kmac-reference-diagram">Figure 1. OpenTitan KMAC core reference architecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-35">Life Cycle Controller (LCC)</h2><div class="sectionbody"><ul><li><a href="sep/lifecycle_controller.html#sep-lifecycle-controller-figure">Figure 1. SEP lifecycle controller</a></li>
 <li><a href="sep/lifecycle_controller.html#sep-lifecycle-state-machine-figure">Figure 2. SEP lifecycle state machine</a></li>
 <li><a href="sep/lifecycle_controller.html#sep-security-domains-figure">Figure 3. SEP security domains</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-39">Mailboxes</h2><div class="sectionbody"><ul><li><a href="sep/mailbox.html#sep-mailbox-diagram">Figure 1. SEP host mailbox architecture and interrupt routing</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-40">OTBN PKA Public Key Accelerator</h2><div class="sectionbody"><ul><li><a href="sep/otbn.html#sep-otbn-reference-diagram">Figure 1. OpenTitan OTBN core reference architecture</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-41">OTP Fuse Controller</h2><div class="sectionbody"><ul><li><a href="sep/otp_fuse_controller.html#sep-otp-fuse-bank-diagram">Figure 1. SEP OTP fuse bank</a></li>
+<div class="sect1"><h2 id="catalog-topic-36">Mailboxes</h2><div class="sectionbody"><ul><li><a href="sep/mailbox.html#sep-mailbox-diagram">Figure 1. SEP host mailbox architecture and interrupt routing</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-37">OTBN PKA Public Key Accelerator</h2><div class="sectionbody"><ul><li><a href="sep/otbn.html#sep-otbn-reference-diagram">Figure 1. OpenTitan OTBN core reference architecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-38">OTP Fuse Controller</h2><div class="sectionbody"><ul><li><a href="sep/otp_fuse_controller.html#sep-otp-fuse-bank-diagram">Figure 1. SEP OTP fuse bank</a></li>
 <li><a href="sep/otp_fuse_controller.html#sep-efuse-interface-diagram">Figure 2. eFuse controller and technology-specific interface shim</a></li>
 <li><a href="sep/otp_fuse_controller.html#sep-efuse-sense-diagram">Figure 3. eFuse sensing state machine and shadow-register timing</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-42">Overview</h2><div class="sectionbody"><ul><li><a href="sep/overview.html#sep-top-level-diagram">Figure 1. SEP top-level microarchitecture</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-43">Peripheral Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/peripheral_subsystem.html#sep-peripheral-extension-port-figure">Figure 1. SEP peripheral extension port</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-44">SEP Reset Controller</h2><div class="sectionbody"><ul><li><a href="sep/reset_controller.html#sep-reset-domain-diagram">Figure 1. SEP reset domains and reset sequencing</a></li>
+<div class="sect1"><h2 id="catalog-topic-39">Overview</h2><div class="sectionbody"><ul><li><a href="sep/overview.html#sep-top-level-diagram">Figure 1. SEP top-level microarchitecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-40">Peripheral Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/peripheral_subsystem.html#sep-peripheral-extension-port-figure">Figure 1. SEP peripheral extension port</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-41">SEP Reset Controller</h2><div class="sectionbody"><ul><li><a href="sep/reset_controller.html#sep-reset-domain-diagram">Figure 1. SEP reset domains and reset sequencing</a></li>
 <li><a href="sep/reset_controller.html#sep-reset-ctrl-logic-diagram">Figure 2. SEP Reset Controller reset logic</a></li>
 <li><a href="sep/reset_controller.html#sep-crypto-axi-isolation-diagram">Figure 3. SEP crypto AXI isolation</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-45">Token Processing</h2><div class="sectionbody"><ul><li><a href="sep/token_processing.html#sep-token-processing-figure">Figure 1. SEP token processing</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-46">TRNG and DRBG</h2><div class="sectionbody"><ul><li><a href="sep/trng.html#sep-trng-diagram">Figure 1. SEP TRNG and DRBG entropy distribution</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-47">SMC Production ROM Reference</h2><div class="sectionbody"><ul><li><a href="smc-bootrom-prod/index.html#detailed-boot-flow">Figure 1. Detailed boot flow</a></li>
-<li><a href="smc-bootrom-prod/index.html#i3c-flow-control">Figure 2. HCI target response flow</a></li>
-<li><a href="smc-bootrom-prod/index.html#status-reporting-flow">Figure 3. SMC ROM FW status-reporting flow</a></li>
-<li><a href="smc-bootrom-prod/index.html#occp-processing-flow">Figure 4. OCCP command-processing flow</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-48">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="smc/clk_rst.html#smc-clock-tree">Figure 1. SMC clock tree and clock domains in u_smc_base</a></li>
+<div class="sect1"><h2 id="catalog-topic-42">Token Processing</h2><div class="sectionbody"><ul><li><a href="sep/token_processing.html#sep-token-processing-figure">Figure 1. SEP token processing</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-43">TRNG and DRBG</h2><div class="sectionbody"><ul><li><a href="sep/trng.html#sep-trng-diagram">Figure 1. SEP TRNG and DRBG entropy distribution</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-44">Clocks and Resets</h2><div class="sectionbody"><ul><li><a href="smc/clk_rst.html#smc-clock-tree">Figure 1. SMC clock tree and clock domains in u_smc_base</a></li>
 <li><a href="smc/clk_rst.html#smc-clock-tree-cpu-periph">Figure 2. SMC clock tree and clock domains in u_smc_cpu_wrapper and u_smc_peripherals</a></li>
 <li><a href="smc/clk_rst.html#smc-reset-distribution-figure">Figure 3. SMC reset unit architecture</a></li>
 <li><a href="smc/clk_rst.html#smc-flr-isolation-diagram">Figure 4. SMC FLR isolation connections between chiplets</a></li>
 <li><a href="smc/clk_rst.html#smc-flr-software-diagram">Figure 5. SMC-driven FLR isolation</a></li>
 <li><a href="smc/clk_rst.html#smc-flr-tile-diagram">Figure 6. Tile-request-driven FLR isolation</a></li>
 <li><a href="smc/clk_rst.html#smc-flr-gpio-diagram">Figure 7. GPIO-driven FLR isolation</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-49">CPU</h2><div class="sectionbody"><ul><li><a href="smc/cpu.html#smc-cpu-cluster-diagram">Figure 1. SMC CPU cluster and TileLink-to-AXI integration</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-50">Design-for-Debug (DFD) and Core Logic Analyzer (CLA)</h2><div class="sectionbody"><ul><li><a href="smc/dfd.html#smc-dfd-diagram">Figure 1. SMC DFD block diagram</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-51">Direct Memory Access (DMA) Engine</h2><div class="sectionbody"><ul><li><a href="smc/dma.html#smc-dma-zeroer-diagram">Figure 1. SMC DMA frontend, backend and shared fabric path</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-52">Interconnect</h2><div class="sectionbody"><ul><li><a href="smc/fabric.html#smc-input-fabric-diagram">Figure 1. SMC input fabric topology and routing</a></li>
+<div class="sect1"><h2 id="catalog-topic-45">CPU</h2><div class="sectionbody"><ul><li><a href="smc/cpu.html#smc-cpu-cluster-diagram">Figure 1. SMC CPU cluster and TileLink-to-AXI integration</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-46">Design-for-Debug (DFD) and Core Logic Analyzer (CLA)</h2><div class="sectionbody"><ul><li><a href="smc/dfd.html#smc-dfd-diagram">Figure 1. SMC DFD block diagram</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-47">Direct Memory Access (DMA) Engine</h2><div class="sectionbody"><ul><li><a href="smc/dma.html#smc-dma-zeroer-diagram">Figure 1. SMC DMA frontend, backend and shared fabric path</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-48">Interconnect</h2><div class="sectionbody"><ul><li><a href="smc/fabric.html#smc-input-fabric-diagram">Figure 1. SMC input fabric topology and routing</a></li>
 <li><a href="smc/fabric.html#smc-local-fabric-diagram">Figure 2. SMC local fabric and peripheral islands</a></li>
 <li><a href="smc/fabric.html#smc-output-fabric-diagram">Figure 3. SMC output fabric and remapping paths</a></li>
 <li><a href="smc/fabric.html#smc-traffic-filter-diagram">Figure 4. SMC inbound and outbound traffic-filter mechanism</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-53">Overview</h2><div class="sectionbody"><ul><li><a href="smc/overview.html#smc-top-level-block-diagram-figure">Figure 1. SMC top-level microarchitecture</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-54">Zeroer</h2><div class="sectionbody"><ul><li><a href="smc/zeroer.html#smc-memory-zeroer-diagram">Figure 1. SMC memory zeroer state machine and AXI write flow</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-55">System Management Unit (SMU)</h2><div class="sectionbody"><ul><li><a href="smu/index.html#smu-composition-diagram">Figure 1. SMU composition with the optional SEP subsystem</a></li>
+<div class="sect1"><h2 id="catalog-topic-49">Overview</h2><div class="sectionbody"><ul><li><a href="smc/overview.html#smc-top-level-block-diagram-figure">Figure 1. SMC top-level microarchitecture</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-50">Zeroer</h2><div class="sectionbody"><ul><li><a href="smc/zeroer.html#smc-memory-zeroer-diagram">Figure 1. SMC memory zeroer state machine and AXI write flow</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-51">System Management Unit (SMU)</h2><div class="sectionbody"><ul><li><a href="smu/index.html#smu-composition-diagram">Figure 1. SMU composition with the optional SEP subsystem</a></li>
 <li><a href="smu/index.html#smu-crossbar-connectivity-diagram">Figure 2. SMU AXI crossbar connectivity</a></li>
 <li><a href="smu/index.html#smu-crossbar-decode-diagram">Figure 3. SMU aperture decode and routing</a></li>
 <li><a href="smu/index.html#smu-clock-distribution">Figure 4. SMU clock distribution</a></li>

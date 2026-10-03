@@ -146,6 +146,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -175,14 +183,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -457,8 +457,10 @@ make -C hw/sys/smc/bootrom/dummy</code></pre>
 <p>Build the production ROM from the same container (self-contained Makefile, not
 the shared <code>compile.mk</code> engine).
 See <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/README.md"><code>hw/sys/smc/bootrom/prod/README.md</code></a> and
-<a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/doc/index.adoc"><code>hw/sys/smc/bootrom/prod/doc/</code></a> for
-the full target list, build variables, and architecture.</p>
+the
+<a href="../../ocah-programmer-guide/latest/index.html#smc-boot-rom" class="xref page">SMC Boot ROM appendix</a>
+of the Programmer&#8217;s Guide for the full target list, build variables, and
+architecture.</p>
 </div>
 <div class="paragraph">
 <p>The build splits across two halves so each runs in the right environment:</p>
@@ -498,8 +500,10 @@ It implements the full secure-boot flow — manifest loading, RSA-3072 signature
 A build that carries its own drivers overrides the stubs at link time: it passes the driver sources as <code>OCAH_FW_OVERLAY_SOURCES_sep</code>, and the include flags (<code>-I&lt;dir&gt;</code>) for their register headers as <code>OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep</code>, on the <code>make</code> command line.
 The Makefile ignores both variables when they are set only in the environment, so a value exported in a shell cannot change an open-tree ROM.
 See <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/README.md"><code>hw/sys/sep/bootrom/prod/README.md</code></a> and
-<a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/doc/index.adoc"><code>hw/sys/sep/bootrom/prod/doc/</code></a> for
-the full target list, build variables, key provisioning, and boot flow.</p>
+the
+<a href="../../ocah-programmer-guide/latest/index.html#sep-boot-rom" class="xref page">SEP Boot ROM appendix</a>
+of the Programmer&#8217;s Guide for the full target list, build variables, key
+provisioning, and boot flow.</p>
 </div>
 <div class="paragraph">
 <p>The ROM supports two flash transports selected at build time by <code>BOOT_SPI_CONTROLLER_OT</code>; the unused driver is dropped by <code>--gc-sections</code> at link time.
@@ -577,7 +581,10 @@ make -C hw/sys/sep/bootrom/prod oca-images</code></pre>
 <div class="paragraph">
 <p>The Key Manager (KM) subsystem (PicoRV32) runs its firmware from ROM.
 That firmware is not only a boot loader: it is the KM runtime, serving the SEP mailbox, until the SEP loads alternative firmware into KM SRAM and hands over to it.
-It therefore lives in <code>hw/ip/key_manager/approm/prod/</code> rather than a <code>bootrom/</code> directory, and builds with a self-contained <code>Makefile</code> there.</p>
+It therefore lives in <code>hw/ip/key_manager/approm/prod/</code> rather than a <code>bootrom/</code> directory, and builds with a self-contained <code>Makefile</code> there.
+The
+<a href="../../ocah-programmer-guide/latest/index.html#km-application-rom" class="xref page">Key Manager Application ROM appendix</a>
+of the Programmer&#8217;s Guide describes the firmware.</p>
 </div>
 <div class="paragraph">
 <p>The entry point is <code>src/rom_main.c</code>.

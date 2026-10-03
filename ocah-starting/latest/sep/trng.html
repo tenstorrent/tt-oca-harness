@@ -147,6 +147,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -176,14 +184,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -256,7 +256,10 @@ adapter. The entropy pool sits in <code>sep</code>, outside <code>sep_crypto</co
 SEP local crossbar. The CSRNG and EDN cores are OpenTitan IP; their internal
 structure and register semantics are described in the
 <a href="https://opentitan.org/book/hw/ip/csrng/">OpenTitan CSRNG</a> and
-<a href="https://opentitan.org/book/hw/ip/edn/">EDN</a> documentation.</p>
+<a href="https://opentitan.org/book/hw/ip/edn/">EDN</a> documentation.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#ocah-trng-bring-up" class="xref page">programming guidance</a>
+for this block.</p>
 </div>
 </div>
 </div>
@@ -343,8 +346,7 @@ is reset; resetting the internal TRNG alone does not unlock it.</p>
 endpoint is backpressured and retains queued data; an unselected external input
 receives ready high and its beats are discarded. Selection is combinational:
 there is no switch-complete handshake or automatic flush of previously queued
-words. Quiesce consumers before changing selection and account for buffered
-state when choosing the source-change/reset policy.</p>
+words.</p>
 </div>
 <table id="entropy-streaming-signals-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. SEP random-data stream contract</caption>
@@ -466,16 +468,12 @@ reset is sufficient. Hardware does not enforce this ordering.</p></td>
 <div class="paragraph">
 <p>An in-progress KM sample can otherwise combine old and new stream data or
 report a stream error. The reset is therefore not an atomic restart of all
-entropy consumers. Firmware recovery must stop new TRNG CSR traffic, satisfy
-KM quiescence and decide whether other consumers must also be reset to abort
-their operations.</p>
-</div>
-<div class="paragraph">
-<p>After release, reinitialize ESRC, CSRNG and EDN, including source startup-health
-qualification and configuration locking, before depending on internal random
-data. Observe fresh endpoint/pool progress before releasing held consumers.
-External crypto/pool traffic also pauses during adapter clear; it can resume
-when that clear ends, independently of internal generator initialization.</p>
+entropy consumers, and after release the internal chain produces no data until
+ESRC, CSRNG and EDN are reinitialized. External crypto/pool traffic also pauses
+during adapter clear; it can resume when that clear ends, independently of
+internal generator initialization. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-trng-recovery" class="xref page">TRNG recovery sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 <div class="paragraph">
 <p>See <a href="reset_controller.html#sep-trng-reset" class="xref page">Resetting the TRNG</a> for the

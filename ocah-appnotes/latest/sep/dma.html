@@ -82,7 +82,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -101,7 +101,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -110,6 +110,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -145,14 +153,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -164,7 +164,7 @@
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="dma.html">Direct Memory Access (DMA)</a></li>
   </ul>
 </nav>
@@ -183,7 +183,10 @@
 with optional inline SHA-256, SHA-384 or SHA-512 hashing. It uses the
 <a href="https://opentitan.org/book/hw/ip/dma/index.html">OpenTitan DMA Controller</a>
 inside an AXI wrapper. The integration below defines which upstream ports
-and hardware triggers are available in SEP.</p>
+and hardware triggers are available in SEP.
+The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-dma" class="xref page">programming guidance</a>
+for this block.</p>
 </div>
 <div class="paragraph">
 <p>Source and destination addresses independently support incrementing, fixed
@@ -228,9 +231,8 @@ core&#8217;s TL-UL host port back to AXI4. A local-alias remapper precedes the S
 crossbar and leaves the CPU TCM backdoor range available to DMA.</p>
 </div>
 <div class="paragraph">
-<p>Use source and destination address-space ID <code>0x7</code> (the core&#8217;s internal host
-port), with both high address registers zero. The upstream SoC control and
-system ports are tied off in this wrapper; their ASIDs do not provide
+<p>Address-space ID <code>0x7</code> selects the core&#8217;s internal host port, the only route
+in this wrapper. The upstream SoC control and system ports are tied off; their ASIDs do not provide
 additional SEP routes. Reachability is governed by the SEP fabric and filters.</p>
 </div>
 <div class="paragraph">
@@ -245,64 +247,17 @@ All other trigger inputs are tied low; SEP does not wire UART or I3C handshake p
 This does not prevent software-initiated accesses to reachable peripheral registers.</p>
 </div>
 <div class="sect2">
-<h3 id="sep-dma-programming"><a class="anchor" href="#sep-dma-programming"></a><a class="link" href="#sep-dma-programming">1.1. Programming a Copy</a></h3>
-<div class="paragraph">
-<p>For one contiguous memory-to-memory copy:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Wait until the previous operation has finished and configuration is writable
-(<code>CFG_REGWEN</code>). Configure a valid enabled-memory base/limit pair and set
-<code>RANGE_VALID</code> before starting; observe <code>RANGE_REGWEN</code> if firmware has locked
-that configuration.</p>
-</li>
-<li>
-<p>Write <code>SRC_ADDR_LO</code> and <code>DST_ADDR_LO</code>, clear both high address registers,
-and select <code>0x7</code> for both fields in <code>ADDR_SPACE_ID</code> (<code>0x77</code> combined).</p>
-</li>
-<li>
-<p>Set <code>TRANSFER_WIDTH</code> to 0, 1 or 2 for 1, 2 or 4 bytes respectively. Align
-both addresses to that width. Enable <code>INCREMENT</code> and clear <code>WRAP</code> in both
-<code>SRC_CONFIG</code> and <code>DST_CONFIG</code>.</p>
-</li>
-<li>
-<p>Set <code>CHUNK_DATA_SIZE</code> and <code>TOTAL_DATA_SIZE</code> to the same nonzero byte count.</p>
-</li>
-<li>
-<p>Write <code>CONTROL</code> with <code>OPCODE=0</code> (copy), <code>HARDWARE_HANDSHAKE_ENABLE=0</code>,
-<code>INITIAL_TRANSFER=1</code> and <code>GO=1</code>.</p>
-</li>
-<li>
-<p>Check <code>STATUS.ERROR</code> and <code>ERROR_CODE</code> while waiting for <code>STATUS.DONE</code>.
-Use a bounded wait in firmware. For interrupt-driven operation, enable
-the required completion/error sources and acknowledge <code>INTR_STATE</code>.</p>
-</li>
-</ol>
-</div>
+<h3 id="sep-dma-completion"><a class="anchor" href="#sep-dma-completion"></a><a class="link" href="#sep-dma-completion">1.1. Completion Reporting</a></h3>
 <div class="paragraph">
 <p>The core reports transaction completion, chunk completion and error separately.
 Chunk completion applies to multi-chunk transfers without hardware handshake;
-it is not a per-trigger interrupt in handshake mode. Status completion/error
-bits are write-one-to-clear; the detailed register map defines each bit.</p>
-</div>
-<div class="paragraph">
-<p>For hashing, select opcode 1, 2 or 3 for SHA-256, SHA-384 or SHA-512 and use
-4-byte transfers. Set <code>INITIAL_TRANSFER</code> on the first transfer of the message;
-read the digest only when <code>STATUS.SHA2_DIGEST_VALID</code> is set. <code>DIGEST_SWAP</code>
-controls byte order within each digest register, not register order.</p>
-</div>
-<div class="paragraph">
-<p>For SPI handshake operation, select trigger 0 in <code>HANDSHAKE_INTR_ENABLE</code>,
-configure the peripheral FIFO and chunk size, and enable hardware handshake.
-A chunk consumes the configured number of bytes per service operation.
-Firmware must clear <code>GO</code> when stopping handshake operation. To abort an active
-operation, request <code>CONTROL.ABORT</code> and wait for <code>STATUS.ABORTED</code> before reusing
-its buffers or configuration. For a peripheral requiring an explicit trigger-clear
-write, configure <code>CLEAR_INTR_SRC</code>, <code>CLEAR_INTR_BUS</code>, <code>INTR_SRC_ADDR</code> and
-<code>INTR_SRC_WR_VAL</code> for the connected host port (<code>CLEAR_INTR_BUS</code> bit 0 = 1);
-otherwise leave that source
-unselected in <code>CLEAR_INTR_SRC</code>.</p>
+it is not a per-trigger interrupt in handshake mode. Status completion and error
+bits are write-one-to-clear; the detailed register map defines each bit. Inline
+hashing requires 4-byte transfers, and <code>DIGEST_SWAP</code> controls byte order within
+each digest register, not register order. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-dma" class="xref page">SEP DMA section</a>
+of the Programmer&#8217;s Guide gives the copy, hashing, handshake and abort
+sequences.</p>
 </div>
 </div>
 </div>

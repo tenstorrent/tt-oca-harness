@@ -83,7 +83,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -102,7 +102,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -111,6 +111,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -146,14 +154,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -165,7 +165,7 @@
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="clk_rst.html">Clocks and Resets</a></li>
   </ul>
 </nav>
@@ -594,30 +594,21 @@ Do not assume an uninitialized pin-enable mask becomes known while that pin is h
 <h3 id="timing-and-recovery"><a class="anchor" href="#timing-and-recovery"></a><a class="link" href="#timing-and-recovery">3.2. Timing and Recovery</a></h3>
 <span id="memory-test-bypass"></span>
 <span id="programmable-reset-timing"></span>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Program the isolation masks and both FLR timing registers before enabling
-requests. The count values cross from SMC to the reference domain through
-handshaked synchronizers; readback in the SMC domain does not acknowledge
-arrival in the reference domain.</p>
-</li>
-<li>
-<p><code>ISOLATE_REQ_FLR_COUNTER_VALUE</code> selects the pre-reset countdown; zero allows
-assertion without that countdown. <code>ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</code>
-selects the cool-reset hold count and must be nonzero to start the timed flow.</p>
-</li>
-<li>
+<div class="paragraph">
+<p>The FLR count values cross from SMC to the reference domain through handshaked
+synchronizers; readback in the SMC domain does not acknowledge arrival in the
+reference domain. <code>ISOLATE_REQ_FLR_COUNTER_VALUE</code> selects the pre-reset
+countdown; zero allows assertion without that countdown.
+<code>ISOLATE_REQ_FLR_RESET_COUNTER_VALUE</code> selects the cool-reset hold count, and
+must be nonzero to start the timed flow.</p>
+</div>
+<div class="paragraph">
 <p>On a synchronized FLR edge, the sequencer counts in reference-clock cycles,
 asserts cool reset, then releases it after the hold countdown. Destination
-reset synchronizers add their release latency. The sequencer is not a queue
-of overlapping FLR requests; coordinate requests and recovery in the integration.</p>
-</li>
-<li>
-<p>Re-establish the affected subsystem&#8217;s state and satisfy its isolation-release
-requirements before clearing the FLR isolation latch or software requests.</p>
-</li>
-</ol>
+reset synchronizers add their release latency. The sequencer is not a queue of
+overlapping FLR requests. The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-flr-isolation" class="xref page">FLR preparation and recovery sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 <div class="paragraph">
 <p>A zero hold count disables the timed reset sequence, but does not prevent the

@@ -147,6 +147,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -176,14 +184,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -569,7 +569,9 @@ every core is released.</p>
 <div class="sect2">
 <h3 id="drain-handshake"><a class="anchor" href="#drain-handshake"></a><a class="link" href="#drain-handshake">6.1. Drain Handshake</a></h3>
 <div class="paragraph">
-<p>A software reset through <code>CPU_CTRL.RESET_CTRL</code>, whether a core or uncore reset
+<p>The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-core-reset-sequence" class="xref page">per-core reset sequence</a>
+in the Programmer&#8217;s Guide gives the firmware steps. A software reset through <code>CPU_CTRL.RESET_CTRL</code>, whether a core or uncore reset
 bit or a core reset pulse, proceeds as follows:</p>
 </div>
 <div class="olist arabic">
@@ -1114,9 +1116,9 @@ cleared, an access that <code>abstractauto</code> selects re-executes the stored
 which is the last value written to <code>command</code>.</p>
 </div>
 <div class="paragraph">
-<p>A debugger that needs the error code of a failed command reads <code>abstractcs</code>
-before it writes <code>command</code> again. Before issuing a command, it clears <code>cmderr</code>
-by writing 1s to the field and confirms that the field reads 0.</p>
+<p>A <code>command</code> write therefore discards the error code of a failed command unless
+<code>abstractcs</code> was read first. The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#dtp-smc-cmderr" class="xref page">debugger sequence for clearing <code>cmderr</code></a>.</p>
 </div>
 </div>
 </div>

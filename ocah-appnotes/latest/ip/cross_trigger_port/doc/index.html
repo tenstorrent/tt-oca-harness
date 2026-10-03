@@ -83,7 +83,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -102,7 +102,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -111,6 +111,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -146,14 +154,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../../../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -165,7 +165,7 @@
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="index.html">Cross-Trigger Port</a></li>
   </ul>
 </nav>
@@ -279,10 +279,11 @@ AXI-Lite CSR window and presents each CTP&#8217;s registers at a 16-byte stride
 starting at offset 0x0200.</p>
 </div>
 <div class="paragraph">
-<p>Program <code>MODE</code> and <code>INVERT</code> once per boot, in a single write, before any CTM
-route selects or targets the port. The
-<a href="../../cross_trigger_network/doc/index.html#ctn-programming" class="xref page">CTN Programming</a>
-section gives the full sequence, reconfiguration, and deadlock recovery.</p>
+<p><code>MODE</code> and <code>INVERT</code> are static configuration, set once per boot in a single
+write before any CTM route selects or targets the port. The Programmer&#8217;s Guide
+gives the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#dtp-cross-trigger" class="xref page">cross-trigger programming sequence</a>
+with reconfiguration and deadlock recovery.</p>
 </div>
 </div>
 </div>

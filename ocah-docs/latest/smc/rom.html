@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Boot ROM :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <link rel="prev" href="cpu.html">
-    <link rel="next" href="../smc-bootrom-prod/index.html">
+    <link rel="next" href="fabric.html">
     <meta name="description" content="SMC Boot ROM architecture, hardware configuration, firmware, and operation.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
@@ -159,13 +159,7 @@
     <a class="nav-link" href="../sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/fabric.html">Interconnect</a>
@@ -250,9 +244,6 @@
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -276,13 +267,7 @@
     <a class="nav-link" href="cpu.html">CPU</a>
   </li>
   <li class="nav-item is-current-page" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../smc-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="fabric.html">Interconnect</a>
@@ -386,13 +371,7 @@
     <span class="nav-text">Cross-Trigger</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="6">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="7">
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -436,9 +415,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../aou-software-operation.html">Appendix C. Software Operation</a>
   </li>
 </ul>
   </li>
@@ -624,6 +600,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -652,14 +636,6 @@
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -735,16 +711,16 @@ eFuse shadow-register output.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The production ROM initializes SRAM and the C runtime, then services OCCP
-requests over target-mode I2C and I3C. The production manual describes the
-startup checks, lifecycle policy and boot-handoff commands.</p>
+requests over target-mode I2C and I3C. The SMC Boot ROM appendix of the
+Programmer&#8217;s Guide describes the startup checks, lifecycle policy and
+boot-handoff commands.</p>
 </div>
 <div class="paragraph">
-<p>The production ROM linker script,
-<code>hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld</code>, matches the 128 KiB hardware
-region. It places <code>.init</code>, <code>.fini</code>, constructor arrays, <code>.rodata</code>, <code>.text</code>, and
-ROM padding in that region. <code>.data</code>, <code>.tdata</code>, <code>.itim</code>, and <code>.lim</code> have runtime
-addresses in the SRAM region at <code>0xC006_0000</code> and load images in ROM. <code>.tbss</code>,
-<code>.bss</code>, the stack, and the heap occupy only SRAM.</p>
+<p>The production ROM image fills the 128 KiB hardware region; its writable data
+runs from SRAM at <code>0xC006_0000</code>. The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-cpu" class="xref page">SMC CPU</a>
+bring-up section of the Programmer&#8217;s Guide gives the linker layout and the
+initialization it requires.</p>
 </div>
 <span id="firmware-reference"></span>
 </div>
@@ -753,13 +729,15 @@ addresses in the SRAM region at <code>0xC006_0000</code> and load images in ROM.
 <h2 id="smc-rom-firmware-reference"><a class="anchor" href="#smc-rom-firmware-reference"></a><a class="link" href="#smc-rom-firmware-reference">4. Firmware Reference</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="../smc-bootrom-prod/index.html" class="xref page">Production ROM Manual</a></p>
+<p>The production ROM firmware is documented in the
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-boot-rom" class="xref page">SMC Boot ROM appendix</a>
+of the Programmer&#8217;s Guide.</p>
 </div>
 </div>
 </div>
 <nav class="pagination">
   <span class="prev"><a href="cpu.html">CPU</a></span>
-  <span class="next"><a href="../smc-bootrom-prod/index.html">Production ROM Manual</a></span>
+  <span class="next"><a href="fabric.html">Interconnect</a></span>
 </nav>
 </article>
   </div>

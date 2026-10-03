@@ -83,7 +83,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -102,7 +102,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -111,6 +111,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -146,14 +154,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -165,7 +165,7 @@
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="dma.html">Direct Memory Access (DMA) Engine</a></li>
   </ul>
 </nav>
@@ -347,17 +347,16 @@ mode overrides gating. Clock gating does not abort transfers or isolate the bus.
 <div class="paragraph">
 <p>The generated map contains <code>NEXT_ID</code>, <code>STATUS</code> and <code>DONE</code> banks for 16 streams,
 but only bank 0 is functional in SMC. Reads of <code>NEXT_ID_1..15</code> complete with zero
-and launch nothing; their <code>STATUS</code> and <code>DONE</code> registers also read zero. Treat
-these banks as reserved. A read of <code>NEXT_ID_0</code> is a command, not a harmless
-status read; exclude it from diagnostic register dumps. Any read whose bytes
-include <code>NEXT_ID_0</code>, such as a 64-bit read at <code>0x48</code>, launches a transfer; a
-32-bit read of the unused word at <code>0x4C</code> does not.</p>
+and launch nothing; their <code>STATUS</code> and <code>DONE</code> registers also read zero. A read of
+<code>NEXT_ID_0</code> is a command, not a status read: any read whose bytes include
+<code>NEXT_ID_0</code>, such as a 64-bit read at <code>0x48</code>, launches a transfer; a 32-bit read
+of the unused word at <code>0x4C</code> does not.</p>
 </div>
 <div class="paragraph">
-<p>Source, destination, length, strides, repetitions and <code>CONFIG</code> are shared registers.
-Serialize their writes and the submission read between software contexts. There
-is no configuration-lock register. The 64-bit fields use low/high 32-bit register
-halves; do not assume the two halves are updated atomically by the register path.</p>
+<p>Source, destination, length, strides, repetitions and <code>CONFIG</code> are registers
+shared by all software contexts, with no configuration-lock register. The 64-bit
+fields use low/high 32-bit register halves, which the register path does not
+update atomically.</p>
 </div>
 <table id="smc-dma-transfer-parameters-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. DMA register storage and effective field widths</caption>
@@ -415,13 +414,12 @@ range. Address stepping uses the effective address width.</p>
 <span id="smc-dma-transfer-capabilities-table"></span>
 <span id="transfer-descriptor-support"></span>
 <div class="paragraph">
-<p>For a linear copy, set <code>CONFIG.ENABLED_ND=1</code> and <code>NUM_REPETITIONS_LO=1</code> and <code>NUM_REPETITIONS_HI=0</code>. For a 2D copy, also
-program source/destination strides and the required repetition count. Strides
-can gather or scatter evenly spaced rows; there is no linked-list walker.</p>
+<p>A linear copy is one repetition with <code>CONFIG.ENABLED_ND</code> set; a 2D copy adds
+source/destination strides and a repetition count. Strides can gather or
+scatter evenly spaced rows; there is no linked-list walker.</p>
 </div>
 <div class="paragraph">
-<p>Set the combined length nonzero and <code>NUM_REPETITIONS_LO/HI</code> at least one. Clearing <code>CONFIG.ENABLED_ND</code> forces the
-midend repetition count to zero. A zero-repetition command produces an internal
+<p>Clearing <code>CONFIG.ENABLED_ND</code> forces the midend repetition count to zero. A zero-repetition command produces an internal
 midend error response without data movement; that response still retires a
 transfer ID. The control aperture does not expose the error payload, so a
 retired ID alone is not proof that valid data was copied.</p>
@@ -447,33 +445,10 @@ to access a filtered or otherwise invalid address.</p>
 <span id="command-processing"></span>
 <span id="response-path"></span>
 <span id="status-and-control"></span>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Establish exclusive ownership of the shared configuration. Prepare the source
-data and destination ownership according to the platform&#8217;s memory-ordering
-and cache-maintenance requirements.</p>
-</li>
-<li>
-<p>Program <code>CONFIG</code>, both address halves, length, strides and repetition count.
-Check effective widths and address bounds before submission.</p>
-</li>
-<li>
-<p>Ensure configuration writes are visible, then read <code>NEXT_ID_0</code> exactly once
-to submit and record its returned transfer ID. This read can be backpressured
-until the frontend accepts the request.</p>
-</li>
-<li>
-<p>Use <code>DONE_0</code> to track retirement. For a single outstanding command, wait for
-its ID; with multiple outstanding commands, maintain an ordered software
-record so a later retirement does not make an earlier equality test wait forever.</p>
-</li>
-<li>
-<p>Apply the platform&#8217;s completion-ordering/cache rules before consuming the
-destination. Handle a firmware timeout as a recovery decision; there is no
-software abort register or state-preserving abort guarantee.</p>
-</li>
-</ol>
+<div class="paragraph">
+<p>The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-dma" class="xref page">DMA Engine section</a>
+of the Programmer&#8217;s Guide gives the submission and completion sequence.</p>
 </div>
 <table id="smc-dma-status-monitoring-and-control-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. DMA status and notification</caption>
@@ -511,15 +486,10 @@ pending register; this is not one interrupt per submitted descriptor.</p></td>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Do not infer completion from frontend readiness or from a zero <code>STATUS</code> value.
+<p>Frontend readiness and a zero <code>STATUS</code> value do not indicate completion.
 The transfer-ID generator resets <code>NEXT_ID</code> to 2 and <code>DONE</code> to 1 and skips zero
-on wrap. Use wrap-aware tracking for long-running queues; ordinary unsigned
-comparison is insufficient across rollover.</p>
-</div>
-<div class="paragraph">
-<p>The busy-falling pulse is a service hint. Use <code>DONE_0</code> to establish retirement
-and provide polling/timeout handling: PLIC gateway behavior does not turn
-successive completion pulses into a counted queue.</p>
+on wrap. PLIC gateway behavior does not turn successive busy-falling pulses
+into a counted queue.</p>
 </div>
 </div>
 </div>

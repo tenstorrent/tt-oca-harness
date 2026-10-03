@@ -135,9 +135,6 @@
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../revision.html">Revision History</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -155,6 +152,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -187,14 +192,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -234,8 +231,8 @@ provide wire-OR or point-to-point signaling at the chiplet boundary.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The CTN combines Cross-Trigger Matrices (CTMs) and Cross-Trigger Ports (CTPs).
-Configure the port modes, then the matrix routes, for the required event path before
-enabling the participating debug sources.</p>
+The port modes are configured before the matrix routes for an event path, and
+both before the participating debug sources are enabled.</p>
 </div>
 </div>
 </div>
@@ -262,11 +259,9 @@ the unified register map; its component chapters describe routing and handshakes
 <p><a href="../ip/cross_trigger_network/doc/index.html#ctn-memory-map" class="xref page">CTN Register Map</a></p>
 </div>
 <div class="paragraph">
-<p>The CTN Programming section gives the configuration sequence for the port modes
-and matrix routes referenced above.</p>
-</div>
-<div class="paragraph">
-<p><a href="../ip/cross_trigger_network/doc/index.html#ctn-programming" class="xref page">CTN Programming</a></p>
+<p>The Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#dtp-cross-trigger" class="xref page">cross-trigger programming sequence</a>
+for the port modes and matrix routes referenced above.</p>
 </div>
 </div>
 </div>

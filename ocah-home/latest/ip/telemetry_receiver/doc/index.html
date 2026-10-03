@@ -144,6 +144,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -172,14 +180,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -218,8 +218,10 @@ settings. Threshold and missing-last-packet interrupts report service needs.</p>
 </div>
 <div class="paragraph">
 <p>Reception does not stop when the message queue fills: a new message replaces
-the oldest one. Software must account for this when reading a message through
-several registers. The receiver does not use <code>atid_i</code> to maintain separate
+the oldest one, including while software is reading it through several
+registers. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-telemetry-receiver" class="xref page">Telemetry Receiver section</a>
+of the Programmer&#8217;s Guide gives the buffer, flush and interrupt procedures. The receiver does not use <code>atid_i</code> to maintain separate
 source contexts; producers sharing a receiver must serialize complete messages.</p>
 </div>
 <div class="sect2">
@@ -527,82 +529,6 @@ receiver. Its external ready signal reflects crossing-FIFO capacity. This does
 not turn the core&#8217;s decoded-message queue into a lossless backpressured queue.
 The wrapper also contains flush-handshake synchronizers and returns a decode
 error for register addresses outside its configured receiver apertures.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="telemetry-receiver-programming"><a class="anchor" href="#telemetry-receiver-programming"></a><a class="link" href="#telemetry-receiver-programming">Programming</a></h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="buffer-management"><a class="anchor" href="#buffer-management"></a><a class="link" href="#buffer-management">Buffer Management</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Check <code>STATUS.BUFFER_EMPTY</code> before reading.</p>
-</li>
-<li>
-<p>Read <code>TELEMETRY_PROBE_ID</code> and <code>TELEMETRY_COUNTER_VLDS</code>, then the required valid
-counter registers. Unused or invalid counter positions read as zero.</p>
-</li>
-<li>
-<p>Write a one to <code>CTRL.BUFFER_POP</code> after consuming the message.</p>
-</li>
-<li>
-<p>Repeat while the queue is nonempty.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>Only one software consumer should own this sequence. Incoming traffic can
-replace the head while the queue is full, so these reads are not an atomic
-snapshot; follow the producer/buffering constraints in the architecture section.</p>
-</div>
-<div class="paragraph">
-<p>Preserve <code>CTRL.BUFFER_THRESHOLD</code> and any outstanding TX-flush request when
-issuing a pop or RX-flush pulse. These fields share one register; a full-word
-write containing only the pulse bit would overwrite the other writable fields.
-Serialize control-register updates between software contexts.</p>
-</div>
-<div class="paragraph">
-<p>For notification on any queued message, set the threshold to zero and enable
-<code>INTR_ENABLE.BUFFER_THRESHOLD</code>. The CSR field is 12 bits, but the core compares
-only its low <code>$clog2(BUFFER_DEPTH)+1</code> bits with occupancy, so values alias modulo
-<code>2 * BUFFER_DEPTH</code>. The interrupt asserts while occupancy is strictly greater
-than the threshold and occupancy never exceeds <code>BUFFER_DEPTH</code>, so only
-thresholds 0 to <code>BUFFER_DEPTH - 1</code> can assert it. With the default depth 8,
-writing 16 acts as 0, and 8 to 15 never assert the interrupt from occupancy.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="flush-operations"><a class="anchor" href="#flush-operations"></a><a class="link" href="#flush-operations">Flush Operations</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Local discard:</strong> pulse <code>CTRL.TELEMETRY_RX_FLUSH</code>. This discards queued messages
-and resets assembly position, without erasing stored bytes or flushing the
-wrapper crossing FIFO. New traffic can make the queue nonempty again.</p>
-</li>
-<li>
-<p><strong>Upstream flush:</strong> set <code>CTRL.TELEMETRY_TX_FLUSH</code> and poll until hardware clears
-it after acknowledgement. Choose a firmware timeout appropriate to the producer;
-the core provides no fixed completion deadline.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Neither operation makes stale trailing blocks safe: producers must still
-write the full configured message footprint and invalidate unused counters.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="interrupt-handling"><a class="anchor" href="#interrupt-handling"></a><a class="link" href="#interrupt-handling">Interrupt Handling</a></h3>
-<div class="paragraph">
-<p>Read <code>INTR_STATUS</code> and service the enabled sources. For <code>BUFFER_THRESHOLD</code>,
-drain until occupancy is at most the threshold; clear the threshold test bit
-if software asserted it. For <code>MISSING_LAST</code>, investigate the producer&#8217;s framing
-and write one to that status bit after handling the event. A receiver flush
-alone does not acknowledge this sticky interrupt.</p>
 </div>
 </div>
 </div>

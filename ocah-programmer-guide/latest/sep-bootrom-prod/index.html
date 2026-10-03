@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>SEP Production ROM :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>SEP Boot ROM :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -100,16 +100,25 @@
     <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -128,6 +137,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -163,14 +180,6 @@
         </li>
       </ul>
     </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -183,7 +192,7 @@
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Programmer's Guide</a></li>
-    <li><a href="index.html">SEP Production ROM</a></li>
+    <li><a href="index.html">SEP Boot ROM</a></li>
   </ul>
 </nav>
 </div>
@@ -192,7 +201,7 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">SEP Production ROM</h1>
+<h1 class="page">SEP Boot ROM</h1>
 <div id="toc" class="toc">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
@@ -334,8 +343,10 @@ verdict. A terminal BL0 error records its status and parks the hart in <code>wfi
 until reset.</p>
 </div>
 <div class="paragraph">
-<p>this chapter specifies the complete boot flow
-and its requirements.</p>
+<p>The
+<a href="../../../ocah-docs/latest/sep/rom.html#sep-rom" class="xref page">SEP Boot ROM chapter</a>
+of the Technical Reference Manual specifies the boot flow requirements that
+this firmware implements.</p>
 </div>
 </div>
 </div>

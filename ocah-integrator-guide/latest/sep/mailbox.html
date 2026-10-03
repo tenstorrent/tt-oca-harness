@@ -135,9 +135,6 @@
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../revision.html">Revision History</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -155,6 +152,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -187,14 +192,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -293,7 +290,9 @@ it. SEP firmware uses the low half at the register base offset.</p>
 <td class="content">
 This depends on the mailbox aperture staying side-effect in <code>mrac</code>.
 Clearing side-effect enables the core&#8217;s load-to-load forwarding and
-speculative accesses, both of which pop entries unpredictably.
+speculative accesses, both of which pop entries unpredictably. The
+Programmer&#8217;s Guide lists it among the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-smc-mailbox-protocol" class="xref page">mailbox usage rules</a>.
 </td>
 </tr>
 </table>

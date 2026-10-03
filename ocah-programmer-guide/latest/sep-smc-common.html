@@ -100,16 +100,25 @@
     <a class="nav-link" href="index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -128,6 +137,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -163,14 +180,6 @@
         </li>
       </ul>
     </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../ocah-appnotes/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -192,7 +201,45 @@
 <h2 id="sep-smc-common-blocks-communication"><a class="anchor" href="#sep-smc-common-blocks-communication"></a><a class="link" href="#sep-smc-common-blocks-communication">1. SEP &amp; SMC Common Blocks and Communication</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="sep-smc-axi-filters"><a class="anchor" href="#sep-smc-axi-filters"></a><a class="link" href="#sep-smc-axi-filters">1.1. AXI Inbound/Outbound Filters</a></h3>
+<h3 id="sep-smc-address-remapping"><a class="anchor" href="#sep-smc-address-remapping"></a><a class="link" href="#sep-smc-address-remapping">1.1. Global Aperture and Address Remapping</a></h3>
+<div class="paragraph">
+<p>During early boot, before other chiplets access SEP or SMC resources, program
+the global apertures to match the chiplet&#8217;s assigned system address map: SEP
+<code>SEP_GLOBAL_BASE_ADDR</code> and <code>SEP_REGION_SIZE</code>, and SMC <code>GLOBAL_BASE</code> and
+<code>REGION_SIZE</code>. Both region sizes reset to 16 MiB. The apertures of different
+chiplets must not overlap, and the hardware does not derive them from the
+chiplet ID: any chiplet-ID-based assignment is platform policy that firmware
+implements. The chiplet ID and chiplet BAR are available in SMC registers.
+Issue a fence between programming these routing registers and later MMIO
+accesses that depend on them. The surrounding system must use the same
+assignments when it accesses the subsystems.</p>
+</div>
+<div class="paragraph">
+<p>The SEP has sixteen and the SMC eight alias remap regions, each with an input
+range, an output offset and an AxCACHE value that replaces the transaction&#8217;s
+own on a hit. They are invalid out of reset and pass traffic through unchanged
+until programmed, so local resources are reached at their local alias addresses
+(SMC <code>0xC000_0000</code>) until then. Program the range, offset and AxCACHE of each
+region before relying on its translation or cacheability.</p>
+</div>
+<div class="paragraph">
+<p>The SMC output fabric has separate Machine-mode and Xvisor remap regions,
+selected by the address window a request targets rather than by its privilege.
+A region with <code>REGION_ATTRS.valid</code> clear passes accesses through unchanged; set
+<code>valid</code> once its offset is programmed to remap through it.</p>
+</div>
+<div class="paragraph">
+<p>On the SEP outbound path, shared resources are reached through the AP- or
+STEE-controlled remappers, which external software programs, and private
+memory and system MMIO through the direct SMN path. Both remappers replace the
+AxUSER source ID with <code>OTHERS</code>, and the secure DMA drives <code>OTHERS</code> as well. The
+outbound filter checks the source ID after remapping, so configure it to keep
+<code>OTHERS</code> traffic away from M-mode assets, and restrict the STEE remapper to
+STEE access in the inbound filter.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sep-smc-axi-filters"><a class="anchor" href="#sep-smc-axi-filters"></a><a class="link" href="#sep-smc-axi-filters">1.2. AXI Inbound/Outbound Filters</a></h3>
 <div class="paragraph">
 <p>SEP and SMC both gate their inbound and outbound AXI traffic through the
 common AXI filter block. AXI filtering uses a match then permit algorithm
@@ -279,12 +326,44 @@ SMC, a matching filter entry must be created that does not have the
 corresponding <code>FILTER_CONFIG</code> register.</p>
 </div>
 <div class="paragraph">
+<p>Most SMC instances block all inbound traffic out of reset, so firmware must
+configure the inbound policies during cold boot. When programming entries:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Program the most specific policy at the lowest index and the broader fallback
+above it. The lowest-numbered matching entry decides: if its permission bit
+is clear, the access is blocked without examining later entries.</p>
+</li>
+<li>
+<p>An entry matches one security state only (<code>allow_ns</code> selects non-secure).
+Covering both secure and non-secure accesses to one range takes two entries;
+a mismatched <code>allow_ns</code> does not deny, it only fails to match.</p>
+</li>
+<li>
+<p>Size protected regions in whole granules: 8 bytes, or 4 KiB with
+<code>allow_burst</code>. A range is widened outward to granule boundaries, so prefer
+<code>allow_burst = 0</code> for an object smaller than 4 KiB.</p>
+</li>
+<li>
+<p>Do not trust read-back as the effective range. Hardware writes the widened
+values back only when both ends fall in the same granule; otherwise read-back
+returns the programmed values while matching still widens them.</p>
+</li>
+<li>
+<p>Do not set <code>allow_burst</code> on a SEP inbound entry that covers a register region:
+register regions accept single-beat accesses only.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
 <p>The following C code examples demonstrate configuring an AXI filter to permit
 (SEP inbound, SEP outbound, SMC inbound) or deny (SMC outbound) external AXI
 requests.</p>
 </div>
 <div class="sect3">
-<h4 id="axi-filter-example"><a class="anchor" href="#axi-filter-example"></a><a class="link" href="#axi-filter-example">1.1.1. Example</a></h4>
+<h4 id="axi-filter-example"><a class="anchor" href="#axi-filter-example"></a><a class="link" href="#axi-filter-example">1.2.1. Example</a></h4>
 <div class="listingblock">
 <div class="title">AXI filter example C definitions.</div>
 <div class="content">
@@ -392,6 +471,17 @@ void smc_inbound_filter_open_range_burst(uintptr_t start, size_t length, uint8_t
 }</code></pre>
 </div>
 </div>
+<div class="paragraph">
+<p>The same entry fields express other policies. A secure-only inbound entry
+(<code>allow_ns = 0</code> with the required read/write permissions) leaves non-secure
+traffic to the inbound default, which blocks it; make sure no other entry
+permits it. On the SMC outbound filter the same entry does not block non-secure
+traffic, because unmatched traffic passes; add matching deny entries for it,
+accounting for entry priority. AXI-Lite filters check AxPROT instead: with
+<code>awprot_requirement</code> and <code>arprot_requirement</code> at <code>0x1</code> (data, secure,
+privileged) and both <code>write_filter_enable</code> and <code>read_filter_enable</code> set, only
+transactions whose three PROT bits equal <code>0x1</code> are allowed.</p>
+</div>
 <div class="admonitionblock note">
 <table>
 <tr>
@@ -417,7 +507,7 @@ registers is sequenced correctly to avoid this possibility.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-smc-mailboxes"><a class="anchor" href="#sep-smc-mailboxes"></a><a class="link" href="#sep-smc-mailboxes">1.2. Mailboxes</a></h3>
+<h3 id="sep-smc-mailboxes"><a class="anchor" href="#sep-smc-mailboxes"></a><a class="link" href="#sep-smc-mailboxes">1.3. Mailboxes</a></h3>
 <div class="paragraph">
 <p>The SEP and SMC contain mailbox instances which can be used for message-passing
 between other cores on the SMC, the SEP and the SMC, as well as the Application
@@ -427,11 +517,57 @@ FIFO messages consist of 64-bit data words.</p>
 </div>
 <div class="paragraph">
 <p>Interrupts can optionally be enabled to fire whenever the number of data words
-in the read FIFO exceeds the configured threshold, or the number of data words
-in the write FIFO falls below the configured threshold. The read and write
-fill level thresholds are configured in the <code>RIRQT</code> and <code>WIRQT</code> registers
-respectively. Individual interrupt conditions can be enabled by setting bits
-in the <code>IRQEN</code> register.</p>
+in the read FIFO, or in the write FIFO, is strictly greater than the configured
+threshold. The write threshold therefore reports words still queued for the
+peer, not that the peer has received them. The read and write fill level
+thresholds are configured in the <code>RIRQT</code> and <code>WIRQT</code> registers respectively.
+Individual interrupt conditions can be enabled by setting bits in the <code>IRQEN</code>
+register.</p>
+</div>
+<div id="sep-smc-mailbox-protocol" class="paragraph">
+<p>Observe these rules when using a mailbox:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Assign one software producer and one consumer per direction, or serialize
+shared access; the register interface does not allocate FIFO ownership.</p>
+</li>
+<li>
+<p>Before sending, check the write-full status, then write <code>WRITE_DATA</code>. Handle
+<code>SLVERR</code> if another writer consumed the space in between.</p>
+</li>
+<li>
+<p>Before receiving, check the read-empty status, then read <code>READ_DATA</code>. Each
+successful read consumes one word, and the status and data accesses are not
+one atomic operation.</p>
+</li>
+<li>
+<p>Read <code>ERROR_FLAGS</code> once to capture access errors, then acknowledge <code>IRQS[2]</code>
+separately if it was set. Avoid diagnostic reads that consume data or clear
+error information.</p>
+</li>
+<li>
+<p>To be interrupted on any available data, program <code>RIRQT = 0</code>, acknowledge old
+status, and enable <code>IRQEN[1]</code>. Drain received words before acknowledging
+<code>IRQS[1]</code>, since a remaining live condition sets it again.</p>
+</li>
+<li>
+<p>Coordinate FIFO flushes with the peer: a flush discards words already queued
+for it.</p>
+</li>
+<li>
+<p>On the SEP, keep the mailbox aperture marked side-effect in <code>mrac</code>. Clearing
+it enables load-to-load forwarding and speculative accesses, which pop entries
+unpredictably.</p>
+</li>
+</ul>
+</div>
+<div class="imageblock text-center kroki">
+<div class="content">
+<img src="_images/ocah-mailbox-exchange-34efb8ecc331dfa748bcf527c164633520d53787.svg" alt="Mailbox message exchange with a read threshold interrupt." width="80%">
+</div>
+<div class="title">Figure 1. Mailbox message exchange with a read threshold interrupt.</div>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -532,6 +668,36 @@ void mailbox_handle_read_threshold_interrupt(uint8_t i) {
     // Acknowledge the receive threshold interrupt,
     // clearing the interrupt pending bit.
     write32(MAILBOX_REG_INBOUND_IRQS(i), MAILBOX_IRQ_RTIRQ);
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sep-smc-reference-counter"><a class="anchor" href="#sep-smc-reference-counter"></a><a class="link" href="#sep-smc-reference-counter">1.4. Reference Counter</a></h3>
+<div class="paragraph">
+<p>The SEP and SMC each expose a free-running 64-bit <code>REFERENCE_COUNTER</code> in their
+CPU control block, counting the always-on reference clock from reset. To reload
+it, write one value at a time: write the new value, then poll
+<code>REFERENCE_COUNTER</code> until the readback is at or just above the written value
+before issuing the next write. Compare against a window above the written value
+rather than for equality, since the counter advances while the poll runs. Where
+the written value is too close to the free-running count to tell the two apart,
+separate consecutive writes by at least eight reference-clock periods instead.</p>
+</div>
+<div class="listingblock">
+<div class="title">SMC reference counter reload example C usage.</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// SMC CPU control register address.
+// In SMC-local address space.
+#define SMC_CPU_CTRL_REG_REFERENCE_COUNTER 0xC0039040
+
+// Load `value` into the reference counter. `window` is the largest
+// number of reference-clock periods that can elapse while polling.
+void reference_counter_load(uint64_t value, uint64_t window) {
+    write64(SMC_CPU_CTRL_REG_REFERENCE_COUNTER, value);
+
+    // Wait until the readback is at or just above `value`.
+    while (read64(SMC_CPU_CTRL_REG_REFERENCE_COUNTER) - value &gt; window);
 }</code></pre>
 </div>
 </div>

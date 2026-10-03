@@ -158,13 +158,7 @@
     <a class="nav-link" href="sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="sep/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="sep-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="sep/fabric.html">Interconnect</a>
@@ -249,9 +243,6 @@
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -275,13 +266,7 @@
     <a class="nav-link" href="smc/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="smc/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="smc-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="smc/fabric.html">Interconnect</a>
@@ -385,13 +370,7 @@
     <span class="nav-text">Cross-Trigger</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="6">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="7">
-    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -435,9 +414,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="aou-referenced-documents.html">Appendix B. Referenced Documents</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="aou-software-operation.html">Appendix C. Software Operation</a>
   </li>
 </ul>
   </li>
@@ -623,6 +599,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -651,14 +635,6 @@
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -823,40 +799,11 @@ status reporting, and error handling.</p>
 </li>
 </ul>
 </div>
-<span id="aou-software-operation-guide"></span>
-<span id="aou-sfr-setting"></span>
-<span id="table-7"></span>
-<span id="figure-22"></span>
-<span id="aou-debugging-features"></span>
-<span id="aou-debugging-features-overview"></span>
-<span id="aou-axi-id-mismatch-error"></span>
-<span id="aou-linkreset-error-reporting"></span>
-<span id="aou-rb-response-error-debug-fifo"></span>
-<span id="figure-23"></span>
-<span id="aou-write-early-response-error"></span>
-<span id="aou-activation-deactivation-flow"></span>
-<span id="figure-24"></span>
-<span id="aou-credit-management-type"></span>
-<span id="aou-activation-start"></span>
-<span id="aou-deactivation-start"></span>
-<span id="figure-25"></span>
-<span id="aou-deactivation-sequence-flow"></span>
-<span id="figure-26"></span>
-<span id="figure-27"></span>
-<span id="aou-activationdeactivation-interrupt"></span>
-<span id="aou-pm-entry--linkreset--linkdisabled-sequence"></span>
-<span id="figure-28"></span>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="aou-software-operation.html" class="xref page">Appendix C. Software Operation</a>&#8201;&#8212;&#8201;software operation guide.</p>
-</li>
-</ul>
-</div>
 <div class="paragraph">
 <p>Integration details are in the <a href="../../ocah-integrator-guide/latest/aou.html" class="xref page">Integrator Guide</a>.
-Register programming and activation flows are in the
-<a href="../../ocah-programmer-guide/latest/index.html" class="xref page">Programmer&#8217;s Guide</a>.</p>
+Register programming, activation and deactivation flows, and the debug
+features are in the
+<a href="../../ocah-programmer-guide/latest/index.html#aou-software-operation-guide" class="xref page">AoU Software Operation appendix of the Programmer&#8217;s Guide</a>.</p>
 </div>
 <nav class="pagination">
   <span class="prev"><a href="smn.html">System Management Network (SMN)</a></span>

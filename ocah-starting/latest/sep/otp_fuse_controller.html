@@ -147,6 +147,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -176,14 +184,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -387,7 +387,10 @@ implements two 256-bit registers, RMA_SIP_TOKEN_I and RMA_CHIPLET_TOKEN_I.</p>
 <p>These two registers can be populated by both SEP software and JTAG. Each input
 is hashed (SHA-256) and compared with the stored RMA_SIP_TOKEN_DIGEST and
 RMA_CHIPLET_TOKEN_DIGEST, respectively. Only on a match can LC_STATE[1] and
-LC_STATE[2] be programmed. For the matching mechanism, see
+LC_STATE[2] be programmed; the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-token-matching" class="xref page">token matching section</a>
+of the Programmer&#8217;s Guide gives the firmware sequence. For the matching
+mechanism, see
 <a href="token_processing.html#token-matching-mechanism-and-attack-countermeasures" class="xref page">Token Matching Mechanism and Attack Countermeasures</a>.</p>
 </div>
 <div class="sect2">
@@ -518,7 +521,7 @@ terminal. Otherwise, LC_STATE[2:1] cannot be updated.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Disables secure boot when
 set to 1, in any lifecycle state. It overrides lifecycle enforcement in PROD
 and PROD_END and the TEST_DEV / RMA_SiP debug-lock rule, but not a signed manifest&#8217;s
-request for verification; see Secure-Boot Enforcement in the Life Cycle
+request for verification; see Firmware Authorization in the Lifecycle
 Controller section.</p></td>
 </tr>
 <tr>
@@ -935,20 +938,16 @@ input to the Key Manager. No read protection is required.</p></td>
 <h2 id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"><a class="anchor" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc"></a><a class="link" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">6. Anti-Rollback Security-Version Flags</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The production ROM reads bits <code>[127:0]</code> of <code>BL1_VERSION</code> into the manifest
-validator&#8217;s 128-bit device security-version field. These bits define the
-enforced BL1 rollback policy.</p>
+<p><code>BL1_VERSION</code> holds the device security-version flags for BL1. They are
+independent flags rather than a counter, and the production ROM uses bits
+<code>[127:0]</code>. <code>BL2_VERSION</code> is separate storage whose interpretation belongs to
+later-stage firmware. Both fields are set-only, so a burned flag stays set.</p>
 </div>
 <div class="paragraph">
-<p>When secure boot is active, the manifest must contain every flag already set
-on the device at the corresponding bit positions: for each byte,
-<code>(device &amp; ~manifest) == 0</code>. A manifest missing any device flag fails the
-security-version check.</p>
-</div>
-<div class="paragraph">
-<p>Provision security-version flags consistently with the signed manifest&#8217;s
-<code>manifest_security_version</code> field. <code>BL2_VERSION</code> is separate storage whose
-interpretation belongs to later-stage firmware.</p>
+<p>The
+<a href="../../../ocah-programmer-guide/latest/index.html#req-SEP-ROM-SB-070" class="xref page">Anti-Rollback</a>
+requirements of the SEP Boot ROM appendix in the Programmer&#8217;s Guide define the
+check a manifest must pass and how firmware commits new flags.</p>
 </div>
 </div>
 </div>

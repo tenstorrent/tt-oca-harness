@@ -158,13 +158,7 @@
     <a class="nav-link" href="../../../sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../sep/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../../../sep-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../../../sep/fabric.html">Interconnect</a>
@@ -249,9 +243,6 @@
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../../key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="../../key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -275,13 +266,7 @@
     <a class="nav-link" href="../../../smc/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../smc/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../../../smc-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../../../smc/fabric.html">Interconnect</a>
@@ -385,13 +370,7 @@
     <span class="nav-text">Cross-Trigger</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="6">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="7">
-    <a class="nav-link" href="../../cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../../cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -435,9 +414,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../../../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../../../aou-software-operation.html">Appendix C. Software Operation</a>
   </li>
 </ul>
   </li>
@@ -623,6 +599,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -651,14 +635,6 @@
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../../../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -707,7 +683,11 @@ moving to the next.</p>
 <p>A 64-bit AXI4-Lite read path fetches message data into a FIFO. A separate
 32-bit AXI4-Lite write path sends one character at a time to a fixed UART
 address, paced by <code>uart_tx_ready_i</code>. The register interface is also
-32-bit AXI4-Lite. Fetch addresses are 56 bits; UART addresses are 32 bits.</p>
+32-bit AXI4-Lite. Fetch addresses are 56 bits; UART addresses are 32 bits.
+The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-log-engine" class="xref page">Log Engine section</a>
+of the Programmer&#8217;s Guide gives the configuration, submission and recovery
+procedures.</p>
 </div>
 <div id="log-engine-wrapper-diagram" class="imageblock">
 <div class="content">
@@ -941,104 +921,15 @@ for the write data and strobe behavior.</p>
 <div class="paragraph">
 <p><code>irq_o</code> is the active-high OR of enabled, latched fetch and write error status.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="log-engine-programming"><a class="anchor" href="#log-engine-programming"></a><a class="link" href="#log-engine-programming">4. Programming</a></h2>
-<div class="sectionbody">
-<span id="simple-log-transfer"></span>
-<div class="sect2">
-<h3 id="log-engine-setup"><a class="anchor" href="#log-engine-setup"></a><a class="link" href="#log-engine-setup">4.1. Configure the Engine</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Start from reset or an idle engine with all pending lengths clear.
-Clear <code>CTRL.EN</code> before changing shared configuration.</p>
-</li>
-<li>
-<p>Allocate a readable region with an 8-byte-aligned base and a size that
-is a multiple of 128 bytes, no larger than 512 KiB.</p>
-</li>
-<li>
-<p>Write <code>LOG_REGION_SIZE</code> and both halves of <code>LOG_REGION_ADDR</code>. Only address
-bits <code>[55:0]</code> are implemented; bits <code>[63:56]</code> are reserved zero.</p>
-</li>
-<li>
-<p>Set <code>LOG_WRITE_ADDR</code> to the UART transmit register and configure the UART
-and its readiness path.</p>
-</li>
-<li>
-<p>Clear stale error status by writing <code>0x11</code> to <code>INTR_STATUS</code>. If required,
-write <code>0x11</code> to <code>INTR_ENABLE</code> and configure the receiving interrupt controller.</p>
-</li>
-<li>
-<p>Set <code>CTRL.EN = 1</code>.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>For a 4 KiB region, each of the 16 slots has 256 bytes. Slot 0 begins at
-the region base, slot 1 at base+256, and so on. Use the system memory map
-for actual memory, engine and UART addresses.</p>
-</div>
-<span id="multiple-entry-management"></span>
-</div>
-<div class="sect2">
-<h3 id="log-engine-submit"><a class="anchor" href="#log-engine-submit"></a><a class="link" href="#log-engine-submit">4.2. Submit and Complete a Message</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Wait for <code>LOG_CTRL[i].LOG_LEN</code> to become zero before reusing slot <code>i</code>.</p>
-</li>
-<li>
-<p>Write the message into that slot. Keep its length within the slot capacity,
-and make the complete final fetch word readable.</p>
-</li>
-<li>
-<p>Make the data visible to the engine using the platform&#8217;s cache-maintenance
-and memory-ordering rules, then write the byte length to <code>LOG_CTRL[i]</code>.</p>
-</li>
-<li>
-<p>Leave the buffer and length unchanged while pending. Poll for zero with a
-timeout appropriate to UART speed and other pending messages, or use a
-software scheduling mechanism that checks completion later.</p>
-</li>
-<li>
-<p>Inspect error status before treating completion as successful. A slot
-reaching zero does not mean the UART serial transmitter is empty.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>Several slots can be pending at once. Assign slots to producers or serialize
-access in software; writing a new length to an active slot is not a queueing
-operation. A zero length submits no message.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="log-engine-recovery"><a class="anchor" href="#log-engine-recovery"></a><a class="link" href="#log-engine-recovery">4.3. Handle an Error or Timeout</a></h3>
-<div class="paragraph">
-<p>Read <code>INTR_STATUS</code> to distinguish fetch and write errors, diagnose the
-memory or UART path, then clear the handled bits with write-one-to-clear.
-There is no automatic retransmission. Because status is shared, it does not
-identify which pending slot encountered the error.</p>
-</div>
-<div class="paragraph">
-<p>If progress stops, check UART readiness and outstanding bus responses.
-Do not free pending buffers solely because <code>CTRL.EN</code> was cleared;
-<a href="#log-engine-reset">Section 2.4</a> describes the disable behavior. Recovery must account
-for any characters already sent, since restarting may duplicate output.</p>
-</div>
 <span id="overview-3"></span>
 </div>
 </div>
-</div>
 <div class="sect1">
-<h2 id="log-engine-memory-map"><a class="anchor" href="#log-engine-memory-map"></a><a class="link" href="#log-engine-memory-map">5. Memory Map and Register Reference</a></h2>
+<h2 id="log-engine-memory-map"><a class="anchor" href="#log-engine-memory-map"></a><a class="link" href="#log-engine-memory-map">4. Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
 <span id="register-map"></span>
 <div class="sect2">
-<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
 <div class="paragraph">
 <p>Offsets below are relative to the Log Engine register bank. All registers
 reset to zero. The generated map gives field access and side effects.</p>
@@ -1102,7 +993,7 @@ reset to zero. The generated map gives field access and side effects.</p>
 </table>
 </div>
 <div class="sect2">
-<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.2. Detailed Register Map</a></h3>
+<h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">4.2. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">

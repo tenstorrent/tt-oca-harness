@@ -146,6 +146,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -175,14 +183,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -229,8 +229,10 @@ selects electrical settings and captures the strap. Each has its own
 these blocks for its pads and supplies the address mapping and LSIO wiring.</p>
 </div>
 <div class="paragraph">
-<p>The sections below explain ownership and reset behavior, list the interfaces,
-and give programming sequences. The register maps follow those sequences.</p>
+<p>The sections below explain ownership and reset behavior, list the interfaces
+and give the register maps. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-gpio" class="xref page">GPIO section</a>
+of the Programmer&#8217;s Guide gives the programming sequences.</p>
 </div>
 <span id="functional-blocks"></span>
 <span id="data-flow-architecture"></span>
@@ -480,8 +482,9 @@ disabling a filter permits that direction regardless of <code>PROT</code>.</p>
 <code>3&#8217;b001</code> (secure, privileged data), but apply only when enabled. <code>PROT</code>
 expresses transaction attributes, not initiator identity: this filter alone
 does not establish SEP-only access. It protects the interface bank, not the
-shim&#8217;s separate control bank. See <a href="#gpio-filter-programming">Configuring Access Filtering</a> for setup and
-readback requirements.</p>
+shim&#8217;s separate control bank. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#smc-gpio-access-filter" class="xref page">GPIO access filtering procedure</a>
+in the Programmer&#8217;s Guide gives the setup and readback requirements.</p>
 </div>
 </div>
 </div>
@@ -576,193 +579,16 @@ event</p>
 </li>
 </ul>
 </div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="gpio-programming"><a class="anchor" href="#gpio-programming"></a><a class="link" href="#gpio-programming">4. Programming</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The sequences below use register names relative to one pad&#8217;s interface and
-control banks. Preserve unrelated fields when updating a register.</p>
-</div>
-<span id="basic-gpio-configuration"></span>
-<span id="bidirectional-operation"></span>
-<div class="sect2">
-<h3 id="gpio-output-programming"><a class="anchor" href="#gpio-output-programming"></a><a class="link" href="#gpio-output-programming">4.1. Register-Controlled Input and Output</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Confirm that the shim&#8217;s secondary-function override is inactive, or arrange
-a controlled handover with that function.</p>
-</li>
-<li>
-<p>Set <code>DATA_CTRL.lsio_disable = 1</code> to prevent an LSIO request from taking
-the primary data/direction path.</p>
-</li>
-<li>
-<p>With TX disabled, program the intended output value and any required
-electrical settings. <code>CONTROL.config_enable = 1</code> selects register-based
-electrical settings once hardware LSIO is disabled.</p>
-</li>
-<li>
-<p>Set <code>DATA_CTRL.interface_enable = 1</code> and select <code>enable_rx_tx</code>:
-<code>00</code> disables both paths, <code>01</code> enables TX, <code>10</code> enables RX, and <code>11</code> enables both.</p>
-</li>
-<li>
-<p>Read <code>DATA_CTRL.pad2core</code> with RX enabled to obtain the synchronized input.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>For bidirectional use, coordinate external-driver release before enabling
-TX. Input-only mode disables TX; enabling both paths allows readback while
-driving. The pad implementation determines electrical behavior and settling
-requirements.</p>
-</div>
-<span id="configuration-strap-capture"></span>
-</div>
-<div class="sect2">
-<h3 id="reading-configuration-straps"><a class="anchor" href="#reading-configuration-straps"></a><a class="link" href="#reading-configuration-straps">4.2. Reading Configuration Straps</a></h3>
-<div class="paragraph">
-<p>After cold reset is released, read <code>CONTROL.strap_valid</code> and
-<code>CONTROL.strap_value</code> from the control bank. A set <code>strap_valid</code> means the
-pad was configured for input by default and strap capture is supported;
-it does not indicate that reset has completed. See <a href="#gpio-reset-straps">Reset and Strap Capture</a>.</p>
-</div>
-<span id="interrupt-configuration"></span>
-</div>
-<div class="sect2">
-<h3 id="enabling-interrupts"><a class="anchor" href="#enabling-interrupts"></a><a class="link" href="#enabling-interrupts">4.3. Enabling Interrupts</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Clear <code>DATA_CTRL.interrupt_enable</code> while configuring the input.</p>
-</li>
-<li>
-<p>Ensure the selected owner enables the pad receiver. For register control,
-use <code>interface_enable = 1</code> and <code>enable_rx_tx = 10</code>.</p>
-</li>
-<li>
-<p>Set <code>DATA_CTRL.interrupt_type</code> using the mode table in <a href="#gpio-interrupt-operation">Interrupts</a>.</p>
-</li>
-<li>
-<p>Configure the receiving interrupt controller for the GPIO request and
-set <code>DATA_CTRL.interrupt_enable = 1</code>.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>A level interrupt can assert as soon as it is enabled if the selected level
-is already present. This block has no pending-event queue or software-clear
-bit; handle or mask the condition at its source.</p>
-</div>
-<span id="lsio-interface-operation"></span>
-</div>
-<div class="sect2">
-<h3 id="gpio-lsio-programming"><a class="anchor" href="#gpio-lsio-programming"></a><a class="link" href="#gpio-lsio-programming">4.4. Selecting LSIO</a></h3>
-<div class="paragraph">
-<p>For hardware selection, clear <code>DATA_CTRL.lsio_disable</code>. When the peripheral
-asserts <code>lsio_interface_select_i</code>, its data and direction take priority over
-<code>interface_enable</code> and the per-field overrides. <code>DATA_CTRL.lsio_enable</code>
-reports this gated hardware request.</p>
-</div>
-<div class="paragraph">
-<p>For software-forced selection, clear <code>interface_enable</code> and all
-<code>DATA_CTRL_ENABLE.use_reg_*</code> bits, then set <code>lsio_select = 1</code> with
-<code>lsio_disable = 0</code>. Clear <code>CONTROL.config_enable</code> as well if LSIO should
-supply the electrical settings. Software-forced LSIO ranks below register
-control and does not set <code>lsio_enable</code>.</p>
-</div>
-<div class="paragraph">
-<p>To reclaim the primary path, set <code>lsio_disable = 1</code>, then program register
-data and direction. Setting <code>interface_enable</code> alone cannot reclaim a pad
-whose hardware request remains asserted. In SMC, this includes pads with
-permanently selected hardware functions: the I3C pads, and the isolate-request, boot-stall
-and cool-reset-out signals.</p>
-</div>
-<span id="security-configuration"></span>
-<span id="protection-bit-encoding"></span>
-<span id="filter-configuration"></span>
-<span id="filter-behavior"></span>
-</div>
-<div class="sect2">
-<h3 id="gpio-filter-programming"><a class="anchor" href="#gpio-filter-programming"></a><a class="link" href="#gpio-filter-programming">4.5. Configuring Access Filtering</a></h3>
-<div class="paragraph">
-<p>Each filter compares the complete three-bit protection value:</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. AXI protection encoding</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 40%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Bit</th>
-<th class="tableblock halign-left valign-top">0</th>
-<th class="tableblock halign-left valign-top">1</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Unprivileged</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Privileged</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Instruction</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>Thus <code>0x0</code> means secure unprivileged data, <code>0x1</code> secure privileged data,
-<code>0x2</code> non-secure unprivileged data, and <code>0x3</code> non-secure privileged data.</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Choose <code>ACCESS_FILTER.awprot_requirement</code> and <code>arprot_requirement</code> for
-the intended writers and readers. Both reset to <code>0x1</code>.</p>
-</li>
-<li>
-<p>Set <code>write_filter_enable</code> and/or <code>read_filter_enable</code> to enforce those
-requirements. The current transaction must satisfy any filter already enabled.</p>
-</li>
-<li>
-<p>Read back <code>ACCESS_FILTER</code> after writing it, using a read transaction that
-satisfies the resulting policy. The register definition requires this readback
-before relying on the new filter settings for subsequent accesses.</p>
-</li>
-<li>
-<p>Check that permitted accesses succeed and rejected accesses return <code>DECERR</code>.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>The enables reset clear, so the reset requirements do not restrict access
-until enabled. Changing the write requirement can exclude the software
-agent making the change. Plan the resulting read and write policy before
-applying it; <code>PROT</code> does not identify a particular initiator.</p>
-</div>
 <span id="address-space-organization"></span>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="gpio-memory-map"><a class="anchor" href="#gpio-memory-map"></a><a class="link" href="#gpio-memory-map">5. Memory Map and Register Reference</a></h2>
+<h2 id="gpio-memory-map"><a class="anchor" href="#gpio-memory-map"></a><a class="link" href="#gpio-memory-map">4. Memory Map and Register Reference</a></h2>
 <div class="sectionbody">
 <span id="register-maps"></span>
 <div class="sect2">
-<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">5.1. Memory Map</a></h3>
+<h3 id="memory-map"><a class="anchor" href="#memory-map"></a><a class="link" href="#memory-map">4.1. Memory Map</a></h3>
 <div class="paragraph">
 <p>The controller&#8217;s interface bank contains <code>DATA_CTRL</code>, <code>DATA_CTRL_ENABLE</code>
 and <code>ACCESS_FILTER</code>; the shim&#8217;s control bank contains <code>CONTROL</code>.
@@ -773,7 +599,7 @@ padring determines their system addresses.</p>
 </div>
 <span id="reset-behavior"></span>
 <div class="sect3">
-<h4 id="reset-values"><a class="anchor" href="#reset-values"></a><a class="link" href="#reset-values">5.1.1. Reset Values</a></h4>
+<h4 id="reset-values"><a class="anchor" href="#reset-values"></a><a class="link" href="#reset-values">4.1.1. Reset Values</a></h4>
 <div class="paragraph">
 <p><code>ACCESS_FILTER</code> resets to <code>0x00010100</code>: read and write filters are disabled,
 with each stored protection requirement set to <code>3&#8217;b001</code>. <code>DATA_CTRL</code> and
@@ -792,7 +618,7 @@ captured input, so the complete value is not a single fixed reset word.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="gpio-detailed-register-map"><a class="anchor" href="#gpio-detailed-register-map"></a><a class="link" href="#gpio-detailed-register-map">5.2. Detailed Register Map</a></h3>
+<h3 id="gpio-detailed-register-map"><a class="anchor" href="#gpio-detailed-register-map"></a><a class="link" href="#gpio-detailed-register-map">4.2. Detailed Register Map</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">

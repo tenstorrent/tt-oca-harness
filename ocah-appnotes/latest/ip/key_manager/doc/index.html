@@ -83,7 +83,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -102,7 +102,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -111,6 +111,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -146,14 +154,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../../../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -165,7 +165,7 @@
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="index.html">Key Manager (KM)</a></li>
   </ul>
 </nav>
@@ -188,8 +188,10 @@ sections describe its hardware architecture and firmware interface.</p>
 active to process SEP mailbox commands and service interrupts. It is both
 startup firmware and the resident runtime; "boot ROM" names the memory, not
 its only function. On an explicit firmware-load/execute command, ROM can hand
-control to mutable firmware in SRAM. See <a href="#key-manager-km-firmware">[key-manager-km-firmware]</a> for the
-implemented services, command protocol and handover rules.</p>
+control to mutable firmware in SRAM. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#km-application-rom" class="xref page">Key Manager Application ROM appendix</a>
+of the Programmer&#8217;s Guide defines the implemented services, command protocol
+and handover rules.</p>
 </div>
 </div>
 </div>
@@ -210,7 +212,9 @@ the recoverable-error status, generate keys from the DRBG, load SEP-supplied
 keys, revoke keys, transfer keys to the accelerators, shred accelerator
 sideload keys, capture the Adams Bridge ML-KEM shared key into the vault, set
 cold-domain OTP read-locks, and either load and execute mutable firmware in
-SRAM or keep the ROM running (<a href="#key-manager-command-summary-table">[key-manager-command-summary-table]</a>).</p>
+SRAM or keep the ROM running (the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#key-manager-command-summary-table" class="xref page">command summary</a>
+in the Programmer&#8217;s Guide).</p>
 </div>
 <div class="paragraph">
 <p>A single KM-mastered AXI4-Lite crossbar connects KMCSR, KPV, the DRBG sampler
@@ -222,7 +226,9 @@ policy checks belong to KM firmware.</p>
 <div class="paragraph">
 <p>The <a href="#km-memory-register-reference">Memory Map and Register Reference</a> at the
 end of the chapter defines the address windows and all generated fields.
-<a href="#key-manager-km-firmware">[key-manager-km-firmware]</a> defines commands, validation and responses.
+The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#km-application-rom" class="xref page">Key Manager Application ROM appendix</a>
+of the Programmer&#8217;s Guide defines commands, validation and responses.
 ROM/SRAM parity detects errors but does not correct them; the ROM fault
 handler can report an unrecoverable fault and halt the CPU.</p>
 </div>
@@ -790,16 +796,18 @@ making the slot reusable; taking a seal during an erase also causes retirement.<
 </table>
 <div class="paragraph">
 <p>The lock/seal bits clear on warm or cold reset. Erase uses the shared
-scrambler and key-data write port: firmware must poll CTRL rather than access
-key data while an erase is active.</p>
+scrambler and key-data write port, so key-data accesses during an erase are not
+defined. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#km-firmware-kpv-driver" class="xref page">KPV driver</a>
+in the Key Manager Application ROM appendix of the Programmer&#8217;s Guide gives
+the erase sequence.</p>
 </div>
 <div class="paragraph">
 <p><strong>Sealed and retired slots.</strong> A slot with <em>seal</em> set is <strong>sealed</strong>: readable, but
 not writable, because hardware holds <em>lock_write</em> set alongside the seal. That
 surviving <em>lock_write</em> is evidence that the slot holds what it held when the
 seal was taken, which is what lets firmware that inherits the vault after a
-handover trust material provisioned before it (see the KM firmware
-specification). A write lock on its own would prove nothing, since an erase
+handover trust material provisioned before it. A write lock on its own would prove nothing, since an erase
 clears it and frees the slot to be rewritten with chosen material and
 re-locked.</p>
 </div>
@@ -1905,109 +1913,47 @@ before transferring control to mutable code.</p>
 <div class="sect2">
 <h3 id="mutable-firmware-model"><a class="anchor" href="#mutable-firmware-model"></a><a class="link" href="#mutable-firmware-model">1.20. Mutable Firmware Model</a></h3>
 <div class="paragraph">
-<p>The KM ROM supports loading and executing a mutable software image from SRAM,
-controlled by the <code>CMD_SRAM_LOAD_EXEC</code> and <code>CMD_SRAM_EXEC</code> mailbox commands.</p>
+<p>The KM ROM can load a mutable image into SRAM and hand control to it, through
+the <code>CMD_SRAM_LOAD_EXEC</code> and <code>CMD_SRAM_EXEC</code> mailbox commands. The image is
+loaded at <code>0x8000</code>, which is also its entry point, and must fit below a static
+load ceiling aligned to a 1 KB write-lock region, so the image never shares a
+region with the ROM stack or data. The load bounds, the key shred, the KPV
+read-lock, the image write-lock, the mailbox flush, the SRAM scramble and the
+jump are ROM behaviour, defined in the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#km-seq-sram-fw-handover" class="xref page">SRAM Firmware Handover</a>
+sequence of the Key Manager Application ROM appendix in the Programmer&#8217;s
+Guide.</p>
 </div>
 <div class="paragraph">
-<p><strong>Memory map.</strong> Mutable firmware is loaded into SRAM starting at <code>0x8000</code> (SRAM
-word-address 0) and ROM jumps to <code>0x8000</code> as the entry point.  ROM does not
-program the CPU IRQ entry vector for the loaded image; the mutable firmware is
-responsible for setting <code>IRQ_ENTRY_ADDR</code> to its own handler before it
-re-enables interrupts.</p>
+<p>The handover relies on the following hardware behaviour:</p>
 </div>
-<div class="paragraph">
-<p><strong>SRAM region write-locking.</strong> After a successful load, ROM write-locks the 1 KB
-SRAM regions that contain the firmware image (regions 0 through
-<code>ceil(fw_size_bytes / 1024) - 1</code>).  These locks are applied immediately before the
-handover jump and remain active for the lifetime of that execution epoch.
-<code>SRAM_LOCK</code> is in the warm-reset domain and is cleared by a warm reset; ROM
-re-applies the write-lock on each subsequent warm boot when <code>CMD_SRAM_EXEC</code> is
-processed, before handing control to mutable firmware.
-The <code>rom_persist</code> region (region 31) is always locked separately.</p>
-</div>
-<div class="paragraph">
-<p><strong>Load bounds.</strong> The firmware image must fit entirely below a <em>static</em> load
-ceiling, <code><em>km_fw_load_limit</code>, rather than below the live stack pointer at load
-time.  This matters because the ROM stack is in volatile SRAM and grows
-downward toward the image: after a warm reset that follows mutable-firmware
-execution, the ROM re-runs and a <code>CMD_SRAM_EXEC</code> restart may drive the stack
-deeper than it was at original load, so a live-SP bound could let the ROM stack
-later overwrite executable image words.  The linker computes the ceiling as
-<code>STACK - </em>rom_max_stack</code> (rounded down to a 1 KB write-lock region), where
-<code>__rom_max_stack</code> is the worst-case ROM stack depth validated against the
-production ELF by a post-link call-graph analyzer; the firmware build is gated
-on the analyzer.  <code>CMD_SRAM_LOAD_EXEC</code> rejects oversized images, and a per-word
-guard during streaming provides defense-in-depth.</p>
-</div>
-<div class="paragraph">
-<p>The region-disjointness invariant guarantees that no ROM runtime region (stack,
-<code>.data</code>, <code>.bss</code>) shares a 1 KB block with any firmware-image region.  This
-ensures that write-locking the firmware regions does not accidentally lock
-ROM-owned data, which must remain erasable by the whole-SRAM scramble during
-handover.  Aligning the load ceiling down to a write-lock region boundary is
-what enforces this invariant.</p>
-</div>
-<div class="paragraph">
-<p><strong>Sideload key shred.</strong> Before locking and the stack-less handoff, ROM shreds the
-HMAC, KMAC, AES, and OTBN sideload key-share registers, as well as the four
-Adams Bridge seed sideload interfaces (ML-DSA seed, ML-KEM seed D, ML-KEM seed
-Z, and ML-KEM message), overwriting them with PRNG data and clearing each
-<code>key_valid</code>.  These crypto-engine register banks are outside the SRAM address
-space, so the whole-SRAM scramble cannot reach them; shredding them explicitly
-prevents mutable firmware from reading any key material the ROM previously
-sideloaded.</p>
-</div>
-<div class="paragraph">
-<p><strong>KPV lock/shred.</strong> KPV key-entry data has no warm reset and is descrambled on
-KM-port reads, and the load path only write-locks (not read-locks) provisioned
-keys, so live key material would otherwise be plaintext-readable by mutable
-firmware at the KPV KM-port window.  During handover ROM walks every KPV slot,
-using the firmware key registry to distinguish live slots from free ones: each
-registered slot is read-locked (<code>lock_use</code>, which is independent of
-<code>lock_write</code>, so the hardware returns zero for KM-port key reads), and each free
-slot is shredded by <code>SHRED_ITER + 1</code> hardware erases through its <code>erase</code>
-trigger. The slot locks do not block an erase, so a write-locked free slot,
-such as a revoked key, is shredded as well.</p>
-</div>
-<div class="paragraph">
-<p><strong>Mailbox flush.</strong> After the outbound <code>RESP_CMD</code> confirmation has been sent and
-consumed by the SEP (and, for <code>CMD_SRAM_LOAD_EXEC</code>, after the image stream has
-been fully drained), ROM flushes both mailbox FIFOs.  This erases any residual
-inbound payload — for example key material from an earlier <code>CMD_KEY_LOAD</code> — so
-mutable firmware cannot recover it from the shared mailbox.</p>
-</div>
-<div class="paragraph">
-<p><strong>IRQ vector.</strong> ROM does not program <code>IRQ_ENTRY_ADDR</code> during handoff.  Before the
-stack-less assembly handoff ROM masks all CPU IRQ sources and clears all
-KMCSR/mailbox IRQ enables, then jumps with the vector left at the ROM default
-(<code>0x10</code>, re-asserted by ROM at boot).  The loaded firmware is responsible for
-programming <code>IRQ_ENTRY_ADDR</code> to its own handler before it re-enables interrupts;
-because every CPU IRQ is masked across the jump, the vector value is immaterial
-until the firmware does so.  <code>IRQ_ENTRY_LOCK</code> is left unset so the firmware can
-program the vector freely.</p>
-</div>
-<div class="paragraph">
-<p><code>IRQ_ENTRY_ADDR</code> and <code>IRQ_ENTRY_LOCK</code> are warm-reset-domain registers: every
-reset that re-enters ROM (cold, external warm, and KM soft reset) restores the
-vector to the ROM default (<code>0x10</code>) and clears the lock, and ROM re-asserts that
-value at boot before unmasking interrupts.  ROM therefore never executes with a
-mutable-firmware-chosen vector, and an attacker-controlled vector cannot coexist
-with ROM-privileged execution.</p>
-</div>
-<div class="paragraph">
-<p><strong><code>sram_fw_size</code> semantics.</strong> ROM sets <code>sram_fw_size = 0</code> at the start of a load
-command (before image transfer) and updates it to <code>FW_WORDS × 4</code> only after
-a successful CRC-32C verification.  <code>CMD_SRAM_EXEC</code> rejects execution if
-<code>sram_fw_size == 0</code>, preventing jumps when no valid image is present.  The
-field persists across warm resets so mutable firmware can be restarted without
-reloading the image.</p>
-</div>
-<div class="paragraph">
-<p><strong>Post-handover IRQ state.</strong> ROM clears all KMCSR and mailbox IRQ enables and
-clears any pending sticky IRQ status bits before the assembly handoff.  This
-ensures mutable firmware does not inherit spurious pending interrupts (in
-particular, the <code>sram_write_lock_err</code> that would otherwise be raised by the
-whole-SRAM scramble writing into locked firmware regions).</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>SRAM_LOCK</code> is in the warm-reset domain. A warm reset clears the image
+write-lock, and ROM re-applies it before every handover, including a
+<code>CMD_SRAM_EXEC</code> restart.</p>
+</li>
+<li>
+<p><code>IRQ_ENTRY_ADDR</code> and <code>IRQ_ENTRY_LOCK</code> are warm-reset-domain registers. Every
+reset that re-enters ROM (cold, external warm, and KM soft reset) restores
+the vector to the ROM default (<code>0x10</code>) and clears the lock, so ROM never
+executes with a vector chosen by mutable firmware.</p>
+</li>
+<li>
+<p>KPV key data has no warm reset and is descrambled on KM-port reads.
+<code>lock_use</code> is independent of <code>lock_write</code> and makes KM-port key reads return
+zero.</p>
+</li>
+<li>
+<p>The crypto-engine sideload key registers lie outside the SRAM address space,
+so scrambling SRAM does not reach them.</p>
+</li>
+<li>
+<p>Writes to a write-locked SRAM region are dropped and raise
+<code>SRAM_WRITE_LOCK_VIOLATION</code>, which is sticky until cleared.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p><a href="../../scrambler/doc/index.html" class="xref page">Scrambler</a></p>
@@ -2016,9 +1962,15 @@ whole-SRAM scramble writing into locked firmware regions).</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="firmware"><a class="anchor" href="#firmware"></a><a class="link" href="#firmware">2. Firmware</a></h2>
+<h2 id="key-manager-firmware"><a class="anchor" href="#key-manager-firmware"></a><a class="link" href="#key-manager-firmware">2. Firmware</a></h2>
 <div class="sectionbody">
-
+<div class="paragraph">
+<p>The KM ROM and any mutable firmware it hands over to run on the PicoRV32. The
+<a href="../../../../../ocah-programmer-guide/latest/index.html#km-application-rom" class="xref page">Key Manager Application ROM appendix</a>
+of the Programmer&#8217;s Guide is the firmware reference: initialization, the
+mailbox command and response protocol, interrupt handling, key management and
+the SRAM handover rules.</p>
+</div>
 </div>
 </div>
 <div class="sect1">

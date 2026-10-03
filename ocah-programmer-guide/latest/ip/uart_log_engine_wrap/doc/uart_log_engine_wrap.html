@@ -100,16 +100,25 @@
     <a class="nav-link" href="../../../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="../../../index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -128,6 +137,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -160,14 +177,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -527,7 +536,7 @@ next section. When this wrapper is arrayed by <code>uart_wrap</code>, instance <
 </div>
 </div>
 <div class="sect1">
-<h2 id="sec-programmers-guide"><a class="anchor" href="#sec-programmers-guide"></a><a class="link" href="#sec-programmers-guide">7. Programmer&#8217;s Guide</a></h2>
+<h2 id="sec-shared-thr"><a class="anchor" href="#sec-shared-thr"></a><a class="link" href="#sec-shared-thr">7. Shared Transmit Holding Register</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>When the Log Engine is enabled (<code>GEN_LOG_ENGINE=1</code>, the default), the UART transmit
@@ -539,8 +548,9 @@ log output to reach the UART.</p>
 </div>
 <div class="paragraph">
 <p>The arbiter serialises the two initiators, but no hardware lock protects the shared
-register. Firmware must not write <code>THR</code> directly while the Log Engine is active, or CPU
-writes and log output will interleave on the transmit path.</p>
+register. The
+<a href="../../../index.html#smc-log-engine-setup" class="xref page">Log Engine configuration sequence</a>
+in the Programmer&#8217;s Guide states the resulting firmware rules.</p>
 </div>
 </div>
 </div>

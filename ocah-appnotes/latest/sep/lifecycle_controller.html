@@ -83,7 +83,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -102,7 +102,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -111,6 +111,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -146,14 +154,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -165,7 +165,7 @@
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="lifecycle_controller.html">Life Cycle Controller (LCC)</a></li>
   </ul>
 </nav>
@@ -193,8 +193,8 @@ Downstream logic uses these outputs to gate debug, test and functional paths.</p
 <div class="paragraph">
 <p>The sections below explain states and security domains, feature-control rules,
 demotion, scan protection and firmware authorization. Hardware gating is
-implemented; the multi-owner signing model in <a href="#demote-signing-model">Section 8.2</a> is a
-deferred firmware design. Do not use that model as a description of current
+implemented; the multi-owner signing model in <a href="#demote-signing-model">Firmware Authorization</a>
+is a deferred firmware design. Do not use that model as a description of current
 ROM verification.</p>
 </div>
 <div class="paragraph">
@@ -495,7 +495,7 @@ and is controlled by Demotion 2. Function bits occupy <code>[63:48]</code>.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_1)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_DBG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>chiplet</strong> scope. <code>1&#8217;b1</code>: chiplet-scope debug / scan-dump access disabled. <code>1&#8217;b0</code>: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when <code>SIP_DBG</code> is open as well (Case 2 of <a href="#dtp-path-gating">Section 5.4</a>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while <code>secure_tm = 1</code>. In <code>TEST_DEV</code> and <code>RMA_SiP</code>, this bit set in <code>SIP_DIS</code> or <code>SYS_DIS</code> makes the production ROM enforce secure boot; it has no such effect in <code>RMA_CHIPLET</code>. See <a href="#secure-boot-enforcement">Section 8.1</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Coarse-grained debug enable for the <strong>chiplet</strong> scope. <code>1&#8217;b1</code>: chiplet-scope debug / scan-dump access disabled. <code>1&#8217;b0</code>: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when <code>SIP_DBG</code> is open as well (Case 2 of <a href="#dtp-path-gating">Section 5.4</a>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while <code>secure_tm = 1</code>. In <code>TEST_DEV</code> and <code>RMA_SiP</code>, this bit set in <code>SIP_DIS</code> or <code>SYS_DIS</code> makes the production ROM enforce secure boot; it has no such effect in <code>RMA_CHIPLET</code>. See <a href="#secure-boot-enforcement">Firmware Authorization</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
@@ -839,29 +839,18 @@ are unchanged. The complete formulas are in <a href="#feature-control-table">Tab
 <p>Opening local debug does not open the external access path. For example,
 a Case 3 SEP debug path requires both groups; see <a href="#dtp-path-gating">Section 5.4</a>.
 The LCC applies register values without authenticating the writer or a
-manifest. Firmware authorization is discussed under <a href="#secure-boot-enforcement">Section 8.1</a>
-and <a href="#demote-signing-model">Section 8.2</a>.</p>
+manifest. Firmware authorization is discussed under
+<a href="#lcc-firmware-policy">Firmware Authorization</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="demote-lock-behavior"><a class="anchor" href="#demote-lock-behavior"></a><a class="link" href="#demote-lock-behavior">4.1. Programming and Locking</a></h3>
 <div class="paragraph">
 <p>Both <code>demote</code> (bit 0) and <code>lock</code> (bit 1) are write-one-to-set fields.
 Writing zero does not clear them. While <code>lock</code> is zero, firmware can set
-<code>demote</code>; once locked, the demotion decision cannot change until cold reset.</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Decide whether to enable demotion for this boot.</p>
-</li>
-<li>
-<p>Set <code>demote</code> if required, then set <code>lock</code> to commit the decision. The lock
-can commit either a demoted or a non-demoted state.</p>
-</li>
-<li>
-<p>Leave <code>lock</code> clear only when a later boot stage is to decide.</p>
-</li>
-</ol>
+<code>demote</code>; once locked, the demotion decision cannot change until cold reset.
+The lock can commit either a demoted or a non-demoted state. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-lifecycle-demotion" class="xref page">demotion sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 <div class="paragraph">
 <p>This is the hardware mechanism. The current ROM&#8217;s manifest handling is
@@ -1405,170 +1394,28 @@ in a future revision of this specification.
 <div class="sect1">
 <h2 id="lcc-firmware-policy"><a class="anchor" href="#lcc-firmware-policy"></a><a class="link" href="#lcc-firmware-policy">8. Firmware Authorization</a></h2>
 <div class="sectionbody">
-<div class="sect2">
-<h3 id="secure-boot-enforcement"><a class="anchor" href="#secure-boot-enforcement"></a><a class="link" href="#secure-boot-enforcement">8.1. Secure-Boot Enforcement</a></h3>
 <div class="paragraph">
-<p>The production ROM and manifest validator decide whether signature verification
-is required in this order:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>A manifest with its secure-boot enforcement bit set requires verification,
-including when <code>SBOOT_DIS</code> is set.</p>
-</li>
-<li>
-<p>Otherwise, a set <code>SBOOT_DIS</code> fuse disables secure boot.</p>
-</li>
-<li>
-<p>Otherwise, the lifecycle policy requires secure boot in <code>PROD</code> and
-<code>PROD_END</code>, and in <code>TEST_DEV</code> and <code>RMA_SiP</code> when chiplet-scope debug is
-disabled (<code>CHIPLET_DBG</code> set in <code>SIP_DIS</code> or <code>SYS_DIS</code>, or either vector
-read-locked). It does not require it in <code>TEST_DEV</code> or <code>RMA_SiP</code> with chiplet
-debug enabled, or in <code>RMA_CHIPLET</code> at all.</p>
-</li>
-</ol>
+<p><a id="secure-boot-enforcement"></a><a id="demote-signing-model"></a>The LCC does not inspect
+manifests or signatures. It supplies the lifecycle state, and the OTP Fuse
+Controller chapter defines the fuse fields that govern firmware authorization:
+<code>SBOOT_DIS</code>, the <code>SIP_DIS</code> and <code>SYS_DIS</code> debug vectors, the public-key digests, <code>CHIPLET_PUBK_REVOKE</code>, and the <code>REQUIRED_SIGNERS</code> and
+<code>REQUIRED_ALGS</code> fields reserved for a deferred multi-owner signing model.
+Firmware, not the LCC, interprets them. The SEP Boot ROM reads <code>CHIPLET_DBG</code>
+from the <code>SIP_DIS</code> and <code>SYS_DIS</code> fuse shadows rather than from <code>FEAT_CTRL</code>,
+because <code>SEC_DIS</code> and demotion can force <code>FEAT_CTRL</code> open on a part whose fuses
+disable debug.</p>
 </div>
 <div class="paragraph">
-<p>The debug-lock rule means a locked-down debug posture cannot be bypassed by
-loading unsigned code. The ROM reads <code>CHIPLET_DBG</code> from the <code>SIP_DIS</code> and
-<code>SYS_DIS</code> fuse shadows rather than from <code>FEAT_CTRL</code>, which <code>SEC_DIS</code> and
-demotion can force open on a part whose fuses disable debug. For the same
-reason the rule holds in <code>RMA_SiP</code>, where the lifecycle controller does not
-apply <code>SYS_DIS</code> to feature control but the fuse still records the lock.
-<code>RMA_CHIPLET</code> applies neither vector, and the ROM ignores the lock there too.</p>
-</div>
-<div class="paragraph">
-<p>An owner relying on lifecycle-enforced secure boot, or on the debug-lock
-rule, must leave <code>SBOOT_DIS</code> unburned and write-lock it via the
-LOCK field. <code>SBOOT_DIS</code> does not override
-a manifest&#8217;s own requirement for verification.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="demote-signing-model"><a class="anchor" href="#demote-signing-model"></a><a class="link" href="#demote-signing-model">8.2. Deferred Multi-Owner Signing Model</a></h3>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-The model in this section is not implemented by the current SEP ROM.
-Current verification uses one RSA-3072 signature and a selected key whose
-digest matches a ROM digest or OTP hash bank. BL0 does not read
-<code>REQUIRED_SIGNERS</code> or <code>REQUIRED_ALGS</code>, and its validation library does not
-verify the manifest&#8217;s verifier-key and co-signer entries. See the Boot ROM
-chapter for implemented boot behavior.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>The target model allows the chiplet creator, SiP owner and system owner to
-participate in manifest authorization. Firmware performs the checks; the LCC
-does not inspect manifests or signatures.</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. Deferred signing policy fields</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 75%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Intended meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>REQUIRED_SIGNERS</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">One bit each for SiP and system owners. A set bit requires
-that owner&#8217;s signature. All-zero adds no owner to the chiplet creator&#8217;s BL1
-root requirement. Burning a bit adds a requirement; leaving it clear does
-not require that owner&#8217;s key to be provisioned.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>REQUIRED_ALGS</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Algorithms required for each required owner: classical
-(ECDSA P-384 or RSA), post-quantum (ML-DSA), or both.</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>For each required owner, the manifest must carry a valid signature for every
-selected algorithm, using a provisioned, non-revoked key. Requiring both
-classical and post-quantum algorithms requires both signatures; neither alone
-suffices. Signatures from owners outside the required set are ignored.</p>
-</div>
-<div class="paragraph">
-<p>At cold reset, the fuse fields reload the shadow policy for BL1. In the target
-model, each authenticated stage may change the shadow signer set for the next
-manifest, adding or dropping owners. Firmware enforces this propagation; there
-is no additional hardware signer-policy gate. The initial fuse requirement is
-restored at the next cold reset.</p>
-</div>
-<div class="paragraph">
-<p>Demotion authorization follows the manifest&#8217;s required-signer set and is not
-tied to a particular boot stage. Both demotions use the same signing rules;
-the additional inter-chiplet effect of Demotion 2 does not add a hardware
-signer check. A SiP owner can require its signature for the initial manifest
-and commit a non-demoted decision with the demotion lock. Later-stage policy
-changes remain part of the deferred firmware model.</p>
-</div>
-<div class="paragraph">
-<p>Only public-key digests, not public keys, are stored in eFuse. The target
-provisioning layout distinguishes these roots:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Chiplet-creator classical and PQC digests are embedded in ROM.</p>
-</li>
-<li>
-<p><code>SIP_PUBK_HASH0/1</code> and <code>SIP_PUBK_PQC_HASH0/1</code> provide two SiP slots,
-allowing one root to remain after the other is revoked.</p>
-</li>
-<li>
-<p><code>SYS_PUBK_HASH</code> and <code>SYS_PUBK_PQC_HASH</code> hold system-owner digests.</p>
-</li>
-<li>
-<p><code>CHIPLET_PUBK_HASH0/1</code> and <code>CHIPLET_PUBK_PQC_HASH0/1</code> provide additional
-chiplet-owner digests alongside the ROM roots.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Key entries have individual revocation controls through <code>CHIPLET_PUBK_REVOKE</code>.
-The OTP Fuse Controller chapter defines those fields and their locks.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="signing-model-examples"><a class="anchor" href="#signing-model-examples"></a><a class="link" href="#signing-model-examples">8.3. Signing-Model Examples</a></h3>
-<div class="paragraph">
-<p>These examples describe the deferred model, and apply only when secure boot
-is enforced for the manifest:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>No additional signer bits: BL1 requires the chiplet creator only.</p>
-</li>
-<li>
-<p>SiP bit set: BL1 requires the chiplet creator and SiP owner. An authenticated
-BL1 may hand off to a BL2 policy requiring only the SiP owner.</p>
-</li>
-<li>
-<p>System owner added downstream: an authenticated stage adds that owner to the
-shadow policy for its successor, alone or alongside the SiP owner.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Cold reset restores the fuse-provided initial policy. These examples are not
-current ROM capabilities.</p>
-</div>
+<p>The
+<a href="../../../ocah-programmer-guide/latest/index.html#sec:secure_boot" class="xref page">Secure Boot Decision</a>
+section of the SEP Boot ROM appendix in the Programmer&#8217;s Guide specifies when
+the ROM requires a verified manifest, including the rule that a debug-locked
+<code>TEST_DEV</code> or <code>RMA_SiP</code> part is treated as <code>PROD</code>. The
+<a href="../sip-secure-boot.html#sip-secure-boot-decision" class="xref page">SiP Secure Boot application note</a>
+summarizes that decision and describes the multi-owner model, which the
+current ROM does not implement, under
+<a href="../sip-secure-boot.html#sip-secure-boot-multi-owner-model" class="xref page">deferred multi-owner signing model</a>
+there.</p>
 </div>
 </div>
 </div>

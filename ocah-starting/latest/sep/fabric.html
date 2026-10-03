@@ -147,6 +147,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -176,14 +184,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -526,10 +526,8 @@ transparent pass-through entries until firmware programs them.</p>
 <li>
 <p>External or cross-subsystem traffic reaches SEP through the global
 aperture described by <code>SEP_GLOBAL_BASE_ADDR</code> and <code>SEP_REGION_SIZE</code>.
-The current <code>SEP_REGION_SIZE</code> reset is <code>0x0100_0000</code> (16 MiB), and
-firmware programs the runtime value during early boot to match the
-chiplet map. Barrier is recommended between programming these routing
-CSRs and issuing later MMIO accesses.</p>
+The current <code>SEP_REGION_SIZE</code> reset is <code>0x0100_0000</code> (16 MiB); the
+runtime value is software-programmed to match the chiplet map.</p>
 </li>
 <li>
 <p>SEP CPU local-alias traffic is an internal CPU-side view of the SEP
@@ -545,9 +543,9 @@ routed out to the SMN.</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>To compute global addresses for external agents, firmware needs the
-chiplet ID or chiplet BAR for the integration. Both the chiplet ID and
-chiplet BAR are available in SMC as MMRs.</p>
+<p>Both the chiplet ID and chiplet BAR are available in SMC as MMRs. The
+Programmer&#8217;s Guide gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-smc-address-remapping" class="xref page">aperture programming sequence</a>.</p>
 </div>
 </div>
 </div>
@@ -569,8 +567,11 @@ traffic, while SEP-scope debug is enabled; see
 outbound filter has no bypass and is always in effect.</p>
 </div>
 <div class="paragraph">
-<p>Firmware must not set <code>allow_burst</code> on an inbound entry that covers a
-register region (<a href="memory_map.html#sep-register-single-beat" class="xref page">Single-Beat Register Access</a>).</p>
+<p>Register regions accept single-beat accesses only
+(<a href="memory_map.html#sep-register-single-beat" class="xref page">Single-Beat Register Access</a>), so an inbound entry covering one with
+<code>allow_burst</code> set admits bursts the target rejects. The Programmer&#8217;s Guide
+gives the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-smc-axi-filters" class="xref page">filter programming rules</a>.</p>
 </div>
 <div class="paragraph">
 <p>The decode algorithm&#8201;&#8212;&#8201;entry priority, the match conditions, the
@@ -618,27 +619,18 @@ That aperture is independent from the SEP CPU local-alias range.</p>
 </div>
 <div class="paragraph">
 <p>Traffic not routed to local SEP or neighboring SMC resources goes to the
-SMN system NoC. Firmware selects the outbound path according to the resource:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Shared resources use AP- or STEE-controlled remappers for address translation.
-These remappers are controlled by external software, such as the Ascalon AP.
-Inbound filter policy must restrict the STEE remapper to STEE access.</p>
-</li>
-<li>
-<p>External private memory and system MMIO use the direct SMN path.</p>
-</li>
-</ul>
+SMN system NoC, either through the AP- or STEE-controlled remappers, which
+external software such as the Ascalon AP controls, or through the direct SMN
+path.</p>
 </div>
 <div class="paragraph">
 <p>SEP outbound traffic carries a source ID in AxUSER. Both AP- and STEE-controlled
 remappers replace it with <code>OTHERS</code>. Other traffic retains the initiator&#8217;s ID:
 the CPU masters drive SEP&#8217;s ID, while the secure DMA master leaves AxUSER at
 zero (<code>OTHERS</code>). AxPROT, including NS, passes unchanged. The outbound filter
-checks address, NS and source ID after remapping; firmware must restrict
-<code>OTHERS</code> traffic from M-mode assets.</p>
+checks address, NS and source ID after remapping. The Programmer&#8217;s Guide
+describes how to
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-smc-address-remapping" class="xref page">select the outbound path and restrict <code>OTHERS</code> traffic</a>.</p>
 </div>
 <div class="paragraph">
 <p>The inbound filter blocks traffic by default. Its entries reside in the system

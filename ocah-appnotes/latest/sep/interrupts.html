@@ -83,7 +83,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -102,7 +102,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -111,6 +111,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -146,14 +154,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -165,7 +165,7 @@
   <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="interrupts.html">Interrupts</a></li>
   </ul>
 </nav>
@@ -433,17 +433,14 @@ pointer-integrity check is not built in the current configuration, so this
 source is tied to zero and never asserts; the slot is assigned anyway so that
 enabling the check later does not renumber the map. When live it is
 level-sensitive and holds until a <code>TRNG_ENTROPY_CLEAR</code> pool scrub resets the
-pointers; there is no write-one-to-clear, so firmware must mask the source or
-scrub the pool rather than acknowledge it.</p></td>
+pointers; there is no write-one-to-clear.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>40</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Token match fault</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse token comparator redundancy fault (fault). The OR of the three sticky
 <code>TOKEN_MATCH_FAULT</code> bits. Those bits are software-read-only and clear only on
-reset, so this source stays asserted. Firmware must mask PIC source 40 after
-it has observed the fault; there is no write-one-to-clear, and an unmasked
-handler re-enters.</p></td>
+reset, so this source stays asserted; there is no write-one-to-clear.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>41</code></p></td>
@@ -451,8 +448,7 @@ handler re-enters.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">A CPU access to a Secure DMA register returned a TL-UL error response
 (unmapped or misaligned offset). The faulting access also
 received SLVERR synchronously. Latched and held until firmware writes
-<code>DMA_BUS_ERR_CLEAR.clr</code>; unlike PIC source 40 this source is clearable, so
-firmware acknowledges it rather than masking it.</p></td>
+<code>DMA_BUS_ERR_CLEAR.clr</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>42</code></p></td>
@@ -466,10 +462,9 @@ Cleared by the same <code>DMA_BUS_ERR_CLEAR.clr</code> write.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>43</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral register-bridge fault</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
-CSRNG, EDN and the watchdog timer. Read <code>PERIPH_BUS_ERR_STATUS</code> to identify
-which block faulted, and clear that block&#8217;s bit in <code>PERIPH_BUS_ERR_CLEAR</code>;
-clears are per-block so acknowledging one cannot discard another block&#8217;s
-fault. See
+CSRNG, EDN and the watchdog timer. <code>PERIPH_BUS_ERR_STATUS</code> identifies the
+block, and <code>PERIPH_BUS_ERR_CLEAR</code> clears one block&#8217;s bit at a time, so
+acknowledging one cannot discard another block&#8217;s fault. See
 <a href="crypto.html#sep-crypto-bridge-faults" class="xref page">Crypto Register-Bridge Faults</a>.</p></td>
 </tr>
 <tr>
@@ -574,34 +569,13 @@ into <code>mip[30]</code> (<code>MCEIP</code>) and delivered when <code>mie[30]<
 <code>mstatus.MIE</code> are both set, with <code>mcause</code> = <code>0x8000_001E</code>.</p>
 </div>
 <div class="paragraph">
-<p>Firmware is expected to:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p><strong>Program a threshold before enabling the interrupt.</strong> Counters and thresholds
-both reset to zero, and a zero threshold raises the request on the very first
-corrected error, so enabling <code>MCEIE</code> without programming a threshold delivers
-an interrupt on error one.</p>
-</li>
-<li>
-<p><strong>Enable</strong> <code>mie[30]</code>. It is clear at reset. Until firmware sets it, corrected
-errors are counted silently and nothing is delivered&#8201;&#8212;&#8201;which is the state
-today, as no SEP firmware enables it.</p>
-</li>
-<li>
-<p><strong>Clear the counter in the handler.</strong> Read both counters to attribute the
-error, then write the one that tripped. <code>MCEIP</code> is level-held and has no
-write-one-to-clear: it follows the threshold comparator directly, so returning
-without dropping the count below the threshold re-enters the handler
-immediately. To clear the count while keeping threshold <code>N</code>, write <code>N &lt;&lt; 27</code>.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>The threshold trades interrupt rate against detection latency. A low threshold
-reports a degrading SRAM early at the cost of an interrupt per error; a high one
-lets transient flips accumulate before firmware is told.</p>
+<p>Counters and thresholds reset to zero, so a zero threshold raises the request
+on the first corrected error. <code>mie[30]</code> is clear at reset, and until it is set
+corrected errors are counted silently. <code>MCEIP</code> follows the threshold comparator
+and has no write-one-to-clear: it stays asserted until the count drops below the
+threshold. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-memory-errors" class="xref page">memory error handling section</a>
+of the Programmer&#8217;s Guide gives the enable and service sequence.</p>
 </div>
 <span id="uncorrectable-double-bit-errors"></span>
 </div>
@@ -656,10 +630,8 @@ A handler that does not read <code>mscause</code> cannot distinguish a software 
 failing hardware.</p>
 </div>
 <div class="paragraph">
-<p>Firmware is expected to treat these as fatal for the affected context. The
-faulting access cannot be completed, and retrying it re-reads the same corrupted
-location, so the handler must not resume the trapping instruction. Reset or
-quarantine the affected memory rather than attempting recovery in place.</p>
+<p>The faulting access cannot be completed, and retrying it re-reads the same
+corrupted location.</p>
 </div>
 <div class="paragraph">
 <p>An uncorrectable error on an externally initiated (DMA) access to either memory
@@ -700,7 +672,10 @@ ID and no off-by-one applies: <code>meipl[7]</code> is source 7. That entry is r
 has no hardware behind it&#8201;&#8212;&#8201;the PIC decodes the address but ties the register
 off, so <code>+0x0000</code>, <code>+0x2000</code>, <code>+0x4000</code> and <code>+0x5000</code> read as zero and discard
 writes. It appears in the RDL, the generated headers and the UVM RAL only to
-preserve the indexing; firmware must never program it.</p>
+preserve the indexing. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-pic" class="xref page">PIC section</a>
+of the Programmer&#8217;s Guide gives the programming and per-source service
+rules.</p>
 </div>
 <div class="admonitionblock note">
 <table>

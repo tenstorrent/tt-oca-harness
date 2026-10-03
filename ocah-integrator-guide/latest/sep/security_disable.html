@@ -136,9 +136,6 @@
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../revision.html">Revision History</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -156,6 +153,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -188,14 +193,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -287,31 +284,19 @@ fuse sensing stops and the SMC shadow map opens in the same way.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sec-dis-recovery-sequence"><a class="anchor" href="#sec-dis-recovery-sequence"></a><a class="link" href="#sec-dis-recovery-sequence">3. Recovery Sequence</a></h2>
+<h2 id="sec-dis-reset-persistence"><a class="anchor" href="#sec-dis-reset-persistence"></a><a class="link" href="#sec-dis-reset-persistence">3. Reset Persistence</a></h2>
 <div class="sectionbody">
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Present the SEC_DIS token over JTAG as described in the Token Processing
-chapter, <em>Token Match Sequence</em>, and poll <code>SEC_DISABLE_TOKEN_MATCH</code> until it
-reads the match code. The computed digest is now valid.</p>
-</li>
-<li>
-<p>Apply a cold reset. The token arrays, the computed digest and its valid bit
-survive reset, so the match holds from cold-reset release. Fuse sensing does
-not start, and every shadow register keeps its reset value instead of the
-partial contents of an interrupted sense. SEP samples the secure test-mode
-request one cycle after cold-reset release, instead of at fuse-sensing
-completion.</p>
-</li>
-<li>
-<p>Override <code>sep_reset_n</code> through the IC_RESET TDR to release the SEP reset.</p>
-</li>
-</ol>
-</div>
 <div class="paragraph">
-<p>Without the cold reset, the shadow registers hold whatever the failed sense
-loaded before the match, and the secure test-mode request is never sampled.</p>
+<p>The token arrays, the computed digest and its valid bit survive reset, so a
+match established before a cold reset holds from cold-reset release. Fuse
+sensing then does not start, every shadow register keeps its reset value
+instead of the partial contents of an interrupted sense, and SEP samples the
+secure test-mode request one cycle after cold-reset release instead of at
+fuse-sensing completion. A match established without a following cold reset
+leaves the shadow registers holding whatever the failed sense loaded, and the
+secure test-mode request is never sampled. The
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-sec-dis-recovery" class="xref page">SEC_DIS recovery sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 </div>
 </div>

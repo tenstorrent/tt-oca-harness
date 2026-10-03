@@ -136,9 +136,6 @@
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../revision.html">Revision History</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -156,6 +153,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -188,14 +193,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -479,7 +476,9 @@ value, and while it is 0 the destination has no valid key or seed.</p>
 preference to the accelerator&#8217;s own software key registers, whether software
 must also declare the key length, and the behavior on an invalid or mismatched
 key are accelerator-specific. They are stated in the accelerator reference
-pages and summarized in <a href="#km-key-delivery-summary">Key Manager key delivery per accelerator</a>.</p>
+pages and summarized in <a href="#km-key-delivery-summary">Key Manager key delivery per accelerator</a>; the
+<a href="../../../ocah-programmer-guide/latest/index.html#sep-km-delivered-keys" class="xref page">delivered-key section</a>
+of the Programmer&#8217;s Guide gives the corresponding software configuration.</p>
 </div>
 <table id="km-key-delivery-summary" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. Key Manager key delivery per accelerator</caption>

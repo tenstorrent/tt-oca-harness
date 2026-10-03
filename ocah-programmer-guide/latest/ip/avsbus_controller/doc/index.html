@@ -100,16 +100,25 @@
     <a class="nav-link" href="../../../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="../../../index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../../../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -128,6 +137,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -160,14 +177,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -458,30 +467,9 @@ clock domain never starts.</p>
 <p>Because the divider defaults to divide-by-4 on <code>clk_ref_i</code> and the protocol
 FSM starts as soon as reset is released, the controller begins issuing slave
 resync operations without any software configuration. Configuration is
-therefore a matter of adjusting defaults rather than enabling the block:</p>
-</div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Release <code>rst_clk_div_ni</code>, then <code>rst_reg_ni</code>.</p>
-</li>
-<li>
-<p>If the default AVS clock is not wanted, set
-<code>AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS</code>, write <code>AVS_CLOCK_SELECT</code>,
-<code>CLK_DIVIDER_VALUE</code> and <code>CLK_DIVIDER_DUTY_CYCLE_NUMERATOR</code>, then clear
-<code>TURN_OFF_ALL_PREMUX_CLOCKS</code>.</p>
-</li>
-<li>
-<p>Set <code>AVS_CFG_0.MAX_RETRIES</code> and <code>AVS_CFG_0.RESYNC_INTERVAL</code>.</p>
-</li>
-<li>
-<p>Clear the <code>AVS_INTERRUPT_MASK</code> bits for the sources of interest; all
-sources are masked out of reset.</p>
-</li>
-<li>
-<p>Write commands to <code>AVS_CMD</code> and collect responses from <code>AVS_READBACK</code>.</p>
-</li>
-</ol>
+therefore a matter of adjusting defaults rather than enabling the block. The
+<a href="../../../index.html#smc-avsbus" class="xref page">AVSBus configuration sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 </div>
 <div class="sect2">
@@ -513,10 +501,8 @@ the retry logic resends the command.</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>Because a write to a full command FIFO is dropped, software that queues
-commands in a burst should check <code>AVS_NORMAL_STATUS.CMD_FIFO_FULL</code> or
-<code>AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS</code> first, or detect the drop from the
-write&#8217;s error response or from <code>CMD_FIFO_OVERFLOW_INT</code>.</p>
+<p>A dropped write also raises <code>CMD_FIFO_OVERFLOW_INT</code>. <code>AVS_NORMAL_STATUS.CMD_FIFO_FULL</code>
+and <code>AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS</code> report the command FIFO&#8217;s space.</p>
 </div>
 </div>
 <div class="sect3">

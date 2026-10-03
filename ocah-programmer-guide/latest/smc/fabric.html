@@ -101,16 +101,25 @@
     <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -129,6 +138,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -161,14 +178,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -767,8 +776,9 @@ performance</p>
 </div>
 <div class="paragraph">
 <p>At reset, remap logic defaults to transparent mapping (no remap), using the
-local alias base address (0xC000_0000) for local resources until programmed by
-firmware.</p>
+local alias base address (0xC000_0000) for local resources until programmed.
+The Programmer&#8217;s Guide gives the
+<a href="../index.html#sep-smc-address-remapping" class="xref page">aperture programming sequence</a>.</p>
 </div>
 <span id="privilege-controlled-remapping"></span>
 </div>
@@ -872,8 +882,9 @@ non-secure or privileged vs. user transactions</p>
 </div>
 <div class="paragraph">
 <p>The default filter configuration varies by chiplet type. Most SMC
-instances default to blocking all external transactions, requiring
-firmware to explicitly configure access policies during cold boot.</p>
+instances default to blocking all external transactions until access policies
+are configured. The Programmer&#8217;s Guide gives the
+<a href="../index.html#sep-smc-axi-filters" class="xref page">filter programming rules</a>.</p>
 </div>
 <div class="paragraph">
 <p>The inbound filter interface provides 16 independent filter instances,
@@ -1090,34 +1101,9 @@ the originating master.</p>
 <div class="sect3">
 <h4 id="smc-fabric-configuration-examples"><a class="anchor" href="#smc-fabric-configuration-examples"></a><a class="link" href="#smc-fabric-configuration-examples">4.3.5. Configuration Examples</a></h4>
 <div class="paragraph">
-<p><strong>Example 1: Secure-only inbound access to a peripheral</strong></p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>Configure filter with:
-- Enable a matching entry with allow_ns = 0 and the required read/write permissions
-- Set the address range and source ID match for the peripheral
-- Ensure no other entry permits unwanted access
-Result: Unmatched non-secure traffic is blocked by the inbound default policy</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>For outbound traffic, the same secure-only allow entry does not block
-non-secure requests: unmatched traffic passes. Add matching deny entries for
-the non-secure traffic to be blocked, accounting for entry priority.</p>
-</div>
-<div class="paragraph">
-<p><strong>Example 2: Secure privileged data access to AXI-Lite registers</strong></p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>Configure AXI-Lite filter with:
-- awprot_requirement = 0x1 (Data, Secure, Privileged)
-- arprot_requirement = 0x1
-- write_filter_enable = 1
-- read_filter_enable = 1
-Result: Only transactions with all three PROT bits equal to 0x1 are allowed</pre>
-</div>
+<p>The Programmer&#8217;s Guide gives
+<a href="../index.html#axi-filter-example" class="xref page">filter configuration examples</a>,
+including secure-only and AXI-Lite PROT policies.</p>
 </div>
 <span id="traffic-routing-and-flow"></span>
 </div>
@@ -1146,9 +1132,9 @@ assignment.</p>
 <p>The SMC input fabric&#8217;s local/global split is sized by the same
 <code>REGION_SIZE</code> CSR used by SMU-level routing and SEP-to-SMC decode, so
 the internal local-alias window and the chiplet-facing global aperture
-stay the same size by construction. Firmware must not program
-<code>REGION_SIZE</code> to zero: doing so collapses both windows and routes SMC
-CPU accesses to its own resources out through the output fabric.</p>
+stay the same size by construction. A <code>REGION_SIZE</code> of zero collapses
+both windows and routes SMC CPU accesses to its own resources out
+through the output fabric.</p>
 </div>
 <div class="paragraph">
 <p>After global-aperture reconfiguration, software may use global addresses

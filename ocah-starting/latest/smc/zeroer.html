@@ -147,6 +147,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -176,14 +184,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -438,7 +438,9 @@ address issuance. AXI <code>AWREADY</code> and <code>WREADY</code> provide downs
 <p>The response channel is consumed without checking <code>BRESP</code>. Completion means
 that all responses have arrived, not that every write succeeded. The internal
 error state handles an illegal state-machine encoding, not AXI bus errors.
-Software requiring verified clearing must use an independent verification path.</p>
+The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-zeroer-general-use" class="xref page">Memory Zeroer procedure</a>
+in the Programmer&#8217;s Guide covers validating a request and verifying a clear.</p>
 </div>
 </div>
 <div class="sect2">
@@ -558,11 +560,6 @@ and start a zeroing operation.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTRL_STATUS.INT_EN</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Enables the completion pulse</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Validation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Software must validate destination, length, permissions, and
-address arithmetic before starting</p></td>
 </tr>
 </tbody>
 </table>

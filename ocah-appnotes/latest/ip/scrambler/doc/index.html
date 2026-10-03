@@ -82,7 +82,7 @@
 <div class="nav-panel-menu is-active" data-panel="menu">
   <nav class="nav-menu">
     <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
-    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></h3>
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
@@ -101,7 +101,7 @@
   </nav>
 </div>
 <div class="nav-panel-explore" data-panel="explore">
-  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Application Notes latest — switch documentation">
     <span class="version">latest</span>
   </button>
   <ul class="components">
@@ -110,6 +110,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -145,14 +153,6 @@
         </li>
       </ul>
     </li>
-    <li class="component is-current">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-current is-latest">
-          <a href="../../../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
   </ul>
 </div>
     </div>
@@ -164,7 +164,7 @@
   <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
-    <li><a href="../../../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></li>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Application Notes</a></li>
     <li><a href="index.html">SRAM Scrambling</a></li>
   </ul>
 </nav>
@@ -198,8 +198,11 @@ is mixed in to ensure that the same data at different address locations
 has a different scrambled value.</p>
 </div>
 <div class="paragraph">
-<p>The scrambling key is provisioned by the ROM by copying the DRBG
-register contents into the local key register.</p>
+<p>The KM ROM writes DRBG output into the key register and then enables and
+locks the scrambler; the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#memory-scrambler-provisioning" class="xref page">Memory Scrambler Provisioning</a>
+section of the Key Manager Application ROM appendix in the Programmer&#8217;s Guide
+gives the order.</p>
 </div>
 <div class="paragraph">
 <p>The scrambler IP consists of a generic top-level module (<code>scrambler</code>) and a set of pre-configured size-specific wrappers that fix the address width to match a particular SRAM depth. The generic module selects the correct address scrambling function at elaboration time through generate blocks keyed on <code>ADDR_WIDTH</code>. The <code>scrambler_addr_tweak</code> submodule expands and mixes the memory address into a 32-bit round key. All cryptographic primitives (S-boxes, permutations, and address scramble functions) are declared as <code>automatic</code> functions in <code>scrambler_pkg</code>.</p>

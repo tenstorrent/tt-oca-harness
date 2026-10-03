@@ -159,13 +159,7 @@
     <a class="nav-link" href="../sep/cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../sep-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/fabric.html">Interconnect</a>
@@ -250,9 +244,6 @@
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="6">
-    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
-  </li>
 </ul>
   </li>
 </ul>
@@ -276,13 +267,7 @@
     <a class="nav-link" href="cpu.html">CPU</a>
   </li>
   <li class="nav-item" data-depth="4">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="rom.html">Boot ROM</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../smc-bootrom-prod/index.html">Production ROM Manual</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="fabric.html">Interconnect</a>
@@ -386,13 +371,7 @@
     <span class="nav-text">Cross-Trigger</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="6">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="7">
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
-  </li>
-</ul>
   </li>
   <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -436,9 +415,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../aou-software-operation.html">Appendix C. Software Operation</a>
   </li>
 </ul>
   </li>
@@ -624,6 +600,14 @@
       </ul>
     </li>
     <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
         <li class="version is-latest">
@@ -652,14 +636,6 @@
       <ul class="versions">
         <li class="version is-current is-latest">
           <a href="../index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -850,7 +826,9 @@ clear them. <code>ENABLE</code> instead gates capture of the first error&#8217;s
 the PLIC and the ordinary per-source <code>mie</code> bits. This is not an unconditionally
 non-maskable interrupt: in machine mode, <code>mstatus.MIE = 0</code> suppresses delivery.
 The machine interrupt is enabled while executing in lower privilege modes.
-The BEU also has a separate output selected by <code>PLIC_ENABLE</code>.</p>
+The BEU also has a separate output selected by <code>PLIC_ENABLE</code>. The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-bus-error-units" class="xref page">Bus Error Unit service sequence</a>
+is in the Programmer&#8217;s Guide.</p>
 </div>
 </div>
 </div>
@@ -1254,75 +1232,29 @@ DMA and zeroer completion indications are busy-falling pulses, not counted queue
 <div class="sect1">
 <h2 id="software-handling"><a class="anchor" href="#software-handling"></a><a class="link" href="#software-handling">3. Software Handling</a></h2>
 <div class="sectionbody">
-<div class="sect2">
-<h3 id="initialization-and-core-assignment"><a class="anchor" href="#initialization-and-core-assignment"></a><a class="link" href="#initialization-and-core-assignment">3.1. Initialization and Core Assignment</a></h3>
 <span id="multi-core-interrupt-distribution-and-load-management"></span>
 <span id="multi-tier-interrupt-classification-and-response-strategy"></span>
 <span id="smc-interrupts-multi-core-interrupt-distribution-and-load-management"></span>
 <span id="smc-interrupts-multi-tier-interrupt-classification-and-response-strategy"></span>
-<div class="paragraph">
-<p>Initialize PLIC priority, enable and threshold registers before enabling delivery;
-the implementation does not hardware-reset these configuration registers.
-Initialize the CPU <code>mie</code> CSR as well before setting individual enables and
-<code>mstatus.MIE</code>. Source ownership and core assignment are firmware decisions, not
-fixed low-latency or throughput roles imposed by the hardware.</p>
-</div>
-<div class="paragraph">
-<p>Enable each source in the intended machine or supervisor context and choose a
-priority above that context&#8217;s threshold. Changing a shared source priority affects
-all contexts that enable it; per-context configuration is not complete independence.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="plic-service-sequence"><a class="anchor" href="#plic-service-sequence"></a><a class="link" href="#plic-service-sequence">3.2. PLIC Service Sequence</a></h3>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Read the handling context&#8217;s claim register. A nonzero return claims one source
-and clears its PLIC pending state; zero means no source was claimed.</p>
-</li>
-<li>
-<p>Service the peripheral or fault source. For an OR-combined source, inspect every
-contributing local cause that can keep the line asserted.</p>
-</li>
-<li>
-<p>Write the claimed ID back to that context&#8217;s completion register after the source
-is serviced. Completion releases the gateway; a still-asserted source can pend again.</p>
-</li>
-<li>
-<p>Repeat as required by the firmware&#8217;s scheduling policy. Preserve context/source
-ownership while a claim is outstanding.</p>
-</li>
-</ol>
-</div>
-<div class="paragraph">
-<p>Claim/complete does not clear a peripheral&#8217;s own sticky status and does not make
-short or repeated pulses lossless. In particular, track DMA retirement using
-<code>DONE_0</code>, not the number of observed completion interrupts.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="local-interrupts-and-fault-handling"><a class="anchor" href="#local-interrupts-and-fault-handling"></a><a class="link" href="#local-interrupts-and-fault-handling">3.3. Local Interrupts and Fault Handling</a></h3>
 <span id="fault-detection-and-recovery-architecture"></span>
 <span id="precision-timer-management-and-inter-core-coordination"></span>
 <span id="smc-interrupts-fault-detection-and-recovery-architecture"></span>
 <span id="smc-interrupts-precision-timer-management-and-inter-core-coordination"></span>
 <div class="paragraph">
-<p>For CLINT timer service, update the core&#8217;s compare value so the timer condition
-is no longer asserted. For a software interrupt, clear the relevant software
-interrupt state after handling the request. Neither uses a PLIC completion write.</p>
+<p>The PLIC priority, enable and threshold registers are not reset by hardware. A
+source&#8217;s priority is shared by every context that enables it. Completion
+releases the source&#8217;s gateway, so a still-asserted source pends again; claim
+and complete do not clear a peripheral&#8217;s own sticky status. CLINT timer and
+software interrupts do not use PLIC completion.</p>
 </div>
 <div class="paragraph">
-<p>For BEU service, capture the cause/address and accrued status before clearing
-or rearming capture. The direct and PLIC enable paths select from the same accrued
-errors, so clearing status affects both. Watchdog recovery and CPU reset/isolation
-ordering are described in the Watchdog Timers and CPU chapters; this routing map
-does not prescribe a system recovery policy.</p>
-</div>
-<div class="paragraph">
-<p>For CPU cluster context, see
+<p>The
+<a href="../../../ocah-programmer-guide/latest/index.html#smc-interrupt-control" class="xref page">Interrupt Control section</a>
+of the Programmer&#8217;s Guide gives the PLIC initialization and claim/complete
+sequence, CLINT timer and software interrupt service, and Bus Error Unit
+service. Watchdog recovery and CPU reset/isolation ordering are described in
+the Watchdog Timers and CPU chapters. For CPU cluster context, see
 <a href="cpu.html#cpu-memory-system" class="xref page">CPU and Memory System</a>.</p>
-</div>
 </div>
 </div>
 </div>

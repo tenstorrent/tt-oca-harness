@@ -101,16 +101,25 @@
     <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -129,6 +138,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -161,14 +178,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -241,16 +250,16 @@ eFuse shadow-register output.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The production ROM initializes SRAM and the C runtime, then services OCCP
-requests over target-mode I2C and I3C. The production manual describes the
-startup checks, lifecycle policy and boot-handoff commands.</p>
+requests over target-mode I2C and I3C. The SMC Boot ROM appendix of the
+Programmer&#8217;s Guide describes the startup checks, lifecycle policy and
+boot-handoff commands.</p>
 </div>
 <div class="paragraph">
-<p>The production ROM linker script,
-<code>hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld</code>, matches the 128 KiB hardware
-region. It places <code>.init</code>, <code>.fini</code>, constructor arrays, <code>.rodata</code>, <code>.text</code>, and
-ROM padding in that region. <code>.data</code>, <code>.tdata</code>, <code>.itim</code>, and <code>.lim</code> have runtime
-addresses in the SRAM region at <code>0xC006_0000</code> and load images in ROM. <code>.tbss</code>,
-<code>.bss</code>, the stack, and the heap occupy only SRAM.</p>
+<p>The production ROM image fills the 128 KiB hardware region; its writable data
+runs from SRAM at <code>0xC006_0000</code>. The
+<a href="../index.html#smc-cpu" class="xref page">SMC CPU</a>
+bring-up section of the Programmer&#8217;s Guide gives the linker layout and the
+initialization it requires.</p>
 </div>
 <span id="firmware-reference"></span>
 </div>
@@ -259,7 +268,9 @@ addresses in the SRAM region at <code>0xC006_0000</code> and load images in ROM.
 <h2 id="smc-rom-firmware-reference"><a class="anchor" href="#smc-rom-firmware-reference"></a><a class="link" href="#smc-rom-firmware-reference">4. Firmware Reference</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="../smc-bootrom-prod/index.html" class="xref page">Production ROM Manual</a></p>
+<p>The production ROM firmware is documented in the
+<a href="../index.html#smc-boot-rom" class="xref page">SMC Boot ROM appendix</a>
+of the Programmer&#8217;s Guide.</p>
 </div>
 </div>
 </div>

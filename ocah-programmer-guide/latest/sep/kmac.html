@@ -101,16 +101,25 @@
     <a class="nav-link" href="../index.html#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks &amp; Communication</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#aou-software-operation-guide">AXI-over-UCIe Bridge (AoU) Software Operation Guide</a>
+    <a class="nav-link" href="../index.html#dtp-programming-guide">DTP Programming Guide</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#smc-prod-rom-reference">SMC Production ROM Reference</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-boot-rom">A. SMC Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#sep-production-rom">SEP Production ROM</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#sep-boot-rom">B. SEP Boot ROM</a>
   </li>
-  <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="../index.html#key-manager-km-firmware">Key Manager Firmware Reference</a>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#km-application-rom">C. Key Manager Application ROM</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#aou-software-operation-guide">D. AXI-over-UCIe Bridge (AoU) Software Operation</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -129,6 +138,14 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -161,14 +178,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -240,8 +249,8 @@ interrupts: <code>done</code>, <code>fifo_empty</code>, and <code>err</code>.</p
 </div>
 <div class="paragraph">
 <p>The Key Manager delivers a 256-bit KMAC key as eight words per share, in the
-format given in <a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>. Software shall set <code>CFG_SHADOWED.sideload</code>
-to select the delivered key; while that bit is 0 the engine uses its software
+format given in <a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>. In KMAC, <code>CFG_SHADOWED.sideload</code>
+selects the delivered key; while that bit is 0 the engine uses its software
 key registers. Unlike AES and HMAC, software does not declare a key length for
 a delivered key: the engine applies the delivered key&#8217;s length automatically
 and ignores its key-length register for that operation. Beginning a keyed
@@ -251,7 +260,11 @@ error instead of producing a digest; OTBN also reports an invalid key error.</p>
 <div class="paragraph">
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC
-documentation</a> for the authoritative core functionality of the IP. The
+documentation</a> for the authoritative core functionality of the IP.
+The Programmer&#8217;s Guide gives the
+<a href="../index.html#sep-kmac" class="xref page">programming guidance</a>
+for this block.
+The
 register map follows below.</p>
 </div>
 </div>

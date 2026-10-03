@@ -147,6 +147,14 @@
         </li>
       </ul>
     </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
     <li class="component is-current">
       <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
       <ul class="versions">
@@ -176,14 +184,6 @@
       <ul class="versions">
         <li class="version is-latest">
           <a href="../../../../../ocah-docs/latest/index.html">latest</a>
-        </li>
-      </ul>
-    </li>
-    <li class="component">
-      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
-      <ul class="versions">
-        <li class="version is-latest">
-          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
         </li>
       </ul>
     </li>
@@ -312,10 +312,11 @@ AXI-Lite CSR window and presents each CTP&#8217;s registers at a 16-byte stride
 starting at offset 0x0200.</p>
 </div>
 <div class="paragraph">
-<p>Program <code>MODE</code> and <code>INVERT</code> once per boot, in a single write, before any CTM
-route selects or targets the port. The
-<a href="../../cross_trigger_network/doc/index.html#ctn-programming" class="xref page">CTN Programming</a>
-section gives the full sequence, reconfiguration, and deadlock recovery.</p>
+<p><code>MODE</code> and <code>INVERT</code> are static configuration, set once per boot in a single
+write before any CTM route selects or targets the port. The Programmer&#8217;s Guide
+gives the
+<a href="../../../../../ocah-programmer-guide/latest/index.html#dtp-cross-trigger" class="xref page">cross-trigger programming sequence</a>
+with reconfiguration and deadlock recovery.</p>
 </div>
 </div>
 </div>
