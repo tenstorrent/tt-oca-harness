@@ -546,13 +546,21 @@ reaches, never the reverse. The CPU cluster, the I3C controllers and the
 library cells are outside the compile-time scope, so none of their points is
 analysed.
 
-The analysis starts from the merged database of the commercial-path
+The analysis is the `smc_cov_vcf` item of the runner's formal mode in the
+companion's SMC formal configuration; a reader without the companion runs
+their own unreachability tool over the same database with the same
+environment and writes the same URG exclusion format.
+
+The accepted list is seeded from the merged database of the commercial-path
 `--items hosted fw` regression (<<smc-cov-paths>>), so it targets the points
 that regression left uncovered, and it runs on the RTL that produced that
-database, because the formal model and the seed must describe one RTL. The
-analysis is part of the companion's SMC formal configuration; a reader
-without the companion runs their own unreachability tool over the same
-database with the same environment and writes the same URG exclusion format.
+database, because the formal model and the seed must describe one RTL. A
+scheduled run of the companion's analysis seeds from the block's `smoke`
+group unless it is given a database. `smoke` is three leaves, so it leaves
+far more points uncovered than the coverage set does, and a list regenerated
+that way proves a larger exclusion set and leaves a smaller effective
+population behind it. A signoff-grade list therefore takes a hand-run
+coverage-set seed, and a list of unrecorded provenance is not one.
 
 The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
 that names the list pins the file's SHA-256. The runner refuses the policy
