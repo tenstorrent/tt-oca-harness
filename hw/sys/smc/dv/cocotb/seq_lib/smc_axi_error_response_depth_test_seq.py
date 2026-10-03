@@ -35,7 +35,9 @@ _UNMAPPED_BELOW_MMODE = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR") - 0x1000
 # The same page offset fourteen apertures above LOCAL_BASE: outside both the
 # local and the global aperture at the generated resets, so the input fabric's
 # window check answers it with DECERR before it reaches any region.
-_ABOVE_APERTURE = LOCAL_BASE_RESET + 14 * REGION_SIZE_RESET + (_UNMAPPED_BELOW_MMODE - LOCAL_BASE_RESET)
+_ABOVE_APERTURE = (
+    LOCAL_BASE_RESET + 14 * REGION_SIZE_RESET + (_UNMAPPED_BELOW_MMODE - LOCAL_BASE_RESET)
+)
 for _base in (LOCAL_BASE_RESET, GLOBAL_BASE_RESET):
     assert not _base <= _ABOVE_APERTURE < _base + REGION_SIZE_RESET, (
         f"0x{_ABOVE_APERTURE:08x} lies inside the aperture at 0x{_base:08x}"
