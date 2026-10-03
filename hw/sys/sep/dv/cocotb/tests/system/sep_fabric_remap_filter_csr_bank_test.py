@@ -67,6 +67,18 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
     masked-random field values. The R/W / 64-bit / woset / RO contract is fixed.
     """
 
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-ALIAS-RW",
+        "CHK-AP-STEE-RW",
+        "CHK-INFILT-CFG",
+        "CHK-OUTFILT-CFG",
+        "CHK-RO",
+        "CHK-BANK-INDEP",
+        "CHK-VALID-RW",
+        "CHK-WOSET",
+    )
+
     async def run_scenario(self) -> None:
         self.cfg_csr = SepFabricCsrCfg(self.random_seed())
         self.logger.info("CSR-bank config: %s", self.cfg_csr.summary())
@@ -242,8 +254,10 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         # CHK-WOSET: inbound + outbound filter FILTER_CONFIG[63] locked is write-once-set
         # (seeded lock entry, DISTINCT from the field-R/W entry; the lock is permanent so
         # this is last). The set sticks, the clear-attempt write completes DECERR and the
-        # bit stays 1. While the lock is set, a write to the entry's START_ADDR and
-        # END_ADDR also completes DECERR and leaves the word unchanged. Source:
+        # bit stays 1. The bit staying 1 shows the woset storage; the DECERR on the clear
+        # write shows the lock steers the hi-word write away. While the lock
+        # is set, a write to the FILTER_CONFIG lo word (the R/W rule fields), START_ADDR
+        # and END_ADDR also completes DECERR and leaves the word unchanged. Source:
         # filter_ctrl.rdl FILTER_CONFIG.locked and hw/ip/axi_filter/doc/index.adoc
         # ("Locking a Filter Entry").
         # Every locked write runs and is logged before any code is graded, so a
@@ -259,11 +273,28 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
             assert s == 1 and c == 1, (
                 f"{name} e{entry} FILTER_CONFIG locked woset: after_set={s} after_clear={c} (want 1/1)"
             )
-            resps = [("FILTER_CONFIG", r)]
-            for reg, off in (("START_ADDR", FILTER_START_ADDR), ("END_ADDR", FILTER_END_ADDR)):
+            resps = [("FILTER_CONFIG hi", r)]
+            for reg, off, flip in (
+                # Flip every writable lo-word field (read_allowed, write_allowed,
+                # entry_enabled, allow_ns, src_id, group_id, allow_burst); the RO
+                # data_bus_width is outside the mask. An accepted write reads back
+                # changed.
+                ("FILTER_CONFIG lo", FILTER_CONFIG, FILTER_RW_MASK),
                 # Flip 4 KB-aligned address bits: START/END store them for any
                 # granule, so an accepted write would read back changed.
-                before, after, wr = await self.fab.locked_write_probe(entry_base + off, 0x0000_F000)
+                ("START_ADDR", FILTER_START_ADDR, 0x0000_F000),
+                ("END_ADDR", FILTER_END_ADDR, 0x0000_F000),
+            ):
+                before, after, wr = await self.fab.locked_write_probe(entry_base + off, flip)
+                self.logger.info(
+                    "CHK-WOSET %s e%d locked %s wrote 0x%08x: word 0x%08x -> 0x%08x",
+                    name,
+                    entry,
+                    reg,
+                    (before ^ flip) & 0xFFFF_FFFF,
+                    before,
+                    after,
+                )
                 resps.append((reg, wr))
                 if after != before:
                     fails.append(
@@ -286,8 +317,9 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
                     )
         assert not fails, "CHK-WOSET FAIL: " + "; ".join(fails)
         self.logger.info(
-            "CHK-WOSET PASS (INFILT e%d, OUTFILT e%d locked): set sticks; writes to "
-            "FILTER_CONFIG, START_ADDR and END_ADDR complete DECERR and leave the entry "
+            "CHK-WOSET PASS (INFILT e%d, OUTFILT e%d locked): set sticks; the "
+            "FILTER_CONFIG hi clear write completes DECERR; writes to the FILTER_CONFIG "
+            "lo word, START_ADDR and END_ADDR complete DECERR and leave the word "
             "unchanged",
             cfg.infilt_lock_entry,
             cfg.outfilt_lock_entry,

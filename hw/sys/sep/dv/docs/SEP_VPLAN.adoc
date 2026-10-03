@@ -4124,6 +4124,8 @@ filter only ever sees `tx_len==0`.
 . Write each bank and require the readback to differ from the observed pre-write.
 . Prove RO `data_bus_width` ignores writes on both filters.
 . Write a distinct pattern into every entry of each bank, then read all of them back, and require each to hold its own pattern.
+. Set and try to clear the alias `valid` bit; it clears.
+. Lock one inbound and one outbound filter entry, try to clear `locked`, then write the `FILTER_CONFIG` lo word, `START_ADDR` and `END_ADDR` of the locked entry; require DECERR on each write and no change to each word.
 
 *Checkers*:
 
@@ -4145,7 +4147,7 @@ filter only ever sees `tx_len==0`.
 |CHK-VALID-RW
 |The region valid bit is read/write in both directions.
 |CHK-WOSET
-|The write-once-set `FILTER_CONFIG.locked` bit holds, and while it is set every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` completes DECERR and leaves the word unchanged, on the inbound and the outbound bank. Source: `hw/ip/axi_filter/regs/filter_ctrl.rdl` (`locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry"). Every code is logged before it is graded.
+|The write-once-set `FILTER_CONFIG.locked` bit holds, and while it is set every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` completes DECERR, on the inbound and the outbound bank. The clear write to the `FILTER_CONFIG` hi word must complete DECERR with `locked` still 1. A write that flips every R/W field of the `FILTER_CONFIG` lo word (`read_allowed`, `write_allowed`, `entry_enabled`, `allow_ns`, `src_id`, `group_id`, `allow_burst`), and a write that flips 4 KB-aligned bits of `START_ADDR` and `END_ADDR`, must each leave the word unchanged. Each probe logs the written value and the word before and after. Source: `hw/ip/axi_filter/regs/filter_ctrl.rdl` (`locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry"). Every code is logged before it is graded.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
