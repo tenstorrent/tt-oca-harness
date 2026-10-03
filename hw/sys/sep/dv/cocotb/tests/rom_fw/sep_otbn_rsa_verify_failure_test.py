@@ -3,7 +3,7 @@
 """A corrupted RSA signature in both slots is rejected by the OTBN verify itself.
 
 Each slot must print ``RSA_EXEC`` then ``RSA_PKCS1_FAIL``. Needs ``+esrc_noise_force``: OTBN
-stalls without EDN entropy, which the ROM does not bring up.
+stalls without EDN entropy. The plusarg forces the ESRC noise input; the ROM brings up the entropy chain.
 """
 
 from __future__ import annotations

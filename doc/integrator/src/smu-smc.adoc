@@ -267,8 +267,6 @@ per-field override enables, and an AXI PROT access filter
 Schmitt select
 |PVT clock-observation pad interface |As the PLL clock-observation pad interface
 |PVT clock-observation pad control |As the PLL clock-observation pad control
-|POC/PBIAS pad control |Pad supply-voltage level selection and retention
-enable, with an access filter
 |Reference-clock pad control |Drive strength, pull and Schmitt settings for the
 reference-clock pad
 |Per-pad GPIO control |One control block per pad: pad electrical settings, the
@@ -337,7 +335,7 @@ banks are never shared. Each controller also drives its own sense-done output
 to the `smu.sv` boundary, `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o`,
 and holds the sensed bank in its own shadow registers.
 <<efuse-smu-instances-fig>> shows these connections. When the SMU is built with
-`SEP = 0`, only the SMC instance is needed.
+`CFG.SEP = 0`, only the SMC instance is needed.
 
 [[efuse-smu-instances-fig]]
 .eFuse connections at the smu.sv boundary
@@ -368,9 +366,9 @@ subsystem's external port as usual.
 [width="100%",cols="12%,30%,23%,35%",options="header"]
 |=======================================================================
 |Subsystem |Window base |Size parameter (SMU default) |Rest of the window
-|SMC |`smc_external` base, SMC-local `0xC040_0000` |`SMC_EFUSE_SHIM_SIZE` (`0x4`)
+|SMC |`smc_external` base, SMC-local `0xC040_0000` |`CFG.SMC_EFUSE_SHIM_SIZE` (`0x4`)
 |`smc_external_req_o` / `smc_external_resp_i`
-|SEP |`sep_external` base, SEP-local `0x2000_0000` |`SEP_EFUSE_SHIM_SIZE` (`0x4`)
+|SEP |`sep_external` base, SEP-local `0x2000_0000` |`CFG.SEP_EFUSE_SHIM_SIZE` (`0x4`)
 |`sep_external_req_o` / `sep_external_resp_i`
 |=======================================================================
 

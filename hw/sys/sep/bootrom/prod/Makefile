@@ -64,9 +64,9 @@ DCCM_BASE ?= 0xC0040000
 # and spilled registers, so this scrub is what keeps key material off the stack.
 DCCM_SCRUB_BYTES ?= 0x20000
 
-# Off, and not for speed: rom_clear_ext_sram() runs before the manifest load and
-# would wipe the warm handler sep_scratch_7_test preloads at SRAM_BASE + 0x100.
-# Stays off until that preload can be staged after the cold-boot scrub.
+# Off by default: rom_clear_ext_sram() runs before the manifest load, and the
+# testbench can preload SEP SRAM (+sep_sram_hex). 0x40000 clears all of it, which
+# SEP-ROM-CPU-100 requires; rom.adoc tracks the default as a gap.
 SRAM_SCRUB_BYTES ?= 0
 
 # BL1 execution from SEP SRAM. ICCM is the secure execution space and is always
@@ -195,9 +195,9 @@ OCA_LIB_OBJS := $(patsubst $(OCA_LIB_DIR)/%.c,$(OCA_OBJ_DIR)/%.o,$(OCA_LIB_SRCS)
 # reports OCA_FAIL_UNSUPPORTED_VARIANT rather than a false pass. Turning PQC off
 # is the largest ROM-size lever available if the 64 KiB budget gets tight.
 
-# Entropy chain bring-up (ESRC -> DRBG/CSRNG -> EDN) in the ROM. On by default;
-# with it off the crypto blocks fall back to the DV +sep_crypto_edn_force
-# shortcut, which is what this replaces.
+# Entropy chain bring-up (ESRC -> DRBG/CSRNG -> EDN) in the ROM. On by default.
+# Setting it to 0 produces a diagnostic build in which the ROM does not provide
+# entropy to crypto blocks, so entropy-dependent secure boot cannot complete.
 SEP_ENTROPY_BRINGUP ?= 1
 
 # One-way entropy lock bypasses, independent of each other. Both locks are
@@ -287,7 +287,7 @@ DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=
 .PHONY: all clean bl1_test ensure-pack-deps toolchain-images toolchain-images-build \
         pio-toolchain-images debug release decrypt_negative_images
 
-# Release stops at the ROM: oca-images signs its 17 flash images with the private
+# Release stops at the ROM: oca-images emits flash images signed with the private
 # test keys the configs name, which a release build must never emit.
 ifeq ($(BUILD_TYPE),release)
 all: toolchain-images
@@ -310,8 +310,7 @@ pio-toolchain-images:
 # Split by tool dependency so callers can run each half in the right environment:
 # toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
 # container). oca-images and key-digests are pure Python and run via uv, which
-# the container carries. The companion's SEP firmware build script drives the
-# two halves this way.
+# the container carries.
 #
 # Direct `make toolchain-images` uses only an explicit RISCV_TOOLCHAIN on the
 # host. Otherwise it runs the compiler-dependent half in the OCAH container.

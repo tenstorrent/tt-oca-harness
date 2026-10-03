@@ -1856,59 +1856,6 @@ module sep_uvm_top
     end
 `undef ESRC_NOISE_FORCE
 
-    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
-    // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
-    // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
-    //
-    // Prefer +esrc_noise_force. The SEP boot ROM brings the real entropy chain up
-    // itself (src/sep_entropy.c), so a crypto test needs only raw noise injected
-    // -- the ring oscillators do not self-oscillate in simulation -- and the
-    // DRBG/CSRNG/EDN handshakes stay real. This force cannot do that: forcing
-    // edn_ack violates the EDN req/ack data-hold protocol and trips
-    // prim_sync_reqack_data's SyncReqAckDataHold* assertions. Testlist entries
-    // still passing it are being migrated.
-    //
-    // Kept for now as a debug lever only. It is a candidate for deletion once
-    // the real-entropy path has some mileage.
-    logic edn_force_on;
-    logic otbn_rnd_ack_q, otbn_urnd_ack_q;
-    initial begin
-        edn_force_on = $test$plusargs("sep_crypto_edn_force");
-        if (edn_force_on) begin
-            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN EDN grants are");
-            $display("[tb] *** forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
-        end
-    end
-
-// Target the driver-side net inside sep_crypto rather than the wrapper's input
-// port -- a `force` on a module instance input is rejected (ASSIGNIN).
-// Client indices from sep_crypto.sv: 0 = AES, 1 = KMAC, 2 = OTBN RND,
-// 3 = OTBN URND. KMAC is not forced -- the ROM's SHA-256 goes through HMAC.
-`define OTBN_RND_RSP  `SEP_CORE.u_sep_crypto.crypto_edn_rsp[2]
-`define OTBN_URND_RSP `SEP_CORE.u_sep_crypto.crypto_edn_rsp[3]
-`define OTBN_RND_REQ  `SEP_CORE.u_sep_crypto.crypto_edn_req[2]
-`define OTBN_URND_REQ `SEP_CORE.u_sep_crypto.crypto_edn_req[3]
-    // ack pulses for one cycle per request rather than sitting high, so a
-    // multi-word reseed is delivered as a sequence of beats like the real EDN.
-    always @(posedge clk_i) begin
-        if (edn_force_on) begin
-            otbn_rnd_ack_q  <= `OTBN_RND_REQ.edn_req  & ~otbn_rnd_ack_q;
-            otbn_urnd_ack_q <= `OTBN_URND_REQ.edn_req & ~otbn_urnd_ack_q;
-            force `OTBN_RND_RSP.edn_ack   = otbn_rnd_ack_q;
-            force `OTBN_RND_RSP.edn_fips  = 1'b1;
-            force `OTBN_RND_RSP.edn_bus   = $urandom();
-            force `OTBN_URND_RSP.edn_ack  = otbn_urnd_ack_q;
-            force `OTBN_URND_RSP.edn_fips = 1'b1;
-            force `OTBN_URND_RSP.edn_bus  = $urandom();
-        end
-    end
-`undef AES_RSP
-`undef AES_REQ
-`undef OTBN_RND_RSP
-`undef OTBN_URND_RSP
-`undef OTBN_RND_REQ
-`undef OTBN_URND_REQ
-
     // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
     // every command write, leaving the block powered, idle and error-free while
     // no program ever runs.

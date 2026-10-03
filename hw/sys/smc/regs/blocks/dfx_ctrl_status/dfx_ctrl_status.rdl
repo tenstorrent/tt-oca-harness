@@ -6,7 +6,7 @@
 
 addrmap dfx_ctrl_status {
     name = "DFX Control and Status Address Map";
-    desc = "Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.";
+    desc = "Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.";
 
     reg STATUS {
         regwidth = 64;
@@ -68,55 +68,65 @@ addrmap dfx_ctrl_status {
         field {
             sw=rw;
             hw=r;
-            desc="Chiplet Enable Used for Triggering";
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
         } chiplet_enable [1:0] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="GPIO en";
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
         }  gpio_en[2:2] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Clock gating en";
+            desc="DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+                    force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+                    reset.";
         }  cg_en[3:3] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Force clk en";
+            desc="Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+                    value of cg_en.";
         } force_clk_en[4:4] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="DTB NS enable";
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
         } dtb_ns_en[5:5] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="DTB E/W enable";
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
         } dtb_ew_en[6:6] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Mask==0 (default) -> disabled; Mask==1 -> enabled";
+            desc="CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every
+                    CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds
+                    them all inactive. Bits 15:1 hold the written value for software to read back
+                    and have no effect.";
         } xtrig_clk_halt_mask[22:7] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Debug marker";
+            desc="Holds the written value for software to read back. It has no effect in the SMC;
+                    the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).";
         } debug_marker [30:23] = 0x0;
 
     };
 
     reg DEBUG_BUS_MUX {
-        desc = "";
+        desc = "Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug
+                    bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,
+                    and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux
+                    at a time.";
         regwidth = 0x40;
 
         field {
@@ -126,7 +136,8 @@ addrmap dfx_ctrl_status {
 
         } Dbmmode[1:0] = 0x0;
         field {
-            desc = "Unique DBM ID of the DBM instance";
+            desc = "ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
+                    level-3 muxes.";
             sw = rw;
             hw = r;
 
@@ -137,45 +148,61 @@ addrmap dfx_ctrl_status {
 
         } Rsvd158[15:8] = 0x0;
         field {
-            desc = "Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...";
+            desc = "Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
+                    takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k
+                    from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.";
             sw = rw;
             hw = r;
 
         } Muxselseg0[21:16] = 0x0;
         field {
-            desc = "Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...";
+            desc = "Binary input-lane select for output lane 1 of the addressed debug-bus mux, which
+                    takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k
+                    from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.";
             sw = rw;
             hw = r;
 
         } Muxselseg1[27:22] = 0x0;
         field {
-            desc = "Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...";
+            desc = "Binary input-lane select for output lane 2 of the addressed debug-bus mux, which
+                    takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k
+                    from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.";
             sw = rw;
             hw = r;
 
         } Muxselseg2[33:28] = 0x0;
         field {
-            desc = "Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...";
+            desc = "Binary input-lane select for output lane 3 of the addressed debug-bus mux, which
+                    takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k
+                    from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.";
             sw = rw;
             hw = r;
 
         } Muxselseg3[39:34] = 0x0;
         field {
+            desc = "No effect in the SMC: each debug-bus mux has four output lanes, selected by
+                    Muxselseg0 to Muxselseg3.";
             sw = rw;
             hw = r;
 
         } Muxselseg4[45:40] = 0x0;
         field {
+            desc = "No effect in the SMC: each debug-bus mux has four output lanes, selected by
+                    Muxselseg0 to Muxselseg3.";
             sw = rw;
             hw = r;
 
         } Muxselseg5[51:46] = 0x0;
         field {
+            desc = "No effect in the SMC: each debug-bus mux has four output lanes, selected by
+                    Muxselseg0 to Muxselseg3.";
             sw = rw;
             hw = r;
 
         } Muxselseg6[57:52] = 0x0;
         field {
+            desc = "No effect in the SMC: each debug-bus mux has four output lanes, selected by
+                    Muxselseg0 to Muxselseg3.";
             sw = rw;
             hw = r;
 

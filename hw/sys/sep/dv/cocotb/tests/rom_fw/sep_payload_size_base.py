@@ -83,11 +83,6 @@ def assert_rom_sram_bounds() -> tuple[int, int]:
     return base, size
 
 
-def shipped_payload_bytes(slot: str) -> int:
-    with open(SECURE_FLASH_IMAGE, "rb") as fh:
-        return pm.manifest_payload_length(bytearray(fh.read()), slot)
-
-
 def shipped_payload_offset(slot: str) -> int:
     with open(SECURE_FLASH_IMAGE, "rb") as fh:
         buf = bytearray(fh.read())
@@ -122,7 +117,7 @@ def accepted_markers(payload_bytes: int, *, smc: bool) -> tuple[tuple[str, ...],
     )
 
 
-def refused_markers(backup_payload_bytes: int) -> tuple[tuple[str, ...], tuple[str, ...]]:
+def refused_markers() -> tuple[tuple[str, ...], tuple[str, ...]]:
     return (
         (
             "MANIFEST_PRIMARY",

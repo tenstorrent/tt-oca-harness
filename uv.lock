@@ -1210,7 +1210,7 @@ wheels = [
 
 [[package]]
 name = "tt-oca-manifest"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest" }
 dependencies = [
     { name = "cryptography" },

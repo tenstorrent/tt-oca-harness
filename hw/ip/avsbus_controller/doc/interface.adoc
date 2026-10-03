@@ -47,7 +47,7 @@ register, so software writes a command in wire order.
 |Preamble |[31:30] |2 |Fixed `2'b01`, inserted by hardware
 
 |Command Type |[29:28] |2 |`AVS_CMD.R_OR_W`: 0 = commit write, 1 = hold write,
-2 = read
+2 = reserved, 3 = read
 
 |Command Group |[27] |1 |`AVS_CMD.CMD_GRP`: 0 = standard, 1 =
 manufacturer-specific
@@ -173,7 +173,7 @@ divider. The reset value 0 is a sentinel that leaves the numerator at its
 hardware default of 0x80
 
 |AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE[8] |0x0 |Gate the AVS clock while the bus is
-idle. The master issues a 34-cycle slave resync whenever the clock restarts
+idle. The master issues a slave resync whenever the clock restarts
 
 |AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS[10] |0x0 |Gate both clocks feeding the
 source mux
@@ -225,13 +225,14 @@ and its corresponding `AVS_INTERRUPT_MASK` bit is clear.
 FIFO was full
 
 |7 |READBACK_UNDERFLOW_INT |`AVS_READBACK` was read while the readback FIFO
-was empty
+was empty; the read returned 0 with an error response
 
 |6 |CMD_FIFO_OVERFLOW_INT |`AVS_CMD` was written while the command FIFO was
-full, so the command was dropped
+full, so the command was dropped and the write completed with an error response
 
-|5 |MAX_RETRIES_ATTEMPTED_INT |A command failed `AVS_CFG_0.MAX_RETRIES`
-consecutive times
+|5 |MAX_RETRIES_ATTEMPTED_INT |A command still failed after
+`AVS_CFG_0.MAX_RETRIES` retries, `MAX_RETRIES` + 1 attempts in all. Never
+raised while `MAX_RETRIES` is 0
 
 |4 |SLAVE_UNRESPONSIVE_INT |The target did not drive a valid subframe
 
@@ -270,14 +271,18 @@ because the protocol FSM begins running as soon as reset is deasserted.
 
 |Subframe length |32 `avs_clock_o` cycles
 
-|Slave resync |34 `avs_clock_o` cycles with `avs_mdata_o` held high
+|Slave resync |35 `avs_clk` cycles in `AVS_SLAVE_RESYNC` with `avs_mdata_o`
+held high; the pin stays high for longer, through the cycles around that state
 
 |Minimum AVS clock division |2, when the divider is selected
 
-|Resync interval |`AVS_CFG_0.RESYNC_INTERVAL` in `clk_reg_i` cycles, plus a
-3-cycle synchronization delay before the FSM observes the request
+|Resync interval |`AVS_CFG_0.RESYNC_INTERVAL` `clk_reg_i` cycles, counted from
+when the register domain observes the end of the previous resync, plus one
+`clk_reg_i` cycle to register the request, three `avs_clk` cycles to
+synchronize it, and the time for any frame in flight to complete
 |=====================================================================================
 
+The resync counts are `avs_clk` cycles at the protocol FSM's state register.
 Pin-level setup, hold and propagation figures are a function of the
 implementation and are not specified by this IP.
 

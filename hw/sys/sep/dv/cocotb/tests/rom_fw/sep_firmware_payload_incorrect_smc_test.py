@@ -9,7 +9,6 @@ Needs ``+sep_crypto_edn_force``: the backup runs RSA-3072 on OTBN.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env.sep_seeded_rng import SepSeededRng
@@ -39,8 +38,13 @@ assert len(_OTHER_TOKENS) == len(td.OTHER_PAYLOAD_TOKENS) - 1, (
     "back so the other payload rows forbid this row's refusal token"
 )
 _OTHER_SMC_REFUSALS = tuple(t for t in ues.SMC_REFUSALS if t != "PAYLOAD_NO_ROOM=")
-_LOCATION_TOKENS = ("PAYLOAD_LOC_OT_OOB", "PAYLOAD_LOC_SMC_OOB",
-                    "PAYLOAD_LOC_OVERFLOW", "STAGED_WIPE=", "FLASH_REINIT_FAIL=")
+_LOCATION_TOKENS = (
+    "PAYLOAD_LOC_OT_OOB",
+    "PAYLOAD_LOC_SMC_OOB",
+    "PAYLOAD_LOC_OVERFLOW",
+    "STAGED_WIPE=",
+    "FLASH_REINIT_FAIL=",
+)
 
 
 @pyuvm.test()
@@ -57,16 +61,25 @@ class sep_firmware_payload_incorrect_smc_test(sep_primary_fail_backup_boot_base)
     primary_expected_sig_valids = 0
 
     extra_required = (
-        ues.WAIT_MARKER, ues.USING_SMC,
+        ues.WAIT_MARKER,
+        ues.USING_SMC,
         f"SMC_WIN_OFF=0x{WINDOW_OFFSET:08x}",
         f"SMC_WIN_LEN=0x{WINDOW_SIZE:08x}",
-        _NO_ROOM_TOKEN, "MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=",
+        _NO_ROOM_TOKEN,
+        "MANIFEST_HASH_OK",
+        "PLD_HASH_OK",
+        "BL1_COPIED",
+        "BL1_JUMP=",
     )
     extra_forbidden = tuple(
         npi.forbidden_errors()
-        + [f"MANIFEST_ERR=0x{ERR_PAYLOAD_TOO_LARGE:08x}",
-           f"MANIFEST_ERR=0x{ERR_PAYLOAD_BAD_LOC:08x}",
-           td.DECRYPT_START, "CRYPTO_FAIL=", "MANIFEST_ALL_FAILED"]
+        + [
+            f"MANIFEST_ERR=0x{ERR_PAYLOAD_TOO_LARGE:08x}",
+            f"MANIFEST_ERR=0x{ERR_PAYLOAD_BAD_LOC:08x}",
+            td.DECRYPT_START,
+            "CRYPTO_FAIL=",
+            "MANIFEST_ALL_FAILED",
+        ]
         + list(_OTHER_TOKENS)
         + list(_OTHER_SMC_REFUSALS)
         + list(_LOCATION_TOKENS)
@@ -86,8 +99,7 @@ class sep_firmware_payload_incorrect_smc_test(sep_primary_fail_backup_boot_base)
         payload_offset = pm.payload_base(buf, "primary") - mm.slot_base("primary")
         capacity = psb.ext_payload_capacity(payload_offset)
         seed = self.random_seed()
-        excess_kib = SepSeededRng(seed).randrange(_EXCESS_KIB_MIN,
-                                                  _EXCESS_KIB_MAX + 1)
+        excess_kib = SepSeededRng(seed).randrange(_EXCESS_KIB_MIN, _EXCESS_KIB_MAX + 1)
         declared = WINDOW_SIZE + excess_kib * 1024
 
         assert declared > WINDOW_SIZE, (
@@ -126,8 +138,16 @@ class sep_firmware_payload_incorrect_smc_test(sep_primary_fail_backup_boot_base)
             "own capacity is the only one left to refuse it. The slot is re-signed, "
             "and the material behind the declaration is NOT produced because the "
             "refusal precedes the fetch",
-            seed, excess_kib, WINDOW_SIZE, was, declared, declared,
-            mm.FLAG_ARGS_BIT_USE_EXT_SRAM, capacity, slot_start, slot_end,
+            seed,
+            excess_kib,
+            WINDOW_SIZE,
+            was,
+            declared,
+            declared,
+            mm.FLAG_ARGS_BIT_USE_EXT_SRAM,
+            capacity,
+            slot_start,
+            slot_end,
         )
 
     def check_efuse(self, image) -> None:
@@ -146,10 +166,8 @@ class sep_firmware_payload_incorrect_smc_test(sep_primary_fail_backup_boot_base)
                 f"{marker} appeared {n} times, expected exactly 1 (the primary's): "
                 f"only the primary clears bit 29 in this row. Console: {console}"
             )
-        i_wait = fd.assert_slot_attributed(console, ues.WAIT_MARKER, after=i_psrc,
-                                           before=i_bsrc)
-        i_smc = fd.assert_slot_attributed(console, ues.USING_SMC, after=i_wait,
-                                          before=i_bsrc)
+        i_wait = fd.assert_slot_attributed(console, ues.WAIT_MARKER, after=i_psrc, before=i_bsrc)
+        i_smc = fd.assert_slot_attributed(console, ues.USING_SMC, after=i_wait, before=i_bsrc)
 
         echoed = fd.hex_value(console, "PAYLOAD_NO_ROOM=")
         win_len = fd.hex_value(console, "SMC_WIN_LEN=")
@@ -170,10 +188,8 @@ class sep_firmware_payload_incorrect_smc_test(sep_primary_fail_backup_boot_base)
             f"{echoed}-byte capacity the ROM enforced; the refusal cannot be the "
             f"one this row is named for"
         )
-        i_no_room = fd.assert_slot_attributed(console, _NO_ROOM_TOKEN, after=i_smc,
-                                              before=i_bsrc)
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_no_room,
-                                          before=i_bsrc)
+        i_no_room = fd.assert_slot_attributed(console, _NO_ROOM_TOKEN, after=i_smc, before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_no_room, before=i_bsrc)
 
         n_hash = fd.count(console, "MANIFEST_HASH_OK")
         assert n_hash == 2, (
@@ -205,21 +221,43 @@ class sep_firmware_payload_incorrect_smc_test(sep_primary_fail_backup_boot_base)
             "-> %s@%d -> %s@%d -> backup@%d, and the backup staged in SEP SRAM. The "
             "ROM measured %d declared bytes against the 0x%08x it read from the "
             "window and refused the slot",
-            i_psrc, i_hash, ues.WAIT_MARKER, i_wait, ues.USING_SMC, i_smc,
-            _NO_ROOM_TOKEN, i_no_room, slot_err, i_err, i_bsrc, self._declared,
+            i_psrc,
+            i_hash,
+            ues.WAIT_MARKER,
+            i_wait,
+            ues.USING_SMC,
+            i_smc,
+            _NO_ROOM_TOKEN,
+            i_no_room,
+            slot_err,
+            i_err,
+            i_bsrc,
+            self._declared,
             echoed,
         )
 
         fd.assert_no_read_starting_at(
-            self.logger, flash, self._payload_src,
+            self.logger,
+            flash,
+            self._payload_src,
             f"the primary declared {self._declared} bytes for a "
             f"{WINDOW_SIZE}-byte window, so the staging block must refuse the slot "
             f"before the payload fetch is ever issued",
         )
 
-        fd.assert_served_field(self.logger, flash, "primary", pm.OFF_PAYLOAD_LENGTH,
-                               self._served_length,
-                               "primary manifest payload_length")
-        fd.assert_served_field(self.logger, flash, "primary", mm.OFF_FLAG_ARGS,
-                               self._served_flags,
-                               "primary boot_arguments.flag_args")
+        fd.assert_served_field(
+            self.logger,
+            flash,
+            "primary",
+            pm.OFF_PAYLOAD_LENGTH,
+            self._served_length,
+            "primary manifest payload_length",
+        )
+        fd.assert_served_field(
+            self.logger,
+            flash,
+            "primary",
+            mm.OFF_FLAG_ARGS,
+            self._served_flags,
+            "primary boot_arguments.flag_args",
+        )

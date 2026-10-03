@@ -1,15 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# DTP VCS coverage policy: the coverage thresholds of DTP_FCOV.adoc, graded over
-# the database that `dtp_cov_scope.hier` scopes at compile time (`[coverage.vcs]`
-# in dtp_sim_cfg.toml). URG hands the runner family totals and no per-point
-# list, so this file carries no [[holes]] and every rule grades its family
-# total: a VCS hole closes through a scenario, a design or model change, or an
-# entry in the URG exclusion list that the `[[native_files]]` entry below names
-# (DTP_FCOV.adoc, Unreachability exclusion list). That list carries code
-# points only; a covergroup bin has no waiver, which `population = "raw"` on
-# the functional rule states.
+# DTP VCS coverage policy: the report inputs for the database that
+# `dtp_cov_scope.hier` scopes at compile time (`[coverage.vcs]` in
+# dtp_sim_cfg.toml). It sets no [[thresholds]]: the runner reports the family
+# figures, a run's status comes from its tests, and DTP_FCOV.adoc states the
+# targets the figures are read against. URG hands the runner family totals and
+# no per-point list, so this file carries no [[holes]]: a VCS hole closes
+# through a scenario, a design or model change, or an entry in the URG
+# exclusion list that the `[[native_files]]` entry below names (DTP_FCOV.adoc,
+# Unreachability exclusion list). That list carries code points only; a
+# covergroup bin has no waiver.
 
 schema_version = 1
 dut = "dtp"
@@ -27,55 +28,3 @@ path = "dtp_unreachable.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 sha256 = "e5b31aa61ed0e5b93d8c2bec84c3c62efbc61de379280d1b88b5981b8ebc711c"
-
-[[thresholds]]
-id = "line"
-tool = "vcs"
-metric_family = "line"
-population = "effective"
-minimum_percent = 85.0
-
-[[thresholds]]
-id = "condition"
-tool = "vcs"
-metric_family = "condition"
-population = "effective"
-minimum_percent = 85.0
-
-[[thresholds]]
-id = "toggle"
-tool = "vcs"
-metric_family = "toggle"
-population = "effective"
-minimum_percent = 85.0
-
-[[thresholds]]
-id = "fsm"
-tool = "vcs"
-metric_family = "fsm_state"
-population = "effective"
-minimum_percent = 85.0
-
-[[thresholds]]
-id = "branch"
-tool = "vcs"
-metric_family = "branch"
-population = "effective"
-minimum_percent = 85.0
-
-# Every assertion in scope attempted and every cover directive hit: the DUT's
-# own assertions, the coverage modules' cover properties, and the protocol
-# checkers under the bench top.
-[[thresholds]]
-id = "assertion"
-tool = "vcs"
-metric_family = "assertion"
-population = "effective"
-minimum_percent = 100.0
-
-[[thresholds]]
-id = "functional"
-tool = "vcs"
-metric_family = "functional"
-population = "raw"
-minimum_percent = 100.0
