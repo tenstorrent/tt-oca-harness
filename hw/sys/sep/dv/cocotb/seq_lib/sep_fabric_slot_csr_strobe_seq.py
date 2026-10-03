@@ -31,8 +31,8 @@ without), they read back as start rounded down and end rounded up to it.
 
 While ``FILTER_CONFIG.locked`` is set, a write to the entry's
 ``FILTER_CONFIG``, ``START_ADDR`` or ``END_ADDR`` leaves the entry unchanged
-(``filter_ctrl.rdl`` ``locked``). The response code of such a write is logged
-and not graded here; ``sep_fabric_remap_filter_csr_bank_test`` grades it.
+and completes DECERR (``filter_ctrl.rdl`` ``locked``: the write is steered to
+the AXI error subordinate). Every refused write's response code is graded.
 """
 
 from __future__ import annotations
@@ -636,15 +636,25 @@ class SepFabricSlotCsrStrobe:
                 reg = self.rng.choice(list(slot.regs.values()))
                 racc, rdata = self._refused_access(slot, reg)
                 code = await self._write(reg, racc, rdata, locked=True)
+                self._grade_locked_resp(reg, code)
                 slot.lock_resp[RESP_NAME.get(code, str(code))] += 1
                 self.stats["locked_writes"] += 1
                 await self._read(reg, random_access(self.rng), "CHK-SLOT-LOCK")
             # Writing 0 to the lock bit leaves it set (onwrite = woset).
             code = await self._write(cfg, Access(lane, 1), 0, locked=True)
+            self._grade_locked_resp(cfg, code)
             slot.lock_resp[RESP_NAME.get(code, str(code))] += 1
             self.stats["locked_writes"] += 1
             for reg in slot.regs.values():
                 await self._read(reg, Access(0, 8), "CHK-SLOT-LOCK")
+
+    def _grade_locked_resp(self, reg: RegModel, code: int) -> None:
+        """A write to a locked entry completes DECERR (filter_ctrl.rdl ``locked``)."""
+        if code != RESP_DECERR:
+            self.mismatches.append(
+                f"CHK-SLOT-LOCK {reg.tag} write to a locked entry resp="
+                f"{RESP_NAME.get(code, code)}, expected DECERR"
+            )
 
     async def final_walk(self) -> None:
         """CHK-SLOT-FINAL: every register still holds its own model value."""

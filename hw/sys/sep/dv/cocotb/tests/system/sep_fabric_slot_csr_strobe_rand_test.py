@@ -192,7 +192,7 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
         assert locked == n_filters, f"CHK-SLOT-LOCK FAIL: {locked} of {n_filters} entries locked"
         codes = sweep.lock_codes()
         self.logger.info(
-            "CHK-SLOT-LOCK locked-entry write responses (logged, not graded): %s",
+            "CHK-SLOT-LOCK locked-entry write responses (each graded DECERR): %s",
             ", ".join(f"{k}={v}" for k, v in sorted(codes.items())),
         )
         self.logger.info(
