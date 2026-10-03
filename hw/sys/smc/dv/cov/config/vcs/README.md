@@ -109,8 +109,11 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 ## Exclusion files
 
 `coverage_policy.toml` beside this file names nine `-elfile` files the report
-applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
-Some classes in them rest on a design-engineering review recorded in
+applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses,
+and a tenth, `smc_unreachable.el`, the points a formal unreachability analysis
+proves no stimulus reaches, which `hw/sys/smc/dv/docs/SMC_FCOV.adoc` describes
+under "Unreachability exclusion list".
+Some classes in the nine rest on a design-engineering review recorded in
 `smc_reviewed_exclusions.toml`; those have their own section below.
 The first four and `smc_reviewed_field_exclusions.el` are written by
 `gen_smc_cov_exclusions.py` from urg's exclusion
