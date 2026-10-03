@@ -329,9 +329,10 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     dma_arm_tx(SRC_BASE, total_bytes);
 
     // --- CHK-DMA-DONE: the handshake transfer completes without error ---
-    // Done must then clear on write-one. Chunk-done is raised only for
-    // multi-chunk memory-to-memory transfers, so it is not checked here;
-    // dma_basic_test covers it.
+    // Done must still read set on a second read after the poll, so a read does
+    // not clear it and it does not drop by itself, and must then clear on
+    // write-one. Chunk-done is raised only for multi-chunk memory-to-memory
+    // transfers, so it is not checked here; dma_basic_test covers it.
     uint32_t st = 0;
     int t = DMA_POLL_LIM;
     while (t-- > 0) {
@@ -345,18 +346,30 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         sep_mbx_putc('\n');
         errors++;
     } else {
-        sep_dma_wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
-                   SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm);
-        __asm__ volatile("fence" ::: "memory");
-        uint32_t post = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
-        if (post & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm)) {
-            sep_mbx_puts("FAIL: DMA STATUS RW1C did not read back clear post=");
-            sep_mbx_puthex(post);
+        uint32_t pre = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        if (!(pre & SECURE_DMA__STATUS__DONE_bm)) {
+            sep_mbx_puts("FAIL: CHK-DMA-DONE DMA DONE not sticky before W1C pre=");
+            sep_mbx_puthex(pre);
             sep_mbx_putc('\n');
             errors++;
         } else {
-            sep_mbx_puts("CHK-DMA-DONE PASS: done RW1C reads back clear "
-                         "(handshake mode: chunk_done is not a handshake status)\n");
+            sep_dma_wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
+                       SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm);
+            __asm__ volatile("fence" ::: "memory");
+            uint32_t post = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+            if (post & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm)) {
+                sep_mbx_puts("FAIL: CHK-DMA-DONE DMA STATUS RW1C did not read back clear post=");
+                sep_mbx_puthex(post);
+                sep_mbx_putc('\n');
+                errors++;
+            } else {
+                sep_mbx_puts("CHK-DMA-DONE PASS: done held after the poll, RW1C reads back "
+                             "clear pre=");
+                sep_mbx_puthex(pre);
+                sep_mbx_puts(" post=");
+                sep_mbx_puthex(post);
+                sep_mbx_puts(" (handshake mode: chunk_done is not a handshake status)\n");
+            }
         }
     }
 

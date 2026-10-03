@@ -66,6 +66,24 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Every slot of the five fabric banks (alias, AP, STEE remap; outbound, inbound
+# filter): RDL reset; 64/32/16/8-bit writes with fill on inactive lanes, graded
+# against the IP-XACT field model, fill also counted at each slot's register block;
+# a write and a read outstanding together on s_axi with BREADY/RREADY held and with
+# W ahead of AW; every filter entry locked, then refused writes leave
+# it unchanged (each refused write graded DECERR). RANDCFG: order, sizes, data, fill and
+# channel delays from the run seed. no_cpu; +skip_fuse_sense.
+name = "sep_fabric_slot_csr_strobe_rand_test"
+module = "system.sep_fabric_slot_csr_strobe_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "remap", "filter", "csr", "strobe", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # WDT/AON-timer internals (the reference suite\'s sep_clock_uvm_aon_timer_operation_test +
 # wdt_wkup_timer_test + wdt_cfg_lock_test + wdt_pet_reset_test). no_cpu host-AXI
 # CSR proof of the aon_timer internals NOT covered by `sep_nmi_sanity_test` /
@@ -117,6 +135,23 @@ module = "system.sep_mailbox_peer_rx_rirqt_test"
 seed = 1
 timeout_sec = 1800
 tags = ["mailbox", "axil_mailbox", "fifo", "interrupt", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Every bit of every mailbox FIFO entry, both directions, both ports: a walking
+# one and a walking zero over 64 bits through all eight mailboxes, plus
+# partial-strobe pushes that must pop with the strobed bytes in their own
+# lanes (mailbox.adoc). The peer port is the external SMN master with seeded AxID,
+# AxPROT, AxCACHE, AxQOS, AxREGION, AxUSER, WUSER and ARLOCK; one filter window
+# per inbound port and NS polarity admits every draw.
+name = "sep_mailbox_datapath_walk_test"
+module = "system.sep_mailbox_datapath_walk_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["mailbox", "axil_mailbox", "fifo", "fabric", "inbound", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
@@ -192,6 +227,22 @@ tags = ["reset", "trng", "entropy", "isolation", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
+# Cold reset (rst_ni, asynchronous assertion) landed inside the response window
+# of a CPU-LSU access to one probe register per converted register port, and
+# inside fuse sensing. Each path must answer the next access with the RDL reset
+# value and then a written value; the next sense must match the staged image.
+# Real fuse sense on the committed default preload.
+name = "sep_reset_mid_transfer_recovery_test"
+module = "system.sep_reset_mid_transfer_recovery_test"
+seed = 1
+reseed = 2
+timeout_sec = 5400
+tags = ["reset", "fabric", "efuse", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+sep_efuse_preload"]
 
 [[tests]]
 # Inbound-filter per-entry RULE matrix (the reference suite's
@@ -407,10 +458,10 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # Every local-master alias-remap region at full 56-bit START/END/offset width.
 # RANDCFG: targets, bounds and the staged word from the run seed; each region
-# runs offset O then ~O, and miss bounds S then ~S. A hit sends the CPU-LSU
-# beat to a 56-bit SMU-path target that one outbound-filter granule admits
-# (OKAY; DECERR one granule up); a miss or valid=0 returns the staged local
-# word. no_cpu; +skip_fuse_sense.
+# runs offset O then ~O, miss bounds S then ~S, and an END miss with END at
+# the source page. A hit sends the CPU-LSU beat to a 56-bit SMU-path target
+# that one outbound-filter granule admits (OKAY; DECERR one granule up); a
+# miss or valid=0 returns the staged local word. no_cpu; +skip_fuse_sense.
 name = "sep_fabric_local_alias_offset_walk_test"
 module = "system.sep_fabric_local_alias_offset_walk_test"
 seed = 1
@@ -425,10 +476,10 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # Intra-block dead-space decode on CSR windows larger than REG_MAP_SIZE
 # (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI), and the
-# adopter TRNG window, whose refusal flavour is logged, not graded.
+# adopter TRNG window, where every access is graded DECERR.
 # An access past allocated size must be refused and must not change a
-# live register; do not XFAIL. CHK-DEADSPACE-BURST asserts the same refusal
-# on a later beat of a burst that ends past the window's extent.
+# live register; do not XFAIL. CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST
+# grade bursts in the crypto region, which refuses every beat DECERR.
 # no_cpu; +skip_fuse_sense.
 name = "sep_fabric_deadspace_decode_test"
 module = "system.sep_fabric_deadspace_decode_test"
@@ -540,8 +591,9 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # AXI channel ordering, swept over the whole write-safe register inventory:
 # the three legal AW/W orderings at every register, crossed with the three
-# transfer sizes on the scratch words. Each block terminates AXI at its own
-# register adapter, so the ordering contract has to hold at each of them. An
+# transfer sizes on the scratch words. The orderings are presented at the
+# s_axi ingress and graded end to end at every register; the crossbar can
+# re-serialize a write before a block adapter sees it. An
 # adapter that latches its pending-write flag on AW accept answers OKAY while
 # dropping the data, so the cell compares the readback, not the response, and
 # a follow-on write to a second register in the block catches a stale flag
@@ -567,6 +619,23 @@ args = ["+skip_fuse_sense"]
 # cells. It grades the MODULE; the leaves below grade the integration.
 name = "sep_drbg_axil_adapter_port_arbitration_test"
 module = "system.sep_drbg_axil_adapter_port_arbitration_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Unsupported writes at drbg_axil64_lane_adapter: a strobe that is not 0x0F or
+# 0xF0, or an address that is not 4-byte aligned, must answer SLVERR and forward
+# nothing. Misaligned reads and wrong-lane strobes are driven and logged, not
+# graded. The DUT's CSRNG and EDN adapters are reached over s_axi; the TB-owned
+# vehicle instance covers the strobe patterns one AXI transfer cannot place at
+# a DUT port.
+name = "sep_drbg_axil_adapter_refusal_test"
+module = "system.sep_drbg_axil_adapter_refusal_test"
 seed = 1
 reseed = 1
 timeout_sec = 3600

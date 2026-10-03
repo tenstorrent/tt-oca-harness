@@ -458,7 +458,7 @@ evidence:
   configuration reaches becomes an ignored bin with the fact beside it.
 
 The covergroups declared inside vendored RTL are the only ones the group
-exclusion file drops; `gen_smu_wrapper_group_exclusions.py` names each class
+exclusion file drops; the companion's `gen_smu_wrapper_group_exclusions.py` names each class
 with its reason, and a covergroup under `u_dut` that no class names stops the
 generator.
 

@@ -42,16 +42,20 @@
 // --- values ----------------------------------------------------------------
 // Ring oscillators: sample clock on, generators off (PHASE A) then everything
 // on (PHASE B). The generators must not run before the rest is configured.
-#define ESRC_RING_OSC_SAMPLECLK_ONLY 0x00FFF000u
-#define ESRC_RING_OSC_ALL_ON 0x00FFFFFFu
+#define ESRC_RING_OSC_SAMPLECLK_ONLY ENTROPY_SOURCE__RING_OSC_ENABLE__SAMPLE_CLK_ENABLE_bm
+#define ESRC_RING_OSC_ALL_ON \
+    (ENTROPY_SOURCE__RING_OSC_ENABLE__SAMPLE_CLK_ENABLE_bm | \
+     ENTROPY_SOURCE__RING_OSC_ENABLE__ENABLE_bm)
 
 // DECORRELATOR_CTRL.SAMPLE_CLK_DIV in [31:12]; 0x3F => divide by 64. The DV
 // default policy; the /8 variant exists for faster smoke runs.
-#define ESRC_DECOR_CTRL_DIV64 0x0003F000u
+#define ESRC_DECOR_CTRL_DIV64 (0x3Fu << ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_bp)
 
 // rep_limit=50, repetition/APT/Markov health tests enabled. HEALTH_TEST_WINDOW_SIZE
 // is deliberately left at its 2048-sample reset.
-#define ESRC_HEALTH_CTRL 0x00003207u
+#define ESRC_HEALTH_CTRL \
+    ((50u << ENTROPY_SOURCE__HEALTH_TEST_CTRL__REPETITION_LIMIT_bp) | \
+     (0x7u << ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bp))
 
 // MuBi4: true = 0x6, false = 0x9. Every control field below is MuBi4.
 #define MUBI4_TRUE 0x6u
@@ -269,7 +273,7 @@ int sep_entropy_init(void) {
 
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR, ESRC_RING_OSC_SAMPLECLK_ONLY);
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_DECORRELATOR_CTRL_BASE_ADDR, ESRC_DECOR_CTRL_DIV64);
-    mmio_write32(SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR, 0x1u);
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR, ENTROPY_SOURCE__FIFO_CTRL__ENABLE_bm);
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_HEALTH_TEST_CTRL_BASE_ADDR, ESRC_HEALTH_CTRL);
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_CTRL_BASE_ADDR, ESRC_CTRL_CONFIGURED);
 

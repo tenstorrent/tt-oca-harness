@@ -36,6 +36,24 @@ the public runner compiles the coverage-instrumented model within a fixed
 time budget, so widening its population to the vendored trees is a separate
 decision with a measurement of its own.
 
+## Generators
+
+Every `.hier` and `.el` file in this directory is generated. The generators
+are the `hw/sys/smc/dv/cov/config/vcs/` scripts of the `nonfree` companion,
+which this README names by file name: `gen_smc_cov_scope.py`,
+`gen_smc_cov_exclusions.py`, `gen_smc_toggle_exclusions.py`,
+`gen_smc_ports_only_exclusions.py` and `gen_smc_group_exclusions.py`, with the
+`smc_toggle_exclusions.py` and `smc_reviewed_exclusions.py` modules they
+share. The commands in this README run them from the repository root with the
+companion at `nonfree/`. Each takes `--check`, which exits 1 when the
+committed file differs from what it would write. The facts stay here: the
+class tables below and `smc_reviewed_exclusions.toml` state what each class
+excludes, why, and what retires it. A reader without the companion derives
+the same files from the same merged database: urg's `-dump full_exclusions`
+templates carry every checksum and signature, the run's raw report
+(`cov/report_raw/modinfo.txt`) marks which points are uncovered where a class
+is gated on it, and the class tables say which points each class takes.
+
 ## What the numbers are
 
 The VCS figure is the SMC DUT minus the CPU subtree and the library cells,
@@ -85,7 +103,7 @@ Verilator 5.050 leaves some vendored files instrumented that its scope names
 The `-module` lines are generated:
 
     python3 tools/dv/run_dv.py --dut smc --items smoke      # any build
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_scope.py
+    python3 nonfree/hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_scope.py
 
 VCS warns `VCM-HFUFF` once per listed unit the current elaboration did not
 instantiate; that is the list being a superset of one build, not an error.
@@ -157,7 +175,7 @@ the class reads the report's term list for that expression and decides the row
 from it, rather than matching the expression by name:
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond+branch -report <dir>
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+    python3 nonfree/hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
 
 | File | Class | Fact |
 | --- | --- | --- |
@@ -257,7 +275,7 @@ the committed file is stale. Every covergroup under `u_dut` must fall in a
 class the script names; one that does not stops the script.
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions group -report <dir>
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_group_exclusions.py <dir>/fullexclude.tb_def
+    python3 nonfree/hw/sys/smc/dv/cov/config/vcs/gen_smc_group_exclusions.py <dir>/fullexclude.tb_def
 
 | File | Class | Fact |
 | --- | --- | --- |
@@ -383,7 +401,7 @@ design fact; T1 to T12 grade a unit on its ports.
 roots' port lists and the uncovered bit-directions:
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond+branch -report <dir>
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_toggle_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+    python3 nonfree/hw/sys/smc/dv/cov/config/vcs/gen_smc_toggle_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
 
 The counts are bit-direction points per instance, as urg scores them, for the
 graded run the files were generated from; the second count is how many of
@@ -505,8 +523,8 @@ hold contributes nothing either, and the generator names it as skipped. The scop
 but not `ocah_prim_generic/`, which is why this one is graded at all.
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond+branch -report <dir>
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_toggle_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_ports_only_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+    python3 nonfree/hw/sys/smc/dv/cov/config/vcs/gen_smc_toggle_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+    python3 nonfree/hw/sys/smc/dv/cov/config/vcs/gen_smc_ports_only_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
 
 ## Exclusions design engineering reviewed
 
@@ -564,6 +582,6 @@ counts are bit-direction points per instance, as urg scores them.
 | `smc_reviewed_field_exclusions.el` | R9-PERIPHERAL-FIELDS | 22,699 half-toggles, 1 line blocks | design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. | an enrolled leaf that covers the point, or design engineering withdrawing the review | DE + DV peer |
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+fsm+cond+branch -report <dir>
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_ports_only_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
-    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_toggle_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+    python3 nonfree/hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+    python3 nonfree/hw/sys/smc/dv/cov/config/vcs/gen_smc_ports_only_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+    python3 nonfree/hw/sys/smc/dv/cov/config/vcs/gen_smc_toggle_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt

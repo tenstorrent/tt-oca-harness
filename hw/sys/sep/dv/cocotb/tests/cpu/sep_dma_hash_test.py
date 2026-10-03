@@ -68,14 +68,22 @@ class sep_dma_hash_test(sep_base_test):
         # each leg's PASS line -- an image built before those legs existed
         # reaches the PASS magic with three contracts never exercised.
         console = self.sb.console_text()
-        for needle, what in (
-            ("PASS: SHA-384 digest matches", "the SHA-384 FIPS 180-4 vector"),
-            ("PASS: multi-chunk SHA-256 digest matches", "the multi-chunk SHA-256 pass"),
-            ("under DIGEST_SWAP=0 are the byte-reverse", "the DIGEST_SWAP=0 comparison"),
+        for needle, chk, what in (
+            ("PASS: SHA-384 digest matches", "CHK-SHA384", "the SHA-384 FIPS 180-4 vector"),
+            (
+                "PASS: multi-chunk SHA-256 digest matches",
+                "CHK-MULTICHUNK",
+                "the multi-chunk SHA-256 pass",
+            ),
+            (
+                "under DIGEST_SWAP=0 are the byte-reverse",
+                "CHK-DIGEST-SWAP",
+                "the DIGEST_SWAP=0 comparison",
+            ),
         ):
             assert needle in console, (
-                f"firmware console has no {needle!r} line, so {what} did not run "
-                f"or did not pass. Console was:\n{console}"
+                f"{chk} FAIL: firmware console has no {needle!r} line, so {what} did "
+                f"not run or did not pass. Console was:\n{console}"
             )
         self.logger.info(
             "CHK-SHA384 / CHK-MULTICHUNK / CHK-DIGEST-SWAP PASS: all three hash "

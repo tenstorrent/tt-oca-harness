@@ -68,7 +68,7 @@ __metal_sram_init_early:
 
     /* Check OTP SMC_CONFIG[7] auto-zero disable override. */
     li      t0, SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR_VAL
-    lwu     t1, 0(t0)
+    ld      t1, 0(t0)
     li      t2, SMC_EFUSE_SMC_CONFIG_SRAM_AUTO_ZERO_DISABLE_MASK_VAL
     and     t1, t1, t2
     beqz    t1, skip_early_scrub

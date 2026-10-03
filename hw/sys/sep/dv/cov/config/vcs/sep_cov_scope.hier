@@ -573,3 +573,47 @@
 -module picorv32_pcpi_div
 -module picorv32_pcpi_mul
 -module picorv32_regs
+
+// lowRISC/opentitan TL-UL library -- 14 modules (hw/common/tlul/rtl).
+// The TL-UL bus cells the OpenTitan cores and the TT AXI-Lite-to-TL-UL bridges
+// use. Each file keeps the lowRISC header, "Copyright lowRISC contributors
+// (OpenTitan project)." at line 1. TT carries local edits in this copy (the
+// OCAH_OT_ASSERT macros, for example tlul_err.sv:103), but the header is not
+// Tenstorrent, so the logic is third-party by the same rule as the OpenTitan
+// block above. The TT bridges around these cells -- axi_lite_to_tlul and
+// tlul_to_axi_lite (hw/common/axi) -- stay graded.
+// lowRISC: hw/common/tlul/rtl/tlul_adapter_host.sv:1
+-module tlul_adapter_host
+// lowRISC: hw/common/tlul/rtl/tlul_adapter_reg.sv:1
+-module tlul_adapter_reg
+// lowRISC: hw/common/tlul/rtl/tlul_adapter_sram.sv:1
+-module tlul_adapter_sram
+// lowRISC: hw/common/tlul/rtl/tlul_cmd_intg_chk.sv:1
+-module tlul_cmd_intg_chk
+// lowRISC: hw/common/tlul/rtl/tlul_cmd_intg_gen.sv:1
+-module tlul_cmd_intg_gen
+// lowRISC: hw/common/tlul/rtl/tlul_data_integ_dec.sv:1
+-module tlul_data_integ_dec
+// lowRISC: hw/common/tlul/rtl/tlul_data_integ_enc.sv:1
+-module tlul_data_integ_enc
+// lowRISC: hw/common/tlul/rtl/tlul_err.sv:1
+-module tlul_err
+// lowRISC: hw/common/tlul/rtl/tlul_err_resp.sv:1
+-module tlul_err_resp
+// lowRISC: hw/common/tlul/rtl/tlul_fifo_sync.sv:1
+-module tlul_fifo_sync
+// lowRISC: hw/common/tlul/rtl/tlul_rsp_intg_chk.sv:1
+-module tlul_rsp_intg_chk
+// lowRISC: hw/common/tlul/rtl/tlul_rsp_intg_gen.sv:1
+-module tlul_rsp_intg_gen
+// lowRISC: hw/common/tlul/rtl/tlul_socket_1n.sv:1
+-module tlul_socket_1n
+// lowRISC: hw/common/tlul/rtl/tlul_sram_byte.sv:1
+-module tlul_sram_byte
+
+// chipsalliance/Cores-VeeR-EL2 -- 1 interface.
+// el2_mem_if is the VeeR memory-export interface. sep_cpu instantiates it
+// (hw/sys/sep/rtl/sep_cpu.sv:174) outside u_el2_veer_wrapper, so the -tree rule
+// for the core above does not reach it. Same ownership decision as that rule.
+// Western Digital: vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/el2_mem_if.sv:3
+-module el2_mem_if

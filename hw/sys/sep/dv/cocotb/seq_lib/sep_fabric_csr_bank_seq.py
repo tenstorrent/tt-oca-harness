@@ -60,6 +60,8 @@ ALIAS_END_RESET = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.reset32("REGION_REGION_END")
 ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_END")
 ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
 ALIAS_START_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_START")
+# REGION_START.start_addr[55:12] continues into the hi word as bits [23:0].
+ALIAS_START_HI_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask("REGION_REGION_START") >> 32
 ALIAS_END_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_END")
 ALIAS_ATTRS_MASK = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.mask32("REGION_REGION_ATTRS")
 
@@ -126,6 +128,9 @@ FILTER_RW_PATTERN = (
     | F_ALLOW_BURST
 )
 FILTER_RW_MASK = ~(DBW_MASK << DBW_LSB) & 0xFFFF_FFFF  # compare RW fields, exclude RO
+# The implemented R/W fields of the FILTER_CONFIG lo word only: no reserved bit
+# and no RO data_bus_width. A pattern inverted under this mask reads back exactly.
+FILTER_CFG_LO_FIELDS = INBOUND_FILTER_CTRL_0.mask32("FILTER_CONFIG") & FILTER_RW_MASK
 
 # Bank sizes (entries) for index randomization. Every count comes from the
 # register export: a literal that goes short simply never reaches the tail
@@ -208,13 +213,32 @@ class SepFabricCsrBank(SepAxiRegDriver):
         await self._wr(CLOCK_GATE_CTRL, CLOCK_GATE_UNGATE)
         return await self._rd(CLOCK_GATE_CTRL)
 
-    async def rw_readback(self, addr: int, pattern: int, *, mask: int = 0xFFFF_FFFF) -> int:
-        """Write ``pattern`` then read back; return (readback & mask)."""
-        await self._wr(addr, pattern)
-        return await self._rd(addr) & mask
-
     async def read32(self, addr: int) -> int:
         return await self._rd(addr)
+
+    async def rw_changed(self, addr: int, pattern: int, mask: int) -> tuple[int, int, int]:
+        """Write a value that differs from the observed pre-write value, then read back.
+
+        Reads ``addr`` first. The value written is ``pattern & mask``; when that
+        equals the pre-write value under ``mask``, every bit of ``mask`` is
+        inverted, so the written value always differs from what the register
+        held. A seeded pattern equal to the reset value therefore cannot let a
+        register that ignores the write read back as if it took it.
+
+        ``mask`` holds only implemented R/W bits, so the written value reads back
+        exactly on a healthy register. Returns (pre, written, readback); the
+        caller grades readback == written and readback != pre under ``mask``.
+        """
+        mask &= 0xFFFF_FFFF
+        if not mask:
+            raise ValueError("mask must hold at least one R/W bit")
+        pre = await self._rd(addr)
+        written = pattern & mask
+        if written == pre & mask:
+            written ^= mask
+        await self._wr(addr, written)
+        rb = await self._rd(addr)
+        return pre, written, rb
 
     async def _wr_tolerant(self, addr: int, data: int) -> int:
         """Write tolerating a non-OKAY response; return the AXI resp_code.

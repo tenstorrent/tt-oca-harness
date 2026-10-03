@@ -22,6 +22,11 @@ fails both when the sideload delivers nothing (a stale register produces the
 earlier value) and when it delivers the wrong block (D and Z swapped, or the
 16-dword lane split at the wrong bit).
 
+The encapsulation key depends on D only, and software cannot read Z back, so
+the seed leg grades Z at the engine: the read-only probe
+``abr_mlkem_seed_z_probe_o`` (SEP_TB_ARCH exception list) must show the REF Z
+after the REF keygen and the ALT Z after the sideloaded keygen.
+
 Seeds are palindromes. The KM transfer and a direct register write disagree on
 dword order, so a palindrome keeps the compare from depending on it; D and Z
 are *different* palindromes, so a D/Z mix-up still fails.
@@ -151,6 +156,15 @@ _POLL_GAP = 200
 class sep_km_abr_mlkem_sideload_test(sep_base_test):
     """ML-KEM seed, message and shared-key transfers across the KV facade."""
 
+    required_evidence = (
+        "CHK-KEM-SEED-REF",
+        "CHK-KEM-SEED-SIDELOAD",
+        "CHK-KEM-MSG-SIDELOAD",
+        "CHK-KEM-SK-CONFIDENTIAL",
+        "CHK-KEM-SK-NOTIFY",
+        "CHK-KEM-SK-WRITEBACK",
+    )
+
     async def _wait_status(self, kem, mask: int, expect: int, *, what: str) -> int:
         for _ in range(_POLL_ITERS):
             st = await kem.rd32(MLKEM_STATUS)
@@ -228,6 +242,11 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             f"dest 0x{dest:02x}"
         )
 
+    def _seed_z_probe(self) -> list[int]:
+        """The eight Z words the ABR engine holds, word i at bits [32*i +: 32]."""
+        v = self.rd_known(cocotb.top.abr_mlkem_seed_z_probe_o)
+        return [(v >> (32 * i)) & 0xFFFF_FFFF for i in range(KEM_SEED_WORDS)]
+
     @staticmethod
     def _first_mismatch(got: list[int], exp: list[int]) -> int | None:
         return next((i for i, (g, e) in enumerate(zip(got, exp)) if g != e), None)
@@ -277,18 +296,43 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             "CHK-KEM-SEED-REF FAIL: the two seed pairs produce the same "
             "encapsulation key, so the sideload compare could not tell them apart"
         )
+        # The probe follows a register-written Z. This is the positive control
+        # for the Z compare below: the probe is live and shows a Z that is not
+        # the one the sideload delivers.
+        z_ref_eng = self._seed_z_probe()
+        self._same(
+            z_ref_eng,
+            _Z_REF,
+            chk="CHK-KEM-SEED-REF",
+            what="the engine's Z after the REF register write",
+        )
         self.logger.info(
             "CHK-KEM-SEED-REF PASS: the two (D, Z) pairs give distinct %d-word "
-            "encapsulation keys; the registers now hold the REF pair",
+            "encapsulation keys (ek_alt[0]=0x%08x ek_ref[0]=0x%08x); the engine Z "
+            "probe reads the REF Z z[0]=0x%08x z[3]=0x%08x",
             KEM_EK_WORDS,
+            ek_alt[0],
+            ek_ref[0],
+            z_ref_eng[0],
+            z_ref_eng[3],
         )
         await self._zeroize(kem, what="after ref keygen")
 
         # --- CHK-KEM-SEED-SIDELOAD: kv_read[1], D||Z split at offset[3] -------
+        # The Z the engine holds before the KV read. It must not already be
+        # the ALT Z, or the Z compare below could not fail.
+        z_pre = self._seed_z_probe()
+        assert z_pre != _Z_ALT, (
+            "CHK-KEM-SEED-SIDELOAD FAIL: the engine already holds the ALT Z before "
+            "the KV read, so the Z compare could not detect a lost delivery"
+        )
         await self._sideload(_D_ALT, KM_DEST_ABR_MLKEM_SEED_D, what="CHK-KEM-SEED-SIDELOAD")
         await self._sideload(_Z_ALT, KM_DEST_ABR_MLKEM_SEED_Z, what="CHK-KEM-SEED-SIDELOAD")
         await kem.wr32(MLKEM_KV_SEED_RD_CTRL, KV_READ_EN)
         ek_km = await self._keygen(kem, None, None, what="CHK-KEM-SEED-SIDELOAD")
+        # KEYGEN does not write Z, so the probe still shows what the KV read
+        # delivered.
+        z_km = self._seed_z_probe()
         assert ek_km != ek_ref, (
             "CHK-KEM-SEED-SIDELOAD FAIL: the KV read produced the REF "
             "encapsulation key, so the seed registers still held the previous "
@@ -300,12 +344,25 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             chk="CHK-KEM-SEED-SIDELOAD",
             what="the encapsulation key from the KM-sideloaded (D, Z)",
         )
+        # Z is a dword palindrome, so this compare holds for either dword order.
+        self._same(
+            z_km,
+            _Z_ALT,
+            chk="CHK-KEM-SEED-SIDELOAD",
+            what="the engine's Z after the KV seed read",
+        )
         self.logger.info(
             "CHK-KEM-SEED-SIDELOAD PASS: the 16-dword kv_read[1] lane delivered "
-            "D[0..%d] and Z[0..%d] to the right halves -- the encapsulation key "
-            "equals the direct-register keygen of the same words",
+            "D[0..%d] and Z[0..%d] -- the %d-word encapsulation key equals the "
+            "direct-register keygen of the same words (ek[0]=0x%08x), and the "
+            "engine Z moved from z[0]=0x%08x to the ALT Z z[0]=0x%08x z[3]=0x%08x",
             KEM_SEED_WORDS - 1,
             KEM_SEED_WORDS - 1,
+            KEM_EK_WORDS,
+            ek_km[0],
+            z_pre[0],
+            z_km[0],
+            z_km[3],
         )
         await self._zeroize(kem, what="after sideload keygen")
 

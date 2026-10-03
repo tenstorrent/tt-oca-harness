@@ -209,10 +209,18 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_km_command_set_rand_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_abr_seed_sideload_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_abr_mlkem_sideload_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_sideload_share_walk_test": {"mode": "random", "lc_raw": 0x1},
     "sep_drbg_real_sink_multi_km_aes_test": {"mode": "random", "lc_raw": 0x1},
     # Spare-field lock x program. Every spare field is pinned 0 so the
     # unlocked-then-lock walk starts from a known-zero field (lock_prob stays 0).
     "sep_efuse_program_lock_matrix_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed_from": "program_lock_spares",
+    },
+    # Same spare-zero image as the lock matrix: the read-back select test
+    # programs bits of one seed-selected spare field.
+    "sep_efuse_program_read_back_select_test": {
         "mode": "random",
         "lc_raw": 0x0,
         "fixed_from": "program_lock_spares",

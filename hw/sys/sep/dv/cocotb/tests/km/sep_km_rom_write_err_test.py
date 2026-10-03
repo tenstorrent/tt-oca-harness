@@ -14,6 +14,9 @@ observes an AXI error response only as the sticky ``IRQ_STATUS.AXI_SLVERR`` /
 
   CHK-KM-SLVERR-LIVE          control: a store past the KPV register map sets
                               AXI_SLVERR, so the bit and the image's poll work.
+  CHK-KM-DECERR-LIVE          control: a load from the Reserved ROM-growth row
+                              sets AXI_DECERR, so that bit sets on an erroring
+                              access too.
   CHK-KM-ROM-UNCHANGED        the ROM word reads ROM_PROBE_WORD before the
                               store and after it.
   CHK-KM-ROM-WRITE-ERR        the store sets IRQ_STATUS.ROM_WRITE_ERR.
@@ -29,10 +32,13 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_bus_err_seq import (
+    IRQ_AXI_DECERR,
     IRQ_AXI_ERR,
     IRQ_AXI_SLVERR,
     IRQ_ROM_WRITE_ERR,
     ROM_PROBE_WORD,
+    W_DEC_CLEAN,
+    W_DEC_IRQ,
     W_ROM_AFTER,
     W_ROM_BEFORE,
     W_ROM_CLEAN,
@@ -51,6 +57,7 @@ class sep_km_rom_write_err_test(sep_base_test):
 
     required_evidence = (
         "CHK-KM-SLVERR-LIVE",
+        "CHK-KM-DECERR-LIVE",
         "CHK-KM-ROM-UNCHANGED",
         "CHK-KM-ROM-WRITE-ERR",
         "CHK-KM-ROM-WRITE-NO-AXI-ERR",
@@ -74,6 +81,19 @@ class sep_km_rom_write_err_test(sep_base_test):
             "CHK-KM-SLVERR-LIVE PASS: store past KM_KPV_SIZE set IRQ_STATUS.AXI_SLVERR "
             "(IRQ_STATUS=0x%08x) and the image ran on",
             slv,
+        )
+
+        img.require_clean(words, W_DEC_CLEAN, "the ROM-growth load", "CHK-KM-DECERR-LIVE")
+        dec = words[W_DEC_IRQ]
+        assert dec & IRQ_AXI_DECERR, (
+            f"CHK-KM-DECERR-LIVE FAIL: IRQ_STATUS=0x{dec:08x} ({irq_names(dec)}) after a "
+            "load from the Reserved ROM-growth row; AXI_DECERR did not set, so a clear "
+            "AXI_DECERR on the ROM-write row below is not evidence"
+        )
+        self.logger.info(
+            "CHK-KM-DECERR-LIVE PASS: load from the Reserved ROM-growth row set "
+            "IRQ_STATUS.AXI_DECERR (IRQ_STATUS=0x%08x)",
+            dec,
         )
 
         img.require_clean(words, W_ROM_CLEAN, "the ROM store", "CHK-KM-ROM-WRITE-ERR")

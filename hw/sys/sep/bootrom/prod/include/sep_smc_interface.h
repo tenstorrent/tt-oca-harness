@@ -202,9 +202,8 @@ static inline uint32_t smc_read_dft_status(void) {
     return mmio_read32(sep_get_smc_base() + SMC_DFX_CTRL_STATUS_SMU_OFFSET);
 }
 
-// Fuse-sense completion is bit 0 of the SEP-local SMC_FUSE_SENSE_STATUS register;
-// the SMC senses the eFuse array and SEP observes the completion here.
-#define SMC_FUSE_SENSE_DONE_MASK 0x1u
+// The SMC senses the eFuse array and SEP observes the completion here.
+#define SMC_FUSE_SENSE_DONE_MASK SEP_CPU_CTRL__SMC_FUSE_SENSE_STATUS__SMC_FUSE_SENSE_DONE_bm
 
 // Every fuse shadow read in the boot flow is downstream of this wait. A shadow
 // read taken before sensing completes returns zero, and zero is a legal encoding

@@ -20,7 +20,7 @@ properties) on Verilator and VCS; on VCS also line, condition, branch and
 `toggle` over the SMU's own logic, where `toggle` is every bit of every net of
 `smu_wrapper`, `smu`, `smu_axi_xbar`, `axi_window_remap` and every other
 SMU-owned unit under `u_smu` outside the SMC, DTP and SEP trees
-(`cov/config/vcs/gen_smu_cov_scope.py`), in both directions after the
+(the companion's `gen_smu_cov_scope.py`), in both directions after the
 exclusion files have left the population, and
 `assertion`, where urg reads the cover properties and the one
 `smu_axi_xbar` assertion

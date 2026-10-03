@@ -13,8 +13,10 @@
 //       CHK-ISO   in one sample while the source is asserted, the other
 //                 covered bits are 0 (each of them is 1 in its own CHK-SET of
 //                 the same pass, which is the control);
-//       CHK-CLR   Event: INTR_TEST=0 and W1C INTR_STATE; Status: INTR_TEST=0;
-//                 then the aggregate bit and the INTR_STATE bit are 0;
+//       CHK-CLR   Event: INTR_TEST=0 alone leaves the aggregate bit at 1 for
+//                 StickyHoldCycles clocks and the INTR_STATE bit at 1, then
+//                 W1C INTR_STATE; Status: INTR_TEST=0; then the aggregate bit
+//                 and the INTR_STATE bit are 0;
 //     then INTR_ENABLE returns to 0, so each pass starts from the reset
 //     enables; CHK-AGG requires every covered source to pass all four;
 //   * one in-window unmapped read through the Secure DMA adapter, the same
@@ -69,6 +71,9 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
 
   // System clocks an aggregate-bit poll waits (cocotb _poll_agg parity).
   localparam int unsigned AggPollCycles = 200;
+  // System clocks an Event source must hold its aggregate bit at 1 after
+  // INTR_TEST=0 and before the W1C (cocotb _STICKY_HOLD).
+  localparam int unsigned StickyHoldCycles = 32;
 
   // One covered interrupt source: its IP INTR_* registers, its bit in each,
   // and its aggregate bit. A Status source has a read-only INTR_STATE and
@@ -333,7 +338,32 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
 
     // CHK-CLR: Event sources W1C INTR_STATE; Status sources drop INTR_TEST.
     csr_write(src.test_addr, '0, {src.name, ".INTR_TEST=0"});
-    if (!src.is_status) csr_write(src.state_addr, src.state_mask, {src.name, ".INTR_STATE.w1c"});
+    if (!src.is_status) begin
+      // The INTR_TEST release alone must not clear an Event source, so the
+      // W1C is what the clear checks below credit.
+      logic [63:0] vec;
+      int unsigned held;
+      for (held = 0; held < StickyHoldCycles; held++) begin
+        sample_agg(vec);
+        if (vec[src.agg_idx] !== 1'b1) break;
+      end
+      ok = m_check.expect_true(
+          ChkClr,
+          held == StickyHoldCycles,
+          $sformatf(
+              "%s.sticky INTR_TEST=0 without W1C agg[%0d] held=%0d of %0d last=%b",
+              src.name,
+              src.agg_idx,
+              held,
+              StickyHoldCycles,
+              vec[src.agg_idx])
+      );
+      all_ok &= ok;
+      check_csr_bits(ChkClr, src.state_addr, src.state_mask, src.state_mask, {
+                     src.name, ".INTR_STATE.sticky"}, ok);
+      all_ok &= ok;
+      csr_write(src.state_addr, src.state_mask, {src.name, ".INTR_STATE.w1c"});
+    end
     check_agg_bit(ChkClr, src.agg_idx, 1'b0, {src.name, src.is_status ? ".release" : ".w1c"}, ok);
     all_ok &= ok;
     check_csr_bits(ChkClr, src.state_addr, src.state_mask, '0, {src.name, ".INTR_STATE.clr"}, ok);

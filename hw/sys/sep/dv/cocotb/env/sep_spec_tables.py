@@ -363,6 +363,64 @@ def kv_field_mask(reg_type: str, field: str) -> int:
     return ((1 << width) - 1) << lsb
 
 
+def _kv_type_body(reg_type: str) -> str:
+    text = _KV_RDL.read_text(encoding="utf-8")
+    m = re.search(rf"reg {reg_type}\s*(?:#\([^)]*\))?\s*\{{", text)
+    if not m:
+        raise KeyError(f"reg {reg_type} missing from kv_def.rdl")
+    depth, i = 1, m.end()
+    while depth:
+        depth += {"{": 1, "}": -1}.get(text[i], 0)
+        i += 1
+    return text[m.end() : i - 1]
+
+
+@lru_cache(maxsize=1)
+def kv_status_fields() -> dict[str, tuple[int, int]]:
+    """``field -> (lsb, width)`` for ``kv_status_reg`` in ``kv_def.rdl``.
+
+    ``kv_reg_fields`` skips this type: its ERROR field nests an enum, and its
+    fields do not fill 32 bits. Fields pack from bit 0 in declaration order.
+    """
+    body = _kv_type_body("kv_status_reg")
+    out: dict[str, tuple[int, int]] = {}
+    lsb, pos = 0, 0
+    while (start := body.find("field", pos)) >= 0:
+        depth, i = 0, body.index("{", start)
+        while True:
+            depth += {"{": 1, "}": -1}.get(body[i], 0)
+            i += 1
+            if depth == 0:
+                break
+        m = re.match(r"\s*(\w+)(?:\[(\d+)\])?\s*=", body[i:])
+        if not m:
+            raise KeyError("kv_status_reg field without a name in kv_def.rdl")
+        width = int(m.group(2)) if m.group(2) else 1
+        out[m.group(1)] = (lsb, width)
+        lsb += width
+        pos = i
+    return out
+
+
+def kv_status_field(status: int, field: str) -> int:
+    """Extract ``field`` of a ``kv_status_reg`` readback."""
+    try:
+        lsb, width = kv_status_fields()[field]
+    except KeyError as exc:
+        raise KeyError(f"kv_status_reg.{field} missing from kv_def.rdl") from exc
+    return (status >> lsb) & ((1 << width) - 1)
+
+
+@lru_cache(maxsize=None)
+def kv_error_code(name: str) -> int:
+    """Encoding of ``name`` in the ``kv_error_e`` enum of ``kv_def.rdl``."""
+    body = _kv_type_body("kv_status_reg")
+    m = re.search(rf"\b{name}\s*=\s*\d+'h([0-9A-Fa-f]+)", body)
+    if not m:
+        raise KeyError(f"kv_error_e.{name} missing from kv_def.rdl")
+    return int(m.group(1), 16)
+
+
 def abr_field_mask(reg: str, field: str) -> int:
     try:
         lsb, width = abr_reg_fields()[reg][field]
