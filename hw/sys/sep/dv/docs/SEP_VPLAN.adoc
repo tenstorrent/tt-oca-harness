@@ -137,6 +137,28 @@ when those encodings produce byte-identical output for the chosen stimulus.
 line, is not a checker; the owning test already fails if a forbidden marker
 appears.
 
+[[bench-assertion-waiver]]
+==== Bench-scope assertion waiver
+
+The `[pass_fail]` patterns of `sep_sim_cfg.toml` decide, for every leaf, which
+assertion failure the runner reads as a failure. They answer for the whole
+bench rather than for one test, so they take this record rather than a run-mode
+note on a test card. A per-test assertion waiver stays a plusarg on its card.
+
+[cols="1,4",options="header"]
+|===
+|Field |Value
+|Claim |A leaf graded PASS has had every assertion failure of the run read, apart from the time-0 firing of the two external-ack assertions of the vendored Adams Bridge register block and any other `abr_reg.sv` message at time 0
+|Why |`vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.sv` lines 67 and 69 are immediate assertions on `external_wr_ack` and `external_rd_ack`, in the post-reset branch of an `always_ff`. On a four-state simulator the first clock edge sees the reset and the ack strobes at X, and each assertion fires once at time 0. The file is vendored third-party RTL, so the tree does not edit it, and `$assertoff` in the testbench races the time-0 evaluation
+|Scope |Two `extra_ignore_patterns` entries and one `extra_hard_fail_patterns` entry. The ignore entries drop an `abr_reg.sv` line that reports time 0 and a line that names `abr_reg.sv` line 67 or 69. The hard-fail entry matches the timestamped line of the same two assertions with a non-zero `failed at` time. The runner matches hard-fail patterns over the raw log, whatever the ignore patterns drop, so a later firing fails the leaf. No other assertion is touched
+|Closes when |The vendored block stops asserting on an X ack strobe, or the reset and the ack strobes into it are at known values at the first clock edge. Either removes the three patterns
+|===
+
+Re-confirm: `grep -nF 'abr_reg\.sv' hw/sys/sep/dv/sep_sim_cfg.toml` prints
+exactly three pattern lines: two under `extra_ignore_patterns` and one under
+`extra_hard_fail_patterns` that carries `failed at [1-9]`. Any other output
+means that the record is stale, and the record is what needs the edit.
+
 === Naming Rules
 
 [cols=",",options="header"]
