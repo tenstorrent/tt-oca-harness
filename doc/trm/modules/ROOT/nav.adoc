@@ -86,7 +86,6 @@ endif::release[]
 ****** xref:ip:jtag_stap/doc/index.adoc[JTAG STAP]
 ***** Cross-Trigger
 ****** xref:ip:cross_trigger_network/doc/index.adoc[Cross-Trigger Network]
-******* xref:ip:cross_trigger_network/doc/index.adoc#ctn-programming[Programming]
 ****** xref:ip:cross_trigger_port/doc/index.adoc[Cross-Trigger Port]
 ****** xref:ip:cross_trigger_matrix/doc/index.adoc[Cross-Trigger Matrix]
 **** xref:dtp:reference.adoc[Configuration and Reference]

@@ -180,23 +180,18 @@ scan. Each SIB captures its own open state. A SIB whose disable field is set
 stays closed and remains a one-bit stage that captures 0, whatever is shifted
 into it.
 
-To reach a segment through the iJTAG network:
-
-1. Shift SELECT_IJTAG, or RUNBIST to run BIST, into the instruction register
-   using the IR-Scan sequence.
-2. Shift three bits into TDI using the DR-Scan sequence, starting with the least
-   significant bit, to open the target SIB: 3'b100 for DFT Secure, 3'b010 for
-   DFT Non-Secure or 3'b001 for DFD. The target SIB's disable field must be
-   clear.
-3. Shift the lengthened DR into TDI using the DR-Scan sequence, starting with
-   the least significant bit, with the target SIB's bit held at 1. With the DFT
-   Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits long: bit 0 is
-   the DFD SIB, bits N to 1 are the segment with the bit nearest its scan output
-   at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the DFT Secure
-   SIB. The contents and length of each segment are defined by the network
-   attached to its ports.
-4. The captured contents of the same scan path shift out on TDO.
-5. To close the SIB, shift the same DR with the target SIB's bit at 0.
+With the DFT Non-Secure SIB open and an N-bit segment, the DR is N + 3 bits
+long: bit 0 is the DFD SIB, bits N to 1 are the segment with the bit nearest its
+scan output at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the
+DFT Secure SIB. The network attached to each segment's ports defines its
+contents and length. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-ijtag-access[segment access sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ijtag-access[segment access sequence]
+endif::backend-pdf[]
+.
 
 ==== DFT Secure Chain
 

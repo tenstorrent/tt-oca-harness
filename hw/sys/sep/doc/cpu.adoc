@@ -194,12 +194,19 @@ Boot ROM base address on JTAG reset (TRST assertion or the Test-Logic-Reset
 TAP state). With that default vector, the CPU starts in the BL0 Root-of-Trust
 code.
 
-A debugger may redirect the first instruction fetch by shifting an alternate
-address into the TDR through JTAG while the SEP CPU is held in reset. The
-TDR stores address bits [31:1]; bit 0 is zero. The programmed value persists
-until it is rewritten or the TAP is reset; CPU reset alone does not restore
-the default. This supports bring-up and
-failure analysis flows that execute from a memory other than the Boot ROM.
+An alternate address shifted into the TDR while the SEP CPU is held in reset
+redirects the first instruction fetch, which supports bring-up and failure
+analysis flows that execute from a memory other than the Boot ROM. The TDR
+stores address bits [31:1]; bit 0 is zero. The programmed value persists until
+it is rewritten or the TAP is reset; CPU reset alone does not restore the
+default. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-sep-reset-vector[redirect procedure]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-sep-reset-vector[redirect procedure]
+endif::backend-pdf[]
+.
 
 
 == System Interfaces

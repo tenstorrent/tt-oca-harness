@@ -27,6 +27,8 @@ include::sep-programming.adoc[]
 
 include::sep-smc-common.adoc[]
 
+include::dtp-programming.adoc[]
+
 [appendix]
 ifdef::backend-pdf[]
 include::../../../hw/sys/smc/bootrom/prod/doc/index.adoc[leveloffset=1]

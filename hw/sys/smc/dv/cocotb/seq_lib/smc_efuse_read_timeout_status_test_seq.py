@@ -2,13 +2,15 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse READ_STATUS on a timed-out read.
 
-`hw/ip/efuse/regs/efuse_interface_ctrl.rdl` defines ``EFUSE_READ_CTRL.READ_STATUS``
-as the read interface's error report (``read_done`` says the read completed,
-``read_status`` says how), ``EFUSE_READ_REQ_TIMEOUT`` arms a bound on the cycles
-the interface waits for a SHIM response, and `hw/ip/efuse/doc/programming.adoc`
-has software check ``read_status`` after every completion. A read that hits
-that bound is therefore a completed read with an error: ``read_done=1`` and
-``read_status=1``. This sequence proves the 1 is produced by the timeout.
+`hw/ip/efuse/regs/efuse_interface_ctrl.rdl` defines
+``EFUSE_READ_CTRL.READ_STATUS`` as the read interface's error report
+(``read_done`` says the read completed, ``read_status`` says how),
+``EFUSE_READ_REQ_TIMEOUT`` arms a bound on the cycles the interface waits for a
+SHIM response, and the eFuse section of
+`doc/programmer/src/smc-programming.adoc` has software check ``read_status``
+after every completion. A read that hits that bound is therefore a completed
+read with an error: ``read_done=1`` and ``read_status=1``. This sequence proves
+the 1 is produced by the timeout.
 
 The arming leg is what makes the check real. ``READ_STATUS`` is a status bit
 that holds until the next completion, so a stale 1 from an earlier error would

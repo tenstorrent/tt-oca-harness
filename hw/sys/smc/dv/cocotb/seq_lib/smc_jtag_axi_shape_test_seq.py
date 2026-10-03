@@ -14,8 +14,8 @@ the JTAG port so the three managers are held to the same fabric behaviour:
   error slave answers with DECERR.
 * The GPIO0 ACCESS_FILTER armed over SEP_IN with a privileged write, then an
   unprivileged JTAG write and read of the same register: the read is refused
-  with DECERR and the error-slave signature (``hw/ip/gpio/doc/programming.adoc``,
-  "Filter Configuration"), the write with an error response whose code is
+  with DECERR and the error-slave signature (``doc/programmer/src/smc-programming.adoc``,
+  "Configuring Access Filtering"), the write with an error response whose code is
   reported, and a privileged readback shows the refused write took no effect.
   The filter is restored to its generated reset before the sequence ends.
 * Three passes of outstanding writes, then of reads, over the eight scratch

@@ -5,6 +5,7 @@
 ** xref:index.adoc#smc-programming-guide[SMC Programming Guide]
 ** xref:index.adoc#sep-programming-guide[SEP Programming Guide]
 ** xref:index.adoc#sep-smc-common-blocks-communication[SEP & SMC Common Blocks & Communication]
+** xref:index.adoc#dtp-programming-guide[DTP Programming Guide]
 ** Appendices
 *** xref:index.adoc#smc-boot-rom[A. SMC Boot ROM]
 *** xref:index.adoc#sep-boot-rom[B. SEP Boot ROM]

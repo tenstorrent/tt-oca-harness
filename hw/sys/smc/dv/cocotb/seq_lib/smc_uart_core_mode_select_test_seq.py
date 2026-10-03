@@ -12,12 +12,12 @@ their reset or their setup value on any wrapper:
   paths the 16550 has: software reads "from RBR or FIFO". Every leaf enables the
   FIFOs, so the receiver buffer register itself -- the path a character takes
   when they are off -- has never held a character.
-* **DMA mode 1.** `programming.adoc` lists "Select DMA mode if using DMA
-  transfers" as a step of FIFO configuration and `uart_16550_main_wo.rdl` gives
-  FCR a `DMA_MODE_SELECT` bit, but no leaf writes it, so the receive and
-  transmit ready handshakes it selects have never run.
+* **DMA mode 1.** The Programmer's Guide UART FIFO section says "Set
+  `FCR.DMA_MODE_SELECT` only to use mode-1 DMA service indications" and
+  `uart_16550_main_wo.rdl` gives FCR a `DMA_MODE_SELECT` bit, but no leaf writes
+  it, so the receive and transmit ready handshakes it selects have never run.
 * **Line loopback.** `MCR.LINE_LOOPBACK` is the second of the two loopback modes
-  `programming.adoc` documents, and no leaf sets it.
+  the Programmer's Guide documents, and no leaf sets it.
 
 The leaf drives all three and checks what each one is specified to do.
 
@@ -38,7 +38,7 @@ report exactly that, and no interrupt pending once the character is read out.
 Four characters are then sent and read back in order, which is the same mode
 with the trigger level reached instead of timed out.
 
-**Line loopback.** `programming.adoc`: "With `MCR.LINE_LOOPBACK` set, the modem
+**Line loopback.** The Programmer's Guide: "With `MCR.LINE_LOOPBACK` set, the modem
 inputs are routed straight back out to the modem outputs and all four MSR level
 bits read `0`." The leaf sets it and requires those four bits to read 0. In this
 mode the receiver input is held idle, so a character written into THR must be
