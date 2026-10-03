@@ -300,6 +300,17 @@ tests = [
 ]
 
 [[groups]]
+name = "rom_fw_smoke"
+expected_count = 5
+tests = [
+    "sep_rom_non_secure_boot_test",
+    "sep_rom_ot_dma_boot_test",
+    "sep_manifest_magic_survives_handoff_test",
+    "sep_rom_ot_pio_boot_test",
+    "sep_rom_ot_secure_boot_test",
+]
+
+[[groups]]
 # ROM firmware boot. Its own group because these are the only tests on the
 # `rom_boot` RTL target and the boot_rom* firmware profiles -- a different build
 # on both axes from cpu (default) and no_cpu (lsu_stub_all_live). Kept out of the
