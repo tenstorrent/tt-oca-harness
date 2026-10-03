@@ -510,6 +510,41 @@ analysis's check mode over the accepted list fails when an excluded point has
 become reachable. A regenerated list takes design review before its entry
 changes, and the review accepts no entry that stimulus can reach.
 
+[[smc-fcov-traceability]]
+=== VPLAN to FCOV Traceability
+
+Each row names a group of <<smc-vplan,SMC_VPLAN>>'s Test Procedures and the
+`cov/sv` collectors that record that group's behaviour. The mapping is the
+plan's; which leaf lights each point is a property of a run and is measured in
+<<smc-fcov-owners>>, and the per-requirement points are in the Coverage intent
+column of <<smc-traceability-matrix>>.
+
+[cols=",",options="header",]
+|===
+|VPLAN group |Coverage
+|MISC |`smc_map_fcov` scratch, chip-configuration, captured-strap and misc-wrapper decodes; `smc_int_fcov` raw vector bit against its PLIC source and the `SYNC_REG` bits; `smc_periph_fcov` `c_irq_*`; `smc_cpu_fcov` cluster interrupt range
+|POWER |`smc_map_fcov` AVSBus, telemetry, OCTS, DMA and zeroer apertures; `smc_periph_fcov` AVSBus, telemetry and OCTS transfers; `smc_dma_fcov`; `smc_zeroer_fcov`; `smc_reset_fcov` and `smc_iso_fcov` watchdog warm-reset sources
+|FABRIC |`smc_map_fcov` region, window, alias-remap and filter-entry decodes; `smc_fabric_fcov` with its three `smc_axi_chan_fcov` instances; `smc_filt_fcov` protection and inbound filters
+|RESET |`smc_reset_fcov` sources, releases and reset states; `smc_rst_seq_fcov` power-on ordering and what the primary reset holds; `smc_iso_fcov` isolation and FLR; `smc_int_fcov` NDM request path
+|CLOCK |`smc_clk_fcov` clock ratios and gate terms; `smc_clk_domain_fcov` blocks advancing on their clock; `smc_dma_fcov` and `smc_zeroer_fcov` clock-enable terms
+|CPU |`smc_cpu_fcov` core retire, reset vector, cluster traffic, memory-init and cold-boot order; `smc_fabric_fcov` the CPU external path. The measured owner of these points is a FIRMWARE or JTAG leaf, since a CPU point needs a booted cluster
+|JTAG |`smc_map_fcov` `c_jtag_axi_in_read` / `c_jtag_axi_in_write`; `smc_filt_fcov` `c_jtag2axi_remapped` / `c_jtag2axi_filtered`; `smc_fabric_fcov` eFuse JTAG port; `smc_cpu_fcov` the boot points a JTAG leaf reaches. No point covers the CPU TAP itself
+|EFUSE |`smc_efuse_fcov` sense, shadow, bank control, SHIM and the lock contract; `smc_fabric_fcov` `c_axil_efuse_bank_active` and the eFuse JTAG port; `smc_map_fcov` eFuse and SHIM decodes
+|GPIO |`smc_gpio_fcov` the `INPUT_BY_DEFAULT` map; `smc_periph_fcov` pad activity and `c_irq_gpio`; `smc_map_fcov` GPIO instance and interface decodes; `smc_filt_fcov` on the SEP-side filter leaves
+|IRQ |`smc_int_fcov` claim, hang OR and NDM; `smc_periph_fcov` `c_irq_*`, each source and two concurrent
+|I2C |`smc_periph_fcov` `c_i2c0_*` bus conditions and the controller and target transfers; `smc_clk_fcov` `c_i2c_cg_open` / `c_i2c_cg_closed`
+|I3C |`smc_map_fcov` I3C window and instance decodes; `smc_periph_fcov` `c_i3c0_*` line drive. No point covers I3C protocol: `hw/ip/i3ccore_wrap/dv` grades the controllers, and their own covergroups leave the GROUP score through `smc_group_exclusions.el`
+|MAILBOX |`smc_map_fcov` mailbox pair and region decodes; `smc_periph_fcov` `c_mailbox_*`, `c_single_entry_message`, `c_two_entry_message`
+|SPI |No `cov/sv` point. The SPI path on this bench is CSR access inside the UART/SPI/log-engine window, which `smc_map_fcov` decodes and the leaf's `CHK-*` checkers grade
+|UART |`smc_map_fcov` `c_uart_decode` and the first and last instance; `smc_periph_fcov` `c_tx_*` and `c_irq_uart`; `smc_clk_domain_fcov` `c_uart_on_clk_periph`
+|OCCP |No `cov/sv` collector; the ROM boot path is graded by the leaves' `CHK-*` checkers. The dual-target `smc_occp_sanity_test` and the on-demand `occp_rom` group are outside the coverage set
+|FIRMWARE |`smc_cpu_fcov` boot, init and isolation ordering; `smc_int_fcov` PLIC claim and delivery; `smc_periph_fcov` the I2C, UART and telemetry traffic firmware drives; `smc_clk_fcov` and `smc_clk_domain_fcov` the ratios and domains a long firmware run walks
+|===
+
+The covergroups under `ifndef VERILATOR` are the commercial `group` metric and
+are not in this table; <<smc-fcov-groups>> states the contract they are held
+to.
+
 [[smc-cov-owners]]
 === Owning tests
 
