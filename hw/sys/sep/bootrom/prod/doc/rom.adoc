@@ -322,11 +322,11 @@ SEP↔SMC interface contract (`sep_smc_interface.h`).
 (<<sec:straps>>).
 |`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([S12]).
 |`CHIP_CONFIG_LC_STATE` |`0x290C` |SMC-side lifecycle mirror (low 4 bits); informational.
-|SMC CPU_CTRL scratch registers |`0x10100 + 8·index` |Coordination protocol
+|SMC CPU_CTRL scratch registers |`0x39080 + 8·index` |Coordination protocol
 (<<tbl:smc_scratch>>).
-|SMC fuse map: chiplet ID / package ID |`0xB008` / `0xB028` |8×32-bit words each; manifest
+|SMC fuse map: chiplet ID / package ID |`0x7008` / `0x7028` |8×32-bit words each; manifest
 usage-constraint identity checks ([S23]).
-|`DFX_CTRL_STATUS_SMU` |`0xF800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
+|`DFX_CTRL_STATUS_SMU` |`0xB800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
 |SMC SRAM |`0x60000` |1 MiB shared memory: status ring buffer; manifest/payload staging for
 recovery and secondary boot.
 |SMC `CPU_CTRL_RESET_CTRL` |`0x39020` |Written only on invalid LC state to hold all SMC cores
@@ -1208,7 +1208,7 @@ map SMC SRAM at different addresses).
 === Scratch-Register Protocol
 
 [[tbl:smc_scratch]]
-.SMC scratch registers used in the SEP↔SMC protocol (offset `0x10100 + 8·index` in the SMC window)
+.SMC scratch registers used in the SEP↔SMC protocol (offset `0x39080 + 8·index` in the SMC window)
 [width="100%",cols="10%,20%,15%,55%",options="header"]
 [grid=rows]
 [frame=ends]
@@ -1267,7 +1267,7 @@ success.
 === Memory-Repair / DFT Gate ([S03])
 
 [[req-SEP-ROM-SMC-030]]*[SEP-ROM-SMC-030]* The ROM shall not proceed past [S03] unless memory
-repair completed successfully: `DFX_CTRL_STATUS_SMU` (SMC window offset `0xF800`) bit 1
+repair completed successfully: `DFX_CTRL_STATUS_SMU` (SMC window offset `0xB800`) bit 1
 (`mem_repair_success`) set. On failure the ROM shall dump the raw status to scratch[10], emit
 a `MBIST_FAIL` warning, and then fail fatally (`ROM_ERR_DFT_GATE_BLOCKED`, `0xD001`) *unless*
 the `mem_repair_bypass` strap (`STRAPS_LO[13]`) is set, in which case boot continues with the
