@@ -6,7 +6,7 @@
 
 addrmap dfx_ctrl_status {
     name = "DFX Control and Status Address Map";
-    desc = "Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.";
+    desc = "Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.";
 
     reg STATUS {
         regwidth = 64;
@@ -68,49 +68,56 @@ addrmap dfx_ctrl_status {
         field {
             sw=rw;
             hw=r;
-            desc="Chiplet Enable Used for Triggering";
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
         } chiplet_enable [1:0] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="GPIO en";
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
         }  gpio_en[2:2] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Clock gating en";
+            desc="DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+                    force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+                    reset.";
         }  cg_en[3:3] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Force clk en";
+            desc="Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+                    value of cg_en.";
         } force_clk_en[4:4] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="DTB NS enable";
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
         } dtb_ns_en[5:5] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="DTB E/W enable";
+            desc="Holds the written value for software to read back. It has no effect in the SMC.";
         } dtb_ew_en[6:6] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Mask==0 (default) -> disabled; Mask==1 -> enabled";
+            desc="CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every
+                    CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds
+                    them all inactive. Bits 15:1 hold the written value for software to read back
+                    and have no effect.";
         } xtrig_clk_halt_mask[22:7] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Debug marker";
+            desc="Holds the written value for software to read back. It has no effect in the SMC;
+                    the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).";
         } debug_marker [30:23] = 0x0;
 
     };
