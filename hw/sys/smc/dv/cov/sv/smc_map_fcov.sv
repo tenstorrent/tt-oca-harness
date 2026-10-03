@@ -764,7 +764,7 @@ module smc_map_fcov (
       RomLo,
       ClaLo,
       32'(SMC_TOP_SMC_EXTERNAL_BASE_ADDR - LocalBase),
-      32'(SMC_TOP_ECAM_REGION_BASE_ADDR - LocalBase)
+      32'(SMC_TOP_MMODE_REGION_BASE_ADDR - LocalBase)
   };
   localparam logic [31:0] RegionHi[NumRegions] = '{
       32'h0000_0FFF,

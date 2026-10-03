@@ -239,7 +239,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         )
         self.assertEqual(hole(smc["main:smc_external"]), "Adopter-defined")
         self.assertEqual(hole(smc["main:mmode_region"]), "Forwarded")
-        self.assertEqual(hole(smc["main:ecam_region"]), "DECERR, 0xBADCAB1E / DECERR")
+        self.assertNotIn("main:ecam_region", smc)
 
 
 if __name__ == "__main__":
