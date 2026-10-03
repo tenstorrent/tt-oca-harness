@@ -628,11 +628,12 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Unsupported accesses at drbg_axil64_lane_adapter: a misaligned read and a
-# write whose strobe is not the addressed lane's must answer SLVERR and forward
-# nothing. The DUT's CSRNG and EDN adapters are reached over s_axi; the
-# TB-owned vehicle instance covers the strobe patterns one AXI transfer cannot
-# place at a DUT port.
+# Unsupported writes at drbg_axil64_lane_adapter: a strobe that is not 0x0F or
+# 0xF0, or an address that is not 4-byte aligned, must answer SLVERR and forward
+# nothing. Misaligned reads and wrong-lane strobes are driven and logged, not
+# graded. The DUT's CSRNG and EDN adapters are reached over s_axi; the TB-owned
+# vehicle instance covers the strobe patterns one AXI transfer cannot place at
+# a DUT port.
 name = "sep_drbg_axil_adapter_refusal_test"
 module = "system.sep_drbg_axil_adapter_refusal_test"
 seed = 1

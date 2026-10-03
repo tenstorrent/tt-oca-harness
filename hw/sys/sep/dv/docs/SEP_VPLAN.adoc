@@ -483,7 +483,7 @@ never when it was written.
 |`sep_drbg_axil_adapter_refusal_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip; TB-instantiated `drbg_axil64_lane_adapter`
-|An unsupported access at a `drbg_axil64_lane_adapter` -- a read that is not 4-byte aligned, or a write whose strobe is not exactly the lane its address bit 2 selects -- answers SLVERR and forwards nothing, and the next supported access completes normally. On the DUT's CSRNG and EDN adapters, reached over s_axi, "nothing forwarded" is graded on each adapter's AXI-Lite-32 request probe, by the target register keeping its value and by the lane's `PERIPH_BUS_ERR_STATUS` bit staying clear; a supported write of the same value is required to be seen on the probe and to land. The TB-owned vehicle covers the strobe patterns one AXI transfer cannot place at a DUT port and observes its downstream side directly.
+|An unsupported write at a `drbg_axil64_lane_adapter` -- a strobe that is not `0x0F` or `0xF0`, or an address that is not 4-byte aligned -- answers SLVERR and forwards nothing, and the next supported access completes normally. On the DUT's CSRNG and EDN adapters, reached over s_axi, "nothing forwarded" is graded on each adapter's AXI-Lite-32 request probe, by the target register keeping its value and by the lane's `PERIPH_BUS_ERR_STATUS` bit staying clear; a supported write of the same value is required to be seen on the probe and to land. The TB-owned vehicle covers the strobe patterns one AXI transfer cannot place at a DUT port and observes its downstream side directly. Misaligned reads, wrong-lane strobes and the other lane of a read are driven and logged but not graded until the spec states those rules.
 
 |`sep_drbg_axil_concurrent_csrng_aw_then_ar_test`
 |no_cpu, +skip_fuse_sense
@@ -6619,10 +6619,10 @@ reported as such rather than counted as a pass.
 
 *Randomization*: RANDCFG -- per DUT lane, `SepSeededRng(seed)` picks the byte offset of the misaligned read (1, 2 or 3), the width of the narrow write (1 or 2 bytes), and the value that write carries (any implemented `INTR_ENABLE` pattern that differs from the register's value). The vehicle cells are fixed and all run on every seed.
 
-*Objective*: The supported-access rule of `drbg_axil64_lane_adapter` (`hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv` header; `hw/ip/drbg/doc/architecture.adoc`, "Bus Protocol Adaptation"): a read must be 4-byte aligned; a write must be 4-byte aligned with WSTRB exactly `0x0F` for the lower lane or `0xF0` for the upper lane, selected by address bit 2. Every other access returns AXI SLVERR and emits no downstream request. The refusal must leave the adapter able to serve the next supported access.
-The architecture document states the SLVERR refusal, the two legal strobes and the address-bit-2 lane select. Three rules come from the adapter header only: the strobe must match address bit 2, a read must be 4-byte aligned, and a supported read returns zero in the other lane (https://github.com/tenstorrent/tt-oca-harness/issues/2822[#2822]). The cells and the CHK-REFUSE-VEH-CONTROL other-lane compare that depend on them follow the header until the spec states the rule.
+*Objective*: The supported-access rule of `drbg_axil64_lane_adapter` as `hw/ip/drbg/doc/architecture.adoc` ("Bus Protocol Adaptation") states it: the adapter forwards only aligned single-lane accesses with WSTRB `0x0F` or `0xF0`, selects the 32-bit data lane by address bit 2, and answers every other access AXI SLVERR with no downstream request. The graded refusals are a write whose strobe is not `0x0F` or `0xF0` and a write whose address is not 4-byte aligned. The refusal must leave the adapter able to serve the next supported access, and a supported read returns the downstream word in the lane address bit 2 selects.
+Three rules are in the adapter RTL header only: a read must be 4-byte aligned, a legal strobe must match address bit 2, and a supported read returns zero in the other lane (https://github.com/tenstorrent/tt-oca-harness/issues/2822[#2822]). The cells that depend on them -- the misaligned reads on the DUT lanes and the vehicle, and the two vehicle wrong-lane strobes -- are driven on every seed for coverage, and the other lane of each vehicle control read is recorded. Their response, data and forward probe are logged at info level as "not graded until #2822 specifies the rule" and do not enter the verdict.
 
-*Test Coverage*: The refused read and refused write on both DUT lane adapters (CSRNG, EDN), and on the vehicle: a misaligned read at each byte offset of each lane, a wrong-lane strobe for each lane, a full 64-bit beat, a byte strobe, a halfword strobe, a zero strobe, and a misaligned write address in each lane.
+*Test Coverage*: Graded: the refused narrow write on both DUT lane adapters (CSRNG, EDN), and on the vehicle a full 64-bit beat, a byte strobe, a halfword strobe, a zero strobe and a misaligned write address in each lane; the supported access after every vehicle cell. Driven only: the misaligned read on both DUT lanes, and on the vehicle a misaligned read at each byte offset of each lane and a wrong-lane strobe for each lane.
 
 *Scope*: the DUT half grades the adapter as software reaches it. It grades "nothing forwarded" on the adapter's AXI-Lite-32 request into its TL-UL bridge (`drbg_csrng_fwd_o` / `drbg_edn_fwd_o`, an observation-only probe), which must be low and known on every cycle of the refused access, and through what the DUT shows: the register keeps its value, and the lane's `PERIPH_BUS_ERR_STATUS` bit, which is the bridge's sticky TL-UL error (`hw/sys/sep/doc/crypto.adoc`, "Crypto Register-Bridge Faults"), stays clear. No legal access sets the CSRNG or EDN bit in this build: their crypto-demux windows end at the last register, so an unmapped offset answers DECERR before it reaches the bridge. The status bit is therefore a second consequence only; the probe is the observable that `CHK-REFUSE-DUT-CONTROL` shows live. One AXI master transfer has a strobe AMBA derives from its address and size, so a wrong-lane strobe, a full-beat 32-bit write, a zero strobe and a misaligned write address with a lane strobe are not presentable at a DUT port; the vehicle presents them.
 
@@ -6630,10 +6630,10 @@ The architecture document states the SLVERR refusal, the two legal strobes and t
 
 [arabic]
 . Bring up `no_cpu`. Require the CSRNG and EDN bits of `PERIPH_BUS_ERR_STATUS` clear and read each block's `INTR_ENABLE` (`CHK-REFUSE-ANCHOR`).
-. Per DUT lane, read one byte at the seeded misaligned offset into `INTR_ENABLE`. Confirm the AR presented on s_axi (`CHK-REFUSE-STIM`). Require SLVERR, an AR handshake at the lane adapter's AXI-Lite-64 input, the lane adapter's forward probe low on every cycle, and the lane's status bit clear (`CHK-REFUSE-DUT-READ`).
-. Write the seeded value to `INTR_ENABLE` as a 1- or 2-byte transfer. Confirm the W strobe presented on s_axi (`CHK-REFUSE-STIM`). Require SLVERR, AW and W handshakes at the lane adapter's AXI-Lite-64 input, the forward probe low on every cycle, `INTR_ENABLE` unchanged and the status bit clear (`CHK-REFUSE-DUT-WRITE`).
+. Per DUT lane, write the seeded value to `INTR_ENABLE` as a 1- or 2-byte transfer. Confirm the W strobe presented on s_axi (`CHK-REFUSE-STIM`). Require SLVERR, AW and W handshakes at the lane adapter's AXI-Lite-64 input, the forward probe low on every cycle, `INTR_ENABLE` unchanged and the status bit clear (`CHK-REFUSE-DUT-WRITE`).
 . Write the same value as a supported 32-bit write and read it back, each seen on the forward probe, then restore the original value and read it back (`CHK-REFUSE-DUT-CONTROL`).
-. Release the vehicle. For each refused cell, present the access and require SLVERR with no AXI-Lite-32 request on any cycle (`CHK-REFUSE-VEH`). Without a vehicle reset, present the supported access of the same kind on the same lane and require OKAY, a forwarded request, and for a read the responder's word in the addressed lane with the other lane zero (`CHK-REFUSE-VEH-CONTROL`).
+. Read one byte at the seeded misaligned offset into `INTR_ENABLE`, last on the lane so it cannot change a graded check. Confirm the AR presented on s_axi (`CHK-REFUSE-STIM`). Log the response, the AXI-Lite-64 input handshakes, the forward probe and the status bit as "not graded until #2822 specifies the rule"; a read that does not complete still fails the run.
+. Release the vehicle. Present the driven-only cells first and log each response and forward probe as "not graded until #2822 specifies the rule". For each graded refused cell, require SLVERR with no AXI-Lite-32 request on any cycle (`CHK-REFUSE-VEH`). After every cell, without a vehicle reset, present the supported access of the same kind on the same lane and require OKAY, a forwarded request, and for a read the responder's word in the lane address bit 2 selects (`CHK-REFUSE-VEH-CONTROL`); log the other lane of the read as not graded.
 
 *Checkers*:
 
@@ -6645,10 +6645,7 @@ The architecture document states the SLVERR refusal, the two legal strobes and t
 |The CSRNG and EDN bits of `PERIPH_BUS_ERR_STATUS` are clear before any refused access, and `INTR_ENABLE` reads OKAY on both blocks. A bit already set would make the "stays clear" half of every DUT check vacuous.
 
 |CHK-REFUSE-STIM
-|s_axi presented the access the cell names: ARADDR at the misaligned byte with ARLEN 0 and ARSIZE 0, and a W beat whose strobe is the one AMBA assigns to the narrow write at that address (`sep_spec_tables.axi_lane_strobe`). A mismatch is a stimulus miss, reported as one.
-
-|CHK-REFUSE-DUT-READ
-|The misaligned read answers SLVERR, and the lane adapter accepted it: `drbg_<lane>_axil_chan_o` shows an AR handshake at the adapter's AXI-Lite-64 input with no X/Z cycle, so the SLVERR is the adapter's and not a refusal upstream of it. The lane adapter's forward probe is low and not X/Z on every cycle from presentation to four cycles after the response, and the lane's `PERIPH_BUS_ERR_STATUS` bit is still clear.
+|s_axi presented the access the cell names: a W beat whose strobe is the one AMBA assigns to the narrow write at that address (`sep_spec_tables.axi_lane_strobe`), and ARADDR at the misaligned byte with ARLEN 0 and ARSIZE 0 for the driven-only read. A mismatch is a stimulus miss, reported as one.
 
 |CHK-REFUSE-DUT-WRITE
 |The narrow write answers SLVERR, and `drbg_<lane>_axil_chan_o` shows AW and W handshakes at the adapter's AXI-Lite-64 input with no X/Z cycle, so the adapter accepted the beat it refused. The forward probe is low and not X/Z on every cycle of the access, `INTR_ENABLE` still holds its value under the block's implemented mask, and the lane's status bit is still clear. The written value differs from the register's in an implemented bit, so a forwarded write is visible.
@@ -6657,15 +6654,15 @@ The architecture document states the SLVERR refusal, the two legal strobes and t
 |A supported 32-bit write of the same value answers OKAY and is seen as a write on the forward probe, its read-back is seen as a read and returns the value, and the restore write reads back. This shows the probe sees a forwarded access and the value the refused write carried lands when the adapter forwards it, so "probe low" and "unchanged" in the two checks above can fail, and that the adapter serves a supported access after a refusal.
 
 |CHK-REFUSE-VEH
-|Every refused vehicle cell retires with SLVERR, and `tbadp_fwd_o` is low and not X/Z on every cycle from presentation to four cycles after the response.
+|Every graded refused vehicle cell (a strobe that is not `0x0F` or `0xF0`, or a misaligned write address) retires with SLVERR, and `tbadp_fwd_o` is low and not X/Z on every cycle from presentation to four cycles after the response. The driven-only cells are not part of this check.
 
 |CHK-REFUSE-VEH-CONTROL
-|After each refused cell, with no vehicle reset, the supported access of the same kind on the same lane answers OKAY and is seen on `tbadp_fwd_o`, which shows the probe can see a forwarded request. A read returns the responder's word in the addressed lane with the other lane zero.
+|After each vehicle cell, graded or driven only, with no vehicle reset, the supported access of the same kind on the same lane answers OKAY and is seen on `tbadp_fwd_o`, which shows the probe can see a forwarded request. A read returns the responder's word in the lane address bit 2 selects. The other lane is logged, not graded.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the `unsupported_access_pulse_o` output. It has no CSR and no SEP consumer outside assertions.
+*Not claimed*: the `unsupported_access_pulse_o` output. It has no CSR and no SEP consumer outside assertions. The adapter's response to a misaligned read or a wrong-lane strobe, and the other lane of a read, until #2822 puts those rules in the spec.
 
 '''''
 

@@ -2,13 +2,19 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Unsupported-access refusal on drbg_axil64_lane_adapter.
 
-Contract (hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv header and
-hw/ip/drbg/doc/architecture.adoc "Bus Protocol Adaptation"): a read must be
-4-byte aligned; a write must be 4-byte aligned with WSTRB exactly 0x0F for the
-lower lane or 0xF0 for the upper lane, selected by address bit 2. Every other
-access is answered AXI SLVERR and emits no downstream request. The
-strobe-to-address-bit-2 match, the read alignment and the zero other lane of a
-read come from the adapter header only; the spec gap is #2822.
+Graded contract (hw/ip/drbg/doc/architecture.adoc "Bus Protocol Adaptation"):
+the adapter forwards only aligned single-lane accesses with WSTRB 0x0F or 0xF0,
+selects the 32-bit data lane by address bit 2, and answers every other access
+AXI SLVERR with no downstream request. The graded refused cells are therefore
+the writes whose strobe is not 0x0F or 0xF0 and the writes whose address is not
+4-byte aligned (``VEHICLE_REFUSED``, and the DUT narrow write).
+
+Driven only (``VEHICLE_HEADER_ONLY``, and the DUT misaligned read): the
+architecture document does not state that a read must be 4-byte aligned, that
+a legal strobe must match address bit 2, or that a read returns zero in the
+other lane. Those rules are in the adapter RTL header only (#2822). Their cells
+run on every seed and their response, data and forward probe are logged at
+info level as ``NOT_GRADED_NOTE``, outside the verdict.
 
 Two drivers:
 
@@ -18,8 +24,8 @@ Two drivers:
   (``tbadp_fwd_o``). The vehicle reaches every refusal condition, including
   the strobe patterns a single AXI master transfer cannot produce.
 * ``SepDrbgLaneRefusal`` reaches the DUT's own CSRNG and EDN adapters as
-  ordinary CSR traffic over s_axi. There the "no downstream request" half is
-  graded on the lane adapter's own AXI-Lite-32 request (``drbg_csrng_fwd_o`` /
+  ordinary CSR traffic over s_axi. There the refused write's "no downstream
+  request" half is graded on the lane adapter's own AXI-Lite-32 request (``drbg_csrng_fwd_o`` /
   ``drbg_edn_fwd_o``, sampled every cycle of the access by ``FwdWatch``), and
   through two DUT-visible consequences: the target register keeps its value,
   and the lane's ``PERIPH_BUS_ERR_STATUS`` bit (the bridge's sticky TL-UL
@@ -27,7 +33,8 @@ Two drivers:
   clear. ``PortWatch`` samples the lane adapter's AXI-Lite-64 input
   (``drbg_csrng_axil_chan_o`` / ``drbg_edn_axil_chan_o``) over the same
   window, so the SLVERR is shown to answer a beat the adapter accepted and
-  not a refusal upstream of it.
+  not a refusal upstream of it. The misaligned read records the same
+  observations for the log only.
 
 A probe value that is X or Z is counted, never read as "nothing forwarded".
 """
@@ -75,10 +82,17 @@ LANE_BYTES = 4
 LOWER_LANE = 0x0
 UPPER_LANE = LANE_BYTES
 
-# Refused vehicle cells: (name, op, addr, strobe). Strobes are AMBA's
+# Not graded until the spec states the rule. The text goes into every log line
+# that reports an observation the verdict does not use.
+NOT_GRADED_NOTE = "not graded until #2822 specifies the rule"
+
+# Vehicle cells: (name, op, addr, strobe). Strobes are AMBA's
 # (sep_spec_tables.axi_lane_strobe), not the adapter's own predicate, so each
 # cell states the protocol meaning of what it presents.
-VEHICLE_REFUSED: tuple[tuple[str, SepAxiOp, int, int], ...] = (
+#
+# Driven only: a misaligned read, and a legal strobe on the lane address bit 2
+# does not select. The spec does not say whether the adapter refuses them.
+VEHICLE_HEADER_ONLY: tuple[tuple[str, SepAxiOp, int, int], ...] = (
     *(
         (f"rd-misaligned-{base:x}+{off}", SepAxiOp.READ, base + off, 0)
         for base in (LOWER_LANE, UPPER_LANE)
@@ -86,12 +100,23 @@ VEHICLE_REFUSED: tuple[tuple[str, SepAxiOp, int, int], ...] = (
     ),
     ("wr-lower-addr-upper-strb", SepAxiOp.WRITE, LOWER_LANE, axi_lane_strobe(UPPER_LANE)),
     ("wr-upper-addr-lower-strb", SepAxiOp.WRITE, UPPER_LANE, axi_lane_strobe(LOWER_LANE)),
+)
+
+# Graded: a strobe that is not 0x0F or 0xF0, or a write address that is not
+# aligned. The spec refuses both with SLVERR.
+VEHICLE_REFUSED: tuple[tuple[str, SepAxiOp, int, int], ...] = (
     ("wr-full-beat", SepAxiOp.WRITE, LOWER_LANE, axi_lane_strobe(LOWER_LANE, AXI_BUS_BYTES)),
     ("wr-lower-byte", SepAxiOp.WRITE, LOWER_LANE, axi_lane_strobe(LOWER_LANE, 1)),
     ("wr-upper-halfword", SepAxiOp.WRITE, UPPER_LANE, axi_lane_strobe(UPPER_LANE, 2)),
     ("wr-zero-strb", SepAxiOp.WRITE, LOWER_LANE, 0),
     ("wr-misaligned-lower", SepAxiOp.WRITE, LOWER_LANE + 1, axi_lane_strobe(LOWER_LANE)),
     ("wr-misaligned-upper", SepAxiOp.WRITE, UPPER_LANE + 1, axi_lane_strobe(UPPER_LANE)),
+)
+
+# Every vehicle cell in run order, with whether its refusal is graded.
+VEHICLE_CELLS: tuple[tuple[tuple[str, SepAxiOp, int, int], bool], ...] = (
+    *((cell, False) for cell in VEHICLE_HEADER_ONLY),
+    *((cell, True) for cell in VEHICLE_REFUSED),
 )
 
 VEHICLE_WDATA = 0x0123_4567_89AB_CDEF
@@ -254,7 +279,11 @@ def legal_partner(op: SepAxiOp, addr: int) -> tuple[SepAxiOp, int, int]:
 
 
 def lane_word(rdata: int, addr: int) -> tuple[int, int]:
-    """(addressed 32-bit lane, other lane) of a 64-bit read beat."""
+    """(addressed 32-bit lane, other lane) of a 64-bit read beat.
+
+    The spec grades the addressed lane only; the other lane is logged with
+    ``NOT_GRADED_NOTE``.
+    """
     lo, hi = rdata & 0xFFFF_FFFF, rdata >> 32
     return (hi, lo) if addr & LANE_BYTES else (lo, hi)
 
@@ -372,10 +401,12 @@ class SepDrbgLaneRefusal:
     async def misaligned_read(
         self, lane: DutLane, offset: int
     ) -> tuple[int, dict | None, FwdWatch, PortWatch]:
-        """One single-byte read at ``offset`` into the word.
+        """One single-byte read at ``offset`` into the word, driven only.
 
-        Returns (RRESP, presented AR, forward probe over the access, adapter
-        input handshakes over the access).
+        The spec does not state the read alignment rule, so the response is not
+        graded here or by the scoreboard (a read that does not complete still
+        fails). Returns (RRESP, presented AR, forward probe over the access,
+        adapter input handshakes over the access) for the caller to log.
         """
         addr = lane.reg_addr + offset
         watch = FwdWatch(lane.fwd_signal).start()
@@ -387,7 +418,7 @@ class SepDrbgLaneRefusal:
             addr=addr,
             length=1,
             size=0,
-            expect_error=True,
+            allow_ungraded_read_resp=True,
         )
         await ClockCycles(cocotb.top.clk_i, 1)
         # Both watches started together; stopping the port watch when the
