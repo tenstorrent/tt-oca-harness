@@ -7,7 +7,9 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
+:revnumber: 0.0.1
+:revdate: 2026-09-10
+:title-page-background-image: image:../../trm/assets/TT_Cover_Image.png[fit=cover]
 
 [WARNING]
 ====
@@ -65,11 +67,19 @@ This documentation is organized into the following sections:
 ** xref:security.adoc[Security Policy] - Reporting a Vulnerability
 ** xref:documentation.adoc[Documentation] - OCAH documentation
 ** xref:code_of_conduct.adoc[Code of Conduct] - OCAH Project Code of Conduct
+ifndef::release[]
+* xref:revision.adoc[Revision History] - Major revisions and updates to this
+  guide
+endif::release[]
 
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: ../assets
+ifndef::release[]
+include::revision.adoc[leveloffset=+1]
+endif::release[]
+
 == Starting as a user
 
 include::dependencies.adoc[leveloffset=+2]

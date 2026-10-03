@@ -2,6 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 * xref:index.adoc[Starting with OCAH]
+ifndef::release[]
+** xref:revision.adoc[Revision History]
+endif::release[]
 * Starting as a user
 ** xref:dependencies.adoc[Dependencies]
 ** xref:setup.adoc[Environment Setup]

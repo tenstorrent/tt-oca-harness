@@ -8,6 +8,8 @@
 :sectnums:
 :toclevels: 3
 :source-highlighter: highlight.js
+:revnumber: 0.0.2
+:revdate: 2026-10-02
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 
 [WARNING]
@@ -20,6 +22,10 @@ ifdef::backend-pdf[]
 :imagesdir: ../assets
 :aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
 endif::backend-pdf[]
+
+ifndef::release[]
+include::revision.adoc[leveloffset=+1]
+endif::release[]
 
 include::smc-programming.adoc[]
 

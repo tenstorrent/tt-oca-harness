@@ -19,7 +19,12 @@ ocah-doc-starting-setup: ocah-doc-reg-setup
 	  OCAH_DOC_PRODUCT_SRC="$(OCAH_STARTING_SRC)" \
 	  OCAH_DOC_PRODUCT_MODULES="$(OCAH_STARTING_MODULES)" \
 	  OCAH_DOC_PRODUCT_ASSETS="$(OCAH_STARTING_ASSETS)" \
+	  OCAH_DOC_PRODUCT_INCLUDE_REVISION="$(if $(OCAH_DOC_RELEASE_ENABLED),0,1)" \
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh"
+	@if [ "$(if $(OCAH_DOC_RELEASE_ENABLED),1,0)" = "1" ]; then \
+		rm -f "$(OCAH_STARTING_BUILD)/html_antora/ocah-starting/latest/revision.html" \
+			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-starting/latest/revision.html"; \
+	fi
 
 .PHONY: ocah-doc-starting-html
 ocah-doc-starting-html: ocah-doc-starting-setup
@@ -27,6 +32,7 @@ ocah-doc-starting-html: ocah-doc-starting-setup
 	@echo "Building Getting Started Guide HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
+		$(OCAH_DOC_ANTORA_RELEASE_ARG) \
 		--attribute basedir="$(OCAH_STARTING_DIR)" "$(OCAH_STARTING_PLAYBOOK)"
 	@echo "Done: $(OCAH_STARTING_BUILD)/html_antora/ocah-starting/latest/index.html"
 
@@ -39,6 +45,7 @@ ocah-doc-starting-pdf: ocah-doc-starting-setup
 	@cd "$(OCAH_STARTING_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
+		$(OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG) \
 		-o "$(OCAH_STARTING_BUILD)/latex/$(OCAH_STARTING_PDF)" src/index.adoc
 	@echo "Done: $(OCAH_STARTING_BUILD)/latex/$(OCAH_STARTING_PDF)"
 
