@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Plan the exclusions smc_reviewed_exclusions.toml records, for the generators that write them.
 
-The manifest records exclusions design engineering reviewed for the SMC bench in
-an earlier repository, by category, against this tree's names: an object entry
+The manifest records exclusions design engineering reviewed on the predecessor
+SMC bench's exclusion lists, by category, against this tree's names: an object entry
 names a module or an instance (an instance path may use `[*]` for any index)
 and the toggle signals (globs: `[*]` for any index, `p.*` for every field
 under `p`, `*` for every signal), bit or part selects, line blocks by statement
@@ -11,7 +11,7 @@ text (with its position among blocks of the same text where the text repeats),
 FSM states or transitions and condition rows it covers; a unit entry
 names an instance whose own ports stay graded while its internal signals and
 every instance beneath it are excluded. Each entry carries the class it belongs
-to and the reviewed file it comes from; the class carries the fact, the
+to and the number of the reviewed list it comes from; the class carries the fact, the
 retiring condition and the reviewer.
 
 Every point of an object entry, and every line, FSM and condition point of a
@@ -44,6 +44,7 @@ from typing import Callable
 
 HERE = Path(__file__).resolve().parent
 MANIFEST = HERE / "smc_reviewed_exclusions.toml"
+REVIEWED = "Reviewed with design engineering on the predecessor bench's exclusion list."
 
 METRICS = ("tgl", "line", "fsm", "cond")
 REPORT_METRIC = {"tgl": "Toggle", "line": "Line", "fsm": "FSM", "cond": "Cond"}
@@ -520,21 +521,19 @@ class Manifest:
         self.review = data["review"]
         self.classes = {c["id"]: c for c in data["class"]}
         self.order = {c["id"]: i for i, c in enumerate(data["class"])}
-        self.sources = {name: i for i, name in enumerate(self.review["files"])}
+        self.sources = {n: n for n in range(1, self.review["lists"] + 1)}
         self.objects = data.get("object", [])
         self.units = data.get("unit", [])
         for entry in self.objects + self.units:
             if entry["class"] not in self.classes:
                 raise SystemExit(f"{path}: entry names unknown class {entry['class']}")
-            if entry["source"] not in self.sources:
-                raise SystemExit(f"{path}: entry names unknown reviewed file {entry['source']}")
+            if entry["list"] not in self.sources:
+                raise SystemExit(f"{path}: entry names unknown reviewed list {entry['list']}")
 
     def annotation(self, owner: tuple[str, str]) -> str:
         cls = self.classes[owner[0]]
-        review = self.review
         return (
-            f'ANNOTATION: "SMC-{owner[0]}: {cls["fact"]} Reviewed with design engineering in '
-            f"{review['repository']} {owner[1]} ({review['commit']}). "
+            f'ANNOTATION: "SMC-{owner[0]}: {cls["fact"]} {REVIEWED} '
             f'Retired by {cls["retired_by"]}."'
         )
 
@@ -574,7 +573,7 @@ class Planner:
         return live
 
     def object(self, entry: dict) -> None:
-        owner = (entry["class"], entry["source"])
+        owner = (entry["class"], entry["list"])
         if entry.get("toggles") or entry.get("toggle_selects"):
             for kind, scope, sc in self.targets(entry, "tgl"):
                 wanted: dict[str, list[tuple[str, tuple[str, ...]]]] = defaultdict(list)
@@ -641,9 +640,9 @@ class Planner:
         """
         db, report = self.db, self.report
         review = self.manifest.review
-        own = (entry["class"], entry["source"])
-        regblock = (review["unit_regblock_class"], entry["source"])
-        fsm_owner = (review["unit_fsm_class"], entry["source"])
+        own = (entry["class"], entry["list"])
+        regblock = (review["unit_regblock_class"], entry["list"])
+        fsm_owner = (review["unit_fsm_class"], entry["list"])
         scopes = [root] + sorted(p for p in db.instances if p.startswith(root + "."))
         for path in scopes:
             sc = db.instances[path]

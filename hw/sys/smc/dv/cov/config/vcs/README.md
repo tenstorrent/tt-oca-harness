@@ -508,12 +508,13 @@ but not `ocah_prim_generic/`, which is why this one is graded at all.
 ## Exclusions design engineering reviewed
 
 `smc_reviewed_exclusions.toml` records exclusions design engineering reviewed
-for the SMC bench in an earlier repository (`[review]` names it, the reviewed
-files and the commit; the reviewed dumps are not in this repository), by
+on the predecessor SMC bench's exclusion lists (`[review]` states that origin
+and the review date; the reviewed lists are not in this repository), by
 category and against this tree's names: an `[[object]]` names a module or an
 instance and the toggle signals, selects, line blocks, FSM points or condition
 rows it covers, and a `[[unit]]` names an instance graded on its ports. Each
-entry carries its class and reviewed file; the class carries the fact, the
+entry carries its class and the number of the reviewed list it comes from;
+the class carries the fact, the
 retiring condition and the reviewer. `smc_reviewed_exclusions.py` resolves the
 manifest against urg's templates and keeps only the points the run's raw
 report (`cov/report_raw/modinfo.txt`) marks uncovered: a toggle per bit and
