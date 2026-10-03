@@ -4,7 +4,8 @@
 
 The reset_wdt_sanity firmware:
   * checks SW_RESET_N default 0x7E, that pulsing each crypto/TRNG/ABR reset bit clears that
-    domain's probe CSRs, and that each probe is writable again after release;
+    domain's probe CSRs and leaves every probe outside that reset bit unchanged, and that each
+    probe is writable again after release;
   * checks that a write and a read to an unmapped fabric gap each raise a D-bus-error NMI
     (count == 2);
   * exercises WDT bark -> NMI, pet, disable-freeze and re-bark, then lets the WDT run to BITE.
@@ -21,6 +22,7 @@ firmware's reset-wire probe write would trap.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import cocotb
@@ -44,6 +46,13 @@ _PROGRESS_EVERY = 5_000
 _BADADDR_LINE = "reset_ctrl bad-address NMI count == 2 OK"
 _SWRST_DEFAULT_NEEDLE = "PASS: SW_RESET_N default"
 _RESET_WIRE_IPS = ("otbn", "aes", "hmac", "kmac", "abr", "esrc", "csrng", "edn")
+# Reset bit of each probe's domain: esrc, csrng and edn share the TRNG bit.
+_RESET_DOMAIN = {ip: ("trng" if ip in ("esrc", "csrng", "edn") else ip) for ip in _RESET_WIRE_IPS}
+# Each reset-wire line ends with the count of other-domain probes the firmware
+# found unchanged after the pulse.
+_WIRE_LINE_RE = re.compile(
+    r"(\w+) reset wire OK, writable after release, other-domain probes unchanged 0x([0-9a-f]{8})"
+)
 # The firmware prints this after "<ip>" only once the probe, rewritten after the
 # release, reads back its non-reset value.
 _WRITABLE_SUFFIX = " reset wire OK, writable after release"
@@ -101,10 +110,21 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             f"{sorted(_RESET_WIRE_IPS)}; a missing domain is an unexercised reset bit. "
             f"Console was:\n{console}"
         )
+        unchanged = {m.group(1): int(m.group(2), 16) for m in _WIRE_LINE_RE.finditer(console)}
+        want_unchanged = {
+            ip: sum(1 for nb in _RESET_WIRE_IPS if _RESET_DOMAIN[nb] != _RESET_DOMAIN[ip])
+            for ip in _RESET_WIRE_IPS
+        }
+        assert unchanged == want_unchanged, (
+            f"CHK-SWRST-WIRE FAIL: other-domain probes found unchanged per pulse "
+            f"{unchanged}, expected {want_unchanged}; a pulse that checked fewer "
+            f"domains leaves a cross-wired reset bit unseen. Console was:\n{console}"
+        )
         self.logger.info(
-            "CHK-SWRST-WIRE PASS: %d reset domains each returned their probe and left "
-            "the neighbour untouched",
+            "CHK-SWRST-WIRE PASS: %d reset bits each returned their probe and left every "
+            "probe outside that bit unchanged (per pulse: %s)",
             len(wired),
+            ", ".join(f"{ip}={unchanged[ip]}" for ip in _RESET_WIRE_IPS),
         )
         writable = [ip for ip in _RESET_WIRE_IPS if f"{ip}{_WRITABLE_SUFFIX}" in console]
         assert len(writable) == len(_RESET_WIRE_IPS), (

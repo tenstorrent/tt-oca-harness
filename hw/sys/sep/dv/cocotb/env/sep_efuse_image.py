@@ -17,7 +17,7 @@ readable field reads back verbatim).
 
 from __future__ import annotations
 
-from sep_reg_meta import SEP_CPU_CTRL, sym
+from sep_reg_meta import SEP_CPU_CTRL, RegBlock, sym
 import sep_efuse_field_map
 
 # The generated map itself, for enumerating the eFuse register set rather than
@@ -62,6 +62,9 @@ SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 # hardcoded word offset cannot silently point at a neighbour field (a wrong but
 # self-consistent differential pair still looks healthy to a shadow checker).
 LC_WORD_IDX = sym("SEP_EFUSE_MAP_LC_STATE_REG_OFFSET") // 4
+# Bits of the LC_STATE word that hold the differential code, from the generated
+# field metadata; the sense FSM writes the other bits verbatim.
+LC_FIELD_MASK = RegBlock("SEP_EFUSE_MAP").field_mask("LC_STATE", "lc_state")
 LC_RAW_WIDTH = 4
 # Legal raw LC_STATE codes from hw/sys/sep/doc/lifecycle_controller.adoc
 # (encoding table and the per-LC-state feature-control profile).
@@ -434,7 +437,7 @@ class SepEfuseImage:
         """
         _ = secure_tm
         if word_idx == LC_WORD_IDX:
-            upper = self.words[LC_WORD_IDX] & 0xFFFF_FF00
+            upper = self.words[LC_WORD_IDX] & WORD_MASK & ~LC_FIELD_MASK
             return upper | lc_encode(self.lc_raw())
         return self.words[word_idx] & WORD_MASK
 

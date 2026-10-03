@@ -51,7 +51,9 @@ Checkers:
               DISTINCT known key transferred after the shred encrypts to its
               own golden and NOT to the first key's
   CHK-REVOKE  CMD_KEY_REVOKE returns rc=0 with the handle echoed
-  CHK-CLOSED  a transfer on the REVOKED handle is refused: revoke fails closed
+  CHK-CLOSED  the generated handle transfers to AES (rc=0, handle and dest
+              echoed) just before the revoke, and the same transfer on the
+              REVOKED handle is refused RC_FAILURE: revoke fails closed
   CHK-NULL    CMD_KEY_REVOKE of the reserved null handle is refused
   CHK-ILLEGAL every seeded undefined command ID returns RC_INVALID_CMD (-4)
   CHK-LEN     a defined command carrying the wrong payload length returns
@@ -66,11 +68,13 @@ Checkers:
               a zero-length payload returns RC_INVALID_LEN
   CHK-RECOV   SEP CTRL.FLUSH raises RESP_RECOVERABLE_FAULT; CMD_STAT reports
               the latched bit; aggregator [31] is 1; CMD_RECOV_ACK clears both
-  CHK-GONE    a shredded engine refuses to start: after a final
-              CMD_ENGINE_SHRED the AES produces no output within a bounded
-              window, so the shred reached the key rather than merely returning
-              success. Run last, because an engine parked waiting for a key
-              stays that way until its next valid key
+  CHK-GONE    a shredded engine refuses to start: KAT_KEY_B is transferred to
+              AES again and a sideload block encrypts to its golden, then a
+              final CMD_ENGINE_SHRED follows and the same start produces no
+              output within a bounded window. The shred is the only change
+              between the two starts, so it reached the key rather than merely
+              returning success. Run last, because an engine parked waiting
+              for a key stays that way until its next valid key
   CHK-ALIVE   after every rejection CMD_STAT succeeds AND reports no latched
               recoverable error. The second half is what gives the refusal
               checkers their meaning: while a recoverable fault is pending the
@@ -487,6 +491,21 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
 
         # --- CHK-REVOKE / CHK-CLOSED: destroy a key, then fail closed ---------
+        # Allow leg of CHK-CLOSED: the generated handle transfers to AES (its
+        # DEST_VALID) right before the revoke, so a refusal after the revoke
+        # comes from the revoke and not from a KM that refuses generated keys.
+        rc, arg = await self.km.key_transfer(handle=gen_handle, dest=KM_DEST_AES)
+        assert rc == KM_RC_SUCCESS, (
+            f"CHK-CLOSED FAIL: pre-revoke CMD_KEY_TRANSFER of generated handle "
+            f"0x{gen_handle:02x} to 0x{KM_DEST_AES:02x} returned rc={rc}, expected rc=0, "
+            "so a refusal after the revoke would not be attributable to the revoke"
+        )
+        assert (arg & 0xFF) == gen_handle and ((arg >> 8) & 0xFF) == KM_DEST_AES, (
+            f"CHK-CLOSED FAIL: pre-revoke RETURN_ARG 0x{arg:08x} does not echo handle "
+            f"0x{gen_handle:02x} and dest 0x{KM_DEST_AES:02x}"
+        )
+        allow_arg = arg
+
         rc, arg = await self.km.key_revoke(handle=gen_handle)
         assert rc == KM_RC_SUCCESS, f"CHK-REVOKE FAIL: CMD_KEY_REVOKE rc={rc}"
         assert (arg & 0xFF) == gen_handle, (
@@ -503,7 +522,14 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"returned rc={rc}, expected {KM_RC_FAILURE} (RC_FAILURE) -- revoke did "
             "not fail closed"
         )
-        self.logger.info("CHK-CLOSED PASS: transfer on the revoked handle refused with RC_FAILURE")
+        self.logger.info(
+            "CHK-CLOSED PASS: generated handle 0x%02x transferred to AES before the revoke "
+            "(rc=0 RETURN_ARG=0x%08x) and the same transfer after the revoke returned "
+            "rc=%d (RC_FAILURE)",
+            gen_handle,
+            allow_arg,
+            rc,
+        )
         await self._check_alive("post-revoked-transfer")
 
         # --- CHK-NULL: the reserved handle is never a target ------------------
@@ -653,10 +679,36 @@ class sep_km_command_set_rand_test(sep_base_test):
         # direct observation of the shred: the engine key registers are
         # write-only, so refusal to start is the only frontdoor evidence that
         # the shred reached the key rather than just returning success.
+        #
+        # Positive control: re-key AES with KAT_KEY_B and run one sideload
+        # block right before the shred, with the same start and the same
+        # bounded window as the refusal below. The output must appear inside
+        # that window and match the golden, so the key is live at the shred,
+        # the window is long enough for a keyed block, and a missing output
+        # afterwards is the shred's doing.
+        rc, _ = await self.km.key_transfer(handle=handle_b, dest=KM_DEST_AES)
+        assert rc == KM_RC_SUCCESS, (
+            f"CHK-GONE FAIL: pre-shred CMD_KEY_TRANSFER of handle 0x{handle_b:02x} rc={rc}"
+        )
+        await self.aes.configure_ecb_enc_256(sideload=True)
+        await self.aes.trigger_prng_reseed()
+        await self.aes.start_block_no_wait(list(AES_ECB_PT))
+        assert await self.aes.output_valid_within(_SHRED_REFUSE_POLLS), (
+            "CHK-GONE FAIL: the pre-shred control block with KAT_KEY_B sideloaded produced "
+            f"no output in {_SHRED_REFUSE_POLLS} polls, so the key was not live before the "
+            "shred or the refusal window is too short to grade"
+        )
+        ct_live = await self.aes.read_data_out()
+        assert ct_live == golden_b, (
+            "CHK-GONE FAIL: the pre-shred control block did not encrypt to KAT_KEY_B's "
+            "golden, so the key was not live before the shred:\n"
+            f"  ct     ={[hex(w) for w in ct_live]}\n"
+            f"  golden ={[hex(w) for w in golden_b]}"
+        )
         rc, _ = await self.km.engine_shred(dest=KM_DEST_AES)
         assert rc == KM_RC_SUCCESS, f"CHK-GONE FAIL: final CMD_ENGINE_SHRED rc={rc}"
-        # Same configure + PRNG reseed as the CHK-XFER / CHK-SHRED legs, so the
-        # missing sideload key is the only difference from a start that runs.
+        # Same configure + PRNG reseed as the control block above, so the
+        # shredded sideload key is the only difference from a start that runs.
         await self.aes.configure_ecb_enc_256(sideload=True)
         await self.aes.trigger_prng_reseed()
         await self.aes.start_block_no_wait(list(AES_ECB_PT))
@@ -665,7 +717,11 @@ class sep_km_command_set_rand_test(sep_base_test):
             "key was shredded -- the shred did not reach the key"
         )
         self.logger.info(
-            "CHK-GONE PASS: the shredded engine produced no output in %d polls (fail-closed START)",
+            "CHK-GONE PASS: pre-shred sideload block gave output within %d polls, "
+            "ct=%s == AES(KAT_KEY_B, PT) golden; after CMD_ENGINE_SHRED the same start "
+            "produced no output in %d polls (fail-closed START)",
+            _SHRED_REFUSE_POLLS,
+            [hex(w) for w in ct_live],
             _SHRED_REFUSE_POLLS,
         )
 

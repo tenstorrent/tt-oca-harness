@@ -13,7 +13,9 @@ disabled). For each of the N_REGIONS alias regions:
     granule at T: an OKAY shows the beat reached T exactly, and the next beat
     (next granule) answers DECERR. The region runs offset O, then ~O.
   * Miss. A region that starts above the source page (start S, then ~S) does
-    not translate: the read answers OKAY with the staged value.
+    not translate: the read answers OKAY with the staged value. A region that
+    starts at the source page and ends there (END = source page, valid set,
+    offset ~O) does not translate either, so the END compare decides a beat.
   * Valid clear. The hit bounds with valid=0 do not translate either.
 
 So every alias START, END and offset bit takes a 0->1 and a 1->0 step, and
@@ -30,8 +32,9 @@ Checkers:
                            back as programmed (56 bits).
   CHK-ALIAS-WALK-HIT       the translated beat answers OKAY in the one
                            granule at T, and DECERR one granule up.
-  CHK-ALIAS-WALK-MISS      a region above the source page leaves the beat
-                           untranslated: OKAY with the staged value.
+  CHK-ALIAS-WALK-MISS      a region above the source page, or one whose END
+                           is the source page, leaves the beat untranslated:
+                           OKAY with the staged value.
   CHK-ALIAS-WALK-VALID     valid=0 leaves the beat untranslated: OKAY with the
                            staged value.
 """
@@ -174,6 +177,13 @@ class _Plan:
 class sep_fabric_local_alias_offset_walk_test(sep_base_test):
     """All alias regions: full-width bounds and offsets, graded on live beats."""
 
+    required_evidence = (
+        "CHK-ALIAS-WALK-READBACK",
+        "CHK-ALIAS-WALK-HIT",
+        "CHK-ALIAS-WALK-MISS",
+        "CHK-ALIAS-WALK-VALID",
+    )
+
     async def _read(self, addr: int, *, deny: bool) -> tuple[int, int]:
         if deny:
             self.env.axi_monitor.arm_expected_decerr(1)
@@ -218,7 +228,7 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         await alias._wr(SRC_ADDR, staged)
         got = await alias._rd(SRC_ADDR)
         assert got == staged, f"staged 0x{SRC_ADDR:08x}=0x{got:08x} != 0x{staged:08x}"
-        counts = dict.fromkeys(("HIT", "MISS", "VALID"), 0)
+        counts = dict.fromkeys(("HIT", "MISS", "END_MISS", "VALID"), 0)
 
         for p in plans:
             r, e = p.region, p.entry
@@ -237,6 +247,14 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
             await alias.program(r, p.hit_start, ~p.hit_end & ADDR_MASK, p.o2, False)
             await self._untranslated("CHK-ALIAS-WALK-VALID", p, staged)
             counts["VALID"] += 1
+
+            # END miss: START matches and valid is set, but the source address is
+            # at END (non-inclusive), so only the END compare keeps the beat
+            # local. A translated beat lands at T2, which the outbound entry still
+            # admits, and returns the responder's data, not the staged word.
+            await alias.program(r, p.hit_start, SRC_PAGE, p.o2, True)
+            await self._untranslated("CHK-ALIAS-WALK-MISS", p, staged)
+            counts["END_MISS"] += 1
 
             for s in (p.miss_start, ~p.miss_start & START_MASK):
                 assert (s >> IDX_START) > SRC_PG
@@ -263,9 +281,12 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
             counts["HIT"],
         )
         self.logger.info(
-            "CHK-ALIAS-WALK-MISS PASS: %d regions above the source page left the beat "
-            "untranslated (staged 0x%08x)",
+            "CHK-ALIAS-WALK-MISS PASS: %d regions above the source page and %d regions "
+            "ending at the source page (END=0x%014x) left the beat untranslated "
+            "(staged 0x%08x)",
             counts["MISS"],
+            counts["END_MISS"],
+            SRC_PAGE,
             staged,
         )
         self.logger.info(

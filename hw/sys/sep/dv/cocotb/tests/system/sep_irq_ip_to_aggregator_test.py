@@ -27,8 +27,12 @@ chunk / error bits 8..10), the 3-phase check:
   CHK-ISO   while this source is asserted, the OTHER 5 mapped bits stay 0
             (one-hot aggregation -- catches an OR-network smear; stronger than
             reference suite, which checks one source at a time).
-  CHK-CLR   Event: W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0.
+  CHK-CLR   Event: INTR_TEST=0 alone leaves the aggregate bit at 1 for
+            _STICKY_HOLD clocks AND INTR_STATE bit 1 (the state is sticky); then
+            W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0.
             Status: INTR_TEST=0 -> the same two zeros (INTR_STATE is read-only).
+            The slowest Status release must land inside _STICKY_HOLD, so the
+            hold is long enough for a level-following state to drop in it.
 
 Then one through-adapter SLVERR on the Secure DMA register hole and one on
 each HMAC / KMAC / OTBN CSR gap:
@@ -68,6 +72,10 @@ from seq_lib.sep_irq_aggregator_seq import (
     periph_holes,
 )
 
+# Clocks an Event source must keep its aggregate bit at 1 after INTR_TEST=0
+# and before the W1C. Every Status source in this bench must drop inside it.
+_STICKY_HOLD = 32
+
 
 @pyuvm.test()
 class sep_irq_ip_to_aggregator_test(sep_base_test):
@@ -96,6 +104,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
         self.irq = SepIrqIp(self)
+        status_release_max = 0
 
         for src in IRQ_TABLE:
             # CHK-BASE: drive to a known-clear state and prove the aggregate bit is
@@ -152,8 +161,37 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             # CHK-CLR: Event sources W1C INTR_STATE; Status sources drop INTR_TEST.
             await self.irq.stop_inject(src)
             if src.kind == "event":
+                # The INTR_TEST release alone must not clear an Event source,
+                # so the W1C below is what the clear checks credit.
+                for cyc in range(_STICKY_HOLD):
+                    if await self._agg_bit(src.agg_idx) != 1:
+                        raise AssertionError(
+                            f"CHK-AGG FAIL: {src.name} sep_internal_interrupts"
+                            f"[{src.agg_idx}] dropped {cyc} clocks after INTR_TEST=0 "
+                            "with no W1C; Event state is not sticky"
+                        )
+                sticky_state = await self.irq.read_state_bit(src)
+                assert sticky_state == 1, (
+                    f"CHK-AGG FAIL: {src.name} INTR_STATE bit={sticky_state} after "
+                    "INTR_TEST=0 with no W1C; Event state is not sticky"
+                )
+                self.logger.info(
+                    "STEP %s: INTR_TEST=0 -> aggregate bit[%d] held 1 for %d clocks, "
+                    "INTR_STATE bit=%d before W1C",
+                    src.name,
+                    src.agg_idx,
+                    _STICKY_HOLD,
+                    sticky_state,
+                )
                 await self.irq.clear_state(src)
-            clr_ok, _ = await self._poll_agg(src.agg_idx, 0)
+                clr_ok, _ = await self._poll_agg(src.agg_idx, 0)
+            else:
+                clr_ok = False
+                for cyc in range(1, 201):
+                    if await self._agg_bit(src.agg_idx) == 0:
+                        clr_ok = True
+                        status_release_max = max(status_release_max, cyc)
+                        break
             clr_how = "W1C clear" if src.kind == "event" else "INTR_TEST release"
             assert clr_ok, (
                 f"{src.name}: sep_internal_interrupts[{src.agg_idx}] stuck after {clr_how}"
@@ -170,10 +208,17 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                 iso,
             )
 
+        assert 0 < status_release_max < _STICKY_HOLD, (
+            f"CHK-AGG FAIL: slowest Status INTR_TEST release took {status_release_max} "
+            f"clocks; the Event sticky hold of {_STICKY_HOLD} clocks must exceed it"
+        )
         self.logger.info(
             "CHK-AGG PASS: all %d HMAC/DMA/CSRNG/EDN IRQs propagate to the aggregator, "
-            "one-hot, with Event W1C / Status INTR_TEST release",
+            "one-hot, with Event W1C (sticky for %d clocks after INTR_TEST=0) / "
+            "Status INTR_TEST release (slowest %d clocks)",
             len(IRQ_TABLE),
+            _STICKY_HOLD,
+            status_release_max,
         )
         await self._check_bus_err_paths()
 

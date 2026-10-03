@@ -45,7 +45,11 @@ _VERDICT_CLAUSES = (
         "the DMA busy and not done at store-loop exit",
     ),
     ("ERROR_CODE=0", "CHK-NOERR", "the DMA completing with no error"),
-    ("DONE+RW1C clear", "CHK-RW1C", "the done status clearing on write-one-to-clear"),
+    (
+        "DONE+RW1C clear",
+        "CHK-RW1C",
+        "the done status holding after the poll and clearing on write-one-to-clear",
+    ),
     ("dst==src", "CHK-DMA-DATA", "the DMA destination matching its source"),
     ("cont==cpu", "CHK-CPU-DATA", "the CPU region holding exactly what the CPU wrote"),
 )
