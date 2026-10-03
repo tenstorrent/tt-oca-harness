@@ -91,8 +91,10 @@ class sep_km_key_policy_vault_test(sep_base_test):
         )
         _bit(FLAG_LOCKUSE, "CHK-LOCKUSE")
         self.logger.info(
-            "CHK-LOCKUSE PASS: key-data read of the lock_use slot raised SLVERR and "
-            "returned zero, after a known non-zero store landed on that slot"
+            "CHK-LOCKUSE PASS: slot %d with lock_write only read back 0xA11CE000 with "
+            "AXI_SLVERR clear (control); after lock_use the same read raised SLVERR "
+            "and returned zero",
+            cfg.slot,
         )
         _bit(FLAG_EXTENT, "CHK-EXTENT")
         self.logger.info(

@@ -16,6 +16,10 @@
 #
 # Then:
 #   write LOCK_WRITE on slot 0, the seed slot, and slot 63; read back bit 0
+#   store key data to the write-locked seed slot and require AXI_SLVERR
+#   read the seed slot while it holds only lock_write: the first store comes
+#     back with AXI_SLVERR clear; then set lock_use and require the same read
+#     to raise AXI_SLVERR and return zero
 #   store to 0x13108 (KPV base 0x12000 + KM_KPV_SIZE 0x1108, so the first
 #     byte past the register map and still inside the 8 KB KPV decode window)
 #     and require AXI_SLVERR with AXI_DECERR clear (key_manager.rdl: an
@@ -177,6 +181,37 @@ lockwr_ok:
     sw    x11, 0(x9)            # W1C for the next check
 lockwr_done:
 
+    # --- control for CHK-LOCKUSE: a lock_write-only slot still reads ---
+    # km_kpv.rdl: lock_write blocks key-data writes only, and it is write-1-set,
+    # so the lock_use write below leaves it set. Without this control a design
+    # that refused reads on lock_write would also satisfy the refusal below.
+    # While CTRL[slot] holds only lock_write, the read must return the
+    # 0xA11CE000 store with AXI_SLVERR clear. The value also shows the refused
+    # 0xC0DE1000 write did not land. x15 = 1 only when the control passes.
+    addi  x15, x0, 0
+    slli  x11, x3, CTRL_SHIFT
+    add   x11, x8, x11          # CTRL[slot]
+    lw    x7, 0(x11)
+    andi  x7, x7, CTRL_ALL
+    addi  x13, x0, CTRL_LOCK_WRITE
+    bne   x7, x13, lockctl_done # must hold lock_write and nothing else
+    addi  x11, x0, IRQ_AXI_SLVERR
+    sw    x11, 0(x9)
+    lw    x7, 0(x9)
+    andi  x7, x7, IRQ_AXI_SLVERR
+    bnez  x7, lockctl_done      # must start clean
+    lw    x13, 0(x12)           # allowed read: slot is write-locked only
+    addi  x14, x0, 32
+9:  lw    x7, 0(x9)
+    andi  x11, x7, IRQ_AXI_SLVERR
+    bnez  x11, lockctl_done     # the read must not raise SLVERR
+    addi  x14, x14, -1
+    bnez  x14, 9b
+    lui   x7, 0xA11CE
+    bne   x13, x7, lockctl_done # the stored value, not the refused write
+    addi  x15, x0, 1
+lockctl_done:
+
     # --- key-data read of a lock_use slot returns SLVERR and zero data ---
     addi  x7, x0, CTRL_LOCK_USE
     slli  x11, x3, CTRL_SHIFT
@@ -199,6 +234,7 @@ lockwr_done:
     j     lockuse_done
 lockuse_err:
     bnez  x13, lockuse_done     # SLVERR alone is not enough: data must be 0
+    beqz  x15, lockuse_done     # the lock_write-only control must also pass
     ori   x5, x5, 0x400         # CHK-LOCKUSE
     addi  x11, x0, IRQ_AXI_SLVERR
     sw    x11, 0(x9)
