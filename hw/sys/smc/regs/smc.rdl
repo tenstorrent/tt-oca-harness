@@ -98,8 +98,6 @@ addrmap smc_top #(
 
     smc_external                   smc_external                @BASE_ADDR + 0x040_0000;
 
-    external remapped_region       ecam_region                 @BASE_ADDR + 0x080_0000;
-
     external remapped_region       mmode_region                @BASE_ADDR + 0x100_0000;
 
     external remapped_region       xvisor_region               @BASE_ADDR + 0x180_0000;
@@ -107,20 +105,20 @@ addrmap smc_top #(
 `ifdef OCAH_DOC_MEMORY_MAP
     ocah_full_stride_extent = true;
     ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY};
-    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core0_wdt->ocah_aperture_size = 0x400;
-    smc_cluster_core0_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core0_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core0_wdt->desc = "Core 0 watchdog timer.";
     smc_cluster_core1_wdt->ocah_aperture_size = 0x400;
-    smc_cluster_core1_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core1_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core1_wdt->desc = "Core 1 watchdog timer.";
     smc_cluster_core2_wdt->ocah_aperture_size = 0x400;
-    smc_cluster_core2_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core2_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core2_wdt->desc = "Core 2 watchdog timer.";
     smc_cluster_core3_wdt->ocah_aperture_size = 0x400;
-    smc_cluster_core3_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core3_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core3_wdt->desc = "Core 3 watchdog timer.";
-    debug_module->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    debug_module->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     debug_module->ocah_hole_note = "Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.";
     smc_reset_unit->ocah_aperture_size = 0x800;
     smc_reset_unit->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
@@ -146,39 +144,37 @@ addrmap smc_top #(
     smc_system_timer_octs->ocah_aperture_size = 0x1000;
     smc_system_timer_octs->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     dfx_ctrl->ocah_aperture_size = 0x800;
-    dfx_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    dfx_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     dfx_ctrl->desc = "DFT status exposed to boot firmware.";
     smc_base_config->ocah_aperture_size = 0x2000;
-    smc_base_config->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    smc_base_config->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     smc_base_config->desc = "SMC base-address and aperture configuration.";
     smc_alias_remap->ocah_aperture_size = 0x1000;
-    smc_alias_remap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    smc_alias_remap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     smc_mmode_remap->ocah_aperture_size = 0x1000;
-    smc_mmode_remap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    smc_mmode_remap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     smc_xvisor_remap->ocah_aperture_size = 0x1000;
-    smc_xvisor_remap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    smc_xvisor_remap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     smc_inbound_filter_ctrl->ocah_aperture_size = 0x1000;
-    smc_inbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    smc_inbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     smc_outbound_filter_ctrl->ocah_aperture_size = 0x1000;
-    smc_outbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    smc_outbound_filter_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
     smc_mailbox->ocah_aperture_size = 0x20000;
-    smc_mailbox->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_mailbox->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_mailbox->desc = "Thirty-two bidirectional mailbox pairs.";
     dma_ctrl->ocah_aperture_size = 0x200;
-    dma_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    dma_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     dma_ctrl->desc = "Direct-memory-access controller.";
     zeroer_ctrl->ocah_aperture_size = 0x100;
-    zeroer_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    zeroer_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cpu_ctrl->ocah_aperture_size = 0x1000;
-    smc_cpu_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cpu_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cpu_ctrl->desc = "SMC CPU-cluster control.";
     dtp_ctrl_reg->desc = "512-entry DTP control block.";
     dtp_ctrl_reg->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
     smc_cla->desc = "Core Logic Analyzer debug and trace aperture.";
     smc_external->desc = "Adopter-owned external peripheral aperture.";
     smc_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
-    ecam_region->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
-    ecam_region->ocah_hole_note = "No RTL decodes this aperture.";
 `endif
 
     // Core-local resources below are reachable only by the SMC cluster's own harts
@@ -196,25 +192,25 @@ addrmap smc_top #(
 
 `ifdef OCAH_DOC_MEMORY_MAP
     smc_cluster_plic->ocah_aperture_size = 0x4000000;
-    smc_cluster_plic->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_plic->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_plic->desc = "Platform-Level Interrupt Controller.";
     smc_cluster_clint->ocah_aperture_size = 0x10000;
-    smc_cluster_clint->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_clint->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_clint->desc = "Core-Local Interruptor.";
     smc_cluster_core0_beu->ocah_aperture_size = 0x1000;
-    smc_cluster_core0_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core0_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core0_beu->desc = "Core 0 bus-error unit.";
     smc_cluster_core1_beu->ocah_aperture_size = 0x1000;
-    smc_cluster_core1_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core1_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core1_beu->desc = "Core 1 bus-error unit.";
     smc_cluster_core2_beu->ocah_aperture_size = 0x1000;
-    smc_cluster_core2_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core2_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core2_beu->desc = "Core 2 bus-error unit.";
     smc_cluster_core3_beu->ocah_aperture_size = 0x1000;
-    smc_cluster_core3_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core3_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core3_beu->desc = "Core 3 bus-error unit.";
     smc_cluster_error_device->desc = "Error responder for unmapped cluster-bus accesses.";
-    smc_cluster_error_device->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xCA11AB1EBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_error_device->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_error_device->ocah_hole_note = "Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.";
 `endif
 `endif

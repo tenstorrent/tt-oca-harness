@@ -31,10 +31,10 @@ per-core watchdog and BEU apertures.
 |===================================================================
 |Block |Base Addr |Size |Interface
 |CPU Control Regs |0xC003_9000 |4 KB |AXI4-Lite
-|PLIC |0xC400_0000 |64 MB |AXI4-Lite
-|CLINT |0xC800_0000 |64 KB |AXI4-Lite
-|Watchdog Timers (N) |0xC000_0000 + (N * 0x400) |1 KB x4 |APB4
-|Bus Error Units (N) |0xC801_0000 + (N * 0x1000) |4 KB x4 |AXI4-Lite
+|PLIC |0xC400_0000 |64 MB |TileLink (cluster control bus)
+|CLINT |0xC800_0000 |64 KB |TileLink (cluster control bus)
+|Watchdog Timers (N) |0xC000_0000 + (N * 0x400) |1 KB x4 |TileLink (cluster peripheral bus)
+|Bus Error Units (N) |0xC801_0000 + (N * 0x1000) |4 KB x4 |TileLink (cluster control bus)
 |===================================================================
 
 

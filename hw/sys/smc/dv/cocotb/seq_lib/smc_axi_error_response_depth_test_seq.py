@@ -25,47 +25,39 @@ ALIVE_SENTINEL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
 # each address built from generated symbols rather than a hand-computed offset
 # ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 #
-# The first probe is not an address-decode hole: `smc.rdl` declares three
-# `external remapped_region` blocks of 0x80_0000 each -- ecam_region,
-# mmode_region, xvisor_region -- and `smc_addr.h` resolves them to
-# 0xC080_0000, 0xC100_0000 and 0xC180_0000. An `external` region with no
-# implementation behind it on this bench answers DECERR with the err_slv
-# signature. Genuinely unmapped offsets inside the aperture are
-# `smc_deadspace_decode_test`'s subject, not this one's.
-#
-# Last page of ecam_region, inside the local aperture (LOCAL_BASE ..
-# LOCAL_BASE + REGION_SIZE at the generated resets).
-_UNIMPL_ECAM = (
-    smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
-)
+# The first probe is the last page of the unmapped gap below mmode_region,
+# inside the local aperture (LOCAL_BASE .. LOCAL_BASE + REGION_SIZE at the
+# generated resets), which the fabric error slave answers with DECERR. The
+# full sweep of unmapped offsets inside the aperture is
+# `smc_deadspace_decode_test`'s subject; this test needs one such page for its
+# error-depth bursts.
+_UNMAPPED_BELOW_MMODE = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR") - 0x1000
 # The same page offset fourteen apertures above LOCAL_BASE: outside both the
 # local and the global aperture at the generated resets, so the input fabric's
 # window check answers it with DECERR before it reaches any region.
-_ABOVE_APERTURE = LOCAL_BASE_RESET + 14 * REGION_SIZE_RESET + (_UNIMPL_ECAM - LOCAL_BASE_RESET)
+_ABOVE_APERTURE = LOCAL_BASE_RESET + 14 * REGION_SIZE_RESET + (_UNMAPPED_BELOW_MMODE - LOCAL_BASE_RESET)
 for _base in (LOCAL_BASE_RESET, GLOBAL_BASE_RESET):
     assert not _base <= _ABOVE_APERTURE < _base + REGION_SIZE_RESET, (
         f"0x{_ABOVE_APERTURE:08x} lies inside the aperture at 0x{_base:08x}"
     )
 
 # EXTERNAL_MANDATORY GPIO_CTRL is a DECERR probe: the OSS tree carries no GPIO
-# pad block behind that window (memmap.adoc lists it as technology-specific).
+# pad block behind that window (memmap.adoc lists it as technology-specific),
+# and the reference integration terminates it with an error slave.
 # OCA_I3C_WRAP is a real core and answers OKAY, so it is not a DECERR probe.
 _GPIO_CTRL0 = external_gpio_ctrl_addr(0)
 
-# Data expected alongside the error response. ``ERR_SLAVE_SIGNATURE`` is the
-# word the eFuse architecture document states for a blocked request, applied to
-# the ecam_region and above-aperture probes under the DV-owned assumption ``SmcCsrSeq``
-# declares; the GPIO_CTRL probe expects the all-zero word
-# ``csr_read_decerr_zero`` also expects, a DV-owned expectation that the
-# terminator returns no payload.
+# Data expected alongside the error response: ``ERR_SLAVE_SIGNATURE`` is the
+# word every error slave in the design returns, whether it is the fabric's
+# own (unmapped-gap and above-aperture probes) or the reference integration's
+# GPIO_CTRL terminator.
 ERR_SLAVE_SIGNATURE = SmcCsrSeq.ERR_SLAVE_SIGNATURE
-_GPIO_CTRL_ERR_DATA = 0x0
 
 # (name, addr, expected AXI resp, expected rdata)
 ERROR_PROBES: list[tuple[str, int, int, int]] = [
-    ("UNIMPL_ECAM_REGION", _UNIMPL_ECAM, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
+    ("UNMAPPED_BELOW_MMODE", _UNMAPPED_BELOW_MMODE, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
     ("ABOVE_APERTURE_WINDOW_CHECK", _ABOVE_APERTURE, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
-    ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR, _GPIO_CTRL_ERR_DATA),
+    ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
 ]
 
 

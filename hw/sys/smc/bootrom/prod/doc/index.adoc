@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= SMC Production ROM
-:toc: left
-:toclevels: 3
-:sectnums:
+[[smc-prod-rom-reference]]
+= SMC Production ROM Reference
 
 [[overview]]
 == Overview

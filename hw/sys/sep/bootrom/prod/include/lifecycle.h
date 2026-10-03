@@ -59,6 +59,11 @@ bool lc_state_enforces_secure_boot(uint32_t lc_state);
 // Check if the given LC state is an RMA state (SiP or Chiplet).
 bool lc_state_is_rma(uint32_t lc_state);
 
+// Check if the given LC state enforces secure boot when chiplet debug is
+// disabled: TEST_DEV and RMA_SiP. PROD and PROD_END enforce regardless, and
+// RMA_CHIPLET never does.
+bool lc_state_follows_debug_lock(uint32_t lc_state);
+
 // Read FEAT_CTRL from the lifecycle controller (64-bit).
 // Returns the low 32 bits; *hi receives the high 32 bits.
 uint32_t lc_read_feat_ctrl(uint32_t *hi);
@@ -105,6 +110,7 @@ bool sboot_dis_disabled(void);
 void rom_chiplet_dbg_policy(uint32_t lc_state);
 
 // True when CHIPLET_DBG is disabled by SIP_DIS or SYS_DIS, as latched by
-// rom_chiplet_dbg_policy(). In TEST_DEV this makes secure boot enforced.
+// rom_chiplet_dbg_policy(). In TEST_DEV and RMA_SiP this makes secure boot
+// enforced.
 // Reads true until [S18] runs, and true enforces secure boot.
 bool chiplet_debug_disabled(void);

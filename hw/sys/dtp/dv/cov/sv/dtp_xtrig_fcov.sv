@@ -61,34 +61,71 @@ module dtp_xtrig_fcov (
   wire in_reset = (rst_ni !== 1'b1);
 
   // ------------------------------------------------------------------
-  // CSR write decode: capture AW address, classify at the W handshake.
+  // CSR write decode. AXI4-Lite pairs the n-th W with the n-th AW, so each
+  // queue holds the beats that await their partner and a write is classified
+  // from the queue heads in the cycle after its later beat.
   // ------------------------------------------------------------------
-  logic [31:0] awaddr_q;
-  logic aw_seen_q;
+  localparam int unsigned WrQueueDepth = 4;
+  localparam int unsigned WrIdxW = $clog2(WrQueueDepth);
+  localparam int unsigned WrCntW = $clog2(WrQueueDepth + 1);
+  logic [31:0] aw_addr_q[WrQueueDepth];
+  logic [31:0] w_data_q[WrQueueDepth];
+  logic [3:0] w_strb_q[WrQueueDepth];
+  logic [WrCntW-1:0] aw_count_q, w_count_q;
   wire aw_hs = axil_awvalid_i && axil_awready_i;
   wire w_hs = axil_wvalid_i && axil_wready_i;
+  wire wr_pair = (aw_count_q != '0) && (w_count_q != '0);
+  wire [WrIdxW-1:0] aw_push_idx = WrIdxW'(aw_count_q - WrCntW'(wr_pair));
+  wire [WrIdxW-1:0] w_push_idx = WrIdxW'(w_count_q - WrCntW'(wr_pair));
+  wire [31:0] wr_addr = aw_addr_q[0];
+  wire [31:0] wr_data = w_data_q[0];
+  wire [3:0] wr_strb = w_strb_q[0];
   always_ff @(posedge clk_i) begin
-    if (aw_hs) begin
-      awaddr_q <= axil_awaddr_i;
-      aw_seen_q <= 1'b1;
-    end else if (w_hs) begin
-      aw_seen_q <= 1'b0;
+    if (in_reset) begin
+      aw_count_q <= '0;
+      w_count_q <= '0;
+    end else begin
+      if (wr_pair) begin
+        for (int i = 0; i < WrQueueDepth - 1; i++) begin
+          aw_addr_q[i] <= aw_addr_q[i+1];
+          w_data_q[i] <= w_data_q[i+1];
+          w_strb_q[i] <= w_strb_q[i+1];
+        end
+      end
+      if (aw_hs) aw_addr_q[aw_push_idx] <= axil_awaddr_i;
+      if (w_hs) begin
+        w_data_q[w_push_idx] <= axil_wdata_i;
+        w_strb_q[w_push_idx] <= axil_wstrb_i;
+      end
+      aw_count_q <= aw_count_q + WrCntW'(aw_hs) - WrCntW'(wr_pair);
+      w_count_q <= w_count_q + WrCntW'(w_hs) - WrCntW'(wr_pair);
     end
   end
+
+`ifdef SIMULATION
+  // A full queue has no slot for the next beat.
+  always_ff @(posedge clk_i) begin
+    if (!in_reset && ((aw_count_q >= WrCntW'(WrQueueDepth)) ||
+                      (w_count_q >= WrCntW'(WrQueueDepth)))) begin
+      $fatal(1, "dtp_xtrig_fcov: CSR write queue full (aw_count=%0d w_count=%0d)", aw_count_q,
+             w_count_q);
+    end
+  end
+`endif  // SIMULATION
+
   // The CSR word a write addresses. Every AXI4-Lite access uses the full
   // 32-bit data bus (AMBA AXI protocol specification, AXI4-Lite), so the
   // address selects the word that contains it and WSTRB the bytes within it.
-  wire [31:0] aw_word_addr = {awaddr_q[31:2], 2'b00};
-  wire ctp_csr_write = w_hs && aw_seen_q && (aw_word_addr >= CtpBase)
-      && (aw_word_addr < CtpEnd);
+  wire [31:0] aw_word_addr = {wr_addr[31:2], 2'b00};
+  wire ctp_csr_write = wr_pair && (aw_word_addr >= CtpBase) && (aw_word_addr < CtpEnd);
   wire [31:0] ctp_csr_off = (aw_word_addr - CtpBase) % CtpStride;
   wire ctp_config_write = ctp_csr_write && (ctp_csr_off == CtpConfigOff);
   wire ctp_stretch_write = ctp_csr_write && (ctp_csr_off == CtpStretchOff);
   // CONFIG.MODE, INVERT, and RESET sit in byte 0 and STRETCH_MULT in bytes 0
   // and 1 (cross_trigger_port.rdl), so a field is written only under the
   // strobes of its bytes.
-  wire ctp_config_fields_write = ctp_config_write && axil_wstrb_i[0];
-  wire ctp_stretch_field_write = ctp_stretch_write && (&axil_wstrb_i[1:0]);
+  wire ctp_config_fields_write = ctp_config_write && wr_strb[0];
+  wire ctp_stretch_field_write = ctp_stretch_write && (&wr_strb[1:0]);
 
   // CONFIG.INVERT per CTP one clock behind the field, the clock at which the
   // port core's registered pad outputs apply it.
@@ -105,12 +142,12 @@ module dtp_xtrig_fcov (
   // ------------------------------------------------------------------
   // ctp_cg — mode, inversion, stretch classes, and P2P phases.
   // ------------------------------------------------------------------
-  wire ctp_mode_wire_or_e = ctp_config_fields_write && !axil_wdata_i[0];
-  wire ctp_mode_p2p_e = ctp_config_fields_write && axil_wdata_i[0];
-  wire ctp_inversion_normal_e = ctp_config_fields_write && !axil_wdata_i[1];
-  wire ctp_inversion_inverted_e = ctp_config_fields_write && axil_wdata_i[1];
-  wire ctp_csr_reset_e = ctp_config_fields_write && axil_wdata_i[2];
-  wire [15:0] stretch_val = axil_wdata_i[15:0];
+  wire ctp_mode_wire_or_e = ctp_config_fields_write && !wr_data[0];
+  wire ctp_mode_p2p_e = ctp_config_fields_write && wr_data[0];
+  wire ctp_inversion_normal_e = ctp_config_fields_write && !wr_data[1];
+  wire ctp_inversion_inverted_e = ctp_config_fields_write && wr_data[1];
+  wire ctp_csr_reset_e = ctp_config_fields_write && wr_data[2];
+  wire [15:0] stretch_val = wr_data[15:0];
   wire ctp_stretch_min_e = ctp_stretch_field_write && (stretch_val == 16'd0);
   wire ctp_stretch_max_e = ctp_stretch_field_write && (stretch_val >= 16'd15);
   wire ctp_stretch_mid_e = ctp_stretch_field_write && (stretch_val != 16'd0)
@@ -400,10 +437,9 @@ module dtp_xtrig_fcov (
   localparam int unsigned RouteWindowCycles = 32;
 
   wire [31:0] ctm_csr_off = aw_word_addr - CtmBase;
-  wire ctm_select_write = w_hs && aw_seen_q && (ctm_csr_off < 32'(CtmPorts * CtmStride))
+  wire ctm_select_write = wr_pair && (ctm_csr_off < 32'(CtmPorts * CtmStride))
       && ((ctm_csr_off % CtmStride) == 0);
-  wire [31:0] axil_wbiten = {{8{axil_wstrb_i[3]}}, {8{axil_wstrb_i[2]}}, {8{axil_wstrb_i[1]}},
-                             {8{axil_wstrb_i[0]}}};
+  wire [31:0] wr_biten = {{8{wr_strb[3]}}, {8{wr_strb[2]}}, {8{wr_strb[1]}}, {8{wr_strb[0]}}};
   wire [CtmPorts-1:0] route_src_rise = {int_src_rise, ctp_src_rise};
   wire [CtmPorts-1:0] route_dst_rise = {int_dst_rise, ctp_dst_rise};
   logic [CtmPorts-1:0] ctm_select_q[CtmPorts];
@@ -416,8 +452,8 @@ module dtp_xtrig_fcov (
         route_src_age_q[s] <= '0;
       end else begin
         if (ctm_select_write && (ctm_csr_off / CtmStride == s))
-          ctm_select_q[s] <= (ctm_select_q[s] & ~axil_wbiten[CtmPorts-1:0])
-              | (axil_wdata_i[CtmPorts-1:0] & axil_wbiten[CtmPorts-1:0]);
+          ctm_select_q[s] <= (ctm_select_q[s] & ~wr_biten[CtmPorts-1:0])
+              | (wr_data[CtmPorts-1:0] & wr_biten[CtmPorts-1:0]);
         if (route_src_rise[s]) route_src_age_q[s] <= 6'(RouteWindowCycles);
         else if (route_src_age_q[s] != 6'd0) route_src_age_q[s] <= route_src_age_q[s] - 6'd1;
       end
@@ -443,7 +479,7 @@ module dtp_xtrig_fcov (
 
   always_ff @(posedge clk_i) begin
     if (ctp_config_fields_write) begin
-      u_cg_ctp.sample(1'b1, axil_wdata_i[0], axil_wdata_i[1], 1'b0, 2'd0);
+      u_cg_ctp.sample(1'b1, wr_data[0], wr_data[1], 1'b0, 2'd0);
     end
     if (!in_reset) begin
       for (int i = 0; i < 16; i++) begin

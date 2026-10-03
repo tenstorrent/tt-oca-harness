@@ -46,9 +46,9 @@ module idma_backend_wrapper #(
                                                             // port.
   parameter int unsigned MST_ID_WIDTH         = 3,          // AXI master ID width; must equal
                                                             // BACKEND_INT_ID_WIDTH + 1.
-  parameter int unsigned BACKEND_INT_ID_WIDTH = 2           // ID width of the backend read and
-                                                            // write ports; axi_mux widens it by one
-                                                            // bit.
+  parameter int unsigned BACKEND_INT_ID_WIDTH = 2           // ID width of idma_req_t and of the
+                                                            // backend read and write ports; axi_mux
+                                                            // widens it by one bit.
 ) (
   input  logic clk_i,                                       // System clock.
   input  logic rst_ni,                                      // Async reset, active-low.
@@ -71,7 +71,11 @@ module idma_backend_wrapper #(
   input  dma_mst_resp_t [NUM_MST_INTERFACES-1:0] dma_mst_axi_resp_i // AXI master response.
 );
 
+  `include "ocah_assert.svh"
   `include "axi/typedef.svh"
+
+  `OCAH_ASSERT_INIT(MstIdWidth_A, MST_ID_WIDTH == BACKEND_INT_ID_WIDTH + 1)
+  `OCAH_ASSERT_INIT(ReqIdWidth_A, $bits(req_i[0].opt.axi_id) == BACKEND_INT_ID_WIDTH)
 
   /////////////////////////////////////////
   // Setup iDMA Control Typedefs/Structs //
@@ -152,7 +156,7 @@ module idma_backend_wrapper #(
       .DataWidth(AXI_DATA_WIDTH),
       .AddrWidth(AXI_ADDR_WIDTH),
       .UserWidth(AXI_USER_WIDTH),
-      .AxiIdWidth(MST_ID_WIDTH),
+      .AxiIdWidth(BACKEND_INT_ID_WIDTH),
       .NumAxInFlight(DMA_MST_MAX_TXNS),
       .BufferDepth(BUFFER_DEPTH),
       .TFLenWidth(TF_LEN_WIDTH),

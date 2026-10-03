@@ -766,7 +766,7 @@ interrupt. Writing `1` clears this bit.
 | 31:9 | `Reserved` | - | - a| Reserved
 | 8 | `SMBUS_EN` | RW | 0x0 a| SMBus Enable. Gates the SMBus Alert signal.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `I2C_CONTROLLER_MODE_EN` | RW | 0x0 a| I2C Controller Mode Enable.
+| 4 | `I2C_CONTROLLER_MODE_EN` | RW | 0x0 a| SMBus Pad Direction. When set, the SMBus alert pad is an input and the SMBus suspend pad is an output, as for an SMBus host. When clear, the alert pad is an output and the suspend pad is an input, as for an SMBus target. SCL and SDA are unaffected. Program it to agree with the core's CTRL.ENABLEHOST and CTRL.ENABLETARGET setting.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `I2C_EN` | RW | 0x0 a| I2C Enable.
+| 0 | `I2C_EN` | RW | 0x0 a| I2C Pad Function Select. When set, the integration routes this instance's SCL, SDA, SMBus alert and SMBus suspend signals to their pads. Does not enable the I2C core; CTRL.ENABLEHOST and CTRL.ENABLETARGET select the core's operating mode.
 |===

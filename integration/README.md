@@ -7,7 +7,7 @@ SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 Each subsystem or IP under `hw/{sys,ip}` keeps the canonical integration
 collateral beside its implementation. The `rdl/`, `ipxact/`, and
-`constraint/` directories centralize symlinks to those distributed files so
+`constraints/` directories centralize symlinks to those distributed files so
 integrators can find them in one place. The `filelists/` directory contains
 portable simulation (`<system>.<tool>.sim.f`), synthesis
 (`<system>.synth.f`), and emulation (`<system>.emul.f`) views for SMU, SMC,

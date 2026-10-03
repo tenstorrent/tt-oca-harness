@@ -36,10 +36,6 @@ S7: the SMC aperture. A SEP address in the SMC window goes straight to the
     resources are accessed through the SMC global aperture"). Every access
     size at every aligned offset of one SPM doubleword and a write and read at
     every SPM address bit read back through the SEP view of the SMC window.
-    A read and a write in the ECAM region are sent and their ``sberror`` is
-    recorded: the SMC map names the region only as "Remapped regions, either
-    ECAM, M-Mode or XVisor", and no specification states what it answers with
-    no remap programmed.
 S8: the external aperture. No adopter peripheral is attached to the SEP
     extension port, whose response the SMU port table ties to DECERR when
     unused (``hw/sys/smu/doc/port_table.adoc``, ``sep_external_resp_i``); the
@@ -139,8 +135,6 @@ TRNG_SIZE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_TRNG_SIZE")
 SMC_LOCAL_BASE = smc_base_config_u32("SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset")
 SMC_SPM_BASE = c_header_u32(_SMC_ADDR_H, "SMC_TOP_SPM_MEMORY_BASE_ADDR")
 SMC_SPM_SIZE = c_header_u32(_SMC_ADDR_H, "SMC_TOP_SPM_MEMORY_SIZE")
-SMC_ECAM_BASE = c_header_u32(_SMC_ADDR_H, "SMC_TOP_ECAM_REGION_BASE_ADDR")
-SMC_ECAM_SIZE = c_header_u32(_SMC_ADDR_H, "SMC_TOP_ECAM_REGION_SIZE")
 
 # A doubleword inside the SMU aperture, clear of the firmware console word the
 # bench snoops at the aperture base.
@@ -416,11 +410,7 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
             if spm < addr < spm + SMC_SPM_SIZE:
                 cells.append((addr, 2, 600 + bit, addr))
         observed, want = await self._round_trips(jtag, cells, backdoor=False)
-        ecam = self._smc_view(SMC_ECAM_BASE + SMC_ECAM_SIZE // 2)
-        ecam_err, _ = await self._sb(jtag, ecam, 2)
-        ecam_werr, _ = await self._sb(jtag, ecam, 2, 0)
         self._log(f"CHK-SEP-SBA-SMC-WINDOW {observed}")
-        self._log(f"OBSERVATION ECAM 0x{ecam:08x} sberror read={ecam_err} write={ecam_werr}")
         sb.expect_eq(
             "CHK-SEP-SBA-SMC-WINDOW",
             observed,

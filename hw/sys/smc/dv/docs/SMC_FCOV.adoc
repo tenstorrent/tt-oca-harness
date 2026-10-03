@@ -152,7 +152,7 @@ window, OKAY unless the row says otherwise.
 |`c_config_reg_read`, `c_config_reg_write`, `c_alias_region_0_configured`, `c_alias_region_7_configured`, `c_local_alias_base_reaches_local_resource`, `c_transparent_at_reset`, `c_global_base_readable`, `c_local_base_readonly_c0000000`, `c_local_base_reads_c0000000`, `c_local_base_write_has_no_effect`, `c_base_config_read`, `c_hang_det_control_fields_present` |Fabric control block: base configuration, alias remap regions, the local alias at reset, `LOCAL_BASE` unchanged after a write, hang-detector controls
 |`c_inbound_entry_0`, `c_inbound_entry_15`, `c_outbound_entry_0`, `c_outbound_entry_15`, `c_outbound_entry_stride_32b` |First and last filter entry of each direction, and the 32 B entry stride
 |`c_scratch_write_readback`, `c_scratch_all_zeros`, `c_scratch_all_ones`, `c_chip_config_read`, `c_chip_config_write`, `c_misc_wrap_base_decodes`, `c_misc_wrap_top_decodes`, `c_ndm_reset_block_decode`, `c_lc_state_readback_matches_input` |Miscellaneous wrapper: scratch patterns, chip configuration, the last decoded register, the NDM reset block, `LC_STATE` matching the driven lifecycle input
-|`c_pll_obs_intf_decode`, `c_pll_obs_ctrl_decode`, `c_pvt_obs_intf_decode`, `c_pvt_obs_ctrl_decode`, `c_gpio_poc_pbias_decode`, `c_gpio_refclk_ctrl_decode`, `c_per_pad_instance_0`, `c_per_pad_block_first`, `c_per_pad_instance_64`, `c_per_pad_block_last`, `c_per_pad_stride_0x20` |Mandatory adopter blocks the reference integration terminates: a completion, whatever its response, that the external port carried
+|`c_pll_obs_intf_decode`, `c_pll_obs_ctrl_decode`, `c_pvt_obs_intf_decode`, `c_pvt_obs_ctrl_decode`, `c_gpio_refclk_ctrl_decode`, `c_per_pad_instance_0`, `c_per_pad_block_first`, `c_per_pad_instance_64`, `c_per_pad_block_last`, `c_per_pad_stride_0x20` |Mandatory adopter blocks the reference integration terminates: a completion, whatever its response, that the external port carried
 |`c_mandatory_region_base_decodes`, `c_efuse_shim_decodes`, `c_pll_wrapper_decodes`, `c_pvt_wrapper_decode`, `c_pvt_wrapper_decodes`, `c_supplementary_region_base_decodes` |eFuse SHIM at the window base, the bench PLL and PVT models, and a supplementary-region completion the external port carried
 |`c_straps_lo_read`, `c_straps_lo_decodes`, `c_straps_hi_read`, `c_straps_hi_decodes`, `c_strap_write_has_no_effect` |Captured-straps block read, and unchanged after a write
 |`c_plic_region`, `c_plic_base_access`, `c_plic_top_access`, `c_just_above_plic_not_plic`, `c_priority_written_to_zero`, `c_enables_written_to_disabled`, `c_readback_matches`, `c_clint_base_access`, `c_clint_top_access`, `c_just_above_clint_not_clint`, `c_timer_buserror_region`, `c_beu0_decode` .. `c_beu3_decode`, `c_beu_instance_3` |PLIC, CLINT and bus-error units above the reset aperture, qualified on `REGION_SIZE` covering the offset; the PLIC and CLINT tops are the last words of their decoded extents; the PLIC software initialisation
@@ -329,13 +329,6 @@ stalled-window cover points are in <<smc-fcov-phase2>>, and a clock the clock
 gates stop is the subject of `cg_clk_gate`. Every other bucket and every cell
 of `x_smc_periph` is graded: the default periods reach one cell and the
 `smc_clk_*` ratio leaves in the `clock` group pin one period set per other cell
-|`smc_reset_fcov::cg_reset_op` |`x_cold_warm`: cold asserted, warm not
-|For design-engineering review. Cold reset asserts warm reset in the same
-timestep through the fuse-reset path: `fuse_reset_ni` falls with cold because
-`u_ext_boot_seq_done_qual` is asynchronously reset by the raw cold pin
-(`hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`), so the state never
-holds at the PLL output clock the group samples on. Retired by a design change
-that sequences warm after cold, or by a specification stating the ordering
 |`smc_clk_fcov::cg_clk_gate` |Clock held with the gate bypassed or the block
 busy |`cg_enable_i` low bypasses the gate and a busy block keeps its clock
 (`dma.adoc`, `zeroer.adoc`, Clock Gating)

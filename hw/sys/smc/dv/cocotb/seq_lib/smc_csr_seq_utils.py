@@ -98,14 +98,19 @@ class SmcCsrSeq(smc_base_test_seq):
     ERR_SLAVE_SIGNATURE = EFUSE_BLOCKED_READ_DATA
 
     async def csr_read_err_signature(
-        self, name: str, addr: int, length: int = 4, prot: int = 0
+        self,
+        name: str,
+        addr: int,
+        length: int = 4,
+        prot: int = 0,
+        resp: int | None = None,
     ) -> int:
         """Read a window terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
-        complete with an error response (SLVERR/DECERR) AND return
-        ``ERR_SLAVE_SIGNATURE``, the data word the eFuse architecture document
-        specifies for a blocked request. Used for TB-side terminators (e.g. DTP
-        CSR) and design-side error slaves that return that signature."""
+        complete with an error response (SLVERR/DECERR, or exactly ``resp``
+        when the scenario states the code) AND return ``ERR_SLAVE_SIGNATURE``,
+        the data word every error slave in the design returns. Used for TB-side
+        terminators (e.g. DTP CSR) and design-side error slaves."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
@@ -113,6 +118,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.length = length
         item.allow_error = True
         item.expect_error = True  # scoreboard also enforces the error response
+        item.expected_resp = resp  # and the exact code when one is stated
         item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
@@ -120,6 +126,10 @@ class SmcCsrSeq(smc_base_test_seq):
         assert item.resp_code is not None and item.resp_code > 1, (
             f"{name} @ 0x{addr:08x}: expected an error-slave response "
             f"(SLVERR/DECERR), got resp={item.resp_code} (rdata=0x{item.rdata:x})"
+        )
+        assert resp is None or item.resp_code == resp, (
+            f"{name} @ 0x{addr:08x}: expected resp={resp}, got resp={item.resp_code} "
+            f"(rdata=0x{item.rdata:x})"
         )
         got = item.rdata & mask
         assert got == (self.ERR_SLAVE_SIGNATURE & mask), (
@@ -138,13 +148,12 @@ class SmcCsrSeq(smc_base_test_seq):
         """Read a window that must complete with an AXI error response
         (SLVERR/DECERR) and an all-zero data word.
 
-        The zero is a DV-owned expectation, not a document-cited value: an
-        error response carries no payload, so a terminator that hands back a
-        neighbouring register's contents or a stale bus word fails here. Two
-        sequences call it: ``smc_gpio_ctrl_full_sweep_test_seq`` (the external
-        GPIO_CTRL windows) relies on this DV-owned zero alone;
-        ``smc_sideband_protocol_smoke_test_seq`` reads AVS_READBACK on an empty
-        FIFO, where memmap.adoc does fix the zero, and cites it at the call."""
+        The zero is the word a register block that is not an error slave
+        returns alongside its error: ``smc_sideband_protocol_smoke_test_seq``
+        and ``smc_avsbus_interrupt_sources_test_seq`` read AVS_READBACK on an
+        empty FIFO, where memmap.adoc fixes the zero and the call cites it.
+        A window terminated by an error slave returns ``ERR_SLAVE_SIGNATURE``
+        instead; use ``csr_read_err_signature`` there."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
@@ -183,9 +192,16 @@ class SmcCsrSeq(smc_base_test_seq):
         return item.rdata
 
     async def csr_write_expect_error(
-        self, name: str, addr: int, data: int, length: int = 4, prot: int = 0
+        self,
+        name: str,
+        addr: int,
+        data: int,
+        length: int = 4,
+        prot: int = 0,
+        resp: int | None = None,
     ) -> int:
-        """Write a register that must refuse it with an AXI error response.
+        """Write a register that must refuse it with an AXI error response
+        (SLVERR/DECERR, or exactly ``resp`` when the scenario states the code).
 
         Returns the response code so the caller can report which refusal the
         DUT gave. The caller pairs this with a readback proving the refused
@@ -197,6 +213,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.wdata = data
         item.allow_error = True
         item.expect_error = True  # scoreboard also enforces the error response
+        item.expected_resp = resp  # and the exact code when one is stated
         item.prot = prot
         await self.start_item(item)
         await self.finish_item(item)
@@ -204,6 +221,9 @@ class SmcCsrSeq(smc_base_test_seq):
         assert item.resp_code is not None and item.resp_code > 1, (
             f"{name} @ 0x{addr:08x}: expected an error response (SLVERR/DECERR), "
             f"got resp={item.resp_code}"
+        )
+        assert resp is None or item.resp_code == resp, (
+            f"{name} @ 0x{addr:08x}: expected resp={resp}, got resp={item.resp_code}"
         )
         return item.resp_code
 

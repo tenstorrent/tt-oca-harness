@@ -24,8 +24,8 @@
 # the full byte is written here to match the convention of every sibling file.
 #
 # Secure boot is ENFORCED in PROD_END exactly as in PROD (lifecycle.c), so a
-# test using this preload runs the full crypto chain and needs
-# +sep_crypto_edn_force if its manifest is meant to verify.
+# test using this preload and a signed manifest needs +esrc_noise_force under
+# Verilator. The ROM brings up the full entropy chain from that raw-noise input.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

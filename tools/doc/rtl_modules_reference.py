@@ -25,6 +25,7 @@ from sv_comment_text import (
     header_prose,
     rtl_blocks,
     rtl_sources,
+    struct_field_clauses,
 )
 from svdoc.ir import ModuleDoc, PackageDoc, Typedef
 from svdoc.parser import (
@@ -193,6 +194,14 @@ def _apply_decl_docs(path: Path, doc: ModuleDoc) -> None:
         item.doc = found.get(item.name) or None
 
 
+def _apply_struct_field_docs(path: Path, doc: PackageDoc) -> None:
+    found = struct_field_clauses(path.read_text(errors="replace").splitlines())
+    for typedef in doc.typedefs:
+        clauses = found.get(typedef.name, {})
+        for item in typedef.fields:
+            item.doc = clauses.get(item.name) or None
+
+
 def _module_tables(doc: ModuleDoc) -> str:
     parts = _params_section(doc.params) + _ports_section(doc.ports)
     return "\n".join(parts).strip() + ("\n" if parts else "")
@@ -239,6 +248,7 @@ def _one(path: Path, include_dirs: list, pages: Path, partials: Path, page_dir: 
         _apply_decl_docs(path, doc)
         tables = _module_tables(doc)
     elif isinstance(doc, PackageDoc):
+        _apply_struct_field_docs(path, doc)
         tables = _package_body(doc)
     else:
         return doc.name, False, f"unsupported {type(doc).__name__}"

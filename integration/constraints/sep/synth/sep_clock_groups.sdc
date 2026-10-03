@@ -1,0 +1,1 @@
+../../../../hw/sys/sep/synth/sep_clock_groups.sdc

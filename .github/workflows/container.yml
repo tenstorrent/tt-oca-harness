@@ -55,11 +55,7 @@ env:
 jobs:
   # Build the image with Nix and publish it to GHCR under its immutable
   # content-hash tag. skopeo streams the nix-built archive straight to the
-  # registry: no `docker load`, so nothing unpacks the multi-GB image onto the
-  # runner's small root volume. This keeps the heavy build off the daemon and
-  # lets the job fit a stock ubuntu-latest. DV_LARGE_RUNNER promotes it to a
-  # larger runner once that label exists:
-  #   gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
+  # registry, so the build never goes through a container engine.
   build-and-publish:
     name: Build and publish Nix image
     # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
@@ -67,7 +63,7 @@ jobs:
     # package needs to pull. Skip rather than fail a contributor's run for
     # something they cannot fix; main republishes the image on merge.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest-16-cores
     timeout-minutes: 240
     outputs:
       image_hash: ${{ steps.build.outputs.image_hash }}
@@ -82,36 +78,17 @@ jobs:
       # Both: the uv workspace names tt-oca-manifest as a member, and
       # nix/packages/whisper.nix reads the pinned revision out of the model's
       # own CI workflow, so the flake cannot evaluate without either one.
-      - name: Checkout the private submodules
-        env:
-          MANIFEST_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+      - name: Check out the submodules
         run: |
-          test -n "$MANIFEST_TOKEN"
-          git -c "url.https://x-access-token:${MANIFEST_TOKEN}@github.com/tenstorrent/.insteadOf=git@github.com:tenstorrent/" \
-            submodule update --init --recursive \
+          git submodule update --init --recursive \
               hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
               virtual_platform/tt-oca-harness-model
-
-      # ocah_deps.nix builds gcc, boost and openssl from source; the closure
-      # outgrows a hosted runner's root volume and the failure surfaces deep in a
-      # build as "ld.bfd: final link failed: No space left on device". Reclaim the
-      # preinstalled toolchains this job never uses before building.
-      - name: Free disk space for the nix build
-        run: |
-          echo "before:"; df -h / | tail -1
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
-                      /usr/local/.ghcup /usr/local/share/boost \
-                      /usr/local/lib/node_modules /opt/hostedtoolcache \
-                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
-          sudo docker image prune -af >/dev/null 2>&1 || true
-          sudo install -d -m 0755 /mnt/nix-build
-          echo "after:"; df -h / | tail -1
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
         with:
           extra_nix_config: |
-            build-dir = /mnt/nix-build
+            max-jobs = auto
 
       - name: Ensure skopeo
         run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
@@ -123,21 +100,6 @@ jobs:
 
       - name: Build and publish full image
         id: build
-        env:
-          # Nix clones submodules while copying the flake into its store. Use
-          # the checkout populated above so the token is not needed while Nix
-          # evaluates or builds the image.
-          GIT_CONFIG_COUNT: 5
-          GIT_CONFIG_KEY_0: protocol.file.allow
-          GIT_CONFIG_VALUE_0: always
-          GIT_CONFIG_KEY_1: url.file://${{ github.workspace }}/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest.insteadOf
-          GIT_CONFIG_VALUE_1: git@github.com:tenstorrent/tt-oca-manifest.git
-          GIT_CONFIG_KEY_2: url.file://${{ github.workspace }}/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest.insteadOf
-          GIT_CONFIG_VALUE_2: ssh://git@github.com/tenstorrent/tt-oca-manifest.git
-          GIT_CONFIG_KEY_3: url.file://${{ github.workspace }}/virtual_platform/tt-oca-harness-model.insteadOf
-          GIT_CONFIG_VALUE_3: git@github.com:tenstorrent/tt-oca-harness-model.git
-          GIT_CONFIG_KEY_4: url.file://${{ github.workspace }}/virtual_platform/tt-oca-harness-model.insteadOf
-          GIT_CONFIG_VALUE_4: ssh://git@github.com/tenstorrent/tt-oca-harness-model.git
         run: |
           # The content-hash tag is write-once: the first build to publish a
           # given closure hash is canonical, and the published bytes are what
@@ -177,10 +139,8 @@ jobs:
             echo "- digest: \`${digest}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Pull the freshly published image on a clean runner and exercise it. Because
-  # this runner never ran the nix build, the ~30 GB the image unpacks into on
-  # `docker pull` has the whole root volume to itself and fits where the combined
-  # build+load did not. Only after this passes is the consumed :main tag moved.
+  # Pull the published image on a clean runner and exercise it. Only after this
+  # passes is the consumed :main tag moved.
   verify-and-promote:
     name: Verify image and promote main
     # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
@@ -189,7 +149,7 @@ jobs:
     # something they cannot fix; main republishes the image on merge.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     needs: build-and-publish
-    runs-on: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest-16-cores
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -201,27 +161,11 @@ jobs:
       # Both: the uv workspace names tt-oca-manifest as a member, and
       # nix/packages/whisper.nix reads the pinned revision out of the model's
       # own CI workflow, so the flake cannot evaluate without either one.
-      - name: Checkout the private submodules
-        env:
-          MANIFEST_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+      - name: Check out the submodules
         run: |
-          test -n "$MANIFEST_TOKEN"
-          git -c "url.https://x-access-token:${MANIFEST_TOKEN}@github.com/tenstorrent/.insteadOf=git@github.com:tenstorrent/" \
-            submodule update --init --recursive \
+          git submodule update --init --recursive \
               hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
               virtual_platform/tt-oca-harness-model
-
-      # docker pull unpacks the multi-GB image into the daemon's data-root on the
-      # small root volume; reclaim the preinstalled toolchains first.
-      - name: Free disk space for the image pull
-        run: |
-          echo "before:"; df -h / | tail -1
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
-                      /usr/local/.ghcup /usr/local/share/boost \
-                      /usr/local/lib/node_modules /opt/hostedtoolcache \
-                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
-          sudo docker image prune -af >/dev/null 2>&1 || true
-          echo "after:"; df -h / | tail -1
 
       # docker-run.sh resolves the image tag from the flake via `nix eval`, then
       # pulls REGISTRY_IMAGE:<hash>; a native nix keeps that off the container.
