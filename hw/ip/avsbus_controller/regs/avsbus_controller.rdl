@@ -22,7 +22,8 @@ addrmap avsbus_controller {
          desc = "Read or write type: [list]
                   [*]0x0 - Commit Write
                   [*]0x1 - Hold Write
-                  [*]0x2 - Read
+                  [*]0x2 - Reserved
+                  [*]0x3 - Read
                   [/list]";
       } R_OR_W[29:28] = 0x0;
 
@@ -134,7 +135,7 @@ addrmap avsbus_controller {
                      [*]0x4-0x7 - Manufacturer-specific  [/list]
                   [*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec
                   [*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned
-                  [*]If master issued a write (rw!=0x2) in previous master subframe, this field is 0xffff
+                  [*]If master issued a write (rw!=0x3) in previous master subframe, this field is 0xffff
                   [/list]";
       } CMD_DATA[23:8] = 0x0;
 

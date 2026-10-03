@@ -7,9 +7,9 @@
 # ===================
 # Generalizes the ADOPTER HOOKS pattern of flows/synth/constraints/cdc_max_delay_procs.tcl
 # (::cdc_hier_prefix / ::cdc_clock_alias, applied by cdc_inst / cdc_clk) to the whole
-# block_flow_customizations constraint set, so a child block's CDC/RDC constraint files
-# (clock_defines, resets, case_analysis, static_signals, cdc_rdc_setup) can be sourced
-# unchanged by a parent run (SMU) with the child re-anchored at its instance path.
+# constraint set, so a child block's timing and CDC/RDC constraint files
+# (hw/sys/<block>/synth/*.sdc and hw/sys/<block>/cdc/*.tcl) can be sourced unchanged by a
+# parent run (hw/sys/smu/cdc/smu.cdc_rdc.tcl) with the child re-anchored at its instance path.
 #
 # The SAME variable names as cdc_max_delay_procs.tcl are shared: one
 #   set ::cdc_hier_prefix u_smc/
@@ -116,10 +116,10 @@ proc cdc_create_port_reset { name port args } {
 # flows/synth/constraints/async_clock_groups.tcl) - this is what lets one domain list
 # serve full-hier, SMU_SEP=0, and per-block configurations.
 # ---------------------------------------------------------------------------------------
-# Per-child scoping for a parent aggregator (see smu/{vccdc,vcrdc}/inputs/smu.timing.tcl):
+# Per-child scoping for a parent aggregator (see hw/sys/smu/cdc/smu.cdc_rdc.tcl):
 #
 #   cdc_begin_block u_smc/ {SMCCLK SMUCLK} {JTAG_RESET {}}
-#   source .../smc/smc.clock_defines.tcl
+#   source .../hw/sys/smc/cdc/smc.cdc_rdc.tcl
 #   ...
 #   cdc_end_block
 #

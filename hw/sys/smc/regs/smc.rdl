@@ -98,8 +98,6 @@ addrmap smc_top #(
 
     smc_external                   smc_external                @BASE_ADDR + 0x040_0000;
 
-    external remapped_region       ecam_region                 @BASE_ADDR + 0x080_0000;
-
     external remapped_region       mmode_region                @BASE_ADDR + 0x100_0000;
 
     external remapped_region       xvisor_region               @BASE_ADDR + 0x180_0000;
@@ -177,8 +175,6 @@ addrmap smc_top #(
     smc_cla->desc = "Core Logic Analyzer debug and trace aperture.";
     smc_external->desc = "Adopter-owned external peripheral aperture.";
     smc_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
-    ecam_region->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
-    ecam_region->ocah_hole_note = "No RTL decodes this aperture.";
 `endif
 
     // Core-local resources below are reachable only by the SMC cluster's own harts

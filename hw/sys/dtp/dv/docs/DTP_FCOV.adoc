@@ -24,7 +24,7 @@ its checker-gated Python ledger (`env/dtp_fcov.py`).
 |Field |Value
 |Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned)
 |Reference VPLAN |`DTP_VPLAN.adoc`
-|Coverage policy |`cov/config/verilator/coverage_policy.toml` (hole dispositions, waivers, threshold rules); `cov/config/vcs/coverage_policy.toml` (the VCS thresholds) and `cov/config/vcs/dtp_cov_scope.hier` (the VCS compile-time scope)
+|Coverage policy |`cov/config/verilator/coverage_policy.toml` (hole dispositions and waivers); `cov/config/vcs/coverage_policy.toml` (the URG exclusion list) and `cov/config/vcs/dtp_cov_scope.hier` (the VCS compile-time scope)
 |Open-source framework |PyUVM on cocotb
 |Open-source simulator |Verilator
 |Commercial simulator |VCS, the cocotb and SV-UVM realizations
@@ -428,10 +428,11 @@ the DTP policy file; the runner's schema and grading behavior are in
   `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>`; the report
   of that combined run is the code-coverage evidence and carries the covergroup bins
   of the same points. URG hands the runner family totals and no per-point
-  list, so `cov/config/vcs/coverage_policy.toml` carries `[[thresholds]]`
-  only and a VCS hole closes through a scenario, a design or model change,
-  or an entry in the URG exclusion list that the `pass:[[[native_files]]]`
-  entry of that policy names (<<dtp-fcov-unreachability-list>>); the runner
+  list, so `cov/config/vcs/coverage_policy.toml` carries no
+  `pass:[[[holes]]]` and a VCS hole closes through a scenario, a design or
+  model change, or an entry in the URG exclusion list that the
+  `pass:[[[native_files]]]` entry of that policy names
+  (<<dtp-fcov-unreachability-list>>); the runner
   passes that list to `urg -elfile`, records its checksum, and reports the
   figures with and without it as `effective_metrics` and `raw_metrics`.
   Covergroup bins take no exclusion.
@@ -476,9 +477,9 @@ task an open hole waits on, and of the review that accepted a waiver.
 An entry's `reviewer` differs from its `owner`. A `waive`,
 `exclude_scope`, or `fix_design` entry whose rationale is a design fact
 takes design review; a `fix_model` or `cover` entry takes DV review; a
-`pass:[[[thresholds]]]` rule or a `pass:[[[native_files]]]` entry takes coverage-flow
-review. Every entry change is graded against a named finished run with the
-runner's `--waive` re-grade.
+`pass:[[[native_files]]]` entry takes coverage-flow review. Every entry
+change is graded against a named finished run with the runner's `--waive`
+re-grade.
 
 ==== Reopen triggers
 
@@ -494,18 +495,15 @@ entry being removed, when:
 * the metric set of `[coverage.verilator]` or the VCS `-cm` set changes;
 * the tracker item its `issues` list names closes.
 
-==== Gating
+==== Run status
 
-The compatibility threshold (`--fail-under`, else
-`[coverage.<tool>].fail_under`) grades the tool's raw figure and no waiver
-moves it. The threshold gate is one `pass:[[[thresholds]]]` rule per
-applicable metric family in the policy file of each path: on Verilator with
-`population = "effective"` and the DUT instance as its `scope`, on VCS over
-the family total of the compile-time scope, at 85 percent for the
-code-coverage families, below the 98 percent target, and 100 percent for
-assertion and functional coverage. The hosted weekly publishes the figures
-without a threshold; the gate runs on a regression graded with the policy file
-and on every `--waive` re-grade of its run tree.
+A regression passes or fails on its tests; its coverage figures do not move
+its status. Neither policy file sets a `pass:[[[thresholds]]]` rule and
+`dtp_sim_cfg.toml` sets no `fail_under`, so the runner grades coverage
+against 0 percent, and `cov_report` fails only when the report tool fails or
+the runner refuses a policy file. Both paths report the raw and effective
+figure of every metric family, and closure reads them against the targets of
+the Coverage Goals section.
 
 [[dtp-fcov-unreachability-list]]
 ==== Unreachability exclusion list

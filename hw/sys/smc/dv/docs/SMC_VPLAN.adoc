@@ -418,6 +418,7 @@ feature rows.
 |`smc_dfd_sanity_test` |Run diagnostic CSR reads as the public DFD bounded checker.
 |`smc_dfx_status_abort_test` |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
 |`smc_ijtag_basic_test` |Run the SMC OSS iJTAG-adjacent CSR and CPU JTAG pin scenario.
+|`smc_jtag_dm_cmderr_command_test` |Debug Module `command` writes over the DMI while `abstractcs.cmderr` is nonzero: the stored command is replaced, a Quick Access write replaces cmderr 4 with 2, and nothing executes.
 |`smc_jtag_dmi_smoke_test` |U7-3: DTMCS + DMI read dmstatus.version==2 after dmactive.
 |===
 
@@ -451,7 +452,7 @@ feature rows.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_external_window_pad_ctrl_decode_test` |The six mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
+|`smc_external_window_pad_ctrl_decode_test` |The five mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
 |`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
 |`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
@@ -1384,18 +1385,19 @@ Drive `smc_zeroer_sanity_test_seq`. Each checker below is a named compare the DU
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP); `tb_dma_busy` sampled on every `clk_smc_i` edge across the sweep
 
-*Objective*: All sixteen DMA stream banks decode with `NUM_CTRL_STREAMS = 1`: the reserved `STATUS`, `DONE` and `NEXT_ID` registers complete OKAY and read the value `dma.adoc` gives a reserved bank, and no reserved `NEXT_ID` read launches a transfer.
+*Objective*: All sixteen DMA stream banks decode with `NUM_CTRL_STREAMS = 1`: the reserved `STATUS`, `DONE` and `NEXT_ID` registers complete OKAY and read the value `dma.adoc` gives a reserved bank, and no reserved `NEXT_ID` read launches a transfer. A 32-bit read of the unused word at `0x4C`, the other half of `NEXT_ID_0`'s 8-byte word, answers the map's hole response and launches nothing either.
 
 *Test Coverage*:
 
 * The zeros are given teeth: `DST_ADDRESS_LO` in the same block takes and returns a pattern before the sweep and is restored after it, so a bank reading 0 is reading from a block that answers rather than from a dead bus.
 * `tb_dma_busy` is required resolvable and 0 at every sampled `clk_smc_i` edge across the whole sweep, and the watcher is required to have sampled at least one edge, so "no transfer started" is a per-sample compare and not an untaken branch.
 * Bank 0 is the functional stream: its `STATUS_0` and `DONE_0` are hardware status the specification pins to no value, so they are read for an OKAY response only and their values are reported, not compared. `NEXT_ID_0` is not read here, because reading it launches a transfer.
+* A 32-bit read of `0x4C` must answer OKAY with `0xFFFFFFFF`, the hole response the generated map gives the DMA block, while `tb_dma_busy` stays 0: the access reaches only its own half of the 8-byte word and not `NEXT_ID_0` at `0x48`.
 * The DMA clock gate is saved, ungated for the sweep, and restored with an exact readback.
 
 *Test Procedure*:
 
-Drive `smc_dma_reserved_stream_banks_test_seq` on the SEP_IN AXI sequencer: ungate the DMA clock, start the busy watcher, write and read back the liveness pattern, read `STATUS_0` and `DONE_0` for a response, sweep `STATUS_1..15`, `DONE_1..15` and `NEXT_ID_1..15` against an exact 0, restore the pattern and the clock gate, then require the busy count to be 0 and the access count to have reached its floor. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
+Drive `smc_dma_reserved_stream_banks_test_seq` on the SEP_IN AXI sequencer: ungate the DMA clock, start the busy watcher, write and read back the liveness pattern, read `STATUS_0` and `DONE_0` for a response, sweep `STATUS_1..15`, `DONE_1..15` and `NEXT_ID_1..15` against an exact 0, read `0x4C` against the hole data, restore the pattern and the clock gate, then require the busy count to be 0 and the access count to have reached its floor. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
 
 *Checkers*:
 
@@ -1456,7 +1458,7 @@ Drive `smc_periph_cg_access_error_test_seq` on the SEP_IN AXI sequencer: save CL
 *Test Coverage*:
 
 * Bounded AXI error-response checks over real SEP_IN AXI. Three probes must each answer DECERR with the exact error data, and an always-OKAY register must read the same before and after them:
-** the last page of `ecam_region`, an `external` region with no implementation behind it on this bench;
+** the last unmapped page below `mmode_region`;
 ** the same page offset fourteen apertures above `LOCAL_BASE`, which lies outside the local and global apertures at the reset `REGION_SIZE`, so the input fabric's window check answers it;
 ** the first `EXTERNAL_MANDATORY` GPIO_CTRL window, with no pad block behind it.
 
@@ -2184,7 +2186,7 @@ Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequenc
 * The pre-admit SYS_IN read is issued with the error response tolerated and its response is reported, not asserted: the specification leaves the reset state of the sixteen inbound entries to the chiplet integration, so no verdict is claimed on it.
 * The inbound filter decides each direction from its own request, with block-by-default when nothing matches, so the write and read channels of the port are driven together: four interleaved passes go out as one outstanding group, SEP_IN seeds the read sources and reads the write targets back, and the filter is observed admitting both directions in the same cycle.
 * Every inbound port of this bench carries an agent, so the "unused port tied idle" cell cannot be driven here.
-* Through the admitted entry a 2-beat and a 16-beat INCR burst of full-width beats are written into the SPM and each read back in order as one burst, and a read of the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR, so the port carries bursts and decode errors, not only single-beat register accesses.
+* Through the admitted entry a 2-beat and a 16-beat INCR burst of full-width beats are written into the SPM and each read back in order as one burst, and a read of the last unmapped page below `mmode_region`, must answer DECERR, so the port carries bursts and decode errors, not only single-beat register accesses.
 * The write channel of the unimplemented region answers DECERR too; with GPIO0 ACCESS_FILTER armed over SEP_IN, an unprivileged `sys_axi_in` write is refused with an error response (reported) and took no effect, and an unprivileged read answers DECERR with the error-slave signature, and a read of the empty inbound mailbox answers SLVERR. Three passes of outstanding writes and then of reads over the eight scratch registers under a 64-cycle BREADY/RREADY hold stall the port's response channels and, with that many addresses queued, its address channels, measured per channel, and every read still returns the word its last write carried.
 
 *Test Procedure*:
@@ -2228,7 +2230,7 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 * FIXED and WRAP multi-beat bursts: `fabric.adoc` does not state how the SEP_IN path answers a burst type it does not support, so the expectation is the DV-owned one for a refused write -- an AXI error response of either kind, never OKAY and never a wedge -- and both target registers, read back right after each burst and before any further write, must still hold the values the INCR burst left, so a path that errored the response while still writing is caught. The error code returned is reported, not asserted. Spec gap for the plan owner: a fabric statement fixing the response to an unsupported burst would let this leg hold an exact code.
 * A 16-beat INCR burst of full-width beats into the SPM: every beat lands at its own address, read back at both ends and as one 16-beat read, so a splitter that drops, repeats or reorders beats past the first few is caught. A 2-beat FIXED burst of full-width beats to the scratch registers carries the words they already hold, so whether the path stores or refuses it the readbacks still test the INCR result; its response is reported, not asserted.
 * The same two burst types at the other beat sizes a 64-bit manager may issue: two-beat FIXED and WRAP bursts of one-byte and two-byte beats, and a two-beat WRAP of eight-byte beats, each aligned for WRAP. A refused one must leave both scratch registers as the INCR burst left them; one the path accepts is reported and the registers re-seeded. Each response is reported.
-* A write to the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR, so the write channel of the error slave is shown on SEP_IN as the read channel already is.
+* A write to the last unmapped page below `mmode_region`, must answer DECERR, so the write channel of the error slave is shown on SEP_IN as the read channel already is.
 * Both scratch registers are restored to zero before the sequence ends.
 
 *Test Procedure*:
@@ -4909,6 +4911,43 @@ Drive `smc_jtag_dmi_smoke_test_seq`. Each checker below is a named compare the D
 *Pass Criteria*: `CHK-JTAG-DMI-SMOKE` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
+[[sec-323-smc_jtag_dm_cmderr_command_test]]
+===== 323 `smc_jtag_dm_cmderr_command_test`
+
+*Source Module*: `smc_jtag_dm_cmderr_command_test`
+
+*BFM / Model*: ocah_axi_vip (AXI), ocah_jtag_vip
+
+*Objective*: Debug Module `command` writes over the DMI while `abstractcs.cmderr` is nonzero: the stored command is replaced, a Quick Access write replaces cmderr 4 with 2, and nothing executes.
+
+*Test Coverage*:
+
+* The RISC-V debug specification ignores `command` writes while `cmderr` is nonzero. This Debug Module stores the written value and, for a command type other than Access Register, sets `cmderr` to 2. The leaf holds the Debug Module to that behaviour, which the Debug section of `hw/sys/smc/doc/cpu.adoc` ("Abstract Command Writes While cmderr Is Set") documents, so a regenerated Debug Module that changes it fails here.
+* An Access Register command (`0x00321000`, 64-bit read of x0) to a hart that is not halted ends with `busy` 0 and `cmderr` 4 (halt/resume); `command` reads back the written value.
+* A Quick Access write (`0x01000000`) while `cmderr` is 4 leaves `cmderr` 2 and `command` reading back `0x01000000`.
+* An Access Register write (`0x00321001`) while `cmderr` is 2 leaves `cmderr` 2 and `busy` 0, so nothing executed, and `command` reads back `0x00321001`.
+* Writing 1s to `cmderr` clears it to 0.
+
+*Test Procedure*:
+
+Drive `smc_jtag_dm_cmderr_command_test_seq`: release `debug_reset_n`, activate the Debug Module over the DMI as `smc_jtag_dmi_smoke_test` does, clear `cmderr`, then make the three `command` writes and the clear above, reading `abstractcs` until `busy` is 0 and reading `command` back after each write. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds. The protocol-VIP record's byte golden is the `cmderr` sequence 4, 2, 2, 0.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-JTAG-DM-CMDERR-CLEAR` |`cmderr` reads 0 after 1s are written to it
+|`CHK-JTAG-DM-CMDERR-HALTRESUME` |`cmderr` 4 and the written `command` read back after an Access Register command to a hart that is not halted
+|`CHK-JTAG-DM-CMDERR-OVERWRITE` |`cmderr` 2 and the Quick Access `command` read back after a write made while `cmderr` was 4
+|`CHK-JTAG-DM-CMDERR-STORE` |`cmderr` still 2, `busy` 0 and the new `command` read back after an Access Register write made while `cmderr` was 2
+|===
+
+
+*Pass Criteria*: `CHK-JTAG-DM-CMDERR-CLEAR`, `CHK-JTAG-DM-CMDERR-HALTRESUME`, `CHK-JTAG-DM-CMDERR-OVERWRITE`, `CHK-JTAG-DM-CMDERR-STORE` hold after their compares. Enrolled in: `all`, `hosted`.
+'''''
+
 [[sec-210-smc_dfd_cla_mmr_sweep_test]]
 ===== 210 `smc_dfd_cla_mmr_sweep_test`
 
@@ -6434,7 +6473,7 @@ Drive `smc_gpio_ctrl_full_sweep_test_seq`. Each checker below is a named compare
 *Test Coverage*:
 
 * READ half -- an unprivileged read is refused with DECERR, the code the GPIO programming guide specifies for a blocked transaction, and the error-slave signature 0xBADCAB1E, while the privileged read returns the programmed word.
-* WRITE half -- an unprivileged write of the value that would DISARM the filter is refused, and a privileged read afterwards shows the register unchanged, so the refusal is proven to have taken no effect. The refusal code is asserted as "an error response" rather than an exact code: the GPIO programming guide (`hw/ip/gpio/doc/programming.adoc`, "Filter Configuration") specifies DECERR for a blocked transaction, which the read half requires exactly, while the write half is observed at the SEP_IN AXI port as SLVERR and no document this bench can cite fixes how the SMC fabric forwards a write-channel refusal.
+* WRITE half -- an unprivileged write of the value that would DISARM the filter is refused with DECERR, the code the GPIO programming guide (`hw/ip/gpio/doc/programming.adoc`, "Filter Configuration") specifies for a blocked transaction, and a privileged read afterwards shows the register unchanged.
 * SWEEP -- each of the eight AxPROT requirement values is programmed into GPIO0 in turn and every AxPROT value is driven against it on both halves; only the value equal to the requirement is admitted, every other one is refused, and a readback with the admitted value shows the refused writes left the register unchanged.
 
 *Test Procedure*:
@@ -6732,7 +6771,7 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 
 *BFM / Model*: SEP_IN AXI driver; the request valids and addresses of `smc_external_req_o`, sampled on every `clk_smc_i` edge while each access is in flight; nothing in this bench answers behind the window
 
-*Objective*: The six mandatory external-window control blocks and the first, second and last of the 65 per-pad control blocks decode into the adopter external AXI-Lite window.
+*Objective*: The five mandatory external-window control blocks and the first, second and last of the 65 per-pad control blocks decode into the adopter external AXI-Lite window.
 
 *Test Coverage*:
 
@@ -6744,7 +6783,7 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 
 *Test Procedure*:
 
-Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer: probe the six control blocks, check the generated per-pad geometry against the chapter, probe per-pad instances 0, 1 and 64, require the access count to have reached its floor and print the cell ledger. The leaf then requires an external-port activity record for every probe with a non-zero active-cycle count, and books a protocol-VIP record.
+Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer: probe the five control blocks, check the generated per-pad geometry against the chapter, probe per-pad instances 0, 1 and 64, require the access count to have reached its floor and print the cell ledger. The leaf then requires an external-port activity record for every probe with a non-zero active-cycle count, and books a protocol-VIP record.
 
 *Checkers*:
 
@@ -9562,7 +9601,7 @@ Drive `smc_cool_reset_zero_delay_test_seq`. Each checker below is a named compar
 
 *Test Coverage*:
 
-* `smc_log_engine_transfer_test` runs transfers to completion. `log_engine.rdl` gives `CTRL.EN` the other half of its contract -- "When unset, disables the Log Engine and resets all FSMs, flops, and FIFOs" -- and no leaf has asked it to stop a transfer in flight.
+* `smc_log_engine_transfer_test` runs transfers to completion. `log_engine.rdl` gives `CTRL.EN` the other half of its contract -- "When cleared, the engine stops fetching and writing, discards buffered log data and resets transfer progress. Configuration and pending LOG_LEN values are retained" -- and no leaf has asked it to stop a transfer in flight.
 * Each wrapper is given one log filling its whole slot, which this region makes twice the UART transmit FIFO the `uart_log_engine_disable_during_xfer` firmware image pins and several fetch beats deep, so neither the fetch nor the write side can be finished when the disable lands one register access after the first byte is seen.
 * Three legs, an allow followed by a deny followed by an allow, so the deny cannot pass on a dead bus: the transfer starts and bytes reach the receiver; `CTRL.EN` is cleared and, once the UART reports itself idle, fewer than the whole log has arrived, what did arrive is the head of that slot in order, and a second drain finds nothing more; a shorter length written into the same element while the engine is still disabled is delivered in full once `CTRL.EN` is set again.
 * Draining until the UART reports transmitter-empty with no received data, for a run of polls longer than a character time, is how the firmware image measures the same thing, and it is what lets the halt be checked without knowing how many bytes the UART had buffered.
@@ -12292,9 +12331,9 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 *Test Coverage*:
 
 * INCR bursts of 2, 8 and 32 full-width beats into the SPM, each read back as one burst of the same length, so a splitter that drops, repeats or reorders beats on the JTAG port is caught on the data.
-* A read of the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR.
+* A read of the last unmapped page below `mmode_region`, must answer DECERR.
 * GPIO0 ACCESS_FILTER is armed over SEP_IN with a privileged write; an unprivileged JTAG read of the register is refused with DECERR and the error-slave signature 0xBADCAB1E, as `hw/ip/gpio/doc/programming.adoc` ("Filter Configuration") specifies, and an unprivileged JTAG write of the disarm value is refused with an error response whose code is reported, not asserted, since no document fixes how the fabric forwards a write-channel refusal; a privileged readback shows the refused write took no effect.
-* A write to the unimplemented `ecam_region` page answers DECERR and a read of the empty inbound mailbox answers SLVERR, so both error codes are shown on both channels of this port.
+* A write to the unmapped page below `mmode_region` answers DECERR and a read of the empty inbound mailbox answers SLVERR, so both error codes are shown on both channels of this port.
 * Three passes of outstanding writes and then of reads over the eight scratch registers under a 64-cycle BREADY/RREADY hold stall the port's response channels and, with that many addresses queued behind the register path, its address channels, measured per channel, and every read still returns the word its last write carried.
 * The filter is restored to its generated reset and the access counts are measured: the sequence requires its own SEP_IN count and the scoreboard's JTAG AXI count to equal the expected numbers.
 

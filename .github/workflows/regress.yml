@@ -190,35 +190,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and a
-      # uv workspace member (pyproject.toml), so without it `uv sync` cannot parse
-      # the project and every DUT's run dies at setup. The SEP DV env also reads
-      # its src/oca/constants.py as the authority for the OCA manifest layout.
-      #
-      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
-      # `token` replaces the credential for the MAIN repository fetch too, and
-      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
-      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
-      # submodule at all, died on the repo checkout itself with
-      # "remote: Write access to repository not granted".
-      #
-      # .gitmodules addresses the submodule over SSH, which a hosted runner has
-      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
-      # rewrite is undone afterwards so the credential does not outlive the
-      # step.
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a uv workspace member
+      # (pyproject.toml), so without it `uv sync` cannot parse the project and
+      # every DUT's run dies at setup. The SEP DV env also reads its
+      # src/oca/constants.py as the authority for the OCA manifest layout.
       - name: Check out the tt-oca-manifest submodule
-        env:
-          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
         run: |
-          set -euo pipefail
-          if [ -z "${OCA_PAT:-}" ]; then
-            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
-            exit 1
-          fi
-          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
-          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
-          trap cleanup EXIT
-          git config --global "${rewrite}.insteadOf" 'git@github.com:'
           git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
           # Fail here rather than 54 import errors deep into the run.
           test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
@@ -363,35 +340,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and a
-      # uv workspace member (pyproject.toml), so without it `uv sync` cannot parse
-      # the project and every DUT's run dies at setup. The SEP DV env also reads
-      # its src/oca/constants.py as the authority for the OCA manifest layout.
-      #
-      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
-      # `token` replaces the credential for the MAIN repository fetch too, and
-      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
-      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
-      # submodule at all, died on the repo checkout itself with
-      # "remote: Write access to repository not granted".
-      #
-      # .gitmodules addresses the submodule over SSH, which a hosted runner has
-      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
-      # rewrite is undone afterwards so the credential does not outlive the
-      # step.
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a uv workspace member
+      # (pyproject.toml), so without it `uv sync` cannot parse the project and
+      # every DUT's run dies at setup. The SEP DV env also reads its
+      # src/oca/constants.py as the authority for the OCA manifest layout.
       - name: Check out the tt-oca-manifest submodule
-        env:
-          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
         run: |
-          set -euo pipefail
-          if [ -z "${OCA_PAT:-}" ]; then
-            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
-            exit 1
-          fi
-          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
-          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
-          trap cleanup EXIT
-          git config --global "${rewrite}.insteadOf" 'git@github.com:'
           git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
           # Fail here rather than 54 import errors deep into the run.
           test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
