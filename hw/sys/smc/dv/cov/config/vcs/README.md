@@ -63,6 +63,19 @@ Verilator's expression family against VCS's condition, FSM and toggle -- and
 Verilator 5.050 leaves some vendored files instrumented that its scope names
 (the known gap below), so quote the flow with the number.
 
+## The companion bench's exclusion set
+
+The companion carries an SV-UVM bench for the SMC, and it grades a different
+top from `smc_wrapper`. That bench has its own coverage compile target, its
+own compile-time hierarchy file and its own exclusion set; this policy reads
+none of them, and the runner merges none of them with the files here. The two
+flows therefore answer over two populations, and the figure
+`hw/sys/smc/dv/docs/SMC_FCOV.adoc` quotes is the `run_dv.py` one: scoped by
+`smc_cov_scope.hier` at compile time and graded after the lists
+`coverage_policy.toml` names. A file under that bench whose name resembles a
+class here is not in this population, and an exclusion accepted on one flow
+argues nothing on the other.
+
 ## What each file excludes
 
 ### `smc_cov_scope.hier` (VCS)

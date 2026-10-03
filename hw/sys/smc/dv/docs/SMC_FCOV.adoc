@@ -49,8 +49,9 @@ response was right belongs to the checker of the leaf that reached it.
 waiver for a `user` point |`user` family of a `--dut smc --items hosted fw
 --cov` run, Verilator or VCS
 |Phase 2 functional coverage |The named set in <<smc-fcov-phase2>> |Not collected
-|Line / branch / expression |Floors in the Verilator policy (line 78.0,
-branch 75.9, expression 69.0 effective) |`--coverage-line`, `--coverage-expr`
+|Line / branch / expression |Targets, not gates: line 97.83, branch 92.58,
+expression 92.54 effective, the figures the coverage set measures. No floor
+is set |`--coverage-line`, `--coverage-expr`
 |Condition / FSM / toggle / assertion / covergroups |Commercial sign-off |VCS
 |===
 
@@ -62,12 +63,20 @@ less `rom_fw`). `hosted` alone is the toolchain-free nightly and weekly tier
 is a developer or self-hosted run. `--dut smc` already instantiates
 `smc_wrapper`; there is no second wrapper job.
 
-The numeric floors live in `cov/config/verilator/coverage_policy.toml` and
-fail `run_dv --dut smc --items hosted fw --tool verilator --cov` when unmet.
-The `user` row carries `max_unclassified_points = 0`, which fails a run on
-any point that is neither hit nor classified. The VCS policy,
-`cov/config/vcs/coverage_policy.toml`, names the exclusion files the report
-applies and grades no floor.
+`cov/config/verilator/coverage_policy.toml` carries one
+`pass:[[[thresholds]]]` row, on the `user` family, with
+`max_unclassified_points = 0`: it fails
+`run_dv --dut smc --items hosted fw --tool verilator --cov` on any point that
+is neither hit nor classified. No code-metric family carries a floor, on
+either tool. DTP and SEP each set none and say why -- a run's status comes
+from its tests, and a threshold without an agreed score target fails runs
+without saying anything true -- and the line, branch and expression
+populations here still hold unclassified vendor and generated-CPU points that
+`smc_cov_scope.vlt` cannot drop, so a floor over them would grade a
+denominator this package does not own. The figures above are what the
+coverage set measures and what a closure reading compares against. The VCS
+policy, `cov/config/vcs/coverage_policy.toml`, names the exclusion files the
+report applies and grades no floor either.
 
 Do not mix line coverage with the Phase 1 points: the line population of this
 DUT would mask them.
@@ -420,11 +429,10 @@ collector, listed in <<smc-fcov-phase2>>
 A `user` point takes no accepted waiver. A collected point the run of record
 leaves unhit is an open hole with an owner until a leaf reaches it, the point
 is corrected, or it moves to Phase 2. The code-coverage families keep their
-waivers and floors.
+waivers; they carry no floor.
 
-`\[[holes]]` and `\[[thresholds]]` are written from a measured
-`--dut smc --items hosted fw --cov` database. `expected_matches` is a hard
-count.
+`\[[holes]]` is written from a measured `--dut smc --items hosted fw --cov`
+database. `expected_matches` is a hard count.
 
 [[smc-cov-waiver]]
 ==== Waiver fields
@@ -440,9 +448,8 @@ requires:
 * `issues` when the disposition is actionable
 
 `max_unclassified_points = 0` on the `user` row is the fail-on-new-hole
-knob. line / branch / expression floors do not set that knob: those
-families still have unclassified vendor and generated-CPU points that
-`smc_cov_scope.vlt` cannot drop.
+knob, and the `user` row is the only `\[[thresholds]]` row in either policy
+(<<smc-fcov-goals>>).
 
 A waiver reaches a finished run without a simulator:
 `python3 tools/dv/run_dv.py --dut smc --run-dir <run> --waive` re-grades
@@ -453,6 +460,65 @@ dashboard pages under `tools/dv/doc/`.
 
 There is no checked-in 98%-after-waiver figure. SMC does not inherit
 an unwritten default. Do not invent one.
+
+[[smc-cov-reviewers]]
+==== Reviewers
+
+An entry's `reviewer` differs from its `owner`, and the review class follows
+the kind of fact the entry rests on.
+
+[cols="2,3,2",options="header",]
+|===
+|Class family |Fact it rests on |Review
+|A1 to A11, C1, C3 to C16, D1, D2, F2 to F9, P1 to P31, X1, and the toggle
+classes UNION-ALIAS, EFUSE-IMAGE-COPY, EFUSE-FIELD-MAP-CONST,
+VERSION-ID-CONST and ERR-SLV-CONST |a design fact: generated-code structure,
+an elaboration constant, a tie in the RTL, or an XOR reduction |design review
+|B1, B2, B4, B6 to B9, B12 to B14, and the toggle classes ATOP-ZERO,
+EXT-IRQ-TIED and PARTIAL-VECTOR |a bench fact: what this testbench ties,
+drives or leaves undriven |DV review
+|T1 to T12, and the line and condition rows of the same units in
+`smc_ports_only_exclusions.el` |a unit graded on its ports |design review,
+recorded in `smc_reviewed_exclusions.toml`
+|A12, A13, F10, F11, R1 to R9 |design engineering reviewed the points
+themselves as not exercised by this bench |design review, recorded in
+`smc_reviewed_exclusions.toml`
+|GROUP-VENDORED-I3C |a covergroup declared inside vendored RTL that another
+package grades |coverage-flow review
+|the unreachability list |a formal proof over the environment
+<<smc-fcov-unreachability-list>> states |design review of the regenerated list
+|a `pass:[[[holes]]]` entry |as above for the class the hole names; a
+`fix_model` or `cover` disposition takes DV review |as above
+|===
+
+Every entry change is graded against a named finished run with the runner's
+`--waive` re-grade.
+
+[[smc-cov-reopen]]
+==== Reopen triggers
+
+An accepted exclusion or waiver stays accepted until the policy changes; the
+calendar does not reopen it. It reopens, by the entry being removed at the
+next regeneration or by a `pass:[[[holes]]]` entry's status returning to
+`open`, when:
+
+* an RTL change moves the module or instance checksum of the scope the entry
+  names, which drops the entry on its own, since URG applies no entry whose
+  checksum differs from the design it reports on;
+* an enrolled leaf covers the point: the nine per-run files are written from
+  each graded run's uncovered set, so a covered point is not written again,
+  and the runner rejects an accepted `pass:[[[holes]]]` entry whose selector
+  matches a covered point;
+* the retiring condition the class's ANNOTATION states is met -- for the
+  reviewed classes, design engineering withdrawing the review recorded in
+  `smc_reviewed_exclusions.toml`;
+* the policy's `scope_epoch` changes, or the compile-time scope
+  (`smc_cov_scope.hier`, `smc_cov_scope.vlt`) changes which points enter the
+  database;
+* a regenerated list is written from a new graded run, which replaces every
+  entry the run no longer leaves uncovered;
+* for the unreachability list, the pinned SHA-256 and the file differ, which
+  makes the runner refuse the policy until a new entry is written.
 
 [[smc-fcov-unreachability-list]]
 ==== Unreachability exclusion list
@@ -487,13 +553,25 @@ reaches, never the reverse. The CPU cluster, the I3C controllers and the
 library cells are outside the compile-time scope, so none of their points is
 analysed.
 
-The analysis starts from the merged database of the commercial-path
+The analysis is the `smc_cov_vcf` item of the runner's formal mode in the
+companion's SMC formal configuration; a reader without the companion runs
+their own unreachability tool over the same database with the same
+environment and writes the same URG exclusion format.
+
+The accepted list is seeded from the merged database of the commercial-path
 `--items hosted fw` regression (<<smc-cov-paths>>), so it targets the points
 that regression left uncovered, and it runs on the RTL that produced that
-database, because the formal model and the seed must describe one RTL. The
-analysis is part of the companion's SMC formal configuration; a reader
-without the companion runs their own unreachability tool over the same
-database with the same environment and writes the same URG exclusion format.
+database, because the formal model and the seed must describe one RTL.
+
+The weekly formal job re-runs the analysis, so the accepted list is
+re-validated on a schedule rather than only when someone remembers. That job
+seeds from the block's `smoke` group unless it is given a database, and
+`smoke` is three leaves: it leaves far more points uncovered than the
+coverage set does, so a list regenerated from it proves a larger exclusion
+set and leaves a smaller effective population behind it. The weekly run is
+therefore a check that an accepted entry has not become reachable, not a
+source of the accepted list. A signoff-grade list takes a hand-run
+coverage-set seed, and a list of unrecorded provenance is not one.
 
 The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
 that names the list pins the file's SHA-256. The runner refuses the policy
@@ -506,9 +584,90 @@ Regeneration rule: after a change to the SMC RTL file set, the list is
 regenerated from the merged database of a fresh `--items hosted fw`
 regression. Until it is, URG drops the entries of every scope whose checksum
 the change moved, and the entries of the other scopes still apply; the
-analysis's check mode over the accepted list fails when an excluded point has
-become reachable. A regenerated list takes design review before its entry
-changes, and the review accepts no entry that stimulus can reach.
+analysis's check mode over the accepted list, which the weekly formal job
+runs, fails when an excluded point has become reachable. A regenerated list
+takes design review before its entry changes, and the review accepts no entry
+that stimulus can reach.
+
+[[smc-fcov-exclusion-files]]
+=== Exclusions and Limitations
+
+The VCS report applies ten `-elfile` lists, which
+`cov/config/vcs/coverage_policy.toml` names. Each entry of each list carries
+an ANNOTATION naming its class; `cov/config/vcs/README.md` is the fact table
+behind those classes, with the RTL file and line each fact is read from, the
+granularity a toggle class takes, and the condition that retires it. The
+compile-time scope, which decides what enters the database at all, is in the
+same README.
+
+[cols="2,2,3",options="header",]
+|===
+|File |Classes |Fact table
+|`smc_regblock_exclusions.el` |A1 to A11, B1, B7, C1, C3, C4, and the
+reviewed A12 and A13 |README.md, "Exclusion files" and "Exclusions design
+engineering reviewed"
+|`smc_xor_network_exclusions.el` |X1 |README.md, "Exclusion files"
+|`smc_fsm_exclusions.el` |F2 to F9, B2, B4, and the reviewed F10 and F11
+|README.md, "Exclusion files" and "Exclusions design engineering reviewed"
+|`smc_disabled_feature_exclusions.el` |P1 to P31, C5 to C16, D1, D2, A3, A11,
+C4, F3, and the bench classes B6, B8, B9, B12 to B14 |README.md, "Exclusion
+files" and "Why these exclusions"
+|`smc_toggle_module_exclusions.el`, `smc_toggle_instance_exclusions.el` |T1 to
+T12, UNION-ALIAS, EFUSE-IMAGE-COPY, EFUSE-FIELD-MAP-CONST, VERSION-ID-CONST,
+ERR-SLV-CONST, ATOP-ZERO, EXT-IRQ-TIED, PARTIAL-VECTOR |README.md, "Toggle
+granularity" and "Units graded on their ports"
+|`smc_ports_only_exclusions.el` |T2 to T12, line blocks and condition rows
+|README.md, "Units graded on their ports"
+|`smc_group_exclusions.el` |GROUP-VENDORED-I3C |README.md, "Exclusion files"
+|`smc_reviewed_field_exclusions.el` |R1 to R9 |README.md, "Exclusions design
+engineering reviewed"
+|`smc_unreachable.el` |formal unreachability, no per-entry class
+|<<smc-fcov-unreachability-list>>
+|===
+
+Two limitations of the scope itself are stated where they bite and are
+repeated here so no reader credits the figure with more than it covers.
+`cov/config/verilator/smc_cov_scope.vlt` reaches neither
+`vendor/pulp-platform/**` nor `vendor/tenstorrent/tt-hw-debug/**`, because no
+file pattern matches either tree, so both stay in the Verilator denominator
+(README.md, "Known gap in the Verilator scope"). The `.vlt` and the `.hier`
+scope by different mechanisms over different populations and are kept in step
+by hand, so a change to one takes a review of the other.
+
+[[smc-fcov-traceability]]
+=== VPLAN to FCOV Traceability
+
+Each row names a group of <<smc-vplan,SMC_VPLAN>>'s Test Procedures and the
+`cov/sv` collectors that record that group's behaviour. The mapping is the
+plan's; which leaf lights each point is a property of a run and is measured in
+<<smc-fcov-owners>>, and the per-requirement points are in the Coverage intent
+column of <<smc-traceability-matrix>>.
+
+[cols=",",options="header",]
+|===
+|VPLAN group |Coverage
+|MISC |`smc_map_fcov` scratch, chip-configuration, captured-strap and misc-wrapper decodes; `smc_int_fcov` raw vector bit against its PLIC source and the `SYNC_REG` bits; `smc_periph_fcov` `c_irq_*`; `smc_cpu_fcov` cluster interrupt range
+|POWER |`smc_map_fcov` AVSBus, telemetry, OCTS, DMA and zeroer apertures; `smc_periph_fcov` AVSBus, telemetry and OCTS transfers; `smc_dma_fcov`; `smc_zeroer_fcov`; `smc_reset_fcov` and `smc_iso_fcov` watchdog warm-reset sources
+|FABRIC |`smc_map_fcov` region, window, alias-remap and filter-entry decodes; `smc_fabric_fcov` with its three `smc_axi_chan_fcov` instances; `smc_filt_fcov` protection and inbound filters
+|RESET |`smc_reset_fcov` sources, releases and reset states; `smc_rst_seq_fcov` power-on ordering and what the primary reset holds; `smc_iso_fcov` isolation and FLR; `smc_int_fcov` NDM request path
+|CLOCK |`smc_clk_fcov` clock ratios and gate terms; `smc_clk_domain_fcov` blocks advancing on their clock; `smc_dma_fcov` and `smc_zeroer_fcov` clock-enable terms
+|CPU |`smc_cpu_fcov` core retire, reset vector, cluster traffic, memory-init and cold-boot order; `smc_fabric_fcov` the CPU external path. The measured owner of these points is a FIRMWARE or JTAG leaf, since a CPU point needs a booted cluster
+|JTAG |`smc_map_fcov` `c_jtag_axi_in_read` / `c_jtag_axi_in_write`; `smc_filt_fcov` `c_jtag2axi_remapped` / `c_jtag2axi_filtered`; `smc_fabric_fcov` eFuse JTAG port; `smc_cpu_fcov` the boot points a JTAG leaf reaches. No point covers the CPU TAP itself
+|EFUSE |`smc_efuse_fcov` sense, shadow, bank control, SHIM and the lock contract; `smc_fabric_fcov` `c_axil_efuse_bank_active` and the eFuse JTAG port; `smc_map_fcov` eFuse and SHIM decodes
+|GPIO |`smc_gpio_fcov` the `INPUT_BY_DEFAULT` map; `smc_periph_fcov` pad activity and `c_irq_gpio`; `smc_map_fcov` GPIO instance and interface decodes; `smc_filt_fcov` on the SEP-side filter leaves
+|IRQ |`smc_int_fcov` claim, hang OR and NDM; `smc_periph_fcov` `c_irq_*`, each source and two concurrent
+|I2C |`smc_periph_fcov` `c_i2c0_*` bus conditions and the controller and target transfers; `smc_clk_fcov` `c_i2c_cg_open` / `c_i2c_cg_closed`
+|I3C |`smc_map_fcov` I3C window and instance decodes; `smc_periph_fcov` `c_i3c0_*` line drive. No point covers I3C protocol: `hw/ip/i3ccore_wrap/dv` grades the controllers, and their own covergroups leave the GROUP score through `smc_group_exclusions.el`
+|MAILBOX |`smc_map_fcov` mailbox pair and region decodes; `smc_periph_fcov` `c_mailbox_*`, `c_single_entry_message`, `c_two_entry_message`
+|SPI |No `cov/sv` point. The SPI path on this bench is CSR access inside the UART/SPI/log-engine window, which `smc_map_fcov` decodes and the leaf's `CHK-*` checkers grade
+|UART |`smc_map_fcov` `c_uart_decode` and the first and last instance; `smc_periph_fcov` `c_tx_*` and `c_irq_uart`; `smc_clk_domain_fcov` `c_uart_on_clk_periph`
+|OCCP |No `cov/sv` collector; the ROM boot path is graded by the leaves' `CHK-*` checkers. The dual-target `smc_occp_sanity_test` and the on-demand `occp_rom` group are outside the coverage set
+|FIRMWARE |`smc_cpu_fcov` boot, init and isolation ordering; `smc_int_fcov` PLIC claim and delivery; `smc_periph_fcov` the I2C, UART and telemetry traffic firmware drives; `smc_clk_fcov` and `smc_clk_domain_fcov` the ratios and domains a long firmware run walks
+|===
+
+The covergroups under `ifndef VERILATOR` are the commercial `group` metric and
+are not in this table; <<smc-fcov-groups>> states the contract they are held
+to.
 
 [[smc-cov-owners]]
 === Owning tests
