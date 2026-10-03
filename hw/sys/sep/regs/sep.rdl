@@ -204,7 +204,7 @@ addrmap sep_top #(
     hmac->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
     kmac->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
     trng->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
-    trng->ocah_hole_note = "With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / SLVERR.";
+    trng->ocah_hole_note = "With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR.";
     csrng->ocah_aperture_size = 0x800;
     csrng->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     edn->ocah_aperture_size = 0x800;

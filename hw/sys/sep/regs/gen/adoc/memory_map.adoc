@@ -91,6 +91,6 @@
 
 .Notes
 [[sep-components-note-1]]^[1]^ An access to an unmapped offset also latches PIC source 41. +
-[[sep-components-note-2]]^[2]^ With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / SLVERR. +
+[[sep-components-note-2]]^[2]^ With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR. +
 [[sep-components-note-3]]^[3]^ A 32-bit read of the upper word of a register also answers SLVERR, 0x0.
 // end::sep-components[]

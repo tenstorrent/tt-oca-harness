@@ -501,7 +501,7 @@ VIEWS = {
                 "count": 1,
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "ADOPTER", "rdata": 0x0, "bresp": "ADOPTER", "text": "Adopter-defined"}),),
-                "hole_notes": ("With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / SLVERR.",),
+                "hole_notes": ("With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR.",),
                 "past_response": None,
                 "past_note": "",
             },

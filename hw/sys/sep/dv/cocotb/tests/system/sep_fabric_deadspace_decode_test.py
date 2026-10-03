@@ -22,9 +22,8 @@ adopter endpoint. The reference integration connects no external TRNG, so no
 offset owns a register and every access must be refused: never OKAY, never
 the value of a neighbouring ESRC register, and no ESRC register moved.
 ``memory_map.adoc`` also states the code for that case: the window ends in a
-DECERR slave, so a read answers DECERR, and the AXI4-to-AXI-Lite conversion on
-the TRNG path makes every errored write SLVERR. Each TRNG probe is graded
-against that code.
+DECERR slave, so a single-beat read or write answers DECERR. Each TRNG probe is
+graded against that code.
 
 CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST grade bursts in the crypto region
 only. ``memory_map.adoc`` ("Single-Beat Register Access") limits register
@@ -73,7 +72,7 @@ _RESP_NAME = {
 
 # Response to an unowned TRNG-window offset with no external TRNG connected,
 # per channel (hw/sys/sep/doc/memory_map.adoc, TRNG aperture).
-TRNG_UNOWNED_RESP = {"r": RESP_DECERR, "w": RESP_SLVERR}
+TRNG_UNOWNED_RESP = {"r": RESP_DECERR, "w": RESP_DECERR}
 
 
 @pyuvm.test()
