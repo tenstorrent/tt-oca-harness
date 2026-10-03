@@ -68,7 +68,7 @@ Base-address, region-size, per-block clock-gating enable, and interrupt configur
 | 10 | `avs_cg_en` | RW | 0x0 a| Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.
 | 9 | `i3c_cg_en` | RW | 0x0 a| Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.
 | 8 | `zeroer_cg_en` | RW | 0x0 a| Clock gate enable for axi zeroer
-| 7 | `output_fabric_cg_en` | RW | 0x0 a| Clock gate enable for address remapper register logic
+| 7 | `output_fabric_cg_en` | RW | 0x0 a| Clock gate enable for the output fabric remap demux and mux
 | 6 | `addr_remap_cg_en` | RW | 0x0 a| Clock gate enable for address remapper register logic
 | 5 | `filter_ib_reg_cg_en` | RW | 0x0 a| Clockgate enable for inbound filter registers
 | 4 | `filter_ib_axi_cg_en` | RW | 0x0 a| Clockgate enable for the inbound filters

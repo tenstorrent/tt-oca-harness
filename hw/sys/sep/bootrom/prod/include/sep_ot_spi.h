@@ -97,8 +97,8 @@ void ot_spi_set_sysclk(uint16_t freq_mhz);
  * or an error. */
 uint32_t ot_spi_init(void);
 
-/* Companion overlay may program a wrapper mux that selects the OCAH SPI host.
- * Empty in this tree — the open DUT has no such mux. */
+/* Weak empty stub: the open DUT has no pad mux. A wrapper build whose pads are
+ * shared overrides it to select the OCAH SPI host. */
 void ot_spi_select_pad_mux(void);
 
 /* Re-run bring-up (between transport-fault retries / slot rotation). */
