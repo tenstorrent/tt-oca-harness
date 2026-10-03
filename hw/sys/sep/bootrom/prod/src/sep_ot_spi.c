@@ -171,7 +171,12 @@ static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     mmio_write32(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Clear any latched error bits (write-1-to-clear). */
-    mmio_write32(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
+    mmio_write32(
+        SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
+        SPI_CONTROLLER__ERROR_STATUS__CMDBUSY_bm | SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_bm |
+            SPI_CONTROLLER__ERROR_STATUS__UNDERFLOW_bm | SPI_CONTROLLER__ERROR_STATUS__CMDINVAL_bm |
+            SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bm |
+            SPI_CONTROLLER__ERROR_STATUS__ACCESSINVAL_bm);
 
     if (ot_spi_wait_ready() != 0) {
         return SEP_MSG_SPI_OT_INIT_FAILED;
@@ -429,20 +434,20 @@ uint32_t ot_spi_flash_read(uint32_t flash_off, uint32_t dst_sram, uint32_t len) 
 /* ── Flash read transport - DMA-streamed drain ────────────────────────────── */
 
 /* SECURE_DMA field values for draining the fixed RXDATA FIFO into a destination
- * region. Written as raw register values, matching the sibling DMA code
- * (sep_dma.c). The address-space-id is composed per destination in
+ * region. The address-space-id is composed per destination in
  * ot_spi_dma_dst_setup() from the region's dst_asid. */
-#define OT_DMA_WIDTH_4B 0x2u  /* 4-byte transfer width                  */
-#define OT_DMA_SRC_FIXED 0x2u /* wrap set, increment clear -> fixed src */
-#define OT_DMA_DST_INCR 0x1u  /* increment -> walk the destination      */
-#define OT_DMA_CTRL_GO (1u << 31)
-#define OT_DMA_CTRL_INITIAL (1u << 8)
-#define OT_DMA_CTRL_HSHAKE (1u << 4) /* hardware_handshake_enable              */
-#define OT_DMA_CTRL_ABORT (1u << 27) /* abort: forces idle; NOT cfg_regwen-gated */
-#define OT_DMA_STATUS_BUSY (1u << 0)
-#define OT_DMA_STATUS_DONE (1u << 1)
-#define OT_DMA_STATUS_ABORTED (1u << 2)
-#define OT_DMA_STATUS_ERROR (1u << 3)
+#define OT_DMA_WIDTH_4B 0x2u /* 4-byte transfer width */
+/* wrap set, increment clear -> fixed src */
+#define OT_DMA_SRC_FIXED SECURE_DMA__SRC_CONFIG__WRAP_bm
+#define OT_DMA_DST_INCR SECURE_DMA__DST_CONFIG__INCREMENT_bm /* walk the destination */
+#define OT_DMA_CTRL_GO SECURE_DMA__CONTROL__GO_bm
+#define OT_DMA_CTRL_INITIAL SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm
+#define OT_DMA_CTRL_HSHAKE SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bm
+#define OT_DMA_CTRL_ABORT SECURE_DMA__CONTROL__ABORT_bm /* forces idle; NOT cfg_regwen-gated */
+#define OT_DMA_STATUS_BUSY SECURE_DMA__STATUS__BUSY_bm
+#define OT_DMA_STATUS_DONE SECURE_DMA__STATUS__DONE_bm
+#define OT_DMA_STATUS_ABORTED SECURE_DMA__STATUS__ABORTED_bm
+#define OT_DMA_STATUS_ERROR SECURE_DMA__STATUS__ERROR_bm
 /* Latched W1C status bits (done/aborted/error) that survive a transfer until
  * explicitly cleared; cleared before arming so a poll can't see a stale value. */
 #define OT_DMA_STATUS_CLEAR (OT_DMA_STATUS_DONE | OT_DMA_STATUS_ABORTED | OT_DMA_STATUS_ERROR)
@@ -514,7 +519,8 @@ static void ot_spi_dma_dst_setup(const ot_spi_dst_region_t *region, uint32_t dst
     mmio_write32(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
     mmio_write32(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
     mmio_write32(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
-                 ((uint32_t)region->dst_asid << 4) | OT_DMA_ASID_OT_INTERNAL);
+                 ((uint32_t)region->dst_asid << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp) |
+                     (OT_DMA_ASID_OT_INTERNAL << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp));
 }
 
 /* Stream `dma_len` bytes (a whole multiple of `chunk_bytes`) from flash into SRAM

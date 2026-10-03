@@ -25,10 +25,6 @@
 // SMC interface (for dynamic SMC SRAM range checks).
 #include "sep_smc_interface.h"
 
-#ifndef BIT
-#define BIT(n) (1u << (n))
-#endif
-
 // XIP window for direct (memory-mapped) flash access (OCAH address map):
 //   0x3000_0000 - 0x3FFF_FFFF (256 MiB).
 #ifndef SEP_SPI_BASE
@@ -42,12 +38,11 @@
 #define SEP_EXT_SRAM_BASE ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR)
 #define SEP_SRAM_SIZE ((uint32_t)SEP_TOP_SEP_SRAM_SIZE)
 
-// secure_dma CONTROL / STATUS bits. The IP is vendored, so the generated headers
-// carry no field macros for it.
-#define DMA_CTRL_ABORT BIT(27) // forces the engine idle; not gated by cfg_regwen
-#define DMA_STATUS_BUSY BIT(0)
-#define DMA_STATUS_DONE BIT(1)
-#define DMA_STATUS_ERROR BIT(3)
+// ABORT forces the engine idle and is not gated by cfg_regwen.
+#define DMA_CTRL_ABORT SECURE_DMA__CONTROL__ABORT_bm
+#define DMA_STATUS_BUSY SECURE_DMA__STATUS__BUSY_bm
+#define DMA_STATUS_DONE SECURE_DMA__STATUS__DONE_bm
+#define DMA_STATUS_ERROR SECURE_DMA__STATUS__ERROR_bm
 
 // Completion-poll budget for one transfer, counted in STATUS reads.
 //
@@ -159,20 +154,24 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
 
     // Configure address space IDs: SRC_ASID=0x7 (OT internal), DST_ASID=0x7.
     // Required by secure_dma hardware (see dma_test.c).
-    dma_write(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, 0x77u);
+    dma_write(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
+              (0x7u << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp) |
+                  (0x7u << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp));
 
     // Configure for contiguous copy.
     // - transfer width: 4 bytes (FOUR_BYTE = 0x2) as used in dma_test.
     // - src/dst increment enabled.
     dma_write(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0x2u);
-    dma_write(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_increment ? 0x1u : 0x0u);
-    dma_write(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x1u);
+    dma_write(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR,
+              src_increment ? SECURE_DMA__SRC_CONFIG__INCREMENT_bm : 0u);
+    dma_write(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
 
     dma_write(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, n);
     dma_write(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, n);
 
     // Start: OPCODE=COPY (0), INITIAL_TRANSFER=1 (bit 8), GO=1 (bit 31).
-    dma_write(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x80000100u);
+    dma_write(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+              SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm);
 
     // Wait for completion, bounded so that an engine which neither finishes nor
     // errors becomes a DMA error rather than a hang. n is range-checked above,
