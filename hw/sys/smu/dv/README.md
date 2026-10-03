@@ -114,12 +114,15 @@ python3 tools/dv/run_dv.py --dut smu --list
 python3 tools/dv/run_dv.py --dut smu --items smoke
 
 # 2. Nightly and weekly. `.github/workflows/regress.yml` runs this as the
-#    release qualification set: 69 toolchain-free leaves, one seed nightly,
-#    three weekly with --cov on the large runner. Their `elaboration` firmware
-#    stage only writes zero-filled preload images (Python, no toolchain).
+#    release qualification set: the 84 toolchain-free leaves of `hosted`, one
+#    seed per leaf on both tiers (`reseed: 1`), on `ubuntu-latest`. Neither
+#    tier collects coverage: both `smu` rows carry `coverage: false`, and the
+#    coverage regression runs on the licensed flow outside hosted CI
+#    (`docs/SMU_COVERAGE_POLICY.adoc`). Their `elaboration` firmware stage
+#    only writes zero-filled preload images (Python, no toolchain).
 python3 tools/dv/run_dv.py --dut smu --items hosted
 
-# 3. The whole package: `all` adds the SEP firmware set (101 leaves). The
+# 3. The whole package: `all` adds the SEP firmware set (120 leaves). The
 #    firmware c_build stages build every image in the toolchain container
 #    (unless RISCV_TOOLCHAIN names a picolibc gcc), so make that toolchain
 #    available once first -- the container image, as below, or the rootfs
