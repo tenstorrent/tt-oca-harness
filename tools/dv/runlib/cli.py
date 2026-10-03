@@ -141,6 +141,7 @@ from .site import (
 from .stages import (
     cocotb_python_paths,
     item_artifact_dir,
+    mark_cocotb_prebuilt,
     request_stage_cancellation,
     reset_stage_cancellation,
     resolve_coverage_policy,
@@ -3763,7 +3764,7 @@ def run_flow(
                 stage=stage, status=result.status, duration_sec=result.duration_sec, target=target
             )
             if result.status == "PASS":
-                args._cocotb_prebuilt_targets.add(target)
+                mark_cocotb_prebuilt(args, target, (result.metadata or {}).get("target_build"))
                 return
             blocked_targets[target] = {
                 "stage": stage,
