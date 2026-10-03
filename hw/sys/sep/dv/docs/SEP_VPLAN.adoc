@@ -744,7 +744,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |KM `CMD_KEY_TRANSFER` dest ABR ML-DSA seed, KV pull, KEYGEN public key equals a direct-seed KEYGEN of the same palindromic seed, and differs from the first seed's public key.
 |`sep_km_abr_mlkem_sideload_test`
 |no_cpu, real fuse sense
-|ocah_axi_vip
+|ocah_axi_vip, `abr_mlkem_seed_z_probe_o`
 |The three ML-KEM lanes of the KV facade: the 16-dword seed lane carrying D then Z, the message lane, and the shared-key writeback the KM consumes back out with `CMD_ABR_SK_TRANSFER`. Each lane is compared against a direct-register run of the same words, preceded by a run on different words. Also the confidentiality rule: the shared key stops reading back once an input came from the vault.
 |`sep_km_sideload_share_walk_test`
 |no_cpu, real fuse sense
@@ -8165,7 +8165,8 @@ the outputs" rule, not a consume probe.
 
 *Source Module*: `sep_km_abr_mlkem_sideload_test`
 
-*BFM / Model*: ocah_axi_vip
+*BFM / Model*: ocah_axi_vip, the `abr_mlkem_seed_z_probe_o` observation probe
+(SEP_TB_ARCH exception list)
 
 *Objective*: every ML-KEM lane of the Key-Vault facade carries what the KM
 pushed into the sideload CSR, and the shared key Adams Bridge posts back over
@@ -8185,11 +8186,15 @@ gives it no reset and no SEP document gives its value, so it is not graded. A
 dead decode reads both reference keys as zero and fails `CHK-KEM-SEED-REF`.
 . KEYGEN on the ALT `(D, Z)` pair written directly to the registers and keep
 the encapsulation key. `ZEROIZE`, then KEYGEN on the REF pair and require a
-different encapsulation key. The registers are left holding REF.
-. `ZEROIZE`. `CMD_KEY_LOAD` + `CMD_KEY_TRANSFER` the ALT `D` to dest
+different encapsulation key. Read the engine's `Z` through
+`abr_mlkem_seed_z_probe_o` and require the REF `Z`. The registers are left
+holding REF.
+. `ZEROIZE`. Read the engine's `Z` and require that it is not the ALT `Z`.
+`CMD_KEY_LOAD` + `CMD_KEY_TRANSFER` the ALT `D` to dest
 `abr_mlkem_seed_d` and the ALT `Z` to dest `abr_mlkem_seed_z`, set the KV
 seed-read enable, and KEYGEN with no register write. The encapsulation key
-must equal the ALT one and differ from the REF one.
+must equal the ALT one and differ from the REF one, and the engine's `Z` must
+equal the ALT `Z`.
 . ENCAPS twice over that key, once on each message, written directly, and
 require the two ciphertexts to differ. The first of the two also establishes
 that the shared key is readable when nothing came from the vault. The register
@@ -8219,9 +8224,9 @@ its `KEY_VALID` is clear is not claimed here.
 |CHK0
 |`rom_main` boots on real entropy and announces `RESP_KM_READY`. This is the bench build with the boot and unrecoverable-fault SRAM wipes compiled out; see Known Limitations, "KM application ROM wipe paths".
 |CHK-KEM-SEED-REF
-|The ALT and REF `(D, Z)` pairs produce different encapsulation keys. Without this the sideload compare could not distinguish a delivered seed from a stale one.
+|The ALT and REF `(D, Z)` pairs produce different encapsulation keys, and after the REF KEYGEN the engine's `Z` (`abr_mlkem_seed_z_probe_o`) equals the REF `Z`. Without the first the sideload compare could not distinguish a delivered seed from a stale one; the second is the positive control that the probe follows the `Z` the engine holds.
 |CHK-KEM-SEED-SIDELOAD
-|A KEYGEN whose seed arrives only over the KV seed lane produces the encapsulation key of the direct-register KEYGEN on the same words, and not the key of the pair the registers last held. This is the only check that the lane's two blocks land in the right halves -- D on the low eight dwords and Z on the high eight.
+|A KEYGEN whose seed arrives only over the KV seed lane produces the encapsulation key of the direct-register KEYGEN on the same words, and not the key of the pair the registers last held; and the engine's `Z` after that KEYGEN equals the ALT `Z`; before the KV read the engine does not hold the ALT `Z`. The encapsulation key depends on `D` only and software cannot read `Z` back, so the key grades the `D` half (the low eight dwords) and the probe grades the `Z` half (the high eight). `Z` is a dword palindrome, so dword order is not graded (#2756).
 |CHK-KEM-MSG-SIDELOAD
 |An ENCAPS whose message arrives only over the KV message lane produces the ciphertext of the direct-register ENCAPS on the same message, and not that of the message the register last held. The compare is on the ciphertext, not the shared key: the ciphertext is public and a deterministic function of the encapsulation key and the message, while the shared key is not readable on exactly this path -- see the next row.
 |CHK-KEM-SK-CONFIDENTIAL
@@ -8237,7 +8242,9 @@ its `KEY_VALID` is clear is not claimed here.
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Anti-vacuity*: every captured encapsulation key and ciphertext is required to
-be non-zero. The shared key read on the register-driven path is required to be
+be non-zero. The `Z` probe reads the REF `Z` after the REF KEYGEN and a value
+other than the ALT `Z` before the KV read, so the ALT `Z` compare after the
+sideloaded KEYGEN can fail. The shared key read on the register-driven path is required to be
 non-zero, and it precedes the check that the vault-sourced shared key reads
 zero. Each sideload leg is preceded by a run on different words, so the
 register the lane bypasses holds the wrong value when the lane is read -- a

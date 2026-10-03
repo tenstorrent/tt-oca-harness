@@ -321,7 +321,8 @@
 // ML-KEM KEYGEN reads). Software cannot read Z back, and after a KV seed read
 // the decapsulation key reads as zero, so this read-only XMR is the only view of
 // the Z a KV read delivered. Word i occupies bits [32*i +: 32]. Zero in a build
-// without Adams Bridge. Owner: sep_km_sideload_share_walk_test.
+// without Adams Bridge. Owners: sep_km_sideload_share_walk_test,
+// sep_km_abr_mlkem_sideload_test.
 `SEP_TB_OUT(logic [255:0], abr_mlkem_seed_z_probe_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this

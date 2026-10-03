@@ -205,8 +205,8 @@ Exceptions (a closed set):
   read-only XMR of the Z words the engine holds for ML-KEM KEYGEN. The
   encapsulation key depends on D only, software cannot read Z back, and after a
   KV seed read the decapsulation key reads as zero, so the Z a KV read delivered
-  has no frontdoor. Observation only; it drives nothing. Owner:
-  `sep_km_sideload_share_walk_test`.
+  has no frontdoor. Observation only; it drives nothing. Owners:
+  `sep_km_sideload_share_walk_test`, `sep_km_abr_mlkem_sideload_test`.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
   `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
   reach that port. Protocol, not data.
