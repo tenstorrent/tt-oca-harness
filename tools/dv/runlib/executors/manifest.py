@@ -53,6 +53,10 @@ class ManifestError(ConfigError):
     """A manifest that cannot be trusted or cannot be run here."""
 
 
+class AttemptGraded(RuntimeError):
+    """The coordinator graded the attempt without its worker's result."""
+
+
 def jobs_dir(run_dir: Path) -> Path:
     return run_dir / "stages" / "regress" / "jobs"
 
@@ -63,6 +67,35 @@ def manifest_path(run_dir: Path, task_id: str) -> Path:
 
 def completion_path(run_dir: Path, task_id: str) -> Path:
     return jobs_dir(run_dir) / f"{task_id}.done.json"
+
+
+def graded_path(run_dir: Path, task_id: str) -> Path:
+    """The mark the coordinator leaves when it grades an attempt without the worker's result."""
+    return jobs_dir(run_dir) / f"{task_id}.graded.json"
+
+
+def refuse_graded(marker: Path | None) -> None:
+    """Raise :class:`AttemptGraded` when ``marker`` exists."""
+    if marker is not None and marker.is_file():
+        raise AttemptGraded(f"the coordinator graded this attempt without its result ({marker})")
+
+
+def clear_attempt_outputs(task: LeafTask) -> None:
+    """Remove the leaf ``result.json``, the completion record and the XML files under
+    ``results/`` and ``debug/``, where a wave-debug rerun's framework writes, from the
+    attempt's paths.
+
+    Task ids and flat leaf directories repeat across invocations into one run directory, so
+    whatever sits at these paths before the attempt runs was written by an earlier one.
+    """
+    task.result_json.unlink(missing_ok=True)
+    completion_path(task.run_dir, task.task_id).unlink(missing_ok=True)
+    for name in ("results", "debug"):
+        directory = task.leaf_dir / name
+        if directory.is_dir():
+            for path in directory.glob("*.xml"):
+                if path.is_file():
+                    path.unlink(missing_ok=True)
 
 
 def repo_identity(root: Path) -> tuple[str | None, bool | None]:
@@ -239,8 +272,18 @@ def execute_attempt(
     tool: str,
     simulators: dict[str, Any],
     policies: dict[str, Any],
+    graded_marker: Path | None = None,
 ) -> tuple[StageResult, str | None]:
-    """Run one attempt and write its leaf ``result.json``; the repo-relative path comes back."""
+    """Run one attempt and write its leaf ``result.json``; the repo-relative path comes back.
+
+    Outputs an earlier invocation left at the attempt's paths are removed first; a dry run
+    removes nothing. ``graded_marker`` present before the attempt starts raises
+    :class:`AttemptGraded` before anything is removed, and present once the stage has run
+    raises it before ``result.json`` is written.
+    """
+    refuse_graded(graded_marker)
+    if not getattr(args, "dry_run", False):
+        clear_attempt_outputs(task)
     result = run_stage(
         flow,
         root,
@@ -259,6 +302,7 @@ def execute_attempt(
     )
     result_json = repo_rel(root, task.result_json)
     if not getattr(args, "dry_run", False):
+        refuse_graded(graded_marker)
         write_result(
             task.result_json,
             fragment_payload(
@@ -296,15 +340,19 @@ __all__ = [
     "DIGEST_KEY",
     "MANIFEST_SCHEMA_VERSION",
     "OVERRIDABLE_ARGS",
+    "AttemptGraded",
     "ManifestError",
     "attempt_args",
+    "clear_attempt_outputs",
     "completion_path",
     "execute_attempt",
+    "graded_path",
     "jobs_dir",
     "load_manifest",
     "manifest_digest",
     "manifest_path",
     "manifest_payload",
+    "refuse_graded",
     "repo_identity",
     "task_from_manifest",
     "write_completion",

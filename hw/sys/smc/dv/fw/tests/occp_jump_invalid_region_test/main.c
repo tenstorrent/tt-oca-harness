@@ -2,14 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * In non-secure mode, issues JUMPs into the protected SRAM region below OCCP_TEST_BASE_ADDR,
+ * In non-secure mode, issues JUMPs into the protected SRAM region below the OCCP test range,
  * checks each is rejected with INVALID_ADDRESS and a JUMP_READ_FAILED status entry, and that
  * the ROM still answers afterwards.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
-#include <string.h>
 
 int exp_num_jump_security_errors = 0;
 
@@ -182,6 +181,4 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }

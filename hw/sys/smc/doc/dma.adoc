@@ -77,7 +77,7 @@ passthrough; these generic arbitration features add no extra SMC streams.
 |Parameter |SMC value |Meaning
 |`NUM_CTRL_INTERFACES`, `NUM_CTRL_STREAMS`, `NUM_MST_INTERFACES` |1 each
 |One shared configuration, one functional stream and one DMA master.
-|`DMA_MST_MAX_TXNS` |32 |Backend in-flight AXI limit, from `FABRIC_MAX_TRANS`.
+|`DMA_MST_MAX_TXNS` |32 |Backend in-flight AXI limit, from `FabricMaxTrans`.
 The generic DMA wrapper default is 16.
 |`F2M_FIFO_DEPTH` |4 |Request FIFO between frontend and 2D midend.
 |`M2B_FIFO_DEPTH` |0 |Midend-to-backend FIFO bypassed.
@@ -123,7 +123,9 @@ The generated map contains `NEXT_ID`, `STATUS` and `DONE` banks for 16 streams,
 but only bank 0 is functional in SMC. Reads of `NEXT_ID_1..15` complete with zero
 and launch nothing; their `STATUS` and `DONE` registers also read zero. Treat
 these banks as reserved. A read of `NEXT_ID_0` is a command, not a harmless
-status read; exclude it from diagnostic register dumps.
+status read; exclude it from diagnostic register dumps. Any read whose bytes
+include `NEXT_ID_0`, such as a 64-bit read at `0x48`, launches a transfer; a
+32-bit read of the unused word at `0x4C` does not.
 
 Source, destination, length, strides, repetitions and `CONFIG` are shared registers.
 Serialize their writes and the submission read between software contexts. There
@@ -168,13 +170,13 @@ retired ID alone is not proof that valid data was copied.
 
 The names above follow the published register map. The RTL frontend calls the
 configuration `conf`, the ND-enable field `enable_nd`, and the repetition pair
-`reps_2_low/high`; these refer to the same fields. Some generated CONFIG field
-descriptions say "Not used", but the frontend forwards the options described here.
+`reps_2_low/high`; these refer to the same fields.
 
 The frontend requests incrementing AXI bursts and sets the cache attribute to
 modifiable. `CONFIG` supplies decoupling, maximum burst-length and length-reduction
-options. The backend handles alignment and burst splitting; these mechanisms
-do not grant permission to access a filtered or otherwise invalid address.
+options; the `CONFIG` register description gives each field's effect. The backend
+handles alignment and burst splitting; these mechanisms do not grant permission
+to access a filtered or otherwise invalid address.
 
 == Submission and Completion
 

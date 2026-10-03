@@ -107,7 +107,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <h3 id="CORE0_MEIP_CLAIM_COMPLETE">CORE0_MEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -118,7 +118,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <h3 id="CORE1_MEIP_CLAIM_COMPLETE">CORE1_MEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -129,7 +129,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <h3 id="CORE2_MEIP_CLAIM_COMPLETE">CORE2_MEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -140,7 +140,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <h3 id="CORE3_MEIP_CLAIM_COMPLETE">CORE3_MEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -151,7 +151,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <h3 id="CORE0_SEIP_CLAIM_COMPLETE">CORE0_SEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -162,7 +162,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <h3 id="CORE1_SEIP_CLAIM_COMPLETE">CORE1_SEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -173,7 +173,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <h3 id="CORE2_SEIP_CLAIM_COMPLETE">CORE2_SEIP_CLAIM_COMPLETE</h3>
 <table>
@@ -184,7 +184,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt &amp; claim threshold. Maximum value is 7.<br>Any interrupt with a priority less than the threshold cannot interrupt the cpu</td></tr>
+<tr><td>2:0</td><td>value</td><td>RW</td><td>-</td><td>Interrupt notification threshold. Maximum value is 7.<br>The context&#x27;s external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.<br>The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</td></tr>
 </table>
 <h3 id="CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</h3>
 <table>

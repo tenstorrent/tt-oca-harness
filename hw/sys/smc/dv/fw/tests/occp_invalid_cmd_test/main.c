@@ -3,14 +3,12 @@
 
 /*
  * Sends OCCP requests with an invalid MsgID, an invalid AppID, and both, and checks that the
- * ROM rejects each and records the expected entries in the SMC status buffer.
- * With STATUS_RPT_DISABLE active, response checks still run but status-buffer validation is
- * skipped.
+ * ROM rejects each and logs the expected number of error entries in the SMC status buffer.
+ * With the status-reporting-disable strap set, the status-buffer check is skipped.
  */
 
 #include "occp_test_common.h"
 #include "smc_test.h"
-#include <string.h>
 
 int exp_num_cmd_unknown_errors = 0;
 
@@ -22,8 +20,8 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
     }
     uint32_t status_data = 0xdeadbeef;
     int num_cmd_unknown_errors = 0;
-    // CMD_UNKNOWN is indistinguishable from CMD_FAILED so we will count both and expect twice the
-    // number of errors
+    // The check cannot tell CMD_UNKNOWN from CMD_FAILED, so it counts both and expects twice the
+    // number of rejected requests.
     exp_num_cmd_unknown_errors *= 2;
     while (status_data != 0x0) {
         int retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status_data);
@@ -33,7 +31,6 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
             return;
         }
         simputshex32("SMC Status: ", status_data);
-        // will match for both CMD_UNKNOWN and CMD_FAILED
         if (occp_status_matches_expected(status_data, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
                                          OCCP_SPEC_ERROR_CMD_UNKNOWN, false)) {
             num_cmd_unknown_errors++;
@@ -103,20 +100,13 @@ static void run_test_suite(test_context_t *ctx) {
 }
 
 static void finalize_test_results(test_context_t *ctx) {
-    uint32_t result_code;
-
     if (ctx->overall_result) {
         simputs("ALL TESTS PASSED!\n");
-        result_code = SMC_SCRATCHPAD_SIM_PASS_CODE;
         test_pass(0);
     } else {
         simputs("SOME TESTS FAILED!\n");
-        result_code = SMC_SCRATCHPAD_SIM_FAIL_CODE;
         test_fail(0);
     }
-
-    occp_send_write_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                            (uint8_t *)&result_code, sizeof(result_code));
 }
 
 int main(void) {
@@ -127,7 +117,6 @@ int main(void) {
     if (!initialize_interface(&test_ctx)) {
         simputs("FAIL: Interface initialization failed\n");
         test_fail(0);
-        return -1;
     }
 
     test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
@@ -141,13 +130,5 @@ int main(void) {
 
     read_and_validate_smc_status_buffer(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
-
-    simputs("Done\n");
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

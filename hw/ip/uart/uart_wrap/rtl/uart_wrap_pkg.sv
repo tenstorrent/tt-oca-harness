@@ -3,7 +3,7 @@
 
 // Define address-map constants and AXI-Lite typedefs for the multi-UART wrap.
 //
-// Defines the 32-bit csr_axil types, MAX_NUM_UARTS and the per-UART address spacing.
+// Defines the 32-bit csr_axil types, MaxNumUarts and the per-UART address spacing.
 
 package uart_wrap_pkg;
 
@@ -13,13 +13,13 @@ package uart_wrap_pkg;
   // Register Interface Definitions //
   ////////////////////////////////////
 
-  localparam int unsigned REG_ADDR_WIDTH = 32;
-  localparam int unsigned REG_DATA_WIDTH = 32;
-  localparam int unsigned REG_STRB_WIDTH = REG_DATA_WIDTH / 8;
+  localparam int unsigned RegAddrWidth = 32;
+  localparam int unsigned RegDataWidth = 32;
+  localparam int unsigned RegStrbWidth = RegDataWidth / 8;
 
-  typedef logic [REG_ADDR_WIDTH-1:0] reg_addr_t;
-  typedef logic [REG_DATA_WIDTH-1:0] reg_data_t;
-  typedef logic [REG_STRB_WIDTH-1:0] reg_strb_t;
+  typedef logic [RegAddrWidth-1:0] reg_addr_t;
+  typedef logic [RegDataWidth-1:0] reg_data_t;
+  typedef logic [RegStrbWidth-1:0] reg_strb_t;
 
   `AXI_LITE_TYPEDEF_ALL(csr_axil, reg_addr_t, reg_data_t, reg_strb_t)
 
@@ -28,7 +28,7 @@ package uart_wrap_pkg;
   // UART Wrapper Definitions //
   //////////////////////////////
 
-  localparam int unsigned MAX_NUM_UARTS = 4;
-  localparam int unsigned UART_LOG_ENGINE_WRAP_SPACING = 32'h400; // Address spacing between UART instances.
+  localparam int unsigned MaxNumUarts = 4;
+  localparam int unsigned UartLogEngineWrapSpacing = 32'h400; // Address spacing between UART instances.
 
 endpackage

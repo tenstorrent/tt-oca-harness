@@ -2,48 +2,32 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP warm/cold reset scratch-bank retention (PyUVM).
 
-OSS port of reference suite ``sep_clock_uvm_warm_reset_vs_cold_reset_test``.
 Proves the SEP System-block dual scratch banks honor their reset domains:
 
-  * SCRATCH_WARM (base 0x1080_2080) is in the WARM domain. A warm reset
-    (``wdt_rst_ni_i`` low) clears it. VPLAN card
-    ``sep_warm_cold_reset_scratch_test``.
-  * SCRATCH_COLD (base 0x1080_2000) is in the COLD domain. A warm reset does
-    not clear it; only a cold reset (``rst_ni``) does.
+  * SCRATCH_WARM (0x1080_2080) is in the WARM domain: a warm reset (``wdt_rst_ni_i`` low)
+    clears it.
+  * SCRATCH_COLD (0x1080_2000) is in the COLD domain: only a cold reset (``rst_ni``) clears it.
 
-Beyond the reference suite (which only warm-resets), it adds the COLD-reset re-init
-half and cross-checks the cold bank both FRONTDOOR (the CPU-LSU AXI
-readback) and BACKDOOR (the ``scratch_cold_probe_o`` XMR tap), proving they agree.
+Both the warm reset and the cold-reset re-init are covered, and the cold bank is read both over
+the CPU-LSU AXI path and through the ``scratch_cold_probe_o`` tap.
 
-Checks (each asserts an exact value, so a stuck/X register fails):
-  CHK-NONVAC     : pre-reset AXI writes to SCRATCH_WARM[0]/SCRATCH_COLD[0] read
-                   back the written patterns (the writes land + banks AXI-live).
-                   Cold bank cross-checked via scratch_cold_probe_o.
-  CHK-WARM-RST   : a wdt_rst_ni_i low pulse drives sep_cpu_reset_n 1->0->1.
-                   Cold-domain isolation is CHK-WARM-CLEAR / CHK-WARM-RETAIN
-                   (warm bank clears, cold bank retains) -- dbg_sep_reset_n_o has
-                   no fan-out from wdt_rst_ni_i, so asserting it stays 1 cannot fail.
-  CHK-BANK-ALIAS : with one distinct pattern in each of the 16 registers (eight
-                   per bank, sep_scratch.rdl SCRATCH[8]), every
-                   index of both banks reads back its OWN pattern -- per-register
-                   storage with no aliasing between indices or between banks.
-                   Cold bank cross-checked word-by-word via scratch_cold_probe_o.
-  CHK-WARM-CLEAR : after the warm reset, SCRATCH_WARM[0] == reset default 0x0.
-  CHK-WARM-RETAIN: after the warm reset, SCRATCH_COLD[0] == its written pattern
-                   (survives). Probe cross-check.
-  CHK-WARM-BANK  : the warm reset clears ALL 8 warm registers and leaves ALL 8
-                   cold registers at their patterns -- the domain split holds per
-                   register, not only at index 0.
-  CHK-WARM-RECOVER: both banks are writable again post-warm-reset, each with
-                   a distinct new pattern.
-  CHK-COLD-REINIT: after a cold reset (rst_ni resense), BOTH banks == reset
-                   default. Probe cross-check on the cold bank.
-  CHK-COLD-BANK  : the cold reset clears both banks -- 8 registers each, 16 in
-                   total.
+Checks (exact values, so a stuck or X register fails):
+  CHK-NONVAC      : pre-reset writes to SCRATCH_WARM[0]/SCRATCH_COLD[0] read back (probe too).
+  CHK-WARM-RST    : a wdt_rst_ni_i low pulse drives sep_cpu_reset_n 1->0->1.
+  CHK-BANK-ALIAS  : a distinct pattern in every register of both banks reads back at its own
+                    index, so no index or bank aliases (probe word-by-word).
+  CHK-WARM-CLEAR  : after the warm reset, SCRATCH_WARM[0] == reset default.
+  CHK-WARM-RETAIN : after the warm reset, SCRATCH_COLD[0] keeps its pattern (probe too).
+  CHK-WARM-BANK   : the warm reset clears every warm register and keeps every cold one.
+  CHK-WARM-RECOVER: both banks accept a new pattern after the warm reset.
+  CHK-COLD-REINIT : after a cold reset (rst_ni resense), both banks == reset default (probe too).
+  CHK-COLD-BANK   : the cold reset clears every register of both banks.
 
-no_cpu / +skip_fuse_sense (the scratch banks are reached over the CPU-LSU AXI
-splice; the reset stimulus is the wdt_rst_ni_i / rst_ni primary inputs -- no OTP
-data is read).
+Cold-domain isolation is shown by CHK-WARM-CLEAR / CHK-WARM-RETAIN: dbg_sep_reset_n_o has no
+fan-out from wdt_rst_ni_i, so a check that it stays 1 could not fail.
+
+no_cpu / +skip_fuse_sense: the banks are reached over the CPU-LSU AXI splice and the reset
+stimulus is the wdt_rst_ni_i / rst_ni primary inputs; no OTP data is read.
 """
 
 from __future__ import annotations

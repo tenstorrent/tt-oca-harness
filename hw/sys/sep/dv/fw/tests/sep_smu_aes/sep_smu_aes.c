@@ -10,8 +10,6 @@
 
 #include <stdint.h>
 
-#include "och_sep_common.h"
-#include "sep.h"
 #include "sep_outbound_filter.h"
 #include "sep_aes_init.h"
 #include "sep_entropy.h"

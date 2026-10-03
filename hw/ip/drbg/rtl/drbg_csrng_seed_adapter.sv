@@ -13,7 +13,7 @@
 module drbg_csrng_seed_adapter
   import drbg_pkg::*;
 #(
-  parameter int unsigned SEED_FIFO_DEPTH = DRBG_DEFAULT_SEED_FIFO_DEPTH // Number of complete seeds that can be queued.
+  parameter int unsigned SEED_FIFO_DEPTH = DrbgDefaultSeedFifoDepth // Number of complete seeds that can be queued.
 ) (
   input  wire logic                               clk_i,    // System clock.
   input  wire logic                               rst_ni,   // Async reset, active-low.
@@ -31,7 +31,7 @@ module drbg_csrng_seed_adapter
   output logic                                    seed_queue_valid_o, // Seed FIFO not empty.
   output logic [383:0]                            seed_queue_bits_o, // Next queued 384-bit seed; zero when the FIFO is empty.
   output logic                                    seed_queue_fips_o, // FIPS flag for the next seed, the provisional policy
-                                                                     // constant DRBG_CSRNG_SEED_FIPS_PROVISIONAL; zero when
+                                                                     // constant DrbgCsrngSeedFipsProvisional; zero when
                                                                      // the FIFO is empty.
   output logic                                    seed_push_o, // Pulse when a seed is pushed.
   output logic [4:0]                              packer_word_count_o, // Words accumulated in the packer, 0 to 12.
@@ -40,22 +40,22 @@ module drbg_csrng_seed_adapter
 
   `include "prim_assert.sv"
 
-  localparam int unsigned WORD_WIDTH = 32;
-  localparam int unsigned SEED_WIDTH = entropy_src_pkg::CSRNG_BUS_WIDTH;
-  localparam int unsigned FIPS_WIDTH = entropy_src_pkg::FIPS_BUS_WIDTH;
-  localparam int unsigned SEED_FIFO_WIDTH = SEED_WIDTH + FIPS_WIDTH;
+  localparam int unsigned WordWidth = 32;
+  localparam int unsigned SeedWidth = entropy_src_pkg::CSRNG_BUS_WIDTH;
+  localparam int unsigned FipsWidth = entropy_src_pkg::FIPS_BUS_WIDTH;
+  localparam int unsigned SeedFifoWidth = SeedWidth + FipsWidth;
 
   logic                  packer_rvalid;
-  logic [SEED_WIDTH-1:0] packer_rdata;
+  logic [SeedWidth-1:0]  packer_rdata;
 
   logic                  seed_fifo_wready;
-  logic [SEED_FIFO_WIDTH-1:0] seed_fifo_rdata;
+  logic [SeedFifoWidth-1:0] seed_fifo_rdata;
   logic                  seed_fifo_full;
   logic                  seed_fifo_err;
 
   prim_packer_fifo #(
-    .InW        (WORD_WIDTH),
-    .OutW       (SEED_WIDTH),
+    .InW        (WordWidth),
+    .OutW       (SeedWidth),
     .ClearOnRead(1'b1)
   ) u_seed_packer (
     .clk_i    (clk_i),
@@ -73,7 +73,7 @@ module drbg_csrng_seed_adapter
   assign seed_push_o = packer_rvalid && seed_fifo_wready;
 
   prim_fifo_sync #(
-    .Width            (SEED_FIFO_WIDTH),
+    .Width            (SeedFifoWidth),
     .Pass             (1'b0),
     .Depth            (SEED_FIFO_DEPTH),
     .OutputZeroIfEmpty(1'b1)
@@ -83,7 +83,7 @@ module drbg_csrng_seed_adapter
     .clr_i    (1'b0),
     .wvalid_i (packer_rvalid),
     .wready_o (seed_fifo_wready),
-    .wdata_i  ({DRBG_CSRNG_SEED_FIPS_PROVISIONAL, packer_rdata}),
+    .wdata_i  ({DrbgCsrngSeedFipsProvisional, packer_rdata}),
     .rvalid_o (seed_queue_valid_o),
     .rready_i (entropy_src_hw_if_req_i.es_req && seed_queue_valid_o),
     .rdata_o  (seed_fifo_rdata),
@@ -92,8 +92,8 @@ module drbg_csrng_seed_adapter
     .err_o    (seed_fifo_err)
   );
 
-  assign seed_queue_fips_o = seed_fifo_rdata[SEED_FIFO_WIDTH-1];
-  assign seed_queue_bits_o = seed_fifo_rdata[SEED_WIDTH-1:0];
+  assign seed_queue_fips_o = seed_fifo_rdata[SeedFifoWidth-1];
+  assign seed_queue_bits_o = seed_fifo_rdata[SeedWidth-1:0];
 
   assign entropy_src_hw_if_rsp_o.es_ack = seed_queue_valid_o && entropy_src_hw_if_req_i.es_req;
   assign entropy_src_hw_if_rsp_o.es_bits = seed_queue_bits_o;
@@ -107,7 +107,7 @@ module drbg_csrng_seed_adapter
   `OCAH_OT_ASSERT(EsAckRequiresSeed_A, entropy_src_hw_if_rsp_o.es_ack |-> seed_queue_valid_o)
   `OCAH_OT_ASSERT(
       SeedFipsPolicy_A,
-      seed_queue_valid_o |-> entropy_src_hw_if_rsp_o.es_fips == DRBG_CSRNG_SEED_FIPS_PROVISIONAL)
+      seed_queue_valid_o |-> entropy_src_hw_if_rsp_o.es_fips == DrbgCsrngSeedFipsProvisional)
   `OCAH_OT_ASSERT(SeedPushRequiresPackedSeed_A, seed_push_o |-> packer_rvalid)
   `OCAH_OT_ASSERT(SeedAckRequiresRequest_A,
                   entropy_src_hw_if_rsp_o.es_ack |-> entropy_src_hw_if_req_i.es_req)

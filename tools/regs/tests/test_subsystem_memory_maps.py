@@ -125,7 +125,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
                 if view.name == "sep-components"
             )
         )
-        self.assertEqual(sep["main:trng"].base, sv_hex(sep_crypto, "TRNG_BASE_ADDR"))
+        self.assertEqual(sep["main:trng"].base, sv_hex(sep_crypto, "TrngBaseAddr"))
         self.assertEqual(sep["main:abr"].base, sv_hex(sep_addrmap, "SEP_TOP_ABR_BASE_ADDR"))
         self.assertEqual(sep["main:abr"].occupied_size, sv_hex(sep_addrmap, "SEP_TOP_ABR_SIZE"))
         self.assertIn("SEP_TOP_ABR_SIZE", sep_crypto)
@@ -191,9 +191,9 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
                 "key_manager",
             )
         )
-        for node, prefix in (("rom", "ROM"), ("sram", "SRAM")):
-            base = sv_hex(km_intf, f"{prefix}_BASE_ADDR")
-            end = sv_hex(km_intf, f"{prefix}_END_ADDR")
+        for node, prefix in (("rom", "Rom"), ("sram", "Sram")):
+            base = sv_hex(km_intf, f"{prefix}BaseAddr")
+            end = sv_hex(km_intf, f"{prefix}EndAddr")
             self.assertEqual(km[f"main:{node}"].base, base)
             self.assertEqual(km[f"main:{node}"].aperture_size, end - base + 1)
 
@@ -239,7 +239,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         )
         self.assertEqual(hole(smc["main:smc_external"]), "Adopter-defined")
         self.assertEqual(hole(smc["main:mmode_region"]), "Forwarded")
-        self.assertEqual(hole(smc["main:ecam_region"]), "DECERR, 0xBADCAB1E / DECERR")
+        self.assertNotIn("main:ecam_region", smc)
 
 
 if __name__ == "__main__":

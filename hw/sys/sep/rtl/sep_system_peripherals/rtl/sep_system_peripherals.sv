@@ -11,8 +11,8 @@
 // remap and a register cut, and are decoded in priority order: the SMC aperture to
 // sep_ext_to_smc_axi_req_o unfiltered; the SMU aperture or any address at or above
 // 0x1_0000_0000 to the outbound filter; the AP and STEE regions through output remaps that
-// set AxUSER to OTHERS_SOURCE_ID, then to the outbound filter; everything else to the
-// peripheral xbar. SMN inbound requests pass the inbound filter, have SEP_GLOBAL_BASE_ADDR
+// set AxUSER to OthersSourceId, then to the outbound filter; everything else to the
+// peripheral xbar. SMN inbound requests pass an axi_cut and the inbound filter, have SEP_GLOBAL_BASE_ADDR
 // within SEP_REGION_SIZE rebased to 0, and enter the same xbar. The xbar serves the mailbox
 // and system CSR windows and forwards other addresses below 0x4000_0000, truncated to 32
 // address bits with a 3-bit ID, on smn_inbound_to_sep_axi_req_o. Both filters block by
@@ -51,13 +51,13 @@ module sep_system_peripherals (
                                                               // local-master write and read
                                                               // requests.
 
-  output logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_write_filter_hit_debug_o,  // Index of the outbound filter matched by the current write request.
-  output logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_read_filter_hit_debug_o,  // Index of the outbound filter matched by the current read request.
-  output logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]  inbound_write_filter_hit_debug_o,  // Index of the inbound filter matched by the current write request.
-  output logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]  inbound_read_filter_hit_debug_o,  // Index of the inbound filter matched by the current read request.
+  output logic [$clog2(sep_pkg::OutboundFilterNumFilters)-1:0] outbound_write_filter_hit_debug_o,  // Index of the outbound filter matched by the current write request.
+  output logic [$clog2(sep_pkg::OutboundFilterNumFilters)-1:0] outbound_read_filter_hit_debug_o,  // Index of the outbound filter matched by the current read request.
+  output logic [$clog2(sep_pkg::InboundFilterNumFilters)-1:0]  inbound_write_filter_hit_debug_o,  // Index of the inbound filter matched by the current write request.
+  output logic [$clog2(sep_pkg::InboundFilterNumFilters)-1:0]  inbound_read_filter_hit_debug_o,  // Index of the inbound filter matched by the current read request.
 
-  output logic [sep_pkg::NUM_MAILBOXES-1:0] mailbox_inbound_interrupt_o,  // Per-mailbox inbound-data interrupts.
-  output logic [sep_pkg::NUM_MAILBOXES-1:0] mailbox_outbound_interrupt_o,  // Per-mailbox outbound-data interrupts.
+  output logic [sep_pkg::NumMailboxes-1:0] mailbox_inbound_interrupt_o,  // Per-mailbox inbound-data interrupts.
+  output logic [sep_pkg::NumMailboxes-1:0] mailbox_outbound_interrupt_o,  // Per-mailbox outbound-data interrupts.
 
   input  logic smc_fuse_sense_done_i,         // SMC fuse sense completion, reflected in
                                               // SMC_FUSE_SENSE_STATUS; requests to the SMC hang
@@ -108,8 +108,8 @@ module sep_system_peripherals (
   sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_system_peripheral_56_remapped_axi_req;
   sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_system_peripheral_56_remapped_axi_resp;
 
-  sep_pkg::sep_system_peripherals_internal_axi_req_t [sep_pkg::ADDRESS_REMAP_DEMUX_PORTS-1:0]  sep_system_peripheral_56_remapped_from_demux_axi_reqs;
-  sep_pkg::sep_system_peripherals_internal_axi_resp_t [sep_pkg::ADDRESS_REMAP_DEMUX_PORTS-1:0] sep_system_peripheral_56_remapped_from_demux_axi_resps;
+  sep_pkg::sep_system_peripherals_internal_axi_req_t [sep_pkg::AddressRemapDemuxPorts-1:0]  sep_system_peripheral_56_remapped_from_demux_axi_reqs;
+  sep_pkg::sep_system_peripherals_internal_axi_resp_t [sep_pkg::AddressRemapDemuxPorts-1:0] sep_system_peripheral_56_remapped_from_demux_axi_resps;
 
   sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_ap_remapped_axi_req;
   sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_ap_remapped_axi_resp;
@@ -118,7 +118,11 @@ module sep_system_peripherals (
 
   sep_pkg::sep_system_peripherals_outbound_axi_req_t  pre_outbound_filter_axi_req;
   sep_pkg::sep_system_peripherals_outbound_axi_resp_t pre_outbound_filter_axi_resp;
+  sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_filtered_axi_req;
+  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_filtered_axi_resp;
 
+  sep_pkg::sep_system_peripherals_internal_axi_req_t     smn_inbound_cut_axi_req;
+  sep_pkg::sep_system_peripherals_internal_axi_resp_t    smn_inbound_cut_axi_resp;
   sep_pkg::sep_system_peripherals_internal_axi_req_t     smn_inbound_filtered_axi_req;
   sep_pkg::sep_system_peripherals_internal_axi_resp_t    smn_inbound_filtered_axi_resp;
   sep_pkg::sep_system_peripherals_internal_axi_req_t     smn_inbound_filtered_from_local_axi_req;
@@ -141,10 +145,10 @@ module sep_system_peripherals (
   sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t system_csr_axil_resp;
 
   // Filter Control and Status Signals
-  filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0];
-  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0];
-  filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0];
-  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0];
+  filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl [sep_pkg::OutboundFilterNumFilters-1:0];
+  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status [sep_pkg::OutboundFilterNumFilters-1:0];
+  filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl [sep_pkg::InboundFilterNumFilters-1:0];
+  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status [sep_pkg::InboundFilterNumFilters-1:0];
 
   // SEP System CSR Address Configuration Signals
   logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_global_base_addr;
@@ -215,8 +219,8 @@ module sep_system_peripherals (
   // AXI Demux (from Address Remap) //
   ////////////////////////////////////
 
-  sep_pkg::address_remap_demux_select_t address_remap_demux_select_aw;
-  sep_pkg::address_remap_demux_select_t address_remap_demux_select_ar;
+  sep_pkg::address_remap_demux_select_e address_remap_demux_select_aw;
+  sep_pkg::address_remap_demux_select_e address_remap_demux_select_ar;
 
   // Direct binary address decode for AXI demux
   // Priority: SMC > SMU > AP > STEE > LOCAL (default)
@@ -225,7 +229,7 @@ module sep_system_peripherals (
     if (sep_system_peripheral_56_remapped_axi_req.aw.addr >= smc_global_base_addr_i && sep_system_peripheral_56_remapped_axi_req.aw.addr < smc_global_base_addr_i + smc_region_size_i) begin
       address_remap_demux_select_aw = sep_pkg::SEP_EXT_TO_SMC;
     end else if ((sep_system_peripheral_56_remapped_axi_req.aw.addr >= smu_global_base_addr && sep_system_peripheral_56_remapped_axi_req.aw.addr < smu_global_base_addr + smu_region_size) ||
-                (sep_system_peripheral_56_remapped_axi_req.aw.addr >= sep_pkg::EXTERNAL_TO_CHIPLET_BASE_ADDR)) begin
+                (sep_system_peripheral_56_remapped_axi_req.aw.addr >= sep_pkg::ExternalToChipletBaseAddr)) begin
       address_remap_demux_select_aw = sep_pkg::SEP_EXT_TO_SMU;
     end else if (sep_system_peripheral_56_remapped_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_AP_REGION_SIZE) begin
       address_remap_demux_select_aw = sep_pkg::SEP_EXT_AP_REMAP;
@@ -240,7 +244,7 @@ module sep_system_peripherals (
     if (sep_system_peripheral_56_remapped_axi_req.ar.addr >= smc_global_base_addr_i && sep_system_peripheral_56_remapped_axi_req.ar.addr < smc_global_base_addr_i + smc_region_size_i) begin
       address_remap_demux_select_ar = sep_pkg::SEP_EXT_TO_SMC;
     end else if ((sep_system_peripheral_56_remapped_axi_req.ar.addr >= smu_global_base_addr && sep_system_peripheral_56_remapped_axi_req.ar.addr < smu_global_base_addr + smu_region_size) ||
-                (sep_system_peripheral_56_remapped_axi_req.ar.addr >= sep_pkg::EXTERNAL_TO_CHIPLET_BASE_ADDR)) begin
+                (sep_system_peripheral_56_remapped_axi_req.ar.addr >= sep_pkg::ExternalToChipletBaseAddr)) begin
       address_remap_demux_select_ar = sep_pkg::SEP_EXT_TO_SMU;
     end else if (sep_system_peripheral_56_remapped_axi_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_AP_REGION_SIZE) begin
       address_remap_demux_select_ar = sep_pkg::SEP_EXT_AP_REMAP;
@@ -262,7 +266,7 @@ module sep_system_peripherals (
     .r_chan_t    (sep_pkg::sep_system_peripherals_internal_axi_r_chan_t),
     .axi_req_t   (sep_pkg::sep_system_peripherals_internal_axi_req_t),
     .axi_resp_t  (sep_pkg::sep_system_peripherals_internal_axi_resp_t),
-    .NoMstPorts  (sep_pkg::ADDRESS_REMAP_DEMUX_PORTS),
+    .NoMstPorts  (sep_pkg::AddressRemapDemuxPorts),
     .MaxTrans    (16),
     .AxiLookBits (3),
     .UniqueIds   (1'b0),
@@ -285,8 +289,22 @@ module sep_system_peripherals (
     .mst_resps_i     (sep_system_peripheral_56_remapped_from_demux_axi_resps)
   );
 
-  assign sep_ext_to_smc_axi_req_o = sep_system_peripheral_56_remapped_from_demux_axi_reqs[sep_pkg::SEP_EXT_TO_SMC];
-  assign sep_system_peripheral_56_remapped_from_demux_axi_resps[sep_pkg::SEP_EXT_TO_SMC] = sep_ext_to_smc_axi_resp_i;
+  axi_cut #(
+    .aw_chan_t  (sep_pkg::sep_system_peripherals_internal_axi_aw_chan_t),
+    .w_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_w_chan_t),
+    .b_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_b_chan_t),
+    .ar_chan_t  (sep_pkg::sep_system_peripherals_internal_axi_ar_chan_t),
+    .r_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_r_chan_t),
+    .axi_req_t  (sep_pkg::sep_system_peripherals_internal_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_system_peripherals_internal_axi_resp_t)
+  ) u_sep_ext_to_smc_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (sep_system_peripheral_56_remapped_from_demux_axi_reqs[sep_pkg::SEP_EXT_TO_SMC]),
+    .slv_resp_o (sep_system_peripheral_56_remapped_from_demux_axi_resps[sep_pkg::SEP_EXT_TO_SMC]),
+    .mst_req_o  (sep_ext_to_smc_axi_req_o),
+    .mst_resp_i (sep_ext_to_smc_axi_resp_i)
+  );
 
   //////////////////////
   // AP Address Remap //
@@ -301,7 +319,7 @@ module sep_system_peripherals (
     .REGION_BASE        (sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR),
     .IDX_START          (sep_pkg::AP_OUTPUT_REMAP_IDX_START),
     .USER_OVERRIDE_EN   (1'b1),
-    .USER_OVERRIDE_VAL  (sep_pkg::OTHERS_SOURCE_ID)
+    .USER_OVERRIDE_VAL  (sep_pkg::OthersSourceId)
   ) u_ap_remap (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
@@ -328,7 +346,7 @@ module sep_system_peripherals (
     .REGION_BASE        (sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_BASE_ADDR),
     .IDX_START          (sep_pkg::STEE_OUTPUT_REMAP_IDX_START),
     .USER_OVERRIDE_EN   (1'b1),
-    .USER_OVERRIDE_VAL  (sep_pkg::OTHERS_SOURCE_ID)
+    .USER_OVERRIDE_VAL  (sep_pkg::OthersSourceId)
   ) u_stee_remap (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
@@ -361,7 +379,7 @@ module sep_system_peripherals (
     .mst_req_t                   (sep_pkg::sep_system_peripherals_outbound_axi_req_t),
     .mst_resp_t                  (sep_pkg::sep_system_peripherals_outbound_axi_resp_t),
     .SlvAxiIDWidth               (sep_pkg::SEP_SYSTEM_PERIPHERALS_INTERNAL_AXI_ID_WIDTH),
-    .NoSlvPorts                  (sep_pkg::OUTBOUND_FILTER_MUX_PORTS),
+    .NoSlvPorts                  (sep_pkg::OutboundFilterMuxPorts),
     .MaxWTrans                   (16),
     .FallThrough                 (1'b0),
     .SpillAw                     (1'b0),
@@ -384,7 +402,7 @@ module sep_system_peripherals (
   /////////////////////////
 
   axi_filter_wrap #(
-    .NUM_FILTERS                 (sep_pkg::OUTBOUND_FILTER_NUM_FILTERS),
+    .NUM_FILTERS                 (sep_pkg::OutboundFilterNumFilters),
     .DEBUG_OUTPUT                (1),
     .BLOCK_BY_DEFAULT            (1'b1),
     .EN_SRC_ID_FILTER            (1'b1),
@@ -420,19 +438,53 @@ module sep_system_peripherals (
     .axi_in_req_i                (pre_outbound_filter_axi_req),
     .axi_in_resp_o               (pre_outbound_filter_axi_resp),
 
-    .axi_filtered_out_req_o      (smn_outbound_axi_req_o),
-    .axi_filtered_out_resp_i     (smn_outbound_axi_resp_i),
+    .axi_filtered_out_req_o      (smn_outbound_filtered_axi_req),
+    .axi_filtered_out_resp_i     (smn_outbound_filtered_axi_resp),
 
     .write_filter_hit_debug_o    (outbound_write_filter_hit_debug_o),
     .read_filter_hit_debug_o     (outbound_read_filter_hit_debug_o)
+  );
+
+  axi_cut #(
+    .aw_chan_t  (sep_pkg::sep_system_peripherals_outbound_axi_aw_chan_t),
+    .w_chan_t   (sep_pkg::sep_system_peripherals_outbound_axi_w_chan_t),
+    .b_chan_t   (sep_pkg::sep_system_peripherals_outbound_axi_b_chan_t),
+    .ar_chan_t  (sep_pkg::sep_system_peripherals_outbound_axi_ar_chan_t),
+    .r_chan_t   (sep_pkg::sep_system_peripherals_outbound_axi_r_chan_t),
+    .axi_req_t  (sep_pkg::sep_system_peripherals_outbound_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_system_peripherals_outbound_axi_resp_t)
+  ) u_smn_outbound_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (smn_outbound_filtered_axi_req),
+    .slv_resp_o (smn_outbound_filtered_axi_resp),
+    .mst_req_o  (smn_outbound_axi_req_o),
+    .mst_resp_i (smn_outbound_axi_resp_i)
   );
 
   ////////////////////////
   // AXI Inbound Filter //
   ////////////////////////
 
+  axi_cut #(
+    .aw_chan_t  (sep_pkg::sep_system_peripherals_internal_axi_aw_chan_t),
+    .w_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_w_chan_t),
+    .b_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_b_chan_t),
+    .ar_chan_t  (sep_pkg::sep_system_peripherals_internal_axi_ar_chan_t),
+    .r_chan_t   (sep_pkg::sep_system_peripherals_internal_axi_r_chan_t),
+    .axi_req_t  (sep_pkg::sep_system_peripherals_internal_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_system_peripherals_internal_axi_resp_t)
+  ) u_smn_inbound_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (smn_inbound_axi_req_i),
+    .slv_resp_o (smn_inbound_axi_resp_o),
+    .mst_req_o  (smn_inbound_cut_axi_req),
+    .mst_resp_i (smn_inbound_cut_axi_resp)
+  );
+
   axi_filter_wrap #(
-    .NUM_FILTERS                 (sep_pkg::INBOUND_FILTER_NUM_FILTERS),
+    .NUM_FILTERS                 (sep_pkg::InboundFilterNumFilters),
     .DEBUG_OUTPUT                (1),
     .BLOCK_BY_DEFAULT            (1'b1),
     .EN_SRC_ID_FILTER            (1'b1),
@@ -465,8 +517,8 @@ module sep_system_peripherals (
     .filter_ctrl_i               (inbound_filter_ctrl),
     .filter_status_o             (inbound_filter_status),
 
-    .axi_in_req_i                (smn_inbound_axi_req_i),
-    .axi_in_resp_o               (smn_inbound_axi_resp_o),
+    .axi_in_req_i                (smn_inbound_cut_axi_req),
+    .axi_in_resp_o               (smn_inbound_cut_axi_resp),
     .axi_filtered_out_req_o      (smn_inbound_filtered_axi_req),
     .axi_filtered_out_resp_i     (smn_inbound_filtered_axi_resp),
     .write_filter_hit_debug_o    (inbound_write_filter_hit_debug_o),
@@ -511,11 +563,11 @@ module sep_system_peripherals (
   );
 
   axi_lite_mailbox_unit #(
-    .NUM_MAILBOXES               (sep_pkg::NUM_MAILBOXES),
-    .MAILBOX_DEPTH               (sep_pkg::MAILBOX_DEPTH),
+    .NUM_MAILBOXES               (sep_pkg::NumMailboxes),
+    .MAILBOX_DEPTH               (sep_pkg::MailboxDepth),
     .MAX_TRANS                   (16),
     .MAILBOX_BASE_ADDR           (sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
-    .MAILBOX_SIZE                (sep_pkg::MAILBOX_SIZE),
+    .MAILBOX_SIZE                (sep_pkg::MailboxSize),
 
     .ADDR_WIDTH                  (sep_pkg::SEP_SYSTEM_PERIPHERALS_MAILBOX_AXI_LITE_ADDR_WIDTH),
     .DATA_WIDTH                  (sep_pkg::SEP_SYSTEM_PERIPHERALS_MAILBOX_AXI_LITE_DATA_WIDTH),
@@ -653,7 +705,7 @@ module sep_system_peripherals (
   );
 
   // Export sep_region_size so SMU can size its SEP-aperture xbar rule.
-  // (The local alias remap window is sized by sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE.)
+  // (The local alias remap window is sized by sep_pkg::SepLocalAliasRegionSize.)
   assign sep_region_size_o = sep_region_size;
 
   // Export sep_global_base_addr so parents can build the SMU xbar rule.

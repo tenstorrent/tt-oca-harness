@@ -8,7 +8,7 @@ mem remapped_region #(
     longint unsigned NUM_ENTRIES = 1048576, // this creates a 0x80_0000 sized region
     longint unsigned WIDTH       = 64       // width in bits
 ) {
-    desc = "Remapped regions, either ECAM, M-Mode or XVisor";
+    desc = "Address region whose accesses an output remap redirects.";
 
     mementries = NUM_ENTRIES;
     memwidth   = WIDTH;

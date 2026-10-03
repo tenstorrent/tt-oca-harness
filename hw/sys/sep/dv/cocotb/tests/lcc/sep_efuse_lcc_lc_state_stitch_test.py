@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse -> Lifecycle-Controller lc_state stitch test (OSS).
 
-OSS port of the reference UVM ``sep_efuse_lcc_lc_state_stitch_test``. Walks the
-lifecycle state up the monotonic OTP W1S chain TEST_DEV -> PROD -> RMA_SIP_1 ->
-RMA_CHIP_1 and, at each step, proves the eFuse-sensed lc_state is stitched into
-the lifecycle controller and decoded into the right feature-control vector:
+Walks the lifecycle state up the monotonic OTP W1S chain TEST_DEV -> PROD ->
+RMA_SIP_1 -> RMA_CHIP_1 and, at each step, proves the eFuse-sensed lc_state is
+stitched into the lifecycle controller and decoded into the right feature-control
+vector:
 
   * the LC_STATE shadow register reads back the differential-encoded state, and
   * FEAT_CTRL reads back exactly ``feat_ctrl_expected(...)`` from the LCC golden
@@ -75,7 +75,7 @@ _MAX_SENSE_CYCLES = 20_000
 # are the secrets the stitch grades for disconnect.
 _SECRET_FIELDS = spec_secret_regs()
 
-# Monotonic lifecycle chain exercised (matches the reference test's PROD/RMA walk).
+# Monotonic lifecycle chain exercised.
 _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
 
 # Distinct, non-zero disable vectors so each decoded FEAT_CTRL is a different,

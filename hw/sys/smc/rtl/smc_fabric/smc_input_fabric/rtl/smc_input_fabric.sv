@@ -8,7 +8,8 @@
 // the local or global SMC window to the local output port truncated to 32 bits and all
 // others to the global output port. System inbound AXI passes a clock-gated access filter
 // that blocks by default; system and SEP requests outside the SMC window receive DECERR,
-// and the rest are truncated to 32 bits for the local fabric.
+// and the rest are truncated to 32 bits for the local fabric. The JTAG, system and SEP inputs
+// each enter through an axi_cut.
 
 module smc_input_fabric #(
   parameter bit          FILTER_REQ_PIPELINE_ENABLE = 1'b0,  // Adds spill registers on the request
@@ -107,7 +108,7 @@ module smc_input_fabric #(
                                                                                      // filter status returned to
                                                                                      // the register block.
 
-  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Alias remap region
+  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NumAliasRemapRegions-1:0],     // Alias remap region
                                                                                                     // configuration from
                                                                                                     // the register block.
 
@@ -116,19 +117,79 @@ module smc_input_fabric #(
   output smc_pkg::remap_debug_t          remap_debug_log_o,  // Alias region index hit by the log path.
   output smc_pkg::remap_debug_t          remap_debug_dma_o,  // Alias region index hit by the data accelerator
                                                              // path.
-  output logic [$clog2(NUM_FILTERS)-1:0] write_filter_hit_debug_o,  // System inbound filter entry hit by writes;
-                                                                    // tied to zero because the filter instance
-                                                                    // disables its debug output.
-  output logic [$clog2(NUM_FILTERS)-1:0] read_filter_hit_debug_o,  // System inbound filter entry hit by reads;
-                                                                   // tied to zero because the filter instance
-                                                                   // disables its debug output.
+  output logic [$clog2(NUM_FILTERS)-1:0] write_filter_hit_debug_o,  // Lowest system inbound filter entry
+                                                                    // hit by a write.
+  output logic [$clog2(NUM_FILTERS)-1:0] read_filter_hit_debug_o,  // Lowest system inbound filter entry
+                                                                   // hit by a read.
 
   output logic sys_in_filter_clk_active_o,  // High while the system inbound filter clock runs.
-  output logic sys_in_filter_bus_active_o  // High while the system AXI input has a request valid or
-                                           // a transaction outstanding.
+  output logic sys_in_filter_bus_active_o  // High while the system inbound filter input has a
+                                           // request valid or a transaction outstanding.
 );
 
   `include "axi/assign.svh"
+
+  /////////////////////
+  // Input Port Cuts //
+  /////////////////////
+
+  smc_pkg::smc_jtag_56_64_2_12_axi_req_t    jtag_axi_cut_req;
+  smc_pkg::smc_jtag_56_64_2_12_axi_resp_t   jtag_axi_cut_resp;
+  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_axi_cut_req;
+  smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_axi_cut_resp;
+  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_cut_req;
+  smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_axi_cut_resp;
+
+  axi_cut #(
+    .aw_chan_t  (smc_pkg::smc_jtag_56_64_2_12_axi_aw_chan_t),
+    .w_chan_t   (smc_pkg::smc_jtag_56_64_2_12_axi_w_chan_t),
+    .b_chan_t   (smc_pkg::smc_jtag_56_64_2_12_axi_b_chan_t),
+    .ar_chan_t  (smc_pkg::smc_jtag_56_64_2_12_axi_ar_chan_t),
+    .r_chan_t   (smc_pkg::smc_jtag_56_64_2_12_axi_r_chan_t),
+    .axi_req_t  (smc_pkg::smc_jtag_56_64_2_12_axi_req_t),
+    .axi_resp_t (smc_pkg::smc_jtag_56_64_2_12_axi_resp_t)
+  ) u_jtag_axi_in_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (axi_in_jtag_req_i),
+    .slv_resp_o (axi_in_jtag_resp_o),
+    .mst_req_o  (jtag_axi_cut_req),
+    .mst_resp_i (jtag_axi_cut_resp)
+  );
+
+  axi_cut #(
+    .aw_chan_t  (smc_pkg::smc_sys_in_56_64_6_12_axi_aw_chan_t),
+    .w_chan_t   (smc_pkg::smc_sys_in_56_64_6_12_axi_w_chan_t),
+    .b_chan_t   (smc_pkg::smc_sys_in_56_64_6_12_axi_b_chan_t),
+    .ar_chan_t  (smc_pkg::smc_sys_in_56_64_6_12_axi_ar_chan_t),
+    .r_chan_t   (smc_pkg::smc_sys_in_56_64_6_12_axi_r_chan_t),
+    .axi_req_t  (smc_pkg::smc_sys_in_56_64_6_12_axi_req_t),
+    .axi_resp_t (smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t)
+  ) u_sys_axi_in_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (sys_axi_in_req_i),
+    .slv_resp_o (sys_axi_in_resp_o),
+    .mst_req_o  (sys_axi_cut_req),
+    .mst_resp_i (sys_axi_cut_resp)
+  );
+
+  axi_cut #(
+    .aw_chan_t  (smc_pkg::smc_sep_in_56_64_6_12_axi_aw_chan_t),
+    .w_chan_t   (smc_pkg::smc_sep_in_56_64_6_12_axi_w_chan_t),
+    .b_chan_t   (smc_pkg::smc_sep_in_56_64_6_12_axi_b_chan_t),
+    .ar_chan_t  (smc_pkg::smc_sep_in_56_64_6_12_axi_ar_chan_t),
+    .r_chan_t   (smc_pkg::smc_sep_in_56_64_6_12_axi_r_chan_t),
+    .axi_req_t  (smc_pkg::smc_sep_in_56_64_6_12_axi_req_t),
+    .axi_resp_t (smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t)
+  ) u_sep_axi_in_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (sep_axi_in_req_i),
+    .slv_resp_o (sep_axi_in_resp_o),
+    .mst_req_o  (sep_axi_cut_req),
+    .mst_resp_i (sep_axi_cut_resp)
+  );
 
   /////////////////////////
   // ID Conversion Logic //
@@ -139,10 +200,10 @@ module smc_input_fabric #(
   smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_mmio_port_resp_prepend_id;
 
   prim_axi_id_converter #(
-    .AXI_ADDR_WIDTH     (smc_pkg::AXI_ADDR_WIDTH),
-    .AXI_DATA_WIDTH     (smc_pkg::AXI_DATA_WIDTH),
-    .AXI_ID_WIDTH_IN    (smc_pkg::SMC_CPU_MMIO_AXI_ID_WIDTH),
-    .AXI_ID_WIDTH_OUT   (smc_pkg::SMC_INPUT_FABRIC_SLAVE_ID_WIDTH),
+    .AXI_ADDR_WIDTH     (smc_pkg::AxiAddrWidth),
+    .AXI_DATA_WIDTH     (smc_pkg::AxiDataWidth),
+    .AXI_ID_WIDTH_IN    (smc_pkg::SmcCpuMmioAxiIdWidth),
+    .AXI_ID_WIDTH_OUT   (smc_pkg::SmcInputFabricSlaveIdWidth),
 
     .input_axi_req_t    (smc_pkg::smc_cpu_mmio_axi_req_t),
     .input_axi_resp_t   (smc_pkg::smc_cpu_mmio_axi_resp_t),
@@ -164,10 +225,10 @@ module smc_input_fabric #(
   smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_jtag_port_resp_prepend_id;
 
   prim_axi_id_converter #(
-    .AXI_ADDR_WIDTH    (smc_pkg::AXI_ADDR_WIDTH),
-    .AXI_DATA_WIDTH    (smc_pkg::AXI_DATA_WIDTH),
-    .AXI_ID_WIDTH_IN   (smc_pkg::JTAG_ID_WIDTH),
-    .AXI_ID_WIDTH_OUT  (smc_pkg::SMC_INPUT_FABRIC_SLAVE_ID_WIDTH),
+    .AXI_ADDR_WIDTH    (smc_pkg::AxiAddrWidth),
+    .AXI_DATA_WIDTH    (smc_pkg::AxiDataWidth),
+    .AXI_ID_WIDTH_IN   (smc_pkg::JtagIdWidth),
+    .AXI_ID_WIDTH_OUT  (smc_pkg::SmcInputFabricSlaveIdWidth),
 
     .input_axi_req_t   (smc_pkg::smc_jtag_56_64_2_12_axi_req_t),
     .input_axi_resp_t  (smc_pkg::smc_jtag_56_64_2_12_axi_resp_t),
@@ -178,8 +239,8 @@ module smc_input_fabric #(
     .rst_ni        (rst_ni),
     .test_en_i     (test_en_i),
 
-    .axi_in_req_i  (axi_in_jtag_req_i),
-    .axi_in_resp_o (axi_in_jtag_resp_o),
+    .axi_in_req_i  (jtag_axi_cut_req),
+    .axi_in_resp_o (jtag_axi_cut_resp),
     .axi_out_req_o (axi_jtag_port_req_prepend_id),
     .axi_out_resp_i(axi_jtag_port_resp_prepend_id)
   );
@@ -192,7 +253,7 @@ module smc_input_fabric #(
   smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t     log_axi_resp;
 
   axi_lite_to_axi #(
-    .AxiDataWidth       (smc_pkg::AXI_DATA_WIDTH),
+    .AxiDataWidth       (smc_pkg::AxiDataWidth),
     .req_lite_t         (smc_pkg::smc_axil_56_64_req_t),
     .resp_lite_t        (smc_pkg::smc_axil_56_64_resp_t),
     .axi_req_t          (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
@@ -249,7 +310,7 @@ module smc_input_fabric #(
   smc_pkg::smc_56_64_6_12_axi_resp_t  axi_from_input_mux_resp;
 
   axi_mux #(
-    .SlvAxiIDWidth      (smc_pkg::SMC_INPUT_FABRIC_SLAVE_ID_WIDTH),
+    .SlvAxiIDWidth      (smc_pkg::SmcInputFabricSlaveIdWidth),
     .slv_aw_chan_t      (smc_pkg::smc_input_fabric_56_64_4_12_axi_aw_chan_t),
     .mst_aw_chan_t      (smc_pkg::smc_56_64_6_12_axi_aw_chan_t),
     .w_chan_t           (smc_pkg::smc_input_fabric_56_64_4_12_axi_w_chan_t),
@@ -263,8 +324,8 @@ module smc_input_fabric #(
     .slv_resp_t         (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t),
     .mst_req_t          (smc_pkg::smc_56_64_6_12_axi_req_t),
     .mst_resp_t         (smc_pkg::smc_56_64_6_12_axi_resp_t),
-    .NoSlvPorts         (smc_pkg::NUM_ALIAS_REMAP_INPUTS),
-    .MaxWTrans          (smc_pkg::FABRIC_MAX_TRANS),
+    .NoSlvPorts         (smc_pkg::NumAliasRemapInputs),
+    .MaxWTrans          (smc_pkg::FabricMaxTrans),
     .FallThrough        (1'b0),
     .SpillAw            (1'b1),
     .SpillW             (1'b1),
@@ -286,8 +347,8 @@ module smc_input_fabric #(
 
   // One bit wider than the address so a base near the top of the 56-bit space cannot
   // wrap the end address and make the window compare pass on unrelated addresses.
-  logic [smc_pkg::AXI_ADDR_WIDTH:0] local_region_end;
-  logic [smc_pkg::AXI_ADDR_WIDTH:0] global_region_end;
+  logic [smc_pkg::AxiAddrWidth:0] local_region_end;
+  logic [smc_pkg::AxiAddrWidth:0] global_region_end;
 
   assign local_region_end  = {1'b0, local_base_addr_i}  + region_size_i;
   assign global_region_end = {1'b0, global_base_addr_i} + region_size_i;
@@ -296,8 +357,8 @@ module smc_input_fabric #(
   // function reads implicitly.
   function automatic logic in_smc_region(
       smc_pkg::smc_axi_addr_t addr, smc_pkg::smc_axi_addr_t local_base,
-      logic [smc_pkg::AXI_ADDR_WIDTH:0] local_end, smc_pkg::smc_axi_addr_t global_base,
-      logic [smc_pkg::AXI_ADDR_WIDTH:0] global_end);
+      logic [smc_pkg::AxiAddrWidth:0] local_end, smc_pkg::smc_axi_addr_t global_base,
+      logic [smc_pkg::AxiAddrWidth:0] global_end);
     return (addr >= local_base)  && ({1'b0, addr} < local_end) ||
            (addr >= global_base) && ({1'b0, addr} < global_end);
   endfunction
@@ -313,7 +374,7 @@ module smc_input_fabric #(
   smc_pkg::input_fabric_demux_axi_resp_t axi_from_demux_resp;
 
   axi_demux #(
-    .AxiIdWidth     (smc_pkg::SMC_LOCAL_OUTPUT_FABRIC_SLAVE_ID_WIDTH),
+    .AxiIdWidth     (smc_pkg::SmcLocalOutputFabricSlaveIdWidth),
     .AtopSupport    (1'b0),
     .aw_chan_t      (smc_pkg::smc_56_64_6_12_axi_aw_chan_t),
     .w_chan_t       (smc_pkg::smc_56_64_6_12_axi_w_chan_t),
@@ -323,8 +384,8 @@ module smc_input_fabric #(
     .axi_req_t      (smc_pkg::smc_56_64_6_12_axi_req_t),
     .axi_resp_t     (smc_pkg::smc_56_64_6_12_axi_resp_t),
     .NoMstPorts     (2),
-    .MaxTrans       (smc_pkg::FABRIC_MAX_TRANS),
-    .AxiLookBits    (smc_pkg::FABRIC_ID_LOOKUP_BITS),
+    .MaxTrans       (smc_pkg::FabricMaxTrans),
+    .AxiLookBits    (smc_pkg::FabricIdLookupBits),
     .UniqueIds      (1'b0),
     .SpillAw        (1'b1),
     .SpillW         (1'b0),
@@ -346,8 +407,8 @@ module smc_input_fabric #(
 
   // Converting 56 -> 32 for local fabric
   prim_axi_addr_fixer #(
-    .INPUT_ADDR_W       (smc_pkg::AXI_ADDR_WIDTH),
-    .OUTPUT_ADDR_W      (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
+    .INPUT_ADDR_W       (smc_pkg::AxiAddrWidth),
+    .OUTPUT_ADDR_W      (smc_pkg::SmcLocalAddrWidth),
     .input_axi_req_t    (smc_pkg::smc_56_64_6_12_axi_req_t),
     .input_axi_resp_t   (smc_pkg::smc_56_64_6_12_axi_resp_t),
     .output_axi_req_t   (smc_pkg::smc_local_32_64_6_12_axi_req_t),
@@ -374,23 +435,23 @@ module smc_input_fabric #(
 
   axi_cg_snoop #(
     // ALL IDs, both directions
-    .OUTSTANDING_TX(smc_pkg::FABRIC_OUTSTANDING_TX),
+    .OUTSTANDING_TX(smc_pkg::FabricOutstandingTx),
     .DENY_DELAY(1),
-    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
+    .HYST_WIDTH(smc_pkg::CgHysteresisW)
   ) u_sys_in_filter_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
 
-    .snoop_aw_valid_i(sys_axi_in_req_i.aw_valid),
-    .snoop_aw_ready_i(sys_axi_in_resp_o.aw_ready),
-    .snoop_w_valid_i (sys_axi_in_req_i.w_valid),
-    .snoop_b_valid_i (sys_axi_in_resp_o.b_valid),
-    .snoop_b_ready_i (sys_axi_in_req_i.b_ready),
-    .snoop_ar_valid_i(sys_axi_in_req_i.ar_valid),
-    .snoop_ar_ready_i(sys_axi_in_resp_o.ar_ready),
-    .snoop_r_valid_i (sys_axi_in_resp_o.r_valid),
-    .snoop_r_ready_i (sys_axi_in_req_i.r_ready),
-    .snoop_r_last_i  (sys_axi_in_resp_o.r.last),
+    .snoop_aw_valid_i(sys_axi_cut_req.aw_valid),
+    .snoop_aw_ready_i(sys_axi_cut_resp.aw_ready),
+    .snoop_w_valid_i (sys_axi_cut_req.w_valid),
+    .snoop_b_valid_i (sys_axi_cut_resp.b_valid),
+    .snoop_b_ready_i (sys_axi_cut_req.b_ready),
+    .snoop_ar_valid_i(sys_axi_cut_req.ar_valid),
+    .snoop_ar_ready_i(sys_axi_cut_resp.ar_ready),
+    .snoop_r_valid_i (sys_axi_cut_resp.r_valid),
+    .snoop_r_ready_i (sys_axi_cut_req.r_ready),
+    .snoop_r_last_i  (sys_axi_cut_resp.r.last),
 
     .kick_i          (~filter_axi_cg_en_i), // continuously kick to keep clock awake when not gating
 
@@ -403,7 +464,7 @@ module smc_input_fabric #(
 
   axi_filter_wrap #(
     .NUM_FILTERS             (NUM_FILTERS),
-    .DEBUG_OUTPUT            (0),
+    .DEBUG_OUTPUT            (1),
     .BLOCK_BY_DEFAULT        (1'b1),
     .EN_SRC_ID_FILTER        (1'b1),
     .SRC_ID_USER_BIT_START   (0),
@@ -412,12 +473,12 @@ module smc_input_fabric #(
     .GROUP_ID_USER_BIT_START (4),
     .GROUP_ID_WIDTH          (4),
     .EN_NS_FILTER            (1'b1),
-    .AXI_ADDR_WIDTH          (smc_pkg::AXI_ADDR_WIDTH),
-    .AXI_ID_WIDTH            (smc_pkg::SYS_IN_ID_WIDTH),
-    .AXI_DATA_WIDTH          (smc_pkg::AXI_DATA_WIDTH),
-    .MAX_TRANS               (smc_pkg::FABRIC_MAX_TRANS),
-    .AXI_LOOK_BITS           (smc_pkg::FABRIC_ID_LOOKUP_BITS),
-    .ERR_SLV_MAX_TRANS       (smc_pkg::ERR_SLV_MAX_TRANS),
+    .AXI_ADDR_WIDTH          (smc_pkg::AxiAddrWidth),
+    .AXI_ID_WIDTH            (smc_pkg::SysInIdWidth),
+    .AXI_DATA_WIDTH          (smc_pkg::AxiDataWidth),
+    .MAX_TRANS               (smc_pkg::FabricMaxTrans),
+    .AXI_LOOK_BITS           (smc_pkg::FabricIdLookupBits),
+    .ERR_SLV_MAX_TRANS       (smc_pkg::ErrSlvMaxTrans),
     .FLOP_REQ_EN             (FILTER_REQ_PIPELINE_ENABLE),
     .FLOP_RESP_EN            (FILTER_RSP_PIPELINE_ENABLE),
     .filter_axi_req_t        (smc_pkg::smc_sys_in_56_64_6_12_axi_req_t),
@@ -439,8 +500,8 @@ module smc_input_fabric #(
     .filter_status_o            (filter_status_o),
 
     // AXI interface to the filter
-    .axi_in_req_i               (sys_axi_in_req_i),
-    .axi_in_resp_o              (sys_axi_in_resp_o),
+    .axi_in_req_i               (sys_axi_cut_req),
+    .axi_in_resp_o              (sys_axi_cut_resp),
 
     // AXI interface to the filtered output
     .axi_filtered_out_req_o     (sys_axi_in_filtered_req),
@@ -472,7 +533,7 @@ module smc_input_fabric #(
   smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_err_slv_resp;
 
   axi_demux #(
-    .AxiIdWidth     (smc_pkg::SYS_IN_ID_WIDTH),
+    .AxiIdWidth     (smc_pkg::SysInIdWidth),
     .AtopSupport    (1'b0),
     .aw_chan_t      (smc_pkg::smc_sys_in_56_64_6_12_axi_aw_chan_t),
     .w_chan_t       (smc_pkg::smc_sys_in_56_64_6_12_axi_w_chan_t),
@@ -482,8 +543,8 @@ module smc_input_fabric #(
     .axi_req_t      (smc_pkg::smc_sys_in_56_64_6_12_axi_req_t),
     .axi_resp_t     (smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t),
     .NoMstPorts     (2),
-    .MaxTrans       (smc_pkg::FABRIC_MAX_TRANS),
-    .AxiLookBits    (smc_pkg::FABRIC_ID_LOOKUP_BITS),
+    .MaxTrans       (smc_pkg::FabricMaxTrans),
+    .AxiLookBits    (smc_pkg::FabricIdLookupBits),
     .UniqueIds      (1'b0),
     .SpillAw        (1'b0),
     .SpillW         (1'b0),
@@ -504,12 +565,12 @@ module smc_input_fabric #(
   );
 
   axi_err_slv #(
-    .AxiIdWidth (smc_pkg::SYS_IN_ID_WIDTH),
+    .AxiIdWidth (smc_pkg::SysInIdWidth),
     .axi_req_t  (smc_pkg::smc_sys_in_56_64_6_12_axi_req_t),
     .axi_resp_t (smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t),
     .Resp       (axi_pkg::RESP_DECERR),
     .ATOPs      (1'b0),
-    .MaxTrans   (smc_pkg::ERR_SLV_MAX_TRANS)
+    .MaxTrans   (smc_pkg::ErrSlvMaxTrans)
   ) u_sys_region_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
@@ -521,9 +582,9 @@ module smc_input_fabric #(
   logic sep_space_write;
   logic sep_space_read;
 
-  assign sep_space_write = in_smc_region(sep_axi_in_req_i.aw.addr, local_base_addr_i,
+  assign sep_space_write = in_smc_region(sep_axi_cut_req.aw.addr, local_base_addr_i,
                                          local_region_end, global_base_addr_i, global_region_end);
-  assign sep_space_read  = in_smc_region(sep_axi_in_req_i.ar.addr, local_base_addr_i,
+  assign sep_space_read  = in_smc_region(sep_axi_cut_req.ar.addr, local_base_addr_i,
                                          local_region_end, global_base_addr_i, global_region_end);
 
   smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_region_req;
@@ -532,7 +593,7 @@ module smc_input_fabric #(
   smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_err_slv_resp;
 
   axi_demux #(
-    .AxiIdWidth     (smc_pkg::SEP_IN_ID_WIDTH),
+    .AxiIdWidth     (smc_pkg::SepInIdWidth),
     .AtopSupport    (1'b0),
     .aw_chan_t      (smc_pkg::smc_sep_in_56_64_6_12_axi_aw_chan_t),
     .w_chan_t       (smc_pkg::smc_sep_in_56_64_6_12_axi_w_chan_t),
@@ -542,8 +603,8 @@ module smc_input_fabric #(
     .axi_req_t      (smc_pkg::smc_sep_in_56_64_6_12_axi_req_t),
     .axi_resp_t     (smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t),
     .NoMstPorts     (2),
-    .MaxTrans       (smc_pkg::FABRIC_MAX_TRANS),
-    .AxiLookBits    (smc_pkg::FABRIC_ID_LOOKUP_BITS),
+    .MaxTrans       (smc_pkg::FabricMaxTrans),
+    .AxiLookBits    (smc_pkg::FabricIdLookupBits),
     .UniqueIds      (1'b0),
     .SpillAw        (1'b0),
     .SpillW         (1'b0),
@@ -555,21 +616,21 @@ module smc_input_fabric #(
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
     .sel_hash_i      (2'd0),  // unused
-    .slv_req_i       (sep_axi_in_req_i),
+    .slv_req_i       (sep_axi_cut_req),
     .slv_aw_select_i (sep_space_write),
     .slv_ar_select_i (sep_space_read),
-    .slv_resp_o      (sep_axi_in_resp_o),
+    .slv_resp_o      (sep_axi_cut_resp),
     .mst_reqs_o      ({sep_axi_in_region_req, sep_err_slv_req}),
     .mst_resps_i     ({sep_axi_in_region_resp, sep_err_slv_resp})
   );
 
   axi_err_slv #(
-    .AxiIdWidth (smc_pkg::SEP_IN_ID_WIDTH),
+    .AxiIdWidth (smc_pkg::SepInIdWidth),
     .axi_req_t  (smc_pkg::smc_sep_in_56_64_6_12_axi_req_t),
     .axi_resp_t (smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t),
     .Resp       (axi_pkg::RESP_DECERR),
     .ATOPs      (1'b0),
-    .MaxTrans   (smc_pkg::ERR_SLV_MAX_TRANS)
+    .MaxTrans   (smc_pkg::ErrSlvMaxTrans)
   ) u_sep_region_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),

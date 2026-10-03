@@ -39,7 +39,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</td></tr>
+<tr><td>31:0</td><td>size</td><td>RW</td><td>0x1000000</td><td>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</td></tr>
 </table>
 <h3 id="CLOCK_GATE_CONTROL">CLOCK_GATE_CONTROL</h3>
 <table>
@@ -47,13 +47,13 @@
 <tr><td>63:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>29:24</td><td>cg_hysteresis</td><td>RW</td><td>0x1F</td><td>Clockgate cg_hysteresis</td></tr>
 <tr><td>23:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>telemetry_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for telemetry</td></tr>
-<tr><td>12</td><td>uart_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for UART</td></tr>
-<tr><td>11</td><td>i2c_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for i2c</td></tr>
-<tr><td>10</td><td>avs_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for AVSBus</td></tr>
-<tr><td>9</td><td>i3c_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for i3c</td></tr>
+<tr><td>13</td><td>telemetry_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.</td></tr>
+<tr><td>12</td><td>uart_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.</td></tr>
+<tr><td>11</td><td>i2c_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.</td></tr>
+<tr><td>10</td><td>avs_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.</td></tr>
+<tr><td>9</td><td>i3c_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.</td></tr>
 <tr><td>8</td><td>zeroer_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for axi zeroer</td></tr>
-<tr><td>7</td><td>output_fabric_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for address remapper register logic</td></tr>
+<tr><td>7</td><td>output_fabric_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for the output fabric remap demux and mux</td></tr>
 <tr><td>6</td><td>addr_remap_cg_en</td><td>RW</td><td>0x0</td><td>Clock gate enable for address remapper register logic</td></tr>
 <tr><td>5</td><td>filter_ib_reg_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for inbound filter registers</td></tr>
 <tr><td>4</td><td>filter_ib_axi_cg_en</td><td>RW</td><td>0x0</td><td>Clockgate enable for the inbound filters</td></tr>

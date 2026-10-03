@@ -46,12 +46,13 @@ returns the same data without popping.
 
 Neither FIFO window back-pressures the bus; both report a failed access
 instead. A write to `AVS_CMD` while the command FIFO is full is dropped, and a
-read of `AVS_READBACK` while the readback FIFO is empty returns the FIFO
-contents at the read pointer rather than a defined value. Each case raises its
-interrupt and completes the access with an error response, so software can
-detect the condition from the bus response alone. `AVS_DEBUG_READBACK` reads
-0xFFFFFFFF when the FIFO is empty and never errors, which makes it the safer
-register to poll.
+read of `AVS_READBACK` while the readback FIFO is empty returns 0 without
+popping. Each case raises its interrupt and completes the access with an error
+response, so software can detect the condition from the bus response alone.
+An all-zero word is also a well-formed target response, so the read data does
+not identify an empty read; only the error response or `READBACK_UNDERFLOW_INT`
+does. `AVS_DEBUG_READBACK` reads 0xFFFFFFFF when the FIFO is empty and never
+errors, which makes it the safer register to poll.
 
 === Detailed Register Map
 

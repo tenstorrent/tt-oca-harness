@@ -16,11 +16,9 @@ class SepEnv(uvm_env):
         self.cfg = ConfigDB().get(self, "", "cfg")
         # Primary stimulus: CPU-LSU master (prefix s_axi, no inbound filter).
         self.axi_agent = SepAxiAgent("axi_agent", self)
-        # Secondary: SMN-inbound EXTERNAL master (prefix m_axi). Traverses the
-        # inbound filter (block-by-default; skipped only when sep_debug=1). It
-        # idles unless a test drives it. The
-        # prefix attribute is read by the agent's build_phase (top-down, so it is
-        # set in time). The OSS analog of the reference suite's ext_axi_sqr (master[0]).
+        # Secondary: SMN-inbound external master (prefix m_axi), idle unless a test
+        # drives it. Its path crosses the inbound filter, which blocks by default unless
+        # sep_debug=1. axi_prefix must be set before the agent's build_phase runs.
         self.ext_axi_agent = SepAxiAgent("ext_axi_agent", self)
         self.ext_axi_agent.axi_prefix = "m_axi"
         self.scoreboard = SepScoreboard("scoreboard", self)

@@ -22,10 +22,12 @@ write containing only the pulse bit would overwrite the other writable fields.
 Serialize control-register updates between software contexts.
 
 For notification on any queued message, set the threshold to zero and enable
-`INTR_ENABLE.BUFFER_THRESHOLD`. The CSR field is 12 bits, but the core casts it
-to `$clog2(BUFFER_DEPTH)+1` bits before comparing occupancy. Use values within
-the configured queue depth rather than treating all values 0–4095 as distinct
-thresholds. With the default depth 8, only the low four bits participate.
+`INTR_ENABLE.BUFFER_THRESHOLD`. The CSR field is 12 bits, but the core compares
+only its low `$clog2(BUFFER_DEPTH)+1` bits with occupancy, so values alias modulo
+`2 * BUFFER_DEPTH`. The interrupt asserts while occupancy is strictly greater
+than the threshold and occupancy never exceeds `BUFFER_DEPTH`, so only
+thresholds 0 to `BUFFER_DEPTH - 1` can assert it. With the default depth 8,
+writing 16 acts as 0, and 8 to 15 never assert the interrupt from occupancy.
 
 === Flush Operations
 

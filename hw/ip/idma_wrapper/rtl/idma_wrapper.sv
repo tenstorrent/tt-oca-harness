@@ -96,10 +96,11 @@ module idma_wrapper #(
   parameter int unsigned MST_ID_WIDTH         = 3,          // ID width of the master ports; must
                                                             // match the ID field of dma_mst_req_t
                                                             // and equal BACKEND_INT_ID_WIDTH + 1.
-  parameter int unsigned BACKEND_INT_ID_WIDTH = 2           // ID width of the separate read and
-                                                            // write managers inside each backend;
-                                                            // the backend mux adds one bit to form
-                                                            // the master-port ID.
+  parameter int unsigned BACKEND_INT_ID_WIDTH = 2           // ID width of the iDMA request and of
+                                                            // the separate read and write managers
+                                                            // inside each backend; the backend mux
+                                                            // adds one bit to form the master-port
+                                                            // ID.
 ) (
   input  logic clk_i,                                       // Clock; the frontend, request manager
                                                             // and backends run on gated copies of
@@ -151,10 +152,10 @@ module idma_wrapper #(
 
   // Local type derivations from width parameters
   typedef logic [AXI_ADDR_WIDTH-1:0] axi_addr_t;
-  typedef logic [MST_ID_WIDTH-1:0] mst_id_t;
+  typedef logic [BACKEND_INT_ID_WIDTH-1:0] int_mst_id_t;
 
   // Control interface address width derived from ctrl type (9-bit for DMA regs)
-  localparam int unsigned CTRL_ADDR_WIDTH = $bits(dma_ctrl_axi_req_i[0].aw.addr);
+  localparam int unsigned CtrlAddrWidth = $bits(dma_ctrl_axi_req_i[0].aw.addr);
 
   localparam int unsigned TFLenWidth = AXI_ADDR_WIDTH;  // width for representing transaction length
   localparam int unsigned NumDim = 2;  // 2 dimensions to support 2d transfers
@@ -165,7 +166,7 @@ module idma_wrapper #(
   typedef logic [StrideWidth-1:0] strides_t;
 
   // iDMA request / response types
-  `IDMA_TYPEDEF_FULL_REQ_T(idma_req_t, mst_id_t, axi_addr_t, tf_len_t)
+  `IDMA_TYPEDEF_FULL_REQ_T(idma_req_t, int_mst_id_t, axi_addr_t, tf_len_t)
   `IDMA_TYPEDEF_FULL_RSP_T(idma_resp_t, axi_addr_t)
 
   // iDMA ND request
@@ -269,7 +270,7 @@ module idma_wrapper #(
     .dma_mst_addr_t(axi_addr_t),
     .dma_ctrl_req_t(dma_ctrl_req_t),
     .dma_ctrl_resp_t(dma_ctrl_resp_t),
-    .CTRL_ADDR_WIDTH(CTRL_ADDR_WIDTH),
+    .CTRL_ADDR_WIDTH(CtrlAddrWidth),
     .CTRL_DATA_WIDTH(AXI_DATA_WIDTH),
     .CTRL_ID_WIDTH(CTRL_ID_WIDTH),
     .CTRL_USER_WIDTH(AXI_USER_WIDTH)

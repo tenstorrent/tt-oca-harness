@@ -227,10 +227,10 @@ args = ["+km_rom_hex=km_rom_otp_id.parhex"]
 
 [[tests]]
 # SECURE_TM shadow-write lock. The field map marks LOCKS/LOCKS_SPARE, LC_STATE,
-# SIP_DIS and SYS_DIS SECURE_TM_LOCK, so a shadow write to them is refused while
+# SIP_DIS and SYS_DIS SecureTmLock, so a shadow write to them is refused while
 # the latched TEST_EN strap is high. Each field takes the same seeded payload
 # twice: strap low, where it must land, and strap high, where the value must not
-# move and the locked-field interrupt must pulse. A SECURE_TM_UNLOCK spare stays
+# move and the locked-field interrupt must pulse. A SecureTmUnlock spare stays
 # writable with the strap up, so the deny is the lock and not a dead write path.
 # Real fuse sense, LC_PROD, no_cpu.
 #

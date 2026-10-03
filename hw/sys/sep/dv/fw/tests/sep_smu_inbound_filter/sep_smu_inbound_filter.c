@@ -2,13 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_inbound_filter - firmware-owned inbound rule0.
+ * sep_smu_inbound_filter - firmware-owned inbound filter rule 0.
  *
- * After real fuse-sense, program SEP GLOBAL_BASE/REGION_SIZE and inbound
- * filter rule 0 (config 0x53113, START=END=A_ext). Filter CSRs are
- * write-only from the CPU (a read stalls); publish the programmed values
- * on cold scratch and park. Cocotb confirms the stored rule via passive
- * field_storage leaves (same policy as the OTP status reference read).
+ * After fuse sensing completes, programs the SEP global base and region size,
+ * checks their readback, then programs rule 0 to cover exactly one external
+ * address. The CPU cannot read the filter registers back (a read stalls), so
+ * the programmed values are published to cold scratch for an external check.
  */
 
 #include <stdint.h>
@@ -101,5 +100,4 @@ int main(void) {
     WRITE_REG(INB_FILTER_SCRATCH6, INB_FILTER_PUBLISH);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
     sep_smu_inbound_filter_pass_loop();
-    return 0;
 }

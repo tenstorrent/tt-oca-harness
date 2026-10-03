@@ -1,24 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""ESRC -> DRBG -> CSRNG -> EDN entropy bring-up sequences + reusable helpers.
+"""ESRC -> DRBG -> CSRNG -> EDN entropy bring-up sequences and register helpers.
 
-Replicates the reference suite real-entropy bring-up order (sep_drbg_uvm_base_test_seq.sv):
 PHASE-A applies the shared TRNG reset, configures ESRC with the generators off,
-enables CSRNG, and stages the EDN commands but does NOT enable EDN; the caller then
+enables CSRNG and stages the EDN commands without enabling EDN. The caller then
 enables the generators and waits for a seed; PHASE-B enables EDN last. CSRNG/EDN
-registers sit behind a 64-bit lane adapter -- a 4-byte write at the register's
-byte address lands on the correct lane automatically.
+registers sit behind a 64-bit lane adapter, so a 4-byte write at the register's
+byte address lands on the correct lane.
 
-Reusable across every entropy-consumer test (KM/AES/KMAC/OTBN). The canonical
-flow is:
+Typical flow from a test:
 
-    await self.start_seq(SepEsrcConfigSeq(...))         # PHASE-A (parameterized)
-    await self.start_seq(SepEsrcEnableGeneratorsSeq())  # start ring-osc generators
-    assert await wait_seed_ready(self)
+    await self.start_seq(SepEsrcConfigSeq(...))         # PHASE-A
+    await self.start_seq(SepEsrcEnableGeneratorsSeq())
+    assert await self.wait_seed_ready()
     await self.start_seq(SepEsrcEnableEdnSeq())          # PHASE-B
-    assert await wait_genbits(self)
-    assert await wait_km_handshake(self)
-    await check_alerts_zero(self)
+    assert await self.wait_genbits()
+    assert await self.wait_km_entropy_handshake()
+    await self.check_entropy_alerts_zero()
 """
 
 from __future__ import annotations
@@ -46,6 +44,8 @@ CLOCK_GATE_CTRL_RESET = SEP_CPU_CTRL.reset("CLOCK_GATE_CTRL")
 EXT_TRNG_SRC_SEL = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL")
 SW_RESET_N = SEP_RESET_CTRL.addr("SW_RESET_N")
 TRNG_SW_RST_N_MASK = SEP_RESET_CTRL.field_mask("SW_RESET_N", "trng_sw_rst_n")
+# EXT_TRNG_SRC_SEL.sel has one bit per stream: 0 = internal DRBG, 1 = external TRNG.
+EXT_TRNG_ALL_EXTERNAL = SEP_CPU_CTRL.field_mask("EXT_TRNG_SRC_SEL", "sel")
 # entropy_source / CSRNG / EDN addresses from the generated top-level export.
 ESRC_CTRL = sym("ENTROPY_SOURCE_CTRL_REG_ADDR")
 ESRC_INTR_STATUS = sym("ENTROPY_SOURCE_INTR_STATUS_REG_ADDR")
@@ -203,7 +203,7 @@ class SepEntropyCfg:
     # instantiate and shift the golden by 12 words: CHK3_seed (and so CHK4/CHK5)
     # mismatch while CHK1/CHK2 match exactly.
     ingress_skip: int = 0
-    internal_drbg: bool = True  # EXT_TRNG_SRC_SEL = 0 (internal) vs 0x7 (ext_trng)
+    internal_drbg: bool = True  # EXT_TRNG_SRC_SEL: every stream internal vs every stream external
     health_ctrl: int = HEALTH_CTRL_DEFAULT
     # None leaves HEALTH_TEST_WINDOW_SIZE at its 2048-sample reset -- see the note
     # above; a shrunk window trips ALERT_THRESHOLD and hangs main_sm in AlertHang.
@@ -213,10 +213,19 @@ class SepEntropyCfg:
     # the FIFO churn XOR; "backdoor" = the entropy_stream_data_o wire-tap (pre-FIFO
     # whitener output), a simpler non-draining cross-check.
     chk2_source: str = "fifo"
+    # FIFO_CTRL.ENABLE. It gates only the main-FIFO write: the same words seed the
+    # DRBG whatever its value. 0 closes the FIFO_RDATA read path, so CHK2 then needs
+    # chk2_source="backdoor" (the FIFO input tap) because the FIFO stays empty.
+    fifo_enable: int = 1
 
     @property
     def chk2_backdoor(self) -> bool:
         return self.chk2_source == "backdoor"
+
+    @property
+    def fifo_ctrl(self) -> int:
+        """FIFO_CTRL with ENABLE from the config and every other field at reset."""
+        return ENTROPY_SOURCE.value("FIFO_CTRL", ENABLE=self.fifo_enable)
 
     # ---- DUT register derivations (the SepEsrcConfigSeq writes) -------------
     @property
@@ -239,7 +248,7 @@ class SepEntropyCfg:
 
     @property
     def ext_trng_src_sel(self) -> int:
-        return 0x0 if self.internal_drbg else 0x7
+        return 0 if self.internal_drbg else EXT_TRNG_ALL_EXTERNAL
 
     @property
     def edn_generate_cmd(self) -> int:
@@ -311,7 +320,7 @@ class SepEsrcConfigSeq(uvm_sequence):
         await _wr(self, EXT_TRNG_SRC_SEL, cfg.ext_trng_src_sel)
         await _wr(self, ESRC_RING_OSC_ENABLE, RING_OSC_SAMPLECLK_ONLY)  # generators off
         await _wr(self, ESRC_DECORRELATOR_CTRL, cfg.decor_ctrl)
-        await _wr(self, ESRC_FIFO_CTRL, 0x1)
+        await _wr(self, ESRC_FIFO_CTRL, cfg.fifo_ctrl)
         await _wr(self, ESRC_HEALTH_TEST_CTRL, cfg.health_ctrl)
         if cfg.window_size is not None:
             await _wr(self, ESRC_HEALTH_TEST_WINDOW_SIZE, cfg.window_size)
@@ -342,19 +351,16 @@ class SepEsrcEnableEdnSeq(uvm_sequence):
         self.auto_mode = auto_mode
 
     async def body(self) -> None:
-        await _wr(self, ESRC_FIPS_LOCK, 0x1)
+        await _wr(self, ESRC_FIPS_LOCK, ENTROPY_SOURCE.value("FIPS_LOCK", LOCK=1))
         await _wr(self, EDN_CTRL, EDN_CTRL_AUTO if self.auto_mode else EDN_CTRL_BOOT)
 
 
 class SepEsrcFifoDrainSeq(uvm_sequence):
-    """Drain the entropy FIFO via the AXI frontdoor (FIFO_RDATA), collecting every
-    word into ``self.words`` in pop (= push) order for the CHK2 compare.
+    """Drain the entropy FIFO through FIFO_RDATA into ``self.words`` in pop order.
 
-    This is the reference suite-faithful CHK2 observation point: FIFO_RDATA is the ONLY thing
-    that pops the FIFO, and the DRBG seed taps the pre-FIFO whitener output, so the
-    frontdoor read is non-invasive to the CHK3..CHK5 chain AND reflects any FIFO
-    churn the backdoor wire-tap would miss. Reads exactly FIFO_STATUS.LEVEL words so
-    it never underflows."""
+    FIFO_RDATA is the only FIFO pop, and the DRBG seed taps the whitener before the
+    FIFO, so the drain does not disturb CHK3..CHK5. Reads FIFO_STATUS.LEVEL words,
+    so it never underflows."""
 
     def __init__(self, name: str = "esrc_fifo_drain", *, max_words: int = 128) -> None:
         super().__init__(name)
@@ -366,6 +372,50 @@ class SepEsrcFifoDrainSeq(uvm_sequence):
         level = ((await _rd(self, ESRC_FIFO_STATUS)) & level_meta["bm"]) >> level_meta["bp"]
         for _ in range(min(level, self.max_words)):
             self.words.append((await _rd(self, ESRC_FIFO_RDATA)) & 0xFFFFFFFF)
+
+
+class SepEsrcRegSeq(uvm_sequence):
+    """Write one entropy_source register (when ``wdata`` is given), then read it back.
+
+    ``reg`` is the RDL register name; the address comes from the generated
+    top-level export. ``rdata`` holds the readback after the sequence runs.
+    """
+
+    def __init__(self, name: str = "esrc_reg", *, reg: str, wdata: int | None = None) -> None:
+        super().__init__(name)
+        self.addr = sym(f"ENTROPY_SOURCE_{reg}_REG_ADDR")
+        self.wdata = wdata
+        self.rdata = -1
+
+    async def body(self) -> None:
+        if self.wdata is not None:
+            await _wr(self, self.addr, self.wdata)
+        self.rdata = await _rd(self, self.addr)
+
+
+class SepEsrcFifoReadPathSeq(uvm_sequence):
+    """Sample the main-FIFO read path: FIFO_STATUS, then ``reads`` FIFO_RDATA pops.
+
+    Unlike SepEsrcFifoDrainSeq, the pop count does not depend on LEVEL, so the
+    pops reach an empty FIFO too. entropy_source.rdl says such a read returns
+    undefined data and sets INTR_STATUS.FIFO_UNDERFLOW. The caller grades the
+    status bits; the returned data is discarded. ``level`` / ``wptr`` are the
+    FIFO_STATUS fields read before the pops.
+    """
+
+    def __init__(self, name: str = "esrc_fifo_read_path", *, reads: int = 2) -> None:
+        super().__init__(name)
+        self.reads = reads
+        self.level = -1
+        self.wptr = -1
+
+    async def body(self) -> None:
+        meta = ENTROPY_SOURCE.fields("FIFO_STATUS")
+        status = await _rd(self, ESRC_FIFO_STATUS)
+        self.level = (status & meta["LEVEL"]["bm"]) >> meta["LEVEL"]["bp"]
+        self.wptr = (status & meta["WPTR"]["bm"]) >> meta["WPTR"]["bp"]
+        for _ in range(self.reads):
+            await _rd(self, ESRC_FIFO_RDATA)
 
 
 class SepEsrcAlertReadSeq(uvm_sequence):

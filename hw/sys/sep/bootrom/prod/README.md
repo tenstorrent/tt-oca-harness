@@ -83,15 +83,14 @@ oca-images` says so rather than doing nothing.
 
 ## Build variants
 
-The three ROM variants use the same source and packed manifest bytes. Each ROM
-variant has its own object directory so builds do not overwrite one another.
-They are a transport axis, independent of `BUILD_TYPE`.
+The OpenTitan DMA and PIO profiles use the same source and packed manifest
+bytes. Each profile has its own object directory so builds do not overwrite one
+another. They are independent of `BUILD_TYPE`.
 
 | Target | Output directory | Flash transport |
 |---|---|---|
-| `toolchain-images` | `build/` | Default memory-mapped SPI integration seam |
-| `ot-toolchain-images` | `build_ot/` | OpenTitan SPI host, secure-DMA RX drain |
-| `ot-pio-toolchain-images` | `build_ot_pio/` | OpenTitan SPI host, CPU-PIO RX drain |
+| `toolchain-images` | `build/` | OpenTitan SPI host, secure-DMA RX drain |
+| `pio-toolchain-images` | `build_pio/` | OpenTitan SPI host, CPU-PIO RX drain |
 
 Useful packaging and maintenance targets are:
 
@@ -107,8 +106,8 @@ Useful packaging and maintenance targets are:
 For example, build both OpenTitan receive paths and the signed flash image:
 
 ```bash
-make -C hw/sys/sep/bootrom/prod ot-toolchain-images
-make -C hw/sys/sep/bootrom/prod ot-pio-toolchain-images
+make -C hw/sys/sep/bootrom/prod toolchain-images
+make -C hw/sys/sep/bootrom/prod pio-toolchain-images
 make -C hw/sys/sep/bootrom/prod oca-images
 ```
 
@@ -129,11 +128,10 @@ The default `build/` may also contain:
 
 | File | Purpose |
 |---|---|
-| `non_secure_boot.bin` | Unsigned manifest and BL1 flash image. |
-| `non_secure_boot.spi_preload` | Verilog-hex form of the unsigned image. |
-| `smc_mem.hex` | Unsigned image rebased to the SEP-visible SMC SRAM address. |
-| `secure_boot.bin` / `.spi_preload` | RSA-3072 signed test image. |
-| `encrypted_boot.bin` / `.spi_preload` | Signed, AES-CBC encrypted test image. |
+| `oca_<name>.bin` / `.spi_preload` | Flash image for each entry in `OCA_IMAGES`, with the bundle at both boot slots, as raw binary and Verilog hex. For example, `oca_non_secure_boot` is unsigned, `oca_secure_boot` is RSA-3072 signed, and `oca_encrypted_boot` is signed and AES-CBC encrypted. |
+| `oca_smc_mem.hex` | `oca_non_secure_boot.bin` rebased to the SEP-visible SMC SRAM address. |
+| `oca_smc_bundle.bin` | Bare signed bundle the virtual platform stages in SMC SRAM. |
+| `invalid_class_key.bin` | Decryption negative image, from `decrypt_negative_images`. |
 
 The manifest configs and the signing keys in `tests/signing_keys/` are DV assets
 for `BUILD_TYPE=debug`. They do not define production key provisioning, and a
@@ -149,9 +147,9 @@ This ROM is not built by the shared firmware engine in `hw/common/dv/fw/`, so
 compiler has no picolibc. The split is deliberate: `toolchain-images-build`
 needs the RISC-V toolchain and can run in the container, while `key-digests` and
 `oca-images` are pure Python and must run on the HOST, because their
-dependencies come from `uv` and the toolchain rootfs has none. The OpenTitan
-variants have their own `[c_build.boot_rom_ot]` and `[c_build.boot_rom_ot_pio]`
-templates, each generating digests into its own `BUILD_DIR`.
+dependencies come from `uv` and the toolchain rootfs has none. The default
+OpenTitan secure-DMA ROM uses `build/`; `pio-toolchain-images` builds the
+OpenTitan CPU-PIO profile in `build_pio/`.
 
 A caller that enters the container without generating digests first does not get
 an import error from inside the sandbox — the rule says which command to run on
@@ -160,7 +158,7 @@ the host.
 A test selects an image with `firmware = { name = "boot_rom", mode = "boot_rom" }`
 and receives it through plusargs. `hw/sys/sep/dv/testlists/rom_fw.toml` passes
 `+sep_boot_rom_hex` and `+sep_smc_mem_hex` pointing at `build/boot_rom.vmem` and
-`build/smc_mem.hex`. Those outputs are gitignored, so a plain `run_dv.py`
+`build/oca_smc_mem.hex`. Those outputs are gitignored, so a plain `run_dv.py`
 invocation builds what it needs, with one exception: the manifest-packer
 submodule above, which a build step must not initialize because it would mutate
 git state.
@@ -173,20 +171,21 @@ Common build variables include:
 |---|---|---|
 | `DCCM_SCRUB_BYTES` | `0x20000` | Cold-boot DCCM scrub length. |
 | `SRAM_SCRUB_BYTES` | `0` | SEP SRAM scrub length. |
-| `ROM_ICCM_CLEAR_ENABLE` | `1` | Clear ICCM through the DMA before loading BL1. |
+| `ROM_ICCM_CLEAR_ENABLE` | `1` | Establish ICCM ECC during BL1 handoff. |
+| `ROM_ICCM_CLEAR_FULL` | `0` | Clear the entire ICCM before loading BL1. |
 | `PMP_ENABLE` | `1` | Program the BL0 PMP entries. |
-| `PMP_LOCK` | `0` | Lock the programmed PMP entries until reset. |
-| `BOOT_SPI_CONTROLLER_OT` | `0` | Select the OpenTitan SPI host when set. |
+| `BOOT_SPI_CONTROLLER_OT` | `1` | Use the OpenTitan SPI host; set to `0` for memory-mapped flash through the XIP window, with an integrator-supplied controller driver. |
 | `BOOT_OT_SPI_USE_PIO` | `0` | Use CPU PIO instead of secure DMA for OpenTitan RX. |
 | `BOOT_OT_SPI_PROFILE` | `0` | Select the OpenTitan timing profile. |
 | `BUILD_TYPE` | `debug` | `debug` or `release`; see [Build types](#build-types). |
 | `SEP_ROM_RELEASE_SIGNING_KEYS_DIR` | `release_signing_keys` | Where a release build reads its public ROM keys. |
 
-The default build is debug-oriented. Its zero-length SEP SRAM scrub reduces RTL
-simulation cost; the full-ICCM clear is ENABLED by default
-(`ROM_ICCM_CLEAR_ENABLE ?= 1`). A release image
-must establish ECC for the full ICCM and apply the adopter's final memory
-sanitization, PMP lock, SPI-controller and version policy.
+The default build is debug-oriented. Its zero-length SEP SRAM scrub leaves in place
+anything the testbench preloads into SEP SRAM. ICCM ECC establishment is enabled, while the full-region clear
+is disabled; an adopter requiring full ICCM residue clearing sets
+`ROM_ICCM_CLEAR_FULL=1`. PMP rules are locked and bound to machine mode whenever
+`PMP_ENABLE=1`. A release image must also apply the adopter's final
+memory-sanitization, SPI-controller, and version policy.
 
 `BUILD_TYPE=release` covers key provisioning and debug output: it generates the
 ROM's trust anchors from public keys that are not in this repository, and drops
@@ -201,13 +200,9 @@ caller-selected in both build types, and the ROM version string stays a fixed
 placeholder so the open build's image, and the hash the ROM reports over itself,
 remain reproducible. See issue #2026.
 
-The rebuild stamp tracks most variables in the table, but not
-`ROM_ICCM_CLEAR_ENABLE`. Clean before changing that variable:
-
-```bash
-make -C hw/sys/sep/bootrom/prod clean
-make -C hw/sys/sep/bootrom/prod ROM_ICCM_CLEAR_ENABLE=0
-```
+The rebuild stamp tracks the compile-affecting variables, including both ICCM
+clear controls, so changing a knob rebuilds objects in the selected build
+directory.
 
 ## Source layout
 

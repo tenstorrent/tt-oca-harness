@@ -7,7 +7,7 @@
  * Testbench for i3ccore_wrapper.
  *
  * BEHAVIORAL STUB / PEER TOPOLOGY:
- *   NUM_I3C=2 instances of the same i3ccore RTL act as controller + target
+ *   NumI3c=2 instances of the same i3ccore RTL act as controller + target
  *   peers on a shared open-drain bus. This is a same-RTL loopback peer, NOT
  *   an independent third-party I3C target model. Interop / multi-vendor
  *   claims are out of scope for tests that only exercise this harness.
@@ -28,9 +28,9 @@ module tb_i3ccore;
   import i3ccore_wrap_pkg::*;
 
   // Parameters matching DUT defaults
-  localparam int unsigned NUM_I3C = 2;
-  localparam int unsigned I3C_REG_ADDR_WIDTH = 12;
-  localparam int unsigned BASE_ADDR = 0;
+  localparam int unsigned NumI3c = 2;
+  localparam int unsigned I3cRegAddrWidth = 12;
+  localparam int unsigned BaseAddr = 0;
 
   // Clock and reset
   logic clk;
@@ -86,34 +86,34 @@ module tb_i3ccore;
   //--------------------------------------------------------------------------
   // I3C bus signals
   //--------------------------------------------------------------------------
-  logic [NUM_I3C-1:0] scl_i;
-  logic [NUM_I3C-1:0] sda_i;
-  logic [NUM_I3C-1:0] scl_o;
-  logic [NUM_I3C-1:0] sda_o;
-  logic [NUM_I3C-1:0] scl_oe;
-  logic [NUM_I3C-1:0] sda_oe;
-  logic [NUM_I3C-1:0] sel_od_pp;
+  logic [NumI3c-1:0] scl_i;
+  logic [NumI3c-1:0] sda_i;
+  logic [NumI3c-1:0] scl_o;
+  logic [NumI3c-1:0] sda_o;
+  logic [NumI3c-1:0] scl_oe;
+  logic [NumI3c-1:0] sda_oe;
+  logic [NumI3c-1:0] sel_od_pp;
 
   //--------------------------------------------------------------------------
   // Interrupt and recovery signals
   //--------------------------------------------------------------------------
-  logic [NUM_I3C-1:0] irq;
-  logic [NUM_I3C-1:0] recovery_payload_available;
-  logic [NUM_I3C-1:0] recovery_image_activated;
-  logic [NUM_I3C-1:0] peripheral_reset;
-  logic [NUM_I3C-1:0] peripheral_reset_done;
-  logic [NUM_I3C-1:0] escalated_reset;
+  logic [NumI3c-1:0] irq;
+  logic [NumI3c-1:0] recovery_payload_available;
+  logic [NumI3c-1:0] recovery_image_activated;
+  logic [NumI3c-1:0] peripheral_reset;
+  logic [NumI3c-1:0] peripheral_reset_done;
+  logic [NumI3c-1:0] escalated_reset;
 
   //--------------------------------------------------------------------------
   // DAT/DCT external memory: the wrapper expects these SRAMs instantiated
   // externally (as the SMC does); modeled by gen_i3c_mem below.
   //--------------------------------------------------------------------------
-  i3c_pkg::dat_mem_src_t  [NUM_I3C-1:0] dat_mem_src;
-  i3c_pkg::dat_mem_sink_t [NUM_I3C-1:0] dat_mem_sink;
-  i3c_pkg::dct_mem_src_t  [NUM_I3C-1:0] dct_mem_src;
-  i3c_pkg::dct_mem_sink_t [NUM_I3C-1:0] dct_mem_sink;
-  i3c_pkg::rlt_mem_src_t  [NUM_I3C-1:0] rlt_mem_src;
-  i3c_pkg::rlt_mem_sink_t [NUM_I3C-1:0] rlt_mem_sink;
+  i3c_pkg::dat_mem_src_t  [NumI3c-1:0] dat_mem_src;
+  i3c_pkg::dat_mem_sink_t [NumI3c-1:0] dat_mem_sink;
+  i3c_pkg::dct_mem_src_t  [NumI3c-1:0] dct_mem_src;
+  i3c_pkg::dct_mem_sink_t [NumI3c-1:0] dct_mem_sink;
+  i3c_pkg::rlt_mem_src_t  [NumI3c-1:0] rlt_mem_src;
+  i3c_pkg::rlt_mem_sink_t [NumI3c-1:0] rlt_mem_sink;
 
   //--------------------------------------------------------------------------
   // I3C Shared Bus Model for Controller-Target Communication
@@ -187,9 +187,9 @@ module tb_i3ccore;
   // DUT instantiation
   //--------------------------------------------------------------------------
   i3ccore_wrapper #(
-    .NUM_I3C(NUM_I3C),
-    .I3C_REG_ADDR_WIDTH(I3C_REG_ADDR_WIDTH),
-    .BASE_ADDR(BASE_ADDR),
+    .NUM_I3C(NumI3c),
+    .I3C_REG_ADDR_WIDTH(I3cRegAddrWidth),
+    .BASE_ADDR(BaseAddr),
     // The spacing must cover each instance's 0x1000-byte address window.
     .INSTANCE_SPACING(32'h1000)
   ) u_dut (
@@ -260,7 +260,7 @@ module tb_i3ccore;
   // SRAM implementations instead.
   //--------------------------------------------------------------------------
 `ifndef I3C_SRAM_DAT_MEM
-  for (genvar gi = 0; gi < NUM_I3C; gi++) begin : gen_i3c_mem
+  for (genvar gi = 0; gi < NumI3c; gi++) begin : gen_i3c_mem
     logic [63:0]  dat_arr [0:(1<<i3c_pkg::DatAw)-1];
     logic [127:0] dct_arr [0:(1<<i3c_pkg::DctAw)-1];
     always_ff @(posedge clk or negedge rst_n) begin
@@ -327,7 +327,7 @@ module tb_i3ccore;
     end
   end : gen_i3c_mem
 `else
-  for (genvar gi = 0; gi < NUM_I3C; gi++) begin : gen_i3c_mem
+  for (genvar gi = 0; gi < NumI3c; gi++) begin : gen_i3c_mem
     // DAT memory (64-bit). EnableOutputPipeline=0: flow_active captures DAT data
     // 1 cycle after the read request, so a 2-cycle read makes it sample X.
     prim_ram_1p_adv #(

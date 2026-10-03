@@ -70,7 +70,6 @@ if len(SCRATCH_WARM_ADDRS) != SCRATCH_N:
 # Register pitch, taken from the export so a width change moves it.
 SCRATCH_STRIDE = SCRATCH_COLD_ADDRS[1] - SCRATCH_COLD_ADDRS[0]
 
-# Test patterns (mirror the reference sep_clock_uvm_warm_reset_vs_cold_reset_test_seq).
 COLD_PATTERN = 0xCAFE_BABE
 WARM_PATTERN = 0xDEAD_BEEF
 WARM_PATTERN2 = 0xA5A5_5A5A  # post-warm-reset recovery write

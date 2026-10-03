@@ -6,24 +6,21 @@ SHELL := /usr/bin/env
 #
 # SEP Boot ROM.
 #
-# A trimmed copy of fw/sep/bootcode adapted for the OSS DV flow:
-#   * SPI is stubbed (src/sep_spi.c) -- the OSS `sep` DUT fits no memory-mapped
-#     (XIP) flash controller, so the ROM skips the SPI manifest and boots from
-#     the SMC-SRAM manifest path.
+# Flash is read through the OpenTitan SPI host (src/sep_ot_spi.c) by default.
+# BOOT_SPI_CONTROLLER_OT=0 selects memory-mapped flash through the XIP window, whose
+# controller driver an integrator supplies; the open src/sep_spi.c reports it absent.
 #
-# The manifest+BL1 images the ROM boots are built entirely from source in this
-# tree: bl1_pass_test (<sep>/dv/fw/tests/bl1_pass_test) is compiled and packed by
-# the real tt-oca-manifest packer from the tools/tt-oca-manifest submodule,
-# using the configs/oca_*.yaml pairs -- see OCA_IMAGES below. The SMC-SRAM path
-# takes build/oca_smc_mem.hex, the same image rebased to the SMC-SRAM base.
+# The boot images are built from source: bl1_pass_test is packed by the
+# tools/tt-oca-manifest submodule from the configs/oca_*.yaml pairs (OCA_IMAGES).
 #
-# Code (.text) links to Boot ROM (ROM_BASE) -> loaded via +sep_boot_rom_hex.
-# Data (.rodata/.data/.bss) links to DCCM -> backdoor-loaded via the TCM responder.
+# Read-only sections (.text/.metadata/.rodata) link into Boot ROM and are loaded
+# through +sep_boot_rom_hex. Writable sections (.data/.bss) link into DCCM and
+# are backdoor-loaded through the TCM responder.
 #
 # Outputs (build/, gitignored):
 #   boot_rom.vmem     - 64-bit VMEM for the Boot ROM responder ($readmemh)
-#   boot_rom.itcm.hex - ROM .text as TCM-relative byte hex (legacy/optional)
-#   boot_rom.dtcm.hex - .rodata/.data/.bss as DCCM-relative byte hex
+#   boot_rom.itcm.hex - ROM read-only sections as TCM-relative byte hex
+#   boot_rom.dtcm.hex - DCCM .data/.bss as DCCM-relative byte hex
 #   oca_*.bin         - OCA boot images, one per validator path (OCA_IMAGES)
 #   oca_smc_mem.hex   - manifest+BL1 image at SMC-SRAM base (+sep_smc_mem_hex)
 #
@@ -67,15 +64,11 @@ DCCM_BASE ?= 0xC0040000
 # and spilled registers, so this scrub is what keeps key material off the stack.
 DCCM_SCRUB_BYTES ?= 0x20000
 
-# Off, and not for speed: rom_clear_ext_sram() runs before the manifest load and
-# would wipe the warm handler sep_scratch_7_test preloads at SRAM_BASE + 0x100.
-# Stays off until that preload can be staged after the cold-boot scrub.
+# Off by default: rom_clear_ext_sram() runs before the manifest load, and the
+# testbench can preload SEP SRAM (+sep_sram_hex). 0x40000 clears all of it, which
+# SEP-ROM-CPU-100 requires; rom.adoc tracks the default as a gap.
 SRAM_SCRUB_BYTES ?= 0
 
-# MUST be 1 for release: the ICCM clear is what gives ICCM valid ECC, which on
-# silicon powers up random. With it off, only the ICCM words the BL1 load writes
-# have valid ECC -- not the rest of the image's last 64-bit fetch line when the
-# BL1 length is not 8-byte aligned. Off here because the clear costs ~1.8M cycles.
 # BL1 execution from SEP SRAM. ICCM is the secure execution space and is always
 # permitted; SRAM is additionally permitted by default because debug and special
 # applications need it (a BL1 linked for SRAM, or an image staged where the LSU
@@ -94,7 +87,6 @@ BL1_SRAM_EXEC_ENABLE ?= 1
 ROM_ICCM_CLEAR_ENABLE ?= 1
 ROM_ICCM_CLEAR_FULL ?= 0
 PMP_ENABLE ?= 1
-PMP_LOCK   ?= 0
 
 # DV drives this Makefile directly (sep_sim_cfg.toml) and names build/, so debug is
 # the default.
@@ -107,10 +99,10 @@ ifeq ($(filter $(BUILD_TYPE),debug release),)
 $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Use 'debug' or 'release')
 endif
 
-# SPI flash transport selection. 0 = memory-mapped (XIP) flash controller,
-# 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is
-# dropped by --gc-sections at link time.
-BOOT_SPI_CONTROLLER_OT ?= 0
+# Flash transport: 1 = OpenTitan SPI host (default), 0 = memory-mapped flash through
+# the XIP window, with controller init from an override of the src/sep_spi.c hooks.
+# --gc-sections drops the unused driver.
+BOOT_SPI_CONTROLLER_OT ?= 1
 # OpenTitan RX-FIFO drain method (used only when BOOT_SPI_CONTROLLER_OT=1):
 # 0 = secure DMA (default), 1 = CPU programmed I/O.
 BOOT_OT_SPI_USE_PIO ?= 0
@@ -203,9 +195,9 @@ OCA_LIB_OBJS := $(patsubst $(OCA_LIB_DIR)/%.c,$(OCA_OBJ_DIR)/%.o,$(OCA_LIB_SRCS)
 # reports OCA_FAIL_UNSUPPORTED_VARIANT rather than a false pass. Turning PQC off
 # is the largest ROM-size lever available if the 64 KiB budget gets tight.
 
-# Entropy chain bring-up (ESRC -> DRBG/CSRNG -> EDN) in the ROM. On by default;
-# with it off the crypto blocks fall back to the DV +sep_crypto_edn_force
-# shortcut, which is what this replaces.
+# Entropy chain bring-up (ESRC -> DRBG/CSRNG -> EDN) in the ROM. On by default.
+# Setting it to 0 produces a diagnostic build in which the ROM does not provide
+# entropy to crypto blocks, so entropy-dependent secure boot cannot complete.
 SEP_ENTROPY_BRINGUP ?= 1
 
 # One-way entropy lock bypasses, independent of each other. Both locks are
@@ -233,9 +225,9 @@ OBJS += $(OCA_LIB_OBJS)
 OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
 OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
-# Optional extra sources injected by an adopter overlay build (absolute .c paths).
-# Their strong symbols override the weak stubs in src/ at link time (e.g. a
-# supplied SPI controller driver overriding the weak src/sep_spi.c stub).
+# Optional absolute .c paths from an adopter overlay build. Their strong symbols
+# override the weak stubs in src/, such as the external flash controller hooks in
+# src/sep_spi.c or ot_spi_select_pad_mux() for a wrapper with shared SPI pads.
 SEP_FW_OVERLAY_SOURCES := $(OCAH_FW_OVERLAY_SOURCES_sep)
 SEP_FW_OVERLAY_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(SEP_FW_OVERLAY_SOURCES)))
 OBJS += $(SEP_FW_OVERLAY_OBJS)
@@ -266,7 +258,7 @@ CFLAGS   := -Os -g -gdwarf-4 -ffreestanding -fno-builtin -fdata-sections -ffunct
 	-DOCA_SUPPORT_CLASSIC=$(OCA_SUPPORT_CLASSIC) -DOCA_SUPPORT_PQC=$(OCA_SUPPORT_PQC) \
 	-DOCA_TOC_MAX_IMAGES=$(OCA_TOC_MAX_IMAGES) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
-	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DSEP_BL0 $(BUILD_TYPE_DEFINES) \
+	-DPMP_ENABLE=$(PMP_ENABLE) -DSEP_BL0 $(BUILD_TYPE_DEFINES) \
 	-DROM_ICCM_CLEAR_ENABLE=$(ROM_ICCM_CLEAR_ENABLE) \
 	-DROM_ICCM_CLEAR_FULL=$(ROM_ICCM_CLEAR_FULL) \
 	-DBL1_SRAM_EXEC_ENABLE=$(BL1_SRAM_EXEC_ENABLE) \
@@ -275,7 +267,7 @@ CFLAGS   := -Os -g -gdwarf-4 -ffreestanding -fno-builtin -fdata-sections -ffunct
 	-DBOOT_OT_SPI_PROFILE=$(BOOT_OT_SPI_PROFILE) \
 	$(CC_ABI)
 ASFLAGS  := -x assembler-with-cpp -g -gdwarf-4 -mno-relax -I$(INCLUDE_DIR) $(REG_INCLUDE_DIRS) \
-	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) \
+	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DPMP_ENABLE=$(PMP_ENABLE) \
 	-DBL1_SRAM_EXEC_ENABLE=$(BL1_SRAM_EXEC_ENABLE) \
 	$(CC_ABI)
 LDFLAGS  := -nostdlib -Wl,--gc-sections -Wl,--no-relax -T $(LINK_DIR)/rom.ld $(CC_ABI)
@@ -293,9 +285,9 @@ DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=
 .DELETE_ON_ERROR:
 
 .PHONY: all clean bl1_test ensure-pack-deps toolchain-images toolchain-images-build \
-        ot-toolchain-images ot-pio-toolchain-images debug release
+        pio-toolchain-images debug release decrypt_negative_images
 
-# Release stops at the ROM: oca-images signs its 17 flash images with the private
+# Release stops at the ROM: oca-images emits flash images signed with the private
 # test keys the configs name, which a release build must never emit.
 ifeq ($(BUILD_TYPE),release)
 all: toolchain-images
@@ -309,27 +301,16 @@ debug:
 release:
 	@$(MAKE) BUILD_TYPE=release all
 
-# OpenTitan SPI-host ROM variants. Same sources, built with the OT transport
-# selected (boot_flash.h picks the driver on BOOT_SPI_CONTROLLER_OT) and each into
-# its own BUILD_DIR so the variants coexist instead of clobbering one another.
-# Named targets rather than raw knobs: the variant-to-directory mapping is the
-# thing that must not be got wrong, so it lives here and not in every caller.
-#
-# These build the ROM only. The packed flash images are transport- and
-# drain-agnostic -- the same manifest+BL1 bytes are what any of the three ROMs
-# read -- so they are built ONCE by `oca-images` into the default build/ and shared.
-# Packing them per variant would be pure duplication with three copies to drift.
-ot-toolchain-images:
-	$(MAKE) BUILD_DIR=$(PROD_DIR)/build_ot BOOT_SPI_CONTROLLER_OT=1 toolchain-images
-ot-pio-toolchain-images:
-	$(MAKE) BUILD_DIR=$(PROD_DIR)/build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 \
+# The CPU-PIO drain builds into its own directory so both OpenTitan ROM profiles
+# coexist. Packed flash images are drain-method agnostic and remain in build/.
+pio-toolchain-images:
+	$(MAKE) BUILD_DIR=$(PROD_DIR)/build_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 \
 		toolchain-images
 
 # Split by tool dependency so callers can run each half in the right environment:
 # toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
 # container). oca-images and key-digests are pure Python and run via uv, which
-# the container carries. The companion's SEP firmware build script drives the
-# two halves this way.
+# the container carries.
 #
 # Direct `make toolchain-images` uses only an explicit RISCV_TOOLCHAIN on the
 # host. Otherwise it runs the compiler-dependent half in the OCAH container.
@@ -347,8 +328,15 @@ toolchain-images: key-digests
 	    $(MAKE) -C "$(CURDIR)" \
 	    BUILD_DIR="$(BUILD_DIR)" ROM_BASE="$(ROM_BASE)" DCCM_BASE="$(DCCM_BASE)" \
 	    DCCM_SCRUB_BYTES="$(DCCM_SCRUB_BYTES)" SRAM_SCRUB_BYTES="$(SRAM_SCRUB_BYTES)" \
-	    ROM_ICCM_CLEAR_ENABLE="$(ROM_ICCM_CLEAR_ENABLE)" PMP_ENABLE="$(PMP_ENABLE)" \
-	    PMP_LOCK="$(PMP_LOCK)" BUILD_TYPE="$(BUILD_TYPE)" \
+	    ROM_ICCM_CLEAR_ENABLE="$(ROM_ICCM_CLEAR_ENABLE)" \
+	    ROM_ICCM_CLEAR_FULL="$(ROM_ICCM_CLEAR_FULL)" \
+	    BL1_SRAM_EXEC_ENABLE="$(BL1_SRAM_EXEC_ENABLE)" \
+	    PMP_ENABLE="$(PMP_ENABLE)" BUILD_TYPE="$(BUILD_TYPE)" \
+	    SEP_ENTROPY_BRINGUP="$(SEP_ENTROPY_BRINGUP)" \
+	    SEP_ENTROPY_DEFER_FIPS_LOCK="$(SEP_ENTROPY_DEFER_FIPS_LOCK)" \
+	    SEP_ENTROPY_DEFER_SRC_SEL_LOCK="$(SEP_ENTROPY_DEFER_SRC_SEL_LOCK)" \
+	    OCA_SUPPORT_CLASSIC="$(OCA_SUPPORT_CLASSIC)" \
+	    OCA_SUPPORT_PQC="$(OCA_SUPPORT_PQC)" OCA_TOC_MAX_IMAGES="$(OCA_TOC_MAX_IMAGES)" \
 	    SEP_ROM_RELEASE_SIGNING_KEYS_DIR="$(SEP_ROM_RELEASE_SIGNING_KEYS_DIR)" \
 	    BOOT_SPI_CONTROLLER_OT="$(BOOT_SPI_CONTROLLER_OT)" \
 	    BOOT_OT_SPI_USE_PIO="$(BOOT_OT_SPI_USE_PIO)" \
@@ -375,8 +363,9 @@ $(OCA_OBJ_DIR):
 # without this stamp a variant rebuild silently hands back the previous image.
 BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	PROFILE=$(BOOT_OT_SPI_PROFILE) BUILD_TYPE=$(BUILD_TYPE) \
-	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
-	BL1_SRAM_EXEC=$(BL1_SRAM_EXEC_ENABLE) ICCM_FULL=$(ROM_ICCM_CLEAR_FULL) \
+	PMP_ENABLE=$(PMP_ENABLE) \
+	BL1_SRAM_EXEC=$(BL1_SRAM_EXEC_ENABLE) ICCM_ENABLE=$(ROM_ICCM_CLEAR_ENABLE) \
+	ICCM_FULL=$(ROM_ICCM_CLEAR_FULL) \
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
 	REG_OVERLAY=$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep) \
 	SOURCE_OVERLAY=$(OCAH_FW_OVERLAY_SOURCES_sep) \
@@ -604,6 +593,9 @@ OCA_IMAGES := \
 	ecdsa_boot \
 	der_boot \
 	multi_image_boot \
+	encrypted_multi_image_boot \
+	toc_cap_boot \
+	encrypted_toc_cap_boot \
 	no_bl1_boot \
 	rom_key1_boot \
 	rom_key2_boot \
@@ -614,12 +606,14 @@ OCA_IMAGES := \
 OCA_BINS := $(patsubst %,$(BUILD_DIR)/oca_%.bin,$(OCA_IMAGES))
 OCA_HEXS := $(patsubst %,$(BUILD_DIR)/oca_%.spi_preload,$(OCA_IMAGES))
 
-# The SMC-SRAM path stages a BARE BUNDLE, not a combined image: it resolves the
-# payload from the manifest's own payload_offset, which for a bundle is exactly
-# body_size, so the slot offsets a combined image adds mean nothing there.
+# The SMC-SRAM model receives the combined non-secure image rebased to its
+# address window. Its MANIFEST_ADDR points at offset 0x1000, matching the
+# primary manifest position in that image.
+OCA_SMC_MEM_HEX := $(BUILD_DIR)/oca_smc_mem.hex
+# The virtual platform stages a bare bundle instead: it resolves the payload from
+# the manifest's own payload_offset, which for a bundle is exactly body_size.
 OCA_SMC_CONFIG := $(PROD_DIR)/configs/oca_secure_boot_test.yaml
 OCA_SMC_BIN    := $(BUILD_DIR)/oca_smc_bundle.bin
-OCA_SMC_MEM_HEX := $(BUILD_DIR)/oca_smc_mem.hex
 
 .PHONY: oca-images
 ifeq ($(BUILD_TYPE),release)
@@ -659,18 +653,38 @@ $(OCA_HEXS): $(BUILD_DIR)/oca_%.spi_preload: $(BUILD_DIR)/oca_%.bin
 $(OCA_SMC_BIN): $(OCA_SMC_CONFIG) bl1_test ensure-pack-deps | $(BUILD_DIR)
 	$(PACK_RUN) --config "$(OCA_SMC_CONFIG)" --out "$@" -v
 
-# The same image the DV SMC-SRAM test loads with +sep_smc_mem_hex, as $readmemh
-# rebased to the SMC-SRAM base. Built from the COMBINED image, not the bundle:
-# the behavioural SMC responder publishes MANIFEST_ADDR = 0x1000, so the manifest
-# has to sit one slot offset into the window -- which is exactly where the
-# combined image already puts it. Rebasing the bundle instead would place the
-# manifest at the window base and the ROM would read 0x1000 bytes past it.
+# Rebase the combined non-secure image for $readmemh into the behavioral SMC
+# SRAM model. The manifest remains at offset 0x1000 from SMC_SRAM_BASE.
 $(OCA_SMC_MEM_HEX): $(BUILD_DIR)/oca_non_secure_boot.bin
 	$(MANIFEST_PYTHON) "$(BIN_TO_SPI)" "$<" "$(BUILD_DIR)/oca_smc_mem.spi_preload"
 	sed 's/@00000000/@$(SMC_SRAM_BASE)/' "$(BUILD_DIR)/oca_smc_mem.spi_preload" > "$@"
 
-# Removes every variant, not just $(BUILD_DIR): a `make clean` that left build_ot/
-# behind would let a stale OT image survive into the next run and boot silently.
+# Decryption negative image: the primary stays encrypted and the backup is unencrypted.
+DERIVE_CONFIG_PY := $(PROD_DIR)/scripts/derive_pack_config.py
+ifneq ($(shell command -v uv 2>/dev/null),)
+DERIVE_RUN := $(MANIFEST_PYTHON) "$(DERIVE_CONFIG_PY)"
+else
+# uv-less fallback: the script needs only ruamel.yaml, which ensure-pack-deps checks.
+DERIVE_RUN := python3 "$(DERIVE_CONFIG_PY)"
+endif
+ENCRYPTED_IMAGE_CONFIG := $(PROD_DIR)/configs/oca_encrypted_boot_image.yaml
+DECRYPT_NEG_BINS := $(BUILD_DIR)/invalid_class_key.bin
+
+decrypt_negative_images: $(DECRYPT_NEG_BINS)
+
+$(BUILD_DIR)/invalid_class_key.yaml: $(DERIVE_CONFIG_PY) $(ENCRYPTED_IMAGE_CONFIG) \
+		| $(BUILD_DIR) ensure-pack-deps
+	$(DERIVE_RUN) --base "$(ENCRYPTED_IMAGE_CONFIG)" \
+		--set-str combos.1.config=configs/oca_secure_boot_test.yaml --out "$@"
+
+$(DECRYPT_NEG_BINS): $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.yaml bl1_test ensure-pack-deps
+	@test -f "$(SEP_SIGNING_KEY)" || { \
+	  echo "ERROR: $* needs the ROM key 0 signing key."; \
+	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
+	  exit 1; }
+	$(PACK_RUN) --config "$<" --out "$@" -v
+
+# Removes every supported build profile, not just $(BUILD_DIR).
 clean:
-	rm -rf "$(BUILD_DIR)" $(PROD_DIR)/build $(PROD_DIR)/build_ot $(PROD_DIR)/build_ot_pio
+	rm -rf "$(BUILD_DIR)" $(PROD_DIR)/build $(PROD_DIR)/build_pio $(PROD_DIR)/build_release
 	$(MAKE) -C "$(BL1_TEST_DIR)" clean 2>/dev/null || true

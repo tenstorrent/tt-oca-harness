@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  VERILATOR_VERSION: v5.050
+  VERILATOR_VERSION: v5.052
 
 jobs:
   diff-class:
@@ -27,7 +27,6 @@ jobs:
 
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init --recursive
 
       - name: Classify the diff
@@ -99,6 +98,40 @@ jobs:
           path: ~/verilator/
           retention-days: 1
 
+  # The ocah-container image takes verilator from the nixpkgs revision that
+  # flake.lock pins, so a flake update can move it without touching any
+  # workflow. The release CI builds from source must be that same one.
+  verilator-version:
+    needs: [diff-class]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+      - name: Compare with the container's Verilator
+        run: |
+          set -euo pipefail
+          rev=$(jq -r '.nodes[.nodes.root.inputs.nixpkgs].locked.rev' flake.lock)
+          container="v$(nix eval --raw "github:nixos/nixpkgs/${rev}#verilator.version")"
+          echo "ocah-container (nixpkgs ${rev}): ${container}"
+          status=0
+          check() {
+            echo "$1 ($2): ${3:-unset}"
+            if [ "$3" != "$container" ]; then
+              echo "::error file=$1::$2 is ${3:-unset}; the ocah-container image ships ${container}"
+              status=1
+            fi
+          }
+          check .github/workflows/lint.yml VERILATOR_VERSION \
+            "$(sed -n 's/^  VERILATOR_VERSION: *//p' .github/workflows/lint.yml)"
+          check .github/actions/dv-run/action.yml "the verilator-version default" \
+            "$(sed -n "/^  verilator-version:/,/default:/s/^    default: *//p" .github/actions/dv-run/action.yml | tr -d "'\"")"
+          exit "$status"
+
   lint-sv-verilator:
     name: lint-sv-verilator/${{ matrix.block }}
     needs: [diff-class, setup-tools, setup-verilator]
@@ -122,9 +155,12 @@ jobs:
           chmod +x ./bin/bender
           # actions/upload-artifact zips (and download-artifact unzips) without
           # preserving Unix permissions, so every file lands back at 644.
-          chmod +x ./verilator/bin/*
+          chmod +x ./verilator/bin/* ./verilator/share/verilator/bin/*
           echo "$GITHUB_WORKSPACE/bin" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/verilator/bin" >> "$GITHUB_PATH"
+          # setup-verilator configures --prefix=$HOME/verilator; the runtime
+          # headers --build compiles against are under this artifact instead.
+          echo "VERILATOR_ROOT=$GITHUB_WORKSPACE/verilator/share/verilator" >> "$GITHUB_ENV"
           sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 update
           sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
             install -y --no-install-recommends libfl2
@@ -157,6 +193,11 @@ jobs:
         run: |
           echo "::error::Verilator exited with status ${{ steps.lint.outputs.exit_code }}"
           exit 1
+      # cocotb's Verilator runner forces --public-flat-rw, which --lint-only
+      # never compiles. SMU's filelist holds the SEP and SMC packages too.
+      - name: Build ${{ matrix.block }} packages under --public-flat-rw
+        if: matrix.block == 'smu'
+        run: make ocah-lint-verilator-public-all BLOCK="${{ matrix.block }}"
 
   lint-python:
     needs: [diff-class, setup-tools]
@@ -168,7 +209,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -219,7 +259,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -251,7 +290,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -275,7 +313,7 @@ jobs:
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: lint_sv_comments.log, efm: '%f:%l: %m', level: error, name: lint-sv-comments }
 
-  lint-sv-enum-members:
+  lint-sv-enums:
     needs: [diff-class, setup-tools]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
@@ -283,14 +321,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
-      - name: Check SystemVerilog enum members
-        run: make ocah-lint-sv-enum-members 2>&1 | tee lint_sv_enum_members.log || true
+      - name: Check SystemVerilog enums
+        id: lint
+        shell: bash
+        run: |
+          set +e
+          make ocah-lint-sv-enums 2>&1 | tee lint_sv_enums.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+      # The Checks API post is advisory. The check's exit status, gated
+      # below, fails the job, including when it dies before checking a file.
       - uses: ./.github/actions/reviewdog-report
-        with: { log-file: lint_sv_enum_members.log, efm: '%f:%l: %m', level: error, name: lint-sv-enum-members }
+        continue-on-error: true
+        with: { log-file: lint_sv_enums.log, efm: '%f:%l: %m', level: error, name: lint-sv-enums }
+      - name: Gate on the enum check's exit status
+        if: always() && steps.lint.outputs.exit_code != '0'
+        run: |
+          echo "::error::make ocah-lint-sv-enums exited with status ${{ steps.lint.outputs.exit_code }}"
+          exit 1
 
   # Vale is a Go binary with no PyPI wheel; fetched here from a pinned
   # release the same way lint-make (checkmake) does (see flows/lint/vale.mk).
@@ -340,7 +395,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -361,7 +415,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -440,7 +493,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -464,7 +516,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -492,18 +543,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-           fetch-depth: 0
+          fetch-depth: 0
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
-          sed -i 's|git@github.com:tenstorrent/|https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/|g' $GITHUB_WORKSPACE/.gitmodules
           git submodule update --init
           git config --global --add safe.directory $GITHUB_WORKSPACE/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
         with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+          github_access_token: ${{ github.token }}
       - name: Run nix-fmt
         run: |
           set +e
@@ -529,7 +577,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -640,7 +687,6 @@ jobs:
       - name: Checkout submodules
         if: steps.scope.outputs.run == 'true'
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         if: steps.scope.outputs.run == 'true'
@@ -693,7 +739,6 @@ jobs:
           fetch-depth: 0
       - name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6

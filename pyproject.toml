@@ -76,8 +76,7 @@ extend-exclude = [
   "nonfree",
   "vendor",
   "**/build",
-  "**/build_ot",
-  "**/build_ot_pio",
+  "**/build_pio",
   "**/regs/gen/py",
   "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest",
   # The VP simulator is a submodule, so it is not covered by a .gitignore the
@@ -124,11 +123,16 @@ explicit_package_bases = true
 # hw/common/dv/), not this environment; treat their absence as expected
 # rather than an error on every DV file that imports them.
 ignore_missing_imports = true
+# The two pyslang importers stay out: pyslang 11.0.0 ships a stub that names a
+# parameter `with`, mypy cannot parse it, and one such error aborts the whole run.
+# follow_imports does not apply to an installed package's own stubs.
 exclude = '''(?x)^(
   vendor/
   | nonfree/
   | .*/regs/gen/py/
   | .*/build(_ot|_ot_pio)?/
+  | tools/doc/rtl_modules_reference\.py$
+  | scripts/ci/check_sv_enums\.py$
 )'''
 
 [tool.codespell]
@@ -159,7 +163,7 @@ skip = """\
 */dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
 */local/pdks/*,\
 \
-*/integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
+*/integration/rdl/*,*/integration/ipxact/*,*/integration/constraints/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
 */doc/*/modules/*,*/_build/*,\
 */virtual_platform/downloads/*,*/virtual_platform/local/*,*/virtual_platform/local-ctr/*,\
@@ -174,8 +178,9 @@ skip = """\
 # "interrupter" spelling codespell's dictionary otherwise prefers.
 ignore-words-list = """\
 STAP,stap,STAPs,staps,EDN,edn,OT,hart,Hart,THRE,thre,WEL,DED,ded,\
-inout,Inout,ist,wit,dout,oen,chainIn,LockIn,DAA,clen,aack,thi,pres,te,\
+inout,Inout,ist,wit,dout,oen,chainIn,LockIn,DAA,clen,aack,thi,pres,te,ues,\
 Dum,ND,nd,RUNN,ASSIGNIN,Synopsys,synopsys,unsecure,Unsecure,UNSECURE,\
 interruptor,Interruptor,interruptors,Interruptors,\
-SpecField,specfield\
+SpecField,specfield,\
+Tye,tye\
 """

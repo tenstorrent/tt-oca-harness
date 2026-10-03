@@ -58,10 +58,12 @@ Synthesis readiness (`list_all_synth_readiness.sh`):
 
 ## Changing the scope
 
-- `run_all_sim_tests.sh` currently runs a single DUT (`duts="smc"`). The
-  commented-out line above it derives the full list from `run_dv.py --list`.
-  Edit `duts` to choose which DUTs to run.
-- The block list for the readiness scripts is `_BLOCKS` at the top of each
-  script. Keep the two copies in step.
+- `run_all_sim_tests.sh [DUT...]` runs the named DUTs, or every Verilator DUT
+  from `run_dv.py --list` when none are given. An unknown name lists the
+  valid ones.
+- `run_all_synth_readiness.sh [BLOCK...]` runs the named blocks, or every block
+  in `_ALL_BLOCKS` when none are given. `list_all_synth_readiness.sh` keeps
+  its own `_BLOCKS` list; keep the two in step.
+- Both `run_*` scripts print usage with `-h` / `--help`.
 - `local/` holds machine-specific scratch output and is not part of the
   open tree.

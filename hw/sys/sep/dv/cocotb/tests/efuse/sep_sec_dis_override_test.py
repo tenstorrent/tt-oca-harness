@@ -75,7 +75,7 @@ _MISMATCH_TOKEN = 1
 # completes. That encoding is outside the named lifecycle set, so the
 # golden's other-encodings row is the closed feature-control value.
 _WITHHELD_LC = 0xF
-# SHA-256 of 32 zero bytes; must match ``SEC_DIS_TB_DIGEST`` in ``tb/tb_top.sv``.
+# SHA-256 of 32 zero bytes; must match ``SecDisTbDigest`` in ``tb/tb_top.sv``.
 _TB_SEC_DIS_DIGEST = 0x66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0D5F2925
 
 

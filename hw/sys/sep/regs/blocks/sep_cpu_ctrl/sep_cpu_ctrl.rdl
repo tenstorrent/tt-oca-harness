@@ -14,7 +14,10 @@ addrmap sep_cpu_ctrl {
             sw=rw;
             hw=rw;
             wr_swacc = true;
-            desc="SEP REFERENCE COUNTER, counting after deassert of cold reset";
+            desc="SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,
+                  then poll this register until the readback reflects the written value before
+                  writing again. The counter keeps advancing, so the readback is at or just
+                  above the written value rather than equal to it.";
         } rc [63:0] = 0x0;
     };
 

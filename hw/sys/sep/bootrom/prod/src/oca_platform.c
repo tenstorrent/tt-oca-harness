@@ -39,11 +39,11 @@
 #include "rsa_verify.h"
 #include "sep_addr.h"
 
-// Entropy chain bring-up is behind SEP_ENTROPY_BRINGUP while it is being brought
-// up; with the flag off the crypto blocks still rely on the DV
-// +sep_crypto_edn_force shortcut, which is what this replaces. Wrapped in a
-// macro so the two crypto gates below read the same either way and the
-// conditional lives in exactly one place.
+// Entropy chain bring-up is behind SEP_ENTROPY_BRINGUP for diagnostic builds.
+// With the flag off, this ROM does not provide entropy to crypto blocks and
+// entropy-dependent secure boot cannot complete. Wrapped in a macro so the two
+// crypto gates below read the same either way and the conditional lives in
+// exactly one place.
 #if SEP_ENTROPY_BRINGUP
 #include "sep_entropy.h"
 #define ENTROPY_PREREQ() sep_entropy_init()
@@ -595,12 +595,11 @@ static oca_secure_bool_t plat_is_secure_boot_active(void) {
     if (lc_state_enforces_secure_boot(lc)) {
         return OCA_SECURE_TRUE;
     }
-    // A TEST_DEV part with chiplet debug disabled enforces secure boot, so a
-    // locked debug posture cannot be bypassed by loading unsigned code. The RMA
-    // states stay manifest-optional whatever the disable vectors say.
+    // A TEST_DEV or RMA_SiP part with chiplet debug disabled enforces secure
+    // boot, so a locked debug posture cannot be bypassed by loading unsigned code.
     //
     // Latched at [S18] so the answer cannot move under the validator's re-checks.
-    if (lc == LC_STATE_TEST_DEV && chiplet_debug_disabled()) {
+    if (lc_state_follows_debug_lock(lc) && chiplet_debug_disabled()) {
         return OCA_SECURE_TRUE;
     }
     return OCA_SECURE_FALSE;

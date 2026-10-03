@@ -12,7 +12,7 @@ passed through to the DTP (with the SMC-reserved lanes added to the internal-CT
 and clock-stop counts). The generated Cross Trigger Matrix register map must
 have one `CT_Src` and one `CT_Dst` for every DTP port
 (`XTRIG_NUM_CTP + XTRIG_NUM_INT_CT` at the DTP, which is the SMU-exposed
-internal-CT count plus `smu_pkg::XTRIG_SMC_INT_CT_LANES`). Resizing is two
+internal-CT count plus `smu_pkg::XtrigSmcIntCtLanes`). Resizing is two
 steps: set the `CFG` counts, and regenerate the CTM with matching PeakRDL
 overrides:
 
@@ -23,7 +23,7 @@ make ocah-regen-regs TARGET=cross_trigger_matrix \
 ----
 
 `<n>` is the DTP total (`CFG.XTRIG_NUM_CTP + CFG.XTRIG_NUM_INT_CT +
-smu_pkg::XTRIG_SMC_INT_CT_LANES`). `cross_trigger_network` fails elaboration if
+smu_pkg::XtrigSmcIntCtLanes`). `cross_trigger_network` fails elaboration if
 the parameterized total disagrees with the generated map. Defaults remain 16
 external CTPs, 10 internal CTs (8 exposed), and 9 clock-stop requests (8
 exposed). `XTRIG_INT_CT_MODE` and every `JTAG_*` enable are set at the
@@ -80,11 +80,14 @@ dtp #(
 The DTP secondary scan path chains multiple STAPs on a single PTAP-managed scan
 string. The fixed order on this string is: PTAP, I/O STAP (if
 `JTAG_STAP_IO_ENABLE=1`), SMC debug STAP (if `JTAG_SMC_DBG_ENABLE=1`), SEP
-debug STAP (if `SEP=1` in the SMU), extra STAP[N-1:0], and return to PTAP.
+debug STAP (if `CFG.SEP=1` in the SMU), extra STAP[N-1:0], and return to PTAP.
 
 The string carries scans only while the PTAP 3DCR select bit is set. While the
-bit is clear, the scan-control strobes to every STAP stay low, so the STAP SIBs,
-3DCRs and any downstream TAPs hold their state through every PTAP scan. The
+bit is clear, the scan-control strobes to every STAP stay low, so the STAP SIBs
+and 3DCRs hold their state through every PTAP scan, as does the downstream TAP
+of every deselected STAP. A STAP whose own select bit is set still forwards TCK
+and the live TMS, so its downstream TAP follows every PTAP scan; clear each
+STAP's select bit, or reset the chain, before clearing the PTAP select bit. The
 select bit updates at Update-DR, so it is set in a TAP_3DCR scan of its own
 before a scan that opens STAP SIBs or writes STAP 3DCRs.
 
@@ -93,7 +96,7 @@ not exported on the SMU boundary. The SMU wires the SMC debug STAP host outputs
 to the SMC CPU/system JTAG ports (`smc_cpu_jtag_*`) when
 `JTAG_SMC_DBG_ENABLE=1`; when disabled, the DTP bypasses this STAP in the
 secondary scan chain and drives the internal host outputs low. The SEP debug
-STAP connects to the SEP JTAG debug port when `SEP=1`; when `SEP=0`, the SMU
+STAP connects to the SEP JTAG debug port when `CFG.SEP=1`; when `CFG.SEP=0`, the SMU
 ties `sep_stap_tdo_to_dtp = 1'b0` to bypass the SEP STAP return path.
 
 Each STAP host interface is gated by a field of `dbg_disable_i`, synchronized to

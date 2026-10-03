@@ -44,8 +44,9 @@ addrmap plic {
         field {
             sw=rw;
             hw=r;
-            desc="Interrupt & claim threshold. Maximum value is 7.
-                  Any interrupt with a priority less than the threshold cannot interrupt the cpu";
+            desc="Interrupt notification threshold. Maximum value is 7.
+                  The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+                  The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.";
         } value[2:0];
     };
 

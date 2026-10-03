@@ -37,7 +37,7 @@ addrmap smc_base_config {
         field {
             sw = rw;
             hw = r;
-            desc = "Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.";
+            desc = "Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.";
         } size [31:0] = 0x100_0000;
     };
 
@@ -90,7 +90,7 @@ addrmap smc_base_config {
         field {
             sw=rw;
             hw=r;
-            desc="Clock gate enable for address remapper register logic";
+            desc="Clock gate enable for the output fabric remap demux and mux";
         } output_fabric_cg_en [7:7] = 0x0;
 
         field {
@@ -102,31 +102,31 @@ addrmap smc_base_config {
         field {
             sw=rw;
             hw=r;
-            desc="Clock gate enable for i3c";
+            desc="Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.";
         } i3c_cg_en [9:9] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Clock gate enable for AVSBus";
+            desc="Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.";
         } avs_cg_en [10:10] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Clock gate enable for i2c";
+            desc="Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.";
         } i2c_cg_en [11:11] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Clock gate enable for UART";
+            desc="Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.";
         } uart_cg_en [12:12] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc="Clock gate enable for telemetry";
+            desc="Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.";
         } telemetry_cg_en [13:13] = 0x0;
 
         field {

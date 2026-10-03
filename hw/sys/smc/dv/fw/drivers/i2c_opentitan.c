@@ -322,7 +322,7 @@ uint32_t g_i2c_tx_reset_residual;     /* TXLVL after that second attempt */
 uint32_t g_i2c_reset_repair_allowed;
 
 /* Bound on the manual drain. The ACQ FIFO is 64 deep
- * (smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH), so anything beyond a small
+ * (smc_config_pkg::I2cTargetRxFifoDepth), so anything beyond a small
  * multiple of that means the level is not falling. */
 #define I2C_ACQ_DRAIN_BOUND 256u
 
@@ -1539,7 +1539,7 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len) {
 
         // TXLVL below the FIFO depth means space is available.
         uint32_t tx_level = fifo_status.f.TXLVL;
-        /* The target TX FIFO is 64 deep (smc_config_pkg::I2C_TARGET_TX_FIFO_DEPTH).
+        /* The target TX FIFO is 64 deep (smc_config_pkg::I2cTargetTxFifoDepth).
          * A TXDATA write into a full FIFO is silently dropped, so stop here and
          * let the caller's "did every byte get pushed?" guard fire. */
         if (tx_level >= I2C_TARGET_TX_FIFO_DEPTH) break;

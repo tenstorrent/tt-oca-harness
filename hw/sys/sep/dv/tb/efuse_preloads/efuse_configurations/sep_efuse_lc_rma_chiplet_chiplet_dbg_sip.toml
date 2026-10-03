@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# RMA_CHIPLET with CHIPLET_DBG disabled by SIP_DIS, and SYS_DIS clear.
+#
+# The chiplet debug lock does not apply in RMA_CHIPLET (SEP-ROM-SB-025), so the
+# ROM must read the lock and still boot an unsigned image, without reporting
+# SBOOT_DBG_LOCK.
+#
+# Used by sep_rom_rma_chiplet_dbg_lock_boot_test.
+
+[LC_STATE]
+  # Differentially encoded {~raw[3:0], raw[3:0]}: raw 0x6 (RMA_CHIPLET) stores
+  # as 0x96. See the directory README.
+  [LC_STATE.fields.lc_state]
+  value = 0x96
+
+[SIP_DIS]
+  # SIP_DIS has no named bitfields in the generated header, so the whole 64-bit
+  # vector is written at once. CHIPLET_DBG is bit 1.
+  [SIP_DIS.fields.sip_dis]
+  value = 0x2

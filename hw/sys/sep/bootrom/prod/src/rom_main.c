@@ -108,15 +108,7 @@ __attribute__((noreturn)) void trap_handler_c(uint32_t mcause, uint32_t mepc, ui
 static volatile uint32_t g_data_init = 0x12345678u;
 static volatile uint32_t g_bss_zero;
 
-// Warm reset is handled in vector.S ([S01]):
-// - vector.S reads cold_scratch[7] early,
-//   before touching DCCM (sp/scrub/.data/.bss), to preserve BL1 state.
-// - A valid ICCM address transfers directly to the warm handler and remains
-//   intact for subsequent watchdog resets.
-// - A zero slot selects cold boot; the cold path then poisons it with -1.
-// - An invalid nonzero slot stops in vector.S.
-//
-// The SEP scratch registers used:
+// Warm reset dispatch runs in vector.S [S01], before any DCCM access.
 //   cold_scratch[7]: warm reset handler pointer (survives watchdog reset)
 //   cold_scratch[0]: terminal ROM verdict
 
@@ -149,10 +141,11 @@ static volatile uint32_t g_bss_zero;
 #define ROM_ICCM_SIZE_BYTES ((uint32_t)SEP_TOP_SEP_ICCM_SIZE)
 #endif
 
-// MUST be 1 for release. Off here only because the clear costs ~1.84M cycles in
-// simulation; the Makefile carries the full reasoning and the residual risk.
 #ifndef ROM_ICCM_CLEAR_ENABLE
-#define ROM_ICCM_CLEAR_ENABLE 0
+#error "ROM_ICCM_CLEAR_ENABLE must come from the Makefile"
+#endif
+#ifndef ROM_ICCM_CLEAR_FULL
+#error "ROM_ICCM_CLEAR_FULL must come from the Makefile"
 #endif
 
 // Stack canary for the [S28] stack health check.
@@ -182,16 +175,7 @@ __attribute__((noreturn)) static void rom_err_fail(uint32_t error_code) {
         s->error_code = error_code;
     }
 
-    // Record in cold_scratch[1] for debugger visibility (STATUS_ENCODE format).
-    //
-    // Only for codes whose upper half is zero (the ROM core's own). A subsystem
-    // error carries its subsystem in the upper half (manifest errors are
-    // 0x0003xxxx), and truncating one to 16 bits lands it in the SEP_MSG_*
-    // numbering space where it decodes as an unrelated message: MANIFEST_ERR
-    // 0x00030012 came out as "SEP_MSG_BL1_SIZE_INVALID" on a payload-hash
-    // failure. Every such path has already reported its own specific ERROR
-    // status, so the truncated word adds nothing and actively misleads. The full
-    // 32-bit code is kept in bl0_state.error_code above when it is initialized.
+    // A subsystem code (upper half set) truncated to 16 bits decodes as an unrelated SEP_MSG_*.
     if ((error_code & 0xFFFF0000u) == 0u) {
         STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_ERROR, error_code & 0xFFFF));
     }
@@ -364,7 +348,7 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
 // Manifest load → validate → handoff sequence.
 // Loads manifest via DMA from SPI/SMC SRAM, validates structure,
 // locks fuse secrets, and hands off to BL1.
-// spi_status: result of spi_init(); non-zero skips the primary manifest retry.
+// spi_status: result of rom_spi_init(); non-zero skips the primary manifest retry.
 __attribute__((noreturn)) static void
 rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status,
                               uint32_t lc_state) {
@@ -703,7 +687,7 @@ void rom_main(void) {
     // the word matter or about when it was sampled. Terminal on a reserved bit.
     rom_sboot_dis_policy();
     // CHIPLET_DBG from SIP_DIS / SYS_DIS, latched the same way. It makes a
-    // TEST_DEV part enforce secure boot, and SBOOT_DIS overrides it.
+    // TEST_DEV or RMA_SiP part enforce secure boot, and SBOOT_DIS overrides it.
     rom_chiplet_dbg_policy(lc_state);
 
     // ── [S19] Stack canary write ──

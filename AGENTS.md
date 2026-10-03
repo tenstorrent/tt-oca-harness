@@ -44,6 +44,7 @@ partial read costs far more time than a full one.
 | `virtual_platform/README.md` | Virtual platform: the three VP executables and which need Whisper, dependency resolution, the `sepvp` runner and pytest harness, container vs ambient build |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
+| `flows/cdc/README.md` | CDC/RDC sign-off collateral: where the block SDC, constraints and waivers live, the scenario and bounding knobs, replaying a block under a parent |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
 
 `make doc-trm-serve` builds a TRM-first preview with the other documentation
@@ -434,7 +435,7 @@ Whatever the testbench, these hold:
 | `hw/top/` | Top-level integration and wrapper sources |
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
-| `flows/` | Lint, format and synthesis flow makefiles |
+| `flows/` | Lint, format and synthesis flow makefiles; `synth/constraints/` shared SDC code and `cdc/` shared CDC/RDC sign-off collateral |
 | `virtual_platform/` | SystemC virtual platform: the `tt-oca-harness-model` submodule that provides `sep-vp`, `smc-vp` and `smu-vp`, the `sepvp` Python runner and its pytest suite, and the Makefile that builds them and their dependencies |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
@@ -493,6 +494,26 @@ A name is held to the same rule as a comment. An identifier that describes what 
 field named for the size a region used to have, a constant named after a mode that was
 replaced — dates as quickly as a breadcrumb, and it forces a comment to explain a concept the
 code no longer has. Name what exists.
+
+### Simplify once the behavior works
+
+When the change behaves correctly and you have checked it, simplify what it added before you
+stop. Do this without being asked. It applies to the software in the change — Python, C, shell,
+Tcl, Makefiles — where a second reading can see repetition the first writing could not. Leave a
+hardware description as it is unless the shorter form is the same behavior, written in the
+style the file already uses.
+
+The aim is a smaller diff that is still easy to read. A reduction that is harder to follow, or
+that only moves the complexity into a new name or a comment, is not an improvement.
+
+- Delete what the new control flow made redundant: a helper, a branch, a parameter, or a copy
+  that nothing reads anymore.
+- Use a function, pattern, or name the file or its neighbors already have. Add a new one only
+  when none of those can carry the behavior.
+- Keep the control flow readable in one pass. A reduction that needs a comment to explain
+  itself has failed the comments rule above.
+- Keep the behavior. A shorter form that changes results, interfaces, or tests is a separate
+  change.
 
 ## Commit Conventions
 
@@ -690,11 +711,12 @@ statement has the companion's own documentation.
 |---|---|
 | SystemVerilog lint (slang) | `make lint-slang-all` lints every `flow.mk` top (`dtp`, `sep`, `smc`, `smu`, `aou` today). `flows/common.mk` also globs `hw/ip/*/flow.mk`; none exist. `BLOCK=` is a top, not an IP. `make lint-slang` from a block's own flow lints that block alone |
 | SystemVerilog lint (Verilator) | `make lint-verilator-all` lints each discovered top the same way; add `BLOCK=<block…>` to restrict it |
+| Verilator `--public-flat-rw` build | `make lint-verilator-public-all BLOCK=smu` builds the block's packages under the flag cocotb's Verilator runner forces |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | SystemVerilog comments | `make lint-sv-comments` checks the `//` header and parameter/port clauses of every source the RTL Modules Reference documents; `tools/doc/check_sv_comments.py <files>` checks individual files |
-| SystemVerilog enum members | `make lint-sv-enum-members` checks that every enum member outside `vendor/` and `regs/gen/` is UPPER_SNAKE_CASE; `scripts/ci/check_sv_enum_members.py <files>` checks individual files |
+| SystemVerilog enums | `make lint-sv-enums` checks that every enum member outside `vendor/` and `regs/gen/` is UPPER_SNAKE_CASE and every enum type is lower_snake_case with an `_e` suffix; `scripts/ci/check_sv_enums.py <files>` checks individual files |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |
@@ -716,12 +738,20 @@ not hide findings from lint. Generated output and `vendor/<org>/<repo>/upstream/
 never patch upstream code for a style-only finding. Fix formatter-safe whitespace and wrapping
 after reviewing the diff, but treat types, range direction, assignment semantics, task
 lifetime, case completeness and hierarchy labels as manual changes requiring owner review.
-`parameter-name-style` requires ALL_CAPS parameter names; localparam naming is deferred to
-issue #1051.
+`parameter-name-style` requires ALL_CAPS parameter names and UpperCamelCase localparam
+names.
 
 Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
 owner's `lint/` directory: `*.verible.waiver`, `*.verilator.vlt`, and synthesis-only
-`*.slang.expected-errors`. Central Makefiles only discover or pass those files, and each block
+`*.slang.expected-errors`. VC SpyGlass lint, CDC and RDC waivers follow the same ownership as
+`hw/sys/<sys>/{lint,cdc,rdc}/<sys>.vc{lint,cdc,rdc}[.opensource_ip].waiver.tcl`: SPDX header
+plus `# tclint-disable line-length`, tclfmt-clean, hierarchical filter fields carrying the
+`${PREFIX}` token so a parent run can replay them, `#` blocks of one to three lines with the
+mechanism in `-comment {}`, and nothing about who sources the file. The CDC/RDC sign-off
+constraints live beside them under `hw/sys/<sys>/cdc/`, the block SDC under
+`hw/sys/<sys>/synth/`, and the shared pieces under `flows/cdc/` and
+`flows/synth/constraints/`; `flows/cdc/README.md` has the layout and the knobs. Central
+Makefiles only discover or pass those files, and each block
 `flow.mk` declares the exceptions relevant to its elaborated top. Use the narrowest
 diagnostic/path/hierarchy/source match and a constraint-focused rationale. Slang expected-error
 patterns must identify the path and message; the flow must fail if a pattern is unused or an
@@ -732,7 +762,7 @@ Verilator flow loads for every block. Its exact path and message matches cover o
 `field_combo` / `field_storage` aggregate `MULTIDRIVEN` reports, including block register
 modules and the copied SPI register module. They must never expand to member names or to
 `WIDTHEXPAND` / `WIDTHTRUNC`. Before changing the exception, run the unwaived integrated-SMU
-zero-overlap audit documented in `CONTRIBUTING.md`; its non-aggregate search must remain empty,
+zero-overlap audit documented in `doc/starting/src/workflows.adoc`; its non-aggregate search must remain empty,
 and the hand-authored findings must remain in the output.
 
 `OCAH_VERIBLE_LINT_EXCLUDES` and `OCAH_VERIBLE_FORMAT_EXCLUDES` are only for documented parser,

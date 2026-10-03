@@ -45,9 +45,9 @@ module prim_pulse_signal #(
     IDLE        = 2'b00,
     PRE_RESET   = 2'b01,
     POST_RESET  = 2'b10
-  } pulse_state_t;
+  } pulse_state_e;
 
-  pulse_state_t pulse_state, pulse_state_nxt;
+  pulse_state_e pulse_state, pulse_state_nxt;
 
   prim_updown_counter #(
     .WIDTH(COUNT_WIDTH),
@@ -131,10 +131,10 @@ module prim_pulse_signal #(
       end
 
       POST_RESET: begin  // hold pulse for some duration
+        pulse_done_o = 1'b0;
 
         if (pulse_start_i) begin  // new reset has arrived, restart the count
           pulse_out_o = IS_ACTIVE_HIGH;
-          pulse_done_o = 1'b0;
           pulse_set_cnt = post_pulse_wait_i;
           pulse_set = 1'b1;
           pulse_decr_en = 1'b1;
@@ -143,7 +143,6 @@ module prim_pulse_signal #(
 
         end else if (~|pulse_count) begin  // count reached
           pulse_out_o = ~IS_ACTIVE_HIGH;
-          pulse_done_o = 1'b0;
           pulse_set_cnt = '0;
           pulse_set = 1'b1;
           pulse_decr_en = 1'b0;
@@ -152,7 +151,6 @@ module prim_pulse_signal #(
 
         end else begin  // keep counting
           pulse_out_o = IS_ACTIVE_HIGH;
-          pulse_done_o = 1'b0;
           pulse_set_cnt = '0;
           pulse_set = 1'b0;
           pulse_decr_en = 1'b1;

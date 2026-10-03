@@ -46,7 +46,7 @@ interface dtp_tb_if;
   // Driven by the DUT top: decoded-IR one-hot observable for CHK-IR-DECODE,
   // 64 bits wide. cocotb reads an enum-typed interface member as a 32-bit
   // integer over VPI, so the member is a packed vector.
-  logic [jtag_inst_reg_pkg::DECODED_IR_WIDTH-1:0] inst_decoded;
+  logic [jtag_inst_reg_pkg::DecodedIrWidth-1:0] inst_decoded;
 
   // Lifecycle debug disables, one named member per dbg_disable_i path
   // (active-high: 1 = path disabled). Init 1 = fail-closed, matching the
@@ -120,7 +120,7 @@ interface dtp_tb_if;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
   // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID,
-  // ARVALID, and WVALID held while the crossbar keeps the matching READY low.
+  // ARVALID, and WVALID held while the CSR port keeps the matching READY low.
   logic [31:0] xtrig_axil_aw_stall_count;
   logic [31:0] xtrig_axil_ar_stall_count;
   logic [31:0] xtrig_axil_w_stall_count;
@@ -149,10 +149,28 @@ interface dtp_tb_if;
   // XTRIG crossbar demux state behind the CSR port (driven by tb_top from
   // the AXI-Lite demux of the cross-trigger network): the AW lock flag,
   // which holds an AW presented to a master port whose AWREADY was low,
-  // and the W-pending flag, high from an accepted AW until its W beat
-  // passes the demux.
+  // and the W-pending flag, high while the demux's W-select queue holds the
+  // port of an AW whose W beat has not passed the demux.
   logic xtrig_demux_aw_lock;
   logic xtrig_demux_w_pending;
+
+  // XTRIG CSR port spill registers (driven by tb_top): cycles in which a
+  // spill register's input READY differs from holding fewer than two beats
+  // or its output VALID differs from holding a beat, and cycles in which the
+  // W and the R spill register hold two beats.
+  logic [31:0] xtrig_axil_spill_err_count;
+  logic [31:0] xtrig_axil_w_spill_full_count;
+  logic [31:0] xtrig_axil_r_spill_full_count;
+  // XTRIG crossbar demux counters (driven by tb_top): the port stall and
+  // occupancy counters above, taken at the demux handshakes behind the CSR
+  // port spill registers.
+  logic [31:0] xtrig_demux_aw_stall_count;
+  logic [31:0] xtrig_demux_w_stall_count;
+  logic [31:0] xtrig_demux_ar_stall_count;
+  logic [31:0] xtrig_demux_aw_open_stall_count;
+  logic [31:0] xtrig_demux_aw_open_accept_count;
+  logic [31:0] xtrig_demux_ar_open_stall_count;
+  logic [31:0] xtrig_demux_ar_open_accept_count;
 
   // Registered BUSY of every external cross-trigger port (driven by tb_top
   // from the CTP busy outputs); STATUS.BUSY reads the same flop.

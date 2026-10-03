@@ -78,7 +78,7 @@ endif::backend-html5[]
 
 The controller has no lifecycle-state input port. When `HAS_LC_STATE` is set, it takes the
 lifecycle state from the fuses: during fuse sensing it loads the low `LC_STATE_WIDTH` bits
-of shadow word `efuse_pkg::SHADOW_IDX_LC_STATE` and stores them differentially encoded in
+of shadow word `efuse_pkg::ShadowIdxLcState` and stores them differentially encoded in
 the shadow map. The shadow word index is fixed in `efuse_pkg`. `LC_STATE_BIT_POSITION` is
 used only by the guard, which derives the RMA SiP and chiplet token bit addresses from it as
 `LC_STATE_BIT_POSITION + 1` and `LC_STATE_BIT_POSITION + 2`.

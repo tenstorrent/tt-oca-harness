@@ -2,25 +2,16 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * fabric_filter_datapath_matrix_p3_test
- *
- * Strategy: Targeted pass/block traffic tests covering all datapath combinations
- *
- * Focus on full datapath-matrix testing of the filter module
+ * Filter datapath matrix: no-match default block, read-only pass with write
+ * block, secure/non-secure allow/deny, and burst-size allow/block cases.
  */
 
 #include "sep_test_common.h"
 #include "sep_fabric.h"
 
-// Filter datapath scenario count
-#define FILTER_DATAPATH_SCENARIOS 8
-
-// Filter test definitions
 #define FILTER_TEST_BASE_ADDR 0x30000000
-#define FILTER_REGION_SIZE 0x100000
-#define MAX_FILTER_ENTRIES 16
 
-// AXI attribute definitions
+// AXI protection attributes.
 #define AXI_PROT_SECURE 0x0
 #define AXI_PROT_NON_SECURE 0x1
 #define AXI_PROT_PRIVILEGED 0x0
@@ -29,7 +20,6 @@
 static int test_no_match_default_block_scenarios(void) {
     printf("Starting no-match default block scenarios...\n");
 
-    // Scenario 1: No-match default-deny test
     for (int test_case = 0; test_case < 16; test_case++) {
         uint32_t test_addr = FILTER_TEST_BASE_ADDR + test_case * 0x10000;
 
@@ -63,7 +53,6 @@ static int test_no_match_default_block_scenarios(void) {
 static int test_read_only_pass_write_block_combinations(void) {
     printf("Starting read-only pass/write block combinations...\n");
 
-    // Scenario 2: Read-only pass / write-block combination
     for (int combo = 0; combo < 16; combo++) {
         uint32_t region_base = FILTER_TEST_BASE_ADDR + combo * 0x100000;
 
@@ -71,7 +60,6 @@ static int test_read_only_pass_write_block_combinations(void) {
             uint32_t entry_start = region_base + entry * 0x20000;
             uint32_t entry_end = entry_start + 0x10000;
 
-            // Configure read-only filter
             if (setup_output_remap_region_extended(entry, entry_start, entry_end,
                                                    1,                         // enable
                                                    1,                         // read allowed
@@ -81,7 +69,6 @@ static int test_read_only_pass_write_block_combinations(void) {
             }
         }
 
-        // Test read-only access mode
         for (int entry = 0; entry < 8; entry++) {
             uint32_t test_addr = region_base + entry * 0x20000 + 0x1000;
 
@@ -105,7 +92,6 @@ static int test_read_only_pass_write_block_combinations(void) {
 static int test_ns_secure_allow_deny_patterns(void) {
     printf("Starting NS/secure allow/deny patterns...\n");
 
-    // Scenario 3: NS allow/deny and secure modes
     uint32_t security_patterns[] = {AXI_PROT_SECURE, AXI_PROT_NON_SECURE,
                                     AXI_PROT_SECURE | AXI_PROT_PRIVILEGED,
                                     AXI_PROT_NON_SECURE | AXI_PROT_USER};
@@ -120,7 +106,6 @@ static int test_ns_secure_allow_deny_patterns(void) {
             int allow_ns = (security_attr & AXI_PROT_NON_SECURE) ? 1 : 0;
             int allow_secure = (security_attr & AXI_PROT_NON_SECURE) ? 0 : 1;
 
-            // Configure security-aware filter
             if (setup_output_remap_region_extended(region, region_start, region_end,
                                                    1,            // enable
                                                    allow_secure, // channel for secure
@@ -130,7 +115,6 @@ static int test_ns_secure_allow_deny_patterns(void) {
                 return -1;
             }
 
-            // Test accesses under different security modes
             uint32_t test_addr = region_start + 0x10000;
 
             // Secure access
@@ -158,7 +142,6 @@ static int test_ns_secure_allow_deny_patterns(void) {
 static int test_burst_allowed_blocked_scenarios(void) {
     printf("Starting burst allowed/blocked scenarios...\n");
 
-    // Scenario 4: Burst allowed/blocked combinations
     uint32_t burst_sizes[] = {1, 2, 4, 8, 16, 32, 64, 128};
 
     for (int burst_idx = 0; burst_idx < 8; burst_idx++) {
@@ -169,7 +152,6 @@ static int test_burst_allowed_blocked_scenarios(void) {
             uint32_t entry_start = region_base + filter_entry * 0x40000;
             uint32_t entry_end = entry_start + 0x20000;
 
-            // Configure burst-aware filter
             int burst_allowed = (burst_size <= (1 << filter_entry)) ? 1 : 0;
 
             if (setup_output_remap_region_extended(filter_entry, entry_start, entry_end,
@@ -182,12 +164,10 @@ static int test_burst_allowed_blocked_scenarios(void) {
             }
         }
 
-        // Test burst access modes
         for (int entry = 0; entry < 8; entry++) {
             uint32_t test_addr = region_base + entry * 0x40000 + 0x8000;
             int burst_allowed = (burst_size <= (1 << entry)) ? 1 : 0;
 
-            // Test different burst sizes
             if (test_axi_transaction(test_addr, burst_size * 4, AXI_READ) != 0) {
                 if (burst_allowed) {
                     printf("ERROR: Burst size %d should be allowed for entry %d\n", burst_size,
@@ -211,7 +191,6 @@ int main(void) {
         return TEST_FAIL;
     }
 
-    // Run all filter datapath scenarios
     if (test_no_match_default_block_scenarios() != 0) {
         test_fail("No Match Default Block");
         return TEST_FAIL;

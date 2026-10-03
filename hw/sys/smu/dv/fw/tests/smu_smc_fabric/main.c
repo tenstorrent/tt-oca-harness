@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-// SMC ROM image for smu_smc_fabric_test: every hart stores to and loads from
-// SEP SRAM over smc_out, an address that leaves on ext_out, and the SMC-local
-// scratch words, and checks each read-back.
+// SMC ROM image for smu_smc_fabric_test: every hart writes and reads back
+// words in SEP SRAM over smc_out and at an address that leaves on ext_out, and
+// reports through the SMC scratch words, which hart 0 collects into a verdict.
 
 #include <stdint.h>
 

@@ -9,14 +9,14 @@
 `include/boot_flash.h` presents one flash-offset interface to the manifest
 loader. `BOOT_SPI_CONTROLLER_OT` selects the implementation at build time:
 
-* The default path uses a memory-mapped SPI XIP aperture and the secure DMA.
-  The open `src/sep_spi.c` implementation is a weak unavailable-device stub so
-  an adopter can supply the controller integration when producing the final
-  image.
-* The OpenTitan SPI host issues command/FIFO transfers. Its receive FIFO can
-  drain through the secure DMA (`BOOT_OT_SPI_USE_PIO=0`) or CPU programmed I/O
-  (`BOOT_OT_SPI_USE_PIO=1`). These are separate ROM build variants over the
-  same packed flash bytes.
+* The default (`BOOT_SPI_CONTROLLER_OT=1`) uses the OpenTitan SPI host. It issues
+  command/FIFO transfers and drains its receive FIFO through the secure DMA
+  (`BOOT_OT_SPI_USE_PIO=0`). The `pio-toolchain-images` profile selects CPU
+  programmed I/O (`BOOT_OT_SPI_USE_PIO=1`) and writes its ROM to `build_pio/`.
+* `BOOT_SPI_CONTROLLER_OT=0` reads memory-mapped flash through the external XIP
+  window with the secure DMA. Controller bring-up is the weak hook set in
+  `src/sep_spi.c`, which reports the controller as absent; an integrator
+  overrides it with a real driver through `OCAH_FW_OVERLAY_SOURCES_sep`.
 
 Controller initialization receives the clock selected earlier in the boot.
 Failure is not immediately terminal because the loader can proceed to another
@@ -99,14 +99,16 @@ the SPI source, read the primary manifest at `0x1000`, started RSA
 verification, accepted the signature, and completed crypto validation. It also
 forbids `SBOOT_OFF`, so a silent downgrade cannot satisfy the test.
 
-That testcase supplies OTBN entropy through the
-`+sep_crypto_edn_force` DV shortcut because the current BL0 does not bring up
-the entropy-source, CSRNG, and EDN chain. The test therefore demonstrates the
-manifest, transport, OTBN RSA, and handoff path; it does not demonstrate ROM
-entropy-chain initialization.
+That testcase injects deterministic raw noise at the entropy-source
+decorrelator inputs with `+esrc_noise_force` because the ring oscillators do
+not self-oscillate under Verilator. BL0 brings up the entropy source, CSRNG,
+and EDN chain; the health tests and downstream command handshakes remain real.
+The test therefore demonstrates ROM entropy-chain initialization as well as
+the manifest, transport, OTBN RSA, and handoff paths. It does not demonstrate
+the physical ring-oscillator noise source.
 
 The DMA and PIO receive paths are covered separately because they are separate
-datapaths. `sep_rom_ot_pio_boot_test` runs the `build_ot_pio` image, which does
+datapaths. `sep_rom_ot_pio_boot_test` runs the `build_pio` image, which does
 not link `ot_spi_flash_read_dma` at all, so passing one of the two proves
 nothing about the other. `hw/sys/sep/dv/testlists/rom_fw.toml` lists the whole
 ROM regression; the cases named here are the ones that bear directly on

@@ -33,18 +33,18 @@ module prim_refclk_count_w_cdc #(
 
   // for timing purposes, split bin count into chunks
   // and calculate the chunks in parallel
-  localparam int unsigned CHUNK_SIZE = 16;
-  localparam int unsigned NUM_CHUNKS = (REF_COUNT_WIDTH + CHUNK_SIZE - 1) / CHUNK_SIZE;
-  localparam int unsigned FINAL_CHUNK_WIDTH = (CHUNK_SIZE * NUM_CHUNKS) - REF_COUNT_WIDTH;
+  localparam int unsigned ChunkSize = 16;
+  localparam int unsigned NumChunks = (REF_COUNT_WIDTH + ChunkSize - 1) / ChunkSize;
+  localparam int unsigned FinalChunkWidth = (ChunkSize * NumChunks) - REF_COUNT_WIDTH;
 
   // need overflow bit
-  typedef logic [CHUNK_SIZE:0] chunk_count_t;
+  typedef logic [ChunkSize:0] chunk_count_t;
 
   ref_count_t gray_count, gray_count_sync;
   ref_count_t bin_count, bin_count_next;
 
-  chunk_count_t [NUM_CHUNKS-1:0] bin_count_chunk;
-  logic [NUM_CHUNKS-1:0] chunk_overflow;
+  chunk_count_t [NumChunks-1:0] bin_count_chunk;
+  logic [NumChunks-1:0] chunk_overflow;
 
   ref_count_t ref_count_sync_gray;
   logic ref_cnt_en;
@@ -142,39 +142,39 @@ module prim_refclk_count_w_cdc #(
   // Only apply the chunk value to the bin_count_next if every chunk
   //  before it will overflow, meaning the current chunk in the counter
   //  also needs to update its value
-  // This constrains the critical path of this counter to be CHUNK_SIZE
-  //  number of ADDERs + the delay of a (NUM_CHUNKS-1) input AND gate
-  for (genvar i = 0; i < NUM_CHUNKS; i++) begin : gen_gray_code_counter
-    assign chunk_overflow[i] = bin_count_chunk[i][CHUNK_SIZE];
+  // This constrains the critical path of this counter to be ChunkSize
+  //  number of ADDERs + the delay of a (NumChunks-1) input AND gate
+  for (genvar i = 0; i < NumChunks; i++) begin : gen_gray_code_counter
+    assign chunk_overflow[i] = bin_count_chunk[i][ChunkSize];
     // first chunk and not last chunk, no previous chunks to check, just assign directly
-    if ((i == 0) && (i != (NUM_CHUNKS - 1))) begin : gen_first_chunk
+    if ((i == 0) && (i != (NumChunks - 1))) begin : gen_first_chunk
       always_comb begin
-        bin_count_chunk[i] = {1'b0, bin_count[CHUNK_SIZE-1:0]};
+        bin_count_chunk[i] = {1'b0, bin_count[ChunkSize-1:0]};
         if (cnt_update_value_valid) begin
-          bin_count_next[CHUNK_SIZE-1:0] = cnt_update_value_sync[CHUNK_SIZE-1:0];
+          bin_count_next[ChunkSize-1:0] = cnt_update_value_sync[ChunkSize-1:0];
         end else begin
           if (!ref_cnt_en) begin
-            bin_count_next[CHUNK_SIZE-1:0] = bin_count[CHUNK_SIZE-1:0];
+            bin_count_next[ChunkSize-1:0] = bin_count[ChunkSize-1:0];
           end else begin
-            bin_count_chunk[i] = bin_count[CHUNK_SIZE-1:0] + chunk_count_t'(1);
+            bin_count_chunk[i] = bin_count[ChunkSize-1:0] + chunk_count_t'(1);
 
-            bin_count_next[CHUNK_SIZE-1:0] = bin_count_chunk[i][CHUNK_SIZE-1:0];
+            bin_count_next[ChunkSize-1:0] = bin_count_chunk[i][ChunkSize-1:0];
           end
         end
       end
       // middle chunks, need to check if prev chunks all overflowed to know what to assign
-    end else if (i != (NUM_CHUNKS - 1)) begin : gen_middle_chunk
+    end else if (i != (NumChunks - 1)) begin : gen_middle_chunk
       always_comb begin
-        bin_count_chunk[i] = {1'b0, bin_count[((i+1)*CHUNK_SIZE-1):(i*CHUNK_SIZE)]};
+        bin_count_chunk[i] = {1'b0, bin_count[((i+1)*ChunkSize-1):(i*ChunkSize)]};
         if (cnt_update_value_valid) begin
-          bin_count_next[((i+1)*CHUNK_SIZE-1):(i*CHUNK_SIZE)] = cnt_update_value_sync[((i+1)*CHUNK_SIZE-1):(i*CHUNK_SIZE)];
+          bin_count_next[((i+1)*ChunkSize-1):(i*ChunkSize)] = cnt_update_value_sync[((i+1)*ChunkSize-1):(i*ChunkSize)];
         end else begin
           if (!ref_cnt_en) begin
-            bin_count_next[((i+1)*CHUNK_SIZE-1):(i*CHUNK_SIZE)] = bin_count[((i+1)*CHUNK_SIZE-1):(i*CHUNK_SIZE)];
+            bin_count_next[((i+1)*ChunkSize-1):(i*ChunkSize)] = bin_count[((i+1)*ChunkSize-1):(i*ChunkSize)];
           end else begin
-            bin_count_chunk[i] = bin_count[((i+1)*CHUNK_SIZE-1):(i*CHUNK_SIZE)] + chunk_count_t'(1);
+            bin_count_chunk[i] = bin_count[((i+1)*ChunkSize-1):(i*ChunkSize)] + chunk_count_t'(1);
 
-            bin_count_next[((i+1)*CHUNK_SIZE-1):(i*CHUNK_SIZE)] = &(chunk_overflow[i-1:0]) ? bin_count_chunk[i][CHUNK_SIZE-1:0] : bin_count[((i+1)*CHUNK_SIZE-1):(i*CHUNK_SIZE)];
+            bin_count_next[((i+1)*ChunkSize-1):(i*ChunkSize)] = &(chunk_overflow[i-1:0]) ? bin_count_chunk[i][ChunkSize-1:0] : bin_count[((i+1)*ChunkSize-1):(i*ChunkSize)];
           end
         end
       end
@@ -182,17 +182,17 @@ module prim_refclk_count_w_cdc #(
     end else begin : gen_last_chunk
       always_comb begin
         bin_count_chunk[i] = {
-          1'b0, {FINAL_CHUNK_WIDTH{1'b0}}, bin_count[(REF_COUNT_WIDTH-1):(i*CHUNK_SIZE)]
+          1'b0, {FinalChunkWidth{1'b0}}, bin_count[(REF_COUNT_WIDTH-1):(i*ChunkSize)]
         };
         if (cnt_update_value_valid) begin
-          bin_count_next[(REF_COUNT_WIDTH-1):(i*CHUNK_SIZE)] = cnt_update_value_sync[(REF_COUNT_WIDTH-1):(i*CHUNK_SIZE)];
+          bin_count_next[(REF_COUNT_WIDTH-1):(i*ChunkSize)] = cnt_update_value_sync[(REF_COUNT_WIDTH-1):(i*ChunkSize)];
         end else begin
           if (!ref_cnt_en) begin
-            bin_count_next[(REF_COUNT_WIDTH-1):(i*CHUNK_SIZE)] = bin_count[(REF_COUNT_WIDTH-1):(i*CHUNK_SIZE)];
+            bin_count_next[(REF_COUNT_WIDTH-1):(i*ChunkSize)] = bin_count[(REF_COUNT_WIDTH-1):(i*ChunkSize)];
           end else begin
-            bin_count_chunk[i] = {{FINAL_CHUNK_WIDTH{1'b0}},bin_count[(REF_COUNT_WIDTH-1):(i*CHUNK_SIZE)]} + chunk_count_t'(1);
+            bin_count_chunk[i] = {{FinalChunkWidth{1'b0}},bin_count[(REF_COUNT_WIDTH-1):(i*ChunkSize)]} + chunk_count_t'(1);
 
-            bin_count_next[(REF_COUNT_WIDTH-1):(i*CHUNK_SIZE)]  = &(chunk_overflow[i-1:0]) ? bin_count_chunk[i][REF_COUNT_WIDTH-(i*CHUNK_SIZE)-1:0] : bin_count[(REF_COUNT_WIDTH-1):(i*CHUNK_SIZE)];
+            bin_count_next[(REF_COUNT_WIDTH-1):(i*ChunkSize)]  = &(chunk_overflow[i-1:0]) ? bin_count_chunk[i][REF_COUNT_WIDTH-(i*ChunkSize)-1:0] : bin_count[(REF_COUNT_WIDTH-1):(i*ChunkSize)];
           end
         end
       end

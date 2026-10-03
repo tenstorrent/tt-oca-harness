@@ -4,27 +4,18 @@
 /*
  * sep_smu_wdt - SMU-level SEP WDT register sanity test.
  *
- * Programs the SEP watchdog timer's control, threshold, count and
- * interrupt-state registers over the SEP-to-WDT CSR path, then reads every one
- * of them back and returns a distinct non-zero code for the first programmed
- * value that did not stick. Bark and bite flows stay disabled -- WDOG_CTRL and
- * WKUP_CTRL are both programmed with their enable clear, so neither counter
- * runs -- which keeps the image deterministic while making the readbacks the
- * whole on-chip check.
+ * Programs the control, threshold, count and interrupt-state registers of the
+ * SEP's own watchdog timer (not the SMC's), reads each one back, and records a
+ * distinct non-zero code for the first programmed value that did not stick.
+ * Both counters stay disabled, which keeps the image deterministic and makes
+ * the readbacks the whole on-chip check.
  *
- * Every programmed register is written away from its reset value, so each
- * readback is a reset-to-programmed delta that a block which took no write,
- * or unmapped space reading as zero, cannot satisfy: the control registers
- * carry a non-reset bit that keeps the counter stopped (WDOG_CTRL.PAUSE_IN_SLEEP
- * with ENABLE clear; a non-zero WKUP_CTRL.PRESCALER with ENABLE clear), the
- * count is preloaded, and all three thresholds are non-zero. INTR_STATE is
- * write-one-to-clear, so its contract is that both defined bits read clear
- * after the clear-all write, not that the written word reads back.
- *
- * Register addresses come from the generated SEP address map by symbol
- * (SEP_TOP_WDT_TIMER_*, hw/sys/sep/regs/gen/c/sep_addr.h via sep.h) -- this
- * is the SEP's own WDT, not the SMC's -- and the field masks from the generated
- * block header by symbol (AON_TIMER__*_bm, aon_timer.h).
+ * Every programmed register is written away from its reset value, so a block
+ * that took no write, or unmapped space reading as zero, cannot pass: each
+ * control register carries a non-reset bit that keeps its counter stopped, the
+ * count is preloaded, and every threshold is non-zero. The interrupt state is
+ * write-one-to-clear, so its defined bits must read clear after the clear-all
+ * write; the written word does not read back.
  */
 
 #include <stdint.h>
@@ -36,8 +27,8 @@
 
 static volatile int g_wdt_status;
 
-/* Programmed values, shared by each write and its own readback so the check has
- * one source. Both ENABLE bits stay clear so neither counter runs. */
+/* Programmed values for each write and its readback. Both enable bits stay
+ * clear so neither counter runs. */
 #define WDT_WDOG_CTRL_PROG AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_bm
 #define WDT_WDOG_COUNT_PROG 0x30u
 #define WDT_WDOG_BARK_THOLD_PROG 0x200u
@@ -83,7 +74,6 @@ static int run_wdt_programming_sequence(void) {
     /* All eight stores retire before the first readback is issued. */
     fence_io();
 
-    /* Thresholds first: the widest deltas. */
     if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT_WDOG_BARK_THOLD_MASK,
                             WDT_WDOG_BARK_THOLD_PROG)) {
         return -1;

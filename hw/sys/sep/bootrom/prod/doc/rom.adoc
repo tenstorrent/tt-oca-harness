@@ -222,7 +222,7 @@ manifest hash, payload hashes, measurements; HMAC mode is the PRF for the payloa
 CHIPLET_PUBK_REVOKE, BL1_VERSION, fuse-key digests, and the LOCKS read-lock register.
 |Lifecycle controller |`0x10918000` |`FEAT_CTRL` (64-bit feature control, read), `DEMOTE_1` /
 `DEMOTE_2` demotion registers (write + lock).
-|OpenTitan SPI host |`0x10B00000` |Boot-flash transport option A: command/FIFO reads (PIO or
+|OpenTitan SPI host |`0x10B00000` |Default boot-flash transport: command/FIFO reads (PIO or
 secure-DMA drain), no XIP (<<sec:spi>>).
 |XIP flash controller |ctrl in SEP external region `0x20000000`, XIP window `0x30000000`
 |Boot-flash transport option B: memory-mapped XIP reads (<<sec:spi>>).
@@ -236,8 +236,9 @@ only the warm-reset re-entry path that a WDT reset triggers (<<sec:warm_reset>>)
 by BL0.
 |===
 
-The SMC is reached through the SEP outbound window at `0x40000000` (<<sec:memory_map>>);
-the STDOUT mailbox used for DV PASS/FAIL signalling is at `0x80000000`.
+The SMC is reached through the SEP outbound window at `0x40000000` (<<sec:memory_map>>); the
+ROM opens no other outbound window and reports exclusively through `cold_scratch`
+(<<sec:status>>).
 
 [[sec:memory_map]]
 == Memory Map
@@ -255,8 +256,9 @@ boot flow. Addresses are as seen by the SEP CPU.
 |===
 |*Region* |*Base* |*Size* |*Boot-flow role*
 |SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 may also
-execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Cleared by the ROM
-before use ([S15]). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
+execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Zeroed at [S15]
+only when `SRAM_SCRUB_BYTES` is nonzero (default 0); the manifest loader zeroes it between SPI
+slot attempts (<<sec:retry>>). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
 the engine re-reads for every beat, and the CPU rewrites that word immediately before each
 fill, so the manifest body, the payload and BL1's permitted load span all stop short of it
 (`SEP_SRAM_USABLE_SIZE`). SEP has no zeroing engine and the secure DMA has no fill opcode, so
@@ -290,10 +292,8 @@ boot decisions.
 (XIP path); DMA source for manifest/payload loads.
 |SMC window |`0x40000000` |— |SEP view of the SMC (`SEP_SMC_GLOBAL_BASE`); the crossbar routes
 `[0x4000_0000, 0xC000_0000)` outbound. See <<tbl:smc_window>>.
-|STDOUT mailbox |`0x80000000` |4 B |DV PASS/FAIL magic words and mailbox character output.
-Only egress window opened at cold boot.
-|ICCM |`0xC0000000` |256 KiB |Cleared by the ROM ([S16]); the secure BL1 execution
-region, always permitted (<<sec:manifest>>).
+|ICCM |`0xC0000000` |256 KiB |ECC established by the ROM before BL1 runs: over an
+ICCM-resident BL1 and a pad past it at hand-off by default, or over all of ICCM at [S16]. The secure BL1 execution region, always permitted (<<sec:manifest>>).
 |DCCM |`0xC0040000` |128 KiB |BL0 runtime data: `.data`, `.bss`, stack, and the `bl0_state`
 hand-off block at the top (<<sec:handoff>>).
 |PIC |`0xC0080000` |— |Interrupts stay disabled in BL0.
@@ -342,8 +342,10 @@ in reset (<<sec:fuses>>).
 [frame=ends]
 |===
 |*Register* |*Address* |*Reset domain* |*Assignment*
-|`cold_scratch[0]` |`0x10802000` |any reset |Boot progress marker: `'COLD'` (`0x434F4C44`) on
-cold boot entry; DV PASS/FAIL codes.
+|`cold_scratch[0]` |`0x10802000` |any reset |Terminal verdict only. The ROM writes
+`0xDEADBEEF` (FAIL) from `rom_err_fail()` and the trap handlers; the MBIST and PMP failure
+halts in `vector.S` report on `cold_scratch[1]` alone. After a successful hand-off BL1 owns the
+word (the DV `bl1_pass_test` writes `0xACAFACA1` PASS or `0xDEADBEEF` FAIL).
 |`cold_scratch[1]` |`0x10802008` |any reset |Machine-readable status channel — every
 `STATUS_OUT()` encoded status word lands here (<<sec:status>>).
 |`cold_scratch[2]` |`0x10802010` |any reset |Virtual console: packed debug text, decoded by
@@ -458,7 +460,7 @@ partition "Manifest retry loop ([S23]-[S24])" {
   repeat while (failed and slot remains ?) is (yes: zero SRAM, reinit transport) not (no)
   if (a slot validated ?) then (no)
     :[S30] rom_err_fail
-    (bl0_state, scratch, mailbox FAIL, wfi);<<#ffe0e0>>
+    (bl0_state, scratch ERROR, wfi);<<#ffe0e0>>
     detach
   else (yes)
   endif
@@ -537,8 +539,10 @@ read in the flow |<<sec:fuses>>
 |[S12] |Chip ID |`CHIP_CONFIG_CHIP_ID` read and reported |<<sec:smc_sync>>
 |[S13] |Peripheral/bus reset |OCAH-specific peripheral reset sequencing |<<sec:cpu_init>>
 |[S14] |Crypto init |SHA-256 self-test against NIST vector |<<sec:cpu_init>>
-|[S15] |SEP SRAM clear |SRAM zeroed before any external content is loaded |<<sec:cpu_init>>
-|[S16] |ICCM clear |ICCM zeroed for deterministic ECC state |<<sec:cpu_init>>
+|[S15] |SEP SRAM clear |The first `SRAM_SCRUB_BYTES` of SRAM zeroed (default 0: skipped)
+|<<sec:cpu_init>>
+|[S16] |ICCM clear |ICCM ECC established: over an ICCM-resident BL1 and a pad at hand-off by
+default, or the whole region zeroed here |<<sec:cpu_init>>
 |[S17] |Measurement slot 0 |Verified ROM self-hash enrolled — soft PCR + raw record in
 `bl0_state` |<<sec:boot_measurement>>
 |[S18] |Secure-boot posture fuses |`SBOOT_DIS` chicken bit read into `bl0_state`; chiplet
@@ -561,7 +565,8 @@ anti-rollback, decrypt |<<sec:secure_boot>>
 in `bl0_state` |<<sec:boot_measurement>>
 |[S28] |Stack canary check |Canary re-verified, before the hand-off that does not return
 |<<sec:handoff>>
-|[S29] |BL1 hand-off |Pre-hand-off self-check, PMP release, jump to BL1 |<<sec:handoff>>
+|[S29] |BL1 hand-off |Pre-hand-off self-check, ICCM ECC pad past an ICCM-resident BL1
+(default build), PMP release, jump to BL1 |<<sec:handoff>>
 |[S30] |Error convergence |All failures funnel into `rom_err_fail()` |<<sec:status>>,
 <<sec:retry>>
 |===
@@ -620,10 +625,8 @@ environment:
    where manifest and payload bytes are staged, so a stack or global placed there would be
    writable by the content the ROM is still deciding whether to trust.
 3. *Outbound AXI filter.* [[req-SEP-ROM-CPU-040]]*[SEP-ROM-CPU-040]* The SEP outbound AXI
-   filter shall block all egress by default; the ROM shall open only the windows it needs.
-   At cold boot the stub programs filter 0 to the 4-byte STDOUT mailbox window
-   (`START=0x8000_0000`, `END=0x8000_0003`, `CONFIG=0x0000_0001_0100_0013`), writing `CONFIG`
-   last (after a `fence w,w`) so the range is committed before the filter is enabled.
+   filter shall block all egress by default; the ROM shall open no outbound window at all. All
+   ROM status and verdict reporting stays on `cold_scratch`.
 4. The debug status word for "entered `_start`" is written to `cold_scratch[1]`.
 5. [[req-SEP-ROM-CPU-050]]*[SEP-ROM-CPU-050]* Interrupts shall remain disabled for the entire
    ROM execution: `mie` is cleared and `mstatus.MIE` is cleared at entry, and no ROM stage
@@ -656,8 +659,6 @@ start
 :warm-reset check (see Warm-Reset chapter);
 :clear cold_scratch[7];
 :sp = __stack_top, gp;
-:outbound filter: open 4 B mailbox window
-(CONFIG written last, after fence w,w);
 :status 'entered _start' -> cold_scratch[1];
 :disable interrupts (mie, mstatus.MIE);
 :program PMP fences;
@@ -680,8 +681,8 @@ fatal error (`ROM_ERR_RUNTIME_INIT_FAILED`, `0xB001`).
 
 [[req-SEP-ROM-CPU-070]]*[SEP-ROM-CPU-070]* Any trap taken during ROM execution is fatal: the
 trap vector shall capture `mcause`/`mepc`/`mtval`/`mstatus`, report them through the debug
-console, signal FAIL through the STDOUT mailbox (magic `0xA5A55A5A` followed by `0xDEADBEEF`),
-and hang in `wfi`. The ROM shall never attempt to resume from a trap.
+console, encode an `ERROR` status into `cold_scratch[1]` and the FAIL verdict (`0xDEADBEEF`)
+into `cold_scratch[0]`, and hang in `wfi`. The ROM shall never attempt to resume from a trap.
 
 === Watchdog Posture
 
@@ -732,7 +733,7 @@ After the entry checks, `rom_main()` performs the following platform bring-up, i
 outbound path to the SMC responds before the boot flow depends on it. Mismatch is fatal
 (`ROM_ERR_SMC_SANITY_FAILED`, `0xA001`).
 |[S05] ROM identity |ROM version string and build-time SHA-256 are emitted (see
-<<sec:boot_measurement>>), and the `'COLD'` marker is written to `cold_scratch[0]`.
+<<sec:boot_measurement>>), and cold-boot entry is reported on the debug console (`COLD`).
 |[S06] straps |Latched straps parsed into the boot configuration (<<sec:straps>>).
 |[S07] status init |Status ring buffer initialized unless disabled by strap (<<sec:status>>).
 |[S08] fuse sense |`smc_fuse_sense_done` polled to completion (<<sec:fuses>>). Unconditional,
@@ -748,10 +749,14 @@ clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock
 |[S13] peripheral reset |OCAH-specific peripheral/bus reset sequencing.
 |[S14] crypto self-test |SHA-256 of `"abc"` computed on the HMAC block and compared against
 the NIST reference digest. See requirement below.
-|[S15] SRAM clear |SEP SRAM (`0x10000000`, 256 KiB) zeroed before any external content is
-loaded into it.
-|[S16] ICCM clear |ICCM zeroed (base/size are build-time parameters; deterministic ECC state
-for BL1).
+|[S15] SRAM clear |The first `SRAM_SCRUB_BYTES` of SEP SRAM (`0x10000000`, 256 KiB) zeroed.
+The default is 0, so nothing is cleared here; the manifest loader zeroes SRAM between SPI
+slot attempts (<<sec:retry>>).
+|[S16] ICCM clear |By default nothing is cleared here. For a BL1 that lands in ICCM, the BL1
+copy writes its words with valid ECC and the ROM zeroes a pad past its end at hand-off; a BL1
+in SRAM leaves ICCM untouched. `ROM_ICCM_CLEAR_FULL=1` zeroes all of ICCM here instead
+(base and size are build-time parameters), clearing power-up residue too;
+`ROM_ICCM_CLEAR_ENABLE=0` skips both.
 |[S17] ROM self-hash |Embedded hash verified by recompute over the ROM region, then
 enrolled in soft measurement slot 0 (<<sec:boot_measurement>>). Fatal on mismatch (`0xF005`).
 Placed at the earliest point where both of its prerequisites hold: the SHA-256 engine has
@@ -770,6 +775,16 @@ result. A mismatch or engine timeout is fatal (`ROM_ERR_CRYPTO_SELFTEST_FAILED`,
 [[req-SEP-ROM-CPU-100]]*[SEP-ROM-CPU-100]* The ROM shall clear SEP SRAM and ICCM before
 loading any external content, so that no stale or attacker-resident data can survive into the
 validated-boot environment.
+
+[WARNING]
+====
+*IMPLEMENTATION GAP* — the default build does not meet this requirement (tracked in
+<<sec:impl_matrix>>). `SRAM_SCRUB_BYTES` defaults to 0, so [S15] clears no SRAM. With the
+default `ROM_ICCM_CLEAR_FULL=0`, ICCM is written only over an ICCM-resident BL1 and a pad past
+its end at hand-off, so power-up residue elsewhere in ICCM survives. `SRAM_SCRUB_BYTES=0x40000`
+and `ROM_ICCM_CLEAR_FULL=1` select the full clears; the SRAM scrub also clears anything the
+testbench preloads into SEP SRAM.
+====
 
 [WARNING]
 ====
@@ -794,8 +809,9 @@ still resident. The warm-reset path returns control to BL1 with minimal disturba
 handler to `cold_scratch[7]`. The handler must lie in a permitted BL1 execution region --
 the same set `BL1_SRAM_EXEC_ENABLE` governs, because accepting a warm handler where the
 cold path would refuse to boot would let a warm reset re-enter code the ROM would never
-have launched. BL1 re-arms
-this value as needed; a value of zero means "no warm handler — treat any reset as cold".
+have launched. The ROM writes 0 to the slot before every jump
+(<<req-SEP-ROM-CPU-130,SEP-ROM-CPU-130>>), so BL1 must re-arm `cold_scratch[7]` every time
+it enters the handler; a value of zero means "no warm handler — treat any reset as cold".
 
 *ROM side:*
 
@@ -883,7 +899,7 @@ execute before validation completes.
    into shall be
    granted only at hand-off, after the pre-hand-off self-check passes.
 4. [[req-SEP-ROM-PMP-040]]*[SEP-ROM-PMP-040]* Data windows shall be limited to the regions
-   the ROM demonstrably needs: DCCM (`RW`), the STDOUT mailbox, the SEP peripheral block
+   the ROM demonstrably needs: DCCM (`RW`), the SEP peripheral block
    (`0x1080_0000`–`0x10BF_FFFF`: DMA, scratch, crypto, lifecycle, efuse, SPI hosts), the
    XIP flash controller registers and XIP window (when fitted), the SMC window (`0x4000_0000`),
    SEP SRAM and ICCM (`RW`, for staging). Everything else shall have no PMP grant.
@@ -954,7 +970,7 @@ Three RTL behaviors shape the programming sequence (`el2_dec_pmp_ctl.sv`,
    matching no rule faults. No catch-all entry is used; a window the rule set fails to grant
    shall manifest as a precise trap (fatal per SEP-ROM-CPU-070), never as silent access.
 3. The locked rule set implements <<tbl:pmp_regions>> as amended by the fence policy: ROM
-   `R-X`; DCCM, mailbox, peripheral block, SMC window, XIP controller registers and XIP
+   `R-X`; DCCM, peripheral block, SMC window, XIP controller registers and XIP
    window `RW-`; SEP SRAM and ICCM `RW-` (no execute) until hand-off.
 
 ==== Release at Hand-off
@@ -996,41 +1012,31 @@ literal CSR values.
 [frame=ends]
 |===
 |*Entry* |*Region* |*Base* |*Size* |*Perms (code)* |*`pmpaddr`* |*Note*
-|0 |Boot ROM |`0x10040000` |64 KiB |R-X |`0x04017FFF` |BL0 itself
+|0 |Boot ROM |`0x10040000` |64 KiB |R-X |`0x04011FFF` |BL0 itself
 |1 |DCCM |`0xC0040000` |128 KiB |RW- |`0x30013FFF` |runtime data, stack, `bl0_state`
-|2 |Mailbox |`0x80000000` |4 KiB |RW- |`0x200007FF` |STDOUT mailbox window
-|3 |SEP SRAM |`0x10000000` |256 KiB |RWX |`0x0401FFFF` |manifest/payload staging; a BL1 launch
-region when `BL1_SRAM_EXEC_ENABLE` permits — *this specification requires RW- until hand-off*
-|4 |Peripherals |`0x10800000` |4 MiB |RW- |`0x0421FFFF` |DMA, scratch, crypto, lifecycle,
+|2 |Unused | | | | |
+|3 |SEP SRAM |`0x10000000` |256 KiB |RW- |`0x04007FFF` |manifest/payload staging; changed to
+RWX at hand-off when `BL1_SRAM_EXEC_ENABLE` permits and BL1 targets SRAM
+|4 |Peripherals |`0x10800000` |4 MiB |RW- |`0x0427FFFF` |DMA, scratch, crypto, lifecycle,
 efuse, SPI hosts
-|5 |ICCM |`0xC0000000` |256 KiB |RWX |`0x30007FFF` |the secure BL1 code region, always a
-launch target — *this specification
-requires RW- until hand-off*
-|6 |SMC/local window |`0xC0000000` |256 MiB |RW- |`0x31FFFFFF` |overlaps entries 1/5; the
-lower-numbered entry takes precedence for its sub-range
+|5 |ICCM |`0xC0000000` |256 KiB |RW- |`0x30007FFF` |changed to RWX at hand-off when BL1
+targets ICCM
+|6 |SMC boot aperture |`0x40000000` |8 MiB |RW- |`0x100FFFFF` |SMC registers and SRAM used
+by BL0; does not grant the separate SMU aperture
 |===
 
-`pmpcfg0` = `0x1F1B1B1D` and `pmpcfg1` = `0x001B1F1B` (with `PMP_LOCK=1`, the same values
-with `L` set: `0x9F9B9B9D` / `0x009B9F9B`). Entry 7 is unused.
+The locked cold values are `pmpcfg0 = 0x9B009B9D` and
+`pmpcfg1 = 0x009B9B9B`. Entries 2 and 7 are unused. `vector.S` sets
+`mseccfg.RLB` before these rules and `mseccfg.MMWP` after their readback.
 
 [WARNING]
 ====
-*IMPLEMENTATION GAP* — the current region set does not yet implement the normative fence
-policy:
-
-* Entries 3 (SEP SRAM) and 5 (ICCM) are `RWX` from cold boot, so next-stage regions are
-  executable throughout validation (violates SEP-ROM-PMP-010/-030).
-* `PMP_LOCK` defaults to 0, and unlocked entries do not constrain machine mode — as
-  programmed, the PMP fences the ROM against nothing (violates SEP-ROM-PMP-020). The
-  ratified Smepmp sequence (<<sec:pmp_mechanism>>: RLB → locked rules → MMWP, release by
-  rule rewrite) is not yet implemented; `mseccfg` is never written.
-* Entry 6's covered range (`0xC000_0000`–`0xCFFF_FFFF`) does not match the actual SMC window
-  at `0x4000_0000`; the XIP window (`0x3000_0000`) and SMC window have no entry. This
-  is currently masked by the entries being unlocked (M-mode unconstrained), but must be fixed
-  before the fences can bind (SEP-ROM-PMP-040).
-
-The pre-hand-off *software* self-check (gate ledger) is implemented but not yet on `main`;
-the PMP release step it gates is not yet implemented.
+*IMPLEMENTATION GAP* — the default OpenTitan-SPI build has a complete cold allowlist and
+releases only the selected BL1 destination. The XIP build still requires entries for the
+`0x3000_0000` flash window and its integrator-defined controller registers before it can run
+under `MMWP`. The full pre-hand-off gate ledger is also not yet wired into `main`; the release
+currently follows the checks implemented by the boot flow, including the final stack-canary
+check.
 ====
 
 [[sec:fuses]]
@@ -1075,8 +1081,9 @@ The 4-bit lifecycle state is read from the low nibble of `SEP_EFUSE_MAP_LC_STATE
 |`TEST_DEV` |`0x0` |0 |Development / test. Security optional unless chiplet debug is
 disabled (see <<sec:secure_boot>>).
 |`PROD` |`0x1` |1 |Production. Secure boot enforced.
-|`RMA_SiP` |`0x2`–`0x3` |3 |Return-material state, system-in-package scope.
-|`RMA_CHIPLET` |`0x6`–`0x7` |4 |Return-material state, chiplet scope.
+|`RMA_SiP` |`0x2`–`0x3` |3 |Return-material state, system-in-package scope. Security
+optional unless chiplet debug is disabled.
+|`RMA_CHIPLET` |`0x6`–`0x7` |4 |Return-material state, chiplet scope. Security optional.
 |`PROD_END` |`0x8` |2 |End-of-life production. Secure boot enforced; demotion permanently
 locked out (<<sec:demotion>>).
 |any other |`0x4`–`0x5`, `0x9`–`0xF` |— |*Invalid* — see below.
@@ -1121,7 +1128,8 @@ bit means the array is not what the ROM believes it to be; [S18] stops there wit
 
 `CHIPLET_DBG` is bit 1 of the `SIP_DIS` (`0x1093_0018`) and `SYS_DIS` (`0x1093_0020`)
 disable vectors. Set in either, it closes external debug access to the chiplet and to the SEP,
-and on a `TEST_DEV` part it makes secure boot enforced (SEP-ROM-SB-025).
+and on a `TEST_DEV` or `RMA_SiP` part it makes secure boot enforced (SEP-ROM-SB-025).
+`RMA_CHIPLET` ignores it.
 
 [S18] reads the `SIP_DIS_READ_LOCK` / `SYS_DIS_READ_LOCK` bits of `LOCKS` and, when neither is
 set, both vectors, once, after the `SBOOT_DIS` read, and latches the result for the library's
@@ -1132,9 +1140,9 @@ The ROM reads the fuse shadows rather than `FEAT_CTRL`. `SEC_DIS` forces every `
 bit to 1, and `TEST_DEV` demotion forces the `DBG_1` group to 1, so either would report debug
 enabled on a part whose fuses disable it.
 
-When the lock is what makes a `TEST_DEV` part enforce secure boot, [S18] reports
-`SBOOT_DBG_LOCK`. It is not reported in `PROD` or `PROD_END`, which enforce regardless, or when
-`SBOOT_DIS` overrides the lock.
+When the lock is what makes a `TEST_DEV` or `RMA_SiP` part enforce secure boot, [S18] reports
+`SBOOT_DBG_LOCK`. It is not reported in `PROD` or `PROD_END`, which enforce regardless, in
+`RMA_CHIPLET`, which never does, or when `SBOOT_DIS` overrides the lock.
 
 === Fuse Fields Touched by the ROM
 
@@ -1362,7 +1370,7 @@ start
 if (primary_chiplet ?) then (yes)
   if (boot_recovery ?) then (no)
     :BOOT_MODE_SPI;
-    :ot_spi_init() / spi_init()
+    :boot_flash_init()
     (failure is non-fatal:
     primary slot is skipped);
     :manifest from flash slots
@@ -1409,7 +1417,7 @@ controller-agnostic: it speaks in *flash byte offsets* only.
 [[req-SEP-ROM-SPI-010]]*[SEP-ROM-SPI-010]* All flash access from the boot path shall go
 through the transport shim (`boot_flash.h`): `boot_flash_init()`, `boot_flash_read(dst,
 flash_off, len)`, `boot_flash_reinit()`, `boot_flash_bounds_ok()`. Boot logic shall not
-depend on which controller is fitted.
+depend on which transport is fitted.
 
 === Flash Layout
 
@@ -1437,6 +1445,8 @@ manifest+payload cannot exceed what SRAM can hold. `PRIMARY_MANIFEST_OFFSET` and
 (slot index × `BOOT_SLOT_SIZE`, plus the manifest's offset within a slot), so the stride
 above is a consequence of the slot size rather than an independent constant. The ROM's
 readable window for a slot runs from its manifest to the end of that slot.
+On both transports, the payload that a manifest's `payload_offset` locates must also lie
+in that window, so a slot cannot name the other slot's payload (`OCA_FAIL_PAYLOAD_LOCATION`).
 
 The OCA combined-image configs place the backup manifest at `0x41000`, matching the offsets
 above, and backup-slot rotation is exercised in simulation. The offsets in
@@ -1483,7 +1493,8 @@ the OpenTitan SPI Bootcode Driver spec (`specs/001-ot-spi-bootcode-driver/`).
 === Memory-Mapped (XIP) Path
 
 An XIP controller exposes flash as a memory-mapped window at `0x3000_0000`
-(`SEP_SPI_BASE`); a "read" is a secure-DMA copy from `SEP_SPI_BASE + offset` into SRAM.
+(`SEP_SPI_BASE`); a "read" is a secure-DMA copy from `SEP_SPI_BASE + offset` into SRAM, under
+the same per-slot bounds gate as the OpenTitan path.
 Bring-up belongs to the controller's driver. The open ROM links only the weak stubs in
 `src/sep_spi.c`, whose `spi_init()` reports that no controller is fitted; a build that fits one
 supplies a driver that overrides them and applies the slot's configuration TLV. The
@@ -1500,7 +1511,7 @@ skinparam ActivityBackgroundColor #f0f8e6
 skinparam ActivityDiamondBackgroundColor #fdf6e3
 start
 :boot_flash_init(straps, sysclk);
-if (controller ?) then (OpenTitan)
+if (transport ?) then (OpenTitan)
   :select profile [BOOT_OT_SPI_PROFILE];
   :CTRL/CFG/CSID bring-up;
 else (XIP)
@@ -1513,7 +1524,7 @@ note right
   disagreement => reject
 end note
 if (in bounds ?) then (yes)
-  if (controller ?) then (OpenTitan)
+  if (transport ?) then (OpenTitan)
     :segmented CMD reads (<=512 B),
     RX FIFO drain via secure DMA or PIO,
     <=3 transport retries;
@@ -1844,8 +1855,8 @@ commercial IP that is not part of this design.
 
 NOTE: Simulation still forces the ESRC *noise* source (`+esrc_noise_force`), because ring
 oscillators do not self-oscillate in simulation. Everything above that — the health tests,
-CSRNG, EDN, and the command handshakes — is exercised for real. This is a much weaker
-shortcut than the whole-chain EDN grant it replaces.
+CSRNG, EDN, and the command handshakes — is exercised for real. The physical
+ring-oscillator noise source itself remains outside this simulation coverage.
 
 [[sec:secure_boot]]
 == Secure Boot Decision and Signature Verification
@@ -1861,22 +1872,25 @@ gating, the boot measurement, and the hand-off self-check.
 
 1. [[req-SEP-ROM-SB-010]]*[SEP-ROM-SB-010]* In `PROD` and `PROD_END`, secure boot shall be
    enforced. No manifest content shall be able to disable it.
-2. [[req-SEP-ROM-SB-020]]*[SEP-ROM-SB-020]* In `TEST_DEV` with chiplet debug enabled, and in
-   the RMA states, secure boot shall be enabled when *either* trigger is set, and disabled
-   otherwise:
+2. [[req-SEP-ROM-SB-020]]*[SEP-ROM-SB-020]* In `TEST_DEV` and `RMA_SiP` with chiplet debug
+   enabled, and in `RMA_CHIPLET` whatever the debug lock, secure boot shall be enabled when
+   *either* trigger is set, and disabled otherwise:
    * the *signed* `secure_boot_control` bit 0 (`secure_boot_enforced`, offset 182) — the
      manifest's own declaration, authenticated once the signature verifies; or
    * the *unauthenticated* escalation flag, `unauthenticated_flags` bit 0 (offset 3756) —
      forces the secure-boot flow even against a manifest whose signed fields do not request
      it.
-3. [[req-SEP-ROM-SB-025]]*[SEP-ROM-SB-025]* In `TEST_DEV`, secure boot shall be enforced when
-   chiplet-scope debug is disabled: `CHIPLET_DBG` set in `SIP_DIS` or `SYS_DIS`, or either
-   vector read-locked. No manifest content shall be able to disable it.
+3. [[req-SEP-ROM-SB-025]]*[SEP-ROM-SB-025]* In `TEST_DEV` and `RMA_SiP`, secure boot shall be
+   enforced when chiplet-scope debug is disabled: `CHIPLET_DBG` set in `SIP_DIS` or `SYS_DIS`,
+   or either vector read-locked. No manifest content shall be able to disable it. The lock
+   does not apply in `RMA_CHIPLET`.
 +
 A locked debug posture is only a guarantee if unsigned code cannot be loaded in its place, so
-a debug-locked `TEST_DEV` part is treated as `PROD` is. The ROM reads the raw fuse shadows once
-at [S18] (<<sec:fuse_chiplet_dbg>>). The RMA states are unaffected: `RMA_CHIPLET` ignores both
-vectors and `RMA_SiP` ignores `SYS_DIS`, and both stay manifest-optional.
+a debug-locked `TEST_DEV` or `RMA_SiP` part is treated as `PROD` is. The ROM reads the raw fuse
+shadows once at [S18] (<<sec:fuse_chiplet_dbg>>). `RMA_SiP` does not apply `SYS_DIS` to
+feature control, but the fuse is unchanged, so a lock burned before RMA entry still keeps the
+part on the verified path. `RMA_CHIPLET` applies neither vector to feature control, and the
+ROM does not apply the lock there either.
 
 4. [[req-SEP-ROM-SB-030]]*[SEP-ROM-SB-030]* The escalation flag shall be strictly
    escalation-only: it can turn secure boot *on*, never off. (It lives in the unsigned tail
@@ -1916,14 +1930,14 @@ keeps the decision and the attestation of that decision the same fact.
 |===
 |*LC state* |*`SBOOT_DIS`* |*signed `secure_boot_control[0]`* |*unauth escalation bit*
 |*Secure boot*
-|PROD / PROD_END / TEST_DEV (debug locked) |0 |— |— |*enforced*
-|PROD / PROD_END / TEST_DEV (debug locked) |1 |1 |— |*on* (manifest outranks the fuse)
-|PROD / PROD_END / TEST_DEV (debug locked) |1 |0 |— |off (chicken bit)
-|TEST_DEV (debug open) / RMA |0 |1 |— |*on* (manifest-declared)
-|TEST_DEV (debug open) / RMA |0 |0 |1 |*on* (forced by escalation flag)
-|TEST_DEV (debug open) / RMA |0 |0 |0 |off
-|TEST_DEV (debug open) / RMA |1 |1 |— |*on* (manifest outranks the fuse)
-|TEST_DEV (debug open) / RMA |1 |0 |— |off
+|PROD / PROD_END / TEST_DEV or RMA_SiP (debug locked) |0 |— |— |*enforced*
+|PROD / PROD_END / TEST_DEV or RMA_SiP (debug locked) |1 |1 |— |*on* (manifest outranks the fuse)
+|PROD / PROD_END / TEST_DEV or RMA_SiP (debug locked) |1 |0 |— |off (chicken bit)
+|TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET |0 |1 |— |*on* (manifest-declared)
+|TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET |0 |0 |1 |*on* (forced by escalation flag)
+|TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET |0 |0 |0 |off
+|TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET |1 |1 |— |*on* (manifest outranks the fuse)
+|TEST_DEV / RMA_SiP (debug open) / RMA_CHIPLET |1 |0 |— |off
 |===
 
 _Debug locked_ means `CHIPLET_DBG` is set in `SIP_DIS` or `SYS_DIS`, or either vector is
@@ -1931,12 +1945,21 @@ read-locked (SEP-ROM-SB-025).
 
 [NOTE]
 ====
-*Ratified (2026-07-23):* the RMA states are treated like `TEST_DEV` — secure boot is
-manifest-optional in both `RMA_SiP` and `RMA_CHIPLET`, supporting manufacturing-return
-failure-analysis flows. Protection of RMA entry rests on the fused RMA token digests and the
-authenticated lifecycle transition, not on image signing; a platform can still force
-verification of any individual image via the escalation flag (SEP-ROM-SB-020/-030).
+*Ratified (2026-07-23, amended 2026-10-01):* secure boot is manifest-optional in both RMA
+states, supporting manufacturing-return failure-analysis flows, with one exception: an
+`RMA_SiP` part whose chiplet debug is locked enforces it, as a locked `TEST_DEV` part does
+(SEP-ROM-SB-025). `RMA_CHIPLET` stays manifest-optional whatever the debug lock. Protection of
+RMA entry rests on the fused RMA token digests and the authenticated lifecycle transition, not
+on image signing; a platform can still force verification of any individual image via the
+escalation flag (SEP-ROM-SB-020/-030), or of every `RMA_SiP` image by burning `CHIPLET_DBG`
+before RMA entry.
 ====
+
+<<fig:secure_boot_decision>> is the whole decision as the ROM implements it: the lifecycle
+and fuse reads latched once per boot at [S11] and [S18], then the precedence applied to each
+manifest slot. The first input that settles the question decides it. Outside `PROD` /
+`PROD_END`, secure boot is left off by `SBOOT_DIS`, by `RMA_CHIPLET`, or by an open debug
+posture in `TEST_DEV` / `RMA_SiP`.
 
 [[fig:secure_boot_decision]]
 .Secure-boot decision
@@ -1945,31 +1968,82 @@ verification of any individual image via the escalation flag (SEP-ROM-SB-020/-03
 @startuml
 skinparam ActivityBackgroundColor #f0f8e6
 skinparam ActivityDiamondBackgroundColor #fdf6e3
+skinparam NoteBackgroundColor #fffbe6
 start
-if (signed secure_boot_control[0] ?) then (yes)
-  :secure boot ON;<<#e6f0f8>>
-  detach
-else (no)
-  if (SBOOT_DIS fuse set ?) then (yes)
-    :secure boot OFF;<<#ffe0e0>>
+group Once per boot
+  :[S11] read LC_STATE;
+  if (LC_STATE is TEST_DEV, PROD, PROD_END,\nRMA_SiP 0x2..0x3 or RMA_CHIPLET 0x6..0x7 ?) then (no)
+    #ffe0e0:hold SMC in reset
+    ROM_ERR_LIFECYCLE_INVALID;
+    detach
+  else (yes)
+  endif
+  :[S18] read SBOOT_DIS once;
+  if (SBOOT_DIS rsvd[31:1] non-zero ?) then (yes)
+    #ffe0e0:ROM_ERR_SBOOT_DIS_RSVD_SET;
     detach
   else (no)
-    if (LC in {PROD, PROD_END}, or\nTEST_DEV with chiplet debug locked ?) then (yes)
-      :secure boot ENFORCED;<<#e6f0f8>>
-      detach
-    else (no: TEST_DEV debug open / RMA)
-      if (unauth escalation bit ?) then (yes)
-        :secure boot ON;<<#e6f0f8>>
-        detach
-      else (no)
-        :secure boot OFF
-        (manifest hash + payload
-        hashes still checked);
-        detach
-      endif
+  endif
+  :latch SBOOT_DIS = disable_secure_boot (bit 0);
+  :[S18] read LOCKS;
+  if (SIP_DIS or SYS_DIS\nread-locked ?) then (yes)
+    :debug locked
+    (value cannot be read: fail closed);
+  else (no)
+    if (CHIPLET_DBG, bit 1, set in\nSIP_DIS or SYS_DIS ?) then (yes)
+      :debug locked;
+    else (no)
+      :debug open;
     endif
   endif
-endif
+  :latch debug lock;
+end group
+group Each manifest slot
+  if (1. signed secure_boot_control[0]\nsecure_boot_enforced set ?) then (yes)
+    #e6f0f8:secure boot ENFORCED
+    (manifest request outranks
+    every device input, SB-040);
+    detach
+  else (no)
+  endif
+  if (2. latched SBOOT_DIS = 1 ?) then (yes)
+    #ffe0e0:secure boot OFF
+    (chicken bit), SBOOT_OFF at [S24];
+    detach
+  else (no)
+  endif
+  if (3. LC = PROD or PROD_END ?) then (yes)
+    #e6f0f8:secure boot ENFORCED
+    (lifecycle, SB-010);
+    detach
+  else (no: TEST_DEV, RMA_SiP, RMA_CHIPLET)
+  endif
+  if (4. LC = RMA_CHIPLET ?) then (yes)
+    #ffe0e0:secure boot OFF
+    (manifest-optional; debug lock
+    not consulted, SB-025)
+    SBOOT_OFF at [S24];
+    detach
+  else (no: TEST_DEV, RMA_SiP)
+  endif
+  if (5. latched debug lock ?) then (locked)
+    #e6f0f8:secure boot ENFORCED
+    (debug lock, SB-025)
+    SBOOT_DBG_LOCK reported at [S18];
+    detach
+  else (open)
+    #ffe0e0:secure boot OFF
+    (manifest-optional, SB-020)
+    SBOOT_OFF at [S24];
+    note right
+      SB-020's unauthenticated escalation
+      flag would force ENFORCED here.
+      It is not implemented yet
+      (see the gap table).
+    end note
+    detach
+  endif
+end group
 @enduml
 ----
 
@@ -2844,7 +2918,7 @@ state "attempt slot A\n(primary, or backup if rotated)" as A
 state "cleanup:\nzero staged SRAM,\nboot_flash_reinit()" as CLEAN
 state "attempt slot B" as B
 state "one-shot stages:\ndemotion, fuse locks,\nmeasurement, hand-off" as GO
-state "rom_err_fail:\nbl0_state.error_code,\ncold_scratch[1] ERROR,\nmailbox FAIL, wfi" as FAIL
+state "rom_err_fail:\nbl0_state.error_code,\ncold_scratch[1] ERROR,\ncold_scratch[0] FAIL, wfi" as FAIL
 
 [*] --> A : spi_status == 0
 [*] --> CLEAN : spi_status != 0\n(skip first slot)
@@ -2862,7 +2936,7 @@ GO --> [*]
 [[req-SEP-ROM-RETRY-050]]*[SEP-ROM-RETRY-050]* Every fatal path in the ROM shall converge in
 a single failure routine (`rom_err_fail`) that (a) records the error code in
 `bl0_state.error_code`, (b) writes the encoded `ERROR` status to `cold_scratch[1]`,
-(c) emits the FAIL magic and code through the STDOUT mailbox, and (d) parks in `wfi`. The
+(c) writes the FAIL verdict (`0xDEADBEEF`) to `cold_scratch[0]`, and (d) parks in `wfi`. The
 ROM never silently resets or falls through on failure; recovery from a fully failed boot is
 the platform's job (recovery strap, <<sec:straps>>).
 
@@ -2921,9 +2995,9 @@ implementation-specific.
 the last value identifies the current/failing stage.
 |Status ring |SMC SRAM (offset from scratch[11]) |Every non-`DEBUG` status, consumed by the
 SMC and forwarded to the platform (OCCP). Strap- and hand-shake-gated (<<sec:smc_sync>>).
-|STDOUT mailbox |`0x80000000` |DV signalling: magic `0xA5A55A5A` then `0xCAFEBABE` (PASS) or
-`0xDEADBEEF` (FAIL) followed by the error code.
-|Progress scratch |`cold_scratch[0]` |Boot markers (`'COLD'`) and DV pass/fail codes.
+|Verdict scratch |`cold_scratch[0]` |Terminal verdict only: `0xDEADBEEF` FAIL from
+`rom_err_fail()` or a trap handler; after hand-off, whatever BL1 writes (`0xACAFACA1` PASS
+or `0xDEADBEEF` FAIL in DV).
 |Virtual console |`cold_scratch[2]` |Packed debug text (debug builds only; decoded by the DV
 monitor).
 |===
@@ -3026,7 +3100,7 @@ regions, or the DMA copy of BL1 or its ICCM pad failed.
 |`OCA_BOOT_ERR_BL1_TOO_LARGE` |`0x00030104` |BL1 length implausible.
 |`OCA_BOOT_ERR_KEY_UNTRUSTED` |`0x00030105` |Reserved; this ROM does not return it.
 |`OCA_BOOT_ERR_READ_OUT_OF_BOUNDS` |`0x00030106` |A storage read was refused by the bounds gate
-(the boot slot on the OpenTitan build, the XIP window on the XIP build); reported as
+(the boot slot on both builds, or a source below the XIP window on the XIP build); reported as
 `IMAGE_OOB`.
 |`OCA_BOOT_ERR_FLASH_READ` |`0x00030107` |The OpenTitan SPI driver failed a read (OpenTitan
 build only); its `SPI_OT_*` code is reported as the status.
@@ -3051,7 +3125,7 @@ denotes a following 16-bit payload word.
 [frame=ends]
 |===
 |*Stage* |*Progress codes (scratch and/or ring)* |*Failure codes*
-|vector.S entry |`BOOTROM_START` (DEBUG, scratch-only) |trap → mailbox FAIL
+|vector.S entry |`BOOTROM_START` (DEBUG, scratch-only) |trap → `cold_scratch[0]` FAIL
 |PMP programmed |`BOOTROM_PRESTART_DONE` (DEBUG) |—
 |runtime init |`RUNTIME_INIT_OK` (DEBUG, from stub; re-reported in [S04]) |`ROM_ERR_RUNTIME_INIT_FAILED`
 |[S04] main entry |`BOOTROM_START_MAIN` (DEBUG) |—
@@ -3075,8 +3149,8 @@ the lock poll (unbounded; hang is the failure mode)
 |[S10] bl0_state |`BL0_STATE_INIT` (DEBUG) |—
 |[S18] SBOOT_DIS |`FUSE_SBOOT_DIS` → `INFO_EXT` (value) |`FUSE_SBOOT_DIS_RSVD` (ERROR) +
 `ROM_ERR_SBOOT_DIS_RSVD_SET`
-|[S18] CHIPLET_DBG |`SBOOT_DBG_LOCK` when the debug lock is what makes a `TEST_DEV` part
-enforce secure boot |—
+|[S18] CHIPLET_DBG |`SBOOT_DBG_LOCK` when the debug lock is what makes a `TEST_DEV` or
+`RMA_SiP` part enforce secure boot |—
 |[S20] DMA |`DMA_INIT_CHECK` (DEBUG) |—
 |[S21] boot mode |`BOOT_MODE` (DEBUG); `PRIMARY_CHIPLET` / `SECONDARY_CHIPLET` /
 `BOOT_RECOVERY`; `ROTATE_UPDATE` → `INFO_EXT`; `SPI_INIT_CHECK` (DEBUG)
@@ -3107,8 +3181,8 @@ never completed), then the caller's error
 `_BL1_BAD_ADDR`
 |[S28] canary |— |`ROM_ERR_STACK_OVERFLOW`
 |PASS (DV builds) |none from the ROM -- BL1 signals it. `rom_handoff_bl1()` does not
-return, so BL0 has no post-handoff path; in DV `bl1_pass_test` writes the `MAGIC0` +
-`PASS` words to the STDOUT mailbox itself once it is running |—
+return, so BL0 has no post-handoff path; in DV `bl1_pass_test` reports PASS through
+`cold_scratch[0]` itself once it is running |—
 |===
 
 [appendix]
@@ -3243,14 +3317,14 @@ released-by-default reset value (`HMAC_SW_RST_N` resets to 1) and the ROM never 
 The AES release had no call site until the
 encrypted-payload path was exercised in RTL, where the block never reported idle.
 |<<sec:payload>>
-|PMP fence policy |*gap* |SRAM/ICCM are RWX from cold boot; entries unlocked (don't bind
-M-mode); release-at-hand-off unimplemented; window set doesn't match data-window needs.
+|PMP fence policy |*partial* |The OpenTitan-SPI build grants the required cold data windows,
+keeps SRAM/ICCM non-executable during validation and releases only the selected BL1 region.
+The integrator-defined XIP-controller aperture remains open.
 |<<sec:pmp>>
-|PMP binding/release mechanism |*ratified, not implemented* |Smepmp ratified 2026-07-23
-(<<sec:pmp_mechanism>>): RLB → locked rules → MMWP at cold boot; release = one rule rewrite
-at hand-off (SEP-ROM-PMP-060/-070/-080). Code writes neither `mseccfg` nor lock bits yet.
-RLB disposition at the jump is a deferred sub-decision (BL1 spec); `MML` deferred as
-optional hardening. |<<sec:pmp_mechanism>>
+|PMP binding/release mechanism |*partial* |The ROM programs RLB → locked rules → MMWP at
+cold boot and adds execute permission to one BL1 rule at hand-off
+(SEP-ROM-PMP-060/-070/-080). RLB disposition at the jump is a deferred sub-decision
+(BL1 spec); `MML` and the full hand-off gate ledger remain deferred. |<<sec:pmp_mechanism>>
 |Exponent constraint |*by design* |Ratified: SEP secure boot accepts F4 (e = 65537) RSA keys
 only. A permanent constraint, not a consequence of the OTBN program build; any other
 exponent is rejected (SEP-ROM-SB-100). |<<sec:secure_boot>>
@@ -3272,8 +3346,9 @@ after the non-returning hand-off call). Stack-top check still absent (SEP-ROM-HO
 |<<sec:handoff>>
 |Secure-boot escalation flag |*gap* |`unauthenticated_flags` bit 0 not implemented; the
 field is unread by the ROM and the validation library. |<<sec:secure_boot>>
-|RMA secure-boot policy |*ratified* |Secure boot is manifest-optional in both RMA states
-(decision 2026-07-23), matching the implementation — no code change needed.
+|RMA secure-boot policy |*ratified* |Secure boot is manifest-optional in both RMA states,
+except that a debug-locked `RMA_SiP` part enforces it (decision 2026-07-23, amended
+2026-10-01), matching the implementation.
 |<<sec:secure_boot>>
 |Device security-state commit |*by design* |Not a gap. The ROM burns no fuses at all: BL0
 performs read-only validation and records the commit directive in `bl0_state`, and SEP BL1
@@ -3288,6 +3363,9 @@ cannot distinguish "not specified" from "specified as no demotion". Closing that
 two-bit field in the hand-off block, not a policy change. |<<sec:demotion>>
 |Payload gap zeroing |*gap (should)* |Un-hashed inter-image bytes not zeroed after
 validation (legacy ROM did). |<<sec:payload>>
+|SRAM and ICCM clear before external content |*gap* |Off by default: `SRAM_SCRUB_BYTES=0`,
+and ICCM is written only over BL1 and its pad unless `ROM_ICCM_CLEAR_FULL=1`
+(SEP-ROM-CPU-100). |<<sec:cpu_init>>
 |Boot measurement |*unmerged* |Soft measurement enrollment implemented
 2026-07-24 (`src/measurement.c`: verified ROM self-hash → slot 0, boot-state record →
 slot 1, raw inputs in `bl0_state`) and validated in RTL simulation
@@ -3348,8 +3426,8 @@ All 95 tagged requirements. Each ID links to its definition.
 |<<req-SEP-ROM-CPU-010,SEP-ROM-CPU-010>> |Only hart 0 boots; others park |<<sec:cpu_init>>
 |<<req-SEP-ROM-CPU-020,SEP-ROM-CPU-020>> |Trap vector before first MMIO |<<sec:cpu_init>>
 |<<req-SEP-ROM-CPU-030,SEP-ROM-CPU-030>> |MRAC before warm-scratch read |<<sec:cpu_init>>
-|<<req-SEP-ROM-CPU-040,SEP-ROM-CPU-040>> |Outbound filter default-deny; open only needed
-windows |<<sec:cpu_init>>
+|<<req-SEP-ROM-CPU-040,SEP-ROM-CPU-040>> |Outbound filter default-deny; ROM opens no window
+|<<sec:cpu_init>>
 |<<req-SEP-ROM-CPU-050,SEP-ROM-CPU-050>> |Interrupts disabled throughout ROM
 |<<sec:cpu_init>>
 |<<req-SEP-ROM-CPU-060,SEP-ROM-CPU-060>> |Runtime-init self-check, fatal on mismatch
@@ -3429,10 +3507,11 @@ region (ICCM always; SRAM per `BL1_SRAM_EXEC_ENABLE`, default on), entry < lengt
 validation only |<<sec:manifest>>
 |<<req-SEP-ROM-SB-010,SEP-ROM-SB-010>> |PROD/PROD_END enforce secure boot
 |<<sec:secure_boot>>
-|<<req-SEP-ROM-SB-020,SEP-ROM-SB-020>> |TEST_DEV (debug open)/RMA: either trigger enables
+|<<req-SEP-ROM-SB-020,SEP-ROM-SB-020>> |TEST_DEV/RMA_SiP (debug open), RMA_CHIPLET: either
+trigger enables
 |<<sec:secure_boot>>
-|<<req-SEP-ROM-SB-025,SEP-ROM-SB-025>> |TEST_DEV with CHIPLET_DBG disabled or its vector
-read-locked enforces secure boot
+|<<req-SEP-ROM-SB-025,SEP-ROM-SB-025>> |TEST_DEV or RMA_SiP with CHIPLET_DBG disabled or its
+vector read-locked enforces secure boot
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-030,SEP-ROM-SB-030>> |Escalation flag is escalation-only
 |<<sec:secure_boot>>

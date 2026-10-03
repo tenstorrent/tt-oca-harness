@@ -2,14 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Transfers a bootcode image from the master BFM to the DUT with OCCP WRITE, then JUMPs to
- * its entry point. Image parameters come from scratch registers 5-8, set by the harness.
+ * Loads a bootcode image from controller memory into the target with OCCP WRITE, then JUMPs to
+ * its entry point. The harness supplies the image layout; the booted image reports the verdict.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"
-#include <string.h>
 
 #define MAX_TRANSFER_CHUNK_SIZE 1024
 
@@ -124,8 +123,6 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

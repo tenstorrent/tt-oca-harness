@@ -4,9 +4,9 @@
 
 no_cpu host-AXI test of the SEP axil_mailbox MECHANICS over the CPU-LSU master,
 on the outbound_mailbox_0 aperture (0x10A0_0000) -- the SEP/CPU side of the
-two-port cross-FIFO, reachable with NO inbound filter. This is the TX-path test,
-matching the reference suite's "CPU not running -> RX FIFO always empty; verify the TX path"
-intent. Distinct from the outbound->PIC->CPU delivery path
+two-port cross-FIFO, reachable with NO inbound filter. This is the TX-path test:
+with no CPU running the RX FIFO is always empty. Distinct from the
+outbound->PIC->CPU delivery path
 (sep_mailbox_plic_test).
 
 A SepMboxCfg config object (seeded WIRQT + payloads) is the single source of truth

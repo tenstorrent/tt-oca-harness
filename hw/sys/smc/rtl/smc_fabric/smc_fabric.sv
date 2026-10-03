@@ -18,7 +18,7 @@ module smc_fabric #(
                                                   // ID-width converter, which reduces area.
                                                   // The input fabric's alias remap remains.
   parameter int unsigned SYS_IN_ID_WIDTH = 9,  // Unused; the input fabric takes the system input ID
-                                               // width from smc_pkg::SYS_IN_ID_WIDTH.
+                                               // width from smc_pkg::SysInIdWidth.
 
   parameter int unsigned NUM_INBOUND_FILTERS        = 16,  // Number of filter entries on the system
                                                            // AXI input; sizes the inbound filter
@@ -28,7 +28,7 @@ module smc_fabric #(
                                                            // AXI output; sizes the outbound filter
                                                            // CSR arrays and the output fabric
                                                            // hit-index outputs.
-  parameter int unsigned MAX_TRANS                  = smc_pkg::FABRIC_MAX_TRANS,  // Outstanding transactions per ID bucket
+  parameter int unsigned MAX_TRANS                  = smc_pkg::FabricMaxTrans,    // Outstanding transactions per ID bucket
                                                                                   // tracked by the output fabric remap demux
                                                                                   // and mux; unused when NO_ADDR_REMAP is set.
   parameter bit          FILTER_REQ_PIPELINE_ENABLE = 1'b0,  // Adds spill registers on the request
@@ -191,13 +191,13 @@ module smc_fabric #(
                                                                                                      // system inbound
                                                                                                      // filter.
 
-  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],  // M-mode output
+  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NumMmodeOutputRemapRegions-1:0],      // M-mode output
                                                                                                              // remap region
                                                                                                              // configuration.
-  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],  // Xvisor output
+  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NumXvisorOutputRemapRegions-1:0],      // Xvisor output
                                                                                                               // remap region
                                                                                                               // configuration.
-  input  alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Alias remap
+  input  alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_i [smc_pkg::NumAliasRemapRegions-1:0],     // Alias remap
                                                                                                       // region
                                                                                                       // configuration.
 
@@ -209,22 +209,14 @@ module smc_fabric #(
                                                                       // path.
   output smc_pkg::remap_debug_t                   remap_debug_dma_o,  // Alias region index hit by the data
                                                                       // accelerator path.
-  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  outbound_write_filter_hit_debug_o,  // Write hit index of the
-                                                                                      // system inbound filter
-                                                                                      // in the input fabric;
-                                                                                      // tied to zero.
-  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  outbound_read_filter_hit_debug_o,  // Read hit index of the
-                                                                                     // system inbound filter
-                                                                                     // in the input fabric;
-                                                                                     // tied to zero.
-  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] inbound_write_filter_hit_debug_o,  // Write hit index of the
-                                                                                     // system outbound filter
-                                                                                     // in the output fabric;
-                                                                                     // tied to zero.
-  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] inbound_read_filter_hit_debug_o,  // Read hit index of the
-                                                                                    // system outbound filter
-                                                                                    // in the output fabric;
-                                                                                    // tied to zero.
+  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  inbound_write_filter_hit_debug_o,  // Lowest system inbound filter
+                                                                                     // entry hit by a write.
+  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  inbound_read_filter_hit_debug_o,  // Lowest system inbound filter
+                                                                                    // entry hit by a read.
+  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] outbound_write_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                                      // entry hit by a write.
+  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] outbound_read_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                                     // entry hit by a read.
 
   output logic fabric_clk_active_o,     // High while the output fabric remap clock runs; low when
                                         // NO_ADDR_REMAP is set.
@@ -304,8 +296,8 @@ module smc_fabric #(
     .remap_debug_jtag_o         (remap_debug_jtag_o),
     .remap_debug_log_o          (remap_debug_log_o),
     .remap_debug_dma_o          (remap_debug_dma_o),
-    .write_filter_hit_debug_o   (outbound_write_filter_hit_debug_o),
-    .read_filter_hit_debug_o    (outbound_read_filter_hit_debug_o),
+    .write_filter_hit_debug_o   (inbound_write_filter_hit_debug_o),
+    .read_filter_hit_debug_o    (inbound_read_filter_hit_debug_o),
 
     // Clock gater activity indicators
     .sys_in_filter_clk_active_o (sys_in_filter_clk_active_o),
@@ -392,8 +384,8 @@ module smc_fabric #(
     .xR_ctrl_i                    (xR_ctrl_i),
 
     // Debug outputs
-    .write_filter_hit_debug_o     (inbound_write_filter_hit_debug_o),
-    .read_filter_hit_debug_o      (inbound_read_filter_hit_debug_o),
+    .write_filter_hit_debug_o     (outbound_write_filter_hit_debug_o),
+    .read_filter_hit_debug_o      (outbound_read_filter_hit_debug_o),
 
     // Clock gater activity indicators
     .fabric_clk_active_o         (fabric_clk_active_o),

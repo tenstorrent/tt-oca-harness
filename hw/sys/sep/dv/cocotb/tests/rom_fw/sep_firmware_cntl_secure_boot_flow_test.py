@@ -1,51 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Lifecycle outranks a manifest asking for non-secure boot: the part refuses (PyUVM).
+"""Lifecycle outranks a manifest asking for non-secure boot: the part refuses.
 
-FEATURE UNDER TEST. Secure boot is decided by a precedence, not by the manifest
-alone (``secure_boot_decide``, ``validators/oca/lib/secure_boot.c``). Three inputs
-are consulted in order, and the first to settle the question wins: the manifest's
-``secure_boot_control`` enforced bit, then a device asserting ``SBOOT_DIS``, then
-the device's own ``is_secure_boot_active()`` -- the lifecycle. The stimulus is
-lifecycle PROD, ``SBOOT_DIS = 0``, and a manifest whose ``secure_boot`` is
-CLEARED, so input (1) declines to enforce and input (3) enforces anyway. The run
-establishes that the lifecycle wins.
-
-THE OUTCOME IS A REFUSAL, AND THAT IS THE POINT. Clearing the enforced bit
-obliges the whole crypto set to be zero: with secure boot off the parser requires
-the slot to carry no signature, public key, key-select or type/encoding bytes,
-and returns ``OCA_FAIL_SECURE_BOOT_INVARIANT`` otherwise
-(``parser.c:180-208``). So ``mm.clear_secure_boot`` necessarily produces a
-legally UNSIGNED manifest -- which is what a manifest requesting non-secure boot
-IS in this format.
-
-Both class bits live in the same byte as the enforced bit: the shipped slots
-carry ``secure_boot_control = 0x03`` (enforced + ``secure_boot_classic``) and the
-mutation leaves ``0x00``. The lifecycle then puts secure boot in force with
-nothing naming a signature family to verify with, and ``secure_boot.c:226``
-refuses on exactly that -- ``MANIFEST_ERR=0x00030024``
-(``OCA_FAIL_SIGNATURE_CLASS_CONTROL``) on both slots, then
-``MANIFEST_ALL_FAILED``. Read plainly: this part requires secure boot, this image
-is unsigned, so it does not boot.
-
-WHY NOT A VERIFIED BOOT. A manifest that disclaims secure boot while carrying a
-verifiable signature is not expressible. The enforced bit sits INSIDE the TBS (at
-offset 182, against a signed region ending at 3172), and the invariant above
-forbids the signing fields whenever it is clear -- including when a class bit is
-still set, because the invariant keys on the enforced bit alone. The format
-closed that hole structurally rather than leaving the ROM to catch it at runtime,
-so requiring ``RSA_VERIFY_OK`` here would be requiring a state the format
-prevents.
-
-The refusal still proves the precedence, because it is lifecycle-dependent: the
-same image boots non-secure in TEST_DEV, where input (1) is honoured. It is
-refused here. ``SBOOT_OFF`` is the sharpest forbid and the base already applies
-it -- a PROD part must never announce secure boot off, whatever the manifest
-asked for.
-
-Distinction from ``sep_firmware_device_cntl_non_secure_boot_flow_test``: there the
-DEVICE asks for non-secure boot (``SBOOT_DIS``) and the manifest asks to be
-verified, so input (1) wins and the boot is verified. Here the two swap sides.
+``secure_boot_decide`` (``validators/oca/lib/secure_boot.c``) takes the first input that settles
+the question: the manifest ``secure_boot_control`` enforced bit, a device ``SBOOT_DIS``, then the
+lifecycle. The stimulus is PROD, ``SBOOT_DIS = 0`` and both manifests with
+``secure_boot_control`` cleared from 0x03 to 0x00. With the enforced bit clear the parser
+requires every signing field to be zero (``OCA_FAIL_SECURE_BOOT_INVARIANT``), so the manifest is
+legally unsigned and a verified boot cannot be expressed. The lifecycle enforces secure boot with
+no signature class named, so both slots fail with ``OCA_FAIL_SIGNATURE_CLASS_CONTROL``, then
+``MANIFEST_ALL_FAILED``; the same image boots non-secure in TEST_DEV. The base forbids
+``SBOOT_OFF``. ``sep_firmware_device_cntl_non_secure_boot_flow_test`` swaps the roles: the device
+asks for non-secure boot and the manifest asks to be verified.
 """
 
 from __future__ import annotations
@@ -106,7 +72,8 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
     )
 
     # --- stimulus ------------------------------------------------------------
-    def _clear_one(self, buf: bytearray, slot: str) -> None:
+    def mutate_slot(self, buf: bytearray, slot: str) -> None:
+        """Plant this scenario's defect in one slot. Applied to both slots."""
         before = mm.secure_boot_control(buf, slot)
         assert before & mm.SECURE_BOOT_ENFORCED_BIT, (
             f"{slot} manifest already has secure_boot=0 (secure_boot_control="
@@ -123,7 +90,7 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
             f"and the slot would be refused somewhere other than the class check"
         )
         # Proves the mutation left the signed region consistent: verify_layout
-        # recomputes sha256(TBS) and compares it to the stored manifest_hash.
+        # recomputes sha256(signed region) and compares it to the stored manifest_hash.
         mm.verify_layout(buf, slot)
         self.logger.info(
             "CHK-MUTATION: %s secure_boot_control 0x%02x -> 0x%02x, %s",
@@ -137,10 +104,10 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
         # Both slots: the ROM may serve this boot from either, and leaving the
         # backup's flag set would let a failover quietly satisfy the test for the
         # wrong reason.
-        self._clear_one(buf, "primary")
+        self.mutate_slot(buf, "primary")
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        self._clear_one(buf, "backup")
+        self.mutate_slot(buf, "backup")
 
     # --- checks --------------------------------------------------------------
     def check_defect_attribution(self, console, i_backup: int) -> None:

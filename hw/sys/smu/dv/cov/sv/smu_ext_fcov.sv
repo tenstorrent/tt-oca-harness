@@ -62,13 +62,13 @@ module smu_ext_fcov #(
   input wire sep_efuse_bank_ctrl_rready_i,
 
   // Outputs to external systems.
-  input wire [smc_pkg::NUM_MAILBOXES-1:0] ext_mailbox_interrupts_i,
+  input wire [smc_pkg::NumMailboxes-1:0] ext_mailbox_interrupts_i,
   input wire [31:0] ss_config_i,
   input smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_i[31:0],
   input smc_efuse_pkg::efuse_map_t smc_shadow_regs_i
 );
 
-  localparam int unsigned MbxMsb = smc_pkg::NUM_MAILBOXES - 1;
+  localparam int unsigned MbxMsb = smc_pkg::NumMailboxes - 1;
 
   wire in_reset = (rst_cold_ni !== 1'b1);
 
@@ -109,10 +109,10 @@ module smu_ext_fcov #(
   end
 
   // ------------------------------------------------------------------
-  // Mailbox interrupt vector: its top bit, index NUM_MAILBOXES-1, rising.
+  // Mailbox interrupt vector: its top bit, index NumMailboxes-1, rising.
   // ------------------------------------------------------------------
   wire mailbox_irq_out_width_32_e = (ext_mailbox_interrupts_i[MbxMsb] === 1'b1)
-      && (mbx_msb_q === 1'b0) && (smc_pkg::NUM_MAILBOXES == 32);
+      && (mbx_msb_q === 1'b0) && (smc_pkg::NumMailboxes == 32);
   `OCAH_FCOV_COVER(c_mailbox_irq_out_width_32, mailbox_irq_out_width_32_e, clk_smu_i, in_reset)
 
   // ------------------------------------------------------------------
