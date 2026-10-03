@@ -56,7 +56,7 @@
 <h3 id="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset</td></tr>
+<tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>SEP REFERENCE COUNTER, counting after deassert of cold reset. Write once,<br>then poll this register until the readback reflects the written value before<br>writing again. The counter keeps advancing, so the readback is at or just<br>above the written value rather than equal to it.</td></tr>
 </table>
 <h3 id="TIMEOUT_INTERRUPT">TIMEOUT_INTERRUPT</h3>
 <table>

@@ -90,7 +90,7 @@ addrmap smc_base_config {
         field {
             sw=rw;
             hw=r;
-            desc="Clock gate enable for address remapper register logic";
+            desc="Clock gate enable for the output fabric remap demux and mux";
         } output_fabric_cg_en [7:7] = 0x0;
 
         field {

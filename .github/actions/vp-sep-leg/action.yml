@@ -6,9 +6,8 @@
 # which mode it is. The container leg pulls its toolchain image from the
 # registry by the flake content hash; the native leg needs no image at all.
 #
-# The caller must check the repository out first and gate this action on the
-# submodule token: a local composite action is loaded from the checked-out tree,
-# and every step here needs the private submodules.
+# The caller must check the repository out first: a local composite action is
+# loaded from the checked-out tree.
 name: 'Run a sep-vp leg'
 description: 'Build sep-vp for one environment and run the sepvp pytest suites against it'
 inputs:
@@ -24,51 +23,19 @@ inputs:
   build_dir:
     required: true
     description: 'VP build tree for this environment; the tag keeps container and native objects apart'
-  oca_pat:
-    required: true
-    description: 'PAT granting the private model and manifest submodules'
 runs:
   using: composite
   steps:
-    - name: Skip when the submodule token is unavailable
-      if: false  # caller handles the skip notice
-      shell: bash
-      run: |
-        {
-          echo "### sep-vp (${{ inputs.mode }}): skipped"
-          echo
-          echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this run'
-          echo '(fork PR, or the secret is not configured yet). The VP needs the'
-          echo 'private `tt-oca-harness-model` and `tt-oca-manifest` submodules,'
-          echo 'which the default `GITHUB_TOKEN` cannot reach.'
-        } >> "$GITHUB_STEP_SUMMARY"
-
     - name: Checkout
       uses: actions/checkout@v4
 
-    # Both submodules are private: tt-oca-harness-model is the simulator, and
-    # the bootcode tests read tt-oca-manifest's src/oca/constants.py as the
-    # authority for the manifest layout.
-    #
-    # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
-    # `token` replaces the credential for the MAIN repository fetch too, and
-    # this PAT grants the two submodule repositories but NOT tt-oca-harness,
-    # so the repository's own checkout fails with
-    # "remote: Write access to repository not granted".
-    #
-    # .gitmodules addresses both over SSH, which a hosted runner has no key
-    # for, so rewrite that remote to HTTPS carrying the PAT. The rewrite is
-    # undone afterwards so the credential does not outlive the step.
-    - name: Check out the private submodules
-      env:
-        OCA_PAT: ${{ inputs.oca_pat }}
+    # tt-oca-harness-model is the simulator, and the bootcode tests read
+    # tt-oca-manifest's src/oca/constants.py as the authority for the manifest
+    # layout.
+    - name: Check out the submodules
       shell: bash
       run: |
         set -euo pipefail
-        rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
-        cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
-        trap cleanup EXIT
-        git config --global "${rewrite}.insteadOf" 'git@github.com:'
         git submodule update --init --recursive \
           virtual_platform/tt-oca-harness-model \
           hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
@@ -122,16 +89,14 @@ runs:
     # back to pulling docker.io/nixos/nix and building inside it otherwise.
     # The fallback builds the whole closure from scratch on every job and does
     # not finish inside the budget, so install nix on the runner -- the same
-    # step and action lint.yml uses. access-tokens lets nix reach the private
-    # submodule repositories when it resolves the flake's inputs.
+    # step and action lint.yml uses. The token lifts the anonymous GitHub API
+    # rate limit while nix resolves the flake's inputs.
     - name: Install Nix
       uses: cachix/install-nix-action@v31.11.1
       with:
-        extra_nix_config: |
-          access-tokens = github.com=${{ inputs.oca_pat }}
+        github_access_token: ${{ github.token }}
 
     - name: Install VP build dependencies
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
       shell: bash
       run: |
         # Acquire options: the hosted-runner mirror list falls back from
@@ -152,7 +117,7 @@ runs:
     # `docker-run.sh run-here` even though the runner's toolchain is usable.
     # It wants a bin dir; RISCV_PREFIX resolves itself from what it finds there.
     - name: Point the bootrom at the runner's RISC-V toolchain
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      if: inputs.mode == 'native'
       shell: bash
       run: echo "RISCV_TOOLCHAIN=/usr/bin" >> "$GITHUB_ENV"
 
@@ -163,7 +128,7 @@ runs:
     # the key. Only the native leg has a dependency cache -- see below.
     - name: Compute dependency cache key
       id: depkey
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      if: inputs.mode == 'native'
       shell: bash
       run: echo "cxx_id=$(g++ -dumpmachine)-$(g++ -dumpversion)" >> "$GITHUB_OUTPUT"
 
@@ -173,7 +138,7 @@ runs:
     # prefixes, so the container leg resolves every one as explicit and builds
     # none of them.
     - name: Cache VP dependencies
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      if: inputs.mode == 'native'
       uses: actions/cache@v4
       with:
         path: |
@@ -185,48 +150,33 @@ runs:
     # populates. Doing it in its own step rather than letting vp-test's import
     # guard trigger it keeps a dependency failure off the test step.
     - name: Install uv
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
       uses: astral-sh/setup-uv@v6
       with:
         python-version: "3.11"
 
     - name: Sync harness Python deps
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
       shell: bash
       run: make -C virtual_platform vp-py-deps
 
     # The published tag is the same flake content hash docker-run.sh computes,
     # so a pull either matches this tree exactly or misses and falls through.
     - name: Log in to GHCR
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
+      if: inputs.mode == 'container'
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ github.token }}
 
-    # Removing the precursor job made the registry the only source of this
-    # image; docker-run.sh would otherwise fall through a miss into a local
-    # build that outlives the job's timeout and produces nothing. Check the tag
-    # first, so a miss says which hash is unpublished instead of burning an hour.
+    # The registry is the only source of this image; a miss must not fall
+    # through into a local build.
     - name: Provision toolchain image
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
+      if: inputs.mode == 'container'
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        hash="$(./scripts/docker-run.sh image-hash)"
-        ref="${OCAH_CONTAINER_REGISTRY_IMAGE}:${hash}"
-        if ! docker manifest inspect "$ref" >/dev/null 2>&1; then
-          echo "::error::$ref is not published"
-          {
-            echo "### Toolchain image not published"
-            echo
-            echo "This tree resolves to \`$hash\`, which the container workflow has"
-            echo "not published. It runs on changes to the flake, \`nix/\`,"
-            echo "\`ocah_deps.nix\` and the uv workspace; if it has not run for this"
-            echo "commit, run it before dispatching this one."
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 1
-        fi
+        ./scripts/ci/await_toolchain_image.sh
         ./scripts/docker-run.sh ensure
 
     - name: Check toolchains
@@ -332,7 +282,7 @@ runs:
         PY
 
     - name: Upload run artifacts
-      if: always() && env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: vp-${{ inputs.mode }}

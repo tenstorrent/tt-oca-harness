@@ -42,9 +42,7 @@ GPIO1_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 1)
 
 # Address, reset default and every field mask come from the SAME generated
 # block, `gpio_intf` -- the block whose ACCESS_FILTER register these addresses
-# select. `gpio_poc_pbias_ctrl` is a separately generated block with its own
-# ACCESS_FILTER register and no exported address in `smc_addr.h`
-# ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+# select ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _FILTER_RESET = GPIO_INTF_ACCESS_FILTER_REG_DEFAULT
 _FILTER_LOCK = (
     _FILTER_RESET

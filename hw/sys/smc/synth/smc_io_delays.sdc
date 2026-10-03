@@ -226,10 +226,9 @@ set_input_delay 0 -clock [get_clock SMCCLK] [get_ports sep_security_disable_i] -
 
 # For us its driven by captured straps | shadow reg, but for an adopter its hard to say. Should not assume anything about the source of this signal.
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports smc_disable_sram_auto_init_i] -add_delay
-# NOTE: clarify the intended launch/capture domain for `tdr_dbg_ctrl_clock_stop_en_i`.
-# The current block-level model keeps this on `ck_feedthru` until the JTAG / TCK
-# relationship is confirmed.
-set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports tdr_dbg_ctrl_clock_stop_en_i] -add_delay
+# `tdr_dbg_ctrl_clock_stop_en_i` is driven by the DTP DEBUG_CONTROL TDR (JTAG_TCK);
+# the functional scenario pins it by case analysis, so the delay applies elsewhere.
+cdc_pinned_port_delay set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports tdr_dbg_ctrl_clock_stop_en_i] -add_delay
 
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_TMS_i}] -add_delay
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {smc_cpu_jtag_TDI_i}] -add_delay

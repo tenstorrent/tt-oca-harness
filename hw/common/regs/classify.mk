@@ -195,6 +195,11 @@ OCAH_REG_INCDIR_BLOCKS ?= $(sort $(OCAH_REG_CATALOG_SEARCH_BLOCKS) $(foreach b,$
 OCAH_REG_EXTRA_SEARCH_hw_ip_i3ccore_wrap_regs_oca_i3c_wrap += \
   $(OCAH_ROOT)/vendor/chipsalliance/i3c-core/upstream/src/rdl
 
+# sep.rdl includes kv_def.rdl and abr_reg.rdl by bare filename. Both live in
+# the vendored Adams Bridge RTL directory, outside the shared catalog.
+OCAH_REG_EXTRA_SEARCH_hw_sys_sep += \
+  $(OCAH_ROOT)/vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl
+
 # Blocks in scope: TARGET=<name> selects one, else all.
 ocah_reg_block_by_name = $(strip $(foreach block,$(OCAH_REG_BLOCKS),$(if $(filter $(1),$(notdir $(block))),$(block))))
 OCAH_SELECTED_REG_BLOCKS := $(if $(TARGET),$(call ocah_reg_block_by_name,$(TARGET)),$(OCAH_REG_BLOCKS))

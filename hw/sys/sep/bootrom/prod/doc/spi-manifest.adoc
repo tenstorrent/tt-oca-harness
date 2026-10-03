@@ -99,11 +99,13 @@ the SPI source, read the primary manifest at `0x1000`, started RSA
 verification, accepted the signature, and completed crypto validation. It also
 forbids `SBOOT_OFF`, so a silent downgrade cannot satisfy the test.
 
-That testcase supplies OTBN entropy through the
-`+sep_crypto_edn_force` DV shortcut because the current BL0 does not bring up
-the entropy-source, CSRNG, and EDN chain. The test therefore demonstrates the
-manifest, transport, OTBN RSA, and handoff path; it does not demonstrate ROM
-entropy-chain initialization.
+That testcase injects deterministic raw noise at the entropy-source
+decorrelator inputs with `+esrc_noise_force` because the ring oscillators do
+not self-oscillate under Verilator. BL0 brings up the entropy source, CSRNG,
+and EDN chain; the health tests and downstream command handshakes remain real.
+The test therefore demonstrates ROM entropy-chain initialization as well as
+the manifest, transport, OTBN RSA, and handoff paths. It does not demonstrate
+the physical ring-oscillator noise source.
 
 The DMA and PIO receive paths are covered separately because they are separate
 datapaths. `sep_rom_ot_pio_boot_test` runs the `build_pio` image, which does

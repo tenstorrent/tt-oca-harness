@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# RMA_SiP with chiplet debug open: both disable vectors clear, nothing read-locked.
+#
+# Secure boot stays manifest-optional, so an unsigned image boots. The negative
+# control for the RMA debug-lock tests.
+#
+# Used by sep_rom_rma_dbg_open_boot_test.
+
+[LC_STATE]
+  # Differentially encoded {~raw[3:0], raw[3:0]}: raw 0x2 (RMA_SiP) stores as
+  # 0xD2. See the directory README.
+  [LC_STATE.fields.lc_state]
+  value = 0xD2

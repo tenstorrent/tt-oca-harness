@@ -109,6 +109,7 @@ canonical := {
   TCRI:   ["transfer command response interface"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
   RO:     ["ring oscillator"], // hw/ip/entropy_source/dv/tb_vcs/README.md
   PQC:    ["post-quantum cryptography"], // hw/sys/sep/doc/crypto.adoc
+  SiP:    ["system-in-package"], // doc/appnotes/src/sip-secure-boot.adoc
   "R/O":  ["read only"], // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
   "R/W":  ["read write"], // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
   "W/O":  ["write only"], // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md

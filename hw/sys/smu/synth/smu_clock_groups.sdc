@@ -32,8 +32,25 @@ if {$smu_owns_child_copies} {
 source [file normalize [file join [file dirname [info script]] \
     ../../../../flows/synth/constraints/async_clock_groups.tcl]]
 
-# A flat run that replays the children applies one merged grouping after the
-# last of them instead, so it must not be declared per block here.
+# Register SMU's own generated clocks against their domains. A flat run that
+# replays the children applies one merged grouping after the last of them and
+# builds each group from these registrations, so it must not be declared per
+# block here; the block-top declaration below names the same clocks by glob.
+set smu_mem_gen_clks [list]
+foreach_in_collection c [get_clocks SMUCLK_* -quiet] {
+    lappend smu_mem_gen_clks [get_object_name $c]
+}
+if {[llength $smu_mem_gen_clks] > 0} {
+    cdc_group_extra SMUCLK $smu_mem_gen_clks
+}
+unset -nocomplain smu_mem_gen_clks
+set smu_tck_gen_clks {JTAG_STAP_IO_TCK JTAG_STAP_EXTRA_TCK JTAG_BSR_TCK JTAG_STAP_SCAN_TCK JTAG_DFD_TCK JTAG_DFT_SECURE_TCK JTAG_DFT_TCK}
+foreach_in_collection c [get_clocks JTAG_TCK_* -quiet] {
+    lappend smu_tck_gen_clks [get_object_name $c]
+}
+cdc_group_extra JTAG_TCK $smu_tck_gen_clks
+unset -nocomplain smu_tck_gen_clks
+
 if {!$smu_inherit_children} {
     set_async_clock_groups [list \
         $smu_refclk_async_grp \

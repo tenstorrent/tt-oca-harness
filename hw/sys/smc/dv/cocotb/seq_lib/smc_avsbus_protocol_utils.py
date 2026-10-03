@@ -144,8 +144,9 @@ MASTER_PREAMBLE_BP = 30
 CRC3_BITS = 3
 # interface.adoc: "Command Data ... 0xFFFF for read commands".
 READ_CMD_DATA = 0xFFFF
-# interface.adoc "Command Type": 2 = read.
-CMD_TYPE_READ = 2
+# interface.adoc "Command Type": 2 = reserved, 3 = read.
+CMD_TYPE_RESERVED = 2
+CMD_TYPE_READ = 3
 # Master subframe bits [29:3]: the AVS_CMD fields, in the register's own bit
 # positions, from the generated header. The union spans the whole payload, so
 # the frame is preamble | this | CRC-3.
@@ -153,7 +154,13 @@ AVS_CMD_WIRE_MASK = R_OR_W_BM | CMD_GRP_BM | CMD_CODE_BM | RAIL_SEL_BM | CMD_DAT
 
 
 def build_avs_cmd(cmd_type: int, cmd_grp: int, cmd_code: int, rail_sel: int, cmd_data: int) -> int:
-    """Pack an AVS_CMD word from its generated-header field positions."""
+    """Pack an AVS_CMD word from its generated-header field positions.
+
+    The reserved command type is refused: the frame compare checks the wire
+    against the word written, so it cannot catch a reserved code.
+    """
+    if cmd_type == CMD_TYPE_RESERVED:
+        raise ValueError(f"AVS_CMD.R_OR_W {cmd_type:#x} is reserved")
     return (
         ((cmd_type << R_OR_W_BP) & R_OR_W_BM)
         | ((cmd_grp << CMD_GRP_BP) & CMD_GRP_BM)
