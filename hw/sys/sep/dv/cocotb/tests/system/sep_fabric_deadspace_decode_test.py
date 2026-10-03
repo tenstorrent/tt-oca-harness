@@ -94,6 +94,14 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         snaps = {}
         for win in cfg.windows.values():
             snaps[win.name] = await dead.snapshot(win)
+            # Every watched register must answer both snapshot reads OKAY. One
+            # that refuses or times out is left out of the change compare, so a
+            # store that aliases onto it would go unseen.
+            assert not dead.snapshot_unread, (
+                f"CHK-WINDOW-LIVE FAIL: {win.name} {len(dead.snapshot_unread)} of "
+                f"{len(win.watch)} watched register(s) refused or timed out on the "
+                f"snapshot read: {'; '.join(dead.snapshot_unread)}"
+            )
             assert snaps[win.name], (
                 f"{win.name}: watch snapshot is empty; the no-alias checker cannot fail"
             )
@@ -113,12 +121,15 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 "no-store-alias check cannot fail there"
             )
             self.logger.info(
-                "CHK-WINDOW-LIVE PASS: %s %d %s register(s) readable, %d compared per "
-                "probe (%d hardware-updating skipped), %d armed with a software "
-                "read-write field",
+                "CHK-WINDOW-LIVE PASS: %s %d %s register(s) watched, %d refused or "
+                "timed out, %d self-changing, %d readable, %d compared per probe (%d "
+                "hardware-updating skipped), %d armed with a software read-write field",
                 win.name,
-                len(snap),
+                len(win.watch),
                 f"neighbouring {win.watch_from}" if win.watch_from else "allocated",
+                len(dead.snapshot_unread),
+                dead.snapshot_volatile,
+                len(snap),
                 compared,
                 hw_updating,
                 armed,

@@ -423,6 +423,12 @@ class SepDeadspace:
         self.flavour_findings: list[str] = []
         # Response of the last probe(); -1 when it timed out.
         self.last_resp: int = -1
+        # Watched addresses of the last snapshot() that a read refused or timed
+        # out on, one "+0x<offset> resp=<r1>/<r2> timed_out=<t1>/<t2>" entry each.
+        self.snapshot_unread: list[str] = []
+        # Count of watched addresses the last snapshot() read two different
+        # values from.
+        self.snapshot_volatile: int = 0
 
     async def _access(
         self,
@@ -564,12 +570,26 @@ class SepDeadspace:
         return resp, False, await self.changed_registers(win, snap, f"write burst 0x{start:08x}")
 
     async def snapshot(self, win) -> dict[int, int]:
+        """Read every watched address twice; return the stable values.
+
+        A watched address that reads two different values is self-changing and
+        stays out of the snapshot; ``snapshot_volatile`` counts them. A watched
+        address that a read refuses or times out on also stays out, and
+        ``snapshot_unread`` names each one, so the caller can fail on it: a
+        store that aliases onto an unread register cannot show in the change
+        compare.
+        """
         snap: dict[int, int] = {}
         volatile: set[int] = set()
+        unread: list[str] = []
         for addr in win.watch:
             resp1, a, to1 = await self._access(SepAxiOp.READ, addr)
             resp2, b, to2 = await self._access(SepAxiOp.READ, addr)
             if to1 or to2 or resp1 != RESP_OKAY or resp2 != RESP_OKAY:
+                unread.append(
+                    f"0x{addr:08x} (+0x{addr - win.base:x}) resp={resp1}/{resp2} "
+                    f"timed_out={to1}/{to2}"
+                )
                 continue
             if a != b:
                 volatile.add(addr)
@@ -581,6 +601,8 @@ class SepDeadspace:
                 win.name,
                 len(volatile),
             )
+        self.snapshot_unread = unread
+        self.snapshot_volatile = len(volatile)
         return snap
 
     async def restore(self, win, snap: dict[int, int]) -> None:
