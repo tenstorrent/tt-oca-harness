@@ -205,7 +205,7 @@ static int check_reset_wire(const reset_probe_t *p) {
         }
         sep_reset_wr(nb->addr, nb->wr);
         if (sep_reset_rd(nb->addr) != nb->wr) {
-            sep_mbx_puts("FAIL: neighbour probe write did not land: ");
+            sep_mbx_puts("CHK-SWRST-WIRE FAIL: neighbour probe write did not land: ");
             sep_mbx_puts(nb->name);
             sep_mbx_putc('\n');
             return 1;
@@ -226,7 +226,7 @@ static int check_reset_wire(const reset_probe_t *p) {
             continue;
         }
         if (sep_reset_rd(nb->addr) != nb->wr) {
-            sep_mbx_puts("FAIL: neighbour domain disturbed: ");
+            sep_mbx_puts("CHK-SWRST-WIRE FAIL: neighbour domain disturbed: ");
             sep_mbx_puts(p->name);
             sep_mbx_puts(" reset changed ");
             sep_mbx_puts(nb->name);
