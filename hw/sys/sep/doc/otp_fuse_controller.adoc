@@ -218,7 +218,7 @@ terminal. Otherwise, LC_STATE[2:1] cannot be updated.
 |SBOOT_DIS |1 |32 (use only 1 bit) |true |true |Disables secure boot when
 set to 1, in any lifecycle state. It overrides lifecycle enforcement in PROD
 and PROD_END and the TEST_DEV / RMA_SiP debug-lock rule, but not a signed manifest's
-request for verification; see Secure-Boot Enforcement in the Life Cycle
+request for verification; see Firmware Authorization in the Lifecycle
 Controller section.
 
 |TRANSIENT_RMA_EN |2 |32 (use only 1 bit) |true |true |Enables automatic
@@ -395,18 +395,20 @@ The JTAG_ID field has been removed from the fuse map and will be implemented as 
 [[anti-rollback-counter-arbc-anti-rollback-counter-arbc]]
 == Anti-Rollback Security-Version Flags
 
-The production ROM reads bits `[127:0]` of `BL1_VERSION` into the manifest
-validator's 128-bit device security-version field. These bits define the
-enforced BL1 rollback policy.
+`BL1_VERSION` holds the device security-version flags for BL1. They are
+independent flags rather than a counter, and the production ROM uses bits
+`[127:0]`. `BL2_VERSION` is separate storage whose interpretation belongs to
+later-stage firmware. Both fields are set-only, so a burned flag stays set.
 
-When secure boot is active, the manifest must contain every flag already set
-on the device at the corresponding bit positions: for each byte,
-`(device & ~manifest) == 0`. A manifest missing any device flag fails the
-security-version check.
-
-Provision security-version flags consistently with the signed manifest's
-`manifest_security_version` field. `BL2_VERSION` is separate storage whose
-interpretation belongs to later-stage firmware.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#req-SEP-ROM-SB-070[Anti-Rollback]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#req-SEP-ROM-SB-070[Anti-Rollback]
+endif::backend-pdf[]
+requirements of the SEP Boot ROM appendix in the Programmer's Guide define the
+check a manifest must pass and how firmware commits new flags.
 
 == RTL Integration
 

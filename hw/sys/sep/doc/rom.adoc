@@ -29,12 +29,15 @@ the first 64 KiB. The unused physical capacity is not part of the BL0 software
 address contract.
 
 The ROM stores executable code, immutable metadata, read-only data, and the
-initial image of writable data. The production linker script,
-`hw/sys/sep/bootrom/prod/link/rom.ld`, places `.text`, `.metadata`, and
-`.rodata` in the ROM. It gives `.data` a runtime address in the 128 KiB DCCM at
-`0xC004_0000`, with its initial image in ROM; reset code copies that image and
-clears `.bss` before entering C. The stack also occupies DCCM, below a reserved
-BL0-to-BL1 state block at the top of the memory.
+initial image of writable data; writable data, the stack and the BL0-to-BL1
+state run from the 128 KiB DCCM at `0xC004_0000`. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-prod-rom-memory-security[memory and security section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-prod-rom-memory-security[memory and security section]
+endif::backend-pdf[]
+of the SEP Boot ROM appendix in the Programmer's Guide gives the linker layout.
 
 BL0 stages the selected manifest and payload in SEP SRAM beginning at
 `0x1000_0000`. A validated SEP BL1 image is copied by the secure DMA to the
@@ -81,40 +84,21 @@ detail.
 [[bl0-secure-boot-and-bl1-execution-unlock]]
 === BL0 Secure Boot and BL1 Execution Unlock
 
-The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
-SEP system into a runnable state after power on reset (PoR) and running
-the first stage of external firmware AKA BL1.
-
-The complete boot flow is specified by the
+BL0 brings the SEP into a runnable state after power-on reset, validates a
+boot manifest and its payload, unlocks BL1 execution in the CPU PMP and jumps
+to it. Any failed check ends the boot: a failure the backup manifest slot
+recovers from is a warning, and exhausting every slot leaves the processor in a
+fail loop until reset. The ordered steps (CPU and PMP setup, fuse and
+lifecycle evaluation, SMC synchronization, boot-source selection, manifest and
+payload validation, secure boot, demotion, attestation and hand-off), their
+requirement identifiers and the implementation-status matrix are in the
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
 endif::backend-pdf[]
-of the Programmer's Guide. It covers CPU initialization, PMP fencing,
-fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
-manifest and payload validation, secure boot, demotion, attestation and
-hand-off, with requirement identifiers and an implementation-status matrix.
-The summary below places the ROM in the context of this chapter, the definitive
-description is in the appendix.
-
-* SEP initialization -- read configuration straps, determine boot options
-* Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
-* Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory
-* Validate it. Under secure boot this means authorizing the root key
-against a trust anchor the device holds -- a ROM-embedded digest or an
-OTP hash bank -- before any public-key operation, then checking
-revocation and anti-rollback, then verifying an RSA-3072 signature on
-OTBN
-* Load the payload it describes, decrypting it when the manifest says so,
-and verify its hashes -- over the ciphertext before decryption and the
-plaintext after
-* Select BL1 from the payload table of contents, unlock execution in the
-CPU PMP, and jump
-* Failure of any check ends the boot. A failure the backup manifest slot
-recovers from is a warning; exhausting every slot is an error, after
-which the processor enters a fail loop requiring a reset to exit
+of the Programmer's Guide.
 
 
 == Firmware Reference

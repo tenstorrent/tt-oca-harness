@@ -22,8 +22,16 @@ however must be descrambled. Address data tweaks the key, which means it
 is mixed in to ensure that the same data at different address locations
 has a different scrambled value.
 
-The scrambling key is provisioned by the ROM by copying the DRBG
-register contents into the local key register.
+The KM ROM writes DRBG output into the key register and then enables and
+locks the scrambler; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#memory-scrambler-provisioning[Memory Scrambler Provisioning]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#memory-scrambler-provisioning[Memory Scrambler Provisioning]
+endif::backend-pdf[]
+section of the Key Manager Application ROM appendix in the Programmer's Guide
+gives the order.
 
 The scrambler IP consists of a generic top-level module (`scrambler`) and a set of pre-configured size-specific wrappers that fix the address width to match a particular SRAM depth. The generic module selects the correct address scrambling function at elaboration time through generate blocks keyed on `ADDR_WIDTH`. The `scrambler_addr_tweak` submodule expands and mixes the memory address into a 32-bit round key. All cryptographic primitives (S-boxes, permutations, and address scramble functions) are declared as `automatic` functions in `scrambler_pkg`.
 

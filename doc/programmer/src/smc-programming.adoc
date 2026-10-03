@@ -88,12 +88,13 @@ The core ID read from the `mhartid` register *must* also be used to give each
 core a unique stack region for C code.
 
 The production SMC ROM linker script --
-`hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld` places the executable `.text`
-and read-only data `.rodata` sections in ROM. The `.data` section and other
-runtime data are included in the ROM image, but have runtime addresses within
-SRAM at `0xC006_0000`. This data must be copied into SRAM (by the single
-initializing core) before it can be referenced or modified. The stack, heap, and
-the `.bss` section reside only in SRAM.
+`hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld` -- matches the 128 KiB ROM
+region. It places `.init`, `.fini`, the constructor arrays, `.rodata`, `.text`
+and ROM padding in ROM. `.data`, `.tdata`, `.itim` and `.lim` are included in
+the ROM image, but have runtime addresses within SRAM at `0xC006_0000`. This
+data must be copied into SRAM (by the single initializing core) before it can be
+referenced or modified. `.tbss`, `.bss`, the stack and the heap reside only in
+SRAM.
 
 ==== SRAM Initialization using Memory Zeroer
 

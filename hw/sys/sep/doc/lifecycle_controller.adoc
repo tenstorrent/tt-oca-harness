@@ -24,8 +24,8 @@ Downstream logic uses these outputs to gate debug, test and functional paths.
 
 The sections below explain states and security domains, feature-control rules,
 demotion, scan protection and firmware authorization. Hardware gating is
-implemented; the multi-owner signing model in <<demote-signing-model>> is a
-deferred firmware design. Do not use that model as a description of current
+implemented; the multi-owner signing model in <<demote-signing-model,Firmware Authorization>>
+is a deferred firmware design. Do not use that model as a description of current
 ROM verification.
 
 <<sep-lifecycle-controller-figure>> shows a high-level view of the Life Cycle Controller
@@ -230,7 +230,7 @@ endif::backend-html5[]
 
 |0 |debug (DBG_1) |SEP_DBG |Coarse-grained debug enable for the *SEP* scope: the local gate for SEP internal state. `1'b1`: SEP-scope debug / scan-dump access disabled and inbound (`ext`) traffic is filtered before it can reach SEP internal state. `1'b0`: enabled -- inbound traffic bypasses the filter and scan dump is allowed. SEP_DBG is a local gate, not the chiplet ingress: `SIP_DBG` (bit 24) admits external debug traffic into the chiplet, `CHIPLET_DBG` (bit 1) admits it to chiplet-internal resources, and `SEP_DBG` then governs whether it can reach SEP internal state. Debugging SEP assets from an external debugger therefore requires *all three* -- Case 3 of <<dtp-path-gating>> -- not `SEP_DBG` alone.
 
-|1 |debug (DBG_1) |CHIPLET_DBG |Coarse-grained debug enable for the *chiplet* scope. `1'b1`: chiplet-scope debug / scan-dump access disabled. `1'b0`: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when `SIP_DBG` is open as well (Case 2 of <<dtp-path-gating>>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while `secure_tm = 1`. In `TEST_DEV` and `RMA_SiP`, this bit set in `SIP_DIS` or `SYS_DIS` makes the production ROM enforce secure boot; it has no such effect in `RMA_CHIPLET`. See <<secure-boot-enforcement>>.
+|1 |debug (DBG_1) |CHIPLET_DBG |Coarse-grained debug enable for the *chiplet* scope. `1'b1`: chiplet-scope debug / scan-dump access disabled. `1'b0`: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when `SIP_DBG` is open as well (Case 2 of <<dtp-path-gating>>). Contributes to the reachability of the crypto / KM secure chain but never authorizes a dump from it: that chain admits only test commands, and only while `secure_tm = 1`. In `TEST_DEV` and `RMA_SiP`, this bit set in `SIP_DIS` or `SYS_DIS` makes the production ROM enforce secure boot; it has no such effect in `RMA_CHIPLET`. See <<secure-boot-enforcement,Firmware Authorization>>.
 
 |2 |debug (DBG_1) |SEP_FUSE_DBG |`1'b1`: the DFT-inserted access path into the SEP OTP is disabled. `1'b0`: enabled. This gate also covers the OTP IP-vendor test and calibration interface (used during ATE for vendor-specific OTP test functions and internal-voltage calibration), which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.
 
@@ -425,8 +425,8 @@ are unchanged. The complete formulas are in <<feature-control-table>>.
 Opening local debug does not open the external access path. For example,
 a Case 3 SEP debug path requires both groups; see <<dtp-path-gating>>.
 The LCC applies register values without authenticating the writer or a
-manifest. Firmware authorization is discussed under <<secure-boot-enforcement>>
-and <<demote-signing-model>>.
+manifest. Firmware authorization is discussed under
+<<lcc-firmware-policy,Firmware Authorization>>.
 
 [[demote-lock-behavior]]
 === Programming and Locking
@@ -807,105 +807,41 @@ in a future revision of this specification.
 [[lcc-firmware-policy]]
 == Firmware Authorization
 
-[[secure-boot-enforcement]]
-=== Secure-Boot Enforcement
+[[secure-boot-enforcement]][[demote-signing-model]]The LCC does not inspect
+manifests or signatures. It supplies the lifecycle state, and the OTP Fuse
+Controller chapter defines the fuse fields that govern firmware authorization:
+`SBOOT_DIS`, the `SIP_DIS` and `SYS_DIS` debug vectors, the public-key digests, `CHIPLET_PUBK_REVOKE`, and the `REQUIRED_SIGNERS` and
+`REQUIRED_ALGS` fields reserved for a deferred multi-owner signing model.
+Firmware, not the LCC, interprets them. The SEP Boot ROM reads `CHIPLET_DBG`
+from the `SIP_DIS` and `SYS_DIS` fuse shadows rather than from `FEAT_CTRL`,
+because `SEC_DIS` and demotion can force `FEAT_CTRL` open on a part whose fuses
+disable debug.
 
-The production ROM and manifest validator decide whether signature verification
-is required in this order:
-
-. A manifest with its secure-boot enforcement bit set requires verification,
-including when `SBOOT_DIS` is set.
-. Otherwise, a set `SBOOT_DIS` fuse disables secure boot.
-. Otherwise, the lifecycle policy requires secure boot in `PROD` and
-`PROD_END`, and in `TEST_DEV` and `RMA_SiP` when chiplet-scope debug is
-disabled (`CHIPLET_DBG` set in `SIP_DIS` or `SYS_DIS`, or either vector
-read-locked). It does not require it in `TEST_DEV` or `RMA_SiP` with chiplet
-debug enabled, or in `RMA_CHIPLET` at all.
-
-The debug-lock rule means a locked-down debug posture cannot be bypassed by
-loading unsigned code. The ROM reads `CHIPLET_DBG` from the `SIP_DIS` and
-`SYS_DIS` fuse shadows rather than from `FEAT_CTRL`, which `SEC_DIS` and
-demotion can force open on a part whose fuses disable debug. For the same
-reason the rule holds in `RMA_SiP`, where the lifecycle controller does not
-apply `SYS_DIS` to feature control but the fuse still records the lock.
-`RMA_CHIPLET` applies neither vector, and the ROM ignores the lock there too.
-
-An owner relying on lifecycle-enforced secure boot, or on the debug-lock
-rule, must leave `SBOOT_DIS` unburned and write-lock it via the
-LOCK field. `SBOOT_DIS` does not override
-a manifest's own requirement for verification.
-
-[[demote-signing-model]]
-=== Deferred Multi-Owner Signing Model
-
-NOTE: The model in this section is not implemented by the current SEP ROM.
-Current verification uses one RSA-3072 signature and a selected key whose
-digest matches a ROM digest or OTP hash bank. BL0 does not read
-`REQUIRED_SIGNERS` or `REQUIRED_ALGS`, and its validation library does not
-verify the manifest's verifier-key and co-signer entries. See the Boot ROM
-chapter for implemented boot behavior.
-
-The target model allows the chiplet creator, SiP owner and system owner to
-participate in manifest authorization. Firmware performs the checks; the LCC
-does not inspect manifests or signatures.
-
-[cols="1,3",options="header"]
-.Deferred signing policy fields
-|===
-|Field |Intended meaning
-|`REQUIRED_SIGNERS` |One bit each for SiP and system owners. A set bit requires
-that owner's signature. All-zero adds no owner to the chiplet creator's BL1
-root requirement. Burning a bit adds a requirement; leaving it clear does
-not require that owner's key to be provisioned.
-|`REQUIRED_ALGS` |Algorithms required for each required owner: classical
-(ECDSA P-384 or RSA), post-quantum (ML-DSA), or both.
-|===
-
-For each required owner, the manifest must carry a valid signature for every
-selected algorithm, using a provisioned, non-revoked key. Requiring both
-classical and post-quantum algorithms requires both signatures; neither alone
-suffices. Signatures from owners outside the required set are ignored.
-
-At cold reset, the fuse fields reload the shadow policy for BL1. In the target
-model, each authenticated stage may change the shadow signer set for the next
-manifest, adding or dropping owners. Firmware enforces this propagation; there
-is no additional hardware signer-policy gate. The initial fuse requirement is
-restored at the next cold reset.
-
-Demotion authorization follows the manifest's required-signer set and is not
-tied to a particular boot stage. Both demotions use the same signing rules;
-the additional inter-chiplet effect of Demotion 2 does not add a hardware
-signer check. A SiP owner can require its signature for the initial manifest
-and commit a non-demoted decision with the demotion lock. Later-stage policy
-changes remain part of the deferred firmware model.
-
-Only public-key digests, not public keys, are stored in eFuse. The target
-provisioning layout distinguishes these roots:
-
-* Chiplet-creator classical and PQC digests are embedded in ROM.
-* `SIP_PUBK_HASH0/1` and `SIP_PUBK_PQC_HASH0/1` provide two SiP slots,
-  allowing one root to remain after the other is revoked.
-* `SYS_PUBK_HASH` and `SYS_PUBK_PQC_HASH` hold system-owner digests.
-* `CHIPLET_PUBK_HASH0/1` and `CHIPLET_PUBK_PQC_HASH0/1` provide additional
-  chiplet-owner digests alongside the ROM roots.
-
-Key entries have individual revocation controls through `CHIPLET_PUBK_REVOKE`.
-The OTP Fuse Controller chapter defines those fields and their locks.
-
-[[signing-model-examples]]
-=== Signing-Model Examples
-
-These examples describe the deferred model, and apply only when secure boot
-is enforced for the manifest:
-
-* No additional signer bits: BL1 requires the chiplet creator only.
-* SiP bit set: BL1 requires the chiplet creator and SiP owner. An authenticated
-  BL1 may hand off to a BL2 policy requiring only the SiP owner.
-* System owner added downstream: an authenticated stage adds that owner to the
-  shadow policy for its successor, alone or alongside the SiP owner.
-
-Cold reset restores the fuse-provided initial policy. These examples are not
-current ROM capabilities.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sec:secure_boot[Secure Boot Decision]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sec:secure_boot[Secure Boot Decision]
+endif::backend-pdf[]
+section of the SEP Boot ROM appendix in the Programmer's Guide specifies when
+the ROM requires a verified manifest, including the rule that a debug-locked
+`TEST_DEV` or `RMA_SiP` part is treated as `PROD`. The
+ifdef::backend-html5[]
+xref:ocah-appnotes::sip-secure-boot.adoc#sip-secure-boot-decision[SiP Secure Boot application note]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-appnotes/latest/sip-secure-boot.html#sip-secure-boot-decision[SiP Secure Boot application note]
+endif::backend-pdf[]
+summarizes that decision and describes the multi-owner model, which the
+current ROM does not implement, under
+ifdef::backend-html5[]
+xref:ocah-appnotes::sip-secure-boot.adoc#sip-secure-boot-multi-owner-model[deferred multi-owner signing model]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-appnotes/latest/sip-secure-boot.html#sip-secure-boot-multi-owner-model[deferred multi-owner signing model]
+endif::backend-pdf[]
+there.
 
 == Memory Map and Register Reference
 
