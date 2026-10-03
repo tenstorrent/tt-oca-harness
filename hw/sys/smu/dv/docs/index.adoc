@@ -11,3 +11,5 @@
 include::SMU_TB_ARCH.adoc[leveloffset=0]
 include::SMU_VPLAN.adoc[leveloffset=0]
 include::SMU_FCOV.adoc[leveloffset=0]
+include::SMU_COVERAGE_POLICY.adoc[leveloffset=+1]
+include::SMU_DEFERRED_DISPOSITION.adoc[leveloffset=+1]

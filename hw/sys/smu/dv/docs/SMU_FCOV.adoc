@@ -44,7 +44,7 @@ compares a golden.
 |Phase 1 cover properties |100 percent of the collected population, with no waiver |The `user` family on Verilator; urg's `Summary for Cover Properties` in `cov/report/asserts.txt` on VCS, graded under the `assertion` family
 |Phase 1 covergroups |100 percent of the GROUP score on `smu_wrapper_uvm_top.u_smu_*_fcov` |URG Group report of a `--tool vcs --cov` run, after `cov/config/vcs/smu_wrapper_group_exclusions.el`
 |Phase 2 |Named set at the end of this plan |Not collected
-|Toggle, line, condition, branch |Not a functional-coverage contract |`hw/sys/smu/doc/dv/SMU_COVERAGE_POLICY.adoc` states the targets
+|Toggle, line, condition, branch |Not a functional-coverage contract |`hw/sys/smu/dv/docs/SMU_COVERAGE_POLICY.adoc` states the targets
 |===
 
 The GROUP score counts only the `cov/sv` covergroups. The covergroups the
@@ -384,6 +384,63 @@ them. The test checks the reads for DECERR and records the write responses
 without grading them. The claim comes back when the design answers those
 writes with DECERR or a specification states the code they return.
 
+[[smu-fcov-traceability]]
+=== VPLAN to FCOV Traceability
+
+Each row names a group of `SMU_VPLAN.adoc`'s Test Procedures and the `cov/sv`
+collectors that record that group's behaviour. The mapping is the plan's;
+which leaf lights each point is a property of a run and is measured in
+<<smu-fcov-owners>>.
+
+[cols=",",options="header",]
+|===
+|VPLAN group |Coverage
+|FABRIC |`smu_xbar_fcov` window programming and reprogramming, the inbound AXI handshake, all four response encodings, and inbound traffic not forwarded outbound; `smu_alias_fcov` the SEP-to-SMC dedicated port; `smu_ext_fcov` the external AXI boundary
+|RESET |`smu_rst_fcov` cold-reset assertion and release, per-domain order and powergood; `smu_boot_fcov` reset-release edges, boot-stall sources and release, and SRAM auto-init; `smu_ext_fcov` the external boot-sequence gate; `smu_dtp_fcov` on the DFT boot-stall leaves
+|MISC |`smu_clkstop_fcov` clock-stop request and grant; `smu_clk_fcov` the clock mirrors `tb/tb_wrapper_top.sv` exposes; `smu_dtp_fcov` XTRIG mode and the CTM path; `smu_dbg_fcov` the debug bridges a race leaf drives
+|JTAG |`smu_dbg_fcov` JTAG2AXI debug paths, security-disable and TAP state; `smu_dtp_fcov` the scan and STAP ports; `smu_boot_fcov` the JTAG boot-stall source
+|SEP |`smu_lc_fcov` lifecycle broadcast and demotion; `smu_boot_fcov` fuse sense and the lifecycle broadcast at reset release; `smu_rst_fcov` the SEP reset domain; `smu_dbg_fcov` SEP debug gating; `smu_alias_fcov` and `smu_ext_fcov` the SEP-side boundary
+|SMC |`smu_ext_fcov` the SMC-side external boundary; `smu_rst_fcov` the SMC reset domain; `smu_alias_fcov` the dedicated port's SMC end
+|SMU_WRAPPER |`smu_xbar_fcov`, `smu_dbg_fcov`, `smu_ext_fcov`, `smu_boot_fcov`, `smu_clk_fcov` and `smu_rst_fcov`: the composition, boundary-port and connectivity-matrix leaves walk the wrapper's whole observable surface, so most points carry one of them as their measured owner
+|===
+
+A group whose leaves own no point in <<smu-fcov-owners>> is not a group
+without coverage: the points are free-running cover properties, so the
+measured owner of a point is the leaf that hit it most, which on this bench
+is usually a long composition or firmware leaf rather than the directed leaf
+the point was written for. Read the mapping above for intent and the owners
+table for which leaf a point depends on.
+
+The covergroups under `ifndef VERILATOR` are the commercial `group` metric
+and are not in this table.
+
+[[smu-fcov-exclusion-files]]
+=== Exclusions and Limitations
+
+`cov/config/vcs/smu_wrapper_coverage_policy.toml` names three `-elfile` lists
+the VCS report applies. Each entry carries an ANNOTATION naming its class;
+`cov/config/vcs/README.md` is the fact table behind those classes, with what
+each one drops, the granularity it takes and what retires it. The
+compile-time scope, which decides what enters the database at all, is in the
+same README.
+
+[cols="2,3",options="header",]
+|===
+|File |Fact table
+|`smu_wrapper_toggle_exclusions.el` |README.md, "Port toggle exclusions": the wrapper port fields no SMU logic reads or writes, one class per fact, each with what retires it
+|`smu_toggle_exclusions.el` |README.md, "Block exclusions": the toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar`, the lifecycle integrity-error condition rows, and the crossbar's zero-size aperture rule
+|`smu_wrapper_group_exclusions.el` |README.md, "Covergroups from vendored RTL": the covergroups the vendored RTL under `u_dut` declares, which another package grades
+|===
+
+Two limitations of the scope itself are stated where they bite and are
+repeated here so no reader credits the figure with more than it covers. The
+Verilator and VCS scopes keep different populations -- the Verilator figure is
+the wrapper and the `cov/sv` points, the VCS figure the SMU block under the
+shared rule -- so a number is quoted with its flow (README.md, "Two
+populations"). And `smu_wrapper_cov_scope.hier` is generated while
+`../verilator/smu_wrapper_cov_scope.vlt` is hand-maintained, so a
+regeneration of the first takes a review of the second; nothing compares them.
+
 === Closure Policy
 
 Coverage closes against a finished `all` run, not against a waiver. Every
@@ -416,7 +473,8 @@ generator.
   alone reaches depends on that leaf.
 . *`smu_fcov.py` sources no coverage claim.*
 . *No CI gate is set on these numbers.* `SMU_COVERAGE_POLICY.adoc` states the
-  targets and how a floor would be set from a measured database.
+  targets the figures are read against, and why no code-metric family carries
+  a floor.
 
 ==== Evidence
 

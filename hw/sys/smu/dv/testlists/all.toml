@@ -2814,7 +2814,7 @@ expected_count = 84
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
 # `--items all` keeps meaning "all of it". Scenarios that cannot run or cannot
-# pass on this bench are not entries here; hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc
+# pass on this bench are not entries here; hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc
 # records them and why.
 [[groups]]
 name = "all"
