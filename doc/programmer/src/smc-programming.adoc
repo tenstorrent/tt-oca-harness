@@ -1835,8 +1835,8 @@ for this when programming or testing them.
 . Enable the GPIO LSIO path with `TIMER_GPIO_ENABLE.GPIO_ENABLE = 1` where
   used, and establish the required pad ownership and direction.
 . Write `TIMER_START.START = 1` on the primary only. Its load pulse starts
-  the secondaries after propagation and synchronization delay. START on a
-  secondary enables it without loading its preset.
+  the secondaries after propagation and synchronization delay. A secondary
+  ignores the write.
 . Check mode and count progress with a bounded wait. Inspect `CREDIT_EXPIRED`
   and the synchronization paths; RUNNING alone does not establish alignment.
 

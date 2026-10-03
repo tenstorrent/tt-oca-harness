@@ -25,8 +25,8 @@
           <ipxact:field>
             <ipxact:name>START</ipxact:name>
             <ipxact:description>Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.
-In SECONDARY mode, it only enables the timer without loading the preset, so credit pulses then advance the count from zero.
-Start secondaries with the primary's sync-load pulse. Ensure both primary and secondary are out of reset.</ipxact:description>
+In SECONDARY mode, the write has no effect; a secondary starts on the primary's sync-load pulse, which is what loads its preset.
+Ensure both primary and secondary are out of reset.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

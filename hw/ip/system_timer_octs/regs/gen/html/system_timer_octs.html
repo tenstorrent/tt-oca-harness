@@ -26,7 +26,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.<br>In SECONDARY mode, it only enables the timer without loading the preset, so credit pulses then advance the count from zero.<br>Start secondaries with the primary&#x27;s sync-load pulse. Ensure both primary and secondary are out of reset.</td></tr>
+<tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.<br>In SECONDARY mode, the write has no effect; a secondary starts on the primary&#x27;s sync-load pulse, which is what loads its preset.<br>Ensure both primary and secondary are out of reset.</td></tr>
 </table>
 <h3 id="CTRL">CTRL</h3>
 <table>
