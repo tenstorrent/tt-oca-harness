@@ -26,7 +26,8 @@ Checks:
     CHK-TRIGGER   : the TX-watermark source of lsio_trigger (STATUS.TXWM) tracks
                     TXQD across TX_WATERMARK (empty->1, fill->0, SW_RST drain->1,
                     values logged). EVENT_ENABLE.TXWM is programmed.
-    CHK-DMA-DONE  : DMA STATUS.done, error==0, ERROR_CODE==0, STATUS RW1C clears.
+    CHK-DMA-DONE  : DMA STATUS.done, error==0, ERROR_CODE==0; done still set on a
+                    second read, then STATUS RW1C clears.
                     Handshake mode does not raise STATUS.chunk_done (RTL: only when
                     hardware handshake is off); that status is `dma_basic_test`.
     CHK-SPI-IDLE  : OT SPI reaches idle, ERROR_STATUS==0.
@@ -40,10 +41,14 @@ Checks:
   cocotb golden cross-check:
     CHK-TRIGGER/BFM : the BFM saw WREN then PAGE PROGRAM at the random addr with the
                       random data; BFM memory == the SRAM source pattern.
-    CHK-MULTICHUNK  : every PAGE PROGRAM the device received was longer on the bus
-                      than one 16-byte DMA chunk, so the TX-watermark refill loop
-                      really iterated. The byte count is read off the bus, not off
-                      the scenario table, and compared against the chunk literal.
+    CHK-MULTICHUNK  : the TX watermark paced every DMA transfer. A watch-only
+                      probe samples the DMA input trigger and the SPI TX FIFO depth
+                      (TXQD) on each clock while DMA STATUS.busy is set. Per case,
+                      the DMA saw at least `chunks` (and at least 2) separate
+                      trigger assertions, and TXQD never went above
+                      TX_WATERMARK - 1 + one chunk (7 words). A trigger held high,
+                      or a DMA that refills without waiting for the watermark,
+                      fills the FIFO past that bound in one burst.
 
 main() returns the error count; start.S emits PASS (0xCAFEBABE) / FAIL (0xDEADBEEF).
 
@@ -59,6 +64,7 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
+from cocotb.triggers import FallingEdge, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_seeded_rng import SepSeededRng
@@ -83,19 +89,25 @@ _SECTOR_SIZE = 4096
 _FLASH_PAGES = 32 * (_SECTOR_SIZE // _PAGE_SIZE)
 _MAX_WORDS = 16
 # nword counts whose (1+n)*4 byte total is a multiple of the 16-byte DMA chunk AND
-# exceeds one chunk -> the TX-watermark refill loop provably iterates (>= 2 chunks),
-# so every seed exercises the dynamic CHK-TRIGGER handshake (n=3 -> exactly 1 chunk,
-# excluded).
+# exceeds one chunk, so every transfer needs >= 2 watermark-triggered refills and
+# every seed gives CHK-MULTICHUNK a pacing sequence to grade (n=3 -> exactly 1
+# chunk, excluded).
 _LEGAL_NWORDS = [7, 11, 15]
 # Literal floor for the breadth claim. Independent of _LEGAL_NWORDS so a
 # shrunken list fails rather than shrinking the check with it.
 _BREADTH_FLOOR = 3
-# One Secure-DMA chunk, in bytes; mirrors DMA_CHUNK in spi_ot_dma_tx_test.c. A
-# PAGE PROGRAM that the flash saw as MORE than this many bytes can only have been
-# assembled from more than one chunk, so the TX-watermark refill loop ran more
-# than once. Literal, and independent of _LEGAL_NWORDS: shrinking the stimulus to
-# a single-chunk transfer fails this instead of quietly shrinking the claim.
+# One Secure-DMA chunk, in bytes; mirrors DMA_CHUNK in spi_ot_dma_tx_test.c.
 _DMA_CHUNK_BYTES = 16
+# TX watermark in words; mirrors TX_WATERMARK in spi_ot_dma_tx_test.c. The SPI
+# host sets TXWM, and so the DMA trigger, while TXQD < TX_WATERMARK. The DMA
+# starts a chunk only on the trigger, so a chunk starts with at most
+# TX_WATERMARK - 1 words queued and adds one chunk of words on top.
+_TX_WATERMARK_WORDS = 4
+_PACED_TXQD_MAX = _TX_WATERMARK_WORDS - 1 + _DMA_CHUNK_BYTES // 4
+# Literal floor on trigger assertions per DMA transfer. Independent of
+# _LEGAL_NWORDS: a stimulus that shrinks to a single-chunk transfer fails this
+# instead of quietly shrinking the pacing claim.
+_MIN_TRIGGERS = 2
 
 
 @dataclass(frozen=True)
@@ -114,6 +126,21 @@ class SepSpiDmaTxCase:
 
     def param_words(self) -> list[int]:
         return [self.addr, self.nwords] + self.data + [0] * (_MAX_WORDS - self.nwords)
+
+
+@dataclass
+class _DmaTxWindow:
+    """Probe record of one DMA transfer: STATUS.busy high to low."""
+
+    trigger_at_start: int
+    peak_txqd: int
+    rises: int = 0
+    cycles: int = 0
+
+    @property
+    def assertions(self) -> int:
+        """Separate trigger-high periods the DMA saw during the transfer."""
+        return self.trigger_at_start + self.rises
 
 
 @dataclass(frozen=True)
@@ -154,6 +181,7 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
     """Boot VeeR EL2 and run the OT SPI DMA-TX firmware against the flash BFM."""
 
     build_env = False
+    required_evidence = ("CHK-FW-CONSOLE", "CHK-MULTICHUNK")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -192,6 +220,8 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
             verbose=True,
         )
         await flash.start()
+        windows: list[_DmaTxWindow] = []
+        cocotb.start_soon(self._watch_dma_pacing(dut, windows))
         dtcm_hex, cfg, cases = self._stage_dtcm()
         try:
             self.sb.expected_line = _BANNER
@@ -205,8 +235,80 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                 progress_every=_PROGRESS_EVERY,
             )
             self._golden_check(flash, cfg, cases)
+            self._pacing_check(windows, cases)
         finally:
             await flash.stop()
+
+    @staticmethod
+    async def _watch_dma_pacing(dut, windows: list[_DmaTxWindow]) -> None:
+        """Record the trigger and TXQD on each clock of each DMA transfer.
+
+        Sampled on the falling clock edge, where every flop is stable. Only the
+        DMA-TX cases start the secure DMA in this test, so each busy window is one
+        case, in firmware order.
+        """
+        busy = dut.dma_busy_probe_o
+        trig = dut.spi_lsio_trigger_probe_o
+        txqd = dut.spi_tx_qd_probe_o
+        while True:
+            await RisingEdge(busy)
+            await FallingEdge(dut.clk_i)
+            prev = int(trig.value)
+            win = _DmaTxWindow(trigger_at_start=prev, peak_txqd=int(txqd.value))
+            while int(busy.value):
+                await FallingEdge(dut.clk_i)
+                now = int(trig.value)
+                if now and not prev:
+                    win.rises += 1
+                prev = now
+                win.peak_txqd = max(win.peak_txqd, int(txqd.value))
+                win.cycles += 1
+            windows.append(win)
+
+    def _pacing_check(self, windows: list[_DmaTxWindow], cases) -> None:
+        """CHK-MULTICHUNK: the TX watermark paced each DMA transfer."""
+        if len(windows) != len(cases):
+            raise AssertionError(
+                f"SPI DMA-TX CHK-MULTICHUNK: the probe saw {len(windows)} DMA busy "
+                f"window(s) for {len(cases)} case(s)"
+            )
+        for case, win in zip(cases, windows):
+            need = max(case.chunks, _MIN_TRIGGERS)
+            self.logger.info(
+                "SPI DMA-TX pacing case[%d]: chunks=%d trigger_at_start=%d rises=%d "
+                "assertions=%d peak_txqd=%d busy_cycles=%d",
+                case.idx,
+                case.chunks,
+                win.trigger_at_start,
+                win.rises,
+                win.assertions,
+                win.peak_txqd,
+                win.cycles,
+            )
+            if win.assertions < need:
+                raise AssertionError(
+                    f"SPI DMA-TX CHK-MULTICHUNK case[{case.idx}]: the DMA saw "
+                    f"{win.assertions} trigger assertion(s) for a {case.chunks}-chunk "
+                    f"transfer, need >= {need}; the watermark did not pace the refill"
+                )
+            if win.peak_txqd > _PACED_TXQD_MAX:
+                raise AssertionError(
+                    f"SPI DMA-TX CHK-MULTICHUNK case[{case.idx}]: TXQD peaked at "
+                    f"{win.peak_txqd} words, above the paced bound {_PACED_TXQD_MAX} "
+                    f"(TX_WATERMARK {_TX_WATERMARK_WORDS} - 1 + "
+                    f"{_DMA_CHUNK_BYTES // 4}-word chunk); the DMA refilled without "
+                    "waiting for the watermark"
+                )
+        self.logger.info(
+            "CHK-MULTICHUNK PASS: %d DMA-TX transfer(s) watermark-paced: "
+            "trigger assertions=%s for chunks=%s (floor %d), peak TXQD=%s <= %d words",
+            len(windows),
+            [w.assertions for w in windows],
+            [c.chunks for c in cases],
+            _MIN_TRIGGERS,
+            [w.peak_txqd for w in windows],
+            _PACED_TXQD_MAX,
+        )
 
     def _golden_check(self, flash, cfg, cases) -> None:
         txns = flash.get_transactions()
@@ -233,33 +335,6 @@ class sep_spi_ot_dma_tx_test(sep_base_test):
                 f"the {_BREADTH_FLOOR} transfer sizes this entry claims"
             )
 
-        # CHK-MULTICHUNK: every DMA-fed PAGE PROGRAM the device saw was longer
-        # than one DMA chunk, so the TX-watermark refill loop provably iterated.
-        # The length is counted off the bus (what the host actually clocked out),
-        # not off the scenario table, and it is compared against the literal chunk
-        # size. A DMA that delivered only its first chunk lands here.
-        # Count PAYLOAD bytes only. Adding the 4 opcode/address header bytes and
-        # comparing against the payload chunk size lets the very defect this
-        # names through: a DMA that delivered exactly one 16-byte chunk and
-        # stopped reaches the device as 20 bus bytes, which clears a 16-byte bar.
-        on_bus = [len(bytes(t.get("data_in") or b"")) for t in pp_txns]
-        short = [n for n in on_bus if n <= _DMA_CHUNK_BYTES]
-        if short:
-            raise AssertionError(
-                f"SPI DMA-TX breadth CHK-MULTICHUNK: {len(short)} PAGE PROGRAM(s) fit "
-                f"in one {_DMA_CHUNK_BYTES}-byte DMA chunk (payload byte counts "
-                f"{on_bus}), "
-                "so the TX-watermark refill loop did not have to iterate"
-            )
-        self.logger.info(
-            "CHK-MULTICHUNK PASS: %d DMA-fed PAGE PROGRAM(s) reached the device "
-            "carrying %s payload bytes, every one past the %d-byte DMA chunk, so "
-            "the refill loop iterated at least %d time(s)",
-            len(on_bus),
-            on_bus,
-            _DMA_CHUNK_BYTES,
-            2,
-        )
         for case in cases:
             exp = b"".join(w.to_bytes(4, "little") for w in case.data)
             match = next(

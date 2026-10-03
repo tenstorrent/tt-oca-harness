@@ -8,7 +8,10 @@ that their beat time-spans overlap. It cannot create a same-cycle dual
 configuration. This test holds AES (crypto_edn[0]) and OTBN URND
 (crypto_edn[3]) with ``edn_req`` high *before* EDN is enabled, then brings up
 the real entropy chain so ``prim_arbiter_ppc`` inside ``drbg_axis_edn_adapter``
-has to grant both.
+has to grant both. CHK-GRANT-ALT grades sharing and an alternating grant
+prefix. It does not prove round-robin order under simultaneous request: a
+fixed-priority arbiter that serves URND whenever AES has dropped ``edn_req``
+gives the same stream.
 
 The grant monitor starts only after the ESRC seed is ready so the dual-req
 window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
@@ -238,8 +241,10 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             grants.count(_URND_BIT),
         )
 
-        # Round-robin while both clients are in the fight: the grant stream
-        # must strictly alternate until the first same-client pair. A repeat
+        # Sharing between the two clients: the grant stream must strictly
+        # alternate until the first same-client pair. This does not separate
+        # round-robin from fixed priority, because a URND grant may follow AES
+        # dropping edn_req (dual_grants is logged, not graded). A repeat
         # after both clients have already been served is the legal tail (one
         # client dropped req). `any(a != b)` would be a tautology once
         # CHK-NO-STARVE has both values in the list.

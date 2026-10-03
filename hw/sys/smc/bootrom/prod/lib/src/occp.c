@@ -297,8 +297,6 @@ static int g_last_unlatched_interface = -1; /* Track last unlatched interface fo
 
 /* Max message body plus up to 4 bytes CRC overhead */
 static uint8_t g_occp_data_buffer[OCCP_MAX_MSG_SIZE + 4];
-static uint8_t
-    read_response_packet_buffer[sizeof(packet_header) + OCCP_MAX_RD_SIZE + sizeof(uint32_t)];
 
 /**
  * @brief Calculates CRC8 checksum for a given data buffer using polynomial 0xD3.
@@ -614,7 +612,6 @@ static bool smc_occp_interface_has_data(int interface_index) {
 static void smc_occp_handle_transport_error(interface_driver_t drv, driver_type_t drv_type,
                                             packet_header command_packet, bool hdr_valid,
                                             occp_error_code_t occp_status) {
-    error_response err;
     if (hdr_valid == 0) {
         command_packet.hdr.app_id = 0xFF;
         command_packet.hdr.msg_id = 0xFF;
@@ -789,7 +786,7 @@ void smc_occp_process(void) {
                                                 occp_status);
             }
             simputs("Error reading OCCP command from bus\n");
-            occp_status_set_error_code(ret);
+            occp_status_set_error_code(occp_status);
             smc_status_report(SMC_STATUS_TYPE_ERROR,
                               SMC_OCCP_ERROR_CMD_READ); /* Command read error */
             /* Handle interface error and potentially unlatch */
@@ -829,7 +826,6 @@ static occp_error_code_t smc_occp_handle_error_response(interface_driver_t drv,
     simputshex16("OCCP: Error code to report: ", (uint16_t)err);
     /* Fill the occp_error_resp struct fields correctly. */
     error_response err_response;
-    uint32_t error_code;
     // Access header fields through the hdr member
     if (err == Corrupt_header) {
         err_response.hdr.app_id = 0xFF;
@@ -1173,10 +1169,6 @@ static int smc_occp_handle_write(interface_driver_t drv, driver_type_t drv_type,
     uint16_t write_size;
     memcpy(&write_size, &g_occp_data_buffer[8], sizeof(write_size));
     write_size &= 0x7FF; // 11-bit length field
-    // Extract 5-bit attr from bits [7:3] of byte 9
-    uint8_t attr = (g_occp_data_buffer[9] >> 3) & 0x1F;
-    // Extract 16-bit reserved field (little-endian) from bytes 10 and 11
-    uint16_t reserved = g_occp_data_buffer[10] | (g_occp_data_buffer[11] << 8);
 
     if (write_size == 0) {
         simputs("WRITE command with zero length not allowed\n");
@@ -1258,9 +1250,8 @@ static int smc_occp_handle_write(interface_driver_t drv, driver_type_t drv_type,
 
     // Set response ready state before sending
     smc_post_code_set_occp_state(POST_CODE_OCCP_STATE_RESP_READY);
-    smc_occp_send_to_bus(drv, drv_type, (uint8_t *)&write_response_header,
-                         sizeof(write_response_header), TRANSPORT_TIMEOUT);
-    return ret;
+    return smc_occp_send_to_bus(drv, drv_type, (uint8_t *)&write_response_header,
+                                sizeof(write_response_header), TRANSPORT_TIMEOUT);
 }
 
 static int smc_occp_handle_read(interface_driver_t drv, driver_type_t drv_type, occp_header hdr,
@@ -1318,8 +1309,7 @@ static int smc_occp_handle_read(interface_driver_t drv, driver_type_t drv_type, 
         memcpy(&addr, g_occp_data_buffer, sizeof(addr));
         uint16_t num_bytes_to_send;
         memcpy(&num_bytes_to_send, &g_occp_data_buffer[8], sizeof(num_bytes_to_send));
-        num_bytes_to_send &= 0x7FF;                         // 11-bit length field
-        uint8_t attr = (g_occp_data_buffer[9] >> 3) & 0x1F; // Correct extraction of 5-bit field
+        num_bytes_to_send &= 0x7FF; // 11-bit length field
 
         if (num_bytes_to_send == 0) {
             simputs("READ command with zero length not allowed\n");
@@ -1354,7 +1344,6 @@ static int smc_occp_handle_read(interface_driver_t drv, driver_type_t drv_type, 
         simputshex16("Number of bytes to read: ", num_bytes_to_send);
         simputshex64("Address to read from: ", addr);
 
-        uint8_t read_status = 0;
         ret = smc_occp_check_addr_access_allowed(addr, num_bytes_to_send);
         if (ret != OCCP_ERROR_NONE) {
             simputshex16("Read denied. Returning 0s. Access check returned code: ", ret);
@@ -1427,10 +1416,9 @@ static int smc_occp_handle_read(interface_driver_t drv, driver_type_t drv_type, 
             }*/
             // Set response ready state before sending
             smc_post_code_set_occp_state(POST_CODE_OCCP_STATE_RESP_READY);
-            smc_occp_send_to_bus(
+            return smc_occp_send_to_bus(
                 drv, drv_type, packet_buffer, sizeof(read_response_header) + num_bytes_to_send,
                 TRANSPORT_TIMEOUT); // Combined header and body send to transport layer
-            return ret;
         }
     } else {
         simputs("Error in READ command body, Ignoring READ Command \n");
@@ -1717,10 +1705,10 @@ static int smc_occp_init_i3c_channel(bool use_channel, uint8_t peripheral_contro
         enable_i3c_gpio_overrides(peripheral_controller_id);
 
         I3C_Driver *drv = I3C_GetDriverInstance(peripheral_controller_id);
-        ret = (drv->init(drv, peripheral_controller_id, i3c_id, SUBORDINATE) == I3C_OK)
-                  ? OCCP_ERROR_NONE
-                  : OCCP_ERROR_INTERFACE_ERROR;
-        ret = (drv->start(drv) == I3C_OK) ? OCCP_ERROR_NONE : OCCP_ERROR_INTERFACE_ERROR;
+        if (drv->init(drv, peripheral_controller_id, i3c_id, SUBORDINATE) != I3C_OK ||
+            drv->start(drv) != I3C_OK) {
+            ret = OCCP_ERROR_INTERFACE_ERROR;
+        }
         if (ret == OCCP_ERROR_NONE) {
             // simputshex16("Initialized I3C Channel: ", peripheral_controller_id);
             g_smc_active_interfaces.channel_drivers[g_smc_active_interfaces.num_channels] =

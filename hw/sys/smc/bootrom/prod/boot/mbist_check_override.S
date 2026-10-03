@@ -41,7 +41,7 @@ __metal_mbist_early_check:
     /* Initialize scratchpad register 15 to indicate MBIST check starting */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_RUNNING_VAL
-    sw      t1, 0(t0)
+    sd      t1, 0(t0)
 
     /*
      * Check SMU MBIST Status - The Memory Domain ROM Depends On
@@ -49,7 +49,7 @@ __metal_mbist_early_check:
      * The SMU DFT status validates the SRAM region (0xC0060000+) that ROM will use.
      */
     li      t0, DFX_CTRL_STATUS_SMU_REG_ADDR_VAL
-    lwu     t1, 0(t0)                       /* Read SMU DFT status register */
+    ld      t1, 0(t0)                       /* Read SMU DFT status register */
 
     /* Check if MBIST was executed (done bit set) */
     andi    t2, t1, DFT_STATUS_MBIST_DONE_MASK_VAL
@@ -80,7 +80,7 @@ mbist_timeout:
     /* MBIST aborted due to timeout - set scratchpad and halt */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_TIMEOUT_VAL
-    sw      t1, 0(t0)
+    sd      t1, 0(t0)
     j       mbist_halt_cpu
 
 mbist_failed:
@@ -90,7 +90,7 @@ mbist_failed:
      * can report false errors. Ignore the error and continue booting.
      */
     li      t0, SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR_VAL                /* SMC_CONFIG eFuse register address */
-    lwu     t1, 0(t0)                                                /* Read SMC_CONFIG register */
+    ld      t1, 0(t0)                                                /* Read SMC_CONFIG register */
     li      t2, SMC_EFUSE_SMC_CONFIG_DFT_IGNORE_ERROR_MASK_VAL       /* 0x8000 exceeds andi immediate range */
     and     t1, t1, t2                                               /* Check bit 15 (DFT ignore) */
     bnez    t1, mbist_error_ignored                                  /* If bit 15 set, ignore error */
@@ -98,14 +98,14 @@ mbist_failed:
     /* Bit 15 not set - treat as real failure and halt */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_FAILED_VAL
-    sw      t1, 0(t0)
+    sd      t1, 0(t0)
     j       mbist_halt_cpu
 
 mbist_error_ignored:
     /* OTP SMC_CONFIG bit 15 is set - ignore MBIST error and continue boot */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_FAILED_VAL     /* Report actual failure status */
-    sw      t1, 0(t0)
+    sd      t1, 0(t0)
 
     /* Restore return address and continue normal boot */
     mv      ra, t3
@@ -121,7 +121,7 @@ mbist_bypass_enabled:
     /* Set scratchpad register 15 to indicate bypass mode for external visibility */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_MEM_BIST_BYPASSED_VAL
-    sw      t1, 0(t0)
+    sd      t1, 0(t0)
 
     /* Restore return address and continue normal boot */
     mv      ra, t3

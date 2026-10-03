@@ -38,10 +38,11 @@
 #   pass A: the number of non-zero words, then that many {index, value} pairs
 #   pass B: one {index, value} pair for the first logical index under the
 #           second key
-#   the round-trip word, the key register read back while still UNLOCKED, the
-#   same register read after the sticky lock, the post-lock round-trip word,
-#   then a round-trip taken AFTER attempting to rewrite both the key and the
-#   enable, and finally KPV_SCRAMBLER_CTRL itself
+#   the round-trip word, the key register read back while still UNLOCKED, a
+#   round-trip taken under a third key (~key B) written while UNLOCKED and
+#   enabled, the post-lock round-trip word (key B restored first), then a
+#   round-trip taken AFTER attempting to rewrite both the key (to ~key B) and
+#   the enable, and finally KPV_SCRAMBLER_CTRL itself
 #
 # That is 15 words on the healthy path (1 + 2*3 + 2 + 6) into a 16-deep
 # outbound FIFO, and this image does not check for space before writing. The
@@ -49,9 +50,13 @@
 # before it drains the pair list -- see the collector in
 # cocotb/seq_lib/sep_km_kpv_scrambler_seq.py.
 #
-# The unlocked readback is the control for the documented lock: without it a
-# write-only register would make a later refused write look like a lock.
-# The post-lock key-register data value is not claimed.
+# The key register is not read after the lock. km_kpv.rdl does not specify
+# what a locked KPV_SCRAMBLER_KEY reads, and the hardware keeps its own copy of
+# the key it uses, so no frontdoor read shows whether the refused key write
+# reached the register. The lock is graded on the key the datapath uses and on
+# ENABLE. The unlocked ~key B round-trip is the control that makes the key
+# half gradeable: it shows a key write made while enabled reaches the datapath,
+# so an unchanged round-trip after the locked ~key B write is due to the lock.
 #
 # Build (output committed as ../km_rom_kpv_scrambler.parhex):
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_kpv_scrambler.parhex
@@ -248,23 +253,33 @@ found_b:
     sw    x5, MBOX_WRITE_SEP(x1)
     sw    x7, MBOX_WRITE_DATA(x1)           # round-trip word
 
-    # Read the key register while it is still unlocked. This is the control for
-    # the locked readback below.
+    # Read the key register while it is still unlocked.
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
     lw    x7, 0(x5)
     addi  x5, x0, 1
     sw    x5, MBOX_WRITE_SEP(x1)
     sw    x7, MBOX_WRITE_DATA(x1)           # key register, unlocked
 
+    # Control for the refused key write after the lock: with ENABLE=1 and the
+    # scrambler unlocked, write the same third key (~key B) that the locked
+    # step writes, and read the first logical index. The host requires this
+    # word to differ from the plaintext, which shows that a key write made
+    # while enabled reaches the datapath. Key B is then written back so the
+    # lock captures it.
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
+    xori  x4, x12, -1
+    sw    x4, 0(x5)             # accepted: scrambler is unlocked
+    slli  x4, x11, WORD_SHIFT
+    add   x4, x2, x4
+    lw    x7, 0(x4)
+    addi  x6, x0, 1
+    sw    x6, MBOX_WRITE_SEP(x1)
+    sw    x7, MBOX_WRITE_DATA(x1)           # round-trip under ~key B, unlocked
+    sw    x12, 0(x5)            # KPV_SCRAMBLER_KEY = key B again
+
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
     addi  x4, x0, (SCR_ENABLE | SCR_LOCK)  # taken last because it sticks
     sw    x4, 0(x5)
-
-    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
-    lw    x7, 0(x5)             # key register readback after the lock
-    addi  x5, x0, 1
-    sw    x5, MBOX_WRITE_SEP(x1)
-    sw    x7, MBOX_WRITE_DATA(x1)
 
     slli  x4, x11, WORD_SHIFT
     add   x4, x2, x4

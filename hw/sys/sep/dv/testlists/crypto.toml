@@ -218,7 +218,8 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 [[tests]]
 # Same-cycle dual crypto-EDN request: AES masking reseed + OTBN URND held before
 # EDN is enabled, then the real entropy chain is brought up so prim_arbiter_ppc
-# inside drbg_axis_edn_adapter has to grant both. Distinct from the AES+KMAC
+# inside drbg_axis_edn_adapter has to grant both; sharing and an alternating
+# grant prefix are graded, round-robin order is not. Distinct from the AES+KMAC
 # time-span overlap test above, which cannot hold two edn_req bits together.
 # Then OTBN RND, the adapter's third scored client, is driven by a program
 # blocked on the RND CSR; its routing and consume are graded, not alternation.

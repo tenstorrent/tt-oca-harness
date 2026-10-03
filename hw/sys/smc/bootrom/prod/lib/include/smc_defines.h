@@ -138,15 +138,15 @@ static inline uint64_t read_smc_reg(uint64_t offset) {
 }
 
 static inline void write_scratch(uint8_t scratch_num, uint32_t value) {
-    volatile uint32_t *addr = (volatile uint32_t *)(uintptr_t)(SMC_CPU_CTRL_SCRATCH_0__REG_ADDR +
+    volatile uint64_t *addr = (volatile uint64_t *)(uintptr_t)(SMC_CPU_CTRL_SCRATCH_0__REG_ADDR +
                                                                (scratch_num * sizeof(uint64_t)));
     *addr = value;
 }
 
 static inline uint32_t read_scratch(uint8_t scratch_num) {
-    volatile uint32_t *addr = (volatile uint32_t *)(uintptr_t)(SMC_CPU_CTRL_SCRATCH_0__REG_ADDR +
+    volatile uint64_t *addr = (volatile uint64_t *)(uintptr_t)(SMC_CPU_CTRL_SCRATCH_0__REG_ADDR +
                                                                (scratch_num * sizeof(uint64_t)));
-    return *addr;
+    return (uint32_t)*addr;
 }
 
 /* Legacy POST code function - writes to scratch register 0 (pass/fail)
@@ -189,7 +189,7 @@ static inline uint32_t read_gpio_shim(uint8_t gpio_num, uint32_t offset) {
 }
 
 static inline void write_gpio(uint8_t gpio_num, uint32_t offset, uint32_t value) {
-    uint32_t gpio_spacing = 0x10;
+    uint32_t gpio_spacing = GPIO_INTF_1__REG_MAP_BASE_ADDR - GPIO_INTF_0__REG_MAP_BASE_ADDR;
     volatile uint32_t *p_addr = (volatile uint32_t *)(uintptr_t)((GPIO_INTF_0__REG_MAP_BASE_ADDR +
                                                                   gpio_num * gpio_spacing) +
                                                                  offset);
@@ -197,7 +197,7 @@ static inline void write_gpio(uint8_t gpio_num, uint32_t offset, uint32_t value)
 }
 
 static inline uint32_t read_gpio(uint8_t gpio_num, uint32_t offset) {
-    uint32_t gpio_spacing = 0x10;
+    uint32_t gpio_spacing = GPIO_INTF_1__REG_MAP_BASE_ADDR - GPIO_INTF_0__REG_MAP_BASE_ADDR;
     volatile uint32_t *p_addr = (volatile uint32_t *)(uintptr_t)((GPIO_INTF_0__REG_MAP_BASE_ADDR +
                                                                   gpio_num * gpio_spacing) +
                                                                  offset);

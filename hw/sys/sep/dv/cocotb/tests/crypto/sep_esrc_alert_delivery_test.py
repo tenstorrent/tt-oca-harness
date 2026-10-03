@@ -154,9 +154,10 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             "PERSISTENT_FAILURE came from the alert threshold"
         )
 
-        # ANY_FAIL_COUNT's event input is the once-per-window ht_fail_pulse, so the
-        # counter is denominated in failing WINDOWS. The per-lane alert counters
-        # take the individual per-test fail pulses instead, so their sum bounds
+        # entropy_source.rdl ALERT_SUMMARY_FAIL_COUNTS counts "consecutive
+        # health-test windows containing any failure", so the counter is
+        # denominated in failing WINDOWS. ALERT_FAIL_COUNTS counts the individual
+        # per-test failures instead, so the sum of its lanes bounds
         # ANY_FAIL_COUNT from above. Both halves are needed: the lower bound alone
         # is implied by the alert comparator that already fired, and the upper
         # bound is what rejects a build that counts events where the register is
@@ -184,12 +185,13 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             alert_counts,
         )
 
-        # Stuck noise with REPETITION_LIMIT=5 fails the repetition lane. Two
-        # separate counters see that one pulse -- a 32-bit total cleared by
-        # health_test_clr and a 4-bit alert counter cleared by alert_cntrs_clr --
-        # so the total must cover the alert counter. The reverse does not hold:
-        # alert_cntrs_clr also fires on a passing window, so a lane's alert
-        # counter can return to zero while its total keeps the history.
+        # Stuck noise with REPETITION_LIMIT=5 fails the repetition lane. Per
+        # entropy_source.rdl two separate counters see that one pulse --
+        # <lane>_TOTAL_FAILS counts since the last CTRL.MODULE_ENABLE rising
+        # edge, and ALERT_FAIL_COUNTS counts for the current alert sequence only
+        # -- so the total must cover the alert counter. The reverse does not
+        # hold: an accepted passing window ends the alert sequence, so a lane's
+        # alert counter can return to zero while its total keeps the history.
         totals = await esrc.read_total_fails()
         assert totals["REPCNT"] > 0, (
             f"CHK-FAIL-ATTRIB FAIL: REPCNT_TOTAL_FAILS={totals['REPCNT']} with stuck "

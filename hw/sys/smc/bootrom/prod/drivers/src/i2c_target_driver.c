@@ -11,7 +11,8 @@
 #include "virt_console.h"
 
 // Fixed parameters: memory layout, number of controller instances, timeout, and default timing.
-#define I2C_INSTANCE_STRIDE 0x200u
+#define I2C_INSTANCE_STRIDE \
+    (SMC_I2C_WRAP_I2C_1__REG_MAP_BASE_ADDR - SMC_I2C_WRAP_I2C_0__REG_MAP_BASE_ADDR)
 #define I2C_CONTROLLER_COUNT 2u
 #define I2C_DEFAULT_TIMEOUT 10000u
 
@@ -312,7 +313,6 @@ static void clear_target_events(uint8_t i2c_id) {
 
 static bool wait_for_tx_space(uint8_t i2c_id, uint32_t timeout) {
     uint32_t remaining = timeout ? timeout : I2C_DEFAULT_TIMEOUT;
-    uint32_t initial = remaining;
     while (remaining--) {
         I2C_STATUS_reg_u status = {.val =
                                        i2c_reg_read(i2c_id, SMC_I2C_WRAP_I2C_0__STATUS_REG_OFFSET)};

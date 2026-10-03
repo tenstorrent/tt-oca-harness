@@ -66,6 +66,57 @@ the JTAG bridge or a second master can reach is not listed. A tied field that a
 leaf moved, for example through the no_cpu TB force on the LSU path, is not
 listed.
 
+A post-remap IFU write address is not a constant on every bit:
+`hw/common/axi/axi_window_remap.sv:39-51` moves a raw address of 0 to
+`0x1000_0000` when `SEP_LOCAL_BASE_ADDR[31:0]` is 0, and that CSR is
+software-writable (`sep_cpu_ctrl.rdl:181-188`). Bit 28 of those `aw.addr`
+fields therefore stays graded; the other bits are listed.
+
+=== Crossbar and interconnect ties
+
+`cov/config/vcs/sep_xbar_tie_exclusions.el` excludes request bits in
+`sep_local_axi_xbar`, `sep_system_peripherals_xbar` and
+`sep_crypto_axi_interconnect` that no connected initiator can move: address
+bits outside every decode rule, initiator-index bits that no initiator sets,
+and fields that every initiator on the port ties. Response IDs, response USER
+fields and every field the inbound SoC port drives remain graded.
+
+=== CPU, reset, IO, watchdog, DMA and mailbox ties
+
+`cov/config/vcs/sep_system_tie_exclusions.el` excludes toggle, line, condition
+and branch objects in TT wrappers where an RTL constant, an elaborated
+parameter or a single tied master holds the value: the IFU/LSU/debug/DMA demux
+and window-remap fields, constant response and TL-UL fields at the AXI-Lite
+bridges, the SPI address mask, regblock no-stall ties and the isolate-FSM
+default arm. Each block names its tie with a file and line.
+
+=== sep_crypto ties
+
+`cov/config/vcs/sep_crypto_tie_exclusions.el` excludes toggle bits in the
+crypto wrappers that SEP RTL fixes: the key-vault shim interface and write
+response, the zero-extended key-vault offset bit, AHB control ties, the unused
+response bit on bridges that return only OKAY or SLVERR, ABR memory address
+pad bits, alert ping lines, the DRBG stream strobe and the constant OTBN OTP
+key. Key storage, key transfer and alert handshakes remain graded.
+
+=== Unreachable FSM transitions
+
+`cov/config/vcs/sep_fsm_unreachable_exclusions.el` excludes eight
+`axi_lite_to_tlul` transitions that depend on `ACK_ZERO_STROBE_WRITE`, which is
+off in every SEP instance except the SPI host wrapper
+(`hw/sys/sep/rtl/sep_ot_spi_wrap.sv:115`), whose transitions remain graded.
+Transitions taken on a reset with a transfer outstanding, error transitions and
+abort transitions are reachable and remain graded.
+
+=== Condition and branch ties
+
+`cov/config/vcs/sep_cond_branch_exclusions.el` excludes condition and branch
+terms that cannot change in the SEP elaboration: the stall terms of no-stall
+PeakRDL regblocks, the error operand of APB regblocks that decode no error, the
+KM CPU virtual-ROM decode without its simulation define, branches inside
+elaboration-only constant functions, and the else arms of the integrity
+generation and `HAS_LC_STATE` parameters that SEP fixes.
+
 The checksums in each `.el` file come from `urg -dump full_exclusions` on the
 merged VCS database. A report run must complete without a checksum or missing
 object warning.

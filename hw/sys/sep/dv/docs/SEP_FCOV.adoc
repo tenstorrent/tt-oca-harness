@@ -40,6 +40,13 @@ SCORE.
 |Condition / FSM / toggle / assertion |Commercial signoff |VCS / Xcelium
 |===
 
+The VCS code-coverage number -- line, condition, toggle, FSM and branch over
+the scope of `cov/config/vcs/sep_cov_scope.hier` -- has no agreed score target,
+and no policy file sets a floor on it: `cov/config/vcs/coverage_policy.toml`
+carries no `pass:[[[thresholds]]]` row. The runner reports the raw
+and the effective figure of each family, and <<sep-fcov-closure>> states how a
+hole closes, who reviews an exclusion and what reopens it.
+
 Do not mix line coverage with the Phase 1 bins: the line population on this
 DUT would mask them.
 
@@ -88,6 +95,7 @@ fault paths, illegal encodings. Named below. Not collected.
 |Seed-dependent stimulus values |`sep_spi_host_rand_cg`, `sep_mbox_rand_cg`, `sep_dma_rand_cg` (see <<sep-fcov-rand>>)
 |===
 
+[[sep-fcov-owners]]
 === Owning tests
 
 A hole is not gradable without knowing which test was supposed to fill it, so
@@ -1023,13 +1031,15 @@ fills it. Their names end in `_rand_cg`, so the report separates them from the
 deterministic groups. A deterministic group must be full in one VCS `all
 --cov`; a `_rand_cg` group is graded on a merge of regressions. Each
 group has two bins, so one regression (three seeds of the owner) leaves a bin
-empty with a probability of about 4 %.
+empty with a probability of about 4 %. `sep_mbox_rand_cg` and
+`sep_spi_host_rand_cg` are the exceptions: each owner programs one value from
+each bin on every seed, so one run fills both.
 
 [cols="1,1,2",options="header"]
 |===
 |Covergroup |Owner |Coverpoint and bins
-|`sep_spi_host_rand_cg` |`sep_spi_ot_host_csr_irq_rand_test` |`cp_tx_wm`: `CONTROL.TX_WATERMARK` as written, `low` 2-4 and `high` 5-8 (`sep_spi_host_csr_seq` draws 2-8). `sep_spi_ot_dma_tx_test` writes a fixed watermark in `low`
-|`sep_mbox_rand_cg` |`sep_axil_mailbox_iface_rand_test` |`cp_wirqt`: a `WIRQT` value, scored at the next `WRITE_DATA` push to the same mailbox, `low` 1-3 and `high` 4-7 (`SepMboxCfg` draws 1 to `MAILBOX_DEPTH` - 1). A register walk that writes `WIRQT` and never pushes after it does not score
+|`sep_spi_host_rand_cg` |`sep_spi_ot_host_csr_irq_rand_test` |`cp_tx_wm`: `CONTROL.TX_WATERMARK` as written, `low` 2-4 and `high` 5-8. `SepSpiHostCfg` draws one watermark from each half on every seed, so one run fills both bins. `sep_spi_ot_dma_tx_test` writes a fixed watermark in `low`
+|`sep_mbox_rand_cg` |`sep_axil_mailbox_iface_rand_test` |`cp_wirqt`: a `WIRQT` value, scored at the next `WRITE_DATA` push to the same mailbox, `low` 1-3 and `high` 4-7. `SepMboxCfg.per_half` draws one threshold from each half on every seed, so one run fills both bins. A register walk that writes `WIRQT` and never pushes after it does not score
 |`sep_dma_rand_cg` |`sep_dma_basic_test` |`cp_len`: `TOTAL_DATA_SIZE`, scored at the COPY `CONTROL.GO` that uses it, 16 and 32 (the copy length the test draws). A register walk writes the size but never issues GO. `sep_spi_ot_dma_tx_test` also copies 32 bytes
 |===
 
@@ -1046,8 +1056,8 @@ count values, not behaviour.
 |`sep_km_command_set_rand_test` |Extra transfer destination |`sep_km_command_sideload_cg.cp_dest`
 |`sep_km_command_set_rand_test` |Generated key size 8 or 12 words |None yet: it is a payload word of the generate command, and the frame tracker does not decode command payload fields. Planned with `sep_km_command_cg` (Phase 2)
 |`sep_km_command_set_rand_test` |Refused destination, two undefined command IDs |None: refusals are error paths (Phase 2 `sep_km_cmd_reject_cg`)
-|`sep_spi_ot_host_csr_irq_rand_test` |TX watermark 2-8 |`sep_spi_host_rand_cg.cp_tx_wm`
-|`sep_axil_mailbox_iface_rand_test` |WIRQT 1-7, first fill length |`sep_mbox_rand_cg.cp_wirqt`; the fill length only has to cross WIRQT, which the checker grades
+|`sep_spi_ot_host_csr_irq_rand_test` |One TX watermark in 2-4 and one in 5-8, their order, fill depths |`sep_spi_host_rand_cg.cp_tx_wm`, both bins on every seed; the fill depth only has to pass the watermark, which the checker grades
+|`sep_axil_mailbox_iface_rand_test` |One WIRQT in 1-3 and one in 4-7, their order, first fill lengths |`sep_mbox_rand_cg.cp_wirqt`, both bins on every seed; the fill length only has to cross WIRQT, which the checker grades
 |`sep_dma_basic_test` |Copy length 16 or 32 |`sep_dma_rand_cg.cp_len`
 |`sep_esrc_ht_watermark_arming_test` |Unsupported selector 5-15 |`sep_esrc_edn_flow_cg.cp_ht_sel.unsupported` records that one was written. One draw per regression, so a bin per value would stay mostly empty
 |`sep_fabric_output_remap_datapath_proxy_test` |AP or STEE bank, region, outbound entry |None: `sep_fabric_outbound_remap_filter_walk_test` walks every region of both banks each seed, so a bank or index bin is deterministic and says nothing about this leaf
@@ -1143,7 +1153,102 @@ The `CMD_ABR_SK_TRANSFER` consume after a live ABR capture is a Phase 1
 checker on `sep_km_abr_mlkem_sideload_test`. No covergroup samples that
 handshake.
 
-=== Exclusions
+[[sep-fcov-closure]]
+=== Closure Policy
+
+A Phase 1 bin takes no waiver. A bin its owner leaves empty is a dead bin or a
+stimulus that does not do what the test says (<<sep-fcov-owners>>), and a cell
+that no `all` test walks belongs in the Phase 2 named set.
+
+The rules below bind the VCS code-coverage number and its policy file,
+`cov/config/vcs/coverage_policy.toml`. The runner's schema and grading
+behaviour are in `tools/dv/doc/run-dv.adoc`. A code-coverage point that the
+`all` regression leaves uncovered stays in the denominator until a test reaches
+it or an RTL fact removes it: `SEP_COV_WAIVERS.adoc` states that an exclusion
+needs an RTL tie, parameter, unconnected port or generate condition, and that a
+stimulus gap stays in the denominator. URG hands the runner family totals and
+no per-point list, so the policy carries no `pass:[[[holes]]]`, and a VCS hole
+closes through a scenario, a design change, or an entry in one of the
+`-elfile` lists (<<sep-fcov-exclusions>>).
+
+==== Run status
+
+A regression passes or fails on its tests; its coverage figures do not move its
+status. `cov/config/vcs/coverage_policy.toml` sets no `pass:[[[thresholds]]]`
+row and `sep_sim_cfg.toml` sets no `fail_under`, so the runner grades coverage
+against 0 percent unless the command passes `--fail-under`. `cov_report` fails
+when the report tool fails or the runner refuses the policy file, not on a
+figure.
+
+==== Reviewers
+
+The reviewer of a change to a coverage input is not its author. The review
+class follows the kind of fact that the input rests on.
+
+[cols="2,3,2",options="header"]
+|===
+|Input |Fact it rests on |Review
+|`sep_cov_scope.hier` |An ownership decision: which modules the number grades. The testbench, the VeeR EL2 core complex, library-class cells, DV models and complete third-party IP leave the scope |Coverage-flow review
+|The nine `-elfile` lists |A design fact: an RTL tie, an elaborated parameter, an unconnected port or a generate condition, which `SEP_COV_WAIVERS.adoc` states for each list |Design review
+|A `pass:[[[native_files]]]` entry of the policy |Which file the report applies, with which arguments |Coverage-flow review
+|A Phase 1 bin or its owner |The cell that an `all` test walks (<<sep-fcov-owners>>) |DV review
+|===
+
+A change to an exclusion list is graded by a re-render of a named finished
+run, `python3 tools/dv/run_dv.py --dut sep --run-dir <run> --stage cov_report`,
+and the report must complete with no checksum or missing-object warning. A
+change to `sep_cov_scope.hier` takes a new compile (`--rebuild`) and a new
+coverage regression, because the scope applies at compile time.
+
+==== Reopen triggers
+
+An accepted exclusion stays accepted until the policy or the design changes;
+the calendar does not reopen it. It reopens when:
+
+* an RTL change moves the module or instance checksum of a scope that an entry
+  names. URG does not apply an entry whose checksum differs from the design it
+  reports on, and the report prints a checksum warning, which
+  `SEP_COV_WAIVERS.adoc` does not accept;
+* a design change removes the tie, parameter, unconnected port or generate
+  condition that the entry rests on;
+* a leaf covers a point that an entry excludes, which shows that the fact the
+  entry states is false;
+* the policy's `scope_epoch` changes, or `sep_cov_scope.hier` changes which
+  points enter the database;
+* the `-cm` metric set or the report `-metric` list of `[coverage.vcs]` in
+  `sep_sim_cfg.toml` changes;
+* a coverage run builds a target other than `--target default`. The lists are
+  written for that elaboration, and several of them state that a `rom_boot`
+  target run is not merged against them.
+
+[[sep-fcov-traceability]]
+=== VPLAN to FCOV Traceability
+
+Each row names a section of the Scenario-Expanded Test Summary in
+link:SEP_VPLAN.adoc[SEP_VPLAN] and the Phase 1 covergroups of
+`cov/sv/sep_fcov.sv` that record the behaviour of that section. A covergroup
+is listed against a section when one of its owning tests (<<sep-fcov-owners>>,
+<<sep-fcov-rand>>) is a row of that section's table, so one group can appear
+in more than one row. The mapping is the plan's. Which leaf fills each bin is a
+property of a run, and the URG Group pages of that run show it. A test whose
+own contract has no Phase 1 bin is listed under <<sep-fcov-owners>>.
+
+[cols="1,3",options="header"]
+|===
+|VPLAN section |Coverage
+|Phase 1 — Smoke |`sep_axi_decode_cg`, `sep_sram_access_cg`, `sep_boot_rom_cg`, `sep_cpu_boot_cg`, `sep_otbn_execute_cg`, `sep_spi_flash_cg`, `sep_efuse_sense_cg`
+|Phase 1 — Representatives |`sep_axi_decode_cg`, `sep_kmac_mode_cg`, `sep_esrc_edn_flow_cg`, `sep_crypto_isolate_cg`, `sep_dma_copy_hash_cg`, `sep_spi_flash_cg`, `sep_efuse_sense_cg`, `sep_lc_state_cg`, `sep_dma_completion_route_cg`, `sep_feat_ctrl_cg`, `sep_mailbox_pic_cg`, `sep_mailbox_channel_cg`, `sep_wdt_bark_cg`
+|Crypto and entropy |`sep_smn_inbound_cg`, `sep_aes_mode_cg`, `sep_hmac_mode_cg`, `sep_kmac_mode_cg`, `sep_otbn_execute_cg`, `sep_abr_keygen_cg`, `sep_abr_sign_cg`, `sep_abr_mlkem_cg`, `sep_esrc_edn_flow_cg`, `sep_crypto_isolate_cg`
+|Fabric and remap |`sep_axi_decode_cg`, `sep_inbound_filter_allow_cg`
+|Mailbox, IRQ, PIC |`sep_mailbox_pic_cg`, `sep_mbox_rand_cg`, `sep_spi_flash_cg`, `sep_spi_host_rand_cg`
+|SPI and DMA |`sep_dma_copy_hash_cg`, `sep_spi_flash_cg`, `sep_dma_completion_route_cg`, `sep_dma_rand_cg`
+|Memory, boot, reset, WDT, clock |`sep_sram_access_cg`, `sep_boot_rom_cg`, `sep_wdt_bark_cg`, `sep_scratch_reset_cg`
+|eFuse, lifecycle, SEC_DIS, locked-field |`sep_efuse_program_lock_cg`, `sep_efuse_fail_closed_cg`, `sep_lc_transition_cg`, `sep_feat_ctrl_cg`, `sep_sec_dis_boot_cg`, `sep_lc_demote_cg`
+|Key Manager vault |`sep_km_generate_cg`, `sep_km_command_sideload_cg`, `sep_km_host_cmd_cg`, `sep_km_wipe_cg`, `sep_km_sw_reset_cg`, `sep_crypto_isolate_cg`, `sep_mailbox_pic_cg`
+|===
+
+[[sep-fcov-exclusions]]
+=== Exclusions and Limitations
 
 [cols="1,2",options="header"]
 |===
@@ -1156,6 +1261,33 @@ handshake.
 |`rom_fw` class |Other owner; not in `all`
 |`sep_abr_absent_decerr_test` |`tools = ["verilator"]`: it needs the `lsu_stub_abr_absent` elaboration, and a VCS coverage run builds `--target default`, which contains ABR. No covergroup samples ABR-absent behaviour
 |===
+
+The VCS code-coverage report applies nine `-elfile` lists, which
+`cov/config/vcs/coverage_policy.toml` names, on top of the compile-time scope
+of `cov/config/vcs/sep_cov_scope.hier`. `SEP_COV_WAIVERS.adoc` is the fact
+table behind them: the RTL fact behind each list, and what stays graded beside
+it.
+
+[cols="2,2,2",options="header"]
+|===
+|File |Excludes |Fact table
+|`sep_cov_scope.hier` |Whole modules and hierarchies, at compile time |`SEP_COV_WAIVERS.adoc`, opening section
+|`sep_regblock_exclusions.el` |PeakRDL no-stall and no-error ties |`SEP_COV_WAIVERS.adoc`, "PeakRDL register blocks"
+|`sep_ext_trng_payload_exclusions.el` |The external-TRNG AXI-Stream payload |`SEP_COV_WAIVERS.adoc`, "External TRNG payload"
+|`sep_unreachable_exclusions.el` |Tied SEP DMA inputs |`SEP_COV_WAIVERS.adoc`, "SEP DMA tied inputs"
+|`sep_master_tie_exclusions.el` |AXI request fields that one internal master ties |`SEP_COV_WAIVERS.adoc`, "Single-master AXI ties"
+|`sep_xbar_tie_exclusions.el` |Crossbar and interconnect request bits that no initiator moves |`SEP_COV_WAIVERS.adoc`, "Crossbar and interconnect ties"
+|`sep_system_tie_exclusions.el` |Ties in the CPU wrapper, reset, IO, watchdog, DMA and mailbox units |`SEP_COV_WAIVERS.adoc`, "CPU, reset, IO, watchdog, DMA and mailbox ties"
+|`sep_crypto_tie_exclusions.el` |Ties inside `sep_crypto` |`SEP_COV_WAIVERS.adoc`, "sep_crypto ties"
+|`sep_fsm_unreachable_exclusions.el` |FSM transitions that the SEP parameters make unreachable |`SEP_COV_WAIVERS.adoc`, "Unreachable FSM transitions"
+|`sep_cond_branch_exclusions.el` |Condition and branch terms that ties and parameters hold constant |`SEP_COV_WAIVERS.adoc`, "Condition and branch ties"
+|===
+
+One limitation of the code-coverage figure is stated where it applies and is
+repeated here, so that no reader credits the figure with more than it covers.
+Only `[coverage.vcs]` applies the compile-time scope: a
+`--cov --tool verilator` run grades an unscoped denominator, and its figure is
+not this one.
 
 === Maintenance
 

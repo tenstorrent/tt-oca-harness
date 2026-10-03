@@ -317,6 +317,13 @@
 // the AXI ready/valid combinational cones.
 `SEP_TB_OUT(logic [63:0], sram_word0_probe_o)
 `SEP_TB_OUT(logic [383:0], sram_payload_probe_o)
+// The ML-KEM seed Z words inside the Adams Bridge engine (the scratch copy the
+// ML-KEM KEYGEN reads). Software cannot read Z back, and after a KV seed read
+// the decapsulation key reads as zero, so this read-only XMR is the only view of
+// the Z a KV read delivered. Word i occupies bits [32*i +: 32]. Zero in a build
+// without Adams Bridge. Owners: sep_km_sideload_share_walk_test,
+// sep_km_abr_mlkem_sideload_test.
+`SEP_TB_OUT(logic [255:0], abr_mlkem_seed_z_probe_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this
 // design does not implement -- see the SMC address decode check in tb_top.
@@ -388,6 +395,10 @@
 // signature: the adapter has accepted nothing and no channel can retire.
 `SEP_TB_OUT(logic [5:0], drbg_csrng_axil_chan_o)  // CSRNG lane adapter port
 `SEP_TB_OUT(logic [5:0], drbg_edn_axil_chan_o)  // EDN lane adapter port
+// {ar_valid, aw_valid | w_valid} on each DUT lane adapter's AXI-Lite-32 side:
+// the adapter presents a request to its TL-UL bridge.
+`SEP_TB_OUT(logic [1:0], drbg_csrng_fwd_o)
+`SEP_TB_OUT(logic [1:0], drbg_edn_fwd_o)
 
 // Port-level arbitration vehicle for drbg_axil64_lane_adapter.
 //
@@ -421,6 +432,10 @@
 `SEP_TB_OUT(logic [63:0], tbadp_r_data_o)
 `SEP_TB_OUT(logic [1:0], tbadp_b_resp_o)  // BRESP: OKAY vs the unsupported-access SLVERR
 `SEP_TB_OUT(logic [1:0], tbadp_r_resp_o)  // RRESP: same, for the read leg
+// {ar_valid, aw_valid | w_valid} on the vehicle's AXI-Lite-32 side: the
+// adapter presents a downstream request. An unsupported access must leave both
+// bits low, because the adapter answers it itself and forwards nothing.
+`SEP_TB_OUT(logic [1:0], tbadp_fwd_o)
 `SEP_TB_OUT(logic, km_entropy_tvalid_o)  // CHK5: post-mux EDN->KM tvalid (entropy_muxed_req[0])
 `SEP_TB_OUT(logic [31:0], km_entropy_tdata_o)  // CHK5: post-mux EDN->KM tdata word
 `SEP_TB_OUT(logic, km_entropy_tready_o)  // CHK5: KM tready (entropy_muxed_rsp[0]) -> real handshake
@@ -496,6 +511,22 @@
 // Saturating count of cycles where CPU-LSU and DMA simultaneously present an
 // SRAM request on the same local-crossbar address channel.
 `SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
+// SPI-to-DMA transmit pacing, observation-only: the OpenTitan SPI host
+// transmit-FIFO depth, the SPI trigger bit at the secure DMA input, and the
+// DMA STATUS.busy flop. No CSR shows the trigger or the FIFO depth while the
+// DMA moves data, so the DMA-TX test reads them here to grade the refill
+// pacing (owner `sep_spi_ot_dma_tx_test`).
+`SEP_TB_OUT(logic [7:0], spi_tx_qd_probe_o)
+`SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
+`SEP_TB_OUT(logic, dma_busy_probe_o)
+// W handshakes at the AXI-Lite port of each fabric remap/filter slot register
+// block in sep_system_csr: saturating count of all beats, saturating count of
+// beats with non-zero data on a byte lane whose WSTRB bit is 0, and one sticky
+// bit per slot for the second kind. Slot order: alias [15:0], AP [31:16],
+// STEE [47:32], outbound filter [79:48], inbound filter [95:80].
+`SEP_TB_OUT(logic [31:0], fabric_slot_w_beats_o)
+`SEP_TB_OUT(logic [31:0], fabric_slot_w_fill_beats_o)
+`SEP_TB_OUT(logic [95:0], fabric_slot_w_fill_seen_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
 `SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)
