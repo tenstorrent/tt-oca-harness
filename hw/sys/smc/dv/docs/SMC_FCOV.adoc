@@ -454,6 +454,62 @@ dashboard pages under `tools/dv/doc/`.
 There is no checked-in 98%-after-waiver figure. SMC does not inherit
 an unwritten default. Do not invent one.
 
+[[smc-fcov-unreachability-list]]
+==== Unreachability exclusion list
+
+`cov/config/vcs/smc_unreachable.el` is the URG exclusion list of the
+code-coverage points that a formal unreachability analysis proves no stimulus
+reaches in the bench's environment. That environment is `smc_wrapper` as the
+cocotb bench instantiates it:
+
+* every input the bench ties to a constant holds that value: the DTP CSR
+  response idle, the eFuse security-disable input low, the SRAM auto-init
+  bypass high, the BISR and MBIST status inputs done, successful and passed,
+  the scan reset released, the cross-trigger, TDR clock-stop and external debug inputs at
+  zero, the external interrupts above the bench's seventeen pins low, AW.ATOP
+  zero on every inbound manager, the telemetry receivers above the bench's
+  three idle and the CPU JTAG identity at the bench's constants;
+* the three domain clocks have no fixed ratio or phase between them, since
+  under `+pll_osc_bench` each follows a bench clock whose period the leaf
+  chooses; the PLL model is left out of the formal model, and the telemetry
+  write clock, which the bench ties to the SMC clock, is free as well;
+* the state the bench's fault-injection hooks force, the zeroer and eFuse
+  interface state registers and the eFuse read-error and secure-test-mode
+  inputs, takes any value at any cycle;
+* every other input is free: power-good, the cold and cool resets, the test
+  enable and the abort inputs among them.
+
+The CPU cluster and its memory macros, the I3C controllers, the generic pad
+cell, the trace sink macro and the behavioural PVT and eFuse bank models are
+left out of the formal model, so whatever they drive into the SMC is free.
+Each of these choices can only leave a point reachable that the bench never
+reaches, never the reverse. The CPU cluster, the I3C controllers and the
+library cells are outside the compile-time scope, so none of their points is
+analysed.
+
+The analysis starts from the merged database of the commercial-path
+`--items hosted fw` regression (<<smc-cov-paths>>), so it targets the points
+that regression left uncovered, and it runs on the RTL that produced that
+database, because the formal model and the seed must describe one RTL. The
+analysis is part of the companion's SMC formal configuration; a reader
+without the companion runs their own unreachability tool over the same
+database with the same environment and writes the same URG exclusion format.
+
+The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
+that names the list pins the file's SHA-256. The runner refuses the policy
+when the file and the pinned digest differ, so a regenerated list takes a new
+entry. URG applies no entry whose module or instance checksum differs from
+the design it reports on, so an RTL change under an excluded scope drops that
+scope's exclusions on its own.
+
+Regeneration rule: after a change to the SMC RTL file set, the list is
+regenerated from the merged database of a fresh `--items hosted fw`
+regression. Until it is, URG drops the entries of every scope whose checksum
+the change moved, and the entries of the other scopes still apply; the
+analysis's check mode over the accepted list fails when an excluded point has
+become reachable. A regenerated list takes design review before its entry
+changes, and the review accepts no entry that stimulus can reach.
+
 [[smc-cov-owners]]
 === Owning tests
 

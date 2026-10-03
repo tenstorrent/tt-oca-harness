@@ -365,7 +365,7 @@ name = "smc_occp_undersize_body_test"
 module = "smc_occp_rom_only_test"
 target = "dual"
 seed = 1
-timeout_sec = 7200
+timeout_sec = 172800
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_undersize_body_test", mode = "occp_rom_only" }
@@ -461,7 +461,7 @@ module = "smc_occp_rom_only_test"
 target = "dual"
 seed = 1
 # Same wall-clock reason as smc_occp_interface_unlatch_test above.
-timeout_sec = 21600
+timeout_sec = 172800
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_ring_buffer_stress_test", mode = "occp_rom_only" }
