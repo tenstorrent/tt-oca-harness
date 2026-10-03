@@ -53,6 +53,15 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             cases.append((addr, size, data, wstrb))
         cases.append((DEFAULT_AXI_ADDR + 0x140, 3, 0xA5A5_5A5A_C3C3_3C3C, 0x55))
         cases.append((DEFAULT_AXI_ADDR + 0x180, 3, 0x5A5A_A5A5_3C3C_C3C3, 0xAA))
+        # The strobe classes below a full beat at every size: no lane, the top
+        # lane alone (2 bytes and wider), and the low half of a 4-byte beat.
+        for size in (0, 1, 2, 3):
+            data = (DEFAULT_AXI_DATA ^ (0x2222_2222_2222_2222 * size)) & self.data_mask(size)
+            cases.append((DEFAULT_AXI_ADDR + 0x200 + size * 0x40, size, data, 0x00))
+            if size > 0:
+                top_lane = 1 << (self.size_bytes(size) - 1)
+                cases.append((DEFAULT_AXI_ADDR + 0x400 + size * 0x40, size, data, top_lane))
+        cases.append((DEFAULT_AXI_ADDR + 0x600, 2, 0x0BAD_F00D, 0x03))
         # Seeded per-pass random cases on top of the deterministic sweep:
         # every loop drives different address/size/data/strobe values.
         rng = self.rng("smc_axi_directed_cases")

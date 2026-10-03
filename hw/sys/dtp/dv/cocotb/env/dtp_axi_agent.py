@@ -50,7 +50,7 @@ class DtpAxiAgent(uvm_agent):
         self.axi_ram = OcahAxiSlaveAgent(
             tb.axi_bus("smc_axi"),
             tb.clk,
-            tb.sys_rst_n,
+            tb.rst_n,
             reset_active_level=False,
             size=self.cfg.axi_mem_size,
             id_width=2,
@@ -63,14 +63,14 @@ class DtpAxiAgent(uvm_agent):
         self.smc_otp_axil_ram = OcahAxiLiteSlaveAgent(
             tb.axi_bus("smc_otp"),
             tb.clk,
-            tb.sys_rst_n,
+            tb.rst_n,
             reset_active_level=False,
             size=self.cfg.otp_axil_mem_size,
         ).sequence
         self.sep_otp_axil_ram = OcahAxiLiteSlaveAgent(
             tb.axi_bus("sep_otp"),
             tb.clk,
-            tb.sys_rst_n,
+            tb.rst_n,
             reset_active_level=False,
             size=self.cfg.otp_axil_mem_size,
         ).sequence
@@ -96,21 +96,21 @@ class DtpAxiAgent(uvm_agent):
             "smc_axi": OcahAxiMonitor(
                 tb.axi_bus("smc_axi", passive=True),
                 tb.clk,
-                reset=tb.sys_rst_n,
+                reset=tb.rst_n,
                 reset_active_level=False,
                 name=PORT_MONITOR_NAMES["smc_axi"],
             ),
             "smc_otp": OcahAxiLiteMonitor(
                 tb.axi_bus("smc_otp", passive=True),
                 tb.clk,
-                reset=tb.sys_rst_n,
+                reset=tb.rst_n,
                 reset_active_level=False,
                 name=PORT_MONITOR_NAMES["smc_otp"],
             ),
             "sep_otp": OcahAxiLiteMonitor(
                 tb.axi_bus("sep_otp", passive=True),
                 tb.clk,
-                reset=tb.sys_rst_n,
+                reset=tb.rst_n,
                 reset_active_level=False,
                 name=PORT_MONITOR_NAMES["sep_otp"],
             ),
@@ -128,21 +128,21 @@ class DtpAxiAgent(uvm_agent):
             "smc_axi": OcahAxiProtocolWatcher(
                 tb.axi_bus("smc_axi", passive=True),
                 tb.clk,
-                reset=tb.sys_rst_n,
+                reset=tb.rst_n,
                 reset_active_level=False,
                 name="dtp_smc_axi_watcher",
             ),
             "smc_otp": OcahAxiLiteProtocolWatcher(
                 tb.axi_bus("smc_otp", passive=True),
                 tb.clk,
-                reset=tb.sys_rst_n,
+                reset=tb.rst_n,
                 reset_active_level=False,
                 name="dtp_smc_otp_watcher",
             ),
             "sep_otp": OcahAxiLiteProtocolWatcher(
                 tb.axi_bus("sep_otp", passive=True),
                 tb.clk,
-                reset=tb.sys_rst_n,
+                reset=tb.rst_n,
                 reset_active_level=False,
                 name="dtp_sep_otp_watcher",
             ),

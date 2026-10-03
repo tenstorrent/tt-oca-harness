@@ -4,8 +4,9 @@
 // IC_RESET override and hold scenario: all fields default to 1 with
 // deasserted slice outputs after TAP reset; each slice's active-low
 // enable drives {ovrd=1, ctrl_n=0} and releases cleanly; reset_hold=0
-// preserves directed and seeded random enable/control patterns and the
-// slice outputs through a TMS-walked TLR; reset_hold=1 lets TLR restore
+// preserves four directed patterns, which give every slice each of its
+// four enable/control values, seeded random patterns, and the slice
+// outputs through a TMS-walked TLR; reset_hold=1 lets TLR restore
 // defaults; and TRST always restores the full default image. The slice
 // outputs across a TLR or a TRST are judged before the following readback,
 // whose Update-DR writes the expected value back into the register.
@@ -81,19 +82,30 @@ class dtp_jtag_ic_reset_test_seq extends dtp_debug_tdr_base_test_seq;
       expect_slice(port_names[p], 1'b0, 1'b1, $sformatf("%s override released", port_names[p]));
     end
 
-    // reset_hold=0 preserves enable/control bits through a TMS TLR.
-    reset_enable  = 3'b001;  // ext=1, sep=0, smc=0
-    reset_control = 3'b010;  // ext=0, sep=1, smc=0
-    write_ic_reset(1'b0, reset_enable, reset_control, held_pattern);
-    wait_sys_cycles();
-    expect_slices(reset_enable, reset_control, "reset_hold=0 directed pattern");
-    goto_tlr_via_tms();
-    wait_sys_cycles();
-    expect_slices(reset_enable, reset_control, "reset_hold=0 in Test-Logic-Reset directed pattern");
-    tlr_to_rti();
-    expected = dtp_ic_reset_after_tlr(1'b0, held_pattern, default_value);
-    read_ic_reset(observed, expected);
-    family_check("CHK-DBG-TDR", "IC_RESET reset_hold=0 TLR preserve", observed, expected);
+    // reset_hold=0 preserves enable/control bits through a TMS TLR. Each
+    // port's {reset_enable, reset_control} is rotated so each slice takes
+    // all four values across the four patterns.
+    for (int unsigned rotation = 0; rotation < 4; rotation++) begin
+      string context_s = $sformatf("reset_hold=0 directed pattern#%0d", rotation + 1);
+      foreach (port_names[p]) begin
+        bit [1:0] slice_value;
+        slice_value = 2'((rotation + p) % 4);
+        reset_enable[port_indices[p]]  = slice_value[1];
+        reset_control[port_indices[p]] = slice_value[0];
+      end
+      `uvm_info(get_type_name(), $sformatf("Iteration %0d/4: %s", rotation + 1, context_s), UVM_LOW)
+      write_ic_reset(1'b0, reset_enable, reset_control, held_pattern);
+      wait_sys_cycles();
+      expect_slices(reset_enable, reset_control, context_s);
+      goto_tlr_via_tms();
+      wait_sys_cycles();
+      expect_slices(reset_enable, reset_control, {context_s, " in Test-Logic-Reset"});
+      tlr_to_rti();
+      expected = dtp_ic_reset_after_tlr(1'b0, held_pattern, default_value);
+      read_ic_reset(observed, expected);
+      family_check("CHK-DBG-TDR", "IC_RESET reset_hold=0 TLR preserve", observed, expected,
+                   context_s);
+    end
 
     // Seeded random reset_hold=0 preservation patterns.
     for (int unsigned idx = 1; idx <= random_count; idx++) begin
