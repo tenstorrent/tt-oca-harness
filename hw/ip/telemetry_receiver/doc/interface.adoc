@@ -33,14 +33,13 @@ The core register port has an 8-bit address and 32-bit data path.
 The global interface provides fundamental clock and reset signals
 required for basic operation.
 
-=== Clock and Reset Specifications
+[[telemetry-receiver-clock-reset]]
+=== Clock and Reset
 
-* *Clock Frequency*: The component can operate at frequencies up to 200
-MHz
-* *Clock Jitter*: Maximum 100ps peak-to-peak jitter tolerance
-* *Reset Duration*: Minimum 10 clock cycles for complete reset
-* *Reset Recovery*: Component ready for operation 2 clock cycles after
-reset deassertion
+`clk_i` is the core clock and `rst_ni` its asynchronous, active-low reset;
+`telemetry_receiver_wrap` adds `clk_telemetry_i` / `rst_telemetry_ni` for
+the ATB side. Clock frequency, jitter, reset duration and physical timing
+constraints must come from the integration timing specification.
 
 === ATB Telemetry Interface
 
@@ -87,6 +86,3 @@ receiver. Its external ready signal reflects crossing-FIFO capacity. This does
 not turn the core's decoded-message queue into a lossless backpressured queue.
 The wrapper also contains flush-handshake synchronizers and returns a decode
 error for register addresses outside its configured receiver apertures.
-
-Clock frequency, jitter, reset duration and physical timing constraints must
-come from the integration timing specification.
