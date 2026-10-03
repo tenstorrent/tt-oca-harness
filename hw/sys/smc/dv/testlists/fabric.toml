@@ -78,6 +78,14 @@ tags = ["diag"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_filter_lock_window_test"
+module = "smc_filter_lock_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_filter_multi_entry_test"
 module = "smc_filter_multi_entry_test"
 seed = 1
