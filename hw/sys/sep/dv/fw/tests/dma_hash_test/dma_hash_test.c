@@ -386,7 +386,10 @@ int main(void) {
     WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_CHUNK_LEN);
 
     // mc_chunks counts only polls that ended on CHUNK_DONE or DONE; a poll that
-    // runs out of budget is a failure and is never counted as a chunk.
+    // runs out of budget is a failure and is never counted as a chunk. The poll
+    // budget matches the other DMA polls in this test: 100000 status reads stay
+    // inside the testbench run budget, so an expired poll reports its ERROR line
+    // instead of ending as a run-cycle timeout.
     uint32_t mc_status = 0;
     uint32_t mc_chunks = 0;
     uint32_t mc_chunk_done = 0;
@@ -396,7 +399,7 @@ int main(void) {
         secure_dma__CONTROL_t mc_ctrl = {.f = {.OPCODE = OPCODE_SHA256, .DIGEST_SWAP = 1, .GO = 1}};
         WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, mc_ctrl.w | mc_initial);
 
-        int t = 200000;
+        int t = 100000;
         do {
             mc_status = READ_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         } while (!(mc_status & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
