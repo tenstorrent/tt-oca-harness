@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-03T15:30:27+00:00",
+  "generated_at": "2026-10-03T17:38:54+00:00",
   "results": [
     {
       "flow": "aou",
@@ -7314,963 +7314,963 @@
       "tests": [
         {
           "category": "smoke",
-          "duration_sec": 33.16,
+          "duration_sec": 46.381,
           "name": "smu_wrapper_elaboration_test",
-          "seed": 788527311,
+          "seed": 1839711724,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 34.319,
+          "duration_sec": 47.004,
           "name": "smu_smc_smoke_test",
-          "seed": 928741891,
+          "seed": 1798722129,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 34.715,
+          "duration_sec": 48.213,
           "name": "smu_sep_smoke_test",
-          "seed": 858355113,
+          "seed": 1534587012,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 28.955,
+          "duration_sec": 40.764,
           "name": "smu_sep_boot_health_test",
-          "seed": 871708053,
+          "seed": 199740729,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 43.751,
+          "duration_sec": 48.151,
           "name": "smu_sep_sanity_test",
-          "seed": 1981834220,
+          "seed": 643551363,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 33.318,
+          "duration_sec": 34.892,
           "name": "smu_sep_otbn_test",
-          "seed": 1658700833,
+          "seed": 1108050803,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 34.155,
+          "duration_sec": 33.407,
           "name": "smu_sep_efuse_test",
-          "seed": 1623057268,
+          "seed": 1435196643,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 34.109,
+          "duration_sec": 35.158,
           "name": "smu_sep_wdt_test",
-          "seed": 1377812855,
+          "seed": 235435206,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 43.479,
+          "duration_sec": 34.217,
           "name": "smu_sep_dma_test",
-          "seed": 15599875,
+          "seed": 809118175,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 45.545,
+          "duration_sec": 39.751,
           "name": "smu_sep_bidirect_test",
-          "seed": 698451731,
+          "seed": 1745571775,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 24.907,
-          "name": "smu_sep_smc_notify_test",
-          "seed": 465874255,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "firmware",
-          "duration_sec": 38.197,
+          "duration_sec": 32.876,
           "name": "smu_sep_remap_test",
-          "seed": 993334087,
+          "seed": 1157221224,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 28.097,
+          "duration_sec": 32.409,
           "name": "smu_sep_rom_tcm_load_test",
-          "seed": 833115953,
+          "seed": 276032939,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 35.469,
+          "duration_sec": 38.351,
           "name": "smu_sep_spi_test",
-          "seed": 314756413,
+          "seed": 1913662088,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "firmware",
+          "duration_sec": 31.035,
+          "name": "smu_sep_smc_notify_test",
+          "seed": 1065810172,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "all",
-          "duration_sec": 75.974,
+          "duration_sec": 80.89,
           "name": "smu_wrapper_jtag_ptap_test",
-          "seed": 1582715982,
+          "seed": 1157504367,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 36.058,
+          "duration_sec": 34.863,
           "name": "smu_sep_lcc_flow_test",
-          "seed": 2007626635,
+          "seed": 1205586792,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 29.007,
+          "duration_sec": 32.558,
           "name": "smu_sep_lcc_state_test_dev_test",
-          "seed": 1584024227,
+          "seed": 1501554251,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 30.568,
+          "duration_sec": 35.05,
           "name": "smu_sep_lcc_state_prod_test",
-          "seed": 857178030,
+          "seed": 488864589,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 29.869,
+          "duration_sec": 30.517,
           "name": "smu_sep_lcc_state_prod_end_test",
-          "seed": 856550038,
+          "seed": 2055803564,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 32.557,
+          "duration_sec": 31.78,
           "name": "smu_sep_lcc_state_rma_chiplet_test",
-          "seed": 681325350,
+          "seed": 1187913396,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 32.58,
+          "duration_sec": 32.272,
           "name": "smu_sep_lcc_state_rma_sip_0_test",
-          "seed": 4555804,
+          "seed": 80277369,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 35.881,
+          "duration_sec": 32.463,
           "name": "smu_sep_lcc_state_rma_sip_1_test",
-          "seed": 874919247,
+          "seed": 981790603,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 37.135,
+          "duration_sec": 30.377,
           "name": "smu_sep_lcc_state_rma_chip_1_test",
-          "seed": 1010469676,
+          "seed": 22571144,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "all",
-          "duration_sec": 89.343,
+          "duration_sec": 80.732,
           "name": "smu_sep_dbg_gating_test_dev_test",
-          "seed": 955049796,
+          "seed": 796224620,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "all",
-          "duration_sec": 87.748,
+          "duration_sec": 82.124,
           "name": "smu_sep_dbg_gating_prod_end_test",
-          "seed": 661026589,
+          "seed": 1776069185,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 148.453,
-          "name": "smu_dtp_sep_smc_chain_prod_test",
-          "seed": 1873003326,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "firmware",
-          "duration_sec": 141.711,
-          "name": "smu_dtp_sep_smc_chain_prod_end_test",
-          "seed": 359977552,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "firmware",
-          "duration_sec": 495.288,
+          "duration_sec": 396.707,
           "name": "smu_sep_modules_test",
-          "seed": 817316020,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "fabric",
-          "duration_sec": 28.415,
-          "name": "smu_axi_crossbar_error_handling_test",
-          "seed": 490972966,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "fabric",
-          "duration_sec": 134.571,
-          "name": "smu_axi_atomic_operation_test",
-          "seed": 850835186,
+          "seed": 1409254609,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 593.351,
+          "duration_sec": 408.996,
           "name": "smu_sep_aes_test",
-          "seed": 554208485,
+          "seed": 519337294,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 394.549,
-          "name": "smu_sep_entropy_test",
-          "seed": 1067624872,
+          "duration_sec": 128.094,
+          "name": "smu_dtp_sep_smc_chain_prod_test",
+          "seed": 1790118538,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "firmware",
+          "duration_sec": 128.327,
+          "name": "smu_dtp_sep_smc_chain_prod_end_test",
+          "seed": 742124000,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 343.017,
-          "name": "smu_axi_alias_remap_manager_scope_test",
-          "seed": 1735374043,
+          "duration_sec": 25.499,
+          "name": "smu_axi_crossbar_error_handling_test",
+          "seed": 916261872,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 182.955,
+          "duration_sec": 163.757,
+          "name": "smu_axi_atomic_operation_test",
+          "seed": 309486224,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "fabric",
+          "duration_sec": 132.37,
           "name": "smu_axi_id_width_conversion_test",
-          "seed": 1073860727,
+          "seed": 190344626,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 178.628,
-          "name": "smu_axi_prot_encoding_decode_test",
-          "seed": 385246015,
+          "duration_sec": 350.458,
+          "name": "smu_axi_alias_remap_manager_scope_test",
+          "seed": 1273604272,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 66.452,
+          "duration_sec": 78.56,
           "name": "smu_boot_stall_jtag_cold_reset_matrix_test",
-          "seed": 484808315,
+          "seed": 1742231901,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "firmware",
+          "duration_sec": 392.768,
+          "name": "smu_sep_entropy_test",
+          "seed": 895751614,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "fabric",
+          "duration_sec": 219.639,
+          "name": "smu_axi_prot_encoding_decode_test",
+          "seed": 2046352112,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 76.682,
+          "duration_sec": 93.091,
           "name": "smu_boot_stall_vs_ic_reset_priority_test",
-          "seed": 1911935865,
+          "seed": 194576663,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 95.123,
+          "duration_sec": 106.46,
           "name": "smu_clock_stop_coordination_test",
-          "seed": 1366914200,
+          "seed": 2036839375,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 39.664,
+          "duration_sec": 78.552,
+          "name": "smu_dft_dtp_boot_stall_test",
+          "seed": 1874780689,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 48.201,
           "name": "smu_dft_gpio_boot_stall_test",
-          "seed": 1528830626,
+          "seed": 1695783741,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 37.505,
+          "duration_sec": 44.152,
           "name": "smu_dtp_bsr_extest_loopback_test",
-          "seed": 956026823,
+          "seed": 537496988,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 64.768,
-          "name": "smu_dft_dtp_boot_stall_test",
-          "seed": 1951575017,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 38.651,
+          "duration_sec": 44.944,
           "name": "smu_dtp_bsr_ijtag_scan_test",
-          "seed": 1283861811,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "fabric",
-          "duration_sec": 507.916,
-          "name": "smu_axi_filter_allow_ns_test",
-          "seed": 285211738,
+          "seed": 538097942,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 76.588,
+          "duration_sec": 81.937,
           "name": "smu_dtp_io_stap_smoke_test",
-          "seed": 401833392,
+          "seed": 1459992335,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 525.367,
+          "duration_sec": 536.489,
           "name": "smu_axi_filter_out_instance_matrix_test",
-          "seed": 1854300175,
+          "seed": 878868483,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "fabric",
+          "duration_sec": 581.947,
+          "name": "smu_axi_filter_allow_ns_test",
+          "seed": 1686056117,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 200.573,
+          "duration_sec": 213.375,
           "name": "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-          "seed": 1971576316,
+          "seed": 611172522,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 154.607,
+          "duration_sec": 195.681,
           "name": "smu_dtp_jtag2axi_smc_error_path_test",
-          "seed": 1521313244,
+          "seed": 925017327,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 35.965,
+          "duration_sec": 49.234,
           "name": "smu_dtp_jtag_smoke_test",
-          "seed": 1936691319,
+          "seed": 911248615,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 223.764,
+          "duration_sec": 194.244,
           "name": "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-          "seed": 857352792,
+          "seed": 195013619,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 159.836,
+          "duration_sec": 167.622,
           "name": "smu_dtp_jtag_smc_cpu_register_test",
-          "seed": 1927252076,
+          "seed": 1780422712,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 108.531,
+          "duration_sec": 88.174,
           "name": "smu_dtp_otp_smc_map_rw_test",
-          "seed": 1682573827,
+          "seed": 972494524,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 106.815,
-          "name": "smu_dtp_otp_smc_series_error_test",
-          "seed": 1783370960,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 143.166,
-          "name": "smu_dtp_sep_dm_dmi_test",
-          "seed": 1340089478,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 308.598,
-          "name": "smu_dtp_otp_smc_complete_rw_test",
-          "seed": 1056273423,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 548.403,
+          "duration_sec": 436.519,
           "name": "smu_dtp_jtag2axi_smc_rw_matrix_test",
-          "seed": 1842666387,
+          "seed": 557558547,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 131.531,
+          "name": "smu_dtp_otp_smc_series_error_test",
+          "seed": 767073102,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 146.714,
+          "name": "smu_dtp_sep_dm_dmi_test",
+          "seed": 764437425,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 320.785,
+          "name": "smu_dtp_otp_smc_complete_rw_test",
+          "seed": 1362010277,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "firmware",
-          "duration_sec": 3330.99,
+          "duration_sec": 2350.304,
           "name": "smu_smc_fabric_test",
-          "seed": 2003059735,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 2674.509,
-          "name": "smu_sep_sba_peripheral_test",
-          "seed": 1817884937,
+          "seed": 1928737841,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 1804.573,
+          "duration_sec": 1953.05,
           "name": "smu_axi_filter_in_instance_matrix_test",
-          "seed": 1800140870,
-          "stage": "sim",
-          "status": "TIMEOUT"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 166.758,
-          "name": "smu_dtp_smc_stap_smoke_test",
-          "seed": 641924394,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 54.286,
-          "name": "smu_ext_boot_seq_gate_test",
-          "seed": 1008241025,
+          "seed": 1323581897,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 397.944,
+          "duration_sec": 375.379,
           "name": "smu_smc_inbound_window_sweep_test",
-          "seed": 1846320580,
+          "seed": 1497852727,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 1802.713,
-          "name": "smu_dtp_jtag2axi_address_walk_test",
-          "seed": 299710160,
-          "stage": "sim",
-          "status": "TIMEOUT"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 159.056,
-          "name": "smu_i3c_mem_port_connectivity_test",
-          "seed": 1904855467,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 68.872,
-          "name": "smu_ic_reset_dual_domain_illegal_test",
-          "seed": 1924460068,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 131.695,
-          "name": "smu_ic_reset_smc_multi_domain_test",
-          "seed": 1192774389,
+          "duration_sec": 176.217,
+          "name": "smu_dtp_smc_stap_smoke_test",
+          "seed": 1907254413,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 98.454,
-          "name": "smu_ic_reset_ss_domain_matrix_test",
-          "seed": 1514581183,
+          "duration_sec": 62.328,
+          "name": "smu_ext_boot_seq_gate_test",
+          "seed": 1202535532,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 1802.992,
+          "duration_sec": 2046.67,
           "name": "smu_dtp_sep_dm_sba_test",
-          "seed": 1778700972,
+          "seed": 748702676,
           "stage": "sim",
-          "status": "TIMEOUT"
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 141.974,
+          "name": "smu_i3c_mem_port_connectivity_test",
+          "seed": 1989585496,
+          "stage": "sim",
+          "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 216.009,
+          "duration_sec": 2154.995,
+          "name": "smu_sep_sba_peripheral_test",
+          "seed": 1717723333,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 78.948,
+          "name": "smu_ic_reset_dual_domain_illegal_test",
+          "seed": 1057902914,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 141.768,
+          "name": "smu_ic_reset_smc_multi_domain_test",
+          "seed": 1152221047,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 92.891,
+          "name": "smu_ic_reset_ss_domain_matrix_test",
+          "seed": 1055750488,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 269.999,
           "name": "smu_jtag2axi_vs_smn_same_csr_race_test",
-          "seed": 2085741349,
+          "seed": 1653924251,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 296.308,
+          "duration_sec": 306.131,
           "name": "smu_jtag_chain_enhanced_test",
-          "seed": 2035459465,
+          "seed": 671555482,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 248.814,
-          "name": "smu_jtag_reset_override_test",
-          "seed": 2018682132,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 139.327,
+          "duration_sec": 126.369,
           "name": "smu_dtp_ptap_ir_walk_test",
-          "seed": 1311965166,
+          "seed": 712294818,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 238.074,
-          "name": "smu_otp_bridges_under_dbg_disable_test",
-          "seed": 1073116027,
+          "duration_sec": 284.501,
+          "name": "smu_jtag_reset_override_test",
+          "seed": 841350370,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 241.835,
-          "name": "smu_otp_prod_error_resp_test",
-          "seed": 184343472,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 245.116,
-          "name": "smu_otp_vs_fabric_map_race_test",
-          "seed": 1702817874,
+          "duration_sec": 3425.902,
+          "name": "smu_dtp_jtag2axi_address_walk_test",
+          "seed": 424841919,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 1475.036,
+          "duration_sec": 1260.87,
           "name": "smu_fabric_reg_bar_wr_test",
-          "seed": 1841675841,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 433.467,
-          "name": "smu_smc_mailbox_sanity_test",
-          "seed": 1074111676,
+          "seed": 1745589481,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 525.013,
+          "duration_sec": 234.115,
+          "name": "smu_otp_bridges_under_dbg_disable_test",
+          "seed": 435891122,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 231.27,
+          "name": "smu_otp_prod_error_resp_test",
+          "seed": 263270474,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 168.849,
           "name": "smu_smc_dtp_jtag2axi_smoke_test",
-          "seed": 2111875809,
+          "seed": 1428405647,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 284.969,
+          "name": "smu_otp_vs_fabric_map_race_test",
+          "seed": 743969021,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 709.823,
-          "name": "smu_smc_mailbox_int_test",
-          "seed": 721844726,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 81.148,
+          "duration_sec": 80.808,
           "name": "smu_smc_rom_boot_min_pass_test",
-          "seed": 1853272004,
+          "seed": 1773387809,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 41.705,
+          "duration_sec": 38.839,
           "name": "smu_smc_reset_ctrl_test",
-          "seed": 1317051546,
+          "seed": 34890465,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 260.284,
-          "name": "smu_smc_wdt_sanity_test",
-          "seed": 577204511,
+          "duration_sec": 300.664,
+          "name": "smu_smc_mailbox_int_test",
+          "seed": 562933539,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 363.493,
-          "name": "smu_smc_wdt_timeout_irq_test",
-          "seed": 1724756201,
+          "duration_sec": 288.935,
+          "name": "smu_smc_mailbox_sanity_test",
+          "seed": 1043405741,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 1803.935,
-          "name": "smu_axi_in_sep_aperture_test",
-          "seed": 2086846480,
-          "stage": "sim",
-          "status": "TIMEOUT"
-        },
-        {
-          "category": "fabric",
-          "duration_sec": 263.756,
+          "duration_sec": 211.366,
           "name": "smu_sys_in_filter_program_jtag_test",
-          "seed": 765449998,
+          "seed": 1203227546,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 309.886,
+          "name": "smu_smc_wdt_sanity_test",
+          "seed": 565786266,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 387.231,
+          "name": "smu_smc_wdt_timeout_irq_test",
+          "seed": 1843917190,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 237.347,
+          "duration_sec": 318.242,
           "name": "smu_sys_in_filter_reprogram_shrink_test",
-          "seed": 95254917,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "fabric",
-          "duration_sec": 257.07,
-          "name": "smu_sys_in_filter_window_edge_test",
-          "seed": 284077260,
+          "seed": 1347364300,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 38.279,
+          "duration_sec": 41.975,
           "name": "smu_xtrig_ctm_illegal_phase_test",
-          "seed": 1869005160,
+          "seed": 164029941,
           "stage": "sim",
           "status": "PASS"
         },
         {
-          "category": "smc_under_smu",
-          "duration_sec": 728.802,
-          "name": "smu_system_timer_octs_test",
-          "seed": 1513697202,
+          "category": "fabric",
+          "duration_sec": 2823.299,
+          "name": "smu_axi_in_sep_aperture_test",
+          "seed": 768370419,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 3603.546,
-          "name": "smu_sep_sba_fabric_sweep_test",
-          "seed": 1815125354,
-          "stage": "sim",
-          "status": "TIMEOUT"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 3603.013,
-          "name": "smu_sep_lsu_fabric_test",
-          "seed": 1453159430,
-          "stage": "sim",
-          "status": "TIMEOUT"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 3602.954,
-          "name": "smu_efuse_command_test",
-          "seed": 1168941371,
-          "stage": "sim",
-          "status": "TIMEOUT"
-        },
-        {
-          "category": "dtp_under_smu",
-          "duration_sec": 39.588,
+          "duration_sec": 36.216,
           "name": "smu_xtrig_ctm_remap_test",
-          "seed": 929586823,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "all",
-          "duration_sec": 43.594,
-          "name": "smu_composition_parameter_test",
-          "seed": 1423456920,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "hosted",
-          "duration_sec": 34.683,
-          "name": "smu_reset_release_sync_test",
-          "seed": 1214915997,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "hosted",
-          "duration_sec": 26.453,
-          "name": "smu_smc_fuse_sense_sequence_test",
-          "seed": 1695327061,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "all",
-          "duration_sec": 28.805,
-          "name": "smu_sep_fuse_sense_done_test",
-          "seed": 306630759,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "hosted",
-          "duration_sec": 79.636,
-          "name": "smu_xtrig_mode_composition_test",
-          "seed": 1910544274,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "hosted",
-          "duration_sec": 118.855,
-          "name": "smu_sram_auto_init_done_test",
-          "seed": 2040936972,
+          "seed": 1363202172,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "fabric",
-          "duration_sec": 183.336,
-          "name": "smu_axi_in_burst_outstanding_test",
-          "seed": 463127828,
+          "duration_sec": 246.347,
+          "name": "smu_sys_in_filter_window_edge_test",
+          "seed": 1931350151,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "all",
-          "duration_sec": 449.286,
-          "name": "smu_xbar_connectivity_matrix_test",
-          "seed": 451726233,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 404.655,
-          "name": "smu_periph_ext_window_test",
-          "seed": 1822768963,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 247.67,
-          "name": "smu_smc_gpio_pad_output_test",
-          "seed": 1950783185,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 26.853,
-          "name": "smu_smc_efuse_shadow_sense_reset_test",
-          "seed": 1954001966,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "all",
-          "duration_sec": 805.447,
-          "name": "smu_clock_domain_composition_test",
-          "seed": 5668133,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 365.975,
-          "name": "smu_smc_cool_reset_pin_test",
-          "seed": 124695305,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 598.451,
-          "name": "smu_telemetry_atb_capture_test",
-          "seed": 1034159035,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "all",
-          "duration_sec": 1249.901,
+          "duration_sec": 37.747,
           "name": "smu_boundary_port_composition_test",
-          "seed": 406046776,
+          "seed": 1086256381,
           "stage": "sim",
           "status": "PASS"
         },
         {
-          "category": "smc_under_smu",
-          "duration_sec": 58.199,
-          "name": "smu_sram_auto_init_disabled_test",
-          "seed": 930573224,
+          "category": "all",
+          "duration_sec": 35.611,
+          "name": "smu_composition_parameter_test",
+          "seed": 959918647,
           "stage": "sim",
           "status": "PASS"
         },
         {
-          "category": "smc_under_smu",
-          "duration_sec": 1315.821,
-          "name": "smu_smc_boundary_io_test",
-          "seed": 1372845764,
+          "category": "all",
+          "duration_sec": 36.419,
+          "name": "smu_xbar_connectivity_matrix_test",
+          "seed": 796115819,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "hosted",
-          "duration_sec": 52.446,
-          "name": "smu_sep_secure_tm_test",
-          "seed": 1384455811,
+          "duration_sec": 37.584,
+          "name": "smu_xtrig_mode_composition_test",
+          "seed": 1283035669,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "all",
+          "duration_sec": 78.891,
+          "name": "smu_clock_domain_composition_test",
+          "seed": 1542265500,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "hosted",
+          "duration_sec": 42.029,
+          "name": "smu_reset_release_sync_test",
+          "seed": 1479042300,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "hosted",
+          "duration_sec": 69.769,
+          "name": "smu_sram_auto_init_done_test",
+          "seed": 130055823,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "hosted",
+          "duration_sec": 41.134,
+          "name": "smu_smc_fuse_sense_sequence_test",
+          "seed": 256140003,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "all",
+          "duration_sec": 37.399,
+          "name": "smu_sep_fuse_sense_done_test",
+          "seed": 339346269,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 479.752,
+          "name": "smu_system_timer_octs_test",
+          "seed": 1130629802,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "fabric",
+          "duration_sec": 193.765,
+          "name": "smu_axi_in_burst_outstanding_test",
+          "seed": 211414953,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 374.631,
+          "name": "smu_periph_ext_window_test",
+          "seed": 1216523941,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 187.367,
+          "name": "smu_smc_gpio_pad_output_test",
+          "seed": 1912730125,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 38.507,
+          "name": "smu_smc_efuse_shadow_sense_reset_test",
+          "seed": 370346227,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 175.924,
+          "name": "smu_smc_cool_reset_pin_test",
+          "seed": 63900118,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 817.26,
+          "name": "smu_smc_boundary_io_test",
+          "seed": 699055866,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 244.553,
+          "name": "smu_telemetry_atb_capture_test",
+          "seed": 1249498793,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 1048.529,
+          "duration_sec": 816.999,
           "name": "smu_dtp_scan_chain_boundary_test",
-          "seed": 2060093083,
+          "seed": 611495448,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 303.067,
-          "name": "smu_smc_peripheral_irq_test",
-          "seed": 195066994,
+          "duration_sec": 67.776,
+          "name": "smu_sram_auto_init_disabled_test",
+          "seed": 932223939,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 407.793,
+          "duration_sec": 450.993,
           "name": "smu_smc_wdt_boundary_timeout_test",
-          "seed": 552909351,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "fabric",
-          "duration_sec": 559.838,
-          "name": "smu_axi_in_attribute_sweep_test",
-          "seed": 477767163,
+          "seed": 2082459369,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 1540.358,
-          "name": "smu_cla_action_test",
-          "seed": 1151630686,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "fabric",
-          "duration_sec": 1802.832,
-          "name": "smu_aperture_map_walk_test",
-          "seed": 619163647,
-          "stage": "sim",
-          "status": "TIMEOUT"
-        },
-        {
-          "category": "fabric",
-          "duration_sec": 1803.347,
-          "name": "smu_axi_out_addr_len_size_test",
-          "seed": 414785014,
-          "stage": "sim",
-          "status": "TIMEOUT"
-        },
-        {
-          "category": "smc_under_smu",
-          "duration_sec": 5711.921,
-          "name": "smu_smc_ss_reset_ctrl_sweep_test",
-          "seed": 1227387660,
+          "duration_sec": 379.213,
+          "name": "smu_smc_peripheral_irq_test",
+          "seed": 1046521194,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 3603.12,
-          "name": "smu_xtrig_ctp_pad_test",
-          "seed": 2052428426,
+          "duration_sec": 6345.87,
+          "name": "smu_sep_lsu_fabric_test",
+          "seed": 472856258,
           "stage": "sim",
-          "status": "TIMEOUT"
+          "status": "PASS"
+        },
+        {
+          "category": "hosted",
+          "duration_sec": 60.215,
+          "name": "smu_sep_secure_tm_test",
+          "seed": 1699465346,
+          "stage": "sim",
+          "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 7203.64,
-          "name": "smu_smc_boundary_lane_sweep_test",
-          "seed": 547942405,
+          "duration_sec": 1580.376,
+          "name": "smu_cla_action_test",
+          "seed": 1062884104,
           "stage": "sim",
-          "status": "TIMEOUT"
+          "status": "PASS"
+        },
+        {
+          "category": "fabric",
+          "duration_sec": 695.056,
+          "name": "smu_axi_in_attribute_sweep_test",
+          "seed": 1183403034,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 4442.74,
+          "name": "smu_smc_ss_reset_ctrl_sweep_test",
+          "seed": 598333220,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "fabric",
+          "duration_sec": 2315.943,
+          "name": "smu_aperture_map_walk_test",
+          "seed": 1636607298,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "fabric",
+          "duration_sec": 2722.43,
+          "name": "smu_axi_out_addr_len_size_test",
+          "seed": 1519923490,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 4375.045,
+          "name": "smu_xtrig_ctp_pad_test",
+          "seed": 379029674,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 10970.078,
+          "name": "smu_efuse_command_test",
+          "seed": 471676536,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "smc_under_smu",
+          "duration_sec": 8521.296,
+          "name": "smu_smc_boundary_lane_sweep_test",
+          "seed": 824650547,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "dtp_under_smu",
+          "duration_sec": 13469.052,
+          "name": "smu_sep_sba_fabric_sweep_test",
+          "seed": 1183596061,
+          "stage": "sim",
+          "status": "PASS"
         }
       ],
       "tool": "vcs"
@@ -8281,45 +8281,51 @@
       "tests": [
         {
           "category": "smoke",
-          "duration_sec": 21.914,
+          "duration_sec": 25.053,
           "name": "smu_dtp_jtag_smoke_test",
-          "seed": 1260646046,
+          "seed": 1675426522,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smc_under_smu",
-          "duration_sec": 15.787,
+          "duration_sec": 18.406,
           "name": "smu_ext_boot_seq_gate_test",
-          "seed": 2092777318,
+          "seed": 21910698,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 36.451,
+          "duration_sec": 34.233,
           "name": "smu_boot_stall_jtag_cold_reset_matrix_test",
-          "seed": 153450992,
+          "seed": 479772117,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 38.55,
+          "duration_sec": 33.7,
           "name": "smu_jtag_reset_override_test",
-          "seed": 689481495,
+          "seed": 1816009606,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "dtp_under_smu",
-          "duration_sec": 96.296,
+          "duration_sec": 119.482,
           "name": "smu_smc_dtp_jtag2axi_smoke_test",
-          "seed": 1983559402,
+          "seed": 1698295432,
           "stage": "sim",
           "status": "PASS"
         }
       ],
+      "tool": "vcs"
+    },
+    {
+      "flow": "smu",
+      "framework": "",
+      "tests": [],
       "tool": "vcs"
     }
   ]
