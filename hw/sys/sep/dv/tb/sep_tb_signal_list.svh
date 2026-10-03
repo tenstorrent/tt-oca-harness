@@ -510,6 +510,14 @@
 // Saturating count of cycles where CPU-LSU and DMA simultaneously present an
 // SRAM request on the same local-crossbar address channel.
 `SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
+// SPI-to-DMA transmit pacing, observation-only: the OpenTitan SPI host
+// transmit-FIFO depth, the SPI trigger bit at the secure DMA input, and the
+// DMA STATUS.busy flop. No CSR shows the trigger or the FIFO depth while the
+// DMA moves data, so the DMA-TX test reads them here to grade the refill
+// pacing (owner `sep_spi_ot_dma_tx_test`).
+`SEP_TB_OUT(logic [7:0], spi_tx_qd_probe_o)
+`SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
+`SEP_TB_OUT(logic, dma_busy_probe_o)
 // W handshakes at the AXI-Lite port of each fabric remap/filter slot register
 // block in sep_system_csr: saturating count of all beats, saturating count of
 // beats with non-zero data on a byte lane whose WSTRB bit is 0, and one sticky

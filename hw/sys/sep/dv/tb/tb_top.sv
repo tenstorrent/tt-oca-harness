@@ -1245,6 +1245,13 @@ module sep_uvm_top
         end
     end
 
+    // SPI-to-DMA transmit pacing probes (read-only XMR, no force).
+    assign spi_tx_qd_probe_o =
+        `SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_qd;
+    assign spi_lsio_trigger_probe_o = `SEP_CORE.lsio_trigger[0];
+    assign dma_busy_probe_o =
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.status.busy.q;
+
     // Fabric-slot W channel, sampled at the AXI-Lite port of each of the 96
     // remap/filter slot register blocks in sep_system_csr (the block that
     // applies WSTRB). A beat counts as fill when a byte lane whose WSTRB bit is

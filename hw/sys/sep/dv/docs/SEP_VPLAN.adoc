@@ -4514,7 +4514,7 @@ poll and yields the same pass.
 
 *Source Module*: `sep_spi_ot_dma_tx_test`
 
-*BFM / Model*: ocah_axi_vip, ocah_spi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address)
+*BFM / Model*: ocah_axi_vip, ocah_spi_vip, CPU FW, `tb/sep_outbound_mbx.sv` (console + verdict mailbox; OKAY / zero read data for any address), observation-only probes `spi_tx_qd_probe_o`, `spi_lsio_trigger_probe_o` and `dma_busy_probe_o`
 
 *Objective*: Drives SRAM through the secure DMA into the OpenTitan SPI host transmit FIFO and on to the flash BFM, then reads the flash back and compares against the cocotb-seeded random source data. After the walk, a TXDATA write past `STATUS.TXFULL` must latch exclusive `ERROR_STATUS.OVERFLOW` and the host must run again after recovery.
 
@@ -4523,7 +4523,7 @@ poll and yields the same pass.
 *Test Procedure*:
 
 [arabic]
-. Walk the seeded length and trigger cells: DMA SRAM into the OpenTitan SPI TX FIFO, page-program the flash BFM, read the flash back and compare to the SRAM source; read the DMA status again and require done still set, then W1C-clear DMA done.
+. Walk the seeded length and trigger cells: DMA SRAM into the OpenTitan SPI TX FIFO, page-program the flash BFM, read the flash back and compare to the SRAM source; read the DMA status again and require done still set, then W1C-clear DMA done. While DMA `STATUS.busy` is set, cocotb samples the DMA trigger input and the transmit FIFO depth on each clock.
 . Write TXDATA past `STATUS.TXFULL`; expect exclusive `ERROR_STATUS.OVERFLOW`; `CONTROL.SW_RST` plus write-one-to-clear; a flash status read must complete.
 
 *Checkers*:
@@ -4544,7 +4544,7 @@ poll and yields the same pass.
 |CHK-RAND-REP
 |The cocotb golden walked the deterministic length and trigger cells, requiring a literal floor of write-enable and page-program transactions on the bus and a per-case address and data match.
 |CHK-MULTICHUNK
-|Every PAGE PROGRAM the device received carries more *payload* than one 16-byte DMA chunk, so the transmit-watermark refill loop iterated. Counted from the bus, not from the scenario table, and counting payload only: adding the four opcode and address header bytes would let a transfer that delivered exactly one chunk and stopped clear a 16-byte bar.
+|The transmit watermark paces every DMA transfer. Per case, during DMA `STATUS.busy`, the DMA trigger input shows at least as many separate assertions as the transfer has 16-byte chunks, with a literal floor of 2, and the transmit FIFO depth never goes above `TX_WATERMARK` - 1 + one chunk (7 words). A trigger held high, or a DMA that refills without waiting for the watermark, fills the FIFO past that bound in one burst. Graded on DUT probes, not on the bus byte count.
 |CHK-ERR-OVERFLOW
 |A TXDATA write past `STATUS.TXFULL` latches exactly `ERROR_STATUS.OVERFLOW`; `CONTROL.SW_RST` plus write-one-to-clear then lets a flash status read complete.
 |===
