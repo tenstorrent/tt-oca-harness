@@ -356,7 +356,7 @@ regenerated from each, and `--check` compares them against the run it is
 given. Where a fact's whole signal is uncovered the file names it in one row,
 which keeps the files smaller than a per-bit listing.
 
-The whole-signal and bit-window rows are split by scope, as the archived SMC
+The whole-signal and bit-window rows are split by scope, as the predecessor SMC
 bench split them: `smc_toggle_module_exclusions.el` holds the rows true of
 every instance of a module, one block per module, and
 `smc_toggle_instance_exclusions.el` the rows true of one instance, each block
@@ -514,9 +514,9 @@ category and against this tree's names: an `[[object]]` names a module or an
 instance and the toggle signals, selects, line blocks, FSM points or condition
 rows it covers, and a `[[unit]]` names an instance graded on its ports. Each
 entry carries its class and the number of the reviewed list it comes from;
-the class carries the fact, the
-retiring condition and the reviewer. `smc_reviewed_exclusions.py` resolves the
-manifest against urg's templates and keeps only the points the run's raw
+the class carries the fact, the retiring condition and the reviewer.
+`smc_reviewed_exclusions.py` resolves the manifest against urg's templates and
+keeps only the points the run's raw
 report (`cov/report_raw/modinfo.txt`) marks uncovered: a toggle per bit and
 direction, a line block by its source line, an FSM state or transition by name
 and a condition row by source line and vector. Nothing a leaf covers is
