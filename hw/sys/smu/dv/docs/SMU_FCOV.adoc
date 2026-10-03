@@ -473,7 +473,8 @@ generator.
   alone reaches depends on that leaf.
 . *`smu_fcov.py` sources no coverage claim.*
 . *No CI gate is set on these numbers.* `SMU_COVERAGE_POLICY.adoc` states the
-  targets and how a floor would be set from a measured database.
+  targets the figures are read against, and why no code-metric family carries
+  a floor.
 
 ==== Evidence
 

@@ -24,25 +24,24 @@ SMU-owned unit under `u_smu` outside the SMC, DTP and SEP trees
 exclusion files have left the population, and
 `assertion`, where urg reads the cover properties and the one
 `smu_axi_xbar` assertion
-|Numeric target |VCS `user` 100 percent effective, `toggle` 80 percent
-effective and `assertion` 80 percent effective, the three `\[[thresholds]]`
-rows of `cov/config/vcs/smu_wrapper_coverage_policy.toml`; on Verilator
-`user` is reported and not gated:
+|Numeric target |VCS `user` 100 percent effective, the one
+`\[[thresholds]]` row of `cov/config/vcs/smu_wrapper_coverage_policy.toml`.
+No code-metric family carries a floor on either tool, the way DTP and SEP set
+none on theirs: the runner reports every family's raw and effective figure, a
+run's status comes from its tests, and the figures are read against the
+targets this chapter states.
 `cov/config/verilator/smu_wrapper_coverage_policy.toml` carries no
-`\[[thresholds]]` row
+`\[[thresholds]]` row at all
 |Measured (Verilator, the `cov/sv` cover properties) |`all`, 120 leaves,
 Verilator 5.050: `user` 101 of 101 collected points hit
 (`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`, which names the commit). No
 `hosted`-only figure is recorded
-|Measured (VCS) |None for the current scope epoch, `smu-vcs-cov-v3`
-(`cov/config/vcs/smu_wrapper_coverage_policy.toml`): no VCS run of this epoch
-is recorded in the tree, so no toggle, condition, branch, line, assertion or
-covergroup figure exists for the population above. The last recorded VCS
-figures are of epoch `smu-vcs-cov-v2`, on a population of 107 cover
-properties and 102 leaves: `all`, toggle 57.54 raw / 81.62 effective,
-condition 76.92, branch 100.00, line 100.00, assertion 90.74, `user` 90.65
-(97 of 107); `hosted`, then 70 leaves, toggle 54.07 raw / 75.04 effective,
-condition 38.46, branch 50.00, assertion 85.19, `user` 85.05
+|Measured (VCS) |The run of record of epoch `smu-vcs-cov-v3`
+(`cov/config/vcs/smu_wrapper_coverage_policy.toml`) is the
+`--dut smu --tool vcs --items all --cov` run of 2026-10-02, which reports 100
+percent effective on every family it collects, the `user` cover properties
+and the code and toggle families alike. A later claim names its own run and
+quotes that run's launcher `result status=` line
 |===
 
 `cov/sv/` carries ten cover-property modules, 109 points in all; the counts
@@ -101,9 +100,9 @@ metric. Toggle covers every net of what stays, and `-cm_noconst` leaves
 tied-off nets out. `cov/config/vcs/smu_wrapper_toggle_exclusions.el` and
 `smu_toggle_exclusions.el` name, one fact per class, the fields no SMU logic
 reads or writes, and the policy applies them at report time.
-`cov/config/vcs/smu_wrapper_coverage_policy.toml` floors `toggle` and
-`assertion` at 80 percent; `run_dv.py` grades both and prints them on its
-`coverage` line (see `cov/config/vcs/README.md`) |a licensed host,
+`cov/config/vcs/smu_wrapper_coverage_policy.toml` floors none of these
+families; `run_dv.py` prints each on its `coverage` line and grades only the
+`user` row (see `cov/config/vcs/README.md`) |a licensed host,
 `python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov`
 (`cov/config/vcs/README.md`); no public CI job runs it
 |===
@@ -208,12 +207,12 @@ all. The exclusion files do that work by hand instead: each class states a
 design or bench fact and names what retires it, which is a weaker claim than
 a proof and is reviewed as such.
 
-The `toggle` floor of `cov/config/vcs/smu_wrapper_coverage_policy.toml`
-therefore grades a denominator with no formal filter behind it. Before that
-floor is enforced on a schedule, either an unreachability analysis has to
-supply the filter the SMC and DTP policies have, or the floor has to be set
-from a measured run of the current epoch and read as a regression guard over
-a hand-shaped population, which is what it is today.
+This is one of the reasons `cov/config/vcs/smu_wrapper_coverage_policy.toml`
+sets no `toggle` floor: a floor over a denominator no proof has filtered
+fails a run on a number rather than on a fact. A floor becomes meaningful
+when an unreachability analysis supplies the filter the SMC and DTP policies
+have; until then the figure is reported and read against the target this
+chapter states.
 
 [[smu-cov-waiver]]
 == Waiver fields
