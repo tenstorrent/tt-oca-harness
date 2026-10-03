@@ -202,7 +202,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         re.compile(rf"^{MEM_IF}\."),
         "address, request, enable, write-enable, mode and handshake fields of the SMC "
         "and SEP RAM, ROM and TCM interfaces. smu.sv connects each interface whole "
-        "between u_smc or u_sep and its own port (smu.sv 869-922, 1002-1043), "
+        "between u_smc or u_sep and its own port (smu.sv 797-850, 930-971), "
         "smu_wrapper.sv carries it whole to the macros in hw/top/smc_ip_integration.sv "
         "and hw/top/sep_ip_integration.sv, and no SMU logic reads or drives a field: the "
         "fields that toggle already prove every connection, and the rest record which "
@@ -249,7 +249,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "the SEP half, bits [383:0], of the external debug bus. sep.sv (1186-1275) "
         "packs SEP-internal status into 24 sixteen-bit lanes -- CPU trace, ECC and "
         "performance-counter strobes, interrupt and reset status, eFuse, token, remap "
-        "and filter-hit debug, and reserved zero fields -- and smu.sv (1384-1387) "
+        "and filter-hit debug, and reserved zero fields -- and smu.sv (1312-1315) "
         "only concatenates it under the "
         "adopter's bits and hands it to the SMC debug mux; the SEP bench grades each "
         "source.",
@@ -267,7 +267,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 "
         "(hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv 141-142, 1185-1219, and 76/104 for the "
         "AXI4-Lite prot outputs). smu.sv connects each bridge straight to its target "
-        "(711-716, 791-794, 963), so no other master drives these nets. Only the bits "
+        "(640-645, 720-723, 893-894), so no other master drives these nets. Only the bits "
         "those constants hold at 0 are taken; the INCR and AxCACHE bits at 1 rise on "
         "the first transfer and fall on a reset.",
         "a JTAG2AXI bridge that programs any of these attributes",
@@ -281,7 +281,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 "
         "(hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv 141-142, 1185-1219, and 76/104 for the "
         "AXI4-Lite prot outputs). smu.sv connects each bridge straight to its target "
-        "(711-716, 791-794, 963), so no other master drives these nets. Only the bits "
+        "(640-645, 720-723, 893-894), so no other master drives these nets. Only the bits "
         "those constants hold at 0 are taken; the INCR and AxCACHE bits at 1 rise on "
         "the first transfer and fall on a reset.",
         "a JTAG2AXI bridge that programs any of these attributes",
@@ -295,7 +295,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 "
         "(hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv 141-142, 1185-1219, and 76/104 for the "
         "AXI4-Lite prot outputs). smu.sv connects each bridge straight to its target "
-        "(711-716, 791-794, 963), so no other master drives these nets. Only the bits "
+        "(640-645, 720-723, 893-894), so no other master drives these nets. Only the bits "
         "those constants hold at 0 are taken; the INCR and AxCACHE bits at 1 rise on "
         "the first transfer and fall on a reset.",
         "a JTAG2AXI bridge that programs any of these attributes",
@@ -340,7 +340,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         ),
         "the SEP SPI pad fields sep_io_pkg::ot_spi_pad_map (sep_io_pkg.sv 79-96) "
         "assigns a constant: enable 1, txd[7:4] 0, dqs_oe_n and dqs_ie_n 1, dq_oe_n[7:4] "
-        "and dq_ie_n[7:4] 1, and the three mem_rebar pads 0. smu.sv (1192-1208) "
+        "and dq_ie_n[7:4] 1, and the three mem_rebar pads 0. smu.sv (1120-1137) "
         "computes sep_spi_pads from that function and assigns each field to its "
         "sep_spi_* net; -cm_noconst does not see through the function call, so the "
         "nets stay in the toggle population.",
@@ -353,7 +353,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         re.compile(r"^(sep_spi_|gen_sep\.sep_spi_pads\.)(txd|dq_ie_n|dq_oe_n)$"),
         "the SEP SPI pad fields sep_io_pkg::ot_spi_pad_map (sep_io_pkg.sv 79-96) "
         "assigns a constant: enable 1, txd[7:4] 0, dqs_oe_n and dqs_ie_n 1, dq_oe_n[7:4] "
-        "and dq_ie_n[7:4] 1, and the three mem_rebar pads 0. smu.sv (1192-1208) "
+        "and dq_ie_n[7:4] 1, and the three mem_rebar pads 0. smu.sv (1120-1137) "
         "computes sep_spi_pads from that function and assigns each field to its "
         "sep_spi_* net; -cm_noconst does not see through the function call, so the "
         "nets stay in the toggle population.",
@@ -616,8 +616,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
             r"^(sep_smn_inbound_axi_(req|resp)|smc_sys_axi_in_(req|resp))\.(aw|ar|b|r)\.id$"
         ),
         "ID bits [5:4] on the SEP and SMC inbound ports past the crossbar's ID width "
-        "converters. Each converter is built for 16 unique slave-port IDs (smu.sv 1130, "
-        "1154), so it remaps through axi_id_remap, which drives the 4-bit table index "
+        "converters. Each converter is built for 16 unique slave-port IDs (smu.sv 1058, "
+        "1082), so it remaps through axi_id_remap, which drives the 4-bit table index "
         "zero-extended to the 6-bit port (axi_id_remap.sv 131, 198-200).",
         "a converter built for more than 16 unique IDs",
         ("smu",),
