@@ -4026,8 +4026,6 @@ recovery attempt.
 
 *BFM / Model*: ocah_axi_vip
 
-*Tracking*: #2603
-
 *Randomization*: RAND-REP — entries 0 and 7 × two windows × `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch, run every seed. Seed varies the window data, the entry-15 granule window, and the bound-probe registers.
 
 *Objective*: Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 x `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15.
@@ -4113,8 +4111,6 @@ filter only ever sees `tx_len==0`.
 *Source Module*: `sep_fabric_remap_filter_csr_bank_test`
 
 *BFM / Model*: ocah_axi_vip
-
-*Tracking*: #2603
 
 *Objective*: R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, and that every entry of the alias remap bank and of the inbound and outbound filter banks holds its own value. The AP and STEE output-remap banks are checked on one seeded region each per seed. Each filter entry and remap region is an independent rule with its own storage, so a decode that aliased two entries, or a bank that implemented fewer entries than the map declares, would be invisible to a sweep that walks one entry per group.
 

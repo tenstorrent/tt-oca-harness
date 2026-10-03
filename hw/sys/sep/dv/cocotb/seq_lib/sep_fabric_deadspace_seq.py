@@ -24,8 +24,8 @@ owned elsewhere for live programming.
 The TRNG window is forwarded whole to an adopter endpoint on
 ``ext_trng_axil``; SEP allocates no register in it. With no external TRNG
 connected, as in the reference integration, no offset owns a register, and
-``hw/sys/sep/doc/memory_map.adoc`` requires the access to be refused: a read
-answers DECERR and a write SLVERR. The test grades that code per probe.
+``hw/sys/sep/doc/memory_map.adoc`` requires the access to be refused: a
+single-beat read or write answers DECERR. The test grades that code per probe.
 Its alias targets are the neighbouring ESRC registers, which an access
 that drops address bit 12 reaches.
 
