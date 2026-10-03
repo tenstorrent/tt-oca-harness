@@ -454,6 +454,65 @@ dashboard pages under `tools/dv/doc/`.
 There is no checked-in 98%-after-waiver figure. SMC does not inherit
 an unwritten default. Do not invent one.
 
+[[smc-cov-reviewers]]
+==== Reviewers
+
+An entry's `reviewer` differs from its `owner`, and the review class follows
+the kind of fact the entry rests on.
+
+[cols="2,3,2",options="header",]
+|===
+|Class family |Fact it rests on |Review
+|A1 to A11, C1, C3 to C16, D1, D2, F2 to F9, P1 to P31, X1, and the toggle
+classes UNION-ALIAS, EFUSE-IMAGE-COPY, EFUSE-FIELD-MAP-CONST,
+VERSION-ID-CONST and ERR-SLV-CONST |a design fact: generated-code structure,
+an elaboration constant, a tie in the RTL, or an XOR reduction |design review
+|B1, B2, B4, B6 to B9, B12 to B14, and the toggle classes ATOP-ZERO,
+EXT-IRQ-TIED and PARTIAL-VECTOR |a bench fact: what this testbench ties,
+drives or leaves undriven |DV review
+|T1 to T12, and the line and condition rows of the same units in
+`smc_ports_only_exclusions.el` |a unit graded on its ports |design review,
+recorded in `smc_reviewed_exclusions.toml`
+|A12, A13, F10, F11, R1 to R9 |design engineering reviewed the points
+themselves as not exercised by this bench |design review, recorded in
+`smc_reviewed_exclusions.toml`
+|GROUP-VENDORED-I3C |a covergroup declared inside vendored RTL that another
+package grades |coverage-flow review
+|the unreachability list |a formal proof over the environment
+<<smc-fcov-unreachability-list>> states |design review of the regenerated list
+|a `pass:[[[holes]]]` entry |as above for the class the hole names; a
+`fix_model` or `cover` disposition takes DV review |as above
+|===
+
+Every entry change is graded against a named finished run with the runner's
+`--waive` re-grade.
+
+[[smc-cov-reopen]]
+==== Reopen triggers
+
+An accepted exclusion or waiver stays accepted until the policy changes; the
+calendar does not reopen it. It reopens, by the entry being removed at the
+next regeneration or by a `pass:[[[holes]]]` entry's status returning to
+`open`, when:
+
+* an RTL change moves the module or instance checksum of the scope the entry
+  names, which drops the entry on its own, since URG applies no entry whose
+  checksum differs from the design it reports on;
+* an enrolled leaf covers the point: the nine per-run files are written from
+  each graded run's uncovered set, so a covered point is not written again,
+  and the runner rejects an accepted `pass:[[[holes]]]` entry whose selector
+  matches a covered point;
+* the retiring condition the class's ANNOTATION states is met -- for the
+  reviewed classes, design engineering withdrawing the review recorded in
+  `smc_reviewed_exclusions.toml`;
+* the policy's `scope_epoch` changes, or the compile-time scope
+  (`smc_cov_scope.hier`, `smc_cov_scope.vlt`) changes which points enter the
+  database;
+* a regenerated list is written from a new graded run, which replaces every
+  entry the run no longer leaves uncovered;
+* for the unreachability list, the pinned SHA-256 and the file differ, which
+  makes the runner refuse the policy until a new entry is written.
+
 [[smc-fcov-unreachability-list]]
 ==== Unreachability exclusion list
 
