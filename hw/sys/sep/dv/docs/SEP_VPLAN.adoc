@@ -4123,7 +4123,7 @@ filter only ever sees `tx_len==0`.
 *Test Procedure*:
 
 [arabic]
-. Write each bank and require the readback to differ from the observed pre-write.
+. Write each bank and require the readback to differ from the observed pre-write. Each written word is read first; when the seeded pattern equals that value under the word's R/W field mask, every R/W bit of the pattern is inverted, so a pattern equal to the reset value cannot hide a register that ignores the write.
 . Prove RO `data_bus_width` ignores writes on both filters.
 . Write a distinct pattern into every entry of each bank, then read all of them back, and require each to hold its own pattern.
 . Set and try to clear the alias `valid` bit; it clears.
@@ -4137,11 +4137,11 @@ filter only ever sees `tx_len==0`.
 |CHK-NONVAC
 |A written register's readback differs from its *observed* pre-write value, and the neighbouring field is undisturbed. The pre-write sample is required: asserting only that the written pattern is non-zero is a property of the stimulus constructor, not of storage.
 |CHK-ALIAS-RW
-|Region start, end and attribute registers are read/write, including the 64-bit upper word.
+|Region start, end and attribute registers are read/write, including the 64-bit upper word: `REGION_START` hi, `REGION_END` lo and `REGION_ATTRS` lo each read back the written value, and that value differs from the word's *observed* pre-write value.
 |CHK-AP-STEE-RW
-|The output-remap CSRs are read/write across both banks.
+|The output-remap CSRs are read/write across both banks: `REGION_ATTRS` lo and hi of the seeded AP and STEE region each read back the written value, and that value differs from the word's *observed* pre-write value.
 |CHK-INFILT-CFG / CHK-OUTFILT-CFG
-|Filter-configuration read/write fields (`rd`, `wr`, `ns`, `burst`, `src_id`, `group_id`) read back exactly on both the inbound and the outbound bank.
+|Filter-configuration read/write fields (`rd`, `wr`, `ns`, `burst`, `src_id`, `group_id`) read back exactly on both the inbound and the outbound bank, and differ from the word's *observed* pre-write value.
 |CHK-BANK-INDEP
 |Every R/W word of every bank entry holds its own distinct pattern: 224 words across 16 alias regions (`REGION_START` lo+hi, `REGION_END`, `REGION_ATTRS` lo+hi) and 48 filter entries (`FILTER_CONFIG`, `START_ADDR`, `END_ADDR`) are each written a value carrying their bank number, entry index and word number, then all are read back and required to match through the same mask the write used. The bank term matters because the two filter banks are instances of one RDL array type and share stride and word list: without it, inbound entry *k* and outbound entry *k* would carry the same pattern and a decode that aliased one onto the other would still read back what it wrote. A bank that decodes two entries to one storage, or that implements fewer entries than the address map declares, fails here and the message names the entry and word; the walked word count is asserted against 224 so a short walk cannot pass on whatever it reached, and every entry count comes from the register export rather than a sequence literal. The per-group field sweep above picks one random entry per seed, so this is the only leg that shows the other entries exist and are distinct. Deterministic: the same words are covered on every seed, so the three `reseed` runs repeat this leg rather than sampling different slices. `FILTER_CONFIG`'s hi word is not walked -- its only field above bit 31 is `locked[63]`, which `CHK-WOSET` owns; the read-only `data_bus_width` is masked out here and graded by `CHK-RO`.
 |CHK-RO

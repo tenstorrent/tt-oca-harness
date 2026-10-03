@@ -6,8 +6,9 @@ Combined-per-group CSR sweep over the SEP System-block fabric banks on the CPU-L
 AXI master (no_cpu): local-master alias-remap, AP/STEE output-remap, and the
 inbound/outbound filter config banks. Proves field R/W + 64-bit upper-word access +
 the FILTER write-once-set lock (FILTER_CONFIG locked[63]) + the RO data_bus_width
-field, with a non-vacuity anchor (a written value differs from reset and is confined
-to its field). The alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
+field. Every word the field sweep writes is read first, and the value written
+differs from that observed pre-write value, so each readback shows a change of
+DUT state on every seed; the alias START_lo write is also confined to its field. The alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
 not woset; only the filter locked bit is woset (CHK-VALID-RW vs CHK-WOSET). CSR
 layer only -- this entry does not prove live remap translation
 or outbound-filter drop.
@@ -30,16 +31,21 @@ import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import (
     ALIAS_ATTRS,
+    ALIAS_ATTRS_MASK,
     ALIAS_BASE,
     ALIAS_END,
+    ALIAS_END_MASK,
     ALIAS_END_RESET,
     ALIAS_START,
+    ALIAS_START_HI_MASK,
+    ALIAS_START_MASK,
     ALIAS_STRIDE,
     AP_BASE,
     CLOCK_GATE_UNGATE,
     DBW_LSB,
     DBW_MASK,
     DBW_RO_VAL,
+    FILTER_CFG_LO_FIELDS,
     FILTER_CONFIG,
     FILTER_END_ADDR,
     FILTER_RW_MASK,
@@ -48,6 +54,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     INFILT_BASE,
     OUTFILT_BASE,
     REMAP_ATTRS,
+    REMAP_OFFSET_LO_MASK,
+    REMAP_RW_HI_MASK,
     REMAP_STRIDE,
     RESP_DECERR,
     RESP_OKAY,
@@ -129,6 +137,26 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
             count,
         )
 
+    async def _rw_word(self, chk: str, label: str, addr: int, pattern: int, mask: int) -> str:
+        """Grade one written word: exact readback and a change from the pre-write value.
+
+        ``rw_changed`` reads the word before the write and writes a value that
+        differs from it under ``mask``, so a register that ignores the write
+        fails here on every seed, including a seed whose pattern equals the
+        reset value. Returns "pre->readback" for the caller's PASS line.
+        """
+        pre, wrote, rb = await self.fab.rw_changed(addr, pattern, mask)
+        # Whole-word compare: bits outside ``mask`` are reserved and read 0.
+        assert rb == wrote, (
+            f"{chk} FAIL: {label} wrote 0x{wrote:08x} (pre-write 0x{pre:08x}), read back 0x{rb:08x}"
+        )
+        assert rb & mask != pre & mask, (
+            f"{chk} FAIL: {label} readback 0x{rb:08x} equals its pre-write value "
+            f"0x{pre:08x} under mask 0x{mask:08x} -- the write did not change "
+            f"observable state"
+        )
+        return f"0x{pre:08x}->0x{rb:08x}"
+
     async def _chk_alias_rw_and_nonvac(self) -> None:
         """CHK-ALIAS-RW + CHK-NONVAC on the seeded alias-remap region (no woset touched)."""
         c = self.cfg_csr
@@ -137,67 +165,73 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         end_lo = r + ALIAS_END
         attrs_lo = r + ALIAS_ATTRS
 
-        # CHK-NONVAC: a written value differs from the reset value (0) and is confined
-        # to its field -- the neighbor END_lo stays 0 after we write START_lo (a
-        # stuck-at-reset bank fails the readback; a field-bleed fails the neighbor).
-        # Read the register BEFORE writing it, so "differs from reset" is an observation
-        # of the DUT, not a property of the written value.
-        pre = await self.fab.read32(start_lo)
-        rb = await self.fab.rw_readback(start_lo, c.start_lo)
-        assert rb == c.start_lo, (
-            f"alias r{c.alias_rw_region} START_lo R/W: 0x{rb:08x} != 0x{c.start_lo:08x}"
-        )
-        assert rb != pre, (
-            f"alias r{c.alias_rw_region} START_lo readback 0x{rb:08x} equals its "
-            f"pre-write value -- the write did not change observable state"
+        # CHK-NONVAC: the START_lo readback differs from the value the register held
+        # before the write (an observation of the DUT, not a property of the written
+        # value), and the neighbour END_lo still holds its reset value (a field-bleed
+        # fails the neighbour).
+        start_lo_obs = await self._rw_word(
+            "CHK-NONVAC",
+            f"alias r{c.alias_rw_region} START_lo",
+            start_lo,
+            c.start_lo,
+            ALIAS_START_MASK,
         )
         neighbor = await self.fab.read32(end_lo)
         assert neighbor == ALIAS_END_RESET, (
-            f"alias END_lo neighbor changed to 0x{neighbor:08x} after START_lo write "
-            f"(not confined); expected its reset value 0x{ALIAS_END_RESET:08x}"
+            f"CHK-NONVAC FAIL: alias END_lo neighbor changed to 0x{neighbor:08x} after "
+            f"START_lo write (not confined); expected its reset value 0x{ALIAS_END_RESET:08x}"
         )
         self.logger.info(
-            "CHK-NONVAC PASS: alias r%d START_lo 0x%08x->0x%08x (observed change), "
-            "neighbor END_lo 0",
+            "CHK-NONVAC PASS: alias r%d START_lo %s (observed change), neighbor END_lo 0x%08x",
             c.alias_rw_region,
-            pre,
-            rb,
+            start_lo_obs,
+            neighbor,
         )
 
         # CHK-ALIAS-RW: 64-bit START upper word (addr[55:32]=hi[23:0]; hi[31:24] reserved
-        # read 0) + END (4KB-aligned) + ATTRS remap offset.
-        rb = await self.fab.rw_readback(start_hi, c.start_hi)
-        assert rb == c.start_hi, (
-            f"alias START_hi (addr[55:32]) R/W: 0x{rb:08x} != 0x{c.start_hi:08x}"
-        )
-        rb = await self.fab.rw_readback(end_lo, c.end_lo)
-        assert rb == c.end_lo, f"alias END_lo R/W: 0x{rb:08x} != 0x{c.end_lo:08x}"
-        rb = await self.fab.rw_readback(attrs_lo, c.attrs_lo)
-        assert rb == c.attrs_lo, (
-            f"alias ATTRS_lo remap-offset R/W: 0x{rb:08x} != 0x{c.attrs_lo:08x}"
-        )
+        # read 0) + END (4KB-aligned) + ATTRS remap offset. Each word reads back what
+        # was written and differs from its observed pre-write value.
+        obs = []
+        for label, addr, pattern, mask in (
+            ("START_hi", start_hi, c.start_hi, ALIAS_START_HI_MASK),
+            ("END_lo", end_lo, c.end_lo, ALIAS_END_MASK),
+            ("ATTRS_lo", attrs_lo, c.attrs_lo, ALIAS_ATTRS_MASK),
+        ):
+            got = await self._rw_word(
+                "CHK-ALIAS-RW", f"alias r{c.alias_rw_region} {label}", addr, pattern, mask
+            )
+            obs.append(f"{label} {got}")
         self.logger.info(
-            "CHK-ALIAS-RW PASS: alias r%d REGION_START/END/ATTRS R/W + 64-bit upper word",
+            "CHK-ALIAS-RW PASS: alias r%d REGION_START/END/ATTRS R/W + 64-bit upper word, "
+            "each changed from its pre-write value: %s",
             c.alias_rw_region,
+            ", ".join(obs),
         )
 
     async def _chk_ap_stee_rw(self) -> None:
         """CHK-AP-STEE-RW: AP and STEE output-remap (seeded region) attrs R/W (CSR layer)."""
         c = self.cfg_csr
+        obs = []
         for name, base, region, plo, phi in (
             ("AP", AP_BASE, c.ap_region, c.ap_lo, c.ap_hi),
             ("STEE", STEE_BASE, c.stee_region, c.stee_lo, c.stee_hi),
         ):
             r = base + region * REMAP_STRIDE
             lo, hi = r + REMAP_ATTRS, r + REMAP_ATTRS + 4
-            rb = await self.fab.rw_readback(lo, plo)  # offset lo word
-            assert rb == plo, f"{name} r{region} remap ATTRS_lo R/W: 0x{rb:08x} != 0x{plo:08x}"
-            rb = await self.fab.rw_readback(hi, phi)  # offset hi word
-            assert rb == phi, f"{name} r{region} remap ATTRS_hi R/W: 0x{rb:08x} != 0x{phi:08x}"
+            for label, addr, pattern, mask in (
+                ("ATTRS_lo", lo, plo, REMAP_OFFSET_LO_MASK),  # offset lo word
+                ("ATTRS_hi", hi, phi, REMAP_RW_HI_MASK),  # offset hi word + valid
+            ):
+                got = await self._rw_word(
+                    "CHK-AP-STEE-RW", f"{name} r{region} remap {label}", addr, pattern, mask
+                )
+                obs.append(f"{name} {label} {got}")
         self.logger.info(
-            "CHK-AP-STEE-RW PASS: AP r%d + STEE r%d output-remap CSRs R/W (64-bit)",
+            "CHK-AP-STEE-RW PASS: AP r%d + STEE r%d output-remap CSRs R/W (64-bit), "
+            "each changed from its pre-write value: %s",
             c.ap_region,
             c.stee_region,
+            ", ".join(obs),
         )
 
     async def _chk_filter_cfg_and_ro(self) -> None:
@@ -208,23 +242,39 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
             ("OUTFILT", OUTFILT_BASE, c.outfilt_fields_entry),
         ):
             cfg_lo = base + entry * FILTER_STRIDE + FILTER_CONFIG
-            rb = await self.fab.rw_readback(cfg_lo, c.filter_pattern)
+            chk = f"CHK-{name}-CFG"
+            pre, wrote, rb = await self.fab.rw_changed(
+                cfg_lo, c.filter_pattern, FILTER_CFG_LO_FIELDS
+            )
             rw = rb & FILTER_RW_MASK
-            assert rw == c.filter_pattern, (
-                f"{name} e{entry} FILTER_CONFIG RW fields: read 0x{rw:08x} != 0x{c.filter_pattern:08x}"
+            assert rw == wrote, (
+                f"{chk} FAIL: e{entry} FILTER_CONFIG RW fields: wrote 0x{wrote:08x} "
+                f"(pre-write 0x{pre:08x}), read 0x{rw:08x}"
+            )
+            assert rw != pre & FILTER_RW_MASK, (
+                f"{chk} FAIL: e{entry} FILTER_CONFIG RW fields read 0x{rw:08x}, equal to "
+                f"the pre-write value -- the write did not change observable state"
             )
             dbw = (rb >> DBW_LSB) & DBW_MASK
-            assert dbw == DBW_RO_VAL, f"{name} e{entry} data_bus_width read {dbw} != {DBW_RO_VAL}"
+            assert dbw == DBW_RO_VAL, (
+                f"{chk} FAIL: e{entry} data_bus_width read {dbw} != {DBW_RO_VAL}"
+            )
             self.logger.info(
-                "CHK-%s-CFG PASS: e%d FILTER_CONFIG RW fields read back exactly "
-                "(rd/wr/ns/burst/src_id/group_id)",
-                name,
+                "%s PASS: e%d FILTER_CONFIG 0x%08x->0x%08x, RW fields "
+                "(rd/wr/ns/burst/src_id/group_id) read back the written 0x%08x and "
+                "changed from the pre-write value; data_bus_width %d",
+                chk,
                 entry,
+                pre,
+                rb,
+                wrote,
+                dbw,
             )
             # CHK-RO: data_bus_width ignores a write (stays 3).
             orig, after = await self.fab.ro_probe(cfg_lo, DBW_LSB, DBW_MASK.bit_count())
             assert orig == DBW_RO_VAL and after == DBW_RO_VAL, (
-                f"{name} e{entry} data_bus_width RO: orig={orig} after-write={after}, expected 3/3"
+                f"CHK-RO FAIL: {name} e{entry} data_bus_width RO: orig={orig} "
+                f"after-write={after}, expected 3/3"
             )
         self.logger.info("CHK-RO PASS: data_bus_width reads 3 and ignores writes (both filters)")
 
