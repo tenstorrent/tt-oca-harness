@@ -22,6 +22,8 @@ class ocah_axi_pipeline_test extends ocah_axi_vip_base_test;
     m_env.m_checker.required_ids.push_back("CHK-AXI-PIPE-STALL");
     m_env.m_checker.required_ids.push_back("CHK-AXI-PIPE-DATA");
     m_env.m_checker.required_ids.push_back("CHK-AXI-PIPE-OVERLAP");
+    m_env.m_checker.required_ids.push_back("CHK-AXI-PIPE-TIMEOUT");
+    m_env.m_checker.required_ids.push_back("CHK-AXI-PIPE-ATOMIC");
     m_env.m_axi_cfg.require_checks = 1'b1;
     m_env.m_axi_cfg.required_ids.push_back("CHK-AXI-RESP");
     m_env.m_axi_cfg.required_ids.push_back("CHK-AXI-RDATA");

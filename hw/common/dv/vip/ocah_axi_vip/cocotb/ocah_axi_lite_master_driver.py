@@ -26,7 +26,7 @@ from cocotb.triggers import ClockCycles, Combine, First, ReadOnly, RisingEdge
 from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 from cocotbext.axi.constants import AxiProt
 
-__all__ = ["OcahAxiLiteMasterDriver"]
+__all__ = ["OcahAxiLiteMasterDriver", "OcahAxiPipelineTimeoutError"]
 
 
 def _sample_int(handle) -> int:
@@ -99,7 +99,6 @@ class _BeatLane:
         self.now = 0
         self.accepted = 0
         self.launched = 0
-        self.stall_cycles = 0
 
     def waiting(self) -> bool:
         """True while the next unlaunched beat is not yet due."""
@@ -114,11 +113,8 @@ class _BeatLane:
         while True:
             await RisingEdge(self._clock)
             self.now += 1
-            valid = _sample_int(self._valid)
-            if valid and _sample_int(self._ready):
+            if _sample_int(self._valid) and _sample_int(self._ready):
                 self.accepted += 1
-            elif valid:
-                self.stall_cycles += 1
             await ReadOnly()
             self.launched = self.accepted + _sample_int(self._valid)
             self.arm()
@@ -151,6 +147,30 @@ class _ReadyHold:
         self._channel.pause = False
         self.counting = False
         self.released = True
+
+
+class OcahAxiPipelineTimeoutError(TimeoutError):
+    """Expiry of ``pipeline``, carrying what it collected before the bound.
+
+    ``raws`` holds one raw response per access in list order, ``None`` for an
+    access whose response was not collected. The stall counters cover every
+    cycle up to and including the one the bound expired on.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        raws: tuple,
+        aw_stall_cycles: int,
+        w_stall_cycles: int,
+        ar_stall_cycles: int,
+    ) -> None:
+        super().__init__(message)
+        self.raws = raws
+        self.aw_stall_cycles = aw_stall_cycles
+        self.w_stall_cycles = w_stall_cycles
+        self.ar_stall_cycles = ar_stall_cycles
 
 
 class OcahAxiLiteMasterDriver:
@@ -632,8 +652,11 @@ class OcahAxiLiteMasterDriver:
         at an unaligned address asks for the bytes up to the end of its beat.
         Returns ``(raws, aw_stall_cycles, w_stall_cycles, ar_stall_cycles)``
         with ``raws`` in list order. Requires idle read and write engines.
-        Raises ``TimeoutError`` after ``timeout_cycles`` cycles with no
-        handshake on any channel while no beat or READY hold is still
+        Every access is checked against the backend's address width,
+        protection signals and strobe mapping before any is issued, so an
+        invalid one raises ``ValueError`` with the bus untouched. Raises
+        ``OcahAxiPipelineTimeoutError`` after ``timeout_cycles`` cycles with
+        no handshake on any channel while no beat or READY hold is still
         waiting on its delay.
         """
         write_if = self._master.write_if
@@ -645,21 +668,35 @@ class OcahAxiLiteMasterDriver:
         writes = []
         reads = []
         for index, op in enumerate(ops):
-            prot = AxiProt(int(AxiProt.NONSECURE if op.prot is None else op.prot))
             if op.direction == "write":
                 offset, payload = self.strb_payload(op.data, op.strb)
                 address = int(op.address) + offset
-                if address % self.bytes_per_beat + len(payload) > self.bytes_per_beat:
+                length = len(payload)
+                if address % self.bytes_per_beat + length > self.bytes_per_beat:
                     raise ValueError(
                         f"{self.name}: pipeline write at 0x{address:X} spans two beats"
                     )
-                writes.append((index, address, payload, prot, op))
+                lane, engine, request = writes, write_if, payload
+                prot_present = write_if.awprot_present
             elif op.direction == "read":
                 address = int(op.address)
                 length = self.bytes_per_beat - address % self.bytes_per_beat
-                reads.append((index, address, length, prot, op))
+                lane, engine, request = reads, read_if, length
+                prot_present = read_if.arprot_present
             else:
                 raise ValueError(f"{self.name}: unknown pipeline direction {op.direction!r}")
+            where = f"{self.name}: pipeline {op.direction} {index} at {address:#x}"
+            if address < 0 or address + length > 2**engine.address_width:
+                raise ValueError(f"{where} leaves the {engine.address_width}-bit address space")
+            prot = AxiProt.NONSECURE if op.prot is None else op.prot
+            if not (isinstance(prot, int) and 0 <= prot <= 7):
+                raise ValueError(f"{where} has prot={prot!r}; AxiProt takes 0 to 7")
+            if prot != AxiProt.NONSECURE and not prot_present:
+                raise ValueError(f"{where} sets prot={prot} on a bus without a protection signal")
+            delays = (op.aw_valid_delay, op.w_valid_delay, op.ar_valid_delay)
+            if not all(isinstance(delay, int) and delay >= 0 for delay in delays):
+                raise ValueError(f"{where} has delays {delays}; each must be a non-negative int")
+            lane.append((index, address, request, AxiProt(prot), op))
 
         aw_bus = self._bus.write.aw
         w_bus = self._bus.write.w
@@ -668,13 +705,12 @@ class OcahAxiLiteMasterDriver:
         r_bus = self._bus.read.r
         sources = (write_if.aw_channel, write_if.w_channel, read_if.ar_channel)
         limits = [source.queue_occupancy_limit for source in sources]
-        handshakes = (
+        requests = (
             (aw_bus.awvalid, aw_bus.awready),
             (w_bus.wvalid, w_bus.wready),
-            (b_bus.bvalid, b_bus.bready),
             (ar_bus.arvalid, ar_bus.arready),
-            (r_bus.rvalid, r_bus.rready),
         )
+        responses = ((b_bus.bvalid, b_bus.bready), (r_bus.rvalid, r_bus.rready))
         tasks = []
         try:
             lanes = (
@@ -683,21 +719,21 @@ class OcahAxiLiteMasterDriver:
                     write_if.aw_channel,
                     aw_bus.awvalid,
                     aw_bus.awready,
-                    [int(op.aw_valid_delay) for *_, op in writes],
+                    [op.aw_valid_delay for *_, op in writes],
                 ),
                 _BeatLane(
                     self._clock,
                     write_if.w_channel,
                     w_bus.wvalid,
                     w_bus.wready,
-                    [int(op.w_valid_delay) for *_, op in writes],
+                    [op.w_valid_delay for *_, op in writes],
                 ),
                 _BeatLane(
                     self._clock,
                     read_if.ar_channel,
                     ar_bus.arvalid,
                     ar_bus.arready,
-                    [int(op.ar_valid_delay) for *_, op in reads],
+                    [op.ar_valid_delay for *_, op in reads],
                 ),
             )
             holds = (
@@ -714,25 +750,28 @@ class OcahAxiLiteMasterDriver:
             for index, address, length, prot, _ in reads:
                 events[index] = read_if.init_read(address, length, prot=prot)
             tasks = [cocotb.start_soon(gate.run()) for gate in (*lanes, *holds)]
+            stalls = [0, 0, 0]
             idle = 0
             while not all(event.is_set() for event in events):
                 await RisingEdge(self._clock)
-                moved = any(self._sample(v) and self._sample(r) for v, r in handshakes)
+                for channel, (valid, ready) in enumerate(requests):
+                    if self._sample(valid) and not self._sample(ready):
+                        stalls[channel] += 1
+                moved = any(self._sample(v) and self._sample(r) for v, r in (*requests, *responses))
                 waiting = any(lane.waiting() for lane in lanes) or any(
                     hold.counting for hold in holds
                 )
                 idle = 0 if (moved or waiting) else idle + 1
                 if idle >= int(timeout_cycles):
                     done = sum(event.is_set() for event in events)
-                    raise TimeoutError(
-                        f"{self.name}: pipeline stalled with {done}/{len(ops)} accesses complete"
+                    raise OcahAxiPipelineTimeoutError(
+                        f"{self.name}: pipeline stalled with {done}/{len(ops)} accesses complete",
+                        raws=tuple(event.data if event.is_set() else None for event in events),
+                        aw_stall_cycles=stalls[0],
+                        w_stall_cycles=stalls[1],
+                        ar_stall_cycles=stalls[2],
                     )
-            return (
-                tuple(event.data for event in events),
-                lanes[0].stall_cycles,
-                lanes[1].stall_cycles,
-                lanes[2].stall_cycles,
-            )
+            return (tuple(event.data for event in events), *stalls)
         finally:
             for task in tasks:
                 task.cancel()

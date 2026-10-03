@@ -19,6 +19,7 @@ package ocah_axi_vip_seq_lib_pkg;
 
   `include "ocah_axi_id_match_test_seq.svh"
   `include "ocah_axi_id_mismatch_test_seq.svh"
+  `include "ocah_axi_pipeline_reject_catcher.svh"
   `include "ocah_axi_pipeline_test_seq.svh"
   `include "ocah_axi_struct_bridge_test_seq.svh"
 

@@ -10,17 +10,22 @@ RVALID, that each response returns to its own access, and that the reported
 stall cycles match the wires. Every claim is judged against a per-cycle
 recording of the l_axi nets, with and without the responder stalling its
 request channels. Data integrity is cross-checked through the lite slave's
-backdoor, so an ordering-only pass cannot mask a misrouted response.
+backdoor, so an ordering-only pass cannot mask a misrouted response. After
+the pipelines, a list whose write times out behind AW and W stalls while its
+read completes, and lists rejected for an invalid access before any of their
+accesses reaches the bus.
 """
 
 from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Awaitable
+from typing import Any
 
 import cocotb
-from cocotb.triggers import Event, RisingEdge
-from ocah_axi_vip import OcahAxiPipelineOp
+from cocotb.triggers import ClockCycles, Event, ReadOnly, RisingEdge
+from ocah_axi_vip import RESP_OKAY, OcahAxiPipelineOp, OcahAxiPipelineResult
 from ocah_axi_vip_harness import (
     build_lite_stack,
     handshake_cycles,
@@ -28,8 +33,27 @@ from ocah_axi_vip_harness import (
     stall_cycles,
     start_clock_reset,
 )
+from ocah_checker import OcahChecker
 
 log = logging.getLogger("cocotb.tb.ocah_axi_lite_pipeline_test")
+
+CHK_ORDER = "CHK-AXI-PIPE-ORDER"
+CHK_LAUNCH = "CHK-AXI-PIPE-LAUNCH"
+CHK_HOLD = "CHK-AXI-PIPE-HOLD"
+CHK_STALL = "CHK-AXI-PIPE-STALL"
+CHK_DATA = "CHK-AXI-PIPE-DATA"
+CHK_OVERLAP = "CHK-AXI-PIPE-OVERLAP"
+CHK_TIMEOUT = "CHK-AXI-PIPE-TIMEOUT"
+CHK_ATOMIC = "CHK-AXI-PIPE-ATOMIC"
+
+# The bound the partial-timeout list runs under, and an AW/W READY stall that
+# outlasts it so the bound, not the responder, ends the operation.
+SHORT_TIMEOUT_CYCLES = 50
+STALL_CYCLES = 4 * SHORT_TIMEOUT_CYCLES
+# Cycles for the released responder to retire the abandoned write.
+DRAIN_CYCLES = 64
+# Cycles recorded after a rejected list.
+QUIET_CYCLES = 20
 
 _KEYS = (
     "awvalid",
@@ -56,22 +80,36 @@ def _sample(handle) -> int:
 
 
 async def record(dut, stop: Event) -> list[dict[str, int]]:
-    """Record the l_axi nets once per cycle, from the next edge until ``stop`` is set."""
+    """Record the l_axi nets once per cycle through the edge ``stop`` is set on."""
     samples: list[dict[str, int]] = []
-    while not stop.is_set():
+    while True:
         await RisingEdge(dut.clk)
         samples.append({key: _sample(getattr(dut, f"l_axi_{key}")) for key in _KEYS})
-    return samples
+        await ReadOnly()
+        if stop.is_set():
+            return samples
+
+
+async def recorded(dut, operation: Awaitable[Any]) -> tuple[Any, list[dict[str, int]]]:
+    """Await ``operation`` under a recording that ends on the edge it returns on."""
+    stop = Event()
+    recorder = cocotb.start_soon(record(dut, stop))
+    try:
+        value = await operation
+    finally:
+        stop.set()
+    return value, await recorder
 
 
 def check_lane(
+    checker: OcahChecker,
     samples: list[dict[str, int]],
     channel: str,
     payload: str,
     expected: list[int],
     delays: list[int],
     *,
-    index: int,
+    ctx: str,
 ) -> list[int]:
     """Judge one request channel's order and launch cycles; return its handshake cycles.
 
@@ -80,46 +118,75 @@ def check_lane(
     after the beat ahead of it was accepted.
     """
     valid, ready = f"{channel}valid", f"{channel}ready"
+    name = channel.upper()
     hs = handshake_cycles(samples, valid, ready)
-    assert len(hs) == len(expected), (
-        f"op {index}: {len(hs)} {channel.upper()} handshakes on the wire, expected {len(expected)}"
-    )
-    assert [samples[c][payload] for c in hs] == expected, (
-        f"op {index}: {channel.upper()} order {[hex(samples[c][payload]) for c in hs]} "
-        f"!= {[hex(value) for value in expected]}"
-    )
-    for beat, delay in enumerate(delays):
+    if not checker.expect_equal(
+        CHK_ORDER, len(hs), len(expected), context=f"{ctx} {name} handshakes"
+    ):
+        return hs
+    for beat, (value, delay) in enumerate(zip(expected, delays)):
         floor = hs[beat - 1] + 1 if beat else 0
-        launch = next(c for c in range(floor, len(samples)) if samples[c][valid])
-        assert launch == max(delay + 1, floor), (
-            f"op {index}: {channel.upper()} beat {beat} launched at {launch}, "
-            f"expected max(delay {delay} + 1, {floor})"
+        checker.expect_equal(
+            CHK_ORDER, samples[hs[beat]][payload], value, context=f"{ctx} {name} beat {beat}"
         )
-        assert all(samples[c][valid] for c in range(launch, hs[beat] + 1)), (
-            f"op {index}: {channel.upper()} beat {beat} dropped VALID before its handshake"
+        launch = next(c for c in range(floor, len(samples)) if samples[c][valid])
+        checker.expect_equal(
+            CHK_LAUNCH,
+            launch,
+            max(delay + 1, floor),
+            context=f"{ctx} {name} beat {beat} delay {delay} floor {floor}",
+        )
+        checker.expect_true(
+            CHK_LAUNCH,
+            all(samples[c][valid] for c in range(launch, hs[beat] + 1)),
+            context=f"{ctx} {name} beat {beat} held VALID",
         )
     return hs
 
 
 def check_hold(
-    samples: list[dict[str, int]], channel: str, hold: int, hs: list[int], *, index: int
+    checker: OcahChecker,
+    samples: list[dict[str, int]],
+    channel: str,
+    hold: int,
+    hs: list[int],
+    *,
+    ctx: str,
 ) -> None:
     """READY stays low for ``hold`` cycles from the first VALID."""
     if not hs or hold == 0:
         return
     valid, ready = f"{channel}valid", f"{channel}ready"
     first = next(c for c, row in enumerate(samples) if row[valid])
-    assert hs[0] - first >= hold, (
-        f"op {index}: first {channel.upper()} handshake {hs[0] - first} cycles after "
-        f"{channel.upper()}VALID, hold {hold}"
+    low = not any(row[ready] for row in samples[first : first + hold])
+    checker.expect_true(
+        CHK_HOLD,
+        hs[0] - first >= hold and low,
+        context=f"{ctx} {channel.upper()} first={first} handshake={hs[0]} hold={hold}",
     )
-    assert not any(row[ready] for row in samples[first : first + hold]), (
-        f"op {index}: {channel.upper()}READY rose inside the {hold}-cycle hold"
-    )
+
+
+def check_stalls(
+    checker: OcahChecker,
+    check_id: str,
+    result: OcahAxiPipelineResult,
+    samples: list[dict[str, int]],
+    *,
+    ctx: str,
+) -> None:
+    """Each request channel's reported stall cycles equal the recorded ones."""
+    for channel, reported in (
+        ("aw", result.aw_stall_cycles),
+        ("w", result.w_stall_cycles),
+        ("ar", result.ar_stall_cycles),
+    ):
+        wire = stall_cycles(samples, f"{channel}valid", f"{channel}ready")
+        checker.expect_equal(check_id, reported, wire, context=f"{ctx} {channel.upper()} stalls")
 
 
 async def run_pipeline(
     dut,
+    checker: OcahChecker,
     seq,
     slave,
     *,
@@ -131,9 +198,10 @@ async def run_pipeline(
     memory: dict[int, int],
 ) -> tuple[list[int], list[int]]:
     """Issue one pipeline, judge the wire recording, and return the B and AR handshakes."""
+    ctx = f"op={index}"
     log.info(
-        "op %d: %d accesses (%s) b_hold=%d r_hold=%d stall=%d",
-        index,
+        "%s: %d accesses (%s) b_hold=%d r_hold=%d stall=%d",
+        ctx,
         len(ops),
         "".join(op.direction[0] for op in ops),
         b_hold,
@@ -144,71 +212,174 @@ async def run_pipeline(
         slave.sequence.enable_backpressure(channels=("aw", "w", "ar"), stall_cycles=stall)
     else:
         slave.sequence.disable_backpressure()
-    stop = Event()
-    recorder = cocotb.start_soon(record(dut, stop))
-    result = await seq.pipeline_result(ops, b_hold_cycles=b_hold, r_hold_cycles=r_hold)
-    stop.set()
-    samples = await recorder
+    result, samples = await recorded(
+        dut, seq.pipeline_result(ops, b_hold_cycles=b_hold, r_hold_cycles=r_hold)
+    )
 
     # Each word takes one direction per list, so a read returns the word as
     # it stood before the list.
-    assert result.ok, f"op {index}: responses {[r.resp for r in result.results]}"
-    for op, res in zip(ops, result.results):
+    for position, (op, res) in enumerate(zip(ops, result.results)):
+        checker.expect_true(
+            CHK_DATA,
+            res.ok and not res.timed_out,
+            context=f"{ctx} access {position} resp={res.resp}",
+        )
         if op.direction == "write":
             memory[op.address] = op.data
         else:
-            shift = 8 * (op.address % 4)
-            expected = memory[op.address & ~0x3] >> shift
-            assert res.data == expected, (
-                f"op {index}: read 0x{op.address:08x} returned 0x{res.data:08x}, "
-                f"expected 0x{expected:08x}"
+            expected = memory[op.address & ~0x3] >> 8 * (op.address % 4)
+            checker.expect_equal(
+                CHK_DATA, res.data, expected, context=f"{ctx} read 0x{op.address:08x}"
             )
     for addr, value in memory.items():
-        assert slave.sequence.read32(addr) == value, f"op {index}: backdoor 0x{addr:08x}"
+        checker.expect_equal(
+            CHK_DATA, slave.sequence.read32(addr), value, context=f"{ctx} backdoor 0x{addr:08x}"
+        )
 
     writes = [op for op in ops if op.direction == "write"]
     reads = [op for op in ops if op.direction == "read"]
     check_lane(
+        checker,
         samples,
         "aw",
         "awaddr",
         [op.address for op in writes],
         [op.aw_valid_delay for op in writes],
-        index=index,
+        ctx=ctx,
     )
     check_lane(
+        checker,
         samples,
         "w",
         "wdata",
         [op.data for op in writes],
         [op.w_valid_delay for op in writes],
-        index=index,
+        ctx=ctx,
     )
     ar_hs = check_lane(
+        checker,
         samples,
         "ar",
         "araddr",
         [op.address for op in reads],
         [op.ar_valid_delay for op in reads],
-        index=index,
+        ctx=ctx,
     )
     b_hs = handshake_cycles(samples, "bvalid", "bready")
     r_hs = handshake_cycles(samples, "rvalid", "rready")
-    assert len(b_hs) == len(writes) and len(r_hs) == len(reads), (
-        f"op {index}: {len(b_hs)} B and {len(r_hs)} R handshakes for "
-        f"{len(writes)} writes and {len(reads)} reads"
+    checker.expect_true(
+        CHK_ORDER,
+        len(b_hs) == len(writes) and len(r_hs) == len(reads),
+        context=f"{ctx} {len(b_hs)} B and {len(r_hs)} R handshakes for "
+        f"{len(writes)} writes and {len(reads)} reads",
     )
-    check_hold(samples, "b", b_hold, b_hs, index=index)
-    check_hold(samples, "r", r_hold, r_hs, index=index)
-
-    for channel, reported in (
-        ("aw", result.aw_stall_cycles),
-        ("w", result.w_stall_cycles),
-        ("ar", result.ar_stall_cycles),
-    ):
-        wire = stall_cycles(samples, f"{channel}valid", f"{channel}ready")
-        assert reported == wire, f"op {index}: VIP {channel}_stall_cycles={reported} != wire {wire}"
+    check_hold(checker, samples, "b", b_hold, b_hs, ctx=ctx)
+    check_hold(checker, samples, "r", r_hold, r_hs, ctx=ctx)
+    check_stalls(checker, CHK_STALL, result, samples, ctx=ctx)
     return b_hs, ar_hs
+
+
+async def check_partial_timeout(
+    dut, checker: OcahChecker, seq, slave, *, words: list[int], memory: dict[int, int], rng
+) -> None:
+    """A write held off far beyond a shortened bound times out; the read beside it completes.
+
+    The read keeps its result, the write reports ``timed_out``, and the stall
+    counts run up to the expiry. The abandoned write's word is never read
+    back: the backend completes that write once the responder takes its
+    beats.
+    """
+    word_a, word_b, word_c = words
+    ctx = "partial-timeout"
+    log.info("%s: bound=%d stall=%d", ctx, SHORT_TIMEOUT_CYCLES, STALL_CYCLES)
+    slave.sequence.disable_backpressure()
+    slave.sequence.enable_backpressure(channels=("aw", "w"), stall_cycles=STALL_CYCLES)
+    before = seq.get_statistics()
+    ops = [OcahAxiPipelineOp.write(word_a, rng.getrandbits(32)), OcahAxiPipelineOp.read(word_b)]
+    result, samples = await recorded(
+        dut, seq.pipeline_result(ops, timeout_cycles=SHORT_TIMEOUT_CYCLES, allow_timeout=True)
+    )
+    after = seq.get_statistics()
+    wres, rres = result.results
+    checker.expect_true(CHK_TIMEOUT, result.timed_out, context=f"{ctx} operation timed out")
+    checker.expect_true(
+        CHK_TIMEOUT,
+        wres.timed_out and not wres.ok,
+        context=f"{ctx} write 0x{word_a:08x} timed out",
+    )
+    checker.expect_equal(
+        CHK_TIMEOUT, rres.resp, RESP_OKAY, context=f"{ctx} read 0x{word_b:08x} response"
+    )
+    checker.expect_equal(
+        CHK_TIMEOUT, rres.data, memory[word_b], context=f"{ctx} read 0x{word_b:08x} data"
+    )
+    checker.expect_true(
+        CHK_TIMEOUT,
+        result.aw_stall_cycles > 0,
+        context=f"{ctx} AW stalled {result.aw_stall_cycles} cycles",
+    )
+    check_stalls(checker, CHK_TIMEOUT, result, samples, ctx=ctx)
+    checker.expect_equal(
+        CHK_TIMEOUT,
+        (
+            after["write_transactions"] - before["write_transactions"],
+            after["read_transactions"] - before["read_transactions"],
+        ),
+        (0, 1),
+        context=f"{ctx} statistics count the completed read only",
+    )
+
+    slave.sequence.disable_backpressure()
+    await ClockCycles(dut.clk, DRAIN_CYCLES)
+    data = rng.getrandbits(32)
+    wres = await seq.write_result(word_c, data)
+    rres = await seq.read_result(word_c)
+    checker.expect_true(
+        CHK_TIMEOUT,
+        wres.ok and rres.ok and rres.data == data,
+        context=f"{ctx} readback 0x{word_c:08x} after the timeout data=0x{rres.data:08x}",
+    )
+
+
+async def check_atomic_validation(
+    dut, checker: OcahChecker, seq, slave, *, word: int, memory: dict[int, int]
+) -> None:
+    """A list holding an invalid access fails before the valid write ahead of it starts.
+
+    The call raises, the bus stays idle, and a valid list issued afterwards
+    reads the word back unchanged.
+    """
+    ctx = "atomic"
+    for invalid in (OcahAxiPipelineOp.read(2**32), OcahAxiPipelineOp.read(word, prot=8)):
+        what = f"{ctx} read 0x{invalid.address:x} prot={invalid.prot}"
+        ops = [OcahAxiPipelineOp.write(word, memory[word] ^ 0xFFFF_FFFF), invalid]
+        rejected = False
+        try:
+            await seq.pipeline_result(ops)
+        except ValueError as exc:
+            rejected = True
+            log.info("%s: rejected as required: %s", what, exc)
+        checker.expect_true(CHK_ATOMIC, rejected, context=f"{what} rejected")
+        _, samples = await recorded(dut, ClockCycles(dut.clk, QUIET_CYCLES))
+        active = [
+            key
+            for key in ("awvalid", "wvalid", "bvalid", "arvalid", "rvalid")
+            if any(row[key] for row in samples)
+        ]
+        checker.expect_equal(
+            CHK_ATOMIC, active, [], context=f"{what} VALID seen over {len(samples)} cycles"
+        )
+
+    follow = await seq.pipeline_result([OcahAxiPipelineOp.read(word)])
+    checker.expect_equal(
+        CHK_ATOMIC,
+        follow.results[0].data,
+        memory[word],
+        context=f"{ctx} read 0x{word:08x} after the rejected lists",
+    )
+    checker.expect_equal(
+        CHK_ATOMIC, slave.sequence.read32(word), memory[word], context=f"{ctx} backdoor"
+    )
 
 
 @cocotb.test()
@@ -218,6 +389,21 @@ async def ocah_axi_lite_pipeline_test(dut) -> None:
     await master.start()
     seq = master.sequence
     rng = scenario_rng("pipeline")
+    checker = OcahChecker(
+        name="ocah_axi_lite_pipeline",
+        fail_fast=False,
+        logger=log,
+        required_ids=(
+            CHK_ORDER,
+            CHK_LAUNCH,
+            CHK_HOLD,
+            CHK_STALL,
+            CHK_DATA,
+            CHK_OVERLAP,
+            CHK_TIMEOUT,
+            CHK_ATOMIC,
+        ),
+    )
 
     n_ops = int(os.environ.get("OCAH_AXI_LITE_PIPELINE_OPS", "12"))
     log.info("=" * 70)
@@ -243,6 +429,7 @@ async def ocah_axi_lite_pipeline_test(dut) -> None:
     ]
     b_hs, ar_hs = await run_pipeline(
         dut,
+        checker,
         seq,
         slave,
         index=0,
@@ -252,8 +439,10 @@ async def ocah_axi_lite_pipeline_test(dut) -> None:
         stall=0,
         memory=memory,
     )
-    assert ar_hs[0] < b_hs[0], (
-        f"op 0: the first AR at {ar_hs[0]} was not accepted before the first B at {b_hs[0]}"
+    checker.expect_true(
+        CHK_OVERLAP,
+        bool(ar_hs and b_hs) and ar_hs[0] < b_hs[0],
+        context=f"op=0 AR handshakes {ar_hs} B handshakes {b_hs}",
     )
     issued = list(directed)
 
@@ -279,6 +468,7 @@ async def ocah_axi_lite_pipeline_test(dut) -> None:
         issued.extend(ops)
         await run_pipeline(
             dut,
+            checker,
             seq,
             slave,
             index=index,
@@ -295,12 +485,22 @@ async def ocah_axi_lite_pipeline_test(dut) -> None:
     last = words[-1]
     wres = await seq.write_result(last, 0x5A5A_A5A5)
     rres = await seq.read_result(last)
-    assert wres.ok and rres.ok and rres.data == 0x5A5A_A5A5, (
-        f"post-pipeline access failed: bresp=0x{wres.resp:x} rresp=0x{rres.resp:x} "
-        f"data=0x{rres.data:08x}"
+    checker.expect_true(
+        CHK_DATA,
+        wres.ok and rres.ok and rres.data == 0x5A5A_A5A5,
+        context=f"post-pipeline access bresp=0x{wres.resp:x} rresp=0x{rres.resp:x} "
+        f"data=0x{rres.data:08x}",
     )
     stats = seq.get_statistics()
-    log.info("done: %d pipelines, sequence stats=%s", n_ops + 1, stats)
+    log.info("%d pipelines complete, sequence stats=%s", n_ops + 1, stats)
     writes = sum(1 for op in issued if op.direction == "write")
-    assert stats["write_transactions"] == writes + 1
-    assert stats["read_transactions"] == len(issued) - writes + 1
+    checker.expect_equal(
+        CHK_DATA,
+        (stats["write_transactions"], stats["read_transactions"]),
+        (writes + 1, len(issued) - writes + 1),
+        context="sequence statistics (writes, reads)",
+    )
+
+    await check_partial_timeout(dut, checker, seq, slave, words=words[6:9], memory=memory, rng=rng)
+    await check_atomic_validation(dut, checker, seq, slave, word=words[9], memory=memory)
+    checker.finalize()

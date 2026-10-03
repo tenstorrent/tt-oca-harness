@@ -33,7 +33,7 @@ from .ocah_axi_item import (
     OcahAxiWritePairResult,
     OcahAxiWriteResult,
 )
-from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
+from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver, OcahAxiPipelineTimeoutError
 from .ocah_axi_types import (
     axi_resp_ok,
     bytes_to_int,
@@ -452,44 +452,56 @@ class OcahAxiLiteMasterSequence:
         BREADY and RREADY stay low until ``b_hold_cycles`` and
         ``r_hold_cycles`` cycles after the first BVALID and RVALID. The result
         lists one write or read result per access, in list order, with the
-        stall cycles of each request channel.
+        stall cycles of each request channel. Every access is validated
+        before any is issued, so an invalid one raises ``ValueError`` with no
+        bus activity. When ``allow_timeout`` turns an expiry into a result,
+        each access whose response arrived keeps its result, the others
+        report ``timed_out``, and the stall cycles run up to the expiry;
+        ``check_response`` covers the completed accesses only. The statistics
+        count every completed access, including when an expiry raises.
         """
         ops = tuple(ops)
         cycles = self.timeout_cycles if timeout_cycles is None else int(timeout_cycles)
+        expiry = None
         try:
-            raws, aw_stall, w_stall, ar_stall = await self.driver.pipeline(
+            outcome = await self.driver.pipeline(
                 ops,
                 b_hold_cycles=b_hold_cycles,
                 r_hold_cycles=r_hold_cycles,
                 timeout_cycles=cycles,
             )
-        except TimeoutError as exc:
-            if allow_timeout:
-                return OcahAxiPipelineResult(
-                    results=tuple(
-                        self._timed_out_write(op.address)
-                        if op.direction == "write"
-                        else self._timed_out_read(op.address)
-                        for op in ops
-                    ),
-                    aw_stall_cycles=0,
-                    w_stall_cycles=0,
-                    ar_stall_cycles=0,
-                )
-            raise AssertionError(f"{self.name}: pipeline of {len(ops)} accesses timed out") from exc
+        except OcahAxiPipelineTimeoutError as exc:
+            expiry = exc
+            outcome = (exc.raws, exc.aw_stall_cycles, exc.w_stall_cycles, exc.ar_stall_cycles)
+        raws, aw_stall, w_stall, ar_stall = outcome
         results = []
         for op, raw in zip(ops, raws):
-            if op.direction == "write":
+            if raw is None:
+                result = (
+                    self._timed_out_write(op.address)
+                    if op.direction == "write"
+                    else self._timed_out_read(op.address)
+                )
+            elif op.direction == "write":
                 result = self._write_result_from_raw(op.address, raw)
                 self._write_count += 1
             else:
                 result = self._read_result_from_raw(op.address, raw)
                 self._read_count += 1
             results.append(result)
+        if expiry is not None and not allow_timeout:
+            raise AssertionError(
+                f"{self.name}: pipeline of {len(ops)} accesses timed out"
+            ) from expiry
         for op, result in zip(ops, results):
-            self._maybe_raise(
-                f"pipelined {op.direction} at", op.address, result.ok, result.resp, check_response
-            )
+            if not result.timed_out:
+                self._maybe_raise(
+                    f"pipelined {op.direction} at",
+                    op.address,
+                    result.ok,
+                    result.resp,
+                    check_response,
+                )
         return OcahAxiPipelineResult(
             results=tuple(results),
             aw_stall_cycles=aw_stall,

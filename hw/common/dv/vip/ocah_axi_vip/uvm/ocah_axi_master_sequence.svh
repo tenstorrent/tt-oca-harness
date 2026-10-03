@@ -311,7 +311,11 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
   // and a responder meets as many requests as it accepts. BREADY and RREADY
   // stay low until b_hold_cycles and r_hold_cycles cycles after the first
   // BVALID and RVALID. Each op is filled like a plain result; `result`
-  // carries the ops and the stall cycles of each request channel.
+  // carries the ops and the stall cycles of each request channel. On a
+  // timeout, `result` and each op without a response report timed_out while
+  // the other ops keep their results, and only ops with a response count in
+  // the statistics. An invalid op fails the whole operation before anything
+  // is driven.
   task pipeline_result(input ocah_axi_item ops[$], output ocah_axi_item result,
                        input int unsigned b_hold_cycles = 0, input int unsigned r_hold_cycles = 0,
                        input bit check_response = 1'b1, input bit allow_timeout = 1'b0);
@@ -323,8 +327,13 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
     it.r_ready_delay = r_hold_cycles;
     do_axi(it);
     foreach (ops[i]) begin
-      if (ops[i].direction == OCAH_AXI_DIR_WRITE) write_transactions++;
-      else read_transactions++;
+      // Neither a response nor a timeout: the driver rejected the operation
+      // and reported why.
+      if (ops[i].resp_list.size() == 0 && !ops[i].timed_out) continue;
+      if (!ops[i].timed_out) begin
+        if (ops[i].direction == OCAH_AXI_DIR_WRITE) write_transactions++;
+        else read_transactions++;
+      end
       enforce_result(ops[i], "pipelined access at", check_response, allow_timeout);
     end
     result = it;

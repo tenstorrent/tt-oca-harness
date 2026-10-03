@@ -41,6 +41,9 @@
 class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
   `uvm_component_utils(ocah_axi_master_driver)
 
+  // Message ID of the error that rejects an invalid pipeline.
+  localparam string PipelineInvalidId = "OCAH_AXI_PIPELINE_INVALID";
+
   ocah_axi_master_config cfg;
 
   // Statistics (completed bursts).
@@ -568,24 +571,34 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
   // acceptance of the beat ahead of it on its channel; reads and writes run
   // independently. BREADY and RREADY stay low until it.b_ready_delay and
   // it.r_ready_delay cycles after the first BVALID and RVALID, then the
-  // responses are collected in list order per direction. A timeout marks
-  // every op and the carrier timed out.
+  // responses are collected in list order per direction. An invalid op
+  // fails the operation before any signal is driven. A timeout marks the
+  // carrier and every op without a collected response timed out; the other
+  // ops keep their results and the stall counts cover the cycles up to the
+  // timeout.
   virtual task do_pipeline(ocah_axi_item it);
     ocah_axi_item wr[$], rd[$];
     int unsigned aw_acc, w_acc, ar_acc;
     bit aw_to, w_to, ar_to, b_to, r_to, done;
     foreach (it.ops[i]) begin
       it.ops[i].resp_list.delete();
-      if (it.ops[i].direction == OCAH_AXI_DIR_WRITE) begin
-        if (it.ops[i].data_words.size() != 1) begin
-          `uvm_error(cfg.name_tag, "pipeline write carries other than one data beat")
-          return;
-        end
-        wr.push_back(it.ops[i]);
-      end else begin
-        it.ops[i].data_words.delete();
-        rd.push_back(it.ops[i]);
+      it.ops[i].timed_out = 1'b0;
+      if (it.ops[i].direction != OCAH_AXI_DIR_WRITE) it.ops[i].data_words.delete();
+    end
+    foreach (it.ops[i]) begin
+      ocah_axi_item op = it.ops[i];
+      string why = "";
+      if (op.direction == OCAH_AXI_DIR_WRITE && (op.data_words.size() != 1 || op.strobes.size() > 1))
+        why = "a write takes one data word and at most one strobe";
+      else if ((op.address >> cfg.addr_width) != 0)
+        why = $sformatf("the address exceeds %0d bits", cfg.addr_width);
+      if (why != "") begin
+        `uvm_error(PipelineInvalidId, $sformatf("pipeline access %0d rejected, %s: %s", i, why,
+                                                op.convert2string()))
+        return;
       end
+      if (op.direction == OCAH_AXI_DIR_WRITE) wr.push_back(op);
+      else rd.push_back(op);
     end
     it.aw_stall_cycles = 0;
     it.w_stall_cycles  = 0;
@@ -600,8 +613,8 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
             bit released = (it.b_ready_delay == 0);
             cfg.vif.bready <= released;
             foreach (wr[i]) begin
-              wait ((aw_acc > i && w_acc > i) || aw_to || w_to);
-              if (aw_to || w_to) break;
+              wait ((aw_acc > i || aw_to) && (w_acc > i || w_to));
+              if (aw_acc <= i || w_acc <= i) break;
               if (!released) begin
                 wait_response_valid(1'b0, b_to);
                 if (b_to) break;
@@ -619,7 +632,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
             cfg.vif.rready <= released;
             foreach (rd[i]) begin
               wait (ar_acc > i || ar_to);
-              if (ar_to) break;
+              if (ar_acc <= i) break;
               if (!released) begin
                 wait_response_valid(1'b1, r_to);
                 if (r_to) break;
@@ -645,7 +658,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       end
     join
     if (aw_to || w_to || ar_to || b_to || r_to) begin
-      foreach (it.ops[i]) it.ops[i].timed_out = 1'b1;
+      foreach (it.ops[i]) if (it.ops[i].resp_list.size() == 0) it.ops[i].timed_out = 1'b1;
       flag_timeout(it, aw_to ? "AW" : w_to ? "W" : ar_to ? "AR" : b_to ? "B" : "R");
     end
   endtask
