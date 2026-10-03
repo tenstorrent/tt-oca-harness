@@ -651,20 +651,12 @@ class Planner:
             c = CLASSES[cls]
             return c.summary, c.fact, c.retired_by
         entry = self.manifest.classes[cls]
-        sources = sorted(
-            {e["source"] for e in self.manifest.units if e["class"] == cls},
-            key=lambda s: self.manifest.sources[s],
-        )
-        review = self.manifest.review
         unit = entry["fact"].split(" is graded on its ports", 1)[0]
         summary = (
             f"{unit} is graded on its ports, as design engineering reviewed; the nets inside it "
             "and beneath it are excluded while uncovered"
         )
-        full = (
-            f"{entry['fact']} Reviewed with design engineering in {review['repository']} "
-            f"{', '.join(sources)} ({review['commit']})."
-        )
+        full = f"{entry['fact']} {reviewed.REVIEWED}"
         return summary, full, "design engineering withdrawing the review of the unit"
 
     def annotation(self, cls: str) -> str:
