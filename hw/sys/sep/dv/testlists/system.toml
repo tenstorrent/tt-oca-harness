@@ -458,10 +458,10 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # Every local-master alias-remap region at full 56-bit START/END/offset width.
 # RANDCFG: targets, bounds and the staged word from the run seed; each region
-# runs offset O then ~O, and miss bounds S then ~S. A hit sends the CPU-LSU
-# beat to a 56-bit SMU-path target that one outbound-filter granule admits
-# (OKAY; DECERR one granule up); a miss or valid=0 returns the staged local
-# word. no_cpu; +skip_fuse_sense.
+# runs offset O then ~O, miss bounds S then ~S, and an END miss with END at
+# the source page. A hit sends the CPU-LSU beat to a 56-bit SMU-path target
+# that one outbound-filter granule admits (OKAY; DECERR one granule up); a
+# miss or valid=0 returns the staged local word. no_cpu; +skip_fuse_sense.
 name = "sep_fabric_local_alias_offset_walk_test"
 module = "system.sep_fabric_local_alias_offset_walk_test"
 seed = 1

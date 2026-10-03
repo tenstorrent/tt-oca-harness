@@ -6195,6 +6195,7 @@ behaviour and the JTAG read are graded on
 . For each region: with offset O, then ~O, the region starts at the source page and ends at E, then ~E (both above the page); one outbound entry admits only the granule at the predicted target. Read the source beat and the next beat.
 . Clear valid with the hit bounds: read the source beat.
 . Program bounds starting at S, then ~S (both above the source page): read the source beat.
+. Program the region to start and end at the source page (END is non-inclusive), with offset ~O and valid set: read the source beat.
 . Restore the region and the entry to reset.
 
 *Checkers*:
@@ -6207,7 +6208,7 @@ behaviour and the JTAG read are graded on
 |CHK-ALIAS-WALK-HIT
 |The translated beat answers OKAY in the one granule at `{offset[55:12] + addr[55:12], addr[11:0]}` and DECERR one granule up, so the alias adder produced exactly that 56-bit address.
 |CHK-ALIAS-WALK-MISS
-|A region that starts above the source page does not translate: OKAY with the staged word.
+|A region that starts above the source page does not translate, and a valid region that starts at the source page and ends there does not translate: OKAY with the staged word. The END leg keeps the outbound entry open at the ~O target, so a translated beat would return the outbound responder's data, not the staged word; it fails an END compare that is ignored or stuck true.
 |CHK-ALIAS-WALK-VALID
 |With valid clear the region does not translate: OKAY with the staged word.
 |===
