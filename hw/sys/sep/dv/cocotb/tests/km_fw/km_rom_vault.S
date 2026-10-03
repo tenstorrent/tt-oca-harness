@@ -43,6 +43,8 @@
 # Result at KM SRAM word0 (0x8000), which the host probes:
 #   0xA11A0000 | slot[15:10] | slot_ok | extent | dropped | viol | irq | w1c
 #              | seal | retire | free
+# KM SRAM word1 (0x8004) holds the data of the refused lock_use read. The host
+# reads it with no unknown bits allowed and requires zero.
 #
 # Build (output committed as ../km_rom_vault.parhex):
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_vault.parhex
@@ -225,6 +227,8 @@ lockctl_done:
     andi  x7, x7, IRQ_AXI_SLVERR
     bnez  x7, lockuse_done      # must start clean
     lw    x13, 0(x12)           # refused read; data must be forced to zero
+    li    x6, KM_SRAM_BASE
+    sw    x13, 4(x6)            # KM SRAM word1: the host reads it X-checked
     addi  x14, x0, 32
 7:  lw    x7, 0(x9)
     andi  x11, x7, IRQ_AXI_SLVERR
@@ -233,7 +237,12 @@ lockctl_done:
     bnez  x14, 7b
     j     lockuse_done
 lockuse_err:
-    bnez  x13, lockuse_done     # SLVERR alone is not enough: data must be 0
+    # SLVERR alone is not enough: data must be 0. The pass path is taken only
+    # on a known zero. PicoRV32 is 4-state in simulation and does not take a
+    # branch whose condition is X, so an X in x13 falls through to the fail.
+    beqz  x13, lockuse_zero
+    j     lockuse_done
+lockuse_zero:
     beqz  x15, lockuse_done     # the lock_write-only control must also pass
     ori   x5, x5, 0x400         # CHK-LOCKUSE
     addi  x11, x0, IRQ_AXI_SLVERR

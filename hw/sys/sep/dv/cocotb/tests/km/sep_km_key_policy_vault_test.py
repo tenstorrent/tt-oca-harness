@@ -12,7 +12,9 @@ region and seal/free slot pair through the mailbox; the ROM walks slot
 the selected SRAM region and W1C-clears the violation / IRQ, then runs
 the seal contrast: the same erase retires a sealed slot and frees an
 unsealed one.
-Result flags in KM SRAM word0 (the ``km_sram_word0_o`` probe).
+Result flags in KM SRAM word0 (the ``km_sram_word0_o`` probe). The data of
+the refused ``lock_use`` read is in KM SRAM word1 (``km_sram_probe_o``), read
+with no unknown bits allowed.
 """
 
 from __future__ import annotations
@@ -43,6 +45,8 @@ from seq_lib.sep_km_vault_seq import (
 )
 
 _MAX_KM_CYCLES = 40_000
+# km_sram_probe_o lane of KM SRAM word1 (0x8004).
+_KM_SRAM_WORD1_MASK = 0xFFFF_FFFF << 32
 
 
 @pyuvm.test()
@@ -90,11 +94,19 @@ class sep_km_key_policy_vault_test(sep_base_test):
             cfg.slot,
         )
         _bit(FLAG_LOCKUSE, "CHK-LOCKUSE")
+        # The ROM stores the refused read's data in KM SRAM word1. rd() raises
+        # on an unknown bit, so X data fails here even if the ROM branch passed.
+        refused = self.rd(dut.km_sram_probe_o, _KM_SRAM_WORD1_MASK) >> 32
+        assert refused == 0, (
+            f"CHK-LOCKUSE FAIL: lock_use read of slot {cfg.slot} returned "
+            f"0x{refused:08x} (KM SRAM word1), expected 0"
+        )
         self.logger.info(
             "CHK-LOCKUSE PASS: slot %d with lock_write only read back 0xA11CE000 with "
             "AXI_SLVERR clear (control); after lock_use the same read raised SLVERR "
-            "and returned zero",
+            "and returned data=0x%08x (KM SRAM word1, fully known)",
             cfg.slot,
+            refused,
         )
         _bit(FLAG_EXTENT, "CHK-EXTENT")
         self.logger.info(
