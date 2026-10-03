@@ -113,6 +113,39 @@ engine:
   and read data `0x1501A7ED`.
 . Set the bit again. Reset and isolation release together.
 
+.Cryptographic engine reset example C definitions.
+[source,sourceCode,c]
+----
+// SEP reset control register address.
+// In SEP-local address space.
+#define SEP_RESET_CTRL_REG_SW_RESET_N 0x10803000
+
+// SW_RESET_N bits; 0 holds the engine in reset.
+#define SW_RESET_N_KM   0x01
+#define SW_RESET_N_OTBN 0x02
+#define SW_RESET_N_AES  0x04
+#define SW_RESET_N_HMAC 0x08
+#define SW_RESET_N_KMAC 0x10
+#define SW_RESET_N_TRNG 0x20
+#define SW_RESET_N_ABR  0x40
+----
+
+.Cryptographic engine reset example C usage.
+[source,sourceCode,c]
+----
+// Hold the engines in `mask` in reset, preserving the other bits.
+void sep_engine_reset_assert(uint32_t mask) {
+    uint32_t val = read32(SEP_RESET_CTRL_REG_SW_RESET_N);
+    write32(SEP_RESET_CTRL_REG_SW_RESET_N, val & ~mask);
+}
+
+// Release the engines in `mask`, preserving the other bits.
+void sep_engine_reset_release(uint32_t mask) {
+    uint32_t val = read32(SEP_RESET_CTRL_REG_SW_RESET_N);
+    write32(SEP_RESET_CTRL_REG_SW_RESET_N, val | mask);
+}
+----
+
 Releasing the Key Manager from reset starts it; the SEP host can still reach the
 SEP-to-KM mailbox while the Key Manager is in reset, because the mailbox's
 SEP-facing side is in the Key Manager's cold domain. The Key Manager can also
@@ -130,8 +163,10 @@ before submitting new work.
 [[sep-pic]]
 ==== Programmable Interrupt Controller (PIC)
 
-The VeeR EL2 PIC numbers external interrupt sources from 1; source 0 does not
-exist. Program source `N` through the per-source arrays, each indexed at
+The
+https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html[EL2 Programmer's Reference Manual]
+defines the VeeR EL2 core and PIC programming model. The PIC numbers external
+interrupt sources from 1; source 0 does not exist. Program source `N` through the per-source arrays, each indexed at
 `N * 4` from its region base:
 
 * `meipl[N]` (PIC base `+0x0000`) sets its priority;
@@ -166,6 +201,36 @@ unmasked handler re-enters.
 |43, peripheral register-bridge fault |Read `PERIPH_BUS_ERR_STATUS` to identify
 the block, then clear that block's bit in `PERIPH_BUS_ERR_CLEAR`.
 |===
+
+.PIC example C definitions.
+[source,sourceCode,c]
+----
+// PIC register addresses, for source `n`.
+// In SEP-local address space.
+#define PIC_BASE             0xC0080000
+#define PIC_REG_MEIPL(n)     (PIC_BASE + 0x0000 + ((n) * 0x4))
+#define PIC_REG_MEIE(n)      (PIC_BASE + 0x2000 + ((n) * 0x4))
+#define PIC_REG_MEIGWCTRL(n) (PIC_BASE + 0x4000 + ((n) * 0x4))
+#define PIC_REG_MEIGWCLR(n)  (PIC_BASE + 0x5000 + ((n) * 0x4))
+
+// Register constants.
+#define PIC_MEIGWCTRL_ACTIVE_LOW 0x1
+#define PIC_MEIGWCTRL_EDGE       0x2
+----
+
+.PIC example C usage.
+[source,sourceCode,c]
+----
+// Enable source `n` (1 or above) at `priority`. `gwctrl` selects the
+// gateway's polarity and type. The core takes the interrupt only while
+// `mie.MEIE` is set and `priority` is above the `meipt` threshold.
+void pic_enable_source(unsigned n, uint32_t priority, uint32_t gwctrl) {
+    write32(PIC_REG_MEIGWCTRL(n), gwctrl);
+    write32(PIC_REG_MEIGWCLR(n), 0);
+    write32(PIC_REG_MEIPL(n), priority);
+    write32(PIC_REG_MEIE(n), 1);
+}
+----
 
 [[sep-memory-errors]]
 ==== Memory Error Handling
@@ -275,6 +340,13 @@ stop
 ----
 
 ==== Internal Entropy-chain Initialization
+
+The entropy source, CSRNG and EDN are OpenTitan IP. The
+https://opentitan.org/book/hw/ip/entropy_src/doc/programmers_guide.html[OpenTitan entropy source],
+https://opentitan.org/book/hw/ip/csrng/doc/programmers_guide.html[CSRNG] and
+https://opentitan.org/book/hw/ip/edn/doc/programmers_guide.html[EDN]
+programmer's guides give the full programming sequence for each block. The
+sequence below composes them for the OCAH chain.
 
 Use generated register definitions and named fields rather than copying complete
 register literals. Several control fields use MuBi4 encodings, for which true is
@@ -531,7 +603,10 @@ format built on top of this register interface.
 [[sep-watchdog]]
 ==== Watchdog
 
-The SEP watchdog is an OpenTitan Always-On Timer. Firmware must service it
+The SEP watchdog is an OpenTitan Always-On Timer. Program it following the
+https://opentitan.org/book/hw/ip/aon_timer/doc/programmers_guide.html[OpenTitan Always-On Timer programmer's guide],
+which gives the full watchdog initialization, servicing and locking sequence.
+The OCAH integration connects the watchdog as follows. Firmware must service it
 periodically by resetting its count, proving that the SEP CPU is still making
 progress. If the count reaches the bark threshold, the watchdog raises the NMI,
 which jumps through `SEP_NMI_VEC`; program and lock that vector first, as
@@ -539,10 +614,51 @@ which jumps through `SEP_NMI_VEC`; program and lock that vector first, as
 threshold, the watchdog requests a SEP CPU reset. `wdt_debug_sleep_mode_i`
 selects whether the timer keeps counting while the CPU is halted in debug.
 
+.Watchdog example C definitions.
+[source,sourceCode,c]
+----
+// Watchdog register addresses.
+// In SEP-local address space.
+#define WDOG_BASE           0x10801000
+#define WDOG_REG_REGWEN     (WDOG_BASE + 0x18)
+#define WDOG_REG_CTRL       (WDOG_BASE + 0x1C)
+#define WDOG_REG_BARK_THOLD (WDOG_BASE + 0x20)
+#define WDOG_REG_BITE_THOLD (WDOG_BASE + 0x24)
+#define WDOG_REG_COUNT      (WDOG_BASE + 0x28)
+
+// Register constants.
+#define WDOG_CTRL_ENABLE 0x1
+----
+
+.Watchdog example C usage.
+[source,sourceCode,c]
+----
+// Start the watchdog and lock its configuration until reset.
+// Program and lock SEP_NMI_VEC before calling this.
+void watchdog_start(uint32_t bark_count, uint32_t bite_count) {
+    write32(WDOG_REG_CTRL, 0);
+    write32(WDOG_REG_COUNT, 0);
+    write32(WDOG_REG_BARK_THOLD, bark_count);
+    write32(WDOG_REG_BITE_THOLD, bite_count);
+    write32(WDOG_REG_CTRL, WDOG_CTRL_ENABLE);
+
+    // Writing 0 to REGWEN locks CTRL and both thresholds.
+    write32(WDOG_REG_REGWEN, 0);
+}
+
+// Service the watchdog before the count reaches the bark threshold.
+void watchdog_pet(void) {
+    write32(WDOG_REG_COUNT, 0);
+}
+----
+
 [[sep-dma]]
 ==== DMA
 
-The SEP DMA is the OpenTitan DMA controller. Use address-space ID `0x7`, the
+The SEP DMA is the OpenTitan DMA controller. Program it following the
+https://opentitan.org/book/hw/ip/dma/doc/programmers_guide.html[OpenTitan DMA programmer's guide],
+which gives the full programming sequence; the OCAH integration differs as
+described here. Use address-space ID `0x7`, the
 core's internal host port, for both source and destination, with both high
 address registers zero; the other address spaces are tied off and never
 complete. Reachability is governed by the SEP fabric and filters.
@@ -587,8 +703,10 @@ To abort an active operation, request `CONTROL.ABORT` and wait for
 [[sep-spi-host]]
 ==== SPI Host
 
-The SEP SPI host is the unmodified OpenTitan SPI Host, and its error and event
-interrupts share one PIC line. In the handler, read `INTR_STATE` to tell them
+The SEP SPI host is the unmodified OpenTitan SPI Host. Program it following the
+https://opentitan.org/book/hw/ip/spi_host/doc/programmers_guide.html[OpenTitan SPI Host programmer's guide],
+which gives the full initialization, command and software-reset sequences. In
+the OCAH integration, its error and event interrupts share one PIC line. In the handler, read `INTR_STATE` to tell them
 apart:
 
 * `INTR_STATE.ERROR` is latched. Clear it by writing one to it after handling
@@ -612,9 +730,18 @@ and `STATUS.pool_low` reports the low-watermark condition. A 32-bit read of a
 register's upper word is not decoded and, for `DATA`, does not pop the pool. The pool is read-only and accepts
 single-beat accesses only.
 
-[[sep-km-delivered-keys]]
-==== Using Key Manager Delivered Keys
+[[sep-cryptographic-engines]]
+==== Cryptographic Engines
 
+AES, HMAC, KMAC and OTBN are OpenTitan IP and Adams Bridge is Caliptra IP.
+Program each engine following its upstream programmer's guide, which gives the
+full programming sequence; the subsections below give only the OCAH
+differences. Firmware can drive the OpenTitan engines through the
+https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan cryptographic library API].
+The OCAH Key Manager is not the OpenTitan key manager, and its firmware
+interface is in <<km-application-rom>>.
+
+[[sep-km-delivered-keys]]
 The Key Manager delivers keys and seeds to the accelerators over a private
 interface, as two shares whose XOR is the value; the
 ifdef::backend-html5[]
@@ -624,28 +751,59 @@ ifdef::backend-pdf[]
 https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/crypto.html#km-key-delivery[Key Manager Key Delivery]
 endif::backend-pdf[]
 section of the Technical Reference Manual defines the format. Software on the
-SEP host configures each accelerator to consume the delivered value:
+SEP host configures each accelerator to consume the delivered value, as the
+subsection for each engine describes.
 
-* *AES:* set `CTRL_SHADOWED.sideload` to select the delivered key; while it is 0
-  the engine uses its software key registers and reports no error. Program
-  `CTRL_SHADOWED.key_len` to the 256-bit encoding, since a shorter setting
-  consumes only part of the delivered key.
-* *HMAC:* there is no select bit; the delivered key is used whenever
-  `KEY_CTRL.KEY_VALID` is set. Program `CFG.key_length` to the 256-bit encoding.
-  An unset or unsupported length raises a configuration error, but a supported
-  length that disagrees with the delivered key produces a wrong but repeatable
-  digest with no error.
-* *KMAC:* set `CFG_SHADOWED.sideload`. The key length is applied automatically.
-  Starting a keyed operation while `KEY_CTRL.KEY_VALID` is 0 raises an error.
-* *OTBN:* the program reads the two shares through the `KEY_S0_L` / `KEY_S0_H`
-  and `KEY_S1_L` / `KEY_S1_H` special registers and must XOR them itself. Reading
-  a share that is not valid sets `ERR_BITS.KEY_INVALID` and stops the program.
-* *Adams Bridge:* enable the seed read before starting an operation that
-  consumes a delivered seed. The ML-KEM seed read completes only when both
-  `MLKEM_SEED_D` and `MLKEM_SEED_Z` are valid. Detect completion from
-  `STATUS.VALID` and issue a `zeroize` between back-to-back operations, since the
-  core parks at the end state until then. A malformed register address inside
-  the Adams Bridge extent does not return a bus error, so do not rely on one.
+[[sep-aes]]
+===== AES
+
+Program the cipher following the
+https://opentitan.org/book/hw/ip/aes/doc/programmers_guide.html[OpenTitan AES programmer's guide].
+To use a delivered key, set `CTRL_SHADOWED.sideload`; while it is 0 the engine
+uses its software key registers and reports no error. Program
+`CTRL_SHADOWED.key_len` to the 256-bit encoding, since a shorter setting
+consumes only part of the delivered key.
+
+[[sep-hmac]]
+===== HMAC
+
+Program the engine following the
+https://opentitan.org/book/hw/ip/hmac/doc/programmers_guide.html[OpenTitan HMAC programmer's guide].
+HMAC has no delivered-key select bit: it uses the delivered key whenever
+`KEY_CTRL.KEY_VALID` is set. Program `CFG.key_length` to the 256-bit encoding.
+An unset or unsupported length raises a configuration error, but a supported
+length that disagrees with the delivered key produces a wrong but repeatable
+digest with no error.
+
+[[sep-kmac]]
+===== KMAC
+
+Program the engine following the
+https://opentitan.org/book/hw/ip/kmac/doc/programmers_guide.html[OpenTitan KMAC programmer's guide].
+To use a delivered key, set `CFG_SHADOWED.sideload`. The key length is applied
+automatically. Starting a keyed operation while `KEY_CTRL.KEY_VALID` is 0 raises an error.
+
+[[sep-otbn]]
+===== OTBN
+
+Program the engine and write its programs following the
+https://opentitan.org/book/hw/ip/otbn/doc/programmers_guide.html[OpenTitan OTBN programmer's guide].
+To use a delivered key, the OTBN program reads the two shares through the
+`KEY_S0_L` / `KEY_S0_H` and `KEY_S1_L` / `KEY_S1_H` special registers and must
+XOR them itself. Reading
+a share that is not valid sets `ERR_BITS.KEY_INVALID` and stops the program.
+
+[[sep-adams-bridge]]
+===== Adams Bridge
+
+Program the engine following the
+https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge documentation].
+Enable the seed read before starting an operation that consumes a delivered
+seed. The ML-KEM seed read completes only when both
+`MLKEM_SEED_D` and `MLKEM_SEED_Z` are valid. Detect completion from
+`STATUS.VALID` and issue a `zeroize` between back-to-back operations, since the
+core parks at the end state until then. A malformed register address inside
+the Adams Bridge extent does not return a bus error, so do not rely on one.
 
 [[sep-token-matching]]
 ==== Token Matching
@@ -663,6 +821,49 @@ interface:
 . Poll the token's `*_TOKEN_MATCH` result with a bounded timeout. Only `0x15`
   authorizes the operation; idle (`0x00`) is not success, and RMA stays idle
   until fuse sensing completes. Check `TOKEN_MATCH_FAULT` as well as the result.
+
+.SiP RMA token example C definitions.
+[source,sourceCode,c]
+----
+// eFuse token register addresses.
+// In SEP-local address space.
+#define TOKEN_BASE                    0x10930500
+#define TOKEN_REG_RMA_SIP_TOKEN_I(i)  (TOKEN_BASE + ((i) * 0x4))
+#define TOKEN_REG_TOKEN_EOP           (TOKEN_BASE + 0x60)
+#define TOKEN_REG_RMA_SIP_TOKEN_MATCH (TOKEN_BASE + 0x64)
+#define TOKEN_REG_TOKEN_MATCH_FAULT   (TOKEN_BASE + 0x70)
+
+// Register constants.
+#define TOKEN_EOP_RMA_SIP   0x1
+#define TOKEN_MATCH_STATUS  0x3F
+#define TOKEN_MATCH_MATCHED 0x15
+#define TOKEN_FAULT_RMA_SIP 0x1
+----
+
+.SiP RMA token example C usage.
+[source,sourceCode,c]
+----
+// Submit the SiP RMA token for the first time since reset.
+// Returns whether the token matched.
+bool rma_sip_token_submit(const uint32_t token[8], unsigned timeout) {
+    // token[0] holds bits 31:0 and token[7] bits 255:224.
+    for (unsigned i = 0; i < 8; i++) {
+        write32(TOKEN_REG_RMA_SIP_TOKEN_I(i), token[i]);
+    }
+    write32(TOKEN_REG_TOKEN_EOP, TOKEN_EOP_RMA_SIP);
+
+    // Idle (0x00) is not a result; wait for the comparison to finish.
+    uint32_t status = 0;
+    while (status == 0 && timeout--) {
+        status = read32(TOKEN_REG_RMA_SIP_TOKEN_MATCH) & TOKEN_MATCH_STATUS;
+    }
+
+    if (read32(TOKEN_REG_TOKEN_MATCH_FAULT) & TOKEN_FAULT_RMA_SIP) {
+        return false;
+    }
+    return status == TOKEN_MATCH_MATCHED;
+}
+----
 
 A fault flag in `TOKEN_MATCH_FAULT` stays set until reset and raises PIC source
 40; mask the source after handling it, as <<sep-pic>> describes. A later
@@ -723,32 +924,3 @@ ifdef::backend-pdf[]
 https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/lifecycle_controller.html#demote-lock-behavior[Lifecycle Controller chapter]
 endif::backend-pdf[]
 of the Technical Reference Manual describes what demotion opens.
-
-[[sep-upstream-ip-programming]]
-=== Upstream IP Programming References
-
-Several SEP blocks are upstream IP integrated with OCAH wrappers. Their
-programming model is the upstream one, with the OCAH differences described in
-this chapter and in the block's Technical Reference Manual chapter.
-
-[cols="2,4,3",options="header"]
-.Upstream programming references for SEP blocks
-|===
-|Block |Upstream programming reference |OCAH differences
-|AES |https://opentitan.org/book/hw/ip/aes/doc/programmers_guide.html[OpenTitan AES programmer's guide] |<<sep-km-delivered-keys>>
-|HMAC |https://opentitan.org/book/hw/ip/hmac/doc/programmers_guide.html[OpenTitan HMAC programmer's guide] |<<sep-km-delivered-keys>>
-|KMAC |https://opentitan.org/book/hw/ip/kmac/doc/programmers_guide.html[OpenTitan KMAC programmer's guide] |<<sep-km-delivered-keys>>
-|OTBN |https://opentitan.org/book/hw/ip/otbn/doc/programmers_guide.html[OpenTitan OTBN programmer's guide] |<<sep-km-delivered-keys>>
-|DMA |https://opentitan.org/book/hw/ip/dma/doc/programmers_guide.html[OpenTitan DMA programmer's guide] |<<sep-dma>>
-|SPI Host |https://opentitan.org/book/hw/ip/spi_host/doc/programmers_guide.html[OpenTitan SPI Host programmer's guide] |<<sep-spi-host>>
-|Watchdog |https://opentitan.org/book/hw/ip/aon_timer/doc/programmers_guide.html[OpenTitan Always-On Timer programmer's guide] |<<sep-watchdog>>
-|Entropy source |https://opentitan.org/book/hw/ip/entropy_src/doc/programmers_guide.html[OpenTitan entropy source programmer's guide] |<<ocah-trng-bring-up>>
-|CSRNG |https://opentitan.org/book/hw/ip/csrng/doc/programmers_guide.html[OpenTitan CSRNG programmer's guide] |<<ocah-trng-bring-up>>
-|EDN |https://opentitan.org/book/hw/ip/edn/doc/programmers_guide.html[OpenTitan EDN programmer's guide] |<<ocah-trng-bring-up>>
-|Adams Bridge |https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge documentation] |<<sep-km-delivered-keys>>
-|VeeR EL2 CPU |https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html[EL2 Programmer's Reference Manual] |<<sep-pic>>, <<sep-memory-errors>>
-|Cryptographic firmware |https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan cryptographic library API] |None
-|===
-
-The Key Manager is not listed: the OpenTitan key manager is background reading
-only, and the OCAH Key Manager firmware interface is in <<km-application-rom>>.

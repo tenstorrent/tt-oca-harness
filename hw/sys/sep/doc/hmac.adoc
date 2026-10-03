@@ -60,10 +60,10 @@ https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC
 documentation] for the authoritative core functionality of the IP.
 The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-km-delivered-keys[programming guidance]
+xref:ocah-programmer-guide::index.adoc#sep-hmac[programming guidance]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-km-delivered-keys[programming guidance]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-hmac[programming guidance]
 endif::backend-pdf[]
 for this block.
 The

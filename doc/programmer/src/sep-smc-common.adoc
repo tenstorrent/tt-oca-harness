@@ -286,6 +286,26 @@ Observe these rules when using a mailbox:
   it enables load-to-load forwarding and speculative accesses, which pop entries
   unpredictably.
 
+.Mailbox message exchange with a read threshold interrupt.
+[plantuml,ocah-mailbox-exchange,svg,width=80%,align="center"]
+----
+@startuml
+participant "Sender" as TX
+participant "Mailbox" as MB
+participant "Receiver" as RX
+RX -> MB : RIRQT = 0, acknowledge IRQS, set IRQEN[1]
+loop for each word
+  TX -> MB : poll STATUS until not full
+  TX -> MB : write WRITE_DATA
+end
+MB -> RX : read threshold interrupt
+loop until STATUS reports empty
+  RX -> MB : read READ_DATA
+end
+RX -> MB : write 1 to IRQS[1]
+@enduml
+----
+
 [NOTE]
 ====
 The SEP and Key Manager address maps contain a separate mailbox for
@@ -381,3 +401,20 @@ before issuing the next write. Compare against a window above the written value
 rather than for equality, since the counter advances while the poll runs. Where
 the written value is too close to the free-running count to tell the two apart,
 separate consecutive writes by at least eight reference-clock periods instead.
+
+.SMC reference counter reload example C usage.
+[source,sourceCode,c]
+----
+// SMC CPU control register address.
+// In SMC-local address space.
+#define SMC_CPU_CTRL_REG_REFERENCE_COUNTER 0xC0039040
+
+// Load `value` into the reference counter. `window` is the largest
+// number of reference-clock periods that can elapse while polling.
+void reference_counter_load(uint64_t value, uint64_t window) {
+    write64(SMC_CPU_CTRL_REG_REFERENCE_COUNTER, value);
+
+    // Wait until the readback is at or just above `value`.
+    while (read64(SMC_CPU_CTRL_REG_REFERENCE_COUNTER) - value > window);
+}
+----

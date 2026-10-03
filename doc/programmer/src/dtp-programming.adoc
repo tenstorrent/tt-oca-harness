@@ -153,15 +153,31 @@ From the local CLAs to Chiplet 3.
 
 Changing `CONFIG` after routes are open is discouraged. When a link must
 change protocol or polarity, for example after both chiplets agree on a new
-topology, reconfigure port `p` as follows:
+topology, reconfigure port `p` as shown below. A poll that times out means
+the point-to-point far end never acknowledged; recover the port as described in
+<<dtp-ctn-deadlock>>.
 
-. Close every route that involves port `p`: write zero to `CT_SRC[p]`, and
-  clear bit `p` in every other `CT_SRC[n]`.
-. Poll `STATUS.BUSY` of port `p` until it reads 0. If a point-to-point far end
-  never acknowledges and `BUSY` stays 1, recover the port as described in
-  <<dtp-ctn-deadlock>>.
-. Write `CONFIG` with the new `MODE` and `INVERT` in a single write.
-. Reopen the routes.
+.Changing a CTP's configuration.
+[plantuml,ocah-ctn-reconfigure,svg,width=60%,align="center"]
+----
+@startuml
+start
+:Close every route involving port p:
+write 0 to CT_SRC[p] and clear bit p
+in every other CT_SRC[n];
+while (STATUS.BUSY of port p reads 1?) is (yes)
+  if (Poll timed out?) then (yes)
+    :Write CONFIG with RESET = 1,
+    then with RESET = 0;
+  else (no)
+  endif
+endwhile (no)
+:Write CONFIG with the new
+MODE and INVERT in one write;
+:Reopen the routes;
+stop
+@enduml
+----
 
 The CTP holds its point-to-point handshake idle while wire-OR mode is
 selected. After point-to-point mode is selected, the handshake ignores
@@ -285,6 +301,33 @@ alone. To assert an override:
 . Write the port's `reset_control` with a DR scan, leaving `reset_enable` at 1.
 . Clear `reset_enable` in a second DR scan, so that its Update-DR moves only the
   select.
+
+.Asserting an IC_RESET override.
+[plantuml,ocah-dtp-ic-reset-override,svg,width=90%,align="center"]
+----
+@startuml
+scale 20 as 120 pixels
+hide time-axis
+concise "IC_RESET DR scan" as DR
+binary "reset_control" as RC
+binary "reset_enable" as RE
+binary "Port reset (active low)" as R
+@0
+DR is Idle
+RC is high
+RE is high
+R is high
+@20
+DR is "Update-DR 1"
+RC is low
+@40
+DR is "Update-DR 2"
+RE is low
+R is low
+@60
+DR is Idle
+@enduml
+----
 
 Changing both in one Update-DR can pulse a reset on a port that neither source
 is resetting. Write `reset_hold` to 0 to keep the override asserted across

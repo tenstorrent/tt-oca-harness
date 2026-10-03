@@ -24,10 +24,10 @@ https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/inde
 defines the core programming model.
 The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-upstream-ip-programming[programming guidance]
+xref:ocah-programmer-guide::index.adoc#sep-pic[programming guidance]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-upstream-ip-programming[programming guidance]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-pic[programming guidance]
 endif::backend-pdf[]
 for this block.
 

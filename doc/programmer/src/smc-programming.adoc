@@ -893,6 +893,27 @@ At 50 MHz, 115200 baud gives divisor 26 (`0x001A`) and an actual rate of
 `50000000 / (16 * 27)`, approximately 115741 baud. Divisor zero disables both
 the transmitter and the receiver; it is not the highest-speed setting.
 
+.UART baud-rate change example C usage.
+[source,sourceCode,c]
+----
+#define UART_LSR_TEMT 0x40
+
+// Change the baud rate, keeping the frame format programmed in LCR.
+// The caller checks that the divisor is in the range 1 to 65535.
+void uart_set_baud(uint32_t clock_frequency, uint32_t baud) {
+    // Let queued transmit data finish.
+    while (!(read32(UART_REG_LSR) & UART_LSR_TEMT));
+
+    uint32_t lcr = read32(UART_REG_LCR) & ~UART_LCR_DLAB;
+    uint32_t divisor = (clock_frequency + 8 * baud) / (16 * baud) - 1;
+
+    write32(UART_REG_LCR, lcr | UART_LCR_DLAB);
+    write32(UART_REG_DLL, divisor & 0xFF);
+    write32(UART_REG_DLM, (divisor >> 8) & 0xFF);
+    write32(UART_REG_LCR, lcr);
+}
+----
+
 [[smc-uart-fifo]]
 ====== FIFO Control and Polled Transfers
 
@@ -1477,6 +1498,21 @@ than sticky configuration: after `PROGRAM_DONE`, deassert `program_enable`
 before any later read, and deassert `read_enable` before starting a program.
 Address, data and the other program fields can be left as they are.
 
+.eFuse command-path ownership.
+[plantuml,ocah-smc-efuse-command-path,svg,width=60%,align="center"]
+----
+@startuml
+hide empty description
+[*] --> Idle
+Idle --> Program : set program_enable
+Program --> Program : program one bit,\nwait for program_done
+Program --> Idle : clear program_enable
+Idle --> Read : set read_enable
+Read --> Read : read one word,\nwait for read_done
+Read --> Idle : clear read_enable
+@enduml
+----
+
 [[smc-efuse-program-sequence]]
 ===== Program Sequence
 
@@ -1644,6 +1680,55 @@ completion. The DMA interrupt (PLIC ID 323) is a pulse on the falling edge of
 the engine's busy state, not one interrupt per transfer; use it as a hint to
 poll `DONE_0`.
 
+.DMA example C definitions.
+[source,sourceCode,c]
+----
+// DMA register addresses.
+// In SMC-local address space.
+#define DMA_BASE                   0xC0038000
+#define DMA_REG_CONFIG             (DMA_BASE + 0x0)
+#define DMA_REG_NEXT_ID_0          (DMA_BASE + 0x48)
+#define DMA_REG_DONE_0             (DMA_BASE + 0xC8)
+#define DMA_REG_DST_ADDRESS_LO     (DMA_BASE + 0x108)
+#define DMA_REG_DST_ADDRESS_HI     (DMA_BASE + 0x10C)
+#define DMA_REG_SRC_ADDRESS_LO     (DMA_BASE + 0x110)
+#define DMA_REG_SRC_ADDRESS_HI     (DMA_BASE + 0x114)
+#define DMA_REG_LENGTH_LO          (DMA_BASE + 0x118)
+#define DMA_REG_LENGTH_HI          (DMA_BASE + 0x11C)
+#define DMA_REG_NUM_REPETITIONS_LO (DMA_BASE + 0x130)
+#define DMA_REG_NUM_REPETITIONS_HI (DMA_BASE + 0x134)
+
+// Register constants.
+#define DMA_CONFIG_ENABLED_ND 0x400
+----
+
+.DMA example C usage.
+[source,sourceCode,c]
+----
+// Copy `len` bytes from `src` to `dst` as one linear transfer, with no
+// other transfer outstanding. Returns once the transfer has retired.
+void dma_copy(uint64_t dst, uint64_t src, uint32_t len) {
+    write32(DMA_REG_CONFIG, DMA_CONFIG_ENABLED_ND);
+    write32(DMA_REG_SRC_ADDRESS_LO, (uint32_t)src);
+    write32(DMA_REG_SRC_ADDRESS_HI, (uint32_t)(src >> 32));
+    write32(DMA_REG_DST_ADDRESS_LO, (uint32_t)dst);
+    write32(DMA_REG_DST_ADDRESS_HI, (uint32_t)(dst >> 32));
+    write32(DMA_REG_LENGTH_LO, len);
+    write32(DMA_REG_LENGTH_HI, 0);
+    write32(DMA_REG_NUM_REPETITIONS_LO, 1);
+    write32(DMA_REG_NUM_REPETITIONS_HI, 0);
+
+    // Make the configuration visible before submitting.
+    __asm__ volatile("fence" ::: "memory");
+
+    // Reading NEXT_ID_0 submits the transfer and returns its ID.
+    uint32_t id = read32(DMA_REG_NEXT_ID_0);
+
+    // Wait for the transfer to retire.
+    while (read32(DMA_REG_DONE_0) != id);
+}
+----
+
 [[smc-flr-isolation]]
 ==== Function-Level Reset and Isolation
 
@@ -1758,6 +1843,25 @@ For example, `CTRL = 0x0001020A` selects STEP=1, PULSE_WIDTH=2 and
 CREDIT_VAL=10. These reset settings are an example, not a timing guarantee
 for every clock ratio. Use the subsystem memory map for each instance's base.
 
+.Starting a primary timer and its secondaries.
+[plantuml,ocah-smc-octs-start,svg,width=80%,align="center"]
+----
+@startuml
+participant "Firmware" as FW
+participant "Primary timer" as P
+participant "Secondary timers" as S
+FW -> P : CTRL, TIMER_PRESET_LO/HI
+FW -> S : CTRL (nonzero STEP), TIMER_PRESET_LO/HI
+FW -> P : TIMER_GPIO_ENABLE (where used)
+FW -> S : TIMER_GPIO_ENABLE (where used)
+FW -> P : TIMER_START.START = 1
+P -> S : load pulse
+P -> S : synchronization pulses
+FW -> P : check mode and count progress
+FW -> S : check mode, count progress, CREDIT_EXPIRED
+@enduml
+----
+
 [[smc-octs-read-count]]
 ===== Read a Timestamp
 
@@ -1766,12 +1870,26 @@ For a primary counting monotonically between reads, read high, low, then
 high again; retry if the high halves differ. Do not restart it during the read.
 Use a bounded retry in software if register access can stall.
 
-[source,c]
+.OCTS timestamp read example C usage.
+[source,sourceCode,c]
 ----
-hi1 = read32(base + 0x18);  // TIMER_COUNT_HI
-lo  = read32(base + 0x14);  // TIMER_COUNT_LO
-hi2 = read32(base + 0x18);  // TIMER_COUNT_HI
-// Accept ((uint64_t)hi1 << 32) | lo only when hi1 == hi2.
+// OCTS system timer register addresses.
+// In SMC-local address space.
+#define OCTS_BASE               0xC000A000
+#define OCTS_REG_TIMER_COUNT_LO (OCTS_BASE + 0x14)
+#define OCTS_REG_TIMER_COUNT_HI (OCTS_BASE + 0x18)
+
+uint64_t octs_read_count(void) {
+    uint32_t hi, lo;
+
+    // Retry if the high half changed while reading the low half.
+    do {
+        hi = read32(OCTS_REG_TIMER_COUNT_HI);
+        lo = read32(OCTS_REG_TIMER_COUNT_LO);
+    } while (read32(OCTS_REG_TIMER_COUNT_HI) != hi);
+
+    return ((uint64_t)hi << 32) | lo;
+}
 ----
 
 A secondary can correct its count at a credit boundary, including backward
@@ -1830,6 +1948,52 @@ only its low `$clog2(BUFFER_DEPTH)+1` bits with occupancy, so values alias modul
 than the threshold and occupancy never exceeds `BUFFER_DEPTH`, so only
 thresholds 0 to `BUFFER_DEPTH - 1` can assert it. With the default depth 8,
 writing 16 acts as 0, and 8 to 15 never assert the interrupt from occupancy.
+
+.Telemetry receiver example C definitions.
+[source,sourceCode,c]
+----
+// Telemetry receiver register addresses, for receiver `i`.
+// In SMC-local address space.
+#define TELEMETRY_BASE(i)             (0xC0009000 + ((i) * 0x100))
+#define TELEMETRY_REG_CTRL(i)         (TELEMETRY_BASE(i) + 0x0)
+#define TELEMETRY_REG_STATUS(i)       (TELEMETRY_BASE(i) + 0x4)
+#define TELEMETRY_REG_PROBE_ID(i)     (TELEMETRY_BASE(i) + 0x14)
+#define TELEMETRY_REG_COUNTER_VLDS(i) (TELEMETRY_BASE(i) + 0x18)
+#define TELEMETRY_REG_COUNTER(i, n)   (TELEMETRY_BASE(i) + 0x80 + ((n) * 0x4))
+
+// Register constants.
+#define TELEMETRY_CTRL_BUFFER_POP     0x1
+#define TELEMETRY_CTRL_RX_FLUSH       0x10
+#define TELEMETRY_STATUS_BUFFER_EMPTY 0x1
+----
+
+.Telemetry receiver example C usage.
+[source,sourceCode,c]
+----
+// Consume every queued message on receiver `i`.
+void telemetry_drain(unsigned i) {
+    while (!(read32(TELEMETRY_REG_STATUS(i)) & TELEMETRY_STATUS_BUFFER_EMPTY)) {
+        uint32_t probe_id = read32(TELEMETRY_REG_PROBE_ID(i));
+        uint32_t valid = read32(TELEMETRY_REG_COUNTER_VLDS(i));
+
+        for (unsigned n = 0; n < 32; n++) {
+            if (valid & (1u << n)) {
+                uint32_t value = read32(TELEMETRY_REG_COUNTER(i, n));
+
+                // Handle the counter value here...
+                (void) probe_id;
+                (void) value;
+            }
+        }
+
+        // Pop the message, preserving the threshold and any
+        // outstanding TX-flush request.
+        uint32_t ctrl = read32(TELEMETRY_REG_CTRL(i))
+                          & ~(TELEMETRY_CTRL_BUFFER_POP | TELEMETRY_CTRL_RX_FLUSH);
+        write32(TELEMETRY_REG_CTRL(i), ctrl | TELEMETRY_CTRL_BUFFER_POP);
+    }
+}
+----
 
 [[smc-telemetry-flush]]
 ===== Flush Operations
