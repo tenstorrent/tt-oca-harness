@@ -18,6 +18,8 @@ __pycache__/
 # filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
 **/build/
 **/build_dual/
+**/build_ot/
+**/build_ot_pio/
 **/build_pio/
 **/build_release/
 
