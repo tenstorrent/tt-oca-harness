@@ -394,7 +394,9 @@ mode overrides gating. Clock gating does not abort transfers or isolate the bus.
 but only bank 0 is functional in SMC. Reads of <code>NEXT_ID_1..15</code> complete with zero
 and launch nothing; their <code>STATUS</code> and <code>DONE</code> registers also read zero. Treat
 these banks as reserved. A read of <code>NEXT_ID_0</code> is a command, not a harmless
-status read; exclude it from diagnostic register dumps.</p>
+status read; exclude it from diagnostic register dumps. Any read whose bytes
+include <code>NEXT_ID_0</code>, such as a 64-bit read at <code>0x48</code>, launches a transfer; a
+32-bit read of the unused word at <code>0x4C</code> does not.</p>
 </div>
 <div class="paragraph">
 <p>Source, destination, length, strides, repetitions and <code>CONFIG</code> are shared registers.
@@ -472,14 +474,14 @@ retired ID alone is not proof that valid data was copied.</p>
 <div class="paragraph">
 <p>The names above follow the published register map. The RTL frontend calls the
 configuration <code>conf</code>, the ND-enable field <code>enable_nd</code>, and the repetition pair
-<code>reps_2_low/high</code>; these refer to the same fields. Some generated CONFIG field
-descriptions say "Not used", but the frontend forwards the options described here.</p>
+<code>reps_2_low/high</code>; these refer to the same fields.</p>
 </div>
 <div class="paragraph">
 <p>The frontend requests incrementing AXI bursts and sets the cache attribute to
 modifiable. <code>CONFIG</code> supplies decoupling, maximum burst-length and length-reduction
-options. The backend handles alignment and burst splitting; these mechanisms
-do not grant permission to access a filtered or otherwise invalid address.</p>
+options; the <code>CONFIG</code> register description gives each field&#8217;s effect. The backend
+handles alignment and burst splitting; these mechanisms do not grant permission
+to access a filtered or otherwise invalid address.</p>
 </div>
 </div>
 </div>
@@ -669,13 +671,13 @@ register file is generated at the maximum stream count. With
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10</td><td>ENABLED_ND</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
-<tr><td>9:7</td><td>DST_MAX_LLEN</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
-<tr><td>6:4</td><td>SRC_MAX_LLEN</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
-<tr><td>3</td><td>DST_REDUCE_LEN</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
-<tr><td>2</td><td>SRC_REDUCE_LEN</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
-<tr><td>1</td><td>DECOUPLE_RW</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
-<tr><td>0</td><td>DECOUPLE_AW</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
+<tr><td>10</td><td>ENABLED_ND</td><td>RW</td><td>0x0</td><td>Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.</td></tr>
+<tr><td>9:7</td><td>DST_MAX_LLEN</td><td>RW</td><td>0x0</td><td>Base-2 logarithm of the maximum write burst length in 64-bit beats, applied when DST_REDUCE_LEN is 1. A write burst does not cross a boundary aligned to 2^(DST_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when DST_REDUCE_LEN is 0.</td></tr>
+<tr><td>6:4</td><td>SRC_MAX_LLEN</td><td>RW</td><td>0x0</td><td>Base-2 logarithm of the maximum read burst length in 64-bit beats, applied when SRC_REDUCE_LEN is 1. A read burst does not cross a boundary aligned to 2^(SRC_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when SRC_REDUCE_LEN is 0.</td></tr>
+<tr><td>3</td><td>DST_REDUCE_LEN</td><td>RW</td><td>0x0</td><td>Destination burst-length reduction. 1: write bursts are limited by DST_MAX_LLEN. 0: a write burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.</td></tr>
+<tr><td>2</td><td>SRC_REDUCE_LEN</td><td>RW</td><td>0x0</td><td>Source burst-length reduction. 1: read bursts are limited by SRC_MAX_LLEN. 0: a read burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.</td></tr>
+<tr><td>1</td><td>DECOUPLE_RW</td><td>RW</td><td>0x0</td><td>Read/write decoupling. 0: read and write bursts are formed in lockstep, one write burst per read burst. 1: read and write bursts are formed and issued independently; this mode can deadlock.</td></tr>
+<tr><td>0</td><td>DECOUPLE_AW</td><td>RW</td><td>0x0</td><td>Write-address decoupling. 0: the write address of each burst is held until the first read data beat of the matching read burst returns. 1: write addresses are issued without waiting for read data.</td></tr>
 </table>
 <span id="STATUS_0"></span><h3 id="dma_ctrl-STATUS_0" data-register-alias="STATUS_0">STATUS_0</h3>
 <table>
@@ -941,7 +943,7 @@ register file is generated at the maximum stream count. With
 <span id="DST_ADDRESS_HI"></span><h3 id="dma_ctrl-DST_ADDRESS_HI" data-register-alias="DST_ADDRESS_HI">DST_ADDRESS_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Destination address for DMA to write to, upper 32 bits</td></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Destination address for DMA to write to, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.</td></tr>
 </table>
 <span id="SRC_ADDRESS_LO"></span><h3 id="dma_ctrl-SRC_ADDRESS_LO" data-register-alias="SRC_ADDRESS_LO">SRC_ADDRESS_LO</h3>
 <table>
@@ -951,7 +953,7 @@ register file is generated at the maximum stream count. With
 <span id="SRC_ADDRESS_HI"></span><h3 id="dma_ctrl-SRC_ADDRESS_HI" data-register-alias="SRC_ADDRESS_HI">SRC_ADDRESS_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Source address for DMA to read from, upper 32 bits.</td></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Source address for DMA to read from, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.</td></tr>
 </table>
 <span id="LENGTH_LO"></span><h3 id="dma_ctrl-LENGTH_LO" data-register-alias="LENGTH_LO">LENGTH_LO</h3>
 <table>
@@ -961,7 +963,7 @@ register file is generated at the maximum stream count. With
 <span id="LENGTH_HI"></span><h3 id="dma_ctrl-LENGTH_HI" data-register-alias="LENGTH_HI">LENGTH_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of bytes to move, upper 32 bits.</td></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of bytes to move, upper 32 bits. Bits [31:24] (combined length bits [63:56]) are discarded, not checked; program them as zero.</td></tr>
 </table>
 <span id="DST_STRIDE_LO"></span><h3 id="dma_ctrl-DST_STRIDE_LO" data-register-alias="DST_STRIDE_LO">DST_STRIDE_LO</h3>
 <table>
@@ -971,7 +973,7 @@ register file is generated at the maximum stream count. With
 <span id="DST_STRIDE_HI"></span><h3 id="dma_ctrl-DST_STRIDE_HI" data-register-alias="DST_STRIDE_HI">DST_STRIDE_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Stride amount on destination address side, upper 32 bits</td></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Stride amount on destination address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.</td></tr>
 </table>
 <span id="SRC_STRIDE_LO"></span><h3 id="dma_ctrl-SRC_STRIDE_LO" data-register-alias="SRC_STRIDE_LO">SRC_STRIDE_LO</h3>
 <table>
@@ -981,17 +983,17 @@ register file is generated at the maximum stream count. With
 <span id="SRC_STRIDE_HI"></span><h3 id="dma_ctrl-SRC_STRIDE_HI" data-register-alias="SRC_STRIDE_HI">SRC_STRIDE_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Stride amount on source address side, upper 32 bits</td></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Stride amount on source address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.</td></tr>
 </table>
 <span id="NUM_REPETITIONS_LO"></span><h3 id="dma_ctrl-NUM_REPETITIONS_LO" data-register-alias="NUM_REPETITIONS_LO">NUM_REPETITIONS_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of times transfer should be repeated, lower 32 bits. If stride is set, stride will be added to address after every repetition</td></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of rows to copy, including the first, lower 32 bits. SRC_STRIDE and DST_STRIDE are added to the addresses between rows. Takes effect only when CONFIG.ENABLED_ND is 1.</td></tr>
 </table>
 <span id="NUM_REPETITIONS_HI"></span><h3 id="dma_ctrl-NUM_REPETITIONS_HI" data-register-alias="NUM_REPETITIONS_HI">NUM_REPETITIONS_HI</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of times transfer should be repeated, upper 32 bits. If stride is set, stride will be added to address after every repetition</td></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>Number of rows to copy, upper 32 bits. The DMA uses only the low 32 bits of the row count, so this register is discarded, not checked; program it as zero.</td></tr>
 </table>
 </div>
 </div>

@@ -693,7 +693,7 @@
 <table id="trm-table-2">
 <caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>System clock, rising-edge triggered.</td></tr>
-<tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low reset. Assert asynchronously; deassert synchronously to clk_i. Resets all state machines, counters and the FIFO.</td></tr>
+<tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low reset. Assert asynchronously; deassert synchronously to clk_i. Resets the registers, state machines, counters and the FIFO.</td></tr>
 <tr><td><code>csr_axil_req_i</code></td><td>input</td><td><code>csr_axil_req_t</code></td><td>Csr AXI-Lite req (AXI4-Lite Register Interface).</td></tr>
 <tr><td><code>csr_axil_resp_o</code></td><td>output</td><td><code>csr_axil_resp_t</code></td><td>Csr AXI-Lite resp.</td></tr>
 <tr><td><code>log_fetch_axil_req_o</code></td><td>output</td><td><code>log_fetch_axil_req_t</code></td><td>Log fetch AXI-Lite req (AXI4-Lite Log Fetch Interface).</td></tr>

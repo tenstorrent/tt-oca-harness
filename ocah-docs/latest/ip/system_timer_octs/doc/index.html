@@ -973,87 +973,17 @@ COUNT_HI registers.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="timing-specifications"><a class="anchor" href="#timing-specifications"></a><a class="link" href="#timing-specifications">3.5. Timing Specifications</a></h3>
+<h3 id="octs-interface-timing"><a class="anchor" href="#octs-interface-timing"></a><a class="link" href="#octs-interface-timing">3.5. Timing</a></h3>
 <div class="paragraph">
-<p>All input signals are required to meet setup and hold times with respect
-to the rising edge of clk_i.</p>
-</div>
-<div class="paragraph">
-<p><a href="#octs-timing-requirements-table">Table 3</a> lists the stated setup and hold requirements by
-signal group.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
-<table id="octs-timing-requirements-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 3. OCTS Timing Requirements</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Group</th>
-<th class="tableblock halign-left valign-top">Setup Time</th>
-<th class="tableblock halign-left valign-top">Hold Time</th>
-<th class="tableblock halign-left valign-top">Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Register Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.0 ns</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0.5 ns</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite/APB4 protocol signals</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronization Inputs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Edge detection provides internal
-synchronization</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Control Inputs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2.0 ns</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0.5 ns</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">test_en_i, scan_rst_ni,
-timer_cnt_step_i</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Timer Count Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output signal with 3.0 ns clock-to-output
-delay</p></td>
-</tr>
-</tbody>
-</table>
+<p>The RTL defines no setup, hold or clock-to-output limit, maximum clock
+frequency or frequency ratio between OCTS clock domains. Clock frequency,
+jitter, reset timing and physical timing constraints must come from the
+integration timing specification.</p>
 </div>
 <div class="paragraph">
-<p>The interface ensures that register outputs are valid within 3.0 ns of a
-rising clock edge, while the timer count output also updates within 3.0
-ns of the clock. Synchronization outputs are generated as pulses with
-programmable widths.</p>
-</div>
-<div class="paragraph">
-<p>Regarding clock domain crossing, the synchronization protocol relies on
-pulses wide enough to be reliably detected: each pulse should last for
-at least two destination clock cycles, and the maximum supported
-frequency ratio between domains is 10:1.</p>
-</div>
-<div class="paragraph">
-<p>Pulse events must be separated by at least 10 destination clock cycles.
-Edge detection logic ensures synchronization latency of 2–3 destination
-clock cycles and provides robust protection against metastability (using
-a 2FF synchronizer with closure on all relevant timing), with internal
-logic maintaining the width of each transmitted pulse.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="reset-behavior-and-initialization"><a class="anchor" href="#reset-behavior-and-initialization"></a><a class="link" href="#reset-behavior-and-initialization">3.6. Reset Behavior and Initialization</a></h3>
-<div class="paragraph">
-<p>When reset is asserted asynchronously (<code>rst_ni</code>), all outputs</p>
+<p>Synchronization inputs cross into <code>clk_i</code> as described in <a href="#octs-pulses">Section 2.2</a>;
+derive the required pulse high and low intervals from the destination clock
+and CDC analysis. Reset behavior is described in <a href="#octs-reset">Section 2.4</a>.</p>
 </div>
 </div>
 </div>
@@ -1171,7 +1101,7 @@ Use the enclosing subsystem&#8217;s memory map for its base address.</p>
 <span id="address-alignment-and-access-requirements"></span>
 <span id="reset-values-and-power-on-behavior"></span>
 <table id="octs-register-reset-values-and-power-on-behavior-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. OCTS register offsets and reset values</caption>
+<caption class="title">Table 3. OCTS register offsets and reset values</caption>
 <colgroup>
 <col style="width: 28.5714%;">
 <col style="width: 14.2857%;">
@@ -1245,8 +1175,8 @@ Use the enclosing subsystem&#8217;s memory map for its base address.</p>
 <h2 id="regmap-system_timer_octs">OCTS System Timer Address Map</h2>
 <p>Open Chiplet Time Synchronization (OCTS) System Timer Registers</p>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-5">
-<caption class="title"><a href="#trm-table-5">Table 5</a>. OCTS System Timer Address Map register list</caption>
+<table id="trm-table-4">
+<caption class="title"><a href="#trm-table-4">Table 4</a>. OCTS System Timer Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#system_timer_octs-TIMER_START">TIMER_START</a></td><td>RW</td><td>System Timer Start Register</td></tr>
 <tr><td>0x4</td><td><a href="#system_timer_octs-CTRL">CTRL</a></td><td>RW</td><td>System Timer Control Register</td></tr>
@@ -1260,15 +1190,15 @@ Use the enclosing subsystem&#8217;s memory map for its base address.</p>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="TIMER_START"></span><h3 id="system_timer_octs-TIMER_START" data-register-alias="TIMER_START">TIMER_START</h3>
-<table id="trm-table-6">
-<caption class="title"><a href="#trm-table-6">Table 6</a>. system_timer_octs.TIMER_START fields</caption>
+<table id="trm-table-5">
+<caption class="title"><a href="#trm-table-5">Table 5</a>. system_timer_octs.TIMER_START fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure<br>both primary and secondary are out of reset.</td></tr>
 </table>
 <span id="CTRL"></span><h3 id="system_timer_octs-CTRL" data-register-alias="CTRL">CTRL</h3>
-<table id="trm-table-7">
-<caption class="title"><a href="#trm-table-7">Table 7</a>. system_timer_octs.CTRL fields</caption>
+<table id="trm-table-6">
+<caption class="title"><a href="#trm-table-6">Table 6</a>. system_timer_octs.CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>23:16</td><td>STEP</td><td>RW</td><td>0x1</td><td>Step amount for secondary timer</td></tr>
@@ -1276,8 +1206,8 @@ Use the enclosing subsystem&#8217;s memory map for its base address.</p>
 <tr><td>7:0</td><td>CREDIT_VAL</td><td>RW</td><td>0xA</td><td>Credit value factor. WARNING: This value must be greater than PULSE_WIDTH</td></tr>
 </table>
 <span id="STATUS"></span><h3 id="system_timer_octs-STATUS" data-register-alias="STATUS">STATUS</h3>
-<table id="trm-table-8">
-<caption class="title"><a href="#trm-table-8">Table 8</a>. system_timer_octs.STATUS fields</caption>
+<table id="trm-table-7">
+<caption class="title"><a href="#trm-table-7">Table 7</a>. system_timer_octs.STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>RUNNING</td><td>R</td><td>0x0</td><td>Timer is currently enabled and running</td></tr>
@@ -1285,38 +1215,38 @@ Use the enclosing subsystem&#8217;s memory map for its base address.</p>
 <tr><td>0</td><td>MODE</td><td>R</td><td>0x0</td><td>Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).</td></tr>
 </table>
 <span id="TIMER_PRESET_LO"></span><h3 id="system_timer_octs-TIMER_PRESET_LO" data-register-alias="TIMER_PRESET_LO">TIMER_PRESET_LO</h3>
-<table id="trm-table-9">
-<caption class="title"><a href="#trm-table-9">Table 9</a>. system_timer_octs.TIMER_PRESET_LO fields</caption>
+<table id="trm-table-8">
+<caption class="title"><a href="#trm-table-8">Table 8</a>. system_timer_octs.TIMER_PRESET_LO fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>PRESET_LO</td><td>RW</td><td>0x0</td><td>Lower 32 bits of preset value</td></tr>
 </table>
 <span id="TIMER_PRESET_HI"></span><h3 id="system_timer_octs-TIMER_PRESET_HI" data-register-alias="TIMER_PRESET_HI">TIMER_PRESET_HI</h3>
-<table id="trm-table-10">
-<caption class="title"><a href="#trm-table-10">Table 10</a>. system_timer_octs.TIMER_PRESET_HI fields</caption>
+<table id="trm-table-9">
+<caption class="title"><a href="#trm-table-9">Table 9</a>. system_timer_octs.TIMER_PRESET_HI fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>PRESET_HI</td><td>RW</td><td>0x0</td><td>Upper 32 bits of preset value</td></tr>
 </table>
 <span id="TIMER_COUNT_LO"></span><h3 id="system_timer_octs-TIMER_COUNT_LO" data-register-alias="TIMER_COUNT_LO">TIMER_COUNT_LO</h3>
-<table id="trm-table-11">
-<caption class="title"><a href="#trm-table-11">Table 11</a>. system_timer_octs.TIMER_COUNT_LO fields</caption>
+<table id="trm-table-10">
+<caption class="title"><a href="#trm-table-10">Table 10</a>. system_timer_octs.TIMER_COUNT_LO fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNT_LO</td><td>R</td><td>0x0</td><td>Lower 32 bits of current timer count</td></tr>
 </table>
 <span id="TIMER_COUNT_HI"></span><h3 id="system_timer_octs-TIMER_COUNT_HI" data-register-alias="TIMER_COUNT_HI">TIMER_COUNT_HI</h3>
-<table id="trm-table-12">
-<caption class="title"><a href="#trm-table-12">Table 12</a>. system_timer_octs.TIMER_COUNT_HI fields</caption>
+<table id="trm-table-11">
+<caption class="title"><a href="#trm-table-11">Table 11</a>. system_timer_octs.TIMER_COUNT_HI fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>COUNT_HI</td><td>R</td><td>0x0</td><td>Upper 32 bits of current timer count</td></tr>
 </table>
 <span id="CREDIT_EXPIRED"></span><h3 id="system_timer_octs-CREDIT_EXPIRED" data-register-alias="CREDIT_EXPIRED">CREDIT_EXPIRED</h3>
-<table id="trm-table-13">
-<caption class="title"><a href="#trm-table-13">Table 13</a>. system_timer_octs.CREDIT_EXPIRED fields</caption>
+<table id="trm-table-12">
+<caption class="title"><a href="#trm-table-12">Table 12</a>. system_timer_octs.CREDIT_EXPIRED fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>MAX_CYCLES_EXPIRED</td><td>RW</td><td>0x0</td><td>Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.<br>If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.<br>This register can also be used to determine the clock skew between the primary and secondary.<br>If PRIMARY, this field is always 0.</td></tr>
 </table>
 <span id="TIMER_GPIO_ENABLE"></span><h3 id="system_timer_octs-TIMER_GPIO_ENABLE" data-register-alias="TIMER_GPIO_ENABLE">TIMER_GPIO_ENABLE</h3>
-<table id="trm-table-14">
-<caption class="title"><a href="#trm-table-14">Table 14</a>. system_timer_octs.TIMER_GPIO_ENABLE fields</caption>
+<table id="trm-table-13">
+<caption class="title"><a href="#trm-table-13">Table 13</a>. system_timer_octs.TIMER_GPIO_ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>GPIO_ENABLE</td><td>RW</td><td>0x0</td><td>Enable the GPIO pad lsio interface for the system timer. This is done to prevent X-prop on reset into the secondary timer, which can cause the secondary timer to start counting early.</td></tr>

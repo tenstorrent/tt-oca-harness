@@ -280,10 +280,10 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-owned technology-specific and supplementary peripherals.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800000 – BASE + 0x1FFFFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">24 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1000000 – BASE + 0x1FFFFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Address Remapping</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ECAM, machine-mode, and hypervisor remapped regions.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Machine-mode and hypervisor remapped regions.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4000000 – BASE + 0x7FFFFFF</p></td>
@@ -598,7 +598,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Direct-memory-access controller.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0xFFFFFFFF / OKAY<sup><a href="#smc-components-note-3">[3]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0xFFFFFFFF / OKAY</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
 </tr>
 <tr>
@@ -631,7 +631,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Wrapper address map instantiating the per-controller I3C CSR blocks.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-4">[4]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-3">[3]</a></sup></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
@@ -642,7 +642,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad ROM memory, present only in non-CPL configurations.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-<sup><a href="#smc-components-note-5">[5]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-<sup><a href="#smc-components-note-4">[4]</a></sup></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
@@ -679,24 +679,13 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800000 – BASE + 0xFFFFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ecam_region</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Remapped regions, either ECAM, M-Mode or XVisor</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR<sup><a href="#smc-components-note-6">[6]</a></sup></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1000000 – BASE + 0x17FFFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">mmode_region</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Remapped regions, either ECAM, M-Mode or XVisor</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address region whose accesses an output remap redirects.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
@@ -707,7 +696,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">xvisor_region</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Remapped regions, either ECAM, M-Mode or XVisor</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address region whose accesses an output remap redirects.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
@@ -719,7 +708,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-7">[7]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-5">[5]</a></sup></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
 </tr>
 <tr>
@@ -794,11 +783,9 @@ the extent occupied by registers.</p>
 <div class="title">Notes</div>
 <p><a id="smc-components-note-1"></a><sup>[1]</sup> Offset 0xC holds the watchdog&#8217;s countHi register, which this map does not list; a 32-bit write there locks the watchdog key again.<br>
 <a id="smc-components-note-2"></a><sup>[2]</sup> Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.<br>
-<a id="smc-components-note-3"></a><sup>[3]</sup> A read fetches the whole 8-byte word, so a read of 0x4C also reads NEXT_ID_0 at 0x48 and launches a transfer.<br>
-<a id="smc-components-note-4"></a><sup>[4]</sup> Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped.<br>
-<a id="smc-components-note-5"></a><sup>[5]</sup> A write answers SLVERR and leaves the ROM unchanged.<br>
-<a id="smc-components-note-6"></a><sup>[6]</sup> No RTL decodes this aperture.<br>
-<a id="smc-components-note-7"></a><sup>[7]</sup> 0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.</p>
+<a id="smc-components-note-3"></a><sup>[3]</sup> Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped.<br>
+<a id="smc-components-note-4"></a><sup>[4]</sup> A write answers SLVERR and leaves the ROM unchanged.<br>
+<a id="smc-components-note-5"></a><sup>[5]</sup> 0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.</p>
 </div>
 <div class="paragraph">
 <p>The last two columns state how the SMC answers a 32-bit access that no
@@ -844,8 +831,8 @@ the split is purely organizational:</p>
 <p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
 Their function is dictated by the OCAH specifications, but their
 implementation is inherently technology- and vendor-specific — the eFuse
-SHIM, PLL and PVT clock observation, the POC/PBIAS and reference-clock pad
-controls, the per-pad GPIO controls, the PLL macro, and the PVT sensors.</p>
+SHIM, PLL and PVT clock observation, the reference-clock pad control, the
+per-pad GPIO controls, the PLL macro, and the PVT sensors.</p>
 </li>
 <li>
 <p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): any additional memory-mapped devices
@@ -1266,7 +1253,7 @@ reset control.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="base-config-dfx-status-and-gpio-pocpbias"><a class="anchor" href="#base-config-dfx-status-and-gpio-pocpbias"></a><a class="link" href="#base-config-dfx-status-and-gpio-pocpbias">3.2. Base Config, DFX Status, and GPIO POC/PBias</a></h3>
+<h3 id="base-config-and-dfx-status"><a class="anchor" href="#base-config-and-dfx-status"></a><a class="link" href="#base-config-and-dfx-status">3.2. Base Config and DFX Status</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1389,13 +1376,13 @@ reset control.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2 id="regmap-dfx_ctrl_status">DFX Control and Status Address Map</h2>
-<p>Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.</p>
+<p>Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#dfx_ctrl_status-STATUS_SMU">STATUS_SMU</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#dfx_ctrl_status-DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#dfx_ctrl_status-DEBUG_BUS_MUX">DEBUG_BUS_MUX</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#dfx_ctrl_status-DEBUG_BUS_MUX">DEBUG_BUS_MUX</a></td><td>RW</td><td>Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug<br>bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,<br>and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux<br>at a time.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="STATUS_SMU"></span><h3 id="dfx_ctrl_status-STATUS_SMU" data-register-alias="STATUS_SMU">STATUS_SMU</h3>
@@ -1416,65 +1403,29 @@ reset control.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>30:23</td><td>debug_marker</td><td>RW</td><td>0x0</td><td>Debug marker</td></tr>
-<tr><td>22:7</td><td>xtrig_clk_halt_mask</td><td>RW</td><td>0x0</td><td>Mask==0 (default) -&gt; disabled; Mask==1 -&gt; enabled</td></tr>
-<tr><td>6</td><td>dtb_ew_en</td><td>RW</td><td>0x0</td><td>DTB E/W enable</td></tr>
-<tr><td>5</td><td>dtb_ns_en</td><td>RW</td><td>0x0</td><td>DTB NS enable</td></tr>
-<tr><td>4</td><td>force_clk_en</td><td>RW</td><td>0x0</td><td>Force clk en</td></tr>
-<tr><td>3</td><td>cg_en</td><td>RW</td><td>0x0</td><td>Clock gating en</td></tr>
-<tr><td>2</td><td>gpio_en</td><td>RW</td><td>0x0</td><td>GPIO en</td></tr>
-<tr><td>1:0</td><td>chiplet_enable</td><td>RW</td><td>0x0</td><td>Chiplet Enable Used for Triggering</td></tr>
+<tr><td>30:23</td><td>debug_marker</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC;<br>the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).</td></tr>
+<tr><td>22:7</td><td>xtrig_clk_halt_mask</td><td>RW</td><td>0x0</td><td>CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every<br>CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds<br>them all inactive. Bits 15:1 hold the written value for software to read back<br>and have no effect.</td></tr>
+<tr><td>6</td><td>dtb_ew_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>5</td><td>dtb_ns_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>4</td><td>force_clk_en</td><td>RW</td><td>0x0</td><td>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the<br>value of cg_en.</td></tr>
+<tr><td>3</td><td>cg_en</td><td>RW</td><td>0x0</td><td>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless<br>force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in<br>reset.</td></tr>
+<tr><td>2</td><td>gpio_en</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
+<tr><td>1:0</td><td>chiplet_enable</td><td>RW</td><td>0x0</td><td>Holds the written value for software to read back. It has no effect in the SMC.</td></tr>
 </table>
 <span id="DEBUG_BUS_MUX"></span><h3 id="dfx_ctrl_status-DEBUG_BUS_MUX" data-register-alias="DEBUG_BUS_MUX">DEBUG_BUS_MUX</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>57:52</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:46</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>45:40</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>39:34</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</td></tr>
-<tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</td></tr>
-<tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</td></tr>
-<tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</td></tr>
+<tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>57:52</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>51:46</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>45:40</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>No effect in the SMC: each debug-bus mux has four output lanes, selected by<br>Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>39:34</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 3 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 2 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 1 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
+<tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Binary input-lane select for output lane 0 of the addressed debug-bus mux, which<br>takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k<br>from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</td></tr>
 <tr><td>15:8</td><td>Rsvd158</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>Unique DBM ID of the DBM instance</td></tr>
+<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the<br>level-3 muxes.</td></tr>
 <tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</td></tr>
-</table>
-</div>
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<div class="ocah-reg-html">
-<style>
-.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
-.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
-.ocah-reg-html th{background:#81BCE5;text-align:left}
-</style>
-<h2 id="regmap-gpio_poc_pbias_ctrl">GPIO POC and PBIAS Control Address Map</h2>
-<p>GPIO POC and PBIAS Control Register Interface</p>
-<p><strong>Register List:</strong></p>
-<table>
-<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#gpio_poc_pbias_ctrl-CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#gpio_poc_pbias_ctrl-ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>-</td></tr>
-</table>
-<p><strong>Register Details:</strong></p>
-<span id="CONTROL"></span><h3 id="gpio_poc_pbias_ctrl-CONTROL" data-register-alias="CONTROL">CONTROL</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>retention_en</td><td>RW</td><td>0x0</td><td>Retention enable control. Set to 0 by default which disables retention.</td></tr>
-<tr><td>0</td><td>pwr_supply_sel</td><td>RW</td><td>0x0</td><td>Power supply voltage level selection.<br>PSW=0 at 1.8V I/O supply<br>PSW=1 at 1.2V I/O supply</td></tr>
-</table>
-<span id="ACCESS_FILTER"></span><h3 id="gpio_poc_pbias_ctrl-ACCESS_FILTER" data-register-alias="ACCESS_FILTER">ACCESS_FILTER</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>18:16</td><td>arprot_requirement</td><td>RW</td><td>0x1</td><td>When read_filter_enable is set, only allow read accesses with this prot value</td></tr>
-<tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10:8</td><td>awprot_requirement</td><td>RW</td><td>0x1</td><td>When write_filter_enable is set, only allow write accesses with this prot value</td></tr>
-<tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>read_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.</td></tr>
-<tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.</td></tr>
 </table>
 </div>
 </div>

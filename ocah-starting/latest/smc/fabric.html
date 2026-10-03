@@ -1054,10 +1054,12 @@ transaction and the outbound instance passes it.</p>
 <div class="sect3">
 <h4 id="smc-fabric-full-3-bit-protection-matching-axi-lite"><a class="anchor" href="#smc-fabric-full-3-bit-protection-matching-axi-lite"></a><a class="link" href="#smc-fabric-full-3-bit-protection-matching-axi-lite">4.3.3. Full 3-Bit Protection Matching (AXI-Lite)</a></h4>
 <div class="paragraph">
-<p>For AXI4-Lite interfaces, the fabric supports exact matching on all
-three protection bits. This is implemented in the <code>prim_axil_prot_filter</code>
-module, which is used by GPIO POC/PBIAS control and other AXI-Lite
-peripherals.</p>
+<p>The fabric filters examine only the NS bit. Exact matching on all three
+protection bits is performed by an AXI-Lite peripheral that provides its own
+<code>ACCESS_FILTER</code> register, after the fabric has routed the transaction to it.
+In the SMC, the GPIO interface bank performs this check; see
+<a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a>. Adopter blocks in the external window
+that carry an <code>ACCESS_FILTER</code> register define the same fields.</p>
 </div>
 <div class="paragraph">
 <p>The full protection matching requires an exact match between the
@@ -1084,7 +1086,8 @@ transactions</p>
 <div class="paragraph">
 <p>When filtering is enabled, only transactions with matching protection
 values are allowed through. All other transactions receive an error
-response.</p>
+response. The protection bits are transaction attributes, not an initiator
+identity, so this check alone does not restrict a block to one initiator.</p>
 </div>
 <span id="protection-bit-pass-through"></span>
 </div>

@@ -283,14 +283,14 @@ rails and power conditions.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">General Purpose Input/Output
 with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">65</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hardware component for decoding and processing telemetry data from
 multi-chiplet systems.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 </tr>
 <tr>
@@ -480,7 +480,7 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
+<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When cleared, the engine<br>stops fetching and writing, discards buffered log data and resets transfer<br>progress. Configuration and pending LOG_LEN values are retained, so a pending<br>entry restarts from the start of its slot when the engine is enabled again.<br>Clearing does not wait for outstanding bus responses.</td></tr>
 </table>
 <span id="uart_log_engine_wrap_4_.log_engine.LOG_REGION_SIZE"></span><h3 id="uart_wrap-uart_log_engine_wrap_4_.log_engine.LOG_REGION_SIZE" data-register-alias="uart_log_engine_wrap_4_.log_engine.LOG_REGION_SIZE">uart_log_engine_wrap[4].log_engine.LOG_REGION_SIZE</h3>
 <table>
@@ -528,7 +528,7 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
+<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. The field holds the requested length until the<br>transfer completes, when hardware clears it to zero; it is not a remaining-byte<br>counter. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
 </table>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
@@ -699,7 +699,7 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
+<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When cleared, the engine<br>stops fetching and writing, discards buffered log data and resets transfer<br>progress. Configuration and pending LOG_LEN values are retained, so a pending<br>entry restarts from the start of its slot when the engine is enabled again.<br>Clearing does not wait for outstanding bus responses.</td></tr>
 </table>
 <span id="LOG_REGION_SIZE"></span><h3 id="uart_log_engine_wrap-LOG_REGION_SIZE" data-register-alias="LOG_REGION_SIZE">LOG_REGION_SIZE</h3>
 <table>
@@ -747,7 +747,7 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
+<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. The field holds the requested length until the<br>transfer completes, when hardware clears it to zero; it is not a remaining-byte<br>counter. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
 </table>
 </div>
 </div>

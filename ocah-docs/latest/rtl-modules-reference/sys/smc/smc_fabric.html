@@ -758,10 +758,10 @@
 <tr><td><code>remap_debug_jtag_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the JTAG path.</td></tr>
 <tr><td><code>remap_debug_log_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the log path.</td></tr>
 <tr><td><code>remap_debug_dma_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the data accelerator path.</td></tr>
-<tr><td><code>outbound_write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_INBOUND_FILTERS)-1:0]</code></td><td>Write hit index of the system inbound filter in the input fabric; tied to zero.</td></tr>
-<tr><td><code>outbound_read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_INBOUND_FILTERS)-1:0]</code></td><td>Read hit index of the system inbound filter in the input fabric; tied to zero.</td></tr>
-<tr><td><code>inbound_write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0]</code></td><td>Write hit index of the system outbound filter in the output fabric; tied to zero.</td></tr>
-<tr><td><code>inbound_read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0]</code></td><td>Read hit index of the system outbound filter in the output fabric; tied to zero.</td></tr>
+<tr><td><code>inbound_write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_INBOUND_FILTERS)-1:0]</code></td><td>Lowest system inbound filter entry hit by a write.</td></tr>
+<tr><td><code>inbound_read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_INBOUND_FILTERS)-1:0]</code></td><td>Lowest system inbound filter entry hit by a read.</td></tr>
+<tr><td><code>outbound_write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0]</code></td><td>Lowest system outbound filter entry hit by a write.</td></tr>
+<tr><td><code>outbound_read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0]</code></td><td>Lowest system outbound filter entry hit by a read.</td></tr>
 <tr><td><code>fabric_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the output fabric remap clock runs; low when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>fabric_bus_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the output fabric input has a request valid or a transaction outstanding; low when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>sys_out_filter_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system outbound filter clock runs.</td></tr>

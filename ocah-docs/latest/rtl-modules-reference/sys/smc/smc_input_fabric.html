@@ -730,8 +730,8 @@
 <tr><td><code>remap_debug_jtag_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the JTAG path.</td></tr>
 <tr><td><code>remap_debug_log_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the log path.</td></tr>
 <tr><td><code>remap_debug_dma_o</code></td><td>output</td><td><code>smc_pkg::remap_debug_t</code></td><td>Alias region index hit by the data accelerator path.</td></tr>
-<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>System inbound filter entry hit by writes; tied to zero because the filter instance disables its debug output.</td></tr>
-<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>System inbound filter entry hit by reads; tied to zero because the filter instance disables its debug output.</td></tr>
+<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Lowest system inbound filter entry hit by a write.</td></tr>
+<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Lowest system inbound filter entry hit by a read.</td></tr>
 <tr><td><code>sys_in_filter_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system inbound filter clock runs.</td></tr>
 <tr><td><code>sys_in_filter_bus_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system inbound filter input has a request valid or a transaction outstanding.</td></tr>
 </table>

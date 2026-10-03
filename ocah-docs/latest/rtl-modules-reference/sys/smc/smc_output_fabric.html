@@ -714,8 +714,8 @@
 <tr><td><code>filter_status_o</code></td><td>output</td><td><code>filter_ctrl_reg_pkg::filter_ctrl__in_t</code></td><td>Per-entry system outbound filter status returned to the register block.</td></tr>
 <tr><td><code>mR_ctrl_i</code></td><td>input</td><td><code>output_remap_reg_pkg::output_remap__out_t</code></td><td>M-mode output remap region configuration; unused when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>xR_ctrl_i</code></td><td>input</td><td><code>output_remap_reg_pkg::output_remap__out_t</code></td><td>Xvisor output remap region configuration; unused when NO_ADDR_REMAP is set.</td></tr>
-<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Filter entry index hit by outbound writes; tied to zero because the filter instance disables its debug output.</td></tr>
-<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Filter entry index hit by outbound reads; tied to zero because the filter instance disables its debug output.</td></tr>
+<tr><td><code>write_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Lowest system outbound filter entry hit by a write.</td></tr>
+<tr><td><code>read_filter_hit_debug_o</code></td><td>output</td><td><code>logic [$clog2(NUM_FILTERS)-1:0]</code></td><td>Lowest system outbound filter entry hit by a read.</td></tr>
 <tr><td><code>fabric_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the remap demux and mux clock runs; tied low when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>fabric_bus_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while axi_req_i has a request valid or a transaction outstanding; tied low when NO_ADDR_REMAP is set.</td></tr>
 <tr><td><code>sys_out_filter_clk_active_o</code></td><td>output</td><td><code>logic</code></td><td>High while the system outbound filter clock runs.</td></tr>

@@ -418,11 +418,10 @@ Advanced Trace Bus (ATB) telemetry data reception interfaces.</p>
 <p>The parameters and ports of <code>telemetry_receiver</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.html" class="xref page">telemetry_receiver</a>.</p>
 </div>
 <div class="paragraph">
-<p>The telemetry buffer dimensions are described as <code>NUM_BUFFERS</code> (default
-2, a dual-buffer architecture), <code>BUFFER_DEPTH</code> (default 16 entries per
-buffer), <code>ATB_DATA_WIDTH</code> (default 8 bits), <code>PACKET_WIDTH</code> (default 64
-bits), <code>ADDR_WIDTH</code> (default 32-bit register address) and <code>DATA_WIDTH</code>
-(default 32-bit data bus).</p>
+<p>The core has two elaboration parameters. <code>BUFFER_DEPTH</code> (default 8) sets the
+number of decoded messages the queue holds; it must be a power of two and at
+least 2. <code>MAX_NUM_COUNTERS_PER_MESSAGE</code> (default 4) sets the number of counters
+decoded from each message.</p>
 </div>
 <div class="paragraph">
 <p>The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
@@ -442,24 +441,12 @@ required for basic operation.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="clock-and-reset-specifications"><a class="anchor" href="#clock-and-reset-specifications"></a><a class="link" href="#clock-and-reset-specifications">3.4. Clock and Reset Specifications</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Clock Frequency</strong>: The component can operate at frequencies up to 200
-MHz</p>
-</li>
-<li>
-<p><strong>Clock Jitter</strong>: Maximum 100ps peak-to-peak jitter tolerance</p>
-</li>
-<li>
-<p><strong>Reset Duration</strong>: Minimum 10 clock cycles for complete reset</p>
-</li>
-<li>
-<p><strong>Reset Recovery</strong>: Component ready for operation 2 clock cycles after
-reset deassertion</p>
-</li>
-</ul>
+<h3 id="telemetry-receiver-clock-reset"><a class="anchor" href="#telemetry-receiver-clock-reset"></a><a class="link" href="#telemetry-receiver-clock-reset">3.4. Clock and Reset</a></h3>
+<div class="paragraph">
+<p><code>clk_i</code> is the core clock and <code>rst_ni</code> its asynchronous, active-low reset;
+<code>telemetry_receiver_wrap</code> adds <code>clk_telemetry_i</code> / <code>rst_telemetry_ni</code> for
+the ATB side. Clock frequency, jitter, reset duration and physical timing
+constraints must come from the integration timing specification.</p>
 </div>
 </div>
 <div class="sect2">
@@ -477,7 +464,7 @@ ATB protocol.</p>
 <p><strong>Data Width</strong>: 8 bits per beat</p>
 </li>
 <li>
-<p><strong>ID Width</strong>: 7 bits (128 unique trace sources)</p>
+<p><strong>ID Width</strong>: 7 bits; the receiver ignores <code>atid_i</code></p>
 </li>
 <li>
 <p><strong>Flow Control</strong>: Valid/ready handshaking for reliable data transfer</p>
@@ -544,10 +531,6 @@ not turn the core&#8217;s decoded-message queue into a lossless backpressured qu
 The wrapper also contains flush-handshake synchronizers and returns a decode
 error for register addresses outside its configured receiver apertures.</p>
 </div>
-<div class="paragraph">
-<p>Clock frequency, jitter, reset duration and physical timing constraints must
-come from the integration timing specification.</p>
-</div>
 </div>
 </div>
 </div>
@@ -586,10 +569,12 @@ Serialize control-register updates between software contexts.</p>
 </div>
 <div class="paragraph">
 <p>For notification on any queued message, set the threshold to zero and enable
-<code>INTR_ENABLE.BUFFER_THRESHOLD</code>. The CSR field is 12 bits, but the core casts it
-to <code>$clog2(BUFFER_DEPTH)+1</code> bits before comparing occupancy. Use values within
-the configured queue depth rather than treating all values 0–4095 as distinct
-thresholds. With the default depth 8, only the low four bits participate.</p>
+<code>INTR_ENABLE.BUFFER_THRESHOLD</code>. The CSR field is 12 bits, but the core compares
+only its low <code>$clog2(BUFFER_DEPTH)+1</code> bits with occupancy, so values alias modulo
+<code>2 * BUFFER_DEPTH</code>. The interrupt asserts while occupancy is strictly greater
+than the threshold and occupancy never exceeds <code>BUFFER_DEPTH</code>, so only
+thresholds 0 to <code>BUFFER_DEPTH - 1</code> can assert it. With the default depth 8,
+writing 16 acts as 0, and 8 to 15 never assert the interrupt from occupancy.</p>
 </div>
 </div>
 <div class="sect2">
@@ -672,7 +657,7 @@ specified below; reset and flush storage behavior is described in Architecture.<
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:12</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is<br>asserted when the number of entries in the buffer is greater than this value.</td></tr>
+<tr><td>23:12</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is<br>asserted when the number of entries in the buffer is greater than this value.<br>Only the low log2(queue depth)+1 bits are compared, so values alias modulo<br>twice the queue depth, and only values below the queue depth can assert the<br>interrupt.</td></tr>
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -767,7 +752,7 @@ specified below; reset and flush storage behavior is described in Architecture.<
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:12</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is<br>asserted when the number of entries in the buffer is greater than this value.</td></tr>
+<tr><td>23:12</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is<br>asserted when the number of entries in the buffer is greater than this value.<br>Only the low log2(queue depth)+1 bits are compared, so values alias modulo<br>twice the queue depth, and only values below the queue depth can assert the<br>interrupt.</td></tr>
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>

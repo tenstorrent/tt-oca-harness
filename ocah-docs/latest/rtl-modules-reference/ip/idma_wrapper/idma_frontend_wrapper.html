@@ -682,7 +682,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">idma_frontend_wrapper</h1>
-<p>Accept AXI control traffic in an iDMA register frontend and emit 1-D iDMA requests.</p><p>Each control interface has its own chain: an axi_cut, an axi_to_reg_v2 bridge to a 32-bit register interface, the idma_reg64_2d register frontend, a stream_fifo that buffers 2-D requests between the register frontend and the 2-D midend, and an idma_nd_midend that splits each 2-D request into 1-D requests. An idma_transfer_id_gen per interface issues transfer IDs and retires one on each midend completion. NUM_CTRL_INTERFACES and NUM_CTRL_STREAMS must be &gt;= 1. F2M_FIFO_DEPTH is passed unchanged to the stream_fifo DEPTH and is the FIFO depth in requests; fifo_v3 asserts DEPTH &gt; 0.</p>
+<p>Accept AXI control traffic in an iDMA register frontend and emit 1-D iDMA requests.</p><p>Each control interface has its own chain: an axi_cut, an axi_dw_converter to 32-bit AXI, an axi_to_reg_v2 bridge to a 32-bit register interface, the idma_reg64_2d register frontend, a stream_fifo that buffers 2-D requests between the register frontend and the 2-D midend, and an idma_nd_midend that splits each 2-D request into 1-D requests. An idma_transfer_id_gen per interface issues transfer IDs and retires one on each midend completion. NUM_CTRL_INTERFACES and NUM_CTRL_STREAMS must be &gt;= 1. F2M_FIFO_DEPTH is passed unchanged to the stream_fifo DEPTH and is the FIFO depth in requests; fifo_v3 asserts DEPTH &gt; 0.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
@@ -694,7 +694,7 @@
 <tr><td><code>NUM_DIM</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Transfer dimension count of the midend; the 2-D register frontend and two-entry RepWidths match only 2.</td></tr>
 <tr><td><code>REP_WIDTH</code></td><td><code>int unsigned</code></td><td><code>32</code></td><td>Width of each midend repetition counter.</td></tr>
 <tr><td><code>CTRL_ADDR_WIDTH</code></td><td><code>int unsigned</code></td><td><code>9</code></td><td>Ctrl AXI address width.</td></tr>
-<tr><td><code>CTRL_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Ctrl AXI data width; axi_to_reg_v2 converts it to the 32-bit register interface.</td></tr>
+<tr><td><code>CTRL_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Ctrl AXI data width; must be &gt;= 32. axi_dw_converter narrows it to the 32-bit register width.</td></tr>
 <tr><td><code>CTRL_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>8</code></td><td>Ctrl AXI ID width.</td></tr>
 <tr><td><code>CTRL_USER_WIDTH</code></td><td><code>int unsigned</code></td><td><code>12</code></td><td>Ctrl AXI user width.</td></tr>
 </table>

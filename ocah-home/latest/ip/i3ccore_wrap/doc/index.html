@@ -283,9 +283,90 @@ output enable, which it drives only in target mode, is not used.</p>
 <div class="paragraph">
 <p><code>irq_o</code>, the five recovery signals and the DAT, DCT and reverse-lookup
 memory ports pass straight through to per-instance vectors on the
-<code>i3ccore_wrapper</code> boundary. In the SMC the recovery outputs are unconnected,
-<code>peripheral_reset_done_i</code> is tied low and the interrupts reach peripheral
-interrupts 12 to 17.</p>
+<code>i3ccore_wrapper</code> boundary. In the SMC <code>recovery_payload_available_o</code>,
+<code>recovery_image_activated_o</code>, <code>peripheral_reset_o</code> and <code>escalated_reset_o</code> are
+left unconnected, <code>peripheral_reset_done_i</code> is tied low, and the interrupts
+reach peripheral interrupts 12 to 17.</p>
+</div>
+<div class="paragraph">
+<p>The register map below reproduces the upstream SystemRDL descriptions; those
+under <code>I3C_EC</code> are upstream&#8217;s own rather than MIPI I3C HCI text. The fields below
+differ from or go beyond those descriptions.</p>
+</div>
+<div class="paragraph">
+<p>These read back the value written but reach no logic:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>PIOControl.PIO_CONTROL.ENABLE</code>: the PIO queues are always enabled.</p>
+</li>
+<li>
+<p><code>I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL.TARGET_XACT_ENABLE</code>: target
+transactions cannot be disabled.</p>
+</li>
+<li>
+<p><code>I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL.RSTACT_DEFBYTE_02</code>: RSTACT with
+defining byte 0x02 is always ACKed.</p>
+</li>
+<li>
+<p><code>I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS.RESET_TIME_PERIPHERAL</code>
+and <code>RESET_TIME_TARGET</code>: GET RSTACT with defining byte 0x81 or 0x82 returns
+0xFF.</p>
+</li>
+<li>
+<p><code>I3C_EC.SoCMgmtIf.REC_INTF_CFG.REC_INTF_BYPASS</code>: <code>DISABLE_LOOPBACK</code> ties the
+bypass off, so recovery always goes through the I3C core.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>These misreport the core:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>I3C_EC.StdbyCtrlMode.STBY_CR_CAPABILITIES.DAA_ENTDAA_SUPPORT</code> reads 0, but
+ENTDAA is supported.</p>
+</li>
+<li>
+<p><code>I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL.STBY_CR_ENABLE_INIT</code> mode <code>2&#8217;b11</code>
+behaves as <code>2&#8217;b01</code> (active controller), not Hot-Join-then-standby.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>These behave as follows, which the descriptions leave unstated:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>I3C_EC.TTI.TARGET_ERR_CNT_TE3</code> counts parity errors on the ENTDAA-assigned
+dynamic address; <code>TARGET_ERR_CNT_TE4</code> counts reserved bytes other than
+<code>7&#8217;h7E</code> with R/W=1.</p>
+</li>
+<li>
+<p><code>I3C_EC.TTI.TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW</code> and
+<code>TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW</code>: the enable in
+<code>TARGET_ERR_CTRL</code> gates detection, so an overflow while it is clear is
+neither counted nor interrupts.</p>
+</li>
+<li>
+<p><code>PIOControl.DATA_BUFFER_THLD_CTRL</code>: <code>RX_START_THLD</code> and <code>TX_BUF_THLD</code> test
+free space, <code>TX_START_THLD</code> and <code>RX_BUF_THLD</code> stored entries; each encodes
+<code>2^(N+1)</code> entries.</p>
+</li>
+<li>
+<p><code>PIOControl.QUEUE_THLD_CTRL</code>: raw entry counts, free for
+<code>CMD_EMPTY_BUF_THLD</code> and stored for <code>RESP_BUF_THLD</code> and <code>IBI_STATUS_THLD</code>.
+Only these ready thresholds are implemented; start thresholds are unconnected.</p>
+</li>
+<li>
+<p><code>DCT.DCT_MEMORY</code>: <code>PID_LO</code> holds the first two (most significant) ENTDAA PID
+bytes and <code>PID_HI</code> the next four. <code>DYNAMIC_ADDRESS</code> holds the address in bits
+7:1 and its odd parity in bit 0.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
 <p>Consult the <a href="https://github.com/chipsalliance/i3c-core">i3c-core documentation</a>
@@ -521,15 +602,15 @@ windows in the generated map describe address decoding, not independent
 <tr><td>0x88 - 0x5088</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.TX_DATA_PORT">i3c_csr[6].PIOControl.TX_DATA_PORT</a></td><td>W</td><td>Writes transmit data to the TX FIFO. This port shares its address with the read-only RX data port.</td></tr>
 <tr><td>0x88 - 0x5088</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.RX_DATA_PORT">i3c_csr[6].PIOControl.RX_DATA_PORT</a></td><td>R</td><td>Reads received data from the RX FIFO. This port shares its address with the write-only TX data port.</td></tr>
 <tr><td>0x8C - 0x508C</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.IBI_PORT">i3c_csr[6].PIOControl.IBI_PORT</a></td><td>R</td><td>Returns IBI status and payload data. Payload data is padded to a 4-byte boundary.</td></tr>
-<tr><td>0x90 - 0x5090</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.QUEUE_THLD_CTRL">i3c_csr[6].PIOControl.QUEUE_THLD_CTRL</a></td><td>RW</td><td>Configures command, response, and IBI queue thresholds.</td></tr>
-<tr><td>0x94 - 0x5094</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.DATA_BUFFER_THLD_CTRL">i3c_csr[6].PIOControl.DATA_BUFFER_THLD_CTRL</a></td><td>RW</td><td>Configures TX and RX start and ready thresholds, encoded as powers of two.</td></tr>
+<tr><td>0x90 - 0x5090</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.QUEUE_THLD_CTRL">i3c_csr[6].PIOControl.QUEUE_THLD_CTRL</a></td><td>RW</td><td>Configures command, response, and IBI queue thresholds as raw entry counts. CMD_EMPTY_BUF_THLD counts free entries; RESP_BUF_THLD and IBI_STATUS_THLD count stored entries. Only the ready thresholds of these three queues are implemented; their start-threshold triggers are left unconnected.</td></tr>
+<tr><td>0x94 - 0x5094</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.DATA_BUFFER_THLD_CTRL">i3c_csr[6].PIOControl.DATA_BUFFER_THLD_CTRL</a></td><td>RW</td><td>Configures TX and RX start and ready thresholds, each encoding 2^(N+1) entries. RX_START_THLD and TX_BUF_THLD test free space; TX_START_THLD and RX_BUF_THLD test stored entries.</td></tr>
 <tr><td>0x98 - 0x5098</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.QUEUE_SIZE">i3c_csr[6].PIOControl.QUEUE_SIZE</a></td><td>R</td><td>Reports command, response, IBI, TX, and RX queue depths.</td></tr>
 <tr><td>0x9C - 0x509C</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.ALT_QUEUE_SIZE">i3c_csr[6].PIOControl.ALT_QUEUE_SIZE</a></td><td>R</td><td>Reports extended IBI and alternate response queue sizes.</td></tr>
 <tr><td>0xA0 - 0x50A0</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.PIO_INTR_STATUS">i3c_csr[6].PIOControl.PIO_INTR_STATUS</a></td><td>RW</td><td>Reports PIO queue-threshold and transfer-event interrupt status.</td></tr>
 <tr><td>0xA4 - 0x50A4</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.PIO_INTR_STATUS_ENABLE">i3c_csr[6].PIOControl.PIO_INTR_STATUS_ENABLE</a></td><td>RW</td><td>Enables individual PIO interrupt status sources.</td></tr>
 <tr><td>0xA8 - 0x50A8</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.PIO_INTR_SIGNAL_ENABLE">i3c_csr[6].PIOControl.PIO_INTR_SIGNAL_ENABLE</a></td><td>RW</td><td>Routes enabled PIO interrupt sources to the interrupt output.</td></tr>
 <tr><td>0xAC - 0x50AC</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.PIO_INTR_FORCE">i3c_csr[6].PIOControl.PIO_INTR_FORCE</a></td><td>W</td><td>-</td></tr>
-<tr><td>0xB0 - 0x50B0</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.PIO_CONTROL">i3c_csr[6].PIOControl.PIO_CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xB0 - 0x50B0</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.PIOControl.PIO_CONTROL">i3c_csr[6].PIOControl.PIO_CONTROL</a></td><td>RW</td><td>Controls run/stop and forced abort of enqueued commands. The ENABLE field is writable and reads back, but reaches no logic: the PIO queues are always enabled.</td></tr>
 <tr><td>0x100 - 0x5100</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SecFwRecoveryIf.EXTCAP_HEADER">i3c_csr[6].I3C_EC.SecFwRecoveryIf.EXTCAP_HEADER</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x104 - 0x5104</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SecFwRecoveryIf.PROT_CAP_0">i3c_csr[6].I3C_EC.SecFwRecoveryIf.PROT_CAP_0</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x108 - 0x5108</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SecFwRecoveryIf.PROT_CAP_1">i3c_csr[6].I3C_EC.SecFwRecoveryIf.PROT_CAP_1</a></td><td>R</td><td>-</td></tr>
@@ -558,9 +639,9 @@ windows in the generated map describe address decoding, not independent
 <tr><td>0x164 - 0x5164</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SecFwRecoveryIf.INDIRECT_FIFO_RESERVED">i3c_csr[6].I3C_EC.SecFwRecoveryIf.INDIRECT_FIFO_RESERVED</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x168 - 0x5168</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SecFwRecoveryIf.INDIRECT_FIFO_DATA">i3c_csr[6].I3C_EC.SecFwRecoveryIf.INDIRECT_FIFO_DATA</a></td><td>R</td><td>Indirect memory access to address space configured in INDIRECT_FIFO_CTRL at the Head Pointer offset.</td></tr>
 <tr><td>0x180 - 0x5180</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.EXTCAP_HEADER">i3c_csr[6].I3C_EC.StdbyCtrlMode.EXTCAP_HEADER</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x184 - 0x5184</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL</a></td><td>RW</td><td>Configures standby-controller operation, dynamic-address-assignment methods, target transactions, and controller-role handoff.</td></tr>
+<tr><td>0x184 - 0x5184</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CONTROL</a></td><td>RW</td><td>Configures standby-controller operation, dynamic-address-assignment methods, target transactions, and controller-role handoff. TARGET_XACT_ENABLE and RSTACT_DEFBYTE_02 are writable and read back, but reach no logic: target transactions cannot be disabled, and RSTACT with defining byte 0x02 is always ACKed. STBY_CR_ENABLE_INIT mode 2&#x27;b11 enables active-controller operation, identically to 2&#x27;b01.</td></tr>
 <tr><td>0x188 - 0x5188</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_DEVICE_ADDR">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_DEVICE_ADDR</a></td><td>RW</td><td>Configures standby-controller dynamic and static addresses.</td></tr>
-<tr><td>0x18C - 0x518C</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CAPABILITIES">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CAPABILITIES</a></td><td>R</td><td>Reports standby-controller capabilities.</td></tr>
+<tr><td>0x18C - 0x518C</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CAPABILITIES">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CAPABILITIES</a></td><td>R</td><td>Reports standby-controller capabilities. DAA_ENTDAA_SUPPORT reads 0, but the CCC engine handles ENTDAA and assigns a dynamic address through it.</td></tr>
 <tr><td>0x190 - 0x5190</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_VIRTUAL_DEVICE_CHAR">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_VIRTUAL_DEVICE_CHAR</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x194 - 0x5194</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_STATUS">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_STATUS</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x198 - 0x5198</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_DEVICE_CHAR">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_DEVICE_CHAR</a></td><td>RW</td><td>-</td></tr>
@@ -570,7 +651,7 @@ windows in the generated map describe address decoding, not independent
 <tr><td>0x1A8 - 0x51A8</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_INTR_SIGNAL_ENABLE">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_INTR_SIGNAL_ENABLE</a></td><td>RW</td><td>When set to 1&#x27;b1, and the corresponding interrupt status field is set in register<br>STBY_CR_INTR_STATUS, the Host Controller shall assert an interrupt to the Host.</td></tr>
 <tr><td>0x1AC - 0x51AC</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_INTR_FORCE">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_INTR_FORCE</a></td><td>RW</td><td>For software testing, when set to 1&#x27;b1, forces the corresponding interrupt<br>to be sent to the Host, if the corresponding fields are set in register<br>STBY_CR_INTR_SIGNAL_ENABLE</td></tr>
 <tr><td>0x1B0 - 0x51B0</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_GETCAPS">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_GETCAPS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1B4 - 0x51B4</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1B4 - 0x51B4</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_CCC_CONFIG_RSTACT_PARAMS</a></td><td>RW</td><td>Reports the defining byte of the last RSTACT CCC received and configures the reset recovery times. RESET_TIME_PERIPHERAL and RESET_TIME_TARGET reach no logic: a Direct GET RSTACT carrying defining byte 0x81 or 0x82 returns a fixed 0xFF.</td></tr>
 <tr><td>0x1B8 - 0x51B8</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_VIRT_DEVICE_ADDR">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_VIRT_DEVICE_ADDR</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x1BC - 0x51BC</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_MWL">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_MWL</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x1C0 - 0x51C0</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.StdbyCtrlMode.STBY_CR_MRL">i3c_csr[6].I3C_EC.StdbyCtrlMode.STBY_CR_MRL</a></td><td>R</td><td>-</td></tr>
@@ -614,7 +695,7 @@ windows in the generated map describe address decoding, not independent
 <tr><td>0x300 - 0x5300</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SoCMgmtIf.EXTCAP_HEADER">i3c_csr[6].I3C_EC.SoCMgmtIf.EXTCAP_HEADER</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x304 - 0x5304</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SoCMgmtIf.SOC_MGMT_CONTROL">i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_CONTROL</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x308 - 0x5308</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SoCMgmtIf.SOC_MGMT_STATUS">i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_STATUS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x30C - 0x530C</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SoCMgmtIf.REC_INTF_CFG">i3c_csr[6].I3C_EC.SoCMgmtIf.REC_INTF_CFG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30C - 0x530C</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SoCMgmtIf.REC_INTF_CFG">i3c_csr[6].I3C_EC.SoCMgmtIf.REC_INTF_CFG</a></td><td>RW</td><td>Configures the recovery interface and signals payload completion to the recovery handler. REC_INTF_BYPASS reaches no logic: the core is built with DISABLE_LOOPBACK set, so recovery is always reached through the I3C core and direct AXI recovery cannot be selected.</td></tr>
 <tr><td>0x310 - 0x5310</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SoCMgmtIf.REC_INTF_REG_W1C_ACCESS">i3c_csr[6].I3C_EC.SoCMgmtIf.REC_INTF_REG_W1C_ACCESS</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x314 - 0x5314</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_2">i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_2</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x318 - 0x5318</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_3">i3c_csr[6].I3C_EC.SoCMgmtIf.SOC_MGMT_RSVD_3</a></td><td>RW</td><td>-</td></tr>
@@ -652,7 +733,7 @@ windows in the generated map describe address decoding, not independent
 <tr><td>0x39C - 0x539C</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.CtrlCfg.CONTROLLER_CONFIG">i3c_csr[6].I3C_EC.CtrlCfg.CONTROLLER_CONFIG</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x3A0 - 0x53A0</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.I3C_EC.TERMINATION_EXTCAP_HEADER">i3c_csr[6].I3C_EC.TERMINATION_EXTCAP_HEADER</a></td><td>R</td><td>Register after the last EC must advertise ID == 0.<br>Termination register is added to guarantee that the discovery mechanism<br>reaches termination value.</td></tr>
 <tr><td>0x400 - 0x57F8</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.DAT.DAT_MEMORY_128_">i3c_csr[6].DAT.DAT_MEMORY[128]</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x800 - 0x5FF0</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.DCT.DCT_MEMORY_128_">i3c_csr[6].DCT.DCT_MEMORY[128]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x800 - 0x5FF0</td><td><a href="#oca_i3c_wrap-i3c_csr_6_.DCT.DCT_MEMORY_128_">i3c_csr[6].DCT.DCT_MEMORY[128]</a></td><td>R</td><td>Holds one Device Characteristic Table entry per device enumerated by ENTDAA. PID_LO holds the first two PID bytes received and PID_HI the next four, so PID_LO is the more significant half despite its name. DYNAMIC_ADDRESS carries the assigned address in bits 7:1 and its odd parity bit in bit 0.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="i3c_csr_6_.I3CBase.HCI_VERSION"></span><h3 id="oca_i3c_wrap-i3c_csr_6_.I3CBase.HCI_VERSION" data-register-alias="i3c_csr_6_.I3CBase.HCI_VERSION">i3c_csr[6].I3CBase.HCI_VERSION</h3>

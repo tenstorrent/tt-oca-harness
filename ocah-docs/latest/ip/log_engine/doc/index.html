@@ -1136,7 +1136,7 @@ reset to zero. The generated map gives field access and side effects.</p>
 <caption class="title"><a href="#trm-table-4">Table 4</a>. log_engine.CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
+<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When cleared, the engine<br>stops fetching and writing, discards buffered log data and resets transfer<br>progress. Configuration and pending LOG_LEN values are retained, so a pending<br>entry restarts from the start of its slot when the engine is enabled again.<br>Clearing does not wait for outstanding bus responses.</td></tr>
 </table>
 <span id="LOG_REGION_SIZE"></span><h3 id="log_engine-LOG_REGION_SIZE" data-register-alias="LOG_REGION_SIZE">LOG_REGION_SIZE</h3>
 <table id="trm-table-5">
@@ -1191,7 +1191,7 @@ reset to zero. The generated map gives field access and side effects.</p>
 <caption class="title"><a href="#trm-table-11">Table 11</a>. log_engine.LOG_CTRL[16] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
+<tr><td>15:0</td><td>LOG_LEN</td><td>RW</td><td>0x0</td><td>Log Length. Writing a nonzero value representing the log length in bytes to this field<br>starts the log transfer process. The field holds the requested length until the<br>transfer completes, when hardware clears it to zero; it is not a remaining-byte<br>counter. There are 16 copies of this register, each representing<br>a log entry. The log entries go through round robin arbitration.</td></tr>
 </table>
 </div>
 </div>

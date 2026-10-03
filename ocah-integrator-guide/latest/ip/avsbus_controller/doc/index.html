@@ -317,19 +317,30 @@ readback FIFO.</p>
 <div class="paragraph">
 <p>Retries are automatic. A slave acknowledgment of 1 (resource unavailable) or 2
 (bad CRC) causes the master to resend the command, up to
-<code>AVS_CFG_0.MAX_RETRIES</code> times; exhausting that budget raises
-<code>MAX_RETRIES_ATTEMPTED_INT</code>. Setting <code>MAX_RETRIES</code> to 0 suppresses retries
-altogether, and the failing response is delivered to software instead. A reply
-whose frame valid bit is set means the target did not respond at all and
-raises <code>SLAVE_UNRESPONSIVE_INT</code>. There is no separate programmable response
-timeout.</p>
+<code>AVS_CFG_0.MAX_RETRIES</code> times after the original attempt. If the last retry
+also fails, the failing response is delivered to software and
+<code>MAX_RETRIES_ATTEMPTED_INT</code> is raised. Setting <code>MAX_RETRIES</code> to 0 suppresses
+both the retries and that interrupt; the failing response is delivered to
+software instead. A reply whose frame valid bit is set means the target did not
+respond at all and raises <code>SLAVE_UNRESPONSIVE_INT</code>. There is no separate
+programmable response timeout.</p>
 </div>
 <div class="paragraph">
-<p>The master also issues periodic slave resync operations, holding <code>avs_mdata_o</code>
-high for 34 AVS clock cycles. <code>AVS_CFG_0.RESYNC_INTERVAL</code> sets the interval in
-register-clock cycles, and <code>AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION</code> requests
-one immediately. Both take effect three cycles later, after synchronization
-into the AVS clock domain.</p>
+<p>The master also issues periodic slave resync operations. The FSM stays in
+<code>AVS_SLAVE_RESYNC</code> for 35 <code>avs_clk</code> cycles, while its resync counter runs from
+0 to 34, and holds <code>avs_mdata_o</code> high throughout. <code>avs_mdata_o</code> is also high in
+the cycles around that state, through idle or the receive half of a retry
+beforehand and through the launch cycle afterwards, so the high period on the
+pin is longer than the resync state itself.</p>
+</div>
+<div class="paragraph">
+<p><code>AVS_CFG_0.RESYNC_INTERVAL</code> is the number of <code>clk_reg_i</code> cycles the register
+domain counts, from when it observes the end of the previous resync, before it
+requests the next one. <code>AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION</code> requests one
+immediately. Either request is registered in the <code>clk_reg_i</code> domain and
+crosses into the AVS domain through a three-stage <code>avs_clk</code> synchronizer. The
+master stops launching new commands once it sees the request, and starts the
+resync from idle after the frame in flight and its reply complete.</p>
 </div>
 </div>
 <div class="sect2">
@@ -382,7 +393,7 @@ afterwards.</p>
 <p>Power is saved at two levels: <code>AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE</code> gates the AVS
 clock whenever the bus is idle, and <code>TURN_OFF_ALL_PREMUX_CLOCKS</code> gates the
 clocks entering the mux. Restarting a gated AVS clock always begins with a
-34-cycle slave resync.</p>
+slave resync.</p>
 </div>
 </div>
 <div class="sect2">
@@ -438,8 +449,8 @@ register clock domain</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Overrun behaviour</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A write to <code>AVS_CMD</code> when full is dropped and raises
-<code>CMD_FIFO_OVERFLOW_INT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A write to <code>AVS_CMD</code> when full is dropped, completes with
+an error response and raises <code>CMD_FIFO_OVERFLOW_INT</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">A response received when full is dropped and raises
 <code>READBACK_OVERFLOW_INT</code></p></td>
 </tr>
@@ -507,8 +518,8 @@ sources are masked out of reset.</p>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Software writes <code>AVS_CMD</code>; the 32-bit word enters the command FIFO. The
-write is dropped if the FIFO is full.</p>
+<p>Software writes <code>AVS_CMD</code>; the 32-bit word enters the command FIFO. If the
+FIFO is full, the write is dropped and completes with an error response.</p>
 </li>
 <li>
 <p>The protocol FSM pops a command, builds the master subframe as preamble,
@@ -529,16 +540,17 @@ the retry logic resends the command.</p>
 </ol>
 </div>
 <div class="paragraph">
-<p>Because writes to a full command FIFO are silently dropped, software that
-queues commands in a burst should check <code>AVS_NORMAL_STATUS.CMD_FIFO_FULL</code> or
-<code>AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS</code> first, or enable
-<code>CMD_FIFO_OVERFLOW_INT</code>.</p>
+<p>Because a write to a full command FIFO is dropped, software that queues
+commands in a burst should check <code>AVS_NORMAL_STATUS.CMD_FIFO_FULL</code> or
+<code>AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS</code> first, or detect the drop from the
+write&#8217;s error response or from <code>CMD_FIFO_OVERFLOW_INT</code>.</p>
 </div>
 </div>
 <div class="sect3">
 <h4 id="response-inspection"><a class="anchor" href="#response-inspection"></a><a class="link" href="#response-inspection">3.6.2. Response Inspection</a></h4>
 <div class="paragraph">
-<p><code>AVS_READBACK</code> is the normal path and advances the FIFO on every read.
+<p><code>AVS_READBACK</code> is the normal path and advances the FIFO on every read that
+finds it non-empty; a read of an empty FIFO returns 0 with an error response.
 <code>AVS_DEBUG_READBACK</code> mirrors the top of the FIFO without advancing it, and
 reads 0xFFFFFFFF when the FIFO is empty. <code>AVS_LATEST_SLAVE_SUBFRAME</code> holds the
 most recent valid subframe regardless of FIFO state, which is what to read
@@ -553,8 +565,10 @@ several commands ago.</p>
 <p>Two domains carry functional logic. The register domain, clocked by
 <code>clk_reg_i</code>, holds the AXI4-Lite bridge, the register file, the command FIFO
 write side, the readback FIFO read side and interrupt generation. The AVS
-domain, clocked by the generated <code>avs_clock_o</code>, holds the protocol FSM, the
-shift registers and the CRC engines.</p>
+domain, clocked by the generated <code>avs_clk</code>, holds the protocol FSM, the shift
+registers and the CRC engines. <code>avs_clock_o</code> is <code>avs_clk</code> after the idle clock
+gate, so the FSM keeps running while <code>STOP_AVS_CLOCK_ON_IDLE</code> holds the pin
+clock stopped.</p>
 </div>
 <div class="paragraph">
 <p>FIFO pointers cross between the domains as Gray codes. Individual control and
@@ -592,7 +606,8 @@ resynchronized to <code>clk_reg_i</code>. The states, in bit order from 0, are (
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVS_SLAVE_RESYNC</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Holding <code>avs_mdata_o</code> high for 34 cycles</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Holding <code>avs_mdata_o</code> high for 35 cycles while the
+resync counter runs from 0 to 34</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
@@ -698,7 +713,9 @@ delivered to software</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Retry budget exhausted</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_RETRIES_ATTEMPTED_INT</code>;
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_RETRIES_ATTEMPTED_INT</code> once the last of
+<code>MAX_RETRIES</code> retries also fails, and the failing response is delivered to
+software; not raised while <code>MAX_RETRIES</code> is 0.
 <code>AVS_NORMAL_STATUS.TOTAL_RETRIES</code> counts every retry attempted</p></td>
 </tr>
 <tr>
@@ -707,7 +724,8 @@ delivered to software</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Command FIFO overrun</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write dropped, <code>CMD_FIFO_OVERFLOW_INT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write dropped with an error response,
+<code>CMD_FIFO_OVERFLOW_INT</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Readback FIFO overrun</p></td>
@@ -715,7 +733,8 @@ delivered to software</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Read of an empty readback FIFO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>READBACK_UNDERFLOW_INT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns 0 with an error response,
+<code>READBACK_UNDERFLOW_INT</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -787,7 +806,7 @@ register, so software writes a command in wire order.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[29:28]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD.R_OR_W</code>: 0 = commit write, 1 = hold write,
-2 = read</p></td>
+2 = reserved, 3 = read</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Command Group</p></td>
@@ -1081,7 +1100,7 @@ hardware default of 0x80</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE[8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Gate the AVS clock while the bus is
-idle. The master issues a 34-cycle slave resync whenever the clock restarts</p></td>
+idle. The master issues a slave resync whenever the clock restarts</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS[10]</p></td>
@@ -1174,19 +1193,20 @@ FIFO was full</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">READBACK_UNDERFLOW_INT</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_READBACK</code> was read while the readback FIFO
-was empty</p></td>
+was empty; the read returned 0 with an error response</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CMD_FIFO_OVERFLOW_INT</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CMD</code> was written while the command FIFO was
-full, so the command was dropped</p></td>
+full, so the command was dropped and the write completed with an error response</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">MAX_RETRIES_ATTEMPTED_INT</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A command failed <code>AVS_CFG_0.MAX_RETRIES</code>
-consecutive times</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A command still failed after
+<code>AVS_CFG_0.MAX_RETRIES</code> retries, <code>MAX_RETRIES</code> + 1 attempts in all. Never
+raised while <code>MAX_RETRIES</code> is 0</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
@@ -1256,7 +1276,8 @@ because the protocol FSM begins running as soon as reset is deasserted.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Slave resync</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">34 <code>avs_clock_o</code> cycles with <code>avs_mdata_o</code> held high</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">35 <code>avs_clk</code> cycles in <code>AVS_SLAVE_RESYNC</code> with <code>avs_mdata_o</code>
+held high; the pin stays high for longer, through the cycles around that state</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Minimum AVS clock division</p></td>
@@ -1264,13 +1285,16 @@ because the protocol FSM begins running as soon as reset is deasserted.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Resync interval</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CFG_0.RESYNC_INTERVAL</code> in <code>clk_reg_i</code> cycles, plus a
-3-cycle synchronization delay before the FSM observes the request</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AVS_CFG_0.RESYNC_INTERVAL</code> <code>clk_reg_i</code> cycles, counted from
+when the register domain observes the end of the previous resync, plus one
+<code>clk_reg_i</code> cycle to register the request, three <code>avs_clk</code> cycles to
+synchronize it, and the time for any frame in flight to complete</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Pin-level setup, hold and propagation figures are a function of the
+<p>The resync counts are <code>avs_clk</code> cycles at the protocol FSM&#8217;s state register.
+Pin-level setup, hold and propagation figures are a function of the
 implementation and are not specified by this IP.</p>
 </div>
 </div>
@@ -1363,12 +1387,13 @@ returns the same data without popping.</p>
 <div class="paragraph">
 <p>Neither FIFO window back-pressures the bus; both report a failed access
 instead. A write to <code>AVS_CMD</code> while the command FIFO is full is dropped, and a
-read of <code>AVS_READBACK</code> while the readback FIFO is empty returns the FIFO
-contents at the read pointer rather than a defined value. Each case raises its
-interrupt and completes the access with an error response, so software can
-detect the condition from the bus response alone. <code>AVS_DEBUG_READBACK</code> reads
-0xFFFFFFFF when the FIFO is empty and never errors, which makes it the safer
-register to poll.</p>
+read of <code>AVS_READBACK</code> while the readback FIFO is empty returns 0 without
+popping. Each case raises its interrupt and completes the access with an error
+response, so software can detect the condition from the bus response alone.
+An all-zero word is also a well-formed target response, so the read data does
+not identify an empty read; only the error response or <code>READBACK_UNDERFLOW_INT</code>
+does. <code>AVS_DEBUG_READBACK</code> reads 0xFFFFFFFF when the FIFO is empty and never
+errors, which makes it the safer register to poll.</p>
 </div>
 </div>
 </div>
@@ -1406,7 +1431,7 @@ register to poll.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>29:28</td><td>R_OR_W</td><td>W</td><td>0x0</td><td>Read or write type: [list]<br>[*]0x0 - Commit Write<br>[*]0x1 - Hold Write<br>[*]0x2 - Read<br>[/list]</td></tr>
+<tr><td>29:28</td><td>R_OR_W</td><td>W</td><td>0x0</td><td>Read or write type: [list]<br>[*]0x0 - Commit Write<br>[*]0x1 - Hold Write<br>[*]0x2 - Reserved<br>[*]0x3 - Read<br>[/list]</td></tr>
 <tr><td>27</td><td>CMD_GRP</td><td>W</td><td>0x0</td><td>Command group:<br>Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0</td></tr>
 <tr><td>26:23</td><td>CMD_CODE</td><td>W</td><td>0x0</td><td>Command Code (For cmd_group=0. For cmd_group=1, this is manufacturer-specific): [list]<br>[*]0x0 - Target Rail Voltage Read/Write<br>[*]0x1 - Vout Transition Rate Read/Write<br>[*]0x2 - Rail Current Read<br>[*]0x3 - Temperature Read<br>[*]0x4 - Force Voltage Reset (Requires wr_cmd_data=0x0)<br>[*]0x5 - Power Mode Read/Write<br>[*]0xe - AVSBus Status Read/Write<br>[*]0xf - AVSBus Version Read<br>[/list]</td></tr>
 <tr><td>22:19</td><td>RAIL_SEL</td><td>W</td><td>0x0</td><td>Rail Select:<br>0x0 - Rail 0<br>0x1 - Rail 1<br>0xf - Broadcast</td></tr>
@@ -1419,7 +1444,7 @@ register to poll.</p>
 <tr><td>31:30</td><td>SLAVE_ACK</td><td>R RMOD</td><td>0x0</td><td>Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]<br>[*]0x0: Action Performed<br>[*]0x1: Good CRC received but resource unavailable - hardware will retry<br>[*]0x2: Bad CRC received - hardware will retry<br>[*]0x3: Good CRC received but bad data, data type or selector - no hardware retry<br>[/list]</td></tr>
 <tr><td>29</td><td>CONST0</td><td>R RMOD</td><td>0x0</td><td>Always 0</td></tr>
 <tr><td>28:24</td><td>STATUS_RESPONSE</td><td>R RMOD</td><td>0x0</td><td>5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]<br>[*]bit 4: VDone - AND of all VDone bits of active rails<br>[*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details<br>[*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.<br>[*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific<br>[*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific<br>[/list]</td></tr>
-<tr><td>23:8</td><td>CMD_DATA</td><td>R RMOD</td><td>0x0</td><td>Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]<br>[*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV<br>[*]Transition Rate (cmd_code 0x1): [list]<br>[*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us<br>[*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]<br>[*]Current (cmd_mode 0x2): 16-bit unsigned, 1LSB=10mA<br>[*]Temperature (cmd_code 0x3): 16-bit signed, 1LSB=0.1degC<br>[*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]<br>[*]0x0 - Maximum Efficiency<br>[*]0x3 - Maximum Power<br>[*]0x4-0x7 - Manufacturer-specific  [/list]<br>[*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec<br>[*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned<br>[*]If master issued a write (rw!=0x2) in previous master subframe, this field is 0xffff<br>[/list]</td></tr>
+<tr><td>23:8</td><td>CMD_DATA</td><td>R RMOD</td><td>0x0</td><td>Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]<br>[*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV<br>[*]Transition Rate (cmd_code 0x1): [list]<br>[*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us<br>[*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]<br>[*]Current (cmd_mode 0x2): 16-bit unsigned, 1LSB=10mA<br>[*]Temperature (cmd_code 0x3): 16-bit signed, 1LSB=0.1degC<br>[*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]<br>[*]0x0 - Maximum Efficiency<br>[*]0x3 - Maximum Power<br>[*]0x4-0x7 - Manufacturer-specific  [/list]<br>[*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec<br>[*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned<br>[*]If master issued a write (rw!=0x3) in previous master subframe, this field is 0xffff<br>[/list]</td></tr>
 <tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>CRC</td><td>R RMOD</td><td>0x0</td><td>The CRC-3 code received from slave</td></tr>
 </table>
@@ -1437,7 +1462,7 @@ register to poll.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>22</td><td>AVS_SLAVE_IS_IN_RESYNC</td><td>R</td><td>0x0</td><td>Indicates that the AVS master is issuing a slave resync operation (34 clock cycles of holding mdata high)</td></tr>
+<tr><td>22</td><td>AVS_SLAVE_IS_IN_RESYNC</td><td>R</td><td>0x0</td><td>Indicates that the AVS master is issuing a slave resync operation (35 AVS clock cycles of holding mdata high)</td></tr>
 <tr><td>21</td><td>AVS_BUS_IS_IDLE</td><td>R</td><td>0x0</td><td>Indicates that neither AVS master nor slave is currently driving a transaction on the AVS bus</td></tr>
 <tr><td>20</td><td>READBACK_HAS_DATA</td><td>R</td><td>0x0</td><td>Indicates AVS_READBACK register has data ready to read on APB</td></tr>
 <tr><td>19</td><td>READBACK_FIFO_FULL</td><td>R</td><td>0x0</td><td>Indicates read-back fifo is full - no new AVS commands will be launched until<br>space is freed by an AVS_READBACK access</td></tr>
@@ -1512,8 +1537,8 @@ register to poll.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:16</td><td>MAX_RETRIES</td><td>RW</td><td>0x5</td><td>Maximum number of times to attempt a retry if an AVS command returns a fail<br>status (either due to targeted resource being busy or CRC failure)</td></tr>
-<tr><td>15:0</td><td>RESYNC_INTERVAL</td><td>RW</td><td>0x1000</td><td>Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</td></tr>
+<tr><td>23:16</td><td>MAX_RETRIES</td><td>RW</td><td>0x5</td><td>Maximum number of retries, after the original attempt, if an AVS command returns a fail<br>status (either due to targeted resource being busy or CRC failure). A value of 0 disables<br>retries and MAX_RETRIES_ATTEMPTED_INT.</td></tr>
+<tr><td>15:0</td><td>RESYNC_INTERVAL</td><td>RW</td><td>0x1000</td><td>Interval between periodic slave resync operations on the AVS bus, in APB clock cycles counted from the end of the previous resync. The resulting request then crosses a 3-stage AVS clock synchronizer, and the resync starts once any frame in flight has completed.</td></tr>
 </table>
 <span id="AVS_CFG_1"></span><h3 id="avsbus_controller-AVS_CFG_1" data-register-alias="AVS_CFG_1">AVS_CFG_1</h3>
 <table>
@@ -1522,8 +1547,8 @@ register to poll.</p>
 <tr><td>23:16</td><td>CLK_DIVIDER_VALUE</td><td>RW</td><td>0x0</td><td>Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).<br>The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%<br>duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of<br>2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings<br>(divider=0x4) by matching the FF default in the resynced version of the signal.</td></tr>
 <tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>10</td><td>TURN_OFF_ALL_PREMUX_CLOCKS</td><td>RW</td><td>0x0</td><td>Gate off all clocks entering the AVS clock mux - do this before changing the mux selection or changing the clock divider settings, then turn back on afterwards</td></tr>
-<tr><td>9</td><td>FORCE_SLAVE_RESYNC_OPERATION</td><td>RW 1P</td><td>0x0</td><td>Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</td></tr>
-<tr><td>8</td><td>STOP_AVS_CLOCK_ON_IDLE</td><td>RW</td><td>0x0</td><td>When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.<br>The master will always first issue 34 slave-resync cycles when the clock first restarts.</td></tr>
+<tr><td>9</td><td>FORCE_SLAVE_RESYNC_OPERATION</td><td>RW 1P</td><td>0x0</td><td>Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.</td></tr>
+<tr><td>8</td><td>STOP_AVS_CLOCK_ON_IDLE</td><td>RW</td><td>0x0</td><td>When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.<br>The master always issues a slave resync first when the clock restarts.</td></tr>
 <tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1:0</td><td>AVS_CLOCK_SELECT</td><td>RW</td><td>0x3</td><td>Selects which clock to use for AVS Clock: [list]<br>[*] 00: Use the APB clock directly as the AVS clock<br>[*] 01: Use a divided version of APB clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[*] 10: Use the refclk clock directly as the AVS clock<br>[*] 11: Use a divided version of refclk clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[/list]</td></tr>
 </table>

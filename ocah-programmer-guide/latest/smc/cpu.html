@@ -720,6 +720,160 @@ timeout errors.</p>
 <div class="sect1">
 <h2 id="debug"><a class="anchor" href="#debug"></a><a class="link" href="#debug">10. Debug</a></h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>The generated memory map below describes the hart-facing Debug Module memory
+region. Only the harts of the CPU cluster reach it, over the cluster&#8217;s own control
+bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
+receive DECERR at every address in the region. Debugger-facing registers such as
+<code>dmcontrol</code>, <code>dmstatus</code>, <code>abstractcs</code> and <code>sbcs</code> are accessed through the Debug
+Module Interface (DMI), not through that memory region.
+<a href="#smc-debug-module-configuration">Debug Module Configuration</a> describes them.</p>
+</div>
+<div class="paragraph">
+<p>Debugging is facilitated by JTAG, through the cluster&#8217;s debug transport module and
+debug module, enabling
+per-core access to registers, memory, and both hardware and software
+breakpoints. These debug capabilities function independently of
+functional resets and allow override of reset vectors to support
+firmware development and diagnostics.</p>
+</div>
+<div class="sect2">
+<h3 id="smc-debug-module-configuration"><a class="anchor" href="#smc-debug-module-configuration"></a><a class="link" href="#smc-debug-module-configuration">10.1. Debug Module Configuration</a></h3>
+<div class="paragraph">
+<p>The Debug Module implements version 0.13 of the RISC-V External Debug Support
+specification for the four harts of the CPU cluster. A debugger discovers its
+configuration by reading DMI registers.
+<a href="#smc-debug-module-capabilities-table">SMC Debug Module capability readbacks</a> lists the fixed capability values those
+registers return, and <a href="#smc-debug-module-dmi-registers-table">SMC Debug Module DMI register inventory</a> lists which DMI
+registers are implemented.</p>
+</div>
+<table id="smc-debug-module-capabilities-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SMC Debug Module capability readbacks</caption>
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 32%;">
+<col style="width: 12%;">
+<col style="width: 38%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Specification 0.13</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>authenticated</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No authentication is required</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hasresethaltreq</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Halt-on-reset is supported</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>confstrptrvalid</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No configuration string</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>impebreak</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An implicit <code>ebreak</code> follows the program buffer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmcontrol</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hartsello</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Harts 0 to 3; <code>hartselhi</code> reads 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>progbufsize</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>progbuf0</code> to <code>progbuf15</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>datacount</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data0</code> to <code>data3</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractauto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>autoexecdata</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auto-execution from <code>data0</code> to <code>data3</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractauto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>autoexecprogbuf</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auto-execution from <code>progbuf0</code> to <code>progbuf15</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbversion</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System bus access as defined by Debug Specification 0.13</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbasize</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System bus address width in bits</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaccess8</code>, <code>sbaccess16</code>, <code>sbaccess32</code>, <code>sbaccess64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8-, 16-, 32- and 64-bit system bus accesses</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaccess128</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No 128-bit system bus access</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The <code>command</code> register accepts only the Access Register command (<code>cmdtype</code> 0).
+With <code>transfer</code> set, Access Register reaches the general-purpose registers <code>x0</code> to
+<code>x31</code> (<code>regno</code> 0x1000 to 0x101F) with an <code>aarsize</code> of 2 or 3 (32 or 64 bits). With
+<code>transfer</code> clear, any <code>regno</code> and size is accepted. Any other command type, and
+any transfer outside those registers and sizes, sets <code>abstractcs.cmderr</code> to 2
+(not supported). The
+debugger reaches CSRs and floating-point registers by executing instructions from
+the program buffer. Reading <code>command</code> returns the last value written.</p>
+</div>
+<div class="paragraph">
+<p><code>hawindowsel</code> reads 0 and ignores writes, so <code>hawindow</code> bits 3:0 hold the hart
+array mask for harts 0 to 3. <code>setresethaltreq</code> and <code>clrresethaltreq</code> in
+<code>dmcontrol</code> set and clear halt-on-reset for the selected harts.</p>
+</div>
+<div class="paragraph">
+<p>DMI address 0x32 provides the halt-group fields of the <code>dmcs2</code> register, which
+later versions of the specification define. A write with <code>hgwrite</code> set,
+<code>hgselect</code> clear and <code>haltgroup</code> 0 or 1 removes the selected harts from halt
+group 1 or adds them to it. When one hart in halt group 1 halts, the Debug Module
+halts the other harts in that group. A read returns the group of the hart selected
+by <code>hartsel</code> in <code>haltgroup</code>. External trigger groups (<code>hgselect</code> set) are not
+supported.</p>
+</div>
 <span id="abstractdata_12_"></span>
 <span id="debug_module-abstractdata_12_"></span>
 <span id="dmcontrol"></span>
@@ -773,20 +927,182 @@ timeout errors.</p>
 <span id="haltsum0"></span>
 <span id="debug_module-haltsum0"></span>
 <div class="paragraph">
-<p>The generated memory map below describes the hart-facing Debug Module memory
-region. Only the harts of the CPU cluster reach it, over the cluster&#8217;s own control
-bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
-receive DECERR at every address in the region. Debugger-facing registers such as
-<code>dmcontrol</code>, <code>dmstatus</code>, <code>abstractcs</code> and <code>sbcs</code> are accessed through the Debug
-Module Interface (DMI), not through that memory region.</p>
+<p>DMI registers that the Debug Module does not implement read as 0 and ignore
+writes.</p>
+</div>
+<table id="smc-debug-module-dmi-registers-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SMC Debug Module DMI register inventory</caption>
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 27%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">DMI address</th>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x04-0x07</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data0</code>-<code>data3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x08-0x0F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data4</code>-<code>data11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmcontrol</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; <code>hartsello</code> bits 17:16 only, <code>hartselhi</code> reads 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hartinfo</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; bit 0 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hawindowsel</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reads 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hawindow</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; bits 3:0 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>command</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; Access Register only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractauto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; <code>autoexecdata</code> bits 3:0 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x19-0x1C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>confstrptr0</code>-<code>confstrptr3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>nextdm</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented; this is the only Debug Module</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x20-0x2F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>progbuf0</code>-<code>progbuf15</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>authdata</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmcs2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; halt groups 0 and 1 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x34</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x35</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x37</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaddress3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x38</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x39-0x3A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaddress0</code>-<code>sbaddress1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaddress2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3C-0x3D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbdata0</code>-<code>sbdata1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3E-0x3F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbdata2</code>-<code>sbdata3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x40</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; bits 3:0 only</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="smc-debug-command-cmderr"><a class="anchor" href="#smc-debug-command-cmderr"></a><a class="link" href="#smc-debug-command-cmderr">10.2. Abstract Command Writes While cmderr Is Set</a></h3>
+<div class="paragraph">
+<p>The Debug Module departs from the RISC-V External Debug Support specification
+(version 0.13) for writes to <code>command</code> while <code>abstractcs.cmderr</code> is nonzero.
+The specification ignores those writes. In this Debug Module, a <code>command</code> write
+made while no abstract command is executing (<code>abstractcs.busy</code> is 0) has two
+effects:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the written value replaces the stored command, whatever <code>cmderr</code> holds, and</p>
+</li>
+<li>
+<p>a command type other than Access Register (<code>cmdtype</code> other than 0) sets
+<code>cmderr</code> to 2 (not supported), replacing the error code it held.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<p>Debugging is facilitated by JTAG, through the cluster&#8217;s debug transport module and
-debug module, enabling
-per-core access to registers, memory, and both hardware and software
-breakpoints. These debug capabilities function independently of
-functional resets and allow override of reset vectors to support
-firmware development and diagnostics.</p>
+<p>No abstract command executes while <code>cmderr</code> is nonzero. Once <code>cmderr</code> is
+cleared, an access that <code>abstractauto</code> selects re-executes the stored command,
+which is the last value written to <code>command</code>.</p>
+</div>
+<div class="paragraph">
+<p>A debugger that needs the error code of a failed command reads <code>abstractcs</code>
+before it writes <code>command</code> again. Before issuing a command, it clears <code>cmderr</code>
+by writing 1s to the field and confirms that the field reads 0.</p>
+</div>
 </div>
 </div>
 </div>

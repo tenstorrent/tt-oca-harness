@@ -726,12 +726,26 @@ and it counts <code>clk_ref_i</code> edges into the CLA time tick. The trace sin
 writes eight external trace RAMs of 256 × 64 bits, 16 KiB in total.</p>
 </div>
 <div class="paragraph">
+<p>Software programs the mux tree one mux at a time through the single
+<code>DEBUG_BUS_MUX</code> register. The level-3 muxes have IDs 7 to 14 and each takes
+eight consecutive debug-bus lanes; the level-2 muxes have IDs 3 to 6 and each
+drives four consecutive CLA input lanes. A mux takes <code>Dbmmode</code> while <code>Dbmid</code>
+equals its ID, and its lane selects while <code>Dbmid</code> equals its ID and its mode
+is 1. Each lane select is a binary index: 0 passes input lane <em>n</em> to output
+lane <em>n</em>, and 1 to 4 select input lanes 4 to 7. The CLA&#8217;s own stage,
+programmed through <code>CDbgMuxSelLo</code> with <code>DbmId</code> 0, decodes its selects the
+same way, so 1 to 12 select CLA input lanes 4 to 15.</p>
+</div>
+<div class="paragraph">
 <p>Bit 0 of <code>xtrig_clk_halt_mask</code> in the DFX CSRs masks the CLA cross-trigger
-and halt-clock outputs. The clocks-stopped output also requires
+and halt-clock outputs, with every cross-trigger lane masked together; bits
+15:1 have no effect. The clocks-stopped output also requires
 <code>tdr_dbg_ctrl_clock_stop_en_i</code>, and it drives a CPU interrupt and a DTP
 clock-stop request. The debug interrupt drives a CPU interrupt. The sixteen
 custom actions leave the SMC, and the SMU wires five of them to the SEP CPU
-debug controls. The debug marker returns to the SMC debug bus.</p>
+debug controls. The CLA debug marker returns to the SMC debug bus. The
+<code>debug_marker</code>, <code>chiplet_enable</code>, <code>gpio_en</code>, <code>dtb_ns_en</code> and <code>dtb_ew_en</code>
+fields of <code>DEBUG_CTRL</code> have no effect in SMC.</p>
 </div>
 <div class="paragraph">
 <p>Key features include:</p>
@@ -899,6 +913,15 @@ The integration does not provide the advertised global timestamp alignment
 through those inputs. In particular, the time-match event consumes the tied-off
 timestamp rather than the running CLA timestamp register.</p>
 </div>
+<div class="paragraph">
+<p>Because of timestamp scheme 0 and the 64-bit CLA debug bus, several CLA
+registers have no effect in SMC. <code>TsCapture</code>, <code>CDbgTimestampCapture</code> and
+<code>CDbgClaTimestampOffset</code> serve only the reference-timestamp scheme. The Hi
+halves of the match, compare, transition, ones-count, change and snapshot
+registers serve only a 128-bit debug bus. <code>CDbgMuxSelHi</code>, and <code>Muxselseg4</code>
+to <code>Muxselseg7</code> of <code>CDbgMuxSelLo</code>, select lanes beyond the four that the CLA
+mux drives.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -985,14 +1008,14 @@ read/write state when programming or testing them, not read-only status.</p>
 <tr><td>0x2148</td><td><a href="#smc_cla-CDbgNode2Eap1">CDbgNode2Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
 <tr><td>0x2150</td><td><a href="#smc_cla-CDbgNode3Eap0">CDbgNode3Eap0</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
 <tr><td>0x2158</td><td><a href="#smc_cla-CDbgNode3Eap1">CDbgNode3Eap1</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
-<tr><td>0x2160</td><td><a href="#smc_cla-CDbgSignalMask0Lo">CDbgSignalMask0Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2168</td><td><a href="#smc_cla-CDbgSignalMatch0Lo">CDbgSignalMatch0Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2170</td><td><a href="#smc_cla-CDbgSignalMask1Lo">CDbgSignalMask1Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2178</td><td><a href="#smc_cla-CDbgSignalMatch1Lo">CDbgSignalMatch1Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2160</td><td><a href="#smc_cla-CDbgSignalMask0Lo">CDbgSignalMask0Lo</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match.</td></tr>
+<tr><td>0x2168</td><td><a href="#smc_cla-CDbgSignalMatch0Lo">CDbgSignalMatch0Lo</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match.</td></tr>
+<tr><td>0x2170</td><td><a href="#smc_cla-CDbgSignalMask1Lo">CDbgSignalMask1Lo</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match.</td></tr>
+<tr><td>0x2178</td><td><a href="#smc_cla-CDbgSignalMatch1Lo">CDbgSignalMatch1Lo</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match.</td></tr>
 <tr><td>0x2180</td><td><a href="#smc_cla-CDbgSignalEdgeDetectCfg">CDbgSignalEdgeDetectCfg</a></td><td>RW</td><td>Register to configure debug bus for edge triggers.</td></tr>
 <tr><td>0x2188</td><td><a href="#smc_cla-CDbgEapStatus">CDbgEapStatus</a></td><td>RW</td><td>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</td></tr>
 <tr><td>0x2190</td><td><a href="#smc_cla-CDbgClaCtrlStatus">CDbgClaCtrlStatus</a></td><td>RW</td><td>Ctrl/Status register to Enable EAP after EAP programming is complete, and read the current node.</td></tr>
-<tr><td>0x2198</td><td><a href="#smc_cla-CDbgMuxSelLo">CDbgMuxSelLo</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2198</td><td><a href="#smc_cla-CDbgMuxSelLo">CDbgMuxSelLo</a></td><td>RW</td><td>Mode, ID, fine-grain time enable and lane selects for the CLA debug-bus mux, which builds the four 16-bit lanes of the CLA&#x27;s 64-bit debug bus from 16 input segments. The mux ID is 0: the mode is taken while DbmId is 0, and the lane selects while DbmId is 0 and DbmMode is 1.</td></tr>
 <tr><td>0x21A0</td><td><a href="#smc_cla-CDbgRsvd1">CDbgRsvd1</a></td><td>RW</td><td>Reserved Register that can be changed.</td></tr>
 <tr><td>0x21A8</td><td><a href="#smc_cla-CDbgRsvd2">CDbgRsvd2</a></td><td>RW</td><td>Reserved Register that can be changed.</td></tr>
 <tr><td>0x21B0</td><td><a href="#smc_cla-CDbgTransitionMaskLo">CDbgTransitionMaskLo</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask.</td></tr>
@@ -1004,16 +1027,16 @@ read/write state when programming or testing them, not read-only status.</p>
 <tr><td>0x21E0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap0Lo">CDbgSignalSnapshotNode0Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
 <tr><td>0x21E8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap1Lo">CDbgSignalSnapshotNode0Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
 <tr><td>0x21F0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap0Lo">CDbgSignalSnapshotNode1Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x21F8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap1Lo">CDbgSignalSnapshotNode1Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x2200</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap0Lo">CDbgSignalSnapshotNode2Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
-<tr><td>0x2208</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap1Lo">CDbgSignalSnapshotNode2Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
-<tr><td>0x2210</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap0Lo">CDbgSignalSnapshotNode3Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x2218</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap1Lo">CDbgSignalSnapshotNode3Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
+<tr><td>0x21F8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap1Lo">CDbgSignalSnapshotNode1Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node1 Eap1 Trigger is met.</td></tr>
+<tr><td>0x2200</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap0Lo">CDbgSignalSnapshotNode2Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node2 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2208</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap1Lo">CDbgSignalSnapshotNode2Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node2 Eap1 Trigger is met.</td></tr>
+<tr><td>0x2210</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap0Lo">CDbgSignalSnapshotNode3Eap0Lo</a></td><td>R</td><td>debug Bus Value when Node3 Eap0 Trigger is met.</td></tr>
+<tr><td>0x2218</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap1Lo">CDbgSignalSnapshotNode3Eap1Lo</a></td><td>R</td><td>debug Bus Value when Node3 Eap1 Trigger is met.</td></tr>
 <tr><td>0x2220</td><td><a href="#smc_cla-CDbgClaTimeMatch">CDbgClaTimeMatch</a></td><td>RW</td><td>This value is compared (greater than or equal to the programmed value) against the internal time register value of the core, and is used to generate a time match event for CLA. Needs to be non zero for the time match event signal to trigger. The event will only trigger an action if the EAP programming is done. Requires writing 0 to this register to stop the match event.</td></tr>
-<tr><td>0x2228</td><td><a href="#smc_cla-CDbgSignalMask2Lo">CDbgSignalMask2Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2230</td><td><a href="#smc_cla-CDbgSignalMatch2Lo">CDbgSignalMatch2Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2238</td><td><a href="#smc_cla-CDbgSignalMask3Lo">CDbgSignalMask3Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2240</td><td><a href="#smc_cla-CDbgSignalMatch3Lo">CDbgSignalMatch3Lo</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
+<tr><td>0x2228</td><td><a href="#smc_cla-CDbgSignalMask2Lo">CDbgSignalMask2Lo</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match.</td></tr>
+<tr><td>0x2230</td><td><a href="#smc_cla-CDbgSignalMatch2Lo">CDbgSignalMatch2Lo</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match.</td></tr>
+<tr><td>0x2238</td><td><a href="#smc_cla-CDbgSignalMask3Lo">CDbgSignalMask3Lo</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match.</td></tr>
+<tr><td>0x2240</td><td><a href="#smc_cla-CDbgSignalMatch3Lo">CDbgSignalMatch3Lo</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match.</td></tr>
 <tr><td>0x2248</td><td><a href="#smc_cla-CDbgNode0Eap2">CDbgNode0Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
 <tr><td>0x2250</td><td><a href="#smc_cla-CDbgNode0Eap3">CDbgNode0Eap3</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
 <tr><td>0x2258</td><td><a href="#smc_cla-CDbgNode1Eap2">CDbgNode1Eap2</a></td><td>RW</td><td>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</td></tr>
@@ -1035,40 +1058,40 @@ read/write state when programming or testing them, not read-only status.</p>
 <tr><td>0x22F0</td><td><a href="#smc_cla-CDbgClaTimestamp">CDbgClaTimestamp</a></td><td>RW</td><td>64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.</td></tr>
 <tr><td>0x22F8</td><td><a href="#smc_cla-CDbgClaTimestampSync">CDbgClaTimestampSync</a></td><td>RW</td><td>Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.</td></tr>
 <tr><td>0x2300</td><td><a href="#smc_cla-CDbgClaTimestampConfig">CDbgClaTimestampConfig</a></td><td>RW</td><td>Timestamp configuration register. Controls resync behavior and debug marker.</td></tr>
-<tr><td>0x2308</td><td><a href="#smc_cla-CDbgClaTimestampOffset">CDbgClaTimestampOffset</a></td><td>RW</td><td>Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.</td></tr>
-<tr><td>0x2400</td><td><a href="#smc_cla-CDbgSignalMask0Hi">CDbgSignalMask0Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2408</td><td><a href="#smc_cla-CDbgSignalMatch0Hi">CDbgSignalMatch0Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2410</td><td><a href="#smc_cla-CDbgSignalMask1Hi">CDbgSignalMask1Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2418</td><td><a href="#smc_cla-CDbgSignalMatch1Hi">CDbgSignalMatch1Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2420</td><td><a href="#smc_cla-CDbgSignalMask2Hi">CDbgSignalMask2Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2428</td><td><a href="#smc_cla-CDbgSignalMatch2Hi">CDbgSignalMatch2Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2430</td><td><a href="#smc_cla-CDbgSignalMask3Hi">CDbgSignalMask3Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2438</td><td><a href="#smc_cla-CDbgSignalMatch3Hi">CDbgSignalMatch3Hi</a></td><td>RW</td><td>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</td></tr>
-<tr><td>0x2440</td><td><a href="#smc_cla-CDbgMuxSelHi">CDbgMuxSelHi</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x2448</td><td><a href="#smc_cla-CDbgTransitionMaskHi">CDbgTransitionMaskHi</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask.</td></tr>
-<tr><td>0x2450</td><td><a href="#smc_cla-CDbgTransitionFromValueHi">CDbgTransitionFromValueHi</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value A.</td></tr>
-<tr><td>0x2458</td><td><a href="#smc_cla-CDbgTransitionToValueHi">CDbgTransitionToValueHi</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value B.</td></tr>
-<tr><td>0x2460</td><td><a href="#smc_cla-CDbgOnesCountMaskHi">CDbgOnesCountMaskHi</a></td><td>RW</td><td>2 registers to configure &quot;ones count&quot; event. This register is to select the signals of interest using a mask.</td></tr>
-<tr><td>0x2468</td><td><a href="#smc_cla-CDbgAnyChangeHi">CDbgAnyChangeHi</a></td><td>RW</td><td>Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.</td></tr>
-<tr><td>0x2470</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap0Hi">CDbgSignalSnapshotNode0Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
-<tr><td>0x2478</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap1Hi">CDbgSignalSnapshotNode0Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
-<tr><td>0x2480</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap0Hi">CDbgSignalSnapshotNode1Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x2488</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap1Hi">CDbgSignalSnapshotNode1Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x2490</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap0Hi">CDbgSignalSnapshotNode2Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met.</td></tr>
-<tr><td>0x2498</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap1Hi">CDbgSignalSnapshotNode2Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met.</td></tr>
-<tr><td>0x24A0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap0Hi">CDbgSignalSnapshotNode3Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x24A8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap1Hi">CDbgSignalSnapshotNode3Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met.</td></tr>
-<tr><td>0x24B0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap2Hi">CDbgSignalSnapshotNode0Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap2 Trigger is met.</td></tr>
-<tr><td>0x24B8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap3Hi">CDbgSignalSnapshotNode0Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap3 Trigger is met.</td></tr>
-<tr><td>0x24C0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap2Hi">CDbgSignalSnapshotNode1Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap2 Trigger is met.</td></tr>
-<tr><td>0x24C8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap3Hi">CDbgSignalSnapshotNode1Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap3 Trigger is met.</td></tr>
-<tr><td>0x24D0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap2Hi">CDbgSignalSnapshotNode2Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node2 Eap2 Trigger is met.</td></tr>
-<tr><td>0x24D8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap3Hi">CDbgSignalSnapshotNode2Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node2 Eap3 Trigger is met.</td></tr>
-<tr><td>0x24E0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap2Hi">CDbgSignalSnapshotNode3Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node3 Eap2 Trigger is met.</td></tr>
-<tr><td>0x24E8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap3Hi">CDbgSignalSnapshotNode3Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node3 Eap3 Trigger is met.</td></tr>
+<tr><td>0x2308</td><td><a href="#smc_cla-CDbgClaTimestampOffset">CDbgClaTimestampOffset</a></td><td>RW</td><td>Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).</td></tr>
+<tr><td>0x2400</td><td><a href="#smc_cla-CDbgSignalMask0Hi">CDbgSignalMask0Hi</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2408</td><td><a href="#smc_cla-CDbgSignalMatch0Hi">CDbgSignalMatch0Hi</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2410</td><td><a href="#smc_cla-CDbgSignalMask1Hi">CDbgSignalMask1Hi</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2418</td><td><a href="#smc_cla-CDbgSignalMatch1Hi">CDbgSignalMatch1Hi</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2420</td><td><a href="#smc_cla-CDbgSignalMask2Hi">CDbgSignalMask2Hi</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2428</td><td><a href="#smc_cla-CDbgSignalMatch2Hi">CDbgSignalMatch2Hi</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2430</td><td><a href="#smc_cla-CDbgSignalMask3Hi">CDbgSignalMask3Hi</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2438</td><td><a href="#smc_cla-CDbgSignalMatch3Hi">CDbgSignalMatch3Hi</a></td><td>RW</td><td>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2440</td><td><a href="#smc_cla-CDbgMuxSelHi">CDbgMuxSelHi</a></td><td>RW</td><td>No effect in the SMC. The CLA debug-bus mux has four output lanes and takes its mode, ID, fine-grain time enable and lane selects from CDbgMuxSelLo.</td></tr>
+<tr><td>0x2448</td><td><a href="#smc_cla-CDbgTransitionMaskHi">CDbgTransitionMaskHi</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2450</td><td><a href="#smc_cla-CDbgTransitionFromValueHi">CDbgTransitionFromValueHi</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value A. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2458</td><td><a href="#smc_cla-CDbgTransitionToValueHi">CDbgTransitionToValueHi</a></td><td>RW</td><td>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value B. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2460</td><td><a href="#smc_cla-CDbgOnesCountMaskHi">CDbgOnesCountMaskHi</a></td><td>RW</td><td>2 registers to configure &quot;ones count&quot; event. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2468</td><td><a href="#smc_cla-CDbgAnyChangeHi">CDbgAnyChangeHi</a></td><td>RW</td><td>Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2470</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap0Hi">CDbgSignalSnapshotNode0Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x2478</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap1Hi">CDbgSignalSnapshotNode0Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x2480</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap0Hi">CDbgSignalSnapshotNode1Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x2488</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap1Hi">CDbgSignalSnapshotNode1Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x2490</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap0Hi">CDbgSignalSnapshotNode2Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node2 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x2498</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap1Hi">CDbgSignalSnapshotNode2Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node2 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24A0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap0Hi">CDbgSignalSnapshotNode3Eap0Hi</a></td><td>R</td><td>debug Bus Value when Node3 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24A8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap1Hi">CDbgSignalSnapshotNode3Eap1Hi</a></td><td>R</td><td>debug Bus Value when Node3 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24B0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap2Hi">CDbgSignalSnapshotNode0Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24B8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode0Eap3Hi">CDbgSignalSnapshotNode0Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node0 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24C0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap2Hi">CDbgSignalSnapshotNode1Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24C8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode1Eap3Hi">CDbgSignalSnapshotNode1Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node1 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24D0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap2Hi">CDbgSignalSnapshotNode2Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node2 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24D8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode2Eap3Hi">CDbgSignalSnapshotNode2Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node2 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24E0</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap2Hi">CDbgSignalSnapshotNode3Eap2Hi</a></td><td>R</td><td>debug Bus Value when Node3 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
+<tr><td>0x24E8</td><td><a href="#smc_cla-CDbgSignalSnapshotNode3Eap3Hi">CDbgSignalSnapshotNode3Eap3Hi</a></td><td>R</td><td>debug Bus Value when Node3 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</td></tr>
 <tr><td>0x24F0</td><td><a href="#smc_cla-CDbgLfsr">CDbgLfsr</a></td><td>RW</td><td>LFSR value.</td></tr>
 <tr><td>0x24F8</td><td><a href="#smc_cla-CDbgLfsrMask">CDbgLfsrMask</a></td><td>RW</td><td>LFSR programming mask.</td></tr>
-<tr><td>0x2500</td><td><a href="#smc_cla-CDbgTimestampCapture">CDbgTimestampCapture</a></td><td>R</td><td>Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.</td></tr>
+<tr><td>0x2500</td><td><a href="#smc_cla-CDbgTimestampCapture">CDbgTimestampCapture</a></td><td>R</td><td>Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register. Never captured in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).</td></tr>
 <tr><td>0x2508</td><td><a href="#smc_cla-CDbgCompare0Lo">CDbgCompare0Lo</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
 <tr><td>0x2510</td><td><a href="#smc_cla-CDbgCompare0MaskLo">CDbgCompare0MaskLo</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
 <tr><td>0x2518</td><td><a href="#smc_cla-CDbgCompare1Lo">CDbgCompare1Lo</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
@@ -1077,14 +1100,14 @@ read/write state when programming or testing them, not read-only status.</p>
 <tr><td>0x2530</td><td><a href="#smc_cla-CDbgCompare2MaskLo">CDbgCompare2MaskLo</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
 <tr><td>0x2538</td><td><a href="#smc_cla-CDbgCompare3Lo">CDbgCompare3Lo</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
 <tr><td>0x2540</td><td><a href="#smc_cla-CDbgCompare3MaskLo">CDbgCompare3MaskLo</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
-<tr><td>0x2548</td><td><a href="#smc_cla-CDbgCompare0Hi">CDbgCompare0Hi</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
-<tr><td>0x2550</td><td><a href="#smc_cla-CDbgCompare0MaskHi">CDbgCompare0MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
-<tr><td>0x2558</td><td><a href="#smc_cla-CDbgCompare1Hi">CDbgCompare1Hi</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
-<tr><td>0x2560</td><td><a href="#smc_cla-CDbgCompare1MaskHi">CDbgCompare1MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
-<tr><td>0x2568</td><td><a href="#smc_cla-CDbgCompare2Hi">CDbgCompare2Hi</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
-<tr><td>0x2570</td><td><a href="#smc_cla-CDbgCompare2MaskHi">CDbgCompare2MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
-<tr><td>0x2578</td><td><a href="#smc_cla-CDbgCompare3Hi">CDbgCompare3Hi</a></td><td>RW</td><td>Value for arithmetic comparison.</td></tr>
-<tr><td>0x2580</td><td><a href="#smc_cla-CDbgCompare3MaskHi">CDbgCompare3MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison.</td></tr>
+<tr><td>0x2548</td><td><a href="#smc_cla-CDbgCompare0Hi">CDbgCompare0Hi</a></td><td>RW</td><td>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2550</td><td><a href="#smc_cla-CDbgCompare0MaskHi">CDbgCompare0MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2558</td><td><a href="#smc_cla-CDbgCompare1Hi">CDbgCompare1Hi</a></td><td>RW</td><td>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2560</td><td><a href="#smc_cla-CDbgCompare1MaskHi">CDbgCompare1MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2568</td><td><a href="#smc_cla-CDbgCompare2Hi">CDbgCompare2Hi</a></td><td>RW</td><td>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2570</td><td><a href="#smc_cla-CDbgCompare2MaskHi">CDbgCompare2MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2578</td><td><a href="#smc_cla-CDbgCompare3Hi">CDbgCompare3Hi</a></td><td>RW</td><td>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
+<tr><td>0x2580</td><td><a href="#smc_cla-CDbgCompare3MaskHi">CDbgCompare3MaskHi</a></td><td>RW</td><td>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</td></tr>
 <tr><td>0x2FF8</td><td><a href="#smc_cla-Scratch">Scratch</a></td><td>RW</td><td>Additional scratch register for DV and potential ECO usage</td></tr>
 <tr><td>0x3000</td><td><a href="#smc_cla-Trdstcontrol">Trdstcontrol</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x3004</td><td><a href="#smc_cla-Trdstimpl">Trdstimpl</a></td><td>RW</td><td>-</td></tr>
@@ -1506,7 +1529,7 @@ read/write state when programming or testing them, not read-only status.</p>
 <tr><td>62:16</td><td>Rsvd6216</td><td>RW</td><td>0x0</td><td>reserved fields</td></tr>
 <tr><td>15</td><td>DisableLocalClockHalt</td><td>RW</td><td>0x0</td><td>If this bit is set, clock halt action is not applied to local clocks</td></tr>
 <tr><td>14</td><td>DisableGlobalClockHalt</td><td>RW</td><td>0x0</td><td>If this bit is set, clock halt action is not applied to global clocks</td></tr>
-<tr><td>13:7</td><td>ClaChainLoopDelay</td><td>RW</td><td>0x36</td><td>Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal</td></tr>
+<tr><td>13:7</td><td>ClaChainLoopDelay</td><td>RW</td><td>0x36</td><td>Self-filter delay, in CLA clock cycles, for the CLA&#x27;s own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered.</td></tr>
 <tr><td>6</td><td>EnableCla</td><td>RW</td><td>0x0</td><td>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated</td></tr>
 <tr><td>5</td><td>EnableEap</td><td>RW</td><td>0x0</td><td>Set Enable EAP to 1 after EAP programming is complete</td></tr>
 <tr><td>4:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1516,14 +1539,14 @@ read/write state when programming or testing them, not read-only status.</p>
 <table id="trm-table-40">
 <caption class="title"><a href="#trm-table-40">Table 40</a>. smc_cla.CDbgMuxSelLo fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>57:52</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:46</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>45:40</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>39:34</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</td></tr>
-<tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</td></tr>
-<tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</td></tr>
-<tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</td></tr>
+<tr><td>63:58</td><td>Muxselseg7</td><td>RW</td><td>0x0</td><td>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>57:52</td><td>Muxselseg6</td><td>RW</td><td>0x0</td><td>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>51:46</td><td>Muxselseg5</td><td>RW</td><td>0x0</td><td>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>45:40</td><td>Muxselseg4</td><td>RW</td><td>0x0</td><td>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</td></tr>
+<tr><td>39:34</td><td>Muxselseg3</td><td>RW</td><td>0x0</td><td>Binary segment select for lane 3 of the CLA debug bus, bits [63:48]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg3; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg2, and k from 1 to 13 selects Seg(k+2).</td></tr>
+<tr><td>33:28</td><td>Muxselseg2</td><td>RW</td><td>0x0</td><td>Binary segment select for lane 2 of the CLA debug bus, bits [47:32]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg2; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg1, and k from 1 to 13 selects Seg(k+2).</td></tr>
+<tr><td>27:22</td><td>Muxselseg1</td><td>RW</td><td>0x0</td><td>Binary segment select for lane 1 of the CLA debug bus, bits [31:16]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg1; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg0, and k from 1 to 13 selects Seg(k+2).</td></tr>
+<tr><td>21:16</td><td>Muxselseg0</td><td>RW</td><td>0x0</td><td>Binary segment select for lane 0 of the CLA debug bus, bits [15:0]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg0; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects the fine-grain time counter, and k from 1 to 13 selects Seg(k+2).</td></tr>
 <tr><td>15:9</td><td>Rsvd159</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>8</td><td>Finegraintime</td><td>RW</td><td>0x0</td><td>Fine Grain Time Enable. If this bit is set, the fine grain time is enabled.</td></tr>
 <tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>Unique DBM ID of the DBM instance</td></tr>
@@ -1903,7 +1926,7 @@ read/write state when programming or testing them, not read-only status.</p>
 <caption class="title"><a href="#trm-table-82">Table 82</a>. smc_cla.CDbgClaTimestampConfig fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:10</td><td>Rsvd1</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>9</td><td>TsCapture</td><td>RW</td><td>0x0</td><td>When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register</td></tr>
+<tr><td>9</td><td>TsCapture</td><td>RW</td><td>0x0</td><td>When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).</td></tr>
 <tr><td>8:1</td><td>DebugMarker</td><td>RW</td><td>0x0</td><td>Debug marker output value</td></tr>
 <tr><td>0</td><td>Resync</td><td>RW</td><td>0x0</td><td>When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.</td></tr>
 </table>
@@ -1912,7 +1935,7 @@ read/write state when programming or testing them, not read-only status.</p>
 <caption class="title"><a href="#trm-table-83">Table 83</a>. smc_cla.CDbgClaTimestampOffset fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>55:0</td><td>Offset</td><td>RW</td><td>0x0</td><td>Timestamp offset value</td></tr>
+<tr><td>55:0</td><td>Offset</td><td>RW</td><td>0x0</td><td>Timestamp offset value. No effect in the SMC.</td></tr>
 </table>
 <span id="CDbgSignalMask0Hi"></span><h3 id="smc_cla-CDbgSignalMask0Hi" data-register-alias="CDbgSignalMask0Hi">CDbgSignalMask0Hi</h3>
 <table id="trm-table-84">
@@ -1966,17 +1989,17 @@ read/write state when programming or testing them, not read-only status.</p>
 <table id="trm-table-92">
 <caption class="title"><a href="#trm-table-92">Table 92</a>. smc_cla.CDbgMuxSelHi fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:58</td><td>Muxselseg15</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>57:52</td><td>Muxselseg14</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>51:46</td><td>Muxselseg13</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>45:40</td><td>Muxselseg12</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>39:34</td><td>Muxselseg11</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</td></tr>
-<tr><td>33:28</td><td>Muxselseg10</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</td></tr>
-<tr><td>27:22</td><td>Muxselseg9</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</td></tr>
-<tr><td>21:16</td><td>Muxselseg8</td><td>RW</td><td>0x0</td><td>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</td></tr>
+<tr><td>63:58</td><td>Muxselseg15</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
+<tr><td>57:52</td><td>Muxselseg14</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
+<tr><td>51:46</td><td>Muxselseg13</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
+<tr><td>45:40</td><td>Muxselseg12</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
+<tr><td>39:34</td><td>Muxselseg11</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
+<tr><td>33:28</td><td>Muxselseg10</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
+<tr><td>27:22</td><td>Muxselseg9</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
+<tr><td>21:16</td><td>Muxselseg8</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
 <tr><td>15:8</td><td>Rsvd158</td><td>RW</td><td>0x0</td><td>-</td></tr>
-<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>Unique DBM ID of the DBM instance</td></tr>
-<tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</td></tr>
+<tr><td>7:2</td><td>Dbmid</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
+<tr><td>1:0</td><td>Dbmmode</td><td>RW</td><td>0x0</td><td>No effect in the SMC.</td></tr>
 </table>
 <span id="CDbgTransitionMaskHi"></span><h3 id="smc_cla-CDbgTransitionMaskHi" data-register-alias="CDbgTransitionMaskHi">CDbgTransitionMaskHi</h3>
 <table id="trm-table-93">

@@ -1214,6 +1214,160 @@ timeout errors.</p>
 <div class="sect1">
 <h2 id="debug"><a class="anchor" href="#debug"></a><a class="link" href="#debug">10. Debug</a></h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>The generated memory map below describes the hart-facing Debug Module memory
+region. Only the harts of the CPU cluster reach it, over the cluster&#8217;s own control
+bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
+receive DECERR at every address in the region. Debugger-facing registers such as
+<code>dmcontrol</code>, <code>dmstatus</code>, <code>abstractcs</code> and <code>sbcs</code> are accessed through the Debug
+Module Interface (DMI), not through that memory region.
+<a href="#smc-debug-module-configuration">Section 10.1</a> describes them.</p>
+</div>
+<div class="paragraph">
+<p>Debugging is facilitated by JTAG, through the cluster&#8217;s debug transport module and
+debug module, enabling
+per-core access to registers, memory, and both hardware and software
+breakpoints. These debug capabilities function independently of
+functional resets and allow override of reset vectors to support
+firmware development and diagnostics.</p>
+</div>
+<div class="sect2">
+<h3 id="smc-debug-module-configuration"><a class="anchor" href="#smc-debug-module-configuration"></a><a class="link" href="#smc-debug-module-configuration">10.1. Debug Module Configuration</a></h3>
+<div class="paragraph">
+<p>The Debug Module implements version 0.13 of the RISC-V External Debug Support
+specification for the four harts of the CPU cluster. A debugger discovers its
+configuration by reading DMI registers.
+<a href="#smc-debug-module-capabilities-table">Table 4</a> lists the fixed capability values those
+registers return, and <a href="#smc-debug-module-dmi-registers-table">Table 5</a> lists which DMI
+registers are implemented.</p>
+</div>
+<table id="smc-debug-module-capabilities-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SMC Debug Module capability readbacks</caption>
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 32%;">
+<col style="width: 12%;">
+<col style="width: 38%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>version</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Specification 0.13</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>authenticated</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No authentication is required</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hasresethaltreq</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Halt-on-reset is supported</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>confstrptrvalid</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No configuration string</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>impebreak</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An implicit <code>ebreak</code> follows the program buffer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmcontrol</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hartsello</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Harts 0 to 3; <code>hartselhi</code> reads 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>progbufsize</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>progbuf0</code> to <code>progbuf15</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>datacount</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data0</code> to <code>data3</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractauto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>autoexecdata</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auto-execution from <code>data0</code> to <code>data3</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractauto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>autoexecprogbuf</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Auto-execution from <code>progbuf0</code> to <code>progbuf15</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbversion</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System bus access as defined by Debug Specification 0.13</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbasize</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System bus address width in bits</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaccess8</code>, <code>sbaccess16</code>, <code>sbaccess32</code>, <code>sbaccess64</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8-, 16-, 32- and 64-bit system bus accesses</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaccess128</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No 128-bit system bus access</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The <code>command</code> register accepts only the Access Register command (<code>cmdtype</code> 0).
+With <code>transfer</code> set, Access Register reaches the general-purpose registers <code>x0</code> to
+<code>x31</code> (<code>regno</code> 0x1000 to 0x101F) with an <code>aarsize</code> of 2 or 3 (32 or 64 bits). With
+<code>transfer</code> clear, any <code>regno</code> and size is accepted. Any other command type, and
+any transfer outside those registers and sizes, sets <code>abstractcs.cmderr</code> to 2
+(not supported). The
+debugger reaches CSRs and floating-point registers by executing instructions from
+the program buffer. Reading <code>command</code> returns the last value written.</p>
+</div>
+<div class="paragraph">
+<p><code>hawindowsel</code> reads 0 and ignores writes, so <code>hawindow</code> bits 3:0 hold the hart
+array mask for harts 0 to 3. <code>setresethaltreq</code> and <code>clrresethaltreq</code> in
+<code>dmcontrol</code> set and clear halt-on-reset for the selected harts.</p>
+</div>
+<div class="paragraph">
+<p>DMI address 0x32 provides the halt-group fields of the <code>dmcs2</code> register, which
+later versions of the specification define. A write with <code>hgwrite</code> set,
+<code>hgselect</code> clear and <code>haltgroup</code> 0 or 1 removes the selected harts from halt
+group 1 or adds them to it. When one hart in halt group 1 halts, the Debug Module
+halts the other harts in that group. A read returns the group of the hart selected
+by <code>hartsel</code> in <code>haltgroup</code>. External trigger groups (<code>hgselect</code> set) are not
+supported.</p>
+</div>
 <span id="abstractdata_12_"></span>
 <span id="debug_module-abstractdata_12_"></span>
 <span id="dmcontrol"></span>
@@ -1267,20 +1421,182 @@ timeout errors.</p>
 <span id="haltsum0"></span>
 <span id="debug_module-haltsum0"></span>
 <div class="paragraph">
-<p>The generated memory map below describes the hart-facing Debug Module memory
-region. Only the harts of the CPU cluster reach it, over the cluster&#8217;s own control
-bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
-receive DECERR at every address in the region. Debugger-facing registers such as
-<code>dmcontrol</code>, <code>dmstatus</code>, <code>abstractcs</code> and <code>sbcs</code> are accessed through the Debug
-Module Interface (DMI), not through that memory region.</p>
+<p>DMI registers that the Debug Module does not implement read as 0 and ignore
+writes.</p>
+</div>
+<table id="smc-debug-module-dmi-registers-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SMC Debug Module DMI register inventory</caption>
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 27%;">
+<col style="width: 55%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">DMI address</th>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x04-0x07</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data0</code>-<code>data3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x08-0x0F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>data4</code>-<code>data11</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmcontrol</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; <code>hartsello</code> bits 17:16 only, <code>hartselhi</code> reads 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmstatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hartinfo</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; bit 0 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hawindowsel</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reads 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hawindow</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; bits 3:0 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>command</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; Access Register only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abstractauto</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; <code>autoexecdata</code> bits 3:0 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x19-0x1C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>confstrptr0</code>-<code>confstrptr3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>nextdm</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented; this is the only Debug Module</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x20-0x2F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>progbuf0</code>-<code>progbuf15</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>authdata</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmcs2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; halt groups 0 and 1 only</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x34</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x35</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x37</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaddress3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x38</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbcs</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x39-0x3A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaddress0</code>-<code>sbaddress1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbaddress2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3C-0x3D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbdata0</code>-<code>sbdata1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x3E-0x3F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sbdata2</code>-<code>sbdata3</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x40</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>haltsum0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Implemented; bits 3:0 only</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="smc-debug-command-cmderr"><a class="anchor" href="#smc-debug-command-cmderr"></a><a class="link" href="#smc-debug-command-cmderr">10.2. Abstract Command Writes While cmderr Is Set</a></h3>
+<div class="paragraph">
+<p>The Debug Module departs from the RISC-V External Debug Support specification
+(version 0.13) for writes to <code>command</code> while <code>abstractcs.cmderr</code> is nonzero.
+The specification ignores those writes. In this Debug Module, a <code>command</code> write
+made while no abstract command is executing (<code>abstractcs.busy</code> is 0) has two
+effects:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the written value replaces the stored command, whatever <code>cmderr</code> holds, and</p>
+</li>
+<li>
+<p>a command type other than Access Register (<code>cmdtype</code> other than 0) sets
+<code>cmderr</code> to 2 (not supported), replacing the error code it held.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<p>Debugging is facilitated by JTAG, through the cluster&#8217;s debug transport module and
-debug module, enabling
-per-core access to registers, memory, and both hardware and software
-breakpoints. These debug capabilities function independently of
-functional resets and allow override of reset vectors to support
-firmware development and diagnostics.</p>
+<p>No abstract command executes while <code>cmderr</code> is nonzero. Once <code>cmderr</code> is
+cleared, an access that <code>abstractauto</code> selects re-executes the stored command,
+which is the last value written to <code>command</code>.</p>
+</div>
+<div class="paragraph">
+<p>A debugger that needs the error code of a failed command reads <code>abstractcs</code>
+before it writes <code>command</code> again. Before issuing a command, it clears <code>cmderr</code>
+by writing 1s to the field and confirms that the field reads 0.</p>
+</div>
 </div>
 </div>
 </div>
@@ -1319,8 +1635,8 @@ The detailed map below defines each register and its fields.</p>
 <li><strong>DUMMY_ROM_NULL[4]</strong>: 4 registers, base 0x2A0, stride 0x8</li>
 </ul>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-4">
-<caption class="title"><a href="#trm-table-4">Table 4</a>. CPU Control Address Map register list</caption>
+<table id="trm-table-6">
+<caption class="title"><a href="#trm-table-6">Table 6</a>. CPU Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x18</td><td><a href="#cpu_ctrl-RESET_VECTOR_4_">RESET_VECTOR[4]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x20</td><td><a href="#cpu_ctrl-RESET_CTRL">RESET_CTRL</a></td><td>RW</td><td>-</td></tr>
@@ -1346,15 +1662,15 @@ The detailed map below defines each register and its fields.</p>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="RESET_VECTOR_4_"></span><h3 id="cpu_ctrl-RESET_VECTOR_4_" data-register-alias="RESET_VECTOR_4_">RESET_VECTOR[4]</h3>
-<table id="trm-table-5">
-<caption class="title"><a href="#trm-table-5">Table 5</a>. cpu_ctrl.RESET_VECTOR[4] fields</caption>
+<table id="trm-table-7">
+<caption class="title"><a href="#trm-table-7">Table 7</a>. cpu_ctrl.RESET_VECTOR[4] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>vector</td><td>RW</td><td>0xC0040000</td><td>-</td></tr>
 </table>
 <span id="RESET_CTRL"></span><h3 id="cpu_ctrl-RESET_CTRL" data-register-alias="RESET_CTRL">RESET_CTRL</h3>
-<table id="trm-table-6">
-<caption class="title"><a href="#trm-table-6">Table 6</a>. cpu_ctrl.RESET_CTRL fields</caption>
+<table id="trm-table-8">
+<caption class="title"><a href="#trm-table-8">Table 8</a>. cpu_ctrl.RESET_CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>24</td><td>debug_reset_n_n0_scan</td><td>RW</td><td>0x0</td><td>Debug Module Reset, active low</td></tr>
@@ -1370,8 +1686,8 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>0</td><td>core0_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
 </table>
 <span id="CORE_RESET_PULSE_COUNT"></span><h3 id="cpu_ctrl-CORE_RESET_PULSE_COUNT" data-register-alias="CORE_RESET_PULSE_COUNT">CORE_RESET_PULSE_COUNT</h3>
-<table id="trm-table-7">
-<caption class="title"><a href="#trm-table-7">Table 7</a>. cpu_ctrl.CORE_RESET_PULSE_COUNT fields</caption>
+<table id="trm-table-9">
+<caption class="title"><a href="#trm-table-9">Table 9</a>. cpu_ctrl.CORE_RESET_PULSE_COUNT fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:36</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>35:32</td><td>core_resets_done</td><td>R</td><td>0xF</td><td>Logic low while performing core reset, logic high otherwise.</td></tr>
@@ -1379,8 +1695,8 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>15:0</td><td>pre_reset_count</td><td>RW</td><td>0x8</td><td>Core reset pulse count pre-reset. The duration of the pulse is the set value + 1.</td></tr>
 </table>
 <span id="RESET_TIMEOUT"></span><h3 id="cpu_ctrl-RESET_TIMEOUT" data-register-alias="RESET_TIMEOUT">RESET_TIMEOUT</h3>
-<table id="trm-table-8">
-<caption class="title"><a href="#trm-table-8">Table 8</a>. cpu_ctrl.RESET_TIMEOUT fields</caption>
+<table id="trm-table-10">
+<caption class="title"><a href="#trm-table-10">Table 10</a>. cpu_ctrl.RESET_TIMEOUT fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:37</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>36</td><td>reset_timeout</td><td>R</td><td>0x0</td><td>Status for the active software reset request: high after the request exceeds<br>timeout_value and remains high until the request is deasserted. Set in both modes.</td></tr>
@@ -1391,20 +1707,20 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>15:0</td><td>timeout_value</td><td>RW</td><td>0x0</td><td>Cycles (clk_smc) a software reset may stay pending (withheld, waiting<br>for drain) before timeout. 0 = disabled, wait indefinitely.</td></tr>
 </table>
 <span id="REFERENCE_COUNTER"></span><h3 id="cpu_ctrl-REFERENCE_COUNTER" data-register-alias="REFERENCE_COUNTER">REFERENCE_COUNTER</h3>
-<table id="trm-table-9">
-<caption class="title"><a href="#trm-table-9">Table 9</a>. cpu_ctrl.REFERENCE_COUNTER fields</caption>
+<table id="trm-table-11">
+<caption class="title"><a href="#trm-table-11">Table 11</a>. cpu_ctrl.REFERENCE_COUNTER fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>rc</td><td>RW</td><td>0x0</td><td>Reference counter for the CPU. Write once, then poll this register until<br>the readback reflects the written value before writing again. The counter<br>keeps advancing, so the readback is at or just above the written value<br>rather than equal to it.</td></tr>
 </table>
 <span id="WDT_TIMEOUT"></span><h3 id="cpu_ctrl-WDT_TIMEOUT" data-register-alias="WDT_TIMEOUT">WDT_TIMEOUT</h3>
-<table id="trm-table-10">
-<caption class="title"><a href="#trm-table-10">Table 10</a>. cpu_ctrl.WDT_TIMEOUT fields</caption>
+<table id="trm-table-12">
+<caption class="title"><a href="#trm-table-12">Table 12</a>. cpu_ctrl.WDT_TIMEOUT fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x4000</td><td>Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles</td></tr>
 </table>
 <span id="WDT_TIMEOUT_RESET"></span><h3 id="cpu_ctrl-WDT_TIMEOUT_RESET" data-register-alias="WDT_TIMEOUT_RESET">WDT_TIMEOUT_RESET</h3>
-<table id="trm-table-11">
-<caption class="title"><a href="#trm-table-11">Table 11</a>. cpu_ctrl.WDT_TIMEOUT_RESET fields</caption>
+<table id="trm-table-13">
+<caption class="title"><a href="#trm-table-13">Table 13</a>. cpu_ctrl.WDT_TIMEOUT_RESET fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>3</td><td>reset_cycle_count_3</td><td>RW 1P</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
@@ -1413,50 +1729,50 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>0</td><td>reset_cycle_count_0</td><td>RW 1P</td><td>0x0</td><td>Reset current cycle count value in 2nd stage watchdog timer</td></tr>
 </table>
 <span id="TEST_CTRL"></span><h3 id="cpu_ctrl-TEST_CTRL" data-register-alias="TEST_CTRL">TEST_CTRL</h3>
-<table id="trm-table-12">
-<caption class="title"><a href="#trm-table-12">Table 12</a>. cpu_ctrl.TEST_CTRL fields</caption>
+<table id="trm-table-14">
+<caption class="title"><a href="#trm-table-14">Table 14</a>. cpu_ctrl.TEST_CTRL fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>Test control register for the CPU</td></tr>
 </table>
 <span id="SCRATCH_16_"></span><h3 id="cpu_ctrl-SCRATCH_16_" data-register-alias="SCRATCH_16_">SCRATCH[16]</h3>
-<table id="trm-table-13">
-<caption class="title"><a href="#trm-table-13">Table 13</a>. cpu_ctrl.SCRATCH[16] fields</caption>
+<table id="trm-table-15">
+<caption class="title"><a href="#trm-table-15">Table 15</a>. cpu_ctrl.SCRATCH[16] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register for the CPU</td></tr>
 </table>
 <span id="WB_PC_CORE0_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE0_8_" data-register-alias="WB_PC_CORE0_8_">WB_PC_CORE0[8]</h3>
-<table id="trm-table-14">
-<caption class="title"><a href="#trm-table-14">Table 14</a>. cpu_ctrl.WB_PC_CORE0[8] fields</caption>
+<table id="trm-table-16">
+<caption class="title"><a href="#trm-table-16">Table 16</a>. cpu_ctrl.WB_PC_CORE0[8] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
 </table>
 <span id="WB_PC_CORE1_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE1_8_" data-register-alias="WB_PC_CORE1_8_">WB_PC_CORE1[8]</h3>
-<table id="trm-table-15">
-<caption class="title"><a href="#trm-table-15">Table 15</a>. cpu_ctrl.WB_PC_CORE1[8] fields</caption>
+<table id="trm-table-17">
+<caption class="title"><a href="#trm-table-17">Table 17</a>. cpu_ctrl.WB_PC_CORE1[8] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
 </table>
 <span id="WB_PC_CORE2_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE2_8_" data-register-alias="WB_PC_CORE2_8_">WB_PC_CORE2[8]</h3>
-<table id="trm-table-16">
-<caption class="title"><a href="#trm-table-16">Table 16</a>. cpu_ctrl.WB_PC_CORE2[8] fields</caption>
+<table id="trm-table-18">
+<caption class="title"><a href="#trm-table-18">Table 18</a>. cpu_ctrl.WB_PC_CORE2[8] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
 </table>
 <span id="WB_PC_CORE3_8_"></span><h3 id="cpu_ctrl-WB_PC_CORE3_8_" data-register-alias="WB_PC_CORE3_8_">WB_PC_CORE3[8]</h3>
-<table id="trm-table-17">
-<caption class="title"><a href="#trm-table-17">Table 17</a>. cpu_ctrl.WB_PC_CORE3[8] fields</caption>
+<table id="trm-table-19">
+<caption class="title"><a href="#trm-table-19">Table 19</a>. cpu_ctrl.WB_PC_CORE3[8] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:58</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>57:0</td><td>pc</td><td>R</td><td>0x0</td><td>Writeback PC value</td></tr>
 </table>
 <span id="SMC_ATTRIBUTES"></span><h3 id="cpu_ctrl-SMC_ATTRIBUTES" data-register-alias="SMC_ATTRIBUTES">SMC_ATTRIBUTES</h3>
-<table id="trm-table-18">
-<caption class="title"><a href="#trm-table-18">Table 18</a>. cpu_ctrl.SMC_ATTRIBUTES fields</caption>
+<table id="trm-table-20">
+<caption class="title"><a href="#trm-table-20">Table 20</a>. cpu_ctrl.SMC_ATTRIBUTES fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:46</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>45:40</td><td>num_mailboxes</td><td>R</td><td>-</td><td>-</td></tr>
@@ -1470,46 +1786,46 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>0</td><td>chiplet_is_primary</td><td>R</td><td>-</td><td>Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.</td></tr>
 </table>
 <span id="MUTEX_4_"></span><h3 id="cpu_ctrl-MUTEX_4_" data-register-alias="MUTEX_4_">MUTEX[4]</h3>
-<table id="trm-table-19">
-<caption class="title"><a href="#trm-table-19">Table 19</a>. cpu_ctrl.MUTEX[4] fields</caption>
+<table id="trm-table-21">
+<caption class="title"><a href="#trm-table-21">Table 21</a>. cpu_ctrl.MUTEX[4] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>mutex</td><td>RW</td><td>0x1</td><td>HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.</td></tr>
 </table>
 <span id="SEMA_4_"></span><h3 id="cpu_ctrl-SEMA_4_" data-register-alias="SEMA_4_">SEMA[4]</h3>
-<table id="trm-table-20">
-<caption class="title"><a href="#trm-table-20">Table 20</a>. cpu_ctrl.SEMA[4] fields</caption>
+<table id="trm-table-22">
+<caption class="title"><a href="#trm-table-22">Table 22</a>. cpu_ctrl.SEMA[4] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>15:0</td><td>sema</td><td>RW</td><td>0x0</td><td>16-bit semaphore value to inc/dec. Writing to this register will inc/dec the semaphore value.<br>The written value is treated as a signed number using 2s compliment.</td></tr>
 </table>
 <span id="DUMMY_ROM_0"></span><h3 id="cpu_ctrl-DUMMY_ROM_0" data-register-alias="DUMMY_ROM_0">DUMMY_ROM_0</h3>
-<table id="trm-table-21">
-<caption class="title"><a href="#trm-table-21">Table 21</a>. cpu_ctrl.DUMMY_ROM_0 fields</caption>
+<table id="trm-table-23">
+<caption class="title"><a href="#trm-table-23">Table 23</a>. cpu_ctrl.DUMMY_ROM_0 fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_word_0</td><td>RW</td><td>0x145051300000517</td><td>Word 0 of WFI loop</td></tr>
 </table>
 <span id="DUMMY_ROM_1"></span><h3 id="cpu_ctrl-DUMMY_ROM_1" data-register-alias="DUMMY_ROM_1">DUMMY_ROM_1</h3>
-<table id="trm-table-22">
-<caption class="title"><a href="#trm-table-22">Table 22</a>. cpu_ctrl.DUMMY_ROM_1 fields</caption>
+<table id="trm-table-24">
+<caption class="title"><a href="#trm-table-24">Table 24</a>. cpu_ctrl.DUMMY_ROM_1 fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_word_1</td><td>RW</td><td>0xFFF0069330551073</td><td>Word 1 of WFI loop</td></tr>
 </table>
 <span id="DUMMY_ROM_2"></span><h3 id="cpu_ctrl-DUMMY_ROM_2" data-register-alias="DUMMY_ROM_2">DUMMY_ROM_2</h3>
-<table id="trm-table-23">
-<caption class="title"><a href="#trm-table-23">Table 23</a>. cpu_ctrl.DUMMY_ROM_2 fields</caption>
+<table id="trm-table-25">
+<caption class="title"><a href="#trm-table-25">Table 25</a>. cpu_ctrl.DUMMY_ROM_2 fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_word_2</td><td>RW</td><td>0x105000733046B073</td><td>Word 2 of WFI loop</td></tr>
 </table>
 <span id="DUMMY_ROM_3"></span><h3 id="cpu_ctrl-DUMMY_ROM_3" data-register-alias="DUMMY_ROM_3">DUMMY_ROM_3</h3>
-<table id="trm-table-24">
-<caption class="title"><a href="#trm-table-24">Table 24</a>. cpu_ctrl.DUMMY_ROM_3 fields</caption>
+<table id="trm-table-26">
+<caption class="title"><a href="#trm-table-26">Table 26</a>. cpu_ctrl.DUMMY_ROM_3 fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_word_3</td><td>RW</td><td>0xFFDFF06F</td><td>Word 3 of WFI loop</td></tr>
 </table>
 <span id="DUMMY_ROM_NULL_4_"></span><h3 id="cpu_ctrl-DUMMY_ROM_NULL_4_" data-register-alias="DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</h3>
-<table id="trm-table-25">
-<caption class="title"><a href="#trm-table-25">Table 25</a>. cpu_ctrl.DUMMY_ROM_NULL[4] fields</caption>
+<table id="trm-table-27">
+<caption class="title"><a href="#trm-table-27">Table 27</a>. cpu_ctrl.DUMMY_ROM_NULL[4] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>dummy_rom_null</td><td>RW</td><td>0x0</td><td>Cache line size is 64 bytes so want to ensure no random data is read when reading dummy rom</td></tr>
 </table>
@@ -1530,8 +1846,8 @@ The detailed map below defines each register and its fields.</p>
 <li><strong>MTIMECMP[4]</strong>: 4 registers, base 0x4000, stride 0x8</li>
 </ul>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-26">
-<caption class="title"><a href="#trm-table-26">Table 26</a>. CLINT Address Map register list</caption>
+<table id="trm-table-28">
+<caption class="title"><a href="#trm-table-28">Table 28</a>. CLINT Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0xC</td><td><a href="#clint-MSIP_4_">MSIP[4]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4000 - 0x4018</td><td><a href="#clint-MTIMECMP_4_">MTIMECMP[4]</a></td><td>RW</td><td>-</td></tr>
@@ -1539,21 +1855,21 @@ The detailed map below defines each register and its fields.</p>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="MSIP_4_"></span><h3 id="clint-MSIP_4_" data-register-alias="MSIP_4_">MSIP[4]</h3>
-<table id="trm-table-27">
-<caption class="title"><a href="#trm-table-27">Table 27</a>. clint.MSIP[4] fields</caption>
+<table id="trm-table-29">
+<caption class="title"><a href="#trm-table-29">Table 29</a>. clint.MSIP[4] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd0</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>0</td><td>value</td><td>RW</td><td>0x0</td><td>MSIP bit for core</td></tr>
 </table>
 <span id="MTIMECMP_4_"></span><h3 id="clint-MTIMECMP_4_" data-register-alias="MTIMECMP_4_">MTIMECMP[4]</h3>
-<table id="trm-table-28">
-<caption class="title"><a href="#trm-table-28">Table 28</a>. clint.MTIMECMP[4] fields</caption>
+<table id="trm-table-30">
+<caption class="title"><a href="#trm-table-30">Table 30</a>. clint.MTIMECMP[4] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Timer compare value. The core&#x27;s machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.</td></tr>
 </table>
 <span id="MTIME"></span><h3 id="clint-MTIME" data-register-alias="MTIME">MTIME</h3>
-<table id="trm-table-29">
-<caption class="title"><a href="#trm-table-29">Table 29</a>. clint.MTIME fields</caption>
+<table id="trm-table-31">
+<caption class="title"><a href="#trm-table-31">Table 31</a>. clint.MTIME fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count (time) value</td></tr>
 </table>
@@ -1576,8 +1892,8 @@ The detailed map below defines each register and its fields.</p>
 <li><strong>ROM[26]</strong>: 26 registers, base 0x800, stride 0x4</li>
 </ul>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-30">
-<caption class="title"><a href="#trm-table-30">Table 30</a>. Debug Module Hart Interface register list</caption>
+<table id="trm-table-32">
+<caption class="title"><a href="#trm-table-32">Table 32</a>. Debug Module Hart Interface register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x100</td><td><a href="#debug_module-HALTED">HALTED</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x104</td><td><a href="#debug_module-GOING">GOING</a></td><td>W</td><td>-</td></tr>
@@ -1593,66 +1909,66 @@ The detailed map below defines each register and its fields.</p>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="HALTED"></span><h3 id="debug_module-HALTED" data-register-alias="HALTED">HALTED</h3>
-<table id="trm-table-31">
-<caption class="title"><a href="#trm-table-31">Table 31</a>. debug_module.HALTED fields</caption>
+<table id="trm-table-33">
+<caption class="title"><a href="#trm-table-33">Table 33</a>. debug_module.HALTED fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write its hart ID here when it is in Debug Mode.</td></tr>
 </table>
 <span id="GOING"></span><h3 id="debug_module-GOING" data-register-alias="GOING">GOING</h3>
-<table id="trm-table-32">
-<caption class="title"><a href="#trm-table-32">Table 32</a>. debug_module.GOING fields</caption>
+<table id="trm-table-34">
+<caption class="title"><a href="#trm-table-34">Table 34</a>. debug_module.GOING fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write 0 here when it begins executing Debug Mode instructions.</td></tr>
 </table>
 <span id="RESUMING"></span><h3 id="debug_module-RESUMING" data-register-alias="RESUMING">RESUMING</h3>
-<table id="trm-table-33">
-<caption class="title"><a href="#trm-table-33">Table 33</a>. debug_module.RESUMING fields</caption>
+<table id="trm-table-35">
+<caption class="title"><a href="#trm-table-35">Table 35</a>. debug_module.RESUMING fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write its hart ID here when it leaves Debug Mode.</td></tr>
 </table>
 <span id="EXCEPTION"></span><h3 id="debug_module-EXCEPTION" data-register-alias="EXCEPTION">EXCEPTION</h3>
-<table id="trm-table-34">
-<caption class="title"><a href="#trm-table-34">Table 34</a>. debug_module.EXCEPTION fields</caption>
+<table id="trm-table-36">
+<caption class="title"><a href="#trm-table-36">Table 36</a>. debug_module.EXCEPTION fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write 0 here if it takes an exception in Debug Mode.</td></tr>
 </table>
 <span id="WHERETO"></span><h3 id="debug_module-WHERETO" data-register-alias="WHERETO">WHERETO</h3>
-<table id="trm-table-35">
-<caption class="title"><a href="#trm-table-35">Table 35</a>. debug_module.WHERETO fields</caption>
+<table id="trm-table-37">
+<caption class="title"><a href="#trm-table-37">Table 37</a>. debug_module.WHERETO fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>instr</td><td>R</td><td>-</td><td>Jump instruction filled in by the Debug Module to direct the hart in Debug Mode.</td></tr>
 </table>
 <span id="ABSTRACT_5_"></span><h3 id="debug_module-ABSTRACT_5_" data-register-alias="ABSTRACT_5_">ABSTRACT[5]</h3>
-<table id="trm-table-36">
-<caption class="title"><a href="#trm-table-36">Table 36</a>. debug_module.ABSTRACT[5] fields</caption>
+<table id="trm-table-38">
+<caption class="title"><a href="#trm-table-38">Table 38</a>. debug_module.ABSTRACT[5] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>instr</td><td>R</td><td>-</td><td>Instruction generated by the Debug Module for the current abstract command.</td></tr>
 </table>
 <span id="PROGBUF_16_"></span><h3 id="debug_module-PROGBUF_16_" data-register-alias="PROGBUF_16_">PROGBUF[16]</h3>
-<table id="trm-table-37">
-<caption class="title"><a href="#trm-table-37">Table 37</a>. debug_module.PROGBUF[16] fields</caption>
+<table id="trm-table-39">
+<caption class="title"><a href="#trm-table-39">Table 39</a>. debug_module.PROGBUF[16] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Program buffer word shared with the debugger. Byte accesses are supported.</td></tr>
 </table>
 <span id="IMPEBREAK"></span><h3 id="debug_module-IMPEBREAK" data-register-alias="IMPEBREAK">IMPEBREAK</h3>
-<table id="trm-table-38">
-<caption class="title"><a href="#trm-table-38">Table 38</a>. debug_module.IMPEBREAK fields</caption>
+<table id="trm-table-40">
+<caption class="title"><a href="#trm-table-40">Table 40</a>. debug_module.IMPEBREAK fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>instr</td><td>R</td><td>0x100073</td><td>Implicit EBREAK instruction following the program buffer.</td></tr>
 </table>
 <span id="DATA_4_"></span><h3 id="debug_module-DATA_4_" data-register-alias="DATA_4_">DATA[4]</h3>
-<table id="trm-table-39">
-<caption class="title"><a href="#trm-table-39">Table 39</a>. debug_module.DATA[4] fields</caption>
+<table id="trm-table-41">
+<caption class="title"><a href="#trm-table-41">Table 41</a>. debug_module.DATA[4] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Abstract command data word shared with the debugger. Byte accesses are supported.</td></tr>
 </table>
 <span id="FLAGS"></span><h3 id="debug_module-FLAGS" data-register-alias="FLAGS">FLAGS</h3>
-<table id="trm-table-40">
-<caption class="title"><a href="#trm-table-40">Table 40</a>. debug_module.FLAGS fields</caption>
+<table id="trm-table-42">
+<caption class="title"><a href="#trm-table-42">Table 42</a>. debug_module.FLAGS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>flags_3</td><td>R</td><td>-</td><td>Hart 3 go/resume flags.</td></tr>
 <tr><td>23:16</td><td>flags_2</td><td>R</td><td>-</td><td>Hart 2 go/resume flags.</td></tr>
@@ -1660,8 +1976,8 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>7:0</td><td>flags_0</td><td>R</td><td>-</td><td>Hart 0 go/resume flags.</td></tr>
 </table>
 <span id="ROM_26_"></span><h3 id="debug_module-ROM_26_" data-register-alias="ROM_26_">ROM[26]</h3>
-<table id="trm-table-41">
-<caption class="title"><a href="#trm-table-41">Table 41</a>. debug_module.ROM[26] fields</caption>
+<table id="trm-table-43">
+<caption class="title"><a href="#trm-table-43">Table 43</a>. debug_module.ROM[26] fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>Debug ROM word. Holds the fixed Debug Mode entry, exception and resume handlers.</td></tr>
 </table>
@@ -1677,8 +1993,8 @@ The detailed map below defines each register and its fields.</p>
 <h2 id="regmap-bus_error_unit">Bus Error Unit Address Map</h2>
 <p>Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.</p>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-42">
-<caption class="title"><a href="#trm-table-42">Table 42</a>. Bus Error Unit Address Map register list</caption>
+<table id="trm-table-44">
+<caption class="title"><a href="#trm-table-44">Table 44</a>. Bus Error Unit Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#bus_error_unit-CAUSE">CAUSE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#bus_error_unit-PHYS_ADDR">PHYS_ADDR</a></td><td>RW</td><td>-</td></tr>
@@ -1689,22 +2005,22 @@ The detailed map below defines each register and its fields.</p>
 </table>
 <p><strong>Register Details:</strong></p>
 <span id="CAUSE"></span><h3 id="bus_error_unit-CAUSE" data-register-alias="CAUSE">CAUSE</h3>
-<table id="trm-table-43">
-<caption class="title"><a href="#trm-table-43">Table 43</a>. bus_error_unit.CAUSE fields</caption>
+<table id="trm-table-45">
+<caption class="title"><a href="#trm-table-45">Table 45</a>. bus_error_unit.CAUSE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>2:0</td><td>data</td><td>RW</td><td>0x0</td><td>Cause register. Enumerates different kinds of errors</td></tr>
 </table>
 <span id="PHYS_ADDR"></span><h3 id="bus_error_unit-PHYS_ADDR" data-register-alias="PHYS_ADDR">PHYS_ADDR</h3>
-<table id="trm-table-44">
-<caption class="title"><a href="#trm-table-44">Table 44</a>. bus_error_unit.PHYS_ADDR fields</caption>
+<table id="trm-table-46">
+<caption class="title"><a href="#trm-table-46">Table 46</a>. bus_error_unit.PHYS_ADDR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>value</td><td>RW</td><td>-</td><td>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</td></tr>
 </table>
 <span id="ENABLE"></span><h3 id="bus_error_unit-ENABLE" data-register-alias="ENABLE">ENABLE</h3>
-<table id="trm-table-45">
-<caption class="title"><a href="#trm-table-45">Table 45</a>. bus_error_unit.ENABLE fields</caption>
+<table id="trm-table-47">
+<caption class="title"><a href="#trm-table-47">Table 47</a>. bus_error_unit.ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x1</td><td>Enable recording error information for DCache ECC uncorrectable bus error. Enabled on reset.</td></tr>
@@ -1717,8 +2033,8 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
 </table>
 <span id="PLIC_ENABLE"></span><h3 id="bus_error_unit-PLIC_ENABLE" data-register-alias="PLIC_ENABLE">PLIC_ENABLE</h3>
-<table id="trm-table-46">
-<caption class="title"><a href="#trm-table-46">Table 46</a>. bus_error_unit.PLIC_ENABLE fields</caption>
+<table id="trm-table-48">
+<caption class="title"><a href="#trm-table-48">Table 48</a>. bus_error_unit.PLIC_ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>PLIC interrupt enable mask for DCache ECC uncorrectable bus error.</td></tr>
@@ -1731,8 +2047,8 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
 </table>
 <span id="ACCRUED_ENABLE"></span><h3 id="bus_error_unit-ACCRUED_ENABLE" data-register-alias="ACCRUED_ENABLE">ACCRUED_ENABLE</h3>
-<table id="trm-table-47">
-<caption class="title"><a href="#trm-table-47">Table 47</a>. bus_error_unit.ACCRUED_ENABLE fields</caption>
+<table id="trm-table-49">
+<caption class="title"><a href="#trm-table-49">Table 49</a>. bus_error_unit.ACCRUED_ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>Sticky accrued status for DCache ECC uncorrectable bus error.</td></tr>
@@ -1745,8 +2061,8 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>0</td><td>rsvd0</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
 </table>
 <span id="LOCAL_ENABLE"></span><h3 id="bus_error_unit-LOCAL_ENABLE" data-register-alias="LOCAL_ENABLE">LOCAL_ENABLE</h3>
-<table id="trm-table-48">
-<caption class="title"><a href="#trm-table-48">Table 48</a>. bus_error_unit.LOCAL_ENABLE fields</caption>
+<table id="trm-table-50">
+<caption class="title"><a href="#trm-table-50">Table 50</a>. bus_error_unit.LOCAL_ENABLE fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7</td><td>dcache_uncorrectable</td><td>RW</td><td>0x0</td><td>Core local interrupt enable mask for DCache ECC uncorrectable bus error.</td></tr>
