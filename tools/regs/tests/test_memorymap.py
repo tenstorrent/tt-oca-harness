@@ -15,7 +15,6 @@ from tools.regs.common.memorymap import (
     render_adoc,
     render_py,
 )
-from tools.regs.common.rdlview import collect
 from tools.regs.stamp_spdx import stamp_file
 
 REGBLOCK_UDP = Path(__file__).resolve().parents[3] / "hw/common/regs/regblock_udps.rdl"
@@ -233,13 +232,6 @@ addrmap bounds_top {
         }
         view = build_views(config, {"main": self.root})[0]
         self.assertEqual(view.base, view.rows[0].base)
-
-    def test_doc_override_is_validated(self):
-        data = collect(self.root, {"first.control": "Documented locally"})
-        control = next(reg for reg in data.regs if reg.path == "top.first.control")
-        self.assertEqual(control.desc, "Documented locally")
-        with self.assertRaisesRegex(ValueError, "matched no register"):
-            collect(self.root, {"first.missing": "Stale"})
 
     def test_xml_stamping_removes_exporter_trailing_space(self):
         xml = Path(self.temp.name) / "map.xml"

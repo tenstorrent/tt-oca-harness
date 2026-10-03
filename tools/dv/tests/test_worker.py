@@ -391,6 +391,24 @@ class WorkerMainTest(ManifestCase):
         self.assertEqual((done["task_id"], done["status"]), (task.task_id, "PASS"))
         self.assertEqual(done["result_json"], str(task.result_json.relative_to(REPO_ROOT)))
 
+    def test_a_leaf_takes_its_build_identity_from_the_manifest(self) -> None:
+        task = self.task()
+        target_build = {
+            "target": "default",
+            "tool": "vcs",
+            "build_dir": str(self.run_dir / "model"),
+            "fingerprint": "efba240c5e52",
+        }
+        path = self.write(task, target_build=target_build)
+        with mock.patch(
+            "runlib.executors.manifest.run_stage", return_value=stage_result(task)
+        ) as run:
+            code = run_worker(path)
+        self.assertEqual(code, 0)
+        args = run.call_args.args[6]
+        self.assertEqual(args._cocotb_prebuilt_targets, {"default"})
+        self.assertEqual(args._cocotb_target_builds, {"default": target_build})
+
     def test_a_build_manifest_runs_the_stage_without_an_item(self) -> None:
         task = LeafTask(
             task_id="build-hdl_compile-default",

@@ -81,8 +81,8 @@ endif::backend-pdf[]
 
 TODO
 
-[#sec-programmers-guide]
-== Programmer's Guide
+[#sec-shared-thr]
+== Shared Transmit Holding Register
 
 When the Log Engine is enabled (`GEN_LOG_ENGINE=1`, the default), the UART transmit
 holding register (`THR`, at wrapper offset `0x100`) is written by two initiators: the
@@ -92,5 +92,11 @@ arbiter. The Log Engine's write target is not fixed in hardware — it is taken 
 log output to reach the UART.
 
 The arbiter serialises the two initiators, but no hardware lock protects the shared
-register. Firmware must not write `THR` directly while the Log Engine is active, or CPU
-writes and log output will interleave on the transmit path.
+register. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-log-engine-setup[Log Engine configuration sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-log-engine-setup[Log Engine configuration sequence]
+endif::backend-pdf[]
+in the Programmer's Guide states the resulting firmware rules.

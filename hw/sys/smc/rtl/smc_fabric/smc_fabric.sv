@@ -209,22 +209,14 @@ module smc_fabric #(
                                                                       // path.
   output smc_pkg::remap_debug_t                   remap_debug_dma_o,  // Alias region index hit by the data
                                                                       // accelerator path.
-  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  outbound_write_filter_hit_debug_o,  // Write hit index of the
-                                                                                      // system inbound filter
-                                                                                      // in the input fabric;
-                                                                                      // tied to zero.
-  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  outbound_read_filter_hit_debug_o,  // Read hit index of the
-                                                                                     // system inbound filter
-                                                                                     // in the input fabric;
-                                                                                     // tied to zero.
-  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] inbound_write_filter_hit_debug_o,  // Write hit index of the
-                                                                                     // system outbound filter
-                                                                                     // in the output fabric;
-                                                                                     // tied to zero.
-  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] inbound_read_filter_hit_debug_o,  // Read hit index of the
-                                                                                    // system outbound filter
-                                                                                    // in the output fabric;
-                                                                                    // tied to zero.
+  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  inbound_write_filter_hit_debug_o,  // Lowest system inbound filter
+                                                                                     // entry hit by a write.
+  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  inbound_read_filter_hit_debug_o,  // Lowest system inbound filter
+                                                                                    // entry hit by a read.
+  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] outbound_write_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                                      // entry hit by a write.
+  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] outbound_read_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                                     // entry hit by a read.
 
   output logic fabric_clk_active_o,     // High while the output fabric remap clock runs; low when
                                         // NO_ADDR_REMAP is set.
@@ -304,8 +296,8 @@ module smc_fabric #(
     .remap_debug_jtag_o         (remap_debug_jtag_o),
     .remap_debug_log_o          (remap_debug_log_o),
     .remap_debug_dma_o          (remap_debug_dma_o),
-    .write_filter_hit_debug_o   (outbound_write_filter_hit_debug_o),
-    .read_filter_hit_debug_o    (outbound_read_filter_hit_debug_o),
+    .write_filter_hit_debug_o   (inbound_write_filter_hit_debug_o),
+    .read_filter_hit_debug_o    (inbound_read_filter_hit_debug_o),
 
     // Clock gater activity indicators
     .sys_in_filter_clk_active_o (sys_in_filter_clk_active_o),
@@ -392,8 +384,8 @@ module smc_fabric #(
     .xR_ctrl_i                    (xR_ctrl_i),
 
     // Debug outputs
-    .write_filter_hit_debug_o     (inbound_write_filter_hit_debug_o),
-    .read_filter_hit_debug_o      (inbound_read_filter_hit_debug_o),
+    .write_filter_hit_debug_o     (outbound_write_filter_hit_debug_o),
+    .read_filter_hit_debug_o      (outbound_read_filter_hit_debug_o),
 
     // Clock gater activity indicators
     .fabric_clk_active_o         (fabric_clk_active_o),

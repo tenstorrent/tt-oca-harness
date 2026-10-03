@@ -154,7 +154,7 @@ build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output
 # the inherited list, then scopes and tunes the compile; the per-leaf dump stays
 # the inherited `[vcs.coverage_defaults].sim_args`. `cov/config/vcs/dtp_cov_scope.hier`
 # states what each number covers; `cov/config/vcs/coverage_policy.toml` carries
-# the thresholds the report is graded against.
+# the exclusion lists the report applies.
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",

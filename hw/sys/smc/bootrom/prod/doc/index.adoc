@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[smc-prod-rom-reference]]
-= SMC Production ROM Reference
+[[smc-boot-rom]]
+= SMC Boot ROM
 
 [[overview]]
 == Overview
@@ -27,7 +27,12 @@ implementations; a final adopter ROM FW image can replace them with strong
 definitions before the ROM FW is frozen. The detailed sections identify the
 hooks where they are used. For the build-time override method and the SMC
 override inventory, see
+ifdef::backend-html5[]
 xref:ocah-integrator-guide::index.adoc#immutable-rom-fw-integration[Immutable ROM FW Integration]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/index.html#immutable-rom-fw-integration[Immutable ROM FW Integration]
+endif::backend-pdf[]
 in the Integrator Guide.
 
 The ROM has two terminal handoff paths.

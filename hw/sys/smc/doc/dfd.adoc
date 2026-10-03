@@ -44,7 +44,14 @@ equals its ID, and its lane selects while `Dbmid` equals its ID and its mode
 is 1. Each lane select is a binary index: 0 passes input lane _n_ to output
 lane _n_, and 1 to 4 select input lanes 4 to 7. The CLA's own stage,
 programmed through `CDbgMuxSelLo` with `DbmId` 0, decodes its selects the
-same way, so 1 to 12 select CLA input lanes 4 to 15.
+same way, so 1 to 12 select CLA input lanes 4 to 15. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-dfd-capture[capture set-up sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-dfd-capture[capture set-up sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 Bit 0 of `xtrig_clk_halt_mask` in the DFX CSRs masks the CLA cross-trigger
 and halt-clock outputs, with every cross-trigger lane masked together; bits
@@ -177,8 +184,8 @@ endif::backend-html5[]
 The CLA counter values and timestamp fields are software-writable. Software
 writes take priority over simultaneous hardware updates; later hardware updates
 can advance or clear them according to their configured controls. The sink's
-`trDstRamWPHigh` register likewise accepts software writes. Treat these as live
-read/write state when programming or testing them, not read-only status.
+`trDstRamWPHigh` register likewise accepts software writes. These are live
+read/write state, not read-only status.
 
 The generated `smc_cla` map is the programmer view of this aperture (see
 ifdef::backend-html5[]

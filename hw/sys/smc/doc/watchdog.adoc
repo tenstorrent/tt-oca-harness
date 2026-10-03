@@ -27,10 +27,14 @@ triggers, supporting uninterrupted development and troubleshooting.
 
 The watchdog interrupt is `CTRL.wdogip0`. Hardware sets it on every cycle the
 scaled count is at or above `CMP`, so it cannot be cleared while that holds.
-Feeding the watchdog resets the count but leaves `wdogip0` set. To clear the
-interrupt, feed the watchdog (or otherwise bring the scaled count below
-`CMP`), write `KEY` again, and write `CTRL` with `wdogip0` at zero and its
-other fields unchanged.
+Feeding the watchdog resets the count but leaves `wdogip0` set. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-watchdog-clear[watchdog interrupt clear sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-watchdog-clear[watchdog interrupt clear sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 === Register Access
 

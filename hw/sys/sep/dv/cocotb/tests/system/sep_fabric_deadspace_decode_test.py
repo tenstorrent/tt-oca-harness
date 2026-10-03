@@ -22,9 +22,8 @@ adopter endpoint. The reference integration connects no external TRNG, so no
 offset owns a register and every access must be refused: never OKAY, never
 the value of a neighbouring ESRC register, and no ESRC register moved.
 ``memory_map.adoc`` also states the code for that case: the window ends in a
-DECERR slave, so a read answers DECERR, and the AXI4-to-AXI-Lite conversion on
-the TRNG path makes every errored write SLVERR. Each TRNG probe is graded
-against that code.
+DECERR slave, so a single-beat read or write answers DECERR. Each TRNG probe is
+graded against that code.
 
 CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST grade bursts in the crypto region
 only. ``memory_map.adoc`` ("Single-Beat Register Access") limits register
@@ -73,7 +72,7 @@ _RESP_NAME = {
 
 # Response to an unowned TRNG-window offset with no external TRNG connected,
 # per channel (hw/sys/sep/doc/memory_map.adoc, TRNG aperture).
-TRNG_UNOWNED_RESP = {"r": RESP_DECERR, "w": RESP_SLVERR}
+TRNG_UNOWNED_RESP = {"r": RESP_DECERR, "w": RESP_DECERR}
 
 
 @pyuvm.test()
@@ -95,27 +94,45 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         snaps = {}
         for win in cfg.windows.values():
             snaps[win.name] = await dead.snapshot(win)
+            # Every watched register must answer both snapshot reads OKAY. One
+            # that refuses or times out is left out of the change compare, so a
+            # store that aliases onto it would go unseen.
+            assert not dead.snapshot_unread, (
+                f"CHK-WINDOW-LIVE FAIL: {win.name} {len(dead.snapshot_unread)} of "
+                f"{len(win.watch)} watched register(s) refused or timed out on the "
+                f"snapshot read: {'; '.join(dead.snapshot_unread)}"
+            )
             assert snaps[win.name], (
                 f"{win.name}: watch snapshot is empty; the no-alias checker cannot fail"
             )
-            # Both numbers, because they differ and the smaller one is the real
-            # coverage: readable is what the read-alias compare uses, armed is
-            # what the per-probe change compare can actually fail on. Printing
-            # only the first reads as more coverage than the change compare has.
-            hw_updating = sum(1 for addr in snaps[win.name] if addr in win.hw_updating)
-            assert len(snaps[win.name]) - hw_updating > 0, (
+            # Readable is what the read-alias compare uses. Armed is what the
+            # per-probe change compare can fail on for a stored write: a
+            # compared register with a software read-write field. A sw=r or
+            # write-only register is compared too, but a store cannot show
+            # there, so it does not count toward armed.
+            snap = snaps[win.name]
+            hw_updating = sum(1 for addr in snap if addr in win.hw_updating)
+            compared = len(snap) - hw_updating
+            armed = win.armed(snap)
+            assert armed > 0, (
                 f"CHK-WINDOW-LIVE FAIL: {win.name} has no register armed for the change "
-                f"compare ({len(snaps[win.name])} readable, all hardware-updating); the "
+                f"compare ({len(snap)} readable, {hw_updating} hardware-updating, "
+                f"{compared} compared, none with a software read-write field); the "
                 "no-store-alias check cannot fail there"
             )
             self.logger.info(
-                "CHK-WINDOW-LIVE PASS: %s %d %s register(s) readable, "
-                "%d armed for the change compare (%d hardware-updating)",
+                "CHK-WINDOW-LIVE PASS: %s %d %s register(s) watched, %d refused or "
+                "timed out, %d self-changing, %d readable, %d compared per probe (%d "
+                "hardware-updating skipped), %d armed with a software read-write field",
                 win.name,
-                len(snaps[win.name]),
+                len(win.watch),
                 f"neighbouring {win.watch_from}" if win.watch_from else "allocated",
-                len(snaps[win.name]) - hw_updating,
+                len(dead.snapshot_unread),
+                dead.snapshot_volatile,
+                len(snap),
+                compared,
                 hw_updating,
+                armed,
             )
 
         refused = 0

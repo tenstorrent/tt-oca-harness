@@ -2333,7 +2333,7 @@ space is freed by an AVS_READBACK access</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>AVS_SLAVE_IS_IN_RESYNC</ipxact:name>
-              <ipxact:description>Indicates that the AVS master is issuing a slave resync operation (34 clock cycles of holding mdata high)</ipxact:description>
+              <ipxact:description>Indicates that the AVS master is issuing a slave resync operation (35 AVS clock cycles of holding mdata high)</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2820,7 +2820,7 @@ full =&gt; response was dropped</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>RESYNC_INTERVAL</ipxact:name>
-              <ipxact:description>Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</ipxact:description>
+              <ipxact:description>Interval between periodic slave resync operations on the AVS bus, in APB clock cycles counted from the end of the previous resync. The resulting request then crosses a 3-stage AVS clock synchronizer, and the resync starts once any frame in flight has completed.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2832,8 +2832,9 @@ full =&gt; response was dropped</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>MAX_RETRIES</ipxact:name>
-              <ipxact:description>Maximum number of times to attempt a retry if an AVS command returns a fail
-status (either due to targeted resource being busy or CRC failure)</ipxact:description>
+              <ipxact:description>Maximum number of retries, after the original attempt, if an AVS command returns a fail
+status (either due to targeted resource being busy or CRC failure). A value of 0 disables
+retries and MAX_RETRIES_ATTEMPTED_INT.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2869,7 +2870,7 @@ status (either due to targeted resource being busy or CRC failure)</ipxact:descr
             <ipxact:field>
               <ipxact:name>STOP_AVS_CLOCK_ON_IDLE</ipxact:name>
               <ipxact:description>When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.
-The master will always first issue 34 slave-resync cycles when the clock first restarts.</ipxact:description>
+The master always issues a slave resync first when the clock restarts.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2881,7 +2882,7 @@ The master will always first issue 34 slave-resync cycles when the clock first r
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>FORCE_SLAVE_RESYNC_OPERATION</ipxact:name>
-              <ipxact:description>Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</ipxact:description>
+              <ipxact:description>Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.</ipxact:description>
               <ipxact:bitOffset>9</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8294,9 +8295,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>cg_en</ipxact:name>
-              <ipxact:description>Design-for-debug (DFD) clock stop. 1 stops the clock to the debug-bus muxes and
-the core logic analyzer (CLA) unless force_clk_en is 1; 0 lets it run. The
-clock also runs while the SMC is in reset.</ipxact:description>
+              <ipxact:description>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+reset.</ipxact:description>
               <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8308,7 +8309,8 @@ clock also runs while the SMC is in reset.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>force_clk_en</ipxact:name>
-              <ipxact:description>DFD clock force. 1 keeps the DFD clock running whatever the value of cg_en.</ipxact:description>
+              <ipxact:description>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+value of cg_en.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8360,7 +8362,7 @@ and have no effect.</ipxact:description>
             <ipxact:field>
               <ipxact:name>debug_marker</ipxact:name>
               <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC;
-the debug marker on the SMC debug bus comes from the CLA.</ipxact:description>
+the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).</ipxact:description>
               <ipxact:bitOffset>23</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33803,6 +33805,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
               <ipxact:register>
                 <ipxact:name>HCI_VERSION</ipxact:name>
                 <ipxact:displayName>HCI Version</ipxact:displayName>
+                <ipxact:description>Identifies the implemented MIPI I3C HCI version.</ipxact:description>
                 <ipxact:addressOffset>'h0</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -33820,6 +33823,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
               <ipxact:register>
                 <ipxact:name>HC_CONTROL</ipxact:name>
                 <ipxact:displayName>Control</ipxact:displayName>
+                <ipxact:description>Controls host-controller bus operation, mode selection, transaction abort, and Hot-Join handling.</ipxact:description>
                 <ipxact:addressOffset>'h4</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -33989,6 +33993,7 @@ Write 1 to resume Controller operations.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>CONTROLLER_DEVICE_ADDR</ipxact:name>
                 <ipxact:displayName>Dynamic address</ipxact:displayName>
+                <ipxact:description>Configures the controller dynamic address and indicates whether that address is valid.</ipxact:description>
                 <ipxact:addressOffset>'h8</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34027,6 +34032,7 @@ Write 1 to resume Controller operations.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>HC_CAPABILITIES</ipxact:name>
                 <ipxact:displayName>Capabilities</ipxact:displayName>
+                <ipxact:description>Reports the host-controller capabilities implemented by this instance.</ipxact:description>
                 <ipxact:addressOffset>'hc</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34254,6 +34260,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>RESET_CONTROL</ipxact:name>
                 <ipxact:displayName>Reset controls</ipxact:displayName>
+                <ipxact:description>Requests a controller soft reset or selective PIO queue and FIFO resets. Reset requests are self-clearing.</ipxact:description>
                 <ipxact:addressOffset>'h10</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34344,6 +34351,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PRESENT_STATE</ipxact:name>
                 <ipxact:displayName>Active controller</ipxact:displayName>
+                <ipxact:description>Reports current controller state, including active-controller bus ownership.</ipxact:description>
                 <ipxact:addressOffset>'h14</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34368,6 +34376,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>INTR_STATUS</ipxact:name>
                 <ipxact:displayName>Status</ipxact:displayName>
+                <ipxact:description>Reports host-controller error and exceptional-condition status.</ipxact:description>
                 <ipxact:addressOffset>'h20</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34449,6 +34458,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>INTR_STATUS_ENABLE</ipxact:name>
                 <ipxact:displayName>Enable status reporting</ipxact:displayName>
+                <ipxact:description>Enables individual host-controller interrupt status sources.</ipxact:description>
                 <ipxact:addressOffset>'h24</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34520,6 +34530,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>INTR_SIGNAL_ENABLE</ipxact:name>
                 <ipxact:displayName>Enable status interrupts</ipxact:displayName>
+                <ipxact:description>Routes enabled host-controller interrupt sources to the interrupt output.</ipxact:description>
                 <ipxact:addressOffset>'h28</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34591,6 +34602,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>INTR_FORCE</ipxact:name>
                 <ipxact:displayName>Force status and interrupt</ipxact:displayName>
+                <ipxact:description>Forces host-controller interrupts for software testing.</ipxact:description>
                 <ipxact:addressOffset>'h2c</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34662,6 +34674,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>DAT_SECTION_OFFSET</ipxact:name>
                 <ipxact:displayName>DAT section offset</ipxact:displayName>
+                <ipxact:description>Reports the Device Address Table section offset and size.</ipxact:description>
                 <ipxact:addressOffset>'h30</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34709,6 +34722,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>DCT_SECTION_OFFSET</ipxact:name>
                 <ipxact:displayName>DCT section offset</ipxact:displayName>
+                <ipxact:description>Configures the Device Characteristic Table section offset, size, and ENTDAA index.</ipxact:description>
                 <ipxact:addressOffset>'h34</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34791,6 +34805,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PIO_SECTION_OFFSET</ipxact:name>
                 <ipxact:displayName>PIO section offset</ipxact:displayName>
+                <ipxact:description>Reports the PIO section offset.</ipxact:description>
                 <ipxact:addressOffset>'h3c</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35071,6 +35086,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>COMMAND_PORT</ipxact:name>
                 <ipxact:displayName>Command issue port</ipxact:displayName>
+                <ipxact:description>Accepts a 64-bit command descriptor as two consecutive 32-bit writes. The second write enqueues the descriptor.</ipxact:description>
                 <ipxact:addressOffset>'h0</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35084,6 +35100,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>RESPONSE_PORT</ipxact:name>
                 <ipxact:displayName>Command response port</ipxact:displayName>
+                <ipxact:description>Returns one 32-bit response descriptor from the response queue.</ipxact:description>
                 <ipxact:addressOffset>'h4</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35098,6 +35115,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>TX_DATA_PORT</ipxact:name>
                 <ipxact:displayName>Transferred data access port</ipxact:displayName>
+                <ipxact:description>Writes transmit data to the TX FIFO. This port shares its address with the read-only RX data port.</ipxact:description>
                 <ipxact:addressOffset>'h8</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35111,6 +35129,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>RX_DATA_PORT</ipxact:name>
                 <ipxact:displayName>Received data access port</ipxact:displayName>
+                <ipxact:description>Reads received data from the RX FIFO. This port shares its address with the write-only TX data port.</ipxact:description>
                 <ipxact:addressOffset>'h8</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35125,6 +35144,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>IBI_PORT</ipxact:name>
                 <ipxact:displayName>IBI descriptor access port</ipxact:displayName>
+                <ipxact:description>Returns IBI status and payload data. Payload data is padded to a 4-byte boundary.</ipxact:description>
                 <ipxact:addressOffset>'hc</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35146,6 +35166,7 @@ This can be determined from the value of field DATA_LENGTH in the IBI Status Des
               <ipxact:register>
                 <ipxact:name>QUEUE_THLD_CTRL</ipxact:name>
                 <ipxact:displayName>The Queue Threshold Control register for the Command Queue, the Response Queue, and the IBI Queue</ipxact:displayName>
+                <ipxact:description>Configures command, response, and IBI queue thresholds as raw entry counts.</ipxact:description>
                 <ipxact:addressOffset>'h10</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35206,6 +35227,7 @@ This can be determined from the value of field DATA_LENGTH in the IBI Status Des
               <ipxact:register>
                 <ipxact:name>DATA_BUFFER_THLD_CTRL</ipxact:name>
                 <ipxact:displayName>RX/TX queue threshold control</ipxact:displayName>
+                <ipxact:description>Configures TX and RX start and ready thresholds, each encoding 2^(N+1) entries.</ipxact:description>
                 <ipxact:addressOffset>'h14</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35264,6 +35286,7 @@ This can be determined from the value of field DATA_LENGTH in the IBI Status Des
               <ipxact:register>
                 <ipxact:name>QUEUE_SIZE</ipxact:name>
                 <ipxact:displayName>Queue sizes</ipxact:displayName>
+                <ipxact:description>Reports command, response, IBI, TX, and RX queue depths.</ipxact:description>
                 <ipxact:addressOffset>'h18</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35322,6 +35345,7 @@ This can be determined from the value of field DATA_LENGTH in the IBI Status Des
               <ipxact:register>
                 <ipxact:name>ALT_QUEUE_SIZE</ipxact:name>
                 <ipxact:displayName>Alternate queue sizes</ipxact:displayName>
+                <ipxact:description>Reports extended IBI and alternate response queue sizes.</ipxact:description>
                 <ipxact:addressOffset>'h1c</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35368,6 +35392,7 @@ ALT_RESP_QUEUE_SIZE contains response queue size</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PIO_INTR_STATUS</ipxact:name>
                 <ipxact:displayName>PIO interrupt status</ipxact:displayName>
+                <ipxact:description>Reports PIO queue-threshold and transfer-event interrupt status.</ipxact:description>
                 <ipxact:addressOffset>'h20</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35473,6 +35498,7 @@ ALT_RESP_QUEUE_SIZE contains response queue size</ipxact:description>
               </ipxact:register>
               <ipxact:register>
                 <ipxact:name>PIO_INTR_STATUS_ENABLE</ipxact:name>
+                <ipxact:description>Enables individual PIO interrupt status sources.</ipxact:description>
                 <ipxact:addressOffset>'h24</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35570,6 +35596,7 @@ ALT_RESP_QUEUE_SIZE contains response queue size</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PIO_INTR_SIGNAL_ENABLE</ipxact:name>
                 <ipxact:displayName>Interrupt Signal Enable</ipxact:displayName>
+                <ipxact:description>Routes enabled PIO interrupt sources to the interrupt output.</ipxact:description>
                 <ipxact:addressOffset>'h28</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35764,6 +35791,7 @@ ALT_RESP_QUEUE_SIZE contains response queue size</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PIO_CONTROL</ipxact:name>
                 <ipxact:displayName>PIO control</ipxact:displayName>
+                <ipxact:description>Controls run/stop and forced abort of enqueued commands.</ipxact:description>
                 <ipxact:addressOffset>'h30</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -36935,7 +36963,7 @@ Enforced to 256 bytes (64 DWORDs) by Caliptra Subsystem Recovery Sequence</ipxac
                 <ipxact:register>
                   <ipxact:name>STBY_CR_CONTROL</ipxact:name>
                   <ipxact:displayName>Standby Controller Control</ipxact:displayName>
-                  <ipxact:description></ipxact:description>
+                  <ipxact:description>Configures standby-controller operation, dynamic-address-assignment methods, target transactions, and controller-role handoff.</ipxact:description>
                   <ipxact:addressOffset>'h4</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>
@@ -37160,7 +37188,7 @@ to receive its Dynamic Address before operating in Standby Controller mode.</ipx
                 <ipxact:register>
                   <ipxact:name>STBY_CR_DEVICE_ADDR</ipxact:name>
                   <ipxact:displayName>Standby Controller Device Address</ipxact:displayName>
-                  <ipxact:description></ipxact:description>
+                  <ipxact:description>Configures standby-controller dynamic and static addresses.</ipxact:description>
                   <ipxact:addressOffset>'h8</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>
@@ -37229,7 +37257,7 @@ to receive its Dynamic Address before operating in Standby Controller mode.</ipx
                 <ipxact:register>
                   <ipxact:name>STBY_CR_CAPABILITIES</ipxact:name>
                   <ipxact:displayName>Standby Controller Capabilities</ipxact:displayName>
-                  <ipxact:description></ipxact:description>
+                  <ipxact:description>Reports standby-controller capabilities.</ipxact:description>
                   <ipxact:addressOffset>'hc</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>
@@ -38137,7 +38165,7 @@ STBY_CR_INTR_SIGNAL_ENABLE</ipxact:description>
                 <ipxact:register>
                   <ipxact:name>STBY_CR_CCC_CONFIG_RSTACT_PARAMS</ipxact:name>
                   <ipxact:displayName>Standby Controller CCC Configuration RSTACT</ipxact:displayName>
-                  <ipxact:description></ipxact:description>
+                  <ipxact:description>Reports the defining byte of the last RSTACT CCC received and configures the reset recovery times.</ipxact:description>
                   <ipxact:addressOffset>'h34</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>
@@ -40823,6 +40851,7 @@ PENDING_IBI and PENDING_INTERRUPT track live conditions.</ipxact:description>
                 <ipxact:register>
                   <ipxact:name>REC_INTF_CFG</ipxact:name>
                   <ipxact:displayName>Configuration of Recovery Interface</ipxact:displayName>
+                  <ipxact:description>Configures the recovery interface and signals payload completion to the recovery handler.</ipxact:description>
                   <ipxact:addressOffset>'hc</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>

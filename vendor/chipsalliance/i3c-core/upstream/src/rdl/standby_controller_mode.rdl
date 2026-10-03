@@ -36,7 +36,7 @@ regfile StandbyControllerModeRegisters#(
     } EXTCAP_HEADER;
     reg {
         name = "Standby Controller Control";
-        desc = "";
+        desc = "Configures standby-controller operation, dynamic-address-assignment methods, target transactions, and controller-role handoff.";
         field {
             name = "Host Controller Secondary Controller Enable";
             desc = "Enables or disables the Secondary Controller:
@@ -189,7 +189,7 @@ regfile StandbyControllerModeRegisters#(
     } STBY_CR_CONTROL;
     reg {
         name = "Standby Controller Device Address";
-        desc = "";
+        desc = "Configures standby-controller dynamic and static addresses.";
         field {
             name = "Dynamic Address is Valid";
             desc = "Indicates whether or not the value in the DYNAMIC_ADDR field is valid.
@@ -233,7 +233,7 @@ regfile StandbyControllerModeRegisters#(
     } STBY_CR_DEVICE_ADDR;
     reg {
         name = "Standby Controller Capabilities";
-        desc = "";
+        desc = "Reports standby-controller capabilities.";
         field {
             name = "DAA_ENTDAA_SUPPORT";
             desc = "Defines whether Dynamic Address Assignment with ENTDAA CCC is supported.
@@ -768,7 +768,7 @@ regfile StandbyControllerModeRegisters#(
     } STBY_CR_CCC_CONFIG_GETCAPS;
     reg {
         name = "Standby Controller CCC Configuration RSTACT";
-        desc = "";
+        desc = "Reports the defining byte of the last RSTACT CCC received and configures the reset recovery times.";
         field {
             name = "Reset Dynamic Address after Target Reset";
             desc = "If set to 1'b1, then the Secondary Controller Logic must clear its Dynamic

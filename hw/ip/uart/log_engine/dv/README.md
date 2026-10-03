@@ -56,6 +56,7 @@ Tests
   injected by the responders with recovery through a disable/enable cycle.
 
 Expected behavior is taken from `../doc/architecture.adoc`,
-`../doc/programming.adoc` and `../regs/log_engine.rdl`. The engine is also
+the Log Engine sections of `doc/programmer/src/smc-programming.adoc` and
+`../regs/log_engine.rdl`. The engine is also
 exercised inside the UART wrappers (`--dut uart_log_engine_wrap`,
 `--dut uart_wrap`) and the SMC (`--dut smc`).

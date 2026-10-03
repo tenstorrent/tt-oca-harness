@@ -1,0 +1,295 @@
+From b8c185aef3bc1ca64ecb63182835e144dc25859d Mon Sep 17 00:00:00 2001
+From: Alessandro Ottaviano <aottaviano@tenstorrent.com>
+Date: Sat, 3 Oct 2026 00:06:33 -0400
+Subject: [PATCH] rdl: Add register descriptions
+
+---
+ src/rdl/DCT_structure.rdl            |  1 +
+ src/rdl/base_registers.rdl           | 13 +++++++++++++
+ src/rdl/pio_registers.rdl            | 13 +++++++++++++
+ src/rdl/soc_management_interface.rdl |  1 +
+ src/rdl/standby_controller_mode.rdl  |  8 ++++----
+ 5 files changed, 32 insertions(+), 4 deletions(-)
+
+diff --git a/src/rdl/DCT_structure.rdl b/src/rdl/DCT_structure.rdl
+index b6382f6e..89b25866 100644
+--- a/src/rdl/DCT_structure.rdl
++++ b/src/rdl/DCT_structure.rdl
+@@ -1,5 +1,6 @@
+ reg DCT_structure {
+     regwidth = 128;
++    desc = "Holds one Device Characteristic Table entry per device enumerated by ENTDAA.";
+     field {
+         name = "DYNAMIC_ADDRESS";
+         desc = "Device I3C Dynamic Address after ENTDAA";
+diff --git a/src/rdl/base_registers.rdl b/src/rdl/base_registers.rdl
+index 74aaf034..ce1c0a97 100644
+--- a/src/rdl/base_registers.rdl
++++ b/src/rdl/base_registers.rdl
+@@ -32,6 +32,7 @@ regfile BaseRegs #(
+     default regwidth = 32;
+     reg {
+         name = "HCI Version";
++        desc = "Identifies the implemented MIPI I3C HCI version.";
+         field {
+             sw = r;
+             hw = na;
+@@ -40,6 +41,7 @@ regfile BaseRegs #(
+     } HCI_VERSION @ 0x0;
+     reg {
+         name = "Control";
++        desc = "Controls host-controller bus operation, mode selection, transaction abort, and Hot-Join handling.";
+         field {
+             name = "BUS_ENABLE";
+             desc = "Host Controller Bus Enable";
+@@ -146,6 +148,7 @@ regfile BaseRegs #(
+     } HC_CONTROL @ 0x4;
+     reg {
+         name = "Dynamic address";
++        desc = "Configures the controller dynamic address and indicates whether that address is valid.";
+         field {
+             name = "DYNAMIC_ADDR_VALID";
+             desc = "Dynamic Address is Valid:
+@@ -169,6 +172,7 @@ regfile BaseRegs #(
+     } CONTROLLER_DEVICE_ADDR @ 0x8;
+     reg {
+         name = "Capabilities";
++        desc = "Reports the host-controller capabilities implemented by this instance.";
+         field {
+             name = "SG_CAPABILITY_DC_EN";
+             desc = "Device context memory:
+@@ -315,6 +319,7 @@ regfile BaseRegs #(
+     } HC_CAPABILITIES @ 0xC;
+     reg {
+         name = "Reset controls";
++        desc = "Requests a controller soft reset or selective PIO queue and FIFO resets. Reset requests are self-clearing.";
+         field {
+             name = "IBI_QUEUE_RST";
+             desc = "Clear IBI queue from software. Valid only in PIO mode.";
+@@ -366,6 +371,7 @@ regfile BaseRegs #(
+     } RESET_CONTROL @ 0x10;
+     reg {
+         name = "Active controller";
++        desc = "Reports current controller state, including active-controller bus ownership.";
+         field {
+             name = "AC_CURRENT_OWN";
+             desc = "Controller I3C state:
+@@ -380,6 +386,7 @@ regfile BaseRegs #(
+     } PRESENT_STATE @ 0x14;
+     reg {
+         name = "Status";
++        desc = "Reports host-controller error and exceptional-condition status.";
+         field {
+             name = "SCHED_CMD_MISSED_TICK_STAT";
+             desc = "Scheduled commands could be executed due to controller being busy.";
+@@ -433,6 +440,7 @@ regfile BaseRegs #(
+     } INTR_STATUS @ 0x20;
+     reg {
+         name = "Enable status reporting";
++        desc = "Enables individual host-controller interrupt status sources.";
+         field {
+             name = "SCHED_CMD_MISSED_TICK_STAT_EN";
+             desc = "Enable SCHED_CMD_MISSED_TICK_STAT monitoring.";
+@@ -471,6 +479,7 @@ regfile BaseRegs #(
+     } INTR_STATUS_ENABLE @ 0x24;
+     reg {
+         name = "Enable status interrupts";
++        desc = "Routes enabled host-controller interrupt sources to the interrupt output.";
+         field {
+             name = "SCHED_CMD_MISSED_TICK_SIGNAL_EN";
+             desc = "Enable SCHED_CMD_MISSED_TICK_STAT interrupt.";
+@@ -509,6 +518,7 @@ regfile BaseRegs #(
+     } INTR_SIGNAL_ENABLE @ 0x28;
+     reg {
+         name = "Force status and interrupt";
++        desc = "Forces host-controller interrupts for software testing.";
+         field {
+             name = "SCHED_CMD_MISSED_TICK_FORCE";
+             desc = "Force SCHED_CMD_MISSED_TICK_STAT interrupt.";
+@@ -547,6 +557,7 @@ regfile BaseRegs #(
+     } INTR_FORCE @ 0x2C;
+     reg {
+         name = "DAT section offset";
++        desc = "Reports the Device Address Table section offset and size.";
+         field {
+             name = "ENTRY_SIZE";
+             desc = "Individual DAT entry size.
+@@ -573,6 +584,7 @@ regfile BaseRegs #(
+     } DAT_SECTION_OFFSET @ 0x30;
+     reg {
+         name = "DCT section offset";
++        desc = "Configures the Device Characteristic Table section offset, size, and ENTDAA index.";
+         field {
+             name = "ENTRY_SIZE";
+             desc = "Individual DCT entry size.
+@@ -619,6 +631,7 @@ regfile BaseRegs #(
+     } RING_HEADERS_SECTION_OFFSET @ 0x38;
+     reg {
+         name = "PIO section offset";
++        desc = "Reports the PIO section offset.";
+         field {
+             name = "SECTION_OFFSET";
+             desc = "PIO section offset. Invalid if 0.";
+diff --git a/src/rdl/pio_registers.rdl b/src/rdl/pio_registers.rdl
+index 3aaed124..ff01a68f 100644
+--- a/src/rdl/pio_registers.rdl
++++ b/src/rdl/pio_registers.rdl
+@@ -13,6 +13,7 @@ regfile PIORegs #(
+     default regwidth = 32;
+     external reg {
+         name = "Command issue port";
++        desc = "Accepts a 64-bit command descriptor as two consecutive 32-bit writes. The second write enqueues the descriptor.";
+         field {
+             name = "COMMAND_QUEUE_PORT";
+             sw = w;
+@@ -21,6 +22,7 @@ regfile PIORegs #(
+     } COMMAND_PORT @ 0x0;
+     external reg {
+         name = "Command response port";
++        desc = "Returns one 32-bit response descriptor from the response queue.";
+         field {
+             name = "RESPONSE_QUEUE_PORT";
+             sw = r;
+@@ -29,6 +31,7 @@ regfile PIORegs #(
+     } RESPONSE_PORT @ 0x4;
+     external reg {
+         name = "Transferred data access port";
++        desc = "Writes transmit data to the TX FIFO. This port shares its address with the read-only RX data port.";
+         field {
+             name = "TX_DATA";
+             sw = w;
+@@ -37,6 +40,7 @@ regfile PIORegs #(
+     } TX_DATA_PORT @ 0x8;
+     external reg {
+         name = "Received data access port";
++        desc = "Reads received data from the RX FIFO. This port shares its address with the write-only TX data port.";
+         field {
+             name = "RX_DATA";
+             sw = r;
+@@ -45,6 +49,7 @@ regfile PIORegs #(
+     } RX_DATA_PORT @ 0x8;
+     external reg {
+         name = "IBI descriptor access port";
++        desc = "Returns IBI status and payload data. Payload data is padded to a 4-byte boundary.";
+         field {
+             name = "IBI_DATA";
+             desc="Data Read from IBI Data Buffer.
+@@ -60,6 +65,7 @@ regfile PIORegs #(
+     } IBI_PORT @ 0xC;
+     reg {
+         name = "The Queue Threshold Control register for the Command Queue, the Response Queue, and the IBI Queue";
++        desc = "Configures command, response, and IBI queue thresholds as raw entry counts.";
+         field {
+             name = "IBI_STATUS_THLD";
+             desc = "Triggers IBI_STATUS_THLD_STAT interrupt when IBI queue has N or more entries. Accepted values are 1:255";
+@@ -95,6 +101,7 @@ regfile PIORegs #(
+     } QUEUE_THLD_CTRL @ 0x10;
+     reg {
+         name = "RX/TX queue threshold control";
++        desc = "Configures TX and RX start and ready thresholds, each encoding 2^(N+1) entries.";
+         field {
+             name = "RX_START_THLD";
+             desc = "Postpone read command until RX queue has 2^(N+1) free entries";
+@@ -126,6 +133,7 @@ regfile PIORegs #(
+     } DATA_BUFFER_THLD_CTRL @ 0x14;
+     reg {
+         name = "Queue sizes";
++        desc = "Reports command, response, IBI, TX, and RX queue depths.";
+         field {
+             name = "TX_DATA_BUFFER_SIZE";
+             desc = "TX queue size is equal to 2^(N+1), where N is this field value";
+@@ -157,6 +165,7 @@ regfile PIORegs #(
+     } QUEUE_SIZE @ 0x18;
+     reg {
+         name = "Alternate queue sizes";
++        desc = "Reports extended IBI and alternate response queue sizes.";
+         field {
+             name = "EXT_IBI_QUEUE_EN";
+             desc = "1 indicates that IBI queue size is equal to 8*IBI_STATUS_SIZE";
+@@ -182,6 +191,7 @@ regfile PIORegs #(
+     } ALT_QUEUE_SIZE @ 0x1C;
+     reg {
+         name = "PIO interrupt status";
++        desc = "Reports PIO queue-threshold and transfer-event interrupt status.";
+         field {
+             name = "TRANSFER_ERR_STAT";
+             desc = "Transfer error";
+@@ -249,6 +259,7 @@ regfile PIORegs #(
+         } TX_THLD_STAT[0:0];
+     } PIO_INTR_STATUS @ 0x20;
+     reg {
++        desc = "Enables individual PIO interrupt status sources.";
+         field {
+             name = "TRANSFER_ERR_STAT_EN";
+             desc = "Enable transfer error monitoring";
+@@ -301,6 +312,7 @@ regfile PIORegs #(
+     } PIO_INTR_STATUS_ENABLE @ 0x24;
+     reg {
+         name = "Interrupt Signal Enable";
++        desc = "Routes enabled PIO interrupt sources to the interrupt output.";
+         field {
+             name = "TRANSFER_ERR_SIGNAL_EN";
+             desc = "Enable transfer error interrupt";
+@@ -405,6 +417,7 @@ regfile PIORegs #(
+     } PIO_INTR_FORCE @ 0x2C;
+     reg {
+         name = "PIO control";
++        desc = "Controls run/stop and forced abort of enqueued commands.";
+         field {
+             name = "ABORT";
+             desc = "Stop current command descriptor execution forcefully and hold remaining commands.
+diff --git a/src/rdl/soc_management_interface.rdl b/src/rdl/soc_management_interface.rdl
+index ec8f6acc..92c6d1e4 100644
+--- a/src/rdl/soc_management_interface.rdl
++++ b/src/rdl/soc_management_interface.rdl
+@@ -44,6 +44,7 @@ regfile SoCManagementInterfaceRegisters #(
+     } SOC_MGMT_STATUS;
+     reg {
+         name = "Configuration of Recovery Interface";
++        desc = "Configures the recovery interface and signals payload completion to the recovery handler.";
+         field {
+             name = "Recovery Interface access type";
+             desc = "Choose Recovery Interface access type:
+diff --git a/src/rdl/standby_controller_mode.rdl b/src/rdl/standby_controller_mode.rdl
+index ad7e7208..2487caf9 100644
+--- a/src/rdl/standby_controller_mode.rdl
++++ b/src/rdl/standby_controller_mode.rdl
+@@ -36,7 +36,7 @@ regfile StandbyControllerModeRegisters#(
+     } EXTCAP_HEADER;
+     reg {
+         name = "Standby Controller Control";
+-        desc = "";
++        desc = "Configures standby-controller operation, dynamic-address-assignment methods, target transactions, and controller-role handoff.";
+         field {
+             name = "Host Controller Secondary Controller Enable";
+             desc = "Enables or disables the Secondary Controller:
+@@ -189,7 +189,7 @@ regfile StandbyControllerModeRegisters#(
+     } STBY_CR_CONTROL;
+     reg {
+         name = "Standby Controller Device Address";
+-        desc = "";
++        desc = "Configures standby-controller dynamic and static addresses.";
+         field {
+             name = "Dynamic Address is Valid";
+             desc = "Indicates whether or not the value in the DYNAMIC_ADDR field is valid.
+@@ -233,7 +233,7 @@ regfile StandbyControllerModeRegisters#(
+     } STBY_CR_DEVICE_ADDR;
+     reg {
+         name = "Standby Controller Capabilities";
+-        desc = "";
++        desc = "Reports standby-controller capabilities.";
+         field {
+             name = "DAA_ENTDAA_SUPPORT";
+             desc = "Defines whether Dynamic Address Assignment with ENTDAA CCC is supported.
+@@ -768,7 +768,7 @@ regfile StandbyControllerModeRegisters#(
+     } STBY_CR_CCC_CONFIG_GETCAPS;
+     reg {
+         name = "Standby Controller CCC Configuration RSTACT";
+-        desc = "";
++        desc = "Reports the defining byte of the last RSTACT CCC received and configures the reset recovery times.";
+         field {
+             name = "Reset Dynamic Address after Target Reset";
+             desc = "If set to 1'b1, then the Secondary Controller Logic must clear its Dynamic
+-- 
+2.26.2
+

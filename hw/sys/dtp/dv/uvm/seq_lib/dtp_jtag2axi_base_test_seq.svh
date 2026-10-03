@@ -1228,6 +1228,16 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     responder(t).disable_backpressure();
   endfunction
 
+  // Arms the target's responder so the W beat of the next write is accepted
+  // while its AW waits against a stalled AWREADY (the cocotb RAM responder's
+  // order); later writes take AW first. Call it with the write channels idle.
+  function void arm_target_w_before_aw(dtp_j2a_target_t t);
+    dtp_axi_slave_driver drv;
+    if (!$cast(drv, responder(t).responder))
+      `uvm_fatal(get_type_name(), $sformatf("%s responder is not a dtp_axi_slave_driver", t.name))
+    drv.w_before_aw = 1'b1;
+  endfunction
+
   // --- request-activity evidence (security gating) -----------------------
   function void sample_activity(dtp_j2a_target_t t, output int unsigned aw, output int unsigned w,
                                 output int unsigned ar);

@@ -44,16 +44,31 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# FIXED and WRAP bursts into SEP SRAM (fabric.adoc: AXI4 fabric). A burst
-# type the slave does not implement must be refused with SRAM unchanged, or
-# performed at the beat addresses AXI4 gives it. OKAY with INCR beat
-# addresses fails. The SRAM target refuses them with SLVERR (fabric.adoc,
-# "SRAM"). no_cpu; +skip_fuse_sense.
+# Multi-beat FIXED and WRAP bursts into SEP SRAM are refused with SLVERR
+# (fabric.adoc#sep-sram-target): BRESP=SLVERR with SRAM unchanged, and
+# RRESP=SLVERR on every read beat. no_cpu; +skip_fuse_sense.
 name = "sep_sram_burst_type_test"
 module = "sram.sep_sram_burst_type_test"
 seed = 1
 timeout_sec = 1800
 tags = ["sram", "memory", "negative", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# INCR bursts of 1 to 256 beats into SRAM from the SMN-inbound master, with
+# seeded AxID, AxPROT, AxCACHE, AxQOS, AxREGION, AxUSER, WUSER and ARLOCK. The
+# inbound filter decides on address, prot[1], user[3:0] and AxLEN only, so two
+# windows (one per NS polarity, any source ID, bursts allowed) admit every draw
+# and the data must not change. Partial-strobe overlays and CPU-LSU cross reads
+# grade the byte lanes and the addresses. no_cpu; +skip_fuse_sense.
+name = "sep_sram_inbound_burst_attr_test"
+module = "sram.sep_sram_inbound_burst_attr_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["sram", "memory", "fabric", "inbound", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

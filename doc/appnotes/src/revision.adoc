@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[revision-history]]
+= Revision History
+
+== Document history
+
+This document tracks major revisions and updates to the OCAH Application Notes.
+
+.Revision History
+[width="100%",cols="15%,15%,15%,55%",options="header",]
+|=======================================================================
+|Version |Date |Author |Description
+|0.0.1 |2026-06-11 |Alessandro Ottaviano, Daniel Green, Jay Alphey, Luís
+Marques |Initial Application Notes, with the System-in-Package secure boot
+note.
+|=======================================================================

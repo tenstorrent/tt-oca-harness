@@ -494,9 +494,6 @@ localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'h400000;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_REGION_BASE_ADDR = 64'hC0400000;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_REGION_SIZE = 64'h400000;
 
-localparam longint unsigned SMC_TOP_ECAM_REGION_BASE_ADDR = 64'hC0800000;
-localparam longint unsigned SMC_TOP_ECAM_REGION_SIZE = 64'h800000;
-
 localparam longint unsigned SMC_TOP_MMODE_REGION_BASE_ADDR = 64'hC1000000;
 localparam longint unsigned SMC_TOP_MMODE_REGION_SIZE = 64'h800000;
 

@@ -194,5 +194,11 @@ Filtering resets disabled. The stored read and write requirements reset to
 `3'b001` (secure, privileged data), but apply only when enabled. `PROT`
 expresses transaction attributes, not initiator identity: this filter alone
 does not establish SEP-only access. It protects the interface bank, not the
-shim's separate control bank. See <<gpio-filter-programming>> for setup and
-readback requirements.
+shim's separate control bank. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-gpio-access-filter[GPIO access filtering procedure]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-gpio-access-filter[GPIO access filtering procedure]
+endif::backend-pdf[]
+in the Programmer's Guide gives the setup and readback requirements.

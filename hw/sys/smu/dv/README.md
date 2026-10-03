@@ -12,7 +12,7 @@ BFM table), `docs/SMU_VPLAN.adoc` (what every enrolled test intends and
 checks, and under its Signoff Package the feature list, the scope and
 traceability matrix, the release matrix and the component scope),
 `docs/SMU_FCOV.adoc` (coverage intent), and the two decision records under
-`hw/sys/smu/doc/dv/` (`SMU_DEFERRED_DISPOSITION`, `SMU_COVERAGE_POLICY`).
+`hw/sys/smu/dv/docs/` (`SMU_DEFERRED_DISPOSITION`, `SMU_COVERAGE_POLICY`).
 `docs/index.adoc` is the chapter set.
 
 ## What the bench is
@@ -29,7 +29,7 @@ The `SEP=0` composition (`smu #(.CFG(smu_pkg::NoSepCfg))`: no crossbar, direct I
 SEP aperture and lifecycle tie-offs) is not elaborated by this package; the
 names that need it, and the JTAG2AXI abort scenario, which needs an OTP
 interface that hangs, are catalogued in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 **What it verifies.** With `elaboration` firmware, four surfaces of the SMU at its
 own boundary: the fabric and address decode (external SMN AXI into SMC,
@@ -52,7 +52,7 @@ leaves -- the firmware's own terminal loop, observed by the bench. The one
 signal the bench forces (`+esrc_noise_force`, the ESRC raw-noise lanes) and
 the other stand-ins on a proof path are recorded, with their scope and
 approval fields, in the *Bench stand-ins and exceptions* section of
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 **Simulators.** Verilator runs every enrolled group and is the only
 simulator with a build and a coverage section in the sim config; it is
@@ -114,12 +114,15 @@ python3 tools/dv/run_dv.py --dut smu --list
 python3 tools/dv/run_dv.py --dut smu --items smoke
 
 # 2. Nightly and weekly. `.github/workflows/regress.yml` runs this as the
-#    release qualification set: 69 toolchain-free leaves, one seed nightly,
-#    three weekly with --cov on the large runner. Their `elaboration` firmware
-#    stage only writes zero-filled preload images (Python, no toolchain).
+#    release qualification set: the 84 toolchain-free leaves of `hosted`, one
+#    seed per leaf on both tiers (`reseed: 1`), on `ubuntu-latest`. Neither
+#    tier collects coverage: both `smu` rows carry `coverage: false`, and the
+#    coverage regression runs on the licensed flow outside hosted CI
+#    (`docs/SMU_COVERAGE_POLICY.adoc`). Their `elaboration` firmware stage
+#    only writes zero-filled preload images (Python, no toolchain).
 python3 tools/dv/run_dv.py --dut smu --items hosted
 
-# 3. The whole package: `all` adds the SEP firmware set (101 leaves). The
+# 3. The whole package: `all` adds the SEP firmware set (120 leaves). The
 #    firmware c_build stages build every image in the toolchain container
 #    (unless RISCV_TOOLCHAIN names a picolibc gcc), so make that toolchain
 #    available once first -- the container image, as below, or the rootfs
@@ -239,7 +242,7 @@ Every directory and top-level file under `dv/` is listed here.
 | `assets/` | the five SEP eFuse shadow preload images: `default_sep_efuse_shadow_reg.preload` and `sep_efuse_shadow_lc_{test_dev,prod,prod_end,rma_chiplet}.preload`, which set the diff-encoded lifecycle state word. Each carries its SPDX header as `//` comment lines, which the preload readers skip |
 | `cocotb/{env,seq_lib}/` | the shared half of the PyUVM environment: `env/` holds `SmuEnv`, `SmuScoreboard`, the evidence map and `smu_fcov.py`; `seq_lib/` the sequences and helpers written against the SMU's own interfaces (address map, lifecycle table, AXI, JTAG and filter helpers, the PTAP smoke sequence) |
 | `cocotb_wrapper/{env,seq_lib,tests}/` | the `--dut smu` framework tree: `tests/` holds every test body and the base test; `env/` the wrapper env pieces (`smu_boot_scoreboard.py`, `smu_sep_cpu_trace_monitor.py`, `smu_env_cfg.py`); `seq_lib/` the wrapper sequences. `env` and `seq_lib` are namespace packages spanning this tree and `cocotb/`, so an import resolves in either |
-| `cov/` | coverage collateral: `config/verilator/smu_wrapper_cov_scope.vlt` and `smu_wrapper_coverage_policy.toml`, `config/vcs/smu_wrapper_cov_scope.hier` (written by `gen_smu_cov_scope.py`; its README states the rule and how it differs from the Verilator scope), and `sv/` with the ten cover-property modules; intent in `docs/SMU_FCOV.adoc` |
+| `cov/` | coverage collateral: `config/verilator/smu_wrapper_cov_scope.vlt` and `smu_wrapper_coverage_policy.toml`, `config/vcs/smu_wrapper_cov_scope.hier` (written by the companion's `gen_smu_cov_scope.py`; its README states the rule and how it differs from the Verilator scope), and `sv/` with the ten cover-property modules; intent in `docs/SMU_FCOV.adoc` |
 | `docs/` | `index.adoc` and the three chapters: `SMU_TB_ARCH.adoc`, `SMU_VPLAN.adoc`, `SMU_FCOV.adoc` |
 | `fw/` | this root's own firmware: `build_firmware.py`, `common/` (SMC and SEP start-up and linker files), `tests/` (the SMC smoke, the SEP smoke and the two SEP arm images). The `sep_real_fw` images come from `hw/sys/sep/dv/fw/` instead |
 | `tb/` | `tb_wrapper_top.sv` (the HDL top, `smu_wrapper_uvm_top`, one module in two shapes: the cocotb port list and the SV-UVM harness), `smu_tb_signal_list.svh` (the single declaration of its TB signals, expanded as ports or as internal signals), `smu_tb_if.sv` (the SMU-local TB interface of the SV-UVM shape) and `smu_wrapper_public_scope.vlt` (the Verilator public-signal scope `smu_sim_cfg.toml` `[build.verilator].public_scope` names) |
@@ -338,14 +341,14 @@ python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
 ## Enrollment
 
 `--dut smu` carries the regression: `all` is every entry of
-`testlists/all.toml` (101), `hosted` is the toolchain-free subset the workflows
-run (69), and the rest of `all` is the SEP firmware set.
+`testlists/all.toml` (120), `hosted` is the toolchain-free subset the workflows
+run (84), and the rest of `all` is the SEP firmware set.
 
 Every test entry of the testlist is in `all`, and every test module under
 `cocotb_wrapper/tests/` is enrolled. Names that cannot run or cannot pass on
 this bench -- among them the SEP=0 composition proofs, which need the
 `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration this package does not build -- are enrolled
 nowhere and have no module in the tree:
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` catalogues each with the
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` catalogues each with the
 condition it needs, and a body written for one of them is kept in git history
 and restored when that condition clears.

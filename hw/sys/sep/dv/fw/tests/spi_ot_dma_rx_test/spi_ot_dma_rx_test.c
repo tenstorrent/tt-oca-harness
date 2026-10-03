@@ -16,8 +16,8 @@
 //
 // The testbench preloads the flash model with a known byte, so every
 // DMA-written SRAM word is value-checked, which proves the data path and not
-// only completion. The test also checks that the DMA status bits clear on a
-// write-one-to-clear.
+// only completion. The test also checks that DMA DONE still reads set after the
+// poll and clears only on the write-one-to-clear.
 //
 // main() returns the error count; crt0.s turns it into the pass/fail mailbox
 // word that the boot scoreboard gates on.
@@ -147,15 +147,32 @@ int main(void) {
     }
 
     // --- RW1C status-clear proof ---------------------------------------------
+    // DONE is write-one-to-clear and a read has no side effect, so a second read
+    // after the poll must still show it set. That rules out a bit that clears on
+    // read or drops by itself, so the clear seen after the write is the write's.
+    uint32_t status_pre_w1c = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    if (!(status_pre_w1c & SECURE_DMA__STATUS__DONE_bm)) {
+        sep_mbx_puts("FAIL: CHK-RW1C DMA DONE not sticky before W1C status=");
+        sep_mbx_puthex(status_pre_w1c);
+        sep_mbx_putc('\n');
+        errors++;
+    }
     // Write one to the status bits and check that they read back clear.
     sep_dma_wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, DMA_STATUS_RW1C_MASK);
     __asm__ volatile("fence" ::: "memory");
     uint32_t status_after_clear = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     sep_mbx_puts("STEP DMA polled to completion; status write-one-to-clear applied\n");
     if (status_after_clear & DMA_STATUS_RW1C_MASK) {
-        sep_mbx_puts("FAIL: DMA STATUS RW1C bits did not clear\n");
+        sep_mbx_puts("FAIL: CHK-RW1C DMA STATUS RW1C bits did not clear status=");
+        sep_mbx_puthex(status_after_clear);
+        sep_mbx_putc('\n');
         errors++;
     }
+    sep_mbx_puts("CHK-RW1C: dma_status_pre_w1c=");
+    sep_mbx_puthex(status_pre_w1c);
+    sep_mbx_puts(" dma_status_after_w1c=");
+    sep_mbx_puthex(status_after_clear);
+    sep_mbx_putc('\n');
 
     // --- SPI controller must be clean ----------------------------------------
     int spi_idle = (spi_wait_idle(SPI_POLL_TIMEOUT) == 0);

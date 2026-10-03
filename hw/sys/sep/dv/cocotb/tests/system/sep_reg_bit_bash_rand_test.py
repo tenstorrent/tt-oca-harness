@@ -12,7 +12,13 @@ no reset value is driven by hardware, so the generated DEFAULT is a field
 default and not a POR value. Both read back 0 against a DEFAULT of 0 in most
 cases, so keeping them would pass without the DUT having shown anything. The
 ABR identity registers in that second group are proven frontdoor by the ABR
-KAT tests, and the entropy-pool pair by sep_entropy_pool_aperture_test. Full-mask write-lands covers the
+KAT tests, and the entropy-pool pair by sep_entropy_pool_aperture_test.
+
+The same rule applies per field. A field the RDL gives no reset value has no
+POR value, and the generated DEFAULT holds a 0 placeholder for it. A word made
+only of such fields is skipped (HMAC DIGEST_*, MSG_LENGTH_*); a word with some
+stays in the walk, and CHK-RESET masks those bits out of its compare (HMAC
+CFG.hmac_en/sha_en). Full-mask write-lands covers the
 scratch-cold, scratch-warm and CPU_CTRL registers; the inbound START/END
 registers use the wrap model.
 
@@ -79,7 +85,12 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
                 f"CHK-RESET FAIL: {len(reset_fails)} register(s) missed the "
                 f"exported reset ({bash.reset_ok} matched)"
             )
-        self.logger.info("CHK-RESET PASS: %d register(s) matched the exported reset", bash.reset_ok)
+        self.logger.info(
+            "CHK-RESET PASS: %d register(s) matched the exported reset; %d of them "
+            "under a mask that drops fields with no RDL reset",
+            bash.reset_ok,
+            bash.reset_masked,
+        )
 
         write_fails: list[str] = []
         for info in cfg.write_regs:

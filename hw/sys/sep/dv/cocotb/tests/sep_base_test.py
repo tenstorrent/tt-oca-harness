@@ -341,7 +341,8 @@ class sep_base_test(uvm_test):
         # reset with its request channels idle. It is a live instance in every
         # build, so leaving its inputs unresolved would drive X into its
         # ASSERT_KNOWN checks in tests that never use it.
-        # sep_drbg_axil_adapter_port_arbitration_test releases it itself.
+        # sep_drbg_axil_adapter_port_arbitration_test and
+        # sep_drbg_axil_adapter_refusal_test release it themselves.
         self._set_if_exists(dut, "tbadp_rst_ni_i", 0)
         for pin in ("aw_valid", "w_valid", "ar_valid"):
             self._set_if_exists(dut, f"tbadp_{pin}_i", 0)

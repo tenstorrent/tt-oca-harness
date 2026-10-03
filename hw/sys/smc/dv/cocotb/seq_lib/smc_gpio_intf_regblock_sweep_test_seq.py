@@ -61,8 +61,8 @@ _ARPROT_SHIFT = gpio_intf_u32("GPIO_INTF__ACCESS_FILTER__ARPROT_REQUIREMENT_bp")
 _PROT_ALL_ONES = _ARPROT_REQUIREMENT >> _ARPROT_SHIFT
 _PROT_ZERO = 0
 
-# DECERR is the response hw/ip/gpio/doc/programming.adoc ("Filter
-# Configuration") specifies for a transaction whose protection bits do not
+# DECERR is the response doc/programmer/src/smc-programming.adoc ("Configuring
+# Access Filtering") specifies for a transaction whose protection bits do not
 # match an armed filter.
 _AXI_RESP_DECERR = 3
 

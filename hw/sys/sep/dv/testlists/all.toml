@@ -29,11 +29,11 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold all 124. `rom_fw`
+# (full-CPU target) are disjoint and together hold all 132. `rom_fw`
 # is not a member: a different owner, a third RTL target, and firmware rather
-# than hardware contracts. `all` is the coverage set. expected_count is 124.
+# than hardware contracts. `all` is the coverage set. expected_count is 132.
 name = "all"
-expected_count = 124
+expected_count = 132
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -83,11 +83,14 @@ tests = [
     "sep_cpu_ifu_lsu_alias_remap_matrix_test",
     "sep_irq_simultaneous_fanin_no_alias_test",
     "sep_fabric_remap_filter_csr_bank_test",
+    "sep_fabric_slot_csr_strobe_rand_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
     "sep_mailbox_peer_rx_rirqt_test",
+    "sep_mailbox_datapath_walk_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
+    "sep_reset_mid_transfer_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
     "sep_sram_datapath_breadth_test",
     "sep_boot_rom_lsu_read_test",
@@ -107,6 +110,7 @@ tests = [
     "sep_otbn_compute_rand_test",
     "sep_clock_gate_control_test",
     "sep_efuse_program_lock_matrix_test",
+    "sep_efuse_program_read_back_select_test",
     "sep_efuse_set_only_monotonicity_test",
     "sep_lcc_demote_feat_ctrl_matrix_test",
     "sep_efuse_rma_token_rand_test",
@@ -126,6 +130,7 @@ tests = [
     "sep_km_handover_test",
     "sep_km_abr_seed_sideload_test",
     "sep_km_abr_mlkem_sideload_test",
+    "sep_km_sideload_share_walk_test",
     "sep_km_mailbox_protocol_rand_test",
     "sep_km_crc_pcpi_kat_test",
     "sep_km_kpv_scrambler_test",
@@ -138,6 +143,7 @@ tests = [
     "sep_axi_order_sweep_test",
     "sep_axi_order_sweep_m_axi_test",
     "sep_drbg_axil_adapter_port_arbitration_test",
+    "sep_drbg_axil_adapter_refusal_test",
     "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
     "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
@@ -154,8 +160,10 @@ tests = [
     "sep_abr_concurrent_rw_test",
     "sep_unmapped_access_policy_test",
     "sep_sram_burst_type_test",
+    "sep_sram_inbound_burst_attr_test",
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
+    "sep_km_drbg_sampler_timeout_reset_test",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
@@ -227,11 +235,14 @@ tests = [
     "sep_lcc_uvm_inbound_filter_gating_test",
     "sep_irq_simultaneous_fanin_no_alias_test",
     "sep_fabric_remap_filter_csr_bank_test",
+    "sep_fabric_slot_csr_strobe_rand_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
     "sep_mailbox_peer_rx_rirqt_test",
+    "sep_mailbox_datapath_walk_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
+    "sep_reset_mid_transfer_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
     "sep_sram_datapath_breadth_test",
     "sep_spi_ot_host_csr_irq_rand_test",
@@ -245,6 +256,7 @@ tests = [
     "sep_otbn_compute_rand_test",
     "sep_clock_gate_control_test",
     "sep_efuse_program_lock_matrix_test",
+    "sep_efuse_program_read_back_select_test",
     "sep_efuse_set_only_monotonicity_test",
     "sep_lcc_demote_feat_ctrl_matrix_test",
     "sep_efuse_rma_token_rand_test",
@@ -264,6 +276,7 @@ tests = [
     "sep_km_handover_test",
     "sep_km_abr_seed_sideload_test",
     "sep_km_abr_mlkem_sideload_test",
+    "sep_km_sideload_share_walk_test",
     "sep_km_mailbox_protocol_rand_test",
     "sep_km_crc_pcpi_kat_test",
     "sep_km_kpv_scrambler_test",
@@ -276,6 +289,7 @@ tests = [
     "sep_axi_order_sweep_test",
     "sep_axi_order_sweep_m_axi_test",
     "sep_drbg_axil_adapter_port_arbitration_test",
+    "sep_drbg_axil_adapter_refusal_test",
     "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
     "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
@@ -292,11 +306,24 @@ tests = [
     "sep_abr_concurrent_rw_test",
     "sep_unmapped_access_policy_test",
     "sep_sram_burst_type_test",
+    "sep_sram_inbound_burst_attr_test",
     "sep_km_rom_write_err_test",
     "sep_km_otp_shim_unreachable_test",
+    "sep_km_drbg_sampler_timeout_reset_test",
     "sep_km_vrom_decerr_test",
     "sep_km_ic_reset_release_test",
     "sep_abr_absent_decerr_test",
+]
+
+[[groups]]
+name = "rom_fw_smoke"
+expected_count = 5
+tests = [
+    "sep_rom_non_secure_boot_test",
+    "sep_rom_ot_dma_boot_test",
+    "sep_manifest_magic_survives_handoff_test",
+    "sep_rom_ot_pio_boot_test",
+    "sep_rom_ot_secure_boot_test",
 ]
 
 [[groups]]

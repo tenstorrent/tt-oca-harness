@@ -366,8 +366,14 @@ AxCACHE value that replaces the transaction's own on a hit. This enables:
   performance
 
 At reset, remap logic defaults to transparent mapping (no remap), using the
-local alias base address (0xC000_0000) for local resources until programmed by
-firmware.
+local alias base address (0xC000_0000) for local resources until programmed.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence].
+endif::backend-pdf[]
 
 ifdef::backend-html5[]
 ++++
@@ -465,8 +471,14 @@ access sensitive resources
 non-secure or privileged vs. user transactions
 
 The default filter configuration varies by chiplet type. Most SMC
-instances default to blocking all external transactions, requiring
-firmware to explicitly configure access policies during cold boot.
+instances default to blocking all external transactions until access policies
+are configured. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules].
+endif::backend-pdf[]
 
 The inbound filter interface provides 16 independent filter instances,
 each configurable with its own address ranges, source ID matching, and
@@ -617,28 +629,14 @@ endif::backend-html5[]
 [[smc-fabric-configuration-examples]]
 ==== Configuration Examples
 
-**Example 1: Secure-only inbound access to a peripheral**
-....
-Configure filter with:
-- Enable a matching entry with allow_ns = 0 and the required read/write permissions
-- Set the address range and source ID match for the peripheral
-- Ensure no other entry permits unwanted access
-Result: Unmatched non-secure traffic is blocked by the inbound default policy
-....
-
-For outbound traffic, the same secure-only allow entry does not block
-non-secure requests: unmatched traffic passes. Add matching deny entries for
-the non-secure traffic to be blocked, accounting for entry priority.
-
-**Example 2: Secure privileged data access to AXI-Lite registers**
-....
-Configure AXI-Lite filter with:
-- awprot_requirement = 0x1 (Data, Secure, Privileged)
-- arprot_requirement = 0x1
-- write_filter_enable = 1
-- read_filter_enable = 1
-Result: Only transactions with all three PROT bits equal to 0x1 are allowed
-....
+The Programmer's Guide gives
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#axi-filter-example[filter configuration examples],
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#axi-filter-example[filter configuration examples],
+endif::backend-pdf[]
+including secure-only and AXI-Lite PROT policies.
 
 ifdef::backend-html5[]
 ++++
@@ -669,9 +667,9 @@ assignment.
 The SMC input fabric's local/global split is sized by the same
 `REGION_SIZE` CSR used by SMU-level routing and SEP-to-SMC decode, so
 the internal local-alias window and the chiplet-facing global aperture
-stay the same size by construction. Firmware must not program
-`REGION_SIZE` to zero: doing so collapses both windows and routes SMC
-CPU accesses to its own resources out through the output fabric.
+stay the same size by construction. A `REGION_SIZE` of zero collapses
+both windows and routes SMC CPU accesses to its own resources out
+through the output fabric.
 
 After global-aperture reconfiguration, software may use global addresses
 for accesses that leave the local SMC view. Global address derivation

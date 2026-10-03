@@ -129,7 +129,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 [cols=",",options="header"]
 |===
 |DUT Interface |`tb_top` Handling
-|CPU-LSU AXI |Flattens to `s_axi_*`. no_cpu `sep_cpu` stub drives `lsu_axi_req` from these ports (`assign`, single driver). Response XMR-read back into the flat bus.
+|CPU-LSU AXI |Flattens to `s_axi_*`. On the `lsu_stub_*` targets the no_cpu `sep_cpu` stub drives `lsu_axi_req` from these ports (`assign`, single driver). On the full-CPU VCS `--target default` build, which produces the graded cocotb coverage logs, a no_cpu leaf holds the core off and `tb_top` forces `u_sep_cpu.lsu_axi_req` from the same ports and holds `u_sep_cpu.lsu_axi_resp_raw` at zero; VIP addresses bypass `u_lsu_local_alias_remap`. Response XMR-read back into the flat bus on both builds.
 |SMN-inbound AXI |Flattens the real inbound port to `m_axi_*` for a second master agent. Traverses `u_inbound_filter`.
 |SEP->SMC AXI |`rom_boot` target only: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Other targets tie the port idle.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`
@@ -138,12 +138,21 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`), KM SRAM read-latency probes (`km_sram_rd_*`), KM SRAM scrambled-write probes (`km_sram_scr_wr_*`), entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, local-crossbar `ext`-initiator handshakes (`xbar_ext_in_*`, owner `sep_unmapped_access_policy_test`), DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o`, crypto reset-sequencer probes (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`, `*_host_isolate_req_probe_o`, `trng_reset_active_probe_o`), EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`, `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`), RMA-SIP token-digest latch probes (`token_digest_*`), KM OTP ID probes (`km_otp_sep_*_id_o`), SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`), DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`), the covergroup sampler's direct reads of the WDT bark interrupt (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read `ARSIZE` (owner `sep_axi_partial_lane_read_test`) — observation-only unless listed as an inject exception
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`), KM SRAM read-latency probes (`km_sram_rd_*`), KM SRAM scrambled-write probes (`km_sram_scr_wr_*`), entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, local-crossbar `ext`-initiator handshakes (`xbar_ext_in_*`, owner `sep_unmapped_access_policy_test`), DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o`, crypto reset-sequencer probes (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`, `*_host_isolate_req_probe_o`, `trng_reset_active_probe_o`), EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`, `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`), RMA-SIP token-digest latch probes (`token_digest_*`), KM OTP ID probes (`km_otp_sep_*_id_o`), SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`), KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`, continuous reads of the KM SRAM macro array that carry the KM ROM images' result words), SEP reset probes (`dbg_sep_reset_n_o` / `sep_cpu_reset_n_o`), DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`), SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`, `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`, owner `sep_spi_ot_dma_tx_test`), Adams Bridge ML-KEM seed Z words (`abr_mlkem_seed_z_probe_o`), fabric-slot register-block W-channel counters (`fabric_slot_w_*`), the covergroup sampler's direct reads of the WDT bark interrupt (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read `ARSIZE` (owner `sep_axi_partial_lane_read_test`) — observation-only unless listed as an inject exception
 |===
 
 Exceptions (a closed set):
 
-* *CPU-LSU splice* — primary no_cpu stimulus (stub assign, not a `force`).
+* *CPU-LSU splice* — primary no_cpu stimulus (stub assign, not a `force`) on
+  the `lsu_stub_*` targets.
+* *CPU-LSU force-splice* — primary no_cpu stimulus on the full-CPU VCS
+  `--target default` build (`tb_top` no_cpu force-splice block). Without
+  `+cpu_boot` it forces `u_sep_cpu.lsu_axi_req` from the flat `s_axi_*` ports
+  and holds `u_sep_cpu.lsu_axi_resp_raw` at zero, so the halted core sees no
+  beats it did not issue. The VIP request enters after
+  `u_lsu_local_alias_remap`, so a card whose checked path includes the remap
+  or the core names the build its evidence comes from. Owner: every no_cpu
+  leaf graded on that build; each logs `LSU VIP force-splice active`.
 * *ESRC noise force* — `esrc_noise_ext_i` into the decorrelator.
 * *LC differential / token-comparator fault inject* — fail-closed paths with no
   legal OTP frontdoor.
@@ -171,9 +180,19 @@ Exceptions (a closed set):
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
   `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
   adapter's AXI-Lite-64 port — concurrent AW/W/AR observation has no CSR
-  mirror). The TB-owned `u_tbadp_vehicle` instance
-  is idle and held in reset unless a port-arbitration leaf releases it;
-  it is not a DUT XMR.
+  mirror; `drbg_csrng_fwd_o` / `drbg_edn_fwd_o` at each DUT lane adapter's
+  AXI-Lite-32 request — no CSR shows a request the bridge answered without
+  error). The TB-owned `u_tbadp_vehicle` instance
+  is idle and held in reset unless a vehicle leaf
+  (`sep_drbg_axil_adapter_port_arbitration_test`,
+  `sep_drbg_axil_adapter_refusal_test`) releases it; it and its
+  AXI-Lite-32 request probe `tbadp_fwd_o` are not DUT XMRs.
+* *SPI-to-DMA transmit pacing probes* — the OpenTitan SPI host transmit-FIFO
+  depth (`spi_tx_qd_probe_o`), the SPI trigger bit at the secure DMA input
+  (`spi_lsio_trigger_probe_o`) and the DMA `STATUS.busy` flop
+  (`dma_busy_probe_o`). `STATUS.TXQD` is readable, but a CPU read cannot
+  sample it on each clock of a DMA transfer, and no CSR shows the trigger.
+  Read-only; no force. Owner: `sep_spi_ot_dma_tx_test`.
 * *Crypto reset-sequencer probes* — the per-domain gated resets, the
   `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
   AXI interconnect (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`,
@@ -182,6 +201,12 @@ Exceptions (a closed set):
   request but not the sequencer state, so none of these has a frontdoor. Used by
   the crypto reset-isolation, TRNG reset-recovery, KM isolate-termination and
   ABR tests.
+* *Adams Bridge ML-KEM seed Z probe* — `abr_mlkem_seed_z_probe_o` is a
+  read-only XMR of the Z words the engine holds for ML-KEM KEYGEN. The
+  encapsulation key depends on D only, software cannot read Z back, and after a
+  KV seed read the decapsulation key reads as zero, so the Z a KV read delivered
+  has no frontdoor. Observation only; it drives nothing. Owners:
+  `sep_km_sideload_share_walk_test`, `sep_km_abr_mlkem_sideload_test`.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
   `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
   reach that port. Protocol, not data.

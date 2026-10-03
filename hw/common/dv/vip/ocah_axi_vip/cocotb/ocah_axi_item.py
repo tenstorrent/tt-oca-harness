@@ -378,3 +378,74 @@ class OcahAxiReadPairResult:
     @property
     def timed_out(self) -> bool:
         return self.first.timed_out or self.second.timed_out
+
+
+@dataclass(frozen=True)
+class OcahAxiPipelineOp:
+    """One single-beat access of a ``pipeline_result`` operation.
+
+    ``aw_valid_delay`` and ``w_valid_delay`` (writes) and ``ar_valid_delay``
+    (reads) count the cycles from the start of the operation before that
+    channel's VALID may assert for this access. A beat also waits for the
+    previous beat on its channel to be accepted, so every channel carries its
+    beats in list order.
+    """
+
+    direction: OcahAxiDirection
+    address: int
+    data: int = 0
+    strb: int | None = None
+    prot: int | None = None
+    aw_valid_delay: int = 0
+    w_valid_delay: int = 0
+    ar_valid_delay: int = 0
+
+    @classmethod
+    def write(
+        cls,
+        address: int,
+        data: int,
+        *,
+        strb: int | None = None,
+        prot: int | None = None,
+        aw_valid_delay: int = 0,
+        w_valid_delay: int = 0,
+    ) -> OcahAxiPipelineOp:
+        return cls(
+            "write",
+            int(address),
+            int(data),
+            strb=strb,
+            prot=prot,
+            aw_valid_delay=int(aw_valid_delay),
+            w_valid_delay=int(w_valid_delay),
+        )
+
+    @classmethod
+    def read(
+        cls, address: int, *, prot: int | None = None, ar_valid_delay: int = 0
+    ) -> OcahAxiPipelineOp:
+        return cls("read", int(address), prot=prot, ar_valid_delay=int(ar_valid_delay))
+
+
+@dataclass(frozen=True)
+class OcahAxiPipelineResult:
+    """Results of a ``pipeline_result`` operation.
+
+    ``results[i]`` is the ``OcahAxiWriteResult`` or ``OcahAxiReadResult`` of
+    ``ops[i]``. ``aw_stall_cycles``, ``w_stall_cycles`` and ``ar_stall_cycles``
+    count the cycles each request channel held VALID while READY was low.
+    """
+
+    results: tuple[OcahAxiWriteResult | OcahAxiReadResult, ...]
+    aw_stall_cycles: int
+    w_stall_cycles: int
+    ar_stall_cycles: int
+
+    @property
+    def ok(self) -> bool:
+        return all(result.ok for result in self.results)
+
+    @property
+    def timed_out(self) -> bool:
+        return any(result.timed_out for result in self.results)

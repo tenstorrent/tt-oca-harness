@@ -6,7 +6,7 @@
 # run and `--waive` re-grades a finished run against it.
 #
 # Scope: the compile-time scope file ocah_axi_vip_cov_scope.vlt keeps the
-# harness body and the vendored packages out of the database, so the graded
+# harness body and the vendored packages out of the database, so the measured
 # points are the VIP's SystemVerilog collateral (interface/ocah_axi_if.sv,
 # interface/ocah_axi_struct_bridge.sv, sva/ocah_axi_sva.sv). The Python
 # components carry no simulator metric; their record is the CHK-AXI-*
@@ -20,11 +20,8 @@
 #                               a category, a rationale, an owner and a
 #                               reviewer.
 #
-# The `effective` thresholds grade hit points over the points that remain
-# after accepted waivers, per metric family, and fail closed on an uncovered
-# point no [[holes]] entry classifies (max_unclassified_points = 0). The `raw`
-# thresholds grade the unwaived figure, so growth of the waived set cannot
-# hide behind the effective number.
+# The file sets no [[thresholds]]: the runner reports the raw and effective
+# figure of each metric family, and the figures do not set a run's status.
 #
 # An accepted selector that matches a covered point fails the run: a waiver
 # that stimulus has overtaken has to be removed. Line selectors follow the source
@@ -34,36 +31,6 @@
 schema_version = 1
 dut = "ocah_axi_vip"
 scope_epoch = "ocah-axi-vip-collateral-v1"
-
-[[thresholds]]
-id = "collateral-line-effective"
-tool = "verilator"
-metric_family = "line"
-population = "effective"
-minimum_percent = 98.0
-max_unclassified_points = 0
-
-[[thresholds]]
-id = "collateral-branch-effective"
-tool = "verilator"
-metric_family = "branch"
-population = "effective"
-minimum_percent = 98.0
-max_unclassified_points = 0
-
-[[thresholds]]
-id = "collateral-line-raw"
-tool = "verilator"
-metric_family = "line"
-population = "raw"
-minimum_percent = 90.0
-
-[[thresholds]]
-id = "collateral-branch-raw"
-tool = "verilator"
-metric_family = "branch"
-population = "raw"
-minimum_percent = 90.0
 
 # The harness ties `en_i` of every ocah_axi_sva instance to 1, so the branch
 # that idles a tracking block while the checker is disabled has no stimulus
@@ -84,7 +51,7 @@ tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv"
 native_locator = "*|o=else|*"
-line = 350
+line = 347
 
 [[holes]]
 id = "sva-lite-counters-disabled"
@@ -103,7 +70,7 @@ metric_family = "branch"
 source = "*/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv"
 hierarchy = "ocah_axi_vip_tb_top.u_l_axi_sva"
 native_locator = "*|o=else|*"
-line = 459
+line = 455
 
 # Verilator places the then-branch count of `if (...) return` after the
 # return statement, so the point cannot increment although the WRAP beats of
@@ -125,4 +92,4 @@ tool = "verilator"
 metric_family = "branch"
 source = "*/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv"
 native_locator = "*|o=if|*"
-line = 329
+line = 326

@@ -23,64 +23,61 @@
 // of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance
 // whole, and here its own ports stay graded, so the SMC's connection to it is still measured,
 // while every net inside it and every instance beneath it is excluded while uncovered: toggle,
-// line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw
-// smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering
-// withdrawing the review of the unit.
+// line blocks and condition rows alike. Reviewed with design engineering on the predecessor
+// bench's exclusion list. Retired by design engineering withdrawing the review of the unit.
 //
 // T3-PADRING-PORTS-ONLY (design review, whole signal): the GPIO pad ring (every GPIO interface,
 // access filter and register block) is graded on its ports: design engineering reviewed excluding
 // the instance whole, and here its own ports stay graded, so the SMC's connection to it is still
 // measured, while every net inside it and every instance beneath it is excluded while uncovered:
-// toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw
-// smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering
-// withdrawing the review of the unit.
+// toggle, line blocks and condition rows alike. Reviewed with design engineering on the
+// predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the
+// unit.
 //
 // T4-UART-I2C-PORTS-ONLY (design review, whole signal): the UART log-engine wrappers and the I2C
 // controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed
 // excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it
 // is still measured, while every net inside it and every instance beneath it is excluded while
-// uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-
-// oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering
-// withdrawing the review of the unit.
+// uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the
+// predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the
+// unit.
 //
 // T6-TELEMETRY-PORTS-ONLY (design review, whole signal): the telemetry receiver wrapper is graded
 // on its ports: design engineering reviewed excluding the instance whole, and here its own ports
 // stay graded, so the SMC's connection to it is still measured, while every net inside it and
 // every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows
-// alike. Reviewed with design engineering in tt-oca-hw
-// smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering
-// withdrawing the review of the unit.
+// alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by
+// design engineering withdrawing the review of the unit.
 //
 // T7-CPU-PORTS-ONLY (design review, whole signal): the CPU wrapper and its ROM bridge is graded on
 // its ports: design engineering reviewed excluding the instance whole, and here its own ports stay
 // graded, so the SMC's connection to it is still measured, while every net inside it and every
 // instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike.
-// Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el
-// (cb678bff). Retired by design engineering withdrawing the review of the unit.
+// Reviewed with design engineering on the predecessor bench's exclusion list. Retired by design
+// engineering withdrawing the review of the unit.
 //
 // T8-DMA-ZEROER-PORTS-ONLY (design review, whole signal): the iDMA wrapper and the zeroer is
 // graded on its ports: design engineering reviewed excluding the instance whole, and here its own
 // ports stay graded, so the SMC's connection to it is still measured, while every net inside it
 // and every instance beneath it is excluded while uncovered: toggle, line blocks and condition
-// rows alike. Reviewed with design engineering in tt-oca-hw
-// smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering
-// withdrawing the review of the unit.
+// rows alike. Reviewed with design engineering on the predecessor bench's exclusion list. Retired
+// by design engineering withdrawing the review of the unit.
 //
 // T9-IP-INTEGRATION-PORTS-ONLY (design review, whole signal): the IP integration shell (memories,
 // eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed
 // excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it
 // is still measured, while every net inside it and every instance beneath it is excluded while
-// uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-
-// oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering
-// withdrawing the review of the unit.
+// uncovered: toggle, line blocks and condition rows alike. Reviewed with design engineering on the
+// predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the
+// unit.
 //
 // T10-CDC-SYNC-PORTS-ONLY (design review, whole signal): the peripheral clock-domain crossings and
 // the synchronizer cells is graded on its ports: design engineering reviewed excluding the
 // instance whole, and here its own ports stay graded, so the SMC's connection to it is still
 // measured, while every net inside it and every instance beneath it is excluded while uncovered:
-// toggle, line blocks and condition rows alike. Reviewed with design engineering in tt-oca-hw
-// smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by design engineering
-// withdrawing the review of the unit.
+// toggle, line blocks and condition rows alike. Reviewed with design engineering on the
+// predecessor bench's exclusion list. Retired by design engineering withdrawing the review of the
+// unit.
 //
 // EFUSE-FIELD-MAP-CONST (design, whole signal): smc_efuse_wrapper.sv:268 connects
 // efuse_field_map_i to the localparam smc_efuse_pkg::EfuseFieldMap (smc_efuse_pkg.sv:246), and the

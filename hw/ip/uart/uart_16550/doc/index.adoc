@@ -24,6 +24,15 @@ single-character operation, frame format, baud divisor and interrupt enables.
 Modem signals provide status and software-controlled outputs; CTS does not
 stop transmission and RTS does not automatically throttle reception.
 DMA-ready outputs indicate service conditions but do not themselves move data.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-uart[UART section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-uart[UART section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the configuration, interrupt service and
+flow-control procedures.
 
 [[uart-wrapper-diagram]]
 .SMC UART wrapper
@@ -70,12 +79,6 @@ include::partial$uart_16550/doc/interface.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::interface.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::partial$uart_16550/doc/programming.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::programming.adoc[]
 endif::backend-pdf[]
 ifdef::backend-html5[]
 include::partial$uart_16550/doc/memmap.adoc[]

@@ -56,5 +56,6 @@ Tests
   accumulating and clearing on the fast secondary.
 
 Expected behavior is taken from `../doc/architecture.adoc`,
-`../doc/programming.adoc` and `../regs/system_timer_octs.rdl`. The timer is
+the System Timer section of `doc/programmer/src/smc-programming.adoc` and
+`../regs/system_timer_octs.rdl`. The timer is
 also exercised inside the SMC (`--dut smc`).

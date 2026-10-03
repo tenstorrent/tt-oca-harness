@@ -25,12 +25,14 @@
 # rd = rs1 = a0 and rs2 = a1. Both registers are in the lower half, so this
 # image cannot reach a register the RV32E core does not have.
 #
-# The mailbox address comes from the generated map, included below.
+# The mailbox address comes from the generated map, and the status and
+# separator field masks from km_fields.inc, both included below.
 #
 # Build (output committed as ../km_rom_crc.parhex):
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_crc.parhex
 
 #include "key_manager_addr.h"
+#include "km_fields.inc"
 
     // Mailbox register offsets, derived from the generated map rather than
     // typed: the images hold the block base in a register and index off it.
@@ -57,7 +59,7 @@ _start:
 next_req:
     # mode
 1:  lw    x5, MBOX_STATUS(x1)
-    andi  x6, x5, 0x1           # inbound_empty
+    andi  x6, x5, KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bm
     bnez  x6, 1b
     lw    x2, MBOX_READ_DATA(x1)
     addi  x6, x0, -1
@@ -65,13 +67,13 @@ next_req:
 
     # rs1 (state)
 2:  lw    x5, MBOX_STATUS(x1)
-    andi  x6, x5, 0x1
+    andi  x6, x5, KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bm
     bnez  x6, 2b
     lw    x10, MBOX_READ_DATA(x1)
 
     # rs2 (data)
 3:  lw    x5, MBOX_STATUS(x1)
-    andi  x6, x5, 0x1
+    andi  x6, x5, KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bm
     bnez  x6, 3b
     lw    x11, MBOX_READ_DATA(x1)
 
@@ -91,7 +93,7 @@ do_byte:
 send:
     # Separator marks the NEXT written word as the last of the frame, so it is
     # written before the result, not after.
-    addi  x6, x0, 1
+    addi  x6, x0, KM_MAILBOX_KM__WRITE_SEPARATOR_REG__SET_bm
     sw    x6, MBOX_WRITE_SEP(x1)
     sw    x10, MBOX_WRITE_DATA(x1)
     j     next_req

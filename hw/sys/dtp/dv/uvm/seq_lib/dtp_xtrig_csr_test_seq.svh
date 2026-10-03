@@ -17,8 +17,10 @@
 //                    then one routed stretched pulse
 //   ctm_csr_sweep    full-word CT_DST_SELECT patterns, every byte strobe, and
 //                    a write to the slot's hole on every CTM source register,
-//                    then two swept selects routing a selected input and
-//                    ignoring an unselected one
+//                    a write and a read answered DECERR in the matrix
+//                    aperture past its registers and past the last CTP
+//                    window, then two swept selects routing a selected input
+//                    and ignoring an unselected one
 //   ctm_all_source_select  per-source select masks with neighbor
 //                    no-aliasing reads
 //   axi_channel_skew                       AW-first and W-first skewed
@@ -38,6 +40,12 @@
 
 class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
   `uvm_object_utils(dtp_xtrig_csr_test_seq)
+
+  // Seeded range of the cycles BREADY waits after a skewed write's request
+  // phase: longer than the write response takes to reach the CSR port, so
+  // the port holds the response.
+  localparam int unsigned SkewBReadyDelayMin = 5;
+  localparam int unsigned SkewBReadyDelayMax = 8;
 
   function new(string name = "dtp_xtrig_csr_test_seq");
     super.new(name);
@@ -256,7 +264,9 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     bit [31:0] random_mask = $urandom_range(CtmSelectMask, 1);
     bit [3:0] strobes[4] = '{4'h1, 4'h2, 4'h4, 4'h8};
     bit [31:0] old_mask, new_mask, held, observed;
+    bit [63:0] unmapped[2];
     int unsigned outputs[$];
+    ocah_axi_item res;
     `uvm_info(get_type_name(), "CTM deterministic CSR byte-strobe and mask sweep", UVM_LOW)
     // Seeded per-pass extra pattern and byte-strobe payloads on top of the
     // deterministic sweep. Reserved bits [31:26] are driven to 1 by the
@@ -296,6 +306,21 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       csr_read(ctm_config_addr(src_idx), observed, $sformatf("ctm%0d.hole_after", src_idx));
       check_evidence(ChkCsr, $sformatf("ctm%0d.hole_no_alias", src_idx), 64'(observed), 64'(held),
                      $sformatf("src=%0d", src_idx));
+    end
+    // The matrix aperture past its register extent and every word past the
+    // last CTP window decode to no register: a write and a read of a seeded
+    // word of each complete with DECERR.
+    unmapped[0] = DtpXtrigCtmEnd + 64'($urandom_range((DtpXtrigCtpBase - DtpXtrigCtmEnd) / 4 - 1)) * 4;
+    unmapped[1] = XtrigUnmappedBase + 64'($urandom_range('h3F)) * 4;
+    foreach (unmapped[k]) begin
+      string name = (k == 0) ? "ctm_unmapped" : "unmapped";
+      string ctx = $sformatf("addr=0x%03h", unmapped[k]);
+      write_skewed_result(unmapped[k], 64'(FullWord), res, .check_response(1'b0));
+      check_evidence(ChkCsr, {name, ".bresp"}, 64'(res.worst_resp()), 64'(OCAH_AXI_RESP_DECERR),
+                     ctx);
+      read_hold_result(unmapped[k], 0, res, .check_response(1'b0));
+      check_evidence(ChkCsr, {name, ".rresp"}, 64'(res.worst_resp()), 64'(OCAH_AXI_RESP_DECERR),
+                     ctx);
     end
     `uvm_info(
         get_type_name(),
@@ -372,7 +397,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     d2 = d1 ^ 16'($urandom_range(16'hFFFF, 1));
     d3 = d2 ^ 16'($urandom_range(16'hFFFF, 1));
     write_skewed_result(addr, 64'(d1), res, .w_valid_delay($urandom_range(7, 3)),
-                        .b_ready_delay($urandom_range(4, 1)));
+                        .b_ready_delay($urandom_range(SkewBReadyDelayMax, SkewBReadyDelayMin)));
     check_evidence(ChkAxil, "axi_skew.aw_before_w.bresp", 64'(res.worst_resp()),
                    64'(OCAH_AXI_RESP_OKAY));
     csr_read(addr, observed, "axi_skew.aw_before_w.readback");
@@ -384,7 +409,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     spill_err_before = xtrig_pin("xtrig_axil_spill_err_count");
     aw_delay = $urandom_range(7, 3);
     write_skewed_result(addr, 64'(d3), res, .aw_valid_delay(aw_delay),
-                        .b_ready_delay($urandom_range(4, 1)));
+                        .b_ready_delay($urandom_range(SkewBReadyDelayMax, SkewBReadyDelayMin)));
     w_stall_delta = xtrig_pin("xtrig_axil_w_stall_count") - w_stall_before;
     demux_w_stall_delta = xtrig_pin("xtrig_demux_w_stall_count") - demux_w_stall_before;
     spill_err_delta = xtrig_pin("xtrig_axil_spill_err_count") - spill_err_before;

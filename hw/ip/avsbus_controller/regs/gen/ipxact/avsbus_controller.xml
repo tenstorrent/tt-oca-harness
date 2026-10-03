@@ -359,7 +359,7 @@ space is freed by an AVS_READBACK access</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>AVS_SLAVE_IS_IN_RESYNC</ipxact:name>
-            <ipxact:description>Indicates that the AVS master is issuing a slave resync operation (34 clock cycles of holding mdata high)</ipxact:description>
+            <ipxact:description>Indicates that the AVS master is issuing a slave resync operation (35 AVS clock cycles of holding mdata high)</ipxact:description>
             <ipxact:bitOffset>22</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -846,7 +846,7 @@ full =&gt; response was dropped</ipxact:description>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>RESYNC_INTERVAL</ipxact:name>
-            <ipxact:description>Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</ipxact:description>
+            <ipxact:description>Interval between periodic slave resync operations on the AVS bus, in APB clock cycles counted from the end of the previous resync. The resulting request then crosses a 3-stage AVS clock synchronizer, and the resync starts once any frame in flight has completed.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -858,8 +858,9 @@ full =&gt; response was dropped</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>MAX_RETRIES</ipxact:name>
-            <ipxact:description>Maximum number of times to attempt a retry if an AVS command returns a fail
-status (either due to targeted resource being busy or CRC failure)</ipxact:description>
+            <ipxact:description>Maximum number of retries, after the original attempt, if an AVS command returns a fail
+status (either due to targeted resource being busy or CRC failure). A value of 0 disables
+retries and MAX_RETRIES_ATTEMPTED_INT.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -895,7 +896,7 @@ status (either due to targeted resource being busy or CRC failure)</ipxact:descr
           <ipxact:field>
             <ipxact:name>STOP_AVS_CLOCK_ON_IDLE</ipxact:name>
             <ipxact:description>When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.
-The master will always first issue 34 slave-resync cycles when the clock first restarts.</ipxact:description>
+The master always issues a slave resync first when the clock restarts.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -907,7 +908,7 @@ The master will always first issue 34 slave-resync cycles when the clock first r
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FORCE_SLAVE_RESYNC_OPERATION</ipxact:name>
-            <ipxact:description>Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</ipxact:description>
+            <ipxact:description>Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.</ipxact:description>
             <ipxact:bitOffset>9</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

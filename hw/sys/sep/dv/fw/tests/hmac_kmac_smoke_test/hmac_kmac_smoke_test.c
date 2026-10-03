@@ -6,12 +6,13 @@
 //
 // HMAC (SHA-256 mode): hash three messages and compare each digest against an
 // independent software SHA-256 (tests/common/sha256.c) over the same bytes.
-// Each hash must finish without timeout or error and clear its done status.
+// Each hash must finish without timeout or error. Its done event must still
+// read set on a second read after the poll and clear on write-one.
 //
 // KMAC (KMAC128): run a masked hash with software entropy, so the engine does
 // not wait on EDN, and check that it completes without error and that the
 // unmasked digest is non-zero. There is no Keccak reference model, so the
-// digest value itself is not checked.
+// digest value itself is not checked. Its done event is checked as for HMAC.
 //
 // AES-128-ECB: encrypt the FIPS-197 C.1 block staged in SRAM, compare it with
 // the published ciphertext, then decrypt it and compare with the plaintext read
@@ -90,7 +91,8 @@ static int hmac_check(const char *chk, const char *name, const uint8_t *msg, uin
         sep_mbx_puts(name);
         sep_mbx_puts(rc == 1   ? " HMAC timeout\n"
                      : rc == 2 ? " HMAC ERR_CODE!=0\n"
-                               : " HMAC done RW1C did not clear\n");
+                     : rc == 4 ? " CHK-RW1C HMAC done not sticky before W1C\n"
+                               : " CHK-RW1C HMAC done RW1C did not clear\n");
         return 1;
     }
 
@@ -140,7 +142,8 @@ int main(void) {
     if (krc != 0) {
         sep_mbx_puts("[FAIL] KMAC rc=");
         sep_mbx_puthex((uint32_t)krc);
-        sep_mbx_puts(" (1=idle-to,2=done-to,3=err_code,4=rw1c)\n");
+        sep_mbx_puts(" (1=idle-to,2=done-to,3=err_code,4=CHK-RW1C no clear,"
+                     "5=CHK-RW1C done not sticky before W1C)\n");
         errors++;
     } else {
         uint32_t acc = 0;
@@ -156,7 +159,8 @@ int main(void) {
             sep_mbx_puthex(kdig[0]);
             sep_mbx_putc('\n');
             if (hmac_errors == 0) {
-                sep_mbx_puts("[PASS] CHK-RW1C: HMAC and KMAC done bits cleared\n");
+                sep_mbx_puts("[PASS] CHK-RW1C: HMAC (3 hashes) and KMAC done bits read 1 "
+                             "after the poll and 0 after the write-one\n");
             }
         }
     }

@@ -20,8 +20,9 @@ schema_version = 1
 #     fixed; the leaf then moves back to its feature testlist without the
 #     `expect_fail` pair. No `ci` tag: a graded expected failure must never
 #     count in the hosted set. One test per defect. The group currently holds
-#     `smc_filter_lock_window_test` and `smc_isolate_req_smc_lane_test`.
-#     `smc_deadspace_decode_test` left it and runs from `fabric.toml`.
+#     `smc_isolate_req_smc_lane_test`.
+#     `smc_deadspace_decode_test` and `smc_filter_lock_window_test` left it
+#     and run from `fabric.toml`.
 #   * `occp_boot` -- held out on runtime. The production ROM's whole
 #     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
 #     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
@@ -35,20 +36,6 @@ schema_version = 1
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
-
-[[tests]]
-# A write queued right behind the write that locks a filter reaches filter_ctrl
-# after locked = 1: the inner demux at smc_internal_regs.sv:306 latches its lock
-# select into its AW spill register, and the outer demux forwards the next AW as
-# soon as the locking write's W has passed. locked is woset (filter_ctrl.rdl).
-name = "smc_filter_lock_window_test"
-module = "smc_filter_lock_window_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "FILTER_CONFIG lock: a write queued behind the locking write reaches the locked filter"
-expect_fail_match = "writes queued behind the locking write landed on locked filter"
 
 [[tests]]
 # ISOLATE_REQ_SMC_REG clears its FLR-latched request on any write with a byte
@@ -90,9 +77,8 @@ run_modes = ["smoke"]
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 2
+expected_count = 1
 tests = [
-    "smc_filter_lock_window_test",
     "smc_isolate_req_smc_lane_test",
 ]
 

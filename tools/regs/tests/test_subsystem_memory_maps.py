@@ -30,8 +30,8 @@ def catalog() -> list[Path]:
         "vendor/*/*/overlay/regs/*/regs",
         "vendor/*/*/overlay/regs/*/regs/include",
         "vendor/*/*/overlay/rdl",
+        "vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl",
         "vendor/chipsalliance/i3c-core/upstream/src/rdl",
-        "vendor/chipsalliance/i3c-core/upstream/src/rdl/tt_rdl",
     )
     return sorted({path for pattern in patterns for path in ROOT.glob(pattern)})
 
@@ -239,7 +239,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         )
         self.assertEqual(hole(smc["main:smc_external"]), "Adopter-defined")
         self.assertEqual(hole(smc["main:mmode_region"]), "Forwarded")
-        self.assertEqual(hole(smc["main:ecam_region"]), "DECERR, 0xBADCAB1E / DECERR")
+        self.assertNotIn("main:ecam_region", smc)
 
 
 if __name__ == "__main__":

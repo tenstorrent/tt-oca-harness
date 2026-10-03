@@ -8,14 +8,10 @@ state, each paired with a privileged access as its positive control:
   * READ half -- an unprivileged read is refused with DECERR and the error-slave
     signature 0xBADCAB1E, while the privileged read returns the programmed word.
   * WRITE half -- an unprivileged write of the value that would DISARM the
-    filter is refused, and a privileged read afterwards shows the register
-    unchanged, so the refusal is proven to have taken no effect. The refusal
-    code is asserted as "an error response" rather than an exact code: the GPIO
-    programming guide (`hw/ip/gpio/doc/programming.adoc`, "Filter
-    Configuration") specifies DECERR for a blocked transaction, which is what
-    the read half requires, while the write half is observed at the SEP_IN AXI
-    port as SLVERR and no document this bench can cite fixes how the SMC fabric
-    forwards a write-channel refusal.
+    filter is refused with DECERR, the code the Programmer's Guide GPIO section
+    (`doc/programmer/src/smc-programming.adoc`, "Configuring Access Filtering") specifies for a
+    blocked transaction, and a privileged read afterwards shows the register
+    unchanged.
   * SWEEP -- each of the eight AxPROT requirement values is programmed in turn
     and every AxPROT value is then driven against it on both halves; only the
     value equal to the requirement is admitted, every other one is refused.
@@ -85,16 +81,12 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         )
 
     async def _write_denied(self, name: str, addr: int, data: int, prot: int = _PROT_UNPRIV) -> int:
-        """Unprivileged ACCESS_FILTER write must be refused on the B channel.
+        """Unprivileged ACCESS_FILTER write must be refused with DECERR.
 
-        The expectation is "an error response", not an exact code: the GPIO
-        programming guide specifies DECERR for a blocked transaction, which the
-        read half of this same filter requires exactly, while the write half is
-        observed at the SEP_IN AXI port as SLVERR and no document this bench can
-        cite fixes how the SMC fabric forwards a write-channel refusal. The
-        caller pairs this leg with the property that carries the security
-        claim: the refused write must not take effect, proven by a privileged
-        readback afterwards.
+        DECERR is the code the GPIO programming guide specifies for a blocked
+        transaction. The caller pairs this leg with the property that carries
+        the security claim: the refused write must not take effect, proven by
+        a privileged readback afterwards.
         """
         item = SmcSysAxiItem(f"wr_{name}")
         item.op = SmcSysAxiOp.WRITE
@@ -107,9 +99,9 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
-        assert item.resp_code is not None and item.resp_code > 1, (
+        assert item.resp_code == AXI_RESP_DECERR, (
             f"{name} @ 0x{addr:08x}: an AxPROT={prot} write to a write-filtered "
-            f"register must be refused with an error response, got "
+            f"register must be refused with DECERR, got "
             f"resp={item.resp_code} ({_RESP_NAME.get(item.resp_code, '?')})"
         )
         self.denied_resps.append(item.resp_code)
@@ -118,8 +110,8 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
     async def _read_denied_decerr(self, name: str, addr: int, prot: int = _PROT_UNPRIV) -> int:
         """Unprivileged ACCESS_FILTER read must DECERR with 0xBADCAB1E.
 
-        DECERR is the code the GPIO programming guide
-        (`hw/ip/gpio/doc/programming.adoc`, "Filter Configuration") specifies
+        DECERR is the code the Programmer's Guide GPIO section
+        (`doc/programmer/src/smc-programming.adoc`, "Configuring Access Filtering") specifies
         for a transaction whose protection bits do not match the filter.
         """
         item = SmcSysAxiItem(f"rd_{name}")
