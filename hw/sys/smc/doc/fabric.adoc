@@ -369,12 +369,11 @@ At reset, remap logic defaults to transparent mapping (no remap), using the
 local alias base address (0xC000_0000) for local resources until programmed.
 The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence]
+xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-pdf[]
-.
 
 ifdef::backend-html5[]
 ++++
@@ -475,12 +474,11 @@ The default filter configuration varies by chiplet type. Most SMC
 instances default to blocking all external transactions until access policies
 are configured. The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules]
+xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules].
 endif::backend-pdf[]
-.
 
 The inbound filter interface provides 16 independent filter instances,
 each configurable with its own address ranges, source ID matching, and
@@ -633,12 +631,12 @@ endif::backend-html5[]
 
 The Programmer's Guide gives
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#axi-filter-example[filter configuration examples]
+xref:ocah-programmer-guide::index.adoc#axi-filter-example[filter configuration examples],
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#axi-filter-example[filter configuration examples]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#axi-filter-example[filter configuration examples],
 endif::backend-pdf[]
-, including secure-only and AXI-Lite PROT policies.
+including secure-only and AXI-Lite PROT policies.
 
 ifdef::backend-html5[]
 ++++

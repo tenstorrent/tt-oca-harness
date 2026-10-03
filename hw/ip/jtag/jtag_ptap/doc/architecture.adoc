@@ -394,12 +394,11 @@ entirely by the iJTAG network attached to the PTAP.
 
 The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#dtp-runbist[BIST execution sequence]
+xref:ocah-programmer-guide::index.adoc#dtp-runbist[BIST execution sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-runbist[BIST execution sequence]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-runbist[BIST execution sequence].
 endif::backend-pdf[]
-.
 
 ifdef::backend-html5[]
 In the JTAG Interface Unit, the iJTAG network begins with three SIBs; their bit

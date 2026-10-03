@@ -227,12 +227,11 @@ prevent loops in the SiP cross trigger network. Configuration is accomplished
 via CSRs. The CTM register interface is described in the <<ctn-memory-map,CTN Memory Map>>
 section below, and the Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#dtp-ctn-init[order in which to program the CTPs and the CTM]
+xref:ocah-programmer-guide::index.adoc#dtp-ctn-init[order in which to program the CTPs and the CTM].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ctn-init[order in which to program the CTPs and the CTM]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ctn-init[order in which to program the CTPs and the CTM].
 endif::backend-pdf[]
-.
 
 === Address Map
 

@@ -201,12 +201,11 @@ stores address bits [31:1]; bit 0 is zero. The programmed value persists until
 it is rewritten or the TAP is reset; CPU reset alone does not restore the
 default. The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#dtp-sep-reset-vector[redirect procedure]
+xref:ocah-programmer-guide::index.adoc#dtp-sep-reset-vector[redirect procedure].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-sep-reset-vector[redirect procedure]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-sep-reset-vector[redirect procedure].
 endif::backend-pdf[]
-.
 
 
 == System Interfaces

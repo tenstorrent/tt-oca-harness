@@ -186,12 +186,11 @@ scan output at bit 1, bit N + 1 is the DFT Non-Secure SIB and bit N + 2 is the
 DFT Secure SIB. The network attached to each segment's ports defines its
 contents and length. The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#dtp-ijtag-access[segment access sequence]
+xref:ocah-programmer-guide::index.adoc#dtp-ijtag-access[segment access sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ijtag-access[segment access sequence]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ijtag-access[segment access sequence].
 endif::backend-pdf[]
-.
 
 ==== DFT Secure Chain
 

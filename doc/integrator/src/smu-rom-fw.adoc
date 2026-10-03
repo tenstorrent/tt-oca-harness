@@ -14,26 +14,25 @@ integration hooks.
 
 The firmware itself is described in the Programmer's Guide appendices: the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM],
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM],
 endif::backend-pdf[]
-, the
+the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM]
+xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM],
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM],
 endif::backend-pdf[]
-, and the
+and the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM]
+xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM].
 endif::backend-pdf[]
-.
 
 [[rom-fw-override-method]]
 == Weak-symbol override method

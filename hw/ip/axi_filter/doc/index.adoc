@@ -132,12 +132,11 @@ Widening only ever enlarges a range, so a range programmed tighter than
 the granule opens more address space than the programmed numbers
 suggest. The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules]
+xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules].
 endif::backend-pdf[]
-.
 
 [[axi-traffic-filter-blocked]]
 == Blocked Transactions

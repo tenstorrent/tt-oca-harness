@@ -79,9 +79,8 @@ endif::backend-html5[]
 The register interface does not allocate FIFO ownership to clients, and status
 and data accesses are not one atomic operation. The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-smc-mailbox-protocol[mailbox usage rules]
+xref:ocah-programmer-guide::index.adoc#sep-smc-mailbox-protocol[mailbox usage rules].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-mailbox-protocol[mailbox usage rules]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-mailbox-protocol[mailbox usage rules].
 endif::backend-pdf[]
-.

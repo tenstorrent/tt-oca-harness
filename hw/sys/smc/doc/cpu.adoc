@@ -557,12 +557,11 @@ which is the last value written to `command`.
 A `command` write therefore discards the error code of a failed command unless
 `abstractcs` was read first. The Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#dtp-smc-cmderr[debugger sequence for clearing `cmderr`]
+xref:ocah-programmer-guide::index.adoc#dtp-smc-cmderr[debugger sequence for clearing `cmderr`].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-smc-cmderr[debugger sequence for clearing `cmderr`]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-smc-cmderr[debugger sequence for clearing `cmderr`].
 endif::backend-pdf[]
-.
 
 [[detailed-register-map]]
 == Memory Map and Register Reference

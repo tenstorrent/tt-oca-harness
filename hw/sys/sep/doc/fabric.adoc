@@ -225,12 +225,11 @@ routed out to the SMN.
 Both the chiplet ID and chiplet BAR are available in SMC as MMRs. The
 Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence]
+xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-pdf[]
-.
 
 [[sep-traffic-filter-decode]]
 == Filtering and Protection
@@ -252,12 +251,11 @@ Register regions accept single-beat accesses only
 `allow_burst` set admits bursts the target rejects. The Programmer's Guide
 gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules]
+xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules].
 endif::backend-pdf[]
-.
 
 The decode algorithm -- entry priority, the match conditions, the
 address range granule and its widening direction, and the response
@@ -308,12 +306,11 @@ zero (`OTHERS`). AxPROT, including NS, passes unchanged. The outbound filter
 checks address, NS and source ID after remapping. The Programmer's Guide
 describes how to
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[select the outbound path and restrict `OTHERS` traffic]
+xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[select the outbound path and restrict `OTHERS` traffic].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[select the outbound path and restrict `OTHERS` traffic]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[select the outbound path and restrict `OTHERS` traffic].
 endif::backend-pdf[]
-.
 
 The inbound filter blocks traffic by default. Its entries reside in the system
 CSRs, reached directly by local masters and by external masters only through

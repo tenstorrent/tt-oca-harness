@@ -33,12 +33,11 @@ The surrounding system must use the same address assignments when accessing
 those subsystems. Subsystem remapping and filtering are described in their
 Interconnect chapters, and the Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence]
+xref:ocah-programmer-guide::index.adoc#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-address-remapping[aperture programming sequence].
 endif::backend-pdf[]
-.
 
 This chapter describes the SMU boundary. Network topology, routing beyond that
 boundary and connections to other chiplets depend on the enclosing system.

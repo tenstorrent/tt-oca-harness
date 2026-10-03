@@ -99,12 +99,11 @@ holds its output while the select alone moves. Moving `reset_enable` and
 which can pulse a reset on a port that neither source is resetting. The
 Programmer's Guide gives the
 ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#dtp-ic-reset-overrides[override sequence]
+xref:ocah-programmer-guide::index.adoc#dtp-ic-reset-overrides[override sequence].
 endif::backend-html5[]
 ifdef::backend-pdf[]
-https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ic-reset-overrides[override sequence]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ic-reset-overrides[override sequence].
 endif::backend-pdf[]
-.
 
 At the SMU the TDR concatenates three slices from TDI to TDO: SMC, SEP, then
 the external slice, followed by `reset_hold`. The SMC and SEP port lists are
