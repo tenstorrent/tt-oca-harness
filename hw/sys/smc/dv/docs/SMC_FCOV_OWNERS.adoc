@@ -315,7 +315,6 @@ or `unclassified` when the policy has none.
 |`c_gpio_instance_0` |23 |`smc_gpio_filter_access_sep_test` (39) |
 |`c_gpio_instance_64` |5 |`smc_gpio_intf_regblock_sweep_test` (23) |
 |`c_gpio_interface_decode` |61 |`smc_gpio_intf_regblock_sweep_test` (1495) |
-|`c_gpio_poc_pbias_decode` |1 |`smc_external_window_pad_ctrl_decode_test` (1) |single
 |`c_gpio_refclk_ctrl_decode` |1 |`smc_external_window_pad_ctrl_decode_test` (1) |single
 |`c_gpio_region` |61 |`smc_gpio_intf_regblock_sweep_test` (1495) |
 |`c_hang_det_control_fields_present` |8 |`smc_rdl_field_sweep_test` (18) |

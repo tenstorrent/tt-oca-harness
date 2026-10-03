@@ -86,8 +86,8 @@ the split is purely organizational:
 * *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
   Their function is dictated by the OCAH specifications, but their
   implementation is inherently technology- and vendor-specific — the eFuse
-  SHIM, PLL and PVT clock observation, the POC/PBIAS and reference-clock pad
-  controls, the per-pad GPIO controls, the PLL macro, and the PVT sensors.
+  SHIM, PLL and PVT clock observation, the reference-clock pad control, the
+  per-pad GPIO controls, the PLL macro, and the PVT sensors.
 * *Supplementary* (`BASE + 0x040_4000`): any additional memory-mapped devices
   the adopter wants to expose, plus the captured strap registers at
   `BASE + 0x040_5800`.
@@ -181,17 +181,14 @@ endif::backend-html5[]
 The PLL and PVT maps below describe placeholder memory footprints used by the
 open verification models. Their memory words do not specify the control
 registers of an adopter's clock or sensor implementation. The straps map
-describes captured GPIO values. The POC/PBIAS map specifies the register
-interface of the mandatory POC/PBIAS pad control block, which the adopter
-implements outside the SMC. Placement of these blocks within the external window
-is integration-specific.
+describes captured GPIO values. Placement of these blocks within the external
+window is integration-specific.
 
 ifdef::backend-html5[]
 ++++
 include::partial$smc/dv/models/regs/gen/html/pll_wrap.html[]
 include::partial$smc/dv/models/regs/gen/html/pvt_wrap.html[]
 include::partial$smc/regs/gen/html/blocks/straps.html[]
-include::partial$smc/regs/gen/html/blocks/gpio_poc_pbias_ctrl.html[]
 ++++
 endif::backend-html5[]
 
@@ -199,7 +196,6 @@ ifdef::backend-pdf[]
 include::../dv/models/regs/gen/adoc/pll_wrap.adoc[leveloffset=+2]
 include::../dv/models/regs/gen/adoc/pvt_wrap.adoc[leveloffset=+2]
 include::../regs/gen/adoc/blocks/straps.adoc[leveloffset=+2]
-include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 == Spare SMC Register Blocks

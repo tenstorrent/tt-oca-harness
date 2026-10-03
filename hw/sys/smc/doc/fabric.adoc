@@ -569,9 +569,8 @@ The fabric filters examine only the NS bit. Exact matching on all three
 protection bits is performed by an AXI-Lite peripheral that provides its own
 `ACCESS_FILTER` register, after the fabric has routed the transaction to it.
 In the SMC, the GPIO interface bank performs this check; see
-xref:ip:gpio/doc/index.adoc[GPIO]. The mandatory adopter blocks in the
-external window that carry an `ACCESS_FILTER` register, such as the POC/PBIAS
-pad control, define the same fields.
+xref:ip:gpio/doc/index.adoc[GPIO]. Adopter blocks in the external window
+that carry an `ACCESS_FILTER` register define the same fields.
 
 The full protection matching requires an exact match between the
 transaction's protection bits and a configured requirement:
