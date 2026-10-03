@@ -560,7 +560,9 @@ class SepRegBitBashCfg:
         for block in touch_blocks:
             for info in by_block[block]:
                 # Value uses reset as the pre-touch image (bring-up leaves POR).
-                x = touch_write_value(info.reset, info.mask, rng_touch)
+                # Draw over the compared mask, so the value always moves a bit
+                # the readback grades; bits outside it stay at reset.
+                x = touch_write_value(info.reset, write_mask(info), rng_touch)
                 touch.append((info, x))
         self.touch_blocks = touch_blocks
         self.touch_regs = tuple(touch)
