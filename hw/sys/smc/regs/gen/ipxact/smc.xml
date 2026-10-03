@@ -8211,9 +8211,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>cg_en</ipxact:name>
-              <ipxact:description>Design-for-debug (DFD) clock stop. 1 stops the clock to the debug-bus muxes and
-the core logic analyzer (CLA) unless force_clk_en is 1; 0 lets it run. The
-clock also runs while the SMC is in reset.</ipxact:description>
+              <ipxact:description>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+reset.</ipxact:description>
               <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8225,7 +8225,8 @@ clock also runs while the SMC is in reset.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>force_clk_en</ipxact:name>
-              <ipxact:description>DFD clock force. 1 keeps the DFD clock running whatever the value of cg_en.</ipxact:description>
+              <ipxact:description>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+value of cg_en.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8277,7 +8278,7 @@ and have no effect.</ipxact:description>
             <ipxact:field>
               <ipxact:name>debug_marker</ipxact:name>
               <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC;
-the debug marker on the SMC debug bus comes from the CLA.</ipxact:description>
+the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).</ipxact:description>
               <ipxact:bitOffset>23</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
