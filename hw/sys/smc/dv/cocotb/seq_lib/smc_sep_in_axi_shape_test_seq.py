@@ -325,8 +325,7 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             ", ".join(f"{k}=resp {v}" for k, v in self.shape_resps.items()),
         )
         cocotb.log.info(
-            "CHK-SEP-IN-DECERR-WRITE: SEP_IN write to the unmapped page 0x%08x "
-            "answered DECERR",
+            "CHK-SEP-IN-DECERR-WRITE: SEP_IN write to the unmapped page 0x%08x answered DECERR",
             UNIMPLEMENTED_ADDR,
         )
         cocotb.log.info(
