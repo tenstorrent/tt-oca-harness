@@ -32,6 +32,7 @@ regfile BaseRegs #(
     default regwidth = 32;
     reg {
         name = "HCI Version";
+        desc = "Identifies the implemented MIPI I3C HCI version.";
         field {
             sw = r;
             hw = na;
@@ -40,6 +41,7 @@ regfile BaseRegs #(
     } HCI_VERSION @ 0x0;
     reg {
         name = "Control";
+        desc = "Controls host-controller bus operation, mode selection, transaction abort, and Hot-Join handling.";
         field {
             name = "BUS_ENABLE";
             desc = "Host Controller Bus Enable";
@@ -146,6 +148,7 @@ regfile BaseRegs #(
     } HC_CONTROL @ 0x4;
     reg {
         name = "Dynamic address";
+        desc = "Configures the controller dynamic address and indicates whether that address is valid.";
         field {
             name = "DYNAMIC_ADDR_VALID";
             desc = "Dynamic Address is Valid:
@@ -169,6 +172,7 @@ regfile BaseRegs #(
     } CONTROLLER_DEVICE_ADDR @ 0x8;
     reg {
         name = "Capabilities";
+        desc = "Reports the host-controller capabilities implemented by this instance.";
         field {
             name = "SG_CAPABILITY_DC_EN";
             desc = "Device context memory:
@@ -315,6 +319,7 @@ regfile BaseRegs #(
     } HC_CAPABILITIES @ 0xC;
     reg {
         name = "Reset controls";
+        desc = "Requests a controller soft reset or selective PIO queue and FIFO resets. Reset requests are self-clearing.";
         field {
             name = "IBI_QUEUE_RST";
             desc = "Clear IBI queue from software. Valid only in PIO mode.";
@@ -366,6 +371,7 @@ regfile BaseRegs #(
     } RESET_CONTROL @ 0x10;
     reg {
         name = "Active controller";
+        desc = "Reports current controller state, including active-controller bus ownership.";
         field {
             name = "AC_CURRENT_OWN";
             desc = "Controller I3C state:
@@ -380,6 +386,7 @@ regfile BaseRegs #(
     } PRESENT_STATE @ 0x14;
     reg {
         name = "Status";
+        desc = "Reports host-controller error and exceptional-condition status.";
         field {
             name = "SCHED_CMD_MISSED_TICK_STAT";
             desc = "Scheduled commands could be executed due to controller being busy.";
@@ -433,6 +440,7 @@ regfile BaseRegs #(
     } INTR_STATUS @ 0x20;
     reg {
         name = "Enable status reporting";
+        desc = "Enables individual host-controller interrupt status sources.";
         field {
             name = "SCHED_CMD_MISSED_TICK_STAT_EN";
             desc = "Enable SCHED_CMD_MISSED_TICK_STAT monitoring.";
@@ -471,6 +479,7 @@ regfile BaseRegs #(
     } INTR_STATUS_ENABLE @ 0x24;
     reg {
         name = "Enable status interrupts";
+        desc = "Routes enabled host-controller interrupt sources to the interrupt output.";
         field {
             name = "SCHED_CMD_MISSED_TICK_SIGNAL_EN";
             desc = "Enable SCHED_CMD_MISSED_TICK_STAT interrupt.";
@@ -509,6 +518,7 @@ regfile BaseRegs #(
     } INTR_SIGNAL_ENABLE @ 0x28;
     reg {
         name = "Force status and interrupt";
+        desc = "Forces host-controller interrupts for software testing.";
         field {
             name = "SCHED_CMD_MISSED_TICK_FORCE";
             desc = "Force SCHED_CMD_MISSED_TICK_STAT interrupt.";
@@ -547,6 +557,7 @@ regfile BaseRegs #(
     } INTR_FORCE @ 0x2C;
     reg {
         name = "DAT section offset";
+        desc = "Reports the Device Address Table section offset and size.";
         field {
             name = "ENTRY_SIZE";
             desc = "Individual DAT entry size.
@@ -573,6 +584,7 @@ regfile BaseRegs #(
     } DAT_SECTION_OFFSET @ 0x30;
     reg {
         name = "DCT section offset";
+        desc = "Configures the Device Characteristic Table section offset, size, and ENTDAA index.";
         field {
             name = "ENTRY_SIZE";
             desc = "Individual DCT entry size.
@@ -619,6 +631,7 @@ regfile BaseRegs #(
     } RING_HEADERS_SECTION_OFFSET @ 0x38;
     reg {
         name = "PIO section offset";
+        desc = "Reports the PIO section offset.";
         field {
             name = "SECTION_OFFSET";
             desc = "PIO section offset. Invalid if 0.";
