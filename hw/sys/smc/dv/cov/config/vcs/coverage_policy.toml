@@ -113,8 +113,9 @@ args = ["-elfile", "{path}"]
 # ERR-SLV-CONST are design facts; ATOP-ZERO and EXT-IRQ-TIED are the bench's, and
 # PARTIAL-VECTOR, the uncovered rest of a payload vector that toggles, is the
 # bench's stimulus-value gap. Only the
-# bit-directions the graded run leaves uncovered are written, so
-# gen_smc_toggle_exclusions.py regenerates both files from each graded run;
+# bit-directions the graded run leaves uncovered are written, so the
+# companion's gen_smc_toggle_exclusions.py regenerates both files from each
+# graded run;
 # README.md gives each class's fact and granularity.
 [[native_files]]
 tool = "vcs"
@@ -133,7 +134,8 @@ args = ["-elfile", "{path}"]
 # The line blocks and condition rows inside the ports-only units T2 to T12,
 # which smc_reviewed_exclusions.toml records, while the run leaves them
 # uncovered; their toggle points are in the two files above.
-# gen_smc_ports_only_exclusions.py writes the file from each graded run.
+# The companion's gen_smc_ports_only_exclusions.py writes the file from each
+# graded run.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -144,7 +146,8 @@ args = ["-elfile", "{path}"]
 # Covergroups declared inside vendored RTL. `-cm_hier` does not reach
 # covergroups, so the six I3C controllers' groups would otherwise sit in urg's
 # GROUP score beside SMC's own cov/sv covergroups. Regenerated from urg's group
-# exclusion template by gen_smc_group_exclusions.py; README.md lists the class.
+# exclusion template by the companion's gen_smc_group_exclusions.py; README.md
+# lists the class.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -155,8 +158,9 @@ args = ["-elfile", "{path}"]
 # Fields design engineering reviewed as not exercised by this bench (R1 to R9,
 # by family), recorded in smc_reviewed_exclusions.toml. Report-gated per bit
 # and direction: only the points the graded run leaves uncovered, and that no
-# toggle-file class takes, are written, so gen_smc_cov_exclusions.py
-# regenerates the file from each graded run; README.md states the classes.
+# toggle-file class takes, are written, so the companion's
+# gen_smc_cov_exclusions.py regenerates the file from each graded run;
+# README.md states the classes.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
