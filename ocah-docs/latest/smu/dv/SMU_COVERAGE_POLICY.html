@@ -754,8 +754,8 @@ condition 38.46, branch 50.00, assertion 85.19, <code>user</code> 85.05</p></td>
 <div class="paragraph">
 <p><code>cov/sv/</code> carries ten cover-property modules, 109 points in all; the counts
 are the <code>OCAH_FCOV_COVER</code> invocations in each file. <code>tb/tb_wrapper_top.sv</code>
-instantiates all ten, and 101 points enter the database on its single
-target, <code>compile_smu_chiplet</code>, which has SEP present: four points sit behind
+instantiates all ten, and 100 points enter the database on its single
+target, <code>compile_smu_chiplet</code>, which has SEP present: five points sit behind
 <code>SMU_FCOV_PHASE2</code>, which no configuration defines, and the four inside
 <code>g_nosep</code> generate blocks exist only on a SEP=0 elaboration, which this
 package does not build (<code>hw/sys/smu/dv/docs/SMU_FCOV.adoc</code>).</p>
