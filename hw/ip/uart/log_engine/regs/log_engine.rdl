@@ -20,8 +20,11 @@ addrmap log_engine #(
         field {
             sw = rw;
             hw = r;
-            desc = "Log Engine Enable. When set, enables the Log Engine. When unset, disables the
-                    Log Engine and resets all FSMs, flops, and FIFOs.";
+            desc = "Log Engine Enable. When set, enables the Log Engine. When cleared, the engine
+                    stops fetching and writing, discards buffered log data and resets transfer
+                    progress. Configuration and pending LOG_LEN values are retained, so a pending
+                    entry restarts from the start of its slot when the engine is enabled again.
+                    Clearing does not wait for outstanding bus responses.";
         } EN[0:0] = 0x0;
     };
 
@@ -133,7 +136,9 @@ addrmap log_engine #(
             hw = r;
             hwclr;
             desc = "Log Length. Writing a nonzero value representing the log length in bytes to this field
-            starts the log transfer process. There are 16 copies of this register, each representing
+            starts the log transfer process. The field holds the requested length until the
+            transfer completes, when hardware clears it to zero; it is not a remaining-byte
+            counter. There are 16 copies of this register, each representing
             a log entry. The log entries go through round robin arbitration.";
         } LOG_LEN[15:0] = 0x0;
     };
