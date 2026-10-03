@@ -3010,6 +3010,36 @@
         }
       ],
       "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 9,
+      "flaky_tests": 0,
+      "flow_pass_rate": 50.0,
+      "generated_at": "2026-10-03T05:58:39+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 85.62,
+            "condition": 69.3,
+            "fsm_state": 64.31,
+            "functional": 100.0,
+            "line": 93.62,
+            "toggle": 76.53
+          },
+          "flow": "sep",
+          "framework": "cocotb",
+          "tool": "vcs"
+        },
+        {
+          "coverage_status": "ERROR",
+          "effective_metrics": {},
+          "flow": "sep",
+          "framework": "uvm",
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 95.54
     }
   ]
 }

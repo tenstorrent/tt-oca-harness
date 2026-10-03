@@ -33,11 +33,19 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 81.45,
+      "coverage_total_percent": 81.56,
       "flow": "sep",
       "framework": "cocotb",
-      "pass_rate": 97.41,
+      "pass_rate": 100.0,
       "tests_total": 193,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": null,
+      "flow": "sep",
+      "framework": "uvm",
+      "pass_rate": 0.0,
+      "tests_total": 9,
       "tool": "vcs"
     },
     {
@@ -57,7 +65,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-03T05:10:22+00:00",
+  "generated_at": "2026-10-03T05:58:39+00:00",
   "results": [
     {
       "coverage": {
@@ -128,16 +136,24 @@
     {
       "coverage": {
         "effective_metrics": {
-          "branch": 85.77,
-          "condition": 69.52,
+          "branch": 85.62,
+          "condition": 69.3,
           "fsm_state": 64.31,
-          "functional": 98.68,
-          "line": 93.71,
-          "toggle": 76.71
+          "functional": 100.0,
+          "line": 93.62,
+          "toggle": 76.53
         }
       },
       "flow": "sep",
       "framework": "cocotb",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {}
+      },
+      "flow": "sep",
+      "framework": "uvm",
       "tool": "vcs"
     },
     {

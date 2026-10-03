@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-03T05:10:22+00:00",
+  "generated_at": "2026-10-03T05:58:39+00:00",
   "results": [
     {
       "flow": "aou",
@@ -3058,1547 +3058,1626 @@
       "tests": [
         {
           "category": "smoke",
-          "duration_sec": 16.752,
+          "duration_sec": 13.502,
           "name": "sep_axi_smoke_test",
-          "seed": 1579274145,
+          "seed": 2062127575,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 18.164,
+          "duration_sec": 15.005,
           "name": "sep_address_map_test",
-          "seed": 73258293,
+          "seed": 1773385172,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 19.527,
+          "duration_sec": 15.105,
           "name": "sep_hello_world_test",
-          "seed": 317683501,
+          "seed": 1808273598,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "all",
-          "duration_sec": 22.375,
+          "duration_sec": 23.588,
           "name": "sep_cpu_trace_diag_test",
-          "seed": 772609697,
+          "seed": 868066167,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 17.437,
+          "duration_sec": 11.679,
           "name": "sep_boot_rom_smoke_test",
-          "seed": 475621654,
+          "seed": 529240770,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 17.615,
+          "duration_sec": 13.106,
           "name": "sep_sram_smoke_test",
-          "seed": 1717083471,
+          "seed": 648424080,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 19.71,
+          "duration_sec": 13.632,
           "name": "sep_km_mem_smoke_test",
-          "seed": 1505155995,
+          "seed": 484444976,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 17.334,
+          "duration_sec": 14.161,
           "name": "sep_otbn_mem_smoke_test",
-          "seed": 636643821,
+          "seed": 1077049232,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 18.601,
+          "duration_sec": 13.235,
           "name": "sep_efuse_sense_test",
-          "seed": 501767286,
+          "seed": 567995337,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 20.428,
+          "duration_sec": 13.886,
           "name": "sep_spi_flash_jedec_smoke_test",
-          "seed": 7253085,
+          "seed": 1276864690,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 21.792,
+          "name": "sep_efuse_lcc_lc_state_stitch_test",
+          "seed": 1779830288,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "all",
-          "duration_sec": 18.607,
+          "duration_sec": 12.809,
           "name": "sep_efuse_jtag_window_allow_test",
-          "seed": 604340187,
+          "seed": 685692780,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 21.015,
+          "duration_sec": 14.803,
           "name": "sep_lcc_lc_state_w1s_prod_test",
-          "seed": 1633847164,
+          "seed": 692330709,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 21.535,
+          "duration_sec": 15.084,
           "name": "sep_lcc_lc_state_w1s_prod_test",
-          "seed": 2029538313,
+          "seed": 1906053171,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 21.456,
+          "duration_sec": 14.731,
           "name": "sep_lcc_lc_state_w1s_prod_test",
-          "seed": 1436112616,
+          "seed": 365089111,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 36.871,
+          "duration_sec": 32.022,
           "name": "sep_efuse_image_test",
-          "seed": 1511220966,
+          "seed": 2141795761,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 26.754,
-          "name": "sep_efuse_lcc_lc_state_stitch_test",
-          "seed": 1044302606,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 16.925,
+          "duration_sec": 13.287,
           "name": "sep_lcc_lc_state_w1s_prod_demote_test",
-          "seed": 1535497764,
+          "seed": 1037649390,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 19.565,
+          "duration_sec": 13.043,
           "name": "sep_lcc_lc_state_w1s_prod_demote_test",
-          "seed": 1319973495,
+          "seed": 2039920636,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.651,
+          "duration_sec": 13.055,
           "name": "sep_lcc_lc_state_w1s_prod_demote_test",
-          "seed": 1891147888,
+          "seed": 226181488,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.953,
+          "duration_sec": 13.023,
           "name": "sep_lcc_lc_state_w1s_rma_sip_test",
-          "seed": 2073277900,
+          "seed": 1420301927,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.754,
+          "duration_sec": 13.365,
           "name": "sep_lcc_lc_state_w1s_rma_sip_test",
-          "seed": 1195318333,
+          "seed": 1725863507,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.044,
+          "duration_sec": 13.655,
           "name": "sep_lcc_lc_state_w1s_rma_sip_test",
-          "seed": 1623210816,
+          "seed": 136673141,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 16.668,
+          "duration_sec": 12.948,
           "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
-          "seed": 535490336,
+          "seed": 685251272,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.255,
+          "duration_sec": 12.658,
           "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
-          "seed": 2137843314,
+          "seed": 297418050,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.103,
+          "duration_sec": 12.858,
           "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
-          "seed": 1100415545,
+          "seed": 331120278,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.134,
+          "duration_sec": 14.688,
           "name": "sep_lcc_lc_state_w1s_prod_end_test",
-          "seed": 1621732454,
+          "seed": 473672856,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.082,
+          "duration_sec": 13.717,
           "name": "sep_lcc_lc_state_w1s_prod_end_test",
-          "seed": 1363542306,
+          "seed": 334343665,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.51,
+          "duration_sec": 13.626,
           "name": "sep_lcc_lc_state_w1s_prod_end_test",
-          "seed": 436434810,
+          "seed": 882480957,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.242,
+          "duration_sec": 14.222,
           "name": "sep_lcc_lc_state_w1s_prod_end_rma_test",
-          "seed": 1968389337,
+          "seed": 1126208016,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 19.739,
+          "duration_sec": 13.729,
           "name": "sep_lcc_lc_state_w1s_prod_end_rma_test",
-          "seed": 448782388,
+          "seed": 2061250506,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.121,
+          "duration_sec": 17.818,
           "name": "sep_lcc_lc_state_w1s_prod_end_rma_test",
-          "seed": 851084006,
+          "seed": 278032981,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.999,
+          "duration_sec": 12.908,
           "name": "sep_lcc_lc_state_w1s_transient_test",
-          "seed": 786784364,
+          "seed": 1296473719,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.459,
+          "duration_sec": 12.659,
           "name": "sep_lcc_lc_state_w1s_transient_test",
-          "seed": 632989445,
+          "seed": 1365082878,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.677,
+          "duration_sec": 12.723,
           "name": "sep_lcc_lc_state_w1s_transient_test",
-          "seed": 965707854,
+          "seed": 621132966,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 15.904,
+          "duration_sec": 11.416,
           "name": "sep_clock_uvm_wdt_rst_input_reset_path_test",
-          "seed": 1148217773,
+          "seed": 1254399949,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.834,
-          "name": "sep_esrc_fips_lock_test",
-          "seed": 168043690,
+          "duration_sec": 32.357,
+          "name": "sep_rom_sanity_test",
+          "seed": 1638251856,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 73.623,
+          "duration_sec": 67.277,
           "name": "sep_dma_cpu_contention_test",
-          "seed": 1808620400,
+          "seed": 833707897,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 34.637,
-          "name": "sep_rom_sanity_test",
-          "seed": 1457036539,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 46.82,
+          "duration_sec": 42.202,
           "name": "sep_spi_ot_dma_rx_test",
-          "seed": 858359520,
+          "seed": 109402258,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "smoke",
-          "duration_sec": 45.004,
+          "duration_sec": 39.097,
           "name": "sep_esrc_e2e_smoke_test",
-          "seed": 621060923,
+          "seed": 2043222970,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "all",
+          "duration_sec": 42.128,
+          "name": "sep_esrc_e2e_fifo_closed_test",
+          "seed": 54143541,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 19.663,
-          "name": "sep_esrc_alert_delivery_test",
-          "seed": 1435001298,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 59.17,
+          "duration_sec": 55.599,
           "name": "sep_esrc_ht_watermark_arming_test",
-          "seed": 2006835753,
+          "seed": 82882257,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 13.381,
+          "name": "sep_esrc_fips_lock_test",
+          "seed": 110261335,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 15.092,
+          "name": "sep_esrc_alert_delivery_test",
+          "seed": 1535048751,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 18.625,
+          "duration_sec": 11.948,
           "name": "sep_irq_ip_to_aggregator_test",
-          "seed": 259340649,
+          "seed": 1728119291,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 16.369,
+          "duration_sec": 10.601,
           "name": "sep_periph_bus_err_misaligned_test",
-          "seed": 1185584459,
+          "seed": 1076738891,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 40.484,
+          "duration_sec": 36.492,
           "name": "sep_drbg_gen_segmentation_test",
-          "seed": 1830356263,
+          "seed": 1424887441,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 200.594,
+          "duration_sec": 193.97,
           "name": "sep_dma_hash_test",
-          "seed": 555384682,
+          "seed": 2089193516,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 96.413,
+          "duration_sec": 92.908,
           "name": "sep_efuse_km_axil_cpu_mux_coexist_test",
-          "seed": 1657253087,
+          "seed": 151083313,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 17.975,
+          "duration_sec": 11.62,
           "name": "sep_lcc_uvm_inbound_filter_gating_test",
-          "seed": 1254756689,
+          "seed": 1958480554,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 288.221,
+          "duration_sec": 282.834,
           "name": "sep_mailbox_plic_test",
-          "seed": 449493133,
+          "seed": 1017325239,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 174.215,
+          "duration_sec": 176.497,
           "name": "sep_drbg_real_sink_multi_km_aes_test",
-          "seed": 381359667,
+          "seed": 1603157449,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 24.069,
+          "duration_sec": 19.936,
           "name": "sep_efuse_jtag_axil_el2_cpu_mux_test",
-          "seed": 1498434563,
+          "seed": 1169118034,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 252.068,
+          "duration_sec": 254.434,
           "name": "sep_hmac_kmac_cpu_crypto_smoke_test",
-          "seed": 1501246971,
+          "seed": 1992557425,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 218.795,
-          "name": "sep_km_aes_sideload_kat_test",
-          "seed": 2008899579,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 241.917,
+          "duration_sec": 226.755,
           "name": "sep_km_otbn_sideload_kat_test",
-          "seed": 531192732,
+          "seed": 1191293122,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 208.584,
+          "duration_sec": 214.609,
+          "name": "sep_km_aes_sideload_kat_test",
+          "seed": 1206146050,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 209.091,
           "name": "sep_km_hmac_sideload_kat_test",
-          "seed": 1658657751,
+          "seed": 245328744,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 34.853,
+          "duration_sec": 30.459,
           "name": "sep_cpu_ifu_lsu_alias_remap_matrix_test",
-          "seed": 1245118671,
+          "seed": 1494305208,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 15.865,
+          "duration_sec": 11.482,
           "name": "sep_irq_simultaneous_fanin_no_alias_test",
-          "seed": 705292098,
+          "seed": 92331001,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 16.051,
+          "duration_sec": 11.263,
           "name": "sep_irq_simultaneous_fanin_no_alias_test",
-          "seed": 1924665934,
+          "seed": 1854872581,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 10.683,
+          "name": "sep_irq_simultaneous_fanin_no_alias_test",
+          "seed": 1457017547,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 168.56,
+          "duration_sec": 167.728,
           "name": "sep_nmi_sanity_test",
-          "seed": 638183490,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 15.647,
-          "name": "sep_irq_simultaneous_fanin_no_alias_test",
-          "seed": 1843988442,
+          "seed": 1538080807,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 217.186,
+          "duration_sec": 211.83,
           "name": "sep_km_kmac_sideload_kat_test",
-          "seed": 25827879,
+          "seed": 1745943294,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 33.399,
-          "name": "sep_wdt_aon_timer_internals_test",
-          "seed": 1118195597,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 31.143,
-          "name": "sep_wdt_aon_timer_internals_test",
-          "seed": 239855130,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 34.399,
-          "name": "sep_wdt_aon_timer_internals_test",
-          "seed": 1959630091,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 19.048,
-          "name": "sep_axil_mailbox_iface_rand_test",
-          "seed": 38109727,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 22.2,
-          "name": "sep_axil_mailbox_iface_rand_test",
-          "seed": 870129131,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 29.928,
+          "duration_sec": 24.411,
           "name": "sep_fabric_remap_filter_csr_bank_test",
-          "seed": 967175554,
-          "stage": "sim",
-          "status": "FAIL"
-        },
-        {
-          "category": "system",
-          "duration_sec": 29.949,
-          "name": "sep_fabric_remap_filter_csr_bank_test",
-          "seed": 1711565429,
-          "stage": "sim",
-          "status": "FAIL"
-        },
-        {
-          "category": "system",
-          "duration_sec": 29.58,
-          "name": "sep_fabric_remap_filter_csr_bank_test",
-          "seed": 843768182,
-          "stage": "sim",
-          "status": "FAIL"
-        },
-        {
-          "category": "system",
-          "duration_sec": 15.689,
-          "name": "sep_axil_mailbox_iface_rand_test",
-          "seed": 27005275,
+          "seed": 768238024,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 16.739,
+          "duration_sec": 24.623,
+          "name": "sep_fabric_remap_filter_csr_bank_test",
+          "seed": 306562122,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 24.022,
+          "name": "sep_fabric_remap_filter_csr_bank_test",
+          "seed": 2063155347,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 27.265,
+          "name": "sep_wdt_aon_timer_internals_test",
+          "seed": 913683797,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 28.494,
+          "name": "sep_wdt_aon_timer_internals_test",
+          "seed": 1540595072,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 28.907,
+          "name": "sep_wdt_aon_timer_internals_test",
+          "seed": 964374422,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 11.257,
+          "name": "sep_axil_mailbox_iface_rand_test",
+          "seed": 1229521728,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 11.443,
+          "name": "sep_axil_mailbox_iface_rand_test",
+          "seed": 1465942991,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 11.258,
+          "name": "sep_axil_mailbox_iface_rand_test",
+          "seed": 1814543068,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 11.076,
           "name": "sep_mailbox_peer_rx_rirqt_test",
-          "seed": 269122836,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 21.495,
-          "name": "sep_sram_datapath_breadth_test",
-          "seed": 2053400832,
+          "seed": 1111137308,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 256.858,
-          "name": "sep_reset_wdt_sanity_test",
-          "seed": 422231704,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 65.737,
+          "duration_sec": 58.488,
           "name": "sep_trng_reset_recovery_test",
-          "seed": 1597475430,
+          "seed": 934456535,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 28.024,
+          "duration_sec": 15.881,
+          "name": "sep_sram_datapath_breadth_test",
+          "seed": 1628319174,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 23.751,
           "name": "sep_boot_rom_lsu_read_test",
-          "seed": 1568652620,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 22.9,
-          "name": "sep_spi_ot_host_csr_irq_rand_test",
-          "seed": 636003230,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 22.787,
-          "name": "sep_spi_ot_host_csr_irq_rand_test",
-          "seed": 1483198697,
+          "seed": 335528715,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 125.873,
-          "name": "sep_crypto_per_ip_reset_isolation_test",
-          "seed": 897443156,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 106.765,
-          "name": "sep_spi_ot_flash_cmd_rand_test",
-          "seed": 1277503867,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 32.861,
+          "duration_sec": 28.908,
           "name": "sep_fabric_inbound_filter_rule_matrix_test",
-          "seed": 922716873,
+          "seed": 231316528,
           "stage": "sim",
-          "status": "FAIL"
+          "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 24.317,
+          "duration_sec": 17.049,
           "name": "sep_spi_ot_host_csr_irq_rand_test",
-          "seed": 349552435,
+          "seed": 919996432,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 178.042,
+          "duration_sec": 17.17,
+          "name": "sep_spi_ot_host_csr_irq_rand_test",
+          "seed": 1539288986,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 251.435,
+          "name": "sep_reset_wdt_sanity_test",
+          "seed": 1998229314,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 16.689,
+          "name": "sep_spi_ot_host_csr_irq_rand_test",
+          "seed": 198327453,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 121.408,
+          "name": "sep_crypto_per_ip_reset_isolation_test",
+          "seed": 512646097,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 102.706,
           "name": "sep_spi_ot_flash_cmd_rand_test",
-          "seed": 1072900443,
+          "seed": 613210409,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 28.466,
+          "duration_sec": 12.496,
           "name": "sep_warm_cold_reset_scratch_test",
-          "seed": 1014281969,
+          "seed": 1544803073,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 177.916,
+          "duration_sec": 145.213,
           "name": "sep_spi_ot_flash_cmd_rand_test",
-          "seed": 1024203648,
+          "seed": 1905661118,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 132.76,
+          "duration_sec": 183.711,
+          "name": "sep_spi_ot_flash_cmd_rand_test",
+          "seed": 1230534655,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 133.18,
           "name": "sep_spi_ot_dma_tx_test",
-          "seed": 1514150438,
+          "seed": 78683525,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 132.487,
+          "duration_sec": 126.893,
           "name": "sep_spi_ot_dma_tx_test",
-          "seed": 1201114153,
+          "seed": 89127142,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 48.404,
+          "duration_sec": 127.074,
+          "name": "sep_spi_ot_dma_tx_test",
+          "seed": 1423543978,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 37.77,
           "name": "sep_efuse_token_match_fault_pic_test",
-          "seed": 1003880190,
+          "seed": 811679294,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.707,
+          "duration_sec": 9.579,
           "name": "sep_cpu_dbg_reset_independence_test",
-          "seed": 1205077079,
+          "seed": 478089757,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 148.002,
-          "name": "sep_spi_ot_dma_tx_test",
-          "seed": 1165906811,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 171.014,
+          "duration_sec": 149.226,
           "name": "sep_pic_irq_source_map_delivery_test",
-          "seed": 1715104437,
+          "seed": 1459341190,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 176.255,
+          "duration_sec": 152.038,
           "name": "sep_pic_irq_source_map_delivery_test",
-          "seed": 2506560,
+          "seed": 1865244540,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 38.748,
+          "duration_sec": 148.745,
+          "name": "sep_pic_irq_source_map_delivery_test",
+          "seed": 1981191849,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 34.368,
           "name": "sep_hmac_sha_variant_rand_test",
-          "seed": 371774517,
+          "seed": 1409791717,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 158.497,
-          "name": "sep_pic_irq_source_map_delivery_test",
-          "seed": 1945582023,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 79.22,
-          "name": "sep_kmac_mode_strength_rand_test",
-          "seed": 1450517409,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 60.559,
-          "name": "sep_crypto_edn_multisink_arbitration_test",
-          "seed": 1748350987,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 54.897,
-          "name": "sep_crypto_edn_multisink_arbitration_test",
-          "seed": 141128712,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 181.897,
-          "name": "sep_dma_basic_test",
-          "seed": 742572125,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 175.771,
-          "name": "sep_dma_basic_test",
-          "seed": 932412214,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 86.502,
+          "duration_sec": 79.023,
           "name": "sep_aes_mode_keysize_rand_test",
-          "seed": 7321153,
+          "seed": 1200380801,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 183.469,
-          "name": "sep_dma_basic_test",
-          "seed": 1243863910,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 57.43,
+          "duration_sec": 49.227,
           "name": "sep_crypto_edn_multisink_arbitration_test",
-          "seed": 1171899587,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 16.243,
-          "name": "sep_clock_gate_control_test",
-          "seed": 693798365,
+          "seed": 2118152471,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 56.12,
+          "duration_sec": 49.799,
+          "name": "sep_crypto_edn_multisink_arbitration_test",
+          "seed": 365450191,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 50.381,
+          "name": "sep_crypto_edn_multisink_arbitration_test",
+          "seed": 1610241736,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 174.677,
+          "name": "sep_dma_basic_test",
+          "seed": 1311618350,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 176.22,
+          "name": "sep_dma_basic_test",
+          "seed": 2049923064,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 167.727,
+          "name": "sep_dma_basic_test",
+          "seed": 1339597039,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 72.287,
+          "name": "sep_kmac_mode_strength_rand_test",
+          "seed": 353304177,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 49.947,
           "name": "sep_crypto_edn_round_robin_grant_test",
-          "seed": 2018350394,
+          "seed": 1644765988,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 59.907,
+          "duration_sec": 54.564,
           "name": "sep_otbn_compute_rand_test",
-          "seed": 1150869877,
+          "seed": 1766725993,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 58.397,
+          "duration_sec": 53.277,
           "name": "sep_otbn_compute_rand_test",
-          "seed": 1337772966,
+          "seed": 1551782083,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 57.95,
+          "duration_sec": 53.652,
           "name": "sep_otbn_compute_rand_test",
-          "seed": 1209299023,
+          "seed": 1166106909,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 11.881,
+          "name": "sep_clock_gate_control_test",
+          "seed": 332219230,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 62.25,
-          "name": "sep_efuse_program_lock_matrix_test",
-          "seed": 255647319,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 29.559,
+          "duration_sec": 25.962,
           "name": "sep_efuse_set_only_monotonicity_test",
-          "seed": 1594134477,
+          "seed": 682522098,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 28.634,
+          "duration_sec": 24.631,
           "name": "sep_lcc_demote_feat_ctrl_matrix_test",
-          "seed": 2003627690,
+          "seed": 825279297,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 29.156,
+          "duration_sec": 55.015,
+          "name": "sep_efuse_program_lock_matrix_test",
+          "seed": 2094957825,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 22.626,
           "name": "sep_efuse_rma_token_rand_test",
-          "seed": 1623091587,
+          "seed": 1461948875,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.476,
+          "duration_sec": 12.705,
           "name": "sep_efuse_digest_latch_fault_test",
-          "seed": 645521734,
+          "seed": 843081656,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.693,
+          "duration_sec": 14.328,
           "name": "sep_efuse_illegal_state_fail_closed_test",
-          "seed": 841647974,
+          "seed": 969438391,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 28.558,
+          "duration_sec": 22.487,
           "name": "sep_sec_dis_override_test",
-          "seed": 957135533,
+          "seed": 144625022,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 15.57,
+          "duration_sec": 11.705,
           "name": "sep_sec_dis_reset_reach_test",
-          "seed": 575683627,
+          "seed": 100219213,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 15.079,
+          "duration_sec": 11.211,
           "name": "sep_fabric_output_remap_datapath_proxy_test",
-          "seed": 1340283630,
+          "seed": 1070726460,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 15.424,
+          "duration_sec": 11.745,
           "name": "sep_fabric_local_alias_datapath_test",
-          "seed": 1690427574,
+          "seed": 1348770729,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 16.986,
+          "duration_sec": 13.724,
           "name": "sep_km_key_policy_vault_test",
-          "seed": 1017615174,
+          "seed": 380996107,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 16.567,
+          "duration_sec": 13.817,
           "name": "sep_km_key_policy_vault_test",
-          "seed": 2010408057,
+          "seed": 1680514667,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 16.77,
+          "duration_sec": 13.888,
           "name": "sep_km_key_policy_vault_test",
-          "seed": 128986334,
+          "seed": 991855289,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.755,
+          "duration_sec": 14.498,
           "name": "sep_km_isolate_termination_test",
-          "seed": 649056233,
+          "seed": 716474868,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 67.458,
+          "duration_sec": 63.862,
           "name": "sep_fabric_local_alias_offset_walk_test",
-          "seed": 1018172041,
+          "seed": 1127814844,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 263.919,
+          "duration_sec": 251.398,
           "name": "sep_km_wipe_reset_test",
-          "seed": 1586529103,
+          "seed": 670533888,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 443.31,
+          "duration_sec": 430.658,
           "name": "sep_fabric_inbound_filter_window_walk_test",
-          "seed": 833117834,
+          "seed": 23322460,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 15.757,
+          "duration_sec": 11.582,
           "name": "sep_km_mailbox_protocol_rand_test",
-          "seed": 1458800679,
+          "seed": 1111023442,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.275,
+          "duration_sec": 12.443,
           "name": "sep_km_mailbox_protocol_rand_test",
-          "seed": 827101033,
+          "seed": 5984055,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 458.43,
+          "duration_sec": 492.917,
           "name": "sep_km_handover_test",
-          "seed": 988845531,
+          "seed": 759201623,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 15.588,
+          "duration_sec": 12.123,
           "name": "sep_km_mailbox_protocol_rand_test",
-          "seed": 820025039,
+          "seed": 548898057,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 20.211,
+          "duration_sec": 21.809,
           "name": "sep_km_crc_pcpi_kat_test",
-          "seed": 658854575,
+          "seed": 147551307,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 30.607,
+          "duration_sec": 16.615,
           "name": "sep_km_crc_pcpi_kat_test",
-          "seed": 367011809,
+          "seed": 1862787891,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 20.072,
+          "duration_sec": 27.107,
           "name": "sep_km_crc_pcpi_kat_test",
-          "seed": 212684956,
+          "seed": 1011788566,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 526.871,
+          "duration_sec": 544.225,
           "name": "sep_km_abr_seed_sideload_test",
-          "seed": 200636214,
+          "seed": 1396993958,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 212.372,
+          "duration_sec": 209.041,
           "name": "sep_km_kpv_scrambler_test",
-          "seed": 1723707217,
+          "seed": 189467444,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 221.279,
+          "duration_sec": 861.071,
+          "name": "sep_km_command_set_rand_test",
+          "seed": 299502271,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 226.335,
           "name": "sep_km_kpv_scrambler_test",
-          "seed": 1857651523,
+          "seed": 784208119,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 201.757,
+          "duration_sec": 174.841,
           "name": "sep_km_kpv_scrambler_test",
-          "seed": 97756131,
+          "seed": 1230572654,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 49.452,
+          "duration_sec": 46.243,
           "name": "sep_reg_bit_bash_rand_test",
-          "seed": 341210371,
+          "seed": 1538283633,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 50.581,
-          "name": "sep_reg_bit_bash_rand_test",
-          "seed": 1244952173,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 51.019,
-          "name": "sep_reg_bit_bash_rand_test",
-          "seed": 1820381935,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 893.1,
-          "name": "sep_km_command_set_rand_test",
-          "seed": 671892838,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 878.818,
-          "name": "sep_km_command_set_rand_test",
-          "seed": 162597801,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 851.066,
-          "name": "sep_km_command_set_rand_test",
-          "seed": 1539189487,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 16.721,
-          "name": "sep_axi_map_refuse_test",
-          "seed": 511740621,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 14.853,
-          "name": "sep_axi_map_refuse_test",
-          "seed": 1534938570,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 930.936,
+          "duration_sec": 893.399,
           "name": "sep_fabric_outbound_remap_filter_walk_test",
-          "seed": 1261397505,
+          "seed": 976399286,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 14.081,
+          "duration_sec": 11.708,
           "name": "sep_axi_map_refuse_test",
-          "seed": 259002100,
+          "seed": 1475471896,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 15.742,
-          "name": "sep_axi_id_routing_test",
-          "seed": 1937820931,
+          "duration_sec": 55.164,
+          "name": "sep_reg_bit_bash_rand_test",
+          "seed": 590332753,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 16.126,
-          "name": "sep_axi_strobe_window_test",
-          "seed": 1828972308,
+          "duration_sec": 39.955,
+          "name": "sep_reg_bit_bash_rand_test",
+          "seed": 827873467,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 22.589,
-          "name": "sep_axi_strobe_window_test",
-          "seed": 1835814255,
+          "duration_sec": 9.198,
+          "name": "sep_axi_map_refuse_test",
+          "seed": 1558986324,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 9.565,
+          "name": "sep_axi_map_refuse_test",
+          "seed": 850302638,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 640.0,
+          "duration_sec": 636.709,
           "name": "sep_km_abr_mlkem_sideload_test",
-          "seed": 2143659057,
+          "seed": 872539284,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 81.183,
+          "duration_sec": 79.071,
           "name": "sep_fabric_deadspace_decode_test",
-          "seed": 589187643,
+          "seed": 3905641,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 24.569,
+          "duration_sec": 12.646,
+          "name": "sep_axi_id_routing_test",
+          "seed": 1747544418,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 12.036,
           "name": "sep_axi_strobe_window_test",
-          "seed": 1139479244,
+          "seed": 1488626916,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 16.44,
+          "duration_sec": 12.692,
+          "name": "sep_axi_strobe_window_test",
+          "seed": 1163947436,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 13.136,
+          "name": "sep_axi_strobe_window_test",
+          "seed": 682723351,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 949.865,
+          "name": "sep_km_command_set_rand_test",
+          "seed": 424428437,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 960.354,
+          "name": "sep_km_command_set_rand_test",
+          "seed": 119809108,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 16.457,
           "name": "sep_axi_partial_lane_read_test",
-          "seed": 327499385,
+          "seed": 973637829,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 19.282,
+          "duration_sec": 15.436,
           "name": "sep_axi_partial_lane_read_test",
-          "seed": 1705603453,
+          "seed": 760853973,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 19.014,
+          "duration_sec": 37.595,
           "name": "sep_axi_partial_lane_read_test",
-          "seed": 2019596367,
+          "seed": 624744126,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 11.917,
+          "duration_sec": 14.235,
           "name": "sep_drbg_axil_adapter_port_arbitration_test",
-          "seed": 1359509193,
+          "seed": 1076022301,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 15.659,
+          "duration_sec": 98.068,
+          "name": "sep_axi_order_sweep_test",
+          "seed": 55092084,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 105.654,
+          "name": "sep_axi_order_sweep_test",
+          "seed": 405347092,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 12.377,
           "name": "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
-          "seed": 1120634145,
+          "seed": 1002310818,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 65.807,
+          "duration_sec": 117.849,
           "name": "sep_axi_order_sweep_test",
-          "seed": 1085253579,
+          "seed": 870698916,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 81.074,
-          "name": "sep_axi_order_sweep_test",
-          "seed": 1715323495,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 42.485,
+          "duration_sec": 97.619,
           "name": "sep_axi_order_sweep_m_axi_test",
-          "seed": 682227062,
+          "seed": 1110183561,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 51.631,
+          "duration_sec": 90.859,
           "name": "sep_axi_order_sweep_m_axi_test",
-          "seed": 1699908368,
+          "seed": 1257258839,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 43.002,
+          "duration_sec": 89.775,
           "name": "sep_axi_order_sweep_m_axi_test",
-          "seed": 1692932718,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 18.464,
-          "name": "sep_locked_field_access_irq_path_test",
-          "seed": 1506261570,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 21.822,
-          "name": "sep_locked_field_access_irq_path_test",
-          "seed": 691065599,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 18.372,
-          "name": "sep_locked_field_access_irq_path_test",
-          "seed": 1517114410,
+          "seed": 1790764444,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 74.551,
-          "name": "sep_entropy_pool_aperture_test",
-          "seed": 1170269384,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 20.211,
-          "name": "sep_efuse_km_public_id_test",
-          "seed": 915306019,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 19.155,
-          "name": "sep_efuse_km_public_id_test",
-          "seed": 1305617052,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 125.77,
-          "name": "sep_axi_order_sweep_test",
-          "seed": 1293975108,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 73.088,
-          "name": "sep_entropy_pool_aperture_test",
-          "seed": 1746927368,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 75.083,
-          "name": "sep_entropy_pool_aperture_test",
-          "seed": 109905490,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 27.284,
-          "name": "sep_efuse_km_public_id_test",
-          "seed": 556671944,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 23.164,
-          "name": "sep_efuse_secure_tm_write_lock_test",
-          "seed": 1381664183,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 19.164,
-          "name": "sep_efuse_secure_tm_write_lock_test",
-          "seed": 203422444,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 14.645,
-          "name": "sep_efuse_secure_tm_write_lock_test",
-          "seed": 1110570418,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 18.624,
+          "duration_sec": 10.688,
           "name": "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
-          "seed": 1856126294,
+          "seed": 1544378080,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 13.215,
+          "duration_sec": 106.584,
+          "name": "sep_entropy_pool_aperture_test",
+          "seed": 1169622719,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 119.703,
+          "name": "sep_entropy_pool_aperture_test",
+          "seed": 1331471618,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 15.465,
+          "name": "sep_locked_field_access_irq_path_test",
+          "seed": 1018646799,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 18.174,
+          "name": "sep_locked_field_access_irq_path_test",
+          "seed": 1891813386,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 12.504,
+          "name": "sep_locked_field_access_irq_path_test",
+          "seed": 488026655,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 22.827,
+          "name": "sep_efuse_km_public_id_test",
+          "seed": 1208636322,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 124.733,
+          "name": "sep_entropy_pool_aperture_test",
+          "seed": 267165587,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 20.039,
+          "name": "sep_efuse_km_public_id_test",
+          "seed": 825022614,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 23.23,
+          "name": "sep_efuse_km_public_id_test",
+          "seed": 1055619651,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 15.088,
+          "name": "sep_efuse_secure_tm_write_lock_test",
+          "seed": 1236673229,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 14.38,
+          "name": "sep_efuse_secure_tm_write_lock_test",
+          "seed": 1820369866,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 14.163,
+          "name": "sep_efuse_secure_tm_write_lock_test",
+          "seed": 701878127,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "system",
+          "duration_sec": 14.774,
           "name": "sep_crypto_csr_wide_access_test",
-          "seed": 867908341,
+          "seed": 1890723545,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 14.37,
+          "duration_sec": 15.349,
           "name": "sep_abr_pipelined_read_test",
-          "seed": 813836525,
+          "seed": 1377383866,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 16.844,
+          "duration_sec": 15.615,
           "name": "sep_abr_pipelined_read_matrix_test",
-          "seed": 1825671572,
+          "seed": 321547278,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 23.766,
+          "duration_sec": 19.508,
           "name": "sep_abr_access_size_test",
-          "seed": 1066802313,
+          "seed": 937298929,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.959,
+          "duration_sec": 13.679,
           "name": "sep_abr_concurrent_rw_test",
-          "seed": 813362485,
+          "seed": 1932889521,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.552,
+          "duration_sec": 13.924,
           "name": "sep_abr_concurrent_rw_test",
-          "seed": 1829220436,
+          "seed": 1206262808,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 20.309,
+          "duration_sec": 13.965,
           "name": "sep_abr_concurrent_rw_test",
-          "seed": 566010297,
+          "seed": 1278611130,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 84.013,
-          "name": "sep_abr_mldsa_keygen_kat_test",
-          "seed": 411737031,
-          "stage": "sim",
-          "status": "PASS"
-        },
-        {
-          "category": "system",
-          "duration_sec": 22.219,
-          "name": "sep_fabric_burst_wrap_test",
-          "seed": 622346980,
-          "stage": "sim",
-          "status": "FAIL"
-        },
-        {
-          "category": "subsystem",
-          "duration_sec": 15.467,
+          "duration_sec": 11.618,
           "name": "sep_sram_burst_type_test",
-          "seed": 180452404,
+          "seed": 1065178959,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 13.958,
+          "duration_sec": 13.572,
           "name": "sep_km_rom_write_err_test",
-          "seed": 7361161,
+          "seed": 886142581,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 14.447,
+          "duration_sec": 16.075,
           "name": "sep_km_otp_shim_unreachable_test",
-          "seed": 1231175984,
+          "seed": 2002128700,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 17.063,
+          "duration_sec": 15.885,
           "name": "sep_km_otp_shim_unreachable_test",
-          "seed": 1348653587,
+          "seed": 1283976021,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 18.7,
+          "duration_sec": 15.893,
           "name": "sep_km_otp_shim_unreachable_test",
-          "seed": 613474271,
+          "seed": 1914905739,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 23.314,
+          "duration_sec": 16.086,
           "name": "sep_km_vrom_decerr_test",
-          "seed": 1295610541,
+          "seed": 1717186098,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 21.386,
+          "duration_sec": 131.42,
+          "name": "sep_abr_mldsa_keygen_kat_test",
+          "seed": 82448536,
+          "stage": "sim",
+          "status": "PASS"
+        },
+        {
+          "category": "subsystem",
+          "duration_sec": 19.437,
           "name": "sep_km_ic_reset_release_test",
-          "seed": 196063289,
+          "seed": 1707592417,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 155.25,
+          "duration_sec": 177.598,
           "name": "sep_abr_mlkem_kat_test",
-          "seed": 1656423382,
+          "seed": 22263326,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "system",
-          "duration_sec": 258.035,
+          "duration_sec": 246.306,
           "name": "sep_unmapped_access_policy_test",
-          "seed": 675431315,
+          "seed": 525202529,
           "stage": "sim",
           "status": "PASS"
         },
         {
           "category": "subsystem",
-          "duration_sec": 447.413,
+          "duration_sec": 754.102,
           "name": "sep_abr_mldsa_sign_verify_kat_test",
-          "seed": 1607615130,
+          "seed": 1402935092,
           "stage": "sim",
           "status": "PASS"
+        }
+      ],
+      "tool": "vcs"
+    },
+    {
+      "flow": "sep",
+      "framework": "uvm",
+      "tests": [
+        {
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "sep_axi_smoke_test",
+          "seed": 501763090,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "sep_address_map_test",
+          "seed": 551082572,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "sep_sram_smoke_test",
+          "seed": 1923921529,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "sep_km_mem_smoke_test",
+          "seed": 2120474798,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "sep_otbn_mem_smoke_test",
+          "seed": 1594334965,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "sep_efuse_sense_test",
+          "seed": 978934722,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "category": "system",
+          "duration_sec": 0.0,
+          "name": "sep_clock_uvm_wdt_rst_input_reset_path_test",
+          "seed": 252780798,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "category": "system",
+          "duration_sec": 0.0,
+          "name": "sep_irq_ip_to_aggregator_test",
+          "seed": 1317986226,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "category": "system",
+          "duration_sec": 0.0,
+          "name": "sep_periph_bus_err_misaligned_test",
+          "seed": 1834457997,
+          "stage": "sim",
+          "status": "ERROR"
         }
       ],
       "tool": "vcs"
