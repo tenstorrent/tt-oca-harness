@@ -99,7 +99,8 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test_seq extends sep_base_test_seq;
         iso_changes == 0 && tb_vif.sep_reset_n === 1'b1,
         $sformatf(
             "wdt_rst_ni assert/release window -> sep_reset_n held 1: value_changes=%0d end=%b",
-            iso_changes, tb_vif.sep_reset_n)
+            iso_changes,
+            tb_vif.sep_reset_n)
     ));
 
     log_step("D", "isolation observable control: assert rst_ni");

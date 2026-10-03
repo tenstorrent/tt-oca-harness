@@ -352,7 +352,11 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
           held == StickyHoldCycles,
           $sformatf(
               "%s.sticky INTR_TEST=0 without W1C agg[%0d] held=%0d of %0d last=%b",
-              src.name, src.agg_idx, held, StickyHoldCycles, vec[src.agg_idx])
+              src.name,
+              src.agg_idx,
+              held,
+              StickyHoldCycles,
+              vec[src.agg_idx])
       );
       all_ok &= ok;
       check_csr_bits(ChkClr, src.state_addr, src.state_mask, src.state_mask, {
