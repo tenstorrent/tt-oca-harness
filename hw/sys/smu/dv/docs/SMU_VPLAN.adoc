@@ -94,7 +94,7 @@ elaborated on the `compile_smu_chiplet` profile (`SEP=1`, the real SEP core,
 the open-source IP integration attached). The behaviours below sit inside a block another
 plan owns, behind a pad the bench does not model, or on a path the tree has
 no stimulus for; a green SMU regression says nothing about them, and
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` records the disposition of
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` records the disposition of
 every name that was catalogued against them.
 
 [cols="1,2",options="header",]
@@ -107,7 +107,7 @@ every name that was catalogued against them.
 |The eFuse macros |`efuse_bank_model` answers every sense behind the shim (an approved stand-in)
 |The asynchronous cold-reset assertion path |The RTL de-glitches the assertion; the scenario is catalogued in the disposition record with the RTL ruling it waits on
 |Live SMC↔SEP mailbox challenge-response and SEP=1 fetch/retire as feature credit |Firmware-driven SEP scenarios need the toolchain container; they run in `all`, not in the scheduled `hosted` set, and count as observe-only
-|The SEP=0 composition, `smu #(.CFG(smu_pkg::NoSepCfg))`: the direct ID-width converters in place of `smu_axi_xbar`, the `lc_state` and demote tie-offs, the SEP=0 OTP error slave |Not verified in this tree: no target of this package elaborates SEP=0. The names that prove that shape are catalogued `not-runnable` in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`, bodies in git history, and that record owns them until a plan builds the elaboration they need
+|The SEP=0 composition, `smu #(.CFG(smu_pkg::NoSepCfg))`: the direct ID-width converters in place of `smu_axi_xbar`, the `lc_state` and demote tie-offs, the SEP=0 OTP error slave |Not verified in this tree: no target of this package elaborates SEP=0. The names that prove that shape are catalogued `not-runnable` in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, bodies in git history, and that record owns them until a plan builds the elaboration they need
 |===
 
 [[smu-scope-traceability]]
@@ -116,7 +116,7 @@ every name that was catalogued against them.
 This section is the requirement-to-test-to-coverage matrix for features
 F1–F7, which the <<smu-feature-list,hosted feature list>> under Signoff
 Package defines together with the hosted subset and the per-leaf
-`TEST_EVIDENCE` tokens; `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`
+`TEST_EVIDENCE` tokens; `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`
 classifies the OUT names. Live group
 membership for `--dut smu` is `testlists/all.toml`.
 
@@ -125,7 +125,7 @@ membership for `--dut smu` is `testlists/all.toml`.
 |Field |Value
 |DUT |`--dut smu` → `hw/top/smu_wrapper.sv` under `smu_wrapper_uvm_top`, on its compile profile `compile_smu_chiplet` (alias `smu_wrapper`)
 |Spec / plan |<<smu-feature-list,hosted feature list>> Features 1–7
-|Coverage intent |`TEST_EVIDENCE` tokens for feature credit; the `cov/sv` cover properties (the `user` family) on Verilator and VCS, and toggle over the SMU's own logic on VCS (`hw/sys/smu/doc/dv/SMU_COVERAGE_POLICY.adoc`)
+|Coverage intent |`TEST_EVIDENCE` tokens for feature credit; the `cov/sv` cover properties (the `user` family) on Verilator and VCS, and toggle over the SMU's own logic on VCS (`hw/sys/smu/dv/docs/SMU_COVERAGE_POLICY.adoc`)
 |Checker |`SmuScoreboard` named `evidence=` / `expect_*` tokens + `results.xml`
 |CI |`.github/workflows/sim.yml` (PR gate) runs `smoke`; `.github/workflows/regress.yml` runs `hosted`
 |===
@@ -154,7 +154,7 @@ runs its `hosted`. PASSes carry `DUT_TAG=WRAPPER`.
   already emits and a non-vacuous `SmuScoreboard` count. The map must not
   invent a checkbox the body cannot prove.
 * Credit is the enrolled `hosted` set.
-* Every name in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` is OUT and reports no PASS.
+* Every name in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` is OUT and reports no PASS.
 * The SEP=0 composition is OUT of this matrix: no target elaborates it, and
   its names are `not-runnable` in the disposition record.
 * SEP=1 instantiate / fetch / retire (F2) and live SMC↔SEP mailbox
@@ -173,7 +173,7 @@ Signoff Package; this table is the credit decision.
 |===
 |Requirement |Canonical tests |Groups |Coverage intent |Checker evidence |Credit
 |F1 SMC boot / firmware observe |reset / mailbox / WDT / OCTS cluster (`smu_smc_reset_ctrl_test`, `smu_smc_mailbox_sanity_test`, `smu_smc_wdt_sanity_test`, `smu_system_timer_octs_test`) |`hosted` |`smu_boot_fcov` (`c_release_primary_smc`, `c_init_mem_done`, `c_fuse_sense_done`), `smu_rst_fcov` (`c_smc_released`, `c_auto_init_runs`), `smu_ext_fcov` (`c_ss_reset_ctrl_array_32`, `c_ss_config_present`) |`RST_PRIMARY_SMC_1`, `SMC_MBX_CSR_OK`, `WDT_UNLOCK_OK`, `CHK-OCTS-COUNT-MONOTONIC` |YES for the cluster. `smu_smc_smoke_test` (`SMC_TEST_PASS_OK`) is in `fw_boot` / `all` only, which nothing schedules, and adds no credit here
-|F1 GPIO strap |none: `smc_wrapper` declares no `captured_straps_i`, so the feature has no testcase in this package (`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`) |none |none |none |NO
+|F1 GPIO strap |none: `smc_wrapper` declares no `captured_straps_i`, so the feature has no testcase in this package (`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`) |none |none |none |NO
 |F1 boot-sequence gate |`smu_ext_boot_seq_gate_test` |`hosted`, `smoke` |`smu_boot_fcov` `c_ext_boot_seq_done`, `smu_rst_fcov` `c_reset_release_after_boot_seq_done` |`CHK-BOOT-SEQ-GATE` |YES
 |F1 mailbox IRQ export |`smu_smc_mailbox_int_test` |`hosted`, `smc_under_smu` |`smu_ext_fcov` `c_mailbox_irq_out_width_32` |`CHK-SMC-MBX-IRQ-EXT-S2` |YES
 |F2 Real SEP under SMU |`smu_sep_smoke_test` |`fw_boot`, `all` |none |`SEP_BOOT_ROM_OK` (F1 observe / F6 export on the wrapper) |NO. OUT of `hosted` credit: the leaf boots SEP firmware, so its `c_build` stage needs the RISC-V toolchain and it sits in `fw_boot` / `all`, which no workflow schedules; `regress.yml` schedules `hosted` alone
@@ -325,7 +325,7 @@ Each entry below is a test body and its sequence: one card for every member
 of the wrapper `all` group (`testlists/all.toml`, `--dut smu`), and no card for
 anything else. Scenarios
 that cannot run or cannot pass on this bench are recorded in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`, not here. The
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, not here. The
 Checkers table lists the evidence tokens the body emits, and those tokens are
 also the `(CHK_ID, TOKEN, EXPECT)` rows in `cocotb/env/smu_evidence_map.py`.
 Those rows are a token contract, not a behavioural one: the gate that
@@ -572,7 +572,7 @@ row's EXPECT sentence is worth, read the check.
 
 * The wrapper elaborates SEP=1, so `ext_in` traffic is routed by `smu_axi_xbar` to the SMC inbound subordinate (`hw/sys/smu/doc/index.adoc`, "AXI Crossbar", row `ext_in` -> `smc_in`). The `ext_in_*` pins carry 8-bit transaction IDs (`tb/tb_wrapper_top.sv`) and the SMC system input carries 6-bit ones (`doc/integrator/src/smu.adoc`, "AXI Interface Configuration"), so a RID that returns on `ext_in_rid` equal to the issued ARID has crossed the fabric's ID handling in both directions.
 * Three probes on one `CHIP_CONFIG` register page, each under a distinct seed-drawn ARID, must complete OKAY with RID == ARID, and the `VERSION_LO` probe must return its RDL reset value. The error slave that answers an unprogrammed SYS_IN also echoes the ARID, so OKAY together with the reset value is what distinguishes the register route from that slave.
-* The SEP=0 direct ID converter (`gen_no_sep`) is not elaborated on this bench and is not claimed here; no target of this package covers it, and the names that prove it (`smu_axi_external_port_connectivity_test`, `smu_axi_xbar_structure_test`) are `not-runnable` in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+* The SEP=0 direct ID converter (`gen_no_sep`) is not elaborated on this bench and is not claimed here; no target of this package covers it, and the names that prove it (`smu_axi_external_port_connectivity_test`, `smu_axi_xbar_structure_test`) are `not-runnable` in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 * Deny-path (DECERR / err_slv poison) is out of scope here: claiming DECERR without the allow control in the same run would violate NEGATIVE-NEEDS-POSITIVE-CONTROL.
 
 *Test Procedure*:
@@ -676,7 +676,7 @@ row's EXPECT sentence is worth, read the check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: OTP then fabric JTAG2AXI writes to the same MAP SPARE[0] word back to back: the later writer wins on both read paths and in the shadow register, with no torn value. The `_race_` in the test name is historical and overstates this; the concurrency case it suggests is carried as a waived row in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`, with the reason no stimulus on this bench can produce it.
+*Objective*: OTP then fabric JTAG2AXI writes to the same MAP SPARE[0] word back to back: the later writer wins on both read paths and in the shadow register, with no torn value. The `_race_` in the test name is historical and overstates this; the concurrency case it suggests is carried as a waived row in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, with the reason no stimulus on this bench can produce it.
 
 *Test Coverage*:
 
@@ -1813,7 +1813,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 * The SMN request/response struct widths, the crossbar-side ID width of both ID-width converters and the SEP-side ID width have no specification in this tree. Those compares are untokened drift checks against a recorded elaboration; no checker row rests on them.
 * The idle-value compares read an output after bring-up against the value the specification gives for that state: `ss_config_o` equals the `SS_CONFIG` reset value, and `skip_mem_repair_o` is clear while no isolation request is pending (`smu.adoc`, memory repair: a cold reset without isolation executes repair), with the wrapper FLR pin sampled low as the precondition. Each can fail on a wrong idle value; neither distinguishes an undriven output from one driven to that value. Write-through of `SS_CONFIG` to `ss_config_o` and the FLR path onto `skip_mem_repair_o` are proven by `smu_smc_boundary_io_test`.
 * `smc_shadow_regs_o`: `port_table.adoc` types it `smc_efuse_pkg::efuse_map_t` and states no width, so the `smu_wrapper` port and the bench net are compared at width with the `smu` port. After `smc_fuse_sense_done_o` rises for the cold boot, the `smu` port, the `smu_wrapper` port and the bench net each carry the image `+smc_efuse_hex` names, fuse word `i` at shadow bits `32i+31..32i`; the image programs every bit, and the leaf requires it to program at least one, so a disconnected or narrowed wrapper port reads a zero where the image has a one.
-* The CTP data inputs are read at their resting level at the SMU boundary and at the DTP consumer. `smu_wrapper` passes them through; the bench, as the integrator the port table's "Tie to '0 if unused" note addresses, holds `req_in`, `ack_in` and `ack_out` at zero (`tb/tb_wrapper_top.sv` ties `ack_out`, and `req_in` and `ack_in` follow bench nets `smu_base_test` drives to zero; stand-in entry "CTP data-input tie-offs" in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`), and `req_out` sits on the bench's wire-OR board and rests at all ones, the pull-up of the active-low wire the generated header's `CONFIG.INVERT` reset of 0 selects, with no chiplet pulling. Every CTP output and the CTM boundary must then stay static at zero over the inert window; that leg is device-observed. A cross-trigger block held in reset, unclocked or disconnected would also stay static, so `smu_xtrig_ctp_pad_test` (<<sec-063-smu_xtrig_ctp_pad_test>>) is the live control for this leg: on the same bench a request on `xtrig_ctp_req_in_din_i[0]` raises `xtrig_ctp_ack_out_dout_o[0]` at the pads.
+* The CTP data inputs are read at their resting level at the SMU boundary and at the DTP consumer. `smu_wrapper` passes them through; the bench, as the integrator the port table's "Tie to '0 if unused" note addresses, holds `req_in`, `ack_in` and `ack_out` at zero (`tb/tb_wrapper_top.sv` ties `ack_out`, and `req_in` and `ack_in` follow bench nets `smu_base_test` drives to zero; stand-in entry "CTP data-input tie-offs" in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`), and `req_out` sits on the bench's wire-OR board and rests at all ones, the pull-up of the active-low wire the generated header's `CONFIG.INVERT` reset of 0 selects, with no chiplet pulling. Every CTP output and the CTM boundary must then stay static at zero over the inert window; that leg is device-observed. A cross-trigger block held in reset, unclocked or disconnected would also stay static, so `smu_xtrig_ctp_pad_test` (<<sec-063-smu_xtrig_ctp_pad_test>>) is the live control for this leg: on the same bench a request on `xtrig_ctp_req_in_din_i[0]` raises `xtrig_ctp_ack_out_dout_o[0]` at the pads.
 
 *Test Procedure*:
 
@@ -5125,7 +5125,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * S4: each outbound mailbox raises its interrupt while its write FIFO holds more words than WIRQT with the write-threshold interrupt enabled (`axil_mailbox` register description). For each of the eight mailboxes, with WIRQT 0 and IRQEN.wtirq set and the write FIFO empty, `sep_mailbox_interrupts` reads 0; a word written then raises that lane alone, and flushing the FIFO, acknowledging IRQS and clearing IRQEN drop it.
 * S5: with the SPI host enabled and its outputs driven (`spi_host.hjson`), the data lanes are sampled once before any command as the idle baseline; two quad-speed transmits of four bytes then drive all four data lanes high, move every lane off its idle level, and raise every output enable, and a quad-speed receive of four bytes (COMMAND.LEN 3), which completes with STATUS.ACTIVE low, takes STATUS.RXQD from 0 to one 32-bit word and leaves every enable low. With EVENT_ENABLE.IDLE and INTR_ENABLE.SPI_EVENT set and the host idle, INTR_STATE.SPI_EVENT and the interrupt line are high; a write of 1 to INTR_STATE.SPI_EVENT, which the RDL makes read-only (`spi_controller.rdl`), leaves both high, and clearing EVENT_ENABLE.IDLE drops both, since SPI_EVENT "follows the level of the events selected by EVENT_ENABLE" (`hw/sys/sep/doc/spi.adoc`). The LSIO trigger with the TX FIFO empty, and the values 0xF, 0x0, 0x5, 0xA and 0x0 the bench drives on GPIO pads 0..3 as seen on `sep_spi_rxd[3:0]`, are recorded as observations.
 * S6: the bench-bound digest is the hash of the all-zero token, so writing that token and the GO strobe reports the match code in SEC_DISABLE_TOKEN_MATCH and raises `sep_security_disable` (`hw/sys/sep/doc/security_disable.adoc`, "Token Activation"), read at the SEP eFuse controller's `security_disable_o`, the `smu` wire and the SMC input `u_smc.sep_security_disable_i`, all 0 before the token and all 1 after the match; a token one bit off then reports the mismatch code (`efuse_mmr.rdl`: "Match = 6'b010101, Mismatch = 6'b101010"). The disable level after the mismatch is recorded.
-* S6 stand-in: on a four-state simulator S6 runs with `ValidDigestModeFlag_A` on the eFuse token processing's SHA-256 `prim_sha2_32` instances ignored by `smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` (the "SEP assertion-ignore patterns" record in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`); on Verilator `+define+ASSERTS_OFF` compiles it out. The verdict is the match and mismatch codes read over the system bus and the security-disable levels, not the assertion. The record's approval fields are `pending`, so until a person fills them `CHK-SEP-SECURITY-DISABLE` is graded as if the stand-in were undeclared. Approver: pending. Date, revision: pending. Review or expiry: pending.
+* S6 stand-in: on a four-state simulator S6 runs with `ValidDigestModeFlag_A` on the eFuse token processing's SHA-256 `prim_sha2_32` instances ignored by `smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` (the "SEP assertion-ignore patterns" record in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`); on Verilator `+define+ASSERTS_OFF` compiles it out. The verdict is the match and mismatch codes read over the system bus and the security-disable levels, not the assertion. The record's approval fields are `pending`, so until a person fills them `CHK-SEP-SECURITY-DISABLE` is graded as if the stand-in were undeclared. Approver: pending. Date, revision: pending. Review or expiry: pending.
 * S7: `sep_wdt_timer_rst_req` is low; with WDOG_CTRL.enable set and bark and bite thresholds of 0x20 (OpenTitan `aon_timer`), the watchdog bites and the request rises (`aon_timer.hjson`: "A bite triggers a reset"). The request level after the cool reset pin is held and released is recorded.
 * S8: the bench drives GPIO pads 4..7, 10 and 54 high and records SPI lanes 4..7, DQS and the rebar loopback while the chip runs, in cold reset and after the release.
 * Spec gaps: no specification states when the SPI host's LSIO trigger rises; the GPIO pin table (`doc/integrator/meta/ocah_gpio_table.adoc`) assigns pads 0..7, 10 and 54 to the SMC SPI and gives the SEP SPI no pad, so nothing states what the SEP SPI receive lanes read; no specification states whether a security-disable token mismatch withdraws an earlier match, or what clears the SEP watchdog reset request. Those values are observations until the specification states them.
@@ -5320,7 +5320,7 @@ card names the groups its test is enrolled in.
 
 The SMU signoff package is this book plus the tracker: the feature list,
 the scope and traceability matrix, the release matrix, the component scope
-and the disposition record (`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`)
+and the disposition record (`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`)
 hold across candidates, and the tracker's signoff item carries what belongs to
 one candidate (the commit, the run trees it was qualified with, the open
 issues and their release dispositions). Feature credit is the
@@ -5337,7 +5337,7 @@ specification in this tree. The hardware facts the features describe are in
 `doc/integrator/src/smu.adoc`.
 
 The executable contract is `testlists/all.toml`. Feature credit is
-the enrolled `hosted` group. Names in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`
+the enrolled `hosted` group. Names in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`
 and SEP=1 work are OUT.
 
 [cols=",",options="header",]
@@ -5347,7 +5347,7 @@ and SEP=1 work are OUT.
 |Feature-credit group |`hosted` (`--dut smu`)
 |PR smoke |`smoke` (`smu_dtp_jtag_smoke_test`, `smu_ext_boot_seq_gate_test`)
 |Evidence map |`cocotb/env/smu_evidence_map.py` `TEST_EVIDENCE`
-|OUT catalog |`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`
+|OUT catalog |`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`
 |===
 
 [[smu-feature-subset]]
@@ -5453,7 +5453,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 [[smu-out-and-wrapper]]
 ===== OUT, wrapper, and missing commercial names
 
-* Every name in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset,
+* Every name in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset,
   and none of them has a `TEST_EVIDENCE` row: the map holds rows only for
   names with a test body in this tree.
 * `--dut smu` is the wrapper bench and carries `hosted` itself; PASSes are
@@ -5493,7 +5493,7 @@ toolchain container and is not a CI tier.
 * `smu_ext_boot_seq_gate_test` is in `hosted` and `smoke`.
   It is not a member of `fw_boot`.
 * Feature credit is the enrolled `hosted` set on `--dut smu`. The SEP=1
-  firmware groups and the names in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` are OUT.
+  firmware groups and the names in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` are OUT.
 
 [[smu-hosted-component-signoff]]
 === Component Signoff
@@ -5501,7 +5501,7 @@ toolchain container and is not a CI tier.
 This section defines the hosted component scope. Feature credit is the
 enrolled `hosted` set, which runs on `--dut smu` — the wrapper, whose
 PASSes carry `DUT_TAG=WRAPPER`. The names in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` are OUT.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` are OUT.
 
 [[smu-signoff-jtag2axi-otp-filter]]
 ==== JTAG2AXI / OTP / filter depth
@@ -5532,7 +5532,7 @@ The JTAG2AXI, OTP and filter depth tests are enrolled in `hosted`:
 `smu_dtp_otp_debug_access_test`,
 `smu_dtp_otp_sep0_err_slv_test`, and the other `feat_ctrl` / OTP names
 that need the SEP=1 lifecycle controller have OUT rows in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`, as do
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`, as do
 `smu_dtp_jtag2axi_abort_mid_op_test` (needs an OTP interface that holds
 SINGLE_OP in BUSY) and `smu_dtp_ptap_otp_instr_scan_test` (needs the SEP=0
 OTP error slave); both need `smu #(.CFG(smu_pkg::NoSepCfg))`, which this package does not
@@ -5564,7 +5564,7 @@ Release-group (`hosted`) SMC-under-SMU names:
 `smu_smc_mailbox_sanity_test`. The SEP=0 composition and demote observes
 (`smu_no_sep_configuration_test`, `smu_smc_security_demote_pm_test`) are OUT:
 they need `smu #(.CFG(smu_pkg::NoSepCfg))`, which this package does not build, and are
-`not-runnable` in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`not-runnable` in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 `smu_smc_smoke_test` -- the SMC ROM boot to PASS on the wrapper -- is not in
 `hosted`. It is enrolled in `fw_boot` and `all`, which need the SMC
@@ -5586,7 +5586,7 @@ and product-pin CTM remap (`smu_xtrig_ctm_remap_test`) are the enrolled
 DTP-under-SMU set in `hosted`. Block-level DTP signoff is the DTP package.
 
 `feat_ctrl` scenarios that need the SEP=1 lifecycle controller are OUT in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 [[smu-signoff-hosted-fabric]]
 ==== Hosted fabric
@@ -5615,7 +5615,7 @@ covered above. SEP=1 3×3 xbar receives no release credit.
   master can reach, the JTAG2AXI abort scenario, the SEP=0 composition
   proofs, and the
   asynchronous cold-reset assertion the RTL does not implement -- are
-  catalogued in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` with the
+  catalogued in `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` with the
   condition each needs, and have no entry in this plan or in any testlist.
 * *Cross-trigger and iJTAG have no OCAH-local model*, so the coverage those
   interfaces get is what the DTP-under-SMU tests reach through JTAG and the
@@ -5627,9 +5627,9 @@ covered above. SEP=1 3×3 xbar receives no release credit.
   cell with the behavioural stand-in in
   `hw/sys/smc/dv/tb/verilator_stubs/`.* VCS drops it. Xcelium receives
   both files; which of the pair it elaborates is not established. The
-  leaves that observe a crossing are named in <<smu-bench-standins>>.
+  leaves that observe a crossing are named in <<smu-vplan-bench-standins>>.
 
-[[smu-bench-standins]]
+[[smu-vplan-bench-standins]]
 ==== Bench stand-ins
 
 The `prim_sync3` file listed in `smu_sim_cfg.toml`
@@ -5647,6 +5647,6 @@ reset-release observes of `smu_smc_reset_ctrl_test` and
 `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five
 boot-stall leaves), and the condition that closes the entry are the
 `prim_sync3` stand-in row of
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` (*Bench stand-ins and
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` (*Bench stand-ins and
 exceptions*). No VCS control run with the product cells is recorded on
 this composition.

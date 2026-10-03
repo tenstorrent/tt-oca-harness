@@ -24,7 +24,7 @@ the same module in its `UVM` shape under `--framework uvm`
 |===
 
 Logs carry `DUT_TAG=WRAPPER`. The SEP=0 composition (`smu #(.CFG(smu_pkg::NoSepCfg))`) is
-not elaborated by this package; `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`
+not elaborated by this package; `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`
 holds the names that need it.
 
 === Directory Structure
@@ -92,7 +92,7 @@ SEP=1 leaves; it and every other stand-in on a proof path (the fuse-sense
 skip, the `abr_reg.sv` waiver, the scan-chain loopbacks, the `prim_sync`
 stand-ins, the eFuse models) have a six-field entry in the *Bench stand-ins
 and exceptions* section of
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`. A scenario that needs a
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`. A scenario that needs a
 force or deposit outside that record is not reportable as PASS and is
 classified OUT in the same document.
 
@@ -227,7 +227,7 @@ registers are preloaded under `+skip_fuse_sense`
 
 The last three rows are stand-ins on a proof path; their scope and approval
 fields are the *Bench stand-ins and exceptions* entries in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 === Testlists
 
@@ -238,7 +238,7 @@ selects; the groups it declares, and what each group is for, are the
 own name or by any group it belongs to.
 
 Names classified deferred or OUT are catalogued in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`; none of them is enrolled and
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`; none of them is enrolled and
 none is reportable as a PASS.
 
 [[sv-uvm-realization]]

@@ -12,7 +12,7 @@ BFM table), `docs/SMU_VPLAN.adoc` (what every enrolled test intends and
 checks, and under its Signoff Package the feature list, the scope and
 traceability matrix, the release matrix and the component scope),
 `docs/SMU_FCOV.adoc` (coverage intent), and the two decision records under
-`hw/sys/smu/doc/dv/` (`SMU_DEFERRED_DISPOSITION`, `SMU_COVERAGE_POLICY`).
+`hw/sys/smu/dv/docs/` (`SMU_DEFERRED_DISPOSITION`, `SMU_COVERAGE_POLICY`).
 `docs/index.adoc` is the chapter set.
 
 ## What the bench is
@@ -29,7 +29,7 @@ The `SEP=0` composition (`smu #(.CFG(smu_pkg::NoSepCfg))`: no crossbar, direct I
 SEP aperture and lifecycle tie-offs) is not elaborated by this package; the
 names that need it, and the JTAG2AXI abort scenario, which needs an OTP
 interface that hangs, are catalogued in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 **What it verifies.** With `elaboration` firmware, four surfaces of the SMU at its
 own boundary: the fabric and address decode (external SMN AXI into SMC,
@@ -52,7 +52,7 @@ leaves -- the firmware's own terminal loop, observed by the bench. The one
 signal the bench forces (`+esrc_noise_force`, the ESRC raw-noise lanes) and
 the other stand-ins on a proof path are recorded, with their scope and
 approval fields, in the *Bench stand-ins and exceptions* section of
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 **Simulators.** Verilator runs every enrolled group and is the only
 simulator with a build and a coverage section in the sim config; it is
@@ -346,6 +346,6 @@ Every test entry of the testlist is in `all`, and every test module under
 this bench -- among them the SEP=0 composition proofs, which need the
 `smu #(.CFG(smu_pkg::NoSepCfg))` elaboration this package does not build -- are enrolled
 nowhere and have no module in the tree:
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` catalogues each with the
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc` catalogues each with the
 condition it needs, and a body written for one of them is kept in git history
 and restored when that condition clears.

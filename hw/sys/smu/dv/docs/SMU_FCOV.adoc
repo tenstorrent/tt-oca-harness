@@ -44,7 +44,7 @@ compares a golden.
 |Phase 1 cover properties |100 percent of the collected population, with no waiver |The `user` family on Verilator; urg's `Summary for Cover Properties` in `cov/report/asserts.txt` on VCS, graded under the `assertion` family
 |Phase 1 covergroups |100 percent of the GROUP score on `smu_wrapper_uvm_top.u_smu_*_fcov` |URG Group report of a `--tool vcs --cov` run, after `cov/config/vcs/smu_wrapper_group_exclusions.el`
 |Phase 2 |Named set at the end of this plan |Not collected
-|Toggle, line, condition, branch |Not a functional-coverage contract |`hw/sys/smu/doc/dv/SMU_COVERAGE_POLICY.adoc` states the targets
+|Toggle, line, condition, branch |Not a functional-coverage contract |`hw/sys/smu/dv/docs/SMU_COVERAGE_POLICY.adoc` states the targets
 |===
 
 The GROUP score counts only the `cov/sv` covergroups. The covergroups the

@@ -13464,7 +13464,7 @@ Buckets:
 The cocotb test names of this package have their own record,
 <<smc-deferred-disposition>>; rows below that cite a waived cocotb alias
 point at it. SMU's record of the tests that stage SMC images is
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 ===== Enrolled images
 
