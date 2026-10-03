@@ -451,7 +451,7 @@ feature rows.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_external_window_pad_ctrl_decode_test` |The six mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
+|`smc_external_window_pad_ctrl_decode_test` |The five mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
 |`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
 |`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
@@ -6732,7 +6732,7 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 
 *BFM / Model*: SEP_IN AXI driver; the request valids and addresses of `smc_external_req_o`, sampled on every `clk_smc_i` edge while each access is in flight; nothing in this bench answers behind the window
 
-*Objective*: The six mandatory external-window control blocks and the first, second and last of the 65 per-pad control blocks decode into the adopter external AXI-Lite window.
+*Objective*: The five mandatory external-window control blocks and the first, second and last of the 65 per-pad control blocks decode into the adopter external AXI-Lite window.
 
 *Test Coverage*:
 
@@ -6744,7 +6744,7 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 
 *Test Procedure*:
 
-Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer: probe the six control blocks, check the generated per-pad geometry against the chapter, probe per-pad instances 0, 1 and 64, require the access count to have reached its floor and print the cell ledger. The leaf then requires an external-port activity record for every probe with a non-zero active-cycle count, and books a protocol-VIP record.
+Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer: probe the five control blocks, check the generated per-pad geometry against the chapter, probe per-pad instances 0, 1 and 64, require the access count to have reached its floor and print the cell ledger. The leaf then requires an external-port activity record for every probe with a non-zero active-cycle count, and books a protocol-VIP record.
 
 *Checkers*:
 

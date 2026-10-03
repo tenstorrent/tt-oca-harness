@@ -179,10 +179,10 @@ static inline bool error_on_bad_cab1e(int hartid, uint32_t val) {
 
 static inline bool gpio_bad_cab1e_check(int hartid, int gpio_num, uint32_t val) {
     // RDL and physical GPIO numbering differ because of how the padring demux selects targets:
-    // physical GPIOs 68-77 are JTAG and not APB-accessible, and three more APB targets (refclk
-    // ctrl, POC & PBIAS ctrl, dummy ERR slave) sit contiguous with GPIOs 0-67 in the demux, so
-    // the JTAG GPIOs map to indices 71-80 here and index 74 is the ERR slave, which returns
-    // 0x0badcab1e.
+    // physical GPIOs 68-77 are JTAG and not APB-accessible, and three more APB targets (two
+    // adopter pad-control blocks and the dummy ERR slave) sit contiguous with GPIOs 0-67 in the
+    // demux, so the JTAG GPIOs map to indices 71-80 here and index 74 is the ERR slave, which
+    // returns 0x0badcab1e.
     if (val == 0x0badcab1e) {
         if (gpio_num == 74) { // ERR slave
             return false;

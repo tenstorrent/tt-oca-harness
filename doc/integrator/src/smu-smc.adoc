@@ -267,8 +267,6 @@ per-field override enables, and an AXI PROT access filter
 Schmitt select
 |PVT clock-observation pad interface |As the PLL clock-observation pad interface
 |PVT clock-observation pad control |As the PLL clock-observation pad control
-|POC/PBIAS pad control |Pad supply-voltage level selection and retention
-enable, with an access filter
 |Reference-clock pad control |Drive strength, pull and Schmitt settings for the
 reference-clock pad
 |Per-pad GPIO control |One control block per pad: pad electrical settings, the

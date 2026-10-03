@@ -408,8 +408,8 @@
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>SMBUS_EN</td><td>RW</td><td>0x0</td><td>SMBus Enable. Gates the SMBus Alert signal.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>I2C_CONTROLLER_MODE_EN</td><td>RW</td><td>0x0</td><td>I2C Controller Mode Enable.</td></tr>
+<tr><td>4</td><td>I2C_CONTROLLER_MODE_EN</td><td>RW</td><td>0x0</td><td>SMBus Pad Direction. When set, the SMBus alert pad is an input and the SMBus suspend pad is an output, as for an SMBus host. When clear, the alert pad is an output and the suspend pad is an input, as for an SMBus target. SCL and SDA are unaffected. Program it to agree with the core&#x27;s CTRL.ENABLEHOST and CTRL.ENABLETARGET setting.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>I2C_EN</td><td>RW</td><td>0x0</td><td>I2C Enable.</td></tr>
+<tr><td>0</td><td>I2C_EN</td><td>RW</td><td>0x0</td><td>I2C Pad Function Select. When set, the integration routes this instance&#x27;s SCL, SDA, SMBus alert and SMBus suspend signals to their pads. Does not enable the I2C core; CTRL.ENABLEHOST and CTRL.ENABLETARGET select the core&#x27;s operating mode.</td></tr>
 </table>
 </div>

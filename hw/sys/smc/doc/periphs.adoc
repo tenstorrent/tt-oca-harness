@@ -60,7 +60,7 @@ rails and power conditions. |APB4/AXI4-Lite |1
 
 |xref:ip:gpio/doc/index.adoc[GPIO] |General Purpose Input/Output
 with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).
-|APB4/AXI4-Lite |65
+|AXI4-Lite |65
 
 |xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
 |Hardware component for decoding and processing telemetry data from
@@ -105,7 +105,7 @@ rails and power conditions. |APB4/AXI4-Lite |1
 
 |GPIO |General Purpose Input/Output
 with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).
-|APB4/AXI4-Lite |65
+|AXI4-Lite |65
 
 |Telemetry Receiver
 |Hardware component for decoding and processing telemetry data from

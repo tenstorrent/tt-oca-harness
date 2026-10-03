@@ -3,7 +3,7 @@
 """OSS SMU Tier A: inbound AxPROT[1] decode via allow_ns=0 (FAB_SMC_029 S9 subset).
 
 SEP=1 honest scope: JTAG2AXI filter program + s_axi stimulus only.
-S1–S8 (GPIO PoC AXI-Lite exact-match) need sep_in_master and are not covered.
+S1–S8 (GPIO AXI-Lite exact-match) need sep_in_master and are not covered.
 """
 
 from __future__ import annotations
@@ -180,5 +180,5 @@ class smu_axi_prot_encoding_decode_test_seq:
         self.matrix_ok = True
         self._log(
             "CHK-SMU-PROT-S9-BASIC: allow_ns=0 eight-way AxPROT matrix on VERSION_LO "
-            "(S1-S8 GPIO PoC deferred — needs sep_in)"
+            "(S1-S8 GPIO exact-match deferred — needs sep_in)"
         )
