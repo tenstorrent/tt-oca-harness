@@ -130,7 +130,7 @@ M_AXI_CELL_FLOOR = 225
 # M_AXI_CELL_FLOOR: slack here is registers that can go missing without failing
 # anything, and three orderings per register means even a small slack hides
 # several of them.
-S_AXI_CELL_FLOOR = 318
+S_AXI_CELL_FLOOR = 321
 
 # The three legal write orderings, as (aw_delay, w_delay) offsets. The seed
 # scales the separation; the ordering itself is fixed, so every seed covers
