@@ -90,7 +90,9 @@ class sep_km_key_policy_vault_test(sep_base_test):
         )
         _bit(FLAG_LOCKWR, "CHK-LOCKWR")
         self.logger.info(
-            "CHK-LOCKWR PASS: key-data write to write-locked slot %d raised AXI SLVERR",
+            "CHK-LOCKWR PASS: key-data store to slot %d left AXI_SLVERR clear before "
+            "lock_write (control: the 0xA11CE000 store read back), then the same store "
+            "on the write-locked slot raised AXI_SLVERR",
             cfg.slot,
         )
         _bit(FLAG_LOCKUSE, "CHK-LOCKUSE")

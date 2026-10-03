@@ -15,6 +15,8 @@
 #   [29:24] slot to erase unsealed, distinct from the others
 #
 # Then:
+#   store key data to the seed slot before any lock and require AXI_SLVERR
+#     to stay clear (the control for the locked store below)
 #   write LOCK_WRITE on slot 0, the seed slot, and slot 63; read back bit 0
 #   store key data to the write-locked seed slot and require AXI_SLVERR
 #   read the seed slot while it holds only lock_write: the first store comes
@@ -133,7 +135,7 @@ _start:
     # x5  result flags
     # x8  CTRL[0] / scratch
     # x9  IRQ_STATUS
-    # x10 SRAM base
+    # x10 CHK-LOCKWR control flag until the SRAM write-lock check, then SRAM base
     # x6,x7,x11-x15 scratch
     li    x1, KEY_MANAGER_MAILBOX_KM_BASE_ADDR
     addi  x5, x0, 0             # flags
@@ -150,13 +152,35 @@ _start:
     # Store a known non-zero in KEY_ENTRY[slot] before any lock. CHK-LOCKUSE
     # later reads this address; a never-written slot already returns 0, so
     # the zero-data refusal would pass whether or not the lock forced it.
+    #
+    # This store is also the control for CHK-LOCKWR: the same address, before
+    # lock_write is set, must answer OKAY. AXI_SLVERR is cleared and confirmed
+    # clean first, and must stay clear for the same bound CHK-LOCKWR polls.
+    # Without it, a design that answered SLVERR on every key-entry store would
+    # pass CHK-LOCKWR. x10 = 1 only when the control passes; CHK-LOCKWR
+    # requires it.
+    li    x9, KEY_MANAGER_KMCSR_IRQ_STATUS_BASE_ADDR
+    addi  x10, x0, 0
+    addi  x11, x0, IRQ_AXI_SLVERR
+    sw    x11, 0(x9)
+    lw    x6, 0(x9)
+    andi  x6, x6, IRQ_AXI_SLVERR    # x6 = 0 when the control starts clean
     li    x12, KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0)
     slli  x13, x3, KEY_ENTRY_SHIFT  # slot * KEY_ENTRY stride
     add   x12, x12, x13
     lui   x13, 0xA11CE
-    sw    x13, 0(x12)
+    sw    x13, 0(x12)           # allowed: slot is not write-locked yet
     lw    x7, 0(x12)
     need_eq x7, x13, slot_done
+    need_z x6, unlocked_done    # must start clean
+    addi  x14, x0, 32
+10: lw    x7, 0(x9)
+    andi  x11, x7, IRQ_AXI_SLVERR
+    need_z x11, unlocked_done   # the unlocked store must not raise SLVERR
+    addi  x14, x14, -1
+    bnez  x14, 10b
+    addi  x10, x0, 1
+unlocked_done:
 
     # --- legal slots: 0, seed, 63 ---
     li    x8, KEY_MANAGER_KPV_CTRL_BASE_ADDR(0)
@@ -206,6 +230,7 @@ slot_done:
     bnez  x14, 6b
     j     lockwr_done
 lockwr_ok:
+    need_nz x10, lockwr_done    # the unlocked-store control must also pass
     ori   x5, x5, 0x200         # CHK-LOCKWR
     addi  x11, x0, IRQ_AXI_SLVERR
     sw    x11, 0(x9)            # W1C for the next check

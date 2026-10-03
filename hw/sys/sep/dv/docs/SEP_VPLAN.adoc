@@ -7772,7 +7772,7 @@ two codes as one field.
 . Dedicated `km_rom_vault` on the KM CPU bus, not `rom_main`.
 . The seal walk lives here rather than on the command set because no mailbox command seals a slot: over that surface an erase always frees, so the retire path has no vehicle there.
 . PicoRV32 is RV32E (`x0`–`x15` only).
-. A legal slot in 0..63 takes `CTRL.lock_write`; a key-data store to the write-locked seed slot raises AXI SLVERR; a key-data read of that slot while it holds only `lock_write` returns the stored word with AXI SLVERR clear, and after `lock_use` the same read raises AXI SLVERR and returns zero, which the host also reads back from KM SRAM word 1; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR and not DECERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
+. A key-data store to the seed slot before any lock lands with AXI SLVERR clear; a legal slot in 0..63 takes `CTRL.lock_write`; the same key-data store to the write-locked seed slot raises AXI SLVERR; a key-data read of that slot while it holds only `lock_write` returns the stored word with AXI SLVERR clear, and after `lock_use` the same read raises AXI SLVERR and returns zero, which the host also reads back from KM SRAM word 1; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR and not DECERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
 
 *Checkers*:
 
@@ -7782,7 +7782,7 @@ two codes as one field.
 |CHK-SLOT
 |`CTRL.lock_write` sticks on slots 0, the seed slot, and 63.
 |CHK-LOCKWR
-|A key-data write to a write-locked slot raises AXI SLVERR. This is the LOCK path, not the decode path CHK-EXTENT grades: a legal key-entry address on a locked slot. The sticky error bits are cleared and confirmed clean first, so an earlier fault cannot satisfy it.
+|A key-data write to a write-locked slot raises AXI SLVERR. This is the LOCK path, not the decode path CHK-EXTENT grades: a legal key-entry address on a locked slot. The sticky error bits are cleared and confirmed clean first, so an earlier fault cannot satisfy it. A control store comes first, to the same address before `lock_write` is set: with AXI_SLVERR cleared and confirmed clean, the store must land and AXI_SLVERR must stay clear for the same poll bound. Without the control, a design that answered SLVERR on every key-entry store would pass.
 |CHK-LOCKUSE
 |A key-data read of a `lock_use` slot raises SLVERR and returns zero data. Both halves are required: the refusal alone would not show the data path is also forced. The zero is graded twice so that X data cannot pass: the ROM takes its pass branch only on a known zero (the 4-state PicoRV32 does not take a branch on an X condition), and the ROM stores the read data in KM SRAM word 1, which the host reads through `km_sram_probe_o` with no unknown bits allowed and requires to be 0. A control read comes first, on the same slot while `CTRL` holds only `lock_write`: it must return the stored `0xA11CE000` with AXI_SLVERR clear. `lock_write` is write-1-set, so it stays set under the `lock_use` read, and without the control a design that refused reads on `lock_write` would pass. The control value also shows the refused CHK-LOCKWR write did not land.
 |CHK-EXTENT
