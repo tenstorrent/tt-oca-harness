@@ -336,9 +336,8 @@ reaches the dashboard.
 
 |Contributor host
 |The GitHub-hosted `ubuntu-latest` image, on which every smoke and
-regression job runs unless the `DV_LARGE_RUNNER` repository variable
-promotes its row to a larger GitHub-hosted label, and a Linux or macOS
-developer host that meets the same pins
+regression job runs, and a Linux or macOS developer host that meets the
+same pins
 (xref:run-dv.adoc#runner-environment-matrix[Supported environments]).
 |Licensed simulators run on self-hosted runners. The `sep` tree's private
 submodule is checked out in hosted CI with a repository secret; a public
@@ -415,11 +414,6 @@ and fails a required tool below its table's `min_version`. With `--items` or
 |`gh workflow run regress.yml -f tier=nightly` or `-f tier=weekly`
 |Scheduled tiers are never cancelled; a dispatch of the same tier queues
 behind the one in flight.
-
-|Move the regression rows to a larger runner
-|`gh variable set DV_LARGE_RUNNER --body <runner-label>`
-|A repository variable, not a workflow edit. A label with no matching runner
-queues until the job times out.
 
 |Publish or backfill a weekly
 |`gh workflow run dashboard.yml -f run_id=<regress run id>`

@@ -8,7 +8,7 @@ addrmap i2c_ctrl #(
     longint unsigned NUM_I2CS = 3
 ) {
     name = "I2C Control Address Map";
-    desc = "Top-level enable registers selecting I2C, controller-mode, and SMBus operation.";
+    desc = "Per-instance pad-function select, SMBus pad direction, and SMBus alert enable.";
 
     //////////////////////////
     // Register Definitions //
@@ -20,13 +20,13 @@ addrmap i2c_ctrl #(
         field {
             sw = rw;
             hw = r;
-            desc = "I2C Enable.";
+            desc = "I2C Pad Function Select. When set, the integration routes this instance's SCL, SDA, SMBus alert and SMBus suspend signals to their pads. Does not enable the I2C core; CTRL.ENABLEHOST and CTRL.ENABLETARGET select the core's operating mode.";
         } I2C_EN[0:0] = 0x0;
 
         field {
             sw = rw;
             hw = r;
-            desc = "I2C Controller Mode Enable.";
+            desc = "SMBus Pad Direction. When set, the SMBus alert pad is an input and the SMBus suspend pad is an output, as for an SMBus host. When clear, the alert pad is an output and the suspend pad is an input, as for an SMBus target. SCL and SDA are unaffected. Program it to agree with the core's CTRL.ENABLEHOST and CTRL.ENABLETARGET setting.";
         } I2C_CONTROLLER_MODE_EN[4:4] = 0x0;
 
         field {

@@ -25,7 +25,7 @@ straddling the backup read.
 
 Neither slot reaches RSA: the hash bind precedes it, so ``RSA_EXEC`` is forbidden and no
 ``+esrc_noise_force`` is needed. If that ordering ever changed, this entry
-would go red rather than quietly start depending on the OTBN shortcut.
+would go red rather than quietly start requiring the entropy chain.
 """
 
 from __future__ import annotations

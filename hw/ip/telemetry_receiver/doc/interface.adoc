@@ -16,11 +16,10 @@ ifndef::backend-html5[]
 The parameters and ports of `telemetry_receiver` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-The telemetry buffer dimensions are described as `NUM_BUFFERS` (default
-2, a dual-buffer architecture), `BUFFER_DEPTH` (default 16 entries per
-buffer), `ATB_DATA_WIDTH` (default 8 bits), `PACKET_WIDTH` (default 64
-bits), `ADDR_WIDTH` (default 32-bit register address) and `DATA_WIDTH`
-(default 32-bit data bus).
+The core has two elaboration parameters. `BUFFER_DEPTH` (default 8) sets the
+number of decoded messages the queue holds; it must be a power of two and at
+least 2. `MAX_NUM_COUNTERS_PER_MESSAGE` (default 4) sets the number of counters
+decoded from each message.
 
 The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
 and ATB ID width (7 bits) are package constants.
@@ -33,14 +32,13 @@ The core register port has an 8-bit address and 32-bit data path.
 The global interface provides fundamental clock and reset signals
 required for basic operation.
 
-=== Clock and Reset Specifications
+[[telemetry-receiver-clock-reset]]
+=== Clock and Reset
 
-* *Clock Frequency*: The component can operate at frequencies up to 200
-MHz
-* *Clock Jitter*: Maximum 100ps peak-to-peak jitter tolerance
-* *Reset Duration*: Minimum 10 clock cycles for complete reset
-* *Reset Recovery*: Component ready for operation 2 clock cycles after
-reset deassertion
+`clk_i` is the core clock and `rst_ni` its asynchronous, active-low reset;
+`telemetry_receiver_wrap` adds `clk_telemetry_i` / `rst_telemetry_ni` for
+the ATB side. Clock frequency, jitter, reset duration and physical timing
+constraints must come from the integration timing specification.
 
 === ATB Telemetry Interface
 
@@ -50,7 +48,7 @@ ATB protocol.
 === ATB Protocol Specifications
 
 * *Data Width*: 8 bits per beat
-* *ID Width*: 7 bits (128 unique trace sources)
+* *ID Width*: 7 bits; the receiver ignores `atid_i`
 * *Flow Control*: Valid/ready handshaking for reliable data transfer
 * *Flush Support*: Bidirectional flush signaling for stream management
 * *Back-pressure*: Component can assert `atready_o` low to apply
@@ -87,6 +85,3 @@ receiver. Its external ready signal reflects crossing-FIFO capacity. This does
 not turn the core's decoded-message queue into a lossless backpressured queue.
 The wrapper also contains flush-handshake synchronizers and returns a decode
 error for register addresses outside its configured receiver apertures.
-
-Clock frequency, jitter, reset duration and physical timing constraints must
-come from the integration timing specification.

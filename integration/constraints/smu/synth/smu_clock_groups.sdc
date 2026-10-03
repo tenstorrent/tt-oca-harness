@@ -1,0 +1,1 @@
+../../../../hw/sys/smu/synth/smu_clock_groups.sdc

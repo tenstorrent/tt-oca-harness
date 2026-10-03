@@ -165,11 +165,12 @@ _CT_Req_in_ pad. On any positive edge of _CT_Req_in_, the receiver generates a
 pulse on _CT_Dst_ and asserts _CT_Ack_out_. Deassertion proceeds in exactly the
 same sequence.
 
-The timing of the request/acknowledge handshake is shown in <<ctp-request-acknowledge-timing-figure>>:
+The timing of the request/acknowledge handshake is shown in <<ctp-request-acknowledge-timing-figure>>.
+The timing is illustrative, and the delays are not to scale:
 
 [[ctp-request-acknowledge-timing-figure]]
 .CTP request-acknowledge timing
-image::p2p_timing_diagram.svg[Point-to-Point Request/Acknowledge Timing,scaledwidth=90.0%]
+image::p2p_timing_diagram.svg["Four-phase handshake: Source CT_Req_out rises, Target CT_Req_in follows after the wire delay, Target CT_Ack_out rises after the target-domain delay, Source CT_Ack_in follows after the wire delay, and the same sequence repeats for deassertion after the source response delay",scaledwidth=90.0%]
 
 ==== Synchronization and CDC Handling
 

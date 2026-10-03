@@ -25,6 +25,13 @@ reset is triggered.
 Watchdog monitoring can be disabled during debugging to prevent false
 triggers, supporting uninterrupted development and troubleshooting.
 
+The watchdog interrupt is `CTRL.wdogip0`. Hardware sets it on every cycle the
+scaled count is at or above `CMP`, so it cannot be cleared while that holds.
+Feeding the watchdog resets the count but leaves `wdogip0` set. To clear the
+interrupt, feed the watchdog (or otherwise bring the scaled count below
+`CMP`), write `KEY` again, and write `CTRL` with `wdogip0` at zero and its
+other fields unchanged.
+
 == Memory Map and Register Reference
 
 ifdef::backend-html5[]

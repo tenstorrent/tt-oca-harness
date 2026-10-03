@@ -942,6 +942,22 @@ def set_secure_boot_enforced(buf: bytearray, slot: str, value: bool) -> int:
     return field
 
 
+def set_secure_boot_control(buf: bytearray, slot: str, value: int) -> int:
+    """Write the whole ``secure_boot_control`` byte. Returns the previous value.
+
+    For stimuli that need a class bit without the enforced bit, which
+    :func:`set_secure_boot_enforced` cannot express because it preserves the
+    class bits it finds. Inside the signed region, so this rehashes.
+    """
+    require_classic(buf, slot)
+    if not 0 <= value <= 0xFF:
+        raise ValueError(f"secure_boot_control is one byte, got 0x{value:x}")
+    before = secure_boot_control(buf, slot)
+    buf[slot_base(slot) + OFF_SECURE_BOOT_CONTROL] = value
+    rehash(buf, slot)
+    return before
+
+
 def verify_usage_constraints_layout(buf: bytes, slot: str) -> None:
     """Assert the constraint fields satisfy the format's own invariants.
 
@@ -1216,6 +1232,47 @@ def corrupt_public_key(buf: bytearray, slot: str, *, offset: int = 0) -> int:
     buf[at] ^= 0xFF
     rehash(buf, slot)
     return offset
+
+
+OFF_PUBLIC_KEY_SIZE = K.OFF_PUBLIC_KEY_SIZE_CLASSIC
+
+
+def remove_public_key(buf: bytearray, slot: str, *, keep_size: bool) -> None:
+    """Zero the classical public-key field, leaving the rest of the slot signed.
+
+    With ``keep_size`` the field still claims its encoded length, so the slot
+    passes the structural size check and reaches key authorization with an
+    all-zero modulus. Without it ``public_key_size`` is zeroed too, which is what
+    a manifest that never carried a key looks like, and the structural check
+    refuses it first. Inside the signed region, so this rehashes.
+    """
+    require_classic(buf, slot)
+    base = slot_base(slot)
+    buf[base + OFF_PUBLIC_KEY : base + OFF_PUBLIC_KEY + K.PUBLIC_KEY_CLASSIC_SIZE] = bytes(
+        K.PUBLIC_KEY_CLASSIC_SIZE
+    )
+    if not keep_size:
+        buf[base + OFF_PUBLIC_KEY_SIZE : base + OFF_PUBLIC_KEY_SIZE + 2] = bytes(2)
+    rehash(buf, slot)
+
+
+def remove_signature(buf: bytearray, slot: str, *, keep_size: bool) -> None:
+    """Zero the classical signature field.
+
+    With ``keep_size`` the slot reaches the verifier carrying an all-zero
+    signature. Without it ``signature_size``, which sits inside the signed region,
+    is zeroed as well and the structural size check refuses the slot first. The
+    signature field itself is outside the signed region; the rehash covers the
+    size field.
+    """
+    require_classic(buf, slot)
+    base = slot_base(slot)
+    buf[base + OFF_SIGNATURE : base + OFF_SIGNATURE + K.SIGNATURE_CLASSIC_SIZE] = bytes(
+        K.SIGNATURE_CLASSIC_SIZE
+    )
+    if not keep_size:
+        buf[base + OFF_SIGNATURE_SIZE : base + OFF_SIGNATURE_SIZE + 2] = bytes(2)
+    rehash(buf, slot)
 
 
 def flip_signature_byte(

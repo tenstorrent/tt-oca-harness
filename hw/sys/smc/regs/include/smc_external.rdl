@@ -13,8 +13,8 @@
 // instantiated with the `external` keyword, which the real smc_external addrmap cannot
 // carry, and smc_top.rdl's instantiation must be identical under every profile.
 //
-// NUM_ENTRIES * 4 bytes = 0x40_0000, the full window between smc_external and
-// ecam_region in smc_top. Growing it overlaps ecam_region.
+// NUM_ENTRIES * 4 bytes = 0x40_0000, the full window smc_top reserves for
+// smc_external.
 addrmap smc_external {
     name = "SMC External Window Address Map";
     desc = "Stubbed adopter extension window reserving the region as opaque external memory.";

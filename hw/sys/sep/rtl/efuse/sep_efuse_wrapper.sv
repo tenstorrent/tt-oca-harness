@@ -5,7 +5,8 @@
 // test mode.
 //
 // Downsizes the functional 64-bit AXI4 slave to 32-bit, converts it to AXI4-Lite, and
-// muxes it with the Key Manager AXI-Lite path into the eFuse controller register port.
+// muxes it with the Key Manager AXI-Lite path into the eFuse controller register port. The
+// controller's shim CSR port leaves through an axi_cut.
 // In a restricted state (PROD / RMA_SiP, or an LC-state differential-decode integrity
 // error), JTAG accesses outside the MMR / token register space receive DECERR with read
 // data 0xBADCAB1E; the MMR space stays accessible for RMA_SiP token programming.
@@ -112,6 +113,9 @@ module sep_efuse_wrapper #(
   // AXI4-Lite after muxing the crossbar path with the Key Manager path
   sep_efuse_pkg::efuse_axil_req_t  efuse_axil_mux_req;
   sep_efuse_pkg::efuse_axil_resp_t efuse_axil_mux_resp;
+
+  sep_efuse_pkg::efuse_axil_req_t  efuse_bank_ctrl_precut_req;
+  sep_efuse_pkg::efuse_axil_resp_t efuse_bank_ctrl_precut_resp;
 
   // JTAG access control policy signals
   logic is_wr_access_token;
@@ -384,8 +388,8 @@ module sep_efuse_wrapper #(
     .axil_jtag_resp_o           (axil_sep_otp_jtag_resp_filtered[0]),
 
     // AXI4-Lite Register Interface from Efuse Controller to shim CSR
-    .fuse_bank_ctrl_req_o       (efuse_bank_ctrl_req_o),
-    .fuse_bank_ctrl_resp_i      (efuse_bank_ctrl_resp_i),
+    .fuse_bank_ctrl_req_o       (efuse_bank_ctrl_precut_req),
+    .fuse_bank_ctrl_resp_i      (efuse_bank_ctrl_precut_resp),
 
     // eFuse Command Interface - custom interface for SHIM state machine
     .fuse_command_req_o         (efuse_shim_command_req_o),
@@ -419,6 +423,23 @@ module sep_efuse_wrapper #(
     .locked_field_access_interrupt_o    (locked_field_access_interrupt_o),
 
     .token_match_fault_o                (token_match_fault_o)
+  );
+
+  axi_cut #(
+    .aw_chan_t  (sep_efuse_pkg::efuse_axil_aw_chan_t),
+    .w_chan_t   (sep_efuse_pkg::efuse_axil_w_chan_t),
+    .b_chan_t   (sep_efuse_pkg::efuse_axil_b_chan_t),
+    .ar_chan_t  (sep_efuse_pkg::efuse_axil_ar_chan_t),
+    .r_chan_t   (sep_efuse_pkg::efuse_axil_r_chan_t),
+    .axi_req_t  (sep_efuse_pkg::efuse_axil_req_t),
+    .axi_resp_t (sep_efuse_pkg::efuse_axil_resp_t)
+  ) u_efuse_bank_ctrl_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (efuse_bank_ctrl_precut_req),
+    .slv_resp_o (efuse_bank_ctrl_precut_resp),
+    .mst_req_o  (efuse_bank_ctrl_req_o),
+    .mst_resp_i (efuse_bank_ctrl_resp_i)
   );
 
 

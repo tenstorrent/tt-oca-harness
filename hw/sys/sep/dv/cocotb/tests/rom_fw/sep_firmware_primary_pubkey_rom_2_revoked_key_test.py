@@ -32,9 +32,10 @@ alongside it to catch the digest table shrinking back under this member.
 1, so the ROM is shown to refuse the slot before spending a modexp on it.
 
 Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. It grants
-OTBN's EDN handshakes only; the RSA assertions are untouched, so ``RSA_VERIFY_OK``
-still means the signature really verified.
+runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The plusarg
+injects raw noise at the decorrelator inputs; the ROM drives the real health
+tests, CSRNG, EDN, and OTBN handshakes. The RSA assertions are untouched, so
+``RSA_VERIFY_OK`` still means the signature really verified.
 """
 
 from __future__ import annotations

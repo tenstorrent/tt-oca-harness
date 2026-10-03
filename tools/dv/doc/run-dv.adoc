@@ -289,15 +289,14 @@ registry to those four tools, with exactly `verilator` and `sby` license-free.
 
 |Host
 |The GitHub-hosted `ubuntu-latest` x86_64 image is the qualified host: every
-smoke, nightly, and weekly job runs on it, or on the larger GitHub-hosted
-label the `DV_LARGE_RUNNER` repository variable names for the rows it
-promotes, and the job log's `Operating System` group names the release the
-label resolved to. A Linux or macOS developer host that meets the rows above
-is supported but not qualified: no hosted job runs there, so its evidence is
-its own doctor report and smoke run. No other host is supported.
+smoke, nightly, and weekly job runs on it, and the job log's `Operating
+System` group names the release the label resolved to. A Linux or macOS
+developer host that meets the rows above is supported but not qualified: no
+hosted job runs there, so its evidence is its own doctor report and smoke
+run. No other host is supported.
 |The `runner` key of each matrix row in `sim.yml` and `regress.yml`.
-|The hosted jobs at head; the matrix tests hold every row's `runner` to the
-hosted label or to the variable that falls back to it.
+|The hosted jobs at head; the matrix tests hold every row's `runner` to
+`ubuntu-latest`.
 
 |Firmware toolchain and container engine
 |A RISC-V toolchain that accepts `--specs=picolibc.specs`, named by
@@ -331,10 +330,10 @@ timestamps and not toolchain identity, so after switching paths or rebuilding
 the image, run `make -f ocah.mk ocah-dv-fw-clean TARGET=<block>` before the
 next simulation.
 
-The `sep` tree carries the repository's one private submodule, under
+The `sep` tree carries the `tt-oca-manifest` submodule, under
 `hw/sys/sep/bootrom/prod/tools/`, and some of its test modules import it.
-The hosted `sep` jobs check it out with a repository secret before the run; a
-public clone runs without it, so those modules fail to import there. An
+The hosted `sep` jobs check it out before the run; a clone that has not run
+`git submodule update --init` lacks it, so those modules fail to import there. An
 unscoped `--doctor --dut sep` imports every testlist module and exits `2` on
 that account. Scope the doctor to the selection you will run:
 
@@ -3220,16 +3219,8 @@ SEP, and SMU do not fit a hosted job.
 |===
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
-smoke matrix, so PR cost stays bounded by the smoke group. The larger-runner
-promotion is a repository variable rather than a workflow edit:
-
-[source,bash]
-----
-gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
-----
-
-A label with no matching runner does not fail fast (the job queues until it
-times out), so the default stays the always-present standard runner.
+smoke matrix, so PR cost stays bounded by the smoke group. Every hosted row
+runs on `ubuntu-latest`.
 
 [[runner-ci-budgets]]
 === Budgets, concurrency, and retention
@@ -3423,8 +3414,8 @@ coverage utilities, or every firmware toolchain.
 
 An unscoped `--doctor --dut <dut>` imports every module in the DUT's
 testlist, including modules whose dependencies a run of your selection never
-touches; the `sep` modules that import the private submodule are the case a
-public clone meets (<<runner-environment-matrix>>). Add the selection to the
+touches; the `sep` modules that import the `tt-oca-manifest` submodule are
+the case a clone without submodules meets (<<runner-environment-matrix>>). Add the selection to the
 doctor:
 
 [source,bash]

@@ -53,7 +53,12 @@ The shared block `u_i2c_ctrl_reg`, generated from `i2c_ctrl.rdl`, holds one
 `I2C_CTRL` register per instance. Its `SMBUS_EN` field drives that instance's
 `smbus_en` input, which masks `smbalert_ni` while low. Its `I2C_EN` and
 `I2C_CONTROLLER_MODE_EN` fields leave the wrapper on `i2c_en_o` and
-`i2c_controller_mode_en_o` without reaching the instance.
+`i2c_controller_mode_en_o` without reaching the instance. The SMC padring uses
+`I2C_EN` to select the I2C function on the instance's SCL, SDA, SMBus alert and
+SMBus suspend pads, and `I2C_CONTROLLER_MODE_EN` to set the direction of the
+SMBus alert and suspend pads. Neither field enables the core: its controller
+or target role comes from `CTRL.ENABLEHOST` and `CTRL.ENABLETARGET`, and
+`I2C_CONTROLLER_MODE_EN` should agree with that role.
 
 Every per-instance port of `i2c_wrap` is a vector with one bit, or for
 `i2c_debug_o` one nibble, per instance. The figure labels the slice that

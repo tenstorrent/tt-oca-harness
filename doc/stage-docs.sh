@@ -172,6 +172,14 @@ for m in smc-bootrom-prod sep-bootrom-prod; do
   sed -i -E 's/^include::([^/$]+\.adoc)\[/include::partial$\1[/' "$idx"
 done
 
+# The SEP production ROM overview points at the TRM's Boot ROM chapter, which
+# only the TRM publishes. The programmer guide publishes the manual itself, so
+# the sentence points at the chapter it is already reading.
+if [ "$(basename "$PRODUCT")" = programmer ]; then
+  sed -i -E 's@xref:rom\.adoc\[SEP ROM Boot Architecture\]@this chapter@' \
+    "$MOD/sep-bootrom-prod/pages/index.adoc"
+fi
+
 # --- aou: each product stages only the section it publishes ---
 rm -rf "$MOD/aou"
 mkdir -p "$MOD/aou/pages" "$MOD/aou/partials" "$MOD/aou/assets/images"
@@ -213,7 +221,15 @@ integrator)
   cp -f "$AOU_INTEGRATION_GUIDE/integrator.adoc" "$MOD/aou/partials/"
   ;;
 programmer)
-  cp -f "$AOU_DOC/software-operation.adoc" "$MOD/aou/partials/"
+  mkdir -p $MOD/aou/partials $MOD/aou/partials/pdf
+  # The guide publishes the software operation section alone, so its links into
+  # the architecture chapter resolve in the Technical Reference Manual.
+  sed -E \
+    -e "s/Appendix C\./AoU/" \
+    -e "s@xref:\\{aou-architecture-xref\\}#@xref:ocah-docs:ROOT:aou-architecture.adoc#@g" \
+    "$AOU_DOC/software-operation.adoc" \
+    >"$MOD/aou/partials/software-operation.adoc"
+  cp $MOD/aou/partials/software-operation.adoc $MOD/aou/partials/pdf/
   ;;
 esac
 

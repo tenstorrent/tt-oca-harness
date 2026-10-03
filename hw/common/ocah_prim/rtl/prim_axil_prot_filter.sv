@@ -5,8 +5,8 @@
 //
 // write_filter_enable_i and read_filter_enable_i arm the AW and AR checks against
 // awprot_requirement_i and arprot_requirement_i; an access passes only on an exact match.
-// Complete failing writes or reads locally with DECERR, reads returning 'hBADCAB1E sized to
-// DATA_WIDTH, and do not forward them to the subordinate.
+// Complete failing writes or reads locally with DECERR, reads returning 0xBADCAB1E in every
+// 32-bit word of the data bus, and do not forward them to the subordinate.
 // MAX_TRANS bounds outstanding filtered traffic.
 
 module prim_axil_prot_filter #(
@@ -110,8 +110,8 @@ module prim_axil_prot_filter #(
     .axil_req_t(axil_req_t),
     .axil_resp_t(axil_resp_t),
     .RESP(axi_pkg::RESP_DECERR),
-    .RESP_WIDTH(DATA_WIDTH),
-    .RESP_DATA(DATA_WIDTH'('hBADCAB1E)),
+    .RESP_WIDTH(64),
+    .RESP_DATA(64'hBADCAB1EBADCAB1E),
     .MAX_TRANS(1)
   ) u_filter_err_slv (
     .clk_i(clk_i),

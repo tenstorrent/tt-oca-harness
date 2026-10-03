@@ -23,7 +23,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DECOUPLE_AW</ipxact:name>
-            <ipxact:description>Not used</ipxact:description>
+            <ipxact:description>Write-address decoupling. 0: the write address of each burst is held until the first read data beat of the matching read burst returns. 1: write addresses are issued without waiting for read data.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -35,7 +35,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>DECOUPLE_RW</ipxact:name>
-            <ipxact:description>Not used</ipxact:description>
+            <ipxact:description>Read/write decoupling. 0: read and write bursts are formed in lockstep, one write burst per read burst. 1: read and write bursts are formed and issued independently; this mode can deadlock.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -47,7 +47,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>SRC_REDUCE_LEN</ipxact:name>
-            <ipxact:description>Not used</ipxact:description>
+            <ipxact:description>Source burst-length reduction. 1: read bursts are limited by SRC_MAX_LLEN. 0: a read burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -59,7 +59,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>DST_REDUCE_LEN</ipxact:name>
-            <ipxact:description>Not used</ipxact:description>
+            <ipxact:description>Destination burst-length reduction. 1: write bursts are limited by DST_MAX_LLEN. 0: a write burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.</ipxact:description>
             <ipxact:bitOffset>3</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -71,7 +71,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>SRC_MAX_LLEN</ipxact:name>
-            <ipxact:description>Not used</ipxact:description>
+            <ipxact:description>Base-2 logarithm of the maximum read burst length in 64-bit beats, applied when SRC_REDUCE_LEN is 1. A read burst does not cross a boundary aligned to 2^(SRC_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when SRC_REDUCE_LEN is 0.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -83,7 +83,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>DST_MAX_LLEN</ipxact:name>
-            <ipxact:description>Not used</ipxact:description>
+            <ipxact:description>Base-2 logarithm of the maximum write burst length in 64-bit beats, applied when DST_REDUCE_LEN is 1. A write burst does not cross a boundary aligned to 2^(DST_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when DST_REDUCE_LEN is 0.</ipxact:description>
             <ipxact:bitOffset>7</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -95,7 +95,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>ENABLED_ND</ipxact:name>
-            <ipxact:description>Not used</ipxact:description>
+            <ipxact:description>Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.</ipxact:description>
             <ipxact:bitOffset>10</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -993,7 +993,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Destination address for DMA to write to, upper 32 bits</ipxact:description>
+            <ipxact:description>Destination address for DMA to write to, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1027,7 +1027,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Source address for DMA to read from, upper 32 bits.</ipxact:description>
+            <ipxact:description>Source address for DMA to read from, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1061,7 +1061,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Number of bytes to move, upper 32 bits.</ipxact:description>
+            <ipxact:description>Number of bytes to move, upper 32 bits. Bits [31:24] (combined length bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1095,7 +1095,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Stride amount on destination address side, upper 32 bits</ipxact:description>
+            <ipxact:description>Stride amount on destination address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1129,7 +1129,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Stride amount on source address side, upper 32 bits</ipxact:description>
+            <ipxact:description>Stride amount on source address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1146,7 +1146,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Number of times transfer should be repeated, lower 32 bits. If stride is set, stride will be added to address after every repetition</ipxact:description>
+            <ipxact:description>Number of rows to copy, including the first, lower 32 bits. SRC_STRIDE and DST_STRIDE are added to the addresses between rows. Takes effect only when CONFIG.ENABLED_ND is 1.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1163,7 +1163,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Number of times transfer should be repeated, upper 32 bits. If stride is set, stride will be added to address after every repetition</ipxact:description>
+            <ipxact:description>Number of rows to copy, upper 32 bits. The DMA uses only the low 32 bits of the row count, so this register is discarded, not checked; program it as zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

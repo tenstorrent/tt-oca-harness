@@ -51,8 +51,10 @@ yosys select -assert-none a:blackbox
 # The entropy-source ring oscillators are intentional combinational loops: the
 # RO feedback path is the physical TRNG noise source, not a design error. Keep
 # the module unflattened so the post-flatten structural check can waive it by
-# scope. catch tolerates blocks that do not instantiate it.
-catch { yosys setattr -mod -set keep_hierarchy 1 entropy_ring_oscillator }
+# scope. Elaboration uniquifies instances as <module>$<hierarchy>, so both
+# spellings are matched.
+yosys setattr -mod -set keep_hierarchy 1 \
+    entropy_ring_oscillator {entropy_ring_oscillator$*}
 yosys flatten
 yosys opt_expr
 yosys opt_clean
