@@ -2,4 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 * xref:index.adoc[Application Notes]
+ifndef::release[]
+** xref:revision.adoc[Revision History]
+endif::release[]
 ** xref:sip-secure-boot.adoc[System-in-Package Secure Boot]

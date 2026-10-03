@@ -2,12 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A real log-engine transfer on every uart_log_engine_wrap instance.
 
-This is the software flow `hw/ip/uart/log_engine/doc/programming.adoc` writes
-out, driven over SEP_IN AXI instead of from firmware: place the log bytes in
-memory the engine can fetch, point LOG_REGION_ADDR at them, point
-LOG_WRITE_ADDR at the wrapper's own UART transmit holding register, put that
-UART in `MCR.LOOP` so the bytes come back through its own receiver, enable the
-engine, and write a length into several LOG_CTRL elements at once.
+This is the software flow the Programmer's Guide Log Engine sections
+(`doc/programmer/src/smc-programming.adoc`) write out, driven over SEP_IN AXI
+instead of from firmware: place the log bytes in memory the engine can fetch,
+point LOG_REGION_ADDR at them, point LOG_WRITE_ADDR at the wrapper's own UART
+transmit holding register, put that UART in `MCR.LOOP` so the bytes come back
+through its own receiver, enable the engine, and write a length into several
+LOG_CTRL elements at once.
 
 What the bench then compares is the byte stream it reads out of RBR against the
 bytes it wrote into memory, the LOG_CTRL elements hardware cleared, and an

@@ -8,6 +8,8 @@
 :sectnums:
 :toclevels: 3
 :source-highlighter: highlight.js
+:revnumber: 0.0.2
+:revdate: 2026-10-02
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 
 [WARNING]
@@ -16,19 +18,24 @@ This documentation product is currently under development. More content will be
 added as the project matures.
 ====
 
+ifdef::backend-pdf[]
+:imagesdir: ../assets
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+endif::backend-pdf[]
+
+ifndef::release[]
+include::revision.adoc[leveloffset=+1]
+endif::release[]
+
 include::smc-programming.adoc[]
 
 include::sep-programming.adoc[]
 
 include::sep-smc-common.adoc[]
 
-ifdef::backend-pdf[]
-include::../modules/aou/partials/pdf/software-operation.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::aou:partial$software-operation.adoc[]
-endif::backend-html5[]
+include::dtp-programming.adoc[]
 
+[appendix]
 ifdef::backend-pdf[]
 include::../../../hw/sys/smc/bootrom/prod/doc/index.adoc[leveloffset=1]
 endif::backend-pdf[]
@@ -36,6 +43,7 @@ ifdef::backend-html5[]
 include::smc-bootrom-prod:index.adoc[leveloffset=1]
 endif::backend-html5[]
 
+[appendix]
 ifdef::backend-pdf[]
 include::../../../hw/sys/sep/bootrom/prod/doc/index.adoc[leveloffset=1]
 endif::backend-pdf[]
@@ -43,12 +51,18 @@ ifdef::backend-html5[]
 include::sep-bootrom-prod:index.adoc[leveloffset=1]
 endif::backend-html5[]
 
-[[key-manager-km-firmware]]
-== Key Manager Firmware Reference
-
+[appendix]
 ifdef::backend-pdf[]
 include::../../../hw/ip/key_manager/doc/firmware.adoc[leveloffset=1]
 endif::backend-pdf[]
 ifdef::backend-html5[]
 include::ip:partial$key_manager/doc/firmware.adoc[leveloffset=1]
+endif::backend-html5[]
+
+[appendix]
+ifdef::backend-pdf[]
+include::../modules/aou/partials/pdf/software-operation.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::aou:partial$software-operation.adoc[]
 endif::backend-html5[]

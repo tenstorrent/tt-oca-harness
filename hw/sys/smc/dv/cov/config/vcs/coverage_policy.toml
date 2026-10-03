@@ -164,6 +164,20 @@ path = "smc_reviewed_field_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
+# The code-coverage points a formal unreachability analysis over the `hosted fw`
+# regression's merged coverage database proves no stimulus reaches in the
+# bench's environment (SMC_FCOV.adoc, Unreachability exclusion list); URG
+# applies it at report time and applies no entry whose scope checksum differs
+# from the reported design. The digest pins the file: a regenerated list takes
+# a new entry.
+[[native_files]]
+tool = "vcs"
+role = "unreachable"
+path = "smc_unreachable.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+sha256 = "d9f63fedf8bbe2f3ada6d8bfe9a16ce9927061cb9c49717b934656059b675c9c"
+
 # urg reports the cov/sv cover properties under `user`; the runner grades the
 # family by the tool's own figure. This file carries no `[[holes]]` row for
 # it: every collected point is hit by an enrolled leaf, and a point this bench

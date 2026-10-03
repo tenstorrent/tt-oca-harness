@@ -165,12 +165,12 @@ endef
 
 # Plain-leaf docs: RDL -> compact AsciiDoc (custom generator), plus a peakrdl html site.
 define ocah_reg_doc_plain_rule
-$(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdladoc.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdladoc.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/adoc" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating AsciiDoc register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_adoc,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_adoc_output,$(1)),$(call ocah_reg_build,$(1))/adoc.log)$(call ocah_reg_stamp_after,"$(call ocah_reg_adoc_output,$(1))")'
 
-$(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/html.log)$(call ocah_reg_stamp_after,"$$@")'

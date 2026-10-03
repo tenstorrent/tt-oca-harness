@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[key-manager-km-firmware]]
-= Firmware
+[[km-application-rom]]
+= Key Manager Application ROM
 
 [[key-manager-rom-code]]
 The KM ROM runs on PicoRV32. It initializes the subsystem, services SEP
@@ -1191,7 +1191,10 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
 . *Lock sensitive data.*  OTP secret fields and the `rom_persist` SRAM region
   are locked, and the KPV is closed to mutable firmware: using the key registry,
   every registered slot is read-locked (`lock_use`) and every free slot is
-  shredded through the hardware erase path.  Note that this read-lock is what
+  shredded through the hardware erase path.  KPV key data has no warm reset,
+  is descrambled on KM-port reads, and is only write-locked by the load path,
+  so without this step live keys would be readable in plaintext by mutable
+  firmware.  Note that this read-lock is what
   denies mutable firmware the surviving key material; it is not the per-slot
   `seal` bit (<<km-firmware-kpv-driver>>), which no ROM flow sets.  The erase
   path is not gated by slot locks, so even an unregistered write-locked slot
@@ -1215,8 +1218,10 @@ The high-level steps for `CMD_SRAM_LOAD_EXEC` are:
   yet read, and flushes both mailbox FIFOs to erase any residual inbound
   payload (e.g. key material from an earlier `CMD_KEY_LOAD`).  Finally the
   mailbox IRQ enables are cleared and all CPU IRQ sources masked.  ROM does not
-  program `IRQ_ENTRY_ADDR`; the vector is left at the ROM default and the loaded
-  firmware sets its own before re-enabling interrupts.
+  program `IRQ_ENTRY_ADDR`; the vector is left at the ROM default (`0x10`) and
+  the loaded firmware sets its own before re-enabling interrupts.  Because every
+  CPU IRQ is masked across the jump, the vector value is immaterial until then.
+  `IRQ_ENTRY_LOCK` is left unset so the firmware can program the vector freely.
 
 . *Scramble.*  A stack-less assembly routine (`rom_handover_jump.S`) seeds a
   `xoshiro128++` PRNG from the value passed from C, iterates over the full
@@ -1355,8 +1360,14 @@ This must precede unmasking.
 with random words sourced from the DRBG.
 .. Using inline assembly, enable & lock the SRAM scrambler then restart
 CPU execution (jump to address 0).
-. On a cold boot, initialize the warm-persistent SRAM region
-(<<rom-warm-persist-region,ROM warm persist region>>). A warm boot leaves it intact.
+. On a cold boot, initialize the warm-persistent SRAM region (the
+ifdef::backend-html5[]
+xref:ocah-docs:ip:key_manager/doc/index.adoc#rom-warm-persist-region[ROM warm persist region]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/key_manager/doc/index.html#rom-warm-persist-region[ROM warm persist region]
+endif::backend-pdf[]
+in the Technical Reference Manual). A warm boot leaves it intact.
 . Initialize the KPV scrambler, enable it, and lock it.
 . If wiping is enabled — a weak predicate, on by default, that block-level
 tests override to preserve state across a restart — then:
@@ -1387,8 +1398,14 @@ ROM provisions and locks the SRAM and KPV scramblers during
 <<km-boot-sequence>>. The SRAM scrambler key and enable/lock state survive
 warm reset, so ROM retains an already enabled SRAM scrambler. Cold reset
 requires fresh provisioning. The boot sequence above defines the ordering;
-the hardware behavior is described in <<kpv-scrambling>> and the SRAM
-scrambler reference.
+the hardware behavior is described in the
+ifdef::backend-html5[]
+xref:ocah-docs:ip:key_manager/doc/index.adoc#kpv-scrambling[KPV scrambling]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/key_manager/doc/index.html#kpv-scrambling[KPV scrambling]
+endif::backend-pdf[]
+section of the Technical Reference Manual and the SRAM scrambler reference.
 
 [[km-firmware-message-buffers]]
 == Message Buffers
@@ -1747,7 +1764,8 @@ further configuration or key changes until reset. Production boot enables and
 locks it; tests can disable an unlocked scrambler to inspect raw storage.
 
 *Erase and shred.* Erase triple-writes `CTRL.erase` and polls until hardware
-clears it. Hardware overwrites all slot words through the scrambler regardless
+clears it. The erase shares the scrambler and the key-data write port, so the
+driver touches no key data while it is active. Hardware overwrites all slot words through the scrambler regardless
 of read/write locks or seal. An unsealed slot's control clears, making it
 reusable. A sealed slot retires: `lock_write` remains set and `lock_use` is set,
 preventing readout or reuse until reset. Slot shred repeats erase

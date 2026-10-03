@@ -121,7 +121,14 @@ controlled by `IER.EDSSI`.
 |===
 
 `MCR.OUT2` does not gate `irq_o`; its modem and loopback uses are described
-in the programming section. The ITR
+in the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-uart-flow-control[UART modem status section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-uart-flow-control[UART modem status section]
+endif::backend-pdf[]
+of the Programmer's Guide. The ITR
 extension can force interrupt sources for testing. Clear test settings after
 use. Do not rely on clearing IER alone to silence the unmasked timeout source;
 use the subsystem interrupt controller when masking all delivery is required.

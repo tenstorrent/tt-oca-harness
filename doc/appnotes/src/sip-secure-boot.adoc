@@ -79,9 +79,21 @@ it.
 management bus as a controller and distributes the secondary's bundle.
 |===
 
-SEP BL0 and SMC BL0 are the OCAH boot ROMs; the _SEP Production ROM Reference_
-and _SMC Production ROM Reference_ chapters of the Programmer's Guide cover the
-details this note summarizes. The SEP BL1 and SMC BL1 steps in this note are an
+SEP BL0 and SMC BL0 are the OCAH boot ROMs; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM]
+endif::backend-pdf[]
+and
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM]
+endif::backend-pdf[]
+appendices of the Programmer's Guide cover the details this note summarizes. The SEP BL1 and SMC BL1 steps in this note are an
 example integration, built on the interfaces the ROMs and the hardware provide;
 a BL1 implementation can divide the work differently.
 
@@ -176,6 +188,7 @@ the anchor. The slot numbers are shown in parentheses:
 |`SYS_PUBK_PQC_HASH` in eFuse (23).
 |===
 
+The two SiP slots let one SiP root remain usable after the other is revoked.
 OCAH assigns no purpose to individual ROM keys. Which of them an integrator
 keeps for development, and revokes in production through `CHIPLET_PUBK_REVOKE`,
 is that integrator's security policy.
@@ -184,19 +197,47 @@ The current SEP ROM verifies one classical RSA-3072 signature, made with the key
 of the one slot the manifest selects. Any owner's anchor can authorize a bundle
 on its own.
 
-The TRM also defines a multi-owner signing model, which the current SEP ROM does
-not implement. In that model, each chiplet's `REQUIRED_SIGNERS` eFuse field sets
-which owners must sign the bundles its SEP ROM verifies:
+[[sip-secure-boot-multi-owner-model]]
+The eFuse map also reserves fields for a multi-owner signing model, which the
+current SEP ROM does not implement: BL0 does not read `REQUIRED_SIGNERS` or
+`REQUIRED_ALGS`, and does not verify a manifest's verifier-key and co-signer
+entries. In that model, each chiplet's `REQUIRED_SIGNERS` eFuse field sets which
+owners must sign the bundles its SEP ROM verifies:
 
 * the chiplet creator always signs;
 * the SiP owner also signs when `REQUIRED_SIGNERS[0]` is burned; and
 * the system owner also signs when `REQUIRED_SIGNERS[1]` is burned.
 
-`REQUIRED_ALGS` then selects, per required owner, a classical signature (ECDSA
-P-384 or RSA), a post-quantum one (ML-DSA), or both, and post-quantum signing
-arrives with the same model. The TRM describes it in its _Deferred Multi-Owner
-Signing Model_ section (part of the SEP chapter's _Life Cycle Controller_
-section).
+Burning a bit adds a requirement; leaving it clear does not require that
+owner's key to be provisioned. `REQUIRED_ALGS` then selects, per required owner,
+a classical signature (ECDSA P-384 or RSA), a post-quantum one (ML-DSA), or
+both, and post-quantum signing arrives with the same model. For each required
+owner, the manifest must carry a valid signature for every selected algorithm,
+made with a provisioned, non-revoked key; when both are selected, neither
+signature alone suffices. Signatures from owners outside the required set are
+ignored. Firmware performs these checks; the lifecycle controller does not
+inspect manifests or signatures.
+
+The fuse fields set only the initial requirement. At cold reset they reload a
+shadow policy for BL1, and in the model each authenticated stage may change the
+shadow signer set for the next manifest, adding or dropping owners. Firmware
+enforces this propagation; there is no hardware signer-policy gate. For
+example:
+
+* With no signer bits burned, BL1 requires the chiplet creator only.
+* With the SiP bit burned, BL1 requires the chiplet creator and the SiP owner,
+  and an authenticated BL1 may hand off to a BL2 policy requiring only the SiP
+  owner.
+* An authenticated stage can add the system owner to the shadow policy for its
+  successor, alone or alongside the SiP owner.
+
+The next cold reset restores the fused requirement.
+
+Demotion authorization in the model follows the manifest's required-signer set
+and is not tied to a particular boot stage. Both demotions use the same signing
+rules; the inter-chiplet effect of the second demotion adds no hardware signer
+check. A SiP owner can require its signature for the initial manifest and
+commit a non-demoted decision with the demotion lock.
 
 The owners need not be the same parties on each chiplet, and chiplets need not
 share any anchors. Each chiplet's creator fixes its ROM keys, and each chiplet's
@@ -214,6 +255,7 @@ or if the anchor's slot bit is set in the union of `CHIPLET_PUBK_REVOKE` and the
 manifest's revocation bitmap. It then checks the anti-rollback posture and
 verifies the signature.
 
+[[sip-secure-boot-decision]]
 SEP BL0 decides whether secure boot is enabled separately for each manifest:
 
 * If the manifest sets its signed `secure_boot_control` enable bit, secure boot
@@ -235,8 +277,15 @@ firmware, so that unsigned firmware can boot even on a `PROD` part, but it never
 lets a manifest that requests verification skip it. When secure boot is disabled
 for a manifest, the manifest gets only the integrity checks, and one that
 declares an encrypted payload is rejected, since decryption is available only
-under secure boot. The TRM describes this decision in its _Secure-Boot
-Enforcement_ section, next to the signing model.
+under secure boot. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sec:secure_boot[Secure Boot Decision]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sec:secure_boot[Secure Boot Decision]
+endif::backend-pdf[]
+section of the SEP Boot ROM appendix in the Programmer's Guide specifies this
+decision as requirements.
 
 A manifest can also request a _debug demotion_: opening debug access for the
 current boot without changing the lifecycle state. The lifecycle controller has
@@ -699,8 +748,14 @@ the SMC ROM, which serves the OCCP Base and Boot applications.
 
 The SMC ROM is an OCCP *target* only. On every chiplet, whatever its straps, it
 starts a fixed set of its I3C and I2C interfaces in target mode and polls them
-round-robin; the _SMC Production ROM Reference_ in the Programmer's Guide lists
-the set. The distributing agent must therefore drive the bus as a controller. In
+round-robin; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide lists the set. The distributing agent must therefore drive the bus as a controller. In
 this example that agent is SMC BL1 on chiplet 0, which can run only once chiplet
 0 has authenticated itself. For the recovery variant it is a host or a board
 management controller.
@@ -837,9 +892,14 @@ T1 -> P : chiplet 1 answers again:\nboot succeeded
 === Staging window
 
 The bundle has to be staged where the target accepts it and where the SEP will
-look for it. The current SMC ROM lays out SMC SRAM as follows; the _SMC
-Production ROM Reference_ in the Programmer's Guide is the authority for these
-values:
+look for it. The current SMC ROM lays out SMC SRAM as follows; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide is the authority for these values:
 
 * Every OCCP address must be 32-bit aligned. Accesses of zero length, accesses
   whose address arithmetic wraps, and accesses that overlap the SMC ROM's own

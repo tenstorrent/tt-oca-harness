@@ -8,8 +8,8 @@ state, each paired with a privileged access as its positive control:
   * READ half -- an unprivileged read is refused with DECERR and the error-slave
     signature 0xBADCAB1E, while the privileged read returns the programmed word.
   * WRITE half -- an unprivileged write of the value that would DISARM the
-    filter is refused with DECERR, the code the GPIO programming guide
-    (`hw/ip/gpio/doc/programming.adoc`, "Filter Configuration") specifies for a
+    filter is refused with DECERR, the code the Programmer's Guide GPIO section
+    (`doc/programmer/src/smc-programming.adoc`, "Configuring Access Filtering") specifies for a
     blocked transaction, and a privileged read afterwards shows the register
     unchanged.
   * SWEEP -- each of the eight AxPROT requirement values is programmed in turn
@@ -110,8 +110,8 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
     async def _read_denied_decerr(self, name: str, addr: int, prot: int = _PROT_UNPRIV) -> int:
         """Unprivileged ACCESS_FILTER read must DECERR with 0xBADCAB1E.
 
-        DECERR is the code the GPIO programming guide
-        (`hw/ip/gpio/doc/programming.adoc`, "Filter Configuration") specifies
+        DECERR is the code the Programmer's Guide GPIO section
+        (`doc/programmer/src/smc-programming.adoc`, "Configuring Access Filtering") specifies
         for a transaction whose protection bits do not match the filter.
         """
         item = SmcSysAxiItem(f"rd_{name}")

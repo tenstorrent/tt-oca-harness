@@ -14,8 +14,15 @@ The immutable ROM firmware first initializes the Key Manager, then remains
 active to process SEP mailbox commands and service interrupts. It is both
 startup firmware and the resident runtime; "boot ROM" names the memory, not
 its only function. On an explicit firmware-load/execute command, ROM can hand
-control to mutable firmware in SRAM. See <<key-manager-km-firmware>> for the
-implemented services, command protocol and handover rules.
+control to mutable firmware in SRAM. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide defines the implemented services, command protocol
+and handover rules.
 
 ifdef::backend-pdf[]
 include::architecture.adoc[leveloffset=+1]
@@ -24,11 +31,19 @@ ifdef::backend-html5[]
 include::partial$key_manager/doc/architecture.adoc[leveloffset=+1]
 endif::backend-html5[]
 
+[[key-manager-firmware]]
 == Firmware
 
+The KM ROM and any mutable firmware it hands over to run on the PicoRV32. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
+endif::backend-html5[]
 ifdef::backend-pdf[]
-include::firmware.adoc[leveloffset=+1]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
 endif::backend-pdf[]
+of the Programmer's Guide is the firmware reference: initialization, the
+mailbox command and response protocol, interrupt handling, key management and
+the SRAM handover rules.
 
 [[km-memory-register-reference]]
 == Memory Map and Register Reference

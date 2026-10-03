@@ -1,9 +1,0 @@
-// SPDX-License-Identifier: CC-BY-4.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-= AoU Appendix C. Software Operation
-:description: AOU Software Operation Guide
-
-:sectnums!:
-
-include::aou:partial$software-operation.adoc[]

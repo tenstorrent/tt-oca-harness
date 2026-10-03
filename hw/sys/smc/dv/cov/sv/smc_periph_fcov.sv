@@ -188,8 +188,8 @@ module smc_periph_fcov #(
   `OCAH_FCOV_COVER(c_gpio_pad2core_en_active, gpio_pad2core_en_active_e, clk_periph_i, in_reset)
 
   // The single-pad point counts the output enables GPIO software owns: a pad
-  // an LSIO function selects is driven by that function (gpio
-  // programming.adoc, LSIO Interface Operation), and several such pads are
+  // an LSIO function selects is driven by that function (Programmer's
+  // Guide, Selecting and Reclaiming LSIO), and several such pads are
   // enabled from reset.
   logic [$clog2(GPIO_WIDTH+1)-1:0] core2pad_en_count, sw_core2pad_en_count;
   always_comb begin

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import re
-import tomllib
 from collections import Counter
 from dataclasses import dataclass
 from html import escape
@@ -55,22 +54,6 @@ def parse_rdl_params(raw: Iterable[str] | None) -> dict[str, int]:
             raise ValueError(f"RDL parameter {item!r} is not NAME=VALUE")
         params[name] = int(value, 0)
     return params
-
-
-def load_doc_overrides(rdl: str) -> dict[str, str]:
-    path = Path(rdl).with_name("regdoc.toml")
-    if not path.exists():
-        return {}
-    with path.open("rb") as stream:
-        data = tomllib.load(stream)
-    if data.get("version") != 1:
-        raise ValueError(f"{path}: expected version = 1")
-    registers = data.get("registers", {})
-    if not isinstance(registers, dict) or not all(
-        isinstance(key, str) and isinstance(value, str) for key, value in registers.items()
-    ):
-        raise ValueError(f"{path}: [registers] must map selectors to descriptions")
-    return registers
 
 
 def compile_root(
@@ -249,13 +232,11 @@ def array_lineage(node: RegNode):
 
 
 class Collector(RDLListener):
-    def __init__(self, overrides: dict[str, str] | None = None):
+    def __init__(self):
         self.regs: list[Reg] = []
         self.arrays: dict[str, ArraySpec] = {}
         self.seen: set[str] = set()
         self.qualified_names: dict[str, str] = {}
-        self.overrides = overrides or {}
-        self.used_overrides: set[str] = set()
 
     def enter_Reg(self, node: RegNode):
         # The walk is not unrolled, so each declared register is visited once no
@@ -303,47 +284,31 @@ class Collector(RDLListener):
             name = node.inst_name
             addr = f"0x{base:X}"
 
-        # Array path segments read "[]" under an un-unrolled walk; strip them (and
-        # any explicit index) so regdoc.toml selectors stay index-free.
-        selector = ".".join(re.sub(r"\[\d*\]$", "", segment) for segment in path.split(".")[1:])
-        description = node.get_property("desc") or ""
-        if selector in self.overrides:
-            if description:
-                raise ValueError(
-                    f"{selector}: documentation override is redundant with an RDL description"
-                )
-            description = self.overrides[selector]
-            self.used_overrides.add(selector)
         self.regs.append(
             Reg(
                 name,
                 addr,
                 sw_access(node),
-                description,
+                node.get_property("desc") or "",
                 path,
                 bit_ranges(node),
             )
         )
 
 
-def collect(root, overrides: dict[str, str] | None = None) -> Collector:
-    c = Collector(overrides)
+def collect(root) -> Collector:
+    c = Collector()
     RDLWalker(unroll=False).walk(root, c)
     counts = Counter(reg.name for reg in c.regs)
     for reg in c.regs:
         if counts[reg.name] > 1:
             reg.name = c.qualified_names[reg.path]
     c.arrays = {reg.name: c.arrays[reg.path] for reg in c.regs if reg.path in c.arrays}
-    unmatched = set(c.overrides) - c.used_overrides
-    if unmatched:
-        raise ValueError(
-            "documentation override selectors matched no register: " + ", ".join(sorted(unmatched))
-        )
     return c
 
 
-def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
-    data = collect(root, overrides)
+def write_adoc(root, out: str):
+    data = collect(root)
     ident = first_addrmap_name(root)
     anchors = {
         r.path: "reg-{regmap-instance}-" + re.sub(r"[^A-Za-z0-9_-]+", "-", r.path)
@@ -408,8 +373,8 @@ def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
     Path(out).write_text("\n".join(lines))
 
 
-def write_html(root, out: str, ident: str | None = None, overrides: dict[str, str] | None = None):
-    data = collect(root, overrides)
+def write_html(root, out: str, ident: str | None = None):
+    data = collect(root)
     ident = ident or first_addrmap_name(root)
     lines = [
         "<!-- SPDX-License-Identifier: Apache-2.0 -->",

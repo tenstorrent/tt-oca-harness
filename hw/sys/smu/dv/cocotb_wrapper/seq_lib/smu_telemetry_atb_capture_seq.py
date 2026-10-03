@@ -24,8 +24,8 @@ S3  One complete last-flagged ATB message. Every beat must be accepted --
 
 S4  The ATB flush handshake. ``CTRL.TELEMETRY_TX_FLUSH`` requests the
     upstream flush over the ATB AF interface and clears itself when the flush
-    completes (``regs/telemetry_receiver.rdl``; ``doc/programming.adoc``,
-    "Transmitter Flush"); ``afvalid_o`` is the flush request and ``afready_i``
+    completes (``regs/telemetry_receiver.rdl``; ``doc/programmer/src/smc-programming.adoc``,
+    "Flush Operations"); ``afvalid_o`` is the flush request and ``afready_i``
     its acknowledgment (``doc/interface.adoc``). With ``telemetry_afready_i``
     held low the request must stay asserted at the pin and in the field, and
     raising it retires both. Lowering it again at the wrapper pin leaves the

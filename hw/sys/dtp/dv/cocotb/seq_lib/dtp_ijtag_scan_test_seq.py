@@ -12,6 +12,7 @@ instrument registers against the SIB model (``CHK-SCAN-CHAIN``).
 from __future__ import annotations
 
 from env.dtp_dbg_disable import IJTAG_SIB_DISABLE
+from env.dtp_scan_ref_model import DtpIjtagSibModel
 
 from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
 
@@ -131,10 +132,27 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         self.log_summary("iJTAG all-on", gate_vectors=len(gate_vectors))
 
     async def run_sib_random(self) -> None:
-        self.log_banner("iJTAG SIB deterministic and random sweep")
-        for pattern in range(8):
-            await self.check_pattern(pattern, context=f"sweep.pattern_{pattern:03b}")
+        self.log_banner("iJTAG SIB gating sweep and random patterns")
         rng = self.rng("dtp_ijtag_sib_random")
+        # Every combination of SIB states, each SIB closed, open, or gated:
+        # every disable mask of the three SIB fields in a seeded order, and
+        # under each mask every open set of the ungated SIBs. A gated SIB's
+        # request bit is drawn; it stays closed either way.
+        masks = list(range(8))
+        rng.shuffle(masks)
+        for step, mask in enumerate(masks, start=1):
+            dbg = {
+                IJTAG_SIB_DISABLE[name]: gated
+                for name, gated in DtpIjtagSibModel.pattern_dict(mask).items()
+            }
+            self.log_step(step, "SIB disable mask %s, every ungated open set", dbg)
+            for pattern in range(8):
+                if pattern & mask:
+                    continue
+                request = pattern | (rng.getrandbits(3) & mask)
+                await self.check_pattern(
+                    request, dbg_disable=dbg, context=f"sweep.mask_{mask:03b}.open_{pattern:03b}"
+                )
         for idx in range(16):
             pattern = rng.randrange(0, 8)
             dbg = {
@@ -146,7 +164,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
                 idx + 1, 16, "pattern=0b%s dbg_disable=%s", format(pattern, "03b"), dbg
             )
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"random.iter_{idx}")
-        self.log_summary("iJTAG random", exhaustive_patterns=8, random_iterations=16)
+        self.log_summary("iJTAG random", gating_combinations=27, random_iterations=16)
 
     async def run_dft(self) -> None:
         self.log_banner("iJTAG DFT secure/non-secure access")

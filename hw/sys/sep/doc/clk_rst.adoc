@@ -62,9 +62,15 @@ Reset scope determines which state survives a restart. In normal operation
 |Separate requests for Key Manager, OTBN, AES, HMAC, KMAC, Adams Bridge and the shared TRNG domain. Each sequencer isolates its required AXI paths and waits for the isolation acknowledgements before asserting reset.
 |===
 
-A watchdog restart therefore does not imply that the cryptographic engines or
-their software reset requests have returned to cold-reset defaults. Recovery
-software must account for surviving engine state before submitting new work.
+A watchdog restart therefore does not return the cryptographic engines or
+their software reset requests to cold-reset defaults; see the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-software-reset[software reset section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-software-reset[software reset section]
+endif::backend-pdf[]
+of the Programmer's Guide.
 The watchdog itself uses cold reset; its timer-domain reset release is
 synchronized to `clk_wdt_i`.
 

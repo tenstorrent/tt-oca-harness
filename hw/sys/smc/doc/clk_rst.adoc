@@ -326,19 +326,24 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-. Program the isolation masks and both FLR timing registers before enabling
-  requests. The count values cross from SMC to the reference domain through
-  handshaked synchronizers; readback in the SMC domain does not acknowledge
-  arrival in the reference domain.
-. `ISOLATE_REQ_FLR_COUNTER_VALUE` selects the pre-reset countdown; zero allows
-  assertion without that countdown. `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`
-  selects the cool-reset hold count and must be nonzero to start the timed flow.
-. On a synchronized FLR edge, the sequencer counts in reference-clock cycles,
-  asserts cool reset, then releases it after the hold countdown. Destination
-  reset synchronizers add their release latency. The sequencer is not a queue
-  of overlapping FLR requests; coordinate requests and recovery in the integration.
-. Re-establish the affected subsystem's state and satisfy its isolation-release
-  requirements before clearing the FLR isolation latch or software requests.
+The FLR count values cross from SMC to the reference domain through handshaked
+synchronizers; readback in the SMC domain does not acknowledge arrival in the
+reference domain. `ISOLATE_REQ_FLR_COUNTER_VALUE` selects the pre-reset
+countdown; zero allows assertion without that countdown.
+`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` selects the cool-reset hold count, and
+must be nonzero to start the timed flow.
+
+On a synchronized FLR edge, the sequencer counts in reference-clock cycles,
+asserts cool reset, then releases it after the hold countdown. Destination
+reset synchronizers add their release latency. The sequencer is not a queue of
+overlapping FLR requests. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-flr-isolation[FLR preparation and recovery sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-flr-isolation[FLR preparation and recovery sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 A zero hold count disables the timed reset sequence, but does not prevent the
 SMC-domain FLR edge from setting the isolation latch. `ISOLATE_REQ_VIS` reports

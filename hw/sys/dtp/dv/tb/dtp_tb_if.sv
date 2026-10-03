@@ -29,6 +29,17 @@ interface dtp_tb_if;
   logic por_rst_n;
   logic sys_rst_n;
 
+  // System reset armed on a JTAG2AXI read (driven by the reset-abort
+  // sequences): while bit t is set (0 smc_axi, 1 smc_otp, 2 sep_otp), tb_top
+  // asserts the system reset for sys_rst_on_ar_cycles clocks from the clock
+  // edge that completes bridge t's next AR handshake, once per arming.
+  logic [2:0] sys_rst_on_ar_arm    = '0;
+  logic [3:0] sys_rst_on_ar_cycles = 4'd1;
+
+  // The system reset the DUT and the AXI responders see (driven by tb_top):
+  // sys_rst_n with the read-armed pulse.
+  logic rst_n;
+
   // DFT controls of the DUT: test_en_i (test-mode enable for the JTAG2AXI
   // bridges and the CTN CSR crossbar) and scan_rst_ni (unused by the DUT),
   // both idle in functional mode; a DFT-mode scenario drives them here.

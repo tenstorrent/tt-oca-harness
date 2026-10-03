@@ -16,6 +16,14 @@ with optional inline SHA-256, SHA-384 or SHA-512 hashing. It uses the
 https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller]
 inside an AXI wrapper. The integration below defines which upstream ports
 and hardware triggers are available in SEP.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-dma[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[programming guidance]
+endif::backend-pdf[]
+for this block.
 
 Source and destination addresses independently support incrementing, fixed
 address and wrap-at-chunk-boundary operation. Use incrementing addresses for
@@ -49,9 +57,8 @@ converts AXI4 to 32-bit AXI4-Lite and then TL-UL; the data path converts the
 core's TL-UL host port back to AXI4. A local-alias remapper precedes the SEP
 crossbar and leaves the CPU TCM backdoor range available to DMA.
 
-Use source and destination address-space ID `0x7` (the core's internal host
-port), with both high address registers zero. The upstream SoC control and
-system ports are tied off in this wrapper; their ASIDs do not provide
+Address-space ID `0x7` selects the core's internal host port, the only route
+in this wrapper. The upstream SoC control and system ports are tied off; their ASIDs do not provide
 additional SEP routes. Reachability is governed by the SEP fabric and filters.
 
 The master path leaves AxUSER at zero. The register and host bridges latch
@@ -63,47 +70,23 @@ Only handshake input 0 is connected, to the SPI host's LSIO trigger.
 All other trigger inputs are tied low; SEP does not wire UART or I3C handshake paths.
 This does not prevent software-initiated accesses to reachable peripheral registers.
 
-[[sep-dma-programming]]
-=== Programming a Copy
-
-For one contiguous memory-to-memory copy:
-
-. Wait until the previous operation has finished and configuration is writable
-  (`CFG_REGWEN`). Configure a valid enabled-memory base/limit pair and set
-  `RANGE_VALID` before starting; observe `RANGE_REGWEN` if firmware has locked
-  that configuration.
-. Write `SRC_ADDR_LO` and `DST_ADDR_LO`, clear both high address registers,
-  and select `0x7` for both fields in `ADDR_SPACE_ID` (`0x77` combined).
-. Set `TRANSFER_WIDTH` to 0, 1 or 2 for 1, 2 or 4 bytes respectively. Align
-  both addresses to that width. Enable `INCREMENT` and clear `WRAP` in both
-  `SRC_CONFIG` and `DST_CONFIG`.
-. Set `CHUNK_DATA_SIZE` and `TOTAL_DATA_SIZE` to the same nonzero byte count.
-. Write `CONTROL` with `OPCODE=0` (copy), `HARDWARE_HANDSHAKE_ENABLE=0`,
-  `INITIAL_TRANSFER=1` and `GO=1`.
-. Check `STATUS.ERROR` and `ERROR_CODE` while waiting for `STATUS.DONE`.
-  Use a bounded wait in firmware. For interrupt-driven operation, enable
-  the required completion/error sources and acknowledge `INTR_STATE`.
+[[sep-dma-completion]]
+=== Completion Reporting
 
 The core reports transaction completion, chunk completion and error separately.
 Chunk completion applies to multi-chunk transfers without hardware handshake;
-it is not a per-trigger interrupt in handshake mode. Status completion/error
-bits are write-one-to-clear; the detailed register map defines each bit.
-
-For hashing, select opcode 1, 2 or 3 for SHA-256, SHA-384 or SHA-512 and use
-4-byte transfers. Set `INITIAL_TRANSFER` on the first transfer of the message;
-read the digest only when `STATUS.SHA2_DIGEST_VALID` is set. `DIGEST_SWAP`
-controls byte order within each digest register, not register order.
-
-For SPI handshake operation, select trigger 0 in `HANDSHAKE_INTR_ENABLE`,
-configure the peripheral FIFO and chunk size, and enable hardware handshake.
-A chunk consumes the configured number of bytes per service operation.
-Firmware must clear `GO` when stopping handshake operation. To abort an active
-operation, request `CONTROL.ABORT` and wait for `STATUS.ABORTED` before reusing
-its buffers or configuration. For a peripheral requiring an explicit trigger-clear
-write, configure `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`, `INTR_SRC_ADDR` and
-`INTR_SRC_WR_VAL` for the connected host port (`CLEAR_INTR_BUS` bit 0 = 1);
-otherwise leave that source
-unselected in `CLEAR_INTR_SRC`.
+it is not a per-trigger interrupt in handshake mode. Status completion and error
+bits are write-one-to-clear; the detailed register map defines each bit. Inline
+hashing requires 4-byte transfers, and `DIGEST_SWAP` controls byte order within
+each digest register, not register order. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-dma[SEP DMA section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-dma[SEP DMA section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the copy, hashing, handshake and abort
+sequences.
 
 [[future-enhancements]]
 == Future Enhancements

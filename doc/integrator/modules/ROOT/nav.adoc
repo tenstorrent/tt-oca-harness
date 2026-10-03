@@ -16,4 +16,6 @@
 ** xref:defines.adoc[Project Defines]
 ** xref:prim.adoc[Prim Cell Replacement and Don't-Touch Constraints]
 ** xref:cdc.adoc[CDC Timing Constraints]
+ifndef::release[]
 ** xref:revision.adoc[Revision History]
+endif::release[]

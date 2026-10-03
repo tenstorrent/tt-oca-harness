@@ -80,6 +80,25 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
     c.data  = 64'h5A5A_A5A5_3C3C_C3C3;
     c.wstrb = 8'hAA;
     cases.push_back(c);
+    // The strobe classes below a full beat at every size: no lane, the top
+    // lane alone (2 bytes and wider), and the low half of a 4-byte beat.
+    for (int unsigned size = 0; size <= 3; size++) begin
+      c.addr  = DefaultAxiAddr + 64'h200 + (size * 64'h40);
+      c.size  = size;
+      c.data  = (DefaultAxiData ^ (64'h2222_2222_2222_2222 * size)) & data_mask(size);
+      c.wstrb = 8'h00;
+      cases.push_back(c);
+      if (size > 0) begin
+        c.addr  = DefaultAxiAddr + 64'h400 + (size * 64'h40);
+        c.wstrb = 8'(1 << (size_bytes(size) - 1));
+        cases.push_back(c);
+      end
+    end
+    c.addr  = DefaultAxiAddr + 64'h600;
+    c.size  = 2;
+    c.data  = 64'h0BAD_F00D;
+    c.wstrb = 8'h03;
+    cases.push_back(c);
     for (int unsigned r = 0; r < random_count; r++) begin
       c.size  = $urandom_range(3);
       c.addr  = random_upper_addr(t);
