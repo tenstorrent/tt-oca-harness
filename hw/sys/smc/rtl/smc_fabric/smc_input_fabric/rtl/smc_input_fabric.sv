@@ -117,12 +117,10 @@ module smc_input_fabric #(
   output smc_pkg::remap_debug_t          remap_debug_log_o,  // Alias region index hit by the log path.
   output smc_pkg::remap_debug_t          remap_debug_dma_o,  // Alias region index hit by the data accelerator
                                                              // path.
-  output logic [$clog2(NUM_FILTERS)-1:0] write_filter_hit_debug_o,  // System inbound filter entry hit by writes;
-                                                                    // tied to zero because the filter instance
-                                                                    // disables its debug output.
-  output logic [$clog2(NUM_FILTERS)-1:0] read_filter_hit_debug_o,  // System inbound filter entry hit by reads;
-                                                                   // tied to zero because the filter instance
-                                                                   // disables its debug output.
+  output logic [$clog2(NUM_FILTERS)-1:0] write_filter_hit_debug_o,  // Lowest system inbound filter entry
+                                                                    // hit by a write.
+  output logic [$clog2(NUM_FILTERS)-1:0] read_filter_hit_debug_o,  // Lowest system inbound filter entry
+                                                                   // hit by a read.
 
   output logic sys_in_filter_clk_active_o,  // High while the system inbound filter clock runs.
   output logic sys_in_filter_bus_active_o  // High while the system inbound filter input has a
@@ -466,7 +464,7 @@ module smc_input_fabric #(
 
   axi_filter_wrap #(
     .NUM_FILTERS             (NUM_FILTERS),
-    .DEBUG_OUTPUT            (0),
+    .DEBUG_OUTPUT            (1),
     .BLOCK_BY_DEFAULT        (1'b1),
     .EN_SRC_ID_FILTER        (1'b1),
     .SRC_ID_USER_BIT_START   (0),
