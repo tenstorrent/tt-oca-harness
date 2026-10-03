@@ -1235,6 +1235,7 @@ def point_blocks(
             for line_no, point in points:
                 if lines is not None and line_no not in lines:
                     continue
+                key: str | None
                 if kind == "Line":
                     key = ""
                 elif kind == "Condition":
