@@ -7381,7 +7381,9 @@ under stuck noise with `REPETITION_LIMIT` = 5, and each lane's 32-bit total
 covers its 4-bit `ALERT_FAIL_COUNTS` counter. The two take the same fail pulse
 but carry different widths and different clears, so the compare is a
 DUT-to-DUT contract. The reverse does not hold and is not claimed:
-`alert_cntrs_clr` also fires on a passing window.
+`entropy_source.rdl` scopes `ALERT_FAIL_COUNTS` to the current alert sequence,
+which an accepted passing window ends, while each total counts since the last
+`CTRL.MODULE_ENABLE` rising edge.
 |CHK-HT-STATUS
 |`HEALTH_TEST_STATUS.HEALTH_STATUS` latches a failing test while the alert is
 asserted. No reserved bit latches: `entropy_source.rdl` allocates
