@@ -95,6 +95,7 @@ from .junit import (
     ensure_graded_junit,
     ensure_leaf_junit,
     graded_xml_path,
+    report_xml_path,
     results_xml_path,
 )
 from .logparse import observed_failure_messages, parse_stage_result
@@ -4026,6 +4027,7 @@ def run_stage(
         if stage_name in {"sim", "regress"} and item is not None and not args.dry_run:
             discard_generated_junit(results_xml_path(stage_dir))
             discard_generated_junit(graded_xml_path(stage_dir))
+            discard_generated_junit(report_xml_path(stage_dir))
         if kind == "noop":
             note = str(stage.get("note", "no operation"))
             console.event("note", note)

@@ -106,9 +106,15 @@ from .junit import (
     ensure_leaf_junit,
     materialize_interruption_junit,
     materialize_stage_junit,
+    report_case_names,
     results_xml_path,
+    write_report_junit,
 )
-from .logparse import validate_parser_extensions, validate_parser_registry
+from .logparse import (
+    observed_failure_messages,
+    validate_parser_extensions,
+    validate_parser_registry,
+)
 from .models import ConfigError, Flow, StageResult, TestCatalog, TestEntry
 from .paths import configs_root, dut_runs_root, repo_path, repo_rel, repo_root
 from .results import (
@@ -3325,6 +3331,7 @@ def run_flow(
                 expected_leaves.append(identity)
                 next_leaf_id += 1
         leaf_plans_by_stage[stage_index] = stage_plans
+    report_names = report_case_names(expected_leaves)
 
     replaying_coverage = existing_result is not None and replay_run_dir == run_dir
     checkpoint_enabled = bool(expected_leaves) and not args.dry_run and not replaying_coverage
@@ -4131,47 +4138,79 @@ def run_flow(
         else:
             executor_impl.close(wait=True)
 
-    def ensure_graded_leaf_junit(result: StageResult, item: str, seed: int) -> None:
-        """Structured XML for a graded leaf whose result names none.
+    def ensure_graded_leaf_junit(leaf: dict[str, Any], result: StageResult) -> None:
+        """Structured XML for a graded leaf whose result names none, and its report case.
 
         A leaf that ran names its file in `results_xml`; any other gets a file in its graded
         attempt's directory, pointing at the leaf's `result.json` when there is one and at
         the run's otherwise. A marked file in that directory is overwritten; a native file
         is kept, with the graded verdict in `graded.xml` beside it when it reads as a pass.
+        Every graded leaf gets `report/junit.xml` in the same directory.
         """
         if args.dry_run or result.stage not in {"sim", "regress"} or result.status == "SKIP":
             return
-        if (result.artifacts or {}).get("results_xml"):
-            return
+        item = str(leaf["item"])
         attempt = int((result.metadata or {}).get("attempt") or 0)
-        leaf_dir = item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=nest)
+        leaf_dir = item_artifact_dir(
+            run_dir, item, seed=int(leaf["seed"]), attempt=attempt, nest=nest
+        )
         leaf_json = leaf_dir / "result.json"
         record = leaf_json if leaf_json.is_file() else run_dir / "result.json"
+        if not (result.artifacts or {}).get("results_xml"):
+            try:
+                discard_generated_junit(results_xml_path(leaf_dir))
+                written = ensure_leaf_junit(
+                    flow=flow,
+                    root=root,
+                    run_dir=run_dir,
+                    tool=tool,
+                    result=result,
+                    leaf_dir=leaf_dir,
+                    result_json=record,
+                )
+                ensure_graded_junit(
+                    flow=flow,
+                    root=root,
+                    run_dir=run_dir,
+                    tool=tool,
+                    result=result,
+                    leaf_dir=leaf_dir,
+                    result_json=record,
+                )
+            except Exception as exc:  # noqa: BLE001
+                console.event("warning", f"junit synthesis failed for {item}: {exc}", force=True)
+            else:
+                if written is not None:
+                    result.artifacts = {
+                        **(result.artifacts or {}),
+                        "results_xml": repo_rel(root, written),
+                    }
         try:
-            discard_generated_junit(results_xml_path(leaf_dir))
-            written = ensure_leaf_junit(
-                flow=flow,
-                root=root,
-                run_dir=run_dir,
-                tool=tool,
-                result=result,
-                leaf_dir=leaf_dir,
-                result_json=record,
+            failures = (
+                observed_failure_messages(
+                    flow=flow,
+                    tool=tool,
+                    policies=policies,
+                    simulators=simulators,
+                    log_path=root / (result.log or ""),
+                    results_dir=results_xml_path(leaf_dir).parent,
+                )
+                if result.status != "PASS"
+                else []
             )
-            ensure_graded_junit(
+            write_report_junit(
                 flow=flow,
                 root=root,
                 run_dir=run_dir,
                 tool=tool,
                 result=result,
-                leaf_dir=leaf_dir,
+                directory=leaf_dir,
+                name=report_names.get(int(leaf["id"]), item),
                 result_json=record,
+                failures=failures,
             )
         except Exception as exc:  # noqa: BLE001
-            console.event("warning", f"junit synthesis failed for {item}: {exc}", force=True)
-            return
-        if written is not None:
-            result.artifacts = {**(result.artifacts or {}), "results_xml": repo_rel(root, written)}
+            console.event("warning", f"junit report failed for {item}: {exc}", force=True)
 
     def record_leaf(
         leaf: dict[str, Any],
@@ -4182,7 +4221,7 @@ def run_flow(
     ) -> bool:
         item = str(leaf["item"])
         seed = int(leaf["seed"])
-        ensure_graded_leaf_junit(result, item, seed)
+        ensure_graded_leaf_junit(leaf, result)
         results.append(result)
         runs_by_item.setdefault(item, []).append((seed, result))
         regression_jobs.extend(jobs)

@@ -25,14 +25,19 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib import stages  # noqa: E402
+from runlib import junit, stages  # noqa: E402
 from runlib.config import load_simulators  # noqa: E402
 from runlib.junit import (  # noqa: E402
     PRODUCER,
+    REPORT_TAIL_BYTES,
+    REPORT_TAIL_LINES,
     ensure_graded_junit,
     ensure_leaf_junit,
     is_generated_junit,
+    materialize_interruption_junit,
     materialize_stage_junit,
+    report_case_names,
+    write_report_junit,
 )
 from runlib.logparse import parse_stage_result, validate_parser_registry  # noqa: E402
 from runlib.models import Dut, StageResult, TestCatalog, TestEntry  # noqa: E402
@@ -583,6 +588,171 @@ class JunitOwnership(unittest.TestCase):
                 flow=self.flow, root=self.root, run_dir=self.run_dir, tool=TOOL, stages=stages
             )
         )
+
+
+class JunitReport(unittest.TestCase):
+    """The CI-facing `report/junit.xml`: testlist identity, failure message, log tail."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.run_dir = self.root / "dut" / "build" / "runs" / "r"
+        self.leaf = self.run_dir / "t_a" / "seed_7" / "attempt_0"
+        self.log = self.leaf / "logs" / "t_a.log"
+        self.log.parent.mkdir(parents=True)
+        self.flow = make_flow(self.root)
+
+    def leaf_result(self, status: str, **extra) -> StageResult:
+        extra.setdefault("metadata", {"seed": 7, "attempt": 0})
+        return stage(
+            "t_a", status, target="dual", log=str(self.log.relative_to(self.root)), **extra
+        )
+
+    def report(self, result: StageResult, failures: tuple[str, ...] = ()) -> ET.Element:
+        path = write_report_junit(
+            flow=self.flow,
+            root=self.root,
+            run_dir=self.run_dir,
+            tool=TOOL,
+            result=result,
+            directory=self.leaf,
+            name="t_a",
+            result_json=self.leaf / "result.json",
+            failures=failures,
+        )
+        self.assertEqual(path, self.leaf / "report" / "junit.xml")
+        assert path is not None
+        self.assertTrue(is_generated_junit(path))
+        (case,) = ET.parse(path).getroot().iter("testcase")
+        return case
+
+    def test_the_case_is_named_by_its_entry_and_carries_the_seed(self):
+        self.log.write_text("only line\n", encoding="utf-8")
+        case = self.report(self.leaf_result("PASS"))
+        self.assertEqual((case.get("classname"), case.get("name")), ("fixture.cocotb.dual", "t_a"))
+        self.assertEqual([child.tag for child in case], ["system-out"])
+        out = case.findtext("system-out", "").splitlines()
+        self.assertEqual(out[0], "seed: 7")
+        self.assertIn("log: dut/build/runs/r/t_a/seed_7/attempt_0/logs/t_a.log", out)
+        self.assertNotIn("only line", out)
+
+    def test_a_failure_takes_the_first_message_and_ends_with_the_log_tail(self):
+        self.log.write_text("".join(f"line {n}\n" for n in range(300)), encoding="utf-8")
+        result = self.leaf_result("FAIL", reason="1 testcase failure/error node(s)")
+        case = self.report(result, ("TypeError: bad width", "second message"))
+        failure = case.find("failure")
+        assert failure is not None
+        self.assertEqual(
+            (failure.get("message"), failure.get("type")), ("TypeError: bad width", "sim_failure")
+        )
+        self.assertEqual(
+            (failure.text or "").splitlines(),
+            ["1 testcase failure/error node(s)", "TypeError: bad width", "second message"],
+        )
+        out = case.findtext("system-out", "").splitlines()
+        self.assertIn(
+            f"last {REPORT_TAIL_LINES} lines of dut/build/runs/r/t_a/seed_7/attempt_0/logs/t_a.log:",
+            out,
+        )
+        self.assertEqual(out[-REPORT_TAIL_LINES:], [f"line {n}" for n in range(100, 300)])
+
+    def test_without_a_failure_message_the_reason_is_the_message(self):
+        result = self.leaf_result("TIMEOUT", reason="exceeded timeout of 60s")
+        error = self.report(result).find("error")
+        assert error is not None
+        self.assertEqual(
+            (error.get("message"), error.get("type")), ("exceeded timeout of 60s", "timeout")
+        )
+        self.assertIsNone(error.text)
+
+    def test_the_tail_of_a_large_log_starts_on_a_whole_line(self):
+        width = 100
+        count = 2 * REPORT_TAIL_BYTES // width
+        lines = [f"{n:0{width - 1}d}" for n in range(count)]
+        self.log.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+        out = self.report(self.leaf_result("FAIL")).findtext("system-out", "").splitlines()
+        self.assertEqual(out[-REPORT_TAIL_LINES:], lines[-REPORT_TAIL_LINES:])
+
+    def test_log_text_is_made_safe_for_xml(self):
+        self.log.write_text("\x1b[31mred\x1b[0m\x00 tail\n", encoding="utf-8")
+        out = self.report(self.leaf_result("FAIL", reason="bell \x07")).findtext("system-out", "")
+        self.assertEqual(out.splitlines()[-1], "red tail")
+
+    def test_a_log_url_base_links_the_log(self):
+        with mock.patch.object(junit, "LOG_URL_BASE", "https://ci.example/job/1/artifact/"):
+            out = self.report(self.leaf_result("PASS")).findtext("system-out", "")
+        self.assertIn(
+            "log_url: https://ci.example/job/1/artifact/dut/build/runs/r/t_a/seed_7/attempt_0/logs/t_a.log",
+            out.splitlines(),
+        )
+
+    def test_a_report_without_the_marker_is_left_alone(self):
+        path = self.leaf / "report" / "junit.xml"
+        path.parent.mkdir()
+        path.write_text(PASSING_XML, encoding="utf-8")
+        written = write_report_junit(
+            flow=self.flow,
+            root=self.root,
+            run_dir=self.run_dir,
+            tool=TOOL,
+            result=self.leaf_result("FAIL"),
+            directory=self.leaf,
+            name="t_a",
+            result_json=self.leaf / "result.json",
+        )
+        self.assertIsNone(written)
+        self.assertEqual(path.read_text(encoding="utf-8"), PASSING_XML)
+
+    def test_a_test_planned_with_several_seeds_is_named_by_seed_index(self):
+        plan = [
+            {"id": 0, "stage": "sim", "item": "t_a", "seed": 5},
+            {"id": 1, "stage": "sim", "item": "t_b", "seed": 9},
+            {"id": 2, "stage": "sim", "item": "t_b", "seed": 3},
+            {"id": 3, "stage": "formal", "item": "t_a", "seed": 1},
+        ]
+        self.assertEqual(report_case_names(plan), {0: "t_a", 1: "t_b[0]", 2: "t_b[1]", 3: "t_a"})
+
+    def test_a_leafless_failing_run_mirrors_its_stage_case_with_the_stage_log(self):
+        compile_log = self.run_dir / "stages" / "hdl_compile" / "logs" / "hdl_compile.log"
+        compile_log.parent.mkdir(parents=True)
+        compile_log.write_text("Error-[SE] syntax error\n", encoding="utf-8")
+        failing = stage(
+            None, "ERROR", stage="hdl_compile", log=str(compile_log.relative_to(self.root))
+        )
+        materialize_stage_junit(
+            flow=self.flow, root=self.root, run_dir=self.run_dir, tool=TOOL, stages=[failing]
+        )
+        report = self.run_dir / "report" / "junit.xml"
+        (case,) = ET.parse(report).getroot().iter("testcase")
+        self.assertEqual(
+            (case.get("classname"), case.get("name")), ("fixture.cocotb.default", "hdl_compile")
+        )
+        self.assertEqual(
+            case.findtext("system-out", "").splitlines()[-1], "Error-[SE] syntax error"
+        )
+        materialize_stage_junit(
+            flow=self.flow,
+            root=self.root,
+            run_dir=self.run_dir,
+            tool=TOOL,
+            stages=[stage(None, "PASS", stage="hdl_compile")],
+        )
+        self.assertFalse(report.exists())
+
+    def test_an_interrupted_run_mirrors_its_run_case(self):
+        materialize_interruption_junit(
+            flow=self.flow,
+            root=self.root,
+            run_dir=self.run_dir,
+            tool=TOOL,
+            interruption={"reason": "SIGINT received"},
+            progress={"completed_count": 1, "expected_count": 3},
+        )
+        (case,) = ET.parse(self.run_dir / "report" / "junit.xml").getroot().iter("testcase")
+        error = case.find("error")
+        assert error is not None
+        self.assertEqual(case.get("name"), "run")
+        self.assertEqual(error.get("type"), "interruption")
 
 
 class LeafJunitRunStage(unittest.TestCase):

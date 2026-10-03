@@ -394,8 +394,8 @@ class ClusterExecutorTests(FakeSchedulerCase):
         tasks = [self.task(15), self.task(16, item="t_beta"), self.task(17, item="t_gamma")]
         stale: list[Path] = []
         for task in tasks:
-            for name in ("results", "debug"):
-                xml = task.leaf_dir / name / "results.xml"
+            for name in ("results/results.xml", "report/junit.xml", "debug/results.xml"):
+                xml = task.leaf_dir / name
                 xml.parent.mkdir(parents=True)
                 xml.write_text("<testsuites/>\n", encoding="utf-8")
                 stale.append(xml)
@@ -1779,6 +1779,39 @@ class CoordinatorTest(unittest.TestCase):
                 for prop in ET.parse(path).getroot().iter("property")
             }
             self.assertEqual(REPO_ROOT / recorded["result_json"], REPO_ROOT / leaf["result_json"])
+
+    def report_case(self, leaf: dict[str, Any]) -> ET.Element:
+        """The one testcase of the report the coordinator wrote for ``leaf``'s graded attempt."""
+        attempt = leaf["metadata"]["attempt"]
+        path = self.junit_path(leaf, attempt).parent.parent / "report" / "junit.xml"
+        self.assertTrue(is_generated_junit(path), path)
+        (case,) = ET.parse(path).getroot().iter("testcase")
+        return case
+
+    def test_every_graded_leaf_gets_a_report_named_by_its_entry(self) -> None:
+        self.scenario()
+        code, summary = self.run_dv(statuses={self.items[0]: "FAIL"})
+        self.assertEqual(code, 1, summary.get("status"))
+        for leaf in self.leaves(summary):
+            case = self.report_case(leaf)
+            self.assertEqual(
+                (case.get("classname"), case.get("name")),
+                (f"{self.dut}.cocotb.default", leaf["item"]),
+            )
+            out = case.findtext("system-out", "").splitlines()
+            self.assertEqual(out[0], f"seed: {leaf['metadata']['seed']}")
+        failing = next(leaf for leaf in self.leaves(summary) if leaf["status"] == "FAIL")
+        failure = self.report_case(failing).find("failure")
+        assert failure is not None
+        self.assertEqual(failure.get("message"), failing["reason"])
+
+    def test_a_test_run_with_several_seeds_names_each_report_by_seed_index(self) -> None:
+        self.items = self.items[:1]
+        self.scenario()
+        code, summary = self.run_dv("--reseed", "2")
+        self.assertEqual(code, 0, summary.get("status"))
+        names = sorted(self.report_case(leaf).get("name") for leaf in self.leaves(summary))
+        self.assertEqual(names, [f"{self.items[0]}[0]", f"{self.items[0]}[1]"])
 
     def test_a_leaf_skipped_after_max_failures_gets_no_junit(self) -> None:
         self.scenario()

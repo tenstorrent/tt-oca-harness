@@ -2773,6 +2773,7 @@ leaf output:
 │   ├── env/
 │   ├── logs/
 │   ├── results/results.xml
+│   ├── report/junit.xml
 │   ├── coverage/
 │   └── waves/
 ├── <test>/seed_<seed>/attempt_<n>/ # scheduler leaf
@@ -3147,8 +3148,8 @@ coordinator grades replaces one in its attempt's directory, and a
 suite carries a `producer` property with the value
 `run_dv.py junit-fallback`. Before an attempt runs, the runner removes every
 XML file that an earlier invocation into the same directory left under the
-attempt's `results/`, or a wave-debug rerun's `debug/`, with or without that
-marker. From then on only a file carrying the marker is removed or replaced; a
+attempt's `results/` and `report/`, or a wave-debug rerun's `debug/`, with or
+without that marker. From then on only a file carrying the marker is removed or replaced; a
 file without it is left alone even when it sits where the runner would write.
 
 Two run-level files follow the same rule. A handled interruption writes
@@ -3159,6 +3160,28 @@ writes the same path with one testcase for the first failing stage in
 stays visible to a JUnit consumer; a run that grades a leaf, or that passes,
 removes a marked run-level file left by an earlier invocation into the same
 directory.
+
+The files above record what each framework saw, and cocotb names its testcase
+after the Python module and test function. Several testlist entries can run
+one module, so those names do not tell the entries apart, and cocotb's failure
+text sits in an `error_msg` attribute that JUnit readers ignore. A CI job that
+publishes JUnit therefore reads `report/junit.xml` instead, one file per
+graded leaf, written in the graded attempt's directory once the grade is
+final. A skipped leaf gets none. The testcase's classname is
+`<dut>.<framework>.<target>` and its name is the testlist entry. A test the
+run plans with several seeds is named `<test>[<n>]` for its n-th seed, so a
+case keeps its name across runs whose seeds differ; `system-out` carries the
+seed, then the lines a synthesized file carries. A non-passing case takes its
+message from the first failure message of the leaf's parser policy, the same
+messages the expected-failure check reads (<<runner-expected-failures>>), or
+from the graded reason when there is none, and its `system-out` ends with up
+to 200 lines from the end of the leaf log. With `OCAH_DV_LOG_URL_BASE` set,
+the case also gives `log_url`, that prefix followed by the log's
+repository-relative path; a job that archives the run tree sets it to the
+archive's base URL. Whenever a run writes one of the two run-level files, it
+writes the same testcase to `<run>/report/junit.xml`, ending with the tail of
+the failing stage's log. Report files carry the producer marker and follow
+the same removal rules.
 
 [[runner-ci]]
 == Continuous integration

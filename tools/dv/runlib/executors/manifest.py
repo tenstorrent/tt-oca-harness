@@ -82,15 +82,15 @@ def refuse_graded(marker: Path | None) -> None:
 
 def clear_attempt_outputs(task: LeafTask) -> None:
     """Remove the leaf ``result.json``, the completion record and the XML files under
-    ``results/`` and ``debug/``, where a wave-debug rerun's framework writes, from the
-    attempt's paths.
+    ``results/``, ``report/`` and ``debug/``, where a wave-debug rerun's framework writes,
+    from the attempt's paths.
 
     Task ids and flat leaf directories repeat across invocations into one run directory, so
     whatever sits at these paths before the attempt runs was written by an earlier one.
     """
     task.result_json.unlink(missing_ok=True)
     completion_path(task.run_dir, task.task_id).unlink(missing_ok=True)
-    for name in ("results", "debug"):
+    for name in ("results", "report", "debug"):
         directory = task.leaf_dir / name
         if directory.is_dir():
             for path in directory.glob("*.xml"):

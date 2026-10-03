@@ -19,21 +19,44 @@ Synthesized files are derived reporting artifacts: they are written strictly aft
 status classification, are never read back as parser evidence, and carry a suite-level
 ``producer`` property so native framework output can always be told apart from runner
 output (and the functions here clean up only marked files).
+
+The report file is the one a CI system publishes: every graded simulation leaf also gets
+``<leaf>/report/junit.xml``, one testcase named by its testlist entry rather than by the
+framework's module and function, with the failure message and the end of the leaf log. A
+run whose run-level file above is written gets the same case in ``<run>/report/junit.xml``.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import xml.etree.ElementTree as ET
+from collections import Counter
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from .compat import UTC
+from .logparse import ANSI_ESCAPE_RE
 from .models import Flow, StageResult
 from .paths import repo_rel
 from .results import NON_PASS_STATUSES, aggregate_status, exit_code_for_status
 
 PRODUCER = "run_dv.py junit-fallback"
+
+# Prefix that turns a repo-relative log path into a link in the report, such as the URL a CI
+# job serves its archived run tree from.
+LOG_URL_BASE = os.environ.get("OCAH_DV_LOG_URL_BASE", "")
+
+# A non-passing report case carries at most this many log lines, taken from at most this many
+# trailing bytes of the log, and at most this many failure messages.
+REPORT_TAIL_LINES = 200
+REPORT_TAIL_BYTES = 64 * 1024
+REPORT_MESSAGE_LIMIT = 20
+
+# Code points XML 1.0 cannot carry.
+_XML_INVALID_RE = re.compile("[^\t\n\r\x20-퟿-�\U00010000-\U0010ffff]")
 
 # Order in which a leafless failing run picks the stage it reports, matching the
 # aggregate-status precedence in `results.aggregate_status`.
@@ -48,6 +71,10 @@ def results_xml_path(leaf_dir: Path) -> Path:
 
 def graded_xml_path(leaf_dir: Path) -> Path:
     return leaf_dir / "results" / "graded.xml"
+
+
+def report_xml_path(directory: Path) -> Path:
+    return directory / "report" / "junit.xml"
 
 
 def is_generated_junit(path: Path) -> bool:
@@ -105,31 +132,45 @@ def _failure_node(status: str, buckets: list[dict] | None) -> tuple[str, str | N
     return "error", kinds[0] if kinds else "tool_error"
 
 
+def _xml_text(text: str) -> str:
+    """`text` without terminal escape sequences or code points XML 1.0 cannot carry."""
+    return _XML_INVALID_RE.sub("", ANSI_ESCAPE_RE.sub("", text))
+
+
+def _target(result: StageResult) -> str:
+    return result.target or (result.metadata or {}).get("target") or "default"
+
+
 def _testcase(
     flow: Flow,
     result: StageResult,
     *,
     name: str,
     system_out: list[str],
+    classname: str | None = None,
+    failures: Sequence[str] = (),
 ) -> ET.Element:
-    target = result.target or (result.metadata or {}).get("target") or "default"
+    """One testcase; `failures` supplies the failure node's message and its text when given."""
     case = ET.Element(
         "testcase",
         {
-            "classname": f"{flow.name}.{target}",
+            "classname": classname or f"{flow.name}.{_target(result)}",
             "name": name,
             "time": f"{result.duration_sec:.3f}",
         },
     )
     if result.status != "PASS":
         tag, type_attr = _failure_node(result.status, result.failure_buckets)
-        attrs = {"message": result.reason or result.status}
+        attrs = {"message": _xml_text(failures[0] if failures else result.reason or result.status)}
         if type_attr:
             attrs["type"] = type_attr
-        ET.SubElement(case, tag, attrs)
+        node = ET.SubElement(case, tag, attrs)
+        if failures:
+            lines = dict.fromkeys(line for line in (result.reason, *failures) if line)
+            node.text = _xml_text("\n".join(lines))
     if system_out:
         out = ET.SubElement(case, "system-out")
-        out.text = "\n".join(system_out)
+        out.text = _xml_text("\n".join(system_out))
     return case
 
 
@@ -280,6 +321,101 @@ def _leaf_suites(
     )
 
 
+def report_case_names(leaves: Iterable[Mapping[str, Any]]) -> dict[int, str]:
+    """The report case name of each planned leaf, by leaf id.
+
+    A test planned once in a stage is named by its testlist entry. A test planned with several
+    seeds is named `<test>[<index>]`, the index counting its seeds in plan order, so a case
+    keeps its name across runs whose seeds differ.
+    """
+    planned = list(leaves)
+    counts = Counter((leaf["stage"], leaf["item"]) for leaf in planned)
+    seen: Counter[tuple[Any, Any]] = Counter()
+    names: dict[int, str] = {}
+    for leaf in planned:
+        key = (leaf["stage"], leaf["item"])
+        item = str(leaf["item"])
+        names[int(leaf["id"])] = item if counts[key] == 1 else f"{item}[{seen[key]}]"
+        seen[key] += 1
+    return names
+
+
+def _log_tail(path: Path) -> list[str]:
+    """The last `REPORT_TAIL_LINES` whole lines in the last `REPORT_TAIL_BYTES` of `path`.
+
+    Returns [] when the file cannot be read.
+    """
+    try:
+        with path.open("rb") as handle:
+            size = handle.seek(0, os.SEEK_END)
+            handle.seek(max(0, size - REPORT_TAIL_BYTES))
+            lines = handle.read().decode("utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    if size > REPORT_TAIL_BYTES:
+        # The window starts part-way through its first line.
+        lines = lines[1:]
+    return lines[-REPORT_TAIL_LINES:]
+
+
+def _report_lines(root: Path, result: StageResult, result_json: Path) -> list[str]:
+    seed = (result.metadata or {}).get("seed")
+    lines = [f"seed: {seed}"] if seed is not None else []
+    lines.extend(_result_lines(root, result, result_json))
+    if not result.log:
+        return lines
+    if LOG_URL_BASE and not Path(result.log).is_absolute():
+        lines.append(f"log_url: {LOG_URL_BASE}{result.log}")
+    tail = _log_tail(root / result.log) if result.status != "PASS" else []
+    if tail:
+        lines.extend(["", f"last {len(tail)} lines of {result.log}:", *tail])
+    return lines
+
+
+def write_report_junit(
+    *,
+    flow: Flow,
+    root: Path,
+    run_dir: Path,
+    tool: str,
+    result: StageResult,
+    directory: Path,
+    name: str,
+    result_json: Path,
+    failures: Sequence[str] = (),
+) -> Path | None:
+    """Write `result` as the one testcase of `report/junit.xml` under `directory`.
+
+    The case is `<flow>.<framework>.<target>` / `name`. A non-passing case takes its message
+    from the first of `failures`, or from the graded reason when there are none, and its
+    `system-out` ends with the tail of the log. A file at that path without the producer
+    marker is left alone. Returns the written path, or None.
+    """
+    path = report_xml_path(directory)
+    if path.exists() and not is_generated_junit(path):
+        return None
+    classname = ".".join(part for part in (flow.name, flow.framework, _target(result)) if part)
+    case = _testcase(
+        flow,
+        result,
+        name=name,
+        system_out=_report_lines(root, result, result_json),
+        classname=classname,
+        failures=failures[:REPORT_MESSAGE_LIMIT],
+    )
+    suites = _suites(
+        flow,
+        root,
+        run_dir,
+        tool,
+        timestamp=result.started_at or datetime.now(UTC).isoformat(),
+        cases=[case],
+        result_json=result_json,
+    )
+    _write_atomic(path, suites)
+    return path
+
+
 def materialize_interruption_junit(
     *,
     flow: Flow,
@@ -292,8 +428,8 @@ def materialize_interruption_junit(
     """Run-level XML for a run that stopped before its planned leaves finished.
 
     The leaves that did finish keep their own files; this errored testcase is what stops a
-    JUnit consumer from reading those alone as the whole run. A file without the producer
-    marker is never touched.
+    JUnit consumer from reading those alone as the whole run. The run's report file carries
+    the same case. A file without the producer marker is never touched.
     """
     run_xml = run_dir / "results" / "results.xml"
     if run_xml.is_file() and not is_generated_junit(run_xml):
@@ -331,6 +467,16 @@ def materialize_interruption_junit(
         result_json=run_dir / "result.json",
     )
     _write_atomic(run_xml, suites)
+    write_report_junit(
+        flow=flow,
+        root=root,
+        run_dir=run_dir,
+        tool=tool,
+        result=marker,
+        directory=run_dir,
+        name="run",
+        result_json=run_dir / "result.json",
+    )
     return run_xml
 
 
@@ -352,15 +498,16 @@ def materialize_stage_junit(
 ) -> Path | None:
     """Run-level stage XML for a non-passing run that grades no leaf other than a skipped one.
 
-    When gated off (a leaf was graded, the run passes, or structured XML already
-    represents the run), a stale marked file from a previous invocation into the same
-    run dir is removed; a file without the producer marker is never touched.
+    The run's report file carries the same case, with the tail of the stage's log. When
+    gated off (a leaf was graded, the run passes, or structured XML already represents the
+    run), stale marked files from a previous invocation into the same run dir are removed;
+    a file without the producer marker is never touched.
     """
     run_xml = run_dir / "results" / "results.xml"
 
     def _cleanup() -> None:
-        if run_xml.is_file() and is_generated_junit(run_xml):
-            run_xml.unlink()
+        discard_generated_junit(run_xml)
+        discard_generated_junit(report_xml_path(run_dir))
 
     graded_leaf = any(
         stage.stage in _LEAF_STAGES and stage.item is not None and stage.status != "SKIP"
@@ -394,6 +541,16 @@ def materialize_stage_junit(
         result_json=run_dir / "result.json",
     )
     _write_atomic(run_xml, suites)
+    write_report_junit(
+        flow=flow,
+        root=root,
+        run_dir=run_dir,
+        tool=tool,
+        result=failing,
+        directory=run_dir,
+        name=failing.stage,
+        result_json=run_dir / "result.json",
+    )
     failing.artifacts = dict(failing.artifacts or {})
     failing.artifacts["results_xml"] = _rel(root, run_xml)
     return run_xml

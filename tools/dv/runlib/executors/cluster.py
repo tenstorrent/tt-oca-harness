@@ -26,8 +26,8 @@ reports for a job that ran is likewise held until the leaf's ``result.json`` is 
 grace has passed, which absorbs a shared filesystem's lag. The verdict comes from that file
 alone; scheduler state decides only whether an attempt is over. Submission removes whatever
 an earlier invocation left at the attempt's ``result.json``, completion record, graded mark, job
-log, ``results/*.xml`` and ``debug/*.xml`` paths, so those files can only come from this
-attempt. Collecting an
+log, ``results/*.xml``, ``report/*.xml`` and ``debug/*.xml`` paths, so those files can only
+come from this attempt. Collecting an
 attempt without a ``result.json`` leaves the graded mark, which stops a worker that is still
 running from writing a result for it.
 
