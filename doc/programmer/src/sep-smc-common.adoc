@@ -4,6 +4,40 @@
 [[sep-smc-common-blocks-communication]]
 == SEP & SMC Common Blocks and Communication
 
+[[sep-smc-address-remapping]]
+=== Global Aperture and Address Remapping
+
+During early boot, before other chiplets access SEP or SMC resources, program
+the global apertures to match the chiplet's assigned system address map: SEP
+`SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE`, and SMC `GLOBAL_BASE` and
+`REGION_SIZE`. Both region sizes reset to 16 MiB. The apertures of different
+chiplets must not overlap, and the hardware does not derive them from the
+chiplet ID: any chiplet-ID-based assignment is platform policy that firmware
+implements. The chiplet ID and chiplet BAR are available in SMC registers.
+Issue a fence between programming these routing registers and later MMIO
+accesses that depend on them. The surrounding system must use the same
+assignments when it accesses the subsystems.
+
+The SEP has sixteen and the SMC eight alias remap regions, each with an input
+range, an output offset and an AxCACHE value that replaces the transaction's
+own on a hit. They are invalid out of reset and pass traffic through unchanged
+until programmed, so local resources are reached at their local alias addresses
+(SMC `0xC000_0000`) until then. Program the range, offset and AxCACHE of each
+region before relying on its translation or cacheability.
+
+The SMC output fabric has separate Machine-mode and Xvisor remap regions,
+selected by the address window a request targets rather than by its privilege.
+A region with `REGION_ATTRS.valid` clear passes accesses through unchanged; set
+`valid` once its offset is programmed to remap through it.
+
+On the SEP outbound path, shared resources are reached through the AP- or
+STEE-controlled remappers, which external software programs, and private
+memory and system MMIO through the direct SMN path. Both remappers replace the
+AxUSER source ID with `OTHERS`, and the secure DMA drives `OTHERS` as well. The
+outbound filter checks the source ID after remapping, so configure it to keep
+`OTHERS` traffic away from M-mode assets, and restrict the STEE remapper to
+STEE access in the inbound filter.
+
 [[sep-smc-axi-filters]]
 === AXI Inbound/Outbound Filters
 
@@ -58,6 +92,24 @@ rather than an allow-list. To deny outbound access to a memory region from the
 SMC, a matching filter entry must be created that does not have the
 `read_allowed` (bit 0) or `write_allowed` (bit 1) fields set in the filter's
 corresponding `FILTER_CONFIG` register.
+
+Most SMC instances block all inbound traffic out of reset, so firmware must
+configure the inbound policies during cold boot. When programming entries:
+
+* Program the most specific policy at the lowest index and the broader fallback
+  above it. The lowest-numbered matching entry decides: if its permission bit
+  is clear, the access is blocked without examining later entries.
+* An entry matches one security state only (`allow_ns` selects non-secure).
+  Covering both secure and non-secure accesses to one range takes two entries;
+  a mismatched `allow_ns` does not deny, it only fails to match.
+* Size protected regions in whole granules: 8 bytes, or 4 KiB with
+  `allow_burst`. A range is widened outward to granule boundaries, so prefer
+  `allow_burst = 0` for an object smaller than 4 KiB.
+* Do not trust read-back as the effective range. Hardware writes the widened
+  values back only when both ends fall in the same granule; otherwise read-back
+  returns the programmed values while matching still widens them.
+* Do not set `allow_burst` on a SEP inbound entry that covers a register region:
+  register regions accept single-beat accesses only.
 
 The following C code examples demonstrate configuring an AXI filter to permit
 (SEP inbound, SEP outbound, SMC inbound) or deny (SMC outbound) external AXI
@@ -173,6 +225,16 @@ void smc_inbound_filter_open_range_burst(uintptr_t start, size_t length, uint8_t
 }
 ----
 
+The same entry fields express other policies. A secure-only inbound entry
+(`allow_ns = 0` with the required read/write permissions) leaves non-secure
+traffic to the inbound default, which blocks it; make sure no other entry
+permits it. On the SMC outbound filter the same entry does not block non-secure
+traffic, because unmatched traffic passes; add matching deny entries for it,
+accounting for entry priority. AXI-Lite filters check AxPROT instead: with
+`awprot_requirement` and `arprot_requirement` at `0x1` (data, secure,
+privileged) and both `write_filter_enable` and `read_filter_enable` set, only
+transactions whose three PROT bits equal `0x1` are allowed.
+
 [NOTE]
 ====
 The hardware places no constraints on the order in which register writes
@@ -195,11 +257,54 @@ exposed through the `READ_DATA` and `WRITE_DATA` registers respectively.
 FIFO messages consist of 64-bit data words.
 
 Interrupts can optionally be enabled to fire whenever the number of data words
-in the read FIFO exceeds the configured threshold, or the number of data words
-in the write FIFO falls below the configured threshold. The read and write
-fill level thresholds are configured in the `RIRQT` and `WIRQT` registers
-respectively. Individual interrupt conditions can be enabled by setting bits
-in the `IRQEN` register.
+in the read FIFO, or in the write FIFO, is strictly greater than the configured
+threshold. The write threshold therefore reports words still queued for the
+peer, not that the peer has received them. The read and write fill level
+thresholds are configured in the `RIRQT` and `WIRQT` registers respectively.
+Individual interrupt conditions can be enabled by setting bits in the `IRQEN`
+register.
+
+[[sep-smc-mailbox-protocol]]
+Observe these rules when using a mailbox:
+
+* Assign one software producer and one consumer per direction, or serialize
+  shared access; the register interface does not allocate FIFO ownership.
+* Before sending, check the write-full status, then write `WRITE_DATA`. Handle
+  `SLVERR` if another writer consumed the space in between.
+* Before receiving, check the read-empty status, then read `READ_DATA`. Each
+  successful read consumes one word, and the status and data accesses are not
+  one atomic operation.
+* Read `ERROR_FLAGS` once to capture access errors, then acknowledge `IRQS[2]`
+  separately if it was set. Avoid diagnostic reads that consume data or clear
+  error information.
+* To be interrupted on any available data, program `RIRQT = 0`, acknowledge old
+  status, and enable `IRQEN[1]`. Drain received words before acknowledging
+  `IRQS[1]`, since a remaining live condition sets it again.
+* Coordinate FIFO flushes with the peer: a flush discards words already queued
+  for it.
+* On the SEP, keep the mailbox aperture marked side-effect in `mrac`. Clearing
+  it enables load-to-load forwarding and speculative accesses, which pop entries
+  unpredictably.
+
+.Mailbox message exchange with a read threshold interrupt.
+[plantuml,ocah-mailbox-exchange,svg,width=80%,align="center"]
+----
+@startuml
+participant "Sender" as TX
+participant "Mailbox" as MB
+participant "Receiver" as RX
+RX -> MB : RIRQT = 0, acknowledge IRQS, set IRQEN[1]
+loop for each word
+  TX -> MB : poll STATUS until not full
+  TX -> MB : write WRITE_DATA
+end
+MB -> RX : read threshold interrupt
+loop until STATUS reports empty
+  RX -> MB : read READ_DATA
+end
+RX -> MB : write 1 to IRQS[1]
+@enduml
+----
 
 [NOTE]
 ====
@@ -282,5 +387,34 @@ void mailbox_handle_read_threshold_interrupt(uint8_t i) {
     // Acknowledge the receive threshold interrupt,
     // clearing the interrupt pending bit.
     write32(MAILBOX_REG_INBOUND_IRQS(i), MAILBOX_IRQ_RTIRQ);
+}
+----
+
+[[sep-smc-reference-counter]]
+=== Reference Counter
+
+The SEP and SMC each expose a free-running 64-bit `REFERENCE_COUNTER` in their
+CPU control block, counting the always-on reference clock from reset. To reload
+it, write one value at a time: write the new value, then poll
+`REFERENCE_COUNTER` until the readback is at or just above the written value
+before issuing the next write. Compare against a window above the written value
+rather than for equality, since the counter advances while the poll runs. Where
+the written value is too close to the free-running count to tell the two apart,
+separate consecutive writes by at least eight reference-clock periods instead.
+
+.SMC reference counter reload example C usage.
+[source,sourceCode,c]
+----
+// SMC CPU control register address.
+// In SMC-local address space.
+#define SMC_CPU_CTRL_REG_REFERENCE_COUNTER 0xC0039040
+
+// Load `value` into the reference counter. `window` is the largest
+// number of reference-clock periods that can elapse while polling.
+void reference_counter_load(uint64_t value, uint64_t window) {
+    write64(SMC_CPU_CTRL_REG_REFERENCE_COUNTER, value);
+
+    // Wait until the readback is at or just above `value`.
+    while (read64(SMC_CPU_CTRL_REG_REFERENCE_COUNTER) - value > window);
 }
 ----

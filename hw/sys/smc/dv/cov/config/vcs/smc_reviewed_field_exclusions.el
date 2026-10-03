@@ -14,12 +14,12 @@
 
 CHECKSUM: "1584876630 631037930"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Block 44 "2869887708" "target_tx_ready_o = 1'b1;"
 
 CHECKSUM: "2420878507 4168147063"
 INSTANCE: smc_uvm_top.u_dut
-ANNOTATION: "SMC-R3-SHELL-PASSTHROUGH: design engineering reviewed these pass-through ports of the SMC hierarchy shells as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R3-SHELL-PASSTHROUGH: design engineering reviewed these pass-through ports of the SMC hierarchy shells as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle sys_axi_in_req_i.ar.user [11:4] "logic sys_axi_in_req_i.ar.user[11:0]"
 Toggle sys_axi_in_req_i.ar.user [2] "logic sys_axi_in_req_i.ar.user[11:0]"
 Toggle 1to0 sys_axi_in_req_i.ar.user [1] "logic sys_axi_in_req_i.ar.user[11:0]"
@@ -343,7 +343,7 @@ Toggle 1to0 timer_count_o [13] "logic timer_count_o[63:0]"
 
 CHECKSUM: "2766243020 2117341764"
 INSTANCE: smc_uvm_top.u_dut.u_smc
-ANNOTATION: "SMC-R3-SHELL-PASSTHROUGH: design engineering reviewed these pass-through ports of the SMC hierarchy shells as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R3-SHELL-PASSTHROUGH: design engineering reviewed these pass-through ports of the SMC hierarchy shells as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle sys_axi_in_req_i.ar.user [11:4] "logic sys_axi_in_req_i.ar.user[11:0]"
 Toggle sys_axi_in_req_i.ar.user [2] "logic sys_axi_in_req_i.ar.user[11:0]"
 Toggle 1to0 sys_axi_in_req_i.ar.user [1] "logic sys_axi_in_req_i.ar.user[11:0]"
@@ -682,7 +682,7 @@ Toggle trace_mem_resp_i[7].mem_rd_data [6:2] "logic trace_mem_resp_i[7].mem_rd_d
 
 CHECKSUM: "1795298313 409729172"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base
-ANNOTATION: "SMC-R3-SHELL-PASSTHROUGH: design engineering reviewed these pass-through ports of the SMC hierarchy shells as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R3-SHELL-PASSTHROUGH: design engineering reviewed these pass-through ports of the SMC hierarchy shells as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle sys_axi_in_req_i.ar.user [11:4] "logic sys_axi_in_req_i.ar.user[11:0]"
 Toggle sys_axi_in_req_i.ar.user [2] "logic sys_axi_in_req_i.ar.user[11:0]"
 Toggle 1to0 sys_axi_in_req_i.ar.user [1] "logic sys_axi_in_req_i.ar.user[11:0]"
@@ -920,12 +920,12 @@ Toggle trace_mem_resp_i[7].mem_rd_data [6:2] "logic trace_mem_resp_i[7].mem_rd_d
 
 CHECKSUM: "3221028506 935196345"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_hang_det_data_accel
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle snoop_b_ready_i "logic snoop_b_ready_i"
 
 CHECKSUM: "3462710341 330985163"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle outbound_filter_status_i[0].START_ADDR.start_addr.next [55:31] "logic outbound_filter_status_i[0].START_ADDR.start_addr.next[55:0]"
 Toggle outbound_filter_status_i[0].START_ADDR.start_addr.next [29] "logic outbound_filter_status_i[0].START_ADDR.start_addr.next[55:0]"
 Toggle outbound_filter_status_i[0].START_ADDR.start_addr.next [26] "logic outbound_filter_status_i[0].START_ADDR.start_addr.next[55:0]"
@@ -1744,7 +1744,7 @@ Toggle trace_mem_resp_i[7].mem_rd_data [54:50] "logic trace_mem_resp_i[7].mem_rd
 Toggle trace_mem_resp_i[7].mem_rd_data [38:35] "logic trace_mem_resp_i[7].mem_rd_data[63:0]"
 Toggle trace_mem_resp_i[7].mem_rd_data [22:19] "logic trace_mem_resp_i[7].mem_rd_data[63:0]"
 Toggle trace_mem_resp_i[7].mem_rd_data [6:2] "logic trace_mem_resp_i[7].mem_rd_data[63:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle mR_ctrl_o[0].REGION.region_attrs.offset.value [55:26] "logic mR_ctrl_o[0].REGION.region_attrs.offset.value[55:0]"
 Toggle mR_ctrl_o[0].REGION.region_attrs.offset.value [24:23] "logic mR_ctrl_o[0].REGION.region_attrs.offset.value[55:0]"
 Toggle mR_ctrl_o[0].REGION.region_attrs.offset.value [21:0] "logic mR_ctrl_o[0].REGION.region_attrs.offset.value[55:0]"
@@ -1844,13 +1844,13 @@ Toggle alias_remap_clk_active_o "logic alias_remap_clk_active_o"
 
 CHECKSUM: "3874342109 38582843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_alias_remap_cg
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle snoop_b_ready_i "logic snoop_b_ready_i"
 Toggle clk_active_o "logic clk_active_o"
 
 CHECKSUM: "3874342109 38582843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_inbound_filter_reg_cg
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle snoop_aw_ready_i "logic snoop_aw_ready_i"
 Toggle snoop_b_ready_i "logic snoop_b_ready_i"
 Toggle snoop_ar_ready_i "logic snoop_ar_ready_i"
@@ -1859,27 +1859,27 @@ Toggle clk_active_o "logic clk_active_o"
 
 CHECKSUM: "3874342109 38582843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_mailbox_cg
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle snoop_b_ready_i "logic snoop_b_ready_i"
 Toggle snoop_r_ready_i "logic snoop_r_ready_i"
 Toggle clk_active_o "logic clk_active_o"
 
 CHECKSUM: "3874342109 38582843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_mmode_remap_cg
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle snoop_b_ready_i "logic snoop_b_ready_i"
 Toggle clk_active_o "logic clk_active_o"
 
 CHECKSUM: "3874342109 38582843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_outbound_filter_reg_cg
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle snoop_b_ready_i "logic snoop_b_ready_i"
 Toggle snoop_r_ready_i "logic snoop_r_ready_i"
 Toggle clk_active_o "logic clk_active_o"
 
 CHECKSUM: "1601839223 964930904"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_base_config_wrap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_base_config_req_i.ar.prot [2] "logic axil_base_config_req_i.ar.prot[2:0]"
 Toggle axil_base_config_req_i.ar.prot [0] "logic axil_base_config_req_i.ar.prot[2:0]"
 Toggle axil_base_config_req_i.ar.addr [29:17] "logic axil_base_config_req_i.ar.addr[31:0]"
@@ -1912,7 +1912,7 @@ Toggle smc_region_size_o [23:0] "logic smc_region_size_o[31:0]"
 
 CHECKSUM: "3685564638 1839284195"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap
-ANNOTATION: "SMC-R6-DFD: design engineering reviewed these debug and trace bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R6-DFD: design engineering reviewed these debug and trace bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle apb_smc_dfd_reg_req_i.pprot "logic apb_smc_dfd_reg_req_i.pprot[2:0]"
 Toggle apb_smc_dfd_reg_req_i.paddr [29:21] "logic apb_smc_dfd_reg_req_i.paddr[31:0]"
 Toggle apb_smc_dfd_reg_req_i.paddr [19] "logic apb_smc_dfd_reg_req_i.paddr[31:0]"
@@ -2021,7 +2021,7 @@ Toggle trace_mem_resp_i[7].mem_rd_data [6:2] "logic trace_mem_resp_i[7].mem_rd_d
 
 CHECKSUM: "1283857568 1439285498"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfx_ctrl_status_wrap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_dfx_csr_req_i.ar.prot [2] "logic axil_dfx_csr_req_i.ar.prot[2:0]"
 Toggle axil_dfx_csr_req_i.ar.prot [0] "logic axil_dfx_csr_req_i.ar.prot[2:0]"
 Toggle axil_dfx_csr_req_i.ar.addr [29:16] "logic axil_dfx_csr_req_i.ar.addr[31:0]"
@@ -2040,7 +2040,7 @@ Toggle axil_dfx_csr_resp_o.b.resp "logic axil_dfx_csr_resp_o.b.resp[1:0]"
 
 CHECKSUM: "3874342109 38582843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_xvisor_remap_cg
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle snoop_aw_ready_i "logic snoop_aw_ready_i"
 Toggle snoop_b_ready_i "logic snoop_b_ready_i"
 Toggle snoop_ar_ready_i "logic snoop_ar_ready_i"
@@ -2049,7 +2049,7 @@ Toggle clk_active_o "logic clk_active_o"
 
 CHECKSUM: "1666538822 1083424163"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap
-ANNOTATION: "SMC-R5-DMA: design engineering reviewed these iDMA and zeroer bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R5-DMA: design engineering reviewed these iDMA and zeroer bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle ctrl_axi_req_i.ar.user [11:4] "logic ctrl_axi_req_i.ar.user[11:0]"
 Toggle ctrl_axi_req_i.ar.burst [1] "logic ctrl_axi_req_i.ar.burst[1:0]"
 Toggle ctrl_axi_req_i.ar.size [2] "logic ctrl_axi_req_i.ar.size[2:0]"
@@ -2115,7 +2115,7 @@ Toggle mst_axi_req_o.aw.id [2:0] "logic mst_axi_req_o.aw.id[3:0]"
 Toggle mst_axi_resp_i.r.user [11:8] "logic mst_axi_resp_i.r.user[11:0]"
 Toggle mst_axi_resp_i.r.id [3] "logic mst_axi_resp_i.r.id[3:0]"
 Toggle mst_axi_resp_i.b.user [11:4] "logic mst_axi_resp_i.b.user[11:0]"
-ANNOTATION: "SMC-R5-DMA: design engineering reviewed these iDMA and zeroer bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R5-DMA: design engineering reviewed these iDMA and zeroer bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle ctrl_axi_req_i.ar.user [3:0] "logic ctrl_axi_req_i.ar.user[11:0]"
 Toggle ctrl_axi_req_i.ar.region "logic ctrl_axi_req_i.ar.region[3:0]"
 Toggle ctrl_axi_req_i.ar.qos "logic ctrl_axi_req_i.ar.qos[3:0]"
@@ -2137,7 +2137,7 @@ Toggle mst_axi_resp_i.b.user [3:0] "logic mst_axi_resp_i.b.user[11:0]"
 
 CHECKSUM: "29352002 2262010950"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
-ANNOTATION: "SMC-R5-DMA: design engineering reviewed these iDMA and zeroer bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R5-DMA: design engineering reviewed these iDMA and zeroer bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle dma_ctrl_axi_req_i[0].ar.user "logic dma_ctrl_axi_req_i[0].ar.user[11:0]"
 Toggle dma_ctrl_axi_req_i[0].ar.region "logic dma_ctrl_axi_req_i[0].ar.region[3:0]"
 Toggle dma_ctrl_axi_req_i[0].ar.qos "logic dma_ctrl_axi_req_i[0].ar.qos[3:0]"
@@ -2232,7 +2232,7 @@ Toggle dma_mst_axi_resp_i[0].b.id "logic dma_mst_axi_resp_i[0].b.id[2:0]"
 
 CHECKSUM: "134859043 1690141417"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
-ANNOTATION: "SMC-R5-DMA: design engineering reviewed these iDMA and zeroer bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R5-DMA: design engineering reviewed these iDMA and zeroer bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle zeroer_ctrl_axi_req_i.ar.user "logic zeroer_ctrl_axi_req_i.ar.user[11:0]"
 Toggle zeroer_ctrl_axi_req_i.ar.region "logic zeroer_ctrl_axi_req_i.ar.region[3:0]"
 Toggle zeroer_ctrl_axi_req_i.ar.qos "logic zeroer_ctrl_axi_req_i.ar.qos[3:0]"
@@ -2298,7 +2298,7 @@ Toggle mst_axi_resp_i.b.id "logic mst_axi_resp_i.b.id[2:0]"
 
 CHECKSUM: "1473029689 2543078713"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle global_base_addr_i [55:39] "logic global_base_addr_i[55:0]"
 Toggle global_base_addr_i [37] "logic global_base_addr_i[55:0]"
 Toggle global_base_addr_i [35:31] "logic global_base_addr_i[55:0]"
@@ -3197,7 +3197,7 @@ Toggle remap_debug_log_o.ar_remap_hit_debug "logic remap_debug_log_o.ar_remap_hi
 Toggle remap_debug_log_o.aw_remap_hit_debug "logic remap_debug_log_o.aw_remap_hit_debug[2:0]"
 Toggle remap_debug_dma_o.ar_remap_hit_debug "logic remap_debug_dma_o.ar_remap_hit_debug[2:0]"
 Toggle remap_debug_dma_o.aw_remap_hit_debug "logic remap_debug_dma_o.aw_remap_hit_debug[2:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axi_in_jtag_req_i.ar.region "logic axi_in_jtag_req_i.ar.region[3:0]"
 Toggle axi_in_jtag_req_i.ar.qos "logic axi_in_jtag_req_i.ar.qos[3:0]"
 Toggle axi_in_jtag_req_i.ar.prot "logic axi_in_jtag_req_i.ar.prot[2:0]"
@@ -3592,7 +3592,7 @@ Toggle sys_in_filter_clk_active_o "logic sys_in_filter_clk_active_o"
 
 CHECKSUM: "3233683744 2489635942"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle global_base_addr_i [55:39] "logic global_base_addr_i[55:0]"
 Toggle global_base_addr_i [37] "logic global_base_addr_i[55:0]"
 Toggle global_base_addr_i [35:31] "logic global_base_addr_i[55:0]"
@@ -4050,7 +4050,7 @@ Toggle remap_debug_log_o.ar_remap_hit_debug "logic remap_debug_log_o.ar_remap_hi
 Toggle remap_debug_log_o.aw_remap_hit_debug "logic remap_debug_log_o.aw_remap_hit_debug[2:0]"
 Toggle remap_debug_dma_o.ar_remap_hit_debug "logic remap_debug_dma_o.ar_remap_hit_debug[2:0]"
 Toggle remap_debug_dma_o.aw_remap_hit_debug "logic remap_debug_dma_o.aw_remap_hit_debug[2:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axi_in_jtag_req_i.ar.region "logic axi_in_jtag_req_i.ar.region[3:0]"
 Toggle axi_in_jtag_req_i.ar.qos "logic axi_in_jtag_req_i.ar.qos[3:0]"
 Toggle axi_in_jtag_req_i.ar.prot "logic axi_in_jtag_req_i.ar.prot[2:0]"
@@ -4250,7 +4250,7 @@ Toggle sys_in_filter_clk_active_o "logic sys_in_filter_clk_active_o"
 
 CHECKSUM: "1012558903 1479437759"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_alias_remap_wrap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axi_in_jtag_req_i.ar.user "logic axi_in_jtag_req_i.ar.user[11:0]"
 Toggle axi_in_jtag_req_i.ar.size [2] "logic axi_in_jtag_req_i.ar.size[2:0]"
 Toggle axi_in_jtag_req_i.ar.id [3:2] "logic axi_in_jtag_req_i.ar.id[3:0]"
@@ -4585,7 +4585,7 @@ Toggle remap_debug_log_o.ar_remap_hit_debug "logic remap_debug_log_o.ar_remap_hi
 Toggle remap_debug_log_o.aw_remap_hit_debug "logic remap_debug_log_o.aw_remap_hit_debug[2:0]"
 Toggle remap_debug_dma_o.ar_remap_hit_debug "logic remap_debug_dma_o.ar_remap_hit_debug[2:0]"
 Toggle remap_debug_dma_o.aw_remap_hit_debug "logic remap_debug_dma_o.aw_remap_hit_debug[2:0]"
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axi_in_jtag_req_i.ar.region "logic axi_in_jtag_req_i.ar.region[3:0]"
 Toggle axi_in_jtag_req_i.ar.qos "logic axi_in_jtag_req_i.ar.qos[3:0]"
 Toggle axi_in_jtag_req_i.ar.prot "logic axi_in_jtag_req_i.ar.prot[2:0]"
@@ -4729,7 +4729,7 @@ Toggle 0to1 aR_ctrl_i[6].REGION.region_start.start_addr.value [14:12] "logic aR_
 
 CHECKSUM: "3149264321 711223219"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_alias_remap_wrap.u_smc_dma_alias_remap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle remap_debug_o.ar_remap_hit_debug "logic remap_debug_o.ar_remap_hit_debug[2:0]"
 Toggle remap_debug_o.aw_remap_hit_debug "logic remap_debug_o.aw_remap_hit_debug[2:0]"
 Toggle axi_in_req_i.ar.prot [1] "logic axi_in_req_i.ar.prot[2:0]"
@@ -4777,7 +4777,7 @@ Toggle axi_out_req_o.aw.id [2:0] "logic axi_out_req_o.aw.id[3:0]"
 
 CHECKSUM: "3149264321 711223219"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_alias_remap_wrap.u_smc_jtag_alias_remap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axi_in_req_i.ar.prot [1] "logic axi_in_req_i.ar.prot[2:0]"
 Toggle 1to0 axi_in_req_i.ar.cache [1] "logic axi_in_req_i.ar.cache[3:0]"
 Toggle 1to0 axi_in_req_i.ar.burst [0] "logic axi_in_req_i.ar.burst[1:0]"
@@ -4803,7 +4803,7 @@ Toggle axi_out_req_o.aw.id [3:2] "logic axi_out_req_o.aw.id[3:0]"
 
 CHECKSUM: "3149264321 711223219"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_alias_remap_wrap.u_smc_log_alias_remap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle remap_debug_o.ar_remap_hit_debug "logic remap_debug_o.ar_remap_hit_debug[2:0]"
 Toggle remap_debug_o.aw_remap_hit_debug "logic remap_debug_o.aw_remap_hit_debug[2:0]"
 Toggle axi_in_req_i.r_ready "logic axi_in_req_i.r_ready"
@@ -4879,7 +4879,7 @@ Toggle axi_out_resp_i.aw_ready "logic axi_out_resp_i.aw_ready"
 
 CHECKSUM: "3149264321 711223219"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_alias_remap_wrap.u_smc_mmio_alias_remap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle remap_debug_o.ar_remap_hit_debug "logic remap_debug_o.ar_remap_hit_debug[2:0]"
 Toggle remap_debug_o.aw_remap_hit_debug "logic remap_debug_o.aw_remap_hit_debug[2:0]"
 Toggle 0to1 axi_in_req_i.ar.cache [0] "logic axi_in_req_i.ar.cache[3:0]"
@@ -4903,7 +4903,7 @@ Toggle axi_out_req_o.aw.id [3] "logic axi_out_req_o.aw.id[3:0]"
 
 CHECKSUM: "1557237986 2379620973"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle filter_ctrl_i[0].END_ADDR.end_addr.value [2:0] "logic filter_ctrl_i[0].END_ADDR.end_addr.value[55:0]"
 Toggle filter_ctrl_i[0].START_ADDR.start_addr.value "logic filter_ctrl_i[0].START_ADDR.start_addr.value[55:0]"
 Toggle 1to0 filter_ctrl_i[0].FILTER_CONFIG.locked.value "logic filter_ctrl_i[0].FILTER_CONFIG.locked.value"
@@ -5161,7 +5161,7 @@ Toggle axi_filtered_out_resp_i.b.user "logic axi_filtered_out_resp_i.b.user[11:0
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[0].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5185,7 +5185,7 @@ Toggle tx_len_i [7:4] "logic tx_len_i[7:0]"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[0].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5209,7 +5209,7 @@ Toggle tx_len_i [7:4] "logic tx_len_i[7:0]"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[10].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5237,7 +5237,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[10].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5265,7 +5265,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[11].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5293,7 +5293,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[11].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5321,7 +5321,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[12].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5349,7 +5349,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[12].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5377,7 +5377,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[13].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5405,7 +5405,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[13].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5433,7 +5433,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[14].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5461,7 +5461,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[14].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5489,7 +5489,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[15].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5517,7 +5517,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[15].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5545,7 +5545,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[1].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5573,7 +5573,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[1].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5601,7 +5601,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[2].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5629,7 +5629,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[2].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5657,7 +5657,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[3].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5685,7 +5685,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[3].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5713,7 +5713,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[4].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5741,7 +5741,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[4].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5769,7 +5769,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[5].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5797,7 +5797,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[5].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5825,7 +5825,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[6].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5853,7 +5853,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[6].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5881,7 +5881,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[7].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5909,7 +5909,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[7].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5937,7 +5937,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[8].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5965,7 +5965,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[8].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -5993,7 +5993,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[9].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -6021,7 +6021,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[9].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [25] "logic cfg_start_addr_i[55:0]"
@@ -6049,12 +6049,12 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "3874342109 38582843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_sys_in_filter_cg
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle clk_active_o "logic clk_active_o"
 
 CHECKSUM: "2584480128 626723021"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_local_fabric
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle local_base_addr_i "logic local_base_addr_i[55:0]"
 Toggle input_axi_req_i.ar.user "logic input_axi_req_i.ar.user[11:0]"
 Toggle input_axi_req_i.ar.region "logic input_axi_req_i.ar.region[3:0]"
@@ -6289,7 +6289,7 @@ Toggle apb_smc_dfd_reg_req_o.paddr [29:21] "logic apb_smc_dfd_reg_req_o.paddr[31
 Toggle apb_smc_dfd_reg_req_o.paddr [19] "logic apb_smc_dfd_reg_req_o.paddr[31:0]"
 Toggle apb_smc_dfd_reg_req_o.paddr [16:14] "logic apb_smc_dfd_reg_req_o.paddr[31:0]"
 Toggle apb_smc_dfd_reg_req_o.paddr [1:0] "logic apb_smc_dfd_reg_req_o.paddr[31:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle sep_in_axi_req_i.ar.region "logic sep_in_axi_req_i.ar.region[3:0]"
 Toggle sep_in_axi_req_i.ar.qos "logic sep_in_axi_req_i.ar.qos[3:0]"
 Toggle sep_in_axi_req_i.ar.cache [3:2] "logic sep_in_axi_req_i.ar.cache[3:0]"
@@ -6456,7 +6456,7 @@ Toggle apb_smc_dfd_reg_resp_i.pslverr "logic apb_smc_dfd_reg_resp_i.pslverr"
 
 CHECKSUM: "180961683 3509404229"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_local_fabric.u_smc_internal_axi_lite_xbar
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle local_in_req_i.ar.addr [29:18] "logic local_in_req_i.ar.addr[31:0]"
 Toggle local_in_req_i.ar.addr [10] "logic local_in_req_i.ar.addr[31:0]"
 Toggle local_in_req_i.ar.addr [1:0] "logic local_in_req_i.ar.addr[31:0]"
@@ -6566,7 +6566,7 @@ Toggle 1to0 mailbox_req_o.aw.addr [31:30] "logic mailbox_req_o.aw.addr[31:0]"
 Toggle 1to0 mailbox_req_o.aw.addr [16] "logic mailbox_req_o.aw.addr[31:0]"
 Toggle mailbox_resp_i.r.resp [0] "logic mailbox_resp_i.r.resp[1:0]"
 Toggle mailbox_resp_i.b.resp [0] "logic mailbox_resp_i.b.resp[1:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle local_in_req_i.ar.prot [2] "logic local_in_req_i.ar.prot[2:0]"
 Toggle local_in_req_i.ar.prot [0] "logic local_in_req_i.ar.prot[2:0]"
 Toggle local_in_req_i.aw.prot [2] "logic local_in_req_i.aw.prot[2:0]"
@@ -6673,7 +6673,7 @@ Toggle dfx_csr_resp_i.b.resp "logic dfx_csr_resp_i.b.resp[1:0]"
 
 CHECKSUM: "384583730 1857284671"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_local_fabric.u_smc_local_xbar
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle system_req_i.ar.user "logic system_req_i.ar.user[11:0]"
 Toggle system_req_i.ar.region "logic system_req_i.ar.region[3:0]"
 Toggle system_req_i.ar.qos "logic system_req_i.ar.qos[3:0]"
@@ -6809,7 +6809,7 @@ Toggle smc_dfd_reg_req_o.paddr [29:21] "logic smc_dfd_reg_req_o.paddr[31:0]"
 Toggle smc_dfd_reg_req_o.paddr [19] "logic smc_dfd_reg_req_o.paddr[31:0]"
 Toggle smc_dfd_reg_req_o.paddr [16:14] "logic smc_dfd_reg_req_o.paddr[31:0]"
 Toggle smc_dfd_reg_req_o.paddr [1:0] "logic smc_dfd_reg_req_o.paddr[31:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle sep_in_req_i.ar.region "logic sep_in_req_i.ar.region[3:0]"
 Toggle sep_in_req_i.ar.qos "logic sep_in_req_i.ar.qos[3:0]"
 Toggle sep_in_req_i.ar.cache [3:2] "logic sep_in_req_i.ar.cache[3:0]"
@@ -6881,7 +6881,7 @@ Toggle smc_dfd_reg_resp_i.pslverr "logic smc_dfd_reg_resp_i.pslverr"
 
 CHECKSUM: "1474921045 2618089153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle global_base_addr_i [55:39] "logic global_base_addr_i[55:0]"
 Toggle global_base_addr_i [37] "logic global_base_addr_i[55:0]"
 Toggle global_base_addr_i [35:31] "logic global_base_addr_i[55:0]"
@@ -7253,7 +7253,7 @@ Toggle 1to0 xR_ctrl_i[7].REGION.region_attrs.offset.value [39:23] "logic xR_ctrl
 Toggle 1to0 xR_ctrl_i[7].REGION.region_attrs.offset.value [21] "logic xR_ctrl_i[7].REGION.region_attrs.offset.value[55:0]"
 Toggle 1to0 xR_ctrl_i[7].REGION.region_attrs.offset.value [19:16] "logic xR_ctrl_i[7].REGION.region_attrs.offset.value[55:0]"
 Toggle 1to0 xR_ctrl_i[7].REGION.region_attrs.offset.value [11:0] "logic xR_ctrl_i[7].REGION.region_attrs.offset.value[55:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axi_req_i.ar.region "logic axi_req_i.ar.region[3:0]"
 Toggle axi_req_i.ar.qos "logic axi_req_i.ar.qos[3:0]"
 Toggle axi_req_i.ar.prot [2] "logic axi_req_i.ar.prot[2:0]"
@@ -7418,12 +7418,12 @@ Toggle sys_out_filter_clk_active_o "logic sys_out_filter_clk_active_o"
 
 CHECKSUM: "3874342109 38582843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.gen_remap.u_fabric_cg
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle clk_active_o "logic clk_active_o"
 
 CHECKSUM: "637028774 393856329"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.gen_remap.u_mmode_addr_remap
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle 1to0 remap_ctrl_i[1].REGION.region_attrs.offset.value [55:26] "logic remap_ctrl_i[1].REGION.region_attrs.offset.value[55:0]"
 Toggle 1to0 remap_ctrl_i[1].REGION.region_attrs.offset.value [24:23] "logic remap_ctrl_i[1].REGION.region_attrs.offset.value[55:0]"
 Toggle 1to0 remap_ctrl_i[1].REGION.region_attrs.offset.value [21] "logic remap_ctrl_i[1].REGION.region_attrs.offset.value[55:0]"
@@ -7471,7 +7471,7 @@ Toggle axi_remapped_resp_i.r.id [3] "logic axi_remapped_resp_i.r.id[5:0]"
 Toggle axi_remapped_resp_i.b.user [11:4] "logic axi_remapped_resp_i.b.user[11:0]"
 Toggle axi_remapped_resp_i.b.id [4] "logic axi_remapped_resp_i.b.id[5:0]"
 Toggle axi_remapped_resp_i.b.id [2] "logic axi_remapped_resp_i.b.id[5:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle remap_ctrl_i[0].REGION.region_attrs.offset.value [55:26] "logic remap_ctrl_i[0].REGION.region_attrs.offset.value[55:0]"
 Toggle remap_ctrl_i[0].REGION.region_attrs.offset.value [24:23] "logic remap_ctrl_i[0].REGION.region_attrs.offset.value[55:0]"
 Toggle remap_ctrl_i[0].REGION.region_attrs.offset.value [21:0] "logic remap_ctrl_i[0].REGION.region_attrs.offset.value[55:0]"
@@ -7556,7 +7556,7 @@ Toggle axi_remapped_resp_i.b.user [3:0] "logic axi_remapped_resp_i.b.user[11:0]"
 
 CHECKSUM: "637028774 393856329"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.gen_remap.u_xvisor_addr_remap
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle remap_ctrl_i[1].REGION.region_attrs.offset.value [55:51] "logic remap_ctrl_i[1].REGION.region_attrs.offset.value[55:0]"
 Toggle remap_ctrl_i[1].REGION.region_attrs.offset.value [49] "logic remap_ctrl_i[1].REGION.region_attrs.offset.value[55:0]"
 Toggle remap_ctrl_i[1].REGION.region_attrs.offset.value [46] "logic remap_ctrl_i[1].REGION.region_attrs.offset.value[55:0]"
@@ -7643,7 +7643,7 @@ Toggle axi_remapped_resp_i.r.id [3] "logic axi_remapped_resp_i.r.id[5:0]"
 Toggle axi_remapped_resp_i.b.user "logic axi_remapped_resp_i.b.user[11:0]"
 Toggle axi_remapped_resp_i.b.id [4] "logic axi_remapped_resp_i.b.id[5:0]"
 Toggle axi_remapped_resp_i.b.id [2] "logic axi_remapped_resp_i.b.id[5:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle remap_ctrl_i[0].REGION.region_attrs.offset.value [55:51] "logic remap_ctrl_i[0].REGION.region_attrs.offset.value[55:0]"
 Toggle remap_ctrl_i[0].REGION.region_attrs.offset.value [49] "logic remap_ctrl_i[0].REGION.region_attrs.offset.value[55:0]"
 Toggle remap_ctrl_i[0].REGION.region_attrs.offset.value [46] "logic remap_ctrl_i[0].REGION.region_attrs.offset.value[55:0]"
@@ -7705,7 +7705,7 @@ Toggle axi_remapped_resp_i.r.user [7:0] "logic axi_remapped_resp_i.r.user[11:0]"
 
 CHECKSUM: "1557237986 1610823769"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle filter_ctrl_i[0].START_ADDR.start_addr.value [55:31] "logic filter_ctrl_i[0].START_ADDR.start_addr.value[55:0]"
 Toggle filter_ctrl_i[0].START_ADDR.start_addr.value [29] "logic filter_ctrl_i[0].START_ADDR.start_addr.value[55:0]"
 Toggle filter_ctrl_i[0].START_ADDR.start_addr.value [26] "logic filter_ctrl_i[0].START_ADDR.start_addr.value[55:0]"
@@ -8040,19 +8040,19 @@ Toggle axi_filtered_out_resp_i.b.id [2] "logic axi_filtered_out_resp_i.b.id[7:0]
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[0].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [21] "logic cfg_start_addr_i[55:0]"
 Toggle tx_len_i [7:5] "logic tx_len_i[7:0]"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[0].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [21] "logic cfg_start_addr_i[55:0]"
 Toggle 1to0 tx_ns_initiator_i "logic tx_ns_initiator_i"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[10].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8070,7 +8070,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[10].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8088,7 +8088,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[11].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8106,7 +8106,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[11].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8124,7 +8124,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[12].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8142,7 +8142,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[12].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8160,7 +8160,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[13].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8178,7 +8178,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[13].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8196,7 +8196,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8214,7 +8214,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8232,7 +8232,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[15].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8250,7 +8250,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[15].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8268,7 +8268,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[1].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [20:19] "logic cfg_start_addr_i[55:0]"
@@ -8285,7 +8285,7 @@ Toggle tx_len_i [7:5] "logic tx_len_i[7:0]"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[1].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [20:19] "logic cfg_start_addr_i[55:0]"
@@ -8303,7 +8303,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[2].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8321,7 +8321,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[2].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8339,7 +8339,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[3].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8357,7 +8357,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[3].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8375,7 +8375,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[4].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8393,7 +8393,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[4].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8411,7 +8411,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[5].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8429,7 +8429,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[5].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8447,7 +8447,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[6].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8465,7 +8465,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[6].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8483,7 +8483,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[7].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8501,7 +8501,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[7].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8519,7 +8519,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[8].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8537,7 +8537,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[8].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8555,7 +8555,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[9].u_read_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8573,7 +8573,7 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "4268271618 3948953717"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[9].u_write_traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [30] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [28:27] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [22:19] "logic cfg_start_addr_i[55:0]"
@@ -8591,12 +8591,12 @@ Toggle tx_rule_pass_o "logic tx_rule_pass_o"
 
 CHECKSUM: "3874342109 38582843"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_sys_out_filter_cg
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle clk_active_o "logic clk_active_o"
 
 CHECKSUM: "1801343035 4199721058"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper
-ANNOTATION: "SMC-R4-CPU-INTERFACE: design engineering reviewed these CPU wrapper interface bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R4-CPU-INTERFACE: design engineering reviewed these CPU wrapper interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axi_front_port_req_i.ar.user "logic axi_front_port_req_i.ar.user[11:0]"
 Toggle axi_front_port_req_i.ar.burst [1] "logic axi_front_port_req_i.ar.burst[1:0]"
 Toggle axi_front_port_req_i.ar.size [2] "logic axi_front_port_req_i.ar.size[2:0]"
@@ -9097,7 +9097,7 @@ Toggle l1_dcache_data_intf_rsp_i[3].rdata [119] "logic l1_dcache_data_intf_rsp_i
 Toggle l1_dcache_data_intf_rsp_i[3].rdata [111] "logic l1_dcache_data_intf_rsp_i[3].rdata[143:0]"
 Toggle 0to1 l1_dcache_data_intf_rsp_i[3].rdata [135] "logic l1_dcache_data_intf_rsp_i[3].rdata[143:0]"
 Toggle 0to1 l1_dcache_data_intf_rsp_i[3].rdata [127] "logic l1_dcache_data_intf_rsp_i[3].rdata[143:0]"
-ANNOTATION: "SMC-R4-CPU-INTERFACE: design engineering reviewed these CPU wrapper interface bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R4-CPU-INTERFACE: design engineering reviewed these CPU wrapper interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axi_front_port_req_i.ar.region "logic axi_front_port_req_i.ar.region[3:0]"
 Toggle axi_front_port_req_i.ar.qos "logic axi_front_port_req_i.ar.qos[3:0]"
 Toggle axi_front_port_req_i.ar.prot [2] "logic axi_front_port_req_i.ar.prot[2:0]"
@@ -9265,7 +9265,7 @@ Toggle 0to1 smc_cpu_jtag_reset_i "net smc_cpu_jtag_reset_i"
 
 CHECKSUM: "1036002057 373675829"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
-ANNOTATION: "SMC-R4-CPU-INTERFACE: design engineering reviewed these CPU wrapper interface bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R4-CPU-INTERFACE: design engineering reviewed these CPU wrapper interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle 1to0 rst_debug_ni "logic rst_debug_ni"
 Toggle reset_vector_i [1][55:32] "logic [3:0][55:0]reset_vector_i"
 Toggle reset_vector_i [1][30:29] "logic [3:0][55:0]reset_vector_i"
@@ -9928,7 +9928,7 @@ Toggle 0to1 l1_dcache_data_intf_rsp_i[3].rdata [32] "logic l1_dcache_data_intf_r
 
 CHECKSUM: "712776189 294239960"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap
-ANNOTATION: "SMC-R4-CPU-INTERFACE: design engineering reviewed these CPU wrapper interface bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R4-CPU-INTERFACE: design engineering reviewed these CPU wrapper interface bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_req_i.ar.prot [2] "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.prot [0] "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.addr [29:18] "logic axil_req_i.ar.addr[31:0]"
@@ -9999,7 +9999,7 @@ Toggle 1to0 debug_reset_n_o "logic debug_reset_n_o"
 
 CHECKSUM: "4170504346 130593703"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_tilelink_to_rom_memory_convert
-ANNOTATION: "SMC-R7-MEMORY-INTERFACE: design engineering reviewed these memory interface words as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R7-MEMORY-INTERFACE: design engineering reviewed these memory interface words as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle auto_in_a_bits_source [8] "logic auto_in_a_bits_source[14:0]"
 Toggle auto_in_a_bits_address [29:21] "logic auto_in_a_bits_address[31:0]"
 Toggle auto_in_a_bits_address [2:0] "logic auto_in_a_bits_address[31:0]"
@@ -10036,7 +10036,7 @@ Toggle rom_bank_data_i [3] "logic rom_bank_data_i[63:0]"
 
 CHECKSUM: "1888534483 2036827199"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals
-ANNOTATION: "SMC-R3-SHELL-PASSTHROUGH: design engineering reviewed these pass-through ports of the SMC hierarchy shells as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R3-SHELL-PASSTHROUGH: design engineering reviewed these pass-through ports of the SMC hierarchy shells as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_peripherals_req_i.ar.addr [29:23] "logic axil_peripherals_req_i.ar.addr[31:0]"
 Toggle axil_peripherals_req_i.aw.addr [29:23] "logic axil_peripherals_req_i.aw.addr[31:0]"
 Toggle axil_log_engine_req_o.ar.prot [2] "logic axil_log_engine_req_o.ar.prot[2:0]"
@@ -10360,7 +10360,7 @@ Toggle avsbus_cur_state_debug_o [16] "logic avsbus_cur_state_debug_o[16:0]"
 
 CHECKSUM: "2347466248 1031941031"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_req_i.ar.addr [29:15] "logic axil_req_i.ar.addr[31:0]"
 Toggle axil_req_i.ar.addr [13:7] "logic axil_req_i.ar.addr[31:0]"
 Toggle axil_req_i.ar.addr [1:0] "logic axil_req_i.ar.addr[31:0]"
@@ -10379,7 +10379,7 @@ Toggle cur_state_debug_o [16] "logic cur_state_debug_o[16:0]"
 
 CHECKSUM: "803494337 3339048023"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_req_i.ar.prot [2] "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.prot [0] "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.addr [29:15] "logic axil_req_i.ar.addr[31:0]"
@@ -10406,7 +10406,7 @@ Toggle i2c_irq_o [2] "logic i2c_irq_o[2:0]"
 
 CHECKSUM: "3297529274 3193930190"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_req_i.ar.prot [2] "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.prot [0] "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.addr [1:0] "logic axil_req_i.ar.addr[7:0]"
@@ -10420,7 +10420,7 @@ Toggle 0to1 target_tx_ready_o "logic target_tx_ready_o"
 
 CHECKSUM: "1584876630 2942663494"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle reg_out_i.TARGET_ACK_CTRL.NBYTES.value [8:2] "logic reg_out_i.TARGET_ACK_CTRL.NBYTES.value[8:0]"
 Toggle reg_in_o.ACQDATA.rd_data._reserved_31_11 "logic reg_in_o.ACQDATA.rd_data._reserved_31_11[20:0]"
 Toggle reg_in_o.TARGET_FIFO_STATUS.ACQLVL.next [11:6] "logic reg_in_o.TARGET_FIFO_STATUS.ACQLVL.next[11:0]"
@@ -10433,20 +10433,20 @@ Toggle 0to1 target_tx_ready_o "logic target_tx_ready_o"
 
 CHECKSUM: "4121512156 4097614446"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle t_r_i [12:10] "logic t_r_i[12:0]"
 Toggle t_f_i [12:9] "logic t_f_i[12:0]"
 
 CHECKSUM: "2664491312 3077082318"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle acq_fifo_depth_i [6] "logic acq_fifo_depth_i[6:0]"
 Toggle t_r_i [12:10] "logic t_r_i[12:0]"
 Toggle tsu_dat_i [12:9] "logic tsu_dat_i[12:0]"
 
 CHECKSUM: "1584876630 2942663494"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle reg_out_i.TARGET_EVENTS.ARBITRATION_LOST.value "logic reg_out_i.TARGET_EVENTS.ARBITRATION_LOST.value"
 Toggle reg_out_i.TARGET_EVENTS.BUS_TIMEOUT.value "logic reg_out_i.TARGET_EVENTS.BUS_TIMEOUT.value"
 Toggle 1to0 reg_out_i.CONTROLLER_EVENTS.intr "logic reg_out_i.CONTROLLER_EVENTS.intr"
@@ -10471,20 +10471,20 @@ Toggle smbalert_no "logic smbalert_no"
 
 CHECKSUM: "4121512156 4097614446"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle t_r_i [12:10] "logic t_r_i[12:0]"
 Toggle t_f_i [12:9] "logic t_f_i[12:0]"
 
 CHECKSUM: "2664491312 3077082318"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle acq_fifo_depth_i [6] "logic acq_fifo_depth_i[6:0]"
 Toggle t_r_i [12:10] "logic t_r_i[12:0]"
 Toggle tsu_dat_i [12:9] "logic tsu_dat_i[12:0]"
 
 CHECKSUM: "2879032915 3268550457"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller
-ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axil_req_i.ar.prot "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.addr [29:23] "logic axil_req_i.ar.addr[31:0]"
@@ -10574,7 +10574,7 @@ Toggle is_secure_tm_blocked_o "logic is_secure_tm_blocked_o"
 
 CHECKSUM: "671687310 1110946913"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_guard
-ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle fuse_command_req_i.access_length_words [7:1] "logic fuse_command_req_i.access_length_words[8:0]"
 Toggle fuse_command_req_i.address [12] "logic fuse_command_req_i.address[12:0]"
 Toggle fuse_command_req_i.address [7:4] "logic fuse_command_req_i.address[12:0]"
@@ -10592,7 +10592,7 @@ Toggle secure_tm_blocked_o "logic secure_tm_blocked_o"
 
 CHECKSUM: "705541431 614652166"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_program_interface
-ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle program_target_addr_o [12] "logic program_target_addr_o[12:0]"
 Toggle program_target_addr_o [7:4] "logic program_target_addr_o[12:0]"
 Toggle program_target_addr_o [2] "logic program_target_addr_o[12:0]"
@@ -10615,7 +10615,7 @@ Toggle fuse_command_resp_i.data [31:2] "logic fuse_command_resp_i.data[31:0]"
 
 CHECKSUM: "3519409302 2035082928"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_read_interface
-ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle read_target_addr_o [12] "logic read_target_addr_o[12:0]"
 Toggle read_target_addr_o [7:0] "logic read_target_addr_o[12:0]"
 Toggle read_back_data_o [30] "logic read_back_data_o[31:0]"
@@ -10637,7 +10637,7 @@ Toggle fuse_command_resp_i.data [31:2] "logic fuse_command_resp_i.data[31:0]"
 
 CHECKSUM: "1655169995 2173799025"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
-ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle apb_req_paddr_i [1:0] "logic apb_req_paddr_i[9:0]"
 Toggle apb_req_pprot_i [2] "logic apb_req_pprot_i[2:0]"
 Toggle apb_req_pprot_i [0] "logic apb_req_pprot_i[2:0]"
@@ -10646,7 +10646,7 @@ Toggle is_lc_state_access_o "logic is_lc_state_access_o"
 
 CHECKSUM: "1105447049 1414052448"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.u_efuse_shadow_reg_access_control
-ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R1-EFUSE-FIELDS: design engineering reviewed these eFuse image and field-map bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle apb_req_paddr_i [1:0] "logic apb_req_paddr_i[9:0]"
 Toggle apb_req_pprot_i [2] "logic apb_req_pprot_i[2:0]"
 Toggle apb_req_pprot_i [0] "logic apb_req_pprot_i[2:0]"
@@ -10660,7 +10660,7 @@ Toggle lc_state_access_o "logic lc_state_access_o"
 
 CHECKSUM: "1878867987 3828062026"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle reg_axi_lite_req_i.r_ready "logic reg_axi_lite_req_i.r_ready"
 Toggle reg_axi_lite_req_i.ar.prot [2] "logic reg_axi_lite_req_i.ar.prot[2:0]"
 Toggle reg_axi_lite_req_i.ar.prot [0] "logic reg_axi_lite_req_i.ar.prot[2:0]"
@@ -10681,7 +10681,7 @@ Toggle reg_axi_lite_resp_o.b.resp "logic reg_axi_lite_resp_o.b.resp[1:0]"
 
 CHECKSUM: "2469021223 288372904"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_req_i.ar.addr [29:14] "logic axil_req_i.ar.addr[31:0]"
 Toggle axil_req_i.ar.addr [11] "logic axil_req_i.ar.addr[31:0]"
 Toggle axil_req_i.ar.addr [1:0] "logic axil_req_i.ar.addr[31:0]"
@@ -10752,7 +10752,7 @@ Toggle gpio_interrupt_o [59:1] "logic gpio_interrupt_o[64:0]"
 
 CHECKSUM: "1215745915 4122543101"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle reg_axi_lite_req_i.ar.prot "logic reg_axi_lite_req_i.ar.prot[2:0]"
 Toggle reg_axi_lite_req_i.ar.addr [29:14] "logic reg_axi_lite_req_i.ar.addr[31:0]"
 Toggle reg_axi_lite_req_i.ar.addr [12:8] "logic reg_axi_lite_req_i.ar.addr[31:0]"
@@ -10906,7 +10906,7 @@ Toggle ss_reset_ctrl_o[31].force_to_ref_clk_n "logic ss_reset_ctrl_o[31].force_t
 
 CHECKSUM: "2423662246 3846446144"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_subsystem_resets
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle ss_config_o [31] "logic ss_config_o[31:0]"
 Toggle ss_config_o [29] "logic ss_config_o[31:0]"
 Toggle ss_config_o [26] "logic ss_config_o[31:0]"
@@ -11050,7 +11050,7 @@ Toggle ss_reset_ctrl_o[31].force_to_ref_clk_n "logic ss_reset_ctrl_o[31].force_t
 
 CHECKSUM: "3251671847 516399594"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_system_timer_octs
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_req_i.ar.prot [2] "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.prot [0] "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.addr [29:16] "logic axil_req_i.ar.addr[31:0]"
@@ -11080,7 +11080,7 @@ Toggle cur_credits_debug_o [8:5] "logic cur_credits_debug_o[8:0]"
 
 CHECKSUM: "2684995546 1985751284"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_system_timer_octs.u_timer_core
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle reg_count_lo_o [31:17] "logic reg_count_lo_o[31:0]"
 Toggle reg_count_lo_o [15:14] "logic reg_count_lo_o[31:0]"
 Toggle 1to0 reg_count_lo_o [16] "logic reg_count_lo_o[31:0]"
@@ -11094,7 +11094,7 @@ Toggle 1to0 timer_count_o [13] "logic timer_count_o[63:0]"
 
 CHECKSUM: "2014271475 3438420412"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_inst_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle axil_req_i.r_ready "logic axil_req_i.r_ready"
 Toggle axil_req_i.ar.prot "logic axil_req_i.ar.prot[2:0]"
 Toggle axil_req_i.ar.addr [29:16] "logic axil_req_i.ar.addr[31:0]"
@@ -11144,7 +11144,7 @@ Toggle telemetry_receiver_debug_o [2][1:0] "logic [2:0][3:0]telemetry_receiver_d
 
 CHECKSUM: "3124638153 556424123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw uart_log_engine_rep0_wrapper_toggle_exclusions.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle csr_axil_req_i.ar.prot [2] "logic csr_axil_req_i.ar.prot[2:0]"
 Toggle csr_axil_req_i.ar.prot [0] "logic csr_axil_req_i.ar.prot[2:0]"
 Toggle csr_axil_req_i.ar.addr [29:16] "logic csr_axil_req_i.ar.addr[31:0]"
@@ -11176,7 +11176,7 @@ Toggle uart_err_o "logic uart_err_o"
 
 CHECKSUM: "3149264321 711223219"
 MODULE: axi_alias_remap
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle remap_regions_i[0].cacheable "logic remap_regions_i[0].cacheable[3:0]"
 Toggle remap_regions_i[0].offset [55:32] "logic remap_regions_i[0].offset[55:0]"
 Toggle remap_regions_i[0].offset [11:0] "logic remap_regions_i[0].offset[55:0]"
@@ -11337,7 +11337,7 @@ Toggle axi_out_resp_i.b.user "logic axi_out_resp_i.b.user[11:0]"
 
 CHECKSUM: "888281972 677026717"
 MODULE: axi_lite_mailbox_unit
-ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R9-PERIPHERAL-FIELDS: design engineering reviewed these peripheral (UART, I2C, GPIO, telemetry, mailbox, timer) bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle mailbox_axi_req_i.r_ready "logic mailbox_axi_req_i.r_ready"
 Toggle mailbox_axi_req_i.ar.prot "logic mailbox_axi_req_i.ar.prot[2:0]"
 Toggle mailbox_axi_req_i.ar.addr [29:18] "logic mailbox_axi_req_i.ar.addr[31:0]"
@@ -11365,9 +11365,9 @@ Toggle outbound_interrupt_o "logic outbound_interrupt_o[31:0]"
 
 CHECKSUM: "4268271618 3948953717"
 MODULE: traffic_filter
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_chiplet_synced/smc_exclusions_path_valid.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle tx_group_id_i "logic tx_group_id_i[3:0]"
-ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering in tt-oca-hw smc_synced_module_filtered.tgl.el (cb678bff). Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
+ANNOTATION: "SMC-R2-FABRIC-WINDOWS: design engineering reviewed these fabric, filter and remap window and configuration bits as not exercised by the SMC bench. Reviewed with design engineering on the predecessor bench's exclusion list. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle cfg_start_addr_i [55:31] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [29] "logic cfg_start_addr_i[55:0]"
 Toggle cfg_start_addr_i [26] "logic cfg_start_addr_i[55:0]"

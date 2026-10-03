@@ -247,7 +247,14 @@ every core is released.
 
 === Drain Handshake
 
-A software reset through `CPU_CTRL.RESET_CTRL`, whether a core or uncore reset
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-core-reset-sequence[per-core reset sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-core-reset-sequence[per-core reset sequence]
+endif::backend-pdf[]
+in the Programmer's Guide gives the firmware steps. A software reset through `CPU_CTRL.RESET_CTRL`, whether a core or uncore reset
 bit or a core reset pulse, proceeds as follows:
 
 . Firmware writes `RESET_CTRL`.
@@ -547,9 +554,14 @@ No abstract command executes while `cmderr` is nonzero. Once `cmderr` is
 cleared, an access that `abstractauto` selects re-executes the stored command,
 which is the last value written to `command`.
 
-A debugger that needs the error code of a failed command reads `abstractcs`
-before it writes `command` again. Before issuing a command, it clears `cmderr`
-by writing 1s to the field and confirms that the field reads 0.
+A `command` write therefore discards the error code of a failed command unless
+`abstractcs` was read first. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-smc-cmderr[debugger sequence for clearing `cmderr`].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-smc-cmderr[debugger sequence for clearing `cmderr`].
+endif::backend-pdf[]
 
 [[detailed-register-map]]
 == Memory Map and Register Reference

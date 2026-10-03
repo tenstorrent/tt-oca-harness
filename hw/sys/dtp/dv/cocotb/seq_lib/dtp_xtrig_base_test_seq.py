@@ -14,8 +14,10 @@ from env.dtp_types import RESET_COUNT_CHECK_ID
 from env.dtp_xtrig_agent import DtpXtrigActivityWindow
 from env.dtp_xtrig_types import (
     XTRIG_CT_DST_LATENCY,
+    XTRIG_CTM_END,
     XTRIG_CTM_SELECT_DEFAULT,
     XTRIG_CTM_SELECT_MASK,
+    XTRIG_CTP_BASE,
     XTRIG_CTP_CONFIG_DEFAULT,
     XTRIG_CTP_CONFIG_MASK,
     XTRIG_CTP_MODE_P2P,
@@ -188,6 +190,10 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # Cycles the window stays open after the last expected output, so a late
     # or stretched pulse on any port is inside it.
     ISOLATION_TAIL_CYCLES = 6
+    # Seeded range of the cycles BREADY waits after a skewed write's request
+    # phase: longer than the write response takes to reach the CSR port, so
+    # the port holds the response.
+    SKEW_B_READY_DELAY = (5, 8)
     # Seeded range of the cycles the bench holds a point-to-point handshake
     # phase, one draw per phase: an acknowledge withheld from a request, an
     # acknowledge held after its request falls, and a request held after its
@@ -222,6 +228,16 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # STRETCH_MULT of the pulse a system reset lands on: wide enough that the
     # output enable is active when the reset asserts.
     RESET_HOLD_STRETCH = 0xFFFF
+    # The first iterations of the random CTP configuration test, as (MODE,
+    # INVERT, lowest STRETCH_MULT, highest STRETCH_MULT): every pass runs a
+    # point-to-point port at both pad polarities and an inverted wire-OR port
+    # at the single-cycle width and a stretched one.
+    RANDOM_HEAD = (
+        (XTRIG_CTP_MODE_WIRE_OR, 1, 0, 0),
+        (XTRIG_CTP_MODE_P2P, 0, 0, 7),
+        (XTRIG_CTP_MODE_WIRE_OR, 1, 1, 7),
+        (XTRIG_CTP_MODE_P2P, 1, 0, 7),
+    )
 
     # Named-evidence IDs recorded by the shared helpers below. finalize() at
     # the end of body() rejects a zero-check run and any missing required ID,
@@ -1358,12 +1374,12 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     async def run_wire_or_bus(self) -> None:
         """Several CTPs on one shared wire: the transmitter's, a chiplet's, and a merged pull each reach every member once."""
         self.log_banner("DTP XTRIG CTPs on one shared wire-OR wire")
-        # Seeded per pass: the members of the wire, their common sense and
-        # stretch, the transmitter, the internal source that triggers it, and
-        # one internal output per member.
+        # Seeded per pass: the members of the wire, their stretch, the
+        # transmitter, the internal source that triggers it, and one internal
+        # output per member. The passes alternate the sense of the wire.
         rng = self.rng("xtrig_wire_or_bus")
         members = rng.sample(range(XTRIG_NUM_CTP), rng.randrange(2, 5))
-        invert = rng.randrange(2)
+        invert = self.loop_index % 2
         stretch = rng.randrange(0, 8)
         int_src, *int_outs = rng.sample(range(XTRIG_NUM_INT_CT), len(members) + 1)
         tx = members[0]
@@ -1663,13 +1679,53 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             label="reset.stuck_req",
         )
         await self.check_status(ctp_idx, "reset.before_config_reset", busy=1, req_out=1)
-        await self.program_ctp(ctp_idx, mode=XTRIG_CTP_MODE_P2P, reset=1)
+        # CONFIG.RESET resets the sender alone: a request the port receives
+        # keeps CT_Ack_out asserted through the reset until CT_Req_in drops.
+        await self.drive_p2p_req_in(ctp_idx, asserted=True)
+        await self.wait_signal_mask(
+            "xtrig_ctp_ack_out_dout",
+            mask,
+            self.pad_level(mask, asserted=True),
+            label="reset.rx_held",
+        )
+        rx_window = self.xtrig.activity_window(("xtrig_ctp_ack_out_dout",))
+        rx_window.start()
+        await self.csr_write(
+            ctp_config_addr(ctp_idx),
+            pack_ctp_config(mode=XTRIG_CTP_MODE_P2P, reset=1),
+            label=f"ctp{ctp_idx}.config_reset",
+        )
         await self.wait_signal_mask(
             "xtrig_ctp_req_out_dout",
             mask,
             self.pad_level(mask, asserted=False),
             label="reset.config_reset_clear",
         )
+        await self.check_status(
+            ctp_idx, "reset.config_reset_rx_held", busy=1, req_out=0, req_in=1, ack_out=1
+        )
+        activity, hold, _last = await rx_window.stop()
+        inverted = self._ctp_invert_mask()
+        self.check_evidence(
+            self.CHK_SIGNAL,
+            "reset.config_reset.rx_kept",
+            (
+                (hold["xtrig_ctp_ack_out_dout"] & ~inverted)
+                | (~activity["xtrig_ctp_ack_out_dout"] & inverted)
+            )
+            & mask,
+            mask,
+            context=f"cycles={rx_window.cycles}",
+        )
+        await self.drive_p2p_req_in(ctp_idx, asserted=False)
+        await self.wait_signal_mask(
+            "xtrig_ctp_ack_out_dout",
+            mask,
+            self.pad_level(mask, asserted=False),
+            cycles=self.P2P_PHASE_MAX_CYCLES,
+            label="reset.rx_released",
+        )
+        await self.program_ctp(ctp_idx, mode=XTRIG_CTP_MODE_P2P, reset=1)
         await self.check_status(ctp_idx, "reset.config_reset", busy=0, req_out=0)
         # The window opens once STATUS has read BUSY=0, because the registered
         # busy flop clears a cycle after RESET forces the sender idle.
@@ -1731,14 +1787,14 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     async def run_random(self) -> None:
         self.log_banner("DTP XTRIG seeded random CTP configuration")
         rng = self.rng("xtrig_random")
-        # The first two iterations take one mode each, so every pass records a
-        # stretch width and a P2P handshake; the rest draw the mode at random.
-        directed_modes = (XTRIG_CTP_MODE_WIRE_OR, XTRIG_CTP_MODE_P2P)
         for idx in range(self.random_count):
             ctp_idx = rng.randrange(XTRIG_NUM_CTP)
-            mode = directed_modes[idx] if idx < len(directed_modes) else rng.randrange(2)
+            mode = rng.randrange(2)
             invert = rng.randrange(2)
             stretch = rng.randrange(0, 8)
+            if idx < len(self.RANDOM_HEAD):
+                mode, invert, lowest, highest = self.RANDOM_HEAD[idx]
+                stretch = rng.randint(lowest, highest)
             int_idx = rng.randrange(XTRIG_NUM_INT_CT)
             self.log_iteration(
                 idx + 1,
@@ -1770,6 +1826,17 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                 1 << external_ctp_port(ctp_idx),
                 XTRIG_CTP_MODE_P2P,
                 label=label,
+            )
+            # The same port receives: CT_Req_in at the port's polarity reaches
+            # the internal CT through the reverse route.
+            await self.program_route(
+                external_ctp_port(ctp_idx), 1 << internal_ct_port(int_idx), label=f"{label}.rx"
+            )
+            await self.run_route_window(
+                1 << external_ctp_port(ctp_idx),
+                1 << internal_ct_port(int_idx),
+                XTRIG_CTP_MODE_P2P,
+                label=f"{label}.rx",
             )
         self.log_summary("random", iterations=self.random_count)
 
@@ -2082,7 +2149,10 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         d2 = d1 ^ rng.randrange(1, 1 << 16)
         d3 = d2 ^ rng.randrange(1, 1 << 16)
         result = await self.axil.write_skewed_result(
-            addr, d1, w_valid_delay=rng.randint(3, 7), b_ready_delay=rng.randint(1, 4)
+            addr,
+            d1,
+            w_valid_delay=rng.randint(3, 7),
+            b_ready_delay=rng.randint(*self.SKEW_B_READY_DELAY),
         )
         self.check_evidence(self.CHK_AXIL, "axi_skew.aw_before_w.bresp", result.resp, self.AXI_OKAY)
         observed = await self.csr_read(addr, label="axi_skew.aw_before_w.readback")
@@ -2098,7 +2168,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             addr,
             d3,
             aw_valid_delay=aw_delay,
-            b_ready_delay=rng.randint(1, 4),
+            b_ready_delay=rng.randint(*self.SKEW_B_READY_DELAY),
         )
         after = await self.sample_xtrig("axi_skew.w_before_aw.after")
         delta = {
@@ -3048,6 +3118,28 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                 observed,
                 held,
                 context=f"src={src_idx}",
+            )
+        # The matrix aperture past its register extent and every word past the
+        # last CTP window decode to no register: a write and a read of a seeded
+        # word of each complete with DECERR.
+        for name, addr in (
+            (
+                "ctm_unmapped",
+                XTRIG_CTM_END + rng.randrange((XTRIG_CTP_BASE - XTRIG_CTM_END) // 4) * 4,
+            ),
+            ("unmapped", XTRIG_UNMAPPED_BASE + rng.randrange(0, 0x40) * 4),
+        ):
+            resp = await self.axil.write(addr, FULL_WORD)
+            self.check_evidence(
+                self.CHK_CSR, f"{name}.bresp", resp, self.AXI_DECERR, context=f"addr=0x{addr:03x}"
+            )
+            result = await self.axil.read_result(addr)
+            self.check_evidence(
+                self.CHK_CSR,
+                f"{name}.rresp",
+                result.resp,
+                self.AXI_DECERR,
+                context=f"addr=0x{addr:03x}",
             )
         self.log_step(
             "route",

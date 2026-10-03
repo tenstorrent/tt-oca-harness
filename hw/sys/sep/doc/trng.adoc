@@ -39,6 +39,14 @@ SEP local crossbar. The CSRNG and EDN cores are OpenTitan IP; their internal
 structure and register semantics are described in the
 https://opentitan.org/book/hw/ip/csrng/[OpenTitan CSRNG] and
 https://opentitan.org/book/hw/ip/edn/[EDN] documentation.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#ocah-trng-bring-up[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#ocah-trng-bring-up[programming guidance]
+endif::backend-pdf[]
+for this block.
 
 [[true-random-number-generator-trng-true-random-number-generator-trng]]
 == Entropy Generation
@@ -97,8 +105,7 @@ The selected source receives the sink's ready signal. An unselected internal
 endpoint is backpressured and retains queued data; an unselected external input
 receives ready high and its beats are discarded. Selection is combinational:
 there is no switch-complete handshake or automatic flush of previously queued
-words. Quiesce consumers before changing selection and account for buffered
-state when choosing the source-change/reset policy.
+words.
 
 [[entropy-streaming-signals-table]]
 .SEP random-data stream contract
@@ -163,15 +170,17 @@ reset is sufficient. Hardware does not enforce this ordering.
 
 An in-progress KM sample can otherwise combine old and new stream data or
 report a stream error. The reset is therefore not an atomic restart of all
-entropy consumers. Firmware recovery must stop new TRNG CSR traffic, satisfy
-KM quiescence and decide whether other consumers must also be reset to abort
-their operations.
-
-After release, reinitialize ESRC, CSRNG and EDN, including source startup-health
-qualification and configuration locking, before depending on internal random
-data. Observe fresh endpoint/pool progress before releasing held consumers.
-External crypto/pool traffic also pauses during adapter clear; it can resume
-when that clear ends, independently of internal generator initialization.
+entropy consumers, and after release the internal chain produces no data until
+ESRC, CSRNG and EDN are reinitialized. External crypto/pool traffic also pauses
+during adapter clear; it can resume when that clear ends, independently of
+internal generator initialization. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-trng-recovery[TRNG recovery sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-trng-recovery[TRNG recovery sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 ifdef::backend-html5[]
 See xref:sep:reset_controller.adoc#sep-trng-reset[Resetting the TRNG] for the

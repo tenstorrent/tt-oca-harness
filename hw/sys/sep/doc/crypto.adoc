@@ -195,7 +195,14 @@ The words per share, whether software must select the delivered key in
 preference to the accelerator's own software key registers, whether software
 must also declare the key length, and the behavior on an invalid or mismatched
 key are accelerator-specific. They are stated in the accelerator reference
-pages and summarized in <<km-key-delivery-summary>>.
+pages and summarized in <<km-key-delivery-summary>>; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-km-delivered-keys[delivered-key section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-km-delivered-keys[delivered-key section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the corresponding software configuration.
 
 [[km-key-delivery-summary]]
 .Key Manager key delivery per accelerator

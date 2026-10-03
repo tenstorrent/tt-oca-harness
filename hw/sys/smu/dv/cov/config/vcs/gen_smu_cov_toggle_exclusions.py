@@ -30,7 +30,11 @@ writes, and each class below states that fact and what would retire it:
   through untouched.
 * RTL-CONSTANT, UNION-ALIAS, SEP-OWNED: the facts
   `smu_wrapper_toggle_exclusions.el` states for the wrapper's ports, where
-  the same nets recur as ports of `smu`.
+  the same nets recur as ports of `smu`. RTL-CONSTANT also takes the SEP SPI
+  pad fields `sep_io_pkg::ot_spi_pad_map` assigns a constant.
+* ZERO-APERTURE-REJECTED: the line block, condition row and branch arm of the
+  crossbar's zero-size aperture rule, which the address decoder's map check
+  rejects, so no zero-size aperture can be programmed on this bench.
 * LC-SIGINT-ENCODED: the lifecycle integrity error, which the SEP eFuse shadow
   registers make unreachable by re-encoding the word they export; its
   condition rows in `smu.sv` go with it.
@@ -107,15 +111,17 @@ the same way. A class that names a bit window applies it to one-dimensional
 ranges only.
 
 A condition row or branch arm is taken only where the raw report marks it
-Not Covered.
+Not Covered, and a line block only where the report covers none of the
+statements on its first line.
 
 The inputs are the templates urg writes for the merged database and the raw
 report the runner writes beside it::
 
-    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+cond+branch -report <dir>
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+cond+branch -report <dir>
     python3 gen_smu_cov_toggle_exclusions.py fullexclude_module.tgl \\
         <run dir>/cov/report_raw/modinfo.txt \\
-        --cond fullexclude_module.cond --branch fullexclude_module.branch [--check]
+        --cond fullexclude_module.cond --branch fullexclude_module.branch \\
+        --line fullexclude_module.line [--check]
 
 The templates land in urg's working directory. They carry each module
 checksum and every signature, so no field name, expression or signature below
@@ -196,7 +202,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         re.compile(rf"^{MEM_IF}\."),
         "address, request, enable, write-enable, mode and handshake fields of the SMC "
         "and SEP RAM, ROM and TCM interfaces. smu.sv connects each interface whole "
-        "between u_smc or u_sep and its own port (smu.sv 869-922, 1002-1043), "
+        "between u_smc or u_sep and its own port (smu.sv 797-850, 930-971), "
         "smu_wrapper.sv carries it whole to the macros in hw/top/smc_ip_integration.sv "
         "and hw/top/sep_ip_integration.sv, and no SMU logic reads or drives a field: the "
         "fields that toggle already prove every connection, and the rest record which "
@@ -243,7 +249,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "the SEP half, bits [383:0], of the external debug bus. sep.sv (1186-1275) "
         "packs SEP-internal status into 24 sixteen-bit lanes -- CPU trace, ECC and "
         "performance-counter strobes, interrupt and reset status, eFuse, token, remap "
-        "and filter-hit debug, and reserved zero fields -- and smu.sv (1384-1387) "
+        "and filter-hit debug, and reserved zero fields -- and smu.sv (1312-1315) "
         "only concatenates it under the "
         "adopter's bits and hands it to the SMC debug mux; the SEP bench grades each "
         "source.",
@@ -261,7 +267,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 "
         "(hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv 141-142, 1185-1219, and 76/104 for the "
         "AXI4-Lite prot outputs). smu.sv connects each bridge straight to its target "
-        "(711-716, 791-794, 963), so no other master drives these nets. Only the bits "
+        "(640-645, 720-723, 893-894), so no other master drives these nets. Only the bits "
         "those constants hold at 0 are taken; the INCR and AxCACHE bits at 1 rise on "
         "the first transfer and fall on a reset.",
         "a JTAG2AXI bridge that programs any of these attributes",
@@ -275,7 +281,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 "
         "(hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv 141-142, 1185-1219, and 76/104 for the "
         "AXI4-Lite prot outputs). smu.sv connects each bridge straight to its target "
-        "(711-716, 791-794, 963), so no other master drives these nets. Only the bits "
+        "(640-645, 720-723, 893-894), so no other master drives these nets. Only the bits "
         "those constants hold at 0 are taken; the INCR and AxCACHE bits at 1 rise on "
         "the first transfer and fall on a reset.",
         "a JTAG2AXI bridge that programs any of these attributes",
@@ -289,7 +295,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 "
         "(hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv 141-142, 1185-1219, and 76/104 for the "
         "AXI4-Lite prot outputs). smu.sv connects each bridge straight to its target "
-        "(711-716, 791-794, 963), so no other master drives these nets. Only the bits "
+        "(640-645, 720-723, 893-894), so no other master drives these nets. Only the bits "
         "those constants hold at 0 are taken; the INCR and AxCACHE bits at 1 rise on "
         "the first transfer and fall on a reset.",
         "a JTAG2AXI bridge that programs any of these attributes",
@@ -325,6 +331,35 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "the SPI enable becoming programmable",
         None,
         None,
+    ),
+    (
+        "RTL-CONSTANT",
+        re.compile(
+            r"^(sep_spi_|gen_sep\.sep_spi_pads\.)"
+            r"(enable|dqs_ie_n|dqs_oe_n|mem_rebar_oepad|mem_rebar_opad|mem_rebar_iepad)$"
+        ),
+        "the SEP SPI pad fields sep_io_pkg::ot_spi_pad_map (sep_io_pkg.sv 79-96) "
+        "assigns a constant: enable 1, txd[7:4] 0, dqs_oe_n and dqs_ie_n 1, dq_oe_n[7:4] "
+        "and dq_ie_n[7:4] 1, and the three mem_rebar pads 0. smu.sv (1120-1137) "
+        "computes sep_spi_pads from that function and assigns each field to its "
+        "sep_spi_* net; -cm_noconst does not see through the function call, so the "
+        "nets stay in the toggle population.",
+        "ot_spi_pad_map driving one of these fields from a register or a port",
+        ("smu",),
+        None,
+    ),
+    (
+        "RTL-CONSTANT",
+        re.compile(r"^(sep_spi_|gen_sep\.sep_spi_pads\.)(txd|dq_ie_n|dq_oe_n)$"),
+        "the SEP SPI pad fields sep_io_pkg::ot_spi_pad_map (sep_io_pkg.sv 79-96) "
+        "assigns a constant: enable 1, txd[7:4] 0, dqs_oe_n and dqs_ie_n 1, dq_oe_n[7:4] "
+        "and dq_ie_n[7:4] 1, and the three mem_rebar pads 0. smu.sv (1120-1137) "
+        "computes sep_spi_pads from that function and assigns each field to its "
+        "sep_spi_* net; -cm_noconst does not see through the function call, so the "
+        "nets stay in the toggle population.",
+        "ot_spi_pad_map driving one of these fields from a register or a port",
+        ("smu",),
+        ((4, 7),),
     ),
     (
         "UNION-ALIAS",
@@ -581,8 +616,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
             r"^(sep_smn_inbound_axi_(req|resp)|smc_sys_axi_in_(req|resp))\.(aw|ar|b|r)\.id$"
         ),
         "ID bits [5:4] on the SEP and SMC inbound ports past the crossbar's ID width "
-        "converters. Each converter is built for 16 unique slave-port IDs (smu.sv 1130, "
-        "1154), so it remaps through axi_id_remap, which drives the 4-bit table index "
+        "converters. Each converter is built for 16 unique slave-port IDs (smu.sv 1058, "
+        "1082), so it remaps through axi_id_remap, which drives the 4-bit table index "
         "zero-extended to the 6-bit port (axi_id_remap.sv 131, 198-200).",
         "a converter built for more than 16 unique IDs",
         ("smu",),
@@ -1068,9 +1103,11 @@ def entries(field: str, sig: str, rows: list[tuple[str, str, str]], bits=None) -
     return out
 
 
-# Condition rows and branch arms, by class: (class, module, source lines or None).
-# The fact and the retiring condition are the toggle class's of the same name.
+# Condition rows, branch arms and line blocks, by class: (class, module,
+# source lines or None). The fact and the retiring condition are the toggle
+# class's of the same name, or POINT_FACTS's for a class with no toggle rows.
 SMU_SV = HERE.parents[3] / "rtl" / "smu.sv"
+XBAR_SV = HERE.parents[3] / "rtl" / "smu_axi_xbar.sv"
 
 
 def _lines_assigning(path: Path, target: str) -> frozenset[int]:
@@ -1084,10 +1121,30 @@ def _lines_assigning(path: Path, target: str) -> frozenset[int]:
     return lines
 
 
+def _zero_size_arm(path: Path) -> frozenset[int]:
+    """The zero-size test of the aperture rule and the two lines of its arm."""
+    pattern = re.compile(r"^\s*if \(size == '0\) begin")
+    lines = [n for n, text in enumerate(path.read_text().splitlines(), 1) if pattern.match(text)]
+    if len(lines) != 1:
+        sys.exit(f"{path}: {len(lines)} zero-size aperture tests, expected 1")
+    return frozenset(range(lines[0], lines[0] + 3))
+
+
 POINT_CLASSES: list[tuple[str, str, frozenset[int] | None]] = [
     ("LC-SIGINT-ENCODED", "smu", _lines_assigning(SMU_SV, "lc_sigint_err_o")),
+    ("ZERO-APERTURE-REJECTED", "smu_axi_xbar", _zero_size_arm(XBAR_SV)),
 ]
-POINT_RE = re.compile(r"^// (Condition|Branch) ")
+POINT_FACTS: dict[str, tuple[str, str]] = {
+    "ZERO-APERTURE-REJECTED": (
+        "the zero-size arm of the crossbar aperture rule. A zero region size forms a "
+        "rule with start == end (smu_axi_xbar.sv 72-74), and the address decoder's map "
+        "check accepts only start < end or end == 0 (addr_decode_dync.sv 150), so a "
+        "zero-size SEP or SMC aperture cannot be programmed on this bench: the check "
+        "fails the run.",
+        "an aperture encoding the decoder accepts for zero size",
+    ),
+}
+POINT_RE = re.compile(r"^// (Condition|Branch|Block) ")
 LINE_RE = re.compile(r"LineNumber: (\d+)")
 
 
@@ -1127,22 +1184,40 @@ def uncovered_conditions(modinfo: str, module: str) -> set[tuple[int, str]]:
     return out
 
 
-def uncovered_branches(modinfo: str, module: str) -> set[tuple[int, str]]:
-    """(source line, arm value) the raw report marks Not Covered."""
-    out, line_no = set(), 0
-    for line in _module_section(modinfo, module, "Branch").splitlines():
-        if m := re.match(r"^(\d+)\s+\S", line):
-            line_no = int(m.group(1))
-        elif m := re.match(r"^([01])\s+Not Covered", line):
-            out.add((line_no, m.group(1)))
+def uncovered_lines(modinfo: str, module: str) -> set[int]:
+    """Source lines the raw report marks with no statement covered."""
+    out = set()
+    for line in _module_section(modinfo, module, "Line").splitlines():
+        if m := re.match(r"^(\d+)\s+0/\d+\s+==>", line):
+            out.add(int(m.group(1)))
     return out
 
 
-def point_blocks(cond: Path | None, branch: Path | None, modinfo: Path, counts) -> list[str]:
+def uncovered_branches(modinfo: str, module: str) -> set[tuple[int, str]]:
+    """(source line, arm value) the raw report marks Not Covered."""
+    out, line_no, first = set(), 0, None
+    for line in _module_section(modinfo, module, "Branch").splitlines():
+        if m := re.match(r"^([01])\s+(Not )?Covered", line):
+            if m.group(2):
+                out.add((line_no, m.group(1)))
+        elif m := re.match(r"^(\d+)\s+\S", line):
+            # A branch's source excerpt lists its arms' lines too; the branch
+            # sits on the first line of the excerpt.
+            if first is None:
+                first = int(m.group(1))
+        elif line.startswith("Branches:"):
+            line_no, first = first or line_no, None
+    return out
+
+
+def point_blocks(
+    cond: Path | None, branch: Path | None, modinfo: Path, counts, line: Path | None = None
+) -> list[str]:
     text = modinfo.read_text()
     facts = {name: (fact, retire) for name, _, fact, retire, _, _ in CLASSES}
+    facts.update(POINT_FACTS)
     out: list[str] = []
-    for path, kind in ((cond, "Condition"), (branch, "Branch")):
+    for path, kind in ((line, "Line"), (cond, "Condition"), (branch, "Branch")):
         if path is None:
             continue
         template = _point_template(path)
@@ -1150,20 +1225,24 @@ def point_blocks(cond: Path | None, branch: Path | None, modinfo: Path, counts) 
             if module not in template:
                 continue
             checksum, points = template[module]
-            holes = (
-                uncovered_conditions(text, module)
-                if kind == "Condition"
-                else uncovered_branches(text, module)
-            )
+            if kind == "Line":
+                holes = {(n, "") for n in uncovered_lines(text, module)}
+            elif kind == "Condition":
+                holes = uncovered_conditions(text, module)
+            else:
+                holes = uncovered_branches(text, module)
             picked = []
             for line_no, point in points:
                 if lines is not None and line_no not in lines:
                     continue
-                if kind == "Condition":
+                key: str | None
+                if kind == "Line":
+                    key = ""
+                elif kind == "Condition":
                     m = re.search(r'\(\d+ "([01]+)"\)$', point)
                     key = m.group(1) if m else None
                 else:
-                    m = re.search(r'\(\d+\) "\S+ ([01])"$', point)
+                    m = re.search(r'\(\d+\) "[^"]* ([01])"$', point)
                     key = m.group(1) if m else None
                 if key is not None and (line_no, key) in holes:
                     picked.append(point)
@@ -1177,12 +1256,17 @@ def point_blocks(cond: Path | None, branch: Path | None, modinfo: Path, counts) 
 
 
 def render(
-    template: Path, modinfo: Path, cond: Path | None = None, branch: Path | None = None
+    template: Path,
+    modinfo: Path,
+    cond: Path | None = None,
+    branch: Path | None = None,
+    line: Path | None = None,
 ) -> tuple[str, dict[str, int]]:
     sections = template_sections(template)
     reports = report_rows(modinfo)
     skip = {"smu_wrapper": wrapper_excluded()}
     counts: dict[str, int] = {c[0]: 0 for c in CLASSES}
+    counts.update({name: 0 for name in POINT_FACTS})
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
@@ -1192,7 +1276,7 @@ def render(
         "// ExclMode: default",
         "//",
         "// Generated by gen_smu_cov_toggle_exclusions.py from urg's",
-        "// `-dump full_exclusions tgl+cond+branch` templates of the merged database",
+        "// `-dump full_exclusions tgl+line+cond+branch` templates of the merged database",
         "// and the raw report; regenerate rather than edit. README.md beside this",
         "// file states each class's fact; the ANNOTATION before each class repeats it.",
         "//==================================================",
@@ -1235,7 +1319,7 @@ def render(
                 block += lines
         if block:
             out += ["", checksum, f"MODULE: {module}", *block]
-    out += point_blocks(cond, branch, modinfo, counts)
+    out += point_blocks(cond, branch, modinfo, counts, line)
     return "\n".join(out) + "\n", counts
 
 
@@ -1245,9 +1329,10 @@ def main() -> int:
     ap.add_argument("modinfo", type=Path, help="the run's cov/report_raw/modinfo.txt")
     ap.add_argument("--cond", type=Path, help="urg fullexclude_module.cond")
     ap.add_argument("--branch", type=Path, help="urg fullexclude_module.branch")
+    ap.add_argument("--line", type=Path, help="urg fullexclude_module.line")
     ap.add_argument("--check", action="store_true", help="fail if the file is stale")
     args = ap.parse_args()
-    text, counts = render(args.template, args.modinfo, args.cond, args.branch)
+    text, counts = render(args.template, args.modinfo, args.cond, args.branch, args.line)
     if args.check:
         if OUTPUT.read_text() != text:
             print(f"{OUTPUT} is stale; rerun without --check", file=sys.stderr)

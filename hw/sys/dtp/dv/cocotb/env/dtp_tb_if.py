@@ -32,11 +32,14 @@ JTAG_SIGNAL_MAP: dict[str, str] = {"trst": "trst_n"}
 
 _DBG_DISABLE_PREFIX = "dbg_disable_"
 
+# Bit of each JTAG2AXI bridge in dtp_tb_if.sys_rst_on_ar_arm.
+_BRIDGE_BIT = {"smc_axi": 0, "smc_otp": 1, "sep_otp": 2}
+
 # Flat observable names that map onto a member of a different name (or of the
 # primary-TAP interface).
 _ALIASES: dict[str, tuple[str, str]] = {
     "clk_i": ("ctrl", "clk"),
-    "rst_n_i": ("ctrl", "sys_rst_n"),
+    "rst_n_i": ("ctrl", "rst_n"),
     "pwr_on_rst_ni": ("ctrl", "por_rst_n"),
     "jtag_ptap_state": ("ctrl", "tap_state"),
     "jtag_ptap_inst_decoded": ("ctrl", "inst_decoded"),
@@ -97,6 +100,11 @@ class DtpTbIf:
     @property
     def sys_rst_n(self) -> Any:
         return self.ctrl.sys_rst_n
+
+    @property
+    def rst_n(self) -> Any:
+        """The system reset the DUT and the AXI responders see: ``sys_rst_n`` with the read-armed pulse."""
+        return self.ctrl.rst_n
 
     @property
     def por_rst_n(self) -> Any:
@@ -184,6 +192,15 @@ class DtpTbIf:
     def set_cdc_clear_seen_clear(self, value: int) -> None:
         """Hold ``cdc_clear_seen_clear``: 1 clears every bridge's sticky clear-seen flag."""
         self.handle("cdc_clear_seen_clear").value = value
+
+    def arm_reset_on_read(self, target: str, *, cycles: int = 1) -> None:
+        """Arm one system-reset pulse of ``cycles`` clocks on ``target``'s next AR handshake."""
+        self.ctrl.sys_rst_on_ar_cycles.value = cycles
+        self.ctrl.sys_rst_on_ar_arm.value = 1 << _BRIDGE_BIT[target]
+
+    def disarm_reset_on_read(self) -> None:
+        """Clear the read-armed system reset of every bridge."""
+        self.ctrl.sys_rst_on_ar_arm.value = 0
 
     def set_error_rdata(self, prefix: str, value: int) -> None:
         """Drive the errored-beat read word of the bridge port whose activity prefix is ``prefix``."""

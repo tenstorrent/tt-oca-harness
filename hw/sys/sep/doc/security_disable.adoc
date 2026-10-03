@@ -56,22 +56,24 @@ While a SEC_DIS match holds:
 * The SMC eFuse controller receives the SEP security-disable status, so SMC
   fuse sensing stops and the SMC shadow map opens in the same way.
 
-[[sec-dis-recovery-sequence]]
-== Recovery Sequence
+[[sec-dis-reset-persistence]]
+== Reset Persistence
 
-. Present the SEC_DIS token over JTAG as described in the Token Processing
-  chapter, _Token Match Sequence_, and poll `SEC_DISABLE_TOKEN_MATCH` until it
-  reads the match code. The computed digest is now valid.
-. Apply a cold reset. The token arrays, the computed digest and its valid bit
-  survive reset, so the match holds from cold-reset release. Fuse sensing does
-  not start, and every shadow register keeps its reset value instead of the
-  partial contents of an interrupted sense. SEP samples the secure test-mode
-  request one cycle after cold-reset release, instead of at fuse-sensing
-  completion.
-. Override `sep_reset_n` through the IC_RESET TDR to release the SEP reset.
-
-Without the cold reset, the shadow registers hold whatever the failed sense
-loaded before the match, and the secure test-mode request is never sampled.
+The token arrays, the computed digest and its valid bit survive reset, so a
+match established before a cold reset holds from cold-reset release. Fuse
+sensing then does not start, every shadow register keeps its reset value
+instead of the partial contents of an interrupted sense, and SEP samples the
+secure test-mode request one cycle after cold-reset release instead of at
+fuse-sensing completion. A match established without a following cold reset
+leaves the shadow registers holding whatever the failed sense loaded, and the
+secure test-mode request is never sampled. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-sec-dis-recovery[SEC_DIS recovery sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-sec-dis-recovery[SEC_DIS recovery sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 == Silicon Revision Scope
 

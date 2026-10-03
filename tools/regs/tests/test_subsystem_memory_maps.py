@@ -30,8 +30,8 @@ def catalog() -> list[Path]:
         "vendor/*/*/overlay/regs/*/regs",
         "vendor/*/*/overlay/regs/*/regs/include",
         "vendor/*/*/overlay/rdl",
+        "vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl",
         "vendor/chipsalliance/i3c-core/upstream/src/rdl",
-        "vendor/chipsalliance/i3c-core/upstream/src/rdl/tt_rdl",
     )
     return sorted({path for pattern in patterns for path in ROOT.glob(pattern)})
 

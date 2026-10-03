@@ -31,7 +31,14 @@ endif::backend-html5[]
 |`CTRL` |`0x04` |`0x0001020A` |STEP=1, PULSE_WIDTH=2, CREDIT_VAL=10.
 |`STATUS` |`0x08` |0 |MODE subsequently reflects the role input; RUNNING reflects enable and nonzero count.
 |`TIMER_PRESET_LO/HI` |`0x0C/0x10` |0 |Two independently writable preset halves.
-|`TIMER_COUNT_LO/HI` |`0x14/0x18` |0 |Live count halves; see <<octs-read-count>>.
+|`TIMER_COUNT_LO/HI` |`0x14/0x18` |0 |Live count halves, with no snapshot latch; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-octs-read-count[timestamp read sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-octs-read-count[timestamp read sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 |`CREDIT_EXPIRED` |`0x1C` |0 |Saved maximum wait for credit; any write clears it.
 |`TIMER_GPIO_ENABLE` |`0x20` |0 |Timer GPIO LSIO selection starts disabled.
 |===

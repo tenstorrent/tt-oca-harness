@@ -104,8 +104,8 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 with DECERR by the demux (<<crypto-single-beat-only>>).
 endif::backend-pdf[]
-Software shall not rely on a bus error to detect a malformed ABR register
-address inside the extent.
+A malformed ABR register address inside the extent therefore returns no bus
+error.
 
 NOTE: The absence of decode inside the extent follows from the vendored
 collateral rather than a SEP decision.
@@ -136,8 +136,8 @@ ifdef::backend-pdf[]
 endif::backend-pdf[]
 256-bit values. The ML-KEM seed is read as one 512-bit value formed by
 concatenating `MLKEM_SEED_D` followed by `MLKEM_SEED_Z`, so that read completes
-only when both blocks are valid. Software shall enable the seed read before
-starting an operation that consumes a delivered seed.
+only when both blocks are valid. An operation consumes a delivered seed only
+once its seed read is enabled.
 
 The ML-KEM shared key travels in the opposite direction, making this the only
 delivery destination that is also a source: the accelerator writes the shared
@@ -168,12 +168,20 @@ bus are terminated with AXI4-Lite error slaves.
 
 NOTE: Adams Bridge does not auto-return to its RESET state when an operation
 finishes. The sequencer parks at the operation's end state with `STATUS.VALID`
-set, and `STATUS.READY` re-asserts only after a `zeroize` or a reset. Firmware
-therefore detects completion from `VALID`, and must issue a `zeroize` between
-back-to-back operations.
+set, and `STATUS.READY` re-asserts only after a `zeroize` or a reset, so
+completion is visible in `VALID` and back-to-back operations need a `zeroize`
+between them.
 
 Consult the https://github.com/chipsalliance/adams-bridge[Adams Bridge
-documentation] for the authoritative core functionality of the IP. Its CSRs are
+documentation] for the authoritative core functionality of the IP.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-adams-bridge[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-adams-bridge[programming guidance]
+endif::backend-pdf[]
+for this block. Its CSRs are
 defined by the vendored Caliptra register package rather than by an OCAH PeakRDL
 source, so unlike the other accelerators they do not appear in
 ifdef::backend-html5[]

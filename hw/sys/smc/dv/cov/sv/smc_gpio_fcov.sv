@@ -102,7 +102,7 @@ module smc_gpio_fcov #(
   wire default_output_count_e = release_primary_smc && (output_count == DEFAULT_OUTPUT_COUNT);
   wire default_input_count_e = release_primary_smc && (input_count == DEFAULT_INPUT_COUNT);
   // A pad an LSIO function owns takes that function's direction rather than
-  // its INPUT_BY_DEFAULT (gpio programming.adoc, LSIO Interface Operation), so
+  // its INPUT_BY_DEFAULT (Programmer's Guide, Selecting and Reclaiming LSIO), so
   // the map is compared on the pads software and the default still own.
   wire lsio_known = (^lsio_select_i !== 1'bx);
   wire [GPIO_WIDTH-1:0] default_map_diff = (pad2core_en_i ^ DEFAULT_INPUT_MAP) & ~lsio_select_i;

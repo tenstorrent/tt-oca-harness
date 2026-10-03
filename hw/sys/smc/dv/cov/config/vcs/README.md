@@ -109,8 +109,11 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 ## Exclusion files
 
 `coverage_policy.toml` beside this file names nine `-elfile` files the report
-applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
-Some classes in them rest on a design-engineering review recorded in
+applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses,
+and a tenth, `smc_unreachable.el`, the points a formal unreachability analysis
+proves no stimulus reaches, which `hw/sys/smc/dv/docs/SMC_FCOV.adoc` describes
+under "Unreachability exclusion list".
+Some classes in the nine rest on a design-engineering review recorded in
 `smc_reviewed_exclusions.toml`; those have their own section below.
 The first four and `smc_reviewed_field_exclusions.el` are written by
 `gen_smc_cov_exclusions.py` from urg's exclusion
@@ -356,7 +359,7 @@ regenerated from each, and `--check` compares them against the run it is
 given. Where a fact's whole signal is uncovered the file names it in one row,
 which keeps the files smaller than a per-bit listing.
 
-The whole-signal and bit-window rows are split by scope, as the archived SMC
+The whole-signal and bit-window rows are split by scope, as the predecessor SMC
 bench split them: `smc_toggle_module_exclusions.el` holds the rows true of
 every instance of a module, one block per module, and
 `smc_toggle_instance_exclusions.el` the rows true of one instance, each block
@@ -508,14 +511,15 @@ but not `ocah_prim_generic/`, which is why this one is graded at all.
 ## Exclusions design engineering reviewed
 
 `smc_reviewed_exclusions.toml` records exclusions design engineering reviewed
-for the SMC bench in an earlier repository (`[review]` names it, the reviewed
-files and the commit; the reviewed dumps are not in this repository), by
+on the predecessor SMC bench's exclusion lists (`[review]` states that origin
+and the review date; the reviewed lists are not in this repository), by
 category and against this tree's names: an `[[object]]` names a module or an
 instance and the toggle signals, selects, line blocks, FSM points or condition
 rows it covers, and a `[[unit]]` names an instance graded on its ports. Each
-entry carries its class and reviewed file; the class carries the fact, the
-retiring condition and the reviewer. `smc_reviewed_exclusions.py` resolves the
-manifest against urg's templates and keeps only the points the run's raw
+entry carries its class and the number of the reviewed list it comes from;
+the class carries the fact, the retiring condition and the reviewer.
+`smc_reviewed_exclusions.py` resolves the manifest against urg's templates and
+keeps only the points the run's raw
 report (`cov/report_raw/modinfo.txt`) marks uncovered: a toggle per bit and
 direction, a line block by its source line, an FSM state or transition by name
 and a condition row by source line and vector. Nothing a leaf covers is

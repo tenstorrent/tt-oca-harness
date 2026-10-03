@@ -52,6 +52,14 @@ proportion and Markov tests, and the main state machine is OpenTitan's
 `entropy_src_main_sm`. Their internal structure is described in the
 https://opentitan.org/book/hw/ip/entropy_src/[OpenTitan entropy source]
 documentation.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#ocah-trng-bring-up[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#ocah-trng-bring-up[programming guidance]
+endif::backend-pdf[]
+for this block.
 
 The entropy source is designed according to guidelines set forth in the
 NIST SP800-90B specification and is planned to be ready for FIPS 140-2
@@ -116,7 +124,7 @@ Health test thresholds, enable bits, and window sizes are all programmable throu
 
 `HT_WATERMARK` is one shared register whose source and maximum/minimum direction are selected by `HT_WATERMARK_NUM`; there is no independent storage per selector. A selector write changes which counter updates the shared register but does not clear it, so changing only the selector carries the value recorded by the previous mode.
 
-The shared watermark is armed by a `CTRL.MODULE_ENABLE` 0-to-1 transition. High modes (`REPCNT_HI`, `APT_HI`, and `MARKOV_HI`) arm to `0x0000`; low modes (`APT_LO` and `MARKOV_LO`) arm to `0xFFFF`. A hardware reset restores the selector and watermark together. Software that needs a deterministic baseline must write `HT_WATERMARK_NUM` before toggling `MODULE_ENABLE`. With the reset-default `MODULE_ENABLE=1`, the power-on enable pulse performs the first mode-aware arm automatically.
+The shared watermark is armed by a `CTRL.MODULE_ENABLE` 0-to-1 transition. High modes (`REPCNT_HI`, `APT_HI`, and `MARKOV_HI`) arm to `0x0000`; low modes (`APT_LO` and `MARKOV_LO`) arm to `0xFFFF`. A hardware reset restores the selector and watermark together, so a deterministic baseline requires `HT_WATERMARK_NUM` to be written before the `MODULE_ENABLE` toggle. With the reset-default `MODULE_ENABLE=1`, the power-on enable pulse performs the first mode-aware arm automatically.
 
 == Persistent Failure and AlertHang
 
@@ -134,7 +142,7 @@ The conditioned entropy stream is stored in a 64-entry FIFO (`entropy_fifo`). Ea
 
 The `entropy_stream_data_o` and `entropy_stream_vld_o` top-level ports carry each word as it is written into the FIFO, not the FIFO read data, and there is no backpressure. In SEP they connect to the DRBG seed path, which distributes the generated random data to the entropy consumers.
 
-Because the FIFO holds the same words that seed the DRBG, `FIFO_CTRL.ENABLE` is covered by `FIPS_LOCK`. The field gates only the FIFO write, so the DRBG seed stream continues whatever its value. It resets to one, keeping the `FIFO_RDATA` read path live out of reset. To close that path on a locked part, software clears `FIFO_CTRL.ENABLE`, reads `FIFO_RDATA` until `FIFO_STATUS.LEVEL` is zero, and then sets `FIPS_LOCK.LOCK`. Reads remain available while writes are disabled, so words already in the FIFO stay readable until they are drained.
+Because the FIFO holds the same words that seed the DRBG, `FIFO_CTRL.ENABLE` is covered by `FIPS_LOCK`. The field gates only the FIFO write, so the DRBG seed stream continues whatever its value. It resets to one, keeping the `FIFO_RDATA` read path live out of reset; the TRNG bring-up sequence in the Programmer's Guide closes it before `FIPS_LOCK`. Reads remain available while writes are disabled, so words already in the FIFO stay readable until they are drained.
 
 == Reset
 
