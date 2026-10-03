@@ -7,6 +7,8 @@ no_cpu / +skip_fuse_sense. The adapter header and hw/ip/drbg/doc/architecture.ad
 write 4-byte aligned with WSTRB exactly 0x0F (lower lane) or 0xF0 (upper lane),
 selected by address bit 2. Any other access returns AXI SLVERR and emits no
 downstream request. The next supported access must then complete normally.
+The strobe-to-address-bit-2 match, the read alignment and the zero other lane
+of a read come from the adapter header only; the spec gap is #2822.
 
 Two halves, the same split as the port-arbitration leaf:
 

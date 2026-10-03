@@ -6,7 +6,9 @@ Contract (hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv header and
 hw/ip/drbg/doc/architecture.adoc "Bus Protocol Adaptation"): a read must be
 4-byte aligned; a write must be 4-byte aligned with WSTRB exactly 0x0F for the
 lower lane or 0xF0 for the upper lane, selected by address bit 2. Every other
-access is answered AXI SLVERR and emits no downstream request.
+access is answered AXI SLVERR and emits no downstream request. The
+strobe-to-address-bit-2 match, the read alignment and the zero other lane of a
+read come from the adapter header only; the spec gap is #2822.
 
 Two drivers:
 
