@@ -222,7 +222,44 @@ added as the project matures.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="smc-programming-guide"><a class="anchor" href="#smc-programming-guide"></a><a class="link" href="#smc-programming-guide">1. SMC Programming Guide</a></h2>
+<h2 id="programmer-guide-about"><a class="anchor" href="#programmer-guide-about"></a><a class="link" href="#programmer-guide-about">1. About this Guide</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This guide describes how firmware and debuggers program the OCA Harness subsystems:
+the bring-up sequences, run-time operation and recovery procedures, with C
+examples where they help. The Technical Reference Manual describes the hardware
+itself, and this guide links to it for register and block details.</p>
+</div>
+<div class="paragraph">
+<p>The guide is organized as follows:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="#smc-programming-guide">SMC Programming Guide</a> covers SMC bring-up and its peripherals.</p>
+</li>
+<li>
+<p><a href="#sep-programming-guide">SEP Programming Guide</a> covers SEP bring-up, entropy, the cryptographic
+engines and the security procedures.</p>
+</li>
+<li>
+<p><a href="#sep-smc-common-blocks-communication">SEP &amp; SMC Common Blocks and Communication</a> covers the address remapping,
+filters, mailboxes and reference counter that both subsystems share.</p>
+</li>
+<li>
+<p><a href="#dtp-programming-guide">DTP Programming Guide</a> covers cross-trigger configuration and the debug
+host procedures.</p>
+</li>
+<li>
+<p>The appendices document the production SMC and SEP Boot ROMs, the Key
+Manager Application ROM and the AoU software operation.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-programming-guide"><a class="anchor" href="#smc-programming-guide"></a><a class="link" href="#smc-programming-guide">2. SMC Programming Guide</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>This Chapter details the bring-up process and run-time operation of the SMC
@@ -235,9 +272,9 @@ with documentation on configurable functionality, such as compile-time options
 and hookable functions.</p>
 </div>
 <div class="sect2">
-<h3 id="smc-bring-up"><a class="anchor" href="#smc-bring-up"></a><a class="link" href="#smc-bring-up">1.1. SMC Bring-up</a></h3>
+<h3 id="smc-bring-up"><a class="anchor" href="#smc-bring-up"></a><a class="link" href="#smc-bring-up">2.1. SMC Bring-up</a></h3>
 <div class="sect3">
-<h4 id="smc-address-map"><a class="anchor" href="#smc-address-map"></a><a class="link" href="#smc-address-map">1.1.1. Address Map</a></h4>
+<h4 id="smc-address-map"><a class="anchor" href="#smc-address-map"></a><a class="link" href="#smc-address-map">2.1.1. Address Map</a></h4>
 <div class="paragraph">
 <p>The SMC accesses its resources and peripherals through its fixed local-alias
 aperture, at the RTL-fixed base address <code>LOCAL_BASE</code> (<code>0xC000_0000</code>), and with
@@ -287,7 +324,7 @@ global addresses for accesses that leave the local SMC view from the
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-cpu"><a class="anchor" href="#smc-cpu"></a><a class="link" href="#smc-cpu">1.1.2. SMC CPU</a></h4>
+<h4 id="smc-cpu"><a class="anchor" href="#smc-cpu"></a><a class="link" href="#smc-cpu">2.1.2. SMC CPU</a></h4>
 <div class="paragraph">
 <p>The SMC CPU consists of 4 Rocket RV64 cores. The cores implement the
 RV64GC instruction set, as well as the Zba, Zbb, and Zbs instructions.
@@ -331,7 +368,7 @@ SRAM.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sram-initialization-using-memory-zeroer"><a class="anchor" href="#sram-initialization-using-memory-zeroer"></a><a class="link" href="#sram-initialization-using-memory-zeroer">1.1.3. SRAM Initialization using Memory Zeroer</a></h4>
+<h4 id="sram-initialization-using-memory-zeroer"><a class="anchor" href="#sram-initialization-using-memory-zeroer"></a><a class="link" href="#sram-initialization-using-memory-zeroer">2.1.3. SRAM Initialization using Memory Zeroer</a></h4>
 <div class="paragraph">
 <p>The SMC contains a Memory Zeroer unit at <code>BASE + 0x0003_8200</code>, which can be used
 to initialize SRAM before use. This can be performed like so:</p>
@@ -383,7 +420,7 @@ independent verification path.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="memory-built-in-self-test-and-repair"><a class="anchor" href="#memory-built-in-self-test-and-repair"></a><a class="link" href="#memory-built-in-self-test-and-repair">1.1.4. Memory Built-In Self Test and Repair</a></h4>
+<h4 id="memory-built-in-self-test-and-repair"><a class="anchor" href="#memory-built-in-self-test-and-repair"></a><a class="link" href="#memory-built-in-self-test-and-repair">2.1.4. Memory Built-In Self Test and Repair</a></h4>
 <div class="paragraph">
 <p>The programmer may check the status of the SRAM memory built-in self-test
 (MBIST) and SRAM Memory Repair before usage by reading the <code>STATUS_SMU</code> register.</p>
@@ -466,7 +503,7 @@ failure and return.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-core-reset-sequence"><a class="anchor" href="#smc-core-reset-sequence"></a><a class="link" href="#smc-core-reset-sequence">1.1.5. Per-Core Reset</a></h4>
+<h4 id="smc-core-reset-sequence"><a class="anchor" href="#smc-core-reset-sequence"></a><a class="link" href="#smc-core-reset-sequence">2.1.5. Per-Core Reset</a></h4>
 <div class="paragraph">
 <p>See the
 <a href="../../ocah-docs/latest/smc/cpu.html#smc-per-core-reset" class="xref page">SMC CPU reset description</a>
@@ -531,7 +568,7 @@ Reference Manual.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-ndm-reset"><a class="anchor" href="#smc-ndm-reset"></a><a class="link" href="#smc-ndm-reset">1.1.6. External CPU Cluster NDM Reset</a></h4>
+<h4 id="smc-ndm-reset"><a class="anchor" href="#smc-ndm-reset"></a><a class="link" href="#smc-ndm-reset">2.1.6. External CPU Cluster NDM Reset</a></h4>
 <div class="paragraph">
 <p>Read <code>NDMRESET_REQUEST</code> bit <code>i</code> as the NDM reset request from external
 CPU cluster <code>i</code>. Write <code>NDMRESET_PROCESS</code> bit <code>i</code> to answer that
@@ -551,9 +588,9 @@ in the Technical Reference Manual.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="smc-general-operation"><a class="anchor" href="#smc-general-operation"></a><a class="link" href="#smc-general-operation">1.2. General Operation</a></h3>
+<h3 id="smc-general-operation"><a class="anchor" href="#smc-general-operation"></a><a class="link" href="#smc-general-operation">2.2. General Operation</a></h3>
 <div class="sect3">
-<h4 id="smc-interrupt-control"><a class="anchor" href="#smc-interrupt-control"></a><a class="link" href="#smc-interrupt-control">1.2.1. Interrupt Control</a></h4>
+<h4 id="smc-interrupt-control"><a class="anchor" href="#smc-interrupt-control"></a><a class="link" href="#smc-interrupt-control">2.2.1. Interrupt Control</a></h4>
 <div class="paragraph">
 <p>There are 3 architectural interrupt sources that the cores of the SMU receive:</p>
 </div>
@@ -835,7 +872,7 @@ delivery paths select from the same accrued bits, so clearing them affects both.
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-watchdog"><a class="anchor" href="#smc-watchdog"></a><a class="link" href="#smc-watchdog">1.2.2. Watchdog Timers</a></h4>
+<h4 id="smc-watchdog"><a class="anchor" href="#smc-watchdog"></a><a class="link" href="#smc-watchdog">2.2.2. Watchdog Timers</a></h4>
 <div class="paragraph">
 <p>Each core of the SMC has a dedicated watchdog timer (WDT), that can generate
 an interrupt and optionally a reset of the core if not serviced within a
@@ -981,7 +1018,7 @@ void wdt_service(void) {
 </div>
 </div>
 <div class="sect3">
-<h4 id="logging-peripherals-uart-log-engine"><a class="anchor" href="#logging-peripherals-uart-log-engine"></a><a class="link" href="#logging-peripherals-uart-log-engine">1.2.3. Logging Peripherals (UART, Log Engine)</a></h4>
+<h4 id="logging-peripherals-uart-log-engine"><a class="anchor" href="#logging-peripherals-uart-log-engine"></a><a class="link" href="#logging-peripherals-uart-log-engine">2.2.3. Logging Peripherals (UART, Log Engine)</a></h4>
 <div class="paragraph">
 <p>Software may log info and error messages by transmitting over UART. For more
 advanced and flexible use-cases, such as logging asynchronously and from
@@ -1710,7 +1747,7 @@ restarting may duplicate output.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-gpio"><a class="anchor" href="#smc-gpio"></a><a class="link" href="#smc-gpio">1.2.4. GPIO</a></h4>
+<h4 id="smc-gpio"><a class="anchor" href="#smc-gpio"></a><a class="link" href="#smc-gpio">2.2.4. GPIO</a></h4>
 <div class="paragraph">
 <p>The SMC exposes 65 GPIO pins, each controlled through its own register
 instance within the GPIO block.</p>
@@ -2046,7 +2083,7 @@ filter hardware.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-efuse"><a class="anchor" href="#smc-efuse"></a><a class="link" href="#smc-efuse">1.2.5. eFuse</a></h4>
+<h4 id="smc-efuse"><a class="anchor" href="#smc-efuse"></a><a class="link" href="#smc-efuse">2.2.5. eFuse</a></h4>
 <div class="paragraph">
 <p>The eFuse block provides One-Time Programmable (OTP) storage for device
 identity, security, and boot configuration.</p>
@@ -2275,7 +2312,7 @@ bool efuse_read_bit(uint16_t bit_index, bool *bit_value) {
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-dma"><a class="anchor" href="#smc-dma"></a><a class="link" href="#smc-dma">1.2.6. DMA Engine</a></h4>
+<h4 id="smc-dma"><a class="anchor" href="#smc-dma"></a><a class="link" href="#smc-dma">2.2.6. DMA Engine</a></h4>
 <div class="paragraph">
 <p>The SMC DMA engine copies linear or two-dimensional (strided) regions. Only
 stream bank 0 is functional: treat <code>NEXT_ID_1..15</code> and their <code>STATUS</code> and <code>DONE</code>
@@ -2389,7 +2426,7 @@ void dma_copy(uint64_t dst, uint64_t src, uint32_t len) {
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-flr-isolation"><a class="anchor" href="#smc-flr-isolation"></a><a class="link" href="#smc-flr-isolation">1.2.7. Function-Level Reset and Isolation</a></h4>
+<h4 id="smc-flr-isolation"><a class="anchor" href="#smc-flr-isolation"></a><a class="link" href="#smc-flr-isolation">2.2.7. Function-Level Reset and Isolation</a></h4>
 <div class="paragraph">
 <p>The hardware behavior is described in the
 <a href="../../ocah-docs/latest/smc/clk_rst.html#smc-function-level-reset" class="xref page">Function Level Reset and Isolation</a>
@@ -2441,7 +2478,7 @@ wake on bus activity.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-axi-hang-detectors"><a class="anchor" href="#smc-axi-hang-detectors"></a><a class="link" href="#smc-axi-hang-detectors">1.2.8. AXI Hang Detectors</a></h4>
+<h4 id="smc-axi-hang-detectors"><a class="anchor" href="#smc-axi-hang-detectors"></a><a class="link" href="#smc-axi-hang-detectors">2.2.8. AXI Hang Detectors</a></h4>
 <div class="paragraph">
 <p>One hang detector watches each of the <code>sys_axi</code>, <code>sep_axi</code> and <code>data_accel</code>
 masters; their interrupts are OR-combined onto one PLIC source. To arm a
@@ -2475,7 +2512,7 @@ cleared. The CPU AXI master is covered by the watchdog instead.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-dfd-capture"><a class="anchor" href="#smc-dfd-capture"></a><a class="link" href="#smc-dfd-capture">1.2.9. Design-for-Debug and CLA</a></h4>
+<h4 id="smc-dfd-capture"><a class="anchor" href="#smc-dfd-capture"></a><a class="link" href="#smc-dfd-capture">2.2.9. Design-for-Debug and CLA</a></h4>
 <div class="paragraph">
 <p>The debug bus selection and the CLA event and action model are described in the
 <a href="../../ocah-docs/latest/smc/dfd.html#smc-dfd-cla" class="xref page">Design-for-Debug chapter</a>
@@ -2505,7 +2542,7 @@ for this when programming or testing them.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-system-timer"><a class="anchor" href="#smc-system-timer"></a><a class="link" href="#smc-system-timer">1.2.10. OCTS System Timer</a></h4>
+<h4 id="smc-system-timer"><a class="anchor" href="#smc-system-timer"></a><a class="link" href="#smc-system-timer">2.2.10. OCTS System Timer</a></h4>
 <div class="sect4">
 <h5 id="smc-octs-setup"><a class="anchor" href="#smc-octs-setup"></a><a class="link" href="#smc-octs-setup">Configure and Start</a></h5>
 <div class="olist arabic">
@@ -2615,7 +2652,7 @@ capture or move secondary timestamps backward.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-telemetry-receiver"><a class="anchor" href="#smc-telemetry-receiver"></a><a class="link" href="#smc-telemetry-receiver">1.2.11. Telemetry Receiver</a></h4>
+<h4 id="smc-telemetry-receiver"><a class="anchor" href="#smc-telemetry-receiver"></a><a class="link" href="#smc-telemetry-receiver">2.2.11. Telemetry Receiver</a></h4>
 <div class="sect4">
 <h5 id="smc-telemetry-buffer"><a class="anchor" href="#smc-telemetry-buffer"></a><a class="link" href="#smc-telemetry-buffer">Buffer Management</a></h5>
 <div class="olist arabic">
@@ -2736,7 +2773,7 @@ alone does not acknowledge this sticky interrupt.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-avsbus"><a class="anchor" href="#smc-avsbus"></a><a class="link" href="#smc-avsbus">1.2.12. AVSBus Controller</a></h4>
+<h4 id="smc-avsbus"><a class="anchor" href="#smc-avsbus"></a><a class="link" href="#smc-avsbus">2.2.12. AVSBus Controller</a></h4>
 <div class="paragraph">
 <p>The controller starts issuing slave resync operations as soon as its resets
 are released, using a divide-by-4 AVS clock, so configuration adjusts defaults
@@ -2771,7 +2808,7 @@ one to the matching bit of <code>AVS_INTERRUPT_CLEAR</code>, which self-clears.<
 </div>
 </div>
 <div class="sect3">
-<h4 id="smc-i2c"><a class="anchor" href="#smc-i2c"></a><a class="link" href="#smc-i2c">1.2.13. I2C Controllers</a></h4>
+<h4 id="smc-i2c"><a class="anchor" href="#smc-i2c"></a><a class="link" href="#smc-i2c">2.2.13. I2C Controllers</a></h4>
 <div class="paragraph">
 <p>The SMC I2C controllers are OpenTitan I2C cores behind an OCAH register wrapper.
 Program them following the
@@ -2787,7 +2824,7 @@ and suspend pads, in agreement with the role selected by <code>CTRL.ENABLEHOST</
 </div>
 </div>
 <div class="sect1">
-<h2 id="sep-programming-guide"><a class="anchor" href="#sep-programming-guide"></a><a class="link" href="#sep-programming-guide">2. SEP Programming Guide</a></h2>
+<h2 id="sep-programming-guide"><a class="anchor" href="#sep-programming-guide"></a><a class="link" href="#sep-programming-guide">3. SEP Programming Guide</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>This Chapter details the bring-up process and run-time operation of the SEP for
@@ -2798,9 +2835,9 @@ the purposes of firmware development, with references to the Production SEP ROM.
 implementation.</p>
 </div>
 <div class="sect2">
-<h3 id="sep-bring-up"><a class="anchor" href="#sep-bring-up"></a><a class="link" href="#sep-bring-up">2.1. Bring-up</a></h3>
+<h3 id="sep-bring-up"><a class="anchor" href="#sep-bring-up"></a><a class="link" href="#sep-bring-up">3.1. Bring-up</a></h3>
 <div class="sect3">
-<h4 id="sep-address-map"><a class="anchor" href="#sep-address-map"></a><a class="link" href="#sep-address-map">2.1.1. Address Map</a></h4>
+<h4 id="sep-address-map"><a class="anchor" href="#sep-address-map"></a><a class="link" href="#sep-address-map">3.1.1. Address Map</a></h4>
 <div class="paragraph">
 <p>See the
 <a href="../../ocah-docs/latest/sep/memory_map.html#sep-memory-map" class="xref page">Memory Map</a>
@@ -2809,7 +2846,7 @@ address-space layout and the full generated component address map.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-early-init"><a class="anchor" href="#sep-early-init"></a><a class="link" href="#sep-early-init">2.1.2. Early Initialization</a></h4>
+<h4 id="sep-early-init"><a class="anchor" href="#sep-early-init"></a><a class="link" href="#sep-early-init">3.1.2. Early Initialization</a></h4>
 <div class="paragraph">
 <p>The SEP CPU cold-reset vector is <code>0x1004_0000</code>, corresponding to the start of
 BL0 ROM.</p>
@@ -2825,7 +2862,7 @@ initialization.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-nmi-vector-programming"><a class="anchor" href="#sep-nmi-vector-programming"></a><a class="link" href="#sep-nmi-vector-programming">2.1.3. NMI Vector Programming</a></h4>
+<h4 id="sep-nmi-vector-programming"><a class="anchor" href="#sep-nmi-vector-programming"></a><a class="link" href="#sep-nmi-vector-programming">3.1.3. NMI Vector Programming</a></h4>
 <div class="paragraph">
 <p>The Security Processor (SEP) runs a VeeR-EL2 core whose Non-Maskable Interrupt
 is driven by the watchdog timer bark (<code>sep.sv</code> wires <code>nmi_int</code> to
@@ -2895,7 +2932,7 @@ does so only after the bite interval and without running any handler.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-configuration-straps"><a class="anchor" href="#sep-configuration-straps"></a><a class="link" href="#sep-configuration-straps">2.1.4. Configuration Straps</a></h4>
+<h4 id="sep-configuration-straps"><a class="anchor" href="#sep-configuration-straps"></a><a class="link" href="#sep-configuration-straps">3.1.4. Configuration Straps</a></h4>
 <div class="paragraph">
 <p>BL0 selects startup options, such as primary or secondary chiplet operation and
 normal or recovery boot, from configuration straps on SMC GPIO pins. The board
@@ -2907,7 +2944,7 @@ that a pin supports capture, not that reset has completed.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-software-reset"><a class="anchor" href="#sep-software-reset"></a><a class="link" href="#sep-software-reset">2.1.5. Software Reset of the Cryptographic Engines</a></h4>
+<h4 id="sep-software-reset"><a class="anchor" href="#sep-software-reset"></a><a class="link" href="#sep-software-reset">3.1.5. Software Reset of the Cryptographic Engines</a></h4>
 <div class="paragraph">
 <p><code>SEP_RESET_CTRL.SW_RESET_N</code> resets to <code>0x7E</code>: the Key Manager is held in reset
 and OTBN, AES, HMAC, KMAC, the TRNG and Adams Bridge are released. To reset one
@@ -2982,7 +3019,7 @@ before submitting new work.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-pic"><a class="anchor" href="#sep-pic"></a><a class="link" href="#sep-pic">2.1.6. Programmable Interrupt Controller (PIC)</a></h4>
+<h4 id="sep-pic"><a class="anchor" href="#sep-pic"></a><a class="link" href="#sep-pic">3.1.6. Programmable Interrupt Controller (PIC)</a></h4>
 <div class="paragraph">
 <p>The
 <a href="https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html">EL2 Programmer&#8217;s Reference Manual</a>
@@ -3083,7 +3120,7 @@ void pic_enable_source(unsigned n, uint32_t priority, uint32_t gwctrl) {
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-memory-errors"><a class="anchor" href="#sep-memory-errors"></a><a class="link" href="#sep-memory-errors">2.1.7. Memory Error Handling</a></h4>
+<h4 id="sep-memory-errors"><a class="anchor" href="#sep-memory-errors"></a><a class="link" href="#sep-memory-errors">3.1.7. Memory Error Handling</a></h4>
 <div class="paragraph">
 <p>Corrected ICCM and DCCM errors are counted in two counters whose request is
 delivered as <code>MCEIP</code> (<code>mcause</code> = <code>0x8000_001E</code>). Bits <code>[26:0]</code> of each counter
@@ -3125,7 +3162,7 @@ instead.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="ocah-trng-bring-up"><a class="anchor" href="#ocah-trng-bring-up"></a><a class="link" href="#ocah-trng-bring-up">2.2. OCAH TRNG Bring-up</a></h3>
+<h3 id="ocah-trng-bring-up"><a class="anchor" href="#ocah-trng-bring-up"></a><a class="link" href="#ocah-trng-bring-up">3.2. OCAH TRNG Bring-up</a></h3>
 <div class="paragraph">
 <p>The SEP has three entropy streams: the Key Manager, the AES/KMAC/OTBN group, and
 the fabric entropy pool. <code>SEP_CPU_CTRL.EXT_TRNG_SRC_SEL</code> selects the source of
@@ -3185,7 +3222,7 @@ test that device through its platform-specific control interface; the OCAH
 sequence below applies only to streams firmware explicitly changes to 0.</p>
 </div>
 <div class="sect3">
-<h4 id="bring-up-sequence-at-a-glance"><a class="anchor" href="#bring-up-sequence-at-a-glance"></a><a class="link" href="#bring-up-sequence-at-a-glance">2.2.1. Bring-up Sequence at a Glance</a></h4>
+<h4 id="bring-up-sequence-at-a-glance"><a class="anchor" href="#bring-up-sequence-at-a-glance"></a><a class="link" href="#bring-up-sequence-at-a-glance">3.2.1. Bring-up Sequence at a Glance</a></h4>
 <div class="imageblock kroki">
 <div class="content">
 <img src="_images/ocah-trng-bring-up-ff5e754b0f3d7d0cb229e6dfeea0dd7f666c60f3.svg" alt="ocah-trng-bring-up">
@@ -3193,7 +3230,7 @@ sequence below applies only to streams firmware explicitly changes to 0.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="internal-entropy-chain-initialization"><a class="anchor" href="#internal-entropy-chain-initialization"></a><a class="link" href="#internal-entropy-chain-initialization">2.2.2. Internal Entropy-chain Initialization</a></h4>
+<h4 id="internal-entropy-chain-initialization"><a class="anchor" href="#internal-entropy-chain-initialization"></a><a class="link" href="#internal-entropy-chain-initialization">3.2.2. Internal Entropy-chain Initialization</a></h4>
 <div class="paragraph">
 <p>The entropy source, CSRNG and EDN are OpenTitan IP. The
 <a href="https://opentitan.org/book/hw/ip/entropy_src/doc/programmers_guide.html">OpenTitan entropy source</a>,
@@ -3332,7 +3369,7 @@ Firmware must not write an undocumented bit 10 as part of entropy bring-up.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-trng-recovery"><a class="anchor" href="#sep-trng-recovery"></a><a class="link" href="#sep-trng-recovery">2.2.3. Failure Handling and Recovery</a></h4>
+<h4 id="sep-trng-recovery"><a class="anchor" href="#sep-trng-recovery"></a><a class="link" href="#sep-trng-recovery">3.2.3. Failure Handling and Recovery</a></h4>
 <div class="paragraph">
 <p>Treat entropy initialization as a fallible operation. Every poll must have a
 platform-defined timeout, and firmware should preserve enough status to
@@ -3416,9 +3453,9 @@ the internal TRNG does not unlock <code>EXT_TRNG_SRC_SEL_LOCK</code>.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-general-operation"><a class="anchor" href="#sep-general-operation"></a><a class="link" href="#sep-general-operation">2.3. General Operation</a></h3>
+<h3 id="sep-general-operation"><a class="anchor" href="#sep-general-operation"></a><a class="link" href="#sep-general-operation">3.3. General Operation</a></h3>
 <div class="sect3">
-<h4 id="mailbox-km"><a class="anchor" href="#mailbox-km"></a><a class="link" href="#mailbox-km">2.3.1. SEP to Key Manager Mailbox</a></h4>
+<h4 id="mailbox-km"><a class="anchor" href="#mailbox-km"></a><a class="link" href="#mailbox-km">3.3.1. SEP to Key Manager Mailbox</a></h4>
 <div class="paragraph">
 <p>The SEP and Key Manager communicate through a shared mailbox, which is
 implemented with two FIFOs. Messages consist of an arbitrary number of
@@ -3557,7 +3594,7 @@ format built on top of this register interface.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-watchdog"><a class="anchor" href="#sep-watchdog"></a><a class="link" href="#sep-watchdog">2.3.2. Watchdog</a></h4>
+<h4 id="sep-watchdog"><a class="anchor" href="#sep-watchdog"></a><a class="link" href="#sep-watchdog">3.3.2. Watchdog</a></h4>
 <div class="paragraph">
 <p>The SEP watchdog is an OpenTitan Always-On Timer. Program it following the
 <a href="https://opentitan.org/book/hw/ip/aon_timer/doc/programmers_guide.html">OpenTitan Always-On Timer programmer&#8217;s guide</a>,
@@ -3610,7 +3647,7 @@ void watchdog_pet(void) {
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-dma"><a class="anchor" href="#sep-dma"></a><a class="link" href="#sep-dma">2.3.3. DMA</a></h4>
+<h4 id="sep-dma"><a class="anchor" href="#sep-dma"></a><a class="link" href="#sep-dma">3.3.3. DMA</a></h4>
 <div class="paragraph">
 <p>The SEP DMA is the OpenTitan DMA controller. Program it following the
 <a href="https://opentitan.org/book/hw/ip/dma/doc/programmers_guide.html">OpenTitan DMA programmer&#8217;s guide</a>,
@@ -3678,7 +3715,7 @@ port (<code>CLEAR_INTR_BUS</code> bit 0 = 1); otherwise leave that source unsele
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-spi-host"><a class="anchor" href="#sep-spi-host"></a><a class="link" href="#sep-spi-host">2.3.4. SPI Host</a></h4>
+<h4 id="sep-spi-host"><a class="anchor" href="#sep-spi-host"></a><a class="link" href="#sep-spi-host">3.3.4. SPI Host</a></h4>
 <div class="paragraph">
 <p>The SEP SPI host is the unmodified OpenTitan SPI Host. Program it following the
 <a href="https://opentitan.org/book/hw/ip/spi_host/doc/programmers_guide.html">OpenTitan SPI Host programmer&#8217;s guide</a>,
@@ -3706,7 +3743,7 @@ into two 4-byte register writes.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-entropy-pool-access"><a class="anchor" href="#sep-entropy-pool-access"></a><a class="link" href="#sep-entropy-pool-access">2.3.5. Entropy Pool</a></h4>
+<h4 id="sep-entropy-pool-access"><a class="anchor" href="#sep-entropy-pool-access"></a><a class="link" href="#sep-entropy-pool-access">3.3.5. Entropy Pool</a></h4>
 <div class="paragraph">
 <p>Read the entropy pool&#8217;s <code>DATA</code> register with a single 64-bit access; each read
 pops one conditioned 64-bit word. A read of an empty pool returns <code>SLVERR</code>
@@ -3718,7 +3755,7 @@ single-beat accesses only.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-cryptographic-engines"><a class="anchor" href="#sep-cryptographic-engines"></a><a class="link" href="#sep-cryptographic-engines">2.3.6. Cryptographic Engines</a></h4>
+<h4 id="sep-cryptographic-engines"><a class="anchor" href="#sep-cryptographic-engines"></a><a class="link" href="#sep-cryptographic-engines">3.3.6. Cryptographic Engines</a></h4>
 <div class="paragraph">
 <p>AES, HMAC, KMAC and OTBN are OpenTitan IP and Adams Bridge is Caliptra IP.
 Program each engine following its upstream programmer&#8217;s guide, which gives the
@@ -3794,7 +3831,7 @@ the Adams Bridge extent does not return a bus error, so do not rely on one.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-token-matching"><a class="anchor" href="#sep-token-matching"></a><a class="link" href="#sep-token-matching">2.3.7. Token Matching</a></h4>
+<h4 id="sep-token-matching"><a class="anchor" href="#sep-token-matching"></a><a class="link" href="#sep-token-matching">3.3.7. Token Matching</a></h4>
 <div class="paragraph">
 <p>SEP software or JTAG submits RMA and SEC_DIS tokens through the eFuse MMR
 interface:</p>
@@ -3881,7 +3918,7 @@ chapter of the Technical Reference Manual gives the transition rules.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-sec-dis-recovery"><a class="anchor" href="#sep-sec-dis-recovery"></a><a class="link" href="#sep-sec-dis-recovery">2.3.8. Security Disable Recovery</a></h4>
+<h4 id="sep-sec-dis-recovery"><a class="anchor" href="#sep-sec-dis-recovery"></a><a class="link" href="#sep-sec-dis-recovery">3.3.8. Security Disable Recovery</a></h4>
 <div class="paragraph">
 <p>SEC_DIS recovers an A0 part whose fuse sensing fails, for debug. It is a JTAG
 procedure:</p>
@@ -3912,7 +3949,7 @@ Present the token only to a part whose fuse sensing fails.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-lifecycle-demotion"><a class="anchor" href="#sep-lifecycle-demotion"></a><a class="link" href="#sep-lifecycle-demotion">2.3.9. Lifecycle Demotion</a></h4>
+<h4 id="sep-lifecycle-demotion"><a class="anchor" href="#sep-lifecycle-demotion"></a><a class="link" href="#sep-lifecycle-demotion">3.3.9. Lifecycle Demotion</a></h4>
 <div class="paragraph">
 <p>The <code>demote</code> (bit 0) and <code>lock</code> (bit 1) fields of the demotion registers are
 write-one-to-set and clear only on SEP cold reset. For each boot:</p>
@@ -3941,10 +3978,10 @@ of the Technical Reference Manual describes what demotion opens.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sep-smc-common-blocks-communication"><a class="anchor" href="#sep-smc-common-blocks-communication"></a><a class="link" href="#sep-smc-common-blocks-communication">3. SEP &amp; SMC Common Blocks and Communication</a></h2>
+<h2 id="sep-smc-common-blocks-communication"><a class="anchor" href="#sep-smc-common-blocks-communication"></a><a class="link" href="#sep-smc-common-blocks-communication">4. SEP &amp; SMC Common Blocks and Communication</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="sep-smc-address-remapping"><a class="anchor" href="#sep-smc-address-remapping"></a><a class="link" href="#sep-smc-address-remapping">3.1. Global Aperture and Address Remapping</a></h3>
+<h3 id="sep-smc-address-remapping"><a class="anchor" href="#sep-smc-address-remapping"></a><a class="link" href="#sep-smc-address-remapping">4.1. Global Aperture and Address Remapping</a></h3>
 <div class="paragraph">
 <p>During early boot, before other chiplets access SEP or SMC resources, program
 the global apertures to match the chiplet&#8217;s assigned system address map: SEP
@@ -3982,7 +4019,7 @@ STEE access in the inbound filter.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-smc-axi-filters"><a class="anchor" href="#sep-smc-axi-filters"></a><a class="link" href="#sep-smc-axi-filters">3.2. AXI Inbound/Outbound Filters</a></h3>
+<h3 id="sep-smc-axi-filters"><a class="anchor" href="#sep-smc-axi-filters"></a><a class="link" href="#sep-smc-axi-filters">4.2. AXI Inbound/Outbound Filters</a></h3>
 <div class="paragraph">
 <p>SEP and SMC both gate their inbound and outbound AXI traffic through the
 common AXI filter block. AXI filtering uses a match then permit algorithm
@@ -4106,7 +4143,7 @@ register regions accept single-beat accesses only.</p>
 requests.</p>
 </div>
 <div class="sect3">
-<h4 id="axi-filter-example"><a class="anchor" href="#axi-filter-example"></a><a class="link" href="#axi-filter-example">3.2.1. Example</a></h4>
+<h4 id="axi-filter-example"><a class="anchor" href="#axi-filter-example"></a><a class="link" href="#axi-filter-example">4.2.1. Example</a></h4>
 <div class="listingblock">
 <div class="title">AXI filter example C definitions.</div>
 <div class="content">
@@ -4250,7 +4287,7 @@ registers is sequenced correctly to avoid this possibility.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-smc-mailboxes"><a class="anchor" href="#sep-smc-mailboxes"></a><a class="link" href="#sep-smc-mailboxes">3.3. Mailboxes</a></h3>
+<h3 id="sep-smc-mailboxes"><a class="anchor" href="#sep-smc-mailboxes"></a><a class="link" href="#sep-smc-mailboxes">4.3. Mailboxes</a></h3>
 <div class="paragraph">
 <p>The SEP and SMC contain mailbox instances which can be used for message-passing
 between other cores on the SMC, the SEP and the SMC, as well as the Application
@@ -4416,7 +4453,7 @@ void mailbox_handle_read_threshold_interrupt(uint8_t i) {
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-smc-reference-counter"><a class="anchor" href="#sep-smc-reference-counter"></a><a class="link" href="#sep-smc-reference-counter">3.4. Reference Counter</a></h3>
+<h3 id="sep-smc-reference-counter"><a class="anchor" href="#sep-smc-reference-counter"></a><a class="link" href="#sep-smc-reference-counter">4.4. Reference Counter</a></h3>
 <div class="paragraph">
 <p>The SEP and SMC each expose a free-running 64-bit <code>REFERENCE_COUNTER</code> in their
 CPU control block, counting the always-on reference clock from reset. To reload
@@ -4448,7 +4485,7 @@ void reference_counter_load(uint64_t value, uint64_t window) {
 </div>
 </div>
 <div class="sect1">
-<h2 id="dtp-programming-guide"><a class="anchor" href="#dtp-programming-guide"></a><a class="link" href="#dtp-programming-guide">4. DTP Programming Guide</a></h2>
+<h2 id="dtp-programming-guide"><a class="anchor" href="#dtp-programming-guide"></a><a class="link" href="#dtp-programming-guide">5. DTP Programming Guide</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The Debug and Test Ports (DTP) are programmed from two sides: firmware or a
@@ -4456,7 +4493,7 @@ debugger configures the cross-trigger network through its CSR window, and an
 external debugger drives the JTAG test access ports.</p>
 </div>
 <div class="sect2">
-<h3 id="dtp-cross-trigger"><a class="anchor" href="#dtp-cross-trigger"></a><a class="link" href="#dtp-cross-trigger">4.1. Cross-Trigger Network</a></h3>
+<h3 id="dtp-cross-trigger"><a class="anchor" href="#dtp-cross-trigger"></a><a class="link" href="#dtp-cross-trigger">5.1. Cross-Trigger Network</a></h3>
 <div class="paragraph">
 <p>Cross-trigger configuration is static. Software programs every external CTP
 from the SiP cross-trigger topology once per boot, then opens the CTM routes
@@ -4468,7 +4505,7 @@ window, and whichever of them programs cross triggers follows the sequence
 below.</p>
 </div>
 <div class="sect3">
-<h4 id="dtp-ctn-requirements"><a class="anchor" href="#dtp-ctn-requirements"></a><a class="link" href="#dtp-ctn-requirements">4.1.1. Requirements</a></h4>
+<h4 id="dtp-ctn-requirements"><a class="anchor" href="#dtp-ctn-requirements"></a><a class="link" href="#dtp-ctn-requirements">5.1.1. Requirements</a></h4>
 <div class="ulist">
 <ul>
 <li>
@@ -4512,7 +4549,7 @@ CTP back to the same CTP is a loop.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-ctn-init"><a class="anchor" href="#dtp-ctn-init"></a><a class="link" href="#dtp-ctn-init">4.1.2. Initialization Sequence</a></h4>
+<h4 id="dtp-ctn-init"><a class="anchor" href="#dtp-ctn-init"></a><a class="link" href="#dtp-ctn-init">5.1.2. Initialization Sequence</a></h4>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -4575,7 +4612,7 @@ write32(CTM_ROUTE(1), 1u &lt;&lt; 0);</code></pre>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-ctn-sip-example"><a class="anchor" href="#dtp-ctn-sip-example"></a><a class="link" href="#dtp-ctn-sip-example">4.1.3. Example SiP Routing</a></h4>
+<h4 id="dtp-ctn-sip-example"><a class="anchor" href="#dtp-ctn-sip-example"></a><a class="link" href="#dtp-ctn-sip-example">5.1.3. Example SiP Routing</a></h4>
 <div class="paragraph">
 <p>The TRM&#8217;s
 <a href="../../ocah-docs/latest/ip/cross_trigger_network/doc/index.html#sip-cross-trigger-topology-figure" class="xref page">example SiP cross-trigger topology</a>
@@ -4634,7 +4671,7 @@ From the local CLAs to Chiplet 3.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="dtp-ctn-reconfigure"><a class="anchor" href="#dtp-ctn-reconfigure"></a><a class="link" href="#dtp-ctn-reconfigure">4.1.4. Changing a Port&#8217;s Configuration</a></h4>
+<h4 id="dtp-ctn-reconfigure"><a class="anchor" href="#dtp-ctn-reconfigure"></a><a class="link" href="#dtp-ctn-reconfigure">5.1.4. Changing a Port&#8217;s Configuration</a></h4>
 <div class="paragraph">
 <p>Changing <code>CONFIG</code> after routes are open is discouraged. When a link must
 change protocol or polarity, for example after both chiplets agree on a new
@@ -4657,7 +4694,7 @@ the two ends of the link disagree.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-ctn-deadlock"><a class="anchor" href="#dtp-ctn-deadlock"></a><a class="link" href="#dtp-ctn-deadlock">4.1.5. Handshake Deadlock Recovery</a></h4>
+<h4 id="dtp-ctn-deadlock"><a class="anchor" href="#dtp-ctn-deadlock"></a><a class="link" href="#dtp-ctn-deadlock">5.1.5. Handshake Deadlock Recovery</a></h4>
 <div class="paragraph">
 <p>A point-to-point sender waits for <code>CT_Ack_in</code> without a timeout. If the far
 end stops responding, <code>STATUS.REQ_OUT</code> and <code>STATUS.BUSY</code> stay 1, and the port
@@ -4682,7 +4719,7 @@ asserted keeps <code>STATUS.BUSY</code> at 1 until it releases the request.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="dtp-debug-host-procedures"><a class="anchor" href="#dtp-debug-host-procedures"></a><a class="link" href="#dtp-debug-host-procedures">4.2. Debug Host Procedures</a></h3>
+<h3 id="dtp-debug-host-procedures"><a class="anchor" href="#dtp-debug-host-procedures"></a><a class="link" href="#dtp-debug-host-procedures">5.2. Debug Host Procedures</a></h3>
 <div class="paragraph">
 <p>These procedures are performed by an external debugger through the chiplet&#8217;s
 JTAG port. An IR scan loads an instruction with the IR-Scan sequence; a DR scan
@@ -4690,7 +4727,7 @@ shifts the selected test data register (TDR) with the DR-Scan sequence, least
 significant bit first. The TRM defines every instruction and TDR field.</p>
 </div>
 <div class="sect3">
-<h4 id="dtp-ptap-tdr-access"><a class="anchor" href="#dtp-ptap-tdr-access"></a><a class="link" href="#dtp-ptap-tdr-access">4.2.1. Primary TAP Registers</a></h4>
+<h4 id="dtp-ptap-tdr-access"><a class="anchor" href="#dtp-ptap-tdr-access"></a><a class="link" href="#dtp-ptap-tdr-access">5.2.1. Primary TAP Registers</a></h4>
 <div class="paragraph">
 <p>To read or write a primary TAP TDR:</p>
 </div>
@@ -4737,7 +4774,7 @@ define the fields.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-runbist"><a class="anchor" href="#dtp-runbist"></a><a class="link" href="#dtp-runbist">4.2.2. Running BIST</a></h4>
+<h4 id="dtp-runbist"><a class="anchor" href="#dtp-runbist"></a><a class="link" href="#dtp-runbist">5.2.2. Running BIST</a></h4>
 <div class="paragraph">
 <p>The PTAP adds no scan cell of its own to the RUNBIST path, so the attached
 iJTAG network defines the length and contents of the RUNBIST DR.</p>
@@ -4763,7 +4800,7 @@ still on the scan path, with a DR scan.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-ijtag-access"><a class="anchor" href="#dtp-ijtag-access"></a><a class="link" href="#dtp-ijtag-access">4.2.3. iJTAG Segment Access</a></h4>
+<h4 id="dtp-ijtag-access"><a class="anchor" href="#dtp-ijtag-access"></a><a class="link" href="#dtp-ijtag-access">5.2.3. iJTAG Segment Access</a></h4>
 <div class="paragraph">
 <p>The JTAG Interface Unit&#8217;s iJTAG network starts with three one-bit SIBs. With
 every SIB closed the DR is three bits long: bit 0 (nearest TDO, shifted in
@@ -4803,7 +4840,7 @@ gives the SIB bit map and segment ports.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-ic-reset-overrides"><a class="anchor" href="#dtp-ic-reset-overrides"></a><a class="link" href="#dtp-ic-reset-overrides">4.2.4. IC_RESET Overrides</a></h4>
+<h4 id="dtp-ic-reset-overrides"><a class="anchor" href="#dtp-ic-reset-overrides"></a><a class="link" href="#dtp-ic-reset-overrides">5.2.4. IC_RESET Overrides</a></h4>
 <div class="paragraph">
 <p>Each IC_RESET port has an active-low <code>reset_control</code> value and a <code>reset_enable</code>
 select that is also active low: writing 0 hands the port to <code>reset_control</code>.
@@ -4840,7 +4877,7 @@ gives the TDR slice order.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-sep-reset-vector"><a class="anchor" href="#dtp-sep-reset-vector"></a><a class="link" href="#dtp-sep-reset-vector">4.2.5. SEP Reset Vector Redirect</a></h4>
+<h4 id="dtp-sep-reset-vector"><a class="anchor" href="#dtp-sep-reset-vector"></a><a class="link" href="#dtp-sep-reset-vector">5.2.5. SEP Reset Vector Redirect</a></h4>
 <div class="paragraph">
 <p>The SEP CPU reset vector is held in a TDR of the EL2 debug TAP, reached through
 the SEP Core Debug STAP. To start the SEP CPU from a memory other than the Boot
@@ -4867,7 +4904,7 @@ Test-Logic-Reset); CPU reset alone does not restore the Boot ROM default.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="dtp-smc-cmderr"><a class="anchor" href="#dtp-smc-cmderr"></a><a class="link" href="#dtp-smc-cmderr">4.2.6. SMC Debug Module Abstract Command Errors</a></h4>
+<h4 id="dtp-smc-cmderr"><a class="anchor" href="#dtp-smc-cmderr"></a><a class="link" href="#dtp-smc-cmderr">5.2.6. SMC Debug Module Abstract Command Errors</a></h4>
 <div class="paragraph">
 <p>The SMC Debug Module departs from the RISC-V External Debug Support
 specification: a <code>command</code> write while <code>abstractcs.cmderr</code> is nonzero replaces

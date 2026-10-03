@@ -1052,19 +1052,19 @@ SEP↔SMC interface contract (<code>sep_smc_interface.h</code>).</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU_CTRL scratch registers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10100 + 8·index</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x39080 + 8·index</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Coordination protocol
-(<a href="#tbl:smc_scratch">SMC scratch registers used in the SEP↔SMC protocol (offset <code>0x10100 + 8·index</code> in the SMC window)</a>).</p></td>
+(<a href="#tbl:smc_scratch">SMC scratch registers used in the SEP↔SMC protocol (offset <code>0x39080 + 8·index</code> in the SMC window)</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC fuse map: chiplet ID / package ID</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xB008</code> / <code>0xB028</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x7008</code> / <code>0x7028</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8×32-bit words each; manifest
 usage-constraint identity checks ([S23]).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>DFX_CTRL_STATUS_SMU</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF800</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xB800</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Memory-repair/MBIST completion gate (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
 </tr>
 <tr>
@@ -2458,7 +2458,7 @@ map SMC SRAM at different addresses).</p>
 <div class="sect2">
 <h3 id="scratch-register-protocol"><a class="anchor" href="#scratch-register-protocol"></a><a class="link" href="#scratch-register-protocol">10.1. Scratch-Register Protocol</a></h3>
 <table id="tbl:smc_scratch" class="tableblock frame-ends grid-rows stretch">
-<caption class="title">Table 11. SMC scratch registers used in the SEP↔SMC protocol (offset <code>0x10100 + 8·index</code> in the SMC window)</caption>
+<caption class="title">Table 11. SMC scratch registers used in the SEP↔SMC protocol (offset <code>0x39080 + 8·index</code> in the SMC window)</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 20%;">
@@ -2563,7 +2563,7 @@ success.</p>
 <h3 id="memory-repair-dft-gate-s03"><a class="anchor" href="#memory-repair-dft-gate-s03"></a><a class="link" href="#memory-repair-dft-gate-s03">10.3. Memory-Repair / DFT Gate ([S03])</a></h3>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-SMC-030"></a><strong>[SEP-ROM-SMC-030]</strong> The ROM shall not proceed past [S03] unless memory
-repair completed successfully: <code>DFX_CTRL_STATUS_SMU</code> (SMC window offset <code>0xF800</code>) bit 1
+repair completed successfully: <code>DFX_CTRL_STATUS_SMU</code> (SMC window offset <code>0xB800</code>) bit 1
 (<code>mem_repair_success</code>) set. On failure the ROM shall dump the raw status to scratch[10], emit
 a <code>MBIST_FAIL</code> warning, and then fail fatally (<code>ROM_ERR_DFT_GATE_BLOCKED</code>, <code>0xD001</code>) <strong>unless</strong>
 the <code>mem_repair_bypass</code> strap (<code>STRAPS_LO[13]</code>) is set, in which case boot continues with the
