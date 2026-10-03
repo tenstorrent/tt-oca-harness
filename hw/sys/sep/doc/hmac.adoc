@@ -48,8 +48,8 @@ is used in preference to the engine's software key registers whenever
 
 The delivered key is most-significant-bit justified in the engine's 1024-bit
 key field, and the engine takes its key length from `CFG.key_length`, which the
-delivery path does not write. Software shall program `CFG.key_length` to the
-256-bit encoding to match the delivered key. An unset or unsupported length
+delivery path does not write; only the 256-bit encoding matches the delivered
+key. An unset or unsupported length
 raises a configuration error when hashing starts. A supported length that
 disagrees with the delivered key does not raise an error: the engine takes key
 material from the top of the 1024-bit field, so the padding below the delivered
@@ -57,7 +57,16 @@ key is mixed into the key and the resulting digest is wrong but repeatable.
 
 Consult the
 https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC
-documentation] for the authoritative core functionality of the IP. The
+documentation] for the authoritative core functionality of the IP.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-km-delivered-keys[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-km-delivered-keys[programming guidance]
+endif::backend-pdf[]
+for this block.
+The
 ifdef::backend-html5[]
 register map follows below.
 endif::backend-html5[]

@@ -95,7 +95,16 @@ material.
 
 Consult the
 https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN
-documentation] for the authoritative core functionality of the IP. The
+documentation] for the authoritative core functionality of the IP.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-km-delivered-keys[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-km-delivered-keys[programming guidance]
+endif::backend-pdf[]
+for this block.
+The
 ifdef::backend-html5[]
 register map follows below.
 endif::backend-html5[]

@@ -30,7 +30,16 @@ The wrapper exports two signals: `intr_wdog_timer_bark_o`, the watchdog bark int
 
 Consult the
 https://opentitan.org/book/hw/ip/aon_timer/[OpenTitan Always-On Timer
-documentation] for the authoritative core functionality of the IP. The
+documentation] for the authoritative core functionality of the IP.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-watchdog[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-watchdog[programming guidance]
+endif::backend-pdf[]
+for this block.
+The
 ifdef::backend-html5[]
 register map follows below.
 endif::backend-html5[]

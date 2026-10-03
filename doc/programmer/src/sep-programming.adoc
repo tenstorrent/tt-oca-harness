@@ -87,6 +87,115 @@ escalates to the watchdog reset path and resets the SEP. A mis-programmed
 vector therefore degrades to a watchdog reset rather than a silent hang, but it
 does so only after the bite interval and without running any handler.
 
+[[sep-configuration-straps]]
+==== Configuration Straps
+
+BL0 selects startup options, such as primary or secondary chiplet operation and
+normal or recovery boot, from configuration straps on SMC GPIO pins. The board
+and boot firmware define which option each pin carries. A strap latch follows
+its pad while cold reset is asserted and holds the level when cold reset is
+released, so read the captured levels through the GPIO control registers after
+reset release, as described in <<smc-gpio-straps>>. `strap_valid` indicates
+that a pin supports capture, not that reset has completed.
+
+[[sep-software-reset]]
+==== Software Reset of the Cryptographic Engines
+
+`SEP_RESET_CTRL.SW_RESET_N` resets to `0x7E`: the Key Manager is held in reset
+and OTBN, AES, HMAC, KMAC, the TRNG and Adams Bridge are released. To reset one
+engine:
+
+. Make sure no operation the reset would corrupt is in flight, or accept that it
+  is aborted.
+. Clear the engine's bit with a read-modify-write that preserves the other bits.
+  Hardware isolates the engine's AXI paths, drains accepted transactions, and
+  only then asserts the reset; new accesses on those paths complete with SLVERR
+  and read data `0x1501A7ED`.
+. Set the bit again. Reset and isolation release together.
+
+Releasing the Key Manager from reset starts it; the SEP host can still reach the
+SEP-to-KM mailbox while the Key Manager is in reset, because the mailbox's
+SEP-facing side is in the Key Manager's cold domain. The Key Manager can also
+restart itself by writing its `SOFT_RST_CODE` register, which takes the same
+warm-reset path without isolation.
+
+The TRNG bit resets the whole internal entropy chain. Follow
+<<sep-trng-recovery>> rather than toggling it on its own.
+
+A watchdog restart resets the SEP CPU but not the cryptographic engines or
+their `SW_RESET_N` requests. Recovery firmware must account for engine state
+that survived the restart, by resetting the engines or checking their state,
+before submitting new work.
+
+[[sep-pic]]
+==== Interrupt Control (PIC)
+
+The VeeR EL2 PIC numbers external interrupt sources from 1; source 0 does not
+exist. Program source `N` through the per-source arrays, each indexed at
+`N * 4` from its region base:
+
+* `meipl[N]` (PIC base `+0x0000`) sets its priority;
+* `meie[N]` (`+0x2000`) enables it;
+* `meigwctrl[N]` (`+0x4000`) configures its gateway; and
+* `meigwclr[N]` (`+0x5000`) clears its gateway's pending state.
+
+Pending status is the bitmap `meip` at `+0x1000`: source `N` is bit `N % 32` of
+`meip[N / 32]`. Never program entry 0 of the per-source arrays; it is reserved,
+reads as zero and discards writes. Register tests that walk the PIC map must
+skip it. The
+ifdef::backend-html5[]
+xref:ocah-docs:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/interrupts.html#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+endif::backend-pdf[]
+in the Technical Reference Manual lists the sources. Some of them need
+specific service:
+
+[cols="1,4",options="header"]
+.SEP interrupt sources with specific service
+|===
+|Source |Service
+|39, entropy pool pointer fault |Level-sensitive with no write-one-to-clear.
+Mask the source, or scrub the pool with `TRNG_ENTROPY_CLEAR`. The source is tied
+to zero in the current configuration.
+|40, token match fault |Stays asserted until reset, with no write-one-to-clear.
+Read `TOKEN_MATCH_FAULT` to identify the token, then mask the source; an
+unmasked handler re-enters.
+|41, 42, DMA register-path and host-path faults |Write `DMA_BUS_ERR_CLEAR.clr`.
+|43, peripheral register-bridge fault |Read `PERIPH_BUS_ERR_STATUS` to identify
+the block, then clear that block's bit in `PERIPH_BUS_ERR_CLEAR`.
+|===
+
+[[sep-memory-errors]]
+==== Memory Error Handling
+
+Corrected ICCM and DCCM errors are counted in two counters whose request is
+delivered as `MCEIP` (`mcause` = `0x8000_001E`). Bits `[26:0]` of each counter
+are the count and bits `[31:27]` a threshold exponent: the request rises when
+the count reaches 2^threshold^. To use the interrupt:
+
+. Program a threshold before enabling the interrupt. Counters and thresholds
+  reset to zero, and a zero threshold raises the request on the first corrected
+  error.
+. Set `mie[30]` (`MCEIE`), which is clear at reset; until then, corrected errors
+  are counted silently.
+. In the handler, read both counters to attribute the error, then write the one
+  that tripped. `MCEIP` follows the comparator and has no write-one-to-clear, so
+  returning without dropping the count below the threshold re-enters the handler.
+  To clear the count while keeping threshold `N`, write `N << 27`.
+
+A low threshold reports a degrading SRAM early at the cost of an interrupt per
+error; a high one lets transient flips accumulate before firmware is told.
+
+Uncorrectable errors trap on the instruction that hit them, as an instruction,
+load or store access fault, or as an NMI on the fast-interrupt path. On an
+access fault, read `mscause` (`0x7FF`): `1` means uncorrectable ECC, which
+`mcause` alone does not distinguish from a bad pointer. Treat the error as fatal
+for the affected context. Do not resume the trapping instruction, since a retry
+re-reads the same corrupted location; reset or quarantine the affected memory
+instead.
+
 [[ocah-trng-bring-up]]
 === OCAH TRNG Bring-up
 
@@ -192,7 +301,10 @@ register literals. Several control fields use MuBi4 encodings, for which true is
   module-enable fields. In particular, the intended standards-aligned profile
   requires
   `CTRL.MODULE_ENABLE=1`, the approved health-test thresholds and window,
-  entropy-compressor bypass disabled, and SHA-256 whitening enabled.
+  entropy-compressor bypass disabled, and SHA-256 whitening enabled. Write
+  `HT_WATERMARK_NUM` before toggling `MODULE_ENABLE` when the health-test
+  watermark needs a deterministic baseline: the selector does not clear the
+  shared watermark, and the 0-to-1 transition re-arms it.
 . Enable the CSRNG with `CSRNG.CTRL.ENABLE`. Leave `SW_APP_ENABLE`,
   `READ_INT_STATE`, and `FIPS_FORCE_ENABLE` false unless the security policy
   explicitly requires those diagnostic interfaces.
@@ -213,6 +325,10 @@ register literals. Several control fields use MuBi4 encodings, for which true is
   certified ESRC configuration until the internal entropy chain is reset.
   `DEBUG_CTRL` intentionally remains outside this lock; the platform must
   separately restrict any externally routed debug-observation signal.
+  To close the `FIFO_RDATA` read path on a locked part, first clear
+  `FIFO_CTRL.ENABLE`, read `FIFO_RDATA` until `FIFO_STATUS.LEVEL` is zero, and
+  only then set `FIPS_LOCK.LOCK`. `FIFO_CTRL.ENABLE` gates only the FIFO write,
+  so the DRBG seed stream continues either way.
 . Enable EDN with `EDN_ENABLE=true`, `AUTO_REQ_MODE=true`,
   `BOOT_REQ_MODE=false`, and `CMD_FIFO_RST=false`.
 . Wait for both `EDN.SW_CMD_STS.CMD_RDY` and `CMD_REG_RDY`, then write an
@@ -239,6 +355,7 @@ continuous auto-request operation.
 Firmware must not write an undocumented bit 10 as part of entropy bring-up.
 ====
 
+[[sep-trng-recovery]]
 ==== Failure Handling and Recovery
 
 Treat entropy initialization as a fallible operation. Every poll must have a
@@ -284,6 +401,13 @@ Manager must be idle before the SEP host asserts the TRNG reset.
 
 Do not try to recover only ESRC with `CTRL[0]`. A shared TRNG reset invalidates
 the entire internal chain.
+
+Changing `EXT_TRNG_SRC_SEL` takes effect immediately, with no switch-complete
+handshake and no flush of previously queued words: an unselected internal
+endpoint keeps its queued data, and an unselected external input is discarded.
+Quiesce the consumers before changing the selection, and account for the
+buffered words when choosing between a source change and a TRNG reset. Resetting
+the internal TRNG does not unlock `EXT_TRNG_SRC_SEL_LOCK`.
 
 [[sep-general-operation]]
 === General Operation
@@ -403,3 +527,228 @@ See also the DV SEP firmware driver `hw/sys/sep/dv/fw/drivers/sep_km_mailbox.h`
 and `hw/sys/sep/dv/fw/tests/common/km_mailbox.h` for an example message-framing
 format built on top of this register interface.
 ====
+
+[[sep-watchdog]]
+==== Watchdog
+
+The SEP watchdog is an OpenTitan Always-On Timer. Firmware must service it
+periodically by resetting its count, proving that the SEP CPU is still making
+progress. If the count reaches the bark threshold, the watchdog raises the NMI,
+which jumps through `SEP_NMI_VEC`; program and lock that vector first, as
+<<sep-nmi-vector-programming>> describes. If the count reaches the bite
+threshold, the watchdog requests a SEP CPU reset. `wdt_debug_sleep_mode_i`
+selects whether the timer keeps counting while the CPU is halted in debug.
+
+[[sep-dma]]
+==== DMA
+
+The SEP DMA is the OpenTitan DMA controller. Use address-space ID `0x7`, the
+core's internal host port, for both source and destination, with both high
+address registers zero; the other address spaces are tied off and never
+complete. Reachability is governed by the SEP fabric and filters.
+
+For one contiguous memory-to-memory copy:
+
+. Wait until the previous operation has finished and configuration is writable
+  (`CFG_REGWEN`). Configure a valid enabled-memory base/limit pair and set
+  `RANGE_VALID` before starting; observe `RANGE_REGWEN` if firmware has locked
+  that configuration.
+. Write `SRC_ADDR_LO` and `DST_ADDR_LO`, clear both high address registers,
+  and select `0x7` for both fields in `ADDR_SPACE_ID` (`0x77` combined).
+. Set `TRANSFER_WIDTH` to 0, 1 or 2 for 1, 2 or 4 bytes respectively. Align
+  both addresses to that width. Enable `INCREMENT` and clear `WRAP` in both
+  `SRC_CONFIG` and `DST_CONFIG`.
+. Set `CHUNK_DATA_SIZE` and `TOTAL_DATA_SIZE` to the same nonzero byte count.
+. Write `CONTROL` with `OPCODE=0` (copy), `HARDWARE_HANDSHAKE_ENABLE=0`,
+  `INITIAL_TRANSFER=1` and `GO=1`.
+. Check `STATUS.ERROR` and `ERROR_CODE` while waiting for `STATUS.DONE`, with a
+  bounded wait. For interrupt-driven operation, enable the required completion
+  and error sources and acknowledge `INTR_STATE`. The status completion and
+  error bits are write-one-to-clear.
+
+For hashing, select opcode 1, 2 or 3 for SHA-256, SHA-384 or SHA-512 and use
+4-byte transfers. Set `INITIAL_TRANSFER` on the first transfer of the message,
+and read the digest only when `STATUS.SHA2_DIGEST_VALID` is set. `DIGEST_SWAP`
+controls byte order within each digest register, not register order.
+
+Only handshake input 0 is connected, to the SPI host's LSIO trigger. For SPI
+handshake operation, select trigger 0 in `HANDSHAKE_INTR_ENABLE`, configure the
+peripheral FIFO and chunk size, and enable hardware handshake. Each service
+operation moves one chunk, and chunk completion is not reported per trigger in
+this mode. Clear `GO` when stopping handshake operation. For a peripheral that
+needs an explicit trigger-clear write, configure `CLEAR_INTR_SRC`,
+`CLEAR_INTR_BUS`, `INTR_SRC_ADDR` and `INTR_SRC_WR_VAL` for the connected host
+port (`CLEAR_INTR_BUS` bit 0 = 1); otherwise leave that source unselected in
+`CLEAR_INTR_SRC`.
+
+To abort an active operation, request `CONTROL.ABORT` and wait for
+`STATUS.ABORTED` before reusing its buffers or configuration.
+
+[[sep-spi-host]]
+==== SPI Host
+
+The SEP SPI host is the unmodified OpenTitan SPI Host, and its error and event
+interrupts share one PIC line. In the handler, read `INTR_STATE` to tell them
+apart:
+
+* `INTR_STATE.ERROR` is latched. Clear it by writing one to it after handling
+  `ERROR_STATUS`; clearing `ERROR_STATUS` alone does not clear it.
+* `INTR_STATE.SPI_EVENT` follows the level of the events selected by
+  `EVENT_ENABLE`; service the event condition or change `EVENT_ENABLE`.
+
+`INTR_ENABLE` gates only the interrupt line, so both state bits can be polled
+with it clear. Activity is reported only by `STATUS.ACTIVE`. Access the
+registers with 32-bit accesses: the 64-bit peripheral bus splits an 8-byte write
+into two 4-byte register writes.
+
+[[sep-entropy-pool-access]]
+==== Entropy Pool
+
+Read the entropy pool's `DATA` register with a single 64-bit access; each read
+pops one conditioned 64-bit word. A read of an empty pool returns `SLVERR`
+rather than a zero word, and that error reaches the CPU as a bus error, so check
+`STATUS.fifo_level` before reading. `STATUS` and `IRQ_CAUSE` are non-destructive,
+and `STATUS.pool_low` reports the low-watermark condition. A 32-bit read of a
+register's upper word is not decoded and, for `DATA`, does not pop the pool. The pool is read-only and accepts
+single-beat accesses only.
+
+[[sep-km-delivered-keys]]
+==== Using Key Manager Delivered Keys
+
+The Key Manager delivers keys and seeds to the accelerators over a private
+interface, as two shares whose XOR is the value; the
+ifdef::backend-html5[]
+xref:ocah-docs:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/crypto.html#km-key-delivery[Key Manager Key Delivery]
+endif::backend-pdf[]
+section of the Technical Reference Manual defines the format. Software on the
+SEP host configures each accelerator to consume the delivered value:
+
+* *AES:* set `CTRL_SHADOWED.sideload` to select the delivered key; while it is 0
+  the engine uses its software key registers and reports no error. Program
+  `CTRL_SHADOWED.key_len` to the 256-bit encoding, since a shorter setting
+  consumes only part of the delivered key.
+* *HMAC:* there is no select bit; the delivered key is used whenever
+  `KEY_CTRL.KEY_VALID` is set. Program `CFG.key_length` to the 256-bit encoding.
+  An unset or unsupported length raises a configuration error, but a supported
+  length that disagrees with the delivered key produces a wrong but repeatable
+  digest with no error.
+* *KMAC:* set `CFG_SHADOWED.sideload`. The key length is applied automatically.
+  Starting a keyed operation while `KEY_CTRL.KEY_VALID` is 0 raises an error.
+* *OTBN:* the program reads the two shares through the `KEY_S0_L` / `KEY_S0_H`
+  and `KEY_S1_L` / `KEY_S1_H` special registers and must XOR them itself. Reading
+  a share that is not valid sets `ERR_BITS.KEY_INVALID` and stops the program.
+* *Adams Bridge:* enable the seed read before starting an operation that
+  consumes a delivered seed. The ML-KEM seed read completes only when both
+  `MLKEM_SEED_D` and `MLKEM_SEED_Z` are valid. Detect completion from
+  `STATUS.VALID` and issue a `zeroize` between back-to-back operations, since the
+  core parks at the end state until then. A malformed register address inside
+  the Adams Bridge extent does not return a bus error, so do not rely on one.
+
+[[sep-token-matching]]
+==== Token Matching
+
+SEP software or JTAG submits RMA and SEC_DIS tokens through the eFuse MMR
+interface:
+
+. Write all eight 32-bit words of the token's input array
+  (`RMA_SIP_TOKEN_I`, `RMA_CHIPLET_TOKEN_I` or `SEC_DISABLE_TOKEN_I`). Index 0
+  holds `token[31:0]` and index 7 `token[255:224]`.
+. After all writes complete, write 1 to the token's `TOKEN_EOP` bit (0, 8 or 16).
+  Keep the array unchanged until hashing finishes: the engine streams the array
+  rather than taking a snapshot. Do not start the same engine again while it is
+  hashing; there is no submission queue.
+. Poll the token's `*_TOKEN_MATCH` result with a bounded timeout. Only `0x15`
+  authorizes the operation; idle (`0x00`) is not success, and RMA stays idle
+  until fuse sensing completes. Check `TOKEN_MATCH_FAULT` as well as the result.
+
+A fault flag in `TOKEN_MATCH_FAULT` stays set until reset and raises PIC source
+40; mask the source after handling it, as <<sep-pic>> describes. A later
+successful comparison does not clear the fault or show that operation is safe.
+Reset clears the result but not the input arrays or the retained digest, so
+reset does not revoke a prior token authorization.
+
+An RMA match authorizes a lifecycle change but does not burn a fuse. After the
+match, program the RMA lifecycle bits (`LC_STATE[1]` for SiP RMA, `LC_STATE[2]`
+for chiplet RMA); the fuse controller gates that programming on the match.
+Chiplet RMA additionally requires SiP RMA to be established first. For the
+shadow-state transition, either request an explicit shadow update or rely on
+`TRANSIENT_RMA_EN` for automatic updates; the
+ifdef::backend-html5[]
+xref:ocah-docs:sep:otp_fuse_controller.adoc#fuse-controller-otp-fuse-controller-otp[OTP Fuse Controller]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/otp_fuse_controller.html#fuse-controller-otp-fuse-controller-otp[OTP Fuse Controller]
+endif::backend-pdf[]
+chapter of the Technical Reference Manual gives the transition rules.
+
+[[sep-sec-dis-recovery]]
+==== Security Disable Recovery
+
+SEC_DIS recovers an A0 part whose fuse sensing fails, for debug. It is a JTAG
+procedure:
+
+. Present the SEC_DIS token through `SEC_DISABLE_TOKEN_I` following
+  <<sep-token-matching>>, and poll `SEC_DISABLE_TOKEN_MATCH` until it reads the
+  match code.
+. Apply a cold reset. The token arrays and the computed digest survive it, so the
+  match holds from cold-reset release: fuse sensing does not start, every shadow
+  register keeps its reset value, and SEP samples the secure test-mode request
+  one cycle after cold-reset release.
+. Override `sep_reset_n` through the SEP slice of the IC_RESET TDR to release the
+  SEP reset, which a match alone does not release.
+
+Without the cold reset, the shadow registers keep whatever the failed sense
+loaded before the match, and the secure test-mode request is never sampled.
+Present the token only to a part whose fuse sensing fails.
+
+[[sep-lifecycle-demotion]]
+==== Lifecycle Demotion
+
+The `demote` (bit 0) and `lock` (bit 1) fields of the demotion registers are
+write-one-to-set and clear only on SEP cold reset. For each boot:
+
+. Decide whether to enable demotion for this boot.
+. Set `demote` if required, then set `lock` to commit the decision. The lock
+  can commit either a demoted or a non-demoted state.
+. Leave `lock` clear only when a later boot stage is to decide.
+
+The
+ifdef::backend-html5[]
+xref:ocah-docs:sep:lifecycle_controller.adoc#demote-lock-behavior[Lifecycle Controller chapter]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/lifecycle_controller.html#demote-lock-behavior[Lifecycle Controller chapter]
+endif::backend-pdf[]
+of the Technical Reference Manual describes what demotion opens.
+
+[[sep-upstream-ip-programming]]
+=== Upstream IP Programming References
+
+Several SEP blocks are upstream IP integrated with OCAH wrappers. Their
+programming model is the upstream one, with the OCAH differences described in
+this chapter and in the block's Technical Reference Manual chapter.
+
+[cols="2,4,3",options="header"]
+.Upstream programming references for SEP blocks
+|===
+|Block |Upstream programming reference |OCAH differences
+|AES |https://opentitan.org/book/hw/ip/aes/doc/programmers_guide.html[OpenTitan AES programmer's guide] |<<sep-km-delivered-keys>>
+|HMAC |https://opentitan.org/book/hw/ip/hmac/doc/programmers_guide.html[OpenTitan HMAC programmer's guide] |<<sep-km-delivered-keys>>
+|KMAC |https://opentitan.org/book/hw/ip/kmac/doc/programmers_guide.html[OpenTitan KMAC programmer's guide] |<<sep-km-delivered-keys>>
+|OTBN |https://opentitan.org/book/hw/ip/otbn/doc/programmers_guide.html[OpenTitan OTBN programmer's guide] |<<sep-km-delivered-keys>>
+|DMA |https://opentitan.org/book/hw/ip/dma/doc/programmers_guide.html[OpenTitan DMA programmer's guide] |<<sep-dma>>
+|SPI Host |https://opentitan.org/book/hw/ip/spi_host/doc/programmers_guide.html[OpenTitan SPI Host programmer's guide] |<<sep-spi-host>>
+|Watchdog |https://opentitan.org/book/hw/ip/aon_timer/doc/programmers_guide.html[OpenTitan Always-On Timer programmer's guide] |<<sep-watchdog>>
+|Entropy source |https://opentitan.org/book/hw/ip/entropy_src/doc/programmers_guide.html[OpenTitan entropy source programmer's guide] |<<ocah-trng-bring-up>>
+|CSRNG |https://opentitan.org/book/hw/ip/csrng/doc/programmers_guide.html[OpenTitan CSRNG programmer's guide] |<<ocah-trng-bring-up>>
+|EDN |https://opentitan.org/book/hw/ip/edn/doc/programmers_guide.html[OpenTitan EDN programmer's guide] |<<ocah-trng-bring-up>>
+|Adams Bridge |https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge documentation] |<<sep-km-delivered-keys>>
+|VeeR EL2 CPU |https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html[EL2 Programmer's Reference Manual] |<<sep-pic>>, <<sep-memory-errors>>
+|Cryptographic firmware |https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan cryptographic library API] |None
+|===
+
+The Key Manager is not listed: the OpenTitan key manager is background reading
+only, and the OCAH Key Manager firmware interface is in <<km-application-rom>>.

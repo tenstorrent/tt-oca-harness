@@ -46,22 +46,30 @@ interrupt.
 
 The Key Manager delivers a 256-bit AES key as eight words per share, in the
 ifdef::backend-html5[]
-format given in xref:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]. Software shall set
+format given in xref:sep:crypto.adoc#km-key-delivery[Key Manager Key Delivery]. In AES,
 endif::backend-html5[]
 ifdef::backend-pdf[]
-format given in <<km-key-delivery>>. Software shall set
+format given in <<km-key-delivery>>. In AES,
 endif::backend-pdf[]
-`CTRL_SHADOWED.sideload` to select the delivered key. While that bit is 0 the
+`CTRL_SHADOWED.sideload` selects the delivered key. While that bit is 0 the
 engine uses its software key registers and the delivered key has no effect,
-and no error is reported. Software shall also program `CTRL_SHADOWED.key_len`
-to the 256-bit encoding to consume the whole delivered key: the key length is
-independent of the delivery path, and a shorter setting consumes only part of
-it. AES carries the two shares into the cipher datapath as a masked pair and
+and no error is reported. `CTRL_SHADOWED.key_len` is independent of the
+delivery path: only its 256-bit encoding consumes the whole delivered key, and
+a shorter setting consumes only part of it. AES carries the two shares into the cipher datapath as a masked pair and
 does not combine them on the delivery path.
 
 Consult the
 https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES
-documentation] for the authoritative core functionality of the IP. The
+documentation] for the authoritative core functionality of the IP.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-km-delivered-keys[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-km-delivered-keys[programming guidance]
+endif::backend-pdf[]
+for this block.
+The
 ifdef::backend-html5[]
 register map follows below.
 endif::backend-html5[]

@@ -22,6 +22,14 @@ security-service firmware. This chapter describes the SEP configuration,
 local memories, reset vector and debug integration. The
 https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html[EL2 Programmer's Reference Manual]
 defines the core programming model.
+The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-upstream-ip-programming[programming guidance]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-upstream-ip-programming[programming guidance]
+endif::backend-pdf[]
+for this block.
 
 <<sep-cpu-diagram>> shows the CPU subsystem and its instruction, data, and external
 memory interfaces.
@@ -168,7 +176,14 @@ completion of reset. The GPIO chapter defines capture and register behavior.
 
 BL0 uses platform configuration to select startup options, such as primary or
 secondary chiplet operation and normal or recovery boot. The board and boot
-firmware define the assignment of those options to pins.
+firmware define the assignment of those options to pins; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-configuration-straps[configuration strap section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-configuration-straps[configuration strap section]
+endif::backend-pdf[]
+of the Programmer's Guide describes reading them.
 
 [[cpu-reset-vector]]
 === Reset Vector

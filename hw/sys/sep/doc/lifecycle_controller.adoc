@@ -434,11 +434,14 @@ manifest. Firmware authorization is discussed under
 Both `demote` (bit 0) and `lock` (bit 1) are write-one-to-set fields.
 Writing zero does not clear them. While `lock` is zero, firmware can set
 `demote`; once locked, the demotion decision cannot change until cold reset.
-
-. Decide whether to enable demotion for this boot.
-. Set `demote` if required, then set `lock` to commit the decision. The lock
-  can commit either a demoted or a non-demoted state.
-. Leave `lock` clear only when a later boot stage is to decide.
+The lock can commit either a demoted or a non-demoted state. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-lifecycle-demotion[demotion sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-lifecycle-demotion[demotion sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 This is the hardware mechanism. The current ROM's manifest handling is
 documented in the Boot ROM chapter; the multi-owner authorization model
