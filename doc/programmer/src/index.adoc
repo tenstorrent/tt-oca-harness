@@ -23,6 +23,26 @@ ifdef::backend-pdf[]
 :aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
 endif::backend-pdf[]
 
+[[programmer-guide-about]]
+== About this Guide
+
+This guide describes how firmware and debuggers program the OCA Harness subsystems:
+the bring-up sequences, run-time operation and recovery procedures, with C
+examples where they help. The Technical Reference Manual describes the hardware
+itself, and this guide links to it for register and block details.
+
+The guide is organized as follows:
+
+* <<smc-programming-guide>> covers SMC bring-up and its peripherals.
+* <<sep-programming-guide>> covers SEP bring-up, entropy, the cryptographic
+  engines and the security procedures.
+* <<sep-smc-common-blocks-communication>> covers the address remapping,
+  filters, mailboxes and reference counter that both subsystems share.
+* <<dtp-programming-guide>> covers cross-trigger configuration and the debug
+  host procedures.
+* The appendices document the production SMC and SEP Boot ROMs, the Key
+  Manager Application ROM and the AoU software operation.
+
 ifndef::release[]
 include::revision.adoc[leveloffset=+1]
 endif::release[]

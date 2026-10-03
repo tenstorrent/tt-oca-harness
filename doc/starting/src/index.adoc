@@ -29,7 +29,7 @@ subsystems like Security Processor (SEP), System Management Controller (SMC),
 System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 (DTP), etc.
 
-This guide outlines how to get started with OCAH, including the use of the repository,
+This guide outlines how to get started with OCA Harness, including the use of the repository,
 licensing and guidelines for effective contribution.
 
 == Repository structure

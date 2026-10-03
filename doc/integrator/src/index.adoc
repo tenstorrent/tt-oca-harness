@@ -14,7 +14,10 @@ ifdef::backend-pdf[]
 :imagesdir: ../assets
 endif::backend-pdf[]
 
-This guide provides instructions and best practices for integrating OCAH
+[[integrator-guide-about]]
+== About this Guide
+
+This guide provides instructions and best practices for integrating OCA Harness
 subsystems into your chiplet design.
 
 The integrator guide is split into multiple chapters. Each of these chapters
