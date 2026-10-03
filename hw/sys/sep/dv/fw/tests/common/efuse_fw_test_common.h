@@ -224,6 +224,14 @@ static inline int efuse_read_bit(uint32_t bit_addr, uint32_t *bit_value) {
     return 0;
 }
 
+// Write eight consecutive 32-bit words starting at base_addr, for a 256-bit
+// register group such as a token.
+static inline void efuse_write_8_words(uint32_t base_addr, const uint32_t words[8]) {
+    for (int i = 0; i < 8; i++) {
+        WRITE_REG(base_addr + (uint32_t)(i * 4), words[i]);
+    }
+}
+
 static inline int efuse_set_shadow_lock_bit(uint32_t lock_bit) {
     if (lock_bit >= 32u) {
         printf("ERROR: helper only supports lower LOCKS word, bit=%u\n", lock_bit);
