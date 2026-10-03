@@ -128,7 +128,7 @@ def is_register_regen_path(path: str) -> bool:
             normalized.startswith("vendor/lowRISC/opentitan/upstream/hw/ip/")
             and normalized.endswith(".hjson")
         )
-        or normalized.endswith(("/doc/memmap.toml", "/regs/regdoc.toml"))
+        or normalized.endswith("/doc/memmap.toml")
     ):
         return True
     if normalized in REGISTER_INFRASTRUCTURE_PATHS or normalized.startswith(

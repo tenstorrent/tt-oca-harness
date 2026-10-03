@@ -1,5 +1,6 @@
 reg DCT_structure {
     regwidth = 128;
+    desc = "Holds one Device Characteristic Table entry per device enumerated by ENTDAA.";
     field {
         name = "DYNAMIC_ADDRESS";
         desc = "Device I3C Dynamic Address after ENTDAA";
