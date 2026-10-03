@@ -69,6 +69,7 @@ module dtp_fcov (
   logic        ir_shifted_since_capture;
   logic [1:0]  last_reset_q;
   logic        por_seen_q;
+  logic        trst_q;
 
   // Power-on reset holds this set and the next TCK edge clears it, so that
   // edge reads 1 even when TCK stayed idle across the pulse.
@@ -91,6 +92,7 @@ module dtp_fcov (
   wire        ir_zero_shift = !ir_shifted_since_capture;
   wire [1:0]  last_reset = last_reset_q;
   wire        por_seen = por_seen_q;
+  wire        trst_prev = trst_q;
 
   wire ir_committed = (tap_state_prev == jtag_tap_pkg::UPDATE_IR) && !in_reset;
   wire dr_scan_done = update_dr && !in_reset;
@@ -108,6 +110,7 @@ module dtp_fcov (
   always_ff @(posedge tck_i) begin
     tap_state_q <= tap_state_i;
     tms_q       <= tms_i;
+    trst_q      <= trst_ni;
     if (tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET || in_reset) begin
       ir_loaded_since_tlr <= 1'b0;
     end else if (tap_state_i == jtag_tap_pkg::UPDATE_IR) begin
@@ -257,7 +260,20 @@ module dtp_fcov (
   // TRST covers must stay armed while reset is asserted, so they carry no
   // reset disable. Power-on reset high on the TRST edge and TRST high on the
   // power-on edge make each the only reset source of its point.
-  wire trst_from_active_e = !trst_ni && por_ni && prev_active;
+  //
+  // trst_from_state is the state the TAP held when TRST fell: the controller's
+  // asynchronous reset moves tap_state_i to Test-Logic-Reset only after
+  // trst_ni has fallen, so the latch has already closed. A TRST point samples
+  // at the first TCK edge under TRST, and only when that state was active.
+  logic [15:0] trst_from_state;
+  always_latch begin
+    if (trst_ni) begin
+      trst_from_state = tap_state_i;
+    end
+  end
+  wire trst_start_active = (trst_from_state != '0)
+      && (trst_from_state != jtag_tap_pkg::TEST_LOGIC_RESET);
+  wire trst_from_active_e = !trst_ni && trst_prev && por_ni && trst_start_active;
   wire por_from_active_e = por_seen && prev_active
       && (tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET);
   `OCAH_FCOV_COVER(c_reset_trst_from_active, trst_from_active_e, tck_i, 1'b0)
@@ -567,6 +583,7 @@ module dtp_fcov (
 
   covergroup cg_tap_smoke with function sample (
       logic [1:0] reset_source,
+      logic [4:0] trst_from,
       logic idcode_read,
       logic [2:0] idcode_origin,
       logic marker_read,
@@ -575,6 +592,11 @@ module dtp_fcov (
     option.per_instance = 1;
     cp_reset_source: coverpoint reset_source iff (reset_source != RstNone) {
       bins trst = {RstTrst}; bins por = {RstPor}; bins tms5 = {RstTms};
+    }
+    cp_trst_from_state: coverpoint trst_from iff (reset_source == RstTrst) {
+      bins state[] = {[1 : 15]};
+      // The controller holds exactly one state bit.
+      illegal_bins not_onehot = {5'd16};
     }
     // idcode_origin is {an IR update since Test-Logic-Reset, last reset source}.
     cp_idcode_read: coverpoint idcode_origin iff (idcode_read) {
@@ -687,9 +709,11 @@ module dtp_fcov (
 
   wire [4:0] prev_code = state_code(tap_state_q);
   wire [4:0] next_code = state_code(tap_state_i);
+  wire [4:0] trst_from_code = state_code(trst_from_state);
+  wire [2:0] idcode_origin_now = {ir_seen_since_tlr, last_reset};
 
   always_ff @(posedge tck_i) begin
-    u_cg_tap_smoke.sample(reset_source_now, idcode_dr_scan, {ir_seen_since_tlr, last_reset},
+    u_cg_tap_smoke.sample(reset_source_now, trst_from_code, idcode_dr_scan, idcode_origin_now,
                           idcode_marker_read && !in_reset, tdo_i);
     if (!in_reset) begin
       if (!$isunknown(tap_state_i)) begin
