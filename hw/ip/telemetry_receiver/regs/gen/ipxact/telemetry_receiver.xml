@@ -72,7 +72,10 @@ itself after the flush completes.</ipxact:description>
           <ipxact:field>
             <ipxact:name>BUFFER_THRESHOLD</ipxact:name>
             <ipxact:description>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
-asserted when the number of entries in the buffer is greater than this value.</ipxact:description>
+asserted when the number of entries in the buffer is greater than this value.
+Only the low log2(queue depth)+1 bits are compared, so values alias modulo
+twice the queue depth, and only values below the queue depth can assert the
+interrupt.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
