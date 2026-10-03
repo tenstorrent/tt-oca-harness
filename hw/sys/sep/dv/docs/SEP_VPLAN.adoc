@@ -434,7 +434,7 @@ never when it was written.
 |`sep_fabric_remap_filter_csr_bank_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, plus per-entry storage independence across all 64 filter and alias entries. Red on the current RTL; see <<known-limitations>>.
+|R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, plus per-entry storage independence across all 64 filter and alias entries. AP and STEE are checked on one seeded region each per seed.
 |`sep_fabric_slot_csr_strobe_rand_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -4114,7 +4114,7 @@ filter only ever sees `tx_len==0`.
 
 *Tracking*: #2603
 
-*Objective*: R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, and that every entry of each bank holds its own value. Each filter entry and remap region is an independent rule with its own storage, so a decode that aliased two entries, or a bank that implemented fewer entries than the map declares, would be invisible to a sweep that walks one entry per group.
+*Objective*: R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, and that every entry of the alias remap bank and of the inbound and outbound filter banks holds its own value. The AP and STEE output-remap banks are checked on one seeded region each per seed. Each filter entry and remap region is an independent rule with its own storage, so a decode that aliased two entries, or a bank that implemented fewer entries than the map declares, would be invisible to a sweep that walks one entry per group.
 
 *Test Coverage*: Remap and filter CSR banks: R/W, 64-bit, RO, valid, write-once-set, and per-entry storage independence across all 16 alias regions, 16 inbound and 32 outbound filter entries.
 
@@ -4151,11 +4151,13 @@ filter only ever sees `tx_len==0`.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Current status*: red on the current RTL. `CHK-WOSET` fails on the response code of the locked writes, and every other named checker PASSes. See <<known-limitations>>.
+*Current status*: green. Every named checker PASSes.
 
-*Scope limit*: one region or entry per bank per seed. Cross-region isolation —
-that writing region *k* leaves region *j* untouched — is not checked beyond the
-immediate neighbour, and nothing records which indices a regression covered.
+*Scope limit*: the field sweep (`CHK-NONVAC`, `CHK-ALIAS-RW`, `CHK-AP-STEE-RW`,
+`CHK-INFILT-CFG`, `CHK-OUTFILT-CFG`, `CHK-RO`, `CHK-VALID-RW`, `CHK-WOSET`)
+covers one seeded region or entry per bank per seed. `CHK-BANK-INDEP` covers
+every alias region and every inbound and outbound filter entry, but not the AP
+and STEE output-remap banks.
 
 '''''
 
