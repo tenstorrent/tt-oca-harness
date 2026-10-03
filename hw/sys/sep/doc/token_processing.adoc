@@ -58,9 +58,14 @@ because their expected values come from OTP shadows. SEC_DIS requires only a
 valid digest: its expected value is implemented in gates, so a SEC_DIS match
 holds before fuse sensing completes. A match forces feature control on, stops
 fuse sensing, and opens eFuse shadow-map reads. It does not release SEP reset;
-use the IC_RESET `sep_reset_n` override. Present the SEC_DIS token only
-to a part whose fuse sensing fails, and apply a cold reset once the match is
-established. SEC_DIS follows the feature-control rules in the
+the IC_RESET `sep_reset_n` override does. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-sec-dis-recovery[SEC_DIS recovery sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-sec-dis-recovery[SEC_DIS recovery sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide. SEC_DIS follows the feature-control rules in the
 Lifecycle Controller chapter, with the metal-programmable enable also required.
 The design requirement is A0-only use and permanent removal by a metal-mask ECO
 in later A1/B0 revisions; this is not a software-disable mechanism. See
@@ -71,8 +76,8 @@ ifdef::backend-pdf[]
 <<security-disable-sec_dis,Security Disable (SEC_DIS)>>.
 endif::backend-pdf[]
 
-[[token-match-sequence]]
-== Token Match Sequence
+[[token-submission]]
+== Token Submission
 
 SEP software or JTAG submits tokens through the eFuse MMR interface, subject to
 its access policy. Register names and start bits are:
@@ -86,18 +91,21 @@ its access policy. Register names and start bits are:
 |`SEC_DISABLE_TOKEN_I` |16 |`SEC_DISABLE_TOKEN_MATCH`
 |===
 
-. Write all eight 32-bit words of the selected input array. Index 0 holds
-  `token[31:0]`; index 7 holds `token[255:224]`. The hash engine consumes
-  index 7 first, down to index 0, without a byte swap.
-. After all writes complete, write 1 to the corresponding `TOKEN_EOP` bit.
-  This generates a start pulse. Keep the array unchanged until hashing finishes;
-  the engine streams the array rather than taking a complete snapshot at start.
-. Poll the selected result with a bounded timeout. Only `0x15` authorizes the
-  operation; idle is not success. RMA remains idle until fuse sensing completes.
-  Check `TOKEN_MATCH_FAULT` as well as the current result before proceeding.
+Index 0 of an input array holds `token[31:0]` and index 7 holds
+`token[255:224]`; the hash engine consumes index 7 first, down to index 0,
+without a byte swap. A write of 1 to a `TOKEN_EOP` bit generates a start pulse,
+and the engine then streams the array rather than taking a snapshot. RMA
+results remain idle until fuse sensing completes. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-token-matching[token submission sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-token-matching[token submission sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
-Do not issue a second start while the same engine is hashing. There is no
-submission queue: the feeder accepts a new operation only while idle. Starting
+There is no submission queue: the feeder accepts a new operation only while
+idle. Starting
 a hash clears retained digest validity, so comparison returns idle while the
 new digest is unavailable. The result register follows the comparator through
 a clocked output stage; writing the token words alone does not invalidate the
@@ -116,7 +124,7 @@ previous result or launch a comparison.
 Reset clears the registered result and sticky fault flags, but does not erase
 the input arrays, retained digest or digest-valid state. A retained digest can
 therefore produce a result again after reset once its comparison prerequisites
-hold. Reset alone must not be treated as revoking a prior token authorization.
+hold, so reset alone does not revoke a prior token authorization.
 
 [[token-matching-countermeasures]]
 == Matching Logic Countermeasures
@@ -129,10 +137,8 @@ This is not majority voting: two matching instances cannot overrule a third.
 
 Each fault also sets a software-read-only flag in `TOKEN_MATCH_FAULT`: bit 0
 for SiP RMA, bit 8 for chiplet RMA and bit 16 for SEC_DIS. These flags remain
-set until reset and combine into SEP CPU PIC source 40. Firmware reads them
-to identify the affected token and masks source 40 after handling the fault;
-there is no write-one-to-clear operation to deassert the source. An unmasked
-handler will re-enter. See
+set until reset and combine into SEP CPU PIC source 40; there is no
+write-one-to-clear operation to deassert the source. See
 ifdef::backend-html5[]
 xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map].
 endif::backend-html5[]
@@ -142,8 +148,7 @@ endif::backend-pdf[]
 
 The sticky flag records fault history; it does not latch the comparator into
 an error state. A later valid comparison can report match or mismatch while
-the fault flag and interrupt remain asserted. Firmware must not treat a
-successful retry as clearing the fault or establishing that operation is safe.
+the fault flag and interrupt remain asserted.
 
 The detector does not cover common-mode faults. If all three instances flip
 in the same way while retaining legal differential pairs, they still agree.

@@ -42,12 +42,6 @@ ifdef::backend-pdf[]
 include::interface.adoc[]
 endif::backend-pdf[]
 
-ifdef::backend-html5[]
-include::partial$system_timer_octs/doc/programming.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::programming.adoc[]
-endif::backend-pdf[]
 
 ifdef::backend-html5[]
 include::partial$system_timer_octs/doc/memmap.adoc[]

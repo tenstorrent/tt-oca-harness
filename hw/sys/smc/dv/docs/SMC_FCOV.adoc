@@ -273,7 +273,7 @@ depth, telemetry, UART, and OCTS.
 |===
 |Points |Records
 |`c_i2c0_*`, `c_i3c0_scl_falling`, `c_i3c0_scl_driven_by_dut`, `c_i3c0_sda_driven_by_dut` |Bus conditions, who drove each line, contention and stretch
-|`c_gpio_core2pad_active`, `c_gpio_core2pad_en_active`, `c_gpio_pad2core_en_active`, `c_gpio_single_pad_enabled`, `c_gpio_multi_pad_enabled`, `c_gpio_output_value_driven`, `c_gpio_boot_stall_pad_*`, `c_pad_output_low` |Pad activity. The single-pad point counts the output enables GPIO software owns; a pad an LSIO function selects takes that function's direction (gpio `programming.adoc`, LSIO Interface Operation)
+|`c_gpio_core2pad_active`, `c_gpio_core2pad_en_active`, `c_gpio_pad2core_en_active`, `c_gpio_single_pad_enabled`, `c_gpio_multi_pad_enabled`, `c_gpio_output_value_driven`, `c_gpio_boot_stall_pad_*`, `c_pad_output_low` |Pad activity. The single-pad point counts the output enables GPIO software owns; a pad an LSIO function selects takes that function's direction (Programmer's Guide GPIO section, Selecting and Reclaiming LSIO)
 |`c_default_output_count_3`, `c_default_input_count_62`, `c_per_instance_default_matches_map` |The `INPUT_BY_DEFAULT` map at primary-reset release (`periphs.adoc`), compared on the pads no LSIO function owns
 |`c_irq_*` |Each interrupt source asserted, the hang legs, and two sources concurrent
 |`c_axil_cdc_*`, `c_mailbox_*`, `c_single_entry_message`, `c_two_entry_message`, `c_atb_transfer_accepted`, `c_receiver_*_decode`, `c_distinct_atid_values`, `c_tx_*`, `c_controller_*`, `c_target_*`, `c_octs_count_*` |CDC bridge, mailbox, telemetry, UART, I2C controller and target transfers, OCTS counter

@@ -108,10 +108,12 @@ write the CSR to reload the counter, after which it resumes counting from the
 loaded value. Both subsystems share the same implementation
 (`prim_refclk_count_w_cdc`) and behave identically.
 
-Reload the counter one write at a time: write the new value, poll
-`REFERENCE_COUNTER` until the readback is at or just above the written value,
-and only then issue the next write. Compare against a window above the written
-value rather than for equality, since the counter advances while the poll runs.
-Where the written value is too close to the free-running count to tell the two
-apart, separate consecutive writes by at least eight reference-clock periods
-instead.
+A reload crosses into the reference-clock domain through a one-entry
+asynchronous FIFO, and a second write issued before the first has crossed is
+dropped without an error indication. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-reference-counter[reload sequence].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-reference-counter[reload sequence].
+endif::backend-pdf[]

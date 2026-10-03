@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[revision-history]]
+= Revision History
+
+== Document history
+
+This document tracks major revisions and updates to the OCAH Programmer's Guide.
+
+.Revision History
+[width="100%",cols="15%,15%,15%,55%",options="header",]
+|=======================================================================
+|Version |Date |Author |Description
+|0.0.1 |2026-06-26 |Alessandro Ottaviano, Alice Ziuziakowska, Ben Melton,
+Daniel Green, Daniel Kim, Jay Alphey, Kai Qin |Initial Programmer's Guide:
+SMC and SEP bring-up and run-time programming, and SEP and SMC common blocks
+and communication.
+|0.0.2 |2026-10-02 |Alessandro Ottaviano |Made the SMC, SEP and Key Manager ROM
+manuals and the AoU software operation guide appendices. Moved the programming
+sequences from the Technical Reference Manual into the SMC, SEP, common and DTP
+chapters, pointed the OpenTitan blocks to their upstream programmer's guides,
+and added C examples and sequence diagrams.
+|=======================================================================

@@ -119,7 +119,14 @@ address issuance. AXI `AWREADY` and `WREADY` provide downstream back-pressure.
 The response channel is consumed without checking `BRESP`. Completion means
 that all responses have arrived, not that every write succeeded. The internal
 error state handles an illegal state-machine encoding, not AXI bus errors.
-Software requiring verified clearing must use an independent verification path.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-zeroer-general-use[Memory Zeroer procedure]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-zeroer-general-use[Memory Zeroer procedure]
+endif::backend-pdf[]
+in the Programmer's Guide covers validating a request and verifying a clear.
 
 === Dual Clock Domain Architecture
 
@@ -181,8 +188,6 @@ and start a zeroing operation.
 |SIZE |64-bit byte count for zeroing operation
 |CTRL_STATUS |Control and status register (trigger, busy status)
 |CTRL_STATUS.INT_EN |Enables the completion pulse
-|Validation |Software must validate destination, length, permissions, and
-address arithmetic before starting
 |===============================================================
 
 ==== Status Features

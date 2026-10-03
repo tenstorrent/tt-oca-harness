@@ -151,17 +151,14 @@ clock domain never starts.
 Because the divider defaults to divide-by-4 on `clk_ref_i` and the protocol
 FSM starts as soon as reset is released, the controller begins issuing slave
 resync operations without any software configuration. Configuration is
-therefore a matter of adjusting defaults rather than enabling the block:
-
-1.  Release `rst_clk_div_ni`, then `rst_reg_ni`.
-2.  If the default AVS clock is not wanted, set
-`AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS`, write `AVS_CLOCK_SELECT`,
-`CLK_DIVIDER_VALUE` and `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR`, then clear
-`TURN_OFF_ALL_PREMUX_CLOCKS`.
-3.  Set `AVS_CFG_0.MAX_RETRIES` and `AVS_CFG_0.RESYNC_INTERVAL`.
-4.  Clear the `AVS_INTERRUPT_MASK` bits for the sources of interest; all
-sources are masked out of reset.
-5.  Write commands to `AVS_CMD` and collect responses from `AVS_READBACK`.
+therefore a matter of adjusting defaults rather than enabling the block. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-avsbus[AVSBus configuration sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-avsbus[AVSBus configuration sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 === Data Flow and Control Path
 
@@ -178,10 +175,8 @@ subframe.
 the retry logic resends the command.
 5.  Software reads `AVS_READBACK`, which pops the readback FIFO.
 
-Because a write to a full command FIFO is dropped, software that queues
-commands in a burst should check `AVS_NORMAL_STATUS.CMD_FIFO_FULL` or
-`AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS` first, or detect the drop from the
-write's error response or from `CMD_FIFO_OVERFLOW_INT`.
+A dropped write also raises `CMD_FIFO_OVERFLOW_INT`. `AVS_NORMAL_STATUS.CMD_FIFO_FULL`
+and `AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS` report the command FIFO's space.
 
 ==== Response Inspection
 

@@ -80,8 +80,8 @@ permission bit clear is blocked outright. Higher-numbered entries are
 never examined, even if one of them would have permitted the access.
 
 Entry index is thus a strict priority and the first match ends the
-search, so program the most specific policy at the lowest index and the
-broader fallback policy above it.
+search, so a specific policy takes effect only at a lower index than any
+broader policy that overlaps it.
 
 Writes and reads are decoded independently: the AW channel and the AR
 channel each run the full decode against their own address, burst
@@ -126,14 +126,17 @@ when both land in the same granule, so reading back the first example
 above returns `0x1000` and `0x1FFF`. When the programmed range spans more
 than one granule the write-back does not fire and read-back returns the
 programmed values unchanged, even though address matching still widens
-them. Firmware must not treat read-back as the effective range; derive
-the effective range from the granule instead.
+them, so read-back is not the effective range.
 
 Widening only ever enlarges a range, so a range programmed tighter than
 the granule opens more address space than the programmed numbers
-suggest. Size protected regions in whole granules, and prefer
-`allow_burst = 0` for entries that must guard an object smaller than
-4 KB.
+suggest. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-smc-axi-filters[filter programming rules].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-smc-axi-filters[filter programming rules].
+endif::backend-pdf[]
 
 [[axi-traffic-filter-blocked]]
 == Blocked Transactions

@@ -28,7 +28,12 @@ ocah-doc-appnotes-setup: ocah-doc-appnotes-meta ocah-doc-reg-setup
 	  OCAH_DOC_PRODUCT_META="$(OCAH_APPNOTES_META)" \
 	  OCAH_DOC_PRODUCT_MODULES="$(OCAH_APPNOTES_MODULES)" \
 	  OCAH_DOC_PRODUCT_ASSETS="$(OCAH_APPNOTES_ASSETS)" \
+	  OCAH_DOC_PRODUCT_INCLUDE_REVISION="$(if $(OCAH_DOC_RELEASE_ENABLED),0,1)" \
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh"
+	@if [ "$(if $(OCAH_DOC_RELEASE_ENABLED),1,0)" = "1" ]; then \
+		rm -f "$(OCAH_APPNOTES_BUILD)/html_antora/ocah-appnotes/latest/revision.html" \
+			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-appnotes/latest/revision.html"; \
+	fi
 
 .PHONY: ocah-doc-appnotes-html
 ocah-doc-appnotes-html: ocah-doc-appnotes-setup
@@ -36,6 +41,7 @@ ocah-doc-appnotes-html: ocah-doc-appnotes-setup
 	@echo "Building Application Notes HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
+		$(OCAH_DOC_ANTORA_RELEASE_ARG) \
 		--attribute basedir="$(OCAH_APPNOTES_DIR)" "$(OCAH_APPNOTES_PLAYBOOK)"
 	@echo "Done: $(OCAH_APPNOTES_BUILD)/html_antora/ocah-appnotes/latest/index.html"
 
@@ -49,6 +55,7 @@ ocah-doc-appnotes-pdf: ocah-doc-appnotes-setup
 		$(OCAH_ASCIIDOCTOR_PDF_DIAGRAM_ARGS) \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
+		$(OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG) \
 		-o "$(OCAH_APPNOTES_BUILD)/latex/$(OCAH_APPNOTES_PDF)" src/index.adoc
 	@echo "Done: $(OCAH_APPNOTES_BUILD)/latex/$(OCAH_APPNOTES_PDF)"
 
