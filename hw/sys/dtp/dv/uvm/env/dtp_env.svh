@@ -119,6 +119,8 @@ class dtp_env extends ocah_env;
                  DtpXtrigNumCtmPorts
                  ))
 
+    // The JTAG2AXI responders take their write order from the DTP driver.
+    ocah_axi_slave_driver::type_id::set_type_override(dtp_axi_slave_driver::get_type());
     build_jtag_master();
     build_checking();
     m_vseqr = dtp_virtual_sequencer::type_id::create("m_vseqr", this);

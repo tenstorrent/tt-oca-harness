@@ -9,8 +9,9 @@
 //                 closed under any seeded gating mask
 //   sib_all_on    all SIBs open, then each direct disable gates its SIB
 //                 in a seeded order while the others stay effective
-//   sib_random    exhaustive 8-pattern sweep plus 16 seeded pattern/mask
-//                 combinations
+//   sib_random    every combination of closed, open, and gated SIBs (the
+//                 27 ungated open sets over the 8 disable masks) plus 16
+//                 seeded pattern/mask combinations
 //   dft           secure/non-secure DFT access, cross-resource isolation,
 //                 and stored-state preservation across a gate
 //   dfd           DFD access, direct-disable gate, seeded patterns, and
@@ -105,9 +106,27 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
 
   protected task run_sib_random();
     sep_lifecycle_ctrl_pkg::dbg_disable_t d;
-    `uvm_info(get_type_name(), "iJTAG SIB deterministic and random sweep", UVM_LOW)
-    for (int unsigned pattern = 0; pattern < 8; pattern++)
-      check_ijtag_pattern(3'(pattern), '0, $sformatf("sweep.pattern_%03b", pattern));
+    int unsigned masks[$] = {0, 1, 2, 3, 4, 5, 6, 7};
+    `uvm_info(get_type_name(), "iJTAG SIB gating sweep and random patterns", UVM_LOW)
+    // Every combination of SIB states, each SIB closed, open, or gated:
+    // every disable mask of the three SIB fields in a seeded order, and
+    // under each mask every open set of the ungated SIBs. A gated SIB's
+    // request bit is drawn; it stays closed either way.
+    shuffle(masks);
+    foreach (masks[m]) begin
+      bit [DtpIjtagSibCount-1:0] mask = DtpIjtagSibCount'(masks[m]);
+      d = '0;
+      for (int unsigned s = 0; s < DtpIjtagSibCount; s++)
+      dtp_dbg_path_set(d, dtp_ijtag_sib_dbg_path(s), mask[DtpIjtagSibCount-1-s]);
+      `uvm_info(get_type_name(), $sformatf(
+                "Step %0d: SIB disable mask 0b%03b, every ungated open set", m + 1, mask), UVM_LOW)
+      for (int unsigned pattern = 0; pattern < 8; pattern++) begin
+        bit [DtpIjtagSibCount-1:0] open_set = DtpIjtagSibCount'(pattern);
+        if ((open_set & mask) != '0) continue;
+        check_ijtag_pattern(open_set | (DtpIjtagSibCount'($urandom_range(7)) & mask), d, $sformatf(
+                            "sweep.mask_%03b.open_%03b", mask, open_set));
+      end
+    end
     for (int unsigned idx = 0; idx < 16; idx++) begin
       bit [2:0] pattern = 3'($urandom_range(7));
       d = '0;

@@ -208,8 +208,10 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner("SMC_AXI_SINGLE_OP Randomized Reads")
         await self.reset_tap()
         rng = self.rng("random_read_ops")
-        for idx in range(1, self.random_count + 1):
-            size = rng.choice([0, 1, 2, 3])
+        # Every pass reads each transfer size once before the drawn sizes.
+        reads = 4 + self.random_count
+        for idx in range(1, reads + 1):
+            size = idx - 1 if idx <= 4 else rng.choice([0, 1, 2, 3])
             beat = self.random_upper_addr("smc_axi", rng) | self.random_aligned_addr(rng, size)
             offset = rng.randrange(0, AXI_BEAT_BYTES >> size) << size
             addr = beat + offset
@@ -220,7 +222,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
             data = (word >> (8 * offset)) & self.data_mask(size)
             self.log_iteration(
                 idx,
-                self.random_count,
+                reads,
                 "random read addr=0x%014x size=%d data=0x%x",
                 addr,
                 size,
