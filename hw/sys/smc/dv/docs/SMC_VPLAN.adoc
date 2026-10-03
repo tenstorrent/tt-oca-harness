@@ -13174,7 +13174,9 @@ row, a control row, and -- where the stand-in can supply a verdict -- one row
 per enrolled leaf stating which crossing is on its proof path, what the
 verdict reads, and the result of the control. `hw/sys/smc/dv/README.md`,
 `tb/verilator_stubs/README.md` and `models/README.md` describe layout and
-enrolment and point here; the dispositions live only here.
+enrolment and point here; the dispositions live only here. The bench's one
+assertion waiver answers in place of a product mechanism without being RTL,
+so it takes its own record after the tables rather than a row in them.
 
 Kinds used in the leaf tables:
 
@@ -13205,7 +13207,7 @@ Kinds used in the leaf tables:
 |===
 |Stand-in |Control that keeps the claims honest |Owner |Review |Closes when
 |`prim_sync2/3`
-|Height-3 control: the `reset`, `clock` and `irq` groups run on VCS with the product cells, `python3 tools/dv/run_dv.py --dut smc --items reset clock irq --tool vcs --regress`, VCS X-2025.06_Full64, 35 leaves; the VCS compile list carries the product `prim_sync2.sv` / `prim_sync3.sv` from `smc_bender.f` and no stub. Run `20260914_022740__vcs__reset`, before the waiver: cocotb verdict 35 of 35 PASS with every `CHK-*` token of each card present; runner grade 35 of 35 FAIL, all on one message class -- the PeakRDL immediate assertions `assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in `cpu_ctrl_reg`, `reset_unit_reg` and `system_timer_octs_reg` (six sites) each report once `at time 0 fs`, before any reset, while `arst_n` and the ack strobes are still X; no leaf reports them at a later time. That class is waived in `smc_sim_cfg.toml` `[pass_fail]` in the form SEP uses for `abr_reg`: an ignore pattern naming exactly these six assertions together with the `at time 0 fs` text, paired with a hard-fail pattern that turns a later firing of the same assertions into an error. Run `20260914_035111__vcs__reset`, with the waiver committed and the tree clean (`result.json` `git.dirty = false`): cocotb 35 of 35 PASS, runner 35 of 35 PASS, the six time-0 lines recorded as `IGNORED` evidence in every leaf and no `Error:` line at any later time. One product assertion fires at a non-zero time and is not waived: `prim_ag_clk_mux.sv` `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux` at 4688 ns in `smc_cg_dft_reset_bringup_test`, the DFT `test_en_i` bypass leaf, on seed 1611842931 (the control run's seed). The waived regression drew seed 1024727039 and did not reach it; a replay of the leaf on seed 1611842931 with the waiver in place (`20260914_035535__vcs__dft_seed1611842931`) fires it again and is graded FAIL on that line, so the firing is seed-dependent and the waiver does not cover it. Verilator compiles assertions out, so only a commercial run can see it. Neither observation depends on the synchroniser cells. The group selection excludes five entries of the three testlist files (named above the reset-group leaf table); run `20260914_031352__vcs__standin_files_minus_groups` covered those five on the same VCS build: cocotb 5 of 5 PASS, runner 5 of 5 PASS, no assertion after time 0.
+|Height-3 control: the `reset`, `clock` and `irq` groups run on VCS with the product cells, `python3 tools/dv/run_dv.py --dut smc --items reset clock irq --tool vcs --regress`, VCS X-2025.06_Full64, 35 leaves; the VCS compile list carries the product `prim_sync2.sv` / `prim_sync3.sv` from `smc_bender.f` and no stub. Before the waiver, with the `[pass_fail]` block of `smc_sim_cfg.toml` removed: cocotb verdict 35 of 35 PASS with every `CHK-*` token of each card present; runner grade 35 of 35 FAIL, all on one message class -- the PeakRDL immediate assertions `assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in `cpu_ctrl_reg`, `reset_unit_reg` and `system_timer_octs_reg` (six sites) each report once `at time 0 fs`, before any reset, while `arst_n` and the ack strobes are still X; no leaf reports them at a later time. That class is waived in `smc_sim_cfg.toml` `[pass_fail]` in the form SEP uses for `abr_reg`: an ignore pattern naming exactly these six assertions together with the `at time 0 fs` text, paired with a hard-fail pattern that turns a later firing of the same assertions into an error. With the waiver committed and the tree clean (`result.json` `git.dirty = false`), the same command: cocotb 35 of 35 PASS, runner 35 of 35 PASS, the six time-0 lines recorded as `IGNORED` evidence in every leaf and no `Error:` line at any later time. One product assertion fires at a non-zero time and is not waived: `prim_ag_clk_mux.sv` `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux` at 4688 ns in `smc_cg_dft_reset_bringup_test`, the DFT `test_en_i` bypass leaf, on seed 1611842931 (the control run's seed). The waived regression drew seed 1024727039 and did not reach it; a replay of the leaf on seed 1611842931 with the waiver in place, `python3 tools/dv/run_dv.py --dut smc --items smc_cg_dft_reset_bringup_test --tool vcs --seed 1611842931`, fires it again and is graded FAIL on that line, so the firing is seed-dependent and the waiver does not cover it. Verilator compiles assertions out, so only a commercial run can see it. Neither observation depends on the synchroniser cells. The group selection excludes five entries of the three testlist files (named above the reset-group leaf table); `python3 tools/dv/run_dv.py --dut smc --items <the five names> --tool vcs --regress` covered those five on the same VCS build: cocotb 5 of 5 PASS, runner 5 of 5 PASS, no assertion after time 0.
 |minshaoho (`9282d8c14`)
 |2026-12-15
 |Either the stand-ins leave the build (the removal plan is tracked with the shared `prim_*` shims), or the `CheckMutualExclusionClk1` firing is resolved and a repeat of this control on seed 1611842931 is graded green by the runner. #1854 tracks that firing (defect under DFT bypass, or an assertion that must be disabled while `test_en_i` is high); it is the one open runner FAIL of this control.
@@ -13215,6 +13217,47 @@ Kinds used in the leaf tables:
 |2026-12-15
 |Real PLL / PVT IP lands on the wrapper; the six retired consumers are then restored from git history per their rows above and re-graded against the real blocks.
 |===
+
+====== Bench-scope assertion waiver
+
+The `[pass_fail]` pair of `smc_sim_cfg.toml` is the other thing that answers
+in place of a product mechanism on this bench: it decides, for every leaf,
+which assertion failure the runner reads as a failure. It is not DV-owned
+RTL, so it takes its own record rather than a row in the inventory above, and
+the same six fields: what is accepted with it in place, why the real path
+cannot be used, the exact scope, an approver, a date, and the command that
+re-confirms the entry against the tree.
+
+[cols="1,4",options="header"]
+|===
+|Field |Value
+|Claim |A leaf graded PASS has had every assertion of the run read, apart from
+the six PeakRDL external-ack assertions at time 0
+|Why |`assert_bad_ext_wr_ack` and `assert_bad_ext_rd_ack` in `cpu_ctrl_reg`,
+`reset_unit_reg` and `system_timer_octs_reg` are immediate assertions in the
+post-reset branch of an `always_ff`. On a four-state simulator the first clock
+edge sees `arst_n` and the ack strobes at X and each fires once at `0 fs`. The
+blocks are generated, so the assertion cannot be gated in the tree, and
+`$assertoff` races the time-0 evaluation
+|Scope |One `extra_ignore_patterns` entry and one `extra_hard_fail_patterns`
+entry of `smc_sim_cfg.toml` `[pass_fail]`, naming those six assertions and no
+others. The ignore matches only the `at time 0 fs` text; the hard-fail matches
+the companion timestamped line with a non-zero `failed at`, so a later firing
+of the same assertions fails the run. No other assertion is touched:
+`prim_ag_clk_mux` `CheckMutualExclusionClk1` still fails the leaf that fires
+it, which the control above records
+|Approver |minshaoho (`24f22f088`)
+|Date |2026-12-15 review, against the `[pass_fail]` block at this branch's head
+|Closes when |The generated blocks stop asserting on an X ack strobe, or the
+bench drives `arst_n` and the ack strobes to a defined value before the first
+clock edge. Either removes the pair
+|===
+
+Re-confirm: `grep -n 'assert_bad_ext' hw/sys/smc/dv/smc_sim_cfg.toml` prints
+exactly two pattern lines, one under `extra_ignore_patterns` carrying
+`at time 0 fs` and one under `extra_hard_fail_patterns` carrying
+`failed at [1-9]`, and no third. A row that prints anything else is an entry
+that has gone stale, and the entry is what needs the edit.
 
 ====== prim_sync3 crossings in the DUT
 
