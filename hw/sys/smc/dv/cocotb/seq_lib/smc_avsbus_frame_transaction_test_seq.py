@@ -25,7 +25,7 @@ Four DUT-produced observables carry the proof, none of them the stimulus:
 
 ``AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE`` is set so the launch is deterministic:
 ``architecture.adoc`` "Clock Generation and Management" states that
-"restarting a gated AVS clock always begins with a 34-cycle slave resync", so
+"restarting a gated AVS clock always begins with a slave resync", so
 the first command leaves idle through the resync and the post-resync launch
 state instead of racing an unsolicited resync interval.
 
