@@ -16,6 +16,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_rom_console import log_scratch_cold, rom_console_task
+from env.sep_smc_mem import SMC_CPU_CTRL_RESET_CTRL_ADDR
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
@@ -41,6 +42,8 @@ _STATUS_LC_TERMINAL = 0x0F01_A002
 _STATUS_LC_INVALID = 0x0F01_0001
 
 _CORE_RESET_N_MASK = 0xF
+_RESET_CTRL_SEED = 0x0000_010F
+_RESET_CTRL_HELD = _RESET_CTRL_SEED & ~_CORE_RESET_N_MASK
 
 # DCCM scrub and ICCM clear alone cost about 400k cycles before the LC check runs.
 _MAX_RUN_CYCLES = 24_000_000
@@ -80,6 +83,10 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
             if not os.path.isfile(src):
                 raise FileNotFoundError(f"ROM image not found: {src}")
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
+
+        smc_mem = self.cfg.smc_mem
+        assert smc_mem is not None, "SMC responder not bound (rom_boot target only)"
+        smc_mem.write32(SMC_CPU_CTRL_RESET_CTRL_ADDR, _RESET_CTRL_SEED)
 
         console: list[str] = []
         cocotb.start_soon(rom_console_task(self.logger, sink=console))
@@ -152,6 +159,19 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
             "access, the reset-control write included, hit an implemented window",
         )
 
+        reg = smc_mem.read32(SMC_CPU_CTRL_RESET_CTRL_ADDR)
+        assert reg == _RESET_CTRL_HELD, (
+            f"SMC_CPU_CTRL_RESET_CTRL (0x{SMC_CPU_CTRL_RESET_CTRL_ADDR:08x}) holds "
+            f"0x{reg:08x}, expected 0x{_RESET_CTRL_HELD:08x}: the seed "
+            f"0x{_RESET_CTRL_SEED:08x} with core reset_n bits [3:0] cleared. The "
+            f"seed unchanged means the write went to another address"
+        )
+        self.logger.info(
+            "CHK-SMC-RST-REG PASS: 0x%08x reads 0x%08x after the ROM's read-modify-write",
+            SMC_CPU_CTRL_RESET_CTRL_ADDR,
+            reg,
+        )
+
         rst = _read_logged_reset_value(console)
         assert (rst & _CORE_RESET_N_MASK) == 0, (
             f"ROM wrote 0x{rst:08x} to SMC_CPU_CTRL_RESET_CTRL, which leaves "
@@ -191,7 +211,6 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
 
 
 def _read_logged_reset_value(console: list[str]) -> int:
-    # The SMC memory model cannot tell the right register from the wrong one, so read the echo.
     token = "SMC_RESET_ON_INVALID_LC="
     for line in console:
         idx = line.find(token)
