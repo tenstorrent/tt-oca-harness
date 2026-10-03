@@ -37,6 +37,7 @@ from env.dtp_xtrig_types import (
     XTRIG_WIRE_OR_ASSERT,
     XTRIG_WIRE_OR_PULL,
     DtpCtmRefModel,
+    DtpXtrigCsrKind,
     apply_wstrb,
     ctm_config_addr,
     ctm_hole_addr,
@@ -51,7 +52,9 @@ from env.dtp_xtrig_types import (
     pack_ctp_config,
     project_ctp_mask,
     project_internal_mask,
+    xtrig_csr_decode,
 )
+from ocah_axi_vip import OcahAxiPipelineOp
 from ocah_checker import OcahChecker
 from ocah_lib import OcahKnobs
 
@@ -238,6 +241,23 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         (XTRIG_CTP_MODE_WIRE_OR, 1, 1, 7),
         (XTRIG_CTP_MODE_P2P, 1, 0, 7),
     )
+    # Accesses in each outstanding read or write burst. The CSR port holds
+    # two requests in its address spill register, the crossbar one, and the
+    # response spill register two responses, so with the responses held the
+    # sixth and seventh requests find READY low.
+    OUTSTANDING_BURST = 7
+    # Seeded range of the cycles BREADY or RREADY stays low after a burst's
+    # first response: long enough for the burst to back up to the port.
+    OUTSTANDING_HOLD = (12, 16)
+    # Crossbar subordinates a burst's third access visits in turn: the
+    # matrix, the sixteen CTPs, and the decode-error subordinate.
+    OUTSTANDING_TARGETS = XTRIG_NUM_CTP + 2
+    # An unmapped word with every address bit above the CSR map set.
+    XTRIG_HIGH_UNMAPPED = 0xFFFF_FC00
+    # Cycles a write waits behind two held reads and a third read to its
+    # register block: the sweep lands it while that read's response is stuck
+    # in the block.
+    OUTSTANDING_IN_FLIGHT_DELAYS = (6, 8, 10, 12, 14)
 
     # Named-evidence IDs recorded by the shared helpers below. finalize() at
     # the end of body() rejects a zero-check run and any missing required ID,
@@ -277,6 +297,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         "axi_channel_skew": (CHK_CSR, CHK_AXIL),
         "axi_channel_skew_demux_aw_lock_release": (CHK_AXIL, CHK_AW_LOCK),
         "axi_channel_skew_read_decode_backpressure": (CHK_AXIL, CHK_AR_STALL),
+        "axi_outstanding": (CHK_AXIL, CHK_AW_LOCK, CHK_AR_STALL),
         "ctp_csr_sweep": _ROUTE_IDS + (CHK_STRETCH,),
         "ctm_csr_sweep": _ROUTE_IDS,
         "ctm_all_source_select": _ROUTE_IDS,
@@ -2026,7 +2047,16 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                 self.xtrig.set_ctm_src_ack(ack_mask)
                 await ClockCycles(self.xtrig.clk, 1)
                 self.xtrig.set_ctm_src_ack(0)
-        self.log_summary("dst_port_sweep", outputs=XTRIG_NUM_CTM_PORTS)
+        # Every CTP routed to itself: in point-to-point mode its request and
+        # acknowledge pads differ on each side, so the trigger it receives
+        # leaves on its own CT_Req_out once, without feeding back.
+        for ctp_idx in range(XTRIG_NUM_CTP):
+            port = external_ctp_port(ctp_idx)
+            self.log_iteration(ctp_idx + 1, XTRIG_NUM_CTP, "CTP %d -> itself", ctp_idx)
+            await self.verify_route(
+                port, 1 << port, XTRIG_CTP_MODE_P2P, label=f"dst_sweep.self{ctp_idx}"
+            )
+        self.log_summary("dst_port_sweep", outputs=XTRIG_NUM_CTM_PORTS, self_routes=XTRIG_NUM_CTP)
 
     # ------------------------------------------------------------------
     # AXI-Lite skew/default path scenarios
@@ -2486,6 +2516,283 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.log_summary(
             "axi_channel_skew_read_decode_backpressure", unmapped_base=f"0x{XTRIG_UNMAPPED_BASE:x}"
         )
+
+    def outstanding_word(self, target: int, rng: Random, *, write: bool) -> int:
+        """A word of crossbar subordinate ``target``: 0 the matrix, 1 to 16 a CTP, 17 none.
+
+        Writes land on a CT_SRC select or a STRETCH_MULT, which change no
+        pad while no trigger is pulsed; reads may also land on CONFIG and
+        STATUS.
+        """
+        if target == 0:
+            return ctm_config_addr(rng.randrange(XTRIG_NUM_CTM_PORTS))
+        if target <= XTRIG_NUM_CTP:
+            ctp = target - 1
+            if write:
+                return ctp_stretch_addr(ctp)
+            return rng.choice((ctp_config_addr(ctp), ctp_stretch_addr(ctp), ctp_status_addr(ctp)))
+        return XTRIG_UNMAPPED_BASE + rng.randrange(0, 0x40) * 4
+
+    def outstanding_write(self, addr: int, rng: Random, **kwargs) -> OcahAxiPipelineOp:
+        """A write of a drawn word."""
+        return OcahAxiPipelineOp.write(addr, rng.getrandbits(32), **kwargs)
+
+    async def run_outstanding_pipeline(
+        self,
+        ops: list[OcahAxiPipelineOp],
+        *,
+        label: str,
+        b_hold: int = 0,
+        r_hold: int = 0,
+    ) -> tuple[object, dict[str, int]]:
+        """Issue ``ops`` through the VIP pipeline and judge responses, spill contract and stalls.
+
+        Every access answers DECERR exactly when no subordinate decodes its
+        word, every CSR port spill register keeps READY and VALID matched to
+        the beats it holds, and the port's stall counters agree with the
+        stall cycles the VIP saw on each request channel.
+        """
+        before = await self.sample_xtrig(f"{label}.before")
+        result = await self.axil.pipeline_result(
+            ops, b_hold_cycles=b_hold, r_hold_cycles=r_hold, check_response=False
+        )
+        after = await self.sample_xtrig(f"{label}.after")
+        delta = {name: after[name] - before[name] for name in after}
+        self.log.info(
+            "%s %d accesses b_hold=%d r_hold=%d resp=%s aw/w/ar stall=%d/%d/%d",
+            label,
+            len(ops),
+            b_hold,
+            r_hold,
+            [res.resp for res in result.results],
+            result.aw_stall_cycles,
+            result.w_stall_cycles,
+            result.ar_stall_cycles,
+        )
+        for index, (op, res) in enumerate(zip(ops, result.results)):
+            kind, _ = xtrig_csr_decode(op.address)
+            expected = self.AXI_DECERR if kind is DtpXtrigCsrKind.UNMAPPED else self.AXI_OKAY
+            self.check_evidence(
+                self.CHK_AXIL,
+                f"{label}.{op.direction}{index}.resp",
+                res.resp,
+                expected,
+                context=f"addr=0x{op.address:08x}",
+            )
+        self.check_evidence(
+            self.CHK_AXIL, f"{label}.spill_contract", delta["xtrig_axil_spill_err_count"], 0
+        )
+        for channel, vip_stall in (
+            ("aw", result.aw_stall_cycles),
+            ("w", result.w_stall_cycles),
+            ("ar", result.ar_stall_cycles),
+        ):
+            self.check_evidence(
+                self.CHK_AXIL,
+                f"{label}.{channel}_stall_count",
+                delta[f"xtrig_axil_{channel}_stall_count"],
+                vip_stall,
+            )
+        return result, delta
+
+    async def run_axi_outstanding(self) -> None:
+        """Several CSR accesses in flight, with the responses held.
+
+        Read and write bursts deep enough to back up to the port visit every
+        crossbar subordinate as their third access, a sweep of a write, a
+        read and a second write to one register block engages the demux AW
+        lock, a read parked behind two held reads meets a write to its own
+        block, accesses carry every AxPROT value and the address bits outside
+        the map, reads address every subordinate at an unaligned byte, and
+        the matrix and the decode-error subordinate take a late W and
+        back-to-back ARs. Every CT_SRC select holds a drawn mask meanwhile,
+        so the held read data carries the upper select bits; no trigger is
+        pulsed, and the selects are cleared on exit.
+        """
+        self.log_banner("DTP XTRIG AXI-Lite outstanding accesses")
+        rng = self.rng("axi_outstanding")
+        targets = list(range(self.OUTSTANDING_TARGETS))
+        await self.run_outstanding_pipeline(
+            [
+                self.outstanding_write(ctm_config_addr(port), rng)
+                for port in range(XTRIG_NUM_CTM_PORTS)
+            ],
+            label="outstanding.ct_src_masks",
+        )
+
+        rng.shuffle(targets)
+        for target in targets:
+            label = f"outstanding.read{target}"
+            ops = [
+                OcahAxiPipelineOp.read(
+                    self.outstanding_word(
+                        target if index == 2 else rng.randrange(self.OUTSTANDING_TARGETS),
+                        rng,
+                        write=False,
+                    ),
+                    prot=rng.randrange(8),
+                )
+                for index in range(self.OUTSTANDING_BURST)
+            ]
+            _, delta = await self.run_outstanding_pipeline(
+                ops, label=label, r_hold=rng.randint(*self.OUTSTANDING_HOLD)
+            )
+            self.check_evidence(
+                self.CHK_AR_STALL,
+                f"{label}.port_ar_stalled",
+                int(delta["xtrig_axil_ar_stall_count"] > 0),
+                1,
+                context=f"ar_stall_cycles={delta['xtrig_axil_ar_stall_count']}",
+            )
+
+        # The fifth write of each burst waits in the port's AW spill register
+        # at an unaligned address: its strobe covers the lanes from that byte
+        # up.
+        rng.shuffle(targets)
+        for target in targets:
+            label = f"outstanding.write{target}"
+            ops = []
+            for index in range(self.OUTSTANDING_BURST):
+                addr = self.outstanding_word(
+                    target if index == 2 else rng.randrange(self.OUTSTANDING_TARGETS),
+                    rng,
+                    write=True,
+                )
+                strb = (0xF << rng.randint(1, 3)) & 0xF if index == 4 else None
+                ops.append(self.outstanding_write(addr, rng, strb=strb, prot=rng.randrange(8)))
+            _, delta = await self.run_outstanding_pipeline(
+                ops, label=label, b_hold=rng.randint(*self.OUTSTANDING_HOLD)
+            )
+            for channel in ("aw", "w"):
+                self.check_evidence(
+                    self.CHK_AXIL,
+                    f"{label}.port_{channel}_stalled",
+                    int(delta[f"xtrig_axil_{channel}_stall_count"] > 0),
+                    1,
+                    context=f"{channel}_stall_cycles={delta[f'xtrig_axil_{channel}_stall_count']}",
+                )
+
+        # A register block takes a read and a write together, on a seeded CTP
+        # and on the matrix. Its AW lock needs the demux to present a write
+        # the block refuses, which a read and a second write landing a cycle
+        # after the first write produce.
+        ctp = rng.randrange(XTRIG_NUM_CTP)
+        stretch, config = ctp_stretch_addr(ctp), ctp_config_addr(ctp)
+        select_w, select_r = rng.sample(range(XTRIG_NUM_CTM_PORTS), 2)
+        blocks = (
+            (1 + ctp, stretch, config),
+            (0, ctm_config_addr(select_w), ctm_config_addr(select_r)),
+        )
+        window = self.xtrig.activity_window(self.DEMUX_SIGNALS)
+        window.start()
+        for target, write_word, read_word in blocks:
+            for ar_delay in range(3):
+                for aw_delay in range(3):
+                    for w_lag in (0, 2):
+                        await self.run_outstanding_pipeline(
+                            [
+                                self.outstanding_write(write_word, rng),
+                                OcahAxiPipelineOp.read(read_word, ar_valid_delay=ar_delay),
+                                self.outstanding_write(
+                                    write_word,
+                                    rng,
+                                    aw_valid_delay=aw_delay,
+                                    w_valid_delay=aw_delay + w_lag,
+                                ),
+                            ],
+                            label=f"outstanding.lock{target}.ar{ar_delay}.aw{aw_delay}.w{w_lag}",
+                        )
+                    await self.run_outstanding_pipeline(
+                        [
+                            OcahAxiPipelineOp.read(read_word),
+                            self.outstanding_write(
+                                write_word, rng, aw_valid_delay=ar_delay, w_valid_delay=ar_delay
+                            ),
+                            OcahAxiPipelineOp.read(read_word, ar_valid_delay=aw_delay),
+                        ],
+                        label=f"outstanding.mixed{target}.aw{ar_delay}.ar{aw_delay}",
+                    )
+        activity, _hold, _last = await window.stop()
+        self.check_evidence(
+            self.CHK_AW_LOCK, "outstanding.aw_lock_engaged", activity["xtrig_demux_aw_lock"], 1
+        )
+
+        # Two reads parked behind the RREADY hold, a third read stuck at a
+        # register block, and a write to the same block, swept so it lands
+        # while that read's response waits: the block holds two accesses.
+        for target, write_word, read_word in blocks:
+            others = [other for other in range(self.OUTSTANDING_TARGETS) if other != target]
+            for delay in self.OUTSTANDING_IN_FLIGHT_DELAYS:
+                parked = [
+                    OcahAxiPipelineOp.read(self.outstanding_word(other, rng, write=False))
+                    for other in rng.sample(others, 2)
+                ]
+                await self.run_outstanding_pipeline(
+                    [
+                        *parked,
+                        OcahAxiPipelineOp.read(read_word),
+                        self.outstanding_write(
+                            write_word, rng, aw_valid_delay=delay, w_valid_delay=delay
+                        ),
+                    ],
+                    label=f"outstanding.in_flight{target}.d{delay}",
+                    r_hold=rng.randint(*self.OUTSTANDING_HOLD),
+                )
+
+        # Every AxPROT bit set and cleared, and an unmapped word with every
+        # address bit above the map set, behind a mapped access on each
+        # channel; then a read of every subordinate at an unaligned byte.
+        await self.run_outstanding_pipeline(
+            [
+                OcahAxiPipelineOp.read(config, prot=0),
+                OcahAxiPipelineOp.read(self.XTRIG_HIGH_UNMAPPED, prot=7),
+                self.outstanding_write(stretch, rng, prot=0),
+                self.outstanding_write(self.XTRIG_HIGH_UNMAPPED, rng, prot=7),
+                OcahAxiPipelineOp.read(config, prot=0),
+                self.outstanding_write(stretch, rng, prot=0),
+            ],
+            label="outstanding.address_shape",
+        )
+        await self.run_outstanding_pipeline(
+            [
+                OcahAxiPipelineOp.read(
+                    self.outstanding_word(target, rng, write=False) + rng.randint(1, 3),
+                    prot=rng.randrange(8),
+                )
+                for target in range(self.OUTSTANDING_TARGETS - 1)
+            ],
+            label="outstanding.unaligned",
+        )
+
+        # The matrix and the decode-error subordinate each take a write whose
+        # W trails its AW, and the matrix a second AR on the cycle after the
+        # first.
+        for target in (0, self.OUTSTANDING_TARGETS - 1):
+            await self.run_outstanding_pipeline(
+                [
+                    self.outstanding_write(
+                        self.outstanding_word(target, rng, write=True), rng, w_valid_delay=3
+                    )
+                ],
+                label=f"outstanding.late_w{target}",
+            )
+        await self.run_outstanding_pipeline(
+            [
+                OcahAxiPipelineOp.read(self.outstanding_word(0, rng, write=False)),
+                OcahAxiPipelineOp.read(
+                    self.outstanding_word(0, rng, write=False), ar_valid_delay=1
+                ),
+            ],
+            label="outstanding.ctm_ar_pair",
+        )
+        await self.run_outstanding_pipeline(
+            [
+                OcahAxiPipelineOp.write(ctm_config_addr(port), 0)
+                for port in range(XTRIG_NUM_CTM_PORTS)
+            ],
+            label="outstanding.ct_src_clear",
+        )
+        self.log_summary("axi_outstanding", targets=self.OUTSTANDING_TARGETS)
 
     # ------------------------------------------------------------------
     # CTM route scenarios

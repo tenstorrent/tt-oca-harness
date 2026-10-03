@@ -787,15 +787,16 @@ behind them, which serves one access at a time.
 [cols=",",options="header",]
 |===
 |Coverpoint |Bins
-|`cp_flow` |`aw_accept_open`, `ar_accept_open`, `w_spill_full`, `r_spill_full`, `demux_aw_held`, `demux_ar_held`
+|`cp_flow` |`aw_accept_open`, `ar_accept_open`, `w_spill_full`, `r_spill_full`, `demux_aw_held`, `demux_ar_held`, `aw_spill_full`, `ar_spill_full`, `demux_aw_lock`
 |===
 
 `aw_accept_open` and `ar_accept_open` are the port taking a request while an
-earlier one of its kind is owed its W or R beat, `w_spill_full` and
-`r_spill_full` a spill register holding two beats, and `demux_aw_held` and
-`demux_ar_held` the demux holding a request while an earlier one is open.
-Each is sampled on the cycle it begins, from the `tb_top` spill-register and
-demux mirrors.
+earlier one of its kind is owed its W or R beat, `w_spill_full`,
+`r_spill_full`, `aw_spill_full` and `ar_spill_full` a spill register holding
+two beats, `demux_aw_held` and `demux_ar_held` the demux holding a request
+while an earlier one is open, and `demux_aw_lock` the demux holding an AW
+its subordinate refused. Each is sampled on the cycle it begins, from the
+`tb_top` spill-register and demux mirrors.
 
 ==== `DtpDbgDisableFcov`
 
@@ -1043,16 +1044,23 @@ changes, and the review accepts no entry that stimulus can reach.
 
 `cov/config/vcs/dtp_waivers.el` is the URG exclusion list of the points the
 bench reaches by no stimulus the DTP's interface contract allows. Each is a
-DTP input or a bench checker rule, which a formal analysis of the DTP cannot
-prove unreachable, and the `ANNOTATION` before each entry states the fact
-that rules it out:
+DTP input, a bench checker rule, an assertion, or a point the cross-trigger
+network's register map and crossbar flow control rule out, none of which the
+formal unreachability analysis proves, and the `ANNOTATION` before each entry
+states the fact that rules it out:
 
 [cols=",",options="header",]
 |===
 |Points |Fact
 |`axi_smc_dbg_resp_i` BID and RID toggles at `u_dut`, `u_jtag_intf_unit` and `u_jtag_ptap` |The JTAG2AXI bridge issues every SMC fabric request with ID 0, and an AXI subordinate returns the request's ID
-|`xtrig_ctp_ack_out_din_i` toggles at `u_dut` |CT_Ack_out is output-only: the cross-trigger network holds the pad input enables low and reads the pad inputs only into its lint sink
+|`xtrig_ctp_ack_out_din_i` toggles at `u_dut`, and `ctp_ack_out_din_i` at `u_cross_trigger_network` |CT_Ack_out is output-only: the cross-trigger network holds the pad input enables low and reads the pad inputs only into its lint sink
 |The FIXED and WRAP burst rules and the multi-beat covers of `u_m_axi_sva` |The bridge issues every SMC fabric request as a single-beat INCR burst
+|The `RECEIVER_WAIT_REQ_DEASSERT` arm of every external CTP's receiver with CT_Req_in high |The receiver enters the state with CT_Req_in low; a four-phase sender raises its next request only after it sees CT_Ack_out fall, which the receiver drives low in that same transition
+|Condition row W valid without AW valid in every CTP register block and the matrix register block |The crossbar demux forwards a W only after presenting its AW, and only once the previous write's B has left the block, by which time the block has taken that AW
+|Bits 26 and 30 of the R data held in the CSR port's R spill register |No subordinate returns them: a CT_SRC select holds 26 bits, every CTP register fewer, and the decode-error subordinate answers `0xBADCAB1E`
+|`flush_valid` on the five CSR port spill registers |The spill register wrapper ties their flush input low
+|`full_write` of the decode-error subordinate's B FIFO |The demux presents it a W only while its own one-entry B FIFO is empty, and that FIFO stays full until the write's B
+|`ar_select_stable` of the crossbar demux |The demux presents an AR only while its one-entry R FIFO is empty, and a subordinate refuses an AR only while it owes a read its R, which keeps that FIFO full
 |===
 
 The entries carry the checksums `urg -dump full_exclusions` reports for each
@@ -1116,7 +1124,6 @@ access, and debug-disable configuration change.
 |Illegal bins: a TAP state or instruction decode that is not one-hot, a TAP transition off the IEEE 1149.1 state graph, a Capture-IR update that is not IDCODE, an invalid IDCODE marker, a contradictory debug-disable outcome, an open SIB under its disable, a 3DCR reset result CONFIG_HOLD does not call for, an XTRIG CSR response the memory map does not give, and the other illegal bins each definition names |Only a design or checker failure reaches them; VCS reports a hit as a runtime error, and the ledger records a contradictory outcome as a checker failure, never a cell
 |Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract
 |Internal cross-trigger lanes in point-to-point mode |The bench elaborates `XTRIG_INT_CT_MODE` = 0, so every internal CT runs pulse mode
-|XTRIG crossbar demux AW lock, and AW or AR spill registers holding two beats |Every subordinate of the network accepts each AW the demux presents, and the AW and AR spill registers pass their first beat on no later than they take the second
 |Static parameter toggles |Compile-time constants; not meaningful runtime coverage
 |`prim_cdc_rand_delay` under every synchronizer primitive (`prim_flop_2sync`, `prim_sync3r` and their siblings) |Simulation-only CDC jitter model with no counterpart in a synthesized DTP; the VCS scope file removes the module from code coverage
 |DFT inputs `test_en_i` and `scan_rst_ni` |The bench holds them at their functional values, the environment the unreachability exclusion list is proven in, so the list excludes their toggles

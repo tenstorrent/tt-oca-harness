@@ -48,6 +48,7 @@ package dtp_seq_lib_pkg;
   `include "dtp_jtag2axi_series_data_seq.svh"
   `include "dtp_axi_csr_write_seq.svh"
   `include "dtp_axi_csr_read_seq.svh"
+  `include "dtp_axi_csr_pipeline_seq.svh"
 
   // Scenario layer: base virtual sequence, the basic-JTAG family, the
   // debug-TDR family, and the scan-network family; the reset-family and

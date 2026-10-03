@@ -42,10 +42,13 @@ module dtp_xtrig_fcov (
   input wire        axil_rready_i,
 
   // CSR port spill registers and the crossbar demux behind them
-  input wire        axil_w_spill_full_i,  // the W spill register holds two beats
-  input wire        axil_r_spill_full_i,  // the R spill register holds two responses
-  input wire        demux_aw_held_i,      // the demux holds an AW while a write is owed its W
-  input wire        demux_ar_held_i,      // the demux holds an AR while a read is owed its R
+  input wire        axil_aw_spill_full_i,  // the AW spill register holds two beats
+  input wire        axil_w_spill_full_i,   // the W spill register holds two beats
+  input wire        axil_ar_spill_full_i,  // the AR spill register holds two beats
+  input wire        axil_r_spill_full_i,   // the R spill register holds two responses
+  input wire        demux_aw_held_i,       // the demux holds an AW while a write is owed its W
+  input wire        demux_ar_held_i,       // the demux holds an AR while a read is owed its R
+  input wire        demux_aw_lock_i,       // the demux holds an AW its subordinate refused
 
   // Cross-trigger matrix and CTP GPIO pins
   input wire [9:0]  ctm_src_req_i,
@@ -148,7 +151,7 @@ module dtp_xtrig_fcov (
   // from the queue heads in the cycle after its later beat. Each beat carries
   // the cycle the port took it.
   // ------------------------------------------------------------------
-  localparam int unsigned WrQueueDepth = 4;
+  localparam int unsigned WrQueueDepth = 8;
   localparam int unsigned WrIdxW = $clog2(WrQueueDepth);
   localparam int unsigned WrCntW = $clog2(WrQueueDepth + 1);
   logic [15:0] cycle_q;
@@ -210,7 +213,7 @@ module dtp_xtrig_fcov (
 
   // Writes and reads awaiting their response, in issue order: the B and R
   // channels answer in the order the port took the requests.
-  localparam int unsigned RspQueueDepth = 4;
+  localparam int unsigned RspQueueDepth = 8;
   localparam int unsigned RspIdxW = $clog2(RspQueueDepth);
   localparam int unsigned RspCntW = $clog2(RspQueueDepth + 1);
   logic [2:0] bq_region_q[RspQueueDepth];
@@ -393,32 +396,42 @@ module dtp_xtrig_fcov (
 
   // ------------------------------------------------------------------
   // CSR port flow (cg_xtrig_axil_flow): a second request taken while the
-  // first is open, a spill register holding two beats, and the crossbar
-  // demux holding a request behind an open one. The port serves one access
-  // at a time behind spill registers that hold two beats each
-  // (cross_trigger_network, Address Map).
+  // first is open, a spill register holding two beats, the crossbar demux
+  // holding a request behind an open one, and the demux holding an AW its
+  // subordinate refused. The port serves one access at a time behind spill
+  // registers that hold two beats each (cross_trigger_network, Address Map).
   // ------------------------------------------------------------------
-  localparam logic [2:0] FlowAwAcceptOpen = 3'd0;
-  localparam logic [2:0] FlowArAcceptOpen = 3'd1;
-  localparam logic [2:0] FlowWSpillFull = 3'd2;
-  localparam logic [2:0] FlowRSpillFull = 3'd3;
-  localparam logic [2:0] FlowDemuxAwHeld = 3'd4;
-  localparam logic [2:0] FlowDemuxArHeld = 3'd5;
-  localparam int unsigned NumFlow = 6;
+  localparam logic [3:0] FlowAwAcceptOpen = 4'd0;
+  localparam logic [3:0] FlowArAcceptOpen = 4'd1;
+  localparam logic [3:0] FlowWSpillFull = 4'd2;
+  localparam logic [3:0] FlowRSpillFull = 4'd3;
+  localparam logic [3:0] FlowDemuxAwHeld = 4'd4;
+  localparam logic [3:0] FlowDemuxArHeld = 4'd5;
+  localparam logic [3:0] FlowAwSpillFull = 4'd6;
+  localparam logic [3:0] FlowArSpillFull = 4'd7;
+  localparam logic [3:0] FlowDemuxAwLock = 4'd8;
+  localparam int unsigned NumFlow = 9;
   wire axil_aw_accept_open_e = aw_hs && ((wr_open_q - int'(w_hs)) > 0);
   wire axil_ar_accept_open_e = ar_hs && ((rd_open_q - int'(r_hs)) > 0);
   wire axil_w_spill_full_e = axil_w_spill_full_i;
   wire axil_r_spill_full_e = axil_r_spill_full_i;
   wire axil_demux_aw_held_e = demux_aw_held_i;
   wire axil_demux_ar_held_e = demux_ar_held_i;
+  wire axil_aw_spill_full_e = axil_aw_spill_full_i;
+  wire axil_ar_spill_full_e = axil_ar_spill_full_i;
+  wire axil_demux_aw_lock_e = demux_aw_lock_i;
   `OCAH_FCOV_COVER(c_xtrig_axil_aw_accept_open, axil_aw_accept_open_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_xtrig_axil_ar_accept_open, axil_ar_accept_open_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_xtrig_axil_w_spill_full, axil_w_spill_full_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_xtrig_axil_r_spill_full, axil_r_spill_full_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_xtrig_axil_demux_aw_held, axil_demux_aw_held_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_xtrig_axil_demux_ar_held, axil_demux_ar_held_e, clk_i, in_reset)
-  wire [NumFlow-1:0] axil_flow = {axil_demux_ar_held_e, axil_demux_aw_held_e,
-      axil_r_spill_full_e, axil_w_spill_full_e, axil_ar_accept_open_e, axil_aw_accept_open_e};
+  `OCAH_FCOV_COVER(c_xtrig_axil_aw_spill_full, axil_aw_spill_full_e, clk_i, in_reset)
+  `OCAH_FCOV_COVER(c_xtrig_axil_ar_spill_full, axil_ar_spill_full_e, clk_i, in_reset)
+  `OCAH_FCOV_COVER(c_xtrig_axil_demux_aw_lock, axil_demux_aw_lock_e, clk_i, in_reset)
+  wire [NumFlow-1:0] axil_flow = {axil_demux_aw_lock_e, axil_ar_spill_full_e,
+      axil_aw_spill_full_e, axil_demux_ar_held_e, axil_demux_aw_held_e, axil_r_spill_full_e,
+      axil_w_spill_full_e, axil_ar_accept_open_e, axil_aw_accept_open_e};
   logic [NumFlow-1:0] axil_flow_q;
   always_ff @(posedge clk_i) axil_flow_q <= in_reset ? '0 : axil_flow;
   wire [NumFlow-1:0] axil_flow_rise = axil_flow & ~axil_flow_q;
@@ -1116,7 +1129,7 @@ module dtp_xtrig_fcov (
     }
   endgroup
 
-  covergroup cg_xtrig_axil_flow with function sample (logic [2:0] flow);
+  covergroup cg_xtrig_axil_flow with function sample (logic [3:0] flow);
     option.per_instance = 1;
     cp_flow: coverpoint flow {
       bins aw_accept_open = {FlowAwAcceptOpen};
@@ -1125,6 +1138,9 @@ module dtp_xtrig_fcov (
       bins r_spill_full = {FlowRSpillFull};
       bins demux_aw_held = {FlowDemuxAwHeld};
       bins demux_ar_held = {FlowDemuxArHeld};
+      bins aw_spill_full = {FlowAwSpillFull};
+      bins ar_spill_full = {FlowArSpillFull};
+      bins demux_aw_lock = {FlowDemuxAwLock};
     }
   endgroup
 
@@ -1152,7 +1168,7 @@ module dtp_xtrig_fcov (
         u_cg_xtrig_csr_read.sample(r_region, axil_rresp_i, r_held_q, r_reset_value, r_status);
       end
       for (int f = 0; f < NumFlow; f++) begin
-        if (axil_flow_rise[f]) u_cg_xtrig_axil_flow.sample(3'(f));
+        if (axil_flow_rise[f]) u_cg_xtrig_axil_flow.sample(4'(f));
       end
       for (int i = 0; i < NumCtp; i++) begin
         if (ctp_tx_rise[i]) begin

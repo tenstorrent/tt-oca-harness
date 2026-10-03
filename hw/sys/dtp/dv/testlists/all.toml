@@ -183,7 +183,7 @@ tests = [
 
 [[groups]]
 name = "xtrig"
-expected_count = 29
+expected_count = 30
 tests = [
     "dtp_xtrig_reg_stall_test",
     "dtp_xtrig_rand_deterministic_csr_sweep_test",
@@ -198,6 +198,7 @@ tests = [
     "dtp_xtrig_axi_channel_skew_test",
     "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test",
     "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test",
+    "dtp_xtrig_axi_outstanding_test",
     "dtp_ctm_wire_or_cla_to_ctp_test",
     "dtp_ctm_wire_or_ctp_to_cla_test",
     "dtp_ctm_wire_or_cla_to_cla_test",
@@ -220,7 +221,7 @@ tests = [
 name = "all"
 # Exact nightly inventory; must match the VPLAN's scenario-expanded test-case
 # count. The loader errors when the list and this count diverge.
-expected_count = 154
+expected_count = 155
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -360,6 +361,7 @@ tests = [
     "dtp_xtrig_axi_channel_skew_test",
     "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test",
     "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test",
+    "dtp_xtrig_axi_outstanding_test",
     "dtp_ctm_wire_or_cla_to_ctp_test",
     "dtp_ctm_wire_or_ctp_to_cla_test",
     "dtp_ctm_wire_or_cla_to_cla_test",
