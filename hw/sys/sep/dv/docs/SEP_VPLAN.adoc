@@ -3383,7 +3383,7 @@ is why they are asserted from Python probes rather than left to the SVA.
 |CHK-PIC-NOTIF-W1C
 |`notif_cmd_done_sts` reads set after keyGen; its `W1C` reads that field back 0 and clears `[35]`. The field mask comes from `abr_reg.rdl`.
 |CHK-ZEROIZE
-|`ZEROIZE` drops VALID and every word of the pubkey window then reads zero. `MLDSA_STATUS.READY` is low through the `ABR_ZEROIZE` walk (`abr_ready = (abr_prog_cntr == ABR_RESET)`), so a READY-high wait would hang rather than pass vacuously. Scope: the pubkey read port is gated on `mldsa_valid_reg`, so a zero window proves the key is no longer readable, *not* that the RAM was wiped. The memory walk is not claimed; proving it needs a probe on the pubkey RAM or on `zeroize_mem_done`.
+|STATUS reads VALID=1 just before the `ZEROIZE` write, `ZEROIZE` then drops VALID, and every word of the pubkey window then reads zero. `MLDSA_STATUS.READY` is low through the `ABR_ZEROIZE` walk (`abr_ready = (abr_prog_cntr == ABR_RESET)`), so a READY-high wait would hang rather than pass vacuously. Scope: the pubkey read port is gated on `mldsa_valid_reg`, so a zero window proves the key is no longer readable, *not* that the RAM was wiped. The memory walk is not claimed; proving it needs a probe on the pubkey RAM or on `zeroize_mem_done`.
 |CHK-SENSITIVITY
 |Flipping one seed bit yields a different public key, and that key is not an all-zero window — an inequality against the vector alone would be satisfied by a cleared window.
 |===

@@ -176,6 +176,15 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         # whether or not the memory walk ran. This proves the window is no
         # longer readable, NOT that the RAM was wiped. Proving the wipe needs a
         # probe on the pubkey RAM or on zeroize_mem_done; it is not claimed.
+        #
+        # VALID is read set just before the ZEROIZE write, after the IRQ probe
+        # reads and the notif W1C, so the 1->0 change is shown around the write.
+        st_pre = await abr.rd32(ABR_STATUS)
+        assert (st_pre & ST_VALID) and not (st_pre & ST_ERROR), (
+            f"CHK-ZEROIZE FAIL: pre-zeroize STATUS=0x{st_pre:08x}, expected VALID=1 "
+            "ERROR=0: VALID must be set before ZEROIZE for its drop to be credited "
+            "to ZEROIZE"
+        )
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         st_z = await self._wait_status(abr, ST_VALID, 0, what="post-zeroize VALID clear")
         assert (st_z & ST_ERROR) == 0, f"post-zeroize STATUS=0x{st_z:08x}, expected VALID=0 ERROR=0"
@@ -188,8 +197,11 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
             f"first at index {live[0][0]}=0x{live[0][1]:08x}"
         )
         self.logger.info(
-            "CHK-ZEROIZE PASS: VALID=0 and all %d pubkey words read 0 (read-gated, "
-            "not a proven RAM wipe)",
+            "CHK-ZEROIZE PASS: STATUS=0x%08x (VALID=1) before ZEROIZE, 0x%08x "
+            "(VALID=0) after, and all %d pubkey words read 0 (read-gated, not a "
+            "proven RAM wipe)",
+            st_pre,
+            st_z,
             PK_WORDS,
         )
 
