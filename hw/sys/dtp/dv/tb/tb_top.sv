@@ -1721,20 +1721,42 @@ module dtp_uvm_top
   assign u_smc_axi_slave_if.arvalid  = m_axi_arvalid;
   assign u_smc_axi_slave_if.rready   = m_axi_rready;
 
+  // The bridge carries response USER across its CDC and never reads it, so
+  // any value is legal. Each channel's value is a 32-bit maximal LFSR
+  // (x^32 + x^22 + x^2 + x + 1) that steps only on that channel's handshake,
+  // which keeps it stable while a response waits for READY.
+  logic [31:0] smc_axi_buser_q;
+  logic [31:0] smc_axi_ruser_q;
+  always_ff @(posedge clk_i or negedge rst_n_i) begin
+    if (!rst_n_i) begin
+      smc_axi_buser_q <= 32'h1D87_2B41;
+      smc_axi_ruser_q <= 32'h6A0F_93C5;
+    end else begin
+      if (m_axi_bvalid && m_axi_bready) begin
+        smc_axi_buser_q <= {smc_axi_buser_q[30:0], smc_axi_buser_q[31] ^ smc_axi_buser_q[21]
+                            ^ smc_axi_buser_q[1] ^ smc_axi_buser_q[0]};
+      end
+      if (m_axi_rvalid && m_axi_rready) begin
+        smc_axi_ruser_q <= {smc_axi_ruser_q[30:0], smc_axi_ruser_q[31] ^ smc_axi_ruser_q[21]
+                            ^ smc_axi_ruser_q[1] ^ smc_axi_ruser_q[0]};
+      end
+    end
+  end
+
   // Responder-side signals: agent driver -> DUT response inputs.
   assign m_axi_awready = u_smc_axi_slave_if.awready;
   assign m_axi_wready  = u_smc_axi_slave_if.wready;
   assign m_axi_bid     = u_smc_axi_slave_if.bid[1:0];
   assign m_axi_bresp   = u_smc_axi_slave_if.bresp;
-  assign m_axi_buser   = '0;
+  assign m_axi_buser   = smc_axi_buser_q[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
   assign m_axi_bvalid  = u_smc_axi_slave_if.bvalid && rst_n_i;
   assign m_axi_arready = u_smc_axi_slave_if.arready;
   assign m_axi_rid     = u_smc_axi_slave_if.rid[1:0];
   assign m_axi_rdata   = (u_smc_axi_slave_if.rvalid && u_smc_axi_slave_if.rresp[1])
                          ? u_tb_if.smc_axi_err_rdata : u_smc_axi_slave_if.rdata;
   assign m_axi_rresp   = u_smc_axi_slave_if.rresp;
-  assign m_axi_rlast   = u_smc_axi_slave_if.rlast;
-  assign m_axi_ruser   = '0;
+  assign m_axi_rlast   = u_smc_axi_slave_if.rlast && m_axi_rvalid;
+  assign m_axi_ruser   = smc_axi_ruser_q[dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0];
   assign m_axi_rvalid  = u_smc_axi_slave_if.rvalid && rst_n_i;
 
   // Shared-VIP passive monitor interfaces at the default geometry (the
