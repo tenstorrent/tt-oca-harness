@@ -121,7 +121,6 @@ OCAH_REG_CATALOG_DIRS := \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl) \
-  $(wildcard $(OCAH_ROOT)/vendor/chipsalliance/i3c-core/upstream/src/rdl/tt_rdl) \
   $(wildcard $(OCAH_ROOT)/vendor/chipsalliance/i3c-core/upstream/src/rdl) \
   $(wildcard $(OCAH_ROOT)/vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl)
 

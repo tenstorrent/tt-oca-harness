@@ -13,6 +13,7 @@ regfile PIORegs #(
     default regwidth = 32;
     external reg {
         name = "Command issue port";
+        desc = "Accepts a 64-bit command descriptor as two consecutive 32-bit writes. The second write enqueues the descriptor.";
         field {
             name = "COMMAND_QUEUE_PORT";
             sw = w;
@@ -21,6 +22,7 @@ regfile PIORegs #(
     } COMMAND_PORT @ 0x0;
     external reg {
         name = "Command response port";
+        desc = "Returns one 32-bit response descriptor from the response queue.";
         field {
             name = "RESPONSE_QUEUE_PORT";
             sw = r;
@@ -29,6 +31,7 @@ regfile PIORegs #(
     } RESPONSE_PORT @ 0x4;
     external reg {
         name = "Transferred data access port";
+        desc = "Writes transmit data to the TX FIFO. This port shares its address with the read-only RX data port.";
         field {
             name = "TX_DATA";
             sw = w;
@@ -37,6 +40,7 @@ regfile PIORegs #(
     } TX_DATA_PORT @ 0x8;
     external reg {
         name = "Received data access port";
+        desc = "Reads received data from the RX FIFO. This port shares its address with the write-only TX data port.";
         field {
             name = "RX_DATA";
             sw = r;
@@ -45,6 +49,7 @@ regfile PIORegs #(
     } RX_DATA_PORT @ 0x8;
     external reg {
         name = "IBI descriptor access port";
+        desc = "Returns IBI status and payload data. Payload data is padded to a 4-byte boundary.";
         field {
             name = "IBI_DATA";
             desc="Data Read from IBI Data Buffer.
@@ -60,6 +65,7 @@ regfile PIORegs #(
     } IBI_PORT @ 0xC;
     reg {
         name = "The Queue Threshold Control register for the Command Queue, the Response Queue, and the IBI Queue";
+        desc = "Configures command, response, and IBI queue thresholds as raw entry counts.";
         field {
             name = "IBI_STATUS_THLD";
             desc = "Triggers IBI_STATUS_THLD_STAT interrupt when IBI queue has N or more entries. Accepted values are 1:255";
@@ -95,6 +101,7 @@ regfile PIORegs #(
     } QUEUE_THLD_CTRL @ 0x10;
     reg {
         name = "RX/TX queue threshold control";
+        desc = "Configures TX and RX start and ready thresholds, each encoding 2^(N+1) entries.";
         field {
             name = "RX_START_THLD";
             desc = "Postpone read command until RX queue has 2^(N+1) free entries";
@@ -126,6 +133,7 @@ regfile PIORegs #(
     } DATA_BUFFER_THLD_CTRL @ 0x14;
     reg {
         name = "Queue sizes";
+        desc = "Reports command, response, IBI, TX, and RX queue depths.";
         field {
             name = "TX_DATA_BUFFER_SIZE";
             desc = "TX queue size is equal to 2^(N+1), where N is this field value";
@@ -157,6 +165,7 @@ regfile PIORegs #(
     } QUEUE_SIZE @ 0x18;
     reg {
         name = "Alternate queue sizes";
+        desc = "Reports extended IBI and alternate response queue sizes.";
         field {
             name = "EXT_IBI_QUEUE_EN";
             desc = "1 indicates that IBI queue size is equal to 8*IBI_STATUS_SIZE";
@@ -182,6 +191,7 @@ regfile PIORegs #(
     } ALT_QUEUE_SIZE @ 0x1C;
     reg {
         name = "PIO interrupt status";
+        desc = "Reports PIO queue-threshold and transfer-event interrupt status.";
         field {
             name = "TRANSFER_ERR_STAT";
             desc = "Transfer error";
@@ -249,6 +259,7 @@ regfile PIORegs #(
         } TX_THLD_STAT[0:0];
     } PIO_INTR_STATUS @ 0x20;
     reg {
+        desc = "Enables individual PIO interrupt status sources.";
         field {
             name = "TRANSFER_ERR_STAT_EN";
             desc = "Enable transfer error monitoring";
@@ -301,6 +312,7 @@ regfile PIORegs #(
     } PIO_INTR_STATUS_ENABLE @ 0x24;
     reg {
         name = "Interrupt Signal Enable";
+        desc = "Routes enabled PIO interrupt sources to the interrupt output.";
         field {
             name = "TRANSFER_ERR_SIGNAL_EN";
             desc = "Enable transfer error interrupt";
@@ -405,6 +417,7 @@ regfile PIORegs #(
     } PIO_INTR_FORCE @ 0x2C;
     reg {
         name = "PIO control";
+        desc = "Controls run/stop and forced abort of enqueued commands.";
         field {
             name = "ABORT";
             desc = "Stop current command descriptor execution forcefully and hold remaining commands.
