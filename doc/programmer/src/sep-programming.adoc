@@ -128,7 +128,7 @@ that survived the restart, by resetting the engines or checking their state,
 before submitting new work.
 
 [[sep-pic]]
-==== Interrupt Control (PIC)
+==== Programmable Interrupt Controller (PIC)
 
 The VeeR EL2 PIC numbers external interrupt sources from 1; source 0 does not
 exist. Program source `N` through the per-source arrays, each indexed at

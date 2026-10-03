@@ -107,7 +107,9 @@ class Structure(unittest.TestCase):
             manual = f"xref:ocah-programmer-guide::index.adoc#{module}-boot-rom["
             self.assertIn(f"* xref:rom.adoc[Boot ROM]\n** {manual}", landing)
         pg = (ROOT / "doc/programmer/src/index.adoc").read_text()
-        appendices = re.findall(r"^\[appendix\]\nifdef::backend-pdf\[\]\ninclude::([^\[]+)\[", pg, re.M)
+        appendices = re.findall(
+            r"^\[appendix\]\nifdef::backend-pdf\[\]\ninclude::([^\[]+)\[", pg, re.M
+        )
         self.assertEqual(
             appendices,
             [

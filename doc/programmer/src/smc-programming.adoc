@@ -1734,7 +1734,7 @@ hardware update, and later hardware updates can advance or clear them. Account
 for this when programming or testing them.
 
 [[smc-system-timer]]
-==== System Timer (OCTS)
+==== OCTS System Timer
 
 [[smc-octs-setup]]
 ===== Configure and Start
