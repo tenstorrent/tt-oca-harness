@@ -101,11 +101,24 @@ class Structure(unittest.TestCase):
 
     def test_rom_manuals_and_mailbox_navigation(self):
         nav = (ROOT / "doc/trm/modules/ROOT/nav.adoc").read_text()
+        self.assertNotIn("bootrom-prod", nav)
         for module in ("sep", "smc"):
-            manual = f"xref:{module}-bootrom-prod:index.adoc[Production ROM Manual]"
-            self.assertIn(f"**** xref:{module}:rom.adoc[Boot ROM]\n***** {manual}", nav)
             landing = (ROOT / f"hw/sys/{module}/doc/index.adoc").read_text()
+            manual = f"xref:ocah-programmer-guide::index.adoc#{module}-boot-rom["
             self.assertIn(f"* xref:rom.adoc[Boot ROM]\n** {manual}", landing)
+        pg = (ROOT / "doc/programmer/src/index.adoc").read_text()
+        appendices = re.findall(r"^\[appendix\]\nifdef::backend-pdf\[\]\ninclude::([^\[]+)\[", pg, re.M)
+        self.assertEqual(
+            appendices,
+            [
+                "../../../hw/sys/smc/bootrom/prod/doc/index.adoc",
+                "../../../hw/sys/sep/bootrom/prod/doc/index.adoc",
+                "../../../hw/ip/key_manager/doc/firmware.adoc",
+                "../modules/aou/partials/pdf/software-operation.adoc",
+            ],
+        )
+        self.assertFalse((ROOT / "doc/trm/src/aou-software-operation.adoc").exists())
+        self.assertNotIn("software-operation", nav)
         self.assertIn("***** xref:sep:mailbox.adoc[Mailboxes]", nav)
         pdf = (ROOT / "doc/trm/src/index.adoc").read_text()
         self.assertIn("include::../../../hw/sys/sep/doc/mailbox.adoc[leveloffset=+5]", pdf)
@@ -154,8 +167,9 @@ class Structure(unittest.TestCase):
                 headings = re.findall(r"^=== (.+)$", text, re.M)
                 self.assertEqual(headings, ["Memory Map", "Detailed Register Map"])
         km = (ROOT / "hw/ip/key_manager/doc/index.adoc").read_text()
+        self.assertNotIn("include::firmware.adoc", km)
         self.assertLess(
-            km.index("include::firmware.adoc"), km.index("== Memory Map and Register Reference")
+            km.index("[[key-manager-firmware]]"), km.index("== Memory Map and Register Reference")
         )
         self.assertEqual(
             re.findall(r"^=== (.+)$", km, re.M), ["Memory Map", "Detailed Register Map"]

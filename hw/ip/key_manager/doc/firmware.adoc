@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[key-manager-km-firmware]]
-= Firmware
+[[km-application-rom]]
+= Key Manager Application ROM
 
 [[key-manager-rom-code]]
 The KM ROM runs on PicoRV32. It initializes the subsystem, services SEP
@@ -1355,8 +1355,14 @@ This must precede unmasking.
 with random words sourced from the DRBG.
 .. Using inline assembly, enable & lock the SRAM scrambler then restart
 CPU execution (jump to address 0).
-. On a cold boot, initialize the warm-persistent SRAM region
-(<<rom-warm-persist-region,ROM warm persist region>>). A warm boot leaves it intact.
+. On a cold boot, initialize the warm-persistent SRAM region (the
+ifdef::backend-html5[]
+xref:ocah-docs:ip:key_manager/doc/index.adoc#rom-warm-persist-region[ROM warm persist region]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/key_manager/doc/index.html#rom-warm-persist-region[ROM warm persist region]
+endif::backend-pdf[]
+in the Technical Reference Manual). A warm boot leaves it intact.
 . Initialize the KPV scrambler, enable it, and lock it.
 . If wiping is enabled — a weak predicate, on by default, that block-level
 tests override to preserve state across a restart — then:
@@ -1387,8 +1393,14 @@ ROM provisions and locks the SRAM and KPV scramblers during
 <<km-boot-sequence>>. The SRAM scrambler key and enable/lock state survive
 warm reset, so ROM retains an already enabled SRAM scrambler. Cold reset
 requires fresh provisioning. The boot sequence above defines the ordering;
-the hardware behavior is described in <<kpv-scrambling>> and the SRAM
-scrambler reference.
+the hardware behavior is described in the
+ifdef::backend-html5[]
+xref:ocah-docs:ip:key_manager/doc/index.adoc#kpv-scrambling[KPV scrambling]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/ip/key_manager/doc/index.html#kpv-scrambling[KPV scrambling]
+endif::backend-pdf[]
+section of the Technical Reference Manual and the SRAM scrambler reference.
 
 [[km-firmware-message-buffers]]
 == Message Buffers

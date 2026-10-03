@@ -79,9 +79,21 @@ it.
 management bus as a controller and distributes the secondary's bundle.
 |===
 
-SEP BL0 and SMC BL0 are the OCAH boot ROMs; the _SEP Production ROM Reference_
-and _SMC Production ROM Reference_ chapters of the Programmer's Guide cover the
-details this note summarizes. The SEP BL1 and SMC BL1 steps in this note are an
+SEP BL0 and SMC BL0 are the OCAH boot ROMs; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM]
+endif::backend-pdf[]
+and
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM]
+endif::backend-pdf[]
+appendices of the Programmer's Guide cover the details this note summarizes. The SEP BL1 and SMC BL1 steps in this note are an
 example integration, built on the interfaces the ROMs and the hardware provide;
 a BL1 implementation can divide the work differently.
 
@@ -699,8 +711,14 @@ the SMC ROM, which serves the OCCP Base and Boot applications.
 
 The SMC ROM is an OCCP *target* only. On every chiplet, whatever its straps, it
 starts a fixed set of its I3C and I2C interfaces in target mode and polls them
-round-robin; the _SMC Production ROM Reference_ in the Programmer's Guide lists
-the set. The distributing agent must therefore drive the bus as a controller. In
+round-robin; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide lists the set. The distributing agent must therefore drive the bus as a controller. In
 this example that agent is SMC BL1 on chiplet 0, which can run only once chiplet
 0 has authenticated itself. For the recovery variant it is a host or a board
 management controller.
@@ -837,9 +855,14 @@ T1 -> P : chiplet 1 answers again:\nboot succeeded
 === Staging window
 
 The bundle has to be staged where the target accepts it and where the SEP will
-look for it. The current SMC ROM lays out SMC SRAM as follows; the _SMC
-Production ROM Reference_ in the Programmer's Guide is the authority for these
-values:
+look for it. The current SMC ROM lays out SMC SRAM as follows; the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide is the authority for these values:
 
 * Every OCCP address must be 32-bit aligned. Accesses of zero length, accesses
   whose address arithmetic wraps, and accesses that overlap the SMC ROM's own

@@ -17,7 +17,14 @@ the recoverable-error status, generate keys from the DRBG, load SEP-supplied
 keys, revoke keys, transfer keys to the accelerators, shred accelerator
 sideload keys, capture the Adams Bridge ML-KEM shared key into the vault, set
 cold-domain OTP read-locks, and either load and execute mutable firmware in
-SRAM or keep the ROM running (<<key-manager-command-summary-table>>).
+SRAM or keep the ROM running (the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#key-manager-command-summary-table[command summary]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#key-manager-command-summary-table[command summary]
+endif::backend-pdf[]
+in the Programmer's Guide).
 
 A single KM-mastered AXI4-Lite crossbar connects KMCSR, KPV, the DRBG sampler
 and mailbox to the private accelerator key interfaces and the SEP OTP/eFuse
@@ -27,7 +34,14 @@ policy checks belong to KM firmware.
 
 The <<km-memory-register-reference,Memory Map and Register Reference>> at the
 end of the chapter defines the address windows and all generated fields.
-<<key-manager-km-firmware>> defines commands, validation and responses.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide defines commands, validation and responses.
 ROM/SRAM parity detects errors but does not correct them; the ROM fault
 handler can report an unrecoverable fault and halt the CPU.
 

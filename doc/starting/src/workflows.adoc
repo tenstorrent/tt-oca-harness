@@ -165,8 +165,15 @@ Outputs land under `hw/sys/smc/bootrom/dummy/build/tests/dummy/` (e.g.
 Build the production ROM from the same container (self-contained Makefile, not
 the shared `compile.mk` engine).
 See https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/README.md[`hw/sys/smc/bootrom/prod/README.md`] and
-https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/doc/index.adoc[`hw/sys/smc/bootrom/prod/doc/`] for
-the full target list, build variables, and architecture.
+the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide for the full target list, build variables, and
+architecture.
 
 The build splits across two halves so each runs in the right environment:
 
@@ -194,8 +201,15 @@ It implements the full secure-boot flow — manifest loading, RSA-3072 signature
 A build that carries its own drivers overrides the stubs at link time: it passes the driver sources as `OCAH_FW_OVERLAY_SOURCES_sep`, and the include flags (`-I<dir>`) for their register headers as `OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep`, on the `make` command line.
 The Makefile ignores both variables when they are set only in the environment, so a value exported in a shell cannot change an open-tree ROM.
 See https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/README.md[`hw/sys/sep/bootrom/prod/README.md`] and
-https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/doc/index.adoc[`hw/sys/sep/bootrom/prod/doc/`] for
-the full target list, build variables, key provisioning, and boot flow.
+the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide for the full target list, build variables, key
+provisioning, and boot flow.
 
 The ROM supports two flash transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
 The default (`BOOT_SPI_CONTROLLER_OT=1`) uses the OpenTitan SPI host, and `BOOT_OT_SPI_USE_PIO` selects its RX-drain method (secure DMA by default, or CPU-programmed I/O).
@@ -243,6 +257,14 @@ The `pio-toolchain-images` target builds the CPU-PIO drain ROM into `build_pio/`
 The Key Manager (KM) subsystem (PicoRV32) runs its firmware from ROM.
 That firmware is not only a boot loader: it is the KM runtime, serving the SEP mailbox, until the SEP loads alternative firmware into KM SRAM and hands over to it.
 It therefore lives in `hw/ip/key_manager/approm/prod/` rather than a `bootrom/` directory, and builds with a self-contained `Makefile` there.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide describes the firmware.
 
 The entry point is `src/rom_main.c`.
 The whole image — vectors, code, constants and the `.data` load image — links into the 16 KB ROM through `link/km_production.ld`.

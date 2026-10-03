@@ -5,7 +5,8 @@
 ** xref:index.adoc#smc-programming-guide[SMC Programming Guide]
 ** xref:index.adoc#sep-programming-guide[SEP Programming Guide]
 ** xref:index.adoc#sep-smc-common-blocks-communication[SEP & SMC Common Blocks & Communication]
-** xref:index.adoc#aou-software-operation-guide[AXI-over-UCIe Bridge (AoU) Software Operation Guide]
-** xref:index.adoc#smc-prod-rom-reference[SMC Production ROM Reference]
-** xref:index.adoc#sep-production-rom[SEP Production ROM]
-** xref:index.adoc#key-manager-km-firmware[Key Manager Firmware Reference]
+** Appendices
+*** xref:index.adoc#smc-boot-rom[A. SMC Boot ROM]
+*** xref:index.adoc#sep-boot-rom[B. SEP Boot ROM]
+*** xref:index.adoc#km-application-rom[C. Key Manager Application ROM]
+*** xref:index.adoc#aou-software-operation-guide[D. AXI-over-UCIe Bridge (AoU) Software Operation]

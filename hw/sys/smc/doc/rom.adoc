@@ -47,8 +47,9 @@ eFuse shadow-register output.
 == Boot Flow
 
 The production ROM initializes SRAM and the C runtime, then services OCCP
-requests over target-mode I2C and I3C. The production manual describes the
-startup checks, lifecycle policy and boot-handoff commands.
+requests over target-mode I2C and I3C. The SMC Boot ROM appendix of the
+Programmer's Guide describes the startup checks, lifecycle policy and
+boot-handoff commands.
 
 The production ROM linker script,
 `hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld`, matches the 128 KiB hardware
@@ -65,9 +66,11 @@ endif::backend-html5[]
 [[smc-rom-firmware-reference]]
 == Firmware Reference
 
+The production ROM firmware is documented in the
 ifdef::backend-html5[]
-xref:smc-bootrom-prod:index.adoc[Production ROM Manual]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-`hw/sys/smc/bootrom/prod/doc/index.adoc` (Production ROM Manual)
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
 endif::backend-pdf[]
+of the Programmer's Guide.

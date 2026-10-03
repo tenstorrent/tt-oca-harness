@@ -111,8 +111,8 @@ operation.
 32) is unset, indicating the operation is complete.
 . Restore interrupt state.
 
-See also `__metal_sram_init_early` from the Production ROM in
-`hw/sys/smc/bootrom/prod/boot/sram_init.S`.
+See also `__metal_sram_init_early` in
+`hw/sys/smc/bootrom/prod/boot/sram_init.S`, described in <<smc-boot-rom>>.
 
 The production ROM assumes that SRAM is automatically zeroed on reset. If
 either `SRAM_AUTO_ZERO_DISABLE` or the eFuse `RESERVED_0[6]` is set, the
@@ -142,7 +142,7 @@ MBIST has passed.
 `RESERVED_2[0]` is set, ignore the failure and return.
 . The MBIST has failed -- park the core in a `wfi` loop.
 
-.Production ROM `__metal_mbist_early_check`.
+.SMC Boot ROM `__metal_mbist_early_check`.
 [plantuml,ocah-smc-mbist-early_check,svg,scaledwidth=50.0%,align="center"]
 ----
 @startuml
@@ -180,7 +180,7 @@ memory repair has passed.
 failure and return.
 . Memory repair has failed -- park the core in a `wfi` loop.
 
-.Production ROM `__metal_memory_repair_check`.
+.SMC Boot ROM `__metal_memory_repair_check`.
 [plantuml,ocah-smc-metal-memory-repair-check,svg,width=50.0%,align="center"]
 ----
 @startuml

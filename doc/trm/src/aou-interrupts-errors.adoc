@@ -3,7 +3,6 @@
 
 = AoU Interrupts and Errors
 :description: AoU interrupt sources, status reporting, and error handling.
-:aou-software-xref: ocah-programmer-guide:ROOT:index.adoc
 
 :sectnums!:
 

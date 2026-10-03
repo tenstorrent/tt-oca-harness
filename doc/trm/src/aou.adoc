@@ -25,7 +25,9 @@ include::../modules/aou/partials/pdf/interrupts-errors.adoc[leveloffset=+1]
 
 include::../modules/aou/partials/pdf/ppa-appendices.adoc[leveloffset=+1]
 
-include::../modules/aou/partials/pdf/software-operation.adoc[leveloffset=+1]
+Register programming, activation and deactivation flows, and the debug
+features are in the
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#aou-software-operation-guide[AoU Software Operation appendix of the Programmer's Guide].
 
 For references from all TRM chapters, see
 <<trm-referenced-documents,Referenced Documents>>.
@@ -62,11 +64,8 @@ include::aou:partial$referenced-documents-anchors.adoc[]
 
 * xref:aou-referenced-documents.adoc[Appendix B. Referenced Documents] -- reference list.
 
-include::aou:partial$software-operation-anchors.adoc[]
-
-* xref:aou-software-operation.adoc[Appendix C. Software Operation] -- software operation guide.
-
 Integration details are in the xref:ocah-integrator-guide:ROOT:aou.adoc[Integrator Guide].
-Register programming and activation flows are in the
-xref:ocah-programmer-guide:ROOT:index.adoc[Programmer's Guide].
+Register programming, activation and deactivation flows, and the debug
+features are in the
+xref:ocah-programmer-guide::index.adoc#aou-software-operation-guide[AoU Software Operation appendix of the Programmer's Guide].
 endif::backend-html5[]
