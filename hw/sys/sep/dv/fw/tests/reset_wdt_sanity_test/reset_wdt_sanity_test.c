@@ -102,11 +102,20 @@
 
 // Core cycles of each watchdog hold window. The bench runs clk_i at 1.25 ns and
 // clk_wdt_i at 5000 ns (cocotb/env/sep_env_cfg.py), so one watchdog tick is
-// 4000 core cycles and this window spans ten of them. WDOG_COUNT reads return
-// a bus-side copy that the register CDC (prim_reg_cdc, DstWrReq) refreshes
-// when the counter moves, one handshake at a time, so a read can lag the
-// counter by several ticks; the window covers more than one refresh, and the
-// disable write needs the same crossing before the count stops.
+// 4000 core cycles and this window spans ten of them.
+//
+// vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl defines
+// WDOG_COUNT.count as software read-write, "the current watchdog counter
+// value", and vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/data/
+// aon_timer.hjson places the register in the watchdog clock domain
+// (async: "clk_aon_i"). A pet writes 0, so the expected read after a pet is
+// that written 0. A read issued after the pet completes only once the pet has
+// crossed into the watchdog domain, and the bus-side copy a read returns
+// re-syncs whenever it differs from the counter, so a pet the counter drops
+// reads back the running count, not 0. The copy follows the counter one
+// crossing at a time and can lag it by several ticks; each window covers more
+// than one refresh, and the disable write needs the same crossing before the
+// count stops.
 #define WDT_HOLD_MCYCLE 40000u
 
 static inline uint32_t rd_mcycle(void) {
