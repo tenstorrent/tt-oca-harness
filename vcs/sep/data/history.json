@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-02T11:56:48+00:00",
+  "generated_at": "2026-10-03T05:58:39+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -936,6 +936,70 @@
         }
       ],
       "test_pass_rate": 97.41
+    },
+    {
+      "failed_tests": 9,
+      "flaky_tests": 0,
+      "flow_pass_rate": 50.0,
+      "generated_at": "2026-10-03T05:58:39+00:00",
+      "id": "e3e7d642a8f9f675",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-0e77b6ad7c4d5212",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 85.62,
+            "condition": 69.3,
+            "fsm_state": 64.31,
+            "functional": 100.0,
+            "line": 93.62,
+            "toggle": 76.53
+          },
+          "flow": "sep",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 85.62,
+            "condition": 69.3,
+            "fsm_state": 64.31,
+            "functional": 100.0,
+            "line": 93.62,
+            "toggle": 76.14
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "ERROR",
+          "effective_metrics": {},
+          "flow": "sep",
+          "framework": "uvm",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 95.54
     }
   ],
   "schema_version": "0.2"

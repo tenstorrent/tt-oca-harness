@@ -2,37 +2,41 @@
   "aggregate": {
     "flows": {
       "failing": 1,
-      "pass_rate": 0.0,
-      "passing": 0,
-      "total": 1,
+      "pass_rate": 50.0,
+      "passing": 1,
+      "total": 2,
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/dashboard-data/history.json",
-    "history_points": 22,
+    "history_points": 23,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/dashboard-data/summary.json",
     "tests": {
-      "failing": 5,
+      "failing": 9,
       "incomplete_runs": 0,
-      "pass_rate": 97.41,
-      "passing": 188,
+      "pass_rate": 95.54,
+      "passing": 193,
       "skipped": 0,
-      "total": 193,
+      "total": 202,
       "unknown": 0
     }
   },
   "errors": [
-    "sep: runner rc=1",
-    "sep: native status=FAIL",
-    "sep: normalized status=FAIL"
+    "sep_uvm: runner rc=2",
+    "sep_uvm: native status=ERROR",
+    "sep_uvm: normalized status=FAIL",
+    "combined: runner rc=2",
+    "combined: collector rc=1",
+    "combined: native status=MISSING",
+    "combined: normalized status=MISSING"
   ],
-  "generated_at": "2026-10-02T11:56:48.800508+00:00",
+  "generated_at": "2026-10-03T05:58:40.597343+00:00",
   "git": {
-    "commit": "9712dfcb5076749017a29d30b09b5a2b1515018a",
-    "requested_ref": "9712dfcb5076749017a29d30b09b5a2b1515018a"
+    "commit": "eb252a4a6d2d28fcf63636fe9e8ee6f111d433c4",
+    "requested_ref": "eb252a4a6d2d28fcf63636fe9e8ee6f111d433c4"
   },
   "jenkins": {
-    "build_number": "47",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/dashboard/47/",
+    "build_number": "48",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/dashboard/48/",
     "job_name": "tt-oca-harness/sep/dashboard",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/dashboard/"
   },
@@ -41,14 +45,42 @@
       "collector_rc": 0,
       "framework": "cocotb",
       "group": "all",
-      "mode": "regression",
-      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/runs/result.json",
-      "native_status": "FAIL",
-      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/dashboard-data/result.json",
-      "normalized_status": "FAIL",
+      "mode": "views",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/runs/cocotb/result.json",
+      "native_status": "PASS",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/dashboard-data/results/cocotb/result.json",
+      "normalized_status": "PASS",
       "profile": "sep",
-      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/runs",
-      "runner_rc": 1,
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/runs/cocotb",
+      "runner_rc": 0,
+      "tool": "vcs"
+    },
+    {
+      "collector_rc": 0,
+      "framework": "uvm",
+      "group": "all",
+      "mode": "views",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/runs/uvm/result.json",
+      "native_status": "ERROR",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/dashboard-data/results/uvm/result.json",
+      "normalized_status": "FAIL",
+      "profile": "sep_uvm",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/runs/uvm",
+      "runner_rc": 2,
+      "tool": "vcs"
+    },
+    {
+      "collector_rc": 1,
+      "framework": "",
+      "group": "combine",
+      "mode": "views",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/runs/combined/result.json",
+      "native_status": "MISSING",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/dashboard-data/results/combined/result.json",
+      "normalized_status": "MISSING",
+      "profile": "combined",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/runs/combined",
+      "runner_rc": 2,
       "tool": "vcs"
     }
   ],
