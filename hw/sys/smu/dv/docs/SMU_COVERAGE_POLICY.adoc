@@ -144,6 +144,77 @@ A vendor site that `coverage_off` cannot name (hierarchy under `.u_smc`
 `expected_matches` is a hard count, and a guessed count is a
 ConfigError on the first run.
 
+[[smu-cov-reviewers]]
+== Reviewers
+
+An entry's `reviewer` differs from its `owner`, and the review class follows
+the kind of fact the entry rests on. `cov/config/vcs/README.md` states each
+class's fact and what retires it.
+
+[cols="2,3,2",options="header",]
+|===
+|Class family |Fact it rests on |Review
+|The port-toggle classes `AXI-USER`, `AXI-DATA`, `ATB-PAYLOAD`,
+`RTL-CONSTANT`, `UNION-ALIAS`, `REGISTER-WIDTH` and `SEP-OWNED`, and the
+block classes whose ANNOTATION names an RTL tie, a packed union, a fixed
+attribute or a reserved field |a design fact, cited to the RTL file and line
+|design review
+|The port-toggle class `DFT` and every block class whose ANNOTATION opens
+`bench scope` |a bench fact: what this testbench ties, drives or leaves
+undriven |DV review
+|`VENDORED-I3C` |a covergroup declared inside vendored RTL that another
+package grades |coverage-flow review
+|A `pass:[[[holes]]]` entry |the class the hole names; a hole whose
+disposition is `fix_model` or `cover` takes DV review |as above
+|===
+
+Every entry change is graded against a named finished run with the runner's
+`--waive` re-grade.
+
+[[smu-cov-reopen]]
+== Reopen triggers
+
+An accepted exclusion or waiver stays accepted until the policy changes; the
+calendar does not reopen it. It reopens, by the entry being removed at the
+next regeneration or by a `pass:[[[holes]]]` entry's status returning to
+`open`, when:
+
+* an RTL change moves the module or instance checksum of the scope the entry
+  names, which drops the entry on its own, since URG applies no entry whose
+  checksum differs from the design it reports on;
+* an enrolled leaf covers the point: the exclusion files are written from the
+  uncovered set of a graded run, so a covered point is not written again, and
+  the runner rejects an accepted `pass:[[[holes]]]` entry whose selector
+  matches a covered point;
+* the retiring condition the class's `Retired by` column states is met;
+* the policy's `scope_epoch` changes, or the compile-time scope
+  (`smu_wrapper_cov_scope.hier`, `smu_wrapper_cov_scope.vlt`) changes which
+  points enter the database;
+* a regenerated file is written from a new graded run, which replaces every
+  entry that run no longer leaves uncovered;
+* a covergroup a vendored block adds falls in no class the group exclusion
+  generator names, which stops the generator rather than admitting it
+  silently.
+
+[[smu-cov-no-formal]]
+== No formal unreachability behind the denominator
+
+SMU has no formal coverage-unreachability analysis. The companion's SMU
+formal configuration holds a connectivity app and no coverage app, so no
+list of the kind `hw/sys/smc/dv/cov/config/vcs/smc_unreachable.el` or
+`hw/sys/dtp/dv/cov/config/vcs/dtp_unreachable.el` exists for this DUT, and
+nothing proves that a point left in the `toggle` denominator is reachable at
+all. The exclusion files do that work by hand instead: each class states a
+design or bench fact and names what retires it, which is a weaker claim than
+a proof and is reviewed as such.
+
+The `toggle` floor of `cov/config/vcs/smu_wrapper_coverage_policy.toml`
+therefore grades a denominator with no formal filter behind it. Before that
+floor is enforced on a schedule, either an unreachability analysis has to
+supply the filter the SMC and DTP policies have, or the floor has to be set
+from a measured run of the current epoch and read as a regression guard over
+a hand-shaped population, which is what it is today.
+
 [[smu-cov-waiver]]
 == Waiver fields
 
