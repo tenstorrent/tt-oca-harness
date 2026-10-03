@@ -231,8 +231,12 @@ branch and expression. Neither
 scheduled tier collects coverage (`.github/workflows/regress.yml`): the coverage
 regression runs on the licensed flow outside hosted CI. Coverage intent, the
 VPLAN-to-FCOV traceability and the closure policy (public versus commercial
-evidence, structural OUT versus waiver holes, waiver fields) are in
-`docs/SMC_FCOV.adoc`.
+evidence, structural OUT versus waiver holes, waiver fields, who reviews an
+exclusion and what reopens it) are in `docs/SMC_FCOV.adoc`; the class facts
+behind the exclusion files are in `cov/config/vcs/README.md`. The companion's
+SV-UVM bench grades a different top with its own hierarchy file and its own
+exclusion set, which this policy does not read and the runner does not merge
+(`cov/config/vcs/README.md`, "The companion bench's exclusion set").
 
 ```bash
 # Coverage merge accepts one elaboration. `hosted` and `fw` build the default

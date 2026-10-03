@@ -577,6 +577,51 @@ analysis's check mode over the accepted list fails when an excluded point has
 become reachable. A regenerated list takes design review before its entry
 changes, and the review accepts no entry that stimulus can reach.
 
+[[smc-fcov-exclusion-files]]
+=== Exclusions and Limitations
+
+The VCS report applies ten `-elfile` lists, which
+`cov/config/vcs/coverage_policy.toml` names. Each entry of each list carries
+an ANNOTATION naming its class; `cov/config/vcs/README.md` is the fact table
+behind those classes, with the RTL file and line each fact is read from, the
+granularity a toggle class takes, and the condition that retires it. The
+compile-time scope, which decides what enters the database at all, is in the
+same README.
+
+[cols="2,2,3",options="header",]
+|===
+|File |Classes |Fact table
+|`smc_regblock_exclusions.el` |A1 to A11, B1, B7, C1, C3, C4, and the
+reviewed A12 and A13 |README.md, "Exclusion files" and "Exclusions design
+engineering reviewed"
+|`smc_xor_network_exclusions.el` |X1 |README.md, "Exclusion files"
+|`smc_fsm_exclusions.el` |F2 to F9, B2, B4, and the reviewed F10 and F11
+|README.md, "Exclusion files" and "Exclusions design engineering reviewed"
+|`smc_disabled_feature_exclusions.el` |P1 to P31, C5 to C16, D1, D2, A3, A11,
+C4, F3, and the bench classes B6, B8, B9, B12 to B14 |README.md, "Exclusion
+files" and "Why these exclusions"
+|`smc_toggle_module_exclusions.el`, `smc_toggle_instance_exclusions.el` |T1 to
+T12, UNION-ALIAS, EFUSE-IMAGE-COPY, EFUSE-FIELD-MAP-CONST, VERSION-ID-CONST,
+ERR-SLV-CONST, ATOP-ZERO, EXT-IRQ-TIED, PARTIAL-VECTOR |README.md, "Toggle
+granularity" and "Units graded on their ports"
+|`smc_ports_only_exclusions.el` |T2 to T12, line blocks and condition rows
+|README.md, "Units graded on their ports"
+|`smc_group_exclusions.el` |GROUP-VENDORED-I3C |README.md, "Exclusion files"
+|`smc_reviewed_field_exclusions.el` |R1 to R9 |README.md, "Exclusions design
+engineering reviewed"
+|`smc_unreachable.el` |formal unreachability, no per-entry class
+|<<smc-fcov-unreachability-list>>
+|===
+
+Two limitations of the scope itself are stated where they bite and are
+repeated here so no reader credits the figure with more than it covers.
+`cov/config/verilator/smc_cov_scope.vlt` reaches neither
+`vendor/pulp-platform/**` nor `vendor/tenstorrent/tt-hw-debug/**`, because no
+file pattern matches either tree, so both stay in the Verilator denominator
+(README.md, "Known gap in the Verilator scope"). The `.vlt` and the `.hier`
+scope by different mechanisms over different populations and are kept in step
+by hand, so a change to one takes a review of the other.
+
 [[smc-fcov-traceability]]
 === VPLAN to FCOV Traceability
 
