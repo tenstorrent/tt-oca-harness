@@ -57,7 +57,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 94.29,
+      "coverage_total_percent": 94.71,
       "flow": "smc",
       "framework": "cocotb",
       "pass_rate": 97.81,
@@ -65,7 +65,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 36.79,
+      "coverage_total_percent": 36.9,
       "flow": "smc",
       "framework": "uvm",
       "pass_rate": 100.0,
@@ -73,7 +73,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 93.96,
+      "coverage_total_percent": 94.38,
       "flow": "smc",
       "framework": "",
       "pass_rate": 97.85,
@@ -97,7 +97,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-03T14:58:14+00:00",
+  "generated_at": "2026-10-03T15:30:27+00:00",
   "results": [
     {
       "coverage": {
@@ -214,12 +214,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 96.36,
-          "branch": 86.55,
-          "condition": 89.3,
+          "branch": 87.69,
+          "condition": 89.38,
           "fsm_state": 97.49,
           "functional": 98.29,
-          "line": 99.69,
-          "toggle": 92.32,
+          "line": 99.74,
+          "toggle": 94.04,
           "user": 99.5968
         }
       },
@@ -231,12 +231,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 59.89,
-          "branch": 52.48,
-          "condition": 31.62,
+          "branch": 53.17,
+          "condition": 31.65,
           "fsm_state": 4.26,
           "functional": 36.12,
-          "line": 69.9,
-          "toggle": 3.25,
+          "line": 69.93,
+          "toggle": 3.31,
           "user": 23.3333
         }
       },
@@ -248,12 +248,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 93.98,
-          "branch": 86.55,
-          "condition": 89.35,
+          "branch": 87.69,
+          "condition": 89.43,
           "fsm_state": 97.49,
           "functional": 98.29,
-          "line": 99.69,
-          "toggle": 92.34,
+          "line": 99.74,
+          "toggle": 94.06,
           "user": 98.0392
         }
       },
