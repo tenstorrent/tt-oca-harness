@@ -185,7 +185,9 @@ int sha256(const uint8_t *data, uint32_t len, uint8_t *digest) {
     bool fifo_timed_out = false;
 
     // 1. Clear any pending interrupt state.
-    mmio_write32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, 0x7u); // clear all 3 bits
+    mmio_write32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, HMAC__INTR_STATE__HMAC_DONE_bm |
+                                                        HMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                        HMAC__INTR_STATE__HMAC_ERR_bm);
 
     // 2. Configure: SHA-256, no HMAC, no endian swap, no digest swap.
     hmac__CFG_t cfg = {.w = 0};
@@ -260,7 +262,9 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
     if (key_len > 32u) return -1; // IP supports 256-bit key max.
 
     // 1. Clear any pending interrupt state.
-    mmio_write32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, 0x7u);
+    mmio_write32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, HMAC__INTR_STATE__HMAC_DONE_bm |
+                                                        HMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                        HMAC__INTR_STATE__HMAC_ERR_bm);
 
     // 2. Write HMAC key to KEY_0..KEY_7 (before enabling HMAC).
     //    Big-endian per word: key[0] is KEY_0[31:24]. The IP applies
