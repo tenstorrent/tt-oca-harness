@@ -8264,8 +8264,8 @@ Precondition, not graded here.
 . Round 1. `CMD_KEY_LOAD` + `CMD_KEY_TRANSFER` one seeded key to each of the
 eight destinations. The firmware response (success, handle and destination
 echoed) is a precondition; the delivered value is graded in the next step.
-. AES ECB-256 encrypt with `CTRL_SHADOWED.sideload` (CHK-AES). HMAC-SHA256 with
-a different software key in the KEY CSRs (CHK-HMAC). Keyed KMAC256 with
+. AES ECB-256 encrypt with `CTRL_SHADOWED.sideload` (CHK-AES). HMAC-SHA256 (CHK-HMAC)
+with a different software key in the KEY CSRs. Keyed KMAC256 with
 `CFG_SHADOWED.sideload` (CHK-KMAC). The OTBN key-dump program (CHK-OTBN). For
 ABR, `ZEROIZE`, set the KV read enable, wait for the KV status to settle, run
 the KV-fed KEYGEN or ENCAPS, then `ZEROIZE` and run the same operation on the
