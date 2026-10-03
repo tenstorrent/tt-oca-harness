@@ -16,6 +16,16 @@ static void configure_injection(test_context_t *ctx, occp_crc_inject_mode_t head
     ctx->body_crc_err_inject_mode = body_mode;
 }
 
+static void clear_consecutive_error_count(test_context_t *ctx) {
+    uint32_t status = 0;
+    int retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status);
+    if (retval != OCCP_SUCCESS) {
+        simputs("FAIL: Failed to get version command\n");
+        ctx->overall_result = false;
+    }
+    increment_cmd_count(ctx);
+}
+
 static bool run_header_body_combo(test_context_t *ctx, occp_crc_inject_mode_t header_mode,
                                   occp_crc_inject_mode_t body_mode) {
     configure_injection(ctx, header_mode, body_mode);
@@ -118,8 +128,7 @@ int main(void) {
     simputs("-- Case 2: Possibly undetectable header CRC error --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_UNDETECTABLE, OCCP_CRC_INJECT_NONE);
 
-    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
-    execute_random_commands(&ctx, 1);
+    clear_consecutive_error_count(&ctx);
 
     simputs("-- Case 3: Undetectable body CRC error --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_NONE, OCCP_CRC_INJECT_DETECTABLE);
@@ -127,7 +136,7 @@ int main(void) {
     simputs("-- Case 4: Possibly undetectable body CRC error --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_NONE, OCCP_CRC_INJECT_UNDETECTABLE);
 
-    execute_random_commands(&ctx, 1);
+    clear_consecutive_error_count(&ctx);
 
     simputs("-- Case 5: Corrupt header CRC --\n");
     run_header_body_combo(&ctx, OCCP_CORRUPT_CRC, OCCP_CRC_INJECT_NONE);
@@ -136,6 +145,7 @@ int main(void) {
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_NONE, OCCP_CORRUPT_CRC);
 
     reset_injection_config(&ctx);
+    clear_consecutive_error_count(&ctx);
 
     /* CRC-error entries carry no fixed status code, so the SMC status buffer is not
      * validated here. */
