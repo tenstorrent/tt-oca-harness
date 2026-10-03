@@ -62,59 +62,14 @@ cycle while the timer is running. This value is useful for timestamping,
 monitoring, or debugging, and can also be read from the COUNT_LO and
 COUNT_HI registers.
 
-=== Timing Specifications
+[[octs-interface-timing]]
+=== Timing
 
-All input signals are required to meet setup and hold times with respect
-to the rising edge of clk_i.
+The RTL defines no setup, hold or clock-to-output limit, maximum clock
+frequency or frequency ratio between OCTS clock domains. Clock frequency,
+jitter, reset timing and physical timing constraints must come from the
+integration timing specification.
 
-<<octs-timing-requirements-table>> lists the stated setup and hold requirements by
-signal group.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[octs-timing-requirements-table]]
-.OCTS Timing Requirements
-[cols="30,15,15,40",options="header",role="port-reference"]
-|=======================================================================
-|Signal Group |Setup Time |Hold Time |Notes
-|Register Interface |2.0 ns |0.5 ns |AXI4-Lite/APB4 protocol signals
-
-|Synchronization Inputs |N/A |N/A |Edge detection provides internal
-synchronization
-
-|Control Inputs |2.0 ns |0.5 ns |test_en_i, scan_rst_ni,
-timer_cnt_step_i
-
-|Timer Count Output |N/A |N/A |Output signal with 3.0 ns clock-to-output
-delay
-|=======================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-The interface ensures that register outputs are valid within 3.0 ns of a
-rising clock edge, while the timer count output also updates within 3.0
-ns of the clock. Synchronization outputs are generated as pulses with
-programmable widths.
-
-Regarding clock domain crossing, the synchronization protocol relies on
-pulses wide enough to be reliably detected: each pulse should last for
-at least two destination clock cycles, and the maximum supported
-frequency ratio between domains is 10:1.
-
-Pulse events must be separated by at least 10 destination clock cycles.
-Edge detection logic ensures synchronization latency of 2–3 destination
-clock cycles and provides robust protection against metastability (using
-a 2FF synchronizer with closure on all relevant timing), with internal
-logic maintaining the width of each transmitted pulse.
-
-=== Reset Behavior and Initialization
-
-When reset is asserted asynchronously (`rst_ni`), all outputs
+Synchronization inputs cross into `clk_i` as described in <<octs-pulses>>;
+derive the required pulse high and low intervals from the destination clock
+and CDC analysis. Reset behavior is described in <<octs-reset>>.

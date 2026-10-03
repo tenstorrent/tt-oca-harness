@@ -168,13 +168,13 @@ retired ID alone is not proof that valid data was copied.
 
 The names above follow the published register map. The RTL frontend calls the
 configuration `conf`, the ND-enable field `enable_nd`, and the repetition pair
-`reps_2_low/high`; these refer to the same fields. Some generated CONFIG field
-descriptions say "Not used", but the frontend forwards the options described here.
+`reps_2_low/high`; these refer to the same fields.
 
 The frontend requests incrementing AXI bursts and sets the cache attribute to
 modifiable. `CONFIG` supplies decoupling, maximum burst-length and length-reduction
-options. The backend handles alignment and burst splitting; these mechanisms
-do not grant permission to access a filtered or otherwise invalid address.
+options; the `CONFIG` register description gives each field's effect. The backend
+handles alignment and burst splitting; these mechanisms do not grant permission
+to access a filtered or otherwise invalid address.
 
 == Submission and Completion
 
