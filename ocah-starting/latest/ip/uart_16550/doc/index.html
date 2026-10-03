@@ -290,11 +290,12 @@ requires the serializer to be idle. Use TEMT when the final character must have
 left the transmitter before reconfiguration.</p>
 </div>
 <div class="paragraph">
-<p>The receiver synchronizes <code>rx_i</code> and uses a three-sample majority decision at
-16-times-baud sampling. Received parity, framing and break indications accompany
-characters; software reads line status before consuming their data. In FIFO
-mode, an overrun drops the newly received character; in non-FIFO mode an unread
-character can be overwritten in RBR. Frame format supports 5–8 data bits, selectable parity
+<p>The receiver synchronizes <code>rx_i</code> and takes a majority of three consecutive
+<code>clk_i</code> samples, which rejects single-cycle glitches. It then samples each bit
+once, at the bit midpoint timed by the 16-times-baud tick. Received parity,
+framing and break indications accompany characters; software reads line status
+before consuming their data. In FIFO mode, an overrun drops the newly received
+character; in non-FIFO mode an unread character can be overwritten in RBR. Frame format supports 5–8 data bits, selectable parity
 and stop-bit configuration. <code>LCR.SET_BREAK</code> forces the transmit line low.</p>
 </div>
 </div>
@@ -401,8 +402,8 @@ controlled by <code>IER.ELSI</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Receive timeout</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Read RBR to clear the latched timeout. It is generated in
-FIFO mode after roughly four character times without receive-FIFO occupancy
-change. In the current RTL this request is not gated by IER.</p></td>
+FIFO mode when the receive FIFO holds data and its occupancy has not changed for
+roughly four character times. In the current RTL this request is not gated by IER.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
@@ -709,8 +710,9 @@ ECR extended trigger selection and ITR interrupt tests.</p>
 <h3 id="detailed-register-map"><a class="anchor" href="#detailed-register-map"></a><a class="link" href="#detailed-register-map">5.2. Detailed Register Map</a></h3>
 <div class="paragraph">
 <p>The first two register views apply when <code>LCR.DLAB=0</code>; read-only and write-only
-aliases at the same offset are shown separately. The divisor-latch view applies
-when <code>LCR.DLAB=1</code>.</p>
+aliases at the same offset are shown separately. Registers outside offsets
+<code>0x00</code> and <code>0x04</code>, including FCR at <code>0x08</code>, are accessible for either
+<code>LCR.DLAB</code> value. The divisor-latch view applies when <code>LCR.DLAB=1</code>.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
@@ -844,7 +846,7 @@ when <code>LCR.DLAB=1</code>.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2 id="regmap-uart_16550_main_wo">UART 16550 Main Write-Only Address Map</h2>
-<p>Contains the write-only registers accessible only when `LCR.DLAB = 0`.</p>
+<p>Contains the write-only registers. THR is accessible only when `LCR.DLAB = 0`;<br>FCR is writable for either `LCR.DLAB` value.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -862,7 +864,7 @@ when <code>LCR.DLAB=1</code>.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:6</td><td>RCVR_TRIGGER</td><td>W</td><td>0x0</td><td>Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most<br>significant 2 bits, use the `CTRL.RCVR_TRIGGER_MS2B` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
+<tr><td>7:6</td><td>RCVR_TRIGGER</td><td>W</td><td>0x0</td><td>Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most<br>significant 2 bits, use the `ECR.RCVR_TRIGGER_MS2B` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
 <tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>3</td><td>DMA_MODE_SELECT</td><td>W</td><td>0x0</td><td>DMA mode select:<br>* `0` - DMA Mode 0<br>* `1` - DMA Mode 1</td></tr>
 <tr><td>2</td><td>XMIT_FIFO_RESET</td><td>W 1P</td><td>0x0</td><td>Transmitter FIFO Reset. Writing `1` clears the TX FIFO.</td></tr>

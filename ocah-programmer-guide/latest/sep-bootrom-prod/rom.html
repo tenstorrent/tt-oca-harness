@@ -968,8 +968,8 @@ boot decisions.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ICCM</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC0000000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cleared by the ROM ([S16]); the secure BL1 execution
-region, always permitted (<a href="#sec:manifest">OCA Manifest Format and Parsing</a>).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ECC established by the ROM before BL1 runs: at hand-off by
+default, or at [S16]. The secure BL1 execution region, always permitted (<a href="#sec:manifest">OCA Manifest Format and Parsing</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DCCM</p></td>
@@ -1095,8 +1095,9 @@ in reset (<a href="#sec:fuses">Fuse and System State</a>).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x10802000</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">any reset</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Boot progress marker: <code>'COLD'</code> (<code>0x434F4C44</code>) on
-cold boot entry; DV PASS/FAIL codes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Terminal verdict only. The ROM writes only
+<code>0xDEADBEEF</code> (FAIL), when it halts; after a successful hand-off BL1 owns the word (the DV
+<code>bl1_pass_test</code> writes <code>0xACAFACA1</code> PASS or <code>0xDEADBEEF</code> FAIL).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[1]</code></p></td>
@@ -1265,13 +1266,14 @@ read in the flow</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S15]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP SRAM clear</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM zeroed before any external content is loaded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The first <code>SRAM_SCRUB_BYTES</code> of SRAM zeroed (default 0: skipped)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S16]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ICCM clear</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ICCM zeroed for deterministic ECC state</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ICCM ECC established: over BL1 and a pad at hand-off by default, or the
+whole region zeroed here</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
 </tr>
 <tr>
@@ -1355,7 +1357,8 @@ in <code>bl0_state</code></p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S29]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL1 hand-off</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Pre-hand-off self-check, PMP release, jump to BL1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pre-hand-off self-check, ICCM ECC pad past BL1 (default build), PMP
+release, jump to BL1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:handoff">Hand-off to BL1</a></p></td>
 </tr>
 <tr>
@@ -1634,7 +1637,7 @@ outbound path to the SMC responds before the boot flow depends on it. Mismatch i
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S05] ROM identity</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ROM version string and build-time SHA-256 are emitted (see
-<a href="#sec:boot_measurement">Boot Measurement</a>), and the <code>'COLD'</code> marker is written to <code>cold_scratch[0]</code>.</p></td>
+<a href="#sec:boot_measurement">Boot Measurement</a>), and cold-boot entry is reported on the debug console (<code>COLD</code>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S06] straps</p></td>
@@ -1680,13 +1683,16 @@ the NIST reference digest. See requirement below.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S15] SRAM clear</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP SRAM (<code>0x10000000</code>, 256 KiB) zeroed before any external content is
-loaded into it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The first <code>SRAM_SCRUB_BYTES</code> of SEP SRAM (<code>0x10000000</code>, 256 KiB) zeroed.
+The default is 0, so nothing is cleared here; the manifest loader zeroes SRAM between slot
+attempts (<a href="#sec:retry">Retry and Backup Bank</a>).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S16] ICCM clear</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ICCM zeroed (base/size are build-time parameters; deterministic ECC state
-for BL1).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">By default nothing is cleared here: the BL1 copy writes BL1&#8217;s words with
+valid ECC, and the ROM zeroes a pad past its end at hand-off. <code>ROM_ICCM_CLEAR_FULL=1</code> zeroes
+all of ICCM here instead, clearing power-up residue too; <code>ROM_ICCM_CLEAR_ENABLE=0</code> skips both.
+Base and size are build-time parameters.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S17] ROM self-hash</p></td>
@@ -1720,6 +1726,24 @@ result. A mismatch or engine timeout is fatal (<code>ROM_ERR_CRYPTO_SELFTEST_FAI
 <p><a id="req-SEP-ROM-CPU-100"></a><strong>[SEP-ROM-CPU-100]</strong> The ROM shall clear SEP SRAM and ICCM before
 loading any external content, so that no stale or attacker-resident data can survive into the
 validated-boot environment.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><strong>IMPLEMENTATION GAP</strong> — the default build does not meet this requirement. <code>SRAM_SCRUB_BYTES</code>
+defaults to 0, so [S15] clears no SRAM. With the default <code>ROM_ICCM_CLEAR_FULL=0</code>, ICCM is
+written only over BL1&#8217;s image and a pad past its end at hand-off, so power-up residue elsewhere
+in ICCM survives. <code>SRAM_SCRUB_BYTES=0x40000</code> and <code>ROM_ICCM_CLEAR_FULL=1</code> select the full
+clears.</p>
+</div>
+</td>
+</tr>
+</table>
 </div>
 <div class="admonitionblock warning">
 <table>
@@ -5027,10 +5051,10 @@ the last value identifies the current/failing stage.</p></td>
 SMC and forwarded to the platform (OCCP). Strap- and hand-shake-gated (<a href="#sec:smc_sync">SMC Synchronization</a>).</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Progress scratch</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Verdict scratch</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Boot markers (<code>'COLD'</code>) and DV pass/fail codes
-(<code>0xACAFACA1</code> PASS, <code>0xDEADBEEF</code> FAIL).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Terminal verdict only: <code>0xDEADBEEF</code> FAIL from the ROM;
+after hand-off, whatever BL1 writes (<code>0xACAFACA1</code> PASS or <code>0xDEADBEEF</code> FAIL in DV).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Virtual console</p></td>
@@ -6562,6 +6586,14 @@ two-bit field in the hand-off block, not a policy change.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Un-hashed inter-image bytes not zeroed after
 validation (legacy ROM did).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:payload">Payload Loading, Decryption and Verification</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SRAM and ICCM clear before external content</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>gap</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Off by default: <code>SRAM_SCRUB_BYTES=0</code>,
+and ICCM is written only over BL1 and its pad unless <code>ROM_ICCM_CLEAR_FULL=1</code>
+(SEP-ROM-CPU-100).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:cpu_init">CPU Initialization</a></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot measurement</p></td>

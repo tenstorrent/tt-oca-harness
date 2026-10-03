@@ -2896,6 +2896,63 @@
         }
       ],
       "test_pass_rate": 91.67
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-10-02T23:31:34+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 93.64,
+            "branch": 86.58,
+            "condition": 84.69,
+            "fsm_state": 77.37,
+            "functional": 100.0,
+            "line": 94.49,
+            "toggle": 83.28,
+            "user": 96.0168
+          },
+          "flow": "dtp",
+          "framework": "cocotb",
+          "tool": "vcs"
+        },
+        {
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 92.95,
+            "branch": 87.24,
+            "condition": 85.09,
+            "fsm_state": 77.47,
+            "functional": 99.17,
+            "line": 95.15,
+            "toggle": 82.26,
+            "user": 94.7589
+          },
+          "flow": "dtp",
+          "framework": "uvm",
+          "tool": "vcs"
+        },
+        {
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 93.64,
+            "branch": 87.46,
+            "condition": 85.62,
+            "fsm_state": 77.58,
+            "functional": 100.0,
+            "line": 95.28,
+            "toggle": 83.36,
+            "user": 96.0168
+          },
+          "flow": "dtp",
+          "framework": "",
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 100.0
     }
   ]
 }

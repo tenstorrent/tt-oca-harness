@@ -850,13 +850,25 @@ each peripheral&#8217;s default values.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input on 62 of 65
 GPIOs, output on the remaining 3</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART 16550</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_config_pkg::UartTxFifoDepth</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART 16550</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_config_pkg::UartRxFifoDepth</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
 <p>The System Timer OCTS takes no parameters. The eFuse overrides only bus
-widths and interface types. The UART 16550, Log Engine, AVSBus Controller,
-and Telemetry Receiver are configured explicitly through <code>smc_config_pkg</code>,
-but at values equal to their IP defaults.</p>
+widths and interface types. The Log Engine, AVSBus Controller, and Telemetry
+Receiver are configured explicitly through <code>smc_config_pkg</code>, but at values
+equal to their IP defaults.</p>
 </div>
 </div>
 </div>

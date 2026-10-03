@@ -1248,8 +1248,9 @@ salt, and derivation buffers are explicitly cleared.</p>
 </div>
 <div class="paragraph">
 <p>After decryption, the ROM validates the TOC and every image extent, requires a
-usable SEP BL1 entry, verifies each image SHA-256, and clears bytes in gaps
-between described images and after the final image.</p>
+usable SEP BL1 entry, and verifies each image SHA-256. It does not clear the
+bytes in gaps between described images or after the final image; <code>rom.adoc</code>
+lists payload gap zeroing as an open gap.</p>
 </div>
 </div>
 <div class="sect2">

@@ -345,6 +345,20 @@ AXI ID bucket in the fabric demultiplexers and traffic filters</p></td>
 each error subordinate, across all IDs</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_local_xbar_pkg::XbarCfg.MaxMstTrans</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding
+transactions each manager connected to the local AXI4 crossbar
+<code>u_smc_local_xbar</code> can have in flight</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_local_xbar_pkg::XbarCfg.MaxSlvTrans</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding
+transactions each subordinate connected to the local AXI4 crossbar
+<code>u_smc_local_xbar</code> can have in flight</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>AXI4-Lite Network</strong></p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1157,8 +1171,9 @@ latency.</p>
 </div>
 <div class="paragraph">
 <p>Each outbound transaction carries a Source ID identifying its privilege
-level and routing path, plus the AxCACHE value from the alias remap
-configuration (<a href="#smc-source-id-by-traffic-path-table">SMC Source ID by Traffic Path</a>).</p>
+level and routing path (<a href="#smc-source-id-by-traffic-path-table">SMC Source ID by Traffic Path</a>). A
+transaction that hits an alias remap region carries that region&#8217;s AxCACHE
+value; any other keeps the AxCACHE its initiator issued.</p>
 </div>
 <table id="smc-source-id-by-traffic-path-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 8. SMC Source ID by Traffic Path</caption>

@@ -698,7 +698,7 @@
 <tr><td><code>AXI_DATA_WIDTH</code></td><td><code>int unsigned</code></td><td><code>64</code></td><td>Data width of the AXI master port and the backend transfer buffer.</td></tr>
 <tr><td><code>AXI_USER_WIDTH</code></td><td><code>int unsigned</code></td><td><code>12</code></td><td>User-signal width of the AXI master port.</td></tr>
 <tr><td><code>MST_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>3</code></td><td>AXI master ID width; must equal BACKEND_INT_ID_WIDTH + 1.</td></tr>
-<tr><td><code>BACKEND_INT_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>ID width of the backend read and write ports; axi_mux widens it by one bit.</td></tr>
+<tr><td><code>BACKEND_INT_ID_WIDTH</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>ID width of idma_req_t and of the backend read and write ports; axi_mux widens it by one bit.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
