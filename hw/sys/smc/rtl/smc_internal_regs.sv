@@ -427,7 +427,7 @@ module smc_internal_regs #(
     logic filter_reg_aw_select;
 
     stream_throttle #(
-      .MaxNumPending (1)
+      .MaxNumPending(1)
     ) u_outbound_filter_aw_throttle (
       .clk_i       (outbound_filter_clk),
       .rst_ni      (rst_primary_smc_clk_ni),
@@ -620,7 +620,7 @@ module smc_internal_regs #(
     logic filter_reg_aw_select;
 
     stream_throttle #(
-      .MaxNumPending (1)
+      .MaxNumPending(1)
     ) u_inbound_filter_aw_throttle (
       .clk_i       (inbound_filter_clk),
       .rst_ni      (rst_primary_smc_clk_ni),
