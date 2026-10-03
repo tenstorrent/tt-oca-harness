@@ -19,8 +19,8 @@ module log_engine
 ) (
   input  logic                 clk_i,   // System clock, rising-edge triggered.
   input  logic                 rst_ni,  // Active-low reset. Assert asynchronously; deassert
-                                        // synchronously to clk_i. Resets all state machines,
-                                        // counters and the FIFO.
+                                        // synchronously to clk_i. Resets the registers, state
+                                        // machines, counters and the FIFO.
 
   input  csr_axil_req_t        csr_axil_req_i,  // Csr AXI-Lite req (AXI4-Lite Register Interface).
   output csr_axil_resp_t       csr_axil_resp_o,  // Csr AXI-Lite resp.

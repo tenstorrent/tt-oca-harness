@@ -608,7 +608,7 @@ row's EXPECT sentence is worth, read the check.
 
 * OSS SMU Tier A: inbound AxPROT[1] decode via allow_ns=0 (FAB_SMC_029 S9 subset).
 * SEP=1 honest scope: JTAG2AXI filter program + s_axi stimulus only.
-* Commercial S1–S8 (GPIO PoC AXI-Lite exact-match) needs sep_in_master — deferred.
+* Commercial S1–S8 (GPIO AXI-Lite exact-match) needs sep_in_master — deferred.
 
 *Test Procedure*:
 
@@ -4675,7 +4675,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 *Test Coverage*:
 
 * The SMU crossbar connects `smc_out` and `sep_out` to `ext_out` and gives `ext_in` no path there (`hw/sys/smu/doc/index.adoc`), so every outbound transfer is issued by the SMC or the SEP. Without firmware the bench drives two SMC masters: the JTAG2AXI bridge, whose single operation carries the programmed address and uses its size field as AxSIZE (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, "JTAG2AXI single-operation fields"), and the iDMA register frontend, which moves LENGTH bytes from SRC_ADDRESS to DST_ADDRESS (`dma_ctrl.rdl`).
-* Spec gap: neither document states the AxLEN, AxBURST or other fixed request fields these masters drive, and `dma_ctrl.rdl` describes every CONFIG field as "Not used" although the copies below set `enabled_nd` and `src/dst_reduce_len`. Burst lengths, burst types and address-phase counts are recorded as observations, not compared.
+* Spec gap: neither document states the AxLEN, AxBURST or other fixed request fields these masters drive. Burst lengths, burst types and address-phase counts are recorded as observations, not compared.
 * JTAG2AXI writes 1, 2, 4 and 8 bytes at two 56-bit addresses whose upper bits are the `0xAA..` and `0x55..` patterns, outside the SMC local window and the SEP aperture, and 1, 2 and 4 bytes at byte offsets 1, 2, 4, 7 and 6 of one doubleword, and reads each back; each transfer crosses the boundary exactly once with that address and AxSIZE, the responder holds the bytes and the read returns them; AxLEN and AxBURST are recorded.
 * With outbound filter entry 0 passing every address, the iDMA copies a 2 KiB block between two further such addresses; the reads and writes at the boundary together cover the block exactly, and their burst types and longest AxLEN are recorded. The destination holds the source bytes and DONE reports the id the launch read from NEXT_ID.
 * S3 repeats the copy with CONFIG `src_reduce_len` and `dst_reduce_len` set and `max_llen` 0 while the bench responder stalls every AW, W and AR handshake; the copy completes intact, and the number of address phases and their AxLEN are recorded. A second such copy stalls only the write handshakes, 24 cycles each; it completes intact too.
@@ -4941,8 +4941,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * S5: a local-master alias region adds its offset to address bits [55:12] of a request inside `[region_start, region_end)` (`alias_remap` register description). One page at `0x7000_0000`, which the local crossbar sends to the peripheral fabric and which is in neither the SMC window nor the SMU aperture, is remapped by each power of two from 2^32 to 2^55 in turn; each write and read reaches the responder at the remapped address. With `cacheable` set, the write and the read leave with AxCACHE[3:2] high. An offset that wraps the 44-bit page field moves the page down into the SEP view of the SMC SPM, where a word written through the remap reads back both through it and directly. The AP and STEE output remaps put region 0 of their windows at a programmed 512 KiB target (`output_remap` register description), and a write and read there reach the responder at the target.
 * Spec gap: the `alias_remap` description says `cacheable` ties the top two AxCACHE bits high and says nothing of the other two; the checker grades only the top two.
 * S6: a one-shot SLVERR and DECERR from the responder on an outbound read and write each come back as `sberror` 2, and the next access at that address completes.
-* S7: a SEP address in the SMC window goes to the SMC's resources (`hw/sys/sep/doc/fabric.adoc`: "Neighboring SMC resources are accessed through the SMC global aperture"). The size sweep and a 32-bit write and read at every SPM address bit read back through the SEP view of the window. A read and a write in the ECAM region are sent and their `sberror` is recorded as an observation.
-* Spec gap: the SMC map names the ECAM region only as "Remapped regions, either ECAM, M-Mode or XVisor" (`hw/sys/smc/regs/gen/adoc/memory_map.adoc`), and no specification states what an access there answers with no remap programmed; the run records `sberror` 2 for both.
+* S7: a SEP address in the SMC window goes to the SMC's resources (`hw/sys/sep/doc/fabric.adoc`: "Neighboring SMC resources are accessed through the SMC global aperture"). The size sweep and a 32-bit write and read at every SPM address bit read back through the SEP view of the window.
 * S8: no adopter peripheral is attached to the SEP extension port, whose response the SMU port table ties to DECERR when unused (`hw/sys/smu/doc/port_table.adoc`, `sep_external_resp_i`), and the eFuse SHIM control word is the one target in `0x2000_0000`-`0x3FFF_FFFF` that answers (`hw/sys/sep/dv/models/regs/sep_external.rdl`). No external TRNG is connected, and `doc/integrator/src/smu.adoc` ("External TRNG") terminates `ext_trng_axil` at `0x1091_7000`-`0x1091_7FFF` in a DECERR slave then. `sberror` 2 is "a bad address was accessed" (Debug Specification 0.13, `sbcs`). The size sweep, every free address bit of the external aperture and an access back below the walk's base, and every address bit and byte offset of the TRNG window, return `sberror` 2 for both reads and writes.
 * Not claimed: traffic from the SEP load/store unit or DMA (`smu_sep_lsu_fabric_test` runs the load/store unit), and responder backpressure.
 
@@ -4953,7 +4952,7 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 . Open SEP outbound filter entry 1 over the 56-bit space; run the size sweep and the address walk in the SMU aperture, comparing each read and the responder's bytes with the pattern written.
 . Program alias region 0 over the `0x7000_0000` page; for each power of two from 2^32 to 2^55 set the offset, write and read the page, and compare the read and the responder's bytes at the remapped address. Record the AxCACHE of a write and read with `cacheable` clear and set. Set a wrapping offset, write and read through the remap, and read the SPM word directly. Program AP and STEE output remap region 0, write and read region 0, and compare with the responder at the target.
 . Arm a one-shot SLVERR and DECERR on a read and on a write, compare `sberror`, then write and read the address.
-. Run the size sweep and the SPM address walk through the SEP view of the SMC window, and read and write the ECAM region, recording its `sberror`.
+. Run the size sweep and the SPM address walk through the SEP view of the SMC window.
 . Run the size sweep and the address walks in the external and TRNG apertures and compare every `sberror`.
 
 *Checkers*:

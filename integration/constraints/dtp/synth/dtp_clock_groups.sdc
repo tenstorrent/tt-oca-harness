@@ -1,0 +1,1 @@
+../../../../hw/sys/dtp/synth/dtp_clock_groups.sdc

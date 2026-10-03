@@ -732,7 +732,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap1 @ 0x158;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match.";
         regwidth = 64;
 
         field {
@@ -742,7 +742,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMask0Lo @ 0x160;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match.";
         regwidth = 64;
 
         field {
@@ -752,7 +752,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMatch0Lo @ 0x168;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match.";
         regwidth = 64;
 
         field {
@@ -762,7 +762,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMask1Lo @ 0x170;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match.";
         regwidth = 64;
 
         field {
@@ -955,7 +955,7 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal";
+            desc = "Self-filter delay, in CLA clock cycles, for the CLA's own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered.";
         } ClaChainLoopDelay[13:7] = 0x36;
         field {
             sw = rw;
@@ -979,6 +979,7 @@ addrmap dfd_cla {
         } ClaLock[63:63] = 0x0;
     } CDbgClaCtrlStatus @ 0x190;
     reg {
+        desc = "Mode, ID, fine-grain time enable and lane selects for the CLA debug-bus mux, which builds the four 16-bit lanes of the CLA's 64-bit debug bus from 16 input segments. The mux ID is 0: the mode is taken while DbmId is 0, and the lane selects while DbmId is 0 and DbmMode is 1.";
         regwidth = 64;
 
         field {
@@ -1003,38 +1004,42 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...";
+            desc = "Binary segment select for lane 0 of the CLA debug bus, bits [15:0]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg0; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects the fine-grain time counter, and k from 1 to 13 selects Seg(k+2).";
         } Muxselseg0[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...";
+            desc = "Binary segment select for lane 1 of the CLA debug bus, bits [31:16]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg1; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg0, and k from 1 to 13 selects Seg(k+2).";
         } Muxselseg1[27:22] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...";
+            desc = "Binary segment select for lane 2 of the CLA debug bus, bits [47:32]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg2; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg1, and k from 1 to 13 selects Seg(k+2).";
         } Muxselseg2[33:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...";
+            desc = "Binary segment select for lane 3 of the CLA debug bus, bits [63:48]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg3; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg2, and k from 1 to 13 selects Seg(k+2).";
         } Muxselseg3[39:34] = 0x0;
         field {
             sw = rw;
             hw = r;
+            desc = "No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.";
         } Muxselseg4[45:40] = 0x0;
         field {
             sw = rw;
             hw = r;
+            desc = "No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.";
         } Muxselseg5[51:46] = 0x0;
         field {
             sw = rw;
             hw = r;
+            desc = "No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.";
         } Muxselseg6[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
+            desc = "No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.";
         } Muxselseg7[63:58] = 0x0;
     } CDbgMuxSelLo @ 0x198;
     reg {
@@ -1139,7 +1144,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode1Eap0Lo @ 0x1F0;
     reg {
-        desc = "debug Bus Value when Node1 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node1 Eap1 Trigger is met.";
         regwidth = 64;
 
         field {
@@ -1148,7 +1153,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode1Eap1Lo @ 0x1F8;
     reg {
-        desc = "debug Bus Value when Node0 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node2 Eap0 Trigger is met.";
         regwidth = 64;
 
         field {
@@ -1157,7 +1162,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode2Eap0Lo @ 0x200;
     reg {
-        desc = "debug Bus Value when Node0 Eap1 Trigger is met.";
+        desc = "debug Bus Value when Node2 Eap1 Trigger is met.";
         regwidth = 64;
 
         field {
@@ -1166,7 +1171,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode2Eap1Lo @ 0x208;
     reg {
-        desc = "debug Bus Value when Node1 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node3 Eap0 Trigger is met.";
         regwidth = 64;
 
         field {
@@ -1175,7 +1180,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode3Eap0Lo @ 0x210;
     reg {
-        desc = "debug Bus Value when Node1 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node3 Eap1 Trigger is met.";
         regwidth = 64;
 
         field {
@@ -1193,7 +1198,7 @@ addrmap dfd_cla {
         } TimeMatchVal[63:0] = 0x0;
     } CDbgClaTimeMatch @ 0x220;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match.";
         regwidth = 64;
 
         field {
@@ -1203,7 +1208,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMask2Lo @ 0x228;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match.";
         regwidth = 64;
 
         field {
@@ -1213,7 +1218,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMatch2Lo @ 0x230;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match.";
         regwidth = 64;
 
         field {
@@ -1223,7 +1228,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMask3Lo @ 0x238;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match.";
         regwidth = 64;
 
         field {
@@ -2051,7 +2056,7 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = rw;
-            desc = "When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register";
+            desc = "When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).";
         } TsCapture[9:9] = 0x0;
         field {
             sw = rw;
@@ -2060,13 +2065,13 @@ addrmap dfd_cla {
         } Rsvd1[63:10] = 0x0;
     } CDbgClaTimestampConfig @ 0x300;
     reg {
-        desc = "Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.";
+        desc = "Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).";
         regwidth = 64;
 
         field {
             sw = rw;
             hw = r;
-            desc = "Timestamp offset value";
+            desc = "Timestamp offset value. No effect in the SMC.";
         } Offset[55:0] = 0x0;
         field {
             sw = rw;
@@ -2075,7 +2080,7 @@ addrmap dfd_cla {
         } Rsvd0[63:56] = 0x0;
     } CDbgClaTimestampOffset @ 0x308;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2085,7 +2090,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMask0Hi @ 0x400;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2095,7 +2100,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMatch0Hi @ 0x408;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2105,7 +2110,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMask1Hi @ 0x410;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2115,7 +2120,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMatch1Hi @ 0x418;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2125,7 +2130,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMask2Hi @ 0x420;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2135,7 +2140,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMatch2Hi @ 0x428;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2145,7 +2150,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMask3Hi @ 0x430;
     reg {
-        desc = "Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.";
+        desc = "Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2155,17 +2160,18 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMatch3Hi @ 0x438;
     reg {
+        desc = "No effect in the SMC. The CLA debug-bus mux has four output lanes and takes its mode, ID, fine-grain time enable and lane selects from CDbgMuxSelLo.";
         regwidth = 64;
 
         field {
             sw = rw;
             hw = r;
-            desc = "Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode";
+            desc = "No effect in the SMC.";
         } Dbmmode[1:0] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Unique DBM ID of the DBM instance";
+            desc = "No effect in the SMC.";
         } Dbmid[7:2] = 0x0;
         field {
             sw = rw;
@@ -2174,42 +2180,46 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...";
+            desc = "No effect in the SMC.";
         } Muxselseg8[21:16] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...";
+            desc = "No effect in the SMC.";
         } Muxselseg9[27:22] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...";
+            desc = "No effect in the SMC.";
         } Muxselseg10[33:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...";
+            desc = "No effect in the SMC.";
         } Muxselseg11[39:34] = 0x0;
         field {
             sw = rw;
             hw = r;
+            desc = "No effect in the SMC.";
         } Muxselseg12[45:40] = 0x0;
         field {
             sw = rw;
             hw = r;
+            desc = "No effect in the SMC.";
         } Muxselseg13[51:46] = 0x0;
         field {
             sw = rw;
             hw = r;
+            desc = "No effect in the SMC.";
         } Muxselseg14[57:52] = 0x0;
         field {
             sw = rw;
             hw = r;
+            desc = "No effect in the SMC.";
         } Muxselseg15[63:58] = 0x0;
     } CDbgMuxSelHi @ 0x440;
     reg {
-        desc = "3 registers to configure \"transition event\". This register is to select the signals of interest using a mask.";
+        desc = "3 registers to configure \"transition event\". This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2218,7 +2228,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgTransitionMaskHi @ 0x448;
     reg {
-        desc = "3 registers to configure \"transition event\". The event is triggered on transition from Value A to Value B. This register specifies Value A.";
+        desc = "3 registers to configure \"transition event\". The event is triggered on transition from Value A to Value B. This register specifies Value A. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2227,7 +2237,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgTransitionFromValueHi @ 0x450;
     reg {
-        desc = "3 registers to configure \"transition event\". The event is triggered on transition from Value A to Value B. This register specifies Value B.";
+        desc = "3 registers to configure \"transition event\". The event is triggered on transition from Value A to Value B. This register specifies Value B. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2236,7 +2246,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgTransitionToValueHi @ 0x458;
     reg {
-        desc = "2 registers to configure \"ones count\" event. This register is to select the signals of interest using a mask.";
+        desc = "2 registers to configure \"ones count\" event. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2245,7 +2255,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgOnesCountMaskHi @ 0x460;
     reg {
-        desc = "Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.";
+        desc = "Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2254,7 +2264,7 @@ addrmap dfd_cla {
         } Mask[63:0] = 0x0;
     } CDbgAnyChangeHi @ 0x468;
     reg {
-        desc = "debug Bus Value when Node0 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node0 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2263,7 +2273,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode0Eap0Hi @ 0x470;
     reg {
-        desc = "debug Bus Value when Node0 Eap1 Trigger is met.";
+        desc = "debug Bus Value when Node0 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2272,7 +2282,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode0Eap1Hi @ 0x478;
     reg {
-        desc = "debug Bus Value when Node1 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node1 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2281,7 +2291,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode1Eap0Hi @ 0x480;
     reg {
-        desc = "debug Bus Value when Node1 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node1 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2290,7 +2300,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode1Eap1Hi @ 0x488;
     reg {
-        desc = "debug Bus Value when Node0 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node2 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2299,7 +2309,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode2Eap0Hi @ 0x490;
     reg {
-        desc = "debug Bus Value when Node0 Eap1 Trigger is met.";
+        desc = "debug Bus Value when Node2 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2308,7 +2318,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode2Eap1Hi @ 0x498;
     reg {
-        desc = "debug Bus Value when Node1 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node3 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2317,7 +2327,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode3Eap0Hi @ 0x4A0;
     reg {
-        desc = "debug Bus Value when Node1 Eap0 Trigger is met.";
+        desc = "debug Bus Value when Node3 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2326,7 +2336,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode3Eap1Hi @ 0x4A8;
     reg {
-        desc = "debug Bus Value when Node0 Eap2 Trigger is met.";
+        desc = "debug Bus Value when Node0 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2335,7 +2345,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode0Eap2Hi @ 0x4B0;
     reg {
-        desc = "debug Bus Value when Node0 Eap3 Trigger is met.";
+        desc = "debug Bus Value when Node0 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2344,7 +2354,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode0Eap3Hi @ 0x4B8;
     reg {
-        desc = "debug Bus Value when Node1 Eap2 Trigger is met.";
+        desc = "debug Bus Value when Node1 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2353,7 +2363,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode1Eap2Hi @ 0x4C0;
     reg {
-        desc = "debug Bus Value when Node1 Eap3 Trigger is met.";
+        desc = "debug Bus Value when Node1 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2362,7 +2372,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode1Eap3Hi @ 0x4C8;
     reg {
-        desc = "debug Bus Value when Node2 Eap2 Trigger is met.";
+        desc = "debug Bus Value when Node2 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2371,7 +2381,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode2Eap2Hi @ 0x4D0;
     reg {
-        desc = "debug Bus Value when Node2 Eap3 Trigger is met.";
+        desc = "debug Bus Value when Node2 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2380,7 +2390,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode2Eap3Hi @ 0x4D8;
     reg {
-        desc = "debug Bus Value when Node3 Eap2 Trigger is met.";
+        desc = "debug Bus Value when Node3 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2389,7 +2399,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalSnapshotNode3Eap2Hi @ 0x4E0;
     reg {
-        desc = "debug Bus Value when Node3 Eap3 Trigger is met.";
+        desc = "debug Bus Value when Node3 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.";
         regwidth = 64;
 
         field {
@@ -2428,7 +2438,7 @@ addrmap dfd_cla {
         } Mask[63:1] = 0x0;
     } CDbgLfsrMask @ 0x4F8;
     reg {
-        desc = "Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.";
+        desc = "Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register. Never captured in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).";
         regwidth = 64;
 
         field {
@@ -2518,7 +2528,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgCompare3MaskLo @ 0x540;
     reg {
-        desc = "Value for arithmetic comparison.";
+        desc = "Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2528,7 +2538,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgCompare0Hi @ 0x548;
     reg {
-        desc = "Value to mask the arithmetic comparison.";
+        desc = "Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2538,7 +2548,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgCompare0MaskHi @ 0x550;
     reg {
-        desc = "Value for arithmetic comparison.";
+        desc = "Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2548,7 +2558,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgCompare1Hi @ 0x558;
     reg {
-        desc = "Value to mask the arithmetic comparison.";
+        desc = "Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2558,7 +2568,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgCompare1MaskHi @ 0x560;
     reg {
-        desc = "Value for arithmetic comparison.";
+        desc = "Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2568,7 +2578,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgCompare2Hi @ 0x568;
     reg {
-        desc = "Value to mask the arithmetic comparison.";
+        desc = "Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2578,7 +2588,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgCompare2MaskHi @ 0x570;
     reg {
-        desc = "Value for arithmetic comparison.";
+        desc = "Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {
@@ -2588,7 +2598,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgCompare3Hi @ 0x578;
     reg {
-        desc = "Value to mask the arithmetic comparison.";
+        desc = "Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.";
         regwidth = 64;
 
         field {

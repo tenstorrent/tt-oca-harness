@@ -2827,8 +2827,7 @@ c_dbg_signal_mask0_lo:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000160'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x2) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2849,8 +2848,7 @@ c_dbg_signal_mask0_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000400'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x2) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2870,8 +2868,7 @@ c_dbg_signal_match0_lo:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000168'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x2) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2892,8 +2889,7 @@ c_dbg_signal_match0_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000408'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x2) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2913,8 +2909,7 @@ c_dbg_signal_mask1_lo:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000170'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x4) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2935,8 +2930,7 @@ c_dbg_signal_mask1_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000410'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x4) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2956,8 +2950,7 @@ c_dbg_signal_match1_lo:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000178'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x4) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2978,8 +2971,7 @@ c_dbg_signal_match1_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000418'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x4) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2999,8 +2991,7 @@ c_dbg_signal_mask2_lo:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000228'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x1C) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3021,8 +3012,7 @@ c_dbg_signal_mask2_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000420'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x1C) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3042,8 +3032,7 @@ c_dbg_signal_match2_lo:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000230'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x1C) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3064,8 +3053,7 @@ c_dbg_signal_match2_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000428'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x1C) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3085,8 +3073,7 @@ c_dbg_signal_mask3_lo:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000238'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x1D) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3107,8 +3094,7 @@ c_dbg_signal_mask3_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000430'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x1D) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3128,8 +3114,7 @@ c_dbg_signal_match3_lo:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000240'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x1D) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3150,8 +3135,7 @@ c_dbg_signal_match3_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000438'
-    DESCRIPTION: Used to define debug bus match event. Match event (0x1D) is triggered
-      when debug_bus & mask = match.
+    DESCRIPTION: "Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3605,8 +3589,7 @@ c_dbg_cla_ctrl_status:
     FIELDS_RANGE: '13:7'
     RESET_VALUE: '36'
     LEGAL_VALUE: ''
-    DESCRIPTION: "Creates a window in which we don\u2019t forward the incoming Xtrigger\
-      \ and Clock_Halt signal"
+    DESCRIPTION: "Self-filter delay, in CLA clock cycles, for the CLA's own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3652,7 +3635,7 @@ c_dbg_mux_sel_lo:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000198'
-    DESCRIPTION: ''
+    DESCRIPTION: "Mode, ID, fine-grain time enable and lane selects for the CLA debug-bus mux, which builds the four 16-bit lanes of the CLA's 64-bit debug bus from 16 input segments. The mux ID is 0: the mode is taken while DbmId is 0, and the lane selects while DbmId is 0 and DbmMode is 1."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3661,7 +3644,7 @@ c_dbg_mux_sel_lo:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3671,7 +3654,7 @@ c_dbg_mux_sel_lo:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3681,7 +3664,7 @@ c_dbg_mux_sel_lo:
     FIELDS_RANGE: '51:46'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3691,7 +3674,7 @@ c_dbg_mux_sel_lo:
     FIELDS_RANGE: '45:40'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3701,9 +3684,7 @@ c_dbg_mux_sel_lo:
     FIELDS_RANGE: '39:34'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Mux Select Bits for Lane 3. Split debug bus into 16 bit segments.
-      Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3=
-      Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...
+    DESCRIPTION: "Binary segment select for lane 3 of the CLA debug bus, bits [63:48]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg3; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg2, and k from 1 to 13 selects Seg(k+2)."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3713,9 +3694,7 @@ c_dbg_mux_sel_lo:
     FIELDS_RANGE: '33:28'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Mux Select Bits for Lane 2. Split debug bus into 16 bit segments.
-      Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2=
-      Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...
+    DESCRIPTION: "Binary segment select for lane 2 of the CLA debug bus, bits [47:32]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg2; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg1, and k from 1 to 13 selects Seg(k+2)."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3725,9 +3704,7 @@ c_dbg_mux_sel_lo:
     FIELDS_RANGE: '27:22'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Mux Select Bits for Lane 1. Split debug bus into 16 bit segments.
-      Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1=
-      Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...
+    DESCRIPTION: "Binary segment select for lane 1 of the CLA debug bus, bits [31:16]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg1; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg0, and k from 1 to 13 selects Seg(k+2)."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3737,9 +3714,7 @@ c_dbg_mux_sel_lo:
     FIELDS_RANGE: '21:16'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Mux Select Bits for Lane 0. Split debug bus into 16 bit segments.
-      Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0
-      = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...
+    DESCRIPTION: "Binary segment select for lane 0 of the CLA debug bus, bits [15:0]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg0; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects the fine-grain time counter, and k from 1 to 13 selects Seg(k+2)."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3792,7 +3767,7 @@ c_dbg_mux_sel_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000440'
-    DESCRIPTION: ''
+    DESCRIPTION: "No effect in the SMC. The CLA debug-bus mux has four output lanes and takes its mode, ID, fine-grain time enable and lane selects from CDbgMuxSelLo."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -3801,7 +3776,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '63:58'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3811,7 +3786,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '57:52'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3821,7 +3796,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '51:46'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3831,7 +3806,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '45:40'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: ''
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3841,9 +3816,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '39:34'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Mux Select Bits for Lane 3. Split debug bus into 16 bit segments.
-      Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3=
-      Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3853,9 +3826,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '33:28'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Mux Select Bits for Lane 2. Split debug bus into 16 bit segments.
-      Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2=
-      Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3865,9 +3836,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '27:22'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Mux Select Bits for Lane 1. Split debug bus into 16 bit segments.
-      Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1=
-      Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3877,9 +3846,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '21:16'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Mux Select Bits for Lane 0. Split debug bus into 16 bit segments.
-      Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0
-      = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3899,7 +3866,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '7:2'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Unique DBM ID of the DBM instance
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -3909,8 +3876,7 @@ c_dbg_mux_sel_hi:
     FIELDS_RANGE: '1:0'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: 'Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output
-      mode, 3: Toggle Mode'
+    DESCRIPTION: "No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -4163,8 +4129,7 @@ c_dbg_transition_mask_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000448'
-    DESCRIPTION: 3 registers to configure "transition event". This register is to
-      select the signals of interest using a mask.
+    DESCRIPTION: "3 registers to configure \"transition event\". This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -4206,8 +4171,7 @@ c_dbg_transition_from_value_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000450'
-    DESCRIPTION: 3 registers to configure "transition event". The event is triggered
-      on transition from Value A to Value B. This register specifies Value A.
+    DESCRIPTION: "3 registers to configure \"transition event\". The event is triggered on transition from Value A to Value B. This register specifies Value A. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -4249,8 +4213,7 @@ c_dbg_transition_to_value_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000458'
-    DESCRIPTION: 3 registers to configure "transition event". The event is triggered
-      on transition from Value A to Value B. This register specifies Value B.
+    DESCRIPTION: "3 registers to configure \"transition event\". The event is triggered on transition from Value A to Value B. This register specifies Value B. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -4291,8 +4254,7 @@ c_dbg_ones_count_mask_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000460'
-    DESCRIPTION: 2 registers to configure "ones count" event. This register is to
-      select the signals of interest using a mask.
+    DESCRIPTION: "2 registers to configure \"ones count\" event. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -4355,8 +4317,7 @@ c_dbg_any_change_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000468'
-    DESCRIPTION: Event triggered when a subset of debug signals change. The mask is
-      used to select the subset of the debug signals.
+    DESCRIPTION: "Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -4396,7 +4357,7 @@ c_dbg_signal_snapshot_node0_eap0_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000470'
-    DESCRIPTION: debug Bus Value when Node0 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node0 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4435,7 +4396,7 @@ c_dbg_signal_snapshot_node0_eap1_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000478'
-    DESCRIPTION: debug Bus Value when Node0 Eap1 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node0 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4474,7 +4435,7 @@ c_dbg_signal_snapshot_node0_eap2_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004B0'
-    DESCRIPTION: debug Bus Value when Node0 Eap2 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node0 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4513,7 +4474,7 @@ c_dbg_signal_snapshot_node0_eap3_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004B8'
-    DESCRIPTION: debug Bus Value when Node0 Eap3 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node0 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4552,7 +4513,7 @@ c_dbg_signal_snapshot_node1_eap0_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000480'
-    DESCRIPTION: debug Bus Value when Node1 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node1 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4571,7 +4532,7 @@ c_dbg_signal_snapshot_node1_eap1_lo:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0001F8'
-    DESCRIPTION: debug Bus Value when Node1 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node1 Eap1 Trigger is met."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4591,7 +4552,7 @@ c_dbg_signal_snapshot_node1_eap1_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000488'
-    DESCRIPTION: debug Bus Value when Node1 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node1 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4630,7 +4591,7 @@ c_dbg_signal_snapshot_node1_eap2_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004C0'
-    DESCRIPTION: debug Bus Value when Node1 Eap2 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node1 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4669,7 +4630,7 @@ c_dbg_signal_snapshot_node1_eap3_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004C8'
-    DESCRIPTION: debug Bus Value when Node1 Eap3 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node1 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4688,7 +4649,7 @@ c_dbg_signal_snapshot_node2_eap0_lo:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000200'
-    DESCRIPTION: debug Bus Value when Node0 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node2 Eap0 Trigger is met."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4708,7 +4669,7 @@ c_dbg_signal_snapshot_node2_eap0_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000490'
-    DESCRIPTION: debug Bus Value when Node0 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node2 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4727,7 +4688,7 @@ c_dbg_signal_snapshot_node2_eap1_lo:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000208'
-    DESCRIPTION: debug Bus Value when Node0 Eap1 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node2 Eap1 Trigger is met."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4747,7 +4708,7 @@ c_dbg_signal_snapshot_node2_eap1_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000498'
-    DESCRIPTION: debug Bus Value when Node0 Eap1 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node2 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4785,7 +4746,7 @@ c_dbg_signal_snapshot_node2_eap2_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004D0'
-    DESCRIPTION: debug Bus Value when Node2 Eap2 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node2 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4824,7 +4785,7 @@ c_dbg_signal_snapshot_node2_eap3_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004D8'
-    DESCRIPTION: debug Bus Value when Node2 Eap3 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node2 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4843,7 +4804,7 @@ c_dbg_signal_snapshot_node3_eap0_lo:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000210'
-    DESCRIPTION: debug Bus Value when Node1 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node3 Eap0 Trigger is met."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4863,7 +4824,7 @@ c_dbg_signal_snapshot_node3_eap0_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004A0'
-    DESCRIPTION: debug Bus Value when Node1 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node3 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4882,7 +4843,7 @@ c_dbg_signal_snapshot_node3_eap1_lo:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x000218'
-    DESCRIPTION: debug Bus Value when Node1 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node3 Eap1 Trigger is met."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4902,7 +4863,7 @@ c_dbg_signal_snapshot_node3_eap1_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004A8'
-    DESCRIPTION: debug Bus Value when Node1 Eap0 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node3 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4941,7 +4902,7 @@ c_dbg_signal_snapshot_node3_eap2_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004E0'
-    DESCRIPTION: debug Bus Value when Node3 Eap2 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node3 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -4980,7 +4941,7 @@ c_dbg_signal_snapshot_node3_eap3_hi:
     TYPE: CR_DEBUG_MUX
     SUB_CATEGORY: ''
     ADDRESS: '0x0004E8'
-    DESCRIPTION: debug Bus Value when Node3 Eap3 Trigger is met.
+    DESCRIPTION: "debug Bus Value when Node3 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus."
     RESET_PORT: reset_n_warm_ovrride
     HW_WRITE: CLA
     SW_TYPE: WARL
@@ -5137,7 +5098,7 @@ c_dbg_cla_timestamp_config:
     FIELDS_RANGE: '9:9'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: "When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register"
+    DESCRIPTION: "When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0)."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -5170,7 +5131,7 @@ c_dbg_cla_timestamp_offset:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000308'
-    DESCRIPTION: Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.
+    DESCRIPTION: "Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0)."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: ''
@@ -5189,7 +5150,7 @@ c_dbg_cla_timestamp_offset:
     FIELDS_RANGE: '55:0'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Timestamp offset value
+    DESCRIPTION: "Timestamp offset value. No effect in the SMC."
     RESET_PORT: ''
     SW_WRITE: W
     SW_READ: R
@@ -5274,9 +5235,7 @@ c_dbg_timestamp_capture:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000500'
-    DESCRIPTION: Captured timestamp upper bits. When ts_capture is set in the timestamp
-      config register, a cross trigger 0 event captures the timestamp upper bits into
-      this register.
+    DESCRIPTION: "Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register. Never captured in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0)."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R
@@ -5438,7 +5397,7 @@ c_dbg_compare0_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000548'
-    DESCRIPTION: 'Value for arithmetic comparison.'
+    DESCRIPTION: "Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R
@@ -5456,7 +5415,7 @@ c_dbg_compare0_mask_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000550'
-    DESCRIPTION: 'Value to mask the arithmetic comparison.'
+    DESCRIPTION: "Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R
@@ -5474,7 +5433,7 @@ c_dbg_compare1_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000558'
-    DESCRIPTION: 'Value for arithmetic comparison.'
+    DESCRIPTION: "Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R
@@ -5492,7 +5451,7 @@ c_dbg_compare1_mask_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000560'
-    DESCRIPTION: 'Value to mask the arithmetic comparison.'
+    DESCRIPTION: "Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R
@@ -5510,7 +5469,7 @@ c_dbg_compare2_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000568'
-    DESCRIPTION: 'Value for arithmetic comparison.'
+    DESCRIPTION: "Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R
@@ -5528,7 +5487,7 @@ c_dbg_compare2_mask_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000570'
-    DESCRIPTION: 'Value to mask the arithmetic comparison.'
+    DESCRIPTION: "Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R
@@ -5546,7 +5505,7 @@ c_dbg_compare3_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000578'
-    DESCRIPTION: 'Value for arithmetic comparison.'
+    DESCRIPTION: "Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R
@@ -5564,7 +5523,7 @@ c_dbg_compare3_mask_hi:
     TYPE: CLA
     SUB_CATEGORY: ''
     ADDRESS: '0x000580'
-    DESCRIPTION: 'Value to mask the arithmetic comparison.'
+    DESCRIPTION: "Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used."
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_READ: R

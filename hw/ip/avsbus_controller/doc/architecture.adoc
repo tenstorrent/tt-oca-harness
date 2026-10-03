@@ -36,18 +36,28 @@ readback FIFO.
 
 Retries are automatic. A slave acknowledgment of 1 (resource unavailable) or 2
 (bad CRC) causes the master to resend the command, up to
-`AVS_CFG_0.MAX_RETRIES` times; exhausting that budget raises
-`MAX_RETRIES_ATTEMPTED_INT`. Setting `MAX_RETRIES` to 0 suppresses retries
-altogether, and the failing response is delivered to software instead. A reply
-whose frame valid bit is set means the target did not respond at all and
-raises `SLAVE_UNRESPONSIVE_INT`. There is no separate programmable response
-timeout.
+`AVS_CFG_0.MAX_RETRIES` times after the original attempt. If the last retry
+also fails, the failing response is delivered to software and
+`MAX_RETRIES_ATTEMPTED_INT` is raised. Setting `MAX_RETRIES` to 0 suppresses
+both the retries and that interrupt; the failing response is delivered to
+software instead. A reply whose frame valid bit is set means the target did not
+respond at all and raises `SLAVE_UNRESPONSIVE_INT`. There is no separate
+programmable response timeout.
 
-The master also issues periodic slave resync operations, holding `avs_mdata_o`
-high for 34 AVS clock cycles. `AVS_CFG_0.RESYNC_INTERVAL` sets the interval in
-register-clock cycles, and `AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION` requests
-one immediately. Both take effect three cycles later, after synchronization
-into the AVS clock domain.
+The master also issues periodic slave resync operations. The FSM stays in
+`AVS_SLAVE_RESYNC` for 35 `avs_clk` cycles, while its resync counter runs from
+0 to 34, and holds `avs_mdata_o` high throughout. `avs_mdata_o` is also high in
+the cycles around that state, through idle or the receive half of a retry
+beforehand and through the launch cycle afterwards, so the high period on the
+pin is longer than the resync state itself.
+
+`AVS_CFG_0.RESYNC_INTERVAL` is the number of `clk_reg_i` cycles the register
+domain counts, from when it observes the end of the previous resync, before it
+requests the next one. `AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION` requests one
+immediately. Either request is registered in the `clk_reg_i` domain and
+crosses into the AVS domain through a three-stage `avs_clk` synchronizer. The
+master stops launching new commands once it sees the request, and starts the
+resync from idle after the frame in flight and its reply complete.
 
 === Clock Generation and Management
 
@@ -81,7 +91,7 @@ afterwards.
 Power is saved at two levels: `AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE` gates the AVS
 clock whenever the bus is idle, and `TURN_OFF_ALL_PREMUX_CLOCKS` gates the
 clocks entering the mux. Restarting a gated AVS clock always begins with a
-34-cycle slave resync.
+slave resync.
 
 === CRC Verification Engine
 
@@ -113,8 +123,8 @@ register clock domain
 
 |Occupancy |`AVS_FIFOS_STATUS.CMD_FIFO_*` |`AVS_FIFOS_STATUS.READBACK_FIFO_*`
 
-|Overrun behaviour |A write to `AVS_CMD` when full is dropped and raises
-`CMD_FIFO_OVERFLOW_INT` |A response received when full is dropped and raises
+|Overrun behaviour |A write to `AVS_CMD` when full is dropped, completes with
+an error response and raises `CMD_FIFO_OVERFLOW_INT` |A response received when full is dropped and raises
 `READBACK_OVERFLOW_INT`
 |=====================================================================================
 
@@ -157,8 +167,8 @@ sources are masked out of reset.
 
 ==== Command Path
 
-1.  Software writes `AVS_CMD`; the 32-bit word enters the command FIFO. The
-write is dropped if the FIFO is full.
+1.  Software writes `AVS_CMD`; the 32-bit word enters the command FIFO. If the
+FIFO is full, the write is dropped and completes with an error response.
 2.  The protocol FSM pops a command, builds the master subframe as preamble,
 `AVS_CMD[29:3]` and CRC-3, and shifts it out on `avs_mdata_o`.
 3.  The target's reply shifts in on `avs_sdata_i` during the following
@@ -168,14 +178,15 @@ subframe.
 the retry logic resends the command.
 5.  Software reads `AVS_READBACK`, which pops the readback FIFO.
 
-Because writes to a full command FIFO are silently dropped, software that
-queues commands in a burst should check `AVS_NORMAL_STATUS.CMD_FIFO_FULL` or
-`AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS` first, or enable
-`CMD_FIFO_OVERFLOW_INT`.
+Because a write to a full command FIFO is dropped, software that queues
+commands in a burst should check `AVS_NORMAL_STATUS.CMD_FIFO_FULL` or
+`AVS_FIFOS_STATUS.CMD_FIFO_VACANT_SLOTS` first, or detect the drop from the
+write's error response or from `CMD_FIFO_OVERFLOW_INT`.
 
 ==== Response Inspection
 
-`AVS_READBACK` is the normal path and advances the FIFO on every read.
+`AVS_READBACK` is the normal path and advances the FIFO on every read that
+finds it non-empty; a read of an empty FIFO returns 0 with an error response.
 `AVS_DEBUG_READBACK` mirrors the top of the FIFO without advancing it, and
 reads 0xFFFFFFFF when the FIFO is empty. `AVS_LATEST_SLAVE_SUBFRAME` holds the
 most recent valid subframe regardless of FIFO state, which is what to read
@@ -187,8 +198,10 @@ several commands ago.
 Two domains carry functional logic. The register domain, clocked by
 `clk_reg_i`, holds the AXI4-Lite bridge, the register file, the command FIFO
 write side, the readback FIFO read side and interrupt generation. The AVS
-domain, clocked by the generated `avs_clock_o`, holds the protocol FSM, the
-shift registers and the CRC engines.
+domain, clocked by the generated `avs_clk`, holds the protocol FSM, the shift
+registers and the CRC engines. `avs_clock_o` is `avs_clk` after the idle clock
+gate, so the FSM keeps running while `STOP_AVS_CLOCK_ON_IDLE` holds the pin
+clock stopped.
 
 FIFO pointers cross between the domains as Gray codes. Individual control and
 status bits cross through `prim_sync3` three-stage synchronizers, and pulses
@@ -208,7 +221,8 @@ resynchronized to `clk_reg_i`. The states, in bit order from 0, are (<<avsbus-pr
 
 |0 |AVS_RESET |Out of reset, before the first resync
 
-|1 |AVS_SLAVE_RESYNC |Holding `avs_mdata_o` high for 34 cycles
+|1 |AVS_SLAVE_RESYNC |Holding `avs_mdata_o` high for 35 cycles while the
+resync counter runs from 0 to 34
 
 |2 |AVS_LAUNCH_FRAME_POST_RESYNC |First command launch after a resync
 
@@ -271,16 +285,20 @@ condition.
 |Bad data, data type or selector acknowledgment |No retry; the response is
 delivered to software
 
-|Retry budget exhausted |`MAX_RETRIES_ATTEMPTED_INT`;
+|Retry budget exhausted |`MAX_RETRIES_ATTEMPTED_INT` once the last of
+`MAX_RETRIES` retries also fails, and the failing response is delivered to
+software; not raised while `MAX_RETRIES` is 0.
 `AVS_NORMAL_STATUS.TOTAL_RETRIES` counts every retry attempted
 
 |Target not responding |`SLAVE_UNRESPONSIVE_INT`
 
-|Command FIFO overrun |Write dropped, `CMD_FIFO_OVERFLOW_INT`
+|Command FIFO overrun |Write dropped with an error response,
+`CMD_FIFO_OVERFLOW_INT`
 
 |Readback FIFO overrun |Response dropped, `READBACK_OVERFLOW_INT`
 
-|Read of an empty readback FIFO |`READBACK_UNDERFLOW_INT`
+|Read of an empty readback FIFO |Returns 0 with an error response,
+`READBACK_UNDERFLOW_INT`
 |=====================================================================================
 
 For diagnosis, `AVS_NORMAL_STATUS` reports bus idle, resync, retry-in-progress

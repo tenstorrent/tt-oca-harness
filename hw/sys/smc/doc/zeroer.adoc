@@ -21,7 +21,8 @@ fabric integration.
 |Address Range |0xC003_8200 - 0xC003_83FF (512 bytes)
 |Control Interface |AXI4 (5-bit address, 64-bit data, 8-bit ID), converted internally to
 AXI4-Lite for the registers
-|Data Interface |AXI4 Master (56-bit address, 64-bit data, 4-bit ID)
+|Data Interface |AXI4 Master (56-bit address, 64-bit data, 3-bit ID; 4-bit ID
+after the shared DMA/zeroer mux)
 |Maximum Burst Length |256 beats (`AWLEN = 255`)
 |Outstanding Transactions |Counted by a 32-bit counter; no 32-transaction
 issuance limit or counter-based back-pressure

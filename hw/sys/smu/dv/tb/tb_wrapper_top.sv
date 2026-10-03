@@ -143,8 +143,7 @@ module smu_wrapper_uvm_top
   //   * only under +esrc_noise_force,
   //   * only dcor.noise_i on the 12 generator lanes,
   //   * downstream taps observe, never drive.
-  // The SEP TB's +sep_crypto_edn_force, which grants OTBN's EDN handshakes
-  // directly and bypasses the chain, has no counterpart here.
+  // Neither the SEP nor SMU bench forces downstream EDN responses.
   logic [11:0] esrc_noise_d;
   assign esrc_noise_d = esrc_noise_ext_i;
   assign esrc_noise_o = esrc_noise_d;

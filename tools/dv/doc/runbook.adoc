@@ -70,16 +70,9 @@ serialized and never cancel one another.
 
 === Capacity
 
-Every row runs on the GitHub-hosted `ubuntu-latest` image unless the
-repository variable `DV_LARGE_RUNNER` names a larger GitHub-hosted label,
-which promotes the `sep` rows of every tier and the weekly rows of `dtp`,
-`smu`, and `smc`; the labelled SMC row and the three
-`cross_trigger` rows stay on the standard runner (the runner page's CI
-section states the mechanism and its failure mode: a label with no matching
-runner queues until GitHub gives the job up). The SEP model is the row the
-larger runner exists for. Each row's duration is on its job in the Actions
-run; a row that approaches the cap has two remedies, both pull requests:
-promote the row, or name a smaller group. The coverage-instrumented
+Every row runs on the GitHub-hosted `ubuntu-latest` image. Each row's
+duration is on its job in the Actions run; a row that approaches the cap is
+a pull request that names a smaller group. The coverage-instrumented
 Verilator models of `dtp`, `sep`, and `smu` do not fit a hosted job; the
 coverage regression runs on the licensed simulator flow outside hosted CI.
 
@@ -294,26 +287,12 @@ workflow owners: revert the publication commit, which touches `latest/`,
 directories are untouched. Never force-push the
 branch; the other publishers rebase onto it.
 
-=== A row queues and never starts
-
-`DV_LARGE_RUNNER` names a label the organization has no runner for. The
-promoted rows queue until GitHub gives them up, since the job's
-`timeout-minutes` budget applies only once a runner has started the job,
-and everything with `needs:` on them stalls. Clear the variable or point it
-back at the standard label:
-
-[source,bash]
-----
-gh variable delete DV_LARGE_RUNNER
-----
-
 === The `sep` rows fail before the runner starts
 
-The step `Check out the tt-oca-manifest submodule` fails when the
-repository secret `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` is unset or has
-expired. The private submodule is the only one in the tree and only the
-`sep` rows need it. Rotating the secret is a repository-settings change by
-the repository administrators; no workflow edit is involved.
+The step `Check out the tt-oca-manifest submodule` fails when GitHub cannot
+serve the submodule at its pinned commit: an outage, or a pin to a commit
+that is not on the submodule's remote. Only the `sep` rows need it. Rerun
+after an outage; a missing commit needs the pin corrected.
 
 === Every row pays a Verilator build
 
@@ -489,11 +468,6 @@ publishes, which is the recovery for a dispatched or missed weekly.
   backfill need a second dispatch, and every publication adds a trend point.
 * Bender is unpinned in hosted CI; `tool_versions.bender` in each run's
   `result.json` is the only record of the release that ran.
-* The `sep` rows depend on a repository secret for a private submodule; a
-  public fork cannot run them.
-* The larger-runner promotion is a repository variable whose label is not
-  validated; a wrong label stalls the promoted rows until GitHub gives them
-  up.
 * Hosted CI runs Verilator only, collects no coverage, and runs no formal
   job (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
 * The branch keeps 90 history points and 90 archives per series and no

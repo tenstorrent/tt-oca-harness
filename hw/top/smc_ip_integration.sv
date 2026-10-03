@@ -451,7 +451,7 @@ module smc_ip_integration (
         .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
         .RESP           (axi_pkg::RESP_DECERR),
         .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
-        .RESP_DATA      ('0),
+        .RESP_DATA      (32'hBADCAB1E),
         .MAX_TRANS      (2)
     ) u_gpio_ctrl_err_slv (
         .clk_i      (clk_sys),
@@ -467,7 +467,7 @@ module smc_ip_integration (
         .axil_resp_t    (smc_pkg::smc_axil_32_32_resp_t),
         .RESP           (axi_pkg::RESP_DECERR),
         .RESP_WIDTH     (smc_pkg::AxiLite32DataWidth),
-        .RESP_DATA      ('0),
+        .RESP_DATA      (32'hBADCAB1E),
         .MAX_TRANS      (2)
     ) u_ext_unmapped_err_slv (
         .clk_i      (clk_sys),

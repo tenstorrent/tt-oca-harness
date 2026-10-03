@@ -14,7 +14,7 @@
 // Either reset clears both sides of every ATB FIFO; atready_o stays high while the write side
 // is in reset, so beats offered then are dropped.
 // NUM_TELEMETRY_RECEIVERS must be between 1 and MaxNumTelemetryReceivers.
-// TELEMETRY_RECEIVER_BUFFER_DEPTH must be greater than or equal to 2.
+// TELEMETRY_RECEIVER_BUFFER_DEPTH must be a power of two and greater than or equal to 2.
 // NumRegMaps is NUM_TELEMETRY_RECEIVERS plus one for the error slave.
 // Each receiver's debug nibble matches telemetry_receiver's four-bit debug bus.
 

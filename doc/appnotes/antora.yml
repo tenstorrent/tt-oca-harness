@@ -10,6 +10,7 @@ nav:
 asciidoc:
   attributes:
     source-highlighter: highlight.js
+    xrefstyle: short
     sectanchors: ''
     sectlinks: ''
     sectnums: ''

@@ -95,12 +95,9 @@ def burst_payload(beats: int) -> int:
     return sum(burst_beat(i) << (64 * i) for i in range(beats))
 
 
-# Last page of ecam_region: a generated-map region with no block behind it,
-# which the fabric error slave answers with DECERR (the error-depth test proves
-# this over SEP_IN).
-UNIMPLEMENTED_ADDR = (
-    smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
-)
+# Last page of the unmapped gap below mmode_region, which the fabric error
+# slave answers with DECERR (the error-depth test proves this over SEP_IN).
+UNIMPLEMENTED_ADDR = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR") - 0x1000
 # Backpressure phase: three passes over the eight scratch registers in one
 # outstanding write group and one outstanding read group, while the manager
 # holds BREADY and RREADY low for this many cycles. Three passes are enough
@@ -535,7 +532,7 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
             "carries an agent, none is tied to zero"
         )
         cocotb.log.info(
-            "CHK-SYS-AXI-IN-ERRORS: sys_axi_in write to the unimplemented ecam_region page "
+            "CHK-SYS-AXI-IN-ERRORS: sys_axi_in write to the unmapped page "
             "0x%08x answered %s; with GPIO0 ACCESS_FILTER armed, the unprivileged sys_axi_in "
             "write was refused with %s and took no effect, the unprivileged read answered "
             "DECERR with the error-slave signature, and the read of the empty inbound mailbox "
@@ -559,7 +556,7 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-SYS-AXI-IN-BURST: AxLEN=%d and AxLEN=%d INCR bursts of %d-byte beats written "
             "over sys_axi_in at 0x%08x and 0x%08x each read back in order as one burst; a "
-            "sys_axi_in read of the unimplemented ecam_region page 0x%08x answered %s",
+            "sys_axi_in read of the unmapped page 0x%08x answered %s",
             SHORT_BURST_BEATS - 1,
             LONG_BURST_BEATS - 1,
             BURST_BYTES,

@@ -7,7 +7,8 @@
 // through the matching output_remap, which rewrites the address and replaces AxUSER with the M-mode
 // or the other source ID; all other requests have AxUSER replaced with the SMC source ID; a mux
 // merges the three paths and widens the ID. With NO_ADDR_REMAP set, only the ID widening remains. A
-// clock-gated outbound access filter, which allows traffic that hits no rule, then guards the port.
+// clock-gated outbound access filter, which allows traffic that hits no rule, then guards the port,
+// which it reaches through an axi_cut.
 
 module smc_output_fabric #(
   parameter bit          NO_ADDR_REMAP              = 1'b1,  // Removes the M-mode and Xvisor
@@ -91,14 +92,10 @@ module smc_output_fabric #(
                                                                                                               // unused when
                                                                                                               // NO_ADDR_REMAP is set.
 
-  output logic [$clog2(NUM_FILTERS)-1:0] write_filter_hit_debug_o,  // Filter entry index hit by
-                                                                    // outbound writes; tied to zero
-                                                                    // because the filter instance
-                                                                    // disables its debug output.
-  output logic [$clog2(NUM_FILTERS)-1:0] read_filter_hit_debug_o,  // Filter entry index hit by
-                                                                   // outbound reads; tied to zero
-                                                                   // because the filter instance
-                                                                   // disables its debug output.
+  output logic [$clog2(NUM_FILTERS)-1:0] write_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                    // entry hit by a write.
+  output logic [$clog2(NUM_FILTERS)-1:0] read_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                   // entry hit by a read.
 
   output logic fabric_clk_active_o,     // High while the remap demux and mux clock runs; tied low
                                         // when NO_ADDR_REMAP is set.
@@ -119,6 +116,8 @@ module smc_output_fabric #(
   // Internal AXI struct signals
   smc_pkg::smc_output_56_64_8_12_axi_req_t  axi_remapped_to_filter_req; // ID = 8
   smc_pkg::smc_output_56_64_8_12_axi_resp_t axi_remapped_to_filter_resp;
+  smc_pkg::smc_output_56_64_8_12_axi_req_t  axi_filtered_req;
+  smc_pkg::smc_output_56_64_8_12_axi_resp_t axi_filtered_resp;
 
   /////////////////////////////
   // AXI-Lite Register Demux //
@@ -406,7 +405,7 @@ module smc_output_fabric #(
 
   axi_filter_wrap #(
     .NUM_FILTERS             (NUM_FILTERS),
-    .DEBUG_OUTPUT            (0),
+    .DEBUG_OUTPUT            (1),
     .BLOCK_BY_DEFAULT        (1'b0),
     .EN_SRC_ID_FILTER        (1'b1),
     .SRC_ID_USER_BIT_START   (0),
@@ -446,11 +445,32 @@ module smc_output_fabric #(
     .axi_in_resp_o              (axi_remapped_to_filter_resp),
 
     // AXI interface to the filtered output
-    .axi_filtered_out_req_o     (axi_filtered_remapped_req_o),
-    .axi_filtered_out_resp_i    (axi_filtered_remapped_resp_i),
+    .axi_filtered_out_req_o     (axi_filtered_req),
+    .axi_filtered_out_resp_i    (axi_filtered_resp),
 
     .write_filter_hit_debug_o   (write_filter_hit_debug_o),
     .read_filter_hit_debug_o    (read_filter_hit_debug_o)
+  );
+
+  /////////////////////
+  // Output Port Cut //
+  /////////////////////
+
+  axi_cut #(
+    .aw_chan_t  (smc_pkg::smc_output_56_64_8_12_axi_aw_chan_t),
+    .w_chan_t   (smc_pkg::smc_output_56_64_8_12_axi_w_chan_t),
+    .b_chan_t   (smc_pkg::smc_output_56_64_8_12_axi_b_chan_t),
+    .ar_chan_t  (smc_pkg::smc_output_56_64_8_12_axi_ar_chan_t),
+    .r_chan_t   (smc_pkg::smc_output_56_64_8_12_axi_r_chan_t),
+    .axi_req_t  (smc_pkg::smc_output_56_64_8_12_axi_req_t),
+    .axi_resp_t (smc_pkg::smc_output_56_64_8_12_axi_resp_t)
+  ) u_sys_axi_out_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (axi_filtered_req),
+    .slv_resp_o (axi_filtered_resp),
+    .mst_req_o  (axi_filtered_remapped_req_o),
+    .mst_resp_i (axi_filtered_remapped_resp_i)
   );
 
 

@@ -338,6 +338,7 @@ UART_CG_EN = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__
 TELEMETRY_CG_EN = _field_mask(
     _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__TELEMETRY_CG_EN_bm"
 )
+AVS_CG_EN = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_bm")
 
 # GPIO_INTF meta from PeakRDL.
 GPIO_INTF_NUM = smc_addr("SMC_TOP_GPIO_INTF_NUM")
@@ -415,16 +416,6 @@ def uart_16550_dl_u32(symbol: str) -> int:
 def uart_16550_dl_offset(symbol: str) -> int:
     """Register offset inside the divisor-latch window from ``uart_16550_dl_addr.h``."""
     return _field_mask(_UART_16550_DL_ADDR_H, symbol)
-
-
-_GPIO_POC_H = (
-    _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "gpio_poc_pbias_ctrl.h"
-)
-
-
-def gpio_poc_u32(symbol: str) -> int:
-    """Field mask/reset from generated ``gpio_poc_pbias_ctrl.h``."""
-    return _field_mask(_GPIO_POC_H, symbol)
 
 
 _SMC_EFUSE_MAP_H = (

@@ -164,8 +164,9 @@ Interrupts start counting at 1.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu
+| 2:0 | `value` | RW | - a| Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
 |===
 
 [#reg-{regmap-instance}-plic-CORE0_MEIP_CLAIM_COMPLETE]
@@ -186,8 +187,9 @@ Writing the interrupt number back completes the interrupt.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu
+| 2:0 | `value` | RW | - a| Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
 |===
 
 [#reg-{regmap-instance}-plic-CORE1_MEIP_CLAIM_COMPLETE]
@@ -208,8 +210,9 @@ Writing the interrupt number back completes the interrupt.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu
+| 2:0 | `value` | RW | - a| Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
 |===
 
 [#reg-{regmap-instance}-plic-CORE2_MEIP_CLAIM_COMPLETE]
@@ -230,8 +233,9 @@ Writing the interrupt number back completes the interrupt.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu
+| 2:0 | `value` | RW | - a| Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
 |===
 
 [#reg-{regmap-instance}-plic-CORE3_MEIP_CLAIM_COMPLETE]
@@ -252,8 +256,9 @@ Writing the interrupt number back completes the interrupt.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu
+| 2:0 | `value` | RW | - a| Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
 |===
 
 [#reg-{regmap-instance}-plic-CORE0_SEIP_CLAIM_COMPLETE]
@@ -274,8 +279,9 @@ Writing the interrupt number back completes the interrupt.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu
+| 2:0 | `value` | RW | - a| Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
 |===
 
 [#reg-{regmap-instance}-plic-CORE1_SEIP_CLAIM_COMPLETE]
@@ -296,8 +302,9 @@ Writing the interrupt number back completes the interrupt.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu
+| 2:0 | `value` | RW | - a| Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
 |===
 
 [#reg-{regmap-instance}-plic-CORE2_SEIP_CLAIM_COMPLETE]
@@ -318,8 +325,9 @@ Writing the interrupt number back completes the interrupt.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `value` | RW | - a| Interrupt & claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu
+| 2:0 | `value` | RW | - a| Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.
 |===
 
 [#reg-{regmap-instance}-plic-CORE3_SEIP_CLAIM_COMPLETE]

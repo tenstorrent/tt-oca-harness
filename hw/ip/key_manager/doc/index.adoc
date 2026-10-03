@@ -17,12 +17,16 @@ its only function. On an explicit firmware-load/execute command, ROM can hand
 control to mutable firmware in SRAM. See <<key-manager-km-firmware>> for the
 implemented services, command protocol and handover rules.
 
-ifdef::backend-html5[]
-include::partial$key_manager/doc/architecture.adoc[leveloffset=+1]
-include::partial$key_manager/doc/firmware.adoc[leveloffset=+1]
-endif::backend-html5[]
 ifdef::backend-pdf[]
 include::architecture.adoc[leveloffset=+1]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$key_manager/doc/architecture.adoc[leveloffset=+1]
+endif::backend-html5[]
+
+== Firmware
+
+ifdef::backend-pdf[]
 include::firmware.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
