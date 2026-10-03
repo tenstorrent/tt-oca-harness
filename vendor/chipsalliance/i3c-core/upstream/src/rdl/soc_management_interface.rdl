@@ -44,6 +44,7 @@ regfile SoCManagementInterfaceRegisters #(
     } SOC_MGMT_STATUS;
     reg {
         name = "Configuration of Recovery Interface";
+        desc = "Configures the recovery interface and signals payload completion to the recovery handler.";
         field {
             name = "Recovery Interface access type";
             desc = "Choose Recovery Interface access type:
