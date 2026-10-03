@@ -81,14 +81,14 @@ early_trap_vector:
 
     li t5, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li t6, ROM_PADDING_TRAP_STATUS_VAL
-    sw t6, 0(t5)
+    sd t6, 0(t5)
     j trap_infinite_loop
 
 generic_trap_fail:
     # Store 0xffffffff to 0xC0039080 (Embedded test fail)
     li t5, 0xC0039080
     li t6, 0xffffffff
-    sw t6, 0(t5)
+    sd t6, 0(t5)
 
 trap_infinite_loop:
     j trap_infinite_loop

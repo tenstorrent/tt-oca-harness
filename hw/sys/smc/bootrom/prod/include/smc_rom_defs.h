@@ -237,9 +237,8 @@
 
 /*
  * Lifecycle State (LC) Register Definitions
- * Register address and mask - detailed LC definitions are in smc_security.h
+ * Decoded state mask - detailed LC definitions are in smc_security.h
  */
-#define SMC_LC_STATE_REG_ADDR 0xC000290C
 #define SMC_LC_STATE_MASK 0xF
 
 /* Clock Frequency Constants */
