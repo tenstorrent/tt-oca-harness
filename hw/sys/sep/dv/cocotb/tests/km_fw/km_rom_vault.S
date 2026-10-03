@@ -10,7 +10,7 @@
 #
 # Host writes one mailbox word before/while this image waits:
 #   [5:0]   legal KPV slot (0..63)
-#   [12:8]  SRAM lock region (1..30, never 0 or 15)
+#   [12:8]  SRAM lock region (1..31; never 0, which holds the result words)
 #   [21:16] slot to seal then erase, distinct from the others
 #   [29:24] slot to erase unsealed, distinct from the others
 #

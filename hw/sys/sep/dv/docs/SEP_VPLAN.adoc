@@ -7760,7 +7760,7 @@ two codes as one field.
 
 *BFM / Model*: ocah_axi_vip, KM path / golden
 
-*Randomization*: RANDCFG — slot, SRAM lock region and the seal/free slot pair from the run seed; extent endpoints 0 and 63 and the lock/W1C sequence are directed.
+*Randomization*: RANDCFG — slot, SRAM lock region (1..31) and the seal/free slot pair from the run seed, logged on the `km vault:` line; extent endpoints 0 and 63 and the lock/W1C sequence are directed.
 
 *Objective*: The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, a store past the KPV register map raises `IRQ_STATUS` AXI_SLVERR only, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
 
@@ -7772,7 +7772,7 @@ two codes as one field.
 . Dedicated `km_rom_vault` on the KM CPU bus, not `rom_main`.
 . The seal walk lives here rather than on the command set because no mailbox command seals a slot: over that surface an erase always frees, so the retire path has no vehicle there.
 . PicoRV32 is RV32E (`x0`–`x15` only).
-. A key-data store to the seed slot before any lock lands with AXI SLVERR clear; a legal slot in 0..63 takes `CTRL.lock_write`; the same key-data store to the write-locked seed slot raises AXI SLVERR; a key-data read of that slot while it holds only `lock_write` returns the stored word with AXI SLVERR clear, and after `lock_use` the same read raises AXI SLVERR and returns zero, which the host also reads back from KM SRAM word 1; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR and not DECERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
+. A key-data store to the seed slot before any lock lands with AXI SLVERR clear; a legal slot in 0..63 takes `CTRL.lock_write`; the same key-data store to the write-locked seed slot raises AXI SLVERR; a key-data read of that slot while it holds only `lock_write` returns the stored word with AXI SLVERR clear, and after `lock_use` the same read raises AXI SLVERR and returns zero, which the host also reads back from KM SRAM word 1; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR and not DECERR; a write to a write-locked SRAM region (any of the 32 regions `km_csr.rdl` `SRAM_LOCK` defines except region 0, which holds the result words: `SRAM_LOCK` is write-1-set until warm reset, so a lock there would drop the final result store) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
 
 *Checkers*:
 

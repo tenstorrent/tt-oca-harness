@@ -116,9 +116,17 @@ class sep_km_key_policy_vault_test(sep_base_test):
             "(key_manager.rdl: unmapped offset inside a window answers SLVERR)"
         )
         _bit(FLAG_DROP, "CHK-DROP")
-        self.logger.info("CHK-DROP PASS: locked SRAM write dropped (readback unchanged)")
+        self.logger.info(
+            "CHK-DROP PASS: write to locked SRAM region %d dropped (readback unchanged)",
+            cfg.region,
+        )
         _bit(FLAG_VIOL, "CHK-VIOL")
-        self.logger.info("CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION matching bit set")
+        self.logger.info(
+            "CHK-VIOL PASS: the ROM read SRAM_WRITE_LOCK_VIOLATION equal to 0x%08x "
+            "(only region %d)",
+            1 << cfg.region,
+            cfg.region,
+        )
         _bit(FLAG_IRQ, "CHK-IRQ")
         self.logger.info("CHK-IRQ PASS: IRQ_STATUS.SRAM_WRITE_LOCK_ERR set")
         _bit(FLAG_W1C, "CHK-W1C")
