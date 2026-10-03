@@ -451,7 +451,7 @@ feature rows.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_external_window_pad_ctrl_decode_test` |The six mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
+|`smc_external_window_pad_ctrl_decode_test` |The five mandatory external-window control blocks and the first, second and last per-pad block decode in the adopter AXI-Lite window.
 |`smc_gpio_ctrl_full_sweep_test` |GPIO_CTRL full sweep over every external GPIO_CTRL entry (65).
 |`smc_gpio_filter_access_sep_test` |GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
 |`smc_gpio_intf_full_sweep_test` |GPIO_INTF full sweep over all GPIO_INTF_NUM (65) instances.
@@ -6732,7 +6732,7 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 
 *BFM / Model*: SEP_IN AXI driver; the request valids and addresses of `smc_external_req_o`, sampled on every `clk_smc_i` edge while each access is in flight; nothing in this bench answers behind the window
 
-*Objective*: The six mandatory external-window control blocks and the first, second and last of the 65 per-pad control blocks decode into the adopter external AXI-Lite window.
+*Objective*: The five mandatory external-window control blocks and the first, second and last of the 65 per-pad control blocks decode into the adopter external AXI-Lite window.
 
 *Test Coverage*:
 
@@ -6744,7 +6744,7 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 
 *Test Procedure*:
 
-Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer: probe the six control blocks, check the generated per-pad geometry against the chapter, probe per-pad instances 0, 1 and 64, require the access count to have reached its floor and print the cell ledger. The leaf then requires an external-port activity record for every probe with a non-zero active-cycle count, and books a protocol-VIP record.
+Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer: probe the five control blocks, check the generated per-pad geometry against the chapter, probe per-pad instances 0, 1 and 64, require the access count to have reached its floor and print the cell ledger. The leaf then requires an external-port activity record for every probe with a non-zero active-cycle count, and books a protocol-VIP record.
 
 *Checkers*:
 
@@ -9562,7 +9562,7 @@ Drive `smc_cool_reset_zero_delay_test_seq`. Each checker below is a named compar
 
 *Test Coverage*:
 
-* `smc_log_engine_transfer_test` runs transfers to completion. `log_engine.rdl` gives `CTRL.EN` the other half of its contract -- "When unset, disables the Log Engine and resets all FSMs, flops, and FIFOs" -- and no leaf has asked it to stop a transfer in flight.
+* `smc_log_engine_transfer_test` runs transfers to completion. `log_engine.rdl` gives `CTRL.EN` the other half of its contract -- "When cleared, the engine stops fetching and writing, discards buffered log data and resets transfer progress. Configuration and pending LOG_LEN values are retained" -- and no leaf has asked it to stop a transfer in flight.
 * Each wrapper is given one log filling its whole slot, which this region makes twice the UART transmit FIFO the `uart_log_engine_disable_during_xfer` firmware image pins and several fetch beats deep, so neither the fetch nor the write side can be finished when the disable lands one register access after the first byte is seen.
 * Three legs, an allow followed by a deny followed by an allow, so the deny cannot pass on a dead bus: the transfer starts and bytes reach the receiver; `CTRL.EN` is cleared and, once the UART reports itself idle, fewer than the whole log has arrived, what did arrive is the head of that slot in order, and a second drain finds nothing more; a shorter length written into the same element while the engine is still disabled is delivered in full once `CTRL.EN` is set again.
 * Draining until the UART reports transmitter-empty with no received data, for a run of polls longer than a character time, is how the firmware image measures the same thing, and it is what lets the halt be checked without knowing how many bytes the UART had buffered.

@@ -1574,7 +1574,6 @@ sources:
       - hw/ip/gpio/regs/gen/sv/gpio_wrap_addrmap_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg_pkg.sv
       - hw/ip/gpio/rtl/gpio_shim_pkg.sv
-      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
       - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
       - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
@@ -1582,7 +1581,6 @@ sources:
       - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg.sv
       - hw/ip/gpio/dv/models/gpio_model.sv
       - hw/ip/gpio/rtl/gpio_shim.sv
-      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
       - hw/common/ocah_prim/rtl/prim_pad_shim.sv
       - hw/sys/smc/dv/models/axil_okay_slv.sv

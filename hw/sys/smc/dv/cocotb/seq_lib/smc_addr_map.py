@@ -418,16 +418,6 @@ def uart_16550_dl_offset(symbol: str) -> int:
     return _field_mask(_UART_16550_DL_ADDR_H, symbol)
 
 
-_GPIO_POC_H = (
-    _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "gpio_poc_pbias_ctrl.h"
-)
-
-
-def gpio_poc_u32(symbol: str) -> int:
-    """Field mask/reset from generated ``gpio_poc_pbias_ctrl.h``."""
-    return _field_mask(_GPIO_POC_H, symbol)
-
-
 _SMC_EFUSE_MAP_H = (
     _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "smc_efuse_map.h"
 )

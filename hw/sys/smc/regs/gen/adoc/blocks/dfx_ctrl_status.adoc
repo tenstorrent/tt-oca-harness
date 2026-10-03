@@ -13,7 +13,10 @@ Memory-repair and MBIST status, chiplet enable, clock and debug controls, and de
 | Address | Name | Access | Description
 | 0x0 | <<reg-{regmap-instance}-dfx_ctrl_status-STATUS_SMU,STATUS_SMU>> | R a| -
 | 0x8 | <<reg-{regmap-instance}-dfx_ctrl_status-DEBUG_CTRL,DEBUG_CTRL>> | RW a| -
-| 0x10 | <<reg-{regmap-instance}-dfx_ctrl_status-DEBUG_BUS_MUX,DEBUG_BUS_MUX>> | RW a| -
+| 0x10 | <<reg-{regmap-instance}-dfx_ctrl_status-DEBUG_BUS_MUX,DEBUG_BUS_MUX>> | RW a| Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug
+bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,
+and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux
+at a time.
 |===
 
 [#reg-{regmap-instance}-dfx_ctrl_status-STATUS_SMU]
@@ -63,15 +66,28 @@ This register is sticky 1 and will hold the value until reset
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Muxselseg7` | RW | 0x0 a| -
-| 57:52 | `Muxselseg6` | RW | 0x0 a| -
-| 51:46 | `Muxselseg5` | RW | 0x0 a| -
-| 45:40 | `Muxselseg4` | RW | 0x0 a| -
-| 39:34 | `Muxselseg3` | RW | 0x0 a| Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...
-| 33:28 | `Muxselseg2` | RW | 0x0 a| Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...
-| 27:22 | `Muxselseg1` | RW | 0x0 a| Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...
-| 21:16 | `Muxselseg0` | RW | 0x0 a| Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...
+| 63:58 | `Muxselseg7` | RW | 0x0 a| No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.
+| 57:52 | `Muxselseg6` | RW | 0x0 a| No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.
+| 51:46 | `Muxselseg5` | RW | 0x0 a| No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.
+| 45:40 | `Muxselseg4` | RW | 0x0 a| No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.
+| 39:34 | `Muxselseg3` | RW | 0x0 a| Binary input-lane select for output lane 3 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
+| 33:28 | `Muxselseg2` | RW | 0x0 a| Binary input-lane select for output lane 2 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
+| 27:22 | `Muxselseg1` | RW | 0x0 a| Binary input-lane select for output lane 1 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
+| 21:16 | `Muxselseg0` | RW | 0x0 a| Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.
 | 15:8 | `Rsvd158` | RW | 0x0 a| -
-| 7:2 | `Dbmid` | RW | 0x0 a| Unique DBM ID of the DBM instance
+| 7:2 | `Dbmid` | RW | 0x0 a| ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
+level-3 muxes.
 | 1:0 | `Dbmmode` | RW | 0x0 a| Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
 |===

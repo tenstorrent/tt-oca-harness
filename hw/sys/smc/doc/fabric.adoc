@@ -573,10 +573,12 @@ endif::backend-html5[]
 [[smc-fabric-full-3-bit-protection-matching-axi-lite]]
 ==== Full 3-Bit Protection Matching (AXI-Lite)
 
-For AXI4-Lite interfaces, the fabric supports exact matching on all
-three protection bits. This is implemented in the `prim_axil_prot_filter`
-module, which is used by GPIO POC/PBIAS control and other AXI-Lite
-peripherals.
+The fabric filters examine only the NS bit. Exact matching on all three
+protection bits is performed by an AXI-Lite peripheral that provides its own
+`ACCESS_FILTER` register, after the fabric has routed the transaction to it.
+In the SMC, the GPIO interface bank performs this check; see
+xref:ip:gpio/doc/index.adoc[GPIO]. Adopter blocks in the external window
+that carry an `ACCESS_FILTER` register define the same fields.
 
 The full protection matching requires an exact match between the
 transaction's protection bits and a configured requirement:
@@ -590,7 +592,8 @@ transaction's protection bits and a configured requirement:
 
 When filtering is enabled, only transactions with matching protection
 values are allowed through. All other transactions receive an error
-response.
+response. The protection bits are transaction attributes, not an initiator
+identity, so this check alone does not restrict a block to one initiator.
 
 ifdef::backend-html5[]
 ++++

@@ -43,7 +43,6 @@ _CONTROL_BLOCKS = (
     ("pll-obs-ctrl-decode", "GPIO_PLL_CLK_OBS_CTRL_CONTROL"),
     ("pvt-obs-intf-decode", "GPIO_PVT_CLK_OBS_INTF_DATA_CTRL"),
     ("pvt-obs-ctrl-decode", "GPIO_PVT_CLK_OBS_CTRL_CONTROL"),
-    ("gpio-poc-pbias-decode", "GPIO_POC_PBIAS_CTRL_CONTROL"),
     ("gpio-refclk-ctrl-decode", "GPIO_REFCLK_CTRL_CONTROL"),
 )
 
