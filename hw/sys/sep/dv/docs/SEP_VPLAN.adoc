@@ -950,7 +950,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_reg_bit_bash_rand_test`
 
 |AXI AW/W channel ordering, write landing and neighbour displacement
-|`sep_axi_order_sweep_test` (s_axi, 318 cells over 27 blocks, 106 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 222 over 11, 74 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure.
+|`sep_axi_order_sweep_test` (s_axi, 318 cells over 27 blocks, 106 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 225 over 11, 75 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure.
 
 |AXI narrow-write strobe and memory windows
 |`sep_axi_strobe_window_test`.

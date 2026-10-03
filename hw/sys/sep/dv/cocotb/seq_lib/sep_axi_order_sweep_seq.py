@@ -120,10 +120,11 @@ M_AXI_ALLOW_WINDOWS: tuple[tuple[str, int, int], ...] = (
     ("spi", 0x10B0_0000, 0x10B0_0FFF),
 )
 
-# A floor on the m_axi walk. BLOCK_EXCLUDE_M_AXI is the only reduction the path
-# justifies, so a map or routing change that removed more registers must fail
-# here rather than let a shrinking walk report a clean pass.
-M_AXI_CELL_FLOOR = 222
+# A floor on the m_axi walk, set to the count the walk presents: 75 registers
+# over 11 blocks, three orderings each. BLOCK_EXCLUDE_M_AXI is the only
+# reduction the path justifies, so a map or routing change that removes even one
+# register must fail here rather than let a shrinking walk report a clean pass.
+M_AXI_CELL_FLOOR = 225
 
 # The same floor for s_axi, set to the count the walk presents, like
 # M_AXI_CELL_FLOOR: slack here is registers that can go missing without failing
@@ -612,7 +613,7 @@ def _selftest() -> None:
     # not shrink below its floor.
     m = SepAxiOrderSweepCfg(1, bus="m_axi")
     assert len(m.cells) >= M_AXI_CELL_FLOOR, (
-        f"m_axi walk built {len(m.cells)} cells, below the floor of "
+        f"CHK-COVERAGE FAIL: m_axi walk built {len(m.cells)} cells, below the floor of "
         f"{M_AXI_CELL_FLOOR}; a map or routing change removed registers the "
         f"inbound master can still reach"
     )
