@@ -53,55 +53,55 @@
       "affected": [
         {
           "item": "sep_axi_smoke_test",
-          "seed": 501763090,
+          "seed": 973776531,
           "status": "ERROR",
           "target": "default"
         },
         {
           "item": "sep_address_map_test",
-          "seed": 551082572,
+          "seed": 1096465094,
           "status": "ERROR",
           "target": "default"
         },
         {
           "item": "sep_sram_smoke_test",
-          "seed": 1923921529,
+          "seed": 1996048884,
           "status": "ERROR",
           "target": "default"
         },
         {
           "item": "sep_km_mem_smoke_test",
-          "seed": 2120474798,
+          "seed": 664518801,
           "status": "ERROR",
           "target": "default"
         },
         {
           "item": "sep_otbn_mem_smoke_test",
-          "seed": 1594334965,
+          "seed": 119199273,
           "status": "ERROR",
           "target": "default"
         },
         {
           "item": "sep_efuse_sense_test",
-          "seed": 978934722,
+          "seed": 2040803366,
           "status": "ERROR",
           "target": "default"
         },
         {
           "item": "sep_clock_uvm_wdt_rst_input_reset_path_test",
-          "seed": 252780798,
+          "seed": 793480212,
           "status": "ERROR",
           "target": "default"
         },
         {
           "item": "sep_irq_ip_to_aggregator_test",
-          "seed": 1317986226,
+          "seed": 1791451884,
           "status": "ERROR",
           "target": "default"
         },
         {
           "item": "sep_periph_bus_err_misaligned_test",
-          "seed": 1834457997,
+          "seed": 1657072878,
           "status": "ERROR",
           "target": "default"
         }
@@ -109,17 +109,17 @@
       "count": 9,
       "examples": [],
       "kind": "dependency_blocked",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
       "signature": "hdl_compile default"
     }
   ],
   "flow": "sep",
   "framework": "uvm",
-  "generated_at": "2026-10-03T05:58:37+00:00",
+  "generated_at": "2026-10-03T10:13:51+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "eb252a4a6d2d28fcf63636fe9e8ee6f111d433c4",
-    "short_sha": "eb252a4a6"
+    "sha": "7fa6c6f33a29ac2ebb63d3b0b0f675b666aaf976",
+    "short_sha": "7fa6c6f33"
   },
   "junit_xml": {
     "missing": 0,
@@ -130,65 +130,65 @@
     "failed_tests": [
       {
         "item": "sep_axi_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test --stage sim --tool vcs --seed 501763090 --target default --cov",
-        "seed": 501763090,
+        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test --stage sim --tool vcs --seed 973776531 --target default --cov",
+        "seed": 973776531,
         "status": "ERROR"
       },
       {
         "item": "sep_address_map_test",
-        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_address_map_test --stage sim --tool vcs --seed 551082572 --target default --cov",
-        "seed": 551082572,
+        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_address_map_test --stage sim --tool vcs --seed 1096465094 --target default --cov",
+        "seed": 1096465094,
         "status": "ERROR"
       },
       {
         "item": "sep_sram_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_sram_smoke_test --stage sim --tool vcs --seed 1923921529 --target default --cov",
-        "seed": 1923921529,
+        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_sram_smoke_test --stage sim --tool vcs --seed 1996048884 --target default --cov",
+        "seed": 1996048884,
         "status": "ERROR"
       },
       {
         "item": "sep_km_mem_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_km_mem_smoke_test --stage sim --tool vcs --seed 2120474798 --target default --cov",
-        "seed": 2120474798,
+        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_km_mem_smoke_test --stage sim --tool vcs --seed 664518801 --target default --cov",
+        "seed": 664518801,
         "status": "ERROR"
       },
       {
         "item": "sep_otbn_mem_smoke_test",
-        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_otbn_mem_smoke_test --stage sim --tool vcs --seed 1594334965 --target default --cov",
-        "seed": 1594334965,
+        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_otbn_mem_smoke_test --stage sim --tool vcs --seed 119199273 --target default --cov",
+        "seed": 119199273,
         "status": "ERROR"
       },
       {
         "item": "sep_efuse_sense_test",
-        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_efuse_sense_test --stage sim --tool vcs --seed 978934722 --target default --cov",
-        "seed": 978934722,
+        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_efuse_sense_test --stage sim --tool vcs --seed 2040803366 --target default --cov",
+        "seed": 2040803366,
         "status": "ERROR"
       },
       {
         "item": "sep_clock_uvm_wdt_rst_input_reset_path_test",
-        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_clock_uvm_wdt_rst_input_reset_path_test --stage sim --tool vcs --seed 252780798 --target default --cov",
-        "seed": 252780798,
+        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_clock_uvm_wdt_rst_input_reset_path_test --stage sim --tool vcs --seed 793480212 --target default --cov",
+        "seed": 793480212,
         "status": "ERROR"
       },
       {
         "item": "sep_irq_ip_to_aggregator_test",
-        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_irq_ip_to_aggregator_test --stage sim --tool vcs --seed 1317986226 --target default --cov",
-        "seed": 1317986226,
+        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_irq_ip_to_aggregator_test --stage sim --tool vcs --seed 1791451884 --target default --cov",
+        "seed": 1791451884,
         "status": "ERROR"
       },
       {
         "item": "sep_periph_bus_err_misaligned_test",
-        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_periph_bus_err_misaligned_test --stage sim --tool vcs --seed 1834457997 --target default --cov",
-        "seed": 1834457997,
+        "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_periph_bus_err_misaligned_test --stage sim --tool vcs --seed 1657072878 --target default --cov",
+        "seed": 1657072878,
         "status": "ERROR"
       }
     ],
@@ -196,10 +196,10 @@
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-10-03T05:01:47.035690+00:00",
+    "generated_at": "2026-10-03T09:28:33.809376+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "eb252a4a6d2d28fcf63636fe9e8ee6f111d433c4",
+      "commit": "7fa6c6f33a29ac2ebb63d3b0b0f675b666aaf976",
       "dirty": "false"
     },
     "label": "all",
@@ -228,8 +228,8 @@
       "category": "smoke",
       "duration_sec": 0.0,
       "name": "sep_axi_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-      "seed": 501763090,
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "seed": 973776531,
       "stage": "sim",
       "status": "ERROR"
     },
@@ -238,8 +238,8 @@
       "category": "smoke",
       "duration_sec": 0.0,
       "name": "sep_address_map_test",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-      "seed": 551082572,
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "seed": 1096465094,
       "stage": "sim",
       "status": "ERROR"
     },
@@ -248,8 +248,8 @@
       "category": "smoke",
       "duration_sec": 0.0,
       "name": "sep_sram_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-      "seed": 1923921529,
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "seed": 1996048884,
       "stage": "sim",
       "status": "ERROR"
     },
@@ -258,8 +258,8 @@
       "category": "smoke",
       "duration_sec": 0.0,
       "name": "sep_km_mem_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-      "seed": 2120474798,
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "seed": 664518801,
       "stage": "sim",
       "status": "ERROR"
     },
@@ -268,8 +268,8 @@
       "category": "smoke",
       "duration_sec": 0.0,
       "name": "sep_otbn_mem_smoke_test",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-      "seed": 1594334965,
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "seed": 119199273,
       "stage": "sim",
       "status": "ERROR"
     },
@@ -278,8 +278,8 @@
       "category": "smoke",
       "duration_sec": 0.0,
       "name": "sep_efuse_sense_test",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-      "seed": 978934722,
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "seed": 2040803366,
       "stage": "sim",
       "status": "ERROR"
     },
@@ -288,8 +288,8 @@
       "category": "system",
       "duration_sec": 0.0,
       "name": "sep_clock_uvm_wdt_rst_input_reset_path_test",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-      "seed": 252780798,
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "seed": 793480212,
       "stage": "sim",
       "status": "ERROR"
     },
@@ -298,8 +298,8 @@
       "category": "system",
       "duration_sec": 0.0,
       "name": "sep_irq_ip_to_aggregator_test",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-      "seed": 1317986226,
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "seed": 1791451884,
       "stage": "sim",
       "status": "ERROR"
     },
@@ -308,16 +308,16 @@
       "category": "system",
       "duration_sec": 0.0,
       "name": "sep_periph_bus_err_misaligned_test",
-      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11949343): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
-      "seed": 1834457997,
+      "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11957544): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/hw/sys/sep/dv/build/uvm/vcs/coverage/a9ee2da96af7/../cov_build.vdb",
+      "seed": 1657072878,
       "stage": "sim",
       "status": "ERROR"
     }
   ],
   "timing": {
-    "duration_sec": 117.541,
-    "end_time": "2026-10-03T05:01:46.886733+00:00",
-    "start_time": "2026-10-03T04:59:28.964709+00:00"
+    "duration_sec": 96.369,
+    "end_time": "2026-10-03T09:28:33.776894+00:00",
+    "start_time": "2026-10-03T09:26:29.581572+00:00"
   },
   "tool": "vcs"
 }
