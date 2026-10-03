@@ -32,10 +32,12 @@ Checkers:
              written
   CHK-LOCKRT the round-trip still recovers the plaintext after the lock, so the
              hardware kept the key it was using
-  CHK-SWWEL  after the lock, a write of a different key leaves the key the
-             hardware uses unchanged (the round-trip still returns the
-             plaintext), and a write clearing ENABLE is refused (ENABLE still
-             reads 1)
+  CHK-SWWEL  control first: before the lock, with ENABLE=1, a write of a third
+             key (~key B) changes the round-trip away from the plaintext.
+             Then, after the lock, a write of that same third key leaves the
+             key the hardware uses unchanged (the round-trip still returns
+             the plaintext), and a write clearing ENABLE is refused (ENABLE
+             still reads 1)
 
 Anti-vacuity. "Exactly three" is the load-bearing quantifier, not "at least
 one": a write that never landed gives zero differences and fails, a read path
@@ -52,7 +54,12 @@ fixed points, so a single index mapping to itself is legal; an identity mapping
 across three seeded indices is not.
 
 The architecture document requires only that a locked key cannot be modified.
-CHK-SWWEL grades that on the key the datapath uses. The write lock on the
+CHK-SWWEL grades that on the key the datapath uses. Every other key write in
+the test is made while ENABLE=0, so without the unlocked control an unchanged
+post-lock round-trip would also come from hardware that takes its key copy only
+while disabled, with no lock at all. The control writes the same key with
+ENABLE=1 before the lock and requires the round-trip to change, so the
+post-lock result is evidence of the lock. The write lock on the
 KPV_SCRAMBLER_KEY register itself is not claimed: the hardware keeps its own
 copy of the key it uses, and km_kpv.rdl does not specify what the locked
 register reads, so no frontdoor observation separates a refused register write
@@ -190,6 +197,18 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         )
 
         # --- CHK-SWWEL --------------------------------------------------------
+        # Control: before the lock, with ENABLE=1, the ROM writes ~key B and
+        # reads the first logical index. That word must not be the plaintext,
+        # so a key write made while enabled is shown to reach the datapath.
+        # Without it the post-lock compare below cannot fail on hardware that
+        # copies the key only while ENABLE=0.
+        rekey = (~cfg.key_b) & 0xFFFF_FFFF
+        assert rep.rekey_round_trip != expected_pt, (
+            f"CHK-SWWEL FAIL: control: before the lock, with ENABLE=1, writing key "
+            f"0x{rekey:08x} left logical index {first_logical} reading the plaintext "
+            f"0x{expected_pt:08x} -- a key write made while enabled does not reach the "
+            "datapath, so the post-lock key compare could not fail"
+        )
         # After the lock, a later key write must not change the key the datapath
         # uses, and an ENABLE-clear must be refused. A lock that froze the key
         # but let ENABLE clear would leave the vault passing plaintext through.
@@ -205,9 +224,14 @@ class sep_km_kpv_scrambler_test(sep_base_test):
             "be set"
         )
         self.logger.info(
-            "CHK-SWWEL PASS: after the lock, a key write left the datapath key "
-            "unchanged (round-trip 0x%08x) and an ENABLE clear is refused "
-            "(CTRL=0x%08x); the KEY register lock itself is not observable frontdoor",
+            "CHK-SWWEL PASS: unlocked control: key 0x%08x written with ENABLE=1 moved "
+            "the round-trip to 0x%08x (plaintext 0x%08x); after the lock, the same key "
+            "write left the datapath key unchanged (round-trip 0x%08x) and an ENABLE "
+            "clear is refused (CTRL=0x%08x); the KEY register lock itself is not "
+            "observable frontdoor",
+            rekey,
+            rep.rekey_round_trip,
+            expected_pt,
             rep.refused_round_trip,
             rep.ctrl_after_refused,
         )

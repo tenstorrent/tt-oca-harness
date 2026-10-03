@@ -91,6 +91,7 @@ class SepKpvScramblerReport:
         key_b_pair: tuple[int, int],
         round_trip: int,
         key_unlocked: int,
+        rekey_round_trip: int,
         post_lock_round_trip: int,
         refused_round_trip: int,
         ctrl_after_refused: int,
@@ -100,6 +101,7 @@ class SepKpvScramblerReport:
         self.key_b_pair = key_b_pair
         self.round_trip = round_trip
         self.key_unlocked = key_unlocked
+        self.rekey_round_trip = rekey_round_trip
         self.post_lock_round_trip = post_lock_round_trip
         self.refused_round_trip = refused_round_trip
         self.ctrl_after_refused = ctrl_after_refused
@@ -173,6 +175,7 @@ class SepKpvScrambler:
         key_b_value = await self._next_word("the second-key value")
         round_trip = await self._next_word("the round-trip word")
         key_unlocked = await self._next_word("the unlocked key readback")
+        rekey_rt = await self._next_word("the round-trip under ~key B while unlocked")
         post_lock = await self._next_word("the post-lock round-trip word")
         refused_rt = await self._next_word("the round-trip after the refused writes")
         ctrl_after = await self._next_word("KPV_SCRAMBLER_CTRL after the refused write")
@@ -182,6 +185,7 @@ class SepKpvScrambler:
             (key_b_index, key_b_value),
             round_trip,
             key_unlocked,
+            rekey_rt,
             post_lock,
             refused_rt,
             ctrl_after,

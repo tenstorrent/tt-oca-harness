@@ -8637,9 +8637,11 @@ relying on power-up values.
 the three logical indices, then disable and scan the whole file.
 . Repeat with the second key at the first index only.
 . Re-enable and read the first index back.
-. Read the key register, then take the sticky lock last and read the first
-index again.
-. Write a different key and clear ENABLE, then read the first index and
+. Read the key register. With the scrambler still unlocked and enabled, write a
+third key (the complement of the second key), read the first index, then write
+the second key back.
+. Take the sticky lock last and read the first index again.
+. Write the third key again and clear ENABLE, then read the first index and
 `KPV_SCRAMBLER_CTRL`.
 
 *Randomization*: RANDCFG — two scrambler keys and three logical indices, drawn
@@ -8679,7 +8681,7 @@ known-zero. The zero fill is *setup*, not a wipe security checker.
 |CHK-LOCKRT
 |The round-trip still recovers the plaintext after the lock, so the hardware kept the key it was using.
 |CHK-SWWEL
-|After the lock, a write of a different key leaves the key the hardware uses unchanged (the round-trip still returns the plaintext), and a write clearing ENABLE is refused (ENABLE still reads set). The write lock on the `KPV_SCRAMBLER_KEY` register itself is not graded: see *Not claimed*.
+|Control first: before the lock, with ENABLE set, a write of a third key (the complement of the second key) moves the round-trip away from the plaintext. Every other key write in the test is made while ENABLE is clear, so without this control the post-lock key compare would also pass on hardware that takes its key copy only while disabled, with no lock. After the lock, a write of that same third key leaves the key the hardware uses unchanged (the round-trip still returns the plaintext), and a write clearing ENABLE is refused (ENABLE still reads set). The write lock on the `KPV_SCRAMBLER_KEY` register itself is not graded: see *Not claimed*.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
