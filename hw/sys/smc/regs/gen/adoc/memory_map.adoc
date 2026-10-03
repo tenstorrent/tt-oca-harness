@@ -17,7 +17,7 @@
 |BASE + 0x40000 – BASE + 0x15FFFF |1152 KiB |Local Memories |Scratchpad ROM and RAM.
 |BASE + 0x160000 – BASE + 0x163FFF |16 KiB |CLA |Core Logic Analyzer debug and trace.
 |BASE + 0x400000 – BASE + 0x7FFFFF |4 MiB |Adopter External |Adopter-owned technology-specific and supplementary peripherals.
-|BASE + 0x800000 – BASE + 0x1FFFFFF |24 MiB |Address Remapping |ECAM, machine-mode, and hypervisor remapped regions.
+|BASE + 0x1000000 – BASE + 0x1FFFFFF |16 MiB |Address Remapping |Machine-mode and hypervisor remapped regions.
 |BASE + 0x4000000 – BASE + 0x7FFFFFF |64 MiB |PLIC |Platform-Level Interrupt Controller aperture.
 |BASE + 0x8000000 – BASE + 0x8013FFF |80 KiB |Core-Local Timer and Errors |Core-local timer and per-core bus-error units.
 |===
@@ -52,17 +52,16 @@
 |BASE + 0x15000 – BASE + 0x15FFF |4 KiB |512 B |AXI Filter Control Address Map |16 instances |32 B |Per-filter access-control registers defining permitted address ranges and transaction attributes. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / SLVERR
 |BASE + 0x16000 – BASE + 0x16FFF |4 KiB |512 B |AXI Filter Control Address Map |16 instances |32 B |Per-filter access-control registers defining permitted address ranges and transaction attributes. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / SLVERR
 |BASE + 0x18000 – BASE + 0x37FFF |128 KiB |129104 B |SMC AXI-Lite Mailbox Wrapper Address Map |1 instance |- |Thirty-two bidirectional mailbox pairs. |SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0x38000 – BASE + 0x381FF |512 B |312 B |iDMA Controller Address Map |1 instance |- |Direct-memory-access controller. |OKAY, 0xFFFFFFFF / OKAY |DECERR, 0xBADCAB1E / DECERR
+|BASE + 0x38000 – BASE + 0x381FF |512 B |312 B |iDMA Controller Address Map |1 instance |- |Direct-memory-access controller. |OKAY, 0xFFFFFFFF / OKAY^<<smc-components-note-3,[3]>>^ |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x38200 – BASE + 0x382FF |256 B |24 B |Zeroer Control Address Map |1 instance |- |Control and status registers for the AXI memory-zeroing engine. |- |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x39000 – BASE + 0x39FFF |4 KiB |704 B |CPU Control Address Map |1 instance |- |SMC CPU-cluster control. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0x3A000 – BASE + 0x3FFFF |24 KiB |24 KiB |OCA I3C Controller Wrapper Address Map |1 instance |- |Wrapper address map instantiating the per-controller I3C CSR blocks. |OKAY, 0x0 / OKAY^<<smc-components-note-3,[3]>>^ |-
-|BASE + 0x40000 – BASE + 0x5FFFF |128 KiB |128 KiB |spm_rom_memory |1 instance |- |Scratchpad ROM memory, present only in non-CPL configurations. |-^<<smc-components-note-4,[4]>>^ |-
+|BASE + 0x3A000 – BASE + 0x3FFFF |24 KiB |24 KiB |OCA I3C Controller Wrapper Address Map |1 instance |- |Wrapper address map instantiating the per-controller I3C CSR blocks. |OKAY, 0x0 / OKAY^<<smc-components-note-4,[4]>>^ |-
+|BASE + 0x40000 – BASE + 0x5FFFF |128 KiB |128 KiB |spm_rom_memory |1 instance |- |Scratchpad ROM memory, present only in non-CPL configurations. |-^<<smc-components-note-5,[5]>>^ |-
 |BASE + 0x60000 – BASE + 0x15FFFF |1 MiB |1 MiB |spm_memory |1 instance |- |Scratch RAM Memory - only present for non-CPL configurations |- |-
 |BASE + 0x160000 – BASE + 0x163FFF |16 KiB |16 KiB |SMC DFD MMR Aperture Address Map |1 instance |- |Core Logic Analyzer debug and trace aperture. |OKAY, 0x0 / OKAY |-
 |BASE + 0x400000 – BASE + 0x7FFFFF |4 MiB |4 MiB |SMC External Window Address Map |1 instance |- |Adopter-owned external peripheral aperture. |Adopter-defined |-
-|BASE + 0x800000 – BASE + 0xFFFFFF |8 MiB |8 MiB |ecam_region |1 instance |- |Remapped regions, either ECAM, M-Mode or XVisor |DECERR, 0xBADCAB1E / DECERR^<<smc-components-note-5,[5]>>^ |-
-|BASE + 0x1000000 – BASE + 0x17FFFFF |8 MiB |8 MiB |mmode_region |1 instance |- |Remapped regions, either ECAM, M-Mode or XVisor |Forwarded |-
-|BASE + 0x1800000 – BASE + 0x1FFFFFF |8 MiB |8 MiB |xvisor_region |1 instance |- |Remapped regions, either ECAM, M-Mode or XVisor |Forwarded |-
+|BASE + 0x1000000 – BASE + 0x17FFFFF |8 MiB |8 MiB |mmode_region |1 instance |- |Address region whose accesses an output remap redirects. |Forwarded |-
+|BASE + 0x1800000 – BASE + 0x1FFFFFF |8 MiB |8 MiB |xvisor_region |1 instance |- |Address region whose accesses an output remap redirects. |Forwarded |-
 |BASE + 0x4000000 – BASE + 0x7FFFFFF |64 MiB |2125832 B |PLIC Address Map |1 instance |- |Platform-Level Interrupt Controller. |OKAY, 0x0 / OKAY^<<smc-components-note-6,[6]>>^ |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x8000000 – BASE + 0x800FFFF |64 KiB |48 KiB |CLINT Address Map |1 instance |- |Core-Local Interruptor. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x8010000 – BASE + 0x8010FFF |4 KiB |48 B |Bus Error Unit Address Map |1 instance |- |Core 0 bus-error unit. |- |DECERR, 0xBADCAB1E / DECERR
@@ -75,8 +74,8 @@
 .Notes
 [[smc-components-note-1]]^[1]^ Offset 0xC holds the watchdog's countHi register, which this map does not list; a 32-bit write there locks the watchdog key again. +
 [[smc-components-note-2]]^[2]^ Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture. +
-[[smc-components-note-3]]^[3]^ Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped. +
-[[smc-components-note-4]]^[4]^ A write answers SLVERR and leaves the ROM unchanged. +
-[[smc-components-note-5]]^[5]^ No RTL decodes this aperture. +
+[[smc-components-note-3]]^[3]^ A read fetches the whole 8-byte word, so a read of 0x4C also reads NEXT_ID_0 at 0x48 and launches a transfer. +
+[[smc-components-note-4]]^[4]^ Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped. +
+[[smc-components-note-5]]^[5]^ A write answers SLVERR and leaves the ROM unchanged. +
 [[smc-components-note-6]]^[6]^ 0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.
 // end::smc-components[]

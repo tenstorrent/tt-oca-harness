@@ -1458,7 +1458,7 @@ Drive `smc_periph_cg_access_error_test_seq` on the SEP_IN AXI sequencer: save CL
 *Test Coverage*:
 
 * Bounded AXI error-response checks over real SEP_IN AXI. Three probes must each answer DECERR with the exact error data, and an always-OKAY register must read the same before and after them:
-** the last page of `ecam_region`, an `external` region with no implementation behind it on this bench;
+** the last unmapped page below `mmode_region`;
 ** the same page offset fourteen apertures above `LOCAL_BASE`, which lies outside the local and global apertures at the reset `REGION_SIZE`, so the input fabric's window check answers it;
 ** the first `EXTERNAL_MANDATORY` GPIO_CTRL window, with no pad block behind it.
 
@@ -2186,7 +2186,7 @@ Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequenc
 * The pre-admit SYS_IN read is issued with the error response tolerated and its response is reported, not asserted: the specification leaves the reset state of the sixteen inbound entries to the chiplet integration, so no verdict is claimed on it.
 * The inbound filter decides each direction from its own request, with block-by-default when nothing matches, so the write and read channels of the port are driven together: four interleaved passes go out as one outstanding group, SEP_IN seeds the read sources and reads the write targets back, and the filter is observed admitting both directions in the same cycle.
 * Every inbound port of this bench carries an agent, so the "unused port tied idle" cell cannot be driven here.
-* Through the admitted entry a 2-beat and a 16-beat INCR burst of full-width beats are written into the SPM and each read back in order as one burst, and a read of the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR, so the port carries bursts and decode errors, not only single-beat register accesses.
+* Through the admitted entry a 2-beat and a 16-beat INCR burst of full-width beats are written into the SPM and each read back in order as one burst, and a read of the last unmapped page below `mmode_region`, must answer DECERR, so the port carries bursts and decode errors, not only single-beat register accesses.
 * The write channel of the unimplemented region answers DECERR too; with GPIO0 ACCESS_FILTER armed over SEP_IN, an unprivileged `sys_axi_in` write is refused with an error response (reported) and took no effect, and an unprivileged read answers DECERR with the error-slave signature, and a read of the empty inbound mailbox answers SLVERR. Three passes of outstanding writes and then of reads over the eight scratch registers under a 64-cycle BREADY/RREADY hold stall the port's response channels and, with that many addresses queued, its address channels, measured per channel, and every read still returns the word its last write carried.
 
 *Test Procedure*:
@@ -2230,7 +2230,7 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 * FIXED and WRAP multi-beat bursts: `fabric.adoc` does not state how the SEP_IN path answers a burst type it does not support, so the expectation is the DV-owned one for a refused write -- an AXI error response of either kind, never OKAY and never a wedge -- and both target registers, read back right after each burst and before any further write, must still hold the values the INCR burst left, so a path that errored the response while still writing is caught. The error code returned is reported, not asserted. Spec gap for the plan owner: a fabric statement fixing the response to an unsupported burst would let this leg hold an exact code.
 * A 16-beat INCR burst of full-width beats into the SPM: every beat lands at its own address, read back at both ends and as one 16-beat read, so a splitter that drops, repeats or reorders beats past the first few is caught. A 2-beat FIXED burst of full-width beats to the scratch registers carries the words they already hold, so whether the path stores or refuses it the readbacks still test the INCR result; its response is reported, not asserted.
 * The same two burst types at the other beat sizes a 64-bit manager may issue: two-beat FIXED and WRAP bursts of one-byte and two-byte beats, and a two-beat WRAP of eight-byte beats, each aligned for WRAP. A refused one must leave both scratch registers as the INCR burst left them; one the path accepts is reported and the registers re-seeded. Each response is reported.
-* A write to the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR, so the write channel of the error slave is shown on SEP_IN as the read channel already is.
+* A write to the last unmapped page below `mmode_region`, must answer DECERR, so the write channel of the error slave is shown on SEP_IN as the read channel already is.
 * Both scratch registers are restored to zero before the sequence ends.
 
 *Test Procedure*:
@@ -12331,9 +12331,9 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 *Test Coverage*:
 
 * INCR bursts of 2, 8 and 32 full-width beats into the SPM, each read back as one burst of the same length, so a splitter that drops, repeats or reorders beats on the JTAG port is caught on the data.
-* A read of the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR.
+* A read of the last unmapped page below `mmode_region`, must answer DECERR.
 * GPIO0 ACCESS_FILTER is armed over SEP_IN with a privileged write; an unprivileged JTAG read of the register is refused with DECERR and the error-slave signature 0xBADCAB1E, as `hw/ip/gpio/doc/programming.adoc` ("Filter Configuration") specifies, and an unprivileged JTAG write of the disarm value is refused with an error response whose code is reported, not asserted, since no document fixes how the fabric forwards a write-channel refusal; a privileged readback shows the refused write took no effect.
-* A write to the unimplemented `ecam_region` page answers DECERR and a read of the empty inbound mailbox answers SLVERR, so both error codes are shown on both channels of this port.
+* A write to the unmapped page below `mmode_region` answers DECERR and a read of the empty inbound mailbox answers SLVERR, so both error codes are shown on both channels of this port.
 * Three passes of outstanding writes and then of reads over the eight scratch registers under a 64-cycle BREADY/RREADY hold stall the port's response channels and, with that many addresses queued behind the register path, its address channels, measured per channel, and every read still returns the word its last write carried.
 * The filter is restored to its generated reset and the access counts are measured: the sequence requires its own SEP_IN count and the scoreboard's JTAG AXI count to equal the expected numbers.
 

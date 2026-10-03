@@ -17521,15 +17521,6 @@
     (SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_5_I3C_CTRL_GPO_3__BASE_ADDR)
 
 //==============================================================================
-// Memory: ecam_region
-//==============================================================================
-
-#define SMC_TOP_ECAM_REGION_MEM_BASE_ADDR (0xC0800000)
-#define SMC_TOP_ECAM_REGION_MEM_SIZE (0x00800000)
-#define ECAM_REGION_MEM_BASE_ADDR (SMC_TOP_ECAM_REGION_MEM_BASE_ADDR)
-#define ECAM_REGION_MEM_SIZE (SMC_TOP_ECAM_REGION_MEM_SIZE)
-
-//==============================================================================
 // Memory: mmode_region
 //==============================================================================
 
@@ -30534,7 +30525,6 @@ typedef struct {
     I3C_CTRL_RESET_REQ_MASKS_reg_u i3c_ctrl_reset_req_masks;
     I3C_CTRL_GPI_reg_u i3c_ctrl_gpi[4];
     I3C_CTRL_GPO_reg_u i3c_ctrl_gpo[4];
-    REMAPPED_REGION_MEM_WORD_reg_u ecam_region_mem_array[1048576];
     REMAPPED_REGION_MEM_WORD_reg_u mmode_region_mem_array[1048576];
     REMAPPED_REGION_MEM_WORD_reg_u xvisor_region_mem_array[1048576];
     PLIC_PRIORITY_reg_u smc_cluster_plic_priority[337];

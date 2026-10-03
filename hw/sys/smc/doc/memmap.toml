@@ -65,8 +65,8 @@ description = "Adopter-owned technology-specific and supplementary peripherals."
 [[views.rows]]
 kind = "group"
 label = "Address Remapping"
-members = ["ecam_region", "mmode_region", "xvisor_region"]
-description = "ECAM, machine-mode, and hypervisor remapped regions."
+members = ["mmode_region", "xvisor_region"]
+description = "Machine-mode and hypervisor remapped regions."
 
 [[views.rows]]
 kind = "group"
