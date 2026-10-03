@@ -7804,7 +7804,11 @@ word, not the individual registers. What keeps it from being a firmware
 self-report is the seeded configuration -- the slot, region and slot pair are
 chosen by the host, and the result word carries a fold of the whole config word
 the ROM received, so a firmware that reported success unconditionally would
-still have to have consumed every one of the host's operands.
+still have to have consumed every one of the host's operands. Every pass/fail
+decision in the ROM reaches its flag only through a taken branch on a known
+compare result; the fall-through goes to the fail label. The 4-state PicoRV32
+does not take a branch on an X condition, so an X register readback or an X
+status bit leaves its flag clear and the named checker FAILs.
 
 '''''
 

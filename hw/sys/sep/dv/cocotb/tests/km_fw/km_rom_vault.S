@@ -95,6 +95,34 @@
     // hw/ip/key_manager/doc/architecture.adoc.
     .equ KM_SRAM_BASE, KEY_MANAGER_SRAM_BASE_ADDR
 
+    // Every pass/fail decision below continues toward a pass flag only
+    // through a TAKEN branch whose condition is a known true; the fall-through
+    // jumps to the fail label. PicoRV32 is 4-state in simulation and does not
+    // take a branch whose condition is X, so an X readback or an X status bit
+    // lands on the fail path and never sets a flag. Polls that pass on a seen
+    // bit (lockwr_ok, lockuse_err, extent_seen, *_erased, retire_stuck)
+    // also pass only on a taken branch; an X there runs out the bound.
+    .macro need_eq a, b, fail       // continue only if a == b is known true
+    beq   \a, \b, .Lneed\@
+    j     \fail
+.Lneed\@:
+    .endm
+    .macro need_ne a, b, fail       // continue only if a != b is known true
+    bne   \a, \b, .Lneed\@
+    j     \fail
+.Lneed\@:
+    .endm
+    .macro need_z a, fail           // continue only if a == 0 is known true
+    beqz  \a, .Lneed\@
+    j     \fail
+.Lneed\@:
+    .endm
+    .macro need_nz a, fail          // continue only if a != 0 is known true
+    bnez  \a, .Lneed\@
+    j     \fail
+.Lneed\@:
+    .endm
+
     .section .text
     .globl _start
 _start:
@@ -128,7 +156,7 @@ _start:
     lui   x13, 0xA11CE
     sw    x13, 0(x12)
     lw    x7, 0(x12)
-    bne   x7, x13, slot_done
+    need_eq x7, x13, slot_done
 
     # --- legal slots: 0, seed, 63 ---
     li    x8, KEY_MANAGER_KPV_CTRL_BASE_ADDR(0)
@@ -136,20 +164,20 @@ _start:
     sw    x6, 0(x8)
     lw    x7, 0(x8)
     andi  x7, x7, CTRL_LOCK_WRITE
-    beqz  x7, slot_done
+    need_nz x7, slot_done
 
     slli  x11, x3, CTRL_SHIFT
     add   x11, x8, x11          # CTRL[slot]
     sw    x6, 0(x11)
     lw    x7, 0(x11)
     andi  x7, x7, CTRL_LOCK_WRITE
-    beqz  x7, slot_done
+    need_nz x7, slot_done
 
     addi  x11, x8, CTRL_LAST_OFF  # CTRL[63]
     sw    x6, 0(x11)
     lw    x7, 0(x11)
     andi  x7, x7, CTRL_LOCK_WRITE
-    beqz  x7, slot_done
+    need_nz x7, slot_done
     ori   x5, x5, 0x1           # CHK-SLOT
 slot_done:
 
@@ -163,7 +191,7 @@ slot_done:
     sw    x11, 0(x9)
     lw    x7, 0(x9)
     andi  x7, x7, IRQ_AXI_SLVERR
-    bnez  x7, lockwr_done
+    need_z x7, lockwr_done
 
     li    x12, KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0)
     slli  x13, x3, KEY_ENTRY_SHIFT  # slot * KEY_ENTRY stride
@@ -196,21 +224,21 @@ lockwr_done:
     lw    x7, 0(x11)
     andi  x7, x7, CTRL_ALL
     addi  x13, x0, CTRL_LOCK_WRITE
-    bne   x7, x13, lockctl_done # must hold lock_write and nothing else
+    need_eq x7, x13, lockctl_done   # must hold lock_write and nothing else
     addi  x11, x0, IRQ_AXI_SLVERR
     sw    x11, 0(x9)
     lw    x7, 0(x9)
     andi  x7, x7, IRQ_AXI_SLVERR
-    bnez  x7, lockctl_done      # must start clean
+    need_z x7, lockctl_done     # must start clean
     lw    x13, 0(x12)           # allowed read: slot is write-locked only
     addi  x14, x0, 32
 9:  lw    x7, 0(x9)
     andi  x11, x7, IRQ_AXI_SLVERR
-    bnez  x11, lockctl_done     # the read must not raise SLVERR
+    need_z x11, lockctl_done    # the read must not raise SLVERR
     addi  x14, x14, -1
     bnez  x14, 9b
     lui   x7, 0xA11CE
-    bne   x13, x7, lockctl_done # the stored value, not the refused write
+    need_eq x13, x7, lockctl_done   # the stored value, not the refused write
     addi  x15, x0, 1
 lockctl_done:
 
@@ -221,11 +249,11 @@ lockctl_done:
     sw    x7, 0(x11)
     lw    x7, 0(x11)
     andi  x7, x7, CTRL_LOCK_USE
-    beqz  x7, lockuse_done      # the lock did not take: prove nothing
+    need_nz x7, lockuse_done    # the lock must take, or prove nothing
 
     lw    x7, 0(x9)
     andi  x7, x7, IRQ_AXI_SLVERR
-    bnez  x7, lockuse_done      # must start clean
+    need_z x7, lockuse_done     # must start clean
     lw    x13, 0(x12)           # refused read; data must be forced to zero
     li    x6, KM_SRAM_BASE
     sw    x13, 4(x6)            # KM SRAM word1: the host reads it X-checked
@@ -237,13 +265,9 @@ lockctl_done:
     bnez  x14, 7b
     j     lockuse_done
 lockuse_err:
-    # SLVERR alone is not enough: data must be 0. The pass path is taken only
-    # on a known zero. PicoRV32 is 4-state in simulation and does not take a
-    # branch whose condition is X, so an X in x13 falls through to the fail.
-    beqz  x13, lockuse_zero
-    j     lockuse_done
-lockuse_zero:
-    beqz  x15, lockuse_done     # the lock_write-only control must also pass
+    # SLVERR alone is not enough: data must be a known 0.
+    need_z x13, lockuse_done
+    need_nz x15, lockuse_done   # the lock_write-only control must also pass
     ori   x5, x5, 0x400         # CHK-LOCKUSE
     addi  x11, x0, IRQ_AXI_SLVERR
     sw    x11, 0(x9)
@@ -262,7 +286,7 @@ lockuse_done:
     sw    x11, 0(x9)
     lw    x7, 0(x9)
     andi  x7, x7, IRQ_AXI_ERR
-    bnez  x7, extent_done       # not clean to begin with: prove nothing
+    need_z x7, extent_done      # must start clean, or prove nothing
     li    x6, KEY_MANAGER_KPV_BASE_ADDR + KEY_MANAGER_KPV_SIZE
     sw    x0, 0(x6)
     addi  x12, x0, 32
@@ -275,7 +299,7 @@ lockuse_done:
 extent_seen:
     # SLVERR alone: a DECERR bit, with or without SLVERR, fails the check.
     addi  x12, x0, IRQ_AXI_SLVERR
-    bne   x11, x12, extent_clear
+    need_eq x11, x12, extent_clear
     ori   x5, x5, 0x2           # CHK-EXTENT
 extent_clear:
     addi  x11, x0, IRQ_AXI_ERR
@@ -291,7 +315,7 @@ extent_done:
     addi  x7, x7, 0x111         # 0x11111111
     sw    x7, 0(x6)
     lw    x11, 0(x6)
-    bne   x11, x7, lock_done    # preload must land (region unlocked)
+    need_eq x11, x7, lock_done  # preload must land (region unlocked)
 
     li    x12, KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR
     addi  x11, x0, 1
@@ -302,21 +326,21 @@ extent_done:
     addi  x13, x13, 0x222       # 0x22222222
     sw    x13, 0(x6)
     lw    x13, 0(x6)
-    bne   x13, x7, lock_done    # write must be dropped
+    need_eq x13, x7, lock_done  # write must be dropped
     ori   x5, x5, 0x4           # CHK-DROP
 
     li    x14, KEY_MANAGER_KMCSR_SRAM_WRITE_LOCK_VIOLATION_BASE_ADDR
     lw    x13, 0(x14)
     addi  x15, x0, 1
     sll   x15, x15, x4
-    bne   x13, x15, lock_done   # exactly this region, not merely including it
+    need_eq x13, x15, lock_done # exactly this region, not merely including it
     ori   x5, x5, 0x8           # CHK-VIOL
 
     lw    x13, 0(x9)            # IRQ_STATUS
     andi  x15, x13, IRQ_SRAM_LOCK_ERR
-    beqz  x15, lock_done
+    need_nz x15, lock_done
     andi  x15, x13, IRQ_PARITY_TRIO
-    bnez  x15, lock_done
+    need_z x15, lock_done
     ori   x5, x5, 0x10          # CHK-IRQ
 
     addi  x13, x0, -1
@@ -324,10 +348,10 @@ extent_done:
     addi  x13, x0, IRQ_SRAM_LOCK_ERR
     sw    x13, 0(x9)            # W1C SRAM_WRITE_LOCK_ERR
     lw    x13, 0(x14)
-    bnez  x13, lock_done
+    need_z x13, lock_done
     lw    x13, 0(x9)
     andi  x13, x13, IRQ_SRAM_LOCK_ERR
-    bnez  x13, lock_done
+    need_z x13, lock_done
     ori   x5, x5, 0x20          # CHK-W1C
 lock_done:
 
@@ -344,7 +368,7 @@ lock_done:
     lw    x7, 0(x6)
     andi  x11, x7, CTRL_ALL
     addi  x12, x0, CTRL_SEALED
-    bne   x11, x12, seal_done   # one write seals AND write-locks, lock_use clear
+    need_eq x11, x12, seal_done # one write seals AND write-locks, lock_use clear
     ori   x5, x5, 0x40          # CHK-SEAL
 
     addi  x7, x0, CTRL_ERASE
@@ -360,7 +384,7 @@ seal_erased:
     lw    x7, 0(x6)
     andi  x11, x7, CTRL_RETIRED
     addi  x12, x0, CTRL_RETIRED
-    bne   x11, x12, seal_done   # retired: write stays locked, use becomes locked
+    need_eq x11, x12, seal_done # retired: write stays locked, use becomes locked
     ori   x5, x5, 0x80          # CHK-RETIRE
 
     # Retirement is stated to hold until warm reset. Erase the retired slot
@@ -379,7 +403,7 @@ retire_stuck:
     lw    x7, 0(x6)
     andi  x11, x7, CTRL_RETIRED
     addi  x12, x0, CTRL_RETIRED
-    bne   x11, x12, seal_done   # a second erase must not release the slot
+    need_eq x11, x12, seal_done # a second erase must not release the slot
     addi  x11, x0, 1
     slli  x11, x11, 12
     or    x5, x5, x11           # CHK-RETSTICK
@@ -412,7 +436,7 @@ seal_done:
     sw    x7, 0(x6)
     lw    x7, 0(x6)
     andi  x7, x7, CTRL_LOCK_WRITE
-    beqz  x7, free_done         # the mark did not take: prove nothing
+    need_nz x7, free_done       # the mark must take, or prove nothing
 
     addi  x7, x0, CTRL_ERASE
     sw    x7, 0(x6)
@@ -426,7 +450,7 @@ seal_done:
 free_erased:
     lw    x7, 0(x6)
     andi  x11, x7, CTRL_ALL
-    bnez  x11, free_done        # unsealed erase clears CTRL entirely
+    need_z x11, free_done       # unsealed erase clears CTRL entirely
     ori   x5, x5, 0x100         # CHK-FREE
 
     # The erase fills through an LFSR that advances per word, so both preloaded
@@ -434,9 +458,9 @@ free_erased:
     # fill, or a fill that never ran, fails.
     lw    x11, 0(x13)
     lw    x12, KEY_WORD_LAST_OFF(x13)
-    beq   x11, x14, free_done   # word 0 unchanged
-    beq   x12, x14, free_done   # word 15 unchanged
-    beq   x11, x12, free_done   # both words identical: not an advancing fill
+    need_ne x11, x14, free_done # word 0 changed
+    need_ne x12, x14, free_done # word 15 changed
+    need_ne x11, x12, free_done # the two words differ: the fill advanced
     addi  x11, x0, 1
     slli  x11, x11, 11
     or    x5, x5, x11           # CHK-ERASEDATA
@@ -453,20 +477,20 @@ free_done:
     sw    x11, 0(x9)            # W1C first: the bit is sticky
     lw    x7, 0(x9)
     andi  x7, x7, IRQ_DRBG_ERR
-    bnez  x7, irqset_done       # must start clean
+    need_z x7, irqset_done      # must start clean
 
     li    x12, KEY_MANAGER_KMCSR_IRQ_SET_BASE_ADDR
     addi  x11, x0, IRQ_DRBG_ERR
     sw    x11, 0(x12)           # software-inject DRBG_ERR
     lw    x7, 0(x9)
     andi  x7, x7, IRQ_DRBG_ERR
-    beqz  x7, irqset_done
+    need_nz x7, irqset_done
 
     addi  x11, x0, IRQ_DRBG_ERR
     sw    x11, 0(x9)            # W1C it back down
     lw    x7, 0(x9)
     andi  x7, x7, IRQ_DRBG_ERR
-    bnez  x7, irqset_done
+    need_z x7, irqset_done
     addi  x11, x0, 1
     slli  x11, x11, 13
     or    x5, x5, x11           # CHK-IRQSET
