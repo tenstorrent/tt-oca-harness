@@ -79,9 +79,9 @@ terminal error, and stop.
 
 `SBOOT_DIS` is an eFuse override that disables secure boot. When it is clear,
 PROD and PROD_END enforce secure boot regardless of the manifest request, and
-so does TEST_DEV when `CHIPLET_DBG` is set in `SIP_DIS` or `SYS_DIS` (or
-either vector is read-locked). Otherwise TEST_DEV and RMA enable secure boot
-when the manifest requests it. An encrypted
+so do TEST_DEV and RMA_SiP when `CHIPLET_DBG` is set in `SIP_DIS` or
+`SYS_DIS` (or either vector is read-locked). Otherwise TEST_DEV and both RMA
+states enable secure boot when the manifest requests it. An encrypted
 payload is rejected when secure boot is not active.
 
 === Manifest authentication
@@ -107,8 +107,10 @@ KBKDF-HMAC-SHA256 and decrypt the payload in place with AES-CBC. Temporary key,
 salt, and derivation buffers are explicitly cleared.
 
 After decryption, the ROM validates the TOC and every image extent, requires a
-usable SEP BL1 entry, verifies each image SHA-256, and clears bytes in gaps
-between described images and after the final image.
+usable SEP BL1 entry, and verifies each image SHA-256. It does not clear the
+bytes in gaps between described images or after the final image; payload gap
+zeroing is an open gap in the
+xref:rom.adoc#sec:impl_matrix[implementation-status table].
 
 === Secret locking, demotion, and measurement
 

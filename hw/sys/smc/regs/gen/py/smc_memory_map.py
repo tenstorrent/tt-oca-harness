@@ -571,7 +571,7 @@ VIEWS = {
                 "count": 1,
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0xFFFFFFFF, "bresp": "OKAY", "text": "OKAY, 0xFFFFFFFF / OKAY"}),),
-                "hole_notes": ("A read fetches the whole 8-byte word, so a read of 0x4C also reads NEXT_ID_0 at 0x48 and launches a transfer.",),
+                "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
                 "past_note": "",
             },

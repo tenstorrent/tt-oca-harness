@@ -8,12 +8,16 @@ stream-count parameter; ``STATUS_1..15`` and ``DONE_1..15`` are tied to 0, and
 a read of ``NEXT_ID_1..15`` completes without a bus error, returns 0 and does
 not start a transfer. ``NEXT_ID_0`` is the one register whose read launches a
 transfer built from the shared descriptor registers, so it is not read here;
-bank 0 is covered by ``STATUS_0`` and ``DONE_0``.
+bank 0 is covered by ``STATUS_0`` and ``DONE_0``. The unused word at ``0x4C``
+shares ``NEXT_ID_0``'s 8-byte word; a 32-bit read of it answers the hole
+response the map gives (OKAY, ``0xFFFFFFFF``) and must not launch a transfer
+either.
 
 The zeros are given teeth two ways: ``DST_ADDRESS_LO`` in the same block takes
 and returns a pattern first (so the block is answering, not a dead bus), and
 ``tb_dma_busy`` is sampled every ``clk_smc_i`` edge across the whole sweep and
-must never rise (the reserved ``NEXT_ID`` reads started nothing).
+must never rise (the reserved ``NEXT_ID`` reads and the ``0x4C`` read started
+nothing).
 
 Bank 0 is the functional stream: its ``STATUS_0`` and ``DONE_0`` are hardware
 status the specification does not pin to a value, so they are read for an
@@ -31,18 +35,23 @@ from .smc_decode_probe_utils import SmcDecodeProbeSeq
 NUM_STREAM_BANKS = 16
 DMA_DST_ADDRESS_LO = DMA_CTRL_BASE + dma_ctrl_offset("DMA_CTRL_DST_ADDRESS_LO_BASE_ADDR")
 _ALIVE_PATTERN = 0xA5A5_5A5A
+_HOLE_RDATA = 0xFFFF_FFFF
 
 
 def _bank_reg(name: str, bank: int) -> int:
     return DMA_CTRL_BASE + dma_ctrl_offset(f"DMA_CTRL_{name}_{bank}_BASE_ADDR")
 
 
+# The other half of NEXT_ID_0's 8-byte word, which no register owns.
+DMA_NEXT_ID_0_HOLE = _bank_reg("NEXT_ID", 0) + 4
+
+
 # Reads carrying an exact expectation: 15 reserved STATUS + 15 reserved DONE +
-# 15 reserved NEXT_ID + the two DST_ADDRESS_LO readbacks + the clock-gate
-# restore readback.
-EXPECTED_VALUE_CHECKS = 48
+# 15 reserved NEXT_ID + the NEXT_ID_0 hole + the two DST_ADDRESS_LO readbacks +
+# the clock-gate restore readback.
+EXPECTED_VALUE_CHECKS = 49
 # Plus the two bank-0 reads, the clock-gate save read and three writes.
-EXPECTED_ACCESSES = 55
+EXPECTED_ACCESSES = 56
 
 
 class smc_dma_reserved_stream_banks_test_seq(SmcDecodeProbeSeq):
@@ -88,6 +97,7 @@ class smc_dma_reserved_stream_banks_test_seq(SmcDecodeProbeSeq):
                 await self.read_reset(f"DMA_DONE_{bank}", _bank_reg("DONE", bank), 0)
             for bank in range(1, NUM_STREAM_BANKS):
                 await self.read_reset(f"DMA_NEXT_ID_{bank}", _bank_reg("NEXT_ID", bank), 0)
+            await self.csr_read("DMA_NEXT_ID_0_HOLE", DMA_NEXT_ID_0_HOLE, expected=_HOLE_RDATA)
 
             await self.csr_write("DMA_DST_ADDRESS_LO_RESTORE", DMA_DST_ADDRESS_LO, 0)
             await self.csr_read("DMA_DST_ADDRESS_LO_RESTORE_RB", DMA_DST_ADDRESS_LO, expected=0)
@@ -100,11 +110,13 @@ class smc_dma_reserved_stream_banks_test_seq(SmcDecodeProbeSeq):
         assert self.sampled_cycles > 0, "the DMA busy watcher never sampled a clock edge"
         assert self.busy_cycles == 0, (
             f"tb_dma_busy rose for {self.busy_cycles} of {self.sampled_cycles} clk_smc_i cycles "
-            f"during the reserved-bank sweep: a NEXT_ID_1..15 read launched a transfer"
+            f"during the reserved-bank sweep: a NEXT_ID_1..15 read or the 32-bit read of "
+            f"0x{DMA_NEXT_ID_0_HOLE:08x} beside NEXT_ID_0 launched a transfer"
         )
         self.close_cell(
             "all-16-banks-decode",
-            f"STATUS_1..15, DONE_1..15 and NEXT_ID_1..15 read 0 (all OKAY); bank 0 answered OKAY "
+            f"STATUS_1..15, DONE_1..15 and NEXT_ID_1..15 read 0 (all OKAY); the NEXT_ID_0 hole "
+            f"read 0x{_HOLE_RDATA:08x}; bank 0 answered OKAY "
             f"with STATUS_0=0x{self.bank0_status:x} DONE_0=0x{self.bank0_done:x} (hardware status, "
             f"reported not compared); DST_ADDRESS_LO took 0x{_ALIVE_PATTERN:08x} in the same "
             f"block; tb_dma_busy stayed 0 for all {self.sampled_cycles} sampled cycles",

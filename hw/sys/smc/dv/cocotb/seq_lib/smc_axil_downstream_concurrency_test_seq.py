@@ -39,7 +39,7 @@ from .smc_efuse_vip_utils import EFUSE_BANK_INIT_TIME_RESET, EFUSE_SHIM_CTRL_WIN
 # One mandatory external-window control block; any of them reaches the same
 # manager port, and this one carries no side effects.
 EXTERNAL_WINDOW = smc_bootrom_addr(
-    "SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_CONTROL_BASE_ADDR"
+    "SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_REFCLK_CTRL_CONTROL_BASE_ADDR"
 )
 AXI_RESP_DECERR = 3
 # The reference integration terminates the adopter window with an error slave

@@ -153,7 +153,10 @@ addrmap cpu_ctrl {
             sw=rw;
             hw=rw;
             wr_swacc = true;
-            desc="Reference counter for the CPU";
+            desc="Reference counter for the CPU. Write once, then poll this register until
+                  the readback reflects the written value before writing again. The counter
+                  keeps advancing, so the readback is at or just above the written value
+                  rather than equal to it.";
         } rc [63:0] = 0x0;
     };
 

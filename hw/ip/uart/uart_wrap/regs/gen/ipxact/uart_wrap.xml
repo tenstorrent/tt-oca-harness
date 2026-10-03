@@ -790,8 +790,11 @@ writing `0` releases it.</ipxact:description>
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>EN</ipxact:name>
-                <ipxact:description>Log Engine Enable. When set, enables the Log Engine. When unset, disables the
-Log Engine and resets all FSMs, flops, and FIFOs.</ipxact:description>
+                <ipxact:description>Log Engine Enable. When set, enables the Log Engine. When cleared, the engine
+stops fetching and writing, discards buffered log data and resets transfer
+progress. Configuration and pending LOG_LEN values are retained, so a pending
+entry restarts from the start of its slot when the engine is enabled again.
+Clearing does not wait for outstanding bus responses.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -993,7 +996,9 @@ an error.</ipxact:description>
               <ipxact:field>
                 <ipxact:name>LOG_LEN</ipxact:name>
                 <ipxact:description>Log Length. Writing a nonzero value representing the log length in bytes to this field
-starts the log transfer process. There are 16 copies of this register, each representing
+starts the log transfer process. The field holds the requested length until the
+transfer completes, when hardware clears it to zero; it is not a remaining-byte
+counter. There are 16 copies of this register, each representing
 a log entry. The log entries go through round robin arbitration.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>

@@ -33,8 +33,8 @@
 `include "edn.rdl"
 `include "entropy_source.rdl"
 `include "sep_trng.rdl"
-`include "../../../../../vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/kv_def.rdl"
-`include "../../../../../vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.rdl"
+`include "kv_def.rdl"
+`include "abr_reg.rdl"
 `include "sep_entropy_pool.rdl"
 
 `include "spi_controller.rdl"

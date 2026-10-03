@@ -9512,25 +9512,6 @@
     (SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_PVT_CLK_OBS_CTRL_CONTROL_BASE_ADDR)
 
 //==============================================================================
-// Addresses for Address Map: gpio_poc_pbias_ctrl
-//==============================================================================
-
-#define SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_BASE_ADDR (0xC0401020)
-#define SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_SIZE (0x0000000C)
-#define SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_REG_MAP_BASE_ADDR \
-    (SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_BASE_ADDR)
-#define SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_REG_MAP_SIZE \
-    (SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_SIZE)
-#define SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_CONTROL_REG_OFFSET (0x00000000)
-#define SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_CONTROL_BASE_ADDR (0xC0401020)
-#define SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_CONTROL_REG_ADDR \
-    (SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_CONTROL_BASE_ADDR)
-#define SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_REG_OFFSET (0x00000008)
-#define SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_BASE_ADDR (0xC0401028)
-#define SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_REG_ADDR \
-    (SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_BASE_ADDR)
-
-//==============================================================================
 // Addresses for Address Map: gpio_refclk_ctrl
 //==============================================================================
 
@@ -23354,34 +23335,6 @@ typedef union {
 #define GPIO_CTRL_CONTROL_REG_DEFAULT (0x00100002)
 
 typedef struct {
-    uint32_t pwr_supply_sel : 1;
-    uint32_t retention_en : 1;
-} GPIO_POC_PBIAS_CTRL_CONTROL_reg_t;
-
-typedef union {
-    uint32_t val;
-    GPIO_POC_PBIAS_CTRL_CONTROL_reg_t f;
-} GPIO_POC_PBIAS_CTRL_CONTROL_reg_u;
-
-#define GPIO_POC_PBIAS_CTRL_CONTROL_REG_DEFAULT (0x00000000)
-
-typedef struct {
-    uint32_t write_filter_enable : 1;
-    uint32_t read_filter_enable : 1;
-    uint32_t rsvd_0 : 6;
-    uint32_t awprot_requirement : 3;
-    uint32_t rsvd_1 : 5;
-    uint32_t arprot_requirement : 3;
-} GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_reg_t;
-
-typedef union {
-    uint32_t val;
-    GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_reg_t f;
-} GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_reg_u;
-
-#define GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_REG_DEFAULT (0x00010100)
-
-typedef struct {
     uint32_t lock_detect : 1;
     uint32_t rsvd_0 : 3;
     uint32_t debug_status : 4;
@@ -30077,8 +30030,6 @@ typedef struct {
     GPIO_INTF_DATA_CTRL_ENABLE_reg_u gpio_pvt_clk_obs_intf_data_ctrl_enable;
     GPIO_INTF_ACCESS_FILTER_reg_u gpio_pvt_clk_obs_intf_access_filter;
     GPIO_CTRL_CONTROL_reg_u gpio_pvt_clk_obs_ctrl_control;
-    GPIO_POC_PBIAS_CTRL_CONTROL_reg_u gpio_poc_pbias_ctrl_control;
-    GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_reg_u gpio_poc_pbias_ctrl_access_filter;
     GPIO_CTRL_CONTROL_reg_u gpio_refclk_ctrl_control;
     GPIO_CTRL_CONTROL_reg_u gpio_ctrl_0__control;
     GPIO_CTRL_CONTROL_reg_u gpio_ctrl_1__control;
@@ -33730,24 +33681,6 @@ typedef struct {
 
 #define GPIO_CTRL_CONTROL_HW2_OVRD_MASK 0x1000000
 #define GPIO_CTRL_CONTROL_HW2_OVRD_SHIFT 24
-
-#define GPIO_POC_PBIAS_CTRL_CONTROL_PWR_SUPPLY_SEL_MASK 0x1
-#define GPIO_POC_PBIAS_CTRL_CONTROL_PWR_SUPPLY_SEL_SHIFT 0
-
-#define GPIO_POC_PBIAS_CTRL_CONTROL_RETENTION_EN_MASK 0x2
-#define GPIO_POC_PBIAS_CTRL_CONTROL_RETENTION_EN_SHIFT 1
-
-#define GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_WRITE_FILTER_ENABLE_MASK 0x1
-#define GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_WRITE_FILTER_ENABLE_SHIFT 0
-
-#define GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_READ_FILTER_ENABLE_MASK 0x2
-#define GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_READ_FILTER_ENABLE_SHIFT 1
-
-#define GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_AWPROT_REQUIREMENT_MASK 0x700
-#define GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_AWPROT_REQUIREMENT_SHIFT 8
-
-#define GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_ARPROT_REQUIREMENT_MASK 0x70000
-#define GPIO_POC_PBIAS_CTRL_ACCESS_FILTER_ARPROT_REQUIREMENT_SHIFT 16
 
 #define PLL_CNTL_CGM_STATUS_LOCK_DETECT_MASK 0x1
 #define PLL_CNTL_CGM_STATUS_LOCK_DETECT_SHIFT 0

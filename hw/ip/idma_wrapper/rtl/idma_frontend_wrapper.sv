@@ -3,10 +3,10 @@
 
 // Accept AXI control traffic in an iDMA register frontend and emit 1-D iDMA requests.
 //
-// Each control interface has its own chain: an axi_cut, an axi_to_reg_v2 bridge to a 32-bit
-// register interface, the idma_reg64_2d register frontend, a stream_fifo that buffers 2-D
-// requests between the register frontend and the 2-D midend, and an idma_nd_midend that splits
-// each 2-D request into 1-D requests. An idma_transfer_id_gen per interface issues transfer IDs
+// Each control interface has its own chain: an axi_cut, an axi_dw_converter to 32-bit AXI, an
+// axi_to_reg_v2 bridge to a 32-bit register interface, the idma_reg64_2d register frontend, a
+// stream_fifo that buffers 2-D requests between the register frontend and the 2-D midend, and
+// an idma_nd_midend that splits each 2-D request into 1-D requests. An idma_transfer_id_gen per interface issues transfer IDs
 // and retires one on each midend completion. NUM_CTRL_INTERFACES and NUM_CTRL_STREAMS must be
 // >= 1. F2M_FIFO_DEPTH is passed unchanged to the stream_fifo DEPTH and is the FIFO depth in
 // requests; fifo_v3 asserts DEPTH > 0.
@@ -47,9 +47,9 @@ module idma_frontend_wrapper #(
   parameter type dma_ctrl_resp_t = logic,                   // AXI ctrl response type.
 
   parameter int unsigned CTRL_ADDR_WIDTH = 9,               // Ctrl AXI address width.
-  parameter int unsigned CTRL_DATA_WIDTH = 64,              // Ctrl AXI data width; axi_to_reg_v2
-                                                            // converts it to the 32-bit register
-                                                            // interface.
+  parameter int unsigned CTRL_DATA_WIDTH = 64,              // Ctrl AXI data width; must be >= 32.
+                                                            // axi_dw_converter narrows it to the
+                                                            // 32-bit register width.
   parameter int unsigned CTRL_ID_WIDTH   = 8,               // Ctrl AXI ID width.
   parameter int unsigned CTRL_USER_WIDTH = 12               // Ctrl AXI user width.
 ) (
@@ -109,10 +109,13 @@ module idma_frontend_wrapper #(
 
   // setup channel types for slave AXI interfaces
   `AXI_TYPEDEF_ALL(slv_axi, ctrl_addr_t, ctrl_id_t, ctrl_data_t, ctrl_strb_t, ctrl_user_t)
+  `AXI_TYPEDEF_ALL(reg_axi, ctrl_addr_t, ctrl_id_t, reg_data_t, reg_strb_t, ctrl_user_t)
 
   // define AXI req/resp interface
   slv_axi_req_t [NUM_CTRL_INTERFACES-1:0] slv_axi_reqs_flopped;
   slv_axi_resp_t [NUM_CTRL_INTERFACES-1:0] slv_axi_resps_flopped;
+  reg_axi_req_t [NUM_CTRL_INTERFACES-1:0] reg_axi_reqs;
+  reg_axi_resp_t [NUM_CTRL_INTERFACES-1:0] reg_axi_resps;
 
   // setup channel types for REG interface
   `REG_BUS_TYPEDEF_REQ(reg_req_t, ctrl_addr_t, reg_data_t, reg_strb_t)
@@ -172,23 +175,51 @@ module idma_frontend_wrapper #(
       .mst_resp_i(slv_axi_resps_flopped[i])
     );
 
-    // Downsize (if needed) and convert AXI ctrl interface to PULP register ctrl interface
+    // axi_to_reg_v2 reads every 32-bit half of a wider beat whatever the AXI size, and a read
+    // of NEXT_ID_0 launches a transfer. Narrowing to the register width first keeps a 32-bit
+    // read of the other half of NEXT_ID_0's word off NEXT_ID_0.
+    axi_dw_converter #(
+      .AxiMaxReads        (1),
+      .AxiSlvPortDataWidth(CTRL_DATA_WIDTH),
+      .AxiMstPortDataWidth(DmaCtrlRegDataW),
+      .AxiAddrWidth       (CTRL_ADDR_WIDTH),
+      .AxiIdWidth         (CTRL_ID_WIDTH),
+      .aw_chan_t          (slv_axi_aw_chan_t),
+      .mst_w_chan_t       (reg_axi_w_chan_t),
+      .slv_w_chan_t       (slv_axi_w_chan_t),
+      .b_chan_t           (slv_axi_b_chan_t),
+      .ar_chan_t          (slv_axi_ar_chan_t),
+      .mst_r_chan_t       (reg_axi_r_chan_t),
+      .slv_r_chan_t       (slv_axi_r_chan_t),
+      .axi_mst_req_t      (reg_axi_req_t),
+      .axi_mst_resp_t     (reg_axi_resp_t),
+      .axi_slv_req_t      (slv_axi_req_t),
+      .axi_slv_resp_t     (slv_axi_resp_t)
+    ) u_dma_ctrl_dw_converter (
+      .clk_i     (clk_i),
+      .rst_ni    (rst_ni),
+      .slv_req_i (slv_axi_reqs_flopped[i]),
+      .slv_resp_o(slv_axi_resps_flopped[i]),
+      .mst_req_o (reg_axi_reqs[i]),
+      .mst_resp_i(reg_axi_resps[i])
+    );
+
     axi_to_reg_v2 #(
       .AxiAddrWidth(CTRL_ADDR_WIDTH),
-      .AxiDataWidth(CTRL_DATA_WIDTH),
+      .AxiDataWidth(DmaCtrlRegDataW),
       .AxiIdWidth  (CTRL_ID_WIDTH),
       .AxiUserWidth(CTRL_USER_WIDTH),
       .RegDataWidth(DmaCtrlRegDataW),
-      .axi_req_t   (slv_axi_req_t),
-      .axi_rsp_t   (slv_axi_resp_t),
+      .axi_req_t   (reg_axi_req_t),
+      .axi_rsp_t   (reg_axi_resp_t),
       .reg_req_t   (reg_req_t),
       .reg_rsp_t   (reg_resp_t)
     ) u_axi_to_reg (
       .clk_i (clk_i),
       .rst_ni(rst_ni),
 
-      .axi_req_i(slv_axi_reqs_flopped[i]),
-      .axi_rsp_o(slv_axi_resps_flopped[i]),
+      .axi_req_i(reg_axi_reqs[i]),
+      .axi_rsp_o(reg_axi_resps[i]),
       .reg_req_o(reg_reqs[i]),
       .reg_rsp_i(reg_resps[i]),
       .reg_id_o (/* NOT CONNECTED */),

@@ -72,7 +72,8 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
     )
 
     # --- stimulus ------------------------------------------------------------
-    def _clear_one(self, buf: bytearray, slot: str) -> None:
+    def mutate_slot(self, buf: bytearray, slot: str) -> None:
+        """Plant this scenario's defect in one slot. Applied to both slots."""
         before = mm.secure_boot_control(buf, slot)
         assert before & mm.SECURE_BOOT_ENFORCED_BIT, (
             f"{slot} manifest already has secure_boot=0 (secure_boot_control="
@@ -103,10 +104,10 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_backup_manifest_fail_base):
         # Both slots: the ROM may serve this boot from either, and leaving the
         # backup's flag set would let a failover quietly satisfy the test for the
         # wrong reason.
-        self._clear_one(buf, "primary")
+        self.mutate_slot(buf, "primary")
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        self._clear_one(buf, "backup")
+        self.mutate_slot(buf, "backup")
 
     # --- checks --------------------------------------------------------------
     def check_defect_attribution(self, console, i_backup: int) -> None:

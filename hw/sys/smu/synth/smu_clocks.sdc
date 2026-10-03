@@ -185,11 +185,12 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
 # `set_clock_sense` needs a leaf pin, and every pin on an RTL module boundary is
 # hierarchical, so the stops below only apply once technology mapping has turned
 # the mux into a library cell. DC reports that failure without raising a Tcl
-# error, so an unguarded call fails in silence -- hence the check.
+# error, so an unguarded call fails in silence -- hence the check. The sign-off
+# (functional) scenario is exempt: VC accepts the stop on a hierarchical pin.
 set avs_mux_cell [get_cells -quiet -of_objects \
     [get_pins -quiet "${avs_hier}/u_refclk_apbclk_mux/clk_o"]]
-set avs_mapped [expr { [sizeof_collection $avs_mux_cell] \
-                       && [get_attribute -quiet $avs_mux_cell is_hierarchical] ne "true" }]
+set avs_mapped [expr { [cdc_ports_pinned] || ([sizeof_collection $avs_mux_cell] \
+                       && [get_attribute -quiet $avs_mux_cell is_hierarchical] ne "true") }]
 
 # Tell the tool the raw primaries stop at the mux output — the generated clocks take over from there
 if { $avs_mapped } {
