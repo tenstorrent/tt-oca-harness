@@ -4,7 +4,7 @@
 # SMC coverage exclusions design engineering reviewed for this bench in an
 # earlier repository, recorded by category against this tree's names. The
 # reviewed dumps are not part of this repository; `[review]` names where they
-# were reviewed. smc_reviewed_exclusions.py resolves every entry against urg's
+# were reviewed. The companion's smc_reviewed_exclusions.py resolves every entry against urg's
 # templates of a graded run and keeps only the points that run's raw report
 # leaves uncovered; gen_smc_cov_exclusions.py and
 # gen_smc_ports_only_exclusions.py write them into the file each class names.
