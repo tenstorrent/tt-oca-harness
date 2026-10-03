@@ -128,10 +128,7 @@ The default `build/` may also contain:
 
 | File | Purpose |
 |---|---|
-| `oca_<name>.bin` / `.spi_preload` | Flash image for each entry in `OCA_IMAGES`, with the bundle at both boot slots, as raw binary and Verilog hex. |
-| `oca_non_secure_boot.bin` / `.spi_preload` | Unsigned manifest and BL1. |
-| `oca_secure_boot.bin` / `.spi_preload` | RSA-3072 signed test image. |
-| `oca_encrypted_boot.bin` / `.spi_preload` | Signed, AES-CBC encrypted test image. |
+| `oca_<name>.bin` / `.spi_preload` | Flash image for each entry in `OCA_IMAGES`, with the bundle at both boot slots, as raw binary and Verilog hex. For example, `oca_non_secure_boot` is unsigned, `oca_secure_boot` is RSA-3072 signed, and `oca_encrypted_boot` is signed and AES-CBC encrypted. |
 | `oca_smc_mem.hex` | `oca_non_secure_boot.bin` rebased to the SEP-visible SMC SRAM address. |
 | `oca_smc_bundle.bin` | Bare signed bundle the virtual platform stages in SMC SRAM. |
 | `invalid_class_key.bin` | Decryption negative image, from `decrypt_negative_images`. |
@@ -183,8 +180,8 @@ Common build variables include:
 | `BUILD_TYPE` | `debug` | `debug` or `release`; see [Build types](#build-types). |
 | `SEP_ROM_RELEASE_SIGNING_KEYS_DIR` | `release_signing_keys` | Where a release build reads its public ROM keys. |
 
-The default build is debug-oriented. Its zero-length SEP SRAM scrub reduces RTL
-simulation cost. ICCM ECC establishment is enabled, while the full-region clear
+The default build is debug-oriented. Its zero-length SEP SRAM scrub leaves in place
+anything the testbench preloads into SEP SRAM. ICCM ECC establishment is enabled, while the full-region clear
 is disabled; an adopter requiring full ICCM residue clearing sets
 `ROM_ICCM_CLEAR_FULL=1`. PMP rules are locked and bound to machine mode whenever
 `PMP_ENABLE=1`. A release image must also apply the adopter's final

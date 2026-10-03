@@ -6,9 +6,8 @@
 # which mode it is. The container leg pulls its toolchain image from the
 # registry by the flake content hash; the native leg needs no image at all.
 #
-# The caller must check the repository out first and gate this action on the
-# submodule token: a local composite action is loaded from the checked-out tree,
-# and every step here needs the private submodules.
+# The caller must check the repository out first: a local composite action is
+# loaded from the checked-out tree.
 name: 'Run an smc-vp/smu-vp leg'
 description: 'Build smc-vp and smu-vp for one environment and run the model firmware suites'
 inputs:
@@ -24,38 +23,19 @@ inputs:
   build_dir:
     required: true
     description: 'VP build tree for this environment; the tag keeps container and native objects apart'
-  oca_pat:
-    required: true
-    description: 'PAT granting the private model and manifest submodules'
 runs:
   using: composite
   steps:
-    - name: Skip when the submodule token is unavailable
-      if: false  # caller handles the skip notice
-      shell: bash
-      run: |
-        {
-          echo "### smc-vp + smu-vp (${{ inputs.mode }}): skipped"
-          echo
-          echo 'The `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` secret is not available to this run'
-          echo '(fork PR, or the secret is not configured yet).'
-        } >> "$GITHUB_STEP_SUMMARY"
-
     - name: Checkout
       uses: actions/checkout@v4
 
-    # See the sep-vp job: checkout's `token` would break this repository's own
-    # fetch, so the private submodules are initialised separately.
-    - name: Check out the private submodules
-      env:
-        OCA_PAT: ${{ inputs.oca_pat }}
+    # tt-oca-harness-model is the simulator, and the bootcode tests read
+    # tt-oca-manifest's src/oca/constants.py as the authority for the manifest
+    # layout.
+    - name: Check out the submodules
       shell: bash
       run: |
         set -euo pipefail
-        rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
-        cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
-        trap cleanup EXIT
-        git config --global "${rewrite}.insteadOf" 'git@github.com:'
         git submodule update --init --recursive \
           virtual_platform/tt-oca-harness-model \
           hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
@@ -111,16 +91,14 @@ runs:
     # back to pulling docker.io/nixos/nix and building inside it otherwise.
     # The fallback builds the whole closure from scratch on every job and does
     # not finish inside the budget, so install nix on the runner -- the same
-    # step and action lint.yml uses. access-tokens lets nix reach the private
-    # submodule repositories when it resolves the flake's inputs.
+    # step and action lint.yml uses. The token lifts the anonymous GitHub API
+    # rate limit while nix resolves the flake's inputs.
     - name: Install Nix
       uses: cachix/install-nix-action@v31.11.1
       with:
-        extra_nix_config: |
-          access-tokens = github.com=${{ inputs.oca_pat }}
+        github_access_token: ${{ github.token }}
 
     - name: Install VP build dependencies
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
       shell: bash
       run: |
         # Acquire options: turn a stalled mirror into an error so apt's
@@ -152,7 +130,7 @@ runs:
     # invalidation only wipes build*/, never local*/.
     - name: Compute dependency cache key
       id: depkey
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      if: inputs.mode == 'native'
       shell: bash
       run: echo "cxx_id=$(g++ -dumpmachine)-$(g++ -dumpversion)" >> "$GITHUB_OUTPUT"
 
@@ -162,7 +140,7 @@ runs:
     # PIC-ness, and a recipe version to bump when the set of archives changes.
     # Native leg only; the container gets Whisper from ocah_deps.nix too.
     - name: Cache VP dependencies (including Whisper)
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      if: inputs.mode == 'native'
       uses: actions/cache@v4
       with:
         path: |
@@ -200,7 +178,7 @@ runs:
     # The published tag is the same flake content hash docker-run.sh computes,
     # so a pull either matches this tree exactly or misses and falls through.
     - name: Log in to GHCR
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
+      if: inputs.mode == 'container'
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
@@ -210,7 +188,7 @@ runs:
     # The registry is the only source of this image; a miss must not fall
     # through into a local build.
     - name: Provision toolchain image
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
+      if: inputs.mode == 'container'
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -330,7 +308,7 @@ runs:
     # The DSO travels with the binary. An smu-vp uploaded on its own cannot
     # run anywhere else: its RUNPATH points into this runner's build tree.
     - name: Upload run artifacts
-      if: always() && env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: vp-smc-smu-${{ inputs.mode }}

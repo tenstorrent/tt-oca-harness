@@ -330,10 +330,10 @@ timestamps and not toolchain identity, so after switching paths or rebuilding
 the image, run `make -f ocah.mk ocah-dv-fw-clean TARGET=<block>` before the
 next simulation.
 
-The `sep` tree carries the repository's one private submodule, under
+The `sep` tree carries the `tt-oca-manifest` submodule, under
 `hw/sys/sep/bootrom/prod/tools/`, and some of its test modules import it.
-The hosted `sep` jobs check it out with a repository secret before the run; a
-public clone runs without it, so those modules fail to import there. An
+The hosted `sep` jobs check it out before the run; a clone that has not run
+`git submodule update --init` lacks it, so those modules fail to import there. An
 unscoped `--doctor --dut sep` imports every testlist module and exits `2` on
 that account. Scope the doctor to the selection you will run:
 
@@ -3414,8 +3414,8 @@ coverage utilities, or every firmware toolchain.
 
 An unscoped `--doctor --dut <dut>` imports every module in the DUT's
 testlist, including modules whose dependencies a run of your selection never
-touches; the `sep` modules that import the private submodule are the case a
-public clone meets (<<runner-environment-matrix>>). Add the selection to the
+touches; the `sep` modules that import the `tt-oca-manifest` submodule are
+the case a clone without submodules meets (<<runner-environment-matrix>>). Add the selection to the
 doctor:
 
 [source,bash]

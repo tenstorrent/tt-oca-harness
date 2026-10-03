@@ -4,8 +4,8 @@
 
 Closes SMC-GPIO-EXTCTRL.S3, SMC-GPIO-EXTCTRL.S4, SMC-GPIO-EXTCTRL.S5 and
 SMC-EXTWIN-MAND.S2 (memmap.adoc: AXI-Lite External Window - Mandatory Region):
-the PLL/PVT clock-observation interface and control blocks, the POC/PBias and
-reference-clock control blocks and the first, second and last of the 65
+the PLL/PVT clock-observation interface and control blocks, the
+reference-clock control block and the first, second and last of the 65
 per-pad control blocks are read at their generated-map addresses; each access
 must drive the adopter external AXI-Lite port while in flight and complete
 with a decode error carrying the error-slave word 0xBADCAB1E, the terminator's
