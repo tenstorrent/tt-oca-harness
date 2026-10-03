@@ -240,7 +240,6 @@ addrmap dma_ctrl {
 
 `ifdef OCAH_DOC_MEMORY_MAP
     ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::OKAY};
-    ocah_hole_note = "A read fetches the whole 8-byte word, so a read of 0x4C also reads NEXT_ID_0 at 0x48 and launches a transfer.";
 `endif
 };
 

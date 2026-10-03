@@ -123,7 +123,9 @@ The generated map contains `NEXT_ID`, `STATUS` and `DONE` banks for 16 streams,
 but only bank 0 is functional in SMC. Reads of `NEXT_ID_1..15` complete with zero
 and launch nothing; their `STATUS` and `DONE` registers also read zero. Treat
 these banks as reserved. A read of `NEXT_ID_0` is a command, not a harmless
-status read; exclude it from diagnostic register dumps.
+status read; exclude it from diagnostic register dumps. Any read whose bytes
+include `NEXT_ID_0`, such as a 64-bit read at `0x48`, launches a transfer; a
+32-bit read of the unused word at `0x4C` does not.
 
 Source, destination, length, strides, repetitions and `CONFIG` are shared registers.
 Serialize their writes and the submission read between software contexts. There
