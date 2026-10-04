@@ -3,7 +3,9 @@
 """DV-owned apertures, PIC IDs, and mailbox constants.
 
 ``WINDOWS``, ``PIC``, mailbox sentinels, and ``OUTPUT_REMAP_REGIONS`` are
-the expectation. ABR offsets come from ``abr_reg.rdl``.
+the expectation. ABR offsets come from ``abr_reg.rdl``. OpenTitan field value
+codes that the overlay RDL states only in field descriptions come from
+``ot_rdl_table_code`` and ``ot_rdl_named_codes``.
 """
 
 from __future__ import annotations
@@ -28,6 +30,53 @@ _ABR_RDL = (
 
 # Key-Vault control register types instantiated by abr_reg.rdl.
 _KV_RDL = _ABR_RDL.with_name("kv_def.rdl")
+
+# OpenTitan register descriptions as SEP builds them: <ip>/regs/<ip>.rdl.
+_OT_OVERLAY_REGS = _REPO / "vendor" / "lowRISC" / "opentitan" / "overlay" / "regs"
+# End of one register instance: `} [external] NAME[[n]] @ offset`.
+_OT_REG_END = re.compile(r"\}\s*(?:external\s+)?([A-Za-z0-9_]+)(?:\[\d+\])?\s*@")
+# A row of a value table in a field description: `| 0xd8 | EXECUTE | ... |`.
+_OT_TABLE_ROW = re.compile(r"^\s*\|\s*(0x[0-9A-Fa-f]+)\s*\|\s*([A-Z][A-Z0-9_]*)\s*\|", re.M)
+# A named code in a field description: `AES_ENC (2'b01)`.
+_OT_NAMED_BITS = re.compile(r"\b([A-Z][A-Z0-9_]*) \((\d+)'b([01_]+)\)")
+
+
+@lru_cache(maxsize=None)
+def _ot_rdl_reg_text(ip: str, reg: str) -> str:
+    """Source text of register ``reg`` in the overlay ``<ip>.rdl``."""
+    path = _OT_OVERLAY_REGS / ip / "regs" / f"{ip}.rdl"
+    text = path.read_text(encoding="utf-8")
+    start = 0
+    for m in _OT_REG_END.finditer(text):
+        if m.group(1) == reg:
+            return text[start : m.end()]
+        start = m.end()
+    raise KeyError(f"register {reg} not found in {path}")
+
+
+def ot_rdl_table_code(ip: str, reg: str, name: str) -> int:
+    """Value of ``name`` in the value table of a ``<ip>.rdl`` field description.
+
+    The overlay RDL gives some OpenTitan field codes only as a table in the
+    field ``desc`` (for example OTBN ``CMD`` and ``STATUS``), not as an enum.
+    """
+    codes = {n: int(v, 16) for v, n in _OT_TABLE_ROW.findall(_ot_rdl_reg_text(ip, reg))}
+    if name not in codes:
+        raise KeyError(f"{ip}.rdl {reg}: no table row named {name} (rows: {sorted(codes)})")
+    return codes[name]
+
+
+def ot_rdl_named_codes(ip: str, reg: str) -> dict[str, int]:
+    """Every ``NAME (N'bBITS)`` code that the ``<ip>.rdl`` text of ``reg`` states."""
+    out: dict[str, int] = {}
+    for name, width, bits in _OT_NAMED_BITS.findall(_ot_rdl_reg_text(ip, reg)):
+        value = int(bits.replace("_", ""), 2)
+        if value >= 1 << int(width):
+            raise ValueError(f"{ip}.rdl {reg}: {name} ({width}'b{bits}) overflows its width")
+        if out.setdefault(name, value) != value:
+            raise ValueError(f"{ip}.rdl {reg}: {name} is stated with two different codes")
+    return out
+
 
 _ABR_CLOSE = re.compile(
     r"^    \} ([A-Za-z0-9_]+)(?:\[(\d+)\])?(?:\s*@(0x[0-9A-Fa-f]+))?;",
