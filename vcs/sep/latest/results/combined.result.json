@@ -8,14 +8,14 @@
     "run_dir": "vcs/sep/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-6dd40391eb9679a2",
+    "comparison_key": "COVCMP-e2f5be95f061368d",
     "details_available": true,
     "effective_metrics": {
-      "branch": 90.0,
-      "condition": 79.85,
+      "branch": 89.96,
+      "condition": 79.73,
       "fsm_state": 88.73,
       "functional": 100.0,
-      "line": 94.82,
+      "line": 94.78,
       "toggle": 82.57
     },
     "holes_summary": {
@@ -35,12 +35,12 @@
     "policy_application": "artifacts/sep/coverage/report/policy-application.json",
     "policy_thresholds": [],
     "raw_metrics": {
-      "branch": 87.6,
-      "condition": 77.34,
+      "branch": 87.56,
+      "condition": 77.22,
       "fsm_state": 86.22,
       "functional": 100.0,
-      "line": 94.79,
-      "toggle": 81.35
+      "line": 94.75,
+      "toggle": 81.36
     },
     "report": "artifacts/sep/coverage/report",
     "source_manifest": "vcs/sep/runs/combined/cov/coverage.json",
@@ -52,16 +52,16 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 89.33
+    "total_percent": 89.29
   },
   "failure_buckets": [],
   "flow": "sep",
   "framework": "",
-  "generated_at": "2026-10-04T11:21:03+00:00",
+  "generated_at": "2026-10-04T14:04:54+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "48505a9c050a21def1c3a54f210517e8a65e2b90",
-    "short_sha": "48505a9c0"
+    "sha": "3917e6cb4a3146c81fe137e5b50e0f22c11b1a54",
+    "short_sha": "3917e6cb4"
   },
   "junit_xml": {
     "missing": 0,
@@ -70,10 +70,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-10-04T11:20:58.297267+00:00",
+    "generated_at": "2026-10-04T14:04:52.169327+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "48505a9c050a21def1c3a54f210517e8a65e2b90",
+      "commit": "3917e6cb4a3146c81fe137e5b50e0f22c11b1a54",
       "dirty": "false"
     },
     "label": "combine",
@@ -98,9 +98,9 @@
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 39.987,
-    "end_time": "2026-10-04T11:20:55.920781+00:00",
-    "start_time": "2026-10-04T11:20:15.898200+00:00"
+    "duration_sec": 22.548,
+    "end_time": "2026-10-04T14:04:51.293285+00:00",
+    "start_time": "2026-10-04T14:04:28.733339+00:00"
   },
   "tool": "vcs"
 }
