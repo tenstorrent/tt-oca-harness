@@ -319,6 +319,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
     wait_b(timed_out);
     if (timed_out) return;
     target.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.bresp));
+    target.resp_xz.push_back($isunknown(cfg.vif.mon_cb.bresp));
     capture_observed_id(target, cfg.vif.mon_cb.bid);
     write_bursts++;
   endtask
@@ -432,6 +433,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       it.data_words.push_back(mask_data(cfg.vif.mon_cb.rdata));
       it.data_xz_masks.push_back(xz_bits(cfg.vif.mon_cb.rdata));
       it.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.rresp));
+      it.resp_xz.push_back($isunknown(cfg.vif.mon_cb.rresp));
       last = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) || (cfg.vif.mon_cb.rlast === 1'b1);
       if (last) capture_observed_id(it, cfg.vif.mon_cb.rid);
     end

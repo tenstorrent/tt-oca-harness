@@ -155,6 +155,14 @@ class sep_base_test_seq extends ocah_sequence;
     return ((64'd1 << (8 * bytes)) - 1) << (8 * first);
   endfunction
 
+  // Every BRESP/RRESP must be known: the VIP stores it two-state, so an X
+  // or Z response would read as a legal code (X reads as OKAY).
+  function void check_resp_known(ocah_axi_item result, string label);
+    if (result.any_resp_xz())
+      `uvm_error(get_type_name(), $sformatf("%s: response at 0x%0h has an X or Z bit", label,
+                                           result.address))
+  endfunction
+
   function void check_read_known(ocah_axi_item result, bit [63:0] addr, int size, string label);
     bit [63:0] xz = result.first_xz_mask() & lane_bits(addr, size);
     if (xz != '0)
@@ -173,6 +181,7 @@ class sep_base_test_seq extends ocah_sequence;
     op.addr = addr;
     op.data = data;
     op.start(p_sequencer.m_lsu_seqr);
+    check_resp_known(op.result, label);
     check_evidence(ChkCsrResp, label.len() ? label : $sformatf("wr_0x%0h", addr),
                    64'(op.result.worst_resp()), 64'(OCAH_AXI_RESP_OKAY), $sformatf(
                    "write addr=0x%0h data=0x%08h", addr, data));
@@ -185,6 +194,7 @@ class sep_base_test_seq extends ocah_sequence;
     sep_axi_csr_read_seq op = sep_axi_csr_read_seq::type_id::create("csr_read");
     op.addr = addr;
     op.start(p_sequencer.m_lsu_seqr);
+    check_resp_known(op.result, label);
     data = op.data;
     check_read_known(op.result, addr, SepCsrSize,
                      label.len() ? label : $sformatf("rd_0x%0h", addr));
@@ -214,6 +224,7 @@ class sep_base_test_seq extends ocah_sequence;
     op.data = data;
     op.check_response = 1'b0;
     op.start(p_sequencer.m_lsu_seqr);
+    check_resp_known(op.result, label);
     check_evidence(check_id, label.len() ? label : $sformatf("wr_0x%0h", addr),
                    64'(op.result.worst_resp()), 64'(expected), $sformatf(
                    "write addr=0x%0h data=0x%08h resp=%s", addr, data, op.result.worst_resp().name()
@@ -226,6 +237,7 @@ class sep_base_test_seq extends ocah_sequence;
     op.addr = addr;
     op.check_response = 1'b0;
     op.start(p_sequencer.m_lsu_seqr);
+    check_resp_known(op.result, label);
     data = op.data;
     check_read_known(op.result, addr, SepCsrSize,
                      label.len() ? label : $sformatf("rd_0x%0h", addr));
@@ -246,6 +258,7 @@ class sep_base_test_seq extends ocah_sequence;
     op.strb = strb;
     op.size = size;
     op.start(p_sequencer.m_lsu_seqr);
+    check_resp_known(op.result, label);
     result = op.result;
     `uvm_info(get_type_name(),
               $sformatf("LSU BUS WRITE %-24s addr=0x%08h size=%0d strb=0x%02h data=0x%016h resp=%s",
@@ -257,6 +270,7 @@ class sep_base_test_seq extends ocah_sequence;
     op.addr = addr;
     op.size = size;
     op.start(p_sequencer.m_lsu_seqr);
+    check_resp_known(op.result, label);
     result = op.result;
     `uvm_info(get_type_name(),
               $sformatf("LSU BUS READ  %-24s addr=0x%08h size=%0d data=0x%016h resp=%s", label,

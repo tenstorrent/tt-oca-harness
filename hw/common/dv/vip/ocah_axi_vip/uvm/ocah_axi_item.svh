@@ -30,6 +30,9 @@ class ocah_axi_item extends uvm_sequence_item;
   bit [15:0]          transaction_id;
   bit [2:0]           prot;
   ocah_axi_resp_e     resp_list[$];        // per beat (reads) / single (writes)
+  // One entry per resp_list entry: the sampled BRESP/RRESP had an X or Z
+  // bit. resp_list is two-state, so such a response reads as a legal code.
+  bit                 resp_xz[$];
   int unsigned        expected_beats = 1;  // AxLEN + 1 recorded at the address phase
   bit                 expected_armed;      // expected items: non-OKAY was armed
   time                start_time;
@@ -97,6 +100,7 @@ class ocah_axi_item extends uvm_sequence_item;
   // twice reports only the operation in flight.
   function void clear_results();
     resp_list.delete();
+    resp_xz.delete();
     if (direction != OCAH_AXI_DIR_WRITE) begin
       data_words.delete();
       data_xz_masks.delete();
@@ -128,6 +132,11 @@ class ocah_axi_item extends uvm_sequence_item;
 
   function bit [63:0] first_data();
     return (data_words.size() > 0) ? data_words[0] : '0;
+  endfunction
+
+  function bit any_resp_xz();
+    foreach (resp_xz[i]) if (resp_xz[i]) return 1'b1;
+    return 1'b0;
   endfunction
 
   function bit [63:0] first_xz_mask();
@@ -170,6 +179,7 @@ class ocah_axi_item extends uvm_sequence_item;
     transaction_id = rhs_item.transaction_id;
     prot           = rhs_item.prot;
     resp_list      = rhs_item.resp_list;
+    resp_xz        = rhs_item.resp_xz;
     expected_beats = rhs_item.expected_beats;
     expected_armed = rhs_item.expected_armed;
     start_time     = rhs_item.start_time;
