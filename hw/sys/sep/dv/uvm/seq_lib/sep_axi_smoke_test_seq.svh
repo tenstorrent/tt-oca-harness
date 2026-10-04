@@ -76,8 +76,8 @@ class sep_axi_smoke_test_seq extends sep_base_test_seq;
     bit [31:0]     rand_pattern;
 
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkCsrReset, ChkCsrReadback, ChkCsrRandom,
-                    ChkCsrRestore, ChkNonvac});
+    attach_evidence('{ChkCsrResp, ChkCsrReset, ChkCsrReadback, ChkCsrRandom, ChkCsrRestore,
+                    ChkNonvac});
     mark_scoreboard_feature(SepFeatureCpuCtrlCsr);
     write_cases(cases);
     if (!sep_cpu_ctrl_csr_by_name(ResetReadRegister, reset_reg))

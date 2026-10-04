@@ -254,7 +254,8 @@ class sep_address_map_test_seq extends sep_base_test_seq;
                    32'(CSRNG_INTR_STATE_REG_DEFAULT)});
     rows.push_back('{"DRBG_EDN", 64'(EDN_INTR_STATE_REG_ADDR), 1'b1, 32'(EDN_INTR_STATE_REG_DEFAULT)
                    });
-    rows.push_back('{"ENTROPY_SRC", 64'(ENTROPY_SOURCE_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
+    rows.push_back('{"ENTROPY_SRC", 64'(ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR), 1'b1,
+                   32'(ENTROPY_SOURCE_COMPONENT_ID_REG_DEFAULT)});
     rows.push_back('{"ADAMS_BRIDGE", 64'(ABR_MLDSA_NAME_0__REG_ADDR), 1'b0, 32'h0});
     rows.push_back('{"ENTROPY_POOL", 64'(ENTROPY_POOL_STATUS_REG_ADDR), 1'b0, 32'h0});
     rows.push_back('{"SEP_LIFECYCLE", 64'(SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR), 1'b0, 32'h0});
@@ -304,8 +305,8 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     fabric_row_t   blocks[$];
 
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkAddrmap, ChkRefcnt, ChkBaseAddrRw, ChkRwReadback,
-                    ChkHole, ChkFabricWalk, ChkExtDemux});
+    attach_evidence('{ChkCsrResp, ChkAddrmap, ChkRefcnt, ChkBaseAddrRw, ChkRwReadback, ChkHole,
+                    ChkFabricWalk, ChkExtDemux});
     cpu_ctrl_rows(rows);
     fabric_rows(blocks);
     `uvm_info(get_type_name(),
