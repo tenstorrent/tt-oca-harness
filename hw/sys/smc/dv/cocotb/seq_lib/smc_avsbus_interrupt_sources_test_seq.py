@@ -20,12 +20,15 @@ The mechanisms come from `hw/ip/avsbus_controller/doc/architecture.adoc`
 
 Every source is unmasked first. At reset all nine mask fields are set, so a
 raised source never reaches the block's interrupt output; with the mask
-cleared the output follows the pending sources and can witness each one
-arriving and going away.
+cleared the output follows the pending sources.
 
-Each source is raised, observed in `AVS_INTERRUPT`, cleared through
-`AVS_INTERRUPT_CLEAR`, and observed gone. Observing it gone is what gives the
-write-only register a measurable effect.
+Each source is read clear in `AVS_INTERRUPT` before its stimulus, raised,
+observed set, cleared through `AVS_INTERRUPT_CLEAR`, and observed gone.
+Observing it gone is what gives the write-only register a measurable effect.
+Because a later source is raised while an earlier one is still pending, the
+output's level alone cannot say which source drives it; each raised source is
+therefore witnessed through the mask: with every mask bit closed the output
+must read 0, and with that source's bit alone open it must read 1.
 
 The command FIFO is filled with the AVS clock gated off, so nothing drains it
 while it fills and the full condition does not depend on winning a race
@@ -87,6 +90,22 @@ CLEAR_READBACK_HAS_DATA_BM = avs_field(
     "AVSBUS_CONTROLLER__AVS_INTERRUPT_CLEAR__CLEAR_READBACK_HAS_DATA_INT_bm"
 )
 
+DISABLE_CMD_FIFO_FULL_BM = avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_FULL_INT_bm"
+)
+DISABLE_CMD_FIFO_OVERFLOW_BM = avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_OVERFLOW_INT_bm"
+)
+DISABLE_READBACK_FIFO_FULL_BM = avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_FIFO_FULL_INT_bm"
+)
+DISABLE_READBACK_UNDERFLOW_BM = avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_UNDERFLOW_INT_bm"
+)
+DISABLE_READBACK_HAS_DATA_BM = avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_HAS_DATA_INT_bm"
+)
+
 # Every mask field, all set at reset so every source is masked out. Clearing
 # them is what lets a raised source reach the block's interrupt output.
 AVS_INTERRUPT_MASK_RESET = 0x1FF
@@ -122,6 +141,7 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_avsbus_interrupt_sources_test_seq") -> None:
         super().__init__(name)
         self.raised: list[str] = []
+        self.witnessed: list[str] = []
         self.cmd_depth_seen = 0
         self.rb_depth_seen = 0
 
@@ -146,6 +166,33 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
             f"{label}: the AVSBus interrupt output stayed {seen}, expected {want}; with the "
             f"mask cleared a pending source must reach it"
         )
+
+    async def _require_clear(self, label: str, source_bm: int, before: str) -> int:
+        """Require the source to read clear in ``AVS_INTERRUPT`` before its stimulus."""
+        value = await self._interrupt(f"{label}_BEFORE")
+        assert not value & source_bm, (
+            f"{label}: AVS_INTERRUPT already reports 0x{source_bm:03x} before {before} "
+            f"(AVS_INTERRUPT=0x{value:08x}); a source pending beforehand cannot be shown "
+            f"to have been raised by it"
+        )
+        return value
+
+    async def _output_follows(self, label: str, disable_bm: int) -> None:
+        """Witness one pending source on the interrupt output through the mask.
+
+        With every mask bit closed the output must read 0; with this source's
+        bit alone open it must read 1. The FIFO mask is restored afterwards.
+        """
+        await self.csr_write(f"AVS_MASK_ALL_{label}", AVS_INTERRUPT_MASK, AVS_INTERRUPT_MASK_RESET)
+        await self._await_irq(0, f"AVS_IRQ_{label}_MASKED")
+        await self.csr_write(
+            f"AVS_MASK_ONLY_{label}", AVS_INTERRUPT_MASK, AVS_INTERRUPT_MASK_RESET & ~disable_bm
+        )
+        await self._await_irq(1, f"AVS_IRQ_{label}")
+        await self.csr_write(
+            f"AVS_MASK_FIFO_OPEN_{label}", AVS_INTERRUPT_MASK, AVS_INTERRUPT_MASK_FIFO_OPEN
+        )
+        self.witnessed.append(label)
 
     async def _clear_and_check(self, label: str, clear_bm: int, source_bm: int) -> int:
         """Write the clear bit, then require the source to read back gone."""
@@ -181,6 +228,7 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
         await self.csr_read("AVS_CFG_1_CLK_OFF_RB", AVS_CFG_1, expected=gated)
         await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
 
+        await self._require_clear("CMD_FULL", CMD_FIFO_FULL_BM, "the command FIFO is filled")
         for slot in range(CMD_FIFO_DEPTH):
             await self.csr_write(f"AVS_CMD_FILL_{slot}", AVS_CMD, _cmd(slot))
         fifos = await self.csr_read("AVS_FIFOS_STATUS_CMD_FULL", AVS_FIFOS_STATUS)
@@ -198,11 +246,14 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
             "CMD_FULL", CMD_FIFO_FULL_BM, f"{CMD_FIFO_DEPTH} commands filled the command FIFO"
         )
         self.raised.append("CMD_FIFO_FULL_INT")
-        await self._await_irq(1, "AVS_IRQ_CMD_FULL")
+        await self._output_follows("CMD_FULL", DISABLE_CMD_FIFO_FULL_BM)
 
         # One more write than the FIFO can take. The block refuses it on the
         # bus as well as flagging it, so the access itself is an observable of
         # the full condition.
+        await self._require_clear(
+            "CMD_OVERFLOW", CMD_FIFO_OVERFLOW_BM, "the write against the full command FIFO"
+        )
         await self.csr_write_expect_error("AVS_CMD_OVERFLOW", AVS_CMD, _cmd(CMD_FIFO_DEPTH))
         await self._wait_interrupt(
             "CMD_OVERFLOW",
@@ -216,7 +267,7 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
             f"documentation says is dropped (AVS_FIFOS_STATUS=0x{fifos:08x})"
         )
         self.raised.append("CMD_FIFO_OVERFLOW_INT")
-        await self._await_irq(1, "AVS_IRQ_CMD_OVERFLOW")
+        await self._output_follows("CMD_OVERFLOW", DISABLE_CMD_FIFO_OVERFLOW_BM)
         await self._clear_and_check(
             "CMD_OVERFLOW", CLEAR_CMD_FIFO_OVERFLOW_BM, CMD_FIFO_OVERFLOW_BM
         )
@@ -229,7 +280,12 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
 
         # Let the queued commands drain against a responding pad. The full
         # flag follows the full condition, so it only clears once that
-        # condition has gone.
+        # condition has gone. The readback sources are read clear here, with
+        # the clock still gated, since the drain is what raises them.
+        await self._require_clear(
+            "RB_HAS_DATA", READBACK_HAS_DATA_INT_BM, "the queued commands drain"
+        )
+        await self._require_clear("RB_FULL", READBACK_FIFO_FULL_BM, "the queued commands drain")
         await self.csr_write("AVS_CFG_1_CLK_ON", AVS_CFG_1, cfg1)
         await self.csr_read("AVS_CFG_1_CLK_ON_RB", AVS_CFG_1, expected=cfg1)
         status = 0
@@ -260,7 +316,7 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
             "the queued commands were answered by the responding pad",
         )
         self.raised.append("READBACK_HAS_DATA_INT")
-        await self._await_irq(1, "AVS_IRQ_RB_HAS_DATA")
+        await self._output_follows("RB_HAS_DATA", DISABLE_READBACK_HAS_DATA_BM)
 
         fifos = 0
         for _ in range(POLL_LIMIT):
@@ -282,7 +338,7 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
             "RB_FULL", READBACK_FIFO_FULL_BM, "the readback FIFO filled with responses"
         )
         self.raised.append("READBACK_FIFO_FULL_INT")
-        await self._await_irq(1, "AVS_IRQ_RB_FULL")
+        await self._output_follows("RB_FULL", DISABLE_READBACK_FIFO_FULL_BM)
 
         # Drain it before clearing: like the command side, the full flag
         # follows the condition and will not clear while it holds.
@@ -307,12 +363,15 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
 
     # --- readback underflow ------------------------------------------------
     async def _readback_underflow(self) -> None:
+        await self._require_clear(
+            "RB_UNDERFLOW", READBACK_UNDERFLOW_BM, "AVS_READBACK is read with the FIFO empty"
+        )
         await self.csr_read_decerr_zero("AVS_READBACK_EMPTY", AVS_READBACK)
         await self._wait_interrupt(
             "RB_UNDERFLOW", READBACK_UNDERFLOW_BM, "AVS_READBACK was read with the FIFO empty"
         )
         self.raised.append("READBACK_UNDERFLOW_INT")
-        await self._await_irq(1, "AVS_IRQ_RB_UNDERFLOW")
+        await self._output_follows("RB_UNDERFLOW", DISABLE_READBACK_UNDERFLOW_BM)
         await self._clear_and_check(
             "RB_UNDERFLOW", CLEAR_READBACK_UNDERFLOW_BM, READBACK_UNDERFLOW_BM
         )
@@ -354,13 +413,22 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
         await self._readback_underflow()
 
         # Every source has been raised and cleared with the mask open, so the
-        # output must have followed them up and must now be back down.
+        # output must now be back down.
         await self._await_irq(0, "AVS_IRQ_FINAL")
+        assert self.witnessed == [
+            "CMD_FULL",
+            "CMD_OVERFLOW",
+            "RB_HAS_DATA",
+            "RB_FULL",
+            "RB_UNDERFLOW",
+        ], f"interrupt output witnessed for {self.witnessed}, not for every raised source"
         cocotb.log.info(
-            "CHK-AVS-IRQ-UNMASKED: with the FIFO sources unmasked, the block's interrupt "
-            "output rose for each of the %d sources as it was raised and returned low once "
-            "every one had been cleared through AVS_INTERRUPT_CLEAR",
-            len(self.raised),
+            "CHK-AVS-IRQ-UNMASKED: the block's interrupt output read low at entry with every "
+            "source cleared; for each of the %d raised sources it read 0 with every mask bit "
+            "closed and 1 with that source's mask bit alone open (%s); it returned low once "
+            "every source had been cleared through AVS_INTERRUPT_CLEAR",
+            len(self.witnessed),
+            ", ".join(self.witnessed),
         )
         await self.csr_write(
             "AVS_INTERRUPT_MASK_RESTORE", AVS_INTERRUPT_MASK, AVS_INTERRUPT_MASK_RESET
@@ -373,8 +441,8 @@ class smc_avsbus_interrupt_sources_test_seq(SmcCsrSeq):
         set_avs_sdata(1)
         cocotb.log.info(
             "CHK-AVS-INTERRUPT-CLEAR-SOURCES: %d AVSBus FIFO interrupt sources were each "
-            "raised, observed in AVS_INTERRUPT, cleared through the write-only "
-            "AVS_INTERRUPT_CLEAR and observed gone: %s",
+            "read clear in AVS_INTERRUPT before their stimulus, raised, observed set, cleared "
+            "through the write-only AVS_INTERRUPT_CLEAR and observed gone: %s",
             len(self.raised),
             ", ".join(self.raised),
         )

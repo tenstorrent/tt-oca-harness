@@ -168,6 +168,12 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
             f"on its own; with nothing behind it the first subframe is followed by the last "
             f"(states seen: {sorted(self.single_states)})"
         )
+        middle = {"AVS_SHIFT_MID_SUBFRAME", "AVS_END_MID_SUBFRAME"} & self.single_states
+        assert not middle, (
+            f"{label}: the debug bus held {sorted(middle)} for a command queued on its own; a "
+            f"middle subframe carries a further command and nothing was queued behind this one "
+            f"(states seen: {sorted(self.single_states)})"
+        )
         cocotb.log.info(
             "CHK-AVS-SINGLE-COMMAND: one command with nothing queued behind it produced %d "
             "response in the readback FIFO and took the machine through the last-subframe "

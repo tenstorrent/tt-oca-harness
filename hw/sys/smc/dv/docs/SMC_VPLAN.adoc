@@ -372,7 +372,7 @@ feature rows.
 |`smc_cpu_ctrl_read_only_write_test` |Writes at every CPU_CTRL address the RDL makes read-only, and a write of 0 into the singlepulse reset fields.
 |`smc_regblock_partial_write_test` |Byte writes that must hold a set field on another lane, W1C events that must survive a write of zero, and writes of zero into a trigger and two status registers.
 |`smc_cpu_ctrl_scratch_window_test` |Run CPU scratch-window write/readback/restore checks.
-|`smc_cpu_ecc_lint_pint_depth_test` |Run RAS/debug CSR reads as the bounded CPU ECC LINT/PINT diagnostic.
+|`smc_cpu_ecc_lint_pint_depth_test` |Run NDM-reset and DFX debug CSR reads as the bounded CPU ECC LINT/PINT diagnostic.
 |`smc_cpu_firmware_boot_test` |SMC_002: ROM boot to PASS magic with exact CHK evidence.
 |`smc_cpu_l2_read_wedge_test` |Force-mode timeout flush recovers an L2 read drain while SEP_IN holds R.
 |`smc_cpu_l2_write_wedge_test` |Force-mode timeout flush recovers an L2 write drain and absorbs late W beats.
@@ -3214,13 +3214,14 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 * The fabric is **not** claimed held, and the four SEP_IN tallies the run records say why rather than standing in as a check. `arready`/`awready` read 1 just before the cool pin drops and 1 at every sample of the window, so ready is not withdrawn under primary reset. `arvalid` reads 0 at every sample because the SEP_IN AXI master takes `rst_primary_smc_clk_no` as its own reset and parks its request lines there, so no request can be presented inside the window and a no-response would be the bench's reset rather than the DUT's refusal. `rvalid`/`bvalid` read 0 for the same reason the window is idle -- on any RTL. None of the four is asserted on.
 * The pad *value* probe cannot carry the peripheral claim: `tb_uart0_tx_from_dut` mirrors `core2pad_o`, which a GPIO wrap in reset parks at 0 with its driver off. The pad's output enable is the observable that distinguishes "transmitter stopped driving" from "wrap parked the pin".
 * A ROM fetch counted inside the window must sit at its head, before the cores' reset had propagated; an advance later in the window fails as a fetch by a core that was not held.
+* `CLOCK_GATE_CONTROL` is armed before the reset with `I3C_CG_EN` set -- a field the RDL resets to 0 whose effect (the I3C clock stopped, its window answering SLVERR) touches nothing this leaf observes -- and the armed word is read back, so the post-reset read can tell a reverted register from an untouched one.
 * After release, the outbound filter register, UART0 `CTRL` and `CLOCK_GATE_CONTROL` are required to read their generated resets, and core 0's reset release is bounded.
 
 *Test Procedure*:
 
 [arabic]
 . Sample the entry state; prove the cores are fetching by measuring `tb_cpu_rom_read_count` advancing over a window.
-. Write and read back the filter pattern; arm UART0 mid-frame at the slowest divisor so the de-glitched reset assertion lands inside the frame.
+. Write and read back the filter pattern; write `CLOCK_GATE_CONTROL` with `I3C_CG_EN` set and read the armed word back; arm UART0 mid-frame at the slowest divisor so the de-glitched reset assertion lands inside the frame.
 . Assert `rst_cool_ni` and match a bounded `WAIT_STATE` on power-good and cold-stable released with both primary resets asserted and left stable.
 . Sample the held window every clock edge and assert the two per-sample held claims plus the frozen ROM counter, recording the four SEP_IN tallies.
 . Release the pin, match the bounded released handshake, bound core 0's reset release, and read the three registers against their generated resets.
@@ -3232,7 +3233,7 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 |Checker |Description
 |`CHK-PRIMARY-RESET-CORES-HELD` |`tb_cpu_core_reset_n` read 0 at every sample of the held window, the ROM read counter stopped advancing after the reset propagated, and core 0 released inside its bound after `rst_cool_ni` returned. The pre-reset fetch count is reported as the precondition
 |`CHK-PRIMARY-RESET-FABRIC-REVERTED` |The outbound filter register went from the resident pattern to its generated reset across the reset and answered a read again afterwards, so the primary reset reached the fabric configuration registers. The line also carries the four recorded SEP_IN tallies and states that held-state is not claimed and why
-|`CHK-PRIMARY-RESET-PERIPHERALS-HELD` |UART0 was mid-frame with its TX pad output enable asserted when the reset landed; the output enable read 0 at every sample after the stated settle, and UART0 `CTRL` and `CLOCK_GATE_CONTROL` read their generated resets afterwards
+|`CHK-PRIMARY-RESET-PERIPHERALS-HELD` |UART0 was mid-frame with its TX pad output enable asserted when the reset landed; the output enable read 0 at every sample after the stated settle; UART0 `CTRL` read its generated reset afterwards, and `CLOCK_GATE_CONTROL`, read back with `I3C_CG_EN` set before the reset, read its generated reset
 |`CHK-TIMEOUT-PATHS` |One line per bounded reset leg the run took, naming the bound and the `clk_ref_i` cycle at which the expected levels matched. The compare is the scoreboard's -- an expired bound raises there -- so these lines are the record of the bounded legs, not a separate compare
 |`CHK-PRIMARY-RESET-SCOPE` |Ledger line in the leaf: the held-window sample count, the two per-sample held tallies and the four recorded SEP_IN tallies. Logged after the leaf requires at least two booked reset `WAIT_STATE` checks, the SEP_IN exact-value compare floor, a non-empty held window and a non-zero pre-reset fetch delta
 |===
@@ -4290,7 +4291,7 @@ Drive `smc_cpu_ctrl_scratch_window_test_seq`. Each checker below is a named comp
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Run RAS/debug CSR reads as the bounded CPU ECC LINT/PINT diagnostic.
+*Objective*: Run NDM-reset and DFX debug CSR reads as the bounded CPU ECC LINT/PINT diagnostic.
 
 *Test Coverage*:
 
@@ -4481,9 +4482,9 @@ Drive `smc_ecc_codeword_sec_test_seq`. Each checker below is a named compare the
 
 *Test Coverage*:
 
-* RAS-bank / NDM-reset / DFX-debug diagnostic representative precheck.
-* Scope note: no ECC and no DBS register is addressed here -- neither surface is exposed at the SMC CSR boundary (`grep -ic ecc` over the authoritative map `hw/sys/smc/regs/gen/c/smc_addr.h` returns 0, and there is no `DBS_`/`_DBS` symbol).
-* Despite its name, this sequence reads the RAS bank type/instance ID pair, the NDM-reset registers, and the DFX debug control/bus-mux registers.
+* NDM-reset / DFX-debug diagnostic representative precheck.
+* Scope note: no ECC, DBS or RAS-bank register is addressed here -- none of those surfaces is exposed at the SMC CSR boundary (the authoritative map `hw/sys/smc/regs/gen/c/smc_addr.h` carries no ECC, `DBS_`/`_DBS` or RAS symbol).
+* Despite its name, this sequence reads the NDM-reset registers (`NDMRESET_PROCESS`, `NDMRESET_CLUSTER_COUNT`) and the DFX debug control/bus-mux registers, and nothing else.
 
 *Test Procedure*:
 
@@ -6478,7 +6479,7 @@ Drive `smc_gpio_ctrl_full_sweep_test_seq`. Each checker below is a named compare
 
 * READ half -- an unprivileged read is refused with DECERR, the code the GPIO programming guide specifies for a blocked transaction, and the error-slave signature 0xBADCAB1E, while the privileged read returns the programmed word.
 * WRITE half -- an unprivileged write of the value that would DISARM the filter is refused with DECERR, the code the Programmer's Guide GPIO section (`doc/programmer/src/smc-programming.adoc`, "Configuring Access Filtering") specifies for a blocked transaction, and a privileged read afterwards shows the register unchanged.
-* SWEEP -- each of the eight AxPROT requirement values is programmed into GPIO0 in turn and every AxPROT value is driven against it on both halves; only the value equal to the requirement is admitted, every other one is refused, and a readback with the admitted value shows the refused writes left the register unchanged.
+* SWEEP -- each of the eight AxPROT requirement values is programmed into GPIO0 in turn and every AxPROT value is driven against it on both halves; only the value equal to the requirement is admitted, every other one is refused. Each refused write carries the filter word for its own AxPROT value, the word the register would hold had the write landed, so the readback with the admitted value that closes each requirement shows the refused writes left the register unchanged.
 
 *Test Procedure*:
 
@@ -9250,7 +9251,7 @@ withdrawal they would report is recorded under <<smc-known-limitations,Known Lim
 
 * Reset is requested before the partial-W wedge, so the leaf proves late-W cleanup after a reset is already in flight.
 * Force mode applies the reset; pending AW and W counts clear while W is still paused.
-* Releasing the W pause leaves the pending W count at 0 (late beats absorbed).
+* Releasing the W pause lets the eight withheld W beats of the flushed write handshake at SEP_IN, WLAST included, and leaves the pending W count at 0 (late beats absorbed).
 * After isolate release an L2 write and checked readback complete.
 
 *Test Procedure*:
@@ -9264,7 +9265,7 @@ Drive `smc_cpu_l2_write_wedge_test_seq`. Each checker below is a named compare t
 |Checker |Description
 |`CHK-CPU-ISO-FLUSH-FORCED-RESET` |Force-mode timeout applied the CPU and uncore reset
 |`CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED` |Isolate reports drained while W is still paused
-|`CHK-CPU-ISO-FLUSH-LATE-W-ABSORBED` |Late W beats left the pending W count at 0
+|`CHK-CPU-ISO-FLUSH-LATE-W-ABSORBED` |The eight withheld W beats of the flushed write handshook at SEP_IN after release, WLAST included, and left the pending W count at 0
 |`CHK-CPU-ISO-FLUSH-L2-WRITE-RECOVERED` |Post-reset L2 write and readback completed
 |`CHK-CPU-ISO-FLUSH-CLUSTER-REOPENED` |L2 isolate released and the recovery write completed
 |===
@@ -10514,7 +10515,8 @@ Drive `smc_i2c_controller_sda_interference_test_seq`. Each checker below is a na
 * The overflowing `AVS_CMD` write is refused on the bus as well as dropped, so the access itself is an observable of the full condition.
 * FIFO depths come from the generated register header's reset values for the vacant-slot fields, not from the design.
 * `READBACK_OVERFLOW_INT` is not raised here. `architecture.adoc` lists it under Error Handling as "a response received when full is dropped", and says a full FIFO stops new launches but not the replies to commands already on the bus. The source is left to a leaf that can set up a reply in flight meeting a full FIFO deliberately.
-* The interrupt output is read as a DUT-produced observable. At reset every source is masked, so a raised source reaches nothing; the leaf opens the mask for the eight FIFO and protocol sources and requires the output to follow them. `AVS_SLAVE_ISSUED_INTERRUPT` stays masked: the slave-interrupt detector re-arms it from the idle level of the AVS serial data line, so it returns immediately after each clear and would hold the output high regardless of the sources under test. The entry state is established by clearing every source and reading the output low, not assumed.
+* Each source is read clear in `AVS_INTERRUPT` before its stimulus, so a source pending beforehand cannot pass as one the stimulus raised.
+* The interrupt output is read as a DUT-produced observable. At reset every source is masked, so a raised source reaches nothing; the leaf opens the mask for the eight FIFO and protocol sources. Because a later source is raised while an earlier one is still pending, the output's level alone cannot say which source drives it, so each raised source is witnessed through the mask: with every mask bit closed the output must read 0 and with that source's bit alone open it must read 1. `AVS_SLAVE_ISSUED_INTERRUPT` stays masked: the slave-interrupt detector re-arms it from the idle level of the AVS serial data line, so it returns immediately after each clear and would hold the output high regardless of the sources under test. The entry state is established by clearing every source and reading the output low, not assumed.
 
 *Test Procedure*:
 
@@ -10530,8 +10532,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |`CHK-AVS-READBACK-FIFO-FULL-INT` |Responses filled the readback FIFO with `AVS_NORMAL_STATUS.READBACK_FIFO_FULL` set and raised `READBACK_FIFO_FULL_INT`; once the entries were read out, `AVS_INTERRUPT_CLEAR` removed the flag
 |`CHK-AVS-READBACK-HAS-DATA-INT` |Responses waiting in the readback FIFO raised `READBACK_HAS_DATA_INT`; once it was emptied, `AVS_INTERRUPT_CLEAR` removed the flag
 |`CHK-AVS-READBACK-UNDERFLOW-INT` |Reading `AVS_READBACK` on an empty FIFO raised `READBACK_UNDERFLOW_INT`, which `AVS_INTERRUPT_CLEAR` removed
-|`CHK-AVS-INTERRUPT-CLEAR-SOURCES` |All five sources above were each raised, observed in `AVS_INTERRUPT`, cleared through the write-only `AVS_INTERRUPT_CLEAR` and observed gone
-|`CHK-AVS-IRQ-UNMASKED` |With the FIFO sources unmasked the block's interrupt output was low at entry, rose as each source was raised and returned low once every one had been cleared
+|`CHK-AVS-INTERRUPT-CLEAR-SOURCES` |All five sources above were each read clear before their stimulus, raised, observed in `AVS_INTERRUPT`, cleared through the write-only `AVS_INTERRUPT_CLEAR` and observed gone
+|`CHK-AVS-IRQ-UNMASKED` |The block's interrupt output was low at entry with every source cleared; for each raised source it read 0 with every mask bit closed and 1 with that source's mask bit alone open; it returned low once every source had been cleared
 |===
 
 *Pass Criteria*: all seven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -10976,7 +10978,7 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 *Test Procedure*:
 
 [arabic]
-. With the pad at its responding level and the readback FIFO drained, queue one command and require a response and the last-subframe shift state on the debug bus.
+. With the pad at its responding level and the readback FIFO drained, queue one command and require a response, the last-subframe shift state on the debug bus and no middle-subframe state.
 . Queue several commands one at a time with a short gap, and require a response for each.
 . With a retry budget programmed and the pad at its idle level, queue two commands and wait for `TOTAL_RETRIES` to move; release the pad to its responding level and require the slave-resynchronisation state on the debug bus.
 . With the readback FIFO filled, queue three commands, require all three still queued, pop one reply, and after the frame that refills the FIFO require one command still queued; pop again and require that command to go out and its reply to arrive.
@@ -10986,7 +10988,7 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-AVS-SINGLE-COMMAND` |A command with nothing behind it produced its response and took the machine through the last-subframe shift rather than a middle one
+|`CHK-AVS-SINGLE-COMMAND` |A command with nothing behind it produced its response and took the machine through the last-subframe shift with no middle-subframe state on the debug bus; a middle subframe seen fails
 |`CHK-AVS-LATE-COMMAND` |Commands written one at a time while the bus ran all produced responses
 |`CHK-AVS-BUFFERED-REPLY` |After a retry with a second frame on the wire, a buffered reply that turned out good took the master to the slave resynchronisation rather than another retry
 |`CHK-AVS-LONE-RETRY` |A command with nothing behind it, answered as not responding, was retried from its last subframe with a transmit-only retry
@@ -12046,7 +12048,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 ** The same read with `CTRL.ENABLETARGET` cleared before the STOP, and the controller enabled so the bus monitor still sees it, must not raise it.
 * A NACK request that does not apply. `TARGET_ACK_CTRL.NACK` takes effect "when `STATUS.ACK_CTRL_STRETCH = 1`". With ACK Control Mode off, the target is made to stretch on a full acquisition FIFO, and `NACK` is written during that stretch. Every byte of the write must still be acknowledged and read out in order.
 * SCL taken during the bus-free time. `TIMING4.T_BUF` is lengthened and SCL is pulled low inside the wait after a STOP. The target must still answer the next write.
-* An access above the I2C wrapper's control registers, inside its window, belongs to no register map. A read and a write there must both be refused on the bus.
+* An access inside the I2C wrapper's window, above its last instance stride and below its control registers, belongs to no register map. A read and a write there must both be refused on the bus. The window extent, the instance strides and the control register base come from the generated address map, and the probe is asserted to lie inside the window.
 * LSIO ownership withdrawn. `gpio_intf.rdl` sets `lsio_enable` "while `lsio_interface_select_i` is asserted and `lsio_disable` is clear".
 ** With I2C0 enabled, its SCL pad (`DATA_CTRL[37]`) must report `lsio_enable`.
 ** With `lsio_disable` set, `lsio_enable` must read clear, also with `lsio_select` forced.
@@ -12058,7 +12060,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 . Enable I2C0 as a target; read one byte and send the STOP in its acknowledge slot; repeat with the target disabled before the STOP.
 . Write more bytes than the acquisition FIFO holds, write `TARGET_ACK_CTRL.NACK` while it stretches, and drain.
 . With a long `T_BUF`, write one byte, pull SCL low after the STOP, and write another.
-. Read and write above the control registers.
+. Read and write the address between the last instance stride and the control registers.
 . Enable the controller and toggle `lsio_disable` and `lsio_select` on the SCL pad.
 
 *Checkers*:
@@ -12069,7 +12071,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 |`CHK-I2C-TGT-UNEXP-STOP` |A STOP in a read byte's acknowledge slot raised `UNEXP_STOP`; with the target disabled first it did not
 |`CHK-I2C-TGT-NACK-IGNORED` |`NACK` written during a FIFO-full stretch with ACK Control Mode off left every byte acknowledged and read out in order
 |`CHK-I2C-BUS-FREE-SCL` |SCL pulled inside the bus-free time left the target answering the next write
-|`CHK-I2C-WRAP-PAST-CTRL` |A read and a write above the wrapper's control registers were refused
+|`CHK-I2C-WRAP-PAST-CTRL` |A read and a write inside the wrapper window, between its instances and its control registers, were refused
 |`CHK-I2C-PAD-LSIO-DISABLE` |`lsio_disable` cleared `lsio_enable` on the SCL pad, also with `lsio_select` forced, and clearing it restored the register
 |===
 

@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS RAS-bank / NDM-reset / DFX-debug diagnostic CSR smoke.
+"""SMC OSS NDM-reset / DFX-debug diagnostic CSR smoke.
 
-No ECC and no DBS register is read by this testcase -- neither surface exists at
-the SMC CSR boundary. The testcase name does not describe the surface; see
-the sequence docstring for what is actually addressed.
+No ECC, DBS or RAS-bank register is read by this testcase -- none of those
+surfaces exists at the SMC CSR boundary. The testcase name does not describe
+the surface; see the sequence docstring for what is actually addressed.
 """
 
 from __future__ import annotations
@@ -64,10 +64,10 @@ class smc_ecc_dfd_dbs_sanity_test(smc_base_test):
             timeouts=None,
             proxy=True,
             details=(
-                "CSR-only diagnostic surface actually addressed: RAS bank "
-                "type/instance ID, NDM reset (PROCESS + CLUSTER_COUNT), DFX "
-                "debug CTRL and the full 64-bit DEBUG_BUS_MUX. No ECC and no DBS "
-                "register is read -- neither surface exists in smc_addr.h. No "
-                "fault inject on this surface"
+                "CSR-only diagnostic surface actually addressed: NDM reset "
+                "(PROCESS + CLUSTER_COUNT), DFX debug CTRL and the full 64-bit "
+                "DEBUG_BUS_MUX. No ECC, DBS or RAS-bank register is read -- none "
+                "of those surfaces exists in smc_addr.h. No fault inject on this "
+                "surface"
             ),
         )
