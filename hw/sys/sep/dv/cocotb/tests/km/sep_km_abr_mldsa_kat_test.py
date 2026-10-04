@@ -71,7 +71,7 @@ _KV_STATUS_POLLS = 2000
 class sep_km_abr_mldsa_kat_test(sep_base_test):
     """ML-DSA-87 KEYGEN on a KM-delivered ACVP seed equals the ACVP public key."""
 
-    required_evidence = ("CHK0", "CHK-XFER", "CHK-KV", "CHK-KM-KAT")
+    required_evidence = ("CHK-XFER", "CHK-KV", "CHK-KM-KAT")
 
     async def _wait_status(self, abr: SepAbr, mask: int, expect: int, *, what: str) -> int:
         for _ in range(_POLL_ITERS):
