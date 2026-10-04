@@ -103,7 +103,7 @@ class sep_km_mem_smoke_test_seq extends sep_base_test_seq;
     int unsigned polled;
     bit          done;
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkKmMem, ChkKmSramScrRt, ChkKmSramScrStored});
+    attach_evidence('{ChkCsrResp, ChkKmMem, ChkKmSramScrRt, ChkKmSramScrStored});
     `uvm_info(get_type_name(), $sformatf("SEP SV-UVM KM memory smoke: pass %0d scenario_seed=%0d",
                                          loop_index, scenario_seed), UVM_LOW)
 

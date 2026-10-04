@@ -281,7 +281,7 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
     int unsigned  walked = 0;
 
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkBase, ChkSet, ChkIso, ChkClr, ChkAgg,
+    attach_evidence('{ChkCsrResp, ChkBase, ChkSet, ChkIso, ChkClr, ChkAgg,
                     ChkBusErrBase, ChkBusErrDma, ChkBusErrDmaWr, ChkBusErrDmaWrClr, ChkBusErrPeriph,
                     ChkBusErrClr});
     irq_sources(srcs);

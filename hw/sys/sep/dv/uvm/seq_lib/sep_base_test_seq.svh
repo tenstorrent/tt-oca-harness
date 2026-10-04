@@ -104,6 +104,12 @@ class sep_base_test_seq extends ocah_sequence;
   // +skip_fuse_sense, after the full OTP sense otherwise), so the poll is
   // bounded by test_cfg.fuse_sense_timeout_cycles system clocks and
   // followed by the cocotb settle window.
+  //
+  // CHK-FUSE-SENSE-DONE is recorded only for a real sense. Under
+  // +skip_fuse_sense, efuse_shadow_regs.sv sets fuse_sense_done one cycle
+  // after reset with no sense FSM, so the wait is a bring-up gate there and
+  // proves nothing about the sense; a scenario that runs with the plusarg
+  // must not require the ID.
   // ------------------------------------------------------------------
   task wait_fuse_sense_done();
     int unsigned cycles = 0;
@@ -120,6 +126,12 @@ class sep_base_test_seq extends ocah_sequence;
     `uvm_info(get_type_name(), $sformatf("fuse sense done after %0d system clocks", cycles),
               UVM_MEDIUM)
     wait_sys_cycles(test_cfg.fuse_sense_settle_cycles);
+    if ($test$plusargs("skip_fuse_sense")) begin
+      `uvm_info(get_type_name(),
+                {"+skip_fuse_sense: fuse_sense_done is set by the simulation bypass, ",
+                 "not by a sense; no ", ChkFuseSense, " record"}, UVM_LOW)
+      return;
+    end
     void'(m_check.expect_true(
         ChkFuseSense,
         tb_vif.fuse_sense_done === 1'b1,

@@ -32,6 +32,15 @@ tests = ["sep_axi_smoke_test"]
 # (full-CPU target) are disjoint and together hold all 132. `rom_fw`
 # is not a member: a different owner, a third RTL target, and firmware rather
 # than hardware contracts. `all` is the coverage set. expected_count is 132.
+#
+# Two members are pinned to one simulator, so a single-simulator run of `all`
+# runs 131 and logs the other as skipped_wrong_tool:
+# - sep_km_ic_reset_release_test, VCS only (km.toml). Its contract is the
+#   prim_rom noXOnCsI assertion. Verilator is two-state and prim_assert.sv
+#   compiles RTL assertions out under it, so that check cannot fail there.
+# - sep_abr_absent_decerr_test, Verilator only (crypto.toml). It needs the
+#   lsu_stub_abr_absent model, and the VCS coverage run elaborates only the
+#   `default` target, which keeps Adams Bridge.
 name = "all"
 expected_count = 132
 tests = [
