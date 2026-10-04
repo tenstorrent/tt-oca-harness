@@ -231,6 +231,31 @@ Feeding the watchdog resets the count but leaves <code>wdogip0</code> set. The
 <a href="../../../ocah-programmer-guide/latest/index.html#smc-watchdog-clear" class="xref page">watchdog interrupt clear sequence</a>
 is in the Programmer&#8217;s Guide.</p>
 </div>
+<div class="sect2">
+<h3 id="register-access"><a class="anchor" href="#register-access"></a><a class="link" href="#register-access">Register Access</a></h3>
+<div class="paragraph">
+<p>Each watchdog is locked out of reset, and a write to any register other
+than KEY locks it again. Software changes one register at a time:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Write <code>0x51F15E</code> to KEY. KEY reads 1 while the watchdog is unlocked.</p>
+</li>
+<li>
+<p>Write the target register. The watchdog locks again on this write, so
+the next write needs a new KEY write first.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>A write acts only when its byte enables cover the register&#8217;s width, and a
+narrower write completes with an OKAY response without changing anything,
+so software cannot detect a dropped write from the response. Software uses
+32-bit stores for every register except CTRL, which accepts byte writes.
+The Detailed Register Map below gives the width each register requires.</p>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -255,12 +280,13 @@ The detailed map below defines each register and its fields.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2 id="regmap-wdt">Watchdog Timer Address Map</h2>
-<p>Watchdog timer configuration, counter, compare, and feed and key registers.</p>
+<p>Watchdog timer configuration, counter, compare, and feed and key registers.<br><br>A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.<br><br>Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#wdt-CTRL">CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
 <tr><td>0x8</td><td><a href="#wdt-COUNT">COUNT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0xC</td><td><a href="#wdt-COUNT_HI">COUNT_HI</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x10</td><td><a href="#wdt-SCALED_COUNT">SCALED_COUNT</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x18</td><td><a href="#wdt-FEED">FEED</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x1C</td><td><a href="#wdt-KEY">KEY</a></td><td>RW</td><td>-</td></tr>
@@ -286,6 +312,11 @@ The detailed map below defines each register and its fields.</p>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>30:0</td><td>wdogcount</td><td>RW</td><td>0x0</td><td>31 bit wdt counter registers. On write, the counter will be set to the written value, then continue counting up.<br>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
+</table>
+<span id="COUNT_HI"></span><h3 id="wdt-COUNT_HI" data-register-alias="COUNT_HI">COUNT_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>wdogcounthi</td><td>W</td><td>0x0</td><td>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</td></tr>
 </table>
 <span id="SCALED_COUNT"></span><h3 id="wdt-SCALED_COUNT" data-register-alias="SCALED_COUNT">SCALED_COUNT</h3>
 <table>

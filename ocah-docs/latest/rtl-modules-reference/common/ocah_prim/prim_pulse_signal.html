@@ -658,7 +658,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_pulse_signal</h1>
-<p>Shape pulse_in_i with programmable pre- and post-wait counts.</p><p>pulse_start_i samples pulse_in_i and starts a sequence: drive the sampled level for pre_pulse_wait_i + 1 cycles, assert pulse_out_o for post_pulse_wait_i cycles, then drive it deasserted for one cycle and return to idle. A new pulse_start_i during the sequence reloads the count of the current phase. IS_ACTIVE_HIGH sets the polarity of pulse_out_o. pulse_done_o is high while idle and low for the whole sequence; pulse_out_o sits at its asserted level while idle, so use it only while pulse_done_o is low.</p>
+<p>Shape pulse_in_i with programmable pre- and post-wait counts.</p><p>pulse_start_i samples pulse_in_i and starts a sequence: drive the sampled level for pre_pulse_wait_i + 1 cycles, assert pulse_out_o for post_pulse_wait_i + 1 cycles, then return to idle. A new pulse_start_i during the sequence reloads the count of the current phase. IS_ACTIVE_HIGH sets the polarity of pulse_out_o. pulse_done_o is high while idle and low for the whole sequence; pulse_out_o sits at its asserted level while idle, so use it only while pulse_done_o is low.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
@@ -673,7 +673,7 @@
 <tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low reset, sampled synchronously.</td></tr>
 <tr><td><code>pulse_start_i</code></td><td>input</td><td><code>logic</code></td><td>Arms a shaped pulse sequence.</td></tr>
 <tr><td><code>pre_pulse_wait_i</code></td><td>input</td><td><code>logic [COUNT_WIDTH-1:0]</code></td><td>Cycles, minus one, of the sampled pulse_in_i level before pulse_out_o asserts.</td></tr>
-<tr><td><code>post_pulse_wait_i</code></td><td>input</td><td><code>logic [COUNT_WIDTH-1:0]</code></td><td>Cycles pulse_out_o stays asserted.</td></tr>
+<tr><td><code>post_pulse_wait_i</code></td><td>input</td><td><code>logic [COUNT_WIDTH-1:0]</code></td><td>Cycles, minus one, that pulse_out_o stays asserted.</td></tr>
 <tr><td><code>pulse_in_i</code></td><td>input</td><td><code>logic</code></td><td>Level sampled on pulse_start_i and driven during the pre-pulse wait.</td></tr>
 <tr><td><code>pulse_out_o</code></td><td>output</td><td><code>logic</code></td><td>Shaped pulse output; valid while pulse_done_o is low.</td></tr>
 <tr><td><code>pulse_done_o</code></td><td>output</td><td><code>logic</code></td><td>High while idle; low while a sequence runs.</td></tr>

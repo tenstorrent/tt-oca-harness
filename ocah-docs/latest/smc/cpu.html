@@ -1654,10 +1654,10 @@ The detailed map below defines each register and its fields.</p>
 <tr><td>24</td><td>debug_reset_n_n0_scan</td><td>RW</td><td>0x0</td><td>Debug Module Reset, active low</td></tr>
 <tr><td>23:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>uncore_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Cluster Uncore Reset, active low. Writing this register will only reset the uncore portion in the chipyard cluster.<br>WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.</td></tr>
-<tr><td>7</td><td>core3_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.<br>This pulse is ANDed with core_reset_n[3] so a 0 in core_reset_n[3] will override the pulse.</td></tr>
-<tr><td>6</td><td>core2_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.<br>This pulse is ANDed with core_reset_n[2] so a 0 in core_reset_n[2] will override the pulse.</td></tr>
-<tr><td>5</td><td>core1_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.<br>This pulse is ANDed with core_reset_n[1] so a 0 in core_reset_n[1] will override the pulse.</td></tr>
-<tr><td>4</td><td>core0_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.<br>This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override the pulse.</td></tr>
+<tr><td>7</td><td>core3_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>6</td><td>core2_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>5</td><td>core1_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>4</td><td>core0_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
 <tr><td>3</td><td>core3_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
 <tr><td>2</td><td>core2_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
 <tr><td>1</td><td>core1_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
@@ -1669,8 +1669,8 @@ The detailed map below defines each register and its fields.</p>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:36</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>35:32</td><td>core_resets_done</td><td>R</td><td>0xF</td><td>Logic low while performing core reset, logic high otherwise.</td></tr>
-<tr><td>31:16</td><td>post_reset_count</td><td>RW</td><td>0x10</td><td>Core reset pulse count post-reset. The duration of the pulse is the set value + 1.</td></tr>
-<tr><td>15:0</td><td>pre_reset_count</td><td>RW</td><td>0x8</td><td>Core reset pulse count pre-reset. The duration of the pulse is the set value + 1.</td></tr>
+<tr><td>31:16</td><td>post_reset_count</td><td>RW</td><td>0x10</td><td>Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.</td></tr>
+<tr><td>15:0</td><td>pre_reset_count</td><td>RW</td><td>0x8</td><td>Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.</td></tr>
 </table>
 <span id="RESET_TIMEOUT"></span><h3 id="cpu_ctrl-RESET_TIMEOUT" data-register-alias="RESET_TIMEOUT">RESET_TIMEOUT</h3>
 <table id="trm-table-10">

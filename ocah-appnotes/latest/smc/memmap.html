@@ -334,7 +334,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 0 watchdog timer.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-1">[1]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
 </tr>
 <tr>
@@ -345,7 +345,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 1 watchdog timer.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-1">[1]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
 </tr>
 <tr>
@@ -356,7 +356,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 2 watchdog timer.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-1">[1]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
 </tr>
 <tr>
@@ -367,7 +367,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 3 watchdog timer.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-1">[1]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
 </tr>
 <tr>
@@ -378,7 +378,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. Only the harts of the CPU cluster reach this region; SMC bus initiators outside the cluster do not. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, &#8230;&#8203;) are reached over the Debug Module Interface and do not appear in this map.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR<sup><a href="#smc-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR<sup><a href="#smc-components-note-1">[1]</a></sup></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
@@ -631,7 +631,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Wrapper address map instantiating the per-controller I3C CSR blocks.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-3">[3]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-2">[2]</a></sup></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
@@ -642,7 +642,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scratchpad ROM memory, present only in non-CPL configurations.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-<sup><a href="#smc-components-note-4">[4]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-<sup><a href="#smc-components-note-3">[3]</a></sup></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
@@ -708,7 +708,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-5">[5]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#smc-components-note-4">[4]</a></sup></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
 </tr>
 <tr>
@@ -774,18 +774,17 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Error responder for unmapped cluster-bus accesses.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR<sup><a href="#smc-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR<sup><a href="#smc-components-note-1">[1]</a></sup></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
 <div class="title">Notes</div>
-<p><a id="smc-components-note-1"></a><sup>[1]</sup> Offset 0xC holds the watchdog&#8217;s countHi register, which this map does not list; a 32-bit write there locks the watchdog key again.<br>
-<a id="smc-components-note-2"></a><sup>[2]</sup> Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.<br>
-<a id="smc-components-note-3"></a><sup>[3]</sup> Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped.<br>
-<a id="smc-components-note-4"></a><sup>[4]</sup> A write answers SLVERR and leaves the ROM unchanged.<br>
-<a id="smc-components-note-5"></a><sup>[5]</sup> 0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.</p>
+<p><a id="smc-components-note-1"></a><sup>[1]</sup> Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.<br>
+<a id="smc-components-note-2"></a><sup>[2]</sup> Each instance implements 16 DAT and 16 DCT entries: the DAT at 0x400-0x7FF repeats every 0x80 bytes, the DCT at 0x800-0xFFF repeats every 0x100 bytes, and DCT writes are dropped.<br>
+<a id="smc-components-note-3"></a><sup>[3]</sup> A write answers SLVERR and leaves the ROM unchanged.<br>
+<a id="smc-components-note-4"></a><sup>[4]</sup> 0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.</p>
 </div>
 <div class="paragraph">
 <p>The last two columns state how the SMC answers a 32-bit access that no
