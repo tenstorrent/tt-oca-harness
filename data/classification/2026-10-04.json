@@ -1,0 +1,257 @@
+{
+  "date": "2026-10-04",
+  "regress_run_id": "37144845475",
+  "status": "FAIL",
+  "leaves": {
+    "total": 578,
+    "pass": 571
+  },
+  "failures": {
+    "infra": 1,
+    "design": 6,
+    "unknown": 0
+  },
+  "flaky_tests": [],
+  "duts": {
+    "axi_hang_detector": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 5,
+        "pass": 5
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "axi_lite_to_ahb": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 12,
+        "pass": 12
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "cross_trigger_matrix": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 2,
+        "pass": 2
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "cross_trigger_network": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 4,
+        "pass": 4
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "cross_trigger_port": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 5,
+        "pass": 5
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "dtp": {
+      "tool": "verilator",
+      "status": "FAIL",
+      "native_status": "TIMEOUT",
+      "leaves": {
+        "total": 154,
+        "pass": 153
+      },
+      "failures": {
+        "infra": 1,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "entropy_source": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 13,
+        "pass": 13
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "log_engine": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 3,
+        "pass": 3
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "scrambler": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 2,
+        "pass": 2
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "sep": {
+      "tool": "verilator",
+      "status": "FAIL",
+      "native_status": "ERROR",
+      "leaves": {
+        "total": 0,
+        "pass": 0
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "smc": {
+      "tool": "verilator",
+      "status": "FAIL",
+      "native_status": "FAIL",
+      "leaves": {
+        "total": 299,
+        "pass": 295
+      },
+      "failures": {
+        "infra": 0,
+        "design": 4,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "smu": {
+      "tool": "verilator",
+      "status": "FAIL",
+      "native_status": "ERROR",
+      "leaves": {
+        "total": 68,
+        "pass": 66
+      },
+      "failures": {
+        "infra": 0,
+        "design": 2,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "system_timer_octs": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 3,
+        "pass": 3
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "uart_16550": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 4,
+        "pass": 4
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "uart_log_engine_wrap": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 2,
+        "pass": 2
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    },
+    "uart_wrap": {
+      "tool": "verilator",
+      "status": "PASS",
+      "native_status": "PASS",
+      "leaves": {
+        "total": 2,
+        "pass": 2
+      },
+      "failures": {
+        "infra": 0,
+        "design": 0,
+        "unknown": 0
+      },
+      "flaky_tests": []
+    }
+  }
+}

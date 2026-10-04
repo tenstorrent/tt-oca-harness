@@ -1,0 +1,201 @@
+{
+  "artifacts": {
+    "log": "weekly-runs/dv-run-axi_lite_to_ahb-verilator-weekly/a2h_smoke_test/seed_1287061248/attempt_0/logs/a2h_smoke_test.log",
+    "regression_json": "weekly-runs/dv-run-axi_lite_to_ahb-verilator-weekly/stages/regress/regression.json",
+    "result_json": "weekly-runs/dv-run-axi_lite_to_ahb-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/axi_lite_to_ahb/verilator/weekly/37144845475"
+  },
+  "coverage": {
+    "comparison_key": null,
+    "details_available": null,
+    "effective_metrics": {},
+    "holes_summary": {
+      "details_available": false
+    },
+    "manifest": null,
+    "policy_application": null,
+    "policy_thresholds": [],
+    "raw_metrics": {},
+    "report": null,
+    "status": "SKIP",
+    "summary": null,
+    "target": null,
+    "threshold": null,
+    "threshold_met": null,
+    "total_percent": null
+  },
+  "failure_buckets": [],
+  "flow": "axi_lite_to_ahb",
+  "framework": "cocotb",
+  "generated_at": "2026-10-04T00:38:03+00:00",
+  "git": {
+    "branch": "main",
+    "sha": "14a8f1268513558c7fee43a60764df629c2f2b72",
+    "short_sha": "14a8f12"
+  },
+  "junit_xml": {
+    "missing": 0,
+    "total": 12
+  },
+  "kind": "dv",
+  "regression": {
+    "failed_tests": [],
+    "flaky_tests": []
+  },
+  "run_metadata": {
+    "executor": "local",
+    "generated_at": "2026-10-03T18:38:03.064973+00:00",
+    "git": {
+      "branch": "main",
+      "commit": "14a8f1268513558c7fee43a60764df629c2f2b72",
+      "dirty": "false"
+    },
+    "label": "all",
+    "result_json": "weekly-runs/dv-run-axi_lite_to_ahb-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/axi_lite_to_ahb/verilator/weekly/37144845475",
+    "tool": "verilator",
+    "tool_version": "Verilator 5.052 2026-09-05 rev v5.052"
+  },
+  "schema_version": "0.2",
+  "source": {
+    "collector": "run_dv-result",
+    "label": "all",
+    "native_status": "PASS"
+  },
+  "status": "PASS",
+  "tests": {
+    "completed": true,
+    "failing": 0,
+    "pass_rate": 100.0,
+    "passing": 12,
+    "total": 12
+  },
+  "tests_detail": [
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 0.453,
+      "name": "a2h_smoke_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1287061248,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 1.035,
+      "name": "a2h_strobe_matrix_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1982773228,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 0.79,
+      "name": "a2h_error_response_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2082445259,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 2.578,
+      "name": "a2h_wait_states_test",
+      "reason": "positive pass evidence matched",
+      "seed": 306233976,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 2.901,
+      "name": "a2h_arbitration_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1917876633,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 4.207,
+      "name": "a2h_backpressure_test",
+      "reason": "positive pass evidence matched",
+      "seed": 32520178,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 0.773,
+      "name": "a2h_pipelined_read_test",
+      "reason": "positive pass evidence matched",
+      "seed": 130133210,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 0.705,
+      "name": "a2h_hprot_signals_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1903944950,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 0.665,
+      "name": "a2h_reset_test",
+      "reason": "positive pass evidence matched",
+      "seed": 995716593,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 10.838,
+      "name": "a2h_random_stress_test",
+      "reason": "positive pass evidence matched",
+      "seed": 136345162,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 10.885,
+      "name": "a2h_random_stress_test",
+      "reason": "positive pass evidence matched",
+      "seed": 247532898,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 6.295,
+      "name": "a2h_random_stress_test",
+      "reason": "positive pass evidence matched",
+      "seed": 754176483,
+      "stage": "sim",
+      "status": "PASS"
+    }
+  ],
+  "timing": {
+    "duration_sec": 58.219,
+    "end_time": "2026-10-03T18:38:03.057861+00:00",
+    "start_time": "2026-10-03T18:37:23.057126+00:00"
+  },
+  "tool": "verilator"
+}

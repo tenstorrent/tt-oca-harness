@@ -1,0 +1,101 @@
+{
+  "artifacts": {
+    "log": "weekly-runs/dv-run-scrambler-verilator-weekly/scrambler_bytewise_test/seed_2070860004/attempt_0/logs/scrambler_bytewise_test.log",
+    "regression_json": "weekly-runs/dv-run-scrambler-verilator-weekly/stages/regress/regression.json",
+    "result_json": "weekly-runs/dv-run-scrambler-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/scrambler/verilator/weekly/37144845475"
+  },
+  "coverage": {
+    "comparison_key": null,
+    "details_available": null,
+    "effective_metrics": {},
+    "holes_summary": {
+      "details_available": false
+    },
+    "manifest": null,
+    "policy_application": null,
+    "policy_thresholds": [],
+    "raw_metrics": {},
+    "report": null,
+    "status": "SKIP",
+    "summary": null,
+    "target": null,
+    "threshold": null,
+    "threshold_met": null,
+    "total_percent": null
+  },
+  "failure_buckets": [],
+  "flow": "scrambler",
+  "framework": "cocotb",
+  "generated_at": "2026-10-04T00:38:04+00:00",
+  "git": {
+    "branch": "main",
+    "sha": "14a8f1268513558c7fee43a60764df629c2f2b72",
+    "short_sha": "14a8f12"
+  },
+  "junit_xml": {
+    "missing": 0,
+    "total": 2
+  },
+  "kind": "dv",
+  "regression": {
+    "failed_tests": [],
+    "flaky_tests": []
+  },
+  "run_metadata": {
+    "executor": "local",
+    "generated_at": "2026-10-03T18:37:49.922690+00:00",
+    "git": {
+      "branch": "main",
+      "commit": "14a8f1268513558c7fee43a60764df629c2f2b72",
+      "dirty": "false"
+    },
+    "label": "all",
+    "result_json": "weekly-runs/dv-run-scrambler-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/scrambler/verilator/weekly/37144845475",
+    "tool": "verilator",
+    "tool_version": "Verilator 5.052 2026-09-05 rev v5.052"
+  },
+  "schema_version": "0.2",
+  "source": {
+    "collector": "run_dv-result",
+    "label": "all",
+    "native_status": "PASS"
+  },
+  "status": "PASS",
+  "tests": {
+    "completed": true,
+    "failing": 0,
+    "pass_rate": 100.0,
+    "passing": 2,
+    "total": 2
+  },
+  "tests_detail": [
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 0.785,
+      "name": "scrambler_bytewise_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2070860004,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 3.726,
+      "name": "scrambler_roundtrip_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1956232312,
+      "stage": "sim",
+      "status": "PASS"
+    }
+  ],
+  "timing": {
+    "duration_sec": 27.884,
+    "end_time": "2026-10-03T18:37:49.918350+00:00",
+    "start_time": "2026-10-03T18:37:22.816861+00:00"
+  },
+  "tool": "verilator"
+}

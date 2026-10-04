@@ -1,0 +1,173 @@
+{
+  "artifacts": {
+    "coverage_manifest": "artifacts/axi_hang_detector/coverage/coverage.json",
+    "coverage_policy_application": "artifacts/axi_hang_detector/coverage/report/policy-application.json",
+    "coverage_report": "artifacts/axi_hang_detector/coverage/report",
+    "coverage_summary": "artifacts/axi_hang_detector/coverage/report/summary.json",
+    "log": "weekly-runs/dv-run-axi_hang_detector-verilator-weekly/ahd_sanity_test/seed_936800609/attempt_0/logs/ahd_sanity_test.log",
+    "regression_json": "weekly-runs/dv-run-axi_hang_detector-verilator-weekly/stages/regress/regression.json",
+    "result_json": "weekly-runs/dv-run-axi_hang_detector-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475"
+  },
+  "coverage": {
+    "comparison_key": "COVCMP-009da2701ebb1677",
+    "details_available": true,
+    "effective_metrics": {
+      "branch": 25.0,
+      "expression": 48.3333,
+      "line": 7.9365,
+      "toggle": 54.5455
+    },
+    "holes_summary": {
+      "accepted": 0,
+      "by_category": {
+        "branch": 12,
+        "expression": 62,
+        "line": 58,
+        "toggle": 130
+      },
+      "by_disposition": {
+        "cover": 262
+      },
+      "by_metric": {
+        "branch": 12,
+        "expression": 62,
+        "line": 58,
+        "toggle": 130
+      },
+      "by_status": {
+        "open": 262
+      },
+      "details_available": true,
+      "hole_group_count": 0,
+      "native_point_count": 262,
+      "observations_complete": true,
+      "open": 262,
+      "unclassified": 262
+    },
+    "manifest": "artifacts/axi_hang_detector/coverage/coverage.json",
+    "policy_application": "artifacts/axi_hang_detector/coverage/report/policy-application.json",
+    "policy_thresholds": [],
+    "raw_metrics": {
+      "branch": 25.0,
+      "expression": 48.3333,
+      "line": 7.9365,
+      "toggle": 54.5455
+    },
+    "report": "artifacts/axi_hang_detector/coverage/report",
+    "source_manifest": "weekly-runs/dv-run-axi_hang_detector-verilator-weekly/cov/coverage.json",
+    "source_policy_application": "weekly-runs/dv-run-axi_hang_detector-verilator-weekly/cov/report/policy-application.json",
+    "source_report": "weekly-runs/dv-run-axi_hang_detector-verilator-weekly/cov/report",
+    "source_summary": "weekly-runs/dv-run-axi_hang_detector-verilator-weekly/cov/report/summary.json",
+    "status": "PASS",
+    "summary": "artifacts/axi_hang_detector/coverage/report/summary.json",
+    "target": "default",
+    "threshold": 0.0,
+    "threshold_met": true,
+    "total_percent": 45.9794
+  },
+  "failure_buckets": [],
+  "flow": "axi_hang_detector",
+  "framework": "cocotb",
+  "generated_at": "2026-10-04T00:38:03+00:00",
+  "git": {
+    "branch": "main",
+    "sha": "14a8f1268513558c7fee43a60764df629c2f2b72",
+    "short_sha": "14a8f12"
+  },
+  "junit_xml": {
+    "missing": 0,
+    "total": 5
+  },
+  "kind": "dv",
+  "regression": {
+    "failed_tests": [],
+    "flaky_tests": []
+  },
+  "run_metadata": {
+    "executor": "local",
+    "generated_at": "2026-10-03T18:37:38.774191+00:00",
+    "git": {
+      "branch": "main",
+      "commit": "14a8f1268513558c7fee43a60764df629c2f2b72",
+      "dirty": "false"
+    },
+    "label": "all",
+    "result_json": "weekly-runs/dv-run-axi_hang_detector-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475",
+    "tool": "verilator",
+    "tool_version": "Verilator 5.052 2026-09-05 rev v5.052"
+  },
+  "schema_version": "0.2",
+  "source": {
+    "collector": "run_dv-result",
+    "label": "all",
+    "native_status": "PASS"
+  },
+  "status": "PASS",
+  "tests": {
+    "completed": true,
+    "failing": 0,
+    "pass_rate": 100.0,
+    "passing": 5,
+    "total": 5
+  },
+  "tests_detail": [
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 0.321,
+      "name": "ahd_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 936800609,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 0.534,
+      "name": "ahd_config_corners_test",
+      "reason": "positive pass evidence matched",
+      "seed": 75794607,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 0.245,
+      "name": "ahd_threshold_latch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1575954296,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 0.278,
+      "name": "ahd_bus_progress_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1033713280,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 0.492,
+      "name": "ahd_threshold_zero_rearm_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1529418801,
+      "stage": "sim",
+      "status": "PASS"
+    }
+  ],
+  "timing": {
+    "duration_sec": 20.989,
+    "end_time": "2026-10-03T18:37:38.766755+00:00",
+    "start_time": "2026-10-03T18:37:18.606392+00:00"
+  },
+  "tool": "verilator"
+}

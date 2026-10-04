@@ -1,0 +1,211 @@
+{
+  "artifacts": {
+    "log": "weekly-runs/dv-run-entropy_source-verilator-weekly/entropy_source_sanity_test/seed_1162762413/attempt_0/logs/entropy_source_sanity_test.log",
+    "regression_json": "weekly-runs/dv-run-entropy_source-verilator-weekly/stages/regress/regression.json",
+    "result_json": "weekly-runs/dv-run-entropy_source-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/entropy_source/verilator/weekly/37144845475"
+  },
+  "coverage": {
+    "comparison_key": null,
+    "details_available": null,
+    "effective_metrics": {},
+    "holes_summary": {
+      "details_available": false
+    },
+    "manifest": null,
+    "policy_application": null,
+    "policy_thresholds": [],
+    "raw_metrics": {},
+    "report": null,
+    "status": "SKIP",
+    "summary": null,
+    "target": null,
+    "threshold": null,
+    "threshold_met": null,
+    "total_percent": null
+  },
+  "failure_buckets": [],
+  "flow": "entropy_source",
+  "framework": "cocotb",
+  "generated_at": "2026-10-04T00:38:03+00:00",
+  "git": {
+    "branch": "main",
+    "sha": "14a8f1268513558c7fee43a60764df629c2f2b72",
+    "short_sha": "14a8f12"
+  },
+  "junit_xml": {
+    "missing": 0,
+    "total": 13
+  },
+  "kind": "dv",
+  "regression": {
+    "failed_tests": [],
+    "flaky_tests": []
+  },
+  "run_metadata": {
+    "executor": "local",
+    "generated_at": "2026-10-03T18:43:52.979053+00:00",
+    "git": {
+      "branch": "main",
+      "commit": "14a8f1268513558c7fee43a60764df629c2f2b72",
+      "dirty": "false"
+    },
+    "label": "all",
+    "result_json": "weekly-runs/dv-run-entropy_source-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/entropy_source/verilator/weekly/37144845475",
+    "tool": "verilator",
+    "tool_version": "Verilator 5.052 2026-09-05 rev v5.052"
+  },
+  "schema_version": "0.2",
+  "source": {
+    "collector": "run_dv-result",
+    "label": "all",
+    "native_status": "PASS"
+  },
+  "status": "PASS",
+  "tests": {
+    "completed": true,
+    "failing": 0,
+    "pass_rate": 100.0,
+    "passing": 13,
+    "total": 13
+  },
+  "tests_detail": [
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 0.992,
+      "name": "entropy_source_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1162762413,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 4.114,
+      "name": "entropy_source_axi_random_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1768168489,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 5.277,
+      "name": "entropy_source_register_walk_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1170978796,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 5.464,
+      "name": "entropy_source_fifo_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2137761215,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 4.078,
+      "name": "entropy_source_health_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1043096722,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 1.402,
+      "name": "entropy_source_health_algorithms_test",
+      "reason": "positive pass evidence matched",
+      "seed": 929723280,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 12.866,
+      "name": "entropy_source_debug_monitor_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2137759414,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 25.339,
+      "name": "entropy_source_decorrelator_modes_test",
+      "reason": "positive pass evidence matched",
+      "seed": 798149500,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 1.715,
+      "name": "entropy_source_downsample_rate_test",
+      "reason": "positive pass evidence matched",
+      "seed": 36034077,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 2.858,
+      "name": "entropy_source_pipeline_integration_test",
+      "reason": "positive pass evidence matched",
+      "seed": 39414967,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 1.586,
+      "name": "entropy_source_conditioning_test",
+      "reason": "positive pass evidence matched",
+      "seed": 879512414,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 14.108,
+      "name": "entropy_source_sampling_test",
+      "reason": "positive pass evidence matched",
+      "seed": 956825670,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 27.035,
+      "name": "entropy_source_integrated_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1191499957,
+      "stage": "sim",
+      "status": "PASS"
+    }
+  ],
+  "timing": {
+    "duration_sec": 404.748,
+    "end_time": "2026-10-03T18:43:52.970318+00:00",
+    "start_time": "2026-10-03T18:37:53.106476+00:00"
+  },
+  "tool": "verilator"
+}

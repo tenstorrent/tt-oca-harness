@@ -1,0 +1,139 @@
+{
+  "artifacts": {
+    "coverage_details": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/cov/report/coverage-details.json",
+    "coverage_details_raw": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/cov/report/coverage-details.raw.json",
+    "merged": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/cov/merged.dat",
+    "policy_application": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/cov/report/policy-application.json",
+    "report": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/cov/report",
+    "summary": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/cov/report/summary.json"
+  },
+  "backend": "verilator_coverage",
+  "build_fingerprint": "6a5498ee4c32",
+  "comparison_key": "COVCMP-009da2701ebb1677",
+  "dut": "axi_hang_detector",
+  "exclusions": [],
+  "generated_at": "2026-10-03T18:37:38.592504+00:00",
+  "holes_summary": {
+    "accepted": 0,
+    "by_category": {
+      "branch": 12,
+      "expression": 62,
+      "line": 58,
+      "toggle": 130
+    },
+    "by_disposition": {
+      "cover": 262
+    },
+    "by_metric": {
+      "branch": 12,
+      "expression": 62,
+      "line": 58,
+      "toggle": 130
+    },
+    "by_status": {
+      "open": 262
+    },
+    "details_available": true,
+    "hole_group_count": 0,
+    "native_point_count": 262,
+    "observations_complete": true,
+    "open": 262,
+    "unclassified": 262
+  },
+  "inputs": [
+    {
+      "attempt": 0,
+      "build_fingerprint": "6a5498ee4c32",
+      "item": "ahd_bus_progress_test",
+      "path": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_bus_progress_test/seed_1033713280/attempt_0/coverage/coverage.dat",
+      "result_json": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_bus_progress_test/seed_1033713280/attempt_0/result.json",
+      "seed": 1033713280,
+      "source": "result_json",
+      "status": "PASS",
+      "target": "default"
+    },
+    {
+      "attempt": 0,
+      "build_fingerprint": "6a5498ee4c32",
+      "item": "ahd_config_corners_test",
+      "path": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_config_corners_test/seed_75794607/attempt_0/coverage/coverage.dat",
+      "result_json": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_config_corners_test/seed_75794607/attempt_0/result.json",
+      "seed": 75794607,
+      "source": "result_json",
+      "status": "PASS",
+      "target": "default"
+    },
+    {
+      "attempt": 0,
+      "build_fingerprint": "6a5498ee4c32",
+      "item": "ahd_sanity_test",
+      "path": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_sanity_test/seed_936800609/attempt_0/coverage/coverage.dat",
+      "result_json": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_sanity_test/seed_936800609/attempt_0/result.json",
+      "seed": 936800609,
+      "source": "result_json",
+      "status": "PASS",
+      "target": "default"
+    },
+    {
+      "attempt": 0,
+      "build_fingerprint": "6a5498ee4c32",
+      "item": "ahd_threshold_latch_test",
+      "path": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_threshold_latch_test/seed_1575954296/attempt_0/coverage/coverage.dat",
+      "result_json": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_threshold_latch_test/seed_1575954296/attempt_0/result.json",
+      "seed": 1575954296,
+      "source": "result_json",
+      "status": "PASS",
+      "target": "default"
+    },
+    {
+      "attempt": 0,
+      "build_fingerprint": "6a5498ee4c32",
+      "item": "ahd_threshold_zero_rearm_test",
+      "path": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_threshold_zero_rearm_test/seed_1529418801/attempt_0/coverage/coverage.dat",
+      "result_json": "build/ci/runs/axi_hang_detector/verilator/weekly/37144845475/ahd_threshold_zero_rearm_test/seed_1529418801/attempt_0/result.json",
+      "seed": 1529418801,
+      "source": "result_json",
+      "status": "PASS",
+      "target": "default"
+    }
+  ],
+  "merge_return_code": 0,
+  "metrics": {
+    "branch": 25.0,
+    "expression": 48.3333,
+    "line": 7.9365,
+    "toggle": 54.5455
+  },
+  "overall_percent": 45.9794,
+  "parser": "verilator",
+  "policy": {
+    "legacy_exclusions": [],
+    "legacy_waivers": [],
+    "native_files": [],
+    "path": null,
+    "scope_epoch": null,
+    "sha256": null
+  },
+  "policy_fingerprint": null,
+  "policy_thresholds": [],
+  "rejected": [],
+  "report_return_code": 0,
+  "schema_version": 2,
+  "scope_fingerprint": "30a92b6b9954ee250b42b1de203fdd4d1eab0609a6d40dcd64f9df748434e333",
+  "selection_policy": "final_non_debug_attempt_per_test_seed",
+  "selection_source": "result_json",
+  "status": "PASS",
+  "supported_metrics": [
+    "line",
+    "toggle",
+    "branch",
+    "expression",
+    "user"
+  ],
+  "target": "default",
+  "threshold": 0.0,
+  "threshold_met": true,
+  "tool": "verilator",
+  "tool_version": "Verilator 5.052 2026-09-05 rev v5.052",
+  "waivers": []
+}

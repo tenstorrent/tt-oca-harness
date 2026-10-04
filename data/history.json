@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-12T19:51:40+00:00",
+  "generated_at": "2026-10-04T00:38:05+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -2928,6 +2928,290 @@
         }
       ],
       "test_pass_rate": null
+    },
+    {
+      "failed_tests": 5,
+      "flaky_tests": 0,
+      "flow_pass_rate": 75.0,
+      "generated_at": "2026-10-04T00:38:05+00:00",
+      "id": "c5f11f5bf76d5ba6",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-009da2701ebb1677",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 25.0,
+            "expression": 48.3333,
+            "line": 7.9365,
+            "toggle": 54.5455
+          },
+          "flow": "axi_hang_detector",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "branch": 12,
+              "expression": 62,
+              "line": 58,
+              "toggle": 130
+            },
+            "by_disposition": {
+              "cover": 262
+            },
+            "by_metric": {
+              "branch": 12,
+              "expression": 62,
+              "line": 58,
+              "toggle": 130
+            },
+            "by_status": {
+              "open": 262
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 262,
+            "observations_complete": true,
+            "open": 262,
+            "unclassified": 262
+          },
+          "raw_metrics": {
+            "branch": 25.0,
+            "expression": 48.3333,
+            "line": 7.9365,
+            "toggle": 54.5455
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "axi_lite_to_ahb",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "cross_trigger_matrix",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "cross_trigger_network",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "cross_trigger_port",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "entropy_source",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "log_engine",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "scrambler",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "sep",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "smc",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "smu",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "system_timer_octs",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "uart_16550",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "uart_log_engine_wrap",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "uart_wrap",
+          "framework": "cocotb",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "PASS",
+          "target": null,
+          "threshold_met": null,
+          "tool": "verilator"
+        }
+      ],
+      "test_pass_rate": 99.02
     }
   ],
   "schema_version": "0.2"

@@ -1,0 +1,95 @@
+{
+  "artifacts": {
+    "regression_json": "weekly-runs/dv-run-sep-verilator-weekly/stages/regress/regression.json",
+    "result_json": "weekly-runs/dv-run-sep-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/sep/verilator/weekly/37144845475"
+  },
+  "coverage": {
+    "comparison_key": null,
+    "details_available": null,
+    "effective_metrics": {},
+    "holes_summary": {
+      "details_available": false
+    },
+    "manifest": null,
+    "policy_application": null,
+    "policy_thresholds": [],
+    "raw_metrics": {},
+    "report": null,
+    "status": "SKIP",
+    "summary": null,
+    "target": null,
+    "threshold": null,
+    "threshold_met": null,
+    "total_percent": null
+  },
+  "failure_buckets": [
+    {
+      "count": 8,
+      "examples": [
+        "weekly-runs/dv-run-sep-verilator-weekly/stages/c_compile/logs/sep_km_mem_smoke_test.log"
+      ],
+      "kind": "compile_error",
+      "signature": "process exited 1"
+    },
+    {
+      "affected": [],
+      "count": 1,
+      "examples": [],
+      "kind": "interruption",
+      "signature": "run interrupted by SIGINT"
+    }
+  ],
+  "flow": "sep",
+  "framework": "cocotb",
+  "generated_at": "2026-10-04T00:38:04+00:00",
+  "git": {
+    "branch": "main",
+    "sha": "14a8f1268513558c7fee43a60764df629c2f2b72",
+    "short_sha": "14a8f12"
+  },
+  "junit_xml": {
+    "missing": 0,
+    "total": 0
+  },
+  "kind": "dv",
+  "regression": {
+    "failed_tests": [],
+    "flaky_tests": []
+  },
+  "run_metadata": {
+    "executor": "local",
+    "generated_at": "2026-10-04T00:37:03.141158+00:00",
+    "git": {
+      "branch": "main",
+      "commit": "14a8f1268513558c7fee43a60764df629c2f2b72",
+      "dirty": "false"
+    },
+    "label": "cpu_stub",
+    "result_json": "weekly-runs/dv-run-sep-verilator-weekly/result.json",
+    "run_dir": "build/ci/runs/sep/verilator/weekly/37144845475",
+    "tool": "verilator",
+    "tool_version": "Verilator 5.052 2026-09-05 rev v5.052"
+  },
+  "schema_version": "0.2",
+  "source": {
+    "collector": "run_dv-result",
+    "label": "cpu_stub",
+    "native_status": "ERROR"
+  },
+  "status": "FAIL",
+  "tests": {
+    "completed": false,
+    "failing": 0,
+    "pass_rate": null,
+    "passing": 0,
+    "total": 0
+  },
+  "tests_detail": [],
+  "timing": {
+    "duration_sec": 19414.094,
+    "end_time": "2026-10-04T00:01:03.530000+00:00",
+    "start_time": "2026-10-03T18:37:29.393766+00:00"
+  },
+  "tool": "verilator"
+}
