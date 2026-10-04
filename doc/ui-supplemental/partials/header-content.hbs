@@ -21,19 +21,20 @@
         <div class="navbar-item has-dropdown is-hoverable guides-menu">
           <a class="navbar-link" href="#">Guides</a>
           <div class="navbar-dropdown">
-            <!-- One entry per book. Add a line here whenever a new book's
-                 antora.yml/nav.adoc scaffolding lands -- these are plain
-                 static links
-
-                 All five books now build as ONE Antora site
-                 (antora-playbook.yml), so {{{siteRootPath}}} already
-                 resolves directly to the one shared root. -->
-            <a class="navbar-item" href="{{{siteRootPath}}}/ocah-starting/latest/index.html">Starting with OCAH</a>
-            <a class="navbar-item" href="{{{siteRootPath}}}/ocah-docs/latest/index.html">Technical Reference Manual</a>
-            <a class="navbar-item" href="{{{siteRootPath}}}/ocah-integrator-guide/latest/index.html">Integrator Guide</a>
-            <a class="navbar-item" href="{{{siteRootPath}}}/ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
-            <a class="navbar-item" href="{{{siteRootPath}}}/ocah-appnotes/latest/index.html">Application Notes</a>
+            {{!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands. Each link resolves to
+                 the start page of the book's version in this build, so a
+                 release snapshot links within itself. --}}
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-starting')}}{{{relativize ./url}}}{{else}}#{{/with}}">Starting with OCAH</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-docs')}}{{{relativize ./url}}}{{else}}#{{/with}}">Technical Reference Manual</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-integrator-guide')}}{{{relativize ./url}}}{{else}}#{{/with}}">Integrator Guide</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-programmer-guide')}}{{{relativize ./url}}}{{else}}#{{/with}}">Programmer's Guide</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-appnotes')}}{{{relativize ./url}}}{{else}}#{{/with}}">Application Notes</a>
           </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="{{{siteRootPath}}}" data-snapshot="{{env.OCAH_DOC_SNAPSHOT}}">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
         </div>
         <div class="navbar-item has-dropdown is-hoverable downloads-menu">
           <a class="navbar-link" href="#">Downloads</a>
