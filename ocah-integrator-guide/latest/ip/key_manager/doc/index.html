@@ -673,7 +673,9 @@ KM side-loads into ABR (<a href="#adams-bridge-seed-sideload-inputs-table">Adams
 whose XOR is the real value, plus a <code>key_valid</code> bit) and is write-only to KM
 firmware. The seeds are valid <code>dest_valid</code> destinations (bits 4–7), so they
 are targets of <code>CMD_KEY_TRANSFER</code> and <code>CMD_ENGINE_SHRED</code>, and ROM shreds them
-during the mutable-firmware handover.</p>
+during the mutable-firmware handover. Word order matches the other engines:
+share word <code>i</code> is word <code>i</code> of the seed the engine consumes, as stated in
+<a href="../../../sep/adams_bridge.html#abr-seed-word-order" class="xref page">ABR seed word order</a>.</p>
 </div>
 <div class="paragraph">
 <p><strong>ML-KEM shared-key output (ABR → KM).</strong> ABR computes an ML-KEM shared key and

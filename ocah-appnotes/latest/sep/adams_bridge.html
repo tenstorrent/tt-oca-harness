@@ -338,12 +338,39 @@ concatenating <code>MLKEM_SEED_D</code> followed by <code>MLKEM_SEED_Z</code>, s
 only when both blocks are valid. An operation consumes a delivered seed only
 once its seed read is enabled.</p>
 </div>
+<div id="abr-seed-word-order" class="paragraph">
+<p>Word order is the same as for every other accelerator: word <code>i</code> of a delivered
+block is register index <code>i</code> of the corresponding software register array
+(<code>MLDSA_SEED[i]</code>, <code>MLKEM_SEED_D[i]</code>, <code>MLKEM_SEED_Z[i]</code> or <code>MLKEM_MSG</code> word
+<code>i</code>), so a value delivered by the Key Manager and the same eight words written
+by software present the same seed or message to the engine. Index 0 holds the
+first four bytes of the FIPS 203 or FIPS 204 byte string, with byte 0 in bits
+<code>[7:0]</code>, as upstream Adams Bridge defines for its registers.</p>
+</div>
 <div class="paragraph">
 <p>The ML-KEM shared key travels in the opposite direction, making this the only
 delivery destination that is also a source: the accelerator writes the shared
 key into <code>MLKEM_SHARED_KEY.KEY</code>, and on the final word sets that block&#8217;s
 <code>KEY_CTRL.KEY_VALID</code> and <code>IRQ_STATUS.KEY_VALID</code>, which raises the gated
-shared-key interrupt consumed by the Key Manager.</p>
+shared-key interrupt consumed by the Key Manager. <code>KEY[i]</code> holds bytes <code>4i</code> to
+<code>4i+3</code> of the FIPS 203 shared key, in the same order as the engine&#8217;s own
+<code>MLKEM_SHARED_KEY</code> register array.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This word order differs from the upstream Caliptra integration. The
+Caliptra Key Vault stores an entry most-significant word first, and the
+vendored controller reverses word index on its Key Vault read and write ports
+to match. <code>sep_abr_kv_shim</code> applies the inverse reversal, so Caliptra&#8217;s
+documentation of Key Vault word order does not apply to the Key Manager path.
+</td>
+</tr>
+</table>
 </div>
 <div class="paragraph">
 <p>The working SRAM is brought out of the wrapper as packed
