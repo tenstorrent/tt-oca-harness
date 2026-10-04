@@ -184,7 +184,14 @@ format: the value is carried as two shares whose XOR is the value, and each
 share is presented as a sequence of 32-bit words in the `KEY_SHARE0` and
 `KEY_SHARE1` registers of the destination. Within a share, word index N carries
 value bits `[32N+31:32N]`, so index 0 is the least-significant word and the
-highest index is the most-significant.
+highest index is the most-significant. The same index order applies to the
+Adams Bridge seed and message blocks and to its returned shared key
+ifdef::backend-html5[]
+(xref:sep:adams_bridge.adoc#abr-seed-word-order[ABR seed word order]).
+endif::backend-html5[]
+ifdef::backend-pdf[]
+(<<abr-seed-word-order>>).
+endif::backend-pdf[]
 
 Both shares are always consumed. Delivering a value V therefore requires two
 shares whose XOR is V; writing a single share delivers V only because the
