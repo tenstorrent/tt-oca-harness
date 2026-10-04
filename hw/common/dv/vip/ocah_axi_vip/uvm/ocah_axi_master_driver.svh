@@ -320,8 +320,8 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
     int unsigned beats = it.data_words.size();
     bit aw_timed_out, w_timed_out, b_timed_out;
     bit first_aw_done, first_w_done;
-    it.resp_list.delete();
-    if (it.pair != null) it.pair.resp_list.delete();
+    it.clear_results();
+    if (it.pair != null) it.pair.clear_results();
     if (beats == 0 || (it.pair != null && it.pair.data_words.size() != 1)) begin
       `uvm_error(cfg.name_tag, "write item carries no data beats")
       return;
@@ -444,12 +444,8 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
   virtual task do_read(ocah_axi_item it);
     int unsigned beats = (it.expected_beats == 0) ? 1 : it.expected_beats;
     bit ar_timed_out, r_timed_out;
-    it.data_words.delete();
-    it.resp_list.delete();
-    if (it.pair != null) begin
-      it.pair.data_words.delete();
-      it.pair.resp_list.delete();
-    end
+    it.clear_results();
+    if (it.pair != null) it.pair.clear_results();
     if (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE && beats > 1) begin
       `uvm_error(cfg.name_tag,
                  $sformatf("%0d-beat read on an AXI4-Lite master (single-beat protocol)", beats))
@@ -573,18 +569,16 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
   // it.r_ready_delay cycles after the first BVALID and RVALID, then the
   // responses are collected in list order per direction. An invalid op
   // fails the operation before any signal is driven. A timeout marks the
-  // carrier and every op without a collected response timed out; the other
-  // ops keep their results and the stall counts cover the cycles up to the
-  // timeout.
+  // carrier and every op whose final response handshake has not completed
+  // timed out; a read keeps the beats it received, the other ops keep their
+  // results, and the stall counts cover the cycles up to the timeout.
   virtual task do_pipeline(ocah_axi_item it);
     ocah_axi_item wr[$], rd[$];
     int unsigned aw_acc, w_acc, ar_acc;
+    int unsigned b_done, r_done;
     bit aw_to, w_to, ar_to, b_to, r_to, done;
-    foreach (it.ops[i]) begin
-      it.ops[i].resp_list.delete();
-      it.ops[i].timed_out = 1'b0;
-      if (it.ops[i].direction != OCAH_AXI_DIR_WRITE) it.ops[i].data_words.delete();
-    end
+    it.clear_results();
+    foreach (it.ops[i]) it.ops[i].clear_results();
     foreach (it.ops[i]) begin
       ocah_axi_item op = it.ops[i];
       string why = "";
@@ -600,9 +594,6 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       if (op.direction == OCAH_AXI_DIR_WRITE) wr.push_back(op);
       else rd.push_back(op);
     end
-    it.aw_stall_cycles = 0;
-    it.w_stall_cycles  = 0;
-    it.ar_stall_cycles = 0;
     fork
       begin
         fork
@@ -624,6 +615,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
               end
               accept_b(wr[i], b_to);
               if (b_to) break;
+              b_done++;
             end
             cfg.vif.bready <= 1'b0;
           end
@@ -642,6 +634,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
               end
               collect_r_beats(rd[i], r_to);
               if (r_to) break;
+              r_done++;
             end
             cfg.vif.rready <= 1'b0;
           end
@@ -658,7 +651,8 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       end
     join
     if (aw_to || w_to || ar_to || b_to || r_to) begin
-      foreach (it.ops[i]) if (it.ops[i].resp_list.size() == 0) it.ops[i].timed_out = 1'b1;
+      foreach (wr[i]) if (i >= b_done) wr[i].timed_out = 1'b1;
+      foreach (rd[i]) if (i >= r_done) rd[i].timed_out = 1'b1;
       flag_timeout(it, aw_to ? "AW" : w_to ? "W" : ar_to ? "AR" : b_to ? "B" : "R");
     end
   endtask

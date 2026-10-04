@@ -50,9 +50,10 @@ class ocah_axi_item extends uvm_sequence_item;
   // response handshake (RLAST beat for reads) — never a copy of the issued
   // transaction_id. observed_id_valid stays 0 on ID-less buses
   // (cfg.id_width == 0) and on timeouts; timed_out reports a handshake
-  // watchdog expiry (see ocah_axi_master_config.timeout_cycles).
-  // hold_stable reports that RVALID stayed asserted with RDATA/RRESP
-  // unchanged across a nonzero r_ready_delay window (stays 1 otherwise).
+  // watchdog expiry (see ocah_axi_master_config.timeout_cycles). is_ok()
+  // is 0 on a timed-out result (the cocotb ok=False state). hold_stable
+  // reports that RVALID stayed asserted with RDATA/RRESP unchanged across
+  // a nonzero r_ready_delay window (stays 1 otherwise).
   bit [15:0]          observed_id;
   bit                 observed_id_valid;
   bit                 timed_out;
@@ -87,12 +88,29 @@ class ocah_axi_item extends uvm_sequence_item;
     super.new(name);
   endfunction
 
+  // Returns every field the master driver fills as a result to its default.
+  // The driver calls it at the start of each operation, so an item issued
+  // twice reports only the operation in flight.
+  function void clear_results();
+    resp_list.delete();
+    if (direction != OCAH_AXI_DIR_WRITE) data_words.delete();
+    timed_out         = 1'b0;
+    observed_id       = '0;
+    observed_id_valid = 1'b0;
+    hold_stable       = 1'b1;
+    ax_stall_cycles   = 0;
+    ax_stable         = 1'b1;
+    aw_stall_cycles   = 0;
+    w_stall_cycles    = 0;
+    ar_stall_cycles   = 0;
+  endfunction
+
   function ocah_axi_resp_e worst_resp();
     return ocah_axi_worst_resp(resp_list);
   endfunction
 
   function bit is_ok();
-    return ocah_axi_resp_ok(resp_list);
+    return !timed_out && ocah_axi_resp_ok(resp_list);
   endfunction
 
   function int unsigned beat_count();

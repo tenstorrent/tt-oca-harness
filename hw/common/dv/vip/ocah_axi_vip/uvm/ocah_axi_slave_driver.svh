@@ -5,9 +5,10 @@
 //
 // A sparse zero-default
 // byte memory answering FIXED/INCR/WRAP single- and multi-beat bursts with
-// ID echo, per-beat one-shot error matching (via ocah_axi_slave_config),
-// per-channel bounded READY backpressure, and single-outstanding registered
-// handshakes per direction. cfg.protocol
+// ID echo, per-beat one-shot error matching and a one-shot missing RLAST
+// per read address (via ocah_axi_slave_config), per-channel bounded READY
+// backpressure, and single-outstanding registered handshakes per
+// direction. cfg.protocol
 // selects AXI4-Lite (single-beat, no IDs/bursts; the AXI4-only vif fields
 // are never sampled).
 //
@@ -276,6 +277,7 @@ class ocah_axi_slave_driver extends uvm_component;
     bit [2:0]       size;
     bit [1:0]       burst;
     int unsigned    beats;
+    bit             drop_last;
     forever begin
       @(cfg.vif.mon_cb);
       if (!cfg.vif.aresetn) begin
@@ -305,9 +307,12 @@ class ocah_axi_slave_driver extends uvm_component;
                                        "%s: corrupting RID arid=0x%0h -> rid=0x%0h (mask=0x%0h)",
                                        cfg.name_tag, id, rid_out, corrupt_mask), UVM_LOW)
       end
+      // An armed missing RLAST keeps the final beat's RLAST low; the pump
+      // then idles, so the master waits for a beat that never comes.
+      drop_last = cfg.consume_missing_rlast(start_addr);
       // Data phase: one beat per accepted cycle.
       for (int unsigned beat = 0; beat < beats; beat++) begin
-        load_read_beat(addr, rid_out, beat == beats - 1);
+        load_read_beat(addr, rid_out, (beat == beats - 1) && !drop_last);
         cfg.vif.rvalid <= 1'b1;
         do
         @(cfg.vif.mon_cb);

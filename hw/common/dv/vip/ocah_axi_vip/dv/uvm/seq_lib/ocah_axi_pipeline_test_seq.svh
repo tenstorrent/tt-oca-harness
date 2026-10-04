@@ -11,99 +11,23 @@
 // RREADY stay low for the hold after the first BVALID and RVALID, each
 // response returns to its own access, and the reported stall cycles match
 // the wires. Read data is cross-checked against the responder's backdoor.
-// After the pipelines, a list whose write times out behind AW and W stalls
-// while its read completes, and a list the driver rejects for an
-// out-of-range access before driving anything.
+// After the pipelines, a list run once with no stall and then again with
+// its write held off by AW and W stalls while its read completes, and a
+// list the driver rejects for an out-of-range access before driving anything.
 
-class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
+class ocah_axi_pipeline_test_seq extends ocah_axi_pipeline_base_test_seq;
   `uvm_object_utils(ocah_axi_pipeline_test_seq)
 
-  localparam int unsigned ShortTimeout = 50;
   localparam int unsigned DrainCycles = 64;
   localparam int unsigned QuietCycles = 20;
 
-  typedef struct {
-    bit        awvalid, awready, wvalid, wready, bvalid, bready;
-    bit        arvalid, arready, rvalid, rready;
-    bit [63:0] awaddr, wdata, araddr;
-  } sample_t;
-
-  // Bound by the test before start().
-  ocah_axi_checker        evidence;
-  ocah_axi_slave_config   slave_cfg;
-  ocah_axi_slave_sequence slave_seq;
-
   int unsigned n_ops = 12;
 
-  protected sample_t     m_samples[$];
-  protected bit          m_stop;
-  protected bit   [63:0] m_memory   [bit [63:0]];
-  protected bit   [63:0] m_words    [$];
+  protected bit [63:0] m_memory[bit [63:0]];
+  protected bit [63:0] m_words[$];
 
   function new(string name = "ocah_axi_pipeline_test_seq");
     super.new(name);
-  endfunction
-
-  protected task record();
-    m_samples.delete();
-    while (!m_stop) begin
-      sample_t row;
-      @(cfg.vif.mon_cb);
-      row.awvalid = cfg.vif.mon_cb.awvalid === 1'b1;
-      row.awready = cfg.vif.mon_cb.awready === 1'b1;
-      row.wvalid  = cfg.vif.mon_cb.wvalid === 1'b1;
-      row.wready  = cfg.vif.mon_cb.wready === 1'b1;
-      row.bvalid  = cfg.vif.mon_cb.bvalid === 1'b1;
-      row.bready  = cfg.vif.mon_cb.bready === 1'b1;
-      row.arvalid = cfg.vif.mon_cb.arvalid === 1'b1;
-      row.arready = cfg.vif.mon_cb.arready === 1'b1;
-      row.rvalid  = cfg.vif.mon_cb.rvalid === 1'b1;
-      row.rready  = cfg.vif.mon_cb.rready === 1'b1;
-      row.awaddr  = 64'(cfg.vif.mon_cb.awaddr);
-      row.wdata   = 64'(cfg.vif.mon_cb.wdata);
-      row.araddr  = 64'(cfg.vif.mon_cb.araddr);
-      m_samples.push_back(row);
-    end
-  endtask
-
-  // chan: 0 AW, 1 W, 2 B, 3 AR, 4 R.
-  protected function bit valid_at(int unsigned chan, int unsigned c);
-    case (chan)
-      0: return m_samples[c].awvalid;
-      1: return m_samples[c].wvalid;
-      2: return m_samples[c].bvalid;
-      3: return m_samples[c].arvalid;
-      default: return m_samples[c].rvalid;
-    endcase
-  endfunction
-
-  protected function bit ready_at(int unsigned chan, int unsigned c);
-    case (chan)
-      0: return m_samples[c].awready;
-      1: return m_samples[c].wready;
-      2: return m_samples[c].bready;
-      3: return m_samples[c].arready;
-      default: return m_samples[c].rready;
-    endcase
-  endfunction
-
-  protected function bit [63:0] payload_at(int unsigned chan, int unsigned c);
-    case (chan)
-      0: return m_samples[c].awaddr;
-      1: return m_samples[c].wdata;
-      default: return m_samples[c].araddr;
-    endcase
-  endfunction
-
-  protected function void handshakes(int unsigned chan, ref int unsigned hs[$]);
-    hs.delete();
-    foreach (m_samples[c]) if (valid_at(chan, c) && ready_at(chan, c)) hs.push_back(c);
-  endfunction
-
-  protected function int unsigned stalls(int unsigned chan);
-    int unsigned n = 0;
-    foreach (m_samples[c]) if (valid_at(chan, c) && !ready_at(chan, c)) n++;
-    return n;
   endfunction
 
   // Order and launch cycles of one request channel. A beat with delay d
@@ -174,22 +98,6 @@ class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
     ));
   endfunction
 
-  // pipeline_result under the per-cycle recorder, which keeps sampling for
-  // `tail` cycles after the operation returns.
-  protected task recorded_pipeline(input ocah_axi_item ops[$], output ocah_axi_item result,
-                                   input int unsigned b_hold = 0, input int unsigned r_hold = 0,
-                                   input bit allow_timeout = 1'b0, input int unsigned tail = 0);
-    m_stop = 1'b0;
-    fork
-      record();
-      begin
-        pipeline_result(ops, result, b_hold, r_hold, 1'b1, allow_timeout);
-        repeat (tail) @(cfg.vif.mon_cb);
-        m_stop = 1'b1;
-      end
-    join
-  endtask
-
   protected task run_pipeline(int unsigned index, ocah_axi_item ops[$], int unsigned b_hold,
                               int unsigned r_hold, int unsigned stall, output int unsigned b_hs[$],
                               output int unsigned ar_hs[$]);
@@ -198,8 +106,8 @@ class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
     string ctx = $sformatf("op=%0d", index);
     `uvm_info(get_type_name(), $sformatf("%s: %0d accesses b_hold=%0d r_hold=%0d stall=%0d", ctx,
                                          ops.size(), b_hold, r_hold, stall), UVM_LOW)
-    if (stall > 0) slave_cfg.enable_backpressure('{"aw", "w", "ar"}, stall);
-    else slave_cfg.disable_backpressure();
+    if (stall > 0) slave_seq.enable_backpressure('{"aw", "w", "ar"}, stall);
+    else slave_seq.disable_backpressure();
     recorded_pipeline(ops, result, b_hold, r_hold);
 
     foreach (ops[i]) begin
@@ -258,8 +166,10 @@ class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
     ));
   endtask
 
-  // A write to word A held off by AW and W stalls far beyond a shortened
-  // handshake bound, behind which a read of word B completes.
+  // The ops [write A, read B] run once with no stall and complete with
+  // matching observed IDs; the same op objects then run with the write held
+  // off by AW and W stalls far beyond a shortened handshake bound, behind
+  // which the read completes.
   protected task run_partial_timeout();
     ocah_axi_item ops[$];
     ocah_axi_item result, wres, rres;
@@ -271,14 +181,30 @@ class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
 
     `uvm_info(get_type_name(), $sformatf("partial timeout: bound=%0d stall=%0d", ShortTimeout,
                                          4 * ShortTimeout), UVM_LOW)
+    slave_seq.disable_backpressure();
+    ops.push_back(pipeline_write(word_a, 64'($urandom())));
+    ops.push_back(pipeline_read(word_b));
+    pipeline_result(ops, result);
+    void'(evidence.expect_true(
+        "CHK-AXI-PIPE-TIMEOUT",
+        ops[0].is_ok() && ops[0].observed_id_valid && ops[0].id_match(),
+        "first-run write completed OKAY with its ID"
+    ));
+    void'(evidence.expect_true(
+        "CHK-AXI-PIPE-TIMEOUT",
+        ops[1].is_ok() && ops[1].observed_id_valid && ops[1].id_match(),
+        "first-run read completed OKAY with its ID"
+    ));
+    void'(evidence.expect_equal(
+        "CHK-AXI-PIPE-TIMEOUT", ops[1].first_data(), m_memory[word_b], "first-run read data"
+    ));
+    m_memory[word_a] = ops[0].data_words[0];
+
     cfg.timeout_cycles = ShortTimeout;
-    slave_cfg.disable_backpressure();
-    slave_cfg.enable_backpressure('{"aw", "w"}, 4 * ShortTimeout);
+    slave_seq.enable_backpressure('{"aw", "w"}, 4 * ShortTimeout);
     // The responder takes up a stall setting at its next sampled edge; the
     // write must not meet an AWREADY raised before it.
     repeat (2) @(cfg.vif.mon_cb);
-    ops.push_back(pipeline_write(word_a, 64'($urandom())));
-    ops.push_back(pipeline_read(word_b));
     recorded_pipeline(ops, result, 0, 0, 1'b1);
     cfg.timeout_cycles = saved_timeout;
 
@@ -286,11 +212,21 @@ class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
     void'(evidence.expect_true(
         "CHK-AXI-PIPE-TIMEOUT", ops[1].is_ok() && !ops[1].timed_out, "read completed OKAY"
     ));
+    void'(evidence.expect_true(
+        "CHK-AXI-PIPE-TIMEOUT",
+        ops[1].observed_id_valid && ops[1].id_match(),
+        "read keeps its observed ID"
+    ));
     void'(evidence.expect_equal(
         "CHK-AXI-PIPE-TIMEOUT", ops[1].first_data(), m_memory[word_b], "read data"
     ));
     void'(evidence.expect_true(
         "CHK-AXI-PIPE-TIMEOUT", ops[0].timed_out && !ops[0].is_ok(), "write timed out"
+    ));
+    void'(evidence.expect_true(
+        "CHK-AXI-PIPE-TIMEOUT",
+        !ops[0].observed_id_valid && !ops[0].id_match(),
+        "timed-out write reports no observed ID"
     ));
     void'(evidence.expect_true(
         "CHK-AXI-PIPE-TIMEOUT",
@@ -302,9 +238,10 @@ class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
         "CHK-AXI-PIPE-TIMEOUT", 64'(result.aw_stall_cycles), 64'(stalls(0)), "AW stall cycles"
     ));
 
-    // Word A has no expected value: the cocotb twin's backend completes the
-    // abandoned write later, this driver withdraws it.
-    slave_cfg.disable_backpressure();
+    // Word A keeps the first run's data whether the abandoned write is
+    // withdrawn or completed later, since both carry the same word; recovery
+    // runs on a fresh word C.
+    slave_seq.disable_backpressure();
     repeat (DrainCycles) @(cfg.vif.mon_cb);
     write_result(word_c, data_c, wres);
     read_result(word_c, rres);
@@ -317,13 +254,14 @@ class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
   // A valid write to word D ahead of a read beyond the 32-bit address
   // space: the call fails with the bus idle and word D unchanged.
   protected task run_atomic_validation();
-    ocah_axi_pipeline_reject_catcher catcher;
+    ocah_axi_expected_error_catcher catcher;
     ocah_axi_item ops[$];
     ocah_axi_item result;
     int unsigned busy = 0;
     bit [63:0] word_d = m_words[9];
 
-    catcher = ocah_axi_pipeline_reject_catcher::type_id::create("catcher");
+    catcher = ocah_axi_expected_error_catcher::type_id::create("catcher");
+    catcher.message_id = ocah_axi_master_driver::PipelineInvalidId;
     `uvm_info(get_type_name(), "atomic validation: valid write, out-of-range read", UVM_LOW)
     ops.push_back(pipeline_write(word_d, m_memory[word_d] ^ 64'hFFFF_FFFF));
     ops.push_back(pipeline_read(64'h1_0000_0000));
@@ -373,8 +311,8 @@ class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
     int unsigned b_hs[$], ar_hs[$];
     bit [63:0] word_dir[bit [63:0]];
 
-    if (evidence == null || slave_cfg == null || slave_seq == null)
-      `uvm_fatal(get_type_name(), "evidence/slave_cfg/slave_seq handles not bound")
+    if (evidence == null || slave_seq == null)
+      `uvm_fatal(get_type_name(), "evidence/slave_seq handles not bound")
     void'(resolve_cfg());
 
     // Preload through the bus, so the passive reference model's shadow
@@ -427,7 +365,7 @@ class ocah_axi_pipeline_test_seq extends ocah_axi_master_sequence;
     run_atomic_validation();
 
     // A plain access afterwards proves the pipeline leaves the master idle.
-    slave_cfg.disable_backpressure();
+    slave_seq.disable_backpressure();
     write_result(m_words[$], 64'h5A5A_A5A5, wres);
     read_result(m_words[$], rres);
     void'(evidence.expect_equal(
