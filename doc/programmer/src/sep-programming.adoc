@@ -800,7 +800,16 @@ Program the engine following the
 https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge documentation].
 Enable the seed read before starting an operation that consumes a delivered
 seed. The ML-KEM seed read completes only when both
-`MLKEM_SEED_D` and `MLKEM_SEED_Z` are valid. Detect completion from
+`MLKEM_SEED_D` and `MLKEM_SEED_Z` are valid. A seed or message delivered by
+the Key Manager and the same words written to the engine's registers present
+the same value, in the word order given in
+ifdef::backend-html5[]
+xref:ocah-docs:sep:adams_bridge.adoc#abr-seed-word-order[ABR seed word order].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/sep/adams_bridge.html#abr-seed-word-order[ABR seed word order].
+endif::backend-pdf[]
+Detect completion from
 `STATUS.VALID` and issue a `zeroize` between back-to-back operations, since the
 core parks at the end state until then. A malformed register address inside
 the Adams Bridge extent does not return a bus error, so do not rely on one.
