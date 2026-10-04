@@ -47,8 +47,11 @@ the transmitter drained and requires `LSR.DR` clear on every read up to that
 point.
 
 **The transmit FIFO under DMA mode 1.** Still in line loopback, the divisor is
-slowed and a burst longer than `smc_config_pkg::UartTxFifoDepth` is written
-into THR without polling, so the transmit FIFO reaches its full condition while
+slowed and a burst longer than the SMC UARTs' 32-entry transmit FIFO
+(`hw/sys/smc/doc/periphs.adoc`, peripheral parameter table: `UartTxFifoDepth`
+SMC value 32; `hw/ip/uart/uart_16550/doc/index.adoc`: "32-entry TX and RX
+FIFOs") is written into THR without polling, so the FIFO reaches its full
+condition while
 the transmitter is still draining the first characters. What the leaf checks is
 what the register map exposes: `LSR.THRE` clear straight after the burst, so the
 FIFO is holding characters, and `LSR.TEMT` and `LSR.THRE` both set once it has
@@ -126,9 +129,10 @@ _DMA_TRIGGER_PAYLOAD = (0x11, 0x22, 0x44, 0x88)
 _PARKED_BYTE = 0x69
 _LINE_LOOPBACK_BYTE = 0x5A
 
-# smc_config_pkg.sv gives the SMC UARTs UART_TX_FIFO_DEPTH = 32. The burst is
-# comfortably longer so the transmit FIFO reaches its full condition even if
-# the CSR port delivers a write every few cycles.
+# hw/sys/smc/doc/periphs.adoc (peripheral parameter table) and
+# hw/ip/uart/uart_16550/doc/index.adoc give the SMC UARTs a 32-entry transmit
+# FIFO. The burst is comfortably longer so the FIFO reaches its full condition
+# even if the CSR port delivers a write every few cycles.
 _TX_FIFO_DEPTH = 32
 _TX_BURST = tuple(range(64))
 # uart_16550_dl.rdl: "baud_rate = system_clock_frequency / (16 * (divisor +

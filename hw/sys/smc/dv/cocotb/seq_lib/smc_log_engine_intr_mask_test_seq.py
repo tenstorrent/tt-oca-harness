@@ -2,10 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Log-engine `INTR_ENABLE` as an output mask.
 
-`hw/ip/uart/log_engine/rtl/log_engine.sv` follows the vendored `prim_intr_hw`
-shape: `INTR_STATUS` latches an event whether or not the interrupt is enabled
-and clears only on W1C, and `irq_o` is the status ANDed with `INTR_ENABLE`.
-Two consequences follow, and this sequence scores both:
+`hw/ip/uart/log_engine/doc/architecture.adoc` (Errors and Interrupts):
+"`INTR_STATUS.LOG_FETCH_ERR` (bit 0) and `LOG_WRITE_ERR` (bit 4) latch bus
+response errors whether or not their interrupts are enabled. `INTR_ENABLE`
+masks the corresponding contributions to `irq_o`. Write 1 to a status bit to
+clear it; `INTR_TEST` can force either condition." `interface.adoc`: "`irq_o`
+is the active-high OR of enabled, latched fetch and write error status."
+`log_engine.rdl` declares the status fields `level intr` with `woclr`. Two
+consequences follow, and this sequence scores both:
 
 * **Held.** Clearing `INTR_ENABLE` releases `irq_o` while `INTR_STATUS` keeps
   the bit; only a W1C clears the status.
@@ -13,17 +17,17 @@ Two consequences follow, and this sequence scores both:
   enabling later fires it and an `INTR_STATUS` poll finds it.
 
 Both are measured before either is allowed to raise, so neither hides the
-other. `hw/ip/i2c/rtl/i2c_core.sv` has the same shape and its own sequence.
+other.
 
 Stimulus. `INTR_TEST` is `sw = w` with `singlepulse` (log_engine.rdl), so a
 write is a one-cycle event on the same line as the real event and needs no bus
 traffic or log region.
 
-Observation. `irq_o` has no probe of its own. `smc_peripherals_cdc.sv` ORs it
-with the 16550 UART IRQ and the UART error line, flops it in the peripheral
-clock domain and synchronises it to the SMC clock, and `smc_peripherals.sv`
-routes the result to `peripheral_interrupts[21:18]` -- one bit per UART
-instance. `tb_uart_irq_combined` exports that slice.
+Observation. `irq_o` has no probe of its own. `hw/sys/smc/doc/interrupts.adoc`
+(PLIC sources 274-277, "UART/Log Engine interrupt 0..3") routes the combined
+UART IRQ, UART error and log-engine interrupt of each instance to
+`peripheral_interrupts[21:18]`, one bit per UART instance, through the
+peripheral clock-domain crossing. `tb_uart_irq_combined` exports that slice.
 `tb_uart_irq_any` is *not* usable here: it is `|uart_interrupt`, the 16550 half
 only, and carries no log-engine contribution at all.
 
