@@ -15,6 +15,12 @@ import release_docs  # noqa: E402
 REPO_DOC = Path(__file__).resolve().parents[3] / "doc"
 
 
+def published(*tags, without=()):
+    return [
+        {"tag": t, "assets": [] if t in without else [release_docs.asset_name(t)]} for t in tags
+    ]
+
+
 class StampTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -24,23 +30,23 @@ class StampTests(unittest.TestCase):
         (self.tmp / name).mkdir()
         (self.tmp / name / "antora.yml").write_text(text)
 
-    def test_sets_the_tag_version_on_every_book(self):
+    def test_versions_every_book_by_series_and_shows_the_release(self):
         self.book("trm", "name: ocah-docs\nversion: latest\nstart_page: index.adoc\n")
         self.book("home", "name: ocah-home\nversion: latest\n")
-        release_docs.stamp("v0.5.0", self.tmp)
+        release_docs.stamp("v0.5.2", self.tmp)
         for name in ("trm", "home"):
             text = (self.tmp / name / "antora.yml").read_text()
-            self.assertIn("version: '0.5.0'\n", text)
+            self.assertIn("version: '0.5'\ndisplay_version: '0.5.2'\n", text)
             self.assertNotIn("latest", text)
 
     def test_rejects_a_book_without_the_latest_version(self):
-        self.book("trm", "name: ocah-docs\nversion: '0.4.0'\n")
+        self.book("trm", "name: ocah-docs\nversion: '0.4'\n")
         with self.assertRaises(SystemExit):
             release_docs.stamp("v0.5.0", self.tmp)
 
-    def test_rejects_tags_that_cannot_name_a_directory(self):
+    def test_rejects_tags_that_are_not_releases(self):
         self.book("trm", "version: latest\n")
-        for tag in ("../x", "a/b", "latest", ""):
+        for tag in ("../x", "latest", "", "v0.5", "v0.5.0-rc1", "v01.2.3"):
             with self.subTest(tag=tag), self.assertRaises(SystemExit):
                 release_docs.stamp(tag, self.tmp)
 
@@ -52,11 +58,26 @@ class StampTests(unittest.TestCase):
                 self.assertRegex(book.read_text(), release_docs.VERSION_LINE)
 
 
-class VersionTests(unittest.TestCase):
-    def test_drops_only_a_leading_v_before_a_digit(self):
-        self.assertEqual(release_docs.version_of("v0.5.0"), "0.5.0")
-        self.assertEqual(release_docs.version_of("0.5.0"), "0.5.0")
-        self.assertEqual(release_docs.version_of("vendor-1"), "vendor-1")
+class NamingTests(unittest.TestCase):
+    def test_a_release_is_served_from_its_minor_series(self):
+        self.assertEqual(release_docs.site_dir("v0.5.2"), "v0.5")
+        self.assertEqual(release_docs.site_dir("1.10.0"), "v1.10")
+        self.assertEqual(release_docs.display("v0.5.2"), "0.5.2")
+
+
+class SelectTests(unittest.TestCase):
+    def test_keeps_the_newest_patch_of_the_newest_series(self):
+        available = published("v0.4.0", "v0.5.1", "v0.4.3", "v0.5.0", "v0.3.9", "v0.5.2")
+        self.assertEqual(release_docs.select(available, keep=2), ["v0.5.2", "v0.4.3"])
+
+    def test_orders_by_version_not_by_publication(self):
+        # A hotfix to an older series published after a newer release.
+        available = published("v0.4.4", "v0.6.0", "v0.5.0")
+        self.assertEqual(release_docs.select(available, keep=2), ["v0.6.0", "v0.5.0"])
+
+    def test_falls_back_to_the_previous_patch_without_a_snapshot(self):
+        available = published("v0.5.2", "v0.5.1", without=("v0.5.2",))
+        self.assertEqual(release_docs.select(available, keep=2), ["v0.5.1"])
 
 
 class RestoreTests(unittest.TestCase):
@@ -66,14 +87,13 @@ class RestoreTests(unittest.TestCase):
         self.site = self.tmp / "site"
         self.site.mkdir()
         (self.site / "index.html").write_text("latest")
-        snapshot = self.tmp / "snapshot"
-        snapshot.mkdir()
-        (snapshot / "index.html").write_text("frozen")
-        (snapshot / "ocah-home").mkdir()
-        (snapshot / "ocah-home" / "page.html").write_text("page")
         self.assets = self.tmp / "assets"
         self.assets.mkdir()
-        for tag in ("v0.6.0", "v0.5.0"):
+        for tag in ("v0.6.0", "v0.5.1", "v0.5.0", "v0.4.0"):
+            snapshot = self.tmp / tag
+            (snapshot / "ocah-home").mkdir(parents=True)
+            (snapshot / "index.html").write_text(tag)
+            (snapshot / "ocah-home" / "page.html").write_text("page")
             release_docs.pack(snapshot, self.assets / release_docs.asset_name(tag))
 
     def fake_gh(self, *args):
@@ -83,41 +103,35 @@ class RestoreTests(unittest.TestCase):
         shutil.copy(self.assets / asset, dest / asset)
         return ""
 
-    def test_unpacks_each_snapshot_and_lists_versions_newest_first(self):
-        available = [
-            {"tag": "v0.6.0", "assets": ["docs-v0.6.0.tar.gz"]},
-            {"tag": "v0.5.1", "assets": ["firmware.bin"]},
-            {"tag": "v0.5.0", "assets": ["docs-v0.5.0.tar.gz", "firmware.bin"]},
-        ]
+    def restore(self, available, keep=2):
         with mock.patch.object(release_docs, "gh", side_effect=self.fake_gh):
-            versions = release_docs.restore(self.site, available)
+            return release_docs.restore(self.site, available, keep)
 
+    def test_serves_each_kept_series_and_lists_it(self):
+        versions = self.restore(published("v0.6.0", "v0.5.1", "v0.5.0", "v0.4.0"))
         self.assertEqual(
             versions,
             [
                 {"version": "latest", "path": ""},
-                {"version": "0.6.0", "path": "v0.6.0/"},
-                {"version": "0.5.0", "path": "v0.5.0/"},
+                {"version": "0.6.0", "path": "v0.6/"},
+                {"version": "0.5.1", "path": "v0.5/"},
             ],
         )
         self.assertEqual(json.loads((self.site / "versions.json").read_text()), versions)
         self.assertEqual((self.site / "index.html").read_text(), "latest")
-        self.assertEqual((self.site / "v0.5.0" / "index.html").read_text(), "frozen")
-        self.assertEqual((self.site / "v0.5.0" / "ocah-home" / "page.html").read_text(), "page")
-        self.assertFalse((self.site / "v0.5.1").exists())
+        self.assertEqual((self.site / "v0.5" / "index.html").read_text(), "v0.5.1")
+        self.assertEqual((self.site / "v0.5" / "ocah-home" / "page.html").read_text(), "page")
+        self.assertFalse((self.site / "v0.4").exists())
 
     def test_without_releases_lists_only_latest(self):
-        versions = release_docs.restore(self.site, [])
-        self.assertEqual(versions, [{"version": "latest", "path": ""}])
+        self.assertEqual(self.restore([]), [{"version": "latest", "path": ""}])
 
     def test_replaces_a_previously_restored_snapshot(self):
-        (self.site / "v0.5.0").mkdir()
-        (self.site / "v0.5.0" / "stale.html").write_text("stale")
-        available = [{"tag": "v0.5.0", "assets": ["docs-v0.5.0.tar.gz"]}]
-        with mock.patch.object(release_docs, "gh", side_effect=self.fake_gh):
-            release_docs.restore(self.site, available)
-        self.assertFalse((self.site / "v0.5.0" / "stale.html").exists())
-        self.assertEqual((self.site / "v0.5.0" / "index.html").read_text(), "frozen")
+        (self.site / "v0.5").mkdir()
+        (self.site / "v0.5" / "stale.html").write_text("stale")
+        self.restore(published("v0.5.1"))
+        self.assertFalse((self.site / "v0.5" / "stale.html").exists())
+        self.assertEqual((self.site / "v0.5" / "index.html").read_text(), "v0.5.1")
 
 
 class PackTests(unittest.TestCase):

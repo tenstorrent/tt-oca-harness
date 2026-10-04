@@ -48,9 +48,10 @@ which comprises:
 - **[Verification Dashboard](https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/dashboard.html)** — single entry point for the DV status of every OCA Harness IP and subsystem.
 - Per-subsystem datasheets (PDF): [SMC](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smc-datasheet.pdf), [SEP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-sep-datasheet.pdf), [SMU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-smu-datasheet.pdf), [DTP](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-dtp-datasheet.pdf), and [AoU](https://tenstorrent.github.io/tt-oca-harness/downloads/ocah-aou-datasheet.pdf).
 
-The site tracks `main`. The documentation of each GitHub release stays
-published as it stood at that tag under `/<tag>/` (for example `/v0.5.0/`),
-and the header's Version menu switches between them.
+The site tracks `main`. The newest release of each of the two newest minor
+series stays published as it stood at its tag under `/vX.Y/` (for example
+`/v0.5/` for 0.5.2), and the header's Version menu switches between them.
+Every release keeps its documentation as a `docs-<tag>.tar.gz` asset.
 
 Integrator-facing register and timing collateral is indexed under
 [`integration/`](integration/) in this repository.

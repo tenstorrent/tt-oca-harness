@@ -2,11 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Header version menu. The deployed site serves the main build at its root and
-// each release snapshot under <tag>/, listed in the root's versions.json
-// (tools/doc/release_docs.py). A snapshot is built with OCAH_DOC_SNAPSHOT set
-// to its tag, so its own root sits one directory below the deployed root. The
-// menu stays hidden until versions.json lists more than one version, which
-// keeps local and pull-request builds unchanged.
+// the newest release of each published minor series under vX.Y/, listed in
+// the root's versions.json (tools/doc/release_docs.py). A snapshot is built
+// with OCAH_DOC_SNAPSHOT set to its tag, so its own root sits one directory
+// below the deployed root. The menu stays hidden until versions.json lists
+// more than one version, which keeps local and pull-request builds unchanged.
 (function () {
   'use strict';
 

@@ -45,7 +45,7 @@ on:
     workflows: [dashboard]
     types: [completed]
   # Freeze each published release's documentation as a release asset, which
-  # every main deploy then serves under /<tag>/.
+  # every main deploy then serves under /vX.Y/ (tools/doc/release_docs.py).
   release:
     types: [published]
 
@@ -61,6 +61,8 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # The site publishes only full releases.
+    if: github.event_name != 'release' || !github.event.release.prerelease
     runs-on: ubuntu-latest
     env:
       SNAPSHOT_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag || '' }}
@@ -143,7 +145,7 @@ jobs:
             echo "::endgroup::"
           done
 
-      # The snapshot is the staged site of the tag, served under /<tag>/. The
+      # The snapshot is the staged site of the tag, served under /vX.Y/. The
       # main deploy it dispatches is what publishes it.
       - name: Publish the release documentation snapshot
         if: env.SNAPSHOT_TAG != ''
@@ -151,7 +153,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           OCAH_DOC_SNAPSHOT: ${{ env.SNAPSHOT_TAG }}
         run: |
-          make ocah-doc-stage-ghpages OCAH_DOC_SITE_URL="/$SNAPSHOT_TAG"
+          site_dir=$(uv run python tools/doc/release_docs.py dir "$SNAPSHOT_TAG")
+          make ocah-doc-stage-ghpages OCAH_DOC_SITE_URL="/$site_dir"
           tarball="$RUNNER_TEMP/docs-$SNAPSHOT_TAG.tar.gz"
           uv run python tools/doc/release_docs.py pack doc/_build/html_antora "$tarball"
           gh release upload "$SNAPSHOT_TAG" "$tarball" --clobber
