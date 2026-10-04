@@ -27,9 +27,17 @@ the seed leg grades Z at the engine: the read-only probe
 ``abr_mlkem_seed_z_probe_o`` (SEP_TB_ARCH exception list) must show the REF Z
 after the REF keygen and the ALT Z after the sideloaded keygen.
 
-Seeds are palindromes. The KM transfer and a direct register write disagree on
-dword order, so a palindrome keeps the compare from depending on it; D and Z
-are *different* palindromes, so a D/Z mix-up still fails.
+Key Manager word i and register index i carry the same dword
+(doc/adams_bridge.adoc, abr-seed-word-order), so each sideloaded run must equal
+the direct-register run of the same words in the same order. Every seed and
+message has eight pairwise-distinct words, and no word is shared between D and
+Z, so a dword reversal, any other word permutation or a D/Z mix-up fails.
+
+The shared key the engine writes back is graded by value: the KM consumes it
+into the KPV and transfers it to AES, and the AES ciphertext must equal the
+AES-256 golden keyed with the engine's own MLKEM_SHARED_KEY words from the
+register-driven ENCAPS of the same inputs. The sideload block's KEY words are
+on the KM-private bus, so AES is the consumer that grades them.
 """
 
 from __future__ import annotations
@@ -37,6 +45,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_aes_golden import aes256_ecb_encrypt_words
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_mlkem_seq import (
     KEM_CMD_ENCAPS,
@@ -67,17 +76,19 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_STATUS,
     SepAbrMlkem,
 )
+from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_km_mailbox_seq import (
     KM_DEST_ABR_MLKEM_MSG,
     KM_DEST_ABR_MLKEM_SEED_D,
     KM_DEST_ABR_MLKEM_SEED_Z,
+    KM_DEST_AES,
     KM_RC_FAILURE,
     KM_RC_SUCCESS,
     KM_RESP_ABR_SHARED_KEY_READY,
     SepKmMailbox,
 )
 
-# Four distinct palindromes. D and Z differ so a swapped pair fails the
+# Four directed seed halves. D and Z differ so a swapped pair fails the
 # compare; the REF pair differs from the ALT pair so a seed that never arrived
 # reproduces the REF public key and fails it too.
 _D_ALT = [
@@ -85,40 +96,40 @@ _D_ALT = [
     0x13572468,
     0xA5A5A5A5,
     0xFEEDFACE,
-    0xFEEDFACE,
-    0xA5A5A5A5,
-    0x13572468,
-    0x0BADC0DE,
+    0x2468ACE0,
+    0x5A5A0F0F,
+    0x97531ECA,
+    0x600DF00D,
 ]
 _Z_ALT = [
     0x1234ABCD,
     0x0F0F0F0F,
     0xC0FFEE00,
     0x5EED5EED,
-    0x5EED5EED,
-    0xC0FFEE00,
-    0x0F0F0F0F,
-    0x1234ABCD,
+    0x7E57CA5E,
+    0x31415926,
+    0x4B1D2C3E,
+    0x8BADF00D,
 ]
 _D_REF = [
     0x00112233,
     0x44556677,
     0x8899AABB,
     0xCCDDEEFF,
-    0xCCDDEEFF,
-    0x8899AABB,
-    0x44556677,
-    0x00112233,
+    0x10213243,
+    0x54657687,
+    0x98A9BACB,
+    0xDCEDFE0F,
 ]
 _Z_REF = [
     0xDEADBEEF,
     0x5A5A5A5A,
     0x0102_0304,
     0x7F7F7F7F,
-    0x7F7F7F7F,
-    0x0102_0304,
-    0x5A5A5A5A,
-    0xDEADBEEF,
+    0x0506_0708,
+    0x6B6B6B6B,
+    0x090A_0B0C,
+    0xCAFED00D,
 ]
 
 # Two messages for the kv_read[2] lane, same discipline.
@@ -127,26 +138,34 @@ _M_ALT = [
     0x4B5A6978,
     0x8796A5B4,
     0xC3D2E1F0,
-    0xC3D2E1F0,
-    0x8796A5B4,
-    0x4B5A6978,
-    0x0F1E2D3C,
+    0x1F2E3D4C,
+    0x5B6A7988,
+    0x97A6B5C4,
+    0xD3E2F100,
 ]
 _M_REF = [
     0x11223344,
     0x55667788,
     0x99AABBCC,
     0xDDEEFF00,
-    0xDDEEFF00,
-    0x99AABBCC,
-    0x55667788,
-    0x11223344,
+    0x21324354,
+    0x65768798,
+    0xA9BACBDC,
+    0xEDFE0F10,
 ]
 
-# The KPV destination the consumed shared key is stored under. Any single
-# in-policy engine bit will do; AES is the consume witness elsewhere in the
-# KM suite, so it is the one already known to be an accepted destination.
-_SK_DEST = 0x04
+for _w in (_D_ALT, _Z_ALT, _D_REF, _Z_REF, _M_ALT, _M_REF):
+    assert len(set(_w)) == len(_w), "test construction error: repeated word in a block"
+assert not set(_D_ALT) & set(_Z_ALT) and not set(_D_REF) & set(_Z_REF), (
+    "test construction error: D and Z share a word"
+)
+
+# AES-256 ECB plaintext for the shared-key value check.
+_SK_AES_PT = [0x03020100, 0x07060504, 0x0B0A0908, 0x0F0E0D0C]
+
+# The KPV destination the consumed shared key is stored under. AES is also
+# the engine that grades the stored words by value (CHK-KEM-SK-VALUE).
+_SK_DEST = KM_DEST_AES
 
 _POLL_ITERS = 20000
 _POLL_GAP = 200
@@ -163,6 +182,7 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         "CHK-KEM-SK-CONFIDENTIAL",
         "CHK-KEM-SK-NOTIFY",
         "CHK-KEM-SK-WRITEBACK",
+        "CHK-KEM-SK-VALUE",
     )
 
     async def _wait_status(self, kem, mask: int, expect: int, *, what: str) -> int:
@@ -210,10 +230,12 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         The CIPHERTEXT is what the value compares use: it is public, and a
         deterministic function of the encapsulation key and the message.
 
-        The shared key is returned too, but is never compared by value, because
-        whether it reads back at all is the contract. The ML-KEM shared key is
-        consumed directly by the Key Manager (doc/crypto.adoc, "a gated ML-KEM
-        shared-key interrupt consumed directly by the Key Manager") and
+        The shared key is returned too. Whether it reads back at all is the
+        contract of CHK-KEM-SK-CONFIDENTIAL, and the value read on a fully
+        register-driven ENCAPS is the reference for CHK-KEM-SK-VALUE. The
+        ML-KEM shared key is consumed directly by the Key Manager
+        (doc/crypto.adoc, "a gated ML-KEM shared-key interrupt consumed
+        directly by the Key Manager") and
         shared-key storage is secret-bearing Class 2 logic
         (doc/attack_countermeasures.adoc), so a key the vault sourced must not
         be readable by software over the CSR aperture. This test establishes
@@ -269,7 +291,8 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
 
         kem = SepAbrMlkem(self)
         self.km = SepKmMailbox(self)
-        await self.bring_up_entropy(strict=True, score_km="observe")
+        self.aes = SepAes(self)
+        await self.bring_up_entropy(strict=True, score_km="observe", score_sinks={"aes": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
 
@@ -344,7 +367,7 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             chk="CHK-KEM-SEED-SIDELOAD",
             what="the encapsulation key from the KM-sideloaded (D, Z)",
         )
-        # Z is a dword palindrome, so this compare holds for either dword order.
+        # Word i of the delivered Z must sit at engine index i.
         self._same(
             z_km,
             _Z_ALT,
@@ -477,6 +500,53 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             "into KPV handle 0x%02x",
             KEM_K_WORDS,
             arg & 0xFF,
+        )
+
+        # --- CHK-KEM-SK-VALUE: the posted words are the engine's shared key ---
+        # MLKEM_SHARED_KEY.KEY[i] must hold the engine's own MLKEM_SHARED_KEY
+        # word i (doc/adams_bridge.adoc). The writeback ENCAPS ran on the same
+        # (ek, m) as the register-driven ENCAPS that read sk_alt back
+        # (CHK-KEM-SK-WRITEBACK compared the ciphertexts), so sk_alt is the
+        # expected key. The KM moves KEY[0..7] word for word into the KPV
+        # handle, and AES encrypts under it.
+        sk_handle = arg & 0xFF
+        assert sk_alt != sk_alt[::-1], (
+            "test construction error: the reference shared key is a dword "
+            "palindrome, so the compare below could not detect a reversal"
+        )
+        golden_sk = aes256_ecb_encrypt_words(list(sk_alt), list(_SK_AES_PT))
+        golden_rev = aes256_ecb_encrypt_words(list(sk_alt[::-1]), list(_SK_AES_PT))
+        assert golden_sk != golden_rev, (
+            "test construction error: the shared key and its dword reversal "
+            "encrypt the plaintext identically"
+        )
+        rc, xarg = await self.km.key_transfer(handle=sk_handle, dest=KM_DEST_AES)
+        assert rc == KM_RC_SUCCESS, (
+            f"CHK-KEM-SK-VALUE FAIL: CMD_KEY_TRANSFER of shared-key handle "
+            f"0x{sk_handle:02x} to AES returned rc={rc}"
+        )
+        assert (xarg & 0xFF) == sk_handle and ((xarg >> 8) & 0xFF) == KM_DEST_AES, (
+            f"CHK-KEM-SK-VALUE FAIL: RETURN_ARG 0x{xarg:08x} does not echo handle "
+            f"0x{sk_handle:02x} and dest 0x{KM_DEST_AES:02x}"
+        )
+        await self.aes.configure_ecb_enc_256(sideload=True)
+        await self.aes.trigger_prng_reseed()
+        ct_sk = await self.aes.run_ecb_block(list(_SK_AES_PT))
+        assert ct_sk == golden_sk, (
+            "CHK-KEM-SK-VALUE FAIL: AES under the written-back shared key is not "
+            "AES-256 of the engine's MLKEM_SHARED_KEY words"
+            + (" (it is the golden of the dword-reversed key)" if ct_sk == golden_rev else "")
+            + f":\n  ct     ={[hex(w) for w in ct_sk]}\n"
+            f"  golden ={[hex(w) for w in golden_sk]}"
+        )
+        self.logger.info(
+            "CHK-KEM-SK-VALUE PASS: AES-256 under the written-back shared key == golden "
+            "keyed with the engine's MLKEM_SHARED_KEY words (ct[0]=0x%08x, "
+            "sk[0]=0x%08x sk[7]=0x%08x); the dword-reversed key's golden ct[0]=0x%08x differs",
+            ct_sk[0],
+            sk_alt[0],
+            sk_alt[7],
+            golden_rev[0],
         )
 
         await self.stop_fifo_drain()

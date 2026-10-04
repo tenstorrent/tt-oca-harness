@@ -37,7 +37,7 @@ Checkers:
               writes this dest only; daily reseed accumulates
   CHK-ABR-DEST
               a directed CMD_KEY_LOAD + CMD_KEY_TRANSFER of an 8-word
-              palindromic seed to dest ABR ML-DSA seed (0x10) returns rc=0
+              seed to dest ABR ML-DSA seed (0x10) returns rc=0
               and echoes that dest. Every seed walks this cell. Consume of
               the seed (KV pull + KEYGEN vs direct-seed PK) is
               sep_km_abr_seed_sideload_test
@@ -154,16 +154,17 @@ KM_ROM_VER_1_1_0 = (_ROM_VER_MAJOR << 16) | (_ROM_VER_MINOR << 8) | _ROM_VER_PAT
 _OTP_LOCK_IDENTITY = 1 << 8
 _OTP_LOCK_RESERVED = 1 << 9
 
-# Dword-palindromic ABR ML-DSA seed (fw/tests/sep_abr_km_seed_test).
-_ABR_SEED_PAL = (
+# Directed ABR ML-DSA seed for the CHK-ABR-DEST transfer cell. Its consume is
+# graded by sep_km_abr_seed_sideload_test, not here.
+_ABR_SEED = (
     0x0BADC0DE,
     0x13572468,
     0xA5A5A5A5,
     0xFEEDFACE,
-    0xFEEDFACE,
-    0xA5A5A5A5,
-    0x13572468,
-    0x0BADC0DE,
+    0x2468ACE0,
+    0x5A5A0F0F,
+    0x97531ECA,
+    0x600DF00D,
 )
 
 # rom_defs.h ROM_KM_RFAULT_FLUSHED_BY_SEP.
@@ -395,9 +396,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self._transfer_seeded_dest(handle_a, cfg)
 
         # --- CHK-ABR-DEST: directed ABR ML-DSA seed cell, every seed ----------
-        handle_abr = await self.km.key_load(
-            key_words=list(_ABR_SEED_PAL), dest=KM_DEST_ABR_MLDSA_SEED
-        )
+        handle_abr = await self.km.key_load(key_words=list(_ABR_SEED), dest=KM_DEST_ABR_MLDSA_SEED)
         rc, arg = await self.km.key_transfer(handle=handle_abr, dest=KM_DEST_ABR_MLDSA_SEED)
         assert rc == KM_RC_SUCCESS, f"CHK-ABR-DEST FAIL: CMD_KEY_TRANSFER dest=0x10 rc={rc}"
         assert (arg & 0xFF) == handle_abr and ((arg >> 8) & 0xFF) == KM_DEST_ABR_MLDSA_SEED, (
