@@ -18,12 +18,14 @@ carries. The zeros pattern clears `entry_enabled` again before the next entry
 is touched.
 
 `locked` is `onwrite = woset`, so only a reset clears it, and a locked entry
-refuses every later configuration write with an error response. Its leg
-therefore runs last, after every entry has completed its field cycle and been
-restored, and the sequence leaves all 32 entries locked. The refusal is the
-leg's own checker, and the field cycle that ran over the same addresses
-moments earlier is its live control: the entry accepted those writes and the
-refused ones leave it reading the locked word.
+steers every later configuration write to the AXI error subordinate, which
+terminates it with DECERR. Its leg therefore runs last, after every entry has
+completed its field cycle and been restored, and the sequence leaves all 32
+entries locked. The refusal is the leg's own checker, and the field cycle that
+ran over the same addresses moments earlier is its live control: the entry
+accepted those writes and the refused ones leave it reading the locked word.
+The entry addresses are registered with the SEP_IN monitor only once the field
+cycles are over, so a DECERR during them is still booked.
 
 `START_ADDR` and `END_ADDR` are not written here. Hardware writes a widened
 range back into them when the programmed range falls inside one granule, so the
@@ -34,6 +36,7 @@ from __future__ import annotations
 
 import cocotb
 
+from .smc_decode_probe_utils import AXI_RESP_DECERR
 from .smc_regblock_field_sweep_utils import RegInstance, SmcRegblockFieldSweepSeq, reg_instances
 
 _FILTER_CONFIG = (
@@ -96,7 +99,7 @@ class smc_filter_config_field_sweep_test_seq(SmcRegblockFieldSweepSeq):
             ("reconfigure_try", 0, half, reg.rw_mask & ((1 << (half * 8)) - 1)),
         ):
             resp = await self.csr_write_expect_error(
-                f"{inst.label}:{tag}", inst.addr + offset, data, length=width
+                f"{inst.label}:{tag}", inst.addr + offset, data, length=width, resp=AXI_RESP_DECERR
             )
             self.denied_resps.append(resp)
             held = await self.csr_read(
@@ -136,14 +139,16 @@ class smc_filter_config_field_sweep_test_seq(SmcRegblockFieldSweepSeq):
 
         sb_before = self.env.scoreboard.sys_axi_value_checks_seen
         for inst in entries:
+            half = inst.width_bytes // 2
+            self.env.axi_monitor.expected_decerr_addrs.update({inst.addr, inst.addr + half})
+        for inst in entries:
             await self._lock_leg(inst)
         cocotb.log.info(
             "CHK-FILTER-CONFIG-LOCK-WOSET: on each of %d filter entries the write-once "
             "%s field went from clear to set on a write of 1, and the entry then refused "
-            "both a write of 0 over that bit and a write of the other half with an error "
-            "response (%d refusals) while still reading the locked word, so the refused "
-            "writes took no effect; every write before the lock on the same addresses was "
-            "accepted",
+            "both a write of 0 over that bit and a write of the other half with DECERR "
+            "(%d refusals) while still reading the locked word, so the refused writes took "
+            "no effect; every write before the lock on the same addresses was accepted",
             self.locks_held,
             _LOCK_FIELD,
             len(self.denied_resps),

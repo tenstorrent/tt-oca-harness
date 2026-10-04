@@ -813,15 +813,15 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
             timeout_smc=GATE_OFF_TIMEOUT_SMC,
             diag_names=("tb_zeroer_busy", "tb_zeroer_cg_en"),
         )
-        # Assert cool reset (frontdoor).
+        # Assert cool reset (frontdoor); the primary reset follows it through
+        # the reference-clock de-glitcher.
         dut.rst_cool_ni.value = 0
-        # Wait for primary reset to assert (active-low out).
-        for _ in range(BUSY_TIMEOUT_SMC):
-            if int(dut.rst_primary_smc_clk_no.value) == 0:
-                break
-            await RisingEdge(dut.clk_smc_i)
-        else:
-            raise AssertionError("TIMEOUT waiting rst_primary_smc_clk_no assert")
+        await cg.wait_reset_asserted(
+            dut,
+            "rst_primary_smc_clk_no",
+            ref_cycles=cg.COOL_RESET_ASSERT_BOUND_REF_CYCLES,
+            ref_period_ns=self.cfg.ref_clk_period_ns,
+        )
         edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, (
             f"axi_clk gated during reset: edges={edges} "
