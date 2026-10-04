@@ -167,6 +167,21 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         "fingerprint": "c670ed085301",
         "filelist": None,
     }
+    # The same drift as the native resolvers report it.
+    DRIFTED_NATIVE = {
+        "target_name": "default",
+        "build_dir": Path("/runs/elsewhere"),
+        "fingerprint": "c670ed085301",
+    }
+    # Each sim stage kind with its framework, tool, sim function, resolver and drifted answer.
+    KINDS = {
+        "cocotb_sim": ("cocotb", "vcs", "cocotb_sim", "_cocotb_build_info", DRIFTED),
+        "vcs_sim": ("uvm", "vcs", "vcs_sim", "_vcs_resolve_build", DRIFTED_NATIVE),
+        "xrun_sim": ("uvm", "xcelium", "xcelium_sim", "_xcelium_resolve_build", DRIFTED_NATIVE),
+    }
+    PASSING_UVM_LOG = (
+        "UVM TEST PASSED\n--- UVM Report Summary ---\nUVM_ERROR :    0\nUVM_FATAL :    0\n"
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -191,49 +206,62 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         mark_cocotb_prebuilt(args, "default", self.RECORDED)
         self.assertIsNone(_prebuilt_target_build(args, "default"))
 
-    def run_sim_leaf(self, args: Namespace):
-        root = Path(tempfile.mkdtemp()).resolve()
-        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
-        raw = {"native": {"stages": {"sim": {"kind": "cocotb_sim"}}}}
+    def passing_sim(self, *call_args, **kwargs) -> int:
+        """A native sim function whose leaf log grades as a passing UVM test."""
+        log_path = Path(call_args[7])
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text(self.PASSING_UVM_LOG, encoding="utf-8")
+        return 0
+
+    def run_sim_leaf(self, args: Namespace, kind: str = "cocotb_sim"):
+        framework, tool, sim_function, resolver, drifted = self.KINDS[kind]
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        raw = {"native": {"stages": {"sim": {"kind": kind}}}}
         flow = Dut(
             name="fixture",
             kind="sim",
             description="build identity fixture",
-            framework="cocotb",
+            framework=framework,
             visibility="public",
             runnability="runnable",
             license="Apache-2.0",
             root="dut",
-            default_tool="vcs",
-            tools=["vcs"],
-            path=root / "dut" / "fixture_sim_cfg.toml",
+            default_tool=tool,
+            tools=[tool],
+            path=self.root / "dut" / "fixture_sim_cfg.toml",
             raw=raw,
-            frameworks=["cocotb"],
-            default_framework="cocotb",
+            frameworks=[framework],
+            default_framework=framework,
         )
         catalog = TestCatalog(
             path=None, groups={}, tests={"t_x": TestEntry(name="t_x", module="t_x")}
         )
+        sim = {"return_value": 0} if kind == "cocotb_sim" else {"side_effect": self.passing_sim}
         with (
-            mock.patch.object(stages, "cocotb_sim", return_value=0),
-            mock.patch.object(stages, "_cocotb_build_info", return_value=self.DRIFTED),
+            mock.patch.object(stages, sim_function, **sim),
+            mock.patch.object(stages, resolver, return_value=drifted),
             mock.patch.object(stages, "_sim_test_args", return_value=[]),
             redirect_stdout(io.StringIO()),
             redirect_stderr(io.StringIO()),
         ):
             return stages.run_stage(
                 flow,
-                root,
+                self.root,
                 raw,
                 catalog,
                 "sim",
                 "t_x",
                 args,
-                "vcs",
-                root / "run",
+                tool,
+                self.root / "run",
                 self.simulators,
                 self.policies,
             )
+
+    def leaf_log(self, result) -> str:
+        log = Path(result.log)
+        return (log if log.is_absolute() else self.root / log).read_text(encoding="utf-8")
 
     def leaf_args(self) -> Namespace:
         return Namespace(
@@ -251,15 +279,83 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         )
 
     def test_a_sim_leaf_records_the_build_identity_over_its_own_recomputation(self):
-        args = self.leaf_args()
-        mark_cocotb_prebuilt(args, "default", self.RECORDED)
-        result = self.run_sim_leaf(args)
-        target_build = result.metadata["target_build"]
-        self.assertEqual(
-            (target_build["build_dir"], target_build["fingerprint"]),
-            ("/runs/model", "efba240c5e52"),
-        )
-        self.assertEqual(result.metadata["provenance"]["build_fingerprint"], "efba240c5e52")
+        for kind in self.KINDS:
+            with self.subTest(kind=kind):
+                args = self.leaf_args()
+                mark_cocotb_prebuilt(args, "default", self.RECORDED)
+                result = self.run_sim_leaf(args, kind)
+                target_build = result.metadata["target_build"]
+                self.assertEqual(
+                    (target_build["build_dir"], target_build["fingerprint"]),
+                    ("/runs/model", "efba240c5e52"),
+                )
+                self.assertEqual(result.metadata["provenance"]["build_fingerprint"], "efba240c5e52")
+                if kind != "cocotb_sim":
+                    self.assertEqual(result.status, "PASS", result.reason)
+                    self.assertRegex(
+                        self.leaf_log(result), r"\nPROVENANCE .*build_fingerprint=efba240c5e52"
+                    )
+
+    def test_a_native_sim_leaf_runs_the_model_its_build_recorded_without_probing(self):
+        flow = resolve_dut(REPO_ROOT, "dtp", framework="uvm")
+        catalog = load_test_catalog(flow, REPO_ROOT)
+        item = sorted(catalog.tests)[0]
+        located = {
+            "vcs": lambda argv: argv[0],
+            "xcelium": lambda argv: argv[argv.index("-xmlibdirpath") + 1],
+        }
+        for tool, sim_function, probe in (
+            ("vcs", stages.vcs_sim, "vcs_version"),
+            ("xcelium", stages.xcelium_sim, "xcelium_version"),
+        ):
+            with self.subTest(tool=tool):
+                sim_cfg = merge_simulator_defaults(flow.raw, self.simulators, [tool])
+                args = parse_args(
+                    ["--dut", "dtp", "--framework", "uvm", "--items", item, "--tool", tool]
+                    + ["--dry-run"]
+                )
+                leaf = Path(tempfile.mkdtemp()).resolve()
+                self.addCleanup(shutil.rmtree, leaf, ignore_errors=True)
+                launches: list[list[str]] = []
+
+                def launch(argv, *call_args, **kwargs) -> int:
+                    launches.append([str(part) for part in argv])
+                    return 0
+
+                def simulate() -> int:
+                    return sim_function(
+                        flow,
+                        REPO_ROOT,
+                        sim_cfg,
+                        catalog,
+                        item,
+                        args,
+                        leaf,
+                        leaf / "sim.log",
+                        leaf / "sim.sh",
+                        leaf / "sim.env",
+                        1,
+                    )
+
+                with (
+                    mock.patch.object(stages, probe, side_effect=AssertionError("probed")),
+                    mock.patch.object(
+                        stages, "_bender_sources_fingerprint", side_effect=AssertionError("read")
+                    ),
+                    mock.patch.object(stages, "run_subprocess", side_effect=launch),
+                    redirect_stdout(io.StringIO()),
+                ):
+                    # Handed nothing, the leaf fingerprints the model itself, which probes.
+                    with self.assertRaises(AssertionError):
+                        simulate()
+                    mark_cocotb_prebuilt(args, "default", self.RECORDED)
+                    rc = simulate()
+                self.assertEqual(rc, 0)
+                self.assertEqual(len(launches), 1)
+                self.assertEqual(
+                    located[tool](launches[0]),
+                    "/runs/model/simv" if tool == "vcs" else "/runs/model",
+                )
 
     def test_a_sim_leaf_runs_the_model_its_build_recorded(self):
         flow = resolve_dut(REPO_ROOT, "dtp")
@@ -301,8 +397,10 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         self.assertTrue(builds and all("build=/runs/model " in line for line in builds), builds)
 
     def test_without_a_recorded_identity_the_leaf_keeps_its_own(self):
-        result = self.run_sim_leaf(self.leaf_args())
-        self.assertEqual(result.metadata["target_build"]["fingerprint"], "c670ed085301")
+        for kind in self.KINDS:
+            with self.subTest(kind=kind):
+                result = self.run_sim_leaf(self.leaf_args(), kind)
+                self.assertEqual(result.metadata["target_build"]["fingerprint"], "c670ed085301")
 
 
 class CocotbVcsRunnerBuildArgs(unittest.TestCase):

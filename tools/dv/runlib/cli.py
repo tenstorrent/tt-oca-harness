@@ -3654,6 +3654,16 @@ def run_flow(
     # their leaves grade `dependency_blocked` instead of running.
     blocked_targets: dict[str, dict[str, Any]] = {}
 
+    def adopt_build(target: str, result: StageResult) -> None:
+        """Hand the identity a passing build recorded to the target's leaves."""
+        target_build = (result.metadata or {}).get("target_build")
+        if (
+            result.status == "PASS"
+            and isinstance(target_build, dict)
+            and target_build.get("build_dir")
+        ):
+            mark_cocotb_prebuilt(args, target, target_build)
+
     def run_builds(stage: str, targets: list[str]) -> None:
         """Build every target of ``stage`` and append the results.
 
@@ -3678,6 +3688,7 @@ def run_flow(
                     nest=nest,
                 )
                 results.append(result)
+                adopt_build(target, result)
                 if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
                     break
             return
@@ -3764,7 +3775,7 @@ def run_flow(
                 stage=stage, status=result.status, duration_sec=result.duration_sec, target=target
             )
             if result.status == "PASS":
-                mark_cocotb_prebuilt(args, target, (result.metadata or {}).get("target_build"))
+                adopt_build(target, result)
                 return
             blocked_targets[target] = {
                 "stage": stage,
@@ -4346,11 +4357,14 @@ def run_flow(
                             )
                         )
                 else:
+                    # The coverage stages read the model the one planned target built, so
+                    # they run on that target's config.
+                    stage_cfg = sim_cfg_for_item(None) if stage in _COVERAGE_STAGES else sim_cfg
                     results.append(
                         run_stage(
                             flow,
                             root,
-                            sim_cfg,
+                            stage_cfg,
                             catalog,
                             stage,
                             None,

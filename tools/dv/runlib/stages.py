@@ -480,6 +480,30 @@ def _prebuilt_target_build(args: argparse.Namespace, target_name: str) -> dict[s
     return recorded if isinstance(recorded, dict) and recorded.get("build_dir") else None
 
 
+def _built_model_dir(args: argparse.Namespace, sim_cfg: dict[str, Any]) -> Path | None:
+    """The directory of the model this run built for the config's target, or None."""
+    handed = _prebuilt_target_build(args, _target_name(sim_cfg))
+    return Path(handed["build_dir"]) if handed else None
+
+
+def _leaf_target_build(
+    args: argparse.Namespace,
+    *,
+    target_name: str,
+    tool: str,
+    build_dir: Path,
+    fingerprint: str | None,
+) -> dict[str, Any]:
+    """The identity a sim leaf reports for the model under ``build_dir``.
+
+    The identity the run's build handed down names the model every leaf of the run shares;
+    a leaf handed none reports ``fingerprint``, its own digest.
+    """
+    return _prebuilt_target_build(args, target_name) or _target_build_metadata(
+        target_name=target_name, tool=tool, build_dir=build_dir, fingerprint=fingerprint
+    )
+
+
 # The expected-failure record keeps at most this many failure messages, each cut to this width.
 FAILURE_MESSAGE_LIMIT = 8
 FAILURE_MESSAGE_WIDTH = 400
@@ -2807,10 +2831,20 @@ def _vcs_uum_elab_args(
 
 
 def _vcs_resolve_build(
-    flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    *,
+    model_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Resolve the (fingerprinted) VCS build dir and simv path. Shared by build and sim stages so
-    the sim stage locates the exact simv the build stage produced."""
+    """Resolve the VCS build directory and simv path.
+
+    Shared by the build and sim stages so the sim stage runs the simv the build produced. A
+    build fingerprints its inputs, which also selects the directory under ``cache_enabled``.
+    A sim leaf handed ``model_dir`` runs the model there and fingerprints nothing: the tool
+    version and the source digests are read on the build host alone.
+    """
     build = build_cfg(flow, sim_cfg)
     target_name = _target_name(sim_cfg)
     compile_target = selected_compile_target(sim_cfg)
@@ -2850,26 +2884,31 @@ def _vcs_resolve_build(
             tool_cov.get("compile_args"), "coverage.vcs.compile_args"
         )
 
-    filelist_text = (
-        filelist.read_text(encoding="utf-8", errors="replace")
-        if filelist.is_file()
-        else str(filelist)
-    )
-    fingerprint = build_fingerprint(
-        build_args=elab_args,
-        top_module=top,
-        tool_version=vcs_version(root),
-        filelist_text=filelist_text,
-        extra=[
-            *cache_key_extra(options),
-            *_target_fingerprint_extra(target_name, compile_target),
-            *_bender_sources_fingerprint(root, build),
-            f"waves={wave_format}",
-            f"cov={bool(args.cov)}",
-            *coverage_compile_args,
-        ],
-    )
-    build_dir = resolve_build_dir(base_build, options, fingerprint)
+    fingerprint: str | None
+    if model_dir is None:
+        filelist_text = (
+            filelist.read_text(encoding="utf-8", errors="replace")
+            if filelist.is_file()
+            else str(filelist)
+        )
+        fingerprint = build_fingerprint(
+            build_args=elab_args,
+            top_module=top,
+            tool_version=vcs_version(root),
+            filelist_text=filelist_text,
+            extra=[
+                *cache_key_extra(options),
+                *_target_fingerprint_extra(target_name, compile_target),
+                *_bender_sources_fingerprint(root, build),
+                f"waves={wave_format}",
+                f"cov={bool(args.cov)}",
+                *coverage_compile_args,
+            ],
+        )
+        build_dir = resolve_build_dir(base_build, options, fingerprint)
+    else:
+        fingerprint = None
+        build_dir = model_dir
     coverage_args = _render_list(
         coverage_compile_args,
         {
@@ -3026,7 +3065,7 @@ def vcs_sim(
     test_args: list[str] | None = None,
 ) -> int:
     """Run a built simv for one test/seed. The simv is reused across all seeds."""
-    info = _vcs_resolve_build(flow, root, sim_cfg, args)
+    info = _vcs_resolve_build(flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg))
     simv = info["simv"]
     vcs_cfg = info["vcs_cfg"]
     test = catalog.tests[item]
@@ -3129,10 +3168,20 @@ def _xcelium_common(xcelium_cfg: dict[str, Any], framework: str) -> list[str]:
 
 
 def _xcelium_resolve_build(
-    flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    *,
+    model_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Resolve the (fingerprinted) Xcelium build dir + snapshot name. Shared by build and sim stages
-    so the sim stage locates the exact snapshot the build stage produced."""
+    """Resolve the Xcelium build directory and snapshot name.
+
+    Shared by the build and sim stages so the sim stage runs the snapshot the build produced.
+    A build fingerprints its inputs, which also selects the directory under ``cache_enabled``.
+    A sim leaf handed ``model_dir`` runs the model there and fingerprints nothing: the tool
+    version and the source digests are read on the build host alone.
+    """
     build = build_cfg(flow, sim_cfg)
     target_name = _target_name(sim_cfg)
     compile_target = selected_compile_target(sim_cfg)
@@ -3158,24 +3207,29 @@ def _xcelium_resolve_build(
     if wave_format:
         elab_args += ["-access", "+rwc"]
 
-    filelist_text = (
-        filelist.read_text(encoding="utf-8", errors="replace")
-        if filelist.is_file()
-        else str(filelist)
-    )
-    fingerprint = build_fingerprint(
-        build_args=[*elab_args, *_xcelium_defines(compile_target, args)],
-        top_module=top,
-        tool_version=xcelium_version(root),
-        filelist_text=filelist_text,
-        extra=[
-            *cache_key_extra(options),
-            *_target_fingerprint_extra(target_name, compile_target),
-            *_bender_sources_fingerprint(root, build),
-            f"waves={wave_format}",
-        ],
-    )
-    build_dir = resolve_build_dir(base_build, options, fingerprint)
+    fingerprint: str | None
+    if model_dir is None:
+        filelist_text = (
+            filelist.read_text(encoding="utf-8", errors="replace")
+            if filelist.is_file()
+            else str(filelist)
+        )
+        fingerprint = build_fingerprint(
+            build_args=[*elab_args, *_xcelium_defines(compile_target, args)],
+            top_module=top,
+            tool_version=xcelium_version(root),
+            filelist_text=filelist_text,
+            extra=[
+                *cache_key_extra(options),
+                *_target_fingerprint_extra(target_name, compile_target),
+                *_bender_sources_fingerprint(root, build),
+                f"waves={wave_format}",
+            ],
+        )
+        build_dir = resolve_build_dir(base_build, options, fingerprint)
+    else:
+        fingerprint = None
+        build_dir = model_dir
     return {
         "target_name": target_name,
         "compile_target": compile_target,
@@ -3301,7 +3355,9 @@ def xcelium_sim(
     test_args: list[str] | None = None,
 ) -> int:
     """Run a built snapshot for one test/seed with xmsim. The snapshot is reused across all seeds."""
-    info = _xcelium_resolve_build(flow, root, sim_cfg, args)
+    info = _xcelium_resolve_build(
+        flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg)
+    )
     xcelium_cfg = info["xcelium_cfg"]
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
@@ -3393,10 +3449,13 @@ def _coverage_design_db(
     template = tool_cov.get("design_artifact")
     if not isinstance(template, str) or not template:
         return None
-    # The design database lands where the elaboration's `-cm_dir` pointed:
-    # the UVM framework builds through the native VCS resolver, cocotb
-    # through the cocotb build info.
-    if flow.framework == "uvm":
+    # The design database lands where the elaboration's `-cm_dir` pointed: the
+    # model this run built, else the directory the UVM framework resolves through
+    # the native VCS resolver and cocotb through the cocotb build info.
+    model_dir = _built_model_dir(args, sim_cfg)
+    if model_dir is not None:
+        build_dir = model_dir
+    elif flow.framework == "uvm":
         build_dir = Path(_vcs_resolve_build(flow, root, sim_cfg, args)["build_dir"])
     else:
         build_info = _cocotb_build_info(flow, root, sim_cfg, args, "vcs")
@@ -4212,9 +4271,13 @@ def run_stage(
                 "rebuild": bool(args.rebuild),
             }
             sim_info = _cocotb_build_info(flow, root, sim_cfg, args, tool)
-            target_build = _prebuilt_target_build(
-                args, str(sim_info["target_name"])
-            ) or _cocotb_target_build_metadata(sim_info, tool)
+            target_build = _leaf_target_build(
+                args,
+                target_name=str(sim_info["target_name"]),
+                tool=tool,
+                build_dir=sim_info["sim_build"],
+                fingerprint=str(sim_info.get("fingerprint") or "") or None,
+            )
             metadata["target_build"] = target_build
             _stamp_provenance(
                 root,
@@ -4318,18 +4381,22 @@ def run_stage(
                 seed,
                 test_args=sim_args,
             )
-            info = _vcs_resolve_build(flow, root, sim_cfg, args)
-            metadata["target_build"] = _target_build_metadata(
+            info = _vcs_resolve_build(
+                flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg)
+            )
+            target_build = _leaf_target_build(
+                args,
                 target_name=info["target_name"],
                 tool="vcs",
                 build_dir=info["build_dir"],
                 fingerprint=info["fingerprint"],
             )
+            metadata["target_build"] = target_build
             _stamp_provenance(
                 root,
                 log_path,
                 metadata,
-                fingerprint=str(info.get("fingerprint", "")) or None,
+                fingerprint=target_build.get("fingerprint"),
                 filelist=None,
                 dry_run=bool(args.dry_run),
                 sim_args=sim_args,
@@ -4374,6 +4441,14 @@ def run_stage(
         elif kind == "xrun_sim":
             if item is None:
                 raise ConfigError("xrun_sim stage requires a test item")
+            sim_args = _sim_test_args(
+                sim_cfg,
+                selected_run_mode(sim_cfg, catalog.tests[item], args),
+                catalog.tests[item],
+                args,
+                seed,
+                root,
+            )
             rc = xcelium_sim(
                 flow,
                 root,
@@ -4386,13 +4461,28 @@ def run_stage(
                 script_path,
                 env_path,
                 seed,
+                test_args=sim_args,
             )
-            info = _xcelium_resolve_build(flow, root, sim_cfg, args)
-            metadata["target_build"] = _target_build_metadata(
+            info = _xcelium_resolve_build(
+                flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg)
+            )
+            target_build = _leaf_target_build(
+                args,
                 target_name=info["target_name"],
                 tool="xcelium",
                 build_dir=info["build_dir"],
                 fingerprint=info["fingerprint"],
+            )
+            metadata["target_build"] = target_build
+            _stamp_provenance(
+                root,
+                log_path,
+                metadata,
+                fingerprint=target_build.get("fingerprint"),
+                filelist=None,
+                dry_run=bool(args.dry_run),
+                sim_args=sim_args,
+                cwd=stage_dir,
             )
         else:
             raise ConfigError(f"{flow.path}: unsupported native stage kind `{kind}`")

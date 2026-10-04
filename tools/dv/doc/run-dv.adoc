@@ -1961,11 +1961,13 @@ An edit to any file the filelist reaches, including its `-f` includes, or to
 any file a build argument names, such as a coverage scope file, therefore
 rebuilds the model on the next run.
 
-A test that runs on a model built earlier in the same run, in the run's own
-process or on a cluster host, reports the model directory and fingerprint
-that build recorded instead of computing them again on its own host, so
-every test of a run names the model it ran on and the coverage merge's
-single-fingerprint rule holds (<<runner-coverage-inputs>>). A wave-debug
+A test that runs on a model built earlier in the same run, a cocotb model
+or a native VCS or Xcelium build, in the run's own process or on a cluster
+host, runs the model in the directory that build recorded and reports that
+directory and fingerprint, so every test of a run names the model it ran on
+and the coverage merge's single-fingerprint rule holds
+(<<runner-coverage-inputs>>). A native test handed that identity reads
+neither the simulator version nor the sources on its own host. A wave-debug
 rerun computes its own, since the wave format is a build input.
 
 `[build.options]` sets the sharing policy:
@@ -2833,7 +2835,7 @@ under `site` in the same two files (<<runner-site-layer>>).
 [[runner-log-provenance]]
 === Provenance lines in the per-test log
 
-A cocotb or VCS sim leaf ends its per-test log with one `PROVENANCE` line
+Every sim leaf ends its per-test log with one `PROVENANCE` line
 naming the commit, branch, dirty flag, build fingerprint and, where the flow
 has one, the filelist and its digest. The same facts are recorded under
 `metadata.provenance` in the leaf's `result.json`, so a log and its result
