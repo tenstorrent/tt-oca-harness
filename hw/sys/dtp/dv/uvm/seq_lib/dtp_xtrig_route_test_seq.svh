@@ -21,7 +21,8 @@
 //                   proving route, isolation, width, and pad polarity per
 //                   draw, a P2P draw in both directions
 //   dst_port_sweep  one seeded internal source swept across every CTM
-//                   destination port
+//                   destination port, then every CTP routed to itself in
+//                   point-to-point mode
 //
 // Every scenario draws its ports per pass from the seeded scenario RNG (per
 // spec, every CTP and internal CT is interchangeable), so the 16-pass floor
@@ -442,6 +443,15 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
       verify_route(input_port, 32'd1 << output_port, CtpModeWireOr, $sformatf(
                    "dst_sweep.port%0d", output_port));
       if (!is_ctp_port(output_port)) pulse_ctm_src_ack(32'd1 << int_idx_from_port(output_port), 1);
+    end
+    // Every CTP routed to itself: in point-to-point mode its request and
+    // acknowledge pads differ on each side, so the trigger it receives leaves
+    // on its own CT_Req_out once, without feeding back.
+    for (int unsigned ctp_idx = 0; ctp_idx < XtrigNumCtp; ctp_idx++) begin
+      int unsigned port = external_ctp_port(ctp_idx);
+      `uvm_info(get_type_name(), $sformatf(
+                "Iteration %0d/%0d: CTP %0d -> itself", ctp_idx + 1, XtrigNumCtp, ctp_idx), UVM_LOW)
+      verify_route(port, 32'd1 << port, CtpModeP2p, $sformatf("dst_sweep.self%0d", ctp_idx));
     end
   endtask
 

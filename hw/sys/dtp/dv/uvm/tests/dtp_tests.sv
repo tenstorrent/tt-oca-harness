@@ -170,6 +170,7 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_xtrig_axi_channel_skew_test.svh"
 `include "dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test.svh"
 `include "dtp_xtrig_axi_channel_skew_read_decode_backpressure_test.svh"
+`include "dtp_xtrig_axi_outstanding_test.svh"
 `include "dtp_xtrig_wire_or_test.svh"
 `include "dtp_xtrig_wire_or_bus_test.svh"
 `include "dtp_xtrig_p2p_test.svh"

@@ -110,6 +110,14 @@ tags = ["xtrig"]
 run_modes = ["xtrig"]
 
 [[tests]]
+name = "dtp_xtrig_axi_outstanding_test"
+module = { cocotb = "dtp_xtrig_axi_outstanding_test", uvm = "dtp_xtrig_axi_outstanding_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["xtrig"]
+run_modes = ["xtrig"]
+
+[[tests]]
 name = "dtp_ctm_wire_or_cla_to_ctp_test"
 module = { cocotb = "dtp_ctm_wire_or_cla_to_ctp_test", uvm = "dtp_ctm_wire_or_cla_to_ctp_test" }
 seed = 1

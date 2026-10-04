@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_xtrig_rand_deterministic_dst_port_sweep_test — one seeded internal source swept across every CTM destination port
-// (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass floor).
+// dtp_xtrig_rand_deterministic_dst_port_sweep_test — one seeded internal source swept across every CTM destination port,
+// then every CTP routed to itself in point-to-point mode (looped runner with per-pass CHK-XTRIG-* evidence, 16-pass
+// floor).
 
 class dtp_xtrig_rand_deterministic_dst_port_sweep_test extends dtp_xtrig_base_test;
   `uvm_component_utils(dtp_xtrig_rand_deterministic_dst_port_sweep_test)

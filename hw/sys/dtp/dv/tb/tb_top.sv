@@ -275,6 +275,7 @@ module dtp_uvm_top
   wire xtrig_dmx_ar_ready = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_ar_ready;
   wire xtrig_dmx_r_valid  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_r_valid;
   wire xtrig_dmx_r_ready  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.slv_r_ready;
+  wire xtrig_dmx_aw_lock  = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.lock_aw_valid_q;
   wire xtrig_dmx_aw_hs = xtrig_dmx_aw_valid & xtrig_dmx_aw_ready;
   wire xtrig_dmx_w_hs  = xtrig_dmx_w_valid & xtrig_dmx_w_ready;
   wire xtrig_dmx_b_hs  = xtrig_dmx_b_valid & xtrig_dmx_b_ready;
@@ -1366,10 +1367,13 @@ module dtp_uvm_top
     .axil_rresp_i          (xtrig_axil_rresp),
     .axil_rvalid_i         (xtrig_axil_rvalid),
     .axil_rready_i         (xtrig_axil_rready),
+    .axil_aw_spill_full_i  (xtrig_spill_aw_occ == 2),
     .axil_w_spill_full_i   (xtrig_spill_w_occ == 2),
+    .axil_ar_spill_full_i  (xtrig_spill_ar_occ == 2),
     .axil_r_spill_full_i   (xtrig_spill_r_occ == 2),
     .demux_aw_held_i       (xtrig_dmx_aw_valid & ~xtrig_dmx_aw_ready & (xtrig_demux_aw_open > 0)),
     .demux_ar_held_i       (xtrig_dmx_ar_valid & ~xtrig_dmx_ar_ready & (xtrig_demux_ar_open > 0)),
+    .demux_aw_lock_i       (xtrig_dmx_aw_lock),
     .ctm_src_req_i         (xtrig_ctm_src_req),
     .ctm_dst_req_i         (xtrig_ctm_dst_req),
     .ctp_req_out_dout_i    (xtrig_ctp_req_out_dout),
@@ -2100,7 +2104,7 @@ module dtp_uvm_top
 
   // XTRIG crossbar demux state (the single subordinate port's AXI-Lite
   // demux) and the external CTP busy flops, sampled from the DUT.
-  assign u_tb_if.xtrig_demux_aw_lock   = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.lock_aw_valid_q;
+  assign u_tb_if.xtrig_demux_aw_lock   = xtrig_dmx_aw_lock;
   assign u_tb_if.xtrig_demux_w_pending = ~u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.w_fifo_empty;
   for (genvar ctp = 0; ctp < dtp_dv_cfg_pkg::NumCtp; ctp++) begin : gen_xtrig_ctp_busy
     assign u_tb_if.xtrig_ctp_busy[ctp] = u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.busy_o;
