@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-04T08:42:46+00:00",
+  "generated_at": "2026-10-04T11:21:05+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -1310,6 +1310,133 @@
             "functional": 100.0,
             "line": 94.77,
             "toggle": 81.4
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-10-04T11:21:05+00:00",
+      "id": "8aa7972c7a921dc4",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-d3c3a9fce8e7c607",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 90.0,
+            "condition": 79.84,
+            "fsm_state": 88.36,
+            "functional": 100.0,
+            "line": 94.82,
+            "toggle": 82.51
+          },
+          "flow": "sep",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 87.56,
+            "condition": 77.32,
+            "fsm_state": 85.87,
+            "functional": 100.0,
+            "line": 94.77,
+            "toggle": 81.3
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": "COVCMP-c5d6c99e23cbeb2e",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 52.71,
+            "condition": 25.07,
+            "fsm_state": 37.09,
+            "functional": 10.27,
+            "line": 67.26,
+            "toggle": 15.22
+          },
+          "flow": "sep",
+          "framework": "uvm",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 51.32,
+            "condition": 24.28,
+            "fsm_state": 36.04,
+            "functional": 10.27,
+            "line": 67.25,
+            "toggle": 15.0
+          },
+          "status": "PASS",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": "COVCMP-6dd40391eb9679a2",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 90.0,
+            "condition": 79.85,
+            "fsm_state": 88.73,
+            "functional": 100.0,
+            "line": 94.82,
+            "toggle": 82.57
+          },
+          "flow": "sep",
+          "framework": "",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 87.6,
+            "condition": 77.34,
+            "fsm_state": 86.22,
+            "functional": 100.0,
+            "line": 94.79,
+            "toggle": 81.35
           },
           "status": "PASS",
           "target": "default",

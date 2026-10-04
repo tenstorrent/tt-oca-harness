@@ -8,7 +8,7 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/dashboard-data/history.json",
-    "history_points": 26,
+    "history_points": 27,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/dashboard/vcs/sep/dashboard-data/summary.json",
     "tests": {
       "failing": 0,
@@ -21,14 +21,14 @@
     }
   },
   "errors": [],
-  "generated_at": "2026-10-04T08:42:47.345362+00:00",
+  "generated_at": "2026-10-04T11:21:06.012197+00:00",
   "git": {
-    "commit": "d2e43f482dcfcfa0726fc2abb16d1e7a5446f3e3",
-    "requested_ref": "d2e43f482dcfcfa0726fc2abb16d1e7a5446f3e3"
+    "commit": "48505a9c050a21def1c3a54f210517e8a65e2b90",
+    "requested_ref": "48505a9c050a21def1c3a54f210517e8a65e2b90"
   },
   "jenkins": {
-    "build_number": "51",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/dashboard/51/",
+    "build_number": "52",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/dashboard/52/",
     "job_name": "tt-oca-harness/sep/dashboard",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/dashboard/"
   },

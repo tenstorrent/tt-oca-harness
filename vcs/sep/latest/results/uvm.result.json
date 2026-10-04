@@ -4,13 +4,13 @@
     "coverage_policy_application": "artifacts/sep/coverage/report/policy-application.json",
     "coverage_report": "artifacts/sep/coverage/report",
     "coverage_summary": "artifacts/sep/coverage/report/summary.json",
-    "log": "vcs/sep/runs/uvm/sep_axi_smoke_test/seed_665372459/attempt_0/logs/sep_axi_smoke_test.log",
+    "log": "vcs/sep/runs/uvm/sep_axi_smoke_test/seed_914518664/attempt_0/logs/sep_axi_smoke_test.log",
     "regression_json": "vcs/sep/runs/uvm/stages/regress/regression.json",
     "result_json": "vcs/sep/runs/uvm/result.json",
     "run_dir": "vcs/sep/runs/uvm"
   },
   "coverage": {
-    "comparison_key": "COVCMP-bd6b3d2b1d80b202",
+    "comparison_key": "COVCMP-c5d6c99e23cbeb2e",
     "details_available": true,
     "effective_metrics": {
       "branch": 52.71,
@@ -59,35 +59,27 @@
   "failure_buckets": [],
   "flow": "sep",
   "framework": "uvm",
-  "generated_at": "2026-10-04T08:42:44+00:00",
+  "generated_at": "2026-10-04T11:21:02+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "d2e43f482dcfcfa0726fc2abb16d1e7a5446f3e3",
-    "short_sha": "d2e43f482"
+    "sha": "48505a9c050a21def1c3a54f210517e8a65e2b90",
+    "short_sha": "48505a9c0"
   },
   "junit_xml": {
     "missing": 0,
-    "total": 10
+    "total": 9
   },
   "kind": "dv",
   "regression": {
     "failed_tests": [],
-    "flaky_tests": [
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "sep_sram_smoke_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_sram_smoke_test --stage sim --tool vcs --seed 603405496 --target default --cov",
-        "seed": 603405496
-      }
-    ]
+    "flaky_tests": []
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-10-04T05:45:08.589699+00:00",
+    "generated_at": "2026-10-04T09:38:28.385605+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "d2e43f482dcfcfa0726fc2abb16d1e7a5446f3e3",
+      "commit": "48505a9c050a21def1c3a54f210517e8a65e2b90",
       "dirty": "false"
     },
     "label": "all",
@@ -114,98 +106,98 @@
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 14.572,
+      "duration_sec": 11.63,
       "name": "sep_axi_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 665372459,
+      "seed": 914518664,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 16.195,
-      "name": "sep_km_mem_smoke_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1179235779,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 8.578,
-      "name": "sep_otbn_mem_smoke_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1551841461,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 8.16,
-      "name": "sep_efuse_sense_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1548055737,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 7.544,
-      "name": "sep_clock_uvm_wdt_rst_input_reset_path_test",
-      "reason": "positive pass evidence matched",
-      "seed": 573206756,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 13.749,
-      "name": "sep_irq_ip_to_aggregator_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1315409669,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 8.755,
-      "name": "sep_periph_bus_err_misaligned_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1932846292,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 136.705,
+      "duration_sec": 17.64,
       "name": "sep_address_map_test",
       "reason": "positive pass evidence matched",
-      "seed": 729188328,
+      "seed": 1128024046,
       "stage": "sim",
       "status": "PASS"
     },
     {
-      "attempt": 1,
+      "attempt": 0,
       "category": "smoke",
-      "duration_sec": 9.587,
+      "duration_sec": 10.189,
       "name": "sep_sram_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 603405496,
+      "seed": 460388938,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 10.286,
+      "name": "sep_km_mem_smoke_test",
+      "reason": "positive pass evidence matched",
+      "seed": 387220127,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 10.656,
+      "name": "sep_otbn_mem_smoke_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2026063049,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 9.706,
+      "name": "sep_efuse_sense_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1803104774,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 9.873,
+      "name": "sep_clock_uvm_wdt_rst_input_reset_path_test",
+      "reason": "positive pass evidence matched",
+      "seed": 996780625,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 15.634,
+      "name": "sep_irq_ip_to_aggregator_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1542039993,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 8.814,
+      "name": "sep_periph_bus_err_misaligned_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1522254771,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 566.427,
-    "end_time": "2026-10-04T05:45:08.357943+00:00",
-    "start_time": "2026-10-04T03:39:57.864389+00:00"
+    "duration_sec": 255.876,
+    "end_time": "2026-10-04T09:38:28.145243+00:00",
+    "start_time": "2026-10-04T09:34:18.806654+00:00"
   },
   "tool": "vcs"
 }
