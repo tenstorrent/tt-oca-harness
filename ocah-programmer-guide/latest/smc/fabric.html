@@ -33,19 +33,16 @@
         <div class="navbar-item has-dropdown is-hoverable guides-menu">
           <a class="navbar-link" href="#">Guides</a>
           <div class="navbar-dropdown">
-            <!-- One entry per book. Add a line here whenever a new book's
-                 antora.yml/nav.adoc scaffolding lands -- these are plain
-                 static links
-
-                 All five books now build as ONE Antora site
-                 (antora-playbook.yml), so ../../.. already
-                 resolves directly to the one shared root. -->
             <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
             <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
             <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
-            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../index.html">Programmer's Guide</a>
             <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
           </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="../../.." data-snapshot="">
+          <a class="navbar-link" href="#">Version</a>
+          <div class="navbar-dropdown"></div>
         </div>
         <div class="navbar-item has-dropdown is-hoverable downloads-menu">
           <a class="navbar-link" href="#">Downloads</a>
@@ -1397,6 +1394,7 @@ filters use the same register structure as the inbound filters
 <script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/version-menu.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>
 <script src="../../../_/js/image-zoom.js"></script>
 <script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
