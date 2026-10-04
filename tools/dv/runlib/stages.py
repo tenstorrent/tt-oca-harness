@@ -450,48 +450,48 @@ def _verilator_public_scope_fingerprint(root: Path, build: dict[str, Any]) -> li
     return [f"verilator_public_scope={scope}", "verilator_public_scope_text=" + text]
 
 
-def _prebuilt_targets(args: argparse.Namespace) -> set[str]:
-    targets = getattr(args, "_cocotb_prebuilt_targets", None)
+def _built_targets(args: argparse.Namespace) -> set[str]:
+    targets = getattr(args, "_built_targets", None)
     if not isinstance(targets, set):
         targets = set()
-        setattr(args, "_cocotb_prebuilt_targets", targets)
+        setattr(args, "_built_targets", targets)
     return targets
 
 
-def mark_cocotb_prebuilt(
+def mark_target_built(
     args: argparse.Namespace, target_name: str, target_build: dict[str, Any] | None = None
 ) -> None:
     """Mark the target's model as built for this run, with the identity its build recorded."""
-    _prebuilt_targets(args).add(target_name)
+    _built_targets(args).add(target_name)
     if target_build:
-        builds = getattr(args, "_cocotb_target_builds", None)
+        builds = getattr(args, "_handed_target_builds", None)
         if not isinstance(builds, dict):
             builds = {}
-            setattr(args, "_cocotb_target_builds", builds)
+            setattr(args, "_handed_target_builds", builds)
         builds[target_name] = dict(target_build)
 
 
-def _is_cocotb_prebuilt(args: argparse.Namespace, target_name: str) -> bool:
-    return target_name in _prebuilt_targets(args)
+def _is_target_built(args: argparse.Namespace, target_name: str) -> bool:
+    return target_name in _built_targets(args)
 
 
-def _prebuilt_target_build(args: argparse.Namespace, target_name: str) -> dict[str, Any] | None:
-    """The identity the build of a pre-built target recorded, or None.
+def _handed_target_build(args: argparse.Namespace, target_name: str) -> dict[str, Any] | None:
+    """The identity a build of the target handed down for its leaves, or None.
 
-    A leaf on a pre-built model reports that build's directory and fingerprint rather than
-    recomputing them from its own host, where a slow `vcs -ID` or an unreadable source changes
+    A leaf handed an identity reports that build's directory and fingerprint rather than
+    recomputing them on its own host, where a slow `vcs -ID` or an unreadable source changes
     the digest. A wave-debug rerun changes the build inputs, so it computes its own.
     """
-    if getattr(args, "_wave_debug_rerun", False) or not _is_cocotb_prebuilt(args, target_name):
+    if getattr(args, "_wave_debug_rerun", False) or not _is_target_built(args, target_name):
         return None
-    builds = getattr(args, "_cocotb_target_builds", None)
+    builds = getattr(args, "_handed_target_builds", None)
     recorded = builds.get(target_name) if isinstance(builds, dict) else None
     return recorded if isinstance(recorded, dict) and recorded.get("build_dir") else None
 
 
 def _built_model_dir(args: argparse.Namespace, sim_cfg: dict[str, Any]) -> Path | None:
     """The directory of the model this run built for the config's target, or None."""
-    handed = _prebuilt_target_build(args, _target_name(sim_cfg))
+    handed = _handed_target_build(args, _target_name(sim_cfg))
     return Path(handed["build_dir"]) if handed else None
 
 
@@ -510,7 +510,7 @@ def _leaf_target_build(
     without one is named by ``fingerprint``, the leaf's own digest. A wave-debug rerun
     changes the build inputs, so it reports its own.
     """
-    handed = _prebuilt_target_build(args, target_name)
+    handed = _handed_target_build(args, target_name)
     if handed:
         return handed
     record: dict[str, Any] = {}
@@ -2237,7 +2237,7 @@ def cocotb_build(
     )
     write_env_snapshot(env_path, env, args.dry_run)
     if args.dry_run:
-        mark_cocotb_prebuilt(args, target_name, _cocotb_target_build_metadata(info, tool))
+        mark_target_built(args, target_name, _cocotb_target_build_metadata(info, tool))
         return 0
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2268,7 +2268,7 @@ def cocotb_build(
                         always=info["rebuild"],
                     )
     _write_build_record(info["build_record"], info["fingerprint"], info["tool_version"], False)
-    mark_cocotb_prebuilt(args, target_name, _cocotb_target_build_metadata(info, tool))
+    mark_target_built(args, target_name, _cocotb_target_build_metadata(info, tool))
     return 0
 
 
@@ -2352,7 +2352,7 @@ def cocotb_sim(
     results_xml = results_dir / "results.xml"
     build_args = list(info["build_args"])
     top_module = str(info["top_module"])
-    recorded = _prebuilt_target_build(args, target_name)
+    recorded = _handed_target_build(args, target_name)
     sim_build = Path(recorded["build_dir"]) if recorded else info["sim_build"]
     rebuild = bool(info["rebuild"])
     wave_format = str(info["wave_format"])
@@ -2493,7 +2493,7 @@ def cocotb_sim(
         "waves": bool(wave_format),
         "wave_format": wave_format,
         "seed": int(seed),
-        "do_build": not _is_cocotb_prebuilt(args, target_name),
+        "do_build": not _is_target_built(args, target_name),
         "rebuild": bool(rebuild),
         "build_record": str(info["build_record"]),
         "fingerprint": str(info["fingerprint"]),

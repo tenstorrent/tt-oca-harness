@@ -141,7 +141,7 @@ from .site import (
 from .stages import (
     cocotb_python_paths,
     item_artifact_dir,
-    mark_cocotb_prebuilt,
+    mark_target_built,
     request_stage_cancellation,
     reset_stage_cancellation,
     resolve_coverage_policy,
@@ -3585,8 +3585,8 @@ def run_flow(
 
     # Stage tables are shared across leaves; the shallow copies a debug rerun takes of `args`
     # must share this set so a model built by one attempt counts as built for the rest.
-    if not isinstance(getattr(args, "_cocotb_prebuilt_targets", None), set):
-        args._cocotb_prebuilt_targets = set()
+    if not isinstance(getattr(args, "_built_targets", None), set):
+        args._built_targets = set()
     resources_by_stage: dict[str, ResourceRequest] = {}
 
     def stage_resources(stage: str) -> ResourceRequest:
@@ -3662,7 +3662,7 @@ def run_flow(
             and isinstance(target_build, dict)
             and target_build.get("build_dir")
         ):
-            mark_cocotb_prebuilt(args, target, target_build)
+            mark_target_built(args, target, target_build)
 
     def run_builds(stage: str, targets: list[str]) -> None:
         """Build every target of ``stage`` and append the results.
@@ -4220,7 +4220,7 @@ def run_flow(
             and isinstance(sim_stage, dict)
             and str(sim_stage.get("kind", "")) in {"cocotb_sim", "cocotb_verilator"}
             and cocotb_build_defined
-            and target not in getattr(args, "_cocotb_prebuilt_targets", set())
+            and target not in getattr(args, "_built_targets", set())
         )
 
     previous_signal_handlers: dict[int, Any] = {}

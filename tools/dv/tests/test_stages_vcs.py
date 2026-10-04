@@ -33,14 +33,14 @@ from runlib.stages import (  # noqa: E402
     COCOTB_VCS_DEFAULT_ACCESS,
     _build_jobs_arg,
     _cocotb_build_args,
+    _handed_target_build,
     _last_plusarg_wins,
-    _prebuilt_target_build,
     _uvm_testname_override,
     _vcs_cocotb_access,
     _vcs_uvm_precompile_cmd,
     cocotb_vcs_access,
     expand_ocah_vendor_define_aliases,
-    mark_cocotb_prebuilt,
+    mark_target_built,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -211,21 +211,21 @@ class PrebuiltBuildIdentity(unittest.TestCase):
 
     def test_a_prebuilt_target_returns_the_identity_its_build_recorded(self):
         args = Namespace()
-        mark_cocotb_prebuilt(args, "default", self.RECORDED)
-        self.assertEqual(_prebuilt_target_build(args, "default"), self.RECORDED)
-        self.assertIsNone(_prebuilt_target_build(args, "other"))
+        mark_target_built(args, "default", self.RECORDED)
+        self.assertEqual(_handed_target_build(args, "default"), self.RECORDED)
+        self.assertIsNone(_handed_target_build(args, "other"))
 
     def test_a_target_marked_without_a_build_directory_has_no_identity(self):
         args = Namespace()
-        mark_cocotb_prebuilt(args, "default")
-        self.assertIsNone(_prebuilt_target_build(args, "default"))
-        mark_cocotb_prebuilt(args, "default", {"fingerprint": "efba240c5e52"})
-        self.assertIsNone(_prebuilt_target_build(args, "default"))
+        mark_target_built(args, "default")
+        self.assertIsNone(_handed_target_build(args, "default"))
+        mark_target_built(args, "default", {"fingerprint": "efba240c5e52"})
+        self.assertIsNone(_handed_target_build(args, "default"))
 
     def test_a_wave_debug_rerun_computes_its_own_identity(self):
         args = Namespace(_wave_debug_rerun=True)
-        mark_cocotb_prebuilt(args, "default", self.RECORDED)
-        self.assertIsNone(_prebuilt_target_build(args, "default"))
+        mark_target_built(args, "default", self.RECORDED)
+        self.assertIsNone(_handed_target_build(args, "default"))
 
     def passing_sim(self, *call_args, **kwargs) -> int:
         """A native sim function whose leaf log grades as a passing UVM test."""
@@ -293,7 +293,7 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         for kind in self.KINDS:
             with self.subTest(kind=kind):
                 args = self.leaf_args()
-                mark_cocotb_prebuilt(args, "default", self.RECORDED)
+                mark_target_built(args, "default", self.RECORDED)
                 result = self.run_sim_leaf(args, kind)
                 target_build = result.metadata["target_build"]
                 self.assertEqual(
@@ -359,7 +359,7 @@ class PrebuiltBuildIdentity(unittest.TestCase):
                     # Handed nothing, the leaf fingerprints the model itself, which probes.
                     with self.assertRaises(AssertionError):
                         simulate()
-                    mark_cocotb_prebuilt(args, "default", self.RECORDED)
+                    mark_target_built(args, "default", self.RECORDED)
                     rc = simulate()
                 self.assertEqual(rc, 0)
                 self.assertEqual(len(launches), 1)
@@ -374,7 +374,7 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         catalog = load_test_catalog(flow, REPO_ROOT)
         item = sorted(catalog.tests)[0]
         args = parse_args(["--dut", "dtp", "--items", item, "--tool", "verilator", "--dry-run"])
-        mark_cocotb_prebuilt(args, "default", self.RECORDED)
+        mark_target_built(args, "default", self.RECORDED)
         computed = stages._cocotb_build_info
 
         def drifted(*call_args, **kwargs):
@@ -435,7 +435,7 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         for kind in self.KINDS:
             with self.subTest(kind=kind):
                 args = self.leaf_args()
-                mark_cocotb_prebuilt(args, "default", self.RECORDED)
+                mark_target_built(args, "default", self.RECORDED)
                 model = self.model_with_record("0123456789ab")
                 result = self.run_sim_leaf(args, kind, model_dir=model)
                 self.assertEqual(result.metadata["target_build"]["fingerprint"], "efba240c5e52")
@@ -445,7 +445,7 @@ class PrebuiltBuildIdentity(unittest.TestCase):
             with self.subTest(kind=kind):
                 args = self.leaf_args()
                 args._wave_debug_rerun = True
-                mark_cocotb_prebuilt(args, "default", self.RECORDED)
+                mark_target_built(args, "default", self.RECORDED)
                 model = self.model_with_record("efba240c5e52")
                 result = self.run_sim_leaf(args, kind, model_dir=model)
                 self.assertEqual(result.metadata["target_build"]["fingerprint"], "c670ed085301")

@@ -385,7 +385,7 @@ class WorkerMainTest(ManifestCase):
         self.assertEqual(called.kwargs, {"nest": True, "attempt": 0, "seed_override": 11})
         args = called.args[6]
         self.assertEqual(args.items, [self.item])
-        self.assertEqual(args._cocotb_prebuilt_targets, {"default"})
+        self.assertEqual(args._built_targets, {"default"})
         leaf = json.loads(task.result_json.read_text(encoding="utf-8"))
         self.assertEqual(leaf["status"], "PASS")
         done = json.loads(completion_path(self.run_dir, task.task_id).read_text(encoding="utf-8"))
@@ -409,8 +409,8 @@ class WorkerMainTest(ManifestCase):
                     code = run_worker(path)
                 self.assertEqual(code, 0)
                 args = run.call_args.args[6]
-                self.assertEqual(args._cocotb_prebuilt_targets, {"default"})
-                self.assertEqual(args._cocotb_target_builds, {"default": target_build})
+                self.assertEqual(args._built_targets, {"default"})
+                self.assertEqual(args._handed_target_builds, {"default": target_build})
 
     def test_a_vcs_leaf_reports_the_identity_its_manifest_hands_down(self) -> None:
         """The leaf a cluster job runs: a native sim on a host whose own digest differs."""
@@ -503,7 +503,7 @@ class WorkerMainTest(ManifestCase):
         self.assertEqual(called.args[4:6], ("hdl_compile", None))
         args = called.args[6]
         self.assertEqual(args.build_jobs, 3)
-        self.assertFalse(hasattr(args, "_cocotb_prebuilt_targets"))
+        self.assertFalse(hasattr(args, "_built_targets"))
         fragment = json.loads(task.result_json.read_text(encoding="utf-8"))
         self.assertEqual((fragment["item"], fragment["status"]), ("", "PASS"))
         self.assertEqual(fragment["target_build"]["target"], "default")

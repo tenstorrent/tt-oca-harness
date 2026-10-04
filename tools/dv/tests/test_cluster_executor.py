@@ -1513,7 +1513,7 @@ class CoordinatorTest(unittest.TestCase):
             parsed = original(argv)
             # The verilator model a parallel cocotb run builds first is not part of dispatch.
             if self.prebuilt:
-                parsed._cocotb_prebuilt_targets = {"default"}
+                parsed._built_targets = {"default"}
             return parsed
 
         console = io.StringIO()
