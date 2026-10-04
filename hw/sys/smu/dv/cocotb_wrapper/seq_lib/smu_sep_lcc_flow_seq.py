@@ -26,19 +26,23 @@ again once the sense has completed. The run fails if the sense was skipped, did
 not complete within its bound, or had already delivered the LC word before the
 pre-sense side could be sampled.
 
-The second is firmware. hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow drives the one
+The second is firmware. hw/sys/sep/dv/fw/tests/sep_smu_lcc_lock drives the one
 input software owns -- the DEMOTE registers -- and parks in a per-stage loop.
-For each firmware stage the hardware half checks that the posture actually
-moved at the consumers. The lock stage is what makes the demote stages
-non-vacuous: a register that stored whatever software wrote would satisfy every
-demote check; only a refused write after lock shows the block implements the
-policy.
+It locks DEMOTE_1 while its demote bit is still clear, then asks for the
+demote; the lifecycle specification ("Demote lock behavior") says firmware can
+set demote only while lock is clear, so the register must stay clear. DEMOTE_2
+is left unlocked and takes the same write, the live control for the write
+path. The hardware half reads the same outcome at the SMU boundary: the
+DEMOTE_2 output moves off the pre-sense baseline and the DEMOTE_1 output does
+not. A register that stored whatever software wrote fails the DEMOTE_1 leg at
+both places.
 
-Note on what is NOT claimed: a demote is not required to move feat_ctrl. In
-TEST_DEV the baseline is already ~(sip_dis | sys_dis), so with a permissive
-eFuse image the bits a demote forces high are high already and the write is a
-no-op there. feat_ctrl is reported, not asserted on; the demote's effect is
-checked at lcc_demote_state_*_o, where it is unambiguous.
+In TEST_DEV, the state the sensed image programs, the posture at the SMC and
+the DTP is the same with and without the demotes, so the consumer compares
+after the firmware carry the state's contract, not a demote delta. A demote is
+not required to move feat_ctrl either: the TEST_DEV baseline is already
+~(sip_dis | sys_dis). feat_ctrl is reported, not asserted on; the demotes are
+checked at lcc_demote_state_*_o, where they are unambiguous.
 """
 
 from __future__ import annotations
@@ -65,12 +69,12 @@ SEP_BOOT_ROM_END = 0x1005_0000
 SEP_ICCM_BASE = 0xC000_0000
 SEP_ICCM_END = 0xC004_0000
 
-PASS_SYM = "sep_smu_lcc_flow_pass_loop"
+PASS_SYM = "sep_smu_lcc_lock_pass_loop"
 FAIL_SYMS = {
-    "feat_ctrl_readable": "sep_smu_lcc_flow_fail_readable_loop",
-    "demote1_not_accepted": "sep_smu_lcc_flow_fail_demote1_loop",
-    "demote2_not_accepted": "sep_smu_lcc_flow_fail_demote2_loop",
-    "demote_lock_not_enforced": "sep_smu_lcc_flow_fail_lock_loop",
+    "feat_ctrl_readable": "sep_smu_lcc_lock_fail_readable_loop",
+    "demote1_lock_not_set": "sep_smu_lcc_lock_fail_lock_set_loop",
+    "demote1_lock_not_enforced": "sep_smu_lcc_lock_fail_lock_enforced_loop",
+    "demote2_not_accepted": "sep_smu_lcc_lock_fail_demote2_loop",
 }
 
 SETTLE_CYCLES = 2000
@@ -280,7 +284,7 @@ class SmuSepLccFlowSeq:
     async def run(self) -> None:
         max_cycles = int(os.environ.get("SMU_SEP_FW_MAX_CYCLES", "300000"), 0)
 
-        sym_path = str(cocotb.plusargs.get("sep_sym", "sep_smu_lcc_flow.tcm.sym"))
+        sym_path = str(cocotb.plusargs.get("sep_sym", "sep_smu_lcc_lock.tcm.sym"))
         syms = load_syms(sym_path)
         assert syms, f"no usable symbol table at {sym_path}"
         pass_pc = addr_of(syms, PASS_SYM)
@@ -298,7 +302,15 @@ class SmuSepLccFlowSeq:
         lc_raw = lc_raw_from_efuse_image(image)
         state = lc_state_name(lc_raw)
         want_sensed = posture(state)
-        want_demoted = posture(state, demoted=True)
+        # The firmware leaves DEMOTE_2 set and DEMOTE_1 locked clear. The
+        # lifecycle table gives one posture for both demotes set and one for
+        # none; the consumer compare after the firmware is only well defined
+        # for a state in which the two agree.
+        want_after = posture(state, demoted=True)
+        assert want_after == posture(state), (
+            f"{state}: the posture depends on the demotes, so a run that sets only DEMOTE_2 "
+            "has no table value to compare the consumers against"
+        )
 
         self.log.info("=" * 70)
         self.log.info(
@@ -409,34 +421,36 @@ class SmuSepLccFlowSeq:
         if not watch["iccm_seen"]:
             errors.append("SEP never executed in the ICCM range")
 
-        # The firmware proved FEAT_CTRL moved as software reads it; these prove
-        # the same posture reached the consumers. The demote baseline is the
-        # pre-sense sample: the SEP CPU has not run at that point.
-        if after["demote1"] == before["demote1"]:
+        # The firmware proved the register readbacks; these prove the same
+        # outcome at the consumers. The demote baseline is the pre-sense
+        # sample: the SEP CPU has not run at that point. DEMOTE_1 was locked
+        # clear before its demote write, so its output must still be the
+        # baseline; DEMOTE_2 was written unlocked, so its output must have
+        # moved.
+        if after["demote1"] != before["demote1"]:
             errors.append(
-                f"lcc_demote_state_1_o never changed ({before['demote1']:#04b}) -- "
-                "the firmware's DEMOTE_1 write did not reach the SMU boundary"
+                f"lcc_demote_state_1_o moved {before['demote1']:#04b}->{after['demote1']:#04b} "
+                "-- the demote written to the locked DEMOTE_1 reached the SMU boundary"
             )
         if after["demote2"] == before["demote2"]:
             errors.append(
                 f"lcc_demote_state_2_o never changed ({before['demote2']:#04b}) -- "
                 "the firmware's DEMOTE_2 write did not reach the SMU boundary"
             )
-        if after["smc_lc_state"] != want_demoted.lc_state:
+        if after["smc_lc_state"] != want_after.lc_state:
             errors.append(
                 f"SMC holds lc_state 0x{after['smc_lc_state']:02x} after the run, expected "
-                f"0x{want_demoted.lc_state:02x} for {state}"
+                f"0x{want_after.lc_state:02x} for {state}"
             )
-        if want_demoted.all_open and after["dbg_disable"] != 0:
+        if want_after.all_open and after["dbg_disable"] != 0:
             errors.append(
                 f"DTP holds dbg_disable 0x{after['dbg_disable']:04x} after the run, "
-                f"{state} with both demotes set leaves every debug path open (0x0000)"
+                f"{state} leaves every debug path open (0x0000)"
             )
-        if bool(after["smc_jtag2axi_disabled"]) != want_demoted.smc_jtag2axi_disabled:
+        if bool(after["smc_jtag2axi_disabled"]) != want_after.smc_jtag2axi_disabled:
             errors.append(
                 f"dbg_disable.smc_jtag2axi is {after['smc_jtag2axi_disabled']} after the "
-                f"run, {state} with both demotes set requires "
-                f"{int(want_demoted.smc_jtag2axi_disabled)}"
+                f"run, {state} requires {int(want_after.smc_jtag2axi_disabled)}"
             )
 
         assert not errors, "SEP LCC flow: " + "; ".join(errors)
@@ -455,11 +469,11 @@ class SmuSepLccFlowSeq:
         )
         self.log.info(
             "CHK-SEP-LCC-FW-STAGES: PASS (firmware cleared all four stages on-chip: "
-            "FEAT_CTRL readable, DEMOTE_1 and DEMOTE_2 each accepted and read back, "
-            "and the DEMOTE_1 lock refused a later clear)"
+            "FEAT_CTRL readable, DEMOTE_1 locked while clear with the lock read back, "
+            "the DEMOTE_1 demote write refused, and DEMOTE_2 accepted and read back)"
         )
         self.log.info(
-            "CHK-SEP-LCC-FANOUT: PASS (demote1 %s->%s, demote2 %s->%s, "
+            "CHK-SEP-LCC-FANOUT: PASS (demote1 %s->%s held under lock, demote2 %s->%s, "
             "feat_ctrl 0x%016x->0x%016x reported only; SMC lc_state 0x%02x held and DTP "
             "dbg_disable 0x%04x held through the demotes, as %s contracts)",
             format(before["demote1"], "#04b"),
@@ -475,7 +489,8 @@ class SmuSepLccFlowSeq:
         self.log.info(
             "CHK-SEP-LCC-NONVAC: PASS (the sense legs are a delta off the pre-sense "
             "posture sampled at cold-reset release and a compare against the lifecycle "
-            "table's value for the sensed image; the write-once lock rules out plain storage)"
+            "table's value for the sensed image; the locked DEMOTE_1 refusing a demote "
+            "that the unlocked DEMOTE_2 takes rules out plain storage)"
         )
         for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)

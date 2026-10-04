@@ -62,7 +62,7 @@ FAIL_SYMS = {
     "feat_ctrl_readable": "sep_smu_lcc_flow_fail_readable_loop",
     "demote1_not_accepted": "sep_smu_lcc_flow_fail_demote1_loop",
     "demote2_not_accepted": "sep_smu_lcc_flow_fail_demote2_loop",
-    "demote_lock_not_enforced": "sep_smu_lcc_flow_fail_lock_loop",
+    "demote_locks_not_read_back": "sep_smu_lcc_flow_fail_lock_loop",
 }
 
 SETTLE_CYCLES = 2000

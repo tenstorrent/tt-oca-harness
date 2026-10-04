@@ -307,7 +307,7 @@ one-line intent.
 |`smu_sep_remap_test` |wrapper |The AP and STEE output-remap region-0 offsets end up at the goldens the firmware names.
 |`smu_sep_smc_notify_test` |wrapper |The SEP outbound egress path is proven segment by segment, not inferred from the arriving magic.
 |`smu_sep_bidirect_test` |wrapper |SEP and SMC complete a bidirectional handshake across the SMU crossbar, with both directions load-bearing.
-|`smu_sep_lcc_flow_test` |wrapper |The SEP lifecycle posture is earned by the SEP eFuse sense and then driven by firmware, and both movements are traced to every consumer as a delta off the pre-sense posture.
+|`smu_sep_lcc_flow_test` |wrapper |The SEP lifecycle posture is earned by the SEP eFuse sense and traced to every consumer as a delta off the pre-sense posture; firmware then shows the DEMOTE lock refuses a demote at the register and at the SMU boundary while an unlocked register takes the same write.
 |`smu_sep_lcc_state_test_dev_test` |wrapper |Lifecycle decode for this state: `lc_state` must reach `0xf0` at the SMC, with `dbg_disable` clear at the DTP.
 |`smu_sep_lcc_state_prod_test` |wrapper |Lifecycle decode for this state: `lc_state` must reach `0xe1` at the SMC, with `dbg_disable` clear at the DTP.
 |`smu_sep_lcc_state_prod_end_test` |wrapper |Lifecycle decode for this state: `lc_state` must reach `0x78` at the SMC, with `dbg_disable` asserted at the DTP.
@@ -3907,9 +3907,9 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 
 *Source Module*: `smu_sep_lcc_flow_test`
 
-*BFM / Model*: the eFuse bank model (`hw/ip/efuse/dv/models/efuse_bank_model.sv`) holding the `+sep_efuse_hex` image the SEP sense reads; the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; consumer-side observables at the SMC (`lc_state`), the DTP (`dbg_disable`, `dbg_disable.smc_jtag2axi`) and `feat_ctrl`; `sep_fuse_sense_done_o` and `sep_fuse_sense_skipped_o` at the wrapper boundary
+*BFM / Model*: the eFuse bank model (`hw/ip/efuse/dv/models/efuse_bank_model.sv`) holding the `+sep_efuse_hex` image the SEP sense reads; the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_lock` driving the DEMOTE registers; consumer-side observables at the SMC (`lc_state`), the DTP (`dbg_disable`, `dbg_disable.smc_jtag2axi`), `feat_ctrl` and `lcc_demote_state_{1,2}_o`; `sep_fuse_sense_done_o` and `sep_fuse_sense_skipped_o` at the wrapper boundary
 
-*Objective*: The SEP lifecycle posture is earned by the SEP eFuse sense and then driven by firmware, and both movements are traced to every consumer as a delta off the pre-sense posture.
+*Objective*: The SEP lifecycle posture is earned by the SEP eFuse sense and traced to every consumer as a delta off the pre-sense posture; firmware then shows the DEMOTE lock refuses a demote at the register and at the SMU boundary while an unlocked register takes the same write.
 
 *Test Coverage*:
 
@@ -3918,8 +3918,9 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 * The run carries no `+skip_fuse_sense` and no shadow preload: the SEP shadow registers are earned by the sense FSM from the `+sep_efuse_hex` image staged into the run directory (`build/firmware/preloads/sep_efuse_default.hex`, whose LC word is all-zero, so LC_STATE raw `0x0` and therefore TEST_DEV; the tracked file of the same basename under `hw/sys/sep/dv/tb/efuse_preloads/` is a different image and is not the one loaded here), and the run fails if `sep_fuse_sense_skipped_o` reads 1 or `sep_fuse_sense_done_o` does not rise within its bound.
 * The contract the consumers are compared against comes from `seq_lib/smu_lifecycle_table.py` for the state the image programs: `lc_state` `{~raw, raw}` at the SMC, every debug path open (`dbg_disable` `0x0000`, `dbg_disable.smc_jtag2axi` clear) at the DTP in TEST_DEV, with and without the demotes.
 * Before the sense delivers the LC word `lc_state` reads `0x0f` (the INVALID encoding) and `dbg_disable` is not all-open. A monitor started before bring-up samples that posture at cold-reset release, logs every transition of `lc_state`, `dbg_disable` and `sep_fuse_sense_done_o` with its time, and samples the posture again after sense-done. Each sense leg is therefore a delta off the pre-sense posture and a compare against the table's value.
-* The lock stage is what makes the demote stages non-vacuous: a register that simply stored whatever software wrote would satisfy every demote check. Only a *refused* write after lock shows the block implements the policy.
-* *Not claimed*: a demote is not required to move `feat_ctrl`. In TEST_DEV the baseline is already `~(sip_dis | sys_dis)`, so the bits a demote forces high are high already and the write is a no-op. `feat_ctrl` is reported, not asserted on; the demote's effect is checked at `lcc_demote_state_*_o`, where it is unambiguous. The order of the LC word within the sense is not claimed either: `lc_state` may leave `0x0f` before `sep_fuse_sense_done_o` rises, and the post-sense compare is made after sense-done.
+* The lifecycle specification ("Demote lock behavior") says `demote` and `lock` are write-one-to-set, that firmware can set `demote` only while `lock` is clear, and that both hold until SEP cold reset. A lock placed after the demote is set cannot show a refusal, because a set-only bit has nothing left to refuse. The firmware therefore locks DEMOTE_1 while it is still clear, reads the lock back, and asks for the demote alone and together with the lock bit; the register must read `demote` clear. DEMOTE_2 stays unlocked and takes the same write, the live control that separates a refusal from a dead write path. The same outcome is read at the SMU boundary: `lcc_demote_state_2_o` moves off the pre-sense baseline and `lcc_demote_state_1_o` does not. A register that simply stored whatever software wrote fails the DEMOTE_1 leg at both places.
+* The leaves of the state matrix and the DTP-SEP-SMC chain run `sep_smu_lcc_flow`, which sets both demotes and locks each afterwards, so their posture is the specification's for a state with both demotes set; this leaf alone claims the lock.
+* *Not claimed*: a demote is not required to move `feat_ctrl`. In TEST_DEV the baseline is already `~(sip_dis | sys_dis)`, so the bits a demote forces high are high already and the write is a no-op. `feat_ctrl` is reported, not asserted on; the demotes are checked at `lcc_demote_state_*_o`, where they are unambiguous. In TEST_DEV the consumer posture is the same with and without the demotes, and the sequence refuses to run on an image whose state's posture depends on them, since the DEMOTE_2-only end state would then have no table value. The order of the LC word within the sense is not claimed either: `lc_state` may leave `0x0f` before `sep_fuse_sense_done_o` rises, and the post-sense compare is made after sense-done.
 
 *Test Procedure*:
 
@@ -3927,8 +3928,8 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 . Start the sense monitor before bring-up; at cold-reset release require `sep_fuse_sense_skipped_o` = 0, `sep_fuse_sense_done_o` = 0, `lc_state` = `0x0f` and `dbg_disable` not all-open, and record that posture as the pre-sense baseline.
 . Decode the lifecycle state from the `+sep_efuse_hex` image and take the consumer contract for it from the lifecycle table.
 . Wait, bounded, for `sep_fuse_sense_done_o`; sample the consumers after it and compare them against the contract.
-. Run the firmware through its four stages -- FEAT_CTRL readable, DEMOTE_1 accepted and read back, DEMOTE_2 accepted and read back, and a later clear refused by the DEMOTE_1 lock.
-. Re-read each consumer: both demote outputs moved off the baseline, and `lc_state` / `dbg_disable` hold the table's value for the state with both demotes set.
+. Run the firmware through its four stages -- FEAT_CTRL readable and both DEMOTE registers clear and unlocked, DEMOTE_1 locked while clear with the lock read back, the DEMOTE_1 demote write refused, DEMOTE_2 accepted and read back.
+. Re-read each consumer: `lcc_demote_state_2_o` moved off the baseline, `lcc_demote_state_1_o` did not, and `lc_state` / `dbg_disable` hold the table's value for the state.
 . Require the firmware to have reached its pass loop, then emit the tokens.
 
 *Checkers*:
@@ -3937,9 +3938,9 @@ In standard mode SD[0] carries host-to-device data and SD[1] device-to-host data
 |===
 |Checker |Description
 |`CHK-SEP-LCC-SENSE` |the SEP eFuse sense ran (`sep_fuse_sense_skipped_o` = 0) and completed within its bound; SMC `lc_state` moved off `0x0f` to the table's value for the sensed image and DTP `dbg_disable` moved from not-all-open to the table's value
-|`CHK-SEP-LCC-FW-STAGES` |the firmware cleared all four stages on-chip: FEAT_CTRL readable, DEMOTE_1 and DEMOTE_2 each accepted and read back, and the DEMOTE_1 lock refused a later clear
-|`CHK-SEP-LCC-FANOUT` |demote1 and demote2 both moved at `lcc_demote_state_*_o`; SMC `lc_state` and DTP `dbg_disable` hold the table's value for the state with both demotes set; `feat_ctrl` is reported, not asserted on
-|`CHK-SEP-LCC-NONVAC` |every sense claim is a delta against the pre-sense posture sampled at cold-reset release *and* a compare against the lifecycle table's value for the sensed image, and the write-once lock rules out plain storage
+|`CHK-SEP-LCC-FW-STAGES` |the firmware cleared all four stages on-chip: FEAT_CTRL readable, DEMOTE_1 locked while clear with the lock read back, the DEMOTE_1 demote write refused (register still clear), and DEMOTE_2 accepted and read back
+|`CHK-SEP-LCC-FANOUT` |`lcc_demote_state_2_o` moved off the baseline and `lcc_demote_state_1_o` held it; SMC `lc_state` and DTP `dbg_disable` hold the table's value for the state; `feat_ctrl` is reported, not asserted on
+|`CHK-SEP-LCC-NONVAC` |every sense claim is a delta against the pre-sense posture sampled at cold-reset release *and* a compare against the lifecycle table's value for the sensed image, and the locked DEMOTE_1 refusing the demote the unlocked DEMOTE_2 takes rules out plain storage
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_LCC_SENSE_OBSERVED_OK`, `SEP_LCC_FW_FLOW_OK`, `SEP_LCC_FANOUT_TO_SMC_DTP_OK`. Enrolled in: `all`, `sep_real_fw`.
