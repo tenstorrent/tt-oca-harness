@@ -244,18 +244,22 @@ Do not reset a hart while any hart is performing coherent memory accesses.
 A software reset through `CPU_CTRL.RESET_CTRL` is withheld until the CPU AXI
 isolation boundary drains. Holding any core in reset terminates the other
 cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until every
-core is released. To request one:
+core is released. An SMC hart that requests a reset therefore cannot read the
+status registers below until the boundary reconnects. Request and monitor these
+resets from a manager outside the cluster, normally the SEP, which reaches
+`CPU_CTRL` at `0x4003_9000` in its view of the SMC.
+
+To hold a core or the uncore in reset:
 
 . Program `CPU_CTRL.RESET_TIMEOUT`. `timeout_value` bounds, in SMC clock cycles,
 how long the request may wait for the drain; zero waits indefinitely.
 `timeout_mode` chooses the expiry behavior: `0` reports the timeout and keeps
 withholding the reset, `1` forces the reset and flushes the isolation blocks.
-. Write the core or uncore reset bit, or the core reset pulse bit, in
-`RESET_CTRL`.
+. Clear the core or uncore reset bit in `RESET_CTRL`.
 . Poll `RESET_TIMEOUT.reset_applied`, which rises once the reset is applied by a
 completed drain or a forced timeout. `RESET_TIMEOUT.reset_timeout` reports an
 expired wait in either mode and stays high until the request is removed.
-. Release the reset bit, or let the pulse complete, so the boundary reconnects.
+. Set the reset bit again so the boundary reconnects.
 
 Use force mode only for recovery from an unresponsive cluster. The flush clears
 only the CPU isolation blocks: a block elsewhere in the fabric that holds a
@@ -268,6 +272,58 @@ address. Before they join normal coherent operation, software can program a
 parked hart's `RESET_VECTOR[n]` and pulse its reset to start it at that address.
 Avoid this flow where possible for the reasons described in the Technical
 Reference Manual.
+
+[[smc-core-reset-pulse]]
+===== Core Reset Pulse
+
+A reset pulse restarts one core without software having to release it. The
+pulse passes through the same drain handshake as a held reset, and
+`RESET_TIMEOUT` applies to it in the same way. To restart core `n`:
+
+. Program `RESET_VECTOR[n]` if the core must start at a different address.
+. Program `CORE_RESET_PULSE_COUNT`. Once the drain completes, the core stays
+out of reset for `pre_reset_count + 1` SMC clock cycles and is then held in
+reset for `post_reset_count + 1` cycles. The reset values give 9 and 17
+cycles.
+. Write 1 to `RESET_CTRL.core<n>_reset_pulse_start`, leaving
+`core<n>_reset_n` at 1. A 0 in `core<n>_reset_n` holds the core in reset for
+the whole pulse and after it.
+
+The pulse start bits read as 0, so a read-modify-write of `RESET_CTRL` does not
+start another pulse. Writing a start bit while that core's pulse runs restarts
+the count of the current phase. `CORE_RESET_PULSE_COUNT.core_resets_done` bit
+`n` reads 0 while the pulse of core `n` runs. It also reads 1 before a withheld
+pulse starts, so confirm the restart through a handshake with the restarted
+core, such as a scratch register it writes, rather than by polling
+`core_resets_done`.
+
+.Core reset pulse example C definitions.
+[source,sourceCode,c]
+----
+// SMC CPU control register addresses.
+// In SEP-local address space, through the SEP view of the SMC.
+#define SMC_CPU_CTRL_BASE           0x40039000
+#define SMC_REG_RESET_VECTOR_LO(n)  (SMC_CPU_CTRL_BASE + ((n) * 0x8))
+#define SMC_REG_RESET_VECTOR_HI(n)  (SMC_CPU_CTRL_BASE + ((n) * 0x8) + 0x4)
+#define SMC_REG_RESET_CTRL          (SMC_CPU_CTRL_BASE + 0x20)
+
+// RESET_CTRL pulse start bit of core `n`.
+#define RESET_CTRL_CORE_PULSE_START(n) (0x10 << (n))
+----
+
+.Core reset pulse example C usage.
+[source,sourceCode,c]
+----
+// Restart SMC core `n` at `entry` with a reset pulse.
+void smc_core_restart(unsigned n, uint64_t entry) {
+    write32(SMC_REG_RESET_VECTOR_LO(n), (uint32_t)entry);
+    write32(SMC_REG_RESET_VECTOR_HI(n), (uint32_t)(entry >> 32));
+    __asm__ volatile("fence" ::: "memory");
+
+    uint32_t val = read32(SMC_REG_RESET_CTRL);
+    write32(SMC_REG_RESET_CTRL, val | RESET_CTRL_CORE_PULSE_START(n));
+}
+----
 
 [[smc-ndm-reset]]
 ==== External CPU Cluster NDM Reset
@@ -562,7 +618,7 @@ delivery paths select from the same accrued bits, so clearing them affects both.
 ==== Watchdog Timers
 
 Each core of the SMC has a dedicated watchdog timer (WDT), that can generate
-an interrupt and optionally a reset of the core if not serviced within a
+an interrupt and optionally a reset request if not serviced within a
 configurable period of time. The watchdog timers are driven by the SMU clock
 signal `clk_smu_i`.
 
@@ -591,14 +647,22 @@ interrupt has been fired. Otherwise, `COUNT` will continue incrementing and
 must be manually written to to set it to a lower value (after unlocking a
 register write by writing to `KEY`).
 
-If `wdogrsten` (bit 8) is enabled in `CTRL` and the WDT fires, the core being
-reset will not be able to service its own WDT interrupt. Other SMC cores
-*should* enable interrupts from each other's watchdog timers to be notified when
-a core is reset by the watchdog, so that SMC software can robustly recover from
-the failure or reallocate work while the reset core is brought up again.
+If `wdogrsten` (bit 8) is enabled in `CTRL` when the WDT fires, the WDT latches
+a reset request until the cluster uncore is reset. The request does not reset the core.
+It starts that core's second-stage countdown in `CPU_CTRL`, and when the
+countdown expires the SMC warm reset restarts the whole CPU cluster.
+`CPU_CTRL.WDT_TIMEOUT` sets the countdown length in SMC clock cycles, 16384
+after reset, and writing 1 to `WDT_TIMEOUT_RESET.reset_cycle_count_<n>`
+restarts the countdown of core `n`. Feeding the WDT does not withdraw a latched
+request, so restarting the countdown only postpones the warm reset.
+
+The core whose WDT fired is presumed unable to service its own interrupt. Other
+SMC cores *should* enable interrupts from each other's watchdog timers to be
+notified, so that SMC software can save state or reallocate work before the
+warm reset, postponing it while it does.
 
 In the event of a watchdog timer interrupt, software -- running on a core other
-than the one reset by `wdogrsten` being set -- should clear the interrupt at the
+than the one whose WDT fired -- should clear the interrupt at the
 [[smc-watchdog-clear]]
 watchdog by:
 
@@ -1729,6 +1793,83 @@ void dma_copy(uint64_t dst, uint64_t src, uint32_t len) {
 }
 ----
 
+[[smc-subsystem-resets]]
+==== Subsystem Resets
+
+The SMC reset unit drives a cold reset, a warm reset and four warm-reset hold
+requests to each of up to 32 managed subsystems. Bit `i` of every `SS_*`
+register controls subsystem `i`. The integration assigns the indices and
+defines what each hold preserves, as the adopter chiplet specification records.
+The hardware is described in the
+ifdef::backend-html5[]
+xref:ocah-docs:smc:clk_rst.adoc#smc-subsystem-controls[Subsystem Controls and Clock Gating]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/smc/clk_rst.html#smc-subsystem-controls[Subsystem Controls and Clock Gating]
+endif::backend-pdf[]
+section of the Technical Reference Manual.
+
+After a primary reset, `SS_COLD_RESET_N` reads 0, holding every managed
+subsystem in cold reset, and `SS_WARM_RESET_N` reads all ones. The Boot ROMs do
+not write either register, so later firmware releases the subsystems it uses.
+The reset unit does not sequence releases: the order between subsystems is
+firmware policy. These resets have no drain handshake, so quiesce traffic to and
+from a subsystem before asserting either of its resets. To release subsystem
+`i` from cold reset:
+
+. Program `SS_CONFIG` and lock it with `SS_CONFIG_LOCK`, if the integration
+uses them.
+. Set bit `i` of `SS_COLD_RESET_N` with a read-modify-write that preserves the
+other bits.
+. Poll bit `i` of `SS_RESET_COMPLETE` until it reads 1, if the subsystem
+reports completion. The register shows the subsystem's completion level after
+synchronization; it does not latch.
+. Set bit `i` of `SS_COLD_RESET_LOCK`. The matching `SS_COLD_RESET_N` bit then
+ignores writes until the next primary reset. Locking a bit while it is 0 keeps
+the subsystem in cold reset, which disables a subsystem the chiplet does not
+use.
+
+To warm-reset subsystem `i`:
+
+. Set bit `i` of each hold register, `SS_CONFIG_HOLD`, `SS_SRAM_HOLD`,
+`SS_CRITICAL_HOLD` and `SS_DEBUG_HOLD`, whose state the subsystem must keep.
+Leave the holds unchanged until the warm reset is released.
+. Clear bit `i` of `SS_WARM_RESET_N`, and keep it clear for as long as the
+subsystem requires; the reset unit does not time the warm reset.
+. Set the bit again, and poll `SS_RESET_COMPLETE` as for a cold release.
+. Clear the hold bits.
+
+A JTAG IC_RESET override can replace any subsystem's cold or warm reset, as
+<<dtp-ic-reset-overrides>> describes.
+
+.Subsystem reset example C definitions.
+[source,sourceCode,c]
+----
+// Reset unit register addresses.
+// In SMC-local address space.
+#define RESET_UNIT_BASE                0xC0002000
+#define RESET_UNIT_SS_COLD_RESET_N     (RESET_UNIT_BASE + 0x40)
+#define RESET_UNIT_SS_RESET_COMPLETE   (RESET_UNIT_BASE + 0x60)
+#define RESET_UNIT_SS_COLD_RESET_LOCK  (RESET_UNIT_BASE + 0x70)
+----
+
+.Subsystem reset example C usage.
+[source,sourceCode,c]
+----
+// Release subsystem `i` from cold reset and keep it released
+// until the next primary reset.
+void ss_cold_release(unsigned i) {
+    uint32_t bit = 1u << i;
+    uint32_t val = read32(RESET_UNIT_SS_COLD_RESET_N);
+    write32(RESET_UNIT_SS_COLD_RESET_N, val | bit);
+
+    while (!(read32(RESET_UNIT_SS_RESET_COMPLETE) & bit));
+
+    // Lock bits are write-1-to-set, so this locks only bit `i`.
+    write32(RESET_UNIT_SS_COLD_RESET_LOCK, bit);
+}
+----
+
 [[smc-flr-isolation]]
 ==== Function-Level Reset and Isolation
 
@@ -1751,8 +1892,10 @@ section of the Technical Reference Manual. To prepare and recover from an FLR:
   still sets the isolation latch.
 . Coordinate FLR requests in the integration: the sequencer does not queue
   overlapping requests.
-. After the cool reset, re-establish the affected subsystem's state and satisfy
-  its isolation-release requirements.
+. After the cool reset, `SS_COLD_RESET_N` again holds every managed subsystem
+  in cold reset. Release the subsystems as <<smc-subsystem-resets>> describes,
+  re-establish the affected subsystem's state and satisfy its isolation-release
+  requirements.
 . Write `ISOLATE_REQ_SMC_REG` to clear the FLR isolation latch; any write with a
   byte strobe set clears it, whatever the data. The end of the cool reset does
   not clear it, and clearing it does not cancel a request held by

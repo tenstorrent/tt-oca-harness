@@ -8,8 +8,8 @@
 :sectnums:
 :toclevels: 3
 :source-highlighter: highlight.js
-:revnumber: 0.0.2
-:revdate: 2026-10-02
+:revnumber: 0.0.3
+:revdate: 2026-10-03
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 
 [WARNING]
@@ -40,6 +40,8 @@ The guide is organized as follows:
   filters, mailboxes and reference counter that both subsystems share.
 * <<dtp-programming-guide>> covers cross-trigger configuration and the debug
   host procedures.
+* <<reset-control>> lists every software- and debugger-requested reset and
+  where its sequence is described.
 * The appendices document the production SMC and SEP Boot ROMs, the Key
   Manager Application ROM and the AoU software operation.
 
@@ -54,6 +56,8 @@ include::sep-programming.adoc[]
 include::sep-smc-common.adoc[]
 
 include::dtp-programming.adoc[]
+
+include::resets.adoc[]
 
 [appendix]
 ifdef::backend-pdf[]
