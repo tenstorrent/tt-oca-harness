@@ -1,23 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The last word of every SEP_IN-reachable window memmap.adoc pins.
+"""The last word of every SEP_IN-reachable window the RDL address map pins.
 
-``memmap.adoc`` pins each window through the table the register generator
-writes from the RDL address map (``regs/gen/adoc/memory_map.adoc``, included
-into the chapter): one inclusive ``BASE + lo - BASE + hi`` row per unit. The
-base side of those windows is covered by ``smc_address_map_region_decode_test``;
-this sequence drives the *last* word of each one, which a decoder that sizes a
-window short answers with a bus error and a decoder that sizes it long answers
-from the next block. Every top below is derived from that generated table, and
-``LOCAL_BASE`` from the generated ``SMC_BASE_CONFIG.LOCAL_BASE`` reset.
+The RDL address map (``smc.rdl``) reserves an aperture for each unit
+(``ocah_aperture_size``) and the register generator writes it, with the
+extent the unit decodes, into the generated memory map
+(``regs/gen/py/smc_memory_map.py``). The base side of those windows is covered
+by ``smc_address_map_region_decode_test``; this sequence drives the *last* word
+of each one, which a decoder that sizes a window short answers with a bus
+error and a decoder that sizes it long answers from the next block. Every top
+below is derived from that generated map, and ``LOCAL_BASE`` from the generated
+``SMC_BASE_CONFIG.LOCAL_BASE`` reset.
 
-The table gives each unit a ``Size`` -- the aperture reserved for it -- and a
-``Decoded Extent``, the part of the aperture that decodes. ``memmap.adoc``
-fixes what happens between the two: the fabric refuses an address past the
-decoded extent, and inside it an offset that owns no register answers OKAY. So
-where a unit's aperture is larger than its decoded extent, the last word *of
-the decoded extent* is the window top that must answer, and the last word of
-the aperture must be refused.
+The map gives each unit an aperture and a decoded extent, the part of the
+aperture that decodes, and the RDL fixes what happens between the two
+(``ocah_past_extent_resp``, the map's ``past_response``): the fabric refuses an
+address past the decoded extent with DECERR, and inside it an offset that owns
+no register answers OKAY (``ocah_hole_resp``). So where a unit's aperture is
+larger than its decoded extent, the last word *of the decoded extent* is the
+window top that must answer, and the last word of the aperture must be refused.
 
 * Scratchpad memory (``spm_memory``, 1 MiB): the first and the last 64-bit word
   hold distinct co-resident patterns, so a short or aliased window fails the
@@ -70,6 +71,7 @@ from .smc_addr_map import (
     ZEROER_CTRL_DEST_ADDR,
     dma_ctrl_offset,
     generated_decoded_extent,
+    generated_past_extent_resp,
     generated_window,
     reg_reset_word,
     smc_addr,
@@ -122,8 +124,8 @@ SPM_SPEC_TOP = _window_top("spm_memory")
 assert SPM_SPEC_BASE == SPM_MEMORY_BASE
 
 # --- generated memory map, Data Processing -------------------------------------
-# Aperture tops (the table's Size) and decoded-extent tops (its Decoded
-# Extent). The two generated artifacts have to agree on the extent.
+# Aperture tops and decoded-extent tops of the generated memory map; the extent
+# has to agree with the generated header's size.
 DMA_APERTURE_TOP = _window_top("dma_ctrl")
 DMA_DECODED_TOP = _decoded_top("dma_ctrl")
 ZEROER_APERTURE_TOP = _window_top("zeroer_ctrl")
@@ -132,6 +134,8 @@ assert _window_base("dma_ctrl") == DMA_CTRL_BASE
 assert generated_decoded_extent("dma_ctrl") == smc_addr("SMC_TOP_DMA_CTRL_SIZE")
 assert generated_decoded_extent("zeroer_ctrl") == smc_addr("SMC_TOP_ZEROER_CTRL_SIZE")
 assert DMA_DECODED_TOP < DMA_APERTURE_TOP and ZEROER_DECODED_TOP < ZEROER_APERTURE_TOP
+assert generated_past_extent_resp("dma_ctrl")[0] == "DECERR"
+assert generated_past_extent_resp("zeroer_ctrl")[0] == "DECERR"
 DMA_NEXT_ID = tuple(
     DMA_CTRL_BASE + dma_ctrl_offset(f"DMA_CTRL_NEXT_ID_{bank}_BASE_ADDR") for bank in range(16)
 )
@@ -152,6 +156,7 @@ MISC_WRAP_DECODED_TOP = _decoded_top("smc_misc_wrap")
 MISC_WRAP_APERTURE_TOP = _window_top("smc_misc_wrap")
 assert generated_decoded_extent("smc_misc_wrap") == smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE")
 assert MISC_WRAP_DECODED_TOP < MISC_WRAP_APERTURE_TOP
+assert generated_past_extent_resp("smc_misc_wrap")[0] == "DECERR"
 _SHORT_WINDOW_TOPS = (
     ("misc-wrap-top-decodes", "smc_misc_wrap", MISC_WRAP_DECODED_TOP, MISC_WRAP_APERTURE_TOP),
 )
@@ -167,7 +172,7 @@ EXPECTED_VALUE_CHECKS = 31
 
 
 class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
-    """Last word of every SEP_IN-reachable window memmap.adoc pins."""
+    """Last word of every SEP_IN-reachable window the RDL address map pins."""
 
     def __init__(self, name: str = "smc_address_window_top_decode_test_seq") -> None:
         super().__init__(name)
@@ -247,7 +252,7 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
                     f"{pattern_name} pattern 0x{pattern:x} (read 0x{word:x}): the extent aliases "
                     f"onto that register"
                 )
-        # Past the decoded extent the fabric refuses the access (memmap.adoc).
+        # Past the decoded extent the fabric refuses the access (RDL ocah_past_extent_resp).
         await self.read_decerr("DMA_APERTURE_TOP", DMA_APERTURE_TOP, length=_WORD)
         await self.read_decerr("ZEROER_APERTURE_TOP", ZEROER_APERTURE_TOP, length=_WORD)
         await self.csr_write("DMA_DST_RESTORE", DMA_CTRL_DST_ADDRESS_LO, 0)
@@ -261,7 +266,7 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
             f"DMA nor the resident zeroer pattern -- no specification pins an in-extent word "
             f"without a register, so its value is reported, not compared -- and "
             f"0x{DMA_APERTURE_TOP:08x} (last word of the 512 B aperture, past the decoded "
-            f"extent) was refused with DECERR as memmap.adoc requires",
+            f"extent) was refused with DECERR as the RDL's past-extent response requires",
         )
         self.close_cell(
             "zeroer-aperture-top",
@@ -270,7 +275,7 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
             f"OKAY with 0x{zeroer_top:x}, neither the resident DMA nor the resident zeroer "
             f"pattern -- reported, not compared, for the same reason -- and "
             f"0x{ZEROER_APERTURE_TOP:08x} (last word of the 256 B aperture, past the decoded "
-            f"extent) was refused with DECERR as memmap.adoc requires",
+            f"extent) was refused with DECERR as the RDL's past-extent response requires",
         )
 
     async def _stream_banks(self) -> None:
@@ -337,8 +342,8 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
                 f"0x{decoded_top:08x} (last word of the {extent} B {unit} decoded extent) "
                 f"answered OKAY with 0x{word:x} -- an in-extent offset without a register, so "
                 f"the value is reported, not compared -- and 0x{aperture_top:08x} (last word of "
-                f"the aperture, past the decoded extent) was refused with DECERR as memmap.adoc "
-                f"requires",
+                f"the aperture, past the decoded extent) was refused with DECERR as the RDL's "
+                f"past-extent response requires",
             )
 
     async def body(self) -> None:
