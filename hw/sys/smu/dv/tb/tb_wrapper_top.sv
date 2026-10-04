@@ -59,7 +59,7 @@ module smu_wrapper_uvm_top
       256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
 
   // Every file-path plusarg this bench and its models consume; a present one
-  // whose file cannot be opened ends the run before any image load.
+  // whose file cannot be opened ends the run at time 0.
   `include "ocah_path_plusargs.svh"
   initial begin : path_plusarg_guard
     static string names[] = '{

@@ -389,7 +389,7 @@ module smc_uvm_top
     logic clk_smc, clk_ref, clk_periph;
 
     // Every file-path plusarg this bench and its models consume; a present one
-    // whose file cannot be opened ends the run before any image load.
+    // whose file cannot be opened ends the run at time 0.
     // +smc_efuse_hex is not listed: the eFuse image leaves write that file
     // during the run, so efuse_bank_model checks it when it reads it.
     `include "ocah_path_plusargs.svh"

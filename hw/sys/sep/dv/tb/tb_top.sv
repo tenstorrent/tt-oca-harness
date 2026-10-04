@@ -891,7 +891,7 @@ module sep_uvm_top
 `endif
 
     // Every file-path plusarg this bench and its models consume; a present one
-    // whose file cannot be opened ends the run before any image load.
+    // whose file cannot be opened ends the run at time 0.
     `include "ocah_path_plusargs.svh"
     initial begin : path_plusarg_guard
         static string names[] = '{
