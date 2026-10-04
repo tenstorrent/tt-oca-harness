@@ -1,34 +1,42 @@
 {
   "aggregate": {
     "flows": {
-      "failing": 0,
-      "pass_rate": 100.0,
-      "passing": 3,
-      "total": 3,
+      "failing": 1,
+      "pass_rate": 50.0,
+      "passing": 1,
+      "total": 2,
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/dashboard/vcs/dtp/dashboard-data/history.json",
-    "history_points": 61,
+    "history_points": 62,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/dashboard/vcs/dtp/dashboard-data/summary.json",
     "tests": {
       "failing": 0,
       "incomplete_runs": 0,
       "pass_rate": 100.0,
-      "passing": 616,
+      "passing": 310,
       "skipped": 0,
-      "total": 616,
+      "total": 310,
       "unknown": 0
     }
   },
-  "errors": [],
-  "generated_at": "2026-10-03T10:28:19.570602+00:00",
+  "errors": [
+    "dtp_uvm: runner rc=2",
+    "dtp_uvm: native status=ERROR",
+    "dtp_uvm: normalized status=FAIL",
+    "combined: runner rc=2",
+    "combined: collector rc=1",
+    "combined: native status=MISSING",
+    "combined: normalized status=MISSING"
+  ],
+  "generated_at": "2026-10-04T06:08:46.438050+00:00",
   "git": {
-    "commit": "7fa6c6f33a29ac2ebb63d3b0b0f675b666aaf976",
-    "requested_ref": "7fa6c6f33a29ac2ebb63d3b0b0f675b666aaf976"
+    "commit": "d2e43f482dcfcfa0726fc2abb16d1e7a5446f3e3",
+    "requested_ref": "d2e43f482dcfcfa0726fc2abb16d1e7a5446f3e3"
   },
   "jenkins": {
-    "build_number": "13",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/dashboard/13/",
+    "build_number": "14",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/dashboard/14/",
     "job_name": "tt-oca-harness/dtp/dashboard",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/dashboard/"
   },
@@ -53,29 +61,29 @@
       "group": "all",
       "mode": "views",
       "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/dashboard/vcs/dtp/runs/uvm/result.json",
-      "native_status": "PASS",
+      "native_status": "ERROR",
       "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/dashboard/vcs/dtp/dashboard-data/results/uvm/result.json",
-      "normalized_status": "PASS",
+      "normalized_status": "FAIL",
       "profile": "dtp_uvm",
       "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/dashboard/vcs/dtp/runs/uvm",
-      "runner_rc": 0,
+      "runner_rc": 2,
       "tool": "vcs"
     },
     {
-      "collector_rc": 0,
+      "collector_rc": 1,
       "framework": "",
       "group": "combine",
       "mode": "views",
       "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/dashboard/vcs/dtp/runs/combined/result.json",
-      "native_status": "PASS",
+      "native_status": "MISSING",
       "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/dashboard/vcs/dtp/dashboard-data/results/combined/result.json",
-      "normalized_status": "PASS",
+      "normalized_status": "MISSING",
       "profile": "combined",
       "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/dashboard/vcs/dtp/runs/combined",
-      "runner_rc": 0,
+      "runner_rc": 2,
       "tool": "vcs"
     }
   ],
   "schema_version": 1,
-  "status": "PASS"
+  "status": "FAIL"
 }
