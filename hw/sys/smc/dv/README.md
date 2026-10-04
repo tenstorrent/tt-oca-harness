@@ -548,6 +548,17 @@ Set `CCACHE_DISABLE=1` for the build, or clear the entry.
 **Two builds race** -- the Bender filelist step is shared, so run concurrent
 builds serially.
 
+**`[ocah_path_plusargs] +<name>=<path> is not a readable file`** at time 0 --
+every file-path plusarg the bench consumes (`+rom_hex`, `+rom_bin64`,
+`+smc_scratch_ram_hex`, `+bfm_rom_hex`, ...) is opened before any clock or
+image load, by `ocah_require_file_plusargs` (`hw/common/dv/vip/ocah_lib/uvm/`
+`ocah_path_plusargs.svh`) from `tb/tb_top.sv` and by `require_file_plusargs`
+(`ocah_lib`) from `smc_base_test.build_phase`, so a stale or mistyped path fails
+the run at once rather than minutes in. Fix the path in the testlist entry or
+run mode. `+smc_efuse_hex` is checked by the bench base test and, once reset is
+released, by `efuse_bank_model`; the eFuse image leaves write that file during
+the run, so `tb_top.sv` does not open it at time 0.
+
 PASS/FAIL is classified by the global parser registry
 (`hw/common/dv/configs/parsers.toml`). The cocotb flow requires positive
 evidence from `results.xml`; a clean simulator exit alone is not enough.

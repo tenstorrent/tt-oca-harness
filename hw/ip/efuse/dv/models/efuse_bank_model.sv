@@ -133,20 +133,32 @@ module efuse_bank_model #(
   // release. EFUSE_BANK_REG.dout has no reset, so the image and later programs
   // survive every reset. $readmemh cannot target the unpacked struct array,
   // hence the scratch array. Selected by +smc_efuse_hex / +sep_efuse_hex
-  // (default out/sep_efuse.hex).
+  // (default out/sep_efuse.hex). A named image that is still missing once
+  // reset is released ends the run.
   initial begin
     string img;
+    int fd;
     logic [31:0] otp_preload_mem [1024];
     for (int unsigned i = 0; i < 1024; i++) otp_preload_mem[i] = '0;
     if (IS_SMC_INSTANCE) begin
       if ($value$plusargs("smc_efuse_hex=%s", img)) begin
         wait (rst_ni);
+        fd = $fopen(img, "r");
+        if (fd == 0) begin
+          $fatal(1, "[efuse_bank_model:SMC] +smc_efuse_hex=%s is not a readable file", img);
+        end
+        $fclose(fd);
         $readmemh(img, otp_preload_mem);
         $display("[efuse_bank_model:SMC] loaded %s", img);
       end
     end else begin
       if ($value$plusargs("sep_efuse_hex=%s", img)) begin
         wait (rst_ni);
+        fd = $fopen(img, "r");
+        if (fd == 0) begin
+          $fatal(1, "[efuse_bank_model:SEP] +sep_efuse_hex=%s is not a readable file", img);
+        end
+        $fclose(fd);
         $readmemh(img, otp_preload_mem);
         $display("[efuse_bank_model:SEP] loaded %s", img);
       end else begin

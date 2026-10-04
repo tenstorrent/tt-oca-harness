@@ -16,7 +16,8 @@ Beyond the bank storage itself, it adds three simulation-only conveniences:
 
 - **OTP image preload**: deposits an Intel-hex image into the bank once reset is released
   (`+sep_efuse_hex=<path>` / `+smc_efuse_hex=<path>`, SEP defaults to
-  `out/sep_efuse.hex` when no plusarg is given).
+  `out/sep_efuse.hex` when no plusarg is given). A named image that cannot be
+  opened at that point ends the run with a `$fatal` naming the plusarg.
 - **Program-fail injection**: silently drops program writes (no APB error,
   matching real OTP) to exercise firmware's `PROGRAM_READ_BACK` error path —
   either the first N writes after reset

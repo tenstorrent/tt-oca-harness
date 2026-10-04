@@ -92,6 +92,8 @@ class smc_efuse_image_pattern_base(smc_base_test):
 
     auto_protocol_vip = False
 
+    run_written_file_plusargs = ("smc_efuse_hex",)
+
     def build_phase(self) -> None:
         super().build_phase()
         self.image = load_image(write_image(self.pattern, self.random_seed()))

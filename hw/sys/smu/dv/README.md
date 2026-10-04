@@ -286,6 +286,17 @@ a boot timeout. `smu_sep_rom_tcm_load_test` is the exception: it boots from
 `+sep_boot_rom_hex` with `+sep_no_tcm_preload` and loads its own TCM, covering
 the step the backdoor hides.
 
+The same holds for every file-path plusarg the bench consumes (`+rom_hex`,
+`+rom_bin64`, `+smc_efuse_hex`, `+sep_efuse_hex`, `+sep_boot_rom_hex`,
+`+smc_scratch_ram_hex`, `+*_shadow_reg_preload`, ...): `tb/tb_wrapper_top.sv`
+opens each one present through `ocah_require_file_plusargs`
+(`hw/common/dv/vip/ocah_lib/uvm/ocah_path_plusargs.svh`) and
+`smu_base_test.build_phase` through `require_file_plusargs` (`ocah_lib`), both
+at time 0, so a run whose log carries
+`[ocah_path_plusargs] +<name>=<path> is not a readable file` named a file that
+does not exist in the simulator directory. Fix the testlist entry or the
+firmware stage that stages it; an absent plusarg is not an error.
+
 The SMC boot path's MEM_ZERO FSM writes every word of scratch RAM after the
 time-zero backdoor load unless held off; `tb_wrapper_top.sv` asserts that hold
 whenever `+smc_scratch_ram_hex` supplies an image.

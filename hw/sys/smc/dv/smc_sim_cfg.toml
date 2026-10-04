@@ -79,6 +79,8 @@ incdirs = [
   "hw/sys/smc/dv/tb",
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
+  # ocah_path_plusargs.svh, the file-path plusarg guard tb_top runs at time 0.
+  "hw/common/dv/vip/ocah_lib/uvm",
 ]
 exclude_files = [
   "hw/oss-example/wrapper/smc/smc_padring_ext.sv",

@@ -58,6 +58,18 @@ module smu_wrapper_uvm_top
   localparam bit [255:0] SEC_DIS_TB_DIGEST =
       256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
 
+  // Every file-path plusarg this bench and its models consume; a present one
+  // whose file cannot be opened ends the run before any image load.
+  `include "ocah_path_plusargs.svh"
+  initial begin : path_plusarg_guard
+    static string names[] = '{
+      "rom_bin64", "rom_hex", "smc_scratch_ram_hex", "smc_efuse_hex", "sep_efuse_hex",
+      "sep_boot_rom_hex", "sep_itcm_hex", "sep_dtcm_hex", "smc_shadow_reg_preload",
+      "sep_shadow_reg_preload"
+    };
+    ocah_require_file_plusargs(names);
+  end
+
   // Same override tb_top.sv applies: exercise the most-significant configured
   // DTP cross-trigger mode bit while [1:0] stay SMC-reserved. Without it lane 7
   // is wire-OR here and point-to-point there, so the CTM leaves would score a

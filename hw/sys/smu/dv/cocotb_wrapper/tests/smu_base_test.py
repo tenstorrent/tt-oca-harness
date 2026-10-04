@@ -32,7 +32,23 @@ from env.smu_env_cfg import SmuEnvCfg, check_pll_clock_periods  # noqa: E402
 from env.smu_evidence_map import TEST_EVIDENCE  # noqa: E402
 from env.smu_sep_cpu_trace_monitor import SmuSepCpuTraceMonitor  # noqa: E402
 from ocah_axi_vip import OcahAxiSlaveAgent  # noqa: E402
+from ocah_lib import require_file_plusargs  # noqa: E402
 from seq_lib.sep_fw_common import load_syms  # noqa: E402
+
+# Every file-path plusarg the SMU bench and its models consume, the
+# path_plusarg_guard list of tb/tb_wrapper_top.sv.
+FILE_PLUSARGS: tuple[str, ...] = (
+    "rom_bin64",
+    "rom_hex",
+    "smc_scratch_ram_hex",
+    "smc_efuse_hex",
+    "sep_efuse_hex",
+    "sep_boot_rom_hex",
+    "sep_itcm_hex",
+    "sep_dtcm_hex",
+    "smc_shadow_reg_preload",
+    "sep_shadow_reg_preload",
+)
 
 
 class _EvidenceRecorder:
@@ -154,6 +170,7 @@ class smu_base_test(uvm_test):
         raise AssertionError(f"{name} still low after {timeout_cycles} cycles")
 
     def build_phase(self) -> None:
+        require_file_plusargs(FILE_PLUSARGS)
         self._evidence = _EvidenceRecorder()
         self._evidence.install()
         self._declared_evidence: list[str] = []
