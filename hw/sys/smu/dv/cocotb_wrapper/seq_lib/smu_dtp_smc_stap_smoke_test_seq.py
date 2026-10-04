@@ -6,7 +6,13 @@ S1: PTAP TRST (active-low) is visible on ``tb_stap_smc_trst_n``.
 S2: Same IDCODE while SMC STAP is *not* selected: ``tb_stap_smc_tms`` stays
     at tms_hold and must *not* track ``jtag_tms``. After TAP_3DCR selects SMC,
     the same IDCODE must make host TMS follow PTAP TMS (stap_sel mux).
-S3: TRST restores the 2-bit PTAP 3DCR, re-select, IDCODE with non-zero DR.
+S3: TRST restores the 2-bit PTAP 3DCR: an IDCODE scan after the TRST and
+    before any re-select leaves ``tb_stap_smc_tms`` and ``tb_stap_smc_tdo_oen``
+    quiet, as the unselected control does; then re-select, IDCODE with
+    non-zero DR.
+
+TMS is held low through every TRST assert here, so the TAP has no path to
+Test-Logic-Reset other than the reset itself.
 
 TDI/TCK fan out without ``stap_sel``; they are not the select proof.
 ``tb_stap_smc_tdo_oen`` is logged when live. IO + SMC + SEP debug + extra0 on the wrapper.
@@ -168,19 +174,16 @@ class smu_dtp_smc_stap_smoke_test_seq:
         sb.expect_eq("CHK-DTP-SMC-STAP-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         # S1: TRST (active-low) reaches SMC STAP host trst_n
-        self.dut.jtag_trst.value = 0
-        for _ in range(TRST_CYCLES):
-            await jtag.step_tms(1)
+        await jtag.assert_trst(tck_cycles=TRST_CYCLES, tms=0)
         trst_asserted = self._sample_bit("tb_stap_smc_trst_n")
         if trst_asserted != 0:
             raise AssertionError(f"SMC STAP trst_n during TRST want 0 got {trst_asserted}")
-        self.dut.jtag_trst.value = 1
+        await jtag.release_trst()
         await ClockCycles(self.dut.clk_ref_i, 4)
         trst_released = self._sample_bit("tb_stap_smc_trst_n")
         if trst_released != 1:
             raise AssertionError(f"SMC STAP trst_n after TRST release want 1 got {trst_released}")
-        raw._state = OcahJtagState.TEST_LOGIC_RESET
-        raw._current_instruction = None
+        jtag.sync_model(OcahJtagState.TEST_LOGIC_RESET)
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
@@ -269,18 +272,44 @@ class smu_dtp_smc_stap_smoke_test_seq:
             evidence="CHK-DTP-SMC-STAP-IDCODE",
         )
 
-        # S3: TRST restores 2-bit PTAP 3DCR (config_hold blocks TLR), then
-        # re-select and IDCODE with a non-zero DR payload.
-        self.dut.jtag_trst.value = 0
-        for _ in range(TRST_CYCLES):
-            await jtag.step_tms(1)
-        self.dut.jtag_trst.value = 1
+        # S3: TRST restores the 2-bit PTAP 3DCR (config_hold holds it across
+        # Test-Logic-Reset, so only the reset can clear the select). Before
+        # any re-select, the same IDCODE scan as the unselected control must
+        # leave host TMS and tdo_oen quiet.
+        await jtag.assert_trst(tck_cycles=TRST_CYCLES, tms=0)
+        await jtag.release_trst()
         await ClockCycles(self.dut.clk_ref_i, 4)
-        raw._state = OcahJtagState.TEST_LOGIC_RESET
-        raw._current_instruction = None
+        jtag.sync_model(OcahJtagState.TEST_LOGIC_RESET)
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        desel_mon = cocotb.start_soon(self._observe_scan(EDGE_SAMPLE_CYCLES))
+        await self._scan_idcode(jtag)
+        desel = await desel_mon
+        if desel["ptap_edges"] < MIN_PTAP_TMS_EDGES:
+            raise AssertionError(
+                f"post-TRST IDCODE PTAP TMS edges={desel['ptap_edges']} "
+                f"want >={MIN_PTAP_TMS_EDGES} (scan did not run)"
+            )
+        if desel["smc_edges"] != 0:
+            raise AssertionError(
+                "SMC STAP TMS still follows PTAP after TRST: "
+                f"smc_edges={desel['smc_edges']} want 0 "
+                f"(ptap_edges={desel['ptap_edges']} sel_before_trst={sel['smc_edges']})"
+            )
+        if desel["oen_tcks"] != 0:
+            raise AssertionError(f"SMC STAP tdo_oen after TRST oen_tcks={desel['oen_tcks']} want 0")
+        self._log(
+            f"CHK-DTP-SMC-STAP-TRST-DESEL: smc_tms_edges={desel['smc_edges']} "
+            f"ptap_edges={desel['ptap_edges']} oen_tcks={desel['oen_tcks']} "
+            f"sel_before_trst={sel['smc_edges']}"
+        )
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-TRST-DESEL",
+            (desel["smc_edges"], desel["oen_tcks"]),
+            (0, 0),
+            evidence="CHK-DTP-SMC-STAP-TRST-DESEL",
+        )
         await self._select_smc_stap(jtag)
         byp_mon = cocotb.start_soon(self._observe_scan(EDGE_SAMPLE_CYCLES))
         await jtag.shift_ir(DTP_IR_IDCODE, width=DTP_IR_WIDTH, back_to_rti=True)

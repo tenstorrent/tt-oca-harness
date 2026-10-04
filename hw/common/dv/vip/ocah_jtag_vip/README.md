@@ -288,7 +288,7 @@ tap = OcahJtagMasterDriver(
 | `from_bus(bus, ...)` | Construct from an existing `JTAGBus` |
 | `init_signals()` | Drive idle values before traffic |
 | `await reset_tap(cycles=10)` | Drive TAP to Test-Logic-Reset |
-| `await assert_trst(tck_cycles=1)` / `await release_trst(tck_cycles=0)` | Drive the bound TRST net, then hold TMS high for `tck_cycles`; asserting re-baselines the tracked state to Test-Logic-Reset |
+| `await assert_trst(tck_cycles=1, tms=1)` / `await release_trst(tck_cycles=0, tms=1)` | Drive the bound TRST net, then hold TMS at `tms` for `tck_cycles` (TMS 0 leaves the controller nothing but the reset to move it); asserting re-baselines the tracked state to Test-Logic-Reset |
 | `await step(tms, tdi=0)` / `await step_tms(tms)` | Drive one TCK cycle with the given TMS and TDI and return sampled TDO |
 | `sync_model(state, instruction=None)` | Declare the TAP state after movement the driver did not drive (a power-on reset, a reset pin outside the bound TAP) |
 | `await shift_ir(value, width=None, back_to_rti=False)` | Shift IR, return captured TDO |

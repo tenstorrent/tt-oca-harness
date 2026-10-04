@@ -308,8 +308,11 @@ class smu_dtp_jtag_smoke_test_seq:
                 f"(state=0x{pre_trst:x}); cannot prove TRST effect"
             )
 
-        # TRST path (active-low): assert while holding TCK, observe TLR
-        await jtag.assert_trst(tck_cycles=self.TRST_CYCLES)
+        # TRST path (active-low). TMS stays low through the TRST_CYCLES TCK
+        # cycles: from Shift-DR the TMS path is the Shift-DR self-loop, so
+        # the controller reaches Test-Logic-Reset through the reset or not at
+        # all. The state is sampled while TRST is still asserted.
+        await jtag.assert_trst(tck_cycles=self.TRST_CYCLES, tms=0)
         tlr_trst = await self._wait_tap_eq_ref(OcahJtagState.TEST_LOGIC_RESET, label="s4_trst_tlr")
         await jtag.release_trst()
         await ClockCycles(dut.clk_ref_i, 4)

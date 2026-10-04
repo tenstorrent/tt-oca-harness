@@ -85,7 +85,7 @@ class ocah_jtag_master_driver extends uvm_driver #(ocah_jtag_item);
 
   virtual task do_trst_level(ocah_jtag_item it);
     cfg.vif.trst_n <= it.trst_asserted ? 1'b0 : 1'b1;
-    repeat (it.trst_tck_cycles) step(1'b1);
+    repeat (it.trst_tck_cycles) step(it.trst_tms);
   endtask
 
   task run_phase(uvm_phase phase);

@@ -2336,6 +2336,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 * Sequence for smu_dtp_jtag_smoke_test (SMU_ALL_005).
 * DV-CARD: SMU_ALL_005 ANCHOR: smu_dtp_jtag_smoke_test Allocated (PTAP only): DTP-JTAG-PTAP.S1 — IDCODE instruction returns configured IDCODE fields DTP-JTAG-PTAP.S2 — BYPASS places a single-bit register between TDI and TDO DTP-JTAG-PTAP.S3 — TRST or power-on returns TAP to Test-Logic-Reset (required_cells: rst=TRST, rst=POR, state=Test-Logic-Reset) No Force/deposit.
+* The TRST leg starts in Shift-DR and holds TMS low through the TCK cycles of the assert, so the TMS path is the Shift-DR self-loop and the exported TAP state can read Test-Logic-Reset only through the reset; the state is sampled while TRST is still asserted. The POR leg clocks no TCK. In both shapes a TRST that does not reach the TAP expires the `s4_trst_tlr` wait with the last state logged.
 
 *Test Procedure*:
 
@@ -2515,7 +2516,8 @@ them with the reconstructed scans.
 * S1: PTAP TRST (active-low) is visible on `tb_stap_smc_trst_n`.
 * S2: Same IDCODE while SMC STAP is *not* selected: `tb_stap_smc_tms` stays at tms_hold and must *not* track `jtag_tms`.
 * After TAP_3DCR selects SMC, the same IDCODE must make host TMS follow PTAP TMS (stap_sel mux).
-* S3: TRST restores the 2-bit PTAP 3DCR, re-select, IDCODE with non-zero DR.
+* S3: TRST restores the 2-bit PTAP 3DCR. Before any re-select, the same IDCODE scan as the unselected control runs and `tb_stap_smc_tms` and `tb_stap_smc_tdo_oen` must stay quiet while the PTAP TMS edges show the scan ran; then re-select, IDCODE with non-zero DR.
+* TMS is held low through every TRST assert, so the TAP has no path to Test-Logic-Reset other than the reset, and the 3DCR (held across Test-Logic-Reset by `config_hold`) can be cleared only by the reset.
 * TDI/TCK fan out without `stap_sel`; they are not the select proof.
 * `tb_stap_smc_tdo_oen` is logged when live.
 * Not claimed: SMC DTM abstract commands, STAP slave BFM IDCODE, real LCC.
@@ -2539,6 +2541,7 @@ them with the reconstructed scans.
 |`CHK-DTP-SMC-STAP-IDCODE` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-SMC-STAP-IDCODE-OEN` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH` |Evidence token, emitted only after the compares it names have held
+|`CHK-DTP-SMC-STAP-TRST-DESEL` |after the S3 TRST and before any re-select, an IDCODE scan leaves SMC STAP TMS and tdo_oen quiet (edges 0, oen TCKs 0) while the PTAP TMS edges show the scan ran
 |`CHK-DTP-SMC-STAP-IDCODE-BFM` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-SMC-STAP-PAYLOAD-OEN` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-SMC-STAP-PAYLOAD-TMS-MATCH` |Evidence token, emitted only after the compares it names have held

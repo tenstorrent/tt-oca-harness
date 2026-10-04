@@ -173,7 +173,11 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
     pre_trst = tap_state();
     if (pre_trst === onehot(OCAH_JTAG_TEST_LOGIC_RESET))
       `uvm_error(get_type_name(), "pre-TRST already Test-Logic-Reset; cannot prove the TRST effect")
-    set_trst(1'b0, test_cfg.trst_hold_tck_cycles);
+    // TMS stays low through the hold cycles: from Shift-DR the TMS path is
+    // the Shift-DR self-loop, so the controller reaches Test-Logic-Reset
+    // through the reset or not at all. The state is sampled while TRST is
+    // still asserted.
+    set_trst(1'b0, test_cfg.trst_hold_tck_cycles, 1'b0);
     wait_tap_eq_ref(OCAH_JTAG_TEST_LOGIC_RESET, "s4_trst_tlr", tlr_trst);
     release_trst();
 
