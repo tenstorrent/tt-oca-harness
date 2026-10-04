@@ -84,11 +84,7 @@ fi
 
 # A site carries one TRM version: latest, or the release a snapshot stamped.
 dashboard=$(find "$site/ocah-docs" -mindepth 2 -maxdepth 2 -name dashboard.html -print -quit 2>/dev/null || true)
-if [ -n "$dashboard" ]; then
-  data="$(dirname "$dashboard")/data"
-else
-  data="$site/ocah-docs/latest/data"
-fi
+data="$(dirname "${dashboard:-$site/ocah-docs/latest/dashboard.html}")/data"
 mkdir -p "$data"
 python3 "$trim" summary "$summary" "$data/summary.json" --tests-out "$data/tests.json"
 if [ -f "$history" ]; then

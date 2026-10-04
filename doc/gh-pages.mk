@@ -13,8 +13,7 @@ OCAH_COMBINED_PLAYBOOK ?= $(OCAH_ROOT)/antora-playbook.yml
 # org.github.io/repo host with no custom domain, or empty/unset if a
 # custom domain fronts the repo root. Left as an override, not hardcoded.
 OCAH_DOC_SITE_URL ?=
-# 1 publishes every GitHub release's documentation snapshot beside the main
-# build (tools/doc/release_docs.py restore). Needs gh authenticated.
+# 1 also publishes the release documentation snapshots (needs gh).
 OCAH_DOC_RELEASE_SNAPSHOTS ?= 0
 
 ## Build the combined multi-book site (Home + every book, one Antora run).

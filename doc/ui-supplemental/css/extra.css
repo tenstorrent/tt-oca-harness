@@ -25,10 +25,6 @@
     align-items: center;
 }
 
-.versions-menu .navbar-dropdown .navbar-item.is-current {
-    font-weight: bold;
-}
-
 /* Guides / Downloads / Datasheets dropdowns -- keep visible, style to match navbar */
 .navbar-end .navbar-item.guides-menu,
 .navbar-end .navbar-item.downloads-menu,

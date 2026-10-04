@@ -25,11 +25,11 @@
                  antora.yml/nav.adoc scaffolding lands. Each link resolves to
                  the start page of the book's version in this build, so a
                  release snapshot links within itself. --}}
-            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-starting')}}{{{relativize ./url}}}{{else}}#{{/with}}">Starting with OCAH</a>
-            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-docs')}}{{{relativize ./url}}}{{else}}#{{/with}}">Technical Reference Manual</a>
-            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-integrator-guide')}}{{{relativize ./url}}}{{else}}#{{/with}}">Integrator Guide</a>
-            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-programmer-guide')}}{{{relativize ./url}}}{{else}}#{{/with}}">Programmer's Guide</a>
-            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-appnotes')}}{{{relativize ./url}}}{{else}}#{{/with}}">Application Notes</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-starting')}}{{{relativize ./url}}}{{/with}}">Starting with OCAH</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-docs')}}{{{relativize ./url}}}{{/with}}">Technical Reference Manual</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-integrator-guide')}}{{{relativize ./url}}}{{/with}}">Integrator Guide</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-programmer-guide')}}{{{relativize ./url}}}{{/with}}">Programmer's Guide</a>
+            <a class="navbar-item" href="{{#with (lookup site.components 'ocah-appnotes')}}{{{relativize ./url}}}{{/with}}">Application Notes</a>
           </div>
         </div>
         <div class="navbar-item has-dropdown is-hoverable versions-menu" data-site-root="{{{siteRootPath}}}" data-snapshot="{{env.OCAH_DOC_SNAPSHOT}}">
