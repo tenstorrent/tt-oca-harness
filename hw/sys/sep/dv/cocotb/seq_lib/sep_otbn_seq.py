@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.sep_spec_tables import ot_rdl_table_code
 from sep_reg_meta import OTBN, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -24,11 +25,11 @@ OTBN_LOAD_CHECKSUM_RESET = OTBN.reset32("LOAD_CHECKSUM")
 OTBN_IMEM_BASE = sym("OTBN_IMEM_MEM_BASE_ADDR")
 OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 
-# CMD.cmd EXECUTE and STATUS IDLE / LOCKED from
-# vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson.
-OTBN_CMD_EXECUTE = 0x0000_00D8
-OTBN_STATUS_IDLE = 0x0000_0000
-OTBN_STATUS_LOCK = 0x0000_00FF
+# CMD.cmd EXECUTE and STATUS IDLE / LOCKED, from the value tables in the
+# otbn.rdl field descriptions (the overlay RDL declares no enum for them).
+OTBN_CMD_EXECUTE = ot_rdl_table_code("otbn", "CMD", "EXECUTE")
+OTBN_STATUS_IDLE = ot_rdl_table_code("otbn", "STATUS", "IDLE")
+OTBN_STATUS_LOCK = ot_rdl_table_code("otbn", "STATUS", "LOCKED")
 
 # DMEM result layout (keydump.s + share dump):
 #   result_lo  @ 0x00  key[255:0]    (w2 = S0_L ^ S1_L, 8 words)

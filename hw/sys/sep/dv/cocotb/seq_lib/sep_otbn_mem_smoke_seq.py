@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import cocotb
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_spec_tables import ot_rdl_table_code
 from pyuvm import uvm_sequence
 from sep_reg_meta import OTBN, sym
 
@@ -17,9 +18,9 @@ OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 OTBN_IMEM_SMOKE_WORD = 0x0000_0013
 OTBN_DMEM_SMOKE_WORD = 0xA5A5_5A5A
 
-# OTBN STATUS encoding, from the generated otbn.adoc STATUS field.
-OTBN_STATUS_BUSY_EXECUTE = 0x01
-OTBN_STATUS_LOCKED = 0xFF
+# OTBN STATUS codes, from the value table in the otbn.rdl STATUS description.
+OTBN_STATUS_BUSY_EXECUTE = ot_rdl_table_code("otbn", "STATUS", "BUSY_EXECUTE")
+OTBN_STATUS_LOCKED = ot_rdl_table_code("otbn", "STATUS", "LOCKED")
 
 # The state in which a bus access to IMEM/DMEM is illegal. While STATUS
 # is BusyExecute, a host request is diverted and latches illegal_bus_access.

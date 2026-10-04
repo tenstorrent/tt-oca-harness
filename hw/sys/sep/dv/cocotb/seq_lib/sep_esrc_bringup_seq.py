@@ -430,10 +430,25 @@ class SepEsrcAlertReadSeq(uvm_sequence):
         self.edn_alert = 0xFFFFFFFF
 
     async def body(self) -> None:
-        self.csrng_err = await _rd(self, CSRNG_ERR_CODE)
-        self.csrng_alert = await _rd(self, CSRNG_RECOV_ALERT)
-        self.edn_err = await _rd(self, EDN_ERR_CODE)
-        self.edn_alert = await _rd(self, EDN_RECOV_ALERT)
+        self.csrng_err = await self._rd_ok(CSRNG_ERR_CODE, "CSRNG ERR_CODE")
+        self.csrng_alert = await self._rd_ok(CSRNG_RECOV_ALERT, "CSRNG RECOV_ALERT")
+        self.edn_err = await self._rd_ok(EDN_ERR_CODE, "EDN ERR_CODE")
+        self.edn_alert = await self._rd_ok(EDN_RECOV_ALERT, "EDN RECOV_ALERT")
+
+    async def _rd_ok(self, addr: int, what: str) -> int:
+        """Read one alert register; a non-OKAY or timed-out read fails here, so a
+        zero value is a register value and never an error response's data."""
+        item = SepAxiItem(f"esrc_alert_rd_0x{addr:08x}")
+        item.op = SepAxiOp.READ
+        item.addr = addr
+        item.length = 4
+        await self.start_item(item)
+        await self.finish_item(item)
+        assert not item.timed_out and item.resp_ok, (
+            f"{what} read at 0x{addr:08x} did not complete OKAY "
+            f"(timed_out={item.timed_out} resp={item.resp_code})"
+        )
+        return item.rdata
 
 
 # The test-side poll/check helpers (wait_seed_ready / wait_genbits /
