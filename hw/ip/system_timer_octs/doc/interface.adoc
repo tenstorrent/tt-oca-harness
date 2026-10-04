@@ -4,63 +4,42 @@
 [[system-timer-octs-interface]]
 == Interface
 
-The System Timer OCTS IP provides interfaces supporting both PRIMARY and
-SECONDARY timer modes, with flexible support for either AXI4-Lite or
-APB4 bus protocols. All interface signals operate synchronously to the
-system clock.
+The System Timer OCTS IP has a 32-bit AXI4-Lite register interface. The
+`is_primary_i` input selects PRIMARY or SECONDARY mode at runtime. All
+signals are synchronous to `clk_i` except `timer_sync_load_i` and
+`timer_cnt_credit_i`, which are synchronized internally as described in
+<<octs-pulses>>.
 
-=== Configuration Parameters
+=== Ports
 
 ifdef::backend-html5[]
-The parameters and ports of `system_timer_octs` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/system_timer_octs/system_timer_octs.adoc[system_timer_octs].
+The ports of `system_timer_octs` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/system_timer_octs/system_timer_octs.adoc[system_timer_octs].
 endif::backend-html5[]
 ifndef::backend-html5[]
-The parameters and ports of `system_timer_octs` are listed in the HTML edition of this manual, under RTL Modules Reference.
+The ports of `system_timer_octs` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-The timer configuration is described in terms of a register interface
-protocol, `BUS_PROTOCOL` (AXI4-Lite or APB4, default AXI4-Lite), an address
-bus width, `ADDR_WIDTH` (default 32, 8 bits effective), and a data bus
-width, `DATA_WIDTH` (default 32).
-
-NOTE: Timer mode selection (PRIMARY vs SECONDARY) is controlled at runtime
-via the `is_primary_i` input signal, not through a compile-time parameter.
-
-=== Test Interface
-
-The test controls are `test_en_i`, an active-high test enable for
-manufacturing test mode and debug access, and `scan_rst_ni`, an active-low
-scan reset that gives the scan chain independent reset control for
-manufacturing test and ATPG.
+`system_timer_octs` has no parameters. Its AXI4-Lite request and response
+types, with 32-bit address and data, are defined in `system_timer_octs_pkg`.
 
 === OCTS Synchronization Interface
 
 When operating in PRIMARY mode, the timer generates synchronization
-pulses: `timer_sync_load_o` is asserted when the START register is
-written, and `timer_cnt_credit_o` is asserted periodically according to
-internal credit generation logic. Any synchronization input signals are
-ignored in PRIMARY mode. In contrast, SECONDARY mode relies on input
-from the PRIMARY: `timer_sync_load_i` directs the timer to initialize
-using a preset value, and `timer_cnt_credit_i` delivers credit pulses
-that allow continuous synchronization. In this mode, the outputs remain
-inactive.
+pulses: `timer_sync_load_o` is asserted for `CTRL.PULSE_WIDTH` cycles when
+the START register is written, and `timer_cnt_credit_o` is asserted for
+`CTRL.PULSE_WIDTH` cycles every `CTRL.CREDIT_VAL` cycles. Any
+synchronization input signals are ignored in PRIMARY mode. In contrast,
+SECONDARY mode relies on input from the PRIMARY: `timer_sync_load_i`
+directs the timer to initialize using a preset value, and
+`timer_cnt_credit_i` delivers credit pulses that allow continuous
+synchronization. In this mode, the outputs remain inactive.
 
-=== Timer Counter Interface
+=== Timer Count
 
-The step input, `timer_cnt_step_i`, is an 8-bit value used in SECONDARY
-mode.
-
-For SECONDARY timers, the step input (`timer_cnt_step_i`) enables
-granular control over the increment rate. Typically set to 1 for a
-standard per-cycle increment, this parameter can be tuned to adjust for
-differing clock ratios or calibration needs, but is only effective when
-credits are available (i.e., when the credit counter permits counting).
-
-The timer's count output (`timer_count_o`) provides direct and
-continuous access to the current counter value, updating every clock
-cycle while the timer is running. This value is useful for timestamping,
-monitoring, or debugging, and can also be read from the COUNT_LO and
-COUNT_HI registers.
+`timer_count_o` is the live 64-bit count, also readable through
+`TIMER_COUNT_LO` and `TIMER_COUNT_HI`. A PRIMARY advances it by one each
+`clk_i` cycle. A SECONDARY advances it by `CTRL.STEP` each cycle while
+credits remain.
 
 [[octs-interface-timing]]
 === Timing

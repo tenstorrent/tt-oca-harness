@@ -354,6 +354,7 @@ run_modes = ["dual"]
 firmware = { name = "occp_crc_err_injection_test", mode = "occp_rom_only" }
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_crc_err_injection_test.rom.hex",
     "+occp_case=smc_occp_crc_err_injection_test",
@@ -448,6 +449,7 @@ firmware = { name = "occp_interface_unlatch_test", mode = "occp_rom_only" }
 # Same +fuse_i2c_ids reason as smc_occp_interface_latch_test above.
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_interface_unlatch_test.rom.hex",
     "+occp_case=smc_occp_interface_unlatch_test",
@@ -488,6 +490,7 @@ firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
 # randomises its own NUM_ENTRIES. This is the only member that varies run to run.
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=sep_ring_buffer_test.rom.hex",
     "+sep_rb_case=smc_sep_ring_buffer_test",
@@ -499,7 +502,7 @@ name = "smc_sep_ring_buffer_overflow_test"
 module = "smc_sep_ring_buffer_test"
 target = "dual"
 seed = 1
-timeout_sec = 21600
+timeout_sec = 57600
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
@@ -507,6 +510,7 @@ firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
 # the ROM must hand back the newest 511 and the oldest 89 writes must be gone.
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=sep_ring_buffer_test.rom.hex",
     "+sep_rb_case=smc_sep_ring_buffer_overflow_test",
@@ -527,6 +531,7 @@ firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
 # stale contents or failing the command.
 args = [
     "+BOOT_I3C",
+    "+FORCE_STATUS_REPORTING",
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=sep_ring_buffer_test.rom.hex",
     "+sep_rb_case=smc_sep_ring_buffer_underflow_test",

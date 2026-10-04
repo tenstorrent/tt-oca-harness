@@ -11,7 +11,9 @@
 //   * wait for fuse sense done (cocotb bring_up_no_cpu parity);
 //   * CHK-BASELINE: with wdt_rst_ni_i released, both resets read 1;
 //   * CHK-ASSERT: wdt_rst_ni_i low drives sep_cpu_reset_n to 0;
-//   * CHK-ISOLATION: in the same window sep_reset_n stays 1; then rst_ni low
+//   * CHK-ISOLATION: from the wdt_rst_ni_i assert edge through the release
+//     settle, sep_reset_n reads 1 and a watcher sees no value change on it, so
+//     a drop of any length in that window fails; then rst_ni low
 //     must drive sep_reset_n to 0, the control that proves the observable
 //     can read 0 (a stuck-high net satisfies the "stays 1" read alone);
 //   * CHK-RELEASE: wdt_rst_ni_i high returns sep_cpu_reset_n to 1.
@@ -50,6 +52,8 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test_seq extends sep_base_test_seq;
 
   task body();
     int unsigned extra_hold;
+    int unsigned iso_changes;
+    process iso_proc;
 
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkBaseline, ChkAssert, ChkIsolation, ChkRelease});
@@ -65,6 +69,18 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test_seq extends sep_base_test_seq;
     check_level(ChkBaseline, "wdt_rst_ni=1 -> sep_reset_n", tb_vif.sep_reset_n, 1'b1);
 
     log_step("B", "assert wdt_rst_ni_i");
+    // Count every sep_reset_n value change from here to the release settle.
+    iso_changes = 0;
+    fork
+      begin
+        iso_proc = process::self();
+        forever begin
+          @(tb_vif.sep_reset_n);
+          iso_changes++;
+        end
+      end
+    join_none
+    wait (iso_proc != null);
     tb_vif.wdt_rst_n <= 1'b0;
     wait_sys_cycles(SettleCycles);
     check_level(ChkAssert, "wdt_rst_ni=0 -> sep_cpu_reset_n", tb_vif.sep_cpu_reset_n, 1'b0);
@@ -77,6 +93,15 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test_seq extends sep_base_test_seq;
     tb_vif.wdt_rst_n <= 1'b1;
     wait_sys_cycles(SettleCycles);
     check_level(ChkRelease, "wdt_rst_ni=1 -> sep_cpu_reset_n", tb_vif.sep_cpu_reset_n, 1'b1);
+    iso_proc.kill();
+    void'(m_check.expect_true(
+        ChkIsolation,
+        iso_changes == 0 && tb_vif.sep_reset_n === 1'b1,
+        $sformatf(
+            "wdt_rst_ni assert/release window -> sep_reset_n held 1: value_changes=%0d end=%b",
+            iso_changes,
+            tb_vif.sep_reset_n)
+    ));
 
     log_step("D", "isolation observable control: assert rst_ni");
     tb_vif.rst_n <= 1'b0;

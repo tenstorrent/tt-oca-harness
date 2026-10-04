@@ -33,8 +33,10 @@ Isolation proof (both directions, then the remaining isolated bits):
   * CHK-REVERSE     roles swapped (AES-victim then HMAC-victim).
   * CHK-KMAC / CHK-OTBN  KMAC SHA3-256 STATE and OTBN DMEM hold across a
                     neighbour pulse. KMAC's own pulse returns STATUS to its
-                    register-map reset; OTBN LOAD_CHECKSUM (rst_ni CSR) clears
-                    to its register-map reset. DMEM is the cross-domain leak
+                    register-map reset on the fields the RDL resets, and to
+                    the idle 0 on sha3_absorb/sha3_squeeze/fifo_depth/
+                    fifo_full, which have no RDL reset; OTBN LOAD_CHECKSUM
+                    (rst_ni CSR) clears to its register-map reset. DMEM is the cross-domain leak
                     check (a neighbour must not wipe it). OTBN's own reset runs
                     a secure wipe, so DMEM retention across that pulse is not
                     claimed. KM (bit 0) stays held at the reset default and is
@@ -149,7 +151,7 @@ from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_kmac_golden import kmac_family_words
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from sep_reg_meta import KMAC
+from sep_reg_meta import register_fields
 from seq_lib.sep_abr_mlkem_seq import MLKEM_STATUS
 from seq_lib.sep_aes_seq import AES_DATA_OUT_0, AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
 from seq_lib.sep_crypto_reset_iso_seq import (
@@ -195,7 +197,17 @@ AES_PT = [0xAABBCCDD, 0x11223344, 0x55667788, 0x99001122]
 KMAC_MSG = [0x6A6F6232, 0xDEADBEEF]
 OTBN_CHECKSUM_MARK = 0xA11CED01
 OTBN_DMEM_MARK = 0xD3E00D3E
-KMAC_STATUS_RESET = KMAC.reset32("STATUS")
+# KMAC STATUS after its own SW_RESET_N pulse, in two parts read off the IP-XACT.
+# The RDL gives sha3_idle, fifo_empty and the two alert bits a reset value; that
+# part is the register-map reset. sha3_absorb, sha3_squeeze, fifo_depth and
+# fifo_full have no RDL reset, so the generated DEFAULT holds a 0 placeholder for
+# them. Their 0 here is the idle state their field descriptions define (not
+# absorbing, not squeezing, no FIFO entries, FIFO not full), and reserved bits
+# read 0. sha3_squeeze reads 1 before the pulse, so that leg discriminates.
+_KMAC_STATUS_FIELDS = register_fields(KMAC_STATUS)[1]
+KMAC_STATUS_RDL_MASK = sum(f.mask for f in _KMAC_STATUS_FIELDS if f.reset is not None)
+KMAC_STATUS_RDL_RESET = sum(f.reset << f.lsb for f in _KMAC_STATUS_FIELDS if f.reset is not None)
+KMAC_STATUS_IDLE_MASK = ~KMAC_STATUS_RDL_MASK & 0xFFFF_FFFF
 
 _ZERO_DIGEST = [0] * 8
 # s_axi ARIDs for the drain-window legs. Neither is ID 0, which the background
@@ -1683,9 +1695,16 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         assert await self.kmac.read_digest() == k_digest, "KMAC STATE not held on re-read"
         await self._drain_kmac()
         kmac_status = await self.kmac.read_status()
-        assert kmac_status == KMAC_STATUS_RESET, (
-            f"KMAC STATUS not restored to register-map reset 0x{KMAC_STATUS_RESET:08x} "
-            f"after its own SW_RESET_N pulse: 0x{kmac_status:08x}"
+        assert kmac_status & KMAC_STATUS_RDL_MASK == KMAC_STATUS_RDL_RESET, (
+            f"KMAC STATUS not restored to register-map reset 0x{KMAC_STATUS_RDL_RESET:08x} "
+            f"under mask 0x{KMAC_STATUS_RDL_MASK:08x} after its own SW_RESET_N pulse: "
+            f"0x{kmac_status:08x}"
+        )
+        assert kmac_status & KMAC_STATUS_IDLE_MASK == 0, (
+            f"KMAC STATUS not idle after its own SW_RESET_N pulse: 0x{kmac_status:08x} "
+            f"has bits 0x{kmac_status & KMAC_STATUS_IDLE_MASK:08x} set under mask "
+            f"0x{KMAC_STATUS_IDLE_MASK:08x} (sha3_absorb/sha3_squeeze/fifo_depth/"
+            "fifo_full/reserved)"
         )
         kmac_after = await self.kmac.read_digest()
         # STATE is a window, not a PeakRDL CSR, so it has no REG_DEFAULT. On this
@@ -1701,9 +1720,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"  before={[hex(w) for w in h_digest]}\n  after={[hex(w) for w in hmac_survived]}"
         )
         self.logger.info(
-            "CHK-KMAC-SELF PASS: KMAC STATUS=0x%08x (REG_DEFAULT), "
-            "STATE cleared to 0 (held[0]=0x%08x); HMAC DIGEST intact",
+            "CHK-KMAC-SELF PASS: KMAC STATUS=0x%08x: register-map reset 0x%08x under "
+            "mask 0x%08x, idle 0 under mask 0x%08x; STATE cleared to 0 "
+            "(held[0]=0x%08x); HMAC DIGEST intact",
             kmac_status,
+            KMAC_STATUS_RDL_RESET,
+            KMAC_STATUS_RDL_MASK,
+            KMAC_STATUS_IDLE_MASK,
             k_digest[0],
         )
 

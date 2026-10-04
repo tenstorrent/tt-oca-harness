@@ -1,0 +1,122 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-coverage-waiver-evidence]]
+== SEP coverage scope and exclusion evidence
+
+The VCS code-coverage result grades TT-owned SEP integration RTL. The
+compile-time `cov/config/vcs/sep_cov_scope.hier` removes the testbench, the VeeR
+EL2 core complex inside `sep_cpu`, library-class cells, DV models and complete
+third-party IP modules and interfaces. The TT CPU wrapper `sep_cpu` (window
+remaps, IFU/LSU demux decode) stays graded.
+Those whole-module entries are ownership decisions, not claims that the logic
+is unreachable.
+
+Report-time `.el` files apply only to objects that remain in the compile-time
+scope. An exclusion needs an RTL tie, parameter, unconnected port or generate
+condition that makes the object unreachable. A stimulus gap stays in the
+denominator.
+
+=== PeakRDL register blocks
+
+`cov/config/vcs/sep_regblock_exclusions.el` excludes generated register-block
+signals that cannot change:
+
+* A block listed for no-stall hardwires `cpuif_req_stall_rd` and
+  `cpuif_req_stall_wr` to zero. For example,
+  `hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv:220-221` contains the tie.
+  A block with external registers drives the stall from `external_pending`
+  (`efuse_mmr_reg`, `entropy_source_reg`, `km_kpv_reg`), so its stall stays
+  graded.
+* Register spaces with no error decode also hold `is_valid_addr` and
+  `is_valid_rw` high and `decoded_err` low. The same generated block shows
+  these assignments at lines 243-248.
+* The wrapper-key register blocks and the KM `km_csr`, `km_drbg_sampler` and
+  `km_mailbox_*` blocks decode real errors. Their exclusion is limited to the
+  two no-stall signals; their error responses remain graded.
+
+=== External TRNG payload
+
+`cov/config/vcs/sep_ext_trng_payload_exclusions.el` excludes the three
+AXI-Stream request payloads while they cross `sep_ip_integration`, `sep` and
+`sep_crypto`. `hw/top/sep_ip_integration.sv:775` ties the complete request
+array to zero. The source-select mux remains graded because software controls
+its select.
+
+=== SEP DMA tied inputs
+
+`cov/config/vcs/sep_unreachable_exclusions.el` contains two instance-scoped
+blocks on `sep_uvm_top.u_dut.u_sep.u_sep_dma_wrap`:
+
+* `hw/sys/sep/rtl/sep.sv:1104-1106` connects LSIO trigger bit 0 to SPI and ties
+  bits 10:1 low. Bit 0 remains graded.
+* `hw/sys/sep/rtl/sep_dma_wrap.sv:341-350` ties the unused CTN response fields,
+  and line 364 ties the alert receiver ping request low. The live DMA host path
+  and alert request/acknowledge behaviour remain graded.
+
+=== Single-master AXI ties
+
+`cov/config/vcs/sep_master_tie_exclusions.el` excludes request fields on ports
+that exactly one internal master drives: the VeeR IFU, LSU and debug masters
+and the secure DMA host port. Each master assigns those fields a constant, for
+example `el2_ifu_mem_ctl.sv:1074-1101` and
+`vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:39-67`, and every
+module on the path passes them unchanged. A port that the inbound SoC port,
+the JTAG bridge or a second master can reach is not listed. A tied field that a
+leaf moved, for example through the no_cpu TB force on the LSU path, is not
+listed.
+
+A post-remap IFU write address is not a constant on every bit:
+`hw/common/axi/axi_window_remap.sv:39-51` moves a raw address of 0 to
+`0x1000_0000` when `SEP_LOCAL_BASE_ADDR[31:0]` is 0, and that CSR is
+software-writable (`sep_cpu_ctrl.rdl:181-188`). Bit 28 of those `aw.addr`
+fields therefore stays graded; the other bits are listed.
+
+=== Crossbar and interconnect ties
+
+`cov/config/vcs/sep_xbar_tie_exclusions.el` excludes request bits in
+`sep_local_axi_xbar`, `sep_system_peripherals_xbar` and
+`sep_crypto_axi_interconnect` that no connected initiator can move: address
+bits outside every decode rule, initiator-index bits that no initiator sets,
+and fields that every initiator on the port ties. Response IDs, response USER
+fields and every field the inbound SoC port drives remain graded.
+
+=== CPU, reset, IO, watchdog, DMA and mailbox ties
+
+`cov/config/vcs/sep_system_tie_exclusions.el` excludes toggle, line, condition
+and branch objects in TT wrappers where an RTL constant, an elaborated
+parameter or a single tied master holds the value: the IFU/LSU/debug/DMA demux
+and window-remap fields, constant response and TL-UL fields at the AXI-Lite
+bridges, the SPI address mask, regblock no-stall ties and the isolate-FSM
+default arm. Each block names its tie with a file and line.
+
+=== sep_crypto ties
+
+`cov/config/vcs/sep_crypto_tie_exclusions.el` excludes toggle bits in the
+crypto wrappers that SEP RTL fixes: the key-vault shim interface and write
+response, the zero-extended key-vault offset bit, AHB control ties, the unused
+response bit on bridges that return only OKAY or SLVERR, ABR memory address
+pad bits, alert ping lines, the DRBG stream strobe and the constant OTBN OTP
+key. Key storage, key transfer and alert handshakes remain graded.
+
+=== Unreachable FSM transitions
+
+`cov/config/vcs/sep_fsm_unreachable_exclusions.el` excludes eight
+`axi_lite_to_tlul` transitions that depend on `ACK_ZERO_STROBE_WRITE`, which is
+off in every SEP instance except the SPI host wrapper
+(`hw/sys/sep/rtl/sep_ot_spi_wrap.sv:115`), whose transitions remain graded.
+Transitions taken on a reset with a transfer outstanding, error transitions and
+abort transitions are reachable and remain graded.
+
+=== Condition and branch ties
+
+`cov/config/vcs/sep_cond_branch_exclusions.el` excludes condition and branch
+terms that cannot change in the SEP elaboration: the stall terms of no-stall
+PeakRDL regblocks, the error operand of APB regblocks that decode no error, the
+KM CPU virtual-ROM decode without its simulation define, branches inside
+elaboration-only constant functions, and the else arms of the integrity
+generation and `HAS_LC_STATE` parameters that SEP fixes.
+
+The checksums in each `.el` file come from `urg -dump full_exclusions` on the
+merged VCS database. A report run must complete without a checksum or missing
+object warning.

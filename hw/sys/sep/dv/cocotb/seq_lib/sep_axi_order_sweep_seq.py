@@ -2,13 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """AW/W ordering sweep across every register the export says is safe to write.
 
-A register adapter that mishandles a channel ordering does so at its own AXI
-port, and every block behind the crossbar has its own adapter, so the contract
-has to hold at each of them rather than at one scratch word. This sweep drives
-the
-three orderings at every register bit-bash already establishes as write-safe
-storage, so an adapter that only works when AW leads W is caught wherever it
-sits.
+Every block behind the crossbar has its own register adapter, so one scratch
+word does not stand for the others. This sweep presents the three orderings at
+the master port for every register bit-bash already establishes as write-safe
+storage, and grades each write end to end at that register. The crossbar can
+re-serialize a write before a block adapter sees it, so the sweep makes no
+claim about the ordering each adapter port receives.
 
 Two checks per cell, because an ordering bug has two distinct signatures:
 
@@ -113,24 +112,66 @@ BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
 # reprogramming mid-sweep. None of them covers the filter CSR bank at
 # INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR: the external master must not be able
 # to rewrite the rules that gate it.
+#
+# Both bounds come from the generated register map. START is the
+# <BLOCK>_REG_MAP_BASE_ADDR of the first block in the window. END is the last
+# byte of the block span (the last block's base plus its _REG_MAP_SIZE, minus 1),
+# rounded up to the top of its 4 KB page. The page rounding is this sequence's
+# choice of a coarse window, not a filter rule. The one exception is cpu_ctrl:
+# it covers only the first 4 KB page of SEP_CPU_CTRL, which holds every
+# SEP_CPU_CTRL register the walk sweeps. The block continues into a second page
+# (SEP_CPU_CTRL_SEP_VERSION_ID_REG_ADDR) that the window leaves out.
+_WINDOW_PAGE = 0x1000
+
+
+def _page_top(addr: int) -> int:
+    """Return the last byte address of the 4 KB page that holds ``addr``."""
+    return addr | (_WINDOW_PAGE - 1)
+
+
+def _block_last_byte(block: str) -> int:
+    """Return the last byte address of ``block`` in the generated register map."""
+    return sym(f"{block}_REG_MAP_BASE_ADDR") + sym(f"{block}_REG_MAP_SIZE") - 1
+
+
 M_AXI_ALLOW_WINDOWS: tuple[tuple[str, int, int], ...] = (
-    ("dma_csr+scratch", 0x1080_0000, 0x1080_2FFF),
-    ("crypto", 0x1090_0000, 0x1091_3FFF),
-    ("mailbox", 0x10A0_0000, 0x10A0_0FFF),
-    ("cpu_ctrl", 0x10A3_0000, 0x10A3_0FFF),
-    ("spi", 0x10B0_0000, 0x10B0_0FFF),
+    # SECURE_DMA, WDT_TIMER, SEP_SCRATCH_COLD and SEP_SCRATCH_WARM.
+    (
+        "dma_csr+scratch",
+        sym("SECURE_DMA_REG_MAP_BASE_ADDR"),
+        _page_top(_block_last_byte("SEP_SCRATCH_WARM")),
+    ),
+    # OTBN through KMAC.
+    ("crypto", sym("OTBN_REG_MAP_BASE_ADDR"), _page_top(_block_last_byte("KMAC"))),
+    # Outbound and inbound mailbox 0.
+    (
+        "mailbox",
+        sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR"),
+        _page_top(_block_last_byte("AXIL_MAILBOX_INBOUND_MAILBOX_0")),
+    ),
+    (
+        "cpu_ctrl",
+        sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR"),
+        _page_top(sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")),
+    ),
+    (
+        "spi",
+        sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR"),
+        _page_top(_block_last_byte("SPI_CONTROLLER")),
+    ),
 )
 
-# A floor on the m_axi walk. BLOCK_EXCLUDE_M_AXI is the only reduction the path
-# justifies, so a map or routing change that removed more registers must fail
-# here rather than let a shrinking walk report a clean pass.
-M_AXI_CELL_FLOOR = 222
+# A floor on the m_axi walk, set to the count the walk presents: 75 registers
+# over 11 blocks, three orderings each. BLOCK_EXCLUDE_M_AXI is the only
+# reduction the path justifies, so a map or routing change that removes even one
+# register must fail here rather than let a shrinking walk report a clean pass.
+M_AXI_CELL_FLOOR = 225
 
 # The same floor for s_axi, set to the count the walk presents, like
 # M_AXI_CELL_FLOOR: slack here is registers that can go missing without failing
 # anything, and three orderings per register means even a small slack hides
 # several of them.
-S_AXI_CELL_FLOOR = 318
+S_AXI_CELL_FLOOR = 321
 
 # The three legal write orderings, as (aw_delay, w_delay) offsets. The seed
 # scales the separation; the ordering itself is fixed, so every seed covers
@@ -613,7 +654,7 @@ def _selftest() -> None:
     # not shrink below its floor.
     m = SepAxiOrderSweepCfg(1, bus="m_axi")
     assert len(m.cells) >= M_AXI_CELL_FLOOR, (
-        f"m_axi walk built {len(m.cells)} cells, below the floor of "
+        f"CHK-COVERAGE FAIL: m_axi walk built {len(m.cells)} cells, below the floor of "
         f"{M_AXI_CELL_FLOOR}; a map or routing change removed registers the "
         f"inbound master can still reach"
     )

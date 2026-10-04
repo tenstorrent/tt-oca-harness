@@ -246,7 +246,7 @@ feature rows.
 |`smc_sideband_protocol_smoke_test` |Run the AVSBus sideband CSR representative precheck.
 |`smc_telemetry_atb_capture_test` |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
 |`smc_telemetry_receiver_csr_test` |U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
-|`smc_wdt_key_csr_test` |CMP writes are gated by the KEY magic value, proven per core.
+|`smc_wdt_key_csr_test` |WDT writes are gated by the KEY magic value, COUNT_HI re-locks, and narrow writes are dropped, proven per core.
 |`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |Run zeroer over output-fabric payload bytes and check the model.
 |`smc_zeroer_multi_burst_test` |Clear a region larger than one AXI burst and check the first and last word of each half, with a witness word past the end.
@@ -310,7 +310,7 @@ feature rows.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
 |`smc_cool_reset_zero_delay_test` |FLR cool reset with the pre-reset delay at 0: no cool while the hold counter is 0, cool inside the synchroniser allowance once it is not.
 |`smc_cool_reset_x_cold_reset_test` |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
-|`smc_cpu_reset_pulse_test` |A SEP_IN core-reset pulse on core 1, and a withheld level reset whose timeout fires in give-up mode.
+|`smc_cpu_reset_pulse_test` |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode.
 |`smc_cpu_reset_source_test` |SW core0 level reset; no Force drain / no FLR isolate_req_o.
 |`smc_flr_sanity_test` |Run the SMC OSS FLR post-release sanity scenario.
 |`smc_gpio_boot_stall_test` |Pad-57 boot stall hold/release/sticky lockout.
@@ -1241,12 +1241,14 @@ Drive `smc_telemetry_receiver_csr_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: CMP writes are gated by the KEY magic value, proven per core.
+*Objective*: WDT writes are gated by the KEY magic value, COUNT_HI re-locks, and narrow writes are dropped, proven per core.
 
 *Test Coverage*:
 
 * **negative leg** -- write `CMP` with the block LOCKED; `CMP` must still read its generated reset `0x1000`;
 * **positive leg** -- write `KEY = 0x51F15E`, confirm `KEY` reads 1, write the same `CMP` probe, and require the exact probe back.
+* **COUNT_HI leg** -- `COUNT_HI` at 0xC reads 0. With the block unlocked, a 32-bit write to it leaves `COUNT` at 0 and makes `KEY` read 0.
+* **write-width leg** -- with the block unlocked, a 1-byte write to `CMP` answers OKAY, leaves `CMP` at reset and `KEY` at 1; a 2-byte write of the probe then reads back exactly and re-locks. A 1-byte write to `CTRL` byte 0 sets `wdogscale` and re-locks.
 
 *Test Procedure*:
 
@@ -1259,10 +1261,12 @@ Drive `smc_wdt_key_csr_test_seq`. Each checker below is a named compare the DUT 
 |===
 |Checker |Description
 |`CHK-WDT-KEY-PROTOCOL` |Named compare in `smc_wdt_key_csr_test_seq.py`; the run fails if it mismatches
+|`CHK-WDT-COUNTHI-RELOCK` |Named compare in `smc_wdt_key_csr_test_seq.py`; the run fails if it mismatches
+|`CHK-WDT-WRITE-WIDTH` |Named compare in `smc_wdt_key_csr_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-WDT-KEY-PROTOCOL` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-WDT-KEY-PROTOCOL`, `CHK-WDT-COUNTHI-RELOCK` and `CHK-WDT-WRITE-WIDTH` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-019-smc_wdt_timeout_pin_test]]
@@ -11997,12 +12001,14 @@ Drive `smc_regblock_partial_write_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI, SEP_IN)
 
-*Objective*: A SEP_IN core-reset pulse on core 1, and a withheld level reset whose timeout fires in give-up mode.
+*Objective*: A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, and a withheld level reset whose timeout fires in give-up mode.
 
 *Test Coverage*:
 
 * **Pulse.** `cpu_ctrl.rdl` gives each core a `RESET_CTRL.coreN_reset_pulse_start` field: a one there starts a reset pulse whose length comes from `CORE_RESET_PULSE_COUNT`, and `core_resets_done` reads low for the core while its pulse runs. The firmware boot contract had been the only writer. From SEP_IN, core 1 is pulsed with every level-reset field high, so the pending pulse and then the running pulse are each the only reset request. Core 1's `core_resets_done` bit must fall and come back, and the other cores' bits must stay high. `RESET_TIMEOUT` is set to force mode for this leg, as the boot contract does, so the pulse is applied whether or not the cluster drains.
-* **Give-up timeout.** Core 1's level reset is requested with `RESET_TIMEOUT` at `timeout_value` 1 and `timeout_mode` 0, and must read `reset_timeout` 1. It is then released, and both status bits must clear. `RESET_TIMEOUT` is restored and read back.
+* **Pulse width.** `CORE_RESET_PULSE_COUNT` is set to `pre_reset_count` 2 and `post_reset_count` 3, and core 1 is pulsed with every level-reset field high. `post_reset_count` gives the cycles, minus one, that the pulse holds the core in reset, so core 1's bit of `tb_cpu_core_resets_n`, sampled at every `clk_smc_i` edge, must read low for exactly one run of 4 cycles.
+* **Pulse with the level reset held.** `core1_reset_n_n0_scan` is written 0 and core 1's cluster reset must assert. Core 1 is then pulsed. A 0 in `core1_reset_n_n0_scan` holds the core in reset for the whole pulse, so core 1's bit of `tb_cpu_core_resets_n` must read 0 at every `clk_smc_i` sample from the pulse write until `core_resets_done` returns, including the cycle where the pulse hands back to the level reset. The level is then released and core 1's reset must deassert.
+* **Give-up timeout.** Core 1's level reset is requested with `RESET_TIMEOUT` at `timeout_value` 1 and `timeout_mode` 0, and must read `reset_timeout` 1. It is then released, and both status bits must clear. `RESET_TIMEOUT` and `CORE_RESET_PULSE_COUNT` are restored and read back.
 * **Design observation: mode 0 applies the reset after the timeout.** `cpu_ctrl.rdl` describes `timeout_mode` 0 as "give up and report error (stay withheld, do not apply)". The run read `RESET_TIMEOUT` `0x1100000001` 16 cycles after the request: `reset_timeout` 1 and `reset_applied` 1. `smc_cpu_ctrl_wrap.sv` computes `withhold = pending & ~force_apply` with `pending = sw_reset_req & ~drained_i`, so once the drain completes the request is applied in either mode. Mode 0 withholds only until the drain; it does not "stay withheld". The leaf reports `reset_applied` and does not grade it until the intended behaviour is settled.
 
 *Test Procedure*:
@@ -12016,9 +12022,11 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 |Checker |Description
 |`CHK-CPU-RST-GIVEUP` |Core 1's level reset under `timeout_mode` 0 and `timeout_value` 1 read `reset_timeout` 1, and both status bits cleared after the release
 |`CHK-CPU-RST-PULSE` |Core 1's `core_resets_done` bit fell and returned after the pulse write, with the other cores' bits high throughout
+|`CHK-CPU-RST-PULSE-HELD` |Core 1's cluster reset read 0 at every `clk_smc_i` sample of a pulse run with `core1_reset_n_n0_scan` held 0
+|`CHK-CPU-RST-PULSE-WIDTH` |With `post_reset_count` 3, core 1's cluster reset read low for one run of exactly 4 `clk_smc_i` cycles
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
 
 '''''
 
@@ -13174,7 +13182,9 @@ row, a control row, and -- where the stand-in can supply a verdict -- one row
 per enrolled leaf stating which crossing is on its proof path, what the
 verdict reads, and the result of the control. `hw/sys/smc/dv/README.md`,
 `tb/verilator_stubs/README.md` and `models/README.md` describe layout and
-enrolment and point here; the dispositions live only here.
+enrolment and point here; the dispositions live only here. The bench's one
+assertion waiver answers in place of a product mechanism without being RTL,
+so it takes its own record after the tables rather than a row in them.
 
 Kinds used in the leaf tables:
 
@@ -13205,7 +13215,7 @@ Kinds used in the leaf tables:
 |===
 |Stand-in |Control that keeps the claims honest |Owner |Review |Closes when
 |`prim_sync2/3`
-|Height-3 control: the `reset`, `clock` and `irq` groups run on VCS with the product cells, `python3 tools/dv/run_dv.py --dut smc --items reset clock irq --tool vcs --regress`, VCS X-2025.06_Full64, 35 leaves; the VCS compile list carries the product `prim_sync2.sv` / `prim_sync3.sv` from `smc_bender.f` and no stub. Run `20260914_022740__vcs__reset`, before the waiver: cocotb verdict 35 of 35 PASS with every `CHK-*` token of each card present; runner grade 35 of 35 FAIL, all on one message class -- the PeakRDL immediate assertions `assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in `cpu_ctrl_reg`, `reset_unit_reg` and `system_timer_octs_reg` (six sites) each report once `at time 0 fs`, before any reset, while `arst_n` and the ack strobes are still X; no leaf reports them at a later time. That class is waived in `smc_sim_cfg.toml` `[pass_fail]` in the form SEP uses for `abr_reg`: an ignore pattern naming exactly these six assertions together with the `at time 0 fs` text, paired with a hard-fail pattern that turns a later firing of the same assertions into an error. Run `20260914_035111__vcs__reset`, with the waiver committed and the tree clean (`result.json` `git.dirty = false`): cocotb 35 of 35 PASS, runner 35 of 35 PASS, the six time-0 lines recorded as `IGNORED` evidence in every leaf and no `Error:` line at any later time. One product assertion fires at a non-zero time and is not waived: `prim_ag_clk_mux.sv` `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux` at 4688 ns in `smc_cg_dft_reset_bringup_test`, the DFT `test_en_i` bypass leaf, on seed 1611842931 (the control run's seed). The waived regression drew seed 1024727039 and did not reach it; a replay of the leaf on seed 1611842931 with the waiver in place (`20260914_035535__vcs__dft_seed1611842931`) fires it again and is graded FAIL on that line, so the firing is seed-dependent and the waiver does not cover it. Verilator compiles assertions out, so only a commercial run can see it. Neither observation depends on the synchroniser cells. The group selection excludes five entries of the three testlist files (named above the reset-group leaf table); run `20260914_031352__vcs__standin_files_minus_groups` covered those five on the same VCS build: cocotb 5 of 5 PASS, runner 5 of 5 PASS, no assertion after time 0.
+|Height-3 control: the `reset`, `clock` and `irq` groups run on VCS with the product cells, `python3 tools/dv/run_dv.py --dut smc --items reset clock irq --tool vcs --regress`, VCS X-2025.06_Full64, 35 leaves; the VCS compile list carries the product `prim_sync2.sv` / `prim_sync3.sv` from `smc_bender.f` and no stub. Before the waiver, with the `[pass_fail]` block of `smc_sim_cfg.toml` removed: cocotb verdict 35 of 35 PASS with every `CHK-*` token of each card present; runner grade 35 of 35 FAIL, all on one message class -- the PeakRDL immediate assertions `assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in `cpu_ctrl_reg`, `reset_unit_reg` and `system_timer_octs_reg` (six sites) each report once `at time 0 fs`, before any reset, while `arst_n` and the ack strobes are still X; no leaf reports them at a later time. That class is waived in `smc_sim_cfg.toml` `[pass_fail]` in the form SEP uses for `abr_reg`: an ignore pattern naming exactly these six assertions together with the `at time 0 fs` text, paired with a hard-fail pattern that turns a later firing of the same assertions into an error. With the waiver committed and the tree clean (`result.json` `git.dirty = false`), the same command: cocotb 35 of 35 PASS, runner 35 of 35 PASS, the six time-0 lines recorded as `IGNORED` evidence in every leaf and no `Error:` line at any later time. One product assertion fires at a non-zero time and is not waived: `prim_ag_clk_mux.sv` `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux` at 4688 ns in `smc_cg_dft_reset_bringup_test`, the DFT `test_en_i` bypass leaf, on seed 1611842931 (the control run's seed). The waived regression drew seed 1024727039 and did not reach it; a replay of the leaf on seed 1611842931 with the waiver in place, `python3 tools/dv/run_dv.py --dut smc --items smc_cg_dft_reset_bringup_test --tool vcs --seed 1611842931`, fires it again and is graded FAIL on that line, so the firing is seed-dependent and the waiver does not cover it. Verilator compiles assertions out, so only a commercial run can see it. Neither observation depends on the synchroniser cells. The group selection excludes five entries of the three testlist files (named above the reset-group leaf table); `python3 tools/dv/run_dv.py --dut smc --items <the five names> --tool vcs --regress` covered those five on the same VCS build: cocotb 5 of 5 PASS, runner 5 of 5 PASS, no assertion after time 0.
 |minshaoho (`9282d8c14`)
 |2026-12-15
 |Either the stand-ins leave the build (the removal plan is tracked with the shared `prim_*` shims), or the `CheckMutualExclusionClk1` firing is resolved and a repeat of this control on seed 1611842931 is graded green by the runner. #1854 tracks that firing (defect under DFT bypass, or an assertion that must be disabled while `test_en_i` is high); it is the one open runner FAIL of this control.
@@ -13215,6 +13225,47 @@ Kinds used in the leaf tables:
 |2026-12-15
 |Real PLL / PVT IP lands on the wrapper; the six retired consumers are then restored from git history per their rows above and re-graded against the real blocks.
 |===
+
+====== Bench-scope assertion waiver
+
+The `[pass_fail]` pair of `smc_sim_cfg.toml` is the other thing that answers
+in place of a product mechanism on this bench: it decides, for every leaf,
+which assertion failure the runner reads as a failure. It is not DV-owned
+RTL, so it takes its own record rather than a row in the inventory above, and
+the same six fields: what is accepted with it in place, why the real path
+cannot be used, the exact scope, an approver, a date, and the command that
+re-confirms the entry against the tree.
+
+[cols="1,4",options="header"]
+|===
+|Field |Value
+|Claim |A leaf graded PASS has had every assertion of the run read, apart from
+the six PeakRDL external-ack assertions at time 0
+|Why |`assert_bad_ext_wr_ack` and `assert_bad_ext_rd_ack` in `cpu_ctrl_reg`,
+`reset_unit_reg` and `system_timer_octs_reg` are immediate assertions in the
+post-reset branch of an `always_ff`. On a four-state simulator the first clock
+edge sees `arst_n` and the ack strobes at X and each fires once at `0 fs`. The
+blocks are generated, so the assertion cannot be gated in the tree, and
+`$assertoff` races the time-0 evaluation
+|Scope |One `extra_ignore_patterns` entry and one `extra_hard_fail_patterns`
+entry of `smc_sim_cfg.toml` `[pass_fail]`, naming those six assertions and no
+others. The ignore matches only the `at time 0 fs` text; the hard-fail matches
+the companion timestamped line with a non-zero `failed at`, so a later firing
+of the same assertions fails the run. No other assertion is touched:
+`prim_ag_clk_mux` `CheckMutualExclusionClk1` still fails the leaf that fires
+it, which the control above records
+|Approver |minshaoho (`24f22f088`)
+|Date |2026-12-15 review, against the `[pass_fail]` block at this branch's head
+|Closes when |The generated blocks stop asserting on an X ack strobe, or the
+bench drives `arst_n` and the ack strobes to a defined value before the first
+clock edge. Either removes the pair
+|===
+
+Re-confirm: `grep -n 'assert_bad_ext' hw/sys/smc/dv/smc_sim_cfg.toml` prints
+exactly two pattern lines, one under `extra_ignore_patterns` carrying
+`at time 0 fs` and one under `extra_hard_fail_patterns` carrying
+`failed at [1-9]`, and no third. A row that prints anything else is an entry
+that has gone stale, and the entry is what needs the edit.
 
 ====== prim_sync3 crossings in the DUT
 
@@ -13464,7 +13515,7 @@ Buckets:
 The cocotb test names of this package have their own record,
 <<smc-deferred-disposition>>; rows below that cite a waived cocotb alias
 point at it. SMU's record of the tests that stage SMC images is
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 ===== Enrolled images
 

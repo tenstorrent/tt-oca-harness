@@ -1110,6 +1110,11 @@ args = [
 ]
 
 [[tests]]
+# Every programmed base and size is written and probed over JTAG2AXI, so the
+# span is set by the JTAG period and the far-end handshakes.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
 name = "smu_aperture_map_walk_test"
 module = "smu_aperture_map_walk_test"
 target = "compile_smu_chiplet"
@@ -1129,9 +1134,15 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
 ]
 
 [[tests]]
+# Every AxSIZE access is issued over JTAG2AXI and completes on smu_axi_out, so
+# the span is set by the JTAG period and the outbound handshakes.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
 name = "smu_axi_out_addr_len_size_test"
 module = "smu_axi_out_addr_len_size_test"
 target = "compile_smu_chiplet"
@@ -1151,6 +1162,7 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
 ]
 
 [[tests]]
@@ -1788,6 +1800,11 @@ args = [
 ]
 
 [[tests]]
+# Every transaction of the walk is issued over JTAG and completes at the far
+# end of a bridge, so the span is set by the JTAG period and the handshakes.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
 name = "smu_dtp_jtag2axi_address_walk_test"
 module = "smu_dtp_jtag2axi_address_walk_test"
 target = "compile_smu_chiplet"
@@ -1807,6 +1824,7 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  "+pll_sys_period_ns=10",
 ]
 
 [[tests]]
@@ -1995,6 +2013,11 @@ args = [
 ]
 
 [[tests]]
+# Every access is driven through the SEP debug module's system bus over JTAG
+# DMI, so the span is set by the JTAG period and the far-end handshakes.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
 name = "smu_sep_sba_fabric_sweep_test"
 module = "smu_sep_sba_fabric_sweep_test"
 target = "compile_smu_chiplet"
@@ -2015,6 +2038,7 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   # TEST_DEV: SEP debug open, so the debug module's system bus is reachable.
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  "+pll_sys_period_ns=10",
 ]
 
 [[tests]]
@@ -2043,6 +2067,11 @@ args = [
 ]
 
 [[tests]]
+# Every fuse command is driven through the SEP debug module's system bus over
+# JTAG DMI, so the span is set by the JTAG period and the command handshakes.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
 name = "smu_efuse_command_test"
 module = "smu_efuse_command_test"
 target = "compile_smu_chiplet"
@@ -2066,6 +2095,7 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   # TEST_DEV: SEP debug open, so the debug module's system bus is reachable.
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  "+pll_sys_period_ns=10",
 ]
 
 [[tests]]
@@ -2092,6 +2122,12 @@ args = [
 ]
 
 [[tests]]
+# The aperture windows are programmed through the SEP debug module's system
+# bus over JTAG DMI around the inbound ext_in transfers, so the span is set by
+# the JTAG period and the handshakes.
+# +pll_sys_period_ns=10 runs the SMU core at 100 MHz, one of the two periods
+# pll_wrap offers, so the bench toggles the core clock an eighth as often over
+# that span.
 name = "smu_axi_in_sep_aperture_test"
 module = "smu_axi_in_sep_aperture_test"
 target = "compile_smu_chiplet"
@@ -2113,6 +2149,7 @@ args = [
   # TEST_DEV: every SEP debug path open, so the DTP forwards TMS to the SEP
   # STAP and the debug module's system bus is reachable.
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+  "+pll_sys_period_ns=10",
 ]
 
 [[tests]]
@@ -2777,7 +2814,7 @@ expected_count = 84
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
 # `--items all` keeps meaning "all of it". Scenarios that cannot run or cannot
-# pass on this bench are not entries here; hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc
+# pass on this bench are not entries here; hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc
 # records them and why.
 [[groups]]
 name = "all"

@@ -23,8 +23,12 @@ from seq_lib.sep_km_mailbox_seq import KM_MBOX_WRITE_DATA, KM_MBOX_WRITE_SEPARAT
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
 
 N_SLOTS = 64
-# Region 0 holds the result word; an SRAM lock on region 15 hangs the KM.
-LEGAL_REGIONS = tuple(r for r in range(1, 31) if r != 15)
+# km_csr.rdl SRAM_LOCK defines 32 lockable 1 KB regions (0..31). Region 0 is
+# excluded because it holds the result words at 0x8000 and 0x8004: SRAM_LOCK
+# is write-1-set until warm reset, so a lock there drops the ROM's final store.
+# Every other region is drawn.
+N_LOCK_REGIONS = 32
+LEGAL_REGIONS = tuple(range(1, N_LOCK_REGIONS))
 # Result word: magic in [31:24], a fold of the received config word in [23:16],
 # and the checker flags in [15:0].
 RESULT_MAGIC = 0xA1

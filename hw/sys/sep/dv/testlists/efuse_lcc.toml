@@ -105,6 +105,24 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
+# Program with and without EFUSE_PROGRAM_CTRL.efuse_program_read_back against a
+# dropped bank write. The bank model drops the first two writes after reset, so
+# the read-back and plain legs each see one dropped and one kept write. RANDCFG:
+# the seed selects the spare and the two bits. Real fuse sense.
+name = "sep_efuse_program_read_back_select_test"
+module = "efuse.sep_efuse_program_read_back_select_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = [
+    "+sep_efuse_prog_fail_count=2",
+    "+sep_efuse_prog_fail_percent=0",
+    "+sep_efuse_prog_fail_seed={seed}",
+]
+
+[[tests]]
 # Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset. RAND-REP.
 # feat_ctrl vs spec golden and one live inbound-filter gate per cell. Real fuse
 # sense. The stitch test stays the LC->feat_ctrl e2e.

@@ -14,7 +14,8 @@
 // PASS/FAIL magic on the mailbox):
 //   * overlap: the mid-flight status shows the DMA busy and not done;
 //   * the DMA reaches done with no error status and a zero error code;
-//   * the done status bits clear on write-1-to-clear in the polled path;
+//   * the done status still reads set after the poll and clears on
+//     write-1-to-clear in the polled path;
 //   * every copied destination word equals the source pattern;
 //   * every CPU-written word equals the CPU pattern;
 //   * together these show neither master starved: a starved DMA never reaches
@@ -94,6 +95,8 @@ int main(void) {
         }
     }
     uint32_t err_code = sep_dma_rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t st_pre_w1c = 0;
+    uint32_t st_after_w1c = 0;
     if (st & SECURE_DMA__STATUS__ERROR_bm) {
         sep_mbx_puts("FAIL: DMA error, ERROR_CODE=");
         sep_mbx_puthex(err_code);
@@ -108,16 +111,27 @@ int main(void) {
         sep_mbx_putc('\n');
         errors++;
     } else {
-        // STATUS RW1C clear contract (the polled path must prove it too).
-        uint32_t rw1c = SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm;
-        sep_dma_wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, rw1c);
-        __asm__ volatile("fence" ::: "memory");
-        uint32_t st_after = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
-        if (st_after & rw1c) {
-            sep_mbx_puts("FAIL: DMA STATUS RW1C did not clear, STATUS=");
-            sep_mbx_puthex(st_after);
+        // STATUS RW1C clear contract (the polled path must prove it too). Done
+        // must still read set on a second read after the poll, so a read does
+        // not clear it and it does not drop by itself; the clear seen after the
+        // write is then the write's.
+        st_pre_w1c = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        if (!(st_pre_w1c & SECURE_DMA__STATUS__DONE_bm)) {
+            sep_mbx_puts("FAIL: CHK-RW1C DMA DONE not sticky before W1C, STATUS=");
+            sep_mbx_puthex(st_pre_w1c);
             sep_mbx_putc('\n');
             errors++;
+        } else {
+            uint32_t rw1c = SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm;
+            sep_dma_wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, rw1c);
+            __asm__ volatile("fence" ::: "memory");
+            st_after_w1c = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+            if (st_after_w1c & rw1c) {
+                sep_mbx_puts("FAIL: CHK-RW1C DMA STATUS RW1C did not clear, STATUS=");
+                sep_mbx_puthex(st_after_w1c);
+                sep_mbx_putc('\n');
+                errors++;
+            }
         }
     }
 
@@ -144,7 +158,11 @@ int main(void) {
         sep_mbx_puts("PASS: DMA(2KiB) + CPU(256B) SRAM contention; overlap "
                      "STATUS=");
         sep_mbx_puthex(st_mid);
-        sep_mbx_puts(", ERROR_CODE=0, DONE+RW1C clear, dst==src, cont==cpu\n");
+        sep_mbx_puts(", ERROR_CODE=0, DONE+RW1C clear (pre=");
+        sep_mbx_puthex(st_pre_w1c);
+        sep_mbx_puts(" post=");
+        sep_mbx_puthex(st_after_w1c);
+        sep_mbx_puts("), dst==src, cont==cpu\n");
     }
     return errors;
 }

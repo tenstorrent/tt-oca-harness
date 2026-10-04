@@ -228,6 +228,20 @@ What remains in GROUP is the `u_smu_*_fcov::cg_*` set, the covergroup half of
 the wrapper's functional coverage; `cov/sv` cover properties are the other
 half and are read under `assertion`.
 
+## The companion bench's exclusion set
+
+The companion carries an SV-UVM bench for the SMU, and it grades a different
+top from the one `--dut smu` builds. That bench has its own coverage
+regression configuration and its own exclusion set, several of whose file
+names read like the classes here; this policy reads none of them, and the
+runner merges none of them with the files here. The two flows therefore
+answer over two populations, and the figure
+`hw/sys/smu/dv/docs/SMU_COVERAGE_POLICY.adoc` quotes is the `run_dv.py` one:
+scoped by `smu_wrapper_cov_scope.hier` at compile time and graded after the
+lists `smu_wrapper_coverage_policy.toml` names. A file under that bench whose
+name resembles a class here is not in this population, and an exclusion
+accepted on one flow argues nothing on the other.
+
 ## Reading a finished run
 
 ```
@@ -242,8 +256,8 @@ toolchain-free subset the workflows run and leaves that stimulus out.
 The runner compiles with the scope, runs the group, merges, writes the urg
 report with the exclusion files, and prints one `coverage` line with every
 family as raw/effective; `smu_wrapper_coverage_policy.toml` floors `user` at
-100 percent and `toggle` and `assertion` at 80 percent, and the result carries
-`coverage=PASS` or `FAIL`. Nothing else is run. `toggle` is urg's TOGGLE column
+100 percent and sets no code-metric floor, so the `coverage=PASS` or `FAIL`
+the result carries grades the cover-property population alone. Nothing else is run. `toggle` is urg's TOGGLE column
 after the exclusions; `user` is the cov/sv `cover property` points, which the
 runner reads from the cover-property summary of `cov/report/asserts.txt`;
 `assertion` is urg's ASSERT column, those points together with the

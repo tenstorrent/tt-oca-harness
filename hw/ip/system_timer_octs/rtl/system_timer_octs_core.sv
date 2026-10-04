@@ -6,10 +6,11 @@
 // Primary emits sync and credit; secondary consumes them and may step by
 // timer_cnt_step_i.
 // A primary counts up by one per cycle from the preset loaded on reg_start_i and pulses
-// timer_cnt_credit_o every reg_credit_val_i cycles. A secondary loads the preset on a sync
-// pulse, adds timer_cnt_step_i each cycle until the steps since the last pulse reach
-// reg_credit_val_i, and on each credit pulse jumps to the expected count, which grows by
-// reg_credit_val_i per pulse. Inbound pulses are synchronized into clk_i and edge detected.
+// timer_cnt_credit_o every reg_credit_val_i cycles. A secondary ignores reg_start_i and
+// starts on a sync pulse; it loads the preset there, adds timer_cnt_step_i each cycle until
+// the steps since the last pulse reach reg_credit_val_i, and on each credit pulse jumps to
+// the expected count, which grows by reg_credit_val_i per pulse. Inbound pulses are
+// synchronized into clk_i and edge detected.
 // Once started, the timer runs until reset.
 // Register ports are bus-agnostic.
 // credit_expired_o counts clk_i cycles a secondary spends without credits and clears on a
@@ -27,9 +28,9 @@ module system_timer_octs_core
     input  logic                  is_primary_i,             // Runtime primary/secondary mode
                                                             // select; 1 selects primary.
 
-    input  logic                  reg_start_i,              // Software start pulse; in primary mode
-                                                            // loads the preset and emits
-                                                            // timer_sync_load_o.
+    input  logic                  reg_start_i,              // Software start pulse; loads the preset
+                                                            // and emits timer_sync_load_o. Ignored
+                                                            // in secondary mode.
     input  logic [7:0]            reg_credit_val_i,         // Credit period in cycles for a primary
                                                             // and count advance per credit pulse
                                                             // for a secondary; must exceed the
@@ -77,6 +78,7 @@ module system_timer_octs_core
 
     // Register enable signals
     logic                      enable;
+    logic                      primary_start;
 
     // Timer preset signals
     logic [63:0]               timer_preset;
@@ -131,11 +133,15 @@ module system_timer_octs_core
         end
     end
 
+    // A secondary has no path to the preset other than a sync-load pulse, so enabling it any
+    // other way leaves it counting from zero.
+    assign primary_start = is_primary_i & reg_start_i;
+
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (~rst_ni) begin
             enable <= 1'b0;
         end else begin
-            enable <= enable | reg_start_i | timer_sync_load_sync_posedge;
+            enable <= enable | primary_start | timer_sync_load_sync_posedge;
         end
     end
 
@@ -208,7 +214,7 @@ module system_timer_octs_core
     always_comb begin
         timer_count_d = timer_count_q;
 
-        if (~enable && ~reg_start_i && ~timer_sync_load_sync_posedge) begin
+        if (~enable && ~primary_start && ~timer_sync_load_sync_posedge) begin
             timer_count_d = 64'b0;
         end else if (is_primary_i) begin
             if (reg_start_i) begin
@@ -334,7 +340,7 @@ module system_timer_octs_core
             pulse_active  <= PULSE_IDLE;
         end else begin
             // Start a new pulse on trigger of sync load
-            if (reg_start_i && pulse_active == PULSE_IDLE) begin
+            if (primary_start && pulse_active == PULSE_IDLE) begin
                 pulse_counter <= 8'h0;
                 pulse_active  <= PULSE_SYNC_LOAD;
             end
@@ -367,9 +373,9 @@ module system_timer_octs_core
     assign timer_sync_load_o        = is_primary_i ? pulse_active == PULSE_SYNC_LOAD  : 1'b0;
     assign timer_cnt_credit_o       = is_primary_i ? pulse_active == PULSE_CREDIT     : 1'b0;
 
-    `OCAH_OT_ASSERT(TimerCountZero_A, (~enable && ~reg_start_i && ~timer_sync_load_sync_posedge) -> (timer_count_q == 64'h0)) // Timer count should be 0 when enable is 0 and not starting
-    `OCAH_OT_ASSERT(TimerCntCreditZero_A, (~enable && ~reg_start_i) -> (~timer_cnt_credit_o)) // Timer credit should be 0 when enable is 0 and not starting
-    `OCAH_OT_ASSERT(TimerSyncLoadZero_A, (~enable && ~reg_start_i) -> (~timer_sync_load_o)) // Timer sync load should be 0 when enable is 0 and not starting
+    `OCAH_OT_ASSERT(TimerCountZero_A, (~enable && ~primary_start && ~timer_sync_load_sync_posedge) -> (timer_count_q == 64'h0)) // Timer count should be 0 when enable is 0 and not starting
+    `OCAH_OT_ASSERT(TimerCntCreditZero_A, (~enable && ~primary_start) -> (~timer_cnt_credit_o)) // Timer credit should be 0 when enable is 0 and not starting
+    `OCAH_OT_ASSERT(TimerSyncLoadZero_A, (~enable && ~primary_start) -> (~timer_sync_load_o)) // Timer sync load should be 0 when enable is 0 and not starting
 
     // Register interface outputs
     assign reg_mode_o               = is_primary_i ? 1'b0 : 1'b1;

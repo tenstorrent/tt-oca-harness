@@ -1,32 +1,48 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Unit tests for the VCS stage helpers (cocotb runner build args, UVM precompile).
+"""Unit tests for the VCS stage helpers (cocotb runner build args, UVM precompile) and the
+build identity a leaf on a pre-built model reports.
 
 Run from the repository root:
 
     python3 -m unittest discover tools/dv/tests
 """
 
+import io
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 from argparse import Namespace
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from runlib import stages  # noqa: E402
+from runlib.cli import parse_args  # noqa: E402
+from runlib.config import load_simulators, load_test_catalog, merge_simulator_defaults  # noqa: E402
+from runlib.duts import resolve_dut  # noqa: E402
+from runlib.logparse import validate_parser_registry  # noqa: E402
+from runlib.models import Dut, TestCatalog, TestEntry  # noqa: E402
 from runlib.stages import (  # noqa: E402
     COCOTB_RUNNER_TOOLS,
     COCOTB_VCS_DEFAULT_ACCESS,
     _build_jobs_arg,
     _cocotb_build_args,
     _last_plusarg_wins,
+    _prebuilt_target_build,
     _uvm_testname_override,
     _vcs_cocotb_access,
     _vcs_uvm_precompile_cmd,
     cocotb_vcs_access,
     expand_ocah_vendor_define_aliases,
+    mark_cocotb_prebuilt,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def make_args(define: list | None = None) -> Namespace:
@@ -133,6 +149,160 @@ class LastPlusargWins(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PrebuiltBuildIdentity(unittest.TestCase):
+    """A leaf on a model built earlier in the run reports that build's identity."""
+
+    RECORDED = {
+        "target": "default",
+        "tool": "vcs",
+        "build_dir": "/runs/model",
+        "fingerprint": "efba240c5e52",
+    }
+    # What a leaf computes on a host where `vcs -ID` timed out: same model, other digest.
+    DRIFTED = {
+        "target_name": "default",
+        "sim_build": Path("/runs/elsewhere"),
+        "fingerprint": "c670ed085301",
+        "filelist": None,
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.policies = validate_parser_registry(REPO_ROOT)
+        cls.simulators = load_simulators(REPO_ROOT)
+
+    def test_a_prebuilt_target_returns_the_identity_its_build_recorded(self):
+        args = Namespace()
+        mark_cocotb_prebuilt(args, "default", self.RECORDED)
+        self.assertEqual(_prebuilt_target_build(args, "default"), self.RECORDED)
+        self.assertIsNone(_prebuilt_target_build(args, "other"))
+
+    def test_a_target_marked_without_a_build_directory_has_no_identity(self):
+        args = Namespace()
+        mark_cocotb_prebuilt(args, "default")
+        self.assertIsNone(_prebuilt_target_build(args, "default"))
+        mark_cocotb_prebuilt(args, "default", {"fingerprint": "efba240c5e52"})
+        self.assertIsNone(_prebuilt_target_build(args, "default"))
+
+    def test_a_wave_debug_rerun_computes_its_own_identity(self):
+        args = Namespace(_wave_debug_rerun=True)
+        mark_cocotb_prebuilt(args, "default", self.RECORDED)
+        self.assertIsNone(_prebuilt_target_build(args, "default"))
+
+    def run_sim_leaf(self, args: Namespace):
+        root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        raw = {"native": {"stages": {"sim": {"kind": "cocotb_sim"}}}}
+        flow = Dut(
+            name="fixture",
+            kind="sim",
+            description="build identity fixture",
+            framework="cocotb",
+            visibility="public",
+            runnability="runnable",
+            license="Apache-2.0",
+            root="dut",
+            default_tool="vcs",
+            tools=["vcs"],
+            path=root / "dut" / "fixture_sim_cfg.toml",
+            raw=raw,
+            frameworks=["cocotb"],
+            default_framework="cocotb",
+        )
+        catalog = TestCatalog(
+            path=None, groups={}, tests={"t_x": TestEntry(name="t_x", module="t_x")}
+        )
+        with (
+            mock.patch.object(stages, "cocotb_sim", return_value=0),
+            mock.patch.object(stages, "_cocotb_build_info", return_value=self.DRIFTED),
+            mock.patch.object(stages, "_sim_test_args", return_value=[]),
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()),
+        ):
+            return stages.run_stage(
+                flow,
+                root,
+                raw,
+                catalog,
+                "sim",
+                "t_x",
+                args,
+                "vcs",
+                root / "run",
+                self.simulators,
+                self.policies,
+            )
+
+    def leaf_args(self) -> Namespace:
+        return Namespace(
+            dry_run=False,
+            quiet=True,
+            verbose=False,
+            timeout=None,
+            ui="plain",
+            seed=None,
+            sim_jobs=1,
+            cov=False,
+            waves=None,
+            rebuild=False,
+            run_mode=None,
+        )
+
+    def test_a_sim_leaf_records_the_build_identity_over_its_own_recomputation(self):
+        args = self.leaf_args()
+        mark_cocotb_prebuilt(args, "default", self.RECORDED)
+        result = self.run_sim_leaf(args)
+        target_build = result.metadata["target_build"]
+        self.assertEqual(
+            (target_build["build_dir"], target_build["fingerprint"]),
+            ("/runs/model", "efba240c5e52"),
+        )
+        self.assertEqual(result.metadata["provenance"]["build_fingerprint"], "efba240c5e52")
+
+    def test_a_sim_leaf_runs_the_model_its_build_recorded(self):
+        flow = resolve_dut(REPO_ROOT, "dtp")
+        sim_cfg = merge_simulator_defaults(flow.raw, self.simulators, ["verilator"])
+        catalog = load_test_catalog(flow, REPO_ROOT)
+        item = sorted(catalog.tests)[0]
+        args = parse_args(["--dut", "dtp", "--items", item, "--tool", "verilator", "--dry-run"])
+        mark_cocotb_prebuilt(args, "default", self.RECORDED)
+        computed = stages._cocotb_build_info
+
+        def drifted(*call_args, **kwargs):
+            info = computed(*call_args, **kwargs)
+            info["sim_build"] = self.DRIFTED["sim_build"]
+            return info
+
+        leaf = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, leaf, ignore_errors=True)
+        console = io.StringIO()
+        with (
+            mock.patch.object(stages, "_cocotb_build_info", side_effect=drifted),
+            redirect_stdout(console),
+        ):
+            rc = stages.cocotb_sim(
+                flow,
+                REPO_ROOT,
+                sim_cfg,
+                catalog,
+                item,
+                args,
+                "verilator",
+                leaf,
+                leaf / "sim.log",
+                leaf / "sim.sh",
+                leaf / "sim.env",
+                1,
+            )
+        self.assertEqual(rc, 0)
+        builds = [line for line in console.getvalue().splitlines() if "build=" in line]
+        self.assertTrue(builds and all("build=/runs/model " in line for line in builds), builds)
+
+    def test_without_a_recorded_identity_the_leaf_keeps_its_own(self):
+        result = self.run_sim_leaf(self.leaf_args())
+        self.assertEqual(result.metadata["target_build"]["fingerprint"], "c670ed085301")
 
 
 class CocotbVcsRunnerBuildArgs(unittest.TestCase):

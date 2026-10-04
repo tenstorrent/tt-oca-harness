@@ -34,8 +34,10 @@ from seq_lib.sep_abr_keygen_seq import (
     ABR_VERSION1,
     CMD_KEYGEN,
     CTRL_ZEROIZE,
+    ERROR_INTERNAL_STS,
     IRQ_ABR_ERROR,
     IRQ_ABR_NOTIF,
+    NOTIF_CMD_DONE_STS,
     PK_WORDS,
     ST_ERROR,
     ST_READY,
@@ -126,11 +128,16 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
                 break
         assert saw_err, "[34] stayed low after error_intr_trig (probe stuck-low / enable missed)"
         err_st = await abr.error_state()
-        assert err_st & 1, f"error_internal_sts=0x{err_st:x} after trigger"
-        err_st = await abr.w1c_error()
-        assert (err_st & 1) == 0, f"error_internal_sts=0x{err_st:x} after W1C"
+        assert err_st == ERROR_INTERNAL_STS, f"error_internal_sts=0x{err_st:x} after trigger"
+        err_clr = await abr.w1c_error()
+        assert err_clr == 0, f"error_internal_sts=0x{err_clr:x} after W1C"
         assert await self._irq(IRQ_ABR_ERROR) == 0, "[34] still high after error_internal_sts W1C"
-        self.logger.info("CHK-PIC-ERROR PASS: [34] 0->1 via error_intr_trig, W1C readback 0")
+        self.logger.info(
+            "CHK-PIC-ERROR PASS: [34] 0->1 via error_intr_trig, error_internal_sts=0x%x "
+            "after trigger, 0x%x after W1C",
+            err_st,
+            err_clr,
+        )
 
         pk = await self._keygen(abr, list(NIST_KG_SEED), cfg.entropy, what="nist-keygen")
         mismatch = next((i for i, (g, e) in enumerate(zip(pk, NIST_KG_PK)) if g != e), None)
@@ -147,11 +154,16 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         self.logger.info("CHK-PIC-NOTIF PASS: [35]=1 [34]=0")
 
         notif_st = await abr.notif_state()
-        assert notif_st & 1, f"notif_internal_sts=0x{notif_st:x} after keyGen"
-        notif_st = await abr.w1c_notif()
-        assert (notif_st & 1) == 0, f"notif_internal_sts=0x{notif_st:x} after W1C"
+        assert notif_st == NOTIF_CMD_DONE_STS, f"notif_cmd_done_sts=0x{notif_st:x} after keyGen"
+        notif_clr = await abr.w1c_notif()
+        assert notif_clr == 0, f"notif_cmd_done_sts=0x{notif_clr:x} after W1C"
         assert await self._irq(IRQ_ABR_NOTIF) == 0, "[35] still high after notif_internal_sts W1C"
-        self.logger.info("CHK-PIC-NOTIF-W1C PASS: [35] 1->0 via notif_internal_sts W1C")
+        self.logger.info(
+            "CHK-PIC-NOTIF-W1C PASS: [35] 1->0 via notif_internal_sts W1C, "
+            "notif_cmd_done_sts=0x%x after keyGen, 0x%x after W1C",
+            notif_st,
+            notif_clr,
+        )
 
         # MLDSA_STATUS.READY is driven by abr_ready = (abr_prog_cntr ==
         # ABR_RESET) (abr_ctrl.sv), which is LOW through the ABR_ZEROIZE walk --
@@ -164,6 +176,15 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         # whether or not the memory walk ran. This proves the window is no
         # longer readable, NOT that the RAM was wiped. Proving the wipe needs a
         # probe on the pubkey RAM or on zeroize_mem_done; it is not claimed.
+        #
+        # VALID is read set just before the ZEROIZE write, after the IRQ probe
+        # reads and the notif W1C, so the 1->0 change is shown around the write.
+        st_pre = await abr.rd32(ABR_STATUS)
+        assert (st_pre & ST_VALID) and not (st_pre & ST_ERROR), (
+            f"CHK-ZEROIZE FAIL: pre-zeroize STATUS=0x{st_pre:08x}, expected VALID=1 "
+            "ERROR=0: VALID must be set before ZEROIZE for its drop to be credited "
+            "to ZEROIZE"
+        )
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         st_z = await self._wait_status(abr, ST_VALID, 0, what="post-zeroize VALID clear")
         assert (st_z & ST_ERROR) == 0, f"post-zeroize STATUS=0x{st_z:08x}, expected VALID=0 ERROR=0"
@@ -176,8 +197,11 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
             f"first at index {live[0][0]}=0x{live[0][1]:08x}"
         )
         self.logger.info(
-            "CHK-ZEROIZE PASS: VALID=0 and all %d pubkey words read 0 (read-gated, "
-            "not a proven RAM wipe)",
+            "CHK-ZEROIZE PASS: STATUS=0x%08x (VALID=1) before ZEROIZE, 0x%08x "
+            "(VALID=0) after, and all %d pubkey words read 0 (read-gated, not a "
+            "proven RAM wipe)",
+            st_pre,
+            st_z,
             PK_WORDS,
         )
 

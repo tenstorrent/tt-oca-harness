@@ -22,6 +22,7 @@ from env.sep_spec_tables import (
     kv_field_mask,
     window,
 )
+from sep_reg_meta import sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -37,6 +38,7 @@ ABR_SEED = ABR_BASE + abr_off("MLDSA_SEED")
 ABR_PUBKEY = ABR_BASE + abr_off("MLDSA_PUBKEY")
 ABR_MLDSA_KV_RD_SEED_CTRL = ABR_BASE + abr_off("kv_mldsa_seed_rd_ctrl")
 ABR_KV_RD_SEED_READ_EN = kv_field_mask("kv_read_ctrl_reg", "read_en")
+ABR_MLDSA_KV_RD_SEED_STATUS = sym("ABR_KV_MLDSA_SEED_RD_STATUS_REG_ADDR")
 ABR_INTR = ABR_BASE + abr_off("intr_block_rf")
 ABR_GLOBAL_INTR_EN = ABR_INTR + abr_off("global_intr_en_r")
 ABR_ERROR_INTR_EN = ABR_INTR + abr_off("error_intr_en_r")
@@ -80,7 +82,13 @@ IRQ_ABR_NOTIF = agg_from_pic("Adams Bridge notification")
 INTR_ERROR_EN = abr_field_mask("global_intr_en_r", "error_en")
 INTR_NOTIF_EN = abr_field_mask("global_intr_en_r", "notif_en")
 INTR_GLOBAL_BOTH = INTR_ERROR_EN | INTR_NOTIF_EN
-INTR_EVENT_EN = abr_field_mask("error_intr_en_r", "error_internal_en")
+# Each interrupt register takes the mask of its own RDL field, so a field that
+# moves inside its register moves the write and the readback compare with it.
+ERROR_INTERNAL_EN = abr_field_mask("error_intr_en_r", "error_internal_en")
+NOTIF_CMD_DONE_EN = abr_field_mask("notif_intr_en_r", "notif_cmd_done_en")
+ERROR_INTERNAL_TRIG = abr_field_mask("error_intr_trig_r", "error_internal_trig")
+ERROR_INTERNAL_STS = abr_field_mask("error_internal_intr_r", "error_internal_sts")
+NOTIF_CMD_DONE_STS = abr_field_mask("notif_internal_intr_r", "notif_cmd_done_sts")
 
 
 class SepAbrKeygenCfg:
@@ -127,28 +135,30 @@ class SepAbr(SepAxiRegDriver):
 
     async def enable_notif(self) -> None:
         await self.wr32(ABR_GLOBAL_INTR_EN, INTR_GLOBAL_BOTH)
-        await self.wr32(ABR_ERROR_INTR_EN, INTR_EVENT_EN)
-        await self.wr32(ABR_NOTIF_INTR_EN, INTR_EVENT_EN)
+        await self.wr32(ABR_ERROR_INTR_EN, ERROR_INTERNAL_EN)
+        await self.wr32(ABR_NOTIF_INTR_EN, NOTIF_CMD_DONE_EN)
 
     async def trigger_error(self) -> None:
         """Pulse error_intr_trig (single-cycle W1S) to set error_internal_sts."""
-        await self.wr32(ABR_ERROR_TRIG, INTR_EVENT_EN)
+        await self.wr32(ABR_ERROR_TRIG, ERROR_INTERNAL_TRIG)
 
     async def error_state(self) -> int:
-        return await self.rd32(ABR_ERROR_INTR)
+        """Read error_internal_intr_r; return the error_internal_sts field, in place."""
+        return await self.rd32(ABR_ERROR_INTR) & ERROR_INTERNAL_STS
 
     async def w1c_error(self) -> int:
-        """W1C error_internal_sts; return the post-clear readback."""
-        await self.wr32(ABR_ERROR_INTR, INTR_EVENT_EN)
-        return await self.rd32(ABR_ERROR_INTR)
+        """W1C error_internal_sts; return that field of the post-clear readback."""
+        await self.wr32(ABR_ERROR_INTR, ERROR_INTERNAL_STS)
+        return await self.rd32(ABR_ERROR_INTR) & ERROR_INTERNAL_STS
 
     async def notif_state(self) -> int:
-        return await self.rd32(ABR_NOTIF_INTR)
+        """Read notif_internal_intr_r; return the notif_cmd_done_sts field, in place."""
+        return await self.rd32(ABR_NOTIF_INTR) & NOTIF_CMD_DONE_STS
 
     async def w1c_notif(self) -> int:
-        """W1C notif_cmd_done_sts; return the post-clear readback."""
-        await self.wr32(ABR_NOTIF_INTR, INTR_EVENT_EN)
-        return await self.rd32(ABR_NOTIF_INTR)
+        """W1C notif_cmd_done_sts; return that field of the post-clear readback."""
+        await self.wr32(ABR_NOTIF_INTR, NOTIF_CMD_DONE_STS)
+        return await self.rd32(ABR_NOTIF_INTR) & NOTIF_CMD_DONE_STS
 
 
 def _selftest() -> None:
@@ -157,6 +167,10 @@ def _selftest() -> None:
     assert ABR_STATUS - ABR_BASE == 0x14
     assert ABR_ENTROPY - ABR_BASE == 0x18
     assert ABR_SEED - ABR_BASE == 0x58
+    # The KV seed-read words resolve the same in abr_reg.rdl and in the
+    # generated SEP register header (hw/sys/sep/regs/gen/py/sep_reg.py).
+    assert ABR_MLDSA_KV_RD_SEED_CTRL == sym("ABR_KV_MLDSA_SEED_RD_CTRL_REG_ADDR")
+    assert ABR_MLDSA_KV_RD_SEED_STATUS == ABR_BASE + abr_off("kv_mldsa_seed_rd_status")
     assert ABR_PUBKEY - ABR_BASE == 0x1000
     # Sign / verify windows, pinned so a bad RDL resolution fails at import
     # rather than as a mid-simulation wrong-address access.

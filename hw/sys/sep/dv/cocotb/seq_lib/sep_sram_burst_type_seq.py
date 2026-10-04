@@ -8,11 +8,11 @@ repeats its start address on every beat, and a WRAP burst increments within
 an aligned window of ``beats * beat_bytes`` bytes and wraps to its start.
 The golden below is that address rule and nothing else.
 
-A slave that answers OKAY must have performed the burst the ``AxBURST``
-field names. A slave may also refuse a burst type it does not implement;
-then the response is an error and SRAM keeps its background. Any other
-outcome -- OKAY with INCR beat addresses in particular -- is the failure
-this sequence exists to find.
+``hw/sys/sep/doc/fabric.adoc#sep-sram-target`` specifies that the SRAM
+target refuses a multi-beat FIXED or WRAP burst: the write answers
+BRESP=SLVERR and SRAM keeps its background, and every read beat answers
+RRESP=SLVERR. The test grades that refusal; the AXI4 image below names
+what a failing DUT wrote.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ BURST_FIXED = 0
 BURST_INCR = 1
 BURST_WRAP = 2
 RESP_OKAY = 0
+RESP_SLVERR = 2
 RESP_DECERR = 3
 
 BEATS = 4

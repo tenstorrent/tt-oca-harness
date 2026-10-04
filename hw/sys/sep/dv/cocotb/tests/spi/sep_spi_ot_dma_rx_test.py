@@ -91,7 +91,11 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             # so dropping either half of the firmware check fails here.
             for token, chk, what in (
                 ("(0xA5)", "CHK-DATAPATH", "the preloaded pattern in the DMA-written SRAM"),
-                ("RW1C verified", "CHK-RW1C", "the DMA done status clearing on write-one-to-clear"),
+                (
+                    "RW1C verified",
+                    "CHK-RW1C",
+                    "the DMA done status holding after the poll and clearing on write-one-to-clear",
+                ),
             ):
                 assert token in verdict, (
                     f"firmware verdict line has no {token!r}, so {what} was not "

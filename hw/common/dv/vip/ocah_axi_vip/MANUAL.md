@@ -157,12 +157,25 @@ Protocol-control operations (SV-UVM parity; see
 | `await read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low for `hold_cycles` after RVALID; the result's `hold_stable` reports that RVALID stayed asserted with RDATA/RRESP unchanged across the window |
 | `await write_pair_skewed_result(addr_a, data_a, addr_b, data_b, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb_a, strb_b, ...)` | `OcahAxiWritePairResult` | Two single-beat writes queued back to back: the second write's AW and W follow the first on their channels, so under a W delay the second AW meets the responder while the first W is pending; BREADY is deferred `b_ready_delay` cycles after the first write's request phase and both B responses are accepted in order; `aw_stall_cycles` counts AWVALID-without-AWREADY cycles across the pair and `aw_stable` reports AWVALID and AWADDR held through every such stall |
 | `await read_pair_hold_result(addr_a, addr_b, hold_cycles, ...)` | `OcahAxiReadPairResult` | Two single-beat reads: AR(b) follows AR(a) while RREADY is held low for `hold_cycles` after the first RVALID, so a responder that admits one read at a time stalls AR(b); `first.hold_stable` reports the hold window, `ar_stall_cycles` / `ar_stable` the AR channel across the pair |
+| `await pipeline_result(ops, *, b_hold_cycles, r_hold_cycles, ...)` | `OcahAxiPipelineResult` | Single-beat reads and writes in flight together: each `OcahAxiPipelineOp` launches its beats no earlier than its `aw_valid_delay` / `w_valid_delay` / `ar_valid_delay`, counted in cycles from the start, and no earlier than the cycle after the beat ahead of it on its channel was accepted; BREADY and RREADY stay low for `b_hold_cycles` / `r_hold_cycles` after the first BVALID / RVALID; `results` holds one write or read result per access in list order, and `aw_stall_cycles` / `w_stall_cycles` / `ar_stall_cycles` count each request channel's VALID-without-READY cycles; an invalid access fails the call before any access is issued |
 
-All four operations require an idle engine on their direction (the skew is
-applied by pausing the backend's channel sources/sinks) and bound every
-phase with `timeout_cycles`; `allow_timeout=True` converts an expiry into a
-`timed_out` result. The pair results expose the two per-transaction results
-as `first` and `second` in issue order.
+All five operations require idle engines (the skew is applied by pausing
+the backend's channel sources/sinks). The first four bound every phase with
+`timeout_cycles`; `pipeline_result` fails after `timeout_cycles` cycles with
+no handshake on any channel while no beat or READY hold is still waiting on
+its delay. `allow_timeout=True` converts an expiry into a `timed_out`
+result. The pair results expose the two per-transaction results as `first`
+and `second` in issue order. A `pipeline_result` expiry marks only the
+accesses without a response `timed_out`: an access whose response arrived
+keeps its result, which `check_response` and the statistics cover, and the
+stall counters hold the cycles counted up to the expiry. The backend goes
+on presenting the unaccepted beats and retires them once the responder
+takes them. A `pipeline_result` write is one beat, so a partial `strb` and
+an unaligned address must stay inside it; a read at an unaligned address
+returns the bytes up to the end of its beat. Each access is checked against
+the backend (direction, address range, `prot` value and the bus's
+protection signal, strobe, delays) before the first one is issued, so a
+`ValueError` leaves the bus untouched.
 
 Event helpers:
 
@@ -540,7 +553,8 @@ modules simply do not elaborate. Its contents:
   watchdog), `ocah_axi_master_driver` (active initiator: sequential AW/W/B
   and AR/R engines, one transaction outstanding except for the pair
   operations, whose second single-beat transaction launches before the
-  first completes; samples via `mon_cb`, drives the initiator-side vif
+  first completes, and the pipelined operation, whose single-beat reads and
+  writes run together; samples via `mon_cb`, drives the initiator-side vif
   signals procedurally), the standard
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
@@ -575,6 +589,22 @@ of `OcahAxiWriteResult`/`OcahAxiReadResult`:
 | `resp_list` / `worst_resp()` / `is_ok()` | Per-beat response evidence |
 | `data_words` | Read data, one raw bus word per beat |
 | `timed_out` | A handshake wait exceeded `ocah_axi_master_config.timeout_cycles` |
+
+`pipeline_result(ops, result, b_hold_cycles, r_hold_cycles)` is the SV
+side of the cocotb pipelined operation: `pipeline_write` and
+`pipeline_read` build the single-beat ops with their channel delays, the
+driver keeps them in flight together under the same launch and hold rules,
+each op comes back filled like a plain result, and `result` carries
+`aw_stall_cycles` / `w_stall_cycles` / `ar_stall_cycles`. Each handshake
+wait is bounded by `timeout_cycles`; when one expires, `result` and every
+op whose response was not collected report `timed_out`, the other ops keep
+their results, and the stall counts cover the cycles before the expiry.
+The driver checks every op before it drives anything: a write that does
+not carry exactly one data word and at most one strobe entry, or an address
+with bits set above `addr_width`, fails the operation with a `uvm_error`
+under the message ID `OCAH_AXI_PIPELINE_INVALID` and leaves the bus idle.
+On an AXI4 bus every op uses one ID, because the driver collects the
+responses in list order per direction.
 
 The response-ID contract is cross-flow parity with "Response-ID
 observation" above: `observed_id` is wire truth, never an issued-ID echo.

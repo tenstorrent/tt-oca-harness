@@ -24,25 +24,25 @@ SMU-owned unit under `u_smu` outside the SMC, DTP and SEP trees
 exclusion files have left the population, and
 `assertion`, where urg reads the cover properties and the one
 `smu_axi_xbar` assertion
-|Numeric target |VCS `user` 100 percent effective, `toggle` 80 percent
-effective and `assertion` 80 percent effective, the three `\[[thresholds]]`
-rows of `cov/config/vcs/smu_wrapper_coverage_policy.toml`; on Verilator
-`user` is reported and not gated:
+|Numeric target |VCS `user` 100 percent effective, the one
+`\[[thresholds]]` row of `cov/config/vcs/smu_wrapper_coverage_policy.toml`.
+No code-metric family carries a floor on either tool, the way DTP and SEP set
+none on theirs: the runner reports every family's raw and effective figure, a
+run's status comes from its tests, and the figures are read against the
+targets this chapter states.
 `cov/config/verilator/smu_wrapper_coverage_policy.toml` carries no
-`\[[thresholds]]` row
+`\[[thresholds]]` row at all
 |Measured (Verilator, the `cov/sv` cover properties) |`all`, 120 leaves,
-Verilator 5.050: `user` 101 of 101 collected points hit
+Verilator 5.052: `user` 100 of 100 collected points hit
 (`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`, which names the commit). No
 `hosted`-only figure is recorded
-|Measured (VCS) |None for the current scope epoch, `smu-vcs-cov-v3`
-(`cov/config/vcs/smu_wrapper_coverage_policy.toml`): no VCS run of this epoch
-is recorded in the tree, so no toggle, condition, branch, line, assertion or
-covergroup figure exists for the population above. The last recorded VCS
-figures are of epoch `smu-vcs-cov-v2`, on a population of 107 cover
-properties and 102 leaves: `all`, toggle 57.54 raw / 81.62 effective,
-condition 76.92, branch 100.00, line 100.00, assertion 90.74, `user` 90.65
-(97 of 107); `hosted`, then 70 leaves, toggle 54.07 raw / 75.04 effective,
-condition 38.46, branch 50.00, assertion 85.19, `user` 85.05
+|Measured (VCS) |The run of record of epoch `smu-vcs-cov-v3`
+(`cov/config/vcs/smu_wrapper_coverage_policy.toml`) is the
+`--dut smu --tool vcs --items all --cov` run of 2026-10-02: 120 of 120 leaves
+PASS, coverage stage PASS, and every family at 100.00 percent effective with
+the policy files applied -- line 100.00, condition 100.00, branch 100.00,
+toggle 100.00, assertion 100.00, group 100.00, `user` 100.00. A later claim
+names its own run and quotes that run's launcher `result status=` line
 |===
 
 `cov/sv/` carries ten cover-property modules, 109 points in all; the counts
@@ -101,9 +101,9 @@ metric. Toggle covers every net of what stays, and `-cm_noconst` leaves
 tied-off nets out. `cov/config/vcs/smu_wrapper_toggle_exclusions.el` and
 `smu_toggle_exclusions.el` name, one fact per class, the fields no SMU logic
 reads or writes, and the policy applies them at report time.
-`cov/config/vcs/smu_wrapper_coverage_policy.toml` floors `toggle` and
-`assertion` at 80 percent; `run_dv.py` grades both and prints them on its
-`coverage` line (see `cov/config/vcs/README.md`) |a licensed host,
+`cov/config/vcs/smu_wrapper_coverage_policy.toml` floors none of these
+families; `run_dv.py` prints each on its `coverage` line and grades only the
+`user` row (see `cov/config/vcs/README.md`) |a licensed host,
 `python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov`
 (`cov/config/vcs/README.md`); no public CI job runs it
 |===
@@ -143,6 +143,77 @@ A vendor site that `coverage_off` cannot name (hierarchy under `.u_smc`
 `disposition = "exclude_scope"`. Write it only from a real database:
 `expected_matches` is a hard count, and a guessed count is a
 ConfigError on the first run.
+
+[[smu-cov-reviewers]]
+== Reviewers
+
+An entry's `reviewer` differs from its `owner`, and the review class follows
+the kind of fact the entry rests on. `cov/config/vcs/README.md` states each
+class's fact and what retires it.
+
+[cols="2,3,2",options="header",]
+|===
+|Class family |Fact it rests on |Review
+|The port-toggle classes `AXI-USER`, `AXI-DATA`, `ATB-PAYLOAD`,
+`RTL-CONSTANT`, `UNION-ALIAS`, `REGISTER-WIDTH` and `SEP-OWNED`, and the
+block classes whose ANNOTATION names an RTL tie, a packed union, a fixed
+attribute or a reserved field |a design fact, cited to the RTL file and line
+|design review
+|The port-toggle class `DFT` and every block class whose ANNOTATION opens
+`bench scope` |a bench fact: what this testbench ties, drives or leaves
+undriven |DV review
+|`VENDORED-I3C` |a covergroup declared inside vendored RTL that another
+package grades |coverage-flow review
+|A `pass:[[[holes]]]` entry |the class the hole names; a hole whose
+disposition is `fix_model` or `cover` takes DV review |as above
+|===
+
+Every entry change is graded against a named finished run with the runner's
+`--waive` re-grade.
+
+[[smu-cov-reopen]]
+== Reopen triggers
+
+An accepted exclusion or waiver stays accepted until the policy changes; the
+calendar does not reopen it. It reopens, by the entry being removed at the
+next regeneration or by a `pass:[[[holes]]]` entry's status returning to
+`open`, when:
+
+* an RTL change moves the module or instance checksum of the scope the entry
+  names, which drops the entry on its own, since URG applies no entry whose
+  checksum differs from the design it reports on;
+* an enrolled leaf covers the point: the exclusion files are written from the
+  uncovered set of a graded run, so a covered point is not written again, and
+  the runner rejects an accepted `pass:[[[holes]]]` entry whose selector
+  matches a covered point;
+* the retiring condition the class's `Retired by` column states is met;
+* the policy's `scope_epoch` changes, or the compile-time scope
+  (`smu_wrapper_cov_scope.hier`, `smu_wrapper_cov_scope.vlt`) changes which
+  points enter the database;
+* a regenerated file is written from a new graded run, which replaces every
+  entry that run no longer leaves uncovered;
+* a covergroup a vendored block adds falls in no class the group exclusion
+  generator names, which stops the generator rather than admitting it
+  silently.
+
+[[smu-cov-no-formal]]
+== No formal unreachability behind the denominator
+
+SMU has no formal coverage-unreachability analysis. The companion's SMU
+formal configuration holds a connectivity app and no coverage app, so no
+list of the kind `hw/sys/smc/dv/cov/config/vcs/smc_unreachable.el` or
+`hw/sys/dtp/dv/cov/config/vcs/dtp_unreachable.el` exists for this DUT, and
+nothing proves that a point left in the `toggle` denominator is reachable at
+all. The exclusion files do that work by hand instead: each class states a
+design or bench fact and names what retires it, which is a weaker claim than
+a proof and is reviewed as such.
+
+This is one of the reasons `cov/config/vcs/smu_wrapper_coverage_policy.toml`
+sets no `toggle` floor: a floor over a denominator no proof has filtered
+fails a run on a number rather than on a fact. A floor becomes meaningful
+when an unreachability analysis supplies the filter the SMC and DTP policies
+have; until then the figure is reported and read against the target this
+chapter states.
 
 [[smu-cov-waiver]]
 == Waiver fields
