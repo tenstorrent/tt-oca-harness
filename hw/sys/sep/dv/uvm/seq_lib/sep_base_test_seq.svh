@@ -127,9 +127,9 @@ class sep_base_test_seq extends ocah_sequence;
               UVM_MEDIUM)
     wait_sys_cycles(test_cfg.fuse_sense_settle_cycles);
     if ($test$plusargs("skip_fuse_sense")) begin
-      `uvm_info(get_type_name(),
-                {"+skip_fuse_sense: fuse_sense_done is set by the simulation bypass, ",
-                 "not by a sense; no ", ChkFuseSense, " record"}, UVM_LOW)
+      `uvm_info(get_type_name(), {
+                "+skip_fuse_sense: fuse_sense_done is set by the simulation bypass, ",
+                "not by a sense; no ", ChkFuseSense, " record"}, UVM_LOW)
       return;
     end
     void'(m_check.expect_true(
@@ -159,16 +159,16 @@ class sep_base_test_seq extends ocah_sequence;
   // or Z response would read as a legal code (X reads as OKAY).
   function void check_resp_known(ocah_axi_item result, string label);
     if (result.any_resp_xz())
-      `uvm_error(get_type_name(), $sformatf("%s: response at 0x%0h has an X or Z bit", label,
-                                           result.address))
+      `uvm_error(get_type_name(), $sformatf(
+                 "%s: response at 0x%0h has an X or Z bit", label, result.address))
   endfunction
 
   function void check_read_known(ocah_axi_item result, bit [63:0] addr, int size, string label);
     bit [63:0] xz = result.first_xz_mask() & lane_bits(addr, size);
     if (xz != '0)
-      `uvm_error(get_type_name(), $sformatf(
-                 "%s: read data at 0x%0h has X/Z on bits 0x%016h of the addressed lanes", label,
-                 addr, xz))
+      `uvm_error(
+          get_type_name(), $sformatf(
+          "%s: read data at 0x%0h has X/Z on bits 0x%016h of the addressed lanes", label, addr, xz))
   endfunction
 
   // ------------------------------------------------------------------
@@ -196,8 +196,8 @@ class sep_base_test_seq extends ocah_sequence;
     op.start(p_sequencer.m_lsu_seqr);
     check_resp_known(op.result, label);
     data = op.data;
-    check_read_known(op.result, addr, SepCsrSize,
-                     label.len() ? label : $sformatf("rd_0x%0h", addr));
+    check_read_known(op.result, addr, SepCsrSize, label.len() ? label : $sformatf("rd_0x%0h", addr
+                     ));
     check_evidence(ChkCsrResp, label.len() ? label : $sformatf("rd_0x%0h", addr),
                    64'(op.result.worst_resp()), 64'(OCAH_AXI_RESP_OKAY), $sformatf(
                    "read addr=0x%0h data=0x%08h", addr, data));
@@ -239,8 +239,8 @@ class sep_base_test_seq extends ocah_sequence;
     op.start(p_sequencer.m_lsu_seqr);
     check_resp_known(op.result, label);
     data = op.data;
-    check_read_known(op.result, addr, SepCsrSize,
-                     label.len() ? label : $sformatf("rd_0x%0h", addr));
+    check_read_known(op.result, addr, SepCsrSize, label.len() ? label : $sformatf("rd_0x%0h", addr
+                     ));
     check_evidence(check_id, label.len() ? label : $sformatf("rd_0x%0h", addr),
                    64'(op.result.worst_resp()), 64'(expected), $sformatf(
                    "read addr=0x%0h data=0x%08h resp=%s", addr, data, op.result.worst_resp().name()

@@ -88,8 +88,7 @@ class sep_sram_smoke_test_seq extends sep_base_test_seq;
     bit [63:0] expected;
 
     seed_scenario_rng();
-    attach_evidence('{ChkResp, ChkResetRead, ChkStore, ChkLane, ChkRandomStore,
-                    ChkRandomLane});
+    attach_evidence('{ChkResp, ChkResetRead, ChkStore, ChkLane, ChkRandomStore, ChkRandomLane});
     word_addr = 64'(SEP_SRAM_MEM_BASE_ADDR) + TargetOffset + 64'(loop_index) * WordBytes;
     if (word_addr + WordBytes > 64'(SEP_SRAM_MEM_BASE_ADDR) + 64'(SEP_SRAM_MEM_SIZE))
       `uvm_fatal(get_type_name(), $sformatf(

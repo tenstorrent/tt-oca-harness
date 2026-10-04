@@ -305,8 +305,8 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     fabric_row_t   blocks[$];
 
     seed_scenario_rng();
-    attach_evidence('{ChkCsrResp, ChkAddrmap, ChkRefcnt, ChkBaseAddrRw, ChkRwReadback,
-                    ChkHole, ChkFabricWalk, ChkExtDemux});
+    attach_evidence('{ChkCsrResp, ChkAddrmap, ChkRefcnt, ChkBaseAddrRw, ChkRwReadback, ChkHole,
+                    ChkFabricWalk, ChkExtDemux});
     cpu_ctrl_rows(rows);
     fabric_rows(blocks);
     `uvm_info(get_type_name(),

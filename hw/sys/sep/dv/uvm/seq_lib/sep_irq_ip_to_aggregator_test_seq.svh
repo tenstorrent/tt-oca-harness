@@ -288,9 +288,9 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
     int unsigned  walked = 0;
 
     seed_scenario_rng();
-    attach_evidence('{ChkCsrResp, ChkBase, ChkSet, ChkIso, ChkClr, ChkAgg,
-                    ChkBusErrBase, ChkBusErrDma, ChkBusErrDmaWr, ChkBusErrDmaWrClr, ChkBusErrPeriph,
-                    ChkBusErrClr});
+    attach_evidence('{ChkCsrResp, ChkBase, ChkSet, ChkIso, ChkClr, ChkAgg, ChkBusErrBase,
+                    ChkBusErrDma, ChkBusErrDmaWr, ChkBusErrDmaWrClr, ChkBusErrPeriph, ChkBusErrClr
+                    });
     irq_sources(srcs);
     periph_holes(holes);
     foreach (srcs[i]) covered_mask |= 64'(1) << srcs[i].agg_idx;
@@ -318,8 +318,10 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
         ChkAgg,
         m_status_release_max > 0 && m_status_release_max < StickyHoldCycles,
         $sformatf(
-            {"slowest Status INTR_TEST release took %0d system clocks; ",
-             "the Event hold of %0d must exceed it"},
+            {
+              "slowest Status INTR_TEST release took %0d system clocks; ",
+              "the Event hold of %0d must exceed it"
+            },
             m_status_release_max,
             StickyHoldCycles)
     ));
