@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[reset-control]]
+== Reset Control
+
+This chapter lists every reset that firmware or a debugger can request in the
+OCA Harness, and the section that gives its programming sequence. Resets from pins and power-good are described in the
+ifdef::backend-html5[]
+xref:ocah-docs::reset.adoc#ocah-reset[Reset chapter]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/reset.html#ocah-reset[Reset chapter]
+endif::backend-pdf[]
+of the Technical Reference Manual.
+
+[[reset-control-table]]
+[cols="2,3,2,2",options="header"]
+.Software- and debugger-requested resets
+|===
+|Reset |Control |Requested by |Sequence
+
+|SMC CPU core or uncore, held
+|`CPU_CTRL.RESET_CTRL` reset bits, `RESET_TIMEOUT`
+|SEP, or another manager outside the SMC cluster
+|<<smc-core-reset-sequence>>
+
+|SMC CPU core restart
+|`RESET_CTRL.core<n>_reset_pulse_start`, `CORE_RESET_PULSE_COUNT`,
+`RESET_VECTOR[n]`
+|SEP, or another manager outside the SMC cluster
+|<<smc-core-reset-pulse>>
+
+|SMC warm reset on watchdog expiry
+|SMC WDT `CTRL.wdogrsten`, `CPU_CTRL.WDT_TIMEOUT`, `WDT_TIMEOUT_RESET`
+|SMC firmware arms it; an unserviced WDT triggers it
+|<<smc-watchdog>>
+
+|Managed subsystem cold or warm reset
+|Reset unit `SS_COLD_RESET_N`, `SS_WARM_RESET_N`, hold and lock registers
+|SMC firmware
+|<<smc-subsystem-resets>>
+
+|Function-level cool reset and isolation
+|Reset unit `ISOLATE_REQ_*` registers
+|SMC firmware prepares and recovers; a PCIe FLR triggers it
+|<<smc-flr-isolation>>
+
+|External CPU cluster non-debug-module reset
+|`NDMRESET_REQUEST`, `NDMRESET_PROCESS`
+|External cluster requests; SMC firmware answers
+|<<smc-ndm-reset>>
+
+|SEP cryptographic engines, TRNG and Key Manager
+|`SEP_RESET_CTRL.SW_RESET_N`
+|SEP firmware
+|<<sep-software-reset>>
+
+|Key Manager restart
+|Key Manager `SOFT_RST_CODE`
+|Key Manager firmware
+|<<sep-software-reset>>
+
+|SEP CPU on watchdog bite
+|SEP watchdog bite threshold
+|SEP firmware arms it; an unserviced watchdog triggers it
+|<<sep-watchdog>>
+
+|AoU core
+|`AOU_CON0.AOU_SW_RESET`
+|Firmware handling a LinkReset
+|<<aou-linkreset-error-reporting>>
+
+|Debug overrides of any SMU reset
+|JTAG IC_RESET TDR
+|Debugger
+|<<dtp-ic-reset-overrides>>
+|===
+
+Two classes of reset differ in what software must do first. The SMC CPU cluster
+resets and the SEP engine resets drain and isolate the affected AXI paths in
+hardware before the reset takes effect. The subsystem resets of the reset unit
+and the AoU core reset do not, so software quiesces traffic to and from the
+target before requesting them.

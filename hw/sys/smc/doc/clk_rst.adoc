@@ -415,6 +415,7 @@ cold reset while the pin is high, so the isolation holds across it.
 .GPIO-driven FLR isolation
 image::smc-flr-isolation-gpio.svg[alt="The FLR isolation drawing with step 1, the board ISOLATE_REQ through GPIO 53 and the isolation OR to the chiplet tiles, and step 2, the board BP_RESET_N into both primary resets, highlighted",width=100%,pdfwidth=100%]
 
+[[smc-subsystem-controls]]
 == Subsystem Controls and Clock Gating
 
 ifdef::backend-html5[]
@@ -432,6 +433,14 @@ to the receiving subsystem, whose implementation defines the retained state.
 `SS_CONFIG_LOCK` and `SS_COLD_RESET_LOCK` mask writes to the corresponding
 configuration and cold-reset bits. `SS_RESET_COMPLETE` samples the return vector
 through a three-stage synchronizer; the unit does not sequence releases from it.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-subsystem-resets[subsystem reset sequences]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-subsystem-resets[subsystem reset sequences]
+endif::backend-pdf[]
+are in the Programmer's Guide.
 
 SMC blocks have their own clock-gating enables, activity detection and hysteresis
 controls. For example, DMA uses a six-bit hysteresis input and bus-aware wakeup.
