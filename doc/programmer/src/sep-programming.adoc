@@ -149,8 +149,16 @@ void sep_engine_reset_release(uint32_t mask) {
 Releasing the Key Manager from reset starts it; the SEP host can still reach the
 SEP-to-KM mailbox while the Key Manager is in reset, because the mailbox's
 SEP-facing side is in the Key Manager's cold domain. The Key Manager can also
-restart itself by writing its `SOFT_RST_CODE` register, which takes the same
-warm-reset path without isolation.
+restart itself by writing `0x53525354` (ASCII `SRST`) to its `SOFT_RST_CODE`
+register; any other value has no effect. The soft reset takes the same
+warm-reset path without isolation and re-enters the Key Manager Application ROM.
+It keeps the cold-domain state: the KM SRAM contents,
+`BOOT_STATUS.COLD_BOOT_DONE`, which the ROM reads to skip cold initialization,
+`OTP_READ_LOCK_COLD`, the SRAM scrambling state and the mailbox FIFO contents,
+which the ROM flushes during boot, so a request pending at the reset is lost.
+It restores the warm-domain state: `IRQ_ENTRY_ADDR` and `IRQ_ENTRY_LOCK` return
+to their reset values, `OTP_READ_LOCK` clears, and the local copies of the UIDs,
+class key and public identities reload from the shadow bus.
 
 The TRNG bit resets the whole internal entropy chain. Follow
 <<sep-trng-recovery>> rather than toggling it on its own.

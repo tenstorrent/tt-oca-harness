@@ -99,4 +99,12 @@ ifdef::backend-pdf[]
 <<clock-and-reset-management,Clock and Reset Management>>
 endif::backend-pdf[]
 
-For integration-level reset procedures, refer to the Integrator Guide.
+For integration-level reset procedures, refer to the Integrator Guide. The
+Programmer's Guide collects every reset that software or a debugger requests
+in its
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#reset-control[Reset Control chapter].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#reset-control[Reset Control chapter].
+endif::backend-pdf[]

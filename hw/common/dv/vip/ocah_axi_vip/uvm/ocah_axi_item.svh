@@ -20,12 +20,19 @@ class ocah_axi_item extends uvm_sequence_item;
   ocah_axi_dir_e      direction = OCAH_AXI_DIR_READ;
   bit [63:0]          address;
   bit [63:0]          data_words[$];       // one entry per beat (raw bus word)
+  // Read beats only, one entry per data_words entry: the bits of RDATA that
+  // were X or Z on the bus. data_words is two-state, so it holds those bits
+  // as 0; a caller that grades read data checks its lanes here.
+  bit [63:0]          data_xz_masks[$];
   bit [7:0]           strobes[$];          // write beats only
   int unsigned        size;                // AxSIZE
   ocah_axi_burst_e    burst = OCAH_AXI_BURST_INCR;
   bit [15:0]          transaction_id;
   bit [2:0]           prot;
   ocah_axi_resp_e     resp_list[$];        // per beat (reads) / single (writes)
+  // One entry per resp_list entry: the sampled BRESP/RRESP had an X or Z
+  // bit. resp_list is two-state, so such a response reads as a legal code.
+  bit                 resp_xz[$];
   int unsigned        expected_beats = 1;  // AxLEN + 1 recorded at the address phase
   bit                 expected_armed;      // expected items: non-OKAY was armed
   time                start_time;
@@ -50,9 +57,10 @@ class ocah_axi_item extends uvm_sequence_item;
   // response handshake (RLAST beat for reads) — never a copy of the issued
   // transaction_id. observed_id_valid stays 0 on ID-less buses
   // (cfg.id_width == 0) and on timeouts; timed_out reports a handshake
-  // watchdog expiry (see ocah_axi_master_config.timeout_cycles).
-  // hold_stable reports that RVALID stayed asserted with RDATA/RRESP
-  // unchanged across a nonzero r_ready_delay window (stays 1 otherwise).
+  // watchdog expiry (see ocah_axi_master_config.timeout_cycles). is_ok()
+  // is 0 on a timed-out result (the cocotb ok=False state). hold_stable
+  // reports that RVALID stayed asserted with RDATA/RRESP unchanged across
+  // a nonzero r_ready_delay window (stays 1 otherwise).
   bit [15:0]          observed_id;
   bit                 observed_id_valid;
   bit                 timed_out;
@@ -87,12 +95,33 @@ class ocah_axi_item extends uvm_sequence_item;
     super.new(name);
   endfunction
 
+  // Returns every field the master driver fills as a result to its default.
+  // The driver calls it at the start of each operation, so an item issued
+  // twice reports only the operation in flight.
+  function void clear_results();
+    resp_list.delete();
+    resp_xz.delete();
+    if (direction != OCAH_AXI_DIR_WRITE) begin
+      data_words.delete();
+      data_xz_masks.delete();
+    end
+    timed_out         = 1'b0;
+    observed_id       = '0;
+    observed_id_valid = 1'b0;
+    hold_stable       = 1'b1;
+    ax_stall_cycles   = 0;
+    ax_stable         = 1'b1;
+    aw_stall_cycles   = 0;
+    w_stall_cycles    = 0;
+    ar_stall_cycles   = 0;
+  endfunction
+
   function ocah_axi_resp_e worst_resp();
     return ocah_axi_worst_resp(resp_list);
   endfunction
 
   function bit is_ok();
-    return ocah_axi_resp_ok(resp_list);
+    return !timed_out && ocah_axi_resp_ok(resp_list);
   endfunction
 
   function int unsigned beat_count();
@@ -103,6 +132,15 @@ class ocah_axi_item extends uvm_sequence_item;
 
   function bit [63:0] first_data();
     return (data_words.size() > 0) ? data_words[0] : '0;
+  endfunction
+
+  function bit any_resp_xz();
+    foreach (resp_xz[i]) if (resp_xz[i]) return 1'b1;
+    return 1'b0;
+  endfunction
+
+  function bit [63:0] first_xz_mask();
+    return (data_xz_masks.size() > 0) ? data_xz_masks[0] : '0;
   endfunction
 
   // True when a live response ID was captured and it echoes the issued ID.
@@ -134,12 +172,14 @@ class ocah_axi_item extends uvm_sequence_item;
     direction      = rhs_item.direction;
     address        = rhs_item.address;
     data_words     = rhs_item.data_words;
+    data_xz_masks  = rhs_item.data_xz_masks;
     strobes        = rhs_item.strobes;
     size           = rhs_item.size;
     burst          = rhs_item.burst;
     transaction_id = rhs_item.transaction_id;
     prot           = rhs_item.prot;
     resp_list      = rhs_item.resp_list;
+    resp_xz        = rhs_item.resp_xz;
     expected_beats = rhs_item.expected_beats;
     expected_armed = rhs_item.expected_armed;
     start_time     = rhs_item.start_time;

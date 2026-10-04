@@ -37,6 +37,18 @@
 //                    the demux holds the second AR until the first response
 //                    passes it (demux open-read counters), and the reads
 //                    return OKAY with the written data and then DECERR
+//   axi_outstanding  seven reads, then seven writes, in flight with the
+//                    responses held until the port stalls, the third access
+//                    reaching each crossbar subordinate in turn; a write, a
+//                    read and a second write to one register block swept
+//                    across launch offsets, engaging the demux AW lock; a
+//                    read parked behind two held reads alongside a write to
+//                    its block; every AxPROT value, a high unmapped word,
+//                    unaligned reads and writes, a late W and back-to-back
+//                    matrix ARs, with drawn CT_SRC masks held throughout.
+//                    Every access answers DECERR exactly when its word is
+//                    unmapped, and the port stall counters match the VIP's
+//                    stall cycles
 
 class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
   `uvm_object_utils(dtp_xtrig_csr_test_seq)
@@ -46,6 +58,24 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
   // the port holds the response.
   localparam int unsigned SkewBReadyDelayMin = 5;
   localparam int unsigned SkewBReadyDelayMax = 8;
+  // Accesses in each outstanding read or write burst. The CSR port holds two
+  // requests in its address spill register, the crossbar one, and the
+  // response spill register two responses, so with the responses held the
+  // sixth and seventh requests find READY low.
+  localparam int unsigned OutstandingBurst = 7;
+  // Seeded range of the cycles BREADY or RREADY stays low after a burst's
+  // first response: long enough for the burst to back up to the port.
+  localparam int unsigned OutstandingHoldMin = 12;
+  localparam int unsigned OutstandingHoldMax = 16;
+  // Crossbar subordinates a burst's third access visits in turn: the matrix,
+  // every CTP, and the decode-error subordinate.
+  localparam int unsigned OutstandingTargets = XtrigNumCtp + 2;
+  // An unmapped word with every address bit above the CSR map set.
+  localparam bit [63:0] XtrigHighUnmapped = 64'hFFFF_FC00;
+  // Cycles a write waits behind two held reads and a third read to its
+  // register block: the sweep lands it while that read's response is stuck
+  // in the block.
+  localparam int unsigned OutstandingInFlightDelays[5] = '{6, 8, 10, 12, 14};
 
   function new(string name = "dtp_xtrig_csr_test_seq");
     super.new(name);
@@ -62,6 +92,7 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
                 run_demux_aw_lock_release();
       "axi_channel_skew_read_decode_backpressure":
                 run_read_decode_backpressure();
+      "axi_outstanding":   run_axi_outstanding();
       default: super.dispatch_scenario();
     endcase
   endtask
@@ -620,6 +651,253 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     check_evidence(ChkArStall, "read_decode.ar_stall_count", 64'(stall_delta),
                    64'(first.ax_stall_cycles));
     check_evidence(ChkArStall, "read_decode.ar_accepted", 64'(arvalid_delta - stall_delta), 64'd2);
+  endtask
+
+  // A word of crossbar subordinate `target`: 0 the matrix, 1 to XtrigNumCtp a
+  // CTP, XtrigNumCtp + 1 none. Writes land on a CT_SRC select or a
+  // STRETCH_MULT, which change no pad while no trigger is pulsed; reads may
+  // also land on CONFIG and STATUS.
+  protected function bit [63:0] outstanding_word(int unsigned target, bit write);
+    bit [63:0] words[3];
+    int unsigned ctp;
+    if (target == 0) return ctm_config_addr($urandom_range(XtrigNumCtmPorts - 1));
+    if (target <= XtrigNumCtp) begin
+      ctp = target - 1;
+      if (write) return ctp_stretch_addr(ctp);
+      words = '{ctp_config_addr(ctp), ctp_stretch_addr(ctp), ctp_status_addr(ctp)};
+      return words[$urandom_range(2)];
+    end
+    return XtrigUnmappedBase + 64'($urandom_range('h3F)) * 4;
+  endfunction
+
+  // A write of a drawn word.
+  protected function pipeline_op_t outstanding_write(
+      bit [63:0] addr, int unsigned aw_valid_delay = 0, int unsigned w_valid_delay = 0,
+      bit [2:0] prot = '0, bit [3:0] strb = 4'hF);
+    return pipeline_write_op(addr, $urandom(), aw_valid_delay, w_valid_delay, prot, strb);
+  endfunction
+
+  // Issue `ops` through the VIP pipeline and judge responses, spill contract
+  // and stalls: every access answers DECERR exactly when no subordinate
+  // decodes its word, every CSR port spill register keeps READY and VALID
+  // matched to the beats it holds, and the port's stall counters agree with
+  // the stall cycles the VIP saw on each request channel. `delta` is the
+  // advance of each judged counter.
+  protected task run_outstanding_pipeline(
+      input pipeline_op_t ops[$], input string label, output bit [31:0] delta[string],
+      input int unsigned b_hold = 0, input int unsigned r_hold = 0);
+    string counters[4] = '{
+        "xtrig_axil_spill_err_count",
+        "xtrig_axil_aw_stall_count",
+        "xtrig_axil_w_stall_count",
+        "xtrig_axil_ar_stall_count"
+    };
+    string channels[3] = '{"aw", "w", "ar"};
+    int unsigned vip_stall[3];
+    bit [31:0] start_count[string];
+    bit [31:0] mask;
+    string resps = "";
+    string direction;
+    ocah_axi_resp_e expected;
+    ocah_axi_item result;
+    ocah_axi_item op_results[$];
+    foreach (counters[i]) start_count[counters[i]] = xtrig_pin(counters[i]);
+    pipeline_result(ops, result, op_results, b_hold, r_hold, .check_response(1'b0));
+    foreach (counters[i]) delta[counters[i]] = xtrig_pin(counters[i]) - start_count[counters[i]];
+    vip_stall = '{result.aw_stall_cycles, result.w_stall_cycles, result.ar_stall_cycles};
+    foreach (op_results[i]) begin
+      if (i > 0) resps = {resps, ", "};
+      resps = {resps, $sformatf("%0d", op_results[i].worst_resp())};
+    end
+    `uvm_info(get_type_name(),
+              $sformatf("%s %0d accesses b_hold=%0d r_hold=%0d resp=[%s] aw/w/ar stall=%0d/%0d/%0d",
+                        label, ops.size(), b_hold, r_hold, resps, vip_stall[0], vip_stall[1],
+                        vip_stall[2]), UVM_LOW)
+    foreach (ops[i]) begin
+      direction = (ops[i].direction == OCAH_AXI_DIR_WRITE) ? "write" : "read";
+      expected = (dtp_xtrig_csr_decode(ops[i].addr, mask) == DTP_XTRIG_CSR_UNMAPPED) ?
+          OCAH_AXI_RESP_DECERR : OCAH_AXI_RESP_OKAY;
+      check_evidence(ChkAxil, $sformatf("%s.%s%0d.resp", label, direction, i),
+                     64'(op_results[i].worst_resp()), 64'(expected), $sformatf(
+                     "addr=0x%08h", ops[i].addr[31:0]));
+    end
+    check_evidence(ChkAxil, {label, ".spill_contract"}, 64'(delta["xtrig_axil_spill_err_count"]),
+                   64'd0);
+    foreach (channels[c])
+      check_evidence(ChkAxil, $sformatf("%s.%s_stall_count", label, channels[c]),
+                     64'(delta[$sformatf("xtrig_axil_%s_stall_count", channels[c])]),
+                     64'(vip_stall[c]));
+  endtask
+
+  // Several CSR accesses in flight, with the responses held. Read and write
+  // bursts deep enough to back up to the port visit every crossbar
+  // subordinate as their third access, a sweep of a write, a read and a
+  // second write to one register block engages the demux AW lock, a read
+  // parked behind two held reads meets a write to its own block, accesses
+  // carry every AxPROT value and the address bits outside the map, reads
+  // address every subordinate at an unaligned byte, and the matrix and the
+  // decode-error subordinate take a late W and back-to-back ARs. Every
+  // CT_SRC select holds a drawn mask meanwhile, so the held read data
+  // carries the upper select bits; no trigger is pulsed, and the selects are
+  // cleared on exit.
+  protected task run_axi_outstanding();
+    int unsigned targets[$], others[$], picks[$], ports[$];
+    int unsigned late_w_targets[2];
+    int unsigned block_targets[2];
+    bit [63:0] block_write[2], block_read[2];
+    int unsigned target, ctp;
+    string write_channels[2] = '{"aw", "w"};
+    string label;
+    bit [63:0] addr, stretch_addr, config_addr;
+    bit [3:0] strb;
+    bit [2:0] prot;
+    bit [31:0] delta[string];
+    pipeline_op_t ops[$];
+    `uvm_info(get_type_name(), "XTRIG AXI-Lite outstanding accesses", UVM_LOW)
+    for (int unsigned t = 0; t < OutstandingTargets; t++) targets.push_back(t);
+    ops.delete();
+    for (int unsigned port = 0; port < XtrigNumCtmPorts; port++)
+      ops.push_back(outstanding_write(ctm_config_addr(port)));
+    run_outstanding_pipeline(ops, "outstanding.ct_src_masks", delta);
+
+    targets.shuffle();
+    foreach (targets[k]) begin
+      label = $sformatf("outstanding.read%0d", targets[k]);
+      ops.delete();
+      for (int unsigned index = 0; index < OutstandingBurst; index++) begin
+        target = (index == 2) ? targets[k] : $urandom_range(OutstandingTargets - 1);
+        addr = outstanding_word(target, 1'b0);
+        prot = 3'($urandom_range(7));
+        ops.push_back(pipeline_read_op(addr, .prot(prot)));
+      end
+      run_outstanding_pipeline(ops, label, delta,
+                               .r_hold($urandom_range(OutstandingHoldMax, OutstandingHoldMin)));
+      check_evidence(ChkArStall, {label, ".port_ar_stalled"},
+                     64'(delta["xtrig_axil_ar_stall_count"] > 0), 64'd1, $sformatf(
+                     "ar_stall_cycles=%0d", delta["xtrig_axil_ar_stall_count"]));
+    end
+
+    // The fifth write of each burst waits in the port's AW spill register at
+    // an unaligned address: its strobe covers the lanes from that byte up.
+    targets.shuffle();
+    foreach (targets[k]) begin
+      label = $sformatf("outstanding.write%0d", targets[k]);
+      ops.delete();
+      for (int unsigned index = 0; index < OutstandingBurst; index++) begin
+        target = (index == 2) ? targets[k] : $urandom_range(OutstandingTargets - 1);
+        addr = outstanding_word(target, 1'b1);
+        strb = 4'hF;
+        if (index == 4) strb = 4'(4'hF << $urandom_range(3, 1));
+        prot = 3'($urandom_range(7));
+        ops.push_back(outstanding_write(addr, .prot(prot), .strb(strb)));
+      end
+      run_outstanding_pipeline(ops, label, delta,
+                               .b_hold($urandom_range(OutstandingHoldMax, OutstandingHoldMin)));
+      foreach (write_channels[c]) begin
+        string counter = $sformatf("xtrig_axil_%s_stall_count", write_channels[c]);
+        check_evidence(ChkAxil, $sformatf("%s.port_%s_stalled", label, write_channels[c]),
+                       64'(delta[counter] > 0), 64'd1, $sformatf(
+                       "%s_stall_cycles=%0d", write_channels[c], delta[counter]));
+      end
+    end
+
+    // A register block takes a read and a write together, on a seeded CTP and
+    // on the matrix. Its AW lock needs the demux to present a write the block
+    // refuses, which a read and a second write landing a cycle after the
+    // first write produce.
+    ctp = $urandom_range(XtrigNumCtp - 1);
+    stretch_addr = ctp_stretch_addr(ctp);
+    config_addr = ctp_config_addr(ctp);
+    pick_distinct(XtrigNumCtmPorts, 2, ports);
+    block_targets = '{1 + ctp, 0};
+    block_write = '{stretch_addr, ctm_config_addr(ports[0])};
+    block_read = '{config_addr, ctm_config_addr(ports[1])};
+    start_activity_window_on(demux_signals);
+    foreach (block_targets[b]) begin
+      for (int unsigned ar_delay = 0; ar_delay < 3; ar_delay++) begin
+        for (int unsigned aw_delay = 0; aw_delay < 3; aw_delay++) begin
+          for (int unsigned w_lag = 0; w_lag <= 2; w_lag += 2) begin
+            ops.delete();
+            ops.push_back(outstanding_write(block_write[b]));
+            ops.push_back(pipeline_read_op(block_read[b], ar_delay));
+            ops.push_back(outstanding_write(block_write[b], aw_delay, aw_delay + w_lag));
+            label = $sformatf("outstanding.lock%0d.ar%0d.aw%0d.w%0d", block_targets[b], ar_delay,
+                              aw_delay, w_lag);
+            run_outstanding_pipeline(ops, label, delta);
+          end
+          ops.delete();
+          ops.push_back(pipeline_read_op(block_read[b]));
+          ops.push_back(outstanding_write(block_write[b], ar_delay, ar_delay));
+          ops.push_back(pipeline_read_op(block_read[b], aw_delay));
+          label =
+              $sformatf("outstanding.mixed%0d.aw%0d.ar%0d", block_targets[b], ar_delay, aw_delay);
+          run_outstanding_pipeline(ops, label, delta);
+        end
+      end
+    end
+    stop_activity_window();
+    check_evidence(ChkAwLock, "outstanding.aw_lock_engaged",
+                   64'(window_activity["xtrig_demux_aw_lock"]), 64'd1);
+
+    // Two reads parked behind the RREADY hold, a third read stuck at a
+    // register block, and a write to the same block, swept so it lands while
+    // that read's response waits: the block holds two accesses.
+    foreach (block_targets[b]) begin
+      others.delete();
+      for (int unsigned t = 0; t < OutstandingTargets; t++)
+      if (t != block_targets[b]) others.push_back(t);
+      foreach (OutstandingInFlightDelays[d]) begin
+        pick_distinct(others.size(), 2, picks);
+        ops.delete();
+        foreach (picks[i])
+        ops.push_back(pipeline_read_op(outstanding_word(others[picks[i]], 1'b0)));
+        ops.push_back(pipeline_read_op(block_read[b]));
+        ops.push_back(outstanding_write(
+                      block_write[b], OutstandingInFlightDelays[d], OutstandingInFlightDelays[d]));
+        label = $sformatf("outstanding.in_flight%0d.d%0d", block_targets[b],
+                          OutstandingInFlightDelays[d]);
+        run_outstanding_pipeline(ops, label, delta,
+                                 .r_hold($urandom_range(OutstandingHoldMax, OutstandingHoldMin)));
+      end
+    end
+
+    // Every AxPROT bit set and cleared, and an unmapped word with every
+    // address bit above the map set, behind a mapped access on each channel;
+    // then a read of every subordinate at an unaligned byte.
+    ops.delete();
+    ops.push_back(pipeline_read_op(config_addr, .prot(3'd0)));
+    ops.push_back(pipeline_read_op(XtrigHighUnmapped, .prot(3'd7)));
+    ops.push_back(outstanding_write(stretch_addr, .prot(3'd0)));
+    ops.push_back(outstanding_write(XtrigHighUnmapped, .prot(3'd7)));
+    ops.push_back(pipeline_read_op(config_addr, .prot(3'd0)));
+    ops.push_back(outstanding_write(stretch_addr, .prot(3'd0)));
+    run_outstanding_pipeline(ops, "outstanding.address_shape", delta);
+    ops.delete();
+    for (int unsigned t = 0; t < OutstandingTargets - 1; t++) begin
+      addr = outstanding_word(t, 1'b0);
+      addr += $urandom_range(3, 1);
+      prot = 3'($urandom_range(7));
+      ops.push_back(pipeline_read_op(addr, .prot(prot)));
+    end
+    run_outstanding_pipeline(ops, "outstanding.unaligned", delta);
+
+    // The matrix and the decode-error subordinate each take a write whose W
+    // trails its AW, and the matrix a second AR on the cycle after the first.
+    late_w_targets = '{0, OutstandingTargets - 1};
+    foreach (late_w_targets[i]) begin
+      addr = outstanding_word(late_w_targets[i], 1'b1);
+      ops.delete();
+      ops.push_back(outstanding_write(addr, .w_valid_delay(3)));
+      run_outstanding_pipeline(ops, $sformatf("outstanding.late_w%0d", late_w_targets[i]), delta);
+    end
+    ops.delete();
+    ops.push_back(pipeline_read_op(outstanding_word(0, 1'b0)));
+    ops.push_back(pipeline_read_op(outstanding_word(0, 1'b0), 1));
+    run_outstanding_pipeline(ops, "outstanding.ctm_ar_pair", delta);
+    ops.delete();
+    for (int unsigned port = 0; port < XtrigNumCtmPorts; port++)
+      ops.push_back(pipeline_write_op(ctm_config_addr(port), 32'd0));
+    run_outstanding_pipeline(ops, "outstanding.ct_src_clear", delta);
   endtask
 
 endclass : dtp_xtrig_csr_test_seq

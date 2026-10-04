@@ -56,7 +56,7 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test_seq extends sep_base_test_seq;
     process iso_proc;
 
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkBaseline, ChkAssert, ChkIsolation, ChkRelease});
+    attach_evidence('{ChkBaseline, ChkAssert, ChkIsolation, ChkRelease});
     extra_hold = int'(random_pattern(ExtraHoldBits));
     `uvm_info(get_type_name(),
               $sformatf({"SEP SV-UVM WDT reset input: wdt_rst_ni_i -> sep_cpu_reset_n only; ",

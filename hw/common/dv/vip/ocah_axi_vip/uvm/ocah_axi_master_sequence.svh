@@ -312,10 +312,11 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
   // stay low until b_hold_cycles and r_hold_cycles cycles after the first
   // BVALID and RVALID. Each op is filled like a plain result; `result`
   // carries the ops and the stall cycles of each request channel. On a
-  // timeout, `result` and each op without a response report timed_out while
-  // the other ops keep their results, and only ops with a response count in
-  // the statistics. An invalid op fails the whole operation before anything
-  // is driven.
+  // timeout, `result` and each op whose final response handshake has not
+  // completed report timed_out (a read keeps the beats it received), the
+  // other ops keep their results, and only completed ops count in the
+  // statistics. An invalid op fails the whole operation before anything is
+  // driven.
   task pipeline_result(input ocah_axi_item ops[$], output ocah_axi_item result,
                        input int unsigned b_hold_cycles = 0, input int unsigned r_hold_cycles = 0,
                        input bit check_response = 1'b1, input bit allow_timeout = 1'b0);

@@ -252,9 +252,27 @@ def _validate_compatibility(inputs: list[CoverageInput]) -> None:
             "coverage inputs span incompatible targets: " + ", ".join(sorted(targets))
         )
     if len(fingerprints) > 1:
+        # The failure-bucket signature keeps only the start of this message, so the
+        # fingerprints lead and the records that carry each one follow.
+        carriers = {
+            fingerprint: sorted(
+                str(entry.result_json or entry.path)
+                for entry in inputs
+                if entry.build_fingerprint == fingerprint
+            )
+            for fingerprint in fingerprints
+        }
+        detail = "; ".join(
+            f"{fingerprint}: "
+            + ", ".join(paths[:3])
+            + (f", {len(paths) - 3} more" if len(paths) > 3 else "")
+            for fingerprint, paths in sorted(carriers.items())
+        )
         raise CoverageCompatibilityError(
             "coverage inputs span incompatible build fingerprints: "
             + ", ".join(sorted(fingerprints))
+            + "; "
+            + detail
         )
     if inputs and any(entry.target is None for entry in inputs) and targets:
         raise CoverageCompatibilityError(
