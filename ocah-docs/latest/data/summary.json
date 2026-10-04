@@ -9,7 +9,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 94.85,
+      "coverage_total_percent": 94.86,
       "flow": "dtp",
       "framework": "cocotb",
       "pass_rate": 100.0,
@@ -17,11 +17,19 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": null,
+      "coverage_total_percent": 95.28,
       "flow": "dtp",
       "framework": "uvm",
       "pass_rate": 100.0,
       "tests_total": 155,
+      "tool": "vcs"
+    },
+    {
+      "coverage_total_percent": 95.57,
+      "flow": "dtp",
+      "framework": "",
+      "pass_rate": 100.0,
+      "tests_total": 310,
       "tool": "vcs"
     },
     {
@@ -97,7 +105,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-04T08:42:46+00:00",
+  "generated_at": "2026-10-04T10:26:56+00:00",
   "results": [
     {
       "coverage": {
@@ -119,11 +127,11 @@
         "effective_metrics": {
           "assertion": 98.86,
           "branch": 96.31,
-          "condition": 94.86,
-          "fsm_state": 78.53,
+          "condition": 94.81,
+          "fsm_state": 78.63,
           "functional": 100.0,
           "line": 97.98,
-          "toggle": 97.44,
+          "toggle": 97.4,
           "user": 100.0
         }
       },
@@ -133,10 +141,36 @@
     },
     {
       "coverage": {
-        "effective_metrics": {}
+        "effective_metrics": {
+          "assertion": 98.86,
+          "branch": 97.07,
+          "condition": 95.13,
+          "fsm_state": 79.79,
+          "functional": 100.0,
+          "line": 98.71,
+          "toggle": 97.42,
+          "user": 100.0
+        }
       },
       "flow": "dtp",
       "framework": "uvm",
+      "tool": "vcs"
+    },
+    {
+      "coverage": {
+        "effective_metrics": {
+          "assertion": 98.86,
+          "branch": 97.32,
+          "condition": 96.14,
+          "fsm_state": 80.21,
+          "functional": 100.0,
+          "line": 98.85,
+          "toggle": 97.62,
+          "user": 100.0
+        }
+      },
+      "flow": "dtp",
+      "framework": "",
       "tool": "vcs"
     },
     {
