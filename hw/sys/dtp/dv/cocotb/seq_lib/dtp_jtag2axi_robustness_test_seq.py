@@ -4,6 +4,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from enum import Enum
+
+import cocotb
 from env.dtp_types import (
     ABORT_ESCAPE_CHECK_ID,
     ABORT_FSM_CHECK_ID,
@@ -11,14 +15,19 @@ from env.dtp_types import (
     ABORT_RECOVERY_CHECK_ID,
     CDC_CLEAR_CHECK_ID,
     FAULT_STATUS_CHECK_ID,
+    ORPHAN_DISCARD_CHECK_ID,
+    ORPHAN_DRAIN_CHECK_ID,
+    ORPHAN_ORDER_CHECK_ID,
     STALL_BUSY_CHECK_ID,
     STALL_FSM_CHECK_ID,
     STALL_HOLD_CHECK_ID,
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
     DtpJtagInstr,
+    DtpTapState,
     unpack_single_op,
 )
+from ocah_lib import OcahKnobs
 
 from .dtp_jtag2axi_base_test_seq import (
     AXI_RESP_DECERR,
@@ -47,6 +56,86 @@ ABORT_RECOVERY_POLLS = 8
 # TCK cycles after a reset pulse for the CDC controller to run its TCK-side
 # isolate-and-clear on an idle bridge.
 ABORT_CDC_CLEAR_TCK = 32
+# TCK-side clear with a request held on the fabric: TRST asserted with one to
+# four TCK cycles clocked under it and held until the TAP leaves
+# Test-Logic-Reset, or five TMS-high cycles into Test-Logic-Reset from any
+# state.
+ORPHAN_TRST_HOLD_TCK = (1, 4)
+ORPHAN_TLR_WALK = 5
+# System cycles from the last TCK cycle of the reset to a stall release inside
+# the clear. The ACLK side starts its clear about two system cycles after the
+# TCK-side reset and holds it until TCK clocks the clear's phases after the
+# reset is released.
+ORPHAN_IN_CLEAR_CYCLES = (6, 16)
+# TCK cycles in Run-Test/Idle after Test-Logic-Reset for the CDC's four-phase
+# isolate-and-clear to finish; each phase handshake costs a few cycles of each
+# clock, and TCK is the slower one.
+ORPHAN_CLEAR_TCK = (64, 96)
+# System cycles a finished clear is probed for: a clear in progress sets the
+# sticky clear-seen flag within them.
+ORPHAN_CLEAR_PROBE_CYCLES = 4
+# TCK cycles for the queued request's push into the CDC once the state machine
+# has left idle, and system cycles for it to cross the three-stage pointer
+# synchronizers into the destination spill register.
+ORPHAN_QUEUE_TCK = 2
+ORPHAN_QUEUE_CYCLES = 16
+# Release offsets of the aligned leg, in system cycles after the TRST
+# assertion (before it when negative). A pass starts at its scenario seed
+# modulo the span and each bridge and direction takes the next offset, so
+# consecutive passes walk every offset on every leg.
+ORPHAN_ALIGN_MIN = -2
+ORPHAN_ALIGN_SPAN = 6
+# Each drain point takes three consecutive 0x400 slots, for its held, queued
+# and follow-on requests; the recovery accesses take the slots after the last.
+ORPHAN_SLOT_STRIDE = 3
+# Negative validation: flips bit 0 of every CHK-J2A-ORPHAN-* expectation.
+ORPHAN_NEGATIVE_KNOB = "DTP_J2A_ORPHAN_NEGATIVE"
+
+
+class _OrphanDrain(Enum):
+    """When the responder releases a request held across a TCK-side clear.
+
+    IN_CLEAR: while the TAP still holds the bridge's TCK side in reset.
+    AFTER_CLEAR: once the clear has finished.
+    QUEUED: as AFTER_CLEAR, with a request of the new session waiting behind it.
+    ALIGNED: a swept number of system cycles around the TRST assertion.
+    """
+
+    IN_CLEAR = "in_clear"
+    AFTER_CLEAR = "after_clear"
+    QUEUED = "queued"
+    ALIGNED = "aligned"
+
+
+@dataclass(frozen=True)
+class _OrphanLeg:
+    """One bridge and direction at one drain point, with its seeded choices.
+
+    ``resp`` is the leg's error code: the held read's response and the queued
+    write's. The follow-on operation gets the other one.
+    """
+
+    target: str
+    read: bool
+    drain: _OrphanDrain
+    slot: int
+    via_trst: bool
+    trst_hold: int
+    clear_tck: int
+    in_clear_wait: int
+    offset: int
+    resp: int
+    context: str
+
+    @property
+    def held(self) -> str:
+        """The channel whose READY stall holds the request."""
+        return "ar" if self.read else "aw"
+
+    @property
+    def landings(self) -> int:
+        """Port completions of the direction once the stall is released."""
+        return 2 if self.drain is _OrphanDrain.QUEUED else 1
 
 
 class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
@@ -850,6 +939,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             second_reset=True,
         )
         await self._run_read_response_abort("narrow_reset_read", addr_offset=12)
+        await self._run_tap_reset_orphans()
 
     async def run_cdc_clear_abort_back_to_back_reset(self) -> None:
         self.log_banner("JTAG2AXI back-to-back reset recovery")
@@ -913,6 +1003,479 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"back_to_back_reset_read.{target}",
             )
             self.operation_count += 1
+
+    def _record_orphan_check(
+        self,
+        target: str,
+        check_id: str,
+        name: str,
+        observed: int,
+        expected: int,
+        context: str = "",
+    ) -> bool:
+        """Record one CHK-J2A-ORPHAN-* judgement of ``target``.
+
+        ``DTP_J2A_ORPHAN_NEGATIVE=1`` flips bit 0 of ``expected``, so the run must fail.
+        """
+        if OcahKnobs.is_set(ORPHAN_NEGATIVE_KNOB):
+            expected = int(expected) ^ 0x1
+        return self._record_abort_check(target, check_id, name, observed, expected, context)
+
+    async def _clear_cdc_clear_seen(self) -> None:
+        tb_if = self.cfg.tb_if
+        tb_if.set_cdc_clear_seen_clear(1)
+        await self.wait_sys_cycles(1)
+        tb_if.set_cdc_clear_seen_clear(0)
+
+    async def _hold_on_fabric(self, leg: _OrphanLeg, *, addr: int, word: int) -> bool:
+        """Issue a SINGLE_OP whose request the responder holds on the fabric.
+
+        A read holds its AR and is answered with the leg's error and the
+        errored-beat word ``word``; a write holds its AW and W and is answered
+        OKAY, so it lands ``word``. The request completes on the bus once the
+        stall is released, so its intents are armed. Records
+        CHK-J2A-ABORT-MIDFLIGHT once the state machine waits on it and the held
+        channel's stall counter has advanced.
+        """
+        tb_if = self.cfg.tb_if
+        target = leg.target
+        size = self.target_cfg(target).default_size
+        channels = ("ar",) if leg.read else ("aw", "w")
+        self.configure_target_backpressure(
+            target, channels=channels, stall_cycles=ABORT_HOLD_CYCLES
+        )
+        stalls = await self.target_stall_counts(target)
+        if leg.read:
+            self.configure_target_error(
+                target, addr, leg.resp, read=True, write=False, err_rdata=word
+            )
+            self.log_target_jtag2axi_op(target, f"{leg.context}.held", addr=addr, size=size)
+            await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
+        else:
+            wstrb = self.target_full_wstrb(target, size)
+            self.log_target_jtag2axi_op(
+                target, f"{leg.context}.held", addr=addr, data=word, size=size, wstrb=wstrb
+            )
+            await self.write_target_single_raw(
+                target, DtpJtag2AxiOp.WRITE, addr, data=word, wstrb=wstrb, size=size
+            )
+        idle = await self._wait_bridge_fsm(target, idle=False, tck_cycles=ABORT_MIDFLIGHT_TCK)
+        on_bus = await self._wait_held_on_bus(
+            target, leg.held, stalls[leg.held], ABORT_MIDFLIGHT_TCK
+        )
+        mid_flight = not idle and tb_if.bridge_op_pending(target) == 1 and on_bus
+        return self._record_abort_check(
+            target,
+            ABORT_MIDFLIGHT_CHECK_ID,
+            f"{leg.context}.mid_flight",
+            int(mid_flight),
+            1,
+            f"idle={idle} {leg.held}_held={int(on_bus)}",
+        )
+
+    async def _enter_tap_reset(self, *, via_trst: bool, hold: int) -> None:
+        """Reset the bridges' TCK side: TRST asserted over ``hold`` TCK cycles and left
+        asserted, or a TMS walk into Test-Logic-Reset."""
+        if via_trst:
+            await self.assert_trst(cycles=hold)
+            return
+        for _ in range(ORPHAN_TLR_WALK):
+            await self.tms_step(1)
+
+    async def _leave_tap_reset(self, *, via_trst: bool, clear_tck: int) -> None:
+        """Release TRST, leave Test-Logic-Reset, and step ``clear_tck`` TCK cycles in
+        Run-Test/Idle, during which the CDC runs its TCK-side isolate-and-clear."""
+        if via_trst:
+            await self.deassert_trst(cycles=1)
+        for _ in range(clear_tck + 1):
+            await self.tms_step(0)
+
+    async def _release_after(self, target: str, cycles: int) -> None:
+        if cycles:
+            await self.wait_sys_cycles(cycles)
+        self.clear_target_backpressure(target)
+
+    async def _aligned_tap_reset(self, target: str, *, offset: int, hold: int) -> None:
+        """Assert TRST and release the stall ``offset`` system cycles after it, or
+        before it when ``offset`` is negative; both land on system clock edges."""
+        await self.wait_sys_cycles(1)
+        if offset < 0:
+            self.clear_target_backpressure(target)
+            await self.wait_sys_cycles(-offset)
+            await self.assert_trst(cycles=hold)
+            return
+        release = cocotb.start_soon(self._release_after(target, offset))
+        await self.assert_trst(cycles=hold)
+        await release
+
+    async def _judge_clear_finished(self, leg: _OrphanLeg) -> bool:
+        """CHK-J2A-ORPHAN-DRAIN: the clear has finished while the request is still held.
+
+        The sticky clear-seen flag stays clear over the probe window and the
+        held channel's stall counter keeps advancing.
+        """
+        target = leg.target
+        await self._clear_cdc_clear_seen()
+        stalls = await self.target_stall_counts(target)
+        await self.wait_sys_cycles(ORPHAN_CLEAR_PROBE_CYCLES)
+        pending = self.cfg.tb_if.cdc_clear_seen(target)
+        still_held = (await self.target_stall_counts(target))[leg.held] > stalls[leg.held]
+        return self._record_orphan_check(
+            target,
+            ORPHAN_DRAIN_CHECK_ID,
+            f"{leg.context}.clear_finished",
+            int(not pending and still_held),
+            1,
+            f"clear_pending={pending} {leg.held}_held={int(still_held)}",
+        )
+
+    async def _drain_tap_reset(self, leg: _OrphanLeg, *, completed: int) -> bool:
+        """Reset the TAP with the request held and leave Test-Logic-Reset again.
+
+        Inside the clear the stall is released while the TAP holds
+        Test-Logic-Reset (CHK-J2A-ORPHAN-DRAIN for the landing there), and at
+        the aligned drain point together with TRST. CHK-J2A-CDC-CLEAR records
+        the TCK-side clear; ahead of a release after the clear,
+        CHK-J2A-ORPHAN-DRAIN records the finished clear with the request still
+        held.
+        """
+        tb_if = self.cfg.tb_if
+        target = leg.target
+        await self._clear_cdc_clear_seen()
+        if leg.drain is _OrphanDrain.ALIGNED:
+            await self._aligned_tap_reset(target, offset=leg.offset, hold=leg.trst_hold)
+        else:
+            await self._enter_tap_reset(via_trst=leg.via_trst, hold=leg.trst_hold)
+        ok = True
+        if leg.drain is _OrphanDrain.IN_CLEAR:
+            await self.wait_sys_cycles(leg.in_clear_wait)
+            self.clear_target_backpressure(target)
+            landed = await self.wait_port_completion(target, read=leg.read, above=completed)
+            tap = tb_if.sample("jtag_ptap_state")
+            ok = self._record_orphan_check(
+                target,
+                ORPHAN_DRAIN_CHECK_ID,
+                f"{leg.context}.drained_in_reset",
+                int(landed and tap == DtpTapState.TEST_LOGIC_RESET),
+                1,
+                f"landed={int(landed)} tap_state=0x{tap:04x}",
+            )
+        await self._leave_tap_reset(via_trst=leg.via_trst, clear_tck=leg.clear_tck)
+        ok &= self._record_abort_check(
+            target,
+            CDC_CLEAR_CHECK_ID,
+            f"{leg.context}.cdc_clear",
+            tb_if.cdc_clear_seen(target),
+            1,
+            "tck-side isolate-and-clear after the TAP reset",
+        )
+        if leg.drain in (_OrphanDrain.AFTER_CLEAR, _OrphanDrain.QUEUED):
+            ok &= await self._judge_clear_finished(leg)
+        return ok
+
+    def _queued_addr(self, target: str, rng, slot: int) -> int:
+        """A seeded beat of slot ``slot``'s 0x400 window, with seeded address bits
+        above the responder window."""
+        beat_bytes = self.target_cfg(target).beat_bytes
+        beat = rng.randrange(0x400 // beat_bytes) * beat_bytes
+        return (ROBUST_BASE + slot * 0x400 + beat) | self.random_upper_addr(target, rng)
+
+    async def _queue_behind(
+        self, leg: _OrphanLeg, *, addr: int, word: int
+    ) -> tuple[DtpJtag2AxiStatus, bool]:
+        """Issue a SINGLE_OP of the new session behind the held request.
+
+        A read of a slot holding ``word`` is answered OKAY, and a write of
+        ``word`` with the leg's error, so neither response matches the held
+        request's. Returns the status the queued request reports, and whether
+        CHK-J2A-ORPHAN-ORDER saw the bridge waiting on it while the held
+        request still stalls.
+        """
+        tb_if = self.cfg.tb_if
+        target = leg.target
+        size = self.target_cfg(target).default_size
+        stalls = await self.target_stall_counts(target)
+        if leg.read:
+            expected = DtpJtag2AxiStatus.SUCCESS
+            self.write_target_mem_int(target, addr, word, size)
+            self.log_target_jtag2axi_op(target, f"{leg.context}.queued", addr=addr, size=size)
+            await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
+        else:
+            expected = self.configure_target_error(target, addr, leg.resp, read=False, write=True)
+            wstrb = self.target_full_wstrb(target, size)
+            self.log_target_jtag2axi_op(
+                target, f"{leg.context}.queued", addr=addr, data=word, size=size, wstrb=wstrb
+            )
+            await self.write_target_single_raw(
+                target, DtpJtag2AxiOp.WRITE, addr, data=word, wstrb=wstrb, size=size
+            )
+        idle = await self._wait_bridge_fsm(target, idle=False, tck_cycles=ABORT_MIDFLIGHT_TCK)
+        for _ in range(ORPHAN_QUEUE_TCK):
+            await self.tms_step(0)
+        await self.wait_sys_cycles(ORPHAN_QUEUE_CYCLES)
+        still_held = (await self.target_stall_counts(target))[leg.held] > stalls[leg.held]
+        queued = not idle and tb_if.bridge_op_pending(target) == 1 and still_held
+        ok = self._record_orphan_check(
+            target,
+            ORPHAN_ORDER_CHECK_ID,
+            f"{leg.context}.queued",
+            int(queued),
+            1,
+            f"idle={idle} {leg.held}_held={int(still_held)}",
+        )
+        return expected, ok
+
+    async def _judge_drain(
+        self,
+        leg: _OrphanLeg,
+        *,
+        held: tuple[int, int],
+        last: tuple[int, int, DtpJtag2AxiStatus],
+        completed: int,
+    ) -> bool:
+        """Judge the port and SINGLE_OP once the held request, and a queued one, drained.
+
+        ``held`` is the held request's (address, word) and ``last`` the newest
+        request's (address, word, status). CHK-J2A-ORPHAN-DRAIN: one completion
+        of the direction, two with a queued request, and a held write's word
+        in its slot. Without a queued request, the newest completion is the
+        held one (CHK-J2A-ORPHAN-DRAIN) and SINGLE_OP reads the TAP reset's
+        SUCCESS (CHK-J2A-ORPHAN-DISCARD). With one, CHK-J2A-ORPHAN-ORDER: the
+        newest completion is the queued request's, SINGLE_OP reads its status,
+        and a queued read's data field holds its slot's word.
+        """
+        tb_if = self.cfg.tb_if
+        target, read = leg.target, leg.read
+        queued = leg.drain is _OrphanDrain.QUEUED
+        size = self.target_cfg(target).default_size
+        history = self.port_history(target)
+        held_addr, held_word = held
+        last_addr, last_word, last_status = last
+        await self.wait_port_completion(target, read=read, above=completed + leg.landings - 1)
+        for _ in range(ABORT_SETTLE_TCK):
+            if not tb_if.bridge_op_pending(target):
+                break
+            await self.tms_step(0)
+        status, rdata, captures = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
+        self.scoreboard_expect_completion(
+            target, status, context=f"{leg.context}.drained", polls=ABORT_RECOVERY_POLLS
+        )
+        newest = history.last(read=read)
+        ok = self._record_orphan_check(
+            target,
+            ORPHAN_DRAIN_CHECK_ID,
+            f"{leg.context}.landings",
+            history.count(read=read) - completed,
+            leg.landings,
+            "port completions of the direction after the release",
+        )
+        ok &= self._record_orphan_check(
+            target,
+            ORPHAN_ORDER_CHECK_ID if queued else ORPHAN_DRAIN_CHECK_ID,
+            f"{leg.context}.last_address",
+            newest.address if newest is not None else 0,
+            self.masked_addr(target, last_addr),
+            "address of the newest completion of the direction",
+        )
+        if not read:
+            nbytes = self.size_bytes(size)
+            self.scoreboard_check_target_memory(
+                target,
+                held_addr,
+                nbytes,
+                context=f"{leg.context}.held_slot",
+                expected=held_word.to_bytes(nbytes, "little"),
+            )
+            ok &= self._record_orphan_check(
+                target,
+                ORPHAN_DRAIN_CHECK_ID,
+                f"{leg.context}.held_slot",
+                self.read_target_mem_int(target, held_addr, size),
+                held_word,
+                f"addr=0x{held_addr:x}",
+            )
+        ok &= self._record_orphan_check(
+            target,
+            ORPHAN_ORDER_CHECK_ID if queued else ORPHAN_DISCARD_CHECK_ID,
+            f"{leg.context}.{'queued_status' if queued else 'status_after_drain'}",
+            status,
+            last_status,
+            f"status={DtpJtag2AxiStatus(status).name} captures={captures}/{ABORT_RECOVERY_POLLS}",
+        )
+        if queued and read:
+            ok &= self._record_orphan_check(
+                target,
+                ORPHAN_ORDER_CHECK_ID,
+                f"{leg.context}.queued_rdata",
+                rdata & self.target_data_mask(target),
+                last_word,
+                f"addr=0x{last_addr:x}",
+            )
+        return ok
+
+    async def _orphan_follow_on(
+        self, leg: _OrphanLeg, rng, *, avoid: tuple[int, ...], completed: int
+    ) -> bool:
+        """The next operation in the held request's direction reports its own response.
+
+        The responder answers it with the error code the leg's earlier
+        requests did not get, and a read with a seeded errored-beat word, so no
+        earlier response of the direction can pass for it
+        (CHK-J2A-ORPHAN-DISCARD); the port completes it as the only further
+        transaction of that direction (CHK-J2A-ORPHAN-DRAIN).
+        """
+        target, read = leg.target, leg.read
+        size = self.target_cfg(target).default_size
+        addr = self._target_addr(target, leg.slot + 2)
+        resp = AXI_RESP_DECERR if leg.resp == AXI_RESP_SLVERR else AXI_RESP_SLVERR
+        errored = self.random_distinct_word(rng, target, *avoid)
+        if read:
+            preload = self.random_distinct_word(rng, target, *avoid, errored)
+            self.write_target_mem_int(target, addr, preload, size)
+            expected = self.configure_target_error(
+                target, addr, resp, read=True, write=False, err_rdata=errored
+            )
+            self.log_target_jtag2axi_op(target, f"{leg.context}.follow_on", addr=addr, size=size)
+            await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
+        else:
+            expected = self.configure_target_error(target, addr, resp, read=False, write=True)
+            wstrb = self.target_full_wstrb(target, size)
+            self.log_target_jtag2axi_op(
+                target, f"{leg.context}.follow_on", addr=addr, data=errored, size=size, wstrb=wstrb
+            )
+            await self.write_target_single_raw(
+                target, DtpJtag2AxiOp.WRITE, addr, data=errored, wstrb=wstrb, size=size
+            )
+        status, rdata, captures = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
+        self.scoreboard_expect_completion(
+            target, status, context=f"{leg.context}.follow_on", polls=ABORT_RECOVERY_POLLS
+        )
+        ok = self._record_orphan_check(
+            target,
+            ORPHAN_DISCARD_CHECK_ID,
+            f"{leg.context}.follow_on_status",
+            status,
+            expected,
+            f"status={DtpJtag2AxiStatus(status).name} captures={captures}/{ABORT_RECOVERY_POLLS}",
+        )
+        if read:
+            ok &= self._record_orphan_check(
+                target,
+                ORPHAN_DISCARD_CHECK_ID,
+                f"{leg.context}.follow_on_rdata",
+                rdata & self.target_data_mask(target),
+                errored,
+                "errored-beat word of the follow-on read",
+            )
+        await self.wait_port_completion(target, read=read, above=completed)
+        ok &= self._record_orphan_check(
+            target,
+            ORPHAN_DRAIN_CHECK_ID,
+            f"{leg.context}.single_landing",
+            self.port_history(target).count(read=read),
+            completed + 1,
+            "port completions of the direction after the follow-on operation",
+        )
+        return ok
+
+    async def _tap_reset_orphan(self, leg: _OrphanLeg, rng) -> bool:
+        """TCK-side clear while a SINGLE_OP is held on the fabric, drained as ``leg`` selects.
+
+        The held request completes on the bus exactly once and the bridge
+        consumes its response, so SINGLE_OP reads the TAP reset's SUCCESS, or
+        the queued request's own status, and the next operation reports its own
+        response. Returns True when every judgement of the leg matched.
+        """
+        target = leg.target
+        addr = self._target_addr(target, leg.slot)
+        word = self.random_distinct_word(rng, target)
+        completed = self.port_history(target).count(read=leg.read)
+        self.log.info(
+            "%s clear=%s trst_hold=%d clear_tck=%d in_clear_wait=%d release_offset=%d error=%s",
+            leg.context,
+            "trst" if leg.via_trst else "tms_walk",
+            leg.trst_hold,
+            leg.clear_tck,
+            leg.in_clear_wait,
+            leg.offset,
+            self.axi_resp_to_jtag_status(leg.resp).name,
+        )
+        ok = await self._hold_on_fabric(leg, addr=addr, word=word)
+        ok &= await self._drain_tap_reset(leg, completed=completed)
+        last = (addr, word, DtpJtag2AxiStatus.SUCCESS)
+        if leg.drain is _OrphanDrain.QUEUED:
+            queued_addr = self._queued_addr(target, rng, leg.slot + 1)
+            queued_word = self.random_distinct_word(rng, target, word)
+            status, queued = await self._queue_behind(leg, addr=queued_addr, word=queued_word)
+            last = (queued_addr, queued_word, status)
+            ok &= queued
+        if leg.drain in (_OrphanDrain.AFTER_CLEAR, _OrphanDrain.QUEUED):
+            self.clear_target_backpressure(target)
+        ok &= await self._judge_drain(leg, held=(addr, word), last=last, completed=completed)
+        ok &= await self._orphan_follow_on(
+            leg, rng, avoid=(word, last[1]), completed=completed + leg.landings
+        )
+        self.operation_count += 1
+        return ok
+
+    async def _run_tap_reset_orphans(self) -> None:
+        """TCK-side clear with a SINGLE_OP held on the fabric: every drain point on
+        every bridge and direction, then a recovery write and read per bridge."""
+        self.log_banner("JTAG2AXI TCK-side clear while a request is held on the fabric")
+        await self.reset_tap()
+        rng = self.rng("cdc_clear_abort_tap_reset")
+        if OcahKnobs.is_set(ORPHAN_NEGATIVE_KNOB):
+            self.log.warning(
+                "NEGATIVE VALIDATION: every CHK-J2A-ORPHAN-* expectation is corrupted (%s)",
+                ORPHAN_NEGATIVE_KNOB,
+            )
+        base = (self.scenario_seed or 0) % ORPHAN_ALIGN_SPAN
+        pairs = [(target, read) for target in ROBUST_TARGETS for read in (False, True)]
+        drains = list(_OrphanDrain)
+        stuck = []
+        for pair, (target, read) in enumerate(pairs):
+            direction = "read" if read else "write"
+            # Seeded drain order per bridge and direction; every drain runs on every pair.
+            rng.shuffle(drains)
+            for idx, drain in enumerate(drains):
+                self.log_iteration(
+                    pair * len(drains) + idx + 1,
+                    len(pairs) * len(drains),
+                    "target=%s %s held on the fabric, drain=%s",
+                    target,
+                    direction,
+                    drain.value,
+                )
+                leg = _OrphanLeg(
+                    target=target,
+                    read=read,
+                    drain=drain,
+                    slot=1 + ORPHAN_SLOT_STRIDE * (len(drains) * int(read) + idx),
+                    via_trst=drain is _OrphanDrain.ALIGNED or bool(rng.getrandbits(1)),
+                    trst_hold=rng.randint(*ORPHAN_TRST_HOLD_TCK),
+                    clear_tck=rng.randint(*ORPHAN_CLEAR_TCK),
+                    in_clear_wait=rng.randint(*ORPHAN_IN_CLEAR_CYCLES),
+                    offset=ORPHAN_ALIGN_MIN + (base + pair) % ORPHAN_ALIGN_SPAN,
+                    resp=rng.choice((AXI_RESP_SLVERR, AXI_RESP_DECERR)),
+                    context=f"tap_reset.{target}.{direction}.{drain.value}",
+                )
+                if not await self._tap_reset_orphan(leg, rng):
+                    stuck.append(f"{target}.{direction}.{drain.value}")
+        for target in ROBUST_TARGETS:
+            for read in (False, True):
+                self.status = await self.verify_target_recovery(
+                    target,
+                    addr=self._target_addr(
+                        target, ORPHAN_SLOT_STRIDE * 2 * len(drains) + 1 + int(read)
+                    ),
+                    data=self.random_distinct_word(rng, target),
+                    read=read,
+                    context=f"tap_reset.{target}",
+                )
+        if stuck:
+            raise AssertionError(
+                f"tap_reset: {', '.join(stuck)} failed a judgement of the TCK-side clear"
+            )
 
     async def run_decode_error_decerr_write(self) -> None:
         self.log_banner("JTAG2AXI DECERR write decode path")
@@ -1276,6 +1839,233 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             await self._series_corner_sticky_status(target, target_idx, beats, rng)
         self.log_step(3, "Interleaved beats across the three bridges")
         await self._series_corner_interleaved(beats, rng)
+        await self._run_cdc_fifo_entry_sweep()
+
+    def _cdc_fifo_slots(self, target: str) -> int:
+        """Entries in each CDC FIFO of the bridge behind ``target``.
+
+        The bridge sizes the five FIFOs of its clock crossing to the power of
+        two at or above its read pipeline depth plus two. A FIFO pushes into
+        its entries in turn from its last clear, so push ``j`` lands in entry
+        ``j % slots``, and a stored entry keeps its payload until the
+        asynchronous reset of the FIFO's source side.
+        """
+        return 1 << (self.target_cfg(target).rd_pl_depth + 1).bit_length()
+
+    @staticmethod
+    def _sweep_error_plan(rng, slots: int, pushes: int, *, errored_last: bool) -> list[int | None]:
+        """The injected response of each of ``pushes`` accesses into a ``slots``-entry FIFO.
+
+        Every entry takes one errored access on a seeded visit and OKAY on the
+        others, so it stores an error code and OKAY in turn; SLVERR and DECERR
+        alternate across entries from a seeded phase. With ``errored_last``
+        the final access is its entry's errored one.
+        """
+        phase = rng.getrandbits(1)
+        plan: list[int | None] = [None] * pushes
+        for entry in range(slots):
+            visit = rng.choice(range(entry, pushes, slots))
+            if errored_last and entry == (pushes - 1) % slots:
+                visit = pushes - 1
+            plan[visit] = AXI_RESP_SLVERR if (entry + phase) % 2 == 0 else AXI_RESP_DECERR
+        return plan
+
+    def _sweep_beat(self, target: str, rng) -> int:
+        """A seeded beat address: bits above the responder window and a beat inside it."""
+        return self.random_upper_addr(target, rng) | self.random_target_aligned_addr(target, rng)
+
+    def _sweep_addr(self, target: str, rng) -> tuple[int, int]:
+        """A seeded address and transfer size for one OKAY access of the sweep.
+
+        A seeded beat; on an AXI4 port a seeded byte offset inside it with a
+        seeded size the offset is aligned to, on an AXI-Lite port the beat
+        address with a seeded size up to the beat.
+        """
+        cfg = self.target_cfg(target)
+        beat = self._sweep_beat(target, rng)
+        offset = rng.randrange(cfg.beat_bytes) if cfg.bus_type == 0 else 0
+        sizes = [
+            size for size in range(cfg.default_size + 1) if offset % self.size_bytes(size) == 0
+        ]
+        return beat + offset, rng.choice(sizes)
+
+    async def _sweep_write(self, target: str, rng, resp: int | None, *, context: str) -> None:
+        """One checked SINGLE_OP write of seeded data and strobes; with ``resp`` the
+        responder answers the full-beat write with that code and drops it."""
+        cfg = self.target_cfg(target)
+        if resp is None:
+            addr, size = self._sweep_addr(target, rng)
+            await self.write_target_single_and_check(
+                target,
+                addr,
+                rng.getrandbits(cfg.data_width),
+                size=size,
+                wstrb=rng.randint(1, self.target_full_wstrb(target, size)),
+                context=context,
+            )
+        else:
+            size = cfg.default_size
+            addr = self._sweep_beat(target, rng)
+            before = self.read_target_mem_int(target, addr, size)
+            expected = self.configure_target_error(target, addr, resp, read=False, write=True)
+            await self.write_target_single_expect_status(
+                target, addr, rng.getrandbits(cfg.data_width), expected, context=context
+            )
+            self.check_target_word(
+                target, addr, before, size=size, context=f"{context}.no_write_side_effect"
+            )
+        self.operation_count += 1
+
+    async def _sweep_read(self, target: str, rng, resp: int | None, *, context: str) -> None:
+        """One checked SINGLE_OP read of a seeded preloaded beat; with ``resp`` the
+        responder answers the full-beat read with that code and a second seeded word
+        (CHK-J2A-ERR-RDATA)."""
+        cfg = self.target_cfg(target)
+        size = cfg.default_size
+        if resp is None:
+            addr, read_size = self._sweep_addr(target, rng)
+            lane = addr % cfg.beat_bytes
+            word = rng.getrandbits(cfg.data_width)
+            self.write_target_mem_int(target, addr - lane, word, size)
+            await self.read_target_single_and_check(
+                target, addr, word >> (8 * lane), size=read_size, context=context
+            )
+        else:
+            addr = self._sweep_beat(target, rng)
+            preload = self.random_distinct_word(rng, target)
+            errored = self.random_distinct_word(rng, target, preload)
+            self.write_target_mem_int(target, addr, preload, size)
+            expected = self.configure_target_error(
+                target, addr, resp, read=True, write=False, err_rdata=errored
+            )
+            _, rdata = await self.read_target_single_expect_status(
+                target, addr, expected, context=context
+            )
+            self.check_error_rdata(
+                target,
+                addr,
+                rdata,
+                resp=resp,
+                preload=preload,
+                errored=errored,
+                size=size,
+                context=context,
+            )
+        self.operation_count += 1
+
+    def _record_sweep_clear(self, label: str) -> None:
+        """CHK-J2A-CDC-CLEAR and CHK-J2A-ABORT-FSM on every bridge after the ``label`` reset."""
+        tb_if = self.cfg.tb_if
+        for target in ROBUST_TARGETS:
+            context = f"cdc_fifo_entry_sweep.{target}.{label}"
+            self._record_abort_check(
+                target,
+                CDC_CLEAR_CHECK_ID,
+                f"{context}.cdc_clear",
+                tb_if.cdc_clear_seen(target),
+                1,
+                f"tck-side isolate-and-clear after the {label}",
+            )
+            self._record_abort_check(
+                target,
+                ABORT_FSM_CHECK_ID,
+                f"{context}.fsm_idle",
+                tb_if.bridge_fsm_idle(target),
+                1,
+                f"after the {label}",
+            )
+
+    async def _run_cdc_fifo_entry_sweep(self) -> None:
+        """Load every CDC FIFO entry of every bridge in one TAP session, then reset the
+        TAP and the system with the entries holding their payloads."""
+        self.log_banner("JTAG2AXI CDC FIFO entry sweep, then TAP and system resets")
+        await self.reset_tap()
+        rng = self.rng("cdc_fifo_entry_sweep")
+        tb_if = self.cfg.tb_if
+        self.log_step(
+            4, "Fill every entry of each bridge's CDC FIFOs at least twice in one TAP session"
+        )
+        operations = 0
+        operations_before = self.operation_count
+        for idx, target in enumerate(ROBUST_TARGETS, start=1):
+            slots = self._cdc_fifo_slots(target)
+            # Two full rotations plus two pushes: every entry is written at
+            # least twice, entries 0 and 1 three times.
+            pushes = 2 * slots + 2
+            write_plan = self._sweep_error_plan(rng, slots, pushes, errored_last=False)
+            read_plan = self._sweep_error_plan(rng, slots, pushes, errored_last=True)
+            self.log_iteration(
+                idx,
+                len(ROBUST_TARGETS),
+                "target=%s slots=%d writes=%d reads=%d write_errors=%s read_errors=%s",
+                target,
+                slots,
+                pushes,
+                pushes,
+                [push for push, resp in enumerate(write_plan) if resp is not None],
+                [push for push, resp in enumerate(read_plan) if resp is not None],
+            )
+            for push in range(pushes):
+                context = f"cdc_fifo_entry_sweep.{target}.{push}"
+                await self._sweep_write(target, rng, write_plan[push], context=f"{context}.write")
+                await self._sweep_read(target, rng, read_plan[push], context=f"{context}.read")
+            operations += 2 * pushes + 2
+        self.log_step(5, "TAP reset while every request entry holds its last payload")
+        tb_if.set_cdc_clear_seen_clear(1)
+        await self.wait_sys_cycles(1)
+        tb_if.set_cdc_clear_seen_clear(0)
+        await self.reset_tap()
+        for _ in range(ABORT_SETTLE_TCK):
+            await self.tms_step(0)
+        self._record_sweep_clear("tap_reset")
+        self.log_step(6, "System reset while every response entry holds its last payload")
+        tb_if.set_cdc_clear_seen_clear(1)
+        await self.wait_sys_cycles(1)
+        tb_if.set_cdc_clear_seen_clear(0)
+        await self.pulse_system_reset(cycles=rng.randint(1, 3))
+        for _ in range(ABORT_SETTLE_TCK):
+            await self.tms_step(0)
+        self._record_sweep_clear("system_reset")
+        self.log_step(7, "SINGLE_OP status at its reset value, then a write and a read per bridge")
+        for target in ROBUST_TARGETS:
+            cfg = self.target_cfg(target)
+            context = f"cdc_fifo_entry_sweep.{target}"
+            # The last read of the sweep left an error code, which the TAP
+            # reset returns to the op field's reset value; the system reset
+            # on the idle bridge discards nothing and keeps it.
+            status, _, captures = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
+            self.scoreboard_expect_completion(
+                target, status, context=f"{context}.status_reset", polls=ABORT_RECOVERY_POLLS
+            )
+            self._record_abort_check(
+                target,
+                ABORT_RECOVERY_CHECK_ID,
+                f"{context}.status_reset",
+                status,
+                DtpJtag2AxiStatus.SUCCESS,
+                f"status={DtpJtag2AxiStatus(status).name} "
+                f"captures={captures}/{ABORT_RECOVERY_POLLS} after the TAP and system resets",
+            )
+            for read in (False, True):
+                self.status = await self.verify_target_recovery(
+                    target,
+                    addr=self._sweep_beat(target, rng),
+                    data=rng.getrandbits(cfg.data_width),
+                    read=read,
+                    context=context,
+                )
+                self.operation_count += 1
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            unconsumed = scoreboard.unconsumed_credits()
+            swept = self.operation_count - operations_before
+            scoreboard.expect_nonvacuous(
+                swept >= operations and unconsumed == 0,
+                context=(
+                    f"scenario={self.scenario} leg=cdc_fifo_entry_sweep operations={swept}/{operations} "
+                    f"credits_unconsumed={unconsumed}"
+                ),
+            )
 
     async def body(self) -> None:
         await self.enable_all_debug()

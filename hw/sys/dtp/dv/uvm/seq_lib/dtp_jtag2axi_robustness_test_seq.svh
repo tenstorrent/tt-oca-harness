@@ -21,7 +21,14 @@
 //     the bridge FSM is observed mid-flight through dtp_tb_if; the FSM's
 //     return to IDLE, the CDC's TCK-side clear, the absence of an escaped
 //     write, and the recovery status are recorded per bridge and the pass
-//     is judged once every bridge has left its evidence;
+//     is judged once every bridge has left its evidence; the narrow-reset
+//     scenario then holds a SINGLE_OP read or write on the fabric by a READY
+//     stall across a TCK-side clear (TRST, or a TMS walk into
+//     Test-Logic-Reset), released inside the clear, after it, after it with
+//     a request of the new session queued behind it, or a swept number of
+//     system cycles around the TRST assertion; the held request lands
+//     exactly once, its response never reaches the JTAG side, and the next
+//     operation reports its own response;
 //   * cdc_clear_abort_back_to_back_reset — two adjacent reset pulses with
 //     seeded spacing, then recovery write and read on every bridge;
 //   * decode_error_decerr_{write,read} / decode_error_mixed — one-shot
@@ -37,7 +44,12 @@
 //   * series_corner_all_bridges — incrementing and fixed-address write
 //     series with their SERIES_CTRL address captures, one faulted beat whose
 //     status holds until SERIES_CTRL.reset, and the three bridges' beats
-//     interleaved.
+//     interleaved; then every entry of each bridge's CDC FIFOs filled at
+//     least twice in one TAP session by checked writes and reads of seeded
+//     addresses, sizes and data, one SLVERR or DECERR per entry, a TAP reset
+//     and a system reset with every entry holding its payload, the
+//     SINGLE_OP status back at its reset value, and a recovery write and
+//     read on every bridge.
 //
 // Every random choice draws from the per-pass seeded stream and is logged
 // with its loop context for replay. The test plumbs the per-target handle
@@ -842,6 +854,543 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     end
   endtask
 
+  // TCK-side clear with a request held on the fabric. TRST is asserted with
+  // one to four TCK cycles clocked under it and held until the TAP leaves
+  // Test-Logic-Reset. The ACLK side starts its clear about two system cycles
+  // after the TCK-side reset and holds it until TCK clocks the clear's
+  // phases after the reset is released, so a release six to sixteen system
+  // cycles after the last TCK cycle of the reset lands inside the clear. The
+  // 64 to 96 TCK cycles stepped in Run-Test/Idle after Test-Logic-Reset
+  // cover the CDC's four-phase isolate-and-clear: each phase handshake costs
+  // a few cycles of each clock, and TCK is the slower one. A clear in
+  // progress sets the sticky clear-seen flag within the probe window. A
+  // queued request reaches the CDC two TCK cycles after the state machine
+  // leaves idle and crosses the three-stage pointer synchronizers into the
+  // destination spill register within sixteen system cycles.
+  localparam int unsigned OrphanTrstHoldMax = 4;
+  localparam int unsigned OrphanInClearMin = 6;
+  localparam int unsigned OrphanInClearMax = 16;
+  localparam int unsigned OrphanClearTckMin = 64;
+  localparam int unsigned OrphanClearTckMax = 96;
+  localparam int unsigned OrphanClearProbeCycles = 4;
+  localparam int unsigned OrphanQueueTck = 2;
+  localparam int unsigned OrphanQueueCycles = 16;
+  // Release offsets of the aligned leg, in system cycles after the TRST
+  // assertion (before it when negative). A pass starts at its scenario seed
+  // modulo the span and each bridge and direction takes the next offset, so
+  // consecutive passes walk every offset on every leg.
+  localparam int OrphanAlignMin = -2;
+  localparam int unsigned OrphanAlignSpan = 6;
+  // Each drain point takes three consecutive 0x400 slots, for its held,
+  // queued and follow-on requests; the recovery accesses take the slots
+  // after the last.
+  localparam int unsigned OrphanSlotStride = 3;
+
+  // When the responder releases a request held across a TCK-side clear:
+  // while the TAP still holds the bridge's TCK side in reset; once the clear
+  // has finished; as the latter with a request of the new session waiting
+  // behind it; a swept number of system cycles around the TRST assertion.
+  typedef enum int unsigned {
+    DTP_J2A_DRAIN_IN_CLEAR,
+    DTP_J2A_DRAIN_AFTER_CLEAR,
+    DTP_J2A_DRAIN_QUEUED,
+    DTP_J2A_DRAIN_ALIGNED
+  } dtp_j2a_drain_e;
+
+  // One bridge and direction at one drain point, with its seeded choices.
+  // `resp` is the leg's error code: the held read's response and the queued
+  // write's. The follow-on operation gets the other one.
+  typedef struct {
+    dtp_j2a_target_t t;
+    bit              is_read;
+    dtp_j2a_drain_e  drain;
+    int unsigned     slot;
+    bit              via_trst;
+    int unsigned     trst_hold;
+    int unsigned     clear_tck;
+    int unsigned     in_clear_wait;
+    int              offset;
+    ocah_axi_resp_e  resp;
+    string           context_s;
+  } orphan_leg_t;
+
+  protected function string drain_label(dtp_j2a_drain_e drain);
+    case (drain)
+      DTP_J2A_DRAIN_IN_CLEAR:    return "in_clear";
+      DTP_J2A_DRAIN_AFTER_CLEAR: return "after_clear";
+      DTP_J2A_DRAIN_QUEUED:      return "queued";
+      default:                   return "aligned";
+    endcase
+  endfunction
+
+  // The channel whose READY stall holds the leg's request.
+  protected function string held_channel(orphan_leg_t leg);
+    string channel = "aw";
+    if (leg.is_read) channel = "ar";
+    return channel;
+  endfunction
+
+  // Port completions of the leg's direction once the stall is released.
+  protected function int unsigned leg_landings(orphan_leg_t leg);
+    return (leg.drain == DTP_J2A_DRAIN_QUEUED) ? 2 : 1;
+  endfunction
+
+  // Record one CHK-J2A-ORPHAN-* judgement on the selected bridge;
+  // +DTP_J2A_ORPHAN_NEGATIVE flips bit 0 of `expected`, so the run must fail.
+  protected function bit record_orphan_check(string check_id, string name, bit [63:0] observed,
+                                             bit [63:0] expected, string context_s);
+    if (test_cfg != null && test_cfg.j2a_orphan_negative) expected ^= 64'd1;
+    return record_abort_check(check_id, name, observed, expected, context_s);
+  endfunction
+
+  // Issue a SINGLE_OP whose request the responder holds on the fabric. A
+  // read holds its AR and is answered with the leg's error and the
+  // errored-beat word `word`; a write holds its AW and W and is answered
+  // OKAY, so it lands `word`. The request completes on the bus once the
+  // stall is released, so its intents are armed. Records
+  // CHK-J2A-ABORT-MIDFLIGHT once the state machine waits on it and the held
+  // channel's stall counter has advanced.
+  protected task hold_on_fabric(orphan_leg_t leg, bit [63:0] addr, bit [63:0] word, output bit ok);
+    dtp_j2a_target_t t = leg.t;
+    string held = held_channel(leg);
+    int unsigned aw0, w0, ar0;
+    bit idle, on_bus;
+    if (leg.is_read) begin
+      configure_target_backpressure(t, '{"ar"}, AbortHoldCycles);
+      arm_target_error(t, addr, leg.resp, 1'b1, 1'b0, 1'b1, word);
+    end else begin
+      configure_target_backpressure(t, '{"aw", "w"}, AbortHoldCycles);
+    end
+    sample_stall(t, aw0, w0, ar0);
+    if (leg.is_read) issue_single(t, DTP_J2A_OP_READ, addr);
+    else issue_single(t, DTP_J2A_OP_WRITE, addr, word, full_wstrb(t.default_size));
+    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, idle);
+    wait_held_on_bus(t, held, leg.is_read ? ar0 : aw0, AbortMidFlightTck, on_bus);
+    ok = record_abort_check(
+        DtpJ2aAbortMidFlightCheckId,
+        {
+          leg.context_s, ".mid_flight"
+        },
+        64'(!idle && bridge_op_pending(
+            t
+        ) && on_bus),
+        64'd1,
+        $sformatf(
+            "idle=%0d %s_held=%0d", idle, held, on_bus)
+    );
+  endtask
+
+  // Reset the bridges' TCK side: TRST asserted over `hold` TCK cycles and
+  // left asserted, or the TMS walk into Test-Logic-Reset.
+  protected task enter_tap_reset(bit via_trst, int unsigned hold);
+    if (via_trst) set_trst(1'b0, hold);
+    else goto_tlr_via_tms();
+  endtask
+
+  // Release TRST, leave Test-Logic-Reset, and step `clear_tck` TCK cycles in
+  // Run-Test/Idle, during which the CDC runs its TCK-side isolate-and-clear.
+  protected task leave_tap_reset(bit via_trst, int unsigned clear_tck);
+    if (via_trst) set_trst(1'b1, 1);
+    repeat (clear_tck + 1) step(1'b0);
+    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after the TAP reset");
+  endtask
+
+  // Assert TRST and release the stall `offset` system cycles after it, or
+  // before it when `offset` is negative. Both start from one instant and
+  // wait whole system clock periods, so they take effect `offset` clock
+  // edges apart.
+  protected task aligned_tap_reset(dtp_j2a_target_t t, int offset, int unsigned hold);
+    if (offset < 0) begin
+      clear_target_backpressure(t);
+      wait_sys_cycles(int'(-offset));
+      set_trst(1'b0, hold);
+      return;
+    end
+    fork
+      begin
+        if (offset > 0) wait_sys_cycles(offset);
+        clear_target_backpressure(t);
+      end
+      set_trst(1'b0, hold);
+    join
+  endtask
+
+  // CHK-J2A-ORPHAN-DRAIN: the clear has finished while the request is still
+  // held. The sticky clear-seen flag stays clear over the probe window and
+  // the held channel's stall counter keeps advancing.
+  protected task judge_clear_finished(orphan_leg_t leg, output bit ok);
+    int unsigned aw0, w0, ar0, aw1, w1, ar1;
+    bit pending, still_held;
+    clear_cdc_clear_seen();
+    sample_stall(leg.t, aw0, w0, ar0);
+    wait_sys_cycles(OrphanClearProbeCycles);
+    pending = cdc_clear_seen(leg.t);
+    sample_stall(leg.t, aw1, w1, ar1);
+    still_held = leg.is_read ? (ar1 > ar0) : (aw1 > aw0);
+    ok = record_orphan_check(DtpJ2aOrphanDrainCheckId, {leg.context_s, ".clear_finished"},
+                             64'(!pending && still_held), 64'd1, $sformatf(
+                             "clear_pending=%0d %s_held=%0d", pending, held_channel(leg),
+                             still_held));
+  endtask
+
+  // Reset the TAP with the request held and leave Test-Logic-Reset again.
+  // Inside the clear the stall is released while the TAP holds
+  // Test-Logic-Reset (CHK-J2A-ORPHAN-DRAIN for the landing there), and at
+  // the aligned drain point together with TRST. CHK-J2A-CDC-CLEAR records
+  // the TCK-side clear; ahead of a release after the clear,
+  // CHK-J2A-ORPHAN-DRAIN records the finished clear with the request still
+  // held.
+  protected task drain_tap_reset(orphan_leg_t leg, int unsigned completed, output bit ok);
+    dtp_j2a_target_t t = leg.t;
+    bit landed, step_ok;
+    ok = 1'b1;
+    clear_cdc_clear_seen();
+    if (leg.drain == DTP_J2A_DRAIN_ALIGNED) aligned_tap_reset(t, leg.offset, leg.trst_hold);
+    else enter_tap_reset(leg.via_trst, leg.trst_hold);
+    if (leg.drain == DTP_J2A_DRAIN_IN_CLEAR) begin
+      wait_sys_cycles(leg.in_clear_wait);
+      clear_target_backpressure(t);
+      wait_port_count(t, leg.is_read, completed, landed);
+      ok = record_orphan_check(
+          DtpJ2aOrphanDrainCheckId,
+          {
+            leg.context_s, ".drained_in_reset"
+          },
+          64'(landed && (tb_vif.tap_state === 16'(TEST_LOGIC_RESET))),
+          64'd1,
+          $sformatf(
+              "landed=%0d tap_state=0x%04h", landed, tb_vif.tap_state)
+      );
+    end
+    leave_tap_reset(leg.via_trst, leg.clear_tck);
+    ok &= record_abort_check(
+        DtpJ2aCdcClearCheckId,
+        {
+          leg.context_s, ".cdc_clear"
+        },
+        64'(cdc_clear_seen(
+            t
+        )),
+        64'd1,
+        "tck-side isolate-and-clear after the TAP reset"
+    );
+    if (leg.drain inside {DTP_J2A_DRAIN_AFTER_CLEAR, DTP_J2A_DRAIN_QUEUED}) begin
+      judge_clear_finished(leg, step_ok);
+      ok &= step_ok;
+    end
+  endtask
+
+  // A seeded beat of slot `slot`'s 0x400 window, with seeded address bits
+  // above the responder window.
+  protected function bit [63:0] queued_addr(dtp_j2a_target_t t, int unsigned slot);
+    bit [63:0] beat = 64'($urandom_range(32'h400 / t.beat_bytes - 1) * t.beat_bytes);
+    return (RobustBase + 64'(slot) * 64'h400 + beat) | random_upper_addr(t);
+  endfunction
+
+  // Issue a SINGLE_OP of the new session behind the held request. A read of
+  // a slot holding `word` is answered OKAY, and a write of `word` with the
+  // leg's error, so neither response matches the held request's. `expected`
+  // is the status the queued request reports; `ok` is 1 when
+  // CHK-J2A-ORPHAN-ORDER saw the bridge waiting on it while the held request
+  // still stalls.
+  protected task queue_behind(orphan_leg_t leg, bit [63:0] addr, bit [63:0] word,
+                              output dtp_j2a_status_e expected, output bit ok);
+    dtp_j2a_target_t t = leg.t;
+    int unsigned size = t.default_size;
+    int unsigned aw0, w0, ar0, aw1, w1, ar1;
+    bit idle, still_held;
+    sample_stall(t, aw0, w0, ar0);
+    if (leg.is_read) begin
+      expected = DTP_J2A_SUCCESS;
+      write_target_mem_int(t, addr, word, size);
+      issue_single(t, DTP_J2A_OP_READ, addr);
+    end else begin
+      expected = dtp_j2a_axi_resp_to_status(leg.resp);
+      arm_target_error(t, addr, leg.resp, 1'b0, 1'b1);
+      issue_single(t, DTP_J2A_OP_WRITE, addr, word, full_wstrb(size));
+    end
+    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, idle);
+    repeat (OrphanQueueTck) step(1'b0);
+    wait_sys_cycles(OrphanQueueCycles);
+    sample_stall(t, aw1, w1, ar1);
+    still_held = leg.is_read ? (ar1 > ar0) : (aw1 > aw0);
+    ok = record_orphan_check(DtpJ2aOrphanOrderCheckId, {leg.context_s, ".queued"},
+                             64'(!idle && bridge_op_pending(t) && still_held), 64'd1, $sformatf(
+                             "idle=%0d %s_held=%0d", idle, held_channel(leg), still_held));
+  endtask
+
+  // Judge the port and SINGLE_OP once the held request, and a queued one,
+  // drained. `held_addr`/`held_word` are the held request's, and
+  // `last_addr`/`last_word`/`last_status` the newest request's.
+  // CHK-J2A-ORPHAN-DRAIN: one completion of the direction, two with a queued
+  // request, and a held write's word in its slot. Without a queued request,
+  // the newest completion is the held one (CHK-J2A-ORPHAN-DRAIN) and
+  // SINGLE_OP reads the TAP reset's SUCCESS (CHK-J2A-ORPHAN-DISCARD). With
+  // one, CHK-J2A-ORPHAN-ORDER: the newest completion is the queued
+  // request's, SINGLE_OP reads its status, and a queued read's data field
+  // holds its slot's word.
+  protected task judge_drain(orphan_leg_t leg, bit [63:0] held_addr, bit [63:0] held_word,
+                             bit [63:0] last_addr, bit [63:0] last_word,
+                             dtp_j2a_status_e last_status, int unsigned completed, output bit ok);
+    dtp_j2a_target_t t = leg.t;
+    int unsigned size = t.default_size;
+    bit queued = (leg.drain == DTP_J2A_DRAIN_QUEUED);
+    string status_id = queued ? DtpJ2aOrphanOrderCheckId : DtpJ2aOrphanDiscardCheckId;
+    string status_label = ".status_after_drain";
+    dtp_axi_port_history port = port_history(t.name);
+    dtp_j2a_status_e st;
+    bit [63:0] rdata;
+    ocah_axi_item newest;
+    bit done;
+    if (queued) status_label = ".queued_status";
+    wait_port_count(t, leg.is_read, completed + leg_landings(leg) - 1, done);
+    for (int unsigned i = 0; i < AbortSettleTck && bridge_op_pending(t); i++) step(1'b0);
+    // A TAP reset loads IDCODE, and the status capture shifts the SINGLE_OP
+    // register under the instruction already loaded.
+    load_ir(t.single_op_instr);
+    poll_single(t, st, rdata, {leg.context_s, ".drained"}, AbortRecoveryPolls);
+    ok = record_orphan_check(
+        DtpJ2aOrphanDrainCheckId,
+        {
+          leg.context_s, ".landings"
+        },
+        64'(port.count(
+            leg.is_read
+        ) - completed),
+        64'(leg_landings(
+            leg
+        )),
+        "port completions of the direction after the release"
+    );
+    void'(port.last(leg.is_read, newest));
+    ok &= record_orphan_check(
+        queued ? DtpJ2aOrphanOrderCheckId : DtpJ2aOrphanDrainCheckId,
+        {
+          leg.context_s, ".last_address"
+        },
+        (newest != null) ? newest.address : '0,
+        last_addr & bit_mask(
+            t.addr_width
+        ),
+        "address of the newest completion of the direction"
+    );
+    if (!leg.is_read) begin
+      check_target_memory(t, held_addr, held_word, size, {leg.context_s, ".held_slot"});
+      ok &= record_orphan_check(
+          DtpJ2aOrphanDrainCheckId,
+          {
+            leg.context_s, ".held_slot"
+          },
+          read_target_mem_int(
+              t, held_addr, size
+          ),
+          held_word & data_mask(
+              size
+          ),
+          $sformatf(
+              "addr=0x%0h", held_addr)
+      );
+    end
+    ok &= record_orphan_check(
+        status_id,
+        {
+          leg.context_s, status_label
+        },
+        64'(st),
+        64'(last_status),
+        $sformatf(
+            "status=%s max_captures=%0d", st.name(), AbortRecoveryPolls)
+    );
+    if (queued && leg.is_read)
+      ok &= record_orphan_check(
+          DtpJ2aOrphanOrderCheckId,
+          {
+            leg.context_s, ".queued_rdata"
+          },
+          rdata & bit_mask(
+              t.data_width
+          ),
+          last_word,
+          $sformatf(
+              "addr=0x%0h", last_addr)
+      );
+  endtask
+
+  // The next operation in the held request's direction reports its own
+  // response. The responder answers it with the error code the leg's
+  // earlier requests did not get, and a read with a seeded errored-beat
+  // word, so no earlier response of the direction can pass for it
+  // (CHK-J2A-ORPHAN-DISCARD); the port completes it as the only further
+  // transaction of that direction (CHK-J2A-ORPHAN-DRAIN).
+  protected task orphan_follow_on(orphan_leg_t leg, bit [63:0] avoid[$], int unsigned completed,
+                                  output bit ok);
+    dtp_j2a_target_t t = leg.t;
+    int unsigned size = t.default_size;
+    bit [63:0] addr = robust_addr(t, leg.slot + 2);
+    ocah_axi_resp_e resp = (leg.resp == OCAH_AXI_RESP_SLVERR) ? OCAH_AXI_RESP_DECERR
+                                                               : OCAH_AXI_RESP_SLVERR;
+    dtp_j2a_status_e expected = dtp_j2a_axi_resp_to_status(resp);
+    bit [63:0] errored = random_distinct_word(t, avoid);
+    dtp_j2a_status_e st;
+    bit [63:0] rdata;
+    bit done;
+    if (leg.is_read) begin
+      avoid.push_back(errored);
+      write_target_mem_int(t, addr, random_distinct_word(t, avoid), size);
+      arm_target_error(t, addr, resp, 1'b1, 1'b0, 1'b1, errored);
+      issue_single(t, DTP_J2A_OP_READ, addr);
+    end else begin
+      arm_target_error(t, addr, resp, 1'b0, 1'b1);
+      issue_single(t, DTP_J2A_OP_WRITE, addr, errored, full_wstrb(size));
+    end
+    poll_single(t, st, rdata, {leg.context_s, ".follow_on"}, AbortRecoveryPolls);
+    ok = record_orphan_check(
+        DtpJ2aOrphanDiscardCheckId,
+        {
+          leg.context_s, ".follow_on_status"
+        },
+        64'(st),
+        64'(expected),
+        $sformatf(
+            "status=%s max_captures=%0d", st.name(), AbortRecoveryPolls)
+    );
+    if (leg.is_read)
+      ok &= record_orphan_check(
+          DtpJ2aOrphanDiscardCheckId,
+          {
+            leg.context_s, ".follow_on_rdata"
+          },
+          rdata & bit_mask(
+              t.data_width
+          ),
+          errored,
+          "errored-beat word of the follow-on read"
+      );
+    wait_port_count(t, leg.is_read, completed, done);
+    ok &= record_orphan_check(
+        DtpJ2aOrphanDrainCheckId,
+        {
+          leg.context_s, ".single_landing"
+        },
+        64'(port_history(
+            t.name
+        ).count(
+            leg.is_read
+        )),
+        64'(completed + 1),
+        "port completions of the direction after the follow-on operation"
+    );
+  endtask
+
+  // TCK-side clear while a SINGLE_OP is held on the fabric, drained as
+  // `leg` selects. The held request completes on the bus exactly once and
+  // the bridge consumes its response, so SINGLE_OP reads the TAP reset's
+  // SUCCESS, or the queued request's own status, and the next operation
+  // reports its own response. `ok` is 1 when every judgement of the leg
+  // matched.
+  protected task tap_reset_orphan(orphan_leg_t leg, output bit ok);
+    dtp_j2a_target_t t = leg.t;
+    bit [63:0] addr = robust_addr(t, leg.slot);
+    bit [63:0] word = rand_nonzero_data(t);
+    int unsigned completed = port_history(t.name).count(leg.is_read);
+    string clear_kind = "tms_walk";
+    bit [63:0] last_addr = addr;
+    bit [63:0] last_word = word;
+    dtp_j2a_status_e last_status = DTP_J2A_SUCCESS;
+    dtp_j2a_status_e error_status = dtp_j2a_axi_resp_to_status(leg.resp);
+    bit step_ok;
+    if (leg.via_trst) clear_kind = "trst";
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "%s clear=%s trst_hold=%0d clear_tck=%0d in_clear_wait=%0d release_offset=%0d error=%s",
+            leg.context_s, clear_kind, leg.trst_hold, leg.clear_tck, leg.in_clear_wait, leg.offset,
+            error_status.name()), UVM_LOW)
+    hold_on_fabric(leg, addr, word, ok);
+    drain_tap_reset(leg, completed, step_ok);
+    ok &= step_ok;
+    if (leg.drain == DTP_J2A_DRAIN_QUEUED) begin
+      last_addr = queued_addr(t, leg.slot + 1);
+      last_word = random_distinct_word(t, {word});
+      queue_behind(leg, last_addr, last_word, last_status, step_ok);
+      ok &= step_ok;
+    end
+    if (leg.drain inside {DTP_J2A_DRAIN_AFTER_CLEAR, DTP_J2A_DRAIN_QUEUED})
+      clear_target_backpressure(t);
+    judge_drain(leg, addr, word, last_addr, last_word, last_status, completed, step_ok);
+    ok &= step_ok;
+    orphan_follow_on(leg, {word, last_word}, completed + leg_landings(leg), step_ok);
+    ok &= step_ok;
+    operation_count++;
+  endtask
+
+  protected task run_tap_reset_orphans();
+    dtp_j2a_drain_e drains[4] = '{
+        DTP_J2A_DRAIN_IN_CLEAR,
+        DTP_J2A_DRAIN_AFTER_CLEAR,
+        DTP_J2A_DRAIN_QUEUED,
+        DTP_J2A_DRAIN_ALIGNED
+    };
+    int unsigned num_drains = $size(drains);
+    int unsigned pairs = 2 * NumTargets;
+    int unsigned base = scenario_seed % OrphanAlignSpan;
+    string stuck = "";
+    reset_to_rti();
+    if (test_cfg != null && test_cfg.j2a_orphan_negative)
+      `uvm_info(get_type_name(),
+                "NEGATIVE VALIDATION: every CHK-J2A-ORPHAN-* expectation is corrupted", UVM_LOW)
+    for (int unsigned pair = 0; pair < pairs; pair++) begin
+      dtp_j2a_target_t t = select_target(pair / 2);
+      bit is_read = bit'(pair % 2);
+      string direction = "write";
+      if (is_read) direction = "read";
+      // Seeded drain order per bridge and direction; every drain runs on
+      // every bridge and direction.
+      drains.shuffle();
+      foreach (drains[d]) begin
+        orphan_leg_t leg;
+        bit ok;
+        leg.t = t;
+        leg.is_read = is_read;
+        leg.drain = drains[d];
+        leg.slot = 1 + OrphanSlotStride * (num_drains * is_read + d);
+        leg.via_trst = (drains[d] == DTP_J2A_DRAIN_ALIGNED) || $urandom_range(1);
+        leg.trst_hold = $urandom_range(OrphanTrstHoldMax, 1);
+        leg.clear_tck = $urandom_range(OrphanClearTckMax, OrphanClearTckMin);
+        leg.in_clear_wait = $urandom_range(OrphanInClearMax, OrphanInClearMin);
+        leg.offset = OrphanAlignMin + int'((base + pair) % OrphanAlignSpan);
+        leg.resp = $urandom_range(1) ? OCAH_AXI_RESP_SLVERR : OCAH_AXI_RESP_DECERR;
+        leg.context_s = $sformatf("tap_reset.%s.%s.%s", t.name, direction, drain_label(drains[d]));
+        `uvm_info(get_type_name(), $sformatf(
+                  "[%0d/%0d] target=%s %s held on the fabric, drain=%s",
+                  pair * num_drains + d + 1,
+                  pairs * num_drains,
+                  t.name,
+                  direction,
+                  drain_label(
+                      drains[d]
+                  )
+                  ), UVM_LOW)
+        tap_reset_orphan(leg, ok);
+        if (!ok) begin
+          if (stuck != "") stuck = {stuck, ", "};
+          stuck = {stuck, leg.context_s};
+        end
+      end
+    end
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      dtp_j2a_target_t t = select_target(i);
+      for (int unsigned is_read = 0; is_read < 2; is_read++) begin
+        recover_target(t, robust_addr(t, OrphanSlotStride * 2 * num_drains + 1 + is_read),
+                       rand_nonzero_data(t), bit'(is_read), $sformatf("tap_reset.%s", t.name),
+                       status);
+      end
+    end
+    if (stuck != "")
+      `uvm_error("jtag2axi_abort_chk", $sformatf(
+                 "tap_reset: %s failed a judgement of the TCK-side clear", stuck))
+  endtask
+
   protected task run_decode_error_decerr_write();
     for (int unsigned i = 0; i < NumTargets; i++) begin
       dtp_j2a_target_t t = select_target(i);
@@ -1108,6 +1657,209 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     series_corner_interleaved(beats);
   endtask
 
+  // --- CDC FIFO entry sweep -------------------------------------------------
+  // Entries in each CDC FIFO of the bridge behind `t`. The bridge sizes the
+  // five FIFOs of its clock crossing to the power of two at or above its read
+  // pipeline depth plus two. A FIFO pushes into its entries in turn from its
+  // last clear, so push j lands in entry j % slots, and a stored entry keeps
+  // its payload until the asynchronous reset of the FIFO's source side.
+  protected function int unsigned cdc_fifo_slots(dtp_j2a_target_t t);
+    return 1 << $clog2(t.rd_pl_depth + 2);
+  endfunction
+
+  // The injected response of each of `pushes` accesses into a `slots`-entry
+  // FIFO, OKAY where none is injected. Every entry takes one errored access
+  // on a seeded visit and OKAY on the others, so it stores an error code and
+  // OKAY in turn; SLVERR and DECERR alternate across entries from a seeded
+  // phase. With `errored_last` the final access is its entry's errored one.
+  protected function void sweep_error_plan(int unsigned slots, int unsigned pushes,
+                                           bit errored_last, ref ocah_axi_resp_e plan[]);
+    int unsigned phase = $urandom_range(1);
+    plan = new[pushes];
+    foreach (plan[j]) plan[j] = OCAH_AXI_RESP_OKAY;
+    for (int unsigned entry = 0; entry < slots; entry++) begin
+      int unsigned visits = (pushes - entry + slots - 1) / slots;
+      int unsigned visit = entry + slots * $urandom_range(visits - 1);
+      if (errored_last && entry == (pushes - 1) % slots) visit = pushes - 1;
+      plan[visit] = ((entry + phase) % 2 == 0) ? OCAH_AXI_RESP_SLVERR : OCAH_AXI_RESP_DECERR;
+    end
+  endfunction
+
+  // A seeded beat address: bits above the responder window and a beat inside
+  // it.
+  protected function bit [63:0] sweep_beat(dtp_j2a_target_t t);
+    return random_upper_addr(t) | random_target_aligned_addr(t, t.default_size);
+  endfunction
+
+  // A seeded address and transfer size for one OKAY access of the sweep: a
+  // seeded beat; on an AXI4 port a seeded byte offset inside it with a seeded
+  // size the offset is aligned to, on an AXI-Lite port the beat address with
+  // a seeded size up to the beat.
+  protected function void sweep_addr(dtp_j2a_target_t t, output bit [63:0] addr,
+                                     output int unsigned size);
+    int unsigned offset = (t.bus_type == 1'b0) ? $urandom_range(t.beat_bytes - 1) : 0;
+    int unsigned sizes[$];
+    for (int unsigned s = 0; s <= t.default_size; s++) begin
+      if (offset % size_bytes(s) == 0) sizes.push_back(s);
+    end
+    addr = sweep_beat(t) + 64'(offset);
+    size = sizes[$urandom_range(sizes.size() - 1)];
+  endfunction
+
+  // One checked SINGLE_OP write of seeded data and strobes; with a non-OKAY
+  // `resp` the responder answers the full-beat write with that code and drops
+  // it.
+  protected task sweep_write(dtp_j2a_target_t t, ocah_axi_resp_e resp, string context_s);
+    dtp_j2a_status_e op_status;
+    bit [63:0] addr;
+    int unsigned size;
+    if (resp == OCAH_AXI_RESP_OKAY) begin
+      bit [7:0] wstrb;
+      sweep_addr(t, addr, size);
+      wstrb = 8'($urandom_range(int'(full_wstrb(size)), 1));
+      write_target_single_and_check(t, addr, rand_data(t), op_status, size, wstrb, context_s);
+    end else begin
+      bit [63:0] prior_word;
+      size = t.default_size;
+      addr = sweep_beat(t);
+      prior_word = read_target_mem_int(t, addr, size);
+      arm_target_error(t, addr, resp, 1'b0, 1'b1);
+      write_target_single_expect_status(t, addr, rand_data(t), axi_resp_to_status(resp), op_status,
+                                        size, full_wstrb(size), context_s);
+      check_target_memory(t, addr, prior_word, size, {context_s, ".no_write_side_effect"});
+    end
+    operation_count++;
+  endtask
+
+  // One checked SINGLE_OP read of a seeded preloaded beat; with a non-OKAY
+  // `resp` the responder answers the full-beat read with that code and a
+  // second seeded word (CHK-J2A-ERR-RDATA).
+  protected task sweep_read(dtp_j2a_target_t t, ocah_axi_resp_e resp, string context_s);
+    dtp_j2a_status_e op_status;
+    bit [63:0] addr, rdata;
+    int unsigned size;
+    if (resp == OCAH_AXI_RESP_OKAY) begin
+      bit [63:0] word = rand_data(t);
+      int unsigned lane;
+      sweep_addr(t, addr, size);
+      lane = int'(addr % t.beat_bytes);
+      write_target_mem_int(t, addr - 64'(lane), word, t.default_size);
+      read_target_single_and_check(t, addr, word >> (8 * lane), op_status, size, context_s);
+    end else begin
+      bit [63:0] preload = rand_nonzero_data(t);
+      bit [63:0] errored = random_distinct_word(t, {preload});
+      addr = sweep_beat(t);
+      write_target_mem_int(t, addr, preload, t.default_size);
+      arm_target_error(t, addr, resp, 1'b1, 1'b0, 1'b1, errored);
+      read_target_single_expect_status(t, addr, axi_resp_to_status(resp), op_status, rdata,
+                                       t.default_size, context_s);
+      check_error_rdata(t, addr, rdata, resp, preload, errored, t.default_size, context_s);
+    end
+    operation_count++;
+  endtask
+
+  // CHK-J2A-CDC-CLEAR and CHK-J2A-ABORT-FSM on every bridge after the
+  // `label` reset.
+  protected function void record_sweep_clear(string label);
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      dtp_j2a_target_t t = select_target(i);
+      string context_s = $sformatf("cdc_fifo_entry_sweep.%s.%s", t.name, label);
+      void'(record_abort_check(
+          DtpJ2aCdcClearCheckId,
+          {
+            context_s, ".cdc_clear"
+          },
+          64'(cdc_clear_seen(
+              t
+          )),
+          64'd1,
+          {
+            "tck-side isolate-and-clear after the ", label
+          }
+      ));
+      void'(record_abort_check(
+          DtpJ2aAbortFsmCheckId,
+          {
+            context_s, ".fsm_idle"
+          },
+          64'(bridge_fsm_idle(
+              t
+          )),
+          64'd1,
+          {
+            "after the ", label
+          }
+      ));
+    end
+  endfunction
+
+  protected task run_cdc_fifo_entry_sweep();
+    ocah_axi_resp_e write_plan[], read_plan[];
+    dtp_j2a_status_e st;
+    bit [63:0] rdata;
+    reset_to_rti();
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      dtp_j2a_target_t t = select_target(i);
+      int unsigned slots = cdc_fifo_slots(t);
+      // Two full rotations plus two pushes: every entry is written at least
+      // twice, entries 0 and 1 three times.
+      int unsigned pushes = 2 * slots + 2;
+      sweep_error_plan(slots, pushes, 1'b0, write_plan);
+      sweep_error_plan(slots, pushes, 1'b1, read_plan);
+      `uvm_info(get_type_name(), $sformatf(
+                "[%0d/%0d] target=%s slots=%0d writes=%0d reads=%0d write_plan=%p read_plan=%p",
+                i + 1,
+                NumTargets,
+                t.name,
+                slots,
+                pushes,
+                pushes,
+                write_plan,
+                read_plan
+                ), UVM_LOW)
+      for (int unsigned push = 0; push < pushes; push++) begin
+        string context_s = $sformatf("cdc_fifo_entry_sweep.%s.%0d", t.name, push);
+        sweep_write(t, write_plan[push], {context_s, ".write"});
+        sweep_read(t, read_plan[push], {context_s, ".read"});
+      end
+    end
+    // TAP reset while every request entry holds its last payload.
+    clear_cdc_clear_seen();
+    reset_to_rti();
+    repeat (AbortSettleTck) step(1'b0);
+    record_sweep_clear("tap_reset");
+    // System reset while every response entry holds its last payload.
+    clear_cdc_clear_seen();
+    pulse_system_reset($urandom_range(3, 1));
+    repeat (AbortSettleTck) step(1'b0);
+    record_sweep_clear("system_reset");
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      dtp_j2a_target_t t = select_target(i);
+      string context_s = $sformatf("cdc_fifo_entry_sweep.%s", t.name);
+      // The last read of the sweep left an error code, which the TAP reset
+      // returns to the op field's reset value; the system reset on the idle
+      // bridge discards nothing and keeps it. The TAP reset also selects
+      // IDCODE, so the poll loads the SINGLE_OP instruction first.
+      load_ir(IrWidth'(t.single_op_instr));
+      poll_single(t, st, rdata, {context_s, ".status_reset"}, AbortRecoveryPolls);
+      void'(record_abort_check(
+          DtpJ2aAbortRecoveryCheckId,
+          {
+            context_s, ".status_reset"
+          },
+          64'(st),
+          64'(DTP_J2A_SUCCESS),
+          $sformatf(
+              "status=%s max_captures=%0d after the TAP and system resets",
+              st.name(),
+              AbortRecoveryPolls)
+      ));
+      recover_target(t, sweep_beat(t), rand_data(t), 1'b0, context_s, status);
+      recover_target(t, sweep_beat(t), rand_data(t), 1'b1, context_s, status);
+      operation_count += 2;
+    end
+  endtask
+
   // CHK-AXI-NONVAC on every bridge: that bridge's responder completed at
   // least one burst this pass and no armed expectation was left unconsumed
   // on its recorder (a tied-off, idle, or always-OKAY bridge cannot satisfy
@@ -1157,12 +1909,16 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       "cdc_clear_abort_narrow_reset_mid_xaction": begin
         run_reset_abort("narrow_reset", "aw", 1, 64'h2222, 8, 1'b1);
         run_read_response_abort("narrow_reset_read", 12);
+        run_tap_reset_orphans();
       end
       "cdc_clear_abort_back_to_back_reset": run_back_to_back_reset();
       "decode_error_decerr_write":  run_decode_error_decerr_write();
       "decode_error_decerr_read":   run_decode_error_decerr_read();
       "decode_error_mixed":         run_decode_error_mixed();
-      "series_corner_all_bridges":  run_series_corner_all_bridges();
+      "series_corner_all_bridges": begin
+        run_series_corner_all_bridges();
+        run_cdc_fifo_entry_sweep();
+      end
       default:
                 `uvm_fatal(get_type_name(), $sformatf(
                     "unknown JTAG2AXI robustness scenario %s", scenario))

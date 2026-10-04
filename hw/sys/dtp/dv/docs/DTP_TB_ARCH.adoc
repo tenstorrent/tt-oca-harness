@@ -320,11 +320,12 @@ transaction on the lane of its port. The bridge model follows the jtag2axi
 update, capture, and completion rules (single-operation rejection while
 pending, the series address and read budget per CTRL programming, the
 byte-lane placement of series transfers, the queued requests a completion
-drops while the bridge is disabled, reset on Test-Logic-Reset) and applies
-completions at the capture or update that follows them, so a capture during
-a shift sees the state of its own Capture-DR; a capture inside the CDC
-settle window after a completion carries no contract; the series read-data
-FIFO is not predicted. Each feature ends the run as one `CHK-SB-<FEATURE>`
+drops while the bridge is disabled, reset on Test-Logic-Reset, where the
+requests already on the fabric complete as orphans the AXI side consumes)
+and applies completions at the capture or update that follows them, so a
+capture during a shift sees the state of its own Capture-DR; a capture
+inside the CDC settle window after a completion carries no contract; the
+series read-data FIFO is not predicted. Each feature ends the run as one `CHK-SB-<FEATURE>`
 record through the shared evidence recorder; a required feature with zero
 comparisons fails, and so does any item left unpaired.
 
@@ -500,7 +501,9 @@ corrupted addresses so the scoreboard pairing fails against the observed bus,
 `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected address size of the per-pass
 CAPS comparison,
 `DTP_J2A_BUS_REQ_NEGATIVE` corrupts the address each `CHK-J2A-BUS-REQ` record
-expects, and
+expects,
+`DTP_J2A_ORPHAN_NEGATIVE` flips bit 0 of the value each `CHK-J2A-ORPHAN-*`
+record expects, and
 `DTP_J2A_STATUS_BIT_NEGATIVE` leaves the with-status fault beat unarmed while
 its expectation stands; a run with any of them set must fail. The same
 knob names are environment variables in cocotb and plusargs in SV-UVM.

@@ -64,10 +64,14 @@ reports as a runtime error.
 On VCS the scope is applied at compile time by `cov/config/vcs/dtp_cov_scope.hier`
 (`-cm_hier` with `-cm_common_hier`): the code-coverage families grade the DUT
 instance `dtp_uvm_top.u_dut` with everything it instantiates, the vendored
-cells included, except `prim_cdc_rand_delay`, the CDC jitter model that the
-synchronizer primitives instantiate only under `SIMULATION`; assertion
-coverage grades the DUT, the `cov/sv/` modules and the protocol checker
-instances under the bench top. Nets a constant drives leave the toggle denominator
+cells included, except two simulation-only modules: `prim_cdc_rand_delay`, the
+CDC jitter model that the synchronizer primitives instantiate only under
+`SIMULATION`, and `dtp_j2a_state_flags`, the observation module `tb_top` binds
+into each JTAG2AXI bridge. The expressions that bind connects to the module's
+ports are evaluated in the bridge's scope, so condition coverage grades them
+with the bridge, under `tb_top.sv` line numbers. Assertion coverage grades the
+DUT, the `cov/sv/` modules and the protocol checker instances under the bench
+top. Nets a constant drives leave the toggle denominator
 (`-cm_noconst`, `-cm_seqnoconst`) and continuous assignments count as lines
 (`-cm_line contassign`); condition coverage is URG's `basic` mode. The
 covergroups are unaffected by the scope file.
@@ -1029,9 +1033,14 @@ The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
 that names the list pins the file's SHA-256. The runner refuses the policy
 when the file and the pinned digest differ, so a regenerated list takes a new
 entry. URG maps each code-coverage entry onto the design it reports on by the
-item's signature and applies it whatever the scope checksum, so an entry
-outlives an RTL change that leaves its signal or expression in place; the
-check mode below finds an entry such a change has made reachable.
+item's signature and applies it whatever the scope checksum. A toggle or
+condition entry outlives an RTL change that leaves the signal or expression it
+quotes in place. A branch entry's signature spans every condition of its
+decision tree, and a line entry's, which URG writes as `Block`, spans its
+statement and the condition that governs it; an FSM state or transition
+entry's signature names its states. Any change to that text, a renamed
+localparam or state included, drops the entry. The check mode below finds an
+entry an RTL change has made reachable.
 
 Regeneration rule: the list is regenerated from the merged database of a
 fresh `all` regression after any change to the DTP RTL file set, and the
@@ -1044,15 +1053,18 @@ changes, and the review accepts no entry that stimulus can reach.
 
 `cov/config/vcs/dtp_waivers.el` is the URG exclusion list of the points the
 bench reaches by no stimulus the DTP's interface contract allows. Each is a
-DTP input, a bench checker rule, an assertion, or a point the cross-trigger
-network's register map and crossbar flow control rule out, none of which the
-formal unreachability analysis proves, and the `ANNOTATION` before each entry
-states the fact that rules it out:
+DTP input, a JTAG2AXI bridge point that only a response outside the AXI
+protocol reaches, a bench checker rule, an assertion, or a point the
+cross-trigger network's register map and crossbar flow control rule out, none
+of which the formal unreachability analysis proves, and the `ANNOTATION`
+before each entry states the fact that rules it out:
 
 [cols=",",options="header",]
 |===
 |Points |Fact
-|`axi_smc_dbg_resp_i` BID and RID toggles at `u_dut`, `u_jtag_intf_unit` and `u_jtag_ptap` |The JTAG2AXI bridge issues every SMC fabric request with ID 0, and an AXI subordinate returns the request's ID
+|BID and RID toggles of `axi_smc_dbg_resp_i` at `u_dut`, `u_jtag_intf_unit` and `u_jtag_ptap`, and of the SMC fabric bridge's `bid_i` and `rid_i`, its response structures on both sides of its clock-domain crossing and that crossing's response ports |The JTAG2AXI bridge issues every SMC fabric request with ID 0, and an AXI subordinate returns the request's ID
+|BID and RID toggles inside the SMC fabric bridge's B and R clock-domain-crossing FIFOs: the source input, the storage and its next-state value, both halves and the destination spill register |The source input, and the next-state value at the write pointer, carry the `axi_smc_dbg_resp_i` ID that the row above waives; every beat the FIFO stores carries the ID of its request, which the bridge issues as 0
+|The EXOKAY fall-through of the B and R response decode in every JTAG2AXI bridge, as condition and branch rows |The bridge issues every access with AxLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access
 |`xtrig_ctp_ack_out_din_i` toggles at `u_dut`, and `ctp_ack_out_din_i` at `u_cross_trigger_network` |CT_Ack_out is output-only: the cross-trigger network holds the pad input enables low and reads the pad inputs only into its lint sink
 |The FIXED and WRAP burst rules and the multi-beat covers of `u_m_axi_sva` |The bridge issues every SMC fabric request as a single-beat INCR burst
 |The `RECEIVER_WAIT_REQ_DEASSERT` arm of every external CTP's receiver with CT_Req_in high |The receiver enters the state with CT_Req_in low; a four-phase sender raises its next request only after it sees CT_Ack_out fall, which the receiver drives low in that same transition
@@ -1067,7 +1079,11 @@ The entries carry the checksums `urg -dump full_exclusions` reports for each
 scope, and the `pass:[[[native_files]]]` entry that names the file, with
 `role = "waive"`, pins its SHA-256. An `Assert` entry applies only while its
 instance checksum matches the design, so a change to the checker drops it
-with a URG warning. A changed entry takes design review.
+with a URG warning. Toggle, condition and branch entries map by the signature
+rule of the unreachability list (<<dtp-fcov-unreachability-list>>), so a
+change to any condition of a waived branch's decision tree drops that entry,
+and its replacement comes from a fresh dump. A changed entry takes design
+review.
 
 === VPLAN to FCOV Traceability
 
@@ -1126,6 +1142,7 @@ access, and debug-disable configuration change.
 |Internal cross-trigger lanes in point-to-point mode |The bench elaborates `XTRIG_INT_CT_MODE` = 0, so every internal CT runs pulse mode
 |Static parameter toggles |Compile-time constants; not meaningful runtime coverage
 |`prim_cdc_rand_delay` under every synchronizer primitive (`prim_flop_2sync`, `prim_sync3r` and their siblings) |Simulation-only CDC jitter model with no counterpart in a synthesized DTP; the VCS scope file removes the module from code coverage
+|`dtp_j2a_state_flags` bound into every JTAG2AXI bridge |Bench observation module with no counterpart in a synthesized DTP; the VCS scope file removes the module from code coverage, and the bridge's condition coverage keeps the expressions the bind connects to its ports
 |DFT inputs `test_en_i` and `scan_rst_ni` |The bench holds them at their functional values, the environment the unreachability exclusion list is proven in, so the list excludes their toggles
 |Protocol-specific behavior without shared VIP support |Covered by OCAH-local DTP BFMs
 |===

@@ -336,6 +336,13 @@ ABORT_FSM_CHECK_ID = "CHK-J2A-ABORT-FSM"
 CDC_CLEAR_CHECK_ID = "CHK-J2A-CDC-CLEAR"
 ABORT_ESCAPE_CHECK_ID = "CHK-J2A-ABORT-ESCAPE"
 ABORT_RECOVERY_CHECK_ID = "CHK-J2A-ABORT-RECOVERY"
+# TCK-side clear evidence with a request held on the fabric: the held request
+# reaches the fabric exactly once, in the clear phase the scenario selects;
+# its response never reaches the JTAG side; and a request of the new session
+# queued behind it completes after it with its own status and data.
+ORPHAN_DRAIN_CHECK_ID = "CHK-J2A-ORPHAN-DRAIN"
+ORPHAN_DISCARD_CHECK_ID = "CHK-J2A-ORPHAN-DISCARD"
+ORPHAN_ORDER_CHECK_ID = "CHK-J2A-ORPHAN-ORDER"
 # A READY stall observed from the DUT side: the bridge FSM dwells on the
 # stalled path and the first status poll reads BUSY_OR_FULL.
 STALL_FSM_CHECK_ID = "CHK-J2A-STALL-FSM"

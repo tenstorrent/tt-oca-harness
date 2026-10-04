@@ -14,14 +14,18 @@
 
 schema_version = 1
 dut = "dtp"
-scope_epoch = "dtp-vcs-cov-v2"
+scope_epoch = "dtp-vcs-cov-v3"
 
 # The code-coverage points a formal unreachability analysis over the `all`
 # regression's merged coverage database proves no stimulus reaches in the
 # bench's environment. URG applies it at report time and maps each entry onto
-# the reported design by the item's signature, whatever the scope checksum, so
-# an entry outlives an RTL change that leaves its signal or expression in place.
-# The digest pins the file: a regenerated list takes a new entry.
+# the reported design by the item's signature, whatever the scope checksum. A
+# Toggle or Condition signature is the signal or expression the entry quotes, a
+# Branch signature every condition of its decision tree, a Block (line)
+# signature its statement and the condition that governs it, and a State or
+# Transition signature the names of its FSM states. A change to that text, a
+# renamed localparam or state included, drops the entry. The digest pins the
+# file: a regenerated list takes a new entry.
 [[native_files]]
 tool = "vcs"
 role = "unreachable"
@@ -32,14 +36,16 @@ sha256 = "e5b31aa61ed0e5b93d8c2bec84c3c62efbc61de379280d1b88b5981b8ebc711c"
 
 # The points the bench reaches by no stimulus the DTP's interface contract
 # allows, each with the fact that rules it out: the SMC fabric response ID
-# echo, the CT_Ack_out pad inputs, the burst rules of the SMC fabric checker,
-# a one-cycle CT_Req_in gap at a CTP receiver, and the cross-trigger crossbar
-# points its register map and flow control rule out. Its entries take design
-# review; the digest pins the file.
+# echo from the DTP port through the bridge's clock-domain crossing, the
+# EXOKAY arm of each JTAG2AXI bridge's response decode, the CT_Ack_out pad
+# inputs, the burst rules of the SMC fabric checker, a one-cycle CT_Req_in gap
+# at a CTP receiver, and the cross-trigger crossbar points its register map and
+# flow control rule out. Its entries take design review; the digest pins the
+# file.
 [[native_files]]
 tool = "vcs"
 role = "waive"
 path = "dtp_waivers.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
-sha256 = "41e7c9e148c83255c934a7207128448b62e3a23dba2f63f26405f0991e7c2781"
+sha256 = "d928287f5a9cb681bd22fc26c53511d8f7c9029e8c0f71dd7fa3aeb749733780"

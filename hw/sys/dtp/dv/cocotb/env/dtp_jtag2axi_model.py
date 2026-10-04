@@ -29,6 +29,10 @@ A gated update (the lifecycle disable of the bridge asserted) changes nothing
 but clears the read budget, and a completion while the disable is asserted
 leaves the bridge idle and disabled, which drops every request queued behind
 it (DTP JTAG document, "Debug Disable": buffered requests are dropped).
+A TAP reset resets the JTAG-visible state and leaves the bridge's AXI side
+running: every request launched before it and not yet completed stays on the
+fabric, and the AXI side consumes its response, so that completion changes no
+state and pairs with no later request.
 Completions are applied at the capture or update time that follows them, so a
 capture during a shift sees the state of its own Capture-DR. Plain class held
 by the JTAG2AXI reference models; no reporting. Not modelled: the series
@@ -198,6 +202,8 @@ class _Bridge:
     last_completion: float = 0.0
     issued: deque[_Issued] = field(default_factory=deque)
     completed: deque[OcahAxiItem] = field(default_factory=deque)
+    # Completions the AXI side consumes after a TAP reset, indexed by is_read.
+    orphans: list[int] = field(default_factory=lambda: [0, 0])
 
 
 class DtpJtag2AxiModel:
@@ -210,8 +216,18 @@ class DtpJtag2AxiModel:
         self.reset()
 
     def reset(self) -> None:
-        """TAP reset: every bridge back to its TCK-domain reset state."""
+        """TAP reset: every bridge back to its TCK-domain reset state.
+
+        The requests launched and not yet completed become orphans of their
+        direction: the AXI side consumes their completions.
+        """
+        prior = self._bridges
         self._bridges = {name: _Bridge() for name in JTAG2AXI_TARGETS}
+        for name, old in prior.items():
+            for read in (False, True):
+                launched = sum(e.is_read == read for e in old.issued)
+                landed = sum(c.is_read == read for c in old.completed)
+                self._bridges[name].orphans[read] = old.orphans[read] + max(0, launched - landed)
 
     def abort_in_flight(self, now_ns: float) -> None:
         """System reset: every operation launched and not yet completed is discarded.
@@ -219,14 +235,17 @@ class DtpJtag2AxiModel:
         A discarded single or with-status operation reads DECERR on SINGLE_OP;
         a discarded series operation reads DECERR on the sticky status unless
         it already holds a series error. Every other status and the
-        SERIES_CTRL configuration keep their values. Called at the first scan
-        or TAP event after the reset, so every queued completion precedes it.
+        SERIES_CTRL configuration keep their values. The reset also clears the
+        AXI side, so no orphan of an earlier TAP reset remains. Called at the
+        first scan or TAP event after the reset, so every queued completion
+        precedes it.
         """
         for name, bridge in self._bridges.items():
             self._apply_completions(name, now_ns)
             single_lost = bridge.single_pending or any(e.with_status for e in bridge.issued)
             series_lost = any(not e.single for e in bridge.issued)
             bridge.issued.clear()
+            bridge.orphans = [0, 0]
             bridge.single_pending = False
             bridge.series_reads_pushed = 0
             if single_lost:
@@ -299,10 +318,14 @@ class DtpJtag2AxiModel:
     def complete(self, target: str, observed: OcahAxiItem, disabled: bool = False) -> None:
         """An AXI completion on a bridge port, applied at the next capture or update after it.
 
-        ``disabled``: the bridge's lifecycle disable is asserted, so the
-        requests issued behind the observed completions are dropped.
+        An orphan of a TAP reset is consumed and changes nothing. ``disabled``:
+        the bridge's lifecycle disable is asserted, so the requests issued
+        behind the observed completions are dropped.
         """
         bridge = self._bridges[target]
+        if bridge.orphans[observed.is_read]:
+            bridge.orphans[observed.is_read] -= 1
+            return
         bridge.completed.append(observed)
         if not disabled:
             return
