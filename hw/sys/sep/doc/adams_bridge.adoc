@@ -139,11 +139,28 @@ concatenating `MLKEM_SEED_D` followed by `MLKEM_SEED_Z`, so that read completes
 only when both blocks are valid. An operation consumes a delivered seed only
 once its seed read is enabled.
 
+[[abr-seed-word-order,ABR seed word order]]
+Word order is the same as for every other accelerator: word `i` of a delivered
+block is register index `i` of the corresponding software register array
+(`MLDSA_SEED[i]`, `MLKEM_SEED_D[i]`, `MLKEM_SEED_Z[i]` or `MLKEM_MSG` word
+`i`), so a value delivered by the Key Manager and the same eight words written
+by software present the same seed or message to the engine. Index 0 holds the
+first four bytes of the FIPS 203 or FIPS 204 byte string, with byte 0 in bits
+`[7:0]`, as upstream Adams Bridge defines for its registers.
+
 The ML-KEM shared key travels in the opposite direction, making this the only
 delivery destination that is also a source: the accelerator writes the shared
 key into `MLKEM_SHARED_KEY.KEY`, and on the final word sets that block's
 `KEY_CTRL.KEY_VALID` and `IRQ_STATUS.KEY_VALID`, which raises the gated
-shared-key interrupt consumed by the Key Manager.
+shared-key interrupt consumed by the Key Manager. `KEY[i]` holds bytes `4i` to
+`4i+3` of the FIPS 203 shared key, in the same order as the engine's own
+`MLKEM_SHARED_KEY` register array.
+
+NOTE: This word order differs from the upstream Caliptra integration. The
+Caliptra Key Vault stores an entry most-significant word first, and the
+vendored controller reverses word index on its Key Vault read and write ports
+to match. `sep_abr_kv_shim` applies the inverse reversal, so Caliptra's
+documentation of Key Vault word order does not apply to the Key Manager path.
 
 The working SRAM is brought out of the wrapper as packed
 `abr_mem_req_t` / `abr_mem_rsp_t` structs. Word-write channels are `we` / `re` /

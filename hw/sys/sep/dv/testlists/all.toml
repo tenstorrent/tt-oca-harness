@@ -29,12 +29,12 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold all 132. `rom_fw`
+# (full-CPU target) are disjoint and together hold all 133. `rom_fw`
 # is not a member: a different owner, a third RTL target, and firmware rather
-# than hardware contracts. `all` is the coverage set. expected_count is 132.
+# than hardware contracts. `all` is the coverage set. expected_count is 133.
 #
 # Two members are pinned to one simulator, so a single-simulator run of `all`
-# runs 131 and logs the other as skipped_wrong_tool:
+# runs 132 and logs the other as skipped_wrong_tool:
 # - sep_km_ic_reset_release_test, VCS only (km.toml). Its contract is the
 #   prim_rom noXOnCsI assertion. Verilator is two-state and prim_assert.sv
 #   compiles RTL assertions out under it, so that check cannot fail there.
@@ -42,7 +42,7 @@ tests = ["sep_axi_smoke_test"]
 #   lsu_stub_abr_absent model, and the VCS coverage run elaborates only the
 #   `default` target, which keeps Adams Bridge.
 name = "all"
-expected_count = 132
+expected_count = 133
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -139,6 +139,7 @@ tests = [
     "sep_km_handover_test",
     "sep_km_abr_seed_sideload_test",
     "sep_km_abr_mlkem_sideload_test",
+    "sep_km_abr_mldsa_kat_test",
     "sep_km_sideload_share_walk_test",
     "sep_km_mailbox_protocol_rand_test",
     "sep_km_crc_pcpi_kat_test",
@@ -285,6 +286,7 @@ tests = [
     "sep_km_handover_test",
     "sep_km_abr_seed_sideload_test",
     "sep_km_abr_mlkem_sideload_test",
+    "sep_km_abr_mldsa_kat_test",
     "sep_km_sideload_share_walk_test",
     "sep_km_mailbox_protocol_rand_test",
     "sep_km_crc_pcpi_kat_test",

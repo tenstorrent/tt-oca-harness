@@ -12,7 +12,7 @@ the consumer. This leaf walks all eight delivery destinations -- AES, HMAC,
 KMAC, OTBN and the four ABR blocks -- through two rounds. Each round loads a
 fresh seeded key per destination with CMD_KEY_LOAD + CMD_KEY_TRANSFER, proves
 that AES, HMAC, KMAC and OTBN used exactly that key and that each ABR
-destination used the delivered words up to a dword reversal, then sends one
+destination used the delivered words in register order, then sends one
 CMD_ENGINE_SHRED for all eight destinations and proves the documented
 invalid-key behaviour of each consumer. The shred clears KEY_VALID and
 overwrites both shares with PRNG data (hw/ip/key_manager/doc/firmware.adoc,
@@ -31,22 +31,20 @@ Checkers (``r`` is the round, 1 or 2):
   CHK-OTBN-r    the key-dump program reads key == round key, share0 ^ share1 ==
                 round key, ERR_BITS == 0
   CHK-MLDSA-r   the KV seed read completes (VALID, ERROR == SUCCESS) and the
-                KEYGEN public key equals a direct-seed KEYGEN of the same words,
-                up to a dword reversal
+                KEYGEN public key equals a direct-seed KEYGEN of the same words
+                in the same order
   CHK-MLKEM-SEED-r
                 the D||Z KV read completes, the encapsulation key equals a
                 direct-seed KEYGEN of the same D and Z, and the Z the engine
-                holds (abr_mlkem_seed_z_probe_o) equals the delivered Z, each up
-                to a dword reversal. The
-                encapsulation key depends on D only, and software cannot read
-                Z back, so the probe is what grades Z
+                holds (abr_mlkem_seed_z_probe_o) equals the delivered Z word for
+                word. The encapsulation key depends on D only, and software
+                cannot read Z back, so the probe is what grades Z
   CHK-MLKEM-MSG-r
                 the message KV read completes and the ENCAPS ciphertext equals
-                a direct-message ENCAPS of the same words, up to a dword
-                reversal
+                a direct-message ENCAPS of the same words in the same order
   CHK-ROUND     every round-2 ABR output differs from its round-1 output. The
                 ABR compares are differential, so this is what fails an engine
-                that ignores its seed or message. It does not grade dword order
+                that ignores its seed or message
   CHK-HMAC-CLR-r
                 with KEY_VALID clear HMAC uses its software key registers: the
                 digest == golden of the software key (doc/hmac.adoc)
@@ -60,7 +58,9 @@ Checkers (``r`` is the round, 1 or 2):
                 clear, so each is graded alone: after the shred only D is
                 delivered again and the read must fail (Z is clear); after a
                 second shred only Z is delivered again and the read must fail
-                (D is clear). The engine STATUS is logged, not graded: no SEP
+                (D is clear). Each single-half leg then delivers the other half
+                too and the read must complete, so the re-delivered half is
+                shown valid. The engine STATUS is logged, not graded: no SEP
                 document states it
   CHK-KMAC-CLR  a keyed operation on the delivered key with KEY_VALID clear
                 raises kmac_err with a non-zero ERR_CODE (doc/kmac.adoc). Both
@@ -80,11 +80,11 @@ Ordering that the compares rely on:
   * Every round-2 key word differs from the round-1 word at the same index,
     so a stale share word changes the consumer output. AES, HMAC, KMAC and
     OTBN then fail their golden; ABR fails its KV-vs-direct compare.
-  * ABR seeds, message, D and Z are dword palindromes: the KV read and a
-    direct register write disagree on dword order, and a palindrome keeps the
-    compare off it. So a full dword reversal in KM-to-ABR delivery is not
-    detected. No spec defines the KV-to-ABR seed word order, so dword order is
-    not graded (https://github.com/tenstorrent/tt-oca-harness/issues/2756).
+  * Key Manager word i and ABR register index i carry the same dword
+    (doc/adams_bridge.adoc, abr-seed-word-order). Every ABR seed, message, D
+    and Z has eight pairwise-distinct words, so a dword reversal or any other
+    word permutation in KM-to-ABR delivery changes the engine input and fails
+    the KV-vs-direct compare.
 """
 
 from __future__ import annotations
@@ -221,9 +221,13 @@ def _distinct_words(rng: SepSeededRng, n: int, avoid: list[int] | None) -> list[
     return out
 
 
-def _palindrome(rng: SepSeededRng, n: int, avoid: list[int] | None) -> list[int]:
-    half = _distinct_words(rng, n // 2, None if avoid is None else avoid[: n // 2])
-    return half + half[::-1]
+def _unique_words(rng: SepSeededRng, n: int, avoid: list[int] | None) -> list[int]:
+    """``_distinct_words`` with no word repeated inside the block, so any word
+    permutation of the block is a different value."""
+    while True:
+        words = _distinct_words(rng, n, avoid)
+        if len(set(words)) == n:
+            return words
 
 
 class SepKmShareWalkCfg:
@@ -239,7 +243,7 @@ class SepKmShareWalkCfg:
             for dest, n in DEST_WORDS.items():
                 avoid = None if prev is None else prev[dest]
                 if dest in ABR_DESTS:
-                    keys[dest] = _palindrome(rng, n, avoid)
+                    keys[dest] = _unique_words(rng, n, avoid)
                 else:
                     keys[dest] = _distinct_words(rng, n, avoid)
             self.keys.append(keys)
@@ -569,7 +573,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         await self._mlkem_zeroize(what=f"CHK-MLKEM-SEED-{tag} pre-ref")
         ek_ref = await self._mlkem_keygen(d, z, what=f"CHK-MLKEM-SEED-{tag} ref")
         self._same(ek_kv, ek_ref, chk=f"CHK-MLKEM-SEED-{tag}", what="the KV-seed encaps key")
-        # Z is a dword palindrome, so this compare holds for either dword order.
+        # Word i of the delivered Z must sit at engine index i.
         self._same(
             z_kv,
             z,
@@ -698,10 +702,13 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             await zeroize(what=f"CHK-ABR-CLR-{tag} {name} recover")
 
         # D and Z one at a time: deliver one of them again, so the D||Z read
-        # can only fail on the other one's KEY_VALID.
-        for again, other in (
-            (KM_DEST_ABR_MLKEM_SEED_D, "Z"),
-            (KM_DEST_ABR_MLKEM_SEED_Z, "D"),
+        # can only fail on the other one's KEY_VALID. Then deliver the other one
+        # too and require the read to complete: that is the control that the
+        # first delivery made its half valid again, so the failure belongs to
+        # the shredded half and not to a re-transfer that set nothing.
+        for again, other, other_dest in (
+            (KM_DEST_ABR_MLKEM_SEED_D, "Z", KM_DEST_ABR_MLKEM_SEED_Z),
+            (KM_DEST_ABR_MLKEM_SEED_Z, "D", KM_DEST_ABR_MLKEM_SEED_D),
         ):
             if again == KM_DEST_ABR_MLKEM_SEED_Z:
                 await self._shred_all(r)
@@ -717,15 +724,34 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 f"the shred, the D||Z KV read reports ERROR={err} (status 0x{st:08x}), "
                 f"expected KV_READ_FAIL={KV_READ_FAIL}: the shred left {other} KEY_VALID set"
             )
+            await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} recover")
+            await self._transfer(r, self.handles[r][other_dest], other_dest)
+            st_ok, err_ok = await self._kv_read(
+                MLKEM_KV_SEED_RD_CTRL,
+                MLKEM_KV_SEED_RD_STATUS,
+                what=f"CHK-ABR-CLR-{tag} {DEST_NAME[again]} then {DEST_NAME[other_dest]}",
+            )
+            assert err_ok == KV_SUCCESS and kv_status_field(st_ok, "VALID") == 1, (
+                f"CHK-ABR-CLR-{tag} FAIL: with {DEST_NAME[again]} and then "
+                f"{DEST_NAME[other_dest]} delivered again, the D||Z KV read did not complete "
+                f"(status 0x{st_ok:08x} ERROR={err_ok}): the {DEST_NAME[again]} delivery did "
+                "not make its half valid, so the failed read above is not attributable to "
+                f"the shredded {other}"
+            )
             self.logger.info(
                 "CHK-ABR-CLR-%d PASS: only %s delivered again, D||Z KV read status 0x%08x "
-                "(ERROR=KV_READ_FAIL): the shred cleared %s",
+                "(ERROR=KV_READ_FAIL): the shred cleared %s; with %s delivered too the read "
+                "completes, status 0x%08x (VALID, ERROR=SUCCESS)",
                 tag,
                 DEST_NAME[again],
                 st,
                 other,
+                DEST_NAME[other_dest],
+                st_ok,
             )
-            await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} recover")
+            await self._mlkem_zeroize(
+                what=f"CHK-ABR-CLR-{tag} {DEST_NAME[again]} then {DEST_NAME[other_dest]} recover"
+            )
         # Leave every destination shredded, as the round expects.
         await self._shred_all(r)
 

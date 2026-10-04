@@ -206,8 +206,9 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
-# KM -> ABR ML-DSA seed sideload consume: palindromic seed over the mailbox,
-# KV pull, KEYGEN PK equals the direct-seed KEYGEN. RANDCFG: masking entropy.
+# KM -> ABR ML-DSA seed sideload consume: seed over the mailbox, KV pull,
+# KEYGEN PK equals the direct-seed KEYGEN of the same words in the same order.
+# RANDCFG: masking entropy.
 # REAL fuse-sense; +esrc_noise_force. Three ML-DSA-87 KEYGENs set the wall budget.
 name = "sep_km_abr_seed_sideload_test"
 module = "km.sep_km_abr_seed_sideload_test"
@@ -232,6 +233,21 @@ firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 10800
 tags = ["km", "abr", "sideload", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM -> ABR ML-DSA NIST keyGen KAT on the Key Manager path: the ACVP seed is
+# delivered only over the KM and the KV seed lane, never written to the ABR
+# registers, and the KEYGEN public key must equal the ACVP public key.
+# RANDCFG: masking entropy. REAL fuse-sense; +esrc_noise_force.
+name = "sep_km_abr_mldsa_kat_test"
+module = "km.sep_km_abr_mldsa_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 7200
+tags = ["km", "abr", "sideload", "mldsa", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]

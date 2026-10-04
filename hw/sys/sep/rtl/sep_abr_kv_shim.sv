@@ -8,10 +8,16 @@
 // private 32-bit AXI4-Lite bus. This shim consumes that decoded hwif and re-presents
 // Caliptra kv_read / kv_rd_resp / kv_write / kv_wr_resp.
 //
-// Seeds are stored as dual XOR shares; plaintext dwords on the KV bus are SHARE0[i] ^
-// SHARE1[i], and a read reports error while the entry's key_valid is clear. The seed is
-// write-only in the CSR and never reconstructed
-// outside this shim, so abr_top's mldsa_privkey_lock stays engaged.
+// Seeds are stored as dual XOR shares; plaintext dword i is SHARE0[i] ^ SHARE1[i], and a
+// read reports error while the entry's key_valid is clear. The seed is write-only in the
+// CSR and never reconstructed outside this shim, so abr_top's mldsa_privkey_lock stays
+// engaged.
+//
+// abr_ctrl stores KV read offset k in register index N-1-k of each N-dword block, and
+// presents shared-key word N-1-k at KV write offset k. Each lane therefore serves KV
+// offset k from Key Manager word N-1-k of the addressed block, and the write path stores
+// offset k in KEY[N-1-k], so Key Manager word i and ABR register index i carry the same
+// dword in both directions.
 //
 // kv_read is combinational with respect to read_offset: AB's kv_read_client samples
 // kv_rd_resp.read_data in the same cycle. The client ends on (offset == num_dwords-1) or
@@ -104,7 +110,8 @@ module sep_abr_kv_shim
 
   // kv_read[0] : ML-DSA seed (8 dwords).
   wire [SeedIdxW-1:0] mldsa_off = kv_read_i[KvRdMldsaSeed].read_offset[SeedIdxW-1:0];
-  assign kv_rd_resp_o[KvRdMldsaSeed].read_data = mldsa_seed[mldsa_off];
+  wire [SeedIdxW-1:0] mldsa_idx = SeedIdxW'(SEED_DWORDS - 1) - mldsa_off;
+  assign kv_rd_resp_o[KvRdMldsaSeed].read_data = mldsa_seed[mldsa_idx];
   assign kv_rd_resp_o[KvRdMldsaSeed].last      =
         (kv_read_i[KvRdMldsaSeed].read_offset == KV_ENTRY_SIZE_W'(SEED_DWORDS - 1));
   assign kv_rd_resp_o[KvRdMldsaSeed].error     = ~mldsa_seed_valid;
@@ -114,15 +121,17 @@ module sep_abr_kv_shim
   wire [MkSeedIdxW-1:0]   mlkem_seed_off  = kv_read_i[KvRdMlkemSeed].read_offset[MkSeedIdxW-1:0];
   wire                    mlkem_seed_is_z = mlkem_seed_off[SeedIdxW];
   wire [SeedIdxW-1:0]     mlkem_seed_sub  = mlkem_seed_off[SeedIdxW-1:0];
+  wire [SeedIdxW-1:0]     mlkem_seed_idx  = SeedIdxW'(SEED_DWORDS - 1) - mlkem_seed_sub;
   assign kv_rd_resp_o[KvRdMlkemSeed].read_data =
-        mlkem_seed_is_z ? mlkem_seed_z[mlkem_seed_sub] : mlkem_seed_d[mlkem_seed_sub];
+        mlkem_seed_is_z ? mlkem_seed_z[mlkem_seed_idx] : mlkem_seed_d[mlkem_seed_idx];
   assign kv_rd_resp_o[KvRdMlkemSeed].last      =
         (kv_read_i[KvRdMlkemSeed].read_offset == KV_ENTRY_SIZE_W'(MlkemSeedDwords - 1));
   assign kv_rd_resp_o[KvRdMlkemSeed].error     = ~(mlkem_seed_d_valid & mlkem_seed_z_valid);
 
   // kv_read[2] : ML-KEM message (8 dwords).
   wire [MsgIdxW-1:0] mlkem_msg_off = kv_read_i[KvRdMlkemMsg].read_offset[MsgIdxW-1:0];
-  assign kv_rd_resp_o[KvRdMlkemMsg].read_data = mlkem_msg[mlkem_msg_off];
+  wire [MsgIdxW-1:0] mlkem_msg_idx = MsgIdxW'(MSG_DWORDS - 1) - mlkem_msg_off;
+  assign kv_rd_resp_o[KvRdMlkemMsg].read_data = mlkem_msg[mlkem_msg_idx];
   assign kv_rd_resp_o[KvRdMlkemMsg].last      =
         (kv_read_i[KvRdMlkemMsg].read_offset == KV_ENTRY_SIZE_W'(MSG_DWORDS - 1));
   assign kv_rd_resp_o[KvRdMlkemMsg].error     = ~mlkem_msg_valid;
@@ -131,22 +140,24 @@ module sep_abr_kv_shim
   // KV write : ML-KEM shared-key writeback into MLKEM_SHARED_KEY.
   //
   // abr_top's kv_write_client walks write_offset = 0,1,... asserting write_en
-  // with write_data each cycle. Each dword is written into the matching KEY[*]
-  // sideload register (data.we pulses combinationally with write_en). On the
-  // final dword (write_offset == SHARED_KEY_DWORDS-1) we pulse
-  // KEY_CTRL.key_valid.hwset (latches the shared-key-valid status) and
-  // IRQ_STATUS.key_valid.hwset (raises the interrupt the wrapper gates with
-  // IRQ_ENABLE). Signatures are public, so ML-DSA never drives kv_write.
+  // with write_data each cycle, carrying shared-key word SHARED_KEY_DWORDS-1-offset.
+  // Each dword is written into KEY[SHARED_KEY_DWORDS-1-offset] (data.we pulses
+  // combinationally with write_en). On the final dword
+  // (write_offset == SHARED_KEY_DWORDS-1) we pulse KEY_CTRL.key_valid.hwset
+  // (latches the shared-key-valid status) and IRQ_STATUS.key_valid.hwset
+  // (raises the interrupt the wrapper gates with IRQ_ENABLE). Signatures are
+  // public, so ML-DSA never drives kv_write.
   // =========================================================================
   localparam int unsigned SkIdxW = (SHARED_KEY_DWORDS > 1) ? $clog2(SHARED_KEY_DWORDS) : 1;
 
   wire [SkIdxW-1:0] sk_off = kv_write_i.write_offset[SkIdxW-1:0];
+  wire [SkIdxW-1:0] sk_idx = SkIdxW'(SHARED_KEY_DWORDS - 1) - sk_off;
 
   always_comb begin
     hwif_o = '{default: '0};
     if (kv_write_i.write_en) begin
-      hwif_o.MLKEM_SHARED_KEY.KEY[sk_off].data.next = kv_write_i.write_data;
-      hwif_o.MLKEM_SHARED_KEY.KEY[sk_off].data.we   = 1'b1;
+      hwif_o.MLKEM_SHARED_KEY.KEY[sk_idx].data.next = kv_write_i.write_data;
+      hwif_o.MLKEM_SHARED_KEY.KEY[sk_idx].data.we   = 1'b1;
       if (kv_write_i.write_offset == KV_ENTRY_SIZE_W'(SHARED_KEY_DWORDS - 1)) begin
         hwif_o.MLKEM_SHARED_KEY.KEY_CTRL.key_valid.hwset   = 1'b1;
         hwif_o.MLKEM_SHARED_KEY.IRQ_STATUS.key_valid.hwset = 1'b1;

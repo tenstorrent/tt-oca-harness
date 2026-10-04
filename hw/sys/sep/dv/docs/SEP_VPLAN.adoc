@@ -763,11 +763,15 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_abr_seed_sideload_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|KM `CMD_KEY_TRANSFER` dest ABR ML-DSA seed, KV pull, KEYGEN public key equals a direct-seed KEYGEN of the same palindromic seed, and differs from the first seed's public key.
+|KM `CMD_KEY_TRANSFER` dest ABR ML-DSA seed, KV pull, KEYGEN public key equals a direct-seed KEYGEN of the same seed words in the same order, and differs from the first seed's public key.
 |`sep_km_abr_mlkem_sideload_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, `abr_mlkem_seed_z_probe_o`
-|The three ML-KEM lanes of the KV facade: the 16-dword seed lane carrying D then Z, the message lane, and the shared-key writeback the KM consumes back out with `CMD_ABR_SK_TRANSFER`. Each lane is compared against a direct-register run of the same words, preceded by a run on different words. Also the confidentiality rule: the shared key stops reading back once an input came from the vault.
+|The three ML-KEM lanes of the KV facade: the 16-dword seed lane carrying D then Z, the message lane, and the shared-key writeback the KM consumes back out with `CMD_ABR_SK_TRANSFER`. Each lane is compared against a direct-register run of the same words, preceded by a run on different words. Also the confidentiality rule: the shared key stops reading back once an input came from the vault, and the value rule: the shared key the KM consumes, transferred to AES, is the engine's own `MLKEM_SHARED_KEY` words.
+|`sep_km_abr_mldsa_kat_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip
+|ML-DSA-87 ACVP keyGen known answer on the Key Manager path: the ACVP seed reaches the engine only through `CMD_KEY_TRANSFER` and the KV seed read, and the KEYGEN public key equals the ACVP public key.
 |`sep_km_sideload_share_walk_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, KM path / golden
@@ -882,7 +886,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_handover_test`. Inhibit after `CMD_EXEC_ROM`, then a 14-word `CMD_SRAM_LOAD_EXEC` and a warm-reset `CMD_SRAM_EXEC`.
 
 |KM to ABR seed
-|`sep_km_abr_seed_sideload_test`. Mailbox dest ABR ML-DSA seed plus KEYGEN public-key equality against a direct-seed KEYGEN. The command-set leaf hits the dest cell every seed; this leaf is the consume proof.
+|`sep_km_abr_seed_sideload_test`. Mailbox dest ABR ML-DSA seed plus KEYGEN public-key equality against a direct-seed KEYGEN of the same words in the same order. The command-set leaf hits the dest cell every seed; this leaf is the consume proof. `sep_km_abr_mldsa_kat_test` grades the same path against the ACVP keyGen vector.
 
 |KM sideload re-key and shred, every destination
 |`sep_km_sideload_share_walk_test`. Two keys per destination, each graded at its consumer, and `CMD_ENGINE_SHRED` on all eight destinations graded by each consumer's documented invalid-key behaviour: HMAC software-key fallback, OTBN `KEY_INVALID`, ABR `KV_READ_FAIL`, KMAC error, AES no output.
@@ -990,7 +994,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_fabric_deadspace_decode_test` — single-beat refuse and no-alias in every block window, and the crypto-region burst rule. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and requires DECERR on every beat of a read burst into the crypto region. `CHK-DEADSPACE-BURST` requires the write burst there to answer DECERR and move no register, and no read beat to return a live value. Bursts into other register regions are outside the specification and are not graded; see <<known-limitations>>.
 
 |Adams Bridge ML-DSA-87 keyGen
-|`sep_abr_mldsa_keygen_kat_test`. The key-vault seed path is not claimed. ML-KEM is a separate vehicle, `sep_abr_mlkem_kat_test`.
+|`sep_abr_mldsa_keygen_kat_test`. The key-vault seed path is a separate vehicle, `sep_km_abr_mldsa_kat_test`. ML-KEM is a separate vehicle, `sep_abr_mlkem_kat_test`.
 
 |Adams Bridge ML-DSA-87 sigGen / sigVer
 |`sep_abr_mldsa_sign_verify_kat_test`. Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair with `MLDSA_VERIFY_RES` compared against each signature's c~. `KEYGEN_SIGN` and the key-vault seed path are not claimed.
@@ -3384,7 +3388,7 @@ is why they are asserted from Python probes rather than left to the SVA.
 . It is *not* behind an `axi_lite_isolate` unit: unlike the ESRC, CSRNG and EDN legs, the external TRNG passthrough in `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv` carries none.
 . Accesses are 32-bit beats (`AxSIZE=2`), one register each. Other access sizes and strobes are graded by <<sep_abr_access_size_test>>.
 . The Key-Manager-side key CSR is the generated PeakRDL `abr_wrapper_key_reg`. The ABR register block behind this aperture is real RTL.
-. This leaf writes the seed window over the bus. The key-vault seed path is not claimed.
+. This leaf writes the seed window over the bus. The key-vault seed path is not claimed here; <<sep_km_abr_mldsa_kat_test>> applies the same ACVP vector over it.
 . The ML-DSA `NAME` and `VERSION` words are read and logged as information only. `abr_reg.rdl` declares them `sw = r` with no reset and no SEP document gives their values, so this leaf does not grade them. The bus-sweep leaves use them as read targets against a reference captured from the DUT (`CHK-ABR-ID-REF`).
 
 *Checkers*:
@@ -3418,7 +3422,8 @@ match, so a cached or constant engine passes the first leg and fails the second.
 stuck-low aggregator cannot satisfy both `CHK-PIC-ERROR` and `CHK-PIC-NOTIF`.
 
 *Not claimed*: the key-vault seed path — a green keyGen does not close it, and
-this leaf writes the seed window over the bus. ML-KEM-1024 is equally not closed
+this leaf writes the seed window over the bus. It is owned by
+<<sep_km_abr_mldsa_kat_test>>. ML-KEM-1024 is equally not closed
 by a green keyGen, and is owned by <<sep_abr_mlkem_kat_test>>; sign and verify by
 <<sep_abr_mldsa_sign_verify_kat_test>>.
 
@@ -7869,7 +7874,7 @@ encrypt: the ciphertext is compared against an independent AES-256-ECB golden.
 dedicated mailbox beat. When that dest is not AES, release that engine for
 the key-bus write (OTBN waits idle after release), then park it again.
 Consume of HMAC / KMAC / OTBN stays on the sideload KATs.
-. Load an 8-word palindromic seed and transfer it to dest ABR ML-DSA seed
+. Load an 8-word seed and transfer it to dest ABR ML-DSA seed
 (`0x10`). Every seed walks this cell. Consume of that seed is
 `sep_km_abr_seed_sideload_test`.
 . Transfer the same handle to an engine outside its permitted set.
@@ -7925,7 +7930,7 @@ slot, so over this surface an erase always frees.
 |CHK-XFER-DEST
 |A dedicated `CMD_KEY_TRANSFER` of that same handle to the seed-selected dest returns success and echoes the dest. Consume of HMAC / KMAC / OTBN is not claimed here.
 |CHK-ABR-DEST
-|A directed `CMD_KEY_LOAD` + `CMD_KEY_TRANSFER` of an 8-word palindromic seed to dest ABR ML-DSA seed returns success and echoes that dest. Every seed walks this cell. Consume is not claimed here.
+|A directed `CMD_KEY_LOAD` + `CMD_KEY_TRANSFER` of an 8-word seed to dest ABR ML-DSA seed returns success and echoes that dest. Every seed walks this cell. Consume is not claimed here.
 |CHK-DEST
 |A transfer to an engine outside the key's permitted set is refused with the failure code, not an argument-validation code. The refusal is attributable: the target engine is released from reset and waited to idle for that beat, so being parked is not the cause, and an unconditional control beat transfers the same handle to a destination inside its permitted set and requires success, so a handle that no longer exists -- which carries the same failure code -- is not the cause either.
 |CHK-SHRED
@@ -7949,7 +7954,7 @@ slot, so over this surface an erase always frees.
 |CHK-GONE
 |A shredded engine refuses to start. After a final `CMD_ENGINE_SHRED` the AES produces no output within a bounded window, which is the only frontdoor evidence the shred reached the key: the engine key registers are write-only. Positive control: right before the shred, the second known key is transferred to AES again and the same sideload start gives output inside the same bounded window and encrypts to its golden, so the key is live at the shred, the window is long enough for a keyed block, and the shred is the only change between the two starts. Runs last, because an engine parked waiting for a key stays parked.
 |CHK-ALIVE
-|After every refusal `CMD_STAT` succeeds and reports no latched recoverable error. The second half is what gives CHK-DEST and CHK-CLOSED their meaning: while a recoverable fault is pending the KM refuses every key command with the same failure code those two expect, before it looks at the arguments at all, so a faulted KM would otherwise satisfy both without the policy they name being exercised.
+|After every refusal `CMD_STAT` succeeds and reports no latched recoverable error. The status word is the response's `RETURN_ARG` (`hw/ip/key_manager/doc/firmware.adoc`, "0x03 - CMD_STAT"), and a response without one fails rather than reading as status 0. The second half is what gives CHK-DEST and CHK-CLOSED their meaning: while a recoverable fault is pending the KM refuses every key command with the same failure code those two expect, before it looks at the arguments at all, so a faulted KM would otherwise satisfy both without the policy they name being exercised.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -8123,12 +8128,12 @@ public key.
 [arabic]
 . Stage a valid PROD OTP image, bring entropy up, release the KM, wait for
 `RESP_KM_READY`.
-. Run a direct-seed ML-DSA-87 KEYGEN on the palindromic seed with
+. Run a direct-seed ML-DSA-87 KEYGEN on the first seed with
 `cfg.entropy` and capture the public key.
 . `ZEROIZE`. Repeat KEYGEN with the inverted entropy vector. The two public
 keys must match -- `ABR_ENTROPY` is SCA masking and must not change the
 outputs.
-. `ZEROIZE`. Run a direct-seed KEYGEN on a second, distinct palindromic seed
+. `ZEROIZE`. Run a direct-seed KEYGEN on a second, distinct seed
 and require a public key different from the first. This is the reference for
 the sideload compare.
 . `ZEROIZE`. Run a KEYGEN with no software seed and no KV seed-read enable and
@@ -8170,9 +8175,11 @@ consume are claimed by `sep_km_abr_mlkem_sideload_test`.
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Anti-vacuity*: both compare public keys must be non-zero. The inverted
-vector is not equal to `cfg.entropy`. The palindrome absorbs the KV dword
-reversal, so a CHK-PK mismatch is a sideload failure, not an ordering
-artifact. `ABR_ENTROPY` is write-only; this row grades the RDL "no change on
+vector is not equal to `cfg.entropy`. Key Manager word `i` and
+`MLDSA_SEED[i]` carry the same dword (`hw/sys/sep/doc/adams_bridge.adoc`,
+"ABR seed word order"), and each seed has eight pairwise-distinct words, so
+CHK-PK fails a delivery that loses, keeps stale or reorders a seed word -- a
+dword reversal included. `ABR_ENTROPY` is write-only; this row grades the RDL "no change on
 the outputs" rule, not a consume probe.
 '''''
 
@@ -8188,12 +8195,13 @@ the outputs" rule, not a consume probe.
 
 *Source Module*: `sep_km_abr_mlkem_sideload_test`
 
-*BFM / Model*: ocah_axi_vip, the `abr_mlkem_seed_z_probe_o` observation probe
-(SEP_TB_ARCH exception list)
+*BFM / Model*: ocah_axi_vip, `env/sep_aes_golden.py`, the
+`abr_mlkem_seed_z_probe_o` observation probe (SEP_TB_ARCH exception list)
 
 *Objective*: every ML-KEM lane of the Key-Vault facade carries what the KM
-pushed into the sideload CSR, and the shared key Adams Bridge posts back over
-the write lane is consumable by the KM.
+pushed into the sideload CSR, word `i` to register index `i`, and the shared
+key Adams Bridge posts back over the write lane is the engine's own shared key,
+consumable by the KM.
 
 *Test Coverage*: the 16-dword seed read lane carrying D then Z, the message
 read lane, and the shared-key write lane with its `KEY_VALID` latch and its
@@ -8229,6 +8237,10 @@ the shared key of that same ENCAPS must now read zero.
 refused. Then set the KV shared-key write enable and ENCAPS again. The KM must
 post the unsolicited `RESP_ABR_SHARED_KEY_READY` announcement, and the same
 command must then succeed with a non-zero KPV handle.
+. `CMD_KEY_TRANSFER` that handle to AES and encrypt one block with the
+delivered key selected. The ciphertext must equal the AES-256 golden keyed with
+the shared key read back from the register-driven ENCAPS of the same
+encapsulation key and message.
 
 *Randomization*: none. Every seed, message and command is directed: each leg
 is a value-equality compare between a sideloaded and a direct run, and a
@@ -8249,7 +8261,7 @@ its `KEY_VALID` is clear is not claimed here.
 |CHK-KEM-SEED-REF
 |The ALT and REF `(D, Z)` pairs produce different encapsulation keys, and after the REF KEYGEN the engine's `Z` (`abr_mlkem_seed_z_probe_o`) equals the REF `Z`. Without the first the sideload compare could not distinguish a delivered seed from a stale one; the second is the positive control that the probe follows the `Z` the engine holds.
 |CHK-KEM-SEED-SIDELOAD
-|A KEYGEN whose seed arrives only over the KV seed lane produces the encapsulation key of the direct-register KEYGEN on the same words, and not the key of the pair the registers last held; and the engine's `Z` after that KEYGEN equals the ALT `Z`; before the KV read the engine does not hold the ALT `Z`. The encapsulation key depends on `D` only and software cannot read `Z` back, so the key grades the `D` half (the low eight dwords) and the probe grades the `Z` half (the high eight). `Z` is a dword palindrome, so dword order is not graded (#2756).
+|A KEYGEN whose seed arrives only over the KV seed lane produces the encapsulation key of the direct-register KEYGEN on the same words in the same order, and not the key of the pair the registers last held; and the engine's `Z` after that KEYGEN equals the ALT `Z` word for word; before the KV read the engine does not hold the ALT `Z`. The encapsulation key depends on `D` only and software cannot read `Z` back, so the key grades the `D` half (the low eight dwords) and the probe grades the `Z` half (the high eight). Key Manager word `i` is register index `i` (`hw/sys/sep/doc/adams_bridge.adoc`, "ABR seed word order").
 |CHK-KEM-MSG-SIDELOAD
 |An ENCAPS whose message arrives only over the KV message lane produces the ciphertext of the direct-register ENCAPS on the same message, and not that of the message the register last held. The compare is on the ciphertext, not the shared key: the ciphertext is public and a deterministic function of the encapsulation key and the message, while the shared key is not readable on exactly this path -- see the next row.
 |CHK-KEM-SK-CONFIDENTIAL
@@ -8258,6 +8270,8 @@ its `KEY_VALID` is clear is not claimed here.
 |The writeback raises the shared-key interrupt and the KM firmware posts the unsolicited `RESP_ABR_SHARED_KEY_READY` frame. The facade pulses `IRQ_STATUS.key_valid` on the final writeback dword and the wrapper gates it onto the shared-key interrupt, so this frame is the only host-side view of that path -- the consume below could succeed with the interrupt dead.
 |CHK-KEM-SK-WRITEBACK
 |`CMD_ABR_SK_TRANSFER` is refused while the sideload block's `KEY_VALID` is clear, and succeeds with a non-zero handle after an ENCAPS with the write lane armed. The refusal is the negative control: without it the success would not show that the writeback set `KEY_VALID`.
+|CHK-KEM-SK-VALUE
+|`MLKEM_SHARED_KEY.KEY[i]` holds word `i` of the engine's own `MLKEM_SHARED_KEY` register array (`hw/sys/sep/doc/adams_bridge.adoc`). The KEY words sit on the KM-private bus, so AES grades them: the consumed handle, transferred to AES, encrypts one block to the AES-256 golden keyed with the shared key the register-driven ENCAPS of the same inputs read back. The golden of the dword-reversed key differs, and a failure reports when the ciphertext matches it.
 |===
 
 *Evidence*: `CHK-KEM-MSG-REF` labels the two direct-register reference ENCAPS runs of CHK-KEM-MSG-SIDELOAD; a timeout, an engine error or an all-zero ciphertext in either one reports under that label.
@@ -8272,11 +8286,84 @@ non-zero, and it precedes the check that the vault-sourced shared key reads
 zero. Each sideload leg is preceded by a run on different words, so the
 register the lane bypasses holds the wrong value when the lane is read -- a
 lane that delivers nothing fails on the inequality before the equality is
-reached. The ML-KEM identity words are logged as information only. Seeds and messages are palindromes, so a
-mismatch is a delivery failure and not the KM-versus-register dword ordering; D
-and Z are *different* palindromes, so a swap between them still fails. The
+reached. The ML-KEM identity words are logged as information only. Every seed
+half and message has eight pairwise-distinct words, and `D` and `Z` share no
+word, so a dword reversal, any other word permutation and a swap between `D`
+and `Z` all fail. The reference shared key is checked not to be a dword
+palindrome before CHK-KEM-SK-VALUE uses it. The
 shared-key consume carries its own refusal leg rather than resting on a single
 success.
+
+'''''
+
+[[sep_km_abr_mldsa_kat_test]]
+===== `sep_km_abr_mldsa_kat_test`
+
+*Phase*: 2
+
+*Run mode*: `no_cpu`, real fuse-sense, `+esrc_noise_force`,
+`+km_rom_hex=rom_main.rom.parhex`
+
+*Bucket*: Key Manager vault
+
+*Source Module*: `sep_km_abr_mldsa_kat_test`
+
+*BFM / Model*: ocah_axi_vip, `env/sep_abr_nist.py` (the ACVP vectors of
+`fw/tests/common/abr_nist_vectors.h`)
+
+*Objective*: an ML-DSA-87 seed delivered by the Key Manager reaches the engine
+in the documented word order: Key Manager word `i` is `MLDSA_SEED[i]`, and
+index 0 holds the first four bytes of the FIPS 204 seed
+(`hw/sys/sep/doc/adams_bridge.adoc`, "ABR seed word order"). The ACVP keyGen
+vector is the golden, so the grade does not depend on the software register
+path.
+
+*Test Coverage*: KM dest ABR ML-DSA seed, the ML-DSA KV seed read, and KEYGEN
+on the delivered seed against an independent known answer.
+
+*Test Procedure*:
+
+[arabic]
+. Stage a valid PROD OTP image, bring entropy up, release the KM, wait for
+`RESP_KM_READY`.
+. `ZEROIZE` the engine.
+. `CMD_KEY_LOAD` the ACVP keyGen seed, in the word order
+<<sep_abr_mldsa_keygen_kat_test>> writes to `MLDSA_SEED`, and
+`CMD_KEY_TRANSFER` it to dest ABR ML-DSA seed.
+. Set the KV seed-read enable and poll `kv_mldsa_seed_rd_status` until `VALID`
+or a non-`SUCCESS` `ERROR`.
+. Write the masking entropy, KEYGEN with no seed register write, and compare
+the 648-word public key with the ACVP public key.
+
+*Randomization*: RANDCFG. `SepAbrKeygenCfg` gives the masking entropy. The
+seed is the ACVP vector.
+
+*Scope*: ML-DSA keyGen only. The ML-KEM lanes and the shared-key writeback
+are graded against the software register path by
+<<sep_km_abr_mlkem_sideload_test>>.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK0
+|`rom_main` boots on real entropy and announces `RESP_KM_READY`. This is the bench build with the boot and unrecoverable-fault SRAM wipes compiled out; see Known Limitations, "KM application ROM wipe paths".
+|CHK-XFER
+|`CMD_KEY_TRANSFER` of the ACVP seed to dest ABR ML-DSA seed returns success and echoes the handle and dest.
+|CHK-KV
+|The KV seed read completes: `VALID` with `ERROR` = `SUCCESS` (`kv_error_e` encoding of `kv_def.rdl`).
+|CHK-KM-KAT
+|The KEYGEN public key equals the ACVP keyGen public key, all 648 words.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Anti-vacuity*: the ACVP seed is never written to the ABR registers, so a
+public key equal to the ACVP public key can only come from the delivered seed.
+The eight seed words are pairwise distinct (asserted at import), so a dword
+reversal or any other word permutation in delivery changes the seed and fails
+CHK-KM-KAT.
 
 '''''
 
@@ -8297,11 +8384,11 @@ success.
 (SEP_TB_ARCH exception list)
 
 *Objective*: AES, HMAC, KMAC and OTBN each consume the exact key the KM
-delivered, and each ABR destination consumes the delivered words up to a dword
-reversal. Every destination takes a second, different key after an engine
-shred, and shows the documented invalid-key behaviour while its
-`KEY_CTRL.KEY_VALID` is clear. ABR dword order is not graded: no spec defines
-the KV-to-ABR seed word order (https://github.com/tenstorrent/tt-oca-harness/issues/2756[#2756]).
+delivered, and each ABR destination consumes the delivered words, word `i` at
+register index `i` (`hw/sys/sep/doc/adams_bridge.adoc`, "ABR seed word order").
+Every destination takes a second, different key after an engine shred, and
+shows the documented invalid-key behaviour while its `KEY_CTRL.KEY_VALID` is
+clear.
 
 *Test Coverage*: all eight `CMD_KEY_TRANSFER` destinations -- AES, HMAC, KMAC,
 OTBN and the four ABR blocks `MLDSA_SEED`, `MLKEM_SEED_D`, `MLKEM_SEED_Z`,
@@ -8326,9 +8413,8 @@ ABR, `ZEROIZE`, set the KV read enable, wait for the KV status to settle, run
 the KV-fed KEYGEN or ENCAPS, then `ZEROIZE` and run the same operation on the
 same words written directly (CHK-MLDSA, CHK-MLKEM-SEED, CHK-MLKEM-MSG). After
 the `D` then `Z` KV read, sample the engine's `Z` through
-`abr_mlkem_seed_z_probe_o` (CHK-MLKEM-SEED). The ABR words are dword
-palindromes, so these compares hold up to a dword reversal; dword order is not
-graded (#2756).
+`abr_mlkem_seed_z_probe_o` (CHK-MLKEM-SEED). Each ABR block has eight
+pairwise-distinct words, so these compares fail a delivery that reorders them.
 . `CMD_ENGINE_SHRED` with all eight destination bits. The firmware response is
 a precondition; the hardware effect is graded in the next step.
 . HMAC with a software key (CHK-HMAC-CLR); OTBN key dump (CHK-OTBN-CLR); for
@@ -8348,7 +8434,7 @@ last.
 for both rounds of keys, the AES plaintext, the HMAC and KMAC messages, the
 HMAC software keys and the ML-DSA masking entropy; the goldens and the
 direct-register ABR references are built from the same object. ABR seeds are
-seeded dword palindromes.
+seeded, with eight pairwise-distinct words per block.
 
 *Scope*: the share words are write-only and sit on the KM-private bus, so a
 delivered value is graded at its consumer, never by readback. The ML-KEM
@@ -8375,19 +8461,19 @@ read is logged, not graded.
 |CHK-OTBN-1/2
 |The key-dump program reads the delivered 384-bit key, share0 XOR share1 equals it, the pad is zero and `ERR_BITS` is 0.
 |CHK-MLDSA-1/2
-|The ML-DSA seed KV read completes (`VALID`, `ERROR` = `SUCCESS`) and the KEYGEN public key equals a direct-seed KEYGEN of the same words, up to a dword reversal of the seed. Dword order is not graded: no spec defines the KV-to-ABR seed word order (#2756).
+|The ML-DSA seed KV read completes (`VALID`, `ERROR` = `SUCCESS`) and the KEYGEN public key equals a direct-seed KEYGEN of the same words in the same order.
 |CHK-MLKEM-SEED-1/2
-|The 16-dword `D` then `Z` KV read completes, the encapsulation key equals a direct-seed KEYGEN of the same `D` and `Z`, and the `Z` the engine holds after the KV read (`abr_mlkem_seed_z_probe_o`) equals the delivered `Z`, each up to a dword reversal. The encapsulation key depends on `D` only and software cannot read `Z` back, so the probe grades `Z`. Dword order is not graded: no spec defines the KV-to-ABR seed word order (#2756).
+|The 16-dword `D` then `Z` KV read completes, the encapsulation key equals a direct-seed KEYGEN of the same `D` and `Z` in the same order, and the `Z` the engine holds after the KV read (`abr_mlkem_seed_z_probe_o`) equals the delivered `Z` word for word. The encapsulation key depends on `D` only and software cannot read `Z` back, so the probe grades `Z`.
 |CHK-MLKEM-MSG-1/2
-|The message KV read completes and the ENCAPS ciphertext equals a direct-message ENCAPS of the same words, up to a dword reversal of the message. Dword order is not graded: no spec defines the KV-to-ABR seed word order (#2756).
+|The message KV read completes and the ENCAPS ciphertext equals a direct-message ENCAPS of the same words in the same order.
 |CHK-ROUND
-|Every round-2 ABR output (ML-DSA public key, ML-KEM encapsulation key, ML-KEM ciphertext) differs from its round-1 output. The ABR compares are against the same engine, so this row fails an engine that ignores its seed or message. It does not grade dword order (#2756). AES, HMAC, KMAC and OTBN have goldens per round and are not compared here.
+|Every round-2 ABR output (ML-DSA public key, ML-KEM encapsulation key, ML-KEM ciphertext) differs from its round-1 output. The ABR compares are against the same engine, so this row fails an engine that ignores its seed or message. AES, HMAC, KMAC and OTBN have goldens per round and are not compared here.
 |CHK-HMAC-CLR-1/2
 |After the shred the HMAC digest equals the golden of the software key in the KEY CSRs: with `KEY_VALID` clear the engine falls back to its software key.
 |CHK-OTBN-CLR-1/2
 |After the shred the key-dump program stops with `ERR_BITS` = `KEY_INVALID` (`doc/otbn.adoc`).
 |CHK-ABR-CLR-1/2
-|After the shred each of the three ABR KV reads reports `ERROR` = `KV_READ_FAIL` (`doc/crypto.adoc`, `km-key-delivery-summary`: "Seed read does not complete"; the encoding is the `kv_error_e` enum of `kv_def.rdl`). `D` and `Z` have their own `KEY_VALID` and the `D` then `Z` read fails if either is clear, so each is also graded alone: with only `D` delivered again the read reports `KV_READ_FAIL` (`Z` is clear), and after a second shred, with only `Z` delivered again, it reports `KV_READ_FAIL` (`D` is clear). The engine `STATUS` is logged and not graded: no SEP document states it.
+|After the shred each of the three ABR KV reads reports `ERROR` = `KV_READ_FAIL` (`doc/crypto.adoc`, `km-key-delivery-summary`: "Seed read does not complete"; the encoding is the `kv_error_e` enum of `kv_def.rdl`). `D` and `Z` have their own `KEY_VALID` and the `D` then `Z` read fails if either is clear, so each is also graded alone: with only `D` delivered again the read reports `KV_READ_FAIL` (`Z` is clear), and after a second shred, with only `Z` delivered again, it reports `KV_READ_FAIL` (`D` is clear). Each single-half leg then delivers the other half too and the read must complete (`VALID`, `ERROR` = `SUCCESS`): the control that the re-delivered half became valid, so each failure belongs to the shredded half. The engine `STATUS` is logged and not graded: no SEP document states it.
 |CHK-KMAC-CLR
 |A keyed KMAC on the shredded delivered key raises `INTR_STATE.kmac_err` with a non-zero `ERR_CODE` (`doc/kmac.adoc`). Both read clear just before `CMD_START`, so the error belongs to that start and not to an earlier operation.
 |CHK-AES-CLR
