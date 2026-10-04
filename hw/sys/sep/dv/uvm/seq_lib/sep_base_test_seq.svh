@@ -141,8 +141,31 @@ class sep_base_test_seq extends ocah_sequence;
   endtask
 
   // ------------------------------------------------------------------
+  // Read-data knownness. The VIP stores RDATA two-state, so an X or Z bit
+  // reads as 0 and a compare that expects 0 would pass on it. Every read
+  // whose data a check grades must have known data on the lanes it
+  // addressed; result.data_xz_masks holds the X/Z bits of each beat.
+  // ------------------------------------------------------------------
+
+  // Bits of the LSU beat that an access of 2**size bytes at addr covers.
+  function bit [63:0] lane_bits(bit [63:0] addr, int size);
+    int unsigned bytes = 1 << size;
+    int unsigned first = int'(addr % SepLsuBeatBytes) & ~(bytes - 1);
+    if (bytes >= SepLsuBeatBytes) return '1;
+    return ((64'd1 << (8 * bytes)) - 1) << (8 * first);
+  endfunction
+
+  function void check_read_known(ocah_axi_item result, bit [63:0] addr, int size, string label);
+    bit [63:0] xz = result.first_xz_mask() & lane_bits(addr, size);
+    if (xz != '0)
+      `uvm_error(get_type_name(), $sformatf(
+                 "%s: read data at 0x%0h has X/Z on bits 0x%016h of the addressed lanes", label,
+                 addr, xz))
+  endfunction
+
+  // ------------------------------------------------------------------
   // CSR operations: one reusable sequence per operation on the CPU-LSU
-  // sequencer. Both record CHK-CSR-RESP.
+  // sequencer. Both record CHK-CSR-RESP; csr_read also requires known data.
   // ------------------------------------------------------------------
 
   task csr_write(bit [63:0] addr, bit [31:0] data, string label = "");
@@ -163,6 +186,8 @@ class sep_base_test_seq extends ocah_sequence;
     op.addr = addr;
     op.start(p_sequencer.m_lsu_seqr);
     data = op.data;
+    check_read_known(op.result, addr, SepCsrSize,
+                     label.len() ? label : $sformatf("rd_0x%0h", addr));
     check_evidence(ChkCsrResp, label.len() ? label : $sformatf("rd_0x%0h", addr),
                    64'(op.result.worst_resp()), 64'(OCAH_AXI_RESP_OKAY), $sformatf(
                    "read addr=0x%0h data=0x%08h", addr, data));
@@ -202,6 +227,8 @@ class sep_base_test_seq extends ocah_sequence;
     op.check_response = 1'b0;
     op.start(p_sequencer.m_lsu_seqr);
     data = op.data;
+    check_read_known(op.result, addr, SepCsrSize,
+                     label.len() ? label : $sformatf("rd_0x%0h", addr));
     check_evidence(check_id, label.len() ? label : $sformatf("rd_0x%0h", addr),
                    64'(op.result.worst_resp()), 64'(expected), $sformatf(
                    "read addr=0x%0h data=0x%08h resp=%s", addr, data, op.result.worst_resp().name()

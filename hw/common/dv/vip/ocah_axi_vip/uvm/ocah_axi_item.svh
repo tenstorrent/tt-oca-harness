@@ -20,6 +20,10 @@ class ocah_axi_item extends uvm_sequence_item;
   ocah_axi_dir_e      direction = OCAH_AXI_DIR_READ;
   bit [63:0]          address;
   bit [63:0]          data_words[$];       // one entry per beat (raw bus word)
+  // Read beats only, one entry per data_words entry: the bits of RDATA that
+  // were X or Z on the bus. data_words is two-state, so it holds those bits
+  // as 0; a caller that grades read data checks its lanes here.
+  bit [63:0]          data_xz_masks[$];
   bit [7:0]           strobes[$];          // write beats only
   int unsigned        size;                // AxSIZE
   ocah_axi_burst_e    burst = OCAH_AXI_BURST_INCR;
@@ -93,7 +97,10 @@ class ocah_axi_item extends uvm_sequence_item;
   // twice reports only the operation in flight.
   function void clear_results();
     resp_list.delete();
-    if (direction != OCAH_AXI_DIR_WRITE) data_words.delete();
+    if (direction != OCAH_AXI_DIR_WRITE) begin
+      data_words.delete();
+      data_xz_masks.delete();
+    end
     timed_out         = 1'b0;
     observed_id       = '0;
     observed_id_valid = 1'b0;
@@ -121,6 +128,10 @@ class ocah_axi_item extends uvm_sequence_item;
 
   function bit [63:0] first_data();
     return (data_words.size() > 0) ? data_words[0] : '0;
+  endfunction
+
+  function bit [63:0] first_xz_mask();
+    return (data_xz_masks.size() > 0) ? data_xz_masks[0] : '0;
   endfunction
 
   // True when a live response ID was captured and it echoes the issued ID.
@@ -152,6 +163,7 @@ class ocah_axi_item extends uvm_sequence_item;
     direction      = rhs_item.direction;
     address        = rhs_item.address;
     data_words     = rhs_item.data_words;
+    data_xz_masks  = rhs_item.data_xz_masks;
     strobes        = rhs_item.strobes;
     size           = rhs_item.size;
     burst          = rhs_item.burst;

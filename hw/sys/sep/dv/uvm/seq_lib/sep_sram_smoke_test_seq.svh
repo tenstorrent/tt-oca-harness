@@ -76,6 +76,7 @@ class sep_sram_smoke_test_seq extends sep_base_test_seq;
     ocah_axi_item result;
     bus_read(addr, WordSize, result, label);
     check_resp(result, 1'b1, label);
+    check_read_known(result, addr, WordSize, label);
     check_evidence(check_id, label, result.first_data(), expected, $sformatf("addr=0x%0h", addr));
   endtask
 

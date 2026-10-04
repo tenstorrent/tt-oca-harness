@@ -132,6 +132,13 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
     return (cfg.data_width >= 64) ? value : (value & ((64'd1 << cfg.data_width) - 1));
   endfunction
 
+  // Bits of a four-state bus word that are X or Z, within the data width.
+  protected function bit [63:0] xz_bits(logic [63:0] value);
+    bit [63:0] xz;
+    foreach (xz[i]) xz[i] = (value[i] !== 1'b0) && (value[i] !== 1'b1);
+    return mask_data(xz);
+  endfunction
+
   // Live response-ID capture at the completing handshake (parity contract:
   // wire truth, never an issued-ID echo). Stays invalid on ID-less buses.
   protected function void capture_observed_id(ocah_axi_item it, bit [15:0] raw);
@@ -423,6 +430,7 @@ class ocah_axi_master_driver extends uvm_driver #(ocah_axi_item);
       wait_r(timed_out);
       if (timed_out) return;
       it.data_words.push_back(mask_data(cfg.vif.mon_cb.rdata));
+      it.data_xz_masks.push_back(xz_bits(cfg.vif.mon_cb.rdata));
       it.resp_list.push_back(ocah_axi_resp_e'(cfg.vif.mon_cb.rresp));
       last = (cfg.protocol == OCAH_AXI_PROTO_AXI4_LITE) || (cfg.vif.mon_cb.rlast === 1'b1);
       if (last) capture_observed_id(it, cfg.vif.mon_cb.rid);

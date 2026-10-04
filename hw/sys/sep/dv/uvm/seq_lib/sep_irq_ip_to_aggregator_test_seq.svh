@@ -75,6 +75,12 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
   // INTR_TEST=0 and before the W1C (cocotb _STICKY_HOLD).
   localparam int unsigned StickyHoldCycles = 32;
 
+  // System clocks the last check_agg_bit() poll took to see its value, and
+  // the slowest Status-source release of the pass (cocotb
+  // status_release_max).
+  int unsigned m_agg_cycles;
+  int unsigned m_status_release_max;
+
   // One covered interrupt source: its IP INTR_* registers, its bit in each,
   // and its aggregate bit. A Status source has a read-only INTR_STATE and
   // deasserts on INTR_TEST=0; an Event source deasserts on W1C INTR_STATE.
@@ -210,6 +216,7 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
       sample_agg(vec);
       if (vec[idx] === expected) break;
     end
+    m_agg_cycles = cycles;
     passed = m_check.expect_true(
         check_id,
         vec[idx] === expected,
@@ -296,6 +303,7 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
     wait_fuse_sense_done();
 
     log_step("1", "INTR_TEST walk of every covered source into the aggregate");
+    m_status_release_max = 0;
     foreach (srcs[i]) begin
       bit src_ok;
       walk_source(srcs[i], covered_mask, src_ok);
@@ -303,6 +311,18 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
     end
     check_evidence(ChkAgg, "sources_walked", 64'(walked), 64'(srcs.size()),
                    "covered sources with BASE, SET, ISO and CLR all PASS");
+    // The Event sticky hold is a valid check only if every Status source has
+    // dropped inside it: a state that follows the test level would otherwise
+    // still read 1 at the end of the hold.
+    void'(m_check.expect_true(
+        ChkAgg,
+        m_status_release_max > 0 && m_status_release_max < StickyHoldCycles,
+        $sformatf(
+            {"slowest Status INTR_TEST release took %0d system clocks; ",
+             "the Event hold of %0d must exceed it"},
+            m_status_release_max,
+            StickyHoldCycles)
+    ));
 
     log_step("2", "adapter SLVERR into DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS");
     check_bus_err_paths(holes);
@@ -366,6 +386,7 @@ class sep_irq_ip_to_aggregator_test_seq extends sep_base_test_seq;
     end
     check_agg_bit(ChkClr, src.agg_idx, 1'b0, {src.name, src.is_status ? ".release" : ".w1c"}, ok);
     all_ok &= ok;
+    if (src.is_status && m_agg_cycles > m_status_release_max) m_status_release_max = m_agg_cycles;
     check_csr_bits(ChkClr, src.state_addr, src.state_mask, '0, {src.name, ".INTR_STATE.clr"}, ok);
     all_ok &= ok;
 
