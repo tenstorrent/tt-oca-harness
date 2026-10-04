@@ -1959,7 +1959,10 @@ changed`), or a model directory without a record (`reason=no build record`),
 forces a clean build; `--rebuild` forces one regardless (`reason=requested`).
 An edit to any file the filelist reaches, including its `-f` includes, or to
 any file a build argument names, such as a coverage scope file, therefore
-rebuilds the model on the next run.
+rebuilds the model on the next run. A VCS or Xcelium elaboration writes the
+same record beside its `simv` or snapshot, naming the fingerprint and the
+simulator version it saw; a native build always elaborates, so its record is
+read by the tests that run the model, not by the next build.
 
 A test that runs on a model built earlier in the same run, a cocotb model
 or a native VCS or Xcelium build, in the run's own process or on a cluster
@@ -1969,6 +1972,10 @@ and the coverage merge's single-fingerprint rule holds
 (<<runner-coverage-inputs>>). A native test handed that identity reads
 neither the simulator version nor the sources on its own host. A wave-debug
 rerun computes its own, since the wave format is a build input.
+
+A run that builds nothing (`--stage sim`, `--run-only`) hands its tests no
+identity; each test reports the record beside the model it runs, and a test
+on a model without one reports its own digest.
 
 `[build.options]` sets the sharing policy:
 

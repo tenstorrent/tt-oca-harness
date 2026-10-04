@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Unit tests for the VCS stage helpers (cocotb runner build args, UVM precompile) and the
-build identity a leaf on a pre-built model reports.
+"""Unit tests for the VCS stage helpers (cocotb runner build args, UVM precompile), the build
+identity a leaf reports, and the record a native elaboration leaves beside its model.
 
 Run from the repository root:
 
@@ -9,6 +9,7 @@ Run from the repository root:
 """
 
 import io
+import json
 import os
 import shutil
 import sys
@@ -47,6 +48,26 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 def make_args(define: list | None = None) -> Namespace:
     return Namespace(define=define)
+
+
+def fixture_flow(root: Path, framework: str, tool: str, raw: dict) -> Dut:
+    """A one-tool DUT of ``framework`` whose config is ``raw``."""
+    return Dut(
+        name="fixture",
+        kind="sim",
+        description="build identity fixture",
+        framework=framework,
+        visibility="public",
+        runnability="runnable",
+        license="Apache-2.0",
+        root="dut",
+        default_tool=tool,
+        tools=[tool],
+        path=root / "dut" / "fixture_sim_cfg.toml",
+        raw=raw,
+        frameworks=[framework],
+        default_framework=framework,
+    )
 
 
 class VcsUvmPrecompileCmd(unittest.TestCase):
@@ -213,27 +234,17 @@ class PrebuiltBuildIdentity(unittest.TestCase):
         log_path.write_text(self.PASSING_UVM_LOG, encoding="utf-8")
         return 0
 
-    def run_sim_leaf(self, args: Namespace, kind: str = "cocotb_sim"):
+    def run_sim_leaf(
+        self, args: Namespace, kind: str = "cocotb_sim", model_dir: Path | None = None
+    ):
+        """One leaf of ``kind``; ``model_dir`` is where the leaf's own resolution points."""
         framework, tool, sim_function, resolver, drifted = self.KINDS[kind]
+        if model_dir is not None:
+            drifted = {**drifted, ("sim_build" if kind == "cocotb_sim" else "build_dir"): model_dir}
         self.root = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
         raw = {"native": {"stages": {"sim": {"kind": kind}}}}
-        flow = Dut(
-            name="fixture",
-            kind="sim",
-            description="build identity fixture",
-            framework=framework,
-            visibility="public",
-            runnability="runnable",
-            license="Apache-2.0",
-            root="dut",
-            default_tool=tool,
-            tools=[tool],
-            path=self.root / "dut" / "fixture_sim_cfg.toml",
-            raw=raw,
-            frameworks=[framework],
-            default_framework=framework,
-        )
+        flow = fixture_flow(self.root, framework, tool, raw)
         catalog = TestCatalog(
             path=None, groups={}, tests={"t_x": TestEntry(name="t_x", module="t_x")}
         )
@@ -401,6 +412,126 @@ class PrebuiltBuildIdentity(unittest.TestCase):
             with self.subTest(kind=kind):
                 result = self.run_sim_leaf(self.leaf_args(), kind)
                 self.assertEqual(result.metadata["target_build"]["fingerprint"], "c670ed085301")
+
+    def model_with_record(self, fingerprint: str) -> Path:
+        model = Path(tempfile.mkdtemp()).resolve() / "model"
+        self.addCleanup(shutil.rmtree, model.parent, ignore_errors=True)
+        stages._write_build_record(model / stages.BUILD_RECORD_NAME, fingerprint, "vcs X", False)
+        return model
+
+    def test_a_leaf_handed_nothing_reports_the_record_beside_the_model(self):
+        for kind in self.KINDS:
+            with self.subTest(kind=kind):
+                model = self.model_with_record("efba240c5e52")
+                result = self.run_sim_leaf(self.leaf_args(), kind, model_dir=model)
+                target_build = result.metadata["target_build"]
+                self.assertEqual(
+                    (target_build["build_dir"], target_build["fingerprint"]),
+                    (str(model), "efba240c5e52"),
+                )
+                self.assertEqual(result.metadata["provenance"]["build_fingerprint"], "efba240c5e52")
+
+    def test_the_handed_down_identity_outranks_the_record(self):
+        for kind in self.KINDS:
+            with self.subTest(kind=kind):
+                args = self.leaf_args()
+                mark_cocotb_prebuilt(args, "default", self.RECORDED)
+                model = self.model_with_record("0123456789ab")
+                result = self.run_sim_leaf(args, kind, model_dir=model)
+                self.assertEqual(result.metadata["target_build"]["fingerprint"], "efba240c5e52")
+
+    def test_a_wave_debug_rerun_reports_its_own_identity_over_the_record(self):
+        for kind in self.KINDS:
+            with self.subTest(kind=kind):
+                args = self.leaf_args()
+                args._wave_debug_rerun = True
+                mark_cocotb_prebuilt(args, "default", self.RECORDED)
+                model = self.model_with_record("efba240c5e52")
+                result = self.run_sim_leaf(args, kind, model_dir=model)
+                self.assertEqual(result.metadata["target_build"]["fingerprint"], "c670ed085301")
+
+
+class NativeBuildRecord(unittest.TestCase):
+    """A native elaboration leaves a record of the model beside it, or none."""
+
+    TOOLS = {
+        "vcs": ("vcs_build", "_vcs_resolve_build"),
+        "xcelium": ("xcelium_build", "_xcelium_resolve_build"),
+    }
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.model = self.root / "model"
+        self.record = self.model / stages.BUILD_RECORD_NAME
+
+    def build(self, tool: str, rc: int, dry_run: bool = False) -> int:
+        build_function, resolver = self.TOOLS[tool]
+        info = {
+            "build": {},
+            "target_name": "default",
+            "compile_target": {},
+            "vcs_cfg": {},
+            "xcelium_cfg": {},
+            "top": "t",
+            "filelist": self.root / "f.f",
+            "build_dir": self.model,
+            "fingerprint": "efba240c5e52",
+            "tool_version": "vcs script version : X-2025.06",
+            "simv": self.model / "simv",
+            "snapshot": "snap",
+            "elab_args": [],
+            "coverage_args": [],
+        }
+        args = Namespace(
+            dry_run=dry_run,
+            quiet=True,
+            verbose=False,
+            timeout=None,
+            ui="plain",
+            comp_arg=None,
+            define=None,
+        )
+        flow = fixture_flow(self.root, "uvm", tool, {})
+        with (
+            mock.patch.object(stages, resolver, return_value=info),
+            mock.patch.object(stages, "run_subprocess", return_value=rc),
+            redirect_stdout(io.StringIO()),
+        ):
+            return getattr(stages, build_function)(
+                flow,
+                self.root,
+                {},
+                args,
+                self.root / "build.log",
+                self.root / "build.sh",
+                self.root / "build.env",
+                include_filelist=True,
+            )
+
+    def test_a_passing_elaboration_records_the_model(self):
+        for tool in self.TOOLS:
+            with self.subTest(tool=tool):
+                self.assertEqual(self.build(tool, 0), 0)
+                record = json.loads(self.record.read_text(encoding="utf-8"))
+                self.assertEqual(
+                    (record["fingerprint"], record["tool_version"]),
+                    ("efba240c5e52", "vcs script version : X-2025.06"),
+                )
+                shutil.rmtree(self.model)
+
+    def test_a_failed_elaboration_leaves_no_record(self):
+        for tool in self.TOOLS:
+            with self.subTest(tool=tool):
+                stages._write_build_record(self.record, "0123456789ab", "old", False)
+                self.assertEqual(self.build(tool, 1), 1)
+                self.assertFalse(self.record.exists())
+
+    def test_a_dry_run_writes_no_record(self):
+        for tool in self.TOOLS:
+            with self.subTest(tool=tool):
+                self.assertEqual(self.build(tool, 0, dry_run=True), 0)
+                self.assertFalse(self.record.exists())
 
 
 class CocotbVcsRunnerBuildArgs(unittest.TestCase):

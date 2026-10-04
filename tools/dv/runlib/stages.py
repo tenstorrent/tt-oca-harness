@@ -421,6 +421,15 @@ def _write_build_record(
     write_text_file(record_path, json.dumps(payload, indent=2) + "\n", dry_run)
 
 
+def _read_build_record(build_dir: Path) -> dict[str, Any] | None:
+    """The record a build wrote beside its model, or None when none parses."""
+    try:
+        record = json.loads((build_dir / BUILD_RECORD_NAME).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return record if isinstance(record, dict) else None
+
+
 def _vcs_cocotb_access(build: dict[str, Any], waves: bool) -> list[str]:
     """Return ``[build.vcs].cocotb_access``, the VCS debug access of a cocotb build.
 
@@ -496,11 +505,22 @@ def _leaf_target_build(
 ) -> dict[str, Any]:
     """The identity a sim leaf reports for the model under ``build_dir``.
 
-    The identity the run's build handed down names the model every leaf of the run shares;
-    a leaf handed none reports ``fingerprint``, its own digest.
+    The identity the run's build handed down names the model every leaf of the run shares.
+    A leaf handed none reports the record the build wrote beside the model, and a model
+    without one is named by ``fingerprint``, the leaf's own digest. A wave-debug rerun
+    changes the build inputs, so it reports its own.
     """
-    return _prebuilt_target_build(args, target_name) or _target_build_metadata(
-        target_name=target_name, tool=tool, build_dir=build_dir, fingerprint=fingerprint
+    handed = _prebuilt_target_build(args, target_name)
+    if handed:
+        return handed
+    record: dict[str, Any] = {}
+    if not getattr(args, "_wave_debug_rerun", False):
+        record = _read_build_record(Path(build_dir)) or {}
+    return _target_build_metadata(
+        target_name=target_name,
+        tool=tool,
+        build_dir=build_dir,
+        fingerprint=str(record.get("fingerprint") or fingerprint or "") or None,
     )
 
 
@@ -2885,16 +2905,18 @@ def _vcs_resolve_build(
         )
 
     fingerprint: str | None
+    tool_version: str | None
     if model_dir is None:
         filelist_text = (
             filelist.read_text(encoding="utf-8", errors="replace")
             if filelist.is_file()
             else str(filelist)
         )
+        tool_version = vcs_version(root)
         fingerprint = build_fingerprint(
             build_args=elab_args,
             top_module=top,
-            tool_version=vcs_version(root),
+            tool_version=tool_version,
             filelist_text=filelist_text,
             extra=[
                 *cache_key_extra(options),
@@ -2907,7 +2929,7 @@ def _vcs_resolve_build(
         )
         build_dir = resolve_build_dir(base_build, options, fingerprint)
     else:
-        fingerprint = None
+        fingerprint = tool_version = None
         build_dir = model_dir
     coverage_args = _render_list(
         coverage_compile_args,
@@ -2930,6 +2952,7 @@ def _vcs_resolve_build(
         "filelist": filelist,
         "build_dir": build_dir,
         "fingerprint": fingerprint,
+        "tool_version": tool_version,
         "simv": build_dir / "simv",
         "elab_args": elab_args,
         "coverage_args": coverage_args,
@@ -2990,6 +3013,45 @@ def vcs_analyze(
     )
 
 
+def _run_elaboration(
+    info: dict[str, Any],
+    args: argparse.Namespace,
+    argv: list[str],
+    root: Path,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+    launch: ToolLaunch,
+) -> int:
+    """Run a native elaboration in its build directory and record the model it leaves there.
+
+    The record is removed before the tool runs and written only after it succeeds, so a
+    failed or interrupted elaboration leaves no record beside a model it may have replaced.
+    """
+    build_dir = Path(info["build_dir"])
+    record = build_dir / BUILD_RECORD_NAME
+    if not args.dry_run:
+        record.unlink(missing_ok=True)
+    rc = run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=build_dir,
+        verbose=args.verbose,
+        timeout_sec=args.timeout,
+        launch=launch,
+    )
+    if rc == 0:
+        _write_build_record(
+            record, str(info["fingerprint"]), str(info["tool_version"]), bool(args.dry_run)
+        )
+    return rc
+
+
 def vcs_build(
     flow: Flow,
     root: Path,
@@ -3035,19 +3097,7 @@ def vcs_build(
     console = console_from_args(args)
     console.artifact("build", build_dir)
     console.artifact("simv", info["simv"])
-    return run_subprocess(
-        argv,
-        root,
-        log_path,
-        args.dry_run,
-        script_path,
-        env_path,
-        args.quiet,
-        cwd=build_dir,
-        verbose=args.verbose,
-        timeout_sec=args.timeout,
-        launch=launch,
-    )
+    return _run_elaboration(info, args, argv, root, log_path, script_path, env_path, launch)
 
 
 def vcs_sim(
@@ -3208,16 +3258,18 @@ def _xcelium_resolve_build(
         elab_args += ["-access", "+rwc"]
 
     fingerprint: str | None
+    tool_version: str | None
     if model_dir is None:
         filelist_text = (
             filelist.read_text(encoding="utf-8", errors="replace")
             if filelist.is_file()
             else str(filelist)
         )
+        tool_version = xcelium_version(root)
         fingerprint = build_fingerprint(
             build_args=[*elab_args, *_xcelium_defines(compile_target, args)],
             top_module=top,
-            tool_version=xcelium_version(root),
+            tool_version=tool_version,
             filelist_text=filelist_text,
             extra=[
                 *cache_key_extra(options),
@@ -3228,7 +3280,7 @@ def _xcelium_resolve_build(
         )
         build_dir = resolve_build_dir(base_build, options, fingerprint)
     else:
-        fingerprint = None
+        fingerprint = tool_version = None
         build_dir = model_dir
     return {
         "target_name": target_name,
@@ -3238,6 +3290,7 @@ def _xcelium_resolve_build(
         "filelist": filelist,
         "build_dir": build_dir,
         "fingerprint": fingerprint,
+        "tool_version": tool_version,
         "snapshot": snapshot,
         "elab_args": elab_args,
     }
@@ -3325,19 +3378,7 @@ def xcelium_build(
     console = console_from_args(args)
     console.artifact("build", build_dir)
     console.artifact("snapshot", info["snapshot"])
-    return run_subprocess(
-        argv,
-        root,
-        log_path,
-        args.dry_run,
-        script_path,
-        env_path,
-        args.quiet,
-        cwd=build_dir,
-        verbose=args.verbose,
-        timeout_sec=args.timeout,
-        launch=launch,
-    )
+    return _run_elaboration(info, args, argv, root, log_path, script_path, env_path, launch)
 
 
 def xcelium_sim(
