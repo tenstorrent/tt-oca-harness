@@ -1,40 +1,37 @@
 {
   "aggregate": {
     "flows": {
-      "failing": 1,
-      "pass_rate": 0.0,
-      "passing": 0,
+      "failing": 0,
+      "pass_rate": 100.0,
+      "passing": 1,
       "total": 1,
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/history.json",
-    "history_points": 8,
+    "history_points": 9,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/summary.json",
     "tests": {
-      "failing": 1,
+      "failing": 0,
       "incomplete_runs": 0,
-      "pass_rate": 98.57,
-      "passing": 69,
+      "pass_rate": 100.0,
+      "passing": 71,
       "skipped": 0,
-      "total": 70,
+      "total": 71,
       "unknown": 0
     }
   },
-  "errors": [
-    "aou_uvm: native status=FAIL",
-    "aou_uvm: normalized status=FAIL"
-  ],
-  "generated_at": "2026-10-03T12:30:57.825639+00:00",
+  "errors": [],
+  "generated_at": "2026-10-04T12:08:00.494213+00:00",
   "git": {
-    "commit": "fa7bc74a59e19d4516e5d13bb765dc32bf590680",
-    "harness_commit": "7fa6c6f33a29ac2ebb63d3b0b0f675b666aaf976",
-    "nonfree_commit": "84c767168276715ead07611722fb90d34836aedd",
+    "commit": "ac05aa5df5b36a332c86c67e2ac7b35c8715fb31",
+    "harness_commit": "48505a9c050a21def1c3a54f210517e8a65e2b90",
+    "nonfree_commit": "05d2469c33c5be92540bb48cc91d92810bf984f2",
     "remote": "git@aus-gitlab.local.tenstorrent.com:arch/aou-rtl",
     "requested_ref": "verification"
   },
   "jenkins": {
-    "build_number": "14",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/14/",
+    "build_number": "15",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/15/",
     "job_name": "tt-oca-harness/aou/uvm",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/"
   },
@@ -45,9 +42,9 @@
       "group": "p0",
       "mode": "regression",
       "native_result": "",
-      "native_status": "FAIL",
+      "native_status": "PASS",
       "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/result.json",
-      "normalized_status": "FAIL",
+      "normalized_status": "PASS",
       "profile": "aou_uvm",
       "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/runs",
       "runner_rc": 0,
@@ -55,5 +52,5 @@
     }
   ],
   "schema_version": 1,
-  "status": "FAIL"
+  "status": "PASS"
 }
