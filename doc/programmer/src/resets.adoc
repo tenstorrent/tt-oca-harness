@@ -57,7 +57,7 @@ of the Technical Reference Manual.
 |<<sep-software-reset>>
 
 |Key Manager restart
-|Key Manager `SOFT_RST_CODE`
+|`0x53525354` written to Key Manager `SOFT_RST_CODE`
 |Key Manager firmware
 |<<sep-software-reset>>
 
