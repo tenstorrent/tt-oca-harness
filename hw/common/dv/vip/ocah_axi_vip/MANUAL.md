@@ -167,11 +167,12 @@ its delay. `allow_timeout=True` converts an expiry into a `timed_out`
 result. The pair results expose the two per-transaction results as `first`
 and `second` in issue order. A `pipeline_result` expiry marks only the
 accesses without a response `timed_out`: an access whose response arrived
-keeps its result, which `check_response` and the statistics cover, and the
-stall counters hold the cycles counted up to the expiry. The backend goes
-on presenting the unaccepted beats and retires them once the responder
-takes them. A `pipeline_result` write is one beat, so a partial `strb` and
-an unaligned address must stay inside it; a read at an unaligned address
+keeps its result, which `check_response` and the statistics cover, a
+timed-out write reports the byte length its `strb` selects, and the stall
+counters hold the cycles counted up to the expiry. The backend goes on
+presenting the unaccepted beats and retires them once the responder takes
+them. A `pipeline_result` write is one beat, so a partial `strb` and an
+unaligned address must stay inside it; a read at an unaligned address
 returns the bytes up to the end of its beat. Each access is checked against
 the backend (direction, address range, `prot` value and the bus's
 protection signal, strobe, delays) before the first one is issued, so a
@@ -586,9 +587,13 @@ of `OcahAxiWriteResult`/`OcahAxiReadResult`:
 | `transaction_id` | The issued AWID/ARID (as passed to the operation) |
 | `observed_id` / `observed_id_valid` | BID/RID sampled live from the response handshake on the completing beat (RLAST for reads); invalid on ID-less buses and timeouts |
 | `id_match()` | Both IDs known and equal (gate on `observed_id_valid` to separate mismatch from capture miss) |
-| `resp_list` / `worst_resp()` / `is_ok()` | Per-beat response evidence |
+| `resp_list` / `worst_resp()` / `is_ok()` | Per-beat response evidence; `is_ok()` is 0 on a timed-out result |
 | `data_words` | Read data, one raw bus word per beat |
-| `timed_out` | A handshake wait exceeded `ocah_axi_master_config.timeout_cycles` |
+| `timed_out` | A handshake wait exceeded `ocah_axi_master_config.timeout_cycles` before the final response handshake (RLAST for reads); the beats received stay in `data_words` / `resp_list` |
+
+Every operation first clears the result fields of the items it is given
+(`ocah_axi_item::clear_results()`), so an item reused across operations
+carries no result from an earlier one.
 
 `pipeline_result(ops, result, b_hold_cycles, r_hold_cycles)` is the SV
 side of the cocotb pipelined operation: `pipeline_write` and
@@ -597,14 +602,15 @@ driver keeps them in flight together under the same launch and hold rules,
 each op comes back filled like a plain result, and `result` carries
 `aw_stall_cycles` / `w_stall_cycles` / `ar_stall_cycles`. Each handshake
 wait is bounded by `timeout_cycles`; when one expires, `result` and every
-op whose response was not collected report `timed_out`, the other ops keep
-their results, and the stall counts cover the cycles before the expiry.
-The driver checks every op before it drives anything: a write that does
-not carry exactly one data word and at most one strobe entry, or an address
-with bits set above `addr_width`, fails the operation with a `uvm_error`
-under the message ID `OCAH_AXI_PIPELINE_INVALID` and leaves the bus idle.
-On an AXI4 bus every op uses one ID, because the driver collects the
-responses in list order per direction.
+op whose final response handshake has not completed report `timed_out` (a
+read keeps the beats it received in `data_words` and `resp_list`), the
+other ops keep their results, and the stall counts cover the cycles before
+the expiry. The driver checks every op before it drives anything: a write
+that does not carry exactly one data word and at most one strobe entry, or
+an address with bits set above `addr_width`, fails the operation with a
+`uvm_error` under the message ID `OCAH_AXI_PIPELINE_INVALID` and leaves the
+bus idle. On an AXI4 bus every op uses one ID, because the driver collects
+the responses in list order per direction.
 
 The response-ID contract is cross-flow parity with "Response-ID
 observation" above: `observed_id` is wire truth, never an issued-ID echo.
@@ -612,9 +618,14 @@ On the responder side, `ocah_axi_slave_sequence.inject_id_corruption(mask,
 for_read, for_write)` mirrors the cocotb fault slave: the next selected
 transaction answers `request_id ^ mask` (ID-width truncated; data path and
 response code untouched), one-shot per direction, disarmed by
-`clear_errors()`. `check_response=1` (default) escalates a non-OKAY
-response to `uvm_error`; `allow_timeout=1` downgrades a watchdog expiry to
-a returned result with `timed_out` set.
+`clear_errors()`. `inject_missing_rlast(addr)` arms a one-shot at a
+beat-aligned address like `inject_error`: the next read whose AR address
+aligns there answers its final beat with RLAST low and sends no further
+beat, so the master's read times out holding that beat; `clear_errors()`
+disarms it and `pending_errors()` counts it (SV-UVM responder only).
+`check_response=1` (default) escalates a non-OKAY response to `uvm_error`;
+`allow_timeout=1` downgrades a watchdog expiry to a returned result with
+`timed_out` set.
 
 The DTP SV-UVM flow (`--dut dtp --framework uvm`) consumes the slave side:
 tb_top wires the slave agent onto the SMC OTP AXI-Lite port (a dedicated
@@ -622,12 +633,11 @@ tb_top wires the slave agent onto the SMC OTP AXI-Lite port (a dedicated
 module on the `m_axi` fabric port, instantiates the SVA checkers on both, and
 `dtp_jtag2axi_single_op_seq` drives JTAG2AXI traffic through the wide-scan
 JTAG VIP path, programming responder error injection via the slave agent's
-`ocah_axi_slave_sequence`. The master side's consumers are the SV-UVM
-selftests (`--dut ocah_axi_vip --framework uvm`): the same
-`ocah_axi_id_match_test` / `ocah_axi_id_mismatch_test` scenarios as the
-cocotb selftests, driven full-stack through the master sequence API against
-the fault slave, with the passive env scoring the same wires in the match
-scenario.
+`ocah_axi_slave_sequence`. The SV-UVM selftests (`--dut ocah_axi_vip
+--framework uvm`) drive the master side through the same scenarios as the
+cocotb selftests, full-stack through the master sequence API against the
+fault slave, with the passive env scoring the same wires wherever a
+scenario leaves them in a state it can judge.
 
 ## UVM Env Surface Convention
 

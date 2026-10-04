@@ -7,11 +7,12 @@
 // the cocotb OcahFaultMixin): error-injection tables — a beat-aligned
 // address armed for a direction answers the programmed non-OKAY response
 // ONCE, skips the memory update (writes), and returns zero data (reads) —
-// plus per-direction one-shot response-ID corruption and per-channel
-// bounded READY backpressure. This table makes the
-// responder MISBEHAVE; the separate passive ocah_axi_config
-// arm_expected_resp table is what classifies the observed non-OKAY as
-// EXPECTED for the scoreboard — tests arm both through their sequence layer.
+// plus per-direction one-shot response-ID corruption, a one-shot missing
+// RLAST per beat-aligned read address, and per-channel bounded READY
+// backpressure. This table makes the responder MISBEHAVE; the separate
+// passive ocah_axi_config arm_expected_resp table is what classifies the
+// observed non-OKAY as EXPECTED for the scoreboard; tests arm both through
+// their sequence layer.
 
 class ocah_axi_slave_config extends uvm_object;
   `uvm_object_utils(ocah_axi_slave_config)
@@ -54,6 +55,9 @@ class ocah_axi_slave_config extends uvm_object;
   // would be an echo).
   protected bit [15:0] m_id_corrupt_rd;
   protected bit [15:0] m_id_corrupt_wr;
+
+  // One-shot missing-RLAST table, keyed by beat-aligned read address.
+  protected bit m_missing_rlast[bit [63:0]];
 
   function new(string name = "ocah_axi_slave_config");
     super.new(name);
@@ -122,11 +126,36 @@ class ocah_axi_slave_config extends uvm_object;
     return 1'b0;
   endfunction
 
+  // Arm a one-shot missing RLAST at a beat-aligned address: the next read
+  // whose AR address aligns there answers its final beat with RLAST low and
+  // sends no further beat. clear_errors() disarms. AXI4 only.
+  function void inject_missing_rlast(bit [63:0] addr);
+    bit [63:0] aligned = beat_align(addr);
+    if (protocol == OCAH_AXI_PROTO_AXI4_LITE)
+      `uvm_fatal(
+          get_type_name(), $sformatf(
+          "%s: inject_missing_rlast needs an AXI4 responder (AXI4-Lite carries no RLAST)", name_tag
+          ))
+    m_missing_rlast[aligned] = 1'b1;
+    `uvm_info(get_type_name(), $sformatf(
+              "%s: injecting missing RLAST addr=0x%0h (aligned 0x%0h)", name_tag, addr, aligned),
+              UVM_LOW)
+  endfunction
+
+  // Consume the one-shot missing RLAST for one read address, if armed.
+  function bit consume_missing_rlast(bit [63:0] addr);
+    bit [63:0] aligned = beat_align(addr);
+    if (!m_missing_rlast.exists(aligned)) return 1'b0;
+    m_missing_rlast.delete(aligned);
+    return 1'b1;
+  endfunction
+
   function void clear_errors();
     m_inject_rd.delete();
     m_inject_wr.delete();
     m_id_corrupt_rd = '0;
     m_id_corrupt_wr = '0;
+    m_missing_rlast.delete();
   endfunction
 
   // Enable the bounded READY-stall pattern on the selected channels
@@ -157,7 +186,7 @@ class ocah_axi_slave_config extends uvm_object;
   endfunction
 
   function int unsigned pending_errors();
-    return m_inject_rd.size() + m_inject_wr.size();
+    return m_inject_rd.size() + m_inject_wr.size() + m_missing_rlast.size();
   endfunction
 
   // Consume the one-shot injection for one beat address, if armed.

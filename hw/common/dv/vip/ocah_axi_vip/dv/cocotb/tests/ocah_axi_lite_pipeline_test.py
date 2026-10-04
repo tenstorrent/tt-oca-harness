@@ -50,6 +50,8 @@ CHK_ATOMIC = "CHK-AXI-PIPE-ATOMIC"
 # outlasts it so the bound, not the responder, ends the operation.
 SHORT_TIMEOUT_CYCLES = 50
 STALL_CYCLES = 4 * SHORT_TIMEOUT_CYCLES
+# Strobe of that list's write: a contiguous lane narrower than the beat.
+PARTIAL_STRB = 0x6
 # Cycles for the released responder to retire the abandoned write.
 DRAIN_CYCLES = 64
 # Cycles recorded after a rejected list.
@@ -284,18 +286,40 @@ async def check_partial_timeout(
 ) -> None:
     """A write held off far beyond a shortened bound times out; the read beside it completes.
 
-    The read keeps its result, the write reports ``timed_out``, and the stall
-    counts run up to the expiry. The abandoned write's word is never read
-    back: the backend completes that write once the responder takes its
-    beats.
+    The list runs once with no stall, then again with the write held off far
+    beyond a shortened bound: the read keeps its result, the write reports
+    ``timed_out`` with the byte length its partial strobe selects, and the
+    stall counts run up to the expiry. The statistics baseline follows the
+    first run. The abandoned write's word is never read back: the backend
+    completes that write once the responder takes its beats.
     """
     word_a, word_b, word_c = words
     ctx = "partial-timeout"
-    log.info("%s: bound=%d stall=%d", ctx, SHORT_TIMEOUT_CYCLES, STALL_CYCLES)
+    log.info(
+        "%s: strb=0x%x bound=%d stall=%d", ctx, PARTIAL_STRB, SHORT_TIMEOUT_CYCLES, STALL_CYCLES
+    )
     slave.sequence.disable_backpressure()
+    ops = [
+        OcahAxiPipelineOp.write(word_a, rng.getrandbits(32), strb=PARTIAL_STRB),
+        OcahAxiPipelineOp.read(word_b),
+    ]
+    first = await seq.pipeline_result(ops)
+    first_write, first_read = first.results
+    checker.expect_equal(
+        CHK_TIMEOUT,
+        first_write.length,
+        PARTIAL_STRB.bit_count(),
+        context=f"{ctx} first-run write 0x{word_a:08x} byte length",
+    )
+    checker.expect_equal(
+        CHK_TIMEOUT,
+        first_read.data,
+        memory[word_b],
+        context=f"{ctx} first-run read 0x{word_b:08x} data",
+    )
+
     slave.sequence.enable_backpressure(channels=("aw", "w"), stall_cycles=STALL_CYCLES)
     before = seq.get_statistics()
-    ops = [OcahAxiPipelineOp.write(word_a, rng.getrandbits(32)), OcahAxiPipelineOp.read(word_b)]
     result, samples = await recorded(
         dut, seq.pipeline_result(ops, timeout_cycles=SHORT_TIMEOUT_CYCLES, allow_timeout=True)
     )
@@ -306,6 +330,12 @@ async def check_partial_timeout(
         CHK_TIMEOUT,
         wres.timed_out and not wres.ok,
         context=f"{ctx} write 0x{word_a:08x} timed out",
+    )
+    checker.expect_equal(
+        CHK_TIMEOUT,
+        wres.length,
+        first_write.length,
+        context=f"{ctx} timed-out write 0x{word_a:08x} byte length",
     )
     checker.expect_equal(
         CHK_TIMEOUT, rres.resp, RESP_OKAY, context=f"{ctx} read 0x{word_b:08x} response"

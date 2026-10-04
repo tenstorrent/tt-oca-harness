@@ -430,10 +430,11 @@ raises `AssertionError` unless `allow_timeout=True`, in which case the result
 has `timed_out=True`, `ok=False`, and `resp=RESP_TIMEOUT` (-1). The AXI4-Lite
 `write_skewed_result()` / `read_hold_result()`, pair and `pipeline_result()`
 operations are bounded by `timeout_cycles` instead. A `pipeline_result()`
-expiry keeps the results of the accesses that completed and marks only the
-unanswered ones `timed_out`. `dv/` proves both bounds on the wire harness
-(`ocah_axi_timeout_test`) and the partial pipeline expiry in
-`ocah_axi_lite_pipeline_test`.
+expiry keeps the results of the accesses that completed and marks the
+others `timed_out`. `dv/` proves both bounds on the wire harness
+(`ocah_axi_timeout_test`), the partial pipeline expiry in
+`ocah_axi_pipeline_test`, and an AXI4 read whose beats stop before RLAST in
+`ocah_axi_pipeline_missing_rlast_test`.
 
 ---
 
@@ -458,7 +459,7 @@ replay of failures.
 | Area | This package provides | Outside this package |
 |---|---|---|
 | Transfers | AXI4 single-beat and burst reads and writes (`INCR`, `FIXED`, `WRAP`, up to 256 beats) at any `size` up to the bus width; byte-granular ranges through `write_bytes_result` / `read_bytes_result`; AXI4-Lite single-beat access with a contiguous partial `strb` | An explicit partial or non-contiguous `strb` on the AXI4 master (`check_strb` rejects it); exclusive (`LOCK`) transactions; `QOS`, `CACHE`, `REGION`, and `USER` values other than their idle defaults; bursts in a `pipeline_result` operation, which carries single-beat accesses only |
-| Responses | `OKAY`, `EXOKAY`, `SLVERR`, `DECERR` on every result; a typed exception or an inspectable `resp` per `raise_on_error`; responders inject a one-shot `SLVERR`/`DECERR` per address and, on AXI4, a one-shot response-ID corruption | Persistent error regions on a responder; address policy belongs to the adopter's reference model (`OcahAxiRegionExpectation`) |
+| Responses | `OKAY`, `EXOKAY`, `SLVERR`, `DECERR` on every result; a typed exception or an inspectable `resp` per `raise_on_error`; responders inject a one-shot `SLVERR`/`DECERR` per address and, on AXI4, a one-shot response-ID corruption; the SV-UVM responder also withholds RLAST once at a programmed beat-aligned read address | Persistent error regions on a responder; address policy belongs to the adopter's reference model (`OcahAxiRegionExpectation`); a missing RLAST on the cocotb responders |
 | Backpressure | Responder READY stalls per channel (`enable_backpressure`); master `b_ready_*` / `r_ready_*` delay knobs; every stall bounded and deterministic | Random delays (opt-in, logged as a warning) |
 | Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive; monitors given a `reset` flush in-flight requests while it is active, and an attached `OcahAxiScoreboard` releases their commit slots | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
 | Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`; `timeout_cycles` on the AXI4-Lite skew, hold, pair and pipeline operations); `allow_timeout=True` returns `RESP_TIMEOUT`, and a `pipeline_result` expiry keeps the results of its completed accesses | — |

@@ -140,14 +140,7 @@ class OcahAxiLiteMasterSequence:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
             if allow_timeout:
-                return OcahAxiWriteResult(
-                    address=addr,
-                    length=len(payload),
-                    resp=-1,
-                    resp_list=(),
-                    ok=False,
-                    timed_out=True,
-                )
+                return self._timed_out_write(addr, data, strb)
             raise AssertionError(f"{self.name}: write to 0x{addr:08X} timed out") from exc
 
         result = OcahAxiWriteResult(
@@ -197,14 +190,7 @@ class OcahAxiLiteMasterSequence:
             )
         except TimeoutError as exc:
             if allow_timeout:
-                return OcahAxiWriteResult(
-                    address=addr,
-                    length=self.driver.bytes_per_beat,
-                    resp=-1,
-                    resp_list=(),
-                    ok=False,
-                    timed_out=True,
-                )
+                return self._timed_out_write(addr, data, strb)
             raise AssertionError(f"{self.name}: skewed write to 0x{addr:08X} timed out") from exc
 
         result = OcahAxiWriteResult(
@@ -368,8 +354,8 @@ class OcahAxiLiteMasterSequence:
         except TimeoutError as exc:
             if allow_timeout:
                 return OcahAxiWritePairResult(
-                    first=self._timed_out_write(addr_a),
-                    second=self._timed_out_write(addr_b),
+                    first=self._timed_out_write(addr_a, data_a, strb_a),
+                    second=self._timed_out_write(addr_b, data_b, strb_b),
                     aw_stall_cycles=0,
                     aw_stable=False,
                 )
@@ -478,7 +464,7 @@ class OcahAxiLiteMasterSequence:
         for op, raw in zip(ops, raws):
             if raw is None:
                 result = (
-                    self._timed_out_write(op.address)
+                    self._timed_out_write(op.address, op.data, op.strb)
                     if op.direction == "write"
                     else self._timed_out_read(op.address)
                 )
@@ -570,10 +556,11 @@ class OcahAxiLiteMasterSequence:
             raw=raw,
         )
 
-    def _timed_out_write(self, addr: int) -> OcahAxiWriteResult:
+    def _timed_out_write(self, addr: int, data: int, strb: int | None) -> OcahAxiWriteResult:
+        _, payload = self.driver.strb_payload(data, strb)
         return OcahAxiWriteResult(
             address=int(addr),
-            length=self.driver.bytes_per_beat,
+            length=len(payload),
             resp=-1,
             resp_list=(),
             ok=False,
