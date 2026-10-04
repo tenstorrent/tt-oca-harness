@@ -3469,6 +3469,17 @@ scheduler may insert a model prebuild, and a cocotb simulation may build its
 model, but the generated filelist and required firmware outputs must already
 exist. Run the missing preparation stages first, or use the implicit path.
 
+=== The coverage merge refused inputs of more than one build fingerprint
+
+The `cov_merge` record in `result.json` is `ERROR` and its `reason` lists
+each fingerprint with the leaf `result.json` records that carry it; the
+`tool_error` bucket signature keeps the fingerprints alone. Every test of a
+run that built its model reports that build's identity, so two fingerprints
+mean the named leaves ran a model of other inputs. Compare their
+`target_build` with the `build_record.json` beside the model directory each
+names, and rerun the regression with its build in the same invocation;
+replaying the merge alone re-reads the same leaf records.
+
 === Coverage was collected but no report appeared
 
 With explicit `--stage sim --cov`, run `cov_merge` and `cov_report` explicitly
