@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Starts the primary payload at its slot-window end and breaks the backup magic word.
+base = "signed"
+patch = [
+  { field = "OFF_PAYLOAD_OFFSET", slot = "primary", le = 0x3F000, size = 8 },
+  { field = "OFF_BOOT_MANIFEST_MAGIC", slot = "backup", le = 0x99999999, size = 4 },
+]

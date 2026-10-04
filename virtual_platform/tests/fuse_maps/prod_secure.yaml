@@ -7,5 +7,7 @@
 # or an int; it is mirrored to both sep_efuse.lc_state and lc_ctrl.lc_state.
 lc_state: PROD
 sboot_dis: 0
-locks_lo: 0xA800
+# No secret is read-locked at power-on: BL0 reads class_key for the payload key and
+# lock_fuse_secrets() then sets these bits for BL1 onwards.
+locks_lo: 0x0
 chiplet_uid: [1, 2, 3, 4, 5, 6, 7, 8]

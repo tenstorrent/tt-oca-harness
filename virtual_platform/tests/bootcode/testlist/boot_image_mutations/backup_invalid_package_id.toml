@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Backup package_id bytes 2 and 4 mismatch the fuse; the primary magic is broken first.
+base = "signed"
+ops = [
+  { op = "set_identity", slot = "backup", args = { kind = "package", value = "0000ff00ff000000000000000000000000000000000000000000000000000000", mask = 0x1400000000 } },
+]
+patch = [
+  { field = "OFF_BOOT_MANIFEST_MAGIC", slot = "primary", le = 0x99999999, size = 4 },
+]

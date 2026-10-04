@@ -1,0 +1,243 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# secure_boot_decide() takes the first input that settles the question: the manifest's
+# enforced bit, then a device SBOOT_DIS, then the lifecycle.
+
+[[testcase]]
+name = "sep_firmware_enforced_secure_boot_flow_test"
+family = "secure_boot_policy"
+classification = "vp-equivalent"
+image = "sboot_flag_cleared_unauthenticated"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "PROD", sboot_dis = 0 }
+image_asserts = [
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "backup", size = 1, value = 0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "backup", size = 1, value = 0 } },
+  { range = [0x1c64, 0x1e64], all = 0x00 },
+  { range = [0x41c64, 0x41e64], all = 0x00 },
+  { range = [0x10b6, 0x10b7], differs_from = "signed" },
+  { range = [0x410b6, 0x410b7], differs_from = "signed" },
+  { range = [0x0, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1e84, 0x410b6], same_as = "signed" },
+  { range = [0x410b7, 0x4182c], same_as = "signed" },
+  { range = [0x41a5d, 0x41c64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC_STATE=0x00000001",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 0",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_ERR=0x00030024",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_ERR=0x00030024",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030024",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "FUSE: SBOOT_DIS: 1",
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "MANIFEST_ERR=0x00030006",
+  "MANIFEST_ERR=0x0003000d",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030024" = 2, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030024" = 1 }
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030024"
+expect_status = ["INFO 0x004c", "WARN 0x008d", "INFO 0x004c", "WARN 0x008d", "ERROR 0x008d", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0053", "INFO 0x0055"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest"]
+markers = [
+  "An OCA manifest without the enforced bit carries no signature, so PROD cannot boot it verified and refuses both slots with OCA_FAIL_SIGNATURE_CLASS_CONTROL.",
+  "Same stimulus and verdict as DV sep_firmware_cntl_secure_boot_flow_test; DV's entry of this name boots the signed image at PROD instead.",
+  "MANIFEST_ERR=0x00030006 is forbidden, so the cleared slots are validly unsigned and the refusal is the lifecycle's, not the secure-boot invariant's.",
+  "PUBK_SEL= is forbidden: oca_determine_secure_boot refuses before key selection, which is also why neither payload is read.",
+]
+
+[[testcase]]
+name = "sep_firmware_cntl_secure_boot_flow_test"
+family = "secure_boot_policy"
+classification = "vp-equivalent"
+image = "sboot_flag_cleared_unauthenticated"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "TEST_DEV", sboot_dis = 0 }
+image_asserts = [
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "backup", size = 1, value = 0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0 } },
+  { range = [0x1c64, 0x1e64], all = 0x00 },
+  { range = [0x10b6, 0x10b7], differs_from = "signed" },
+  { range = [0x0, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1e84, 0x410b6], same_as = "signed" },
+]
+expect = [
+  "LC_STATE=0x00000000",
+  "LC=TEST_DEV",
+  "FUSE: SBOOT_DIS: 0",
+  "FUSE: CHIPLET_DBG_DIS: 0",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "GO!",
+]
+forbid = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "FUSE: CHIPLET_DBG_DIS: 1",
+  "SBOOT_DBG_LOCK",
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=",
+  "FUSE_VER=",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "SBOOT_OFF" = 1 }
+expect_status = [
+  "INFO 0x0020",
+  "INFO_EXT 0x0000",
+  "INFO 0x002c",
+  "INFO 0x0058",
+  "INFO_EXT 0x0000",
+  "INFO 0x0023",
+  "INFO 0x004c",
+  "INFO 0x0053",
+  "INFO 0x0055",
+  "INFO 0x021b",
+  "INFO 0x021c",
+  "INFO 0x0054",
+]
+forbid_status = ["WARN 0x008d", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup_and_beyond", range = [0x40000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "With the enforced bit clear and SBOOT_DIS 0, plat_is_secure_boot_active() decides: TEST_DEV with chiplet debug open reports not active, so the unsigned primary boots.",
+  "The stimulus differs from DV's entry of this name, which runs the same image at PROD; that refusal is sep_firmware_enforced_secure_boot_flow_test here.",
+  "Covers the debug-open TEST_DEV arm only; a TEST_DEV part with CHIPLET_DBG disabled enforces secure boot and is not exercised.",
+]
+
+[[testcase]]
+name = "sep_firmware_device_cntl_non_secure_boot_flow_test"
+family = "secure_boot_policy"
+classification = "vp-equivalent"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "PROD", sboot_dis = 1 }
+image_asserts = [
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x03 } },
+]
+expect = [
+  "LC_STATE=0x00000001",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "SBOOT_OFF",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "FUSE: SBOOT_DIS: 1" = 1 }
+expect_status = [
+  "INFO 0x0058",
+  "INFO_EXT 0x0001",
+  "INFO 0x0023",
+  "INFO 0x004c",
+  "INFO 0x0053",
+  "INFO 0x0055",
+  "INFO 0x021b",
+  "INFO 0x021c",
+  "INFO 0x0054",
+]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup_and_beyond", range = [0x40000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "The signed manifest's enforced bit settles secure boot before SBOOT_DIS is consulted, so the RSA chain runs and SBOOT_OFF is absent.",
+  "Matches DV sep_firmware_device_cntl_non_secure_boot_flow_test (PROD, SBOOT_DIS = 1, signed image).",
+  "The image is the golden one; the stimulus is the fuse, and INFO 0x0058 followed by INFO_EXT 0x0001 shows the ROM sensed it.",
+  "Does not show the fuse disabling anything; that arm is the non-secure fuse_lock cells, whose manifests carry no enforced bit.",
+]

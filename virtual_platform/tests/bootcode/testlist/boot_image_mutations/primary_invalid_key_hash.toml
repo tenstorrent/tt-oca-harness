@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Signs the primary with an RSA-3072 key whose modulus digest is in no ROM key slot.
+pack_config = "oca_secure_boot"
+set = [
+  { target = "bundle", slot = "primary", path = "signing_key_file", value = "{untrusted_signing_key}" },
+  { target = "bundle", slot = "primary", path = "signing_key_name", value = "{untrusted_signing_key_name}" },
+]
+pin = [
+  { target = "bundle", slot = "primary", path = "public_key_select_classic", value = 0x01 },
+]

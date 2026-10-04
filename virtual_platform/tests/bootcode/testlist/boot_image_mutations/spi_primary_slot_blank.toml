@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Erases the whole primary slot so only the backup address answers with a manifest.
+base = "signed"
+patch = [
+  { fill = [0x1000, 0x41000], value = 0xFF },
+]

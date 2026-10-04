@@ -1,0 +1,320 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_firmware_bad_manifest_hash_test"
+family = "bl1_image"
+classification = "vp-equivalent"
+image = "bad_manifest_hash"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The flip inverts the first stored primary manifest_hash byte and leaves the signed region untouched.
+image_asserts = [
+  { range = [0x1e64, 0x1e65], same_as = "signed", xor = 0xFF },
+  { range = [0x1e64, 0x1e65], differs_from = "signed" },
+  { range = [0x0, 0x1e64], same_as = "signed" },
+  { range = [0x1e65, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x0003000f",
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_ERR=0x0003001c",
+  "SHA_FIFO_TIMEOUT",
+  "SHA_START_REJECTED",
+  "SHA_OP_REJECTED",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x0003000d" = 1, "PUBK_SEL=0x00000000" = 1, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x004c", "WARN 0x0013", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0013", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "oca_check_manifest_hash runs after framing and before key selection, so the primary prints OCA_BODY= and MFST_VER= but no PUBK_ line.",
+  "The flip is in the stored digest in the unsigned tail, so the signed region and its signature are intact and the hash comparison is the only check that can refuse the slot.",
+  "Not covered: the SHA engine failure arms, which return 0x0003000f; they are forbidden so they cannot stand in for the mismatch.",
+]
+
+[[testcase]]
+name = "sep_firmware_bl1_image_body_corrupted_test"
+tp_id = "TP052"
+family = "bl1_image"
+classification = "vp-equivalent"
+image = "bl1_image_body_corrupted"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# The first BL1 body byte is 0xb7 in both slots; the patch flips bit 0.
+image_asserts = [
+  { range = [0x2138, 0x2139], all = 0xb6 },
+  { range = [0x42138, 0x42139], all = 0xb6 },
+  { range = [0x2138, 0x2139], differs_from = "signed" },
+  { range = [0x42138, 0x42139], differs_from = "signed" },
+  { range = [0x0, 0x2138], same_as = "signed" },
+  { range = [0x2139, 0x42138], same_as = "signed" },
+  { range = [0x42139, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030014",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ERR=0x00030019",
+  "PAYLOAD_LOC_FAIL",
+  "FLASH_READ_OOB",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_ERR=0x00030014" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["INFO 0x0053", "DEBUG 0x0052", "WARN 0x0066", "INFO 0x0053", "DEBUG 0x0052", "WARN 0x0066", "ERROR 0x0066", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030014"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "A cleartext payload_hash covers only the TOC, so a changed image body passes it; check_payload_hash_chain_and_entries reports the chain mismatch (0x00030014) ahead of the entry-hash mismatch (0x00030019) it also causes.",
+  "RSA_VERIFY_OK and MANIFEST_OK twice prove both manifests are intact and signed; only the image body differs.",
+  "One byte at the start of the BL1 body; positions are not swept and only the single-image TOC is covered.",
+  "No same-name DV rom_fw member exists; the expectation is derived from the validator source alone.",
+  "Not covered: the per-entry hash arm (0x00030019), which needs a resealed chain over a TOC whose stored digest does not describe its image; no VP entry expects it.",
+]
+
+[[testcase]]
+name = "sep_bl1_size_invalid_test"
+tp_id = "TP053-S"
+family = "bl1_image"
+classification = "vp-equivalent"
+image = "bl1_zero_length"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# BL1 is TOC entry 0, whose length field starts at payload 0x40; the shipped length is 0x734.
+image_asserts = [
+  { toc_field = { name = "OFF_TOC_ENTRY_LENGTH", slot = "primary", entry = 0, size = 8, value = 0 } },
+  { toc_field = { name = "OFF_TOC_ENTRY_LENGTH", slot = "backup", entry = 0, size = 8, value = 0 } },
+  { range = [0x2040, 0x2042], differs_from = "signed" },
+  { range = [0x42040, 0x42042], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x1af7, 0x1b1f], same_as = "signed" },
+  { range = [0x1b3f, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x2040], same_as = "signed" },
+  { range = [0x2048, 0x2070], same_as = "signed" },
+  { range = [0x2090, 0x41ad7], same_as = "signed" },
+  { range = [0x41af7, 0x41b1f], same_as = "signed" },
+  { range = [0x41b3f, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x42040], same_as = "signed" },
+  { range = [0x42048, 0x42070], same_as = "signed" },
+  { range = [0x42090, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030015",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "BL1_SIZE",
+  "BL1_ADDR_RANGE",
+  "BL1_ENTRY_RANGE",
+  "NO_BL1_IMAGE",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "MANIFEST_ERR=0x00030012",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030019",
+  "MANIFEST_ERR=0x00030104",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_ERR=0x00030015" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x000f", "INFO 0x0053", "WARN 0x000f", "ERROR 0x000f", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055", "ERROR 0x0012"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030015"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "Zero is the only size class a manifest can reach: validate_toc_structure refuses a zero-length entry (0x00030015) and an entry past payload_length before the ROM's own BL1_SIZE and placement arms run, so BL1_SIZE is forbidden.",
+  "Not covered: a BL1 larger than ICCM or the spec maximum, which needs a payload above 256 KiB to pass the TOC bound.",
+  "Not covered: the BL1_ADDR_RANGE arm of bl1_locate (a load range past the ICCM top), which the zero-length stimulus never reaches; no VP entry expects it.",
+  "The op reseals the entry hash, chain, payload hash and signature, so the zero length is each slot's only defect; RSA_VERIFY_OK and MANIFEST_OK twice confirm both manifests verify.",
+  "NO_BL1_IMAGE is forbidden so a mutation that lost the entry type cannot pass for this one.",
+]
+
+[[testcase]]
+name = "sep_bl1_entry_invalid_test"
+tp_id = "TP053-E"
+family = "bl1_image"
+classification = "vp-equivalent"
+image = "bl1_entry_point_at_length"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# BL1 is TOC entry 0, whose entry_point field starts at payload 0x60; 0x734 is the BL1 length.
+image_asserts = [
+  { toc_field = { name = "OFF_TOC_ENTRY_ENTRY_POINT", slot = "primary", entry = 0, size = 8, value = 0x734 } },
+  { toc_field = { name = "OFF_TOC_ENTRY_ENTRY_POINT", slot = "backup", entry = 0, size = 8, value = 0x734 } },
+  { range = [0x2060, 0x2062], differs_from = "signed" },
+  { range = [0x42060, 0x42062], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x1af7, 0x1b1f], same_as = "signed" },
+  { range = [0x1b3f, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x2060], same_as = "signed" },
+  { range = [0x2068, 0x41ad7], same_as = "signed" },
+  { range = [0x41af7, 0x41b1f], same_as = "signed" },
+  { range = [0x41b3f, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, 0x42060], same_as = "signed" },
+  { range = [0x42068, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_ENTRY_RANGE",
+  "MANIFEST_ERR=0x00030103",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_ENTRY_RANGE",
+  "MANIFEST_ERR=0x00030103",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030103",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "BL1_ADDR_RANGE",
+  "BL1_SIZE",
+  "BL1_SRAM_EXEC_DISABLED",
+  "NO_BL1_IMAGE",
+  "BL1_DST=ICCM",
+  "BL1_DST=SRAM",
+  "COPY_SRC=",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "MANIFEST_ERR=0x00030014",
+  "MANIFEST_ERR=0x00030015",
+  "MANIFEST_ERR=0x00030019",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "BL1_ENTRY_RANGE" = 2, "MANIFEST_ERR=0x00030103" = 2, "PAYLOAD_OK" = 2, "MANIFEST_OK" = 2, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["INFO 0x0055", "ERROR 0x012b", "INFO 0x0055", "ERROR 0x012b", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0217", "ERROR 0x0012", "INFO 0x020e", "INFO 0x004a"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030103"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "entry_point equal to length is the smallest value bl1_locate refuses, so a > in place of >= would boot this image.",
+  "The check runs per slot in rom_bl1_check, after PAYLOAD_OK and inside the retry loop, so both slots print BL1_ENTRY_RANGE and the run ends terminal; the hand-off copy of the check in rom_handoff_bl1 is not reached.",
+  "0x00030103 is a ROM code, not an oca_result_t, so rom_manifest_boot adds no status_for_result ERROR before ERROR 0x0213; the per-slot ERROR 0x012b comes from bl1_locate.",
+  "BL1_ADDR_RANGE and BL1_SIZE are forbidden: they share the error code and run before the entry-point comparison.",
+]

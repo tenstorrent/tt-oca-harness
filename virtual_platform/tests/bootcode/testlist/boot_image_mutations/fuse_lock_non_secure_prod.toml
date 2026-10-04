@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Narrows both slots' lifecycle constraint to PROD state, then makes them validly unsigned.
+base = "signed"
+ops = [
+  { op = "set_lifecycle_constraint", slot = "primary", args = { allowed = 0x2, level = "chiplet" } },
+  { op = "clear_secure_boot", slot = "primary" },
+  { op = "set_lifecycle_constraint", slot = "backup", args = { allowed = 0x2, level = "chiplet" } },
+  { op = "clear_secure_boot", slot = "backup" },
+]

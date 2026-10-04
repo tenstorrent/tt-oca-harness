@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A v1.0 primary whose manifest_length is one word above the classic body size.
+base = "signed"
+ops = [
+  { op = "set_manifest_length", slot = "primary", args = { value = 4100 } },
+]

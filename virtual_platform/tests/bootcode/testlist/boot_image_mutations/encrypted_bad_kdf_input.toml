@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A primary KDF context that derives the wrong key, re-signed so decryption is reached.
+base = "encrypted"
+ops = [
+  { op = "set_encryption_kdf_input", slot = "primary", args = { kdf_input = "5aa5a5a5a5a5a5a5a5a5a5a5a5a5a5a5b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8" } },
+]

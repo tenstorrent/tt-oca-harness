@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Flips the first BL1 body byte in both slots without resealing, so each payload breaks only its
+# hash chain.
+base = "signed"
+patch = [
+  { offset = 0x2138, xor = 0x01 },
+  { offset = 0x42138, xor = 0x01 },
+]

@@ -1,0 +1,486 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_firmware_primary_rom_key_valid_test"
+family = "rom_key"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# Byte-identical to sep_firmware_primary_pubkey_rom_0_revoked_key_test; only the fuse differs.
+efuse = { chiplet_pubk_revoke = 0 }
+image_asserts = [
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "primary", size = 8, value = 0x1 } },
+  { range = [0x0, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 0",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "FUSE_VER=0x00000000",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "FUSE_VER=0x00000000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+  "FUSE: SBOOT_DIS: 1",
+  "PUBK_NO_SIGNATURE",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_SEL_EMPTY",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_PQC_UNSUPPORTED",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_HASH_TIMEOUT",
+  "RSA_PKCS1_FAIL",
+  "RSA_EXEC_FAIL",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "PUBK_SEL=0x00000000" = 1, "PUBK_AUTHORIZED" = 1, "PUBK_REVOKE=0x00000000" = 1, "FUSE_VER=0x00000000" = 2, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["WARN 0x000c", "WARN 0x000d", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = [
+  "primary_manifest",
+  "primary_payload",
+]
+markers = [
+  "PUBK_SEL, PUBK_AUTHORIZED and PUBK_REVOKE each exactly once, before RSA_EXEC, show key selection ran on the primary; the boot alone does not.",
+  "The backup exact-0 span is the device-side proof that no silent failover served the boot.",
+  "Slot 0 only; slots 1 to 5 are exercised by the revocation family, each with its own shipped key.",
+  "PIO drain only; DV runs this case on the SECURE_DMA path.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_rom_key_valid_test"
+family = "rom_key"
+classification = "vp-equivalent"
+image = "primary_manifest_identifier_invalid"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# Byte-identical to sep_firmware_backup_pubkey_rom_0_revoked_key_test; only the fuse differs.
+efuse = { chiplet_pubk_revoke = 0 }
+image_asserts = [
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "backup", size = 8, value = 0x1 } },
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x1000, 0x1004], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "FUSE_VER=0x00000000",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+  "PUBK_NO_SIGNATURE",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_SEL_EMPTY",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_PQC_UNSUPPORTED",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_HASH_TIMEOUT",
+  "RSA_PKCS1_FAIL",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "OCA_BODY=0x00001000" = 1, "PUBK_SEL=0x00000000" = 1, "PUBK_AUTHORIZED" = 1, "PUBK_REVOKE=0x00000000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1 }
+expect_status = ["INFO 0x0212", "WARN 0x0006", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x0006", "WARN 0x000c", "WARN 0x000d", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = [
+  "primary_peek",
+  "backup_manifest",
+  "backup_payload",
+]
+markers = [
+  "OCA_BODY once shows the primary stopped at the 20-byte peek; the selector, authorization and revocation echoes are the backup's.",
+  "The failover trigger is the DV break_magic value 99 99 99 99, refused before any key work.",
+  "Slot 0 only; the revocation family boots and refuses slots 1 to 5 with their own keys.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_invalid_public_key_selection_test"
+family = "rom_key"
+classification = "vp-equivalent"
+image = "primary_invalid_public_key_selection"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "primary", size = 8, value = 0x3 } },
+  { range = [0x1c64, 0x1de4], differs_from = "signed" },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1838], same_as = "signed" },
+  { range = [0x1840, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_SEL_AMBIGUOUS",
+  "MANIFEST_ERR=0x00030023",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = [
+  "PUBK_SEL=0x00000001",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+  "PUBK_NO_SIGNATURE",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_SEL_EMPTY",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_PQC_UNSUPPORTED",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_HASH_TIMEOUT",
+  "RSA_PKCS1_FAIL",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "PUBK_SEL_AMBIGUOUS" = 1, "MANIFEST_ERR=0x00030023" = 1, "PUBK_SEL=0x00000000" = 1, "PUBK_AUTHORIZED" = 1, "PUBK_REVOKE=0x00000000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x000d", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x000d", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = [
+  "primary_manifest",
+  "backup_manifest",
+  "backup_payload",
+]
+markers = [
+  "plat_is_key_authorized refuses a bitmap naming two slots before it echoes one, so PUBK_SEL=0x00000000 exactly once, after MANIFEST_BACKUP, is the backup's and the primary resolved nothing.",
+  "0x00030023 is shared by every key-authorization refusal; PUBK_SEL_AMBIGUOUS is the discriminator and PUBK_SLOT_RESERVED is forbidden.",
+  "The packer re-signs the primary, so a stale signature cannot be the cause; the refusal precedes the verifier either way.",
+  "Slots 0 and 1 only, matching DV; wider ambiguous bitmaps are not swept.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_invalid_public_key_selection_test"
+family = "rom_key"
+classification = "vp-equivalent"
+image = "backup_bad_key_sel"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x1000, 0x1004], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "backup", size = 8, value = 0x3 } },
+  { range = [0x41c64, 0x41de4], differs_from = "signed" },
+  { range = [0x41e64, 0x41e84], differs_from = "signed" },
+  { range = [0x1004, 0x41838], same_as = "signed" },
+  { range = [0x41840, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "PUBK_SEL_AMBIGUOUS",
+  "MANIFEST_ERR=0x00030023",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030023",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=",
+  "FUSE_VER=",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "PUBK_NO_SIGNATURE",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_SEL_EMPTY",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_PQC_UNSUPPORTED",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_HASH_TIMEOUT",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "OCA_BODY=0x00001000" = 1, "PUBK_SEL_AMBIGUOUS" = 1, "MANIFEST_ERR=0x00030023" = 1, "MANIFEST_ALL_FAILED" = 1 }
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030023"
+expect_status = ["INFO 0x0212", "WARN 0x0006", "INFO 0x0212", "INFO 0x004c", "WARN 0x000d", "ERROR 0x000d", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = [
+  "primary_peek",
+  "backup_manifest",
+]
+markers = [
+  "No PUBK_SEL= line at all: the primary dies at the peek and the backup's two-slot bitmap is refused before a slot is echoed.",
+  "PUBK_SEL_AMBIGUOUS separates this from every other 0x00030023 refusal; the status ring reports all of them as INVALID_KEY_HASH (0x000d).",
+  "The hang is asserted by terminal_token and the FAILED verdict; it does not prove the CPU stays in the WFI loop.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_rom_key_index_invalid_test"
+family = "rom_key"
+classification = "vp-equivalent"
+image = "primary_rom_key_index_invalid"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "primary", size = 8, value = 0x4000000 } },
+  { range = [0x1c64, 0x1de4], differs_from = "signed" },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1838], same_as = "signed" },
+  { range = [0x1840, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_SEL=0x0000001a",
+  "PUBK_SLOT_RESERVED",
+  "MANIFEST_ERR=0x00030023",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+  "PUBK_NO_SIGNATURE",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_SEL_EMPTY",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_PQC_UNSUPPORTED",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_HASH_TIMEOUT",
+  "RSA_PKCS1_FAIL",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "PUBK_SEL=0x0000001a" = 1, "PUBK_SLOT_RESERVED" = 1, "MANIFEST_ERR=0x00030023" = 1, "PUBK_SEL=0x00000000" = 1, "PUBK_AUTHORIZED" = 1, "PUBK_REVOKE=0x00000000" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x000d", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x000d", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = [
+  "primary_manifest",
+  "backup_manifest",
+  "backup_payload",
+]
+markers = [
+  "Slot 26 is OCA_KEY_SLOT_MAX + 1, the smallest reserved slot, so it tells a > bound from >=; it is the DV value.",
+  "PUBK_REVOKE=0x00000000 exactly once, after the backup read, shows the reserved-slot bound stopped the primary before the revocation read.",
+  "PUBK_SLOT_RESERVED is the discriminator; PUBK_SEL_AMBIGUOUS shares 0x00030023 and is forbidden.",
+  "One boundary value only; slots 27 to 127 and the reserved ROM slots 6 and 7 are not swept.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_rom_key_index_invalid_test"
+family = "rom_key"
+classification = "vp-equivalent"
+image = "backup_rom_key_index_invalid"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x1000, 0x1004], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "backup", size = 8, value = 0x4000000 } },
+  { range = [0x41c64, 0x41de4], differs_from = "signed" },
+  { range = [0x41e64, 0x41e84], differs_from = "signed" },
+  { range = [0x1004, 0x41838], same_as = "signed" },
+  { range = [0x41840, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "PUBK_SEL=0x0000001a",
+  "PUBK_SLOT_RESERVED",
+  "MANIFEST_ERR=0x00030023",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030023",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PUBK_REVOKE=",
+  "PUBK_AUTHORIZED",
+  "FUSE_VER=",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "PUBK_NO_SIGNATURE",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_SEL_EMPTY",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_PQC_UNSUPPORTED",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_HASH_TIMEOUT",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "OCA_BODY=0x00001000" = 1, "PUBK_SEL=0x0000001a" = 1, "PUBK_SLOT_RESERVED" = 1, "MANIFEST_ERR=0x00030023" = 1, "MANIFEST_ALL_FAILED" = 1 }
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030023"
+expect_status = ["INFO 0x0212", "WARN 0x0006", "INFO 0x0212", "INFO 0x004c", "WARN 0x000d", "ERROR 0x000d", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = [
+  "primary_peek",
+  "backup_manifest",
+]
+markers = [
+  "Forbidding PUBK_REVOKE= is the ordering proof: the reserved-slot bound in plat_is_key_authorized runs before oca_check_root_key_revocation.",
+  "PUBK_SEL=0x0000001a ties the refusal to the planted slot; PUBK_SLOT_RESERVED separates it from the other 0x00030023 arms.",
+  "One boundary value only; the hang is asserted by terminal_token and the FAILED verdict.",
+]

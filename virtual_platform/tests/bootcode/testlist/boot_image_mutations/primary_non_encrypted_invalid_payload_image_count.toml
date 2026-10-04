@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A primary TOC image_count whose entry array overruns the payload, with every seal and the
+# signature refreshed so the ROM reaches the TOC check.
+base = "signed"
+ops = [
+  { op = "set_toc_image_count", slot = "primary", args = { value = 257 } },
+]

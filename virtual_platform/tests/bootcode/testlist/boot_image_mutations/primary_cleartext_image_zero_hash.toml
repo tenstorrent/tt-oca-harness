@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Zeroes primary TOC entry 0's digest inside the payload_hash span with nothing resealed.
+base = "signed"
+patch = [
+  { fill = [0x2070, 0x2090], value = 0x00 },
+]

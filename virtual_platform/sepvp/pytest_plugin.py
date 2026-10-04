@@ -25,6 +25,7 @@ Fixtures:
   build_type           the resolved --build-type
 """
 
+import dataclasses
 import logging
 import os
 import shutil
@@ -70,6 +71,11 @@ def pytest_addoption(parser):
         help="firmware build type: test (DEBUG/SIM_OUT) or release",
     )
     g.addoption("--stream", action="store_true", help="tee sep-vp stdout to the console")
+    g.addoption(
+        "--iss-trace",
+        action="store_true",
+        help="write each run's ISS trace to <run dir>/veer_trace.log",
+    )
     g.addoption(
         "--riscv-toolchain",
         default=paths.default_riscv_toolchain(),
@@ -217,48 +223,26 @@ def bootcode_elf(request):
 
 @pytest.fixture(scope="session")
 def oca_images(request):
-    """Build (unless --no-build) the three OCA boot images and return their paths.
+    """Build (unless --no-build) every prebuilt OCA boot image and return their paths.
 
-    Returns a dict keyed "unsigned" / "signed" / "encrypted" / "otp_key" /
-    "smc_bundle". One fixture rather
-    than three because they come from a single make target and share every
-    prerequisite, so splitting them would just triple the build check.
+    Returns a copy of paths.OCA_IMAGE_PATHS. One fixture rather than one per image
+    because the images come from two make targets that share every prerequisite.
+    A missing paths.TESTLIST_ONLY_IMAGES entry does not skip the fixture; the testlist
+    skips the entries that read it.
 
     container_ok=False because the pack step
     is Python and wants uv, which the toolchain container does not carry. The BL1
     payload it packs needs a host RISC-V toolchain -- without one this skips
     rather than fails, which is a coverage hole worth knowing about.
     """
-    imgs = {
-        "unsigned": paths.OCA_NS_IMAGE,
-        "signed": paths.OCA_SEC_IMAGE,
-        "encrypted": paths.OCA_ENC_IMAGE,
-        # Signed with the same dev0 key, but public_key_select_classic names an
-        # OTP anchor (CHIPLET_PUBK_HASH0) instead of a ROM digest slot.
-        "otp_key": paths.OCA_OTP_IMAGE,
-        # Bare bundle for the SMC-SRAM path, not a combined SPI image.
-        "smc_bundle": paths.OCA_SMC_BUNDLE,
-        # Manifest bound to a chiplet identity via usage_constraints.
-        "identity": paths.OCA_ID_IMAGE,
-        "pqc": paths.OCA_PQC_IMAGE,
-        "ecdsa": paths.OCA_ECDSA_IMAGE,
-        "der": paths.OCA_DER_IMAGE,
-        "aes128": paths.OCA_AES128_IMAGE,
-        "sip_key": paths.OCA_SIP_KEY_IMAGE,
-        "multi": paths.OCA_MULTI_IMAGE,
-        "no_bl1": paths.OCA_NO_BL1_IMAGE,
-        # ROM key slots 1-5, each signed by its own key (slot 0 is "signed").
-        # Flat entries rather than a nested slot->path dict so the existence check
-        # below still sees every path; tests/bootcode/test_bootcode_oca_rom_keys.py
-        # rebuilds the slot map from these.
-        **{f"rom_key{n}": paths.OCA_ROM_KEY_IMAGES[n] for n in range(1, 6)},
-    }
+    imgs = dict(paths.OCA_IMAGE_PATHS)
     if request.config.getoption("build"):
         res = _make(
             request.config,
             "-C",
             str(paths.BOOTCODE_DIR),
             "oca-images",
+            "decrypt_negative_images",
             cwd=paths.OCAH_ROOT,
             container_ok=False,
         )
@@ -277,7 +261,11 @@ def oca_images(request):
                 f"oca-images build failed and {paths.MANIFEST_DIR} is not checked out; "
                 f"initialise the submodule to run these tests:\n{detail}"
             )
-    missing = [str(p) for p in imgs.values() if not p.is_file()]
+    missing = [
+        str(p)
+        for name, p in imgs.items()
+        if name not in paths.TESTLIST_ONLY_IMAGES and not p.is_file()
+    ]
     if missing:
         pytest.skip(f"OCA images not present: {', '.join(missing)}; build them or drop --no-build")
     return imgs
@@ -324,6 +312,8 @@ def vp(request):
     created = []
 
     def _make_harness(config: SimConfig) -> SepVpHarness:
+        if request.config.getoption("--iss-trace"):
+            config = dataclasses.replace(config, iss_trace=True)
         h = SepVpHarness(
             config,
             sep_vp_bin=request.config.getoption("--vp-bin"),

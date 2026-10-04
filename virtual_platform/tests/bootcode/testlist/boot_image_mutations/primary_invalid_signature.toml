@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Flips one bit of the primary signature, outside the hashed region, so only the RSA verify can refuse it.
+base = "signed"
+patch = [
+  { field = "OFF_SIGNATURE_CLASSIC", slot = "primary", xor = 0x01 },
+]

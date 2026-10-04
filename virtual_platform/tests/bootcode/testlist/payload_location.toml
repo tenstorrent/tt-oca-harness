@@ -1,0 +1,198 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_payload_overlaps_manifest_test"
+family = "payload_location"
+classification = "vp-equivalent"
+image = "payload_overlaps_manifest"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "primary", size = 8, value = 0x100 } },
+  { range = [0x1ea4, 0x1eac], differs_from = "signed" },
+  { range = [0x0, 0x1ea4], same_as = "signed" },
+  { range = [0x1eac, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "MANIFEST_ERR=0x00030101",
+  "MANIFEST_ERR=0x00030106",
+  "MANIFEST_ERR=0x00030012",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "PAYLOAD_LOC_FAIL" = 1, "MANIFEST_ERR=0x0003001b" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x007a", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x007a", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], exact = 18 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 10 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "payload_offset lies in the unsigned tail outside manifest_hash, so a byte patch keeps the signature valid and oca_locate_payload is the first check that can refuse the slot.",
+  "The refusal is the ranges_intersect arm of oca_locate_payload; the payload address 0x1100 is inside the slot window, so the region-bound arm is not what fires.",
+  "PAYLOAD_LOC_FAIL is shared by every oca_locate_payload arm; the overlap is attributed by the image (offset 0x100 < body size 0x1000), not by the token.",
+  "primary_manifest exact 18 (peek 2 + body 16 reads) and primary_payload exact 0 show no payload read was issued, at 0x1100 or anywhere else.",
+]
+
+[[testcase]]
+name = "sep_payload_too_large_test"
+family = "payload_location"
+classification = "vp-equivalent"
+image = "payload_too_large"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "primary", size = 8, value = 0x3F000 } },
+  { field = { name = "OFF_BOOT_MANIFEST_MAGIC", slot = "backup", size = 4, value = 0x99999999 } },
+  { range = [0x1ea4, 0x1eac], differs_from = "signed" },
+  { range = [0x41000, 0x41004], differs_from = "signed" },
+  { range = [0x0, 0x1ea4], same_as = "signed" },
+  { range = [0x1eac, 0x41000], same_as = "signed" },
+  { range = [0x41004, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030002",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PAYLOAD_OK",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "MANIFEST_ERR=0x00030101",
+  "MANIFEST_ERR=0x00030106",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "PAYLOAD_LOC_FAIL" = 1, "MANIFEST_ERR=0x0003001b" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_OK" = 1, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x007a", "WARN 0x0006", "ERROR 0x0006", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0055", "ERROR 0x007a"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030002"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_peek", range = [0x41000, 0x41014], exact = 2 },
+  { name = "backup_rest", range = [0x41014, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_peek"]
+markers = [
+  "The primary payload starts at 0x40000, the end of its 0x3F000-byte slot window, so oca_locate_payload refuses it on the region bound (0x0003001b), not the ROM's staging bound.",
+  "PAYLOAD_TOO_LARGE (0x00030101) is unreachable on the SPI path: the slot window admits at most 0x3E000 payload bytes after the 0x1000 body, less than the SEP SRAM staging room 0x3EFF8, so it stays forbidden here.",
+  "The two slots fail for different reasons, so the terminal code 0x00030002 identifies the backup and 0x0003001b appears exactly once.",
+  "The hang is asserted by terminal_token and the FAILED verdict from cold scratch 0; it does not prove the CPU stays in the WFI loop.",
+]
+
+[[testcase]]
+name = "sep_firmware_payload_overlaps_manifest_test"
+family = "payload_location"
+classification = "vp-equivalent"
+image = "payload_overlaps_manifest_tail"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_PAYLOAD_OFFSET", slot = "primary", size = 8, value = 4088 } },
+  { range = [0x1ea4, 0x1eac], differs_from = "signed" },
+  { range = [0x0, 0x1ea4], same_as = "signed" },
+  { range = [0x1eac, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_LOC_FAIL",
+  "MANIFEST_ERR=0x0003001b",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "DECRYPT_OK",
+  "MANIFEST_ERR=0x00030101",
+  "MANIFEST_ERR=0x00030106",
+  "MANIFEST_ERR=0x00030012",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "PAYLOAD_LOC_FAIL" = 1, "MANIFEST_ERR=0x0003001b" = 1, "RSA_EXEC" = 2, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x0053", "WARN 0x007a", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x007a", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], exact = 18 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], exact = 18 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 10 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "Follows DV sep_firmware_payload_overlaps_manifest_test: the primary carries the overlap and the backup boots; DV draws an 8-aligned offset in [8, 4096) by seed, and this entry pins 4088, the last such offset, so the payload overlaps the body by its final 8 bytes.",
+  "The payload [0x1ff8, 0x2864) also crosses the body end at 0x2000, so this is the intersect arm at its boundary; sep_payload_overlaps_manifest_test covers an offset deep inside the body.",
+  "payload_offset lies in the unsigned tail, so the byte patch keeps the signature valid; primary_manifest exact 18 and primary_payload exact 0 show no read was issued at 0x1ff8.",
+]

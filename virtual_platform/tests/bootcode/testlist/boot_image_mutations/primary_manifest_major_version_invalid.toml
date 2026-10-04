@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# A primary manifest major version above the one the ROM library supports.
+base = "signed"
+ops = [
+  { op = "set_manifest_version", slot = "primary", args = { major = 2 } },
+]

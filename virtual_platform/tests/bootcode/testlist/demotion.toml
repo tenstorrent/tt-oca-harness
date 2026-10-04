@@ -1,0 +1,1308 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# One testcase per row of the BL0 demotion decision table. demotion_control is signed and not
+# declared by the packer configs, so the specs set it with set_demotion. A row with secure boot
+# off also needs efuse.sboot_dis = 1, or a PROD part boots the signed backup instead.
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_auth_flag_0_prod_end_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_auth_flag_0_prod_end"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "PROD_END" }
+# demotion_control 0x2 = BL1_VALID 0, BL1_ENABLE 1, BL2 pair 0; outcome O1.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x4 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x3 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x1 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "DEMOTE: PROD_END lock",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=",
+  "BL2_DEMOTE_DEC=",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "DEMOTE: PROD_END lock" = 1, "DEMOTE_LOCKED" = 1, "RSA_VERIFY_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x8, demotion_decision = 0x2, secure_boot = 1, sboot_dis = 0 }
+markers = [
+  "At PROD_END the ROM reads no demotion_control bit; the planted input only proves the branch ignores it.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_auth_flag_0_prod_sel_bit_set"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { sboot_dis = 1 }
+# demotion_control 0x3 = BL1_VALID 1, BL1_ENABLE 1, BL2 pair 0; outcome O2a.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x3 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x0 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1838, 0x19cc], all = 0x00 },
+  { range = [0x1c64, 0x1de4], all = 0x00 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "BL1_DEMOTE=1",
+  "BL2_DEMOTE_DEC=0",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=0",
+  "BL2_DEMOTE_DEC=1",
+  "DEMOTE: PROD_END lock",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "BL1_DEMOTE=1" = 1, "BL2_DEMOTE_DEC=0" = 1, "DEMOTE_LOCKED" = 1, "SBOOT_OFF" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x3, secure_boot = 0, sboot_dis = 1 }
+markers = [
+  "Secure boot is off through the sboot_dis fuse plus an unsigned primary; without the fuse PROD refuses the primary and fails over to the backup, which MANIFEST_BACKUP and the backup exact-0 span forbid.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_auth_flag_0_unauth_flag_0_prod"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { sboot_dis = 1 }
+# demotion_control 0xE = BL1_VALID 0, BL1_ENABLE 1, BL2 pair 1; outcome O4.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xE } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x0 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1838, 0x19cc], all = 0x00 },
+  { range = [0x1c64, 0x1de4], all = 0x00 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "DEMOTE: BL2 deferred, unlocked",
+  "BL2_DEMOTE_DEC=1",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_NOT_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=",
+  "BL2_DEMOTE_DEC=0",
+  "DEMOTE: PROD_END lock",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_LOCKED",
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "DEMOTE: BL2 deferred, unlocked" = 1, "BL2_DEMOTE_DEC=1" = 1, "DEMOTE_NOT_LOCKED" = 1, "SBOOT_OFF" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x4, secure_boot = 0, sboot_dis = 1 }
+markers = [
+  "DEMOTE_1 left unwritten is shown by DEMOTE_NOT_LOCKED and the clear lock bit in the boot-state PCR.",
+  "Secure boot is off through the sboot_dis fuse plus an unsigned primary; without the fuse PROD refuses the primary and fails over to the backup, which MANIFEST_BACKUP and the backup exact-0 span forbid.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_auth_flag_0_prod_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_auth_flag_0_prod"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { sboot_dis = 1 }
+# demotion_control 0x2 = BL1_VALID 0, BL1_ENABLE 1, BL2 pair 0; outcome O5.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x0 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1838, 0x19cc], all = 0x00 },
+  { range = [0x1c64, 0x1de4], all = 0x00 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "BL2_DEMOTE_DEC=0",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=",
+  "BL2_DEMOTE_DEC=1",
+  "DEMOTE: PROD_END lock",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "DEMOTE: BL2 deferred, lock non-demoted" = 1, "BL2_DEMOTE_DEC=0" = 1, "DEMOTE_LOCKED" = 1, "SBOOT_OFF" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x2, secure_boot = 0, sboot_dis = 1 }
+markers = [
+  "Secure boot is off through the sboot_dis fuse plus an unsigned primary; without the fuse PROD refuses the primary and fails over to the backup, which MANIFEST_BACKUP and the backup exact-0 span forbid.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_no_flag_prod_sel_bit_set"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { sboot_dis = 1 }
+# demotion_control 0x1 = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 0; outcome O3a.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x1 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x0 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1838, 0x19cc], all = 0x00 },
+  { range = [0x1c64, 0x1de4], all = 0x00 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "BL1_DEMOTE=0",
+  "BL2_DEMOTE_DEC=0",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=1",
+  "BL2_DEMOTE_DEC=1",
+  "DEMOTE: PROD_END lock",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "BL1_DEMOTE=0" = 1, "BL2_DEMOTE_DEC=0" = 1, "DEMOTE_LOCKED" = 1, "SBOOT_OFF" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x2, secure_boot = 0, sboot_dis = 1 }
+markers = [
+  "Secure boot is off through the sboot_dis fuse plus an unsigned primary; without the fuse PROD refuses the primary and fails over to the backup, which MANIFEST_BACKUP and the backup exact-0 span forbid.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_auth_flag_0_unauth_flag_0_prod_sel_bit_set"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { sboot_dis = 1 }
+# demotion_control 0xF = BL1_VALID 1, BL1_ENABLE 1, BL2 pair 1; outcome O2b.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xF } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x0 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1838, 0x19cc], all = 0x00 },
+  { range = [0x1c64, 0x1de4], all = 0x00 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "BL1_DEMOTE=1",
+  "BL2_DEMOTE_DEC=1",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=0",
+  "BL2_DEMOTE_DEC=0",
+  "DEMOTE: PROD_END lock",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "BL1_DEMOTE=1" = 1, "BL2_DEMOTE_DEC=1" = 1, "DEMOTE_LOCKED" = 1, "SBOOT_OFF" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x7, secure_boot = 0, sboot_dis = 1 }
+markers = [
+  "Secure boot is off through the sboot_dis fuse plus an unsigned primary; without the fuse PROD refuses the primary and fails over to the backup, which MANIFEST_BACKUP and the backup exact-0 span forbid.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_no_flag_prod_end_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_no_flag_prod_end"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "PROD_END" }
+# demotion_control 0x0 = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 0; outcome O1.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x0 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x4 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x3 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x1 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "DEMOTE: PROD_END lock",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=",
+  "BL2_DEMOTE_DEC=",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "DEMOTE: PROD_END lock" = 1, "DEMOTE_LOCKED" = 1, "RSA_VERIFY_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x8, demotion_decision = 0x2, secure_boot = 1, sboot_dis = 0 }
+markers = [
+  "At PROD_END the ROM reads no demotion_control bit; the planted input only proves the branch ignores it.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_no_flag_prod_end_sel_bit_set"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "PROD_END" }
+# demotion_control 0x1 = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 0; outcome O1.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x1 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x4 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x3 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x1 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "DEMOTE: PROD_END lock",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=",
+  "BL2_DEMOTE_DEC=",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "DEMOTE: PROD_END lock" = 1, "DEMOTE_LOCKED" = 1, "RSA_VERIFY_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x8, demotion_decision = 0x2, secure_boot = 1, sboot_dis = 0 }
+markers = [
+  "At PROD_END the ROM reads no demotion_control bit; the planted input only proves the branch ignores it.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_unauth_flag_0_prod_end_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_unauth_flag_0_prod_end"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "PROD_END" }
+# demotion_control 0xC = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 1; outcome O1.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xC } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x4 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x3 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x1 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "DEMOTE: PROD_END lock",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=",
+  "BL2_DEMOTE_DEC=",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "DEMOTE: PROD_END lock" = 1, "DEMOTE_LOCKED" = 1, "RSA_VERIFY_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x8, demotion_decision = 0x2, secure_boot = 1, sboot_dis = 0 }
+markers = [
+  "At PROD_END the ROM reads no demotion_control bit; the planted input only proves the branch ignores it.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_unauth_flag_0_prod_sel_bit_set_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_unauth_flag_0_prod_sel_bit_set"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { sboot_dis = 1 }
+# demotion_control 0xD = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 1; outcome O3b.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xD } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x0 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1838, 0x19cc], all = 0x00 },
+  { range = [0x1c64, 0x1de4], all = 0x00 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "BL1_DEMOTE=0",
+  "BL2_DEMOTE_DEC=1",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=1",
+  "BL2_DEMOTE_DEC=0",
+  "DEMOTE: PROD_END lock",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "BL1_DEMOTE=0" = 1, "BL2_DEMOTE_DEC=1" = 1, "DEMOTE_LOCKED" = 1, "SBOOT_OFF" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x6, secure_boot = 0, sboot_dis = 1 }
+markers = [
+  "Secure boot is off through the sboot_dis fuse plus an unsigned primary; without the fuse PROD refuses the primary and fails over to the backup, which MANIFEST_BACKUP and the backup exact-0 span forbid.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_unauth_flag_30_prod_end_test"
+family = "demotion"
+classification = "partial"
+image = "demotion_unauth_flag_30_prod_end"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { lc_state = "PROD_END" }
+# demotion_control 0x3 = BL1_VALID 1, BL1_ENABLE 1, BL2 pair 0; outcome O1.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x3 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x4 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x4 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x3 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x1 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "DEMOTE: PROD_END lock",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=",
+  "BL2_DEMOTE_DEC=",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "DEMOTE: PROD_END lock" = 1, "DEMOTE_LOCKED" = 1, "RSA_VERIFY_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x8, demotion_decision = 0x2, secure_boot = 1, sboot_dis = 0 }
+markers = [
+  "At PROD_END the ROM reads no demotion_control bit; the planted input only proves the branch ignores it.",
+  "The legacy stimulus, unsigned boot_arguments bit 30, has no OCA field; the entry carries the DV member's signed demotion_control input instead.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_unauth_flag_30_prod_sel_bit_set_test"
+family = "demotion"
+classification = "partial"
+image = "demotion_unauth_flag_30_prod_sel_bit_set"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# demotion_control 0x1 = BL1_VALID 1, BL1_ENABLE 0, BL2 pair 0; outcome O3a.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x1 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x3 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x1 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_DEMOTE=0",
+  "BL2_DEMOTE_DEC=0",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=1",
+  "BL2_DEMOTE_DEC=1",
+  "DEMOTE: PROD_END lock",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "BL1_DEMOTE=0" = 1, "BL2_DEMOTE_DEC=0" = 1, "DEMOTE_LOCKED" = 1, "RSA_VERIFY_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x2, secure_boot = 1, sboot_dis = 0 }
+markers = [
+  "The legacy stimulus, unsigned boot_arguments bit 30, has no OCA field; the entry carries the DV member's signed demotion_control input instead.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_no_flag_prod_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_no_flag_prod"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# demotion_control 0x0 = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 0; outcome O5.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0x0 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x3 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x1 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "BL2_DEMOTE_DEC=0",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=",
+  "BL2_DEMOTE_DEC=1",
+  "DEMOTE: PROD_END lock",
+  "DEMOTE: BL2 deferred, unlocked",
+  "DEMOTE_NOT_LOCKED",
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "DEMOTE: BL2 deferred, lock non-demoted" = 1, "BL2_DEMOTE_DEC=0" = 1, "DEMOTE_LOCKED" = 1, "RSA_VERIFY_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x2, secure_boot = 1, sboot_dis = 0 }
+markers = [
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]
+
+[[testcase]]
+name = "sep_firmware_demotion_decision_unauth_flag_0_prod_test"
+family = "demotion"
+classification = "vp-equivalent"
+image = "demotion_unauth_flag_0_prod"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+efuse = { sboot_dis = 1 }
+# demotion_control 0xC = BL1_VALID 0, BL1_ENABLE 0, BL2 pair 1; outcome O4.
+image_asserts = [
+  { field = { name = "OFF_DEMOTION_CONTROL", slot = "primary", size = 2, value = 0xC } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "primary", size = 4, value = 0x2 } },
+  { field = { name = "OFF_LIFECYCLE_CHIPLET_STATES", slot = "backup", size = 4, value = 0x2 } },
+  { field = { name = "OFF_SECURE_BOOT_CONTROL", slot = "primary", size = 1, value = 0x0 } },
+  { field = { name = "OFF_SIGNATURE_TYPE_CLASSIC", slot = "primary", size = 1, value = 0x0 } },
+  { range = [0x1024, 0x1025], all = 0x01 },
+  { range = [0x41024, 0x41025], all = 0x01 },
+  { range = [0x1838, 0x19cc], all = 0x00 },
+  { range = [0x1c64, 0x1de4], all = 0x00 },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1024], same_as = "signed" },
+  { range = [0x1025, 0x1088], same_as = "signed" },
+  { range = [0x108c, 0x10ac], same_as = "signed" },
+  { range = [0x10ae, 0x10b6], same_as = "signed" },
+  { range = [0x10b7, 0x182c], same_as = "signed" },
+  { range = [0x1a5d, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41024], same_as = "signed" },
+  { range = [0x41025, 0x41088], same_as = "signed" },
+  { range = [0x4108c, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "FUSE: SBOOT_DIS: 1",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "SBOOT_OFF",
+  "DEMOTE: BL2 deferred, unlocked",
+  "BL2_DEMOTE_DEC=1",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "DEMOTE_NOT_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "{measurement_golden}",
+  "BL0S_OK",
+  "GO!",
+]
+forbid = [
+  "BL1_DEMOTE=",
+  "BL2_DEMOTE_DEC=0",
+  "DEMOTE: PROD_END lock",
+  "DEMOTE: BL2 deferred, lock non-demoted",
+  "DEMOTE_LOCKED",
+  "LC=PROD_END",
+  "FUSE: SBOOT_DIS: 0",
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "DEMOTE: BL2 deferred, unlocked" = 1, "BL2_DEMOTE_DEC=1" = 1, "DEMOTE_NOT_LOCKED" = 1, "SBOOT_OFF" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0051", "INFO 0x021b", "INFO 0x021c", "INFO 0x004a", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+measurement_golden = { slot = "primary", lc_state = 0x1, demotion_decision = 0x4, secure_boot = 0, sboot_dis = 1 }
+markers = [
+  "DEMOTE_1 left unwritten is shown by DEMOTE_NOT_LOCKED and the clear lock bit in the boot-state PCR.",
+  "Secure boot is off through the sboot_dis fuse plus an unsigned primary; without the fuse PROD refuses the primary and fails over to the backup, which MANIFEST_BACKUP and the backup exact-0 span forbid.",
+  "DEMOTE_1, DEMOTE_2 and FEAT_CTRL are not read back; the decision is shown by the console and the boot-state PCR only.",
+]

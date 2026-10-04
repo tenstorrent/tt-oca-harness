@@ -1,0 +1,321 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# OTP-anchored chiplet keys: each twin pair runs one image file, one revoke bit apart.
+
+[[testcase]]
+name = "sep_firmware_chiplet_pubkey_0_test"
+family = "chiplet_pubkey"
+classification = "vp-equivalent"
+image = "chiplet_pubkey_sel_1"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# ROM key 0 is revoked so a ROM that ignored the selector would be refused; HASH1 holds a decoy.
+efuse = { chiplet_pubk_hash0 = "{untrusted_signing_key_digest}", chiplet_pubk_hash1 = [0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a], chiplet_pubk_revoke = 0x1 }
+image_asserts = [
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "primary", size = 8, value = 0x10000 } },
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "backup", size = 8, value = 0x10000 } },
+  { range = [0x1848, 0x19c8], differs_from = "signed" },
+  { range = [0x41848, 0x419c8], differs_from = "signed" },
+  { range = [0x0, 0x1838], same_as = "signed" },
+  { range = [0x19c8, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41838], same_as = "signed" },
+  { range = [0x419c8, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_SEL=0x00000010",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000001",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = [
+  "PUBK_SEL=0x00000000",
+  "PUBK_SEL=0x00000011",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_PQC_UNSUPPORTED",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_HASH_TIMEOUT",
+  "RSA_PKCS1_FAIL",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "PUBK_SEL=0x00000010" = 1, "PUBK_AUTHORIZED" = 1, "PUBK_REVOKE=0x00000001" = 1, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "PUBK_SEL=0x00000010 is the bitmap slot plat_is_key_authorized resolved: CHIPLET_PUBK_HASH0, outside the ROM-key band.",
+  "Signed with a generated key in no ROM slot, so CHIPLET_PUBK_HASH0 is the only anchor that can authorize it; DV signs with dev0, whose digest is also ROM slot 0's.",
+  "Revoke bit 0 and the HASH1 decoy are DV's counterfactuals: a ROM on the ROM-key arm or reading the wrong fuse bank is refused instead of booting.",
+  "The revoke twin sep_firmware_chiplet_pubkey_0_revoke_test runs the same image with revoke bit 16 added.",
+  "Not covered: slots 20, 22 and 24, the SIP and SYS OTP anchors.",
+]
+
+[[testcase]]
+name = "sep_firmware_chiplet_pubkey_0_revoke_test"
+family = "chiplet_pubkey"
+classification = "vp-equivalent"
+image = "chiplet_pubkey_sel_1"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# Revoke bit 16 is CHIPLET_PUBK_HASH0; bit 0 and the HASH1 decoy match the positive twin.
+efuse = { chiplet_pubk_hash0 = "{untrusted_signing_key_digest}", chiplet_pubk_hash1 = [0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a], chiplet_pubk_revoke = 0x10001 }
+image_asserts = [
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "primary", size = 8, value = 0x10000 } },
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "backup", size = 8, value = 0x10000 } },
+  { range = [0x1848, 0x19c8], differs_from = "signed" },
+  { range = [0x41848, 0x419c8], differs_from = "signed" },
+  { range = [0x0, 0x1838], same_as = "signed" },
+  { range = [0x1e84, 0x41838], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_SEL=0x00000010",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00010001",
+  "MANIFEST_ERR=0x00030016",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_SEL=0x00000010",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00010001",
+  "MANIFEST_ERR=0x00030016",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030016",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PUBK_SEL=0x00000000",
+  "PUBK_SEL=0x00000011",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_HASH_TIMEOUT",
+  "RSA_EXEC",
+  "RSA_PKCS1_FAIL",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "PUBK_SEL=0x00000010" = 2, "PUBK_AUTHORIZED" = 2, "PUBK_REVOKE=0x00010001" = 2, "MANIFEST_ERR=0x00030016" = 2, "MANIFEST_ALL_FAILED" = 1 }
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030016"
+expect_status = ["INFO 0x004c", "WARN 0x000c", "INFO 0x004c", "WARN 0x000c", "ERROR 0x000c", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest"]
+markers = [
+  "PUBK_AUTHORIZED before each refusal shows the fuse anchor accepted the key, so revocation, not the bind, refused both slots.",
+  "Same image file as sep_firmware_chiplet_pubkey_0_test; only CHIPLET_PUBK_REVOKE bit 16 differs, and the verdict flips.",
+  "Terminal because both slots select the same OTP key; RSA_EXEC forbidden shows revocation precedes the verifier.",
+  "PUBK_SEL=0x00000011 forbidden keeps the two chiplet anchors from collapsing onto one revoke bit.",
+]
+
+[[testcase]]
+name = "sep_firmware_chiplet_pubkey_1_test"
+family = "chiplet_pubkey"
+classification = "vp-equivalent"
+image = "chiplet_pubkey_sel_2"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# ROM key 0 is revoked so a ROM that ignored the selector would be refused; HASH0 holds a decoy.
+efuse = { chiplet_pubk_hash1 = "{untrusted_signing_key_digest}", chiplet_pubk_hash0 = [0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a], chiplet_pubk_revoke = 0x1 }
+image_asserts = [
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "primary", size = 8, value = 0x20000 } },
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "backup", size = 8, value = 0x20000 } },
+  { range = [0x1848, 0x19c8], differs_from = "signed" },
+  { range = [0x41848, 0x419c8], differs_from = "signed" },
+  { range = [0x0, 0x1838], same_as = "signed" },
+  { range = [0x19c8, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, 0x41838], same_as = "signed" },
+  { range = [0x419c8, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_SEL=0x00000011",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000001",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = [
+  "PUBK_SEL=0x00000000",
+  "PUBK_SEL=0x00000010",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_PQC_UNSUPPORTED",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_HASH_TIMEOUT",
+  "RSA_PKCS1_FAIL",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "PUBK_SEL=0x00000011" = 1, "PUBK_AUTHORIZED" = 1, "PUBK_REVOKE=0x00000001" = 1, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1 }
+expect_status = ["INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "PUBK_SEL=0x00000011 is bitmap slot 17, CHIPLET_PUBK_HASH1.",
+  "Signed with a generated key in no ROM slot, so CHIPLET_PUBK_HASH1 is the only anchor that can authorize it; DV signs with dev0.",
+  "Revoke bit 0 and the HASH0 decoy are DV's counterfactuals for the ROM-key arm and the wrong fuse bank.",
+  "The revoke twin sep_firmware_chiplet_pubkey_1_revoke_test runs the same image with revoke bit 17 added.",
+]
+
+[[testcase]]
+name = "sep_firmware_chiplet_pubkey_1_revoke_test"
+family = "chiplet_pubkey"
+classification = "vp-equivalent"
+image = "chiplet_pubkey_sel_2"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# Revoke bit 17 is CHIPLET_PUBK_HASH1; bit 0 and the HASH0 decoy match the positive twin.
+efuse = { chiplet_pubk_hash1 = "{untrusted_signing_key_digest}", chiplet_pubk_hash0 = [0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a, 0x5a5a5a5a], chiplet_pubk_revoke = 0x20001 }
+image_asserts = [
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "primary", size = 8, value = 0x20000 } },
+  { field = { name = "OFF_PUBLIC_KEY_SELECT_CLASSIC", slot = "backup", size = 8, value = 0x20000 } },
+  { range = [0x1848, 0x19c8], differs_from = "signed" },
+  { range = [0x41848, 0x419c8], differs_from = "signed" },
+  { range = [0x0, 0x1838], same_as = "signed" },
+  { range = [0x1e84, 0x41838], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_SEL=0x00000011",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00020001",
+  "MANIFEST_ERR=0x00030016",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_SEL=0x00000011",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00020001",
+  "MANIFEST_ERR=0x00030016",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030016",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "PUBK_SEL=0x00000000",
+  "PUBK_SEL=0x00000010",
+  "PUBK_OTP_EMPTY",
+  "PUBK_UNAUTHORIZED",
+  "PUBK_SLOT_UNPROVISIONED",
+  "PUBK_SLOT_RESERVED",
+  "PUBK_SEL_AMBIGUOUS",
+  "PUBK_ALGO_UNSUPPORTED",
+  "PUBK_HASH_TIMEOUT",
+  "RSA_EXEC",
+  "RSA_PKCS1_FAIL",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "PUBK_SEL=0x00000011" = 2, "PUBK_AUTHORIZED" = 2, "PUBK_REVOKE=0x00020001" = 2, "MANIFEST_ERR=0x00030016" = 2, "MANIFEST_ALL_FAILED" = 1 }
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030016"
+expect_status = ["INFO 0x004c", "WARN 0x000c", "INFO 0x004c", "WARN 0x000c", "ERROR 0x000c", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest"]
+markers = [
+  "PUBK_AUTHORIZED before each refusal shows the fuse anchor accepted the key, so revocation, not the bind, refused both slots.",
+  "Same image file as sep_firmware_chiplet_pubkey_1_test; only CHIPLET_PUBK_REVOKE bit 17 differs, and the verdict flips.",
+  "Terminal because both slots select the same OTP key; RSA_EXEC forbidden shows revocation precedes the verifier.",
+  "PUBK_SEL=0x00000010 forbidden keeps the two chiplet anchors from collapsing onto one revoke bit.",
+]

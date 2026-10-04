@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Sets the BL1 TOC entry length to zero in both slots and reseals them, so each slot breaks only the
+# non-zero-length TOC rule.
+base = "signed"
+ops = [
+  { op = "set_bl1_zero_length", slot = "primary" },
+  { op = "set_bl1_zero_length", slot = "backup" },
+]

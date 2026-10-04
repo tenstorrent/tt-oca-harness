@@ -1,0 +1,280 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_firmware_mbist_fail_test"
+tp_id = "TP007"
+family = "platform_gating"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "none"
+pytest_markers = ["needs_debug"]
+# Every DFX_CTRL_STATUS bit set except mem_repair_success, so only a gate keyed on bit 1 stops.
+init_writes = [{ address = 0x4000B800, value = 0xFFFFFFFD }]
+expect_silence = true
+forbid = [
+  "SMC_MEM_CHK",
+  "COLD",
+  "MEM_INIT_OK",
+  "LC_STATE=",
+  "LC=PROD",
+  "CHIP_ID=",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_OK",
+  "BL1_COPIED",
+  "PRE_JUMP",
+  "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+expect_status = ["DEBUG 0x0056", "WARN 0x0219", "ERROR 0xd001"]
+forbid_status = ["DEBUG 0x0057"]
+markers = [
+  "The gate runs in vector.S before the C runtime, so silence is the expected console; WARN 0x0219 then ERROR 0xd001 show which step the ROM reached.",
+  "DEBUG 0x0057 is the first status rom_main writes; forbidding it shows the C runtime never started.",
+  "Not covered: the raw status the ROM copies to SMC scratch 10, and the PC staying in the WFI loop; the VP reports neither.",
+  "The silence is fenced by the init-write witness and by the run reaching its timeout.",
+]
+
+[[testcase]]
+name = "sep_firmware_mbist_pass_test"
+tp_id = "TP-MBIST-PASS"
+family = "platform_gating"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# Exactly mem_repair_success, mbist_done and mbist_pass; the model's 0x113 default would also set mem_repair_done.
+init_writes = [{ address = 0x4000B800, value = 0x112 }]
+expect = [
+  "SMC_MEM_CHK",
+  "COLD",
+  "MEM_INIT_OK",
+  "CHIP_ID=0x00000000",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = ["MANIFEST_ERR=", "MANIFEST_BACKUP", "MANIFEST_ALL_FAILED", "TRAP H0"]
+expect_status = ["DEBUG 0x0056", "DEBUG 0x0057", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["WARN 0x0219", "ERROR 0xd001", "ERROR 0x0213"]
+markers = [
+  "The pass arm of the vector.S gate prints nothing; DEBUG 0x0056 is the last status before the gate's load and DEBUG 0x0057 the first after it, so the pair brackets the gate.",
+  "WARN 0x0219 and ERROR 0xd001 are the failure arm's only writes to cold scratch 1, and both are forbidden.",
+  "0x112 leaves mem_repair_done and both abort bits clear, so gates keyed on bit 0, on the whole word or on an abort bit would hang here.",
+  "Not covered: SMC scratch 10 staying unwritten, and the BYPASS_SRAM_REPAIR and MBIST_BYPASS strap arms; the VP reports neither scratch.",
+]
+
+[[testcase]]
+name = "sep_mbist_fail_continue_test"
+tp_id = "TP008"
+family = "platform_gating"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# STATUS_RPT bit 2 is the SKIP_MEM_CHECK fuse vector.S consults after a failed gate.
+efuse = { status_rpt = 0x4 }
+# Every DFX_CTRL_STATUS bit set except mem_repair_success, the same stimulus as sep_firmware_mbist_fail_test.
+init_writes = [{ address = 0x4000B800, value = 0xFFFFFFFD }]
+expect = [
+  "SMC_MEM_CHK",
+  "COLD",
+  "MEM_INIT_OK",
+  "CHIP_ID=0x00000000",
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = ["MANIFEST_ERR=", "MANIFEST_BACKUP", "MANIFEST_ALL_FAILED", "TRAP H0"]
+expect_status = ["DEBUG 0x0056", "WARN 0x0219", "DEBUG 0x0057", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0xd001", "ERROR 0x0213"]
+markers = [
+  "WARN 0x0219 between DEBUG 0x0056 and DEBUG 0x0057 shows the gate failed and the fuse let the boot continue; sep_firmware_mbist_fail_test is the same stimulus without the fuse.",
+  "The stimulus fails the repair arm, so this covers the shared fuse policy, not an MBIST-verdict failure followed by the fuse.",
+  "Not covered: the raw status the ROM copies to SMC scratch 10; the VP does not report it.",
+]
+
+[[testcase]]
+name = "sep_warm_reset_invalid_hang_test"
+tp_id = "TP006"
+family = "platform_gating"
+classification = "partial"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 90
+expect_verdict = "none"
+pytest_markers = ["needs_debug"]
+# The ICCM end, the smallest address the upper bound refuses.
+init_writes = [{ address = 0x10802038, value = 0xC0040000 }]
+expect_silence = true
+forbid = ["SMC_MEM_CHK", "COLD", "MEM_INIT_OK", "GO!", "BL1_COPIED"]
+expect_status = ["ERROR 0x0069"]
+forbid_status = ["INFO 0x0068", "DEBUG 0x0044", "DEBUG 0x0056"]
+markers = [
+  "0xC0040000 is DV's boundary seed: an off-by-one bgtu would accept it, the ROM's bgeu refuses it.",
+  "ERROR 0x0069 is warm_reset_hang's status, and DEBUG 0x0044 forbidden shows the ROM did not fall back to cold_boot.",
+  "Not covered: cold scratch 7 holding the seed, and the PC staying in the WFI loop; the VP reports neither.",
+]
+
+[[testcase]]
+name = "sep_failover_sram_clear_assertion_test"
+tp_id = "TP080"
+family = "platform_gating"
+classification = "partial"
+image = "spi_primary_slot_blank"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x41000], all = 0xFF },
+  { range = [0x1000, 0x1004], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x41000, "end"], same_as = "signed" },
+]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "FLASH_READ_OOB",
+  "SBOOT_OFF",
+  "TRAP H0",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "OCA_BODY=0x00001000" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1 }
+expect_status = ["WARN 0x0006", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055"]
+forbid_status = ["ERROR 0x0006", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "Not covered, and it is the claim this entry is named for: the clear_sram_region() zeroing of SEP SRAM between the primary refusal and the backup fetch prints nothing; DV witnesses it in the SRAM array, and the VP needs an ISS-trace judge for the stores.",
+  "Covered: the failover window itself, from the device side (only the primary peek, then the backup) and on the console.",
+  "SRAM_SCRUB_CFG= and SRAM_CLR_SKIP belong to the one-time pre-manifest scrub in rom_clear_ext_sram, not to this window, so they are not asserted.",
+  "The primary span is erased as in DV, so the primary is refused at the magic peek.",
+]
+
+[[testcase]]
+name = "sep_boot_recovery_test"
+tp_id = "TP004"
+family = "platform_gating"
+classification = "vp-equivalent"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+recovery = true
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The bare signed bundle the SMC would receive: manifest at 0, payload at its payload_offset 0x1000.
+smc_sram_image = "smc_bundle"
+smc_sram_source = [0x0, 0x186c]
+smc_sram_offset = 0x2000
+smc_sram_manifest_at = 0x0
+expect = [
+  "STRAPS_LO=0x02080000",
+  "STRAP primary=1",
+  "recovery=1",
+  "LC=PROD",
+  "BOOT_RECOVERY",
+  "SMC_STATUS_TO_SEP=0x0000000f",
+  "MANIFEST_OFF=0x00002000",
+  "SMC_MANIFEST_ADDR=0x40062000",
+  "WAIT_SMC_MANIFEST",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x40062000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "BL1",
+  "FUSE_CHK",
+  "GO!",
+]
+forbid = [
+  "BOOT_SPI",
+  "BOOT_SECONDARY",
+  ">>SPI_INIT",
+  "SPI_INIT_OK",
+  "SMC_COORD_NOT_READY",
+  "SMC_MANIFEST_OFF_INVALID",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ERR=",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_SRC=0x40062000" = 1, "WAIT_SMC_MANIFEST" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "GO!" = 1 }
+expect_status = [
+  "DEBUG 0x0044",
+  "INFO 0x0023",
+  "INFO 0x002b",
+  "INFO 0x007d",
+  "INFO 0x0212",
+  "INFO 0x004c",
+  "INFO 0x0053",
+  "INFO 0x0055",
+  "INFO 0x0054",
+]
+forbid_status = ["INFO 0x002a", "INFO 0x0090", "ERROR 0x0213"]
+spi_reads = [
+  { name = "whole_flash", range = [0x0, 0x1000000], exact = 0 },
+]
+markers = [
+  "boot_from_spi() is primary_chiplet && !boot_recovery, so the recovery strap diverts a primary chiplet to the SMC-SRAM path; STRAPS_LO=0x02080000 and recovery=1 show the ROM read both strap bits.",
+  "The flash holds the bootable signed image and the device must serve zero reads; BOOT_SECONDARY and INFO 0x002a forbidden separate this arm from the secondary one, which waits on the same window.",
+  "MANIFEST_SRC=0x40062000, where DV sees 0x40061000: the platform publishes MANIFEST_ADDR as the staging offset 0x2000, and 0x40061000 holds the ROM's status ring in the VP.",
+  "PROD with the RSA chain, where DV stages the unsigned combined image at TEST_DEV; both take the same recovery branch.",
+  "rom_manifest_boot sets num_retries = 0 off SPI, so MANIFEST_BACKUP is unreachable; it is forbidden so a second attempt would fail this entry.",
+  "Not covered: how the manifest reached SMC SRAM; the platform stages it by backdoor and raises all four ready flags at once.",
+]

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Breaks the primary magic, then names ROM key slots 0 and 1 at once in the re-signed backup.
+pack_config = "oca_secure_boot"
+set = [
+  { target = "bundle", slot = "backup", path = "public_key_select_classic", value = 0x03 },
+]
+patch = [
+  { fill = [0x1000, 0x1004], value = 0x99 },
+]

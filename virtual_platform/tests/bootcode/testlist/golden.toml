@@ -1,0 +1,129 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# The two clean boots every negative entry departs from; the audit judges all entries
+# against the secure golden's log.
+
+[[testcase]]
+name = "rom_ot_secure_boot_golden"
+tp_id = "TP000"
+family = "golden"
+classification = "vp-equivalent"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+expect = [
+  "BOOT_SPI",
+  "SPI_INIT_OK",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "PRE_JUMP",
+  "BL1",
+  "BL0S_OK",
+  "FUSE_OK",
+  "LOCK_RD_OK",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "SBOOT_OFF",
+  "WAIT_SMC_MANIFEST",
+  "PUBK_UNAUTHORIZED",
+  "RSA_PKCS1_FAIL",
+  "RSA_EXEC_FAIL",
+  "OTBN_RST_FAIL",
+  "TRAP H0",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "RSA_VERIFY_OK" = 1 }
+expect_status = ["INFO 0x0023", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+markers = [
+  "PIO drain only; the DV run uses the SECURE_DMA path.",
+  "PROD lifecycle from base_ini secure, where DV boots TEST_DEV with the manifest flag enforcing secure boot; both enforce the RSA chain.",
+  "reset_ctrl is an unconnected stub, so OTBN reset release is not exercised.",
+]
+
+[[testcase]]
+name = "rom_ot_encrypted_boot_golden"
+tp_id = "TP000-ENC"
+family = "golden"
+classification = "vp-equivalent"
+image = "encrypted"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The secret 00..1f of configs/oca_encrypted_boot_test.yaml, as tests/fuse_maps/oca_encrypted.yaml provisions it.
+efuse = { class_key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c] }
+expect = [
+  "BOOT_SPI",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "DECRYPT_OK",
+  "PAYLOAD_OK",
+  "FUSE_SECRETS_LOCKED",
+  "BL1_COPIED",
+  "BL1",
+  "LOCKS=0x8880A800",
+  "LOCK_RD_OK",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ALL_FAILED",
+  "SBOOT_OFF",
+  "WAIT_SMC_MANIFEST",
+  "DECRYPT_NO_SECRET",
+  "DECRYPT_CLASS_KEY_EMPTY",
+  "KDF_FAIL",
+  "KDF_HMAC_FAIL",
+  "AES_DEC_FAIL",
+  "AES_PAD_BAD",
+  "AES_INIT_BUSY",
+  "HMAC_START_REJECTED",
+  "HMAC_OP_REJECTED",
+  "SHA_START_REJECTED",
+  "SHA_OP_REJECTED",
+  "HMAC_ERR_CODE=",
+  "AES_IDLE_TIMEOUT=",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "DECRYPT_OK" = 1, "PAYLOAD_OK" = 1 }
+expect_status = [
+  "INFO 0x0023",
+  "INFO 0x004c",
+  "INFO 0x0053",
+  "INFO 0x0040",
+  "INFO 0x0042",
+  "INFO 0x0055",
+  "INFO 0x0054",
+]
+forbid_status = ["ERROR 0x0213"]
+markers = [
+  "PAYLOAD_OK follows DECRYPT_OK because the hash chain is computed over the plaintext, so a wrong derived key cannot reach it.",
+  "LOCKS=0x8880A800 with LOCK_RD_OK shows the ROM closed the secret window itself; base_ini secure leaves every lock clear at reset.",
+  "Does not sweep key, IV or KDF input; the encryption family owns those negatives.",
+]

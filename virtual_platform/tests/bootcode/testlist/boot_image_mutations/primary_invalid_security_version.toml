@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Raises the backup security_version to the one flag the fuse sets and re-signs it, so only the
+# unchanged primary omits a device flag.
+base = "signed"
+ops = [
+  { op = "set_security_version", slot = "backup", args = { value = 1 } },
+]

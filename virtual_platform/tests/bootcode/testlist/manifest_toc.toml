@@ -1,0 +1,1101 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[testcase]]
+name = "sep_firmware_validate_backup_manifest_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "validate_backup_manifest"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "primary", size = 2, value = 99 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "primary", size = 2, value = 0 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "primary", size = 4, value = 4096 } },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x100c], same_as = "signed" },
+  { range = [0x1014, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "PUBK_SEL=0x00000000",
+  "PUBK_AUTHORIZED",
+  "PUBK_REVOKE=0x00000000",
+  "FUSE_VER=0x00000000",
+  "ENTROPY_OK",
+  "RSA_EXEC",
+  "RSA_CMP1",
+  "RSA_CMP2",
+  "RSA_VERIFY_OK",
+  "FUSE_VER=0x00000000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "MEAS_BOOT_STATE_OK",
+  "FUSE_SECRETS_LOCKED",
+  "COPY_SRC=0x10001138",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "PRE_JUMP",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003001c",
+  "NO_BL1_IMAGE",
+  "SBOOT_OFF",
+  "SPI init failed, using backup manifest",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030004" = 1, "OCA_BODY=0x00001000" = 2, "MFST_VER=0x00000000" = 2, "PUBK_SEL=0x00000000" = 1, "ENTROPY_OK" = 1, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x0007", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0007", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "The subject is the backup's full validation chain after a primary refusal; the counts of PUBK_SEL=, ENTROPY_OK and RSA_EXEC put every crypto step in the backup attempt.",
+  "Major 99 matches the DV member; any major above OCA_LIB_MANIFEST_MAJOR (1) reaches the same branch, and major 0 is accepted, not refused.",
+  "Only the format-version leg of the primary refusal is planted; the length leg is covered by the primary-side length entries.",
+  "This does not prove the backup's own field validation, only that a valid backup completes the boot after a primary header rejection.",
+]
+
+[[testcase]]
+name = "sep_firmware_manifest_primary_missing_sepbl1_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "primary_missing_sepbl1"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# The last byte of the primary TOC entry type turns "OCAHSEP BLSTAGE1" into "...BLSTAGE2".
+image_asserts = [
+  { range = [0x202f, 0x2030], all = 0x32 },
+  { range = [0x1ad7, 0x1af7], differs_from = "signed" },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x1ad7], same_as = "signed" },
+  { range = [0x2030, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "NO_BL1_IMAGE",
+  "MANIFEST_ERR=0x00030102",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "LOAD=0xc0000000",
+  "COPY_SRC=0x10001138",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "BL1_ADDR_RANGE",
+  "BL1_SRAM_EXEC_DISABLED",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "PAYLOAD_LOC_FAIL",
+  "SBOOT_OFF",
+  "SPI init failed, using backup manifest",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "NO_BL1_IMAGE" = 1, "MANIFEST_ERR=0x00030102" = 1, "RSA_VERIFY_OK" = 2, "MANIFEST_OK" = 2, "PAYLOAD_OK" = 2, "BL1_COPIED" = 1, "COPY_SRC=0x10001138" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x0053", "INFO 0x0055", "ERROR 0x0014", "INFO 0x0212", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], min = 1 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload", "backup_manifest", "backup_payload"]
+markers = [
+  "A repack, not a byte patch: the packer re-seals the TOC so payload_hash, the hash chain and the signature all verify, and only the BL1 lookup can refuse the slot.",
+  "rom_bl1_check() runs inside the retry after PAYLOAD_OK, so a missing BL1 fails over instead of ending the boot; RSA_VERIFY_OK, MANIFEST_OK and PAYLOAD_OK each count 2.",
+  "bl1_locate() reports ERROR 0x0014 even on a slot the backup recovers from; the failover fence is ERROR 0x0213, not every ERROR.",
+  "SEPBL2 is pinned to match the DV member; type_matches() compares all 16 type bytes, so any other type reaches the same not-found branch.",
+  "The mutated payload still holds exactly one entry, so this says nothing about a payload with several images and no BL1 among them.",
+]
+
+[[testcase]]
+name = "sep_firmware_manifest_backup_missing_sepbl1_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "backup_missing_sepbl1"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+# The backup type differs from BLSTAGE1 only in its 16th byte, so a type compare shorter than 16 bytes would boot it.
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { range = [0x4202f, 0x42030], all = 0x32 },
+  { range = [0x42020, 0x4202f], same_as = "signed" },
+  { range = [0x41ad7, 0x41af7], differs_from = "signed" },
+  { range = [0x41e64, 0x41e84], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x41ad7], same_as = "signed" },
+  { range = [0x42030, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "NO_BL1_IMAGE",
+  "MANIFEST_ERR=0x00030102",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030102",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "BL1_ADDR_RANGE",
+  "BL1_SRAM_EXEC_DISABLED",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "DECRYPT_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030102" = 1, "OCA_BODY=0x00001000" = 1, "NO_BL1_IMAGE" = 1, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "MANIFEST_ALL_FAILED" = 1 }
+expect_status = ["INFO 0x0212", "WARN 0x0006", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "ERROR 0x0014", "ERROR 0x0213"]
+forbid_status = ["ERROR 0x0006", "INFO 0x0054"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030102"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest", "backup_payload"]
+markers = [
+  "The backup is a repack whose only TOC entry is typed OCAHSEP BLSTAGE2, the DV member's relabel; the packer re-seals it, so only the BL1 lookup can refuse the slot, and identifier, load_addr and image body stay those of the signed image.",
+  "The primary is refused on a broken magic (0x00030002, before OCA_BODY=), the DV backup bases' default breaker; the DV member uses a package-identity mismatch instead, which needs an op and cannot follow a repack. The primary refusal is the means of reaching the backup, not the subject.",
+  "0x000301xx codes skip the status_for_result() re-report, so the terminal status is ERROR 0x0014 from bl1_locate() followed by ERROR 0x0213, with no ERROR for the primary's WARN 0x0006.",
+  "The FAILED verdict and terminal_token assert the halt; they do not prove the CPU stays in the WFI loop.",
+]
+
+[[testcase]]
+name = "sep_firmware_manifest_primary_reordered_sepbl1_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "multi"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "LOAD=0xc0000000",
+  "LEN=0x00000734",
+  "ENTRY=0x00000000",
+  "BL1_DST=ICCM",
+  "COPY_SRC=0x100021d8",
+  "COPY_DST=0xc0000000",
+  "COPY_LEN=0x00000734",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "PRE_JUMP",
+  "BL1",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_ALL_FAILED",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SRAM_EXEC_DISABLED",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "COPY_SRC=0x100021d8" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x020e", "INFO 0x020f", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0014", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x390c], min = 1 },
+  { name = "primary_tail", range = [0x390c, 0x40000], exact = 0 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "primary_payload"]
+markers = [
+  "COPY_SRC is the discriminating assertion: the TOC is [BLMEMMAP, _VENDOR1, BLSTAGE1] over three copies of one binary, so a ROM that took entry 0 or 1 would still reach GO! but copy from 0x10001368 or 0x10001aa0.",
+  "0x100021d8 is the staged payload base (SEP SRAM + the 4096-byte body, already 8-byte aligned) plus entry[2].offset 0x11d8, read from the packed TOC rather than from a run.",
+  "Uses the prebuilt multi image as packed, as the DV member does; the image bodies stay in ascending offset order, so this exercises the type search, not an ordering rule.",
+  "Nothing loads the BLMEMMAP or _VENDOR1 entries; this says nothing about their handling.",
+]
+
+[[testcase]]
+name = "sep_firmware_manifest_backup_reordered_sepbl1_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "backup_reordered_sepbl1"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+# Selector bit 33 is bit 1 of byte 4; package identity byte 1 is 0xFF against an all-zero SEP_SIP_ID.
+image_asserts = [
+  { field = { name = "OFF_SELECTOR_BITS", slot = "primary", size = 8, value = 0x200000000 } },
+  { field = { name = "OFF_PACKAGE_ID", slot = "primary", size = 2, value = 0xFFA5 } },
+  { range = [0x1e64, 0x1e84], differs_from = "multi" },
+  { range = [0x0, 0x101c], same_as = "multi" },
+  { range = [0x101d, 0x1048], same_as = "multi" },
+  { range = [0x104a, 0x1c64], same_as = "multi" },
+  { range = [0x1de4, 0x1e64], same_as = "multi" },
+  { range = [0x1e84, "end"], same_as = "multi" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x00030008",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "LOAD=0xc0000000",
+  "LEN=0x00000734",
+  "COPY_SRC=0x100021d8",
+  "COPY_DST=0xc0000000",
+  "COPY_LEN=0x00000734",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "PRE_JUMP",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "NO_BL1_IMAGE",
+  "BL1_ADDR_RANGE",
+  "BL1_SRAM_EXEC_DISABLED",
+  "BL1_SIZE",
+  "BL1_ENTRY_RANGE",
+  "SBOOT_OFF",
+  "SPI init failed, using backup manifest",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030008" = 1, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1, "COPY_SRC=0x100021d8" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x0022", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0022", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x4390c], min = 1 },
+  { name = "backup_tail", range = [0x4390c, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "COPY_SRC is the discriminating assertion: the backup TOC is [BLMEMMAP, _VENDOR1, BLSTAGE1], and the backup body is staged at the same SEP SRAM base as the primary's, so BL1 is copied from 0x10001000 + entry[2].offset 0x11d8.",
+  "The primary refusal is the means of reaching the backup, not the subject; it matches the DV member's package-identity arm.",
+  "The backup payload is 0x190c bytes, so its span ends at 0x4390c rather than the single-image 0x4286c.",
+  "Nothing loads the BLMEMMAP or _VENDOR1 entries; this says nothing about their handling.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_manifest_major_version_invalid_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "primary_manifest_major_version_invalid"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "primary", size = 2, value = 2 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "primary", size = 2, value = 0 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "primary", size = 4, value = 4096 } },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x100c], same_as = "signed" },
+  { range = [0x1014, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "COPY_SRC=0x10001138",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x0003001c",
+  "NO_BL1_IMAGE",
+  "SBOOT_OFF",
+  "SPI init failed, using backup manifest",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030004" = 1, "OCA_BODY=0x00001000" = 2, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x0007", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0007", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "oca_check_format_version refuses major 2 after the trailer check and before oca_check_manifest_length; minor 0 and length 4096 are pinned at their accepting values so neither neighbour can claim the refusal.",
+  "Major 2 matches the DV member; any major above OCA_LIB_MANIFEST_MAJOR (1) reaches the same branch, and major 0 is accepted, not refused.",
+  "OCA_BODY= counts 2 and PUBK_AUTHORIZED 1, so the primary read its body and was refused before key selection.",
+  "The backup is byte-identical to the signed image, so the boot that follows is the healthy fallback rather than a second damaged image.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "signed"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "primary", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "primary", size = 2, value = 0 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "primary", size = 4, value = 4096 } },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ERR=",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "MANIFEST_ALL_FAILED",
+  "RSA_PKCS1_FAIL",
+  "PAYLOAD_LOC_FAIL",
+  "PAYLOAD_TOO_LARGE",
+  "FLASH_READ_OOB",
+  "NO_BL1_IMAGE",
+  "SBOOT_OFF",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "OCA_BODY=0x00001000" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["WARN 0x0009", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_body", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x286c], min = 1 },
+  { name = "primary_tail", range = [0x286c, 0x40000], exact = 0 },
+  { name = "backup", range = [0x40000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_body", "primary_payload"]
+markers = [
+  "Shares its bytes with rom_ot_secure_boot_golden: v1.0 with manifest_length 4096 is the packer's own output, so the fields are pinned by image_asserts rather than written.",
+  "The span bounds are the DV member's read check: every read falls in the 4096-byte body or the 0x86c-byte payload, and the backup is never read.",
+  "OCA has one length rule, manifest_length == the body size the magic selects, at every minor; there is no exact-match versus range split to accept here.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_manifest_major_version_valid_minor_0_length_incorrect_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "primary_manifest_major_version_valid_minor_0_length_incorrect"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "primary", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "primary", size = 2, value = 0 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "primary", size = 4, value = 4100 } },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x100c], same_as = "signed" },
+  { range = [0x1014, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x0003001c",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "COPY_SRC=0x10001138",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_ERR=0x0003000d",
+  "NO_BL1_IMAGE",
+  "SBOOT_OFF",
+  "SPI init failed, using backup manifest",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x0003001c" = 1, "OCA_BODY=0x00001000" = 2, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x0009", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0009", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "oca_check_manifest_length compares manifest_length with the body size the magic selects (4096 for OCAC); 4100 is body+4, the DV member's value.",
+  "The length check runs after the format-version check and before manifest_hash, so the primary prints OCA_BODY= and MFST_VER= and no PUBK_ line before its refusal.",
+  "The ROM sizes every read from the magic, never from manifest_length: primary_payload exact 0 shows nothing past the 4096-byte body was fetched.",
+  "OCA applies one length rule at every minor, so this entry and its minor-1 siblings test the same predicate from different declared lengths.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "primary_manifest_major_version_valid_minor_nonzero_length_small_incorrect"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "primary", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "primary", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "primary", size = 4, value = 4092 } },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x100c], same_as = "signed" },
+  { range = [0x1014, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x0003001c",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "COPY_SRC=0x10001138",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_ERR=0x0003000d",
+  "NO_BL1_IMAGE",
+  "SBOOT_OFF",
+  "SPI init failed, using backup manifest",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x0003001c" = 1, "OCA_BODY=0x00001000" = 2, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x0009", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0009", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "v1.1 with manifest_length 4092 (body-4), the DV member's values; a short declared length is refused by the same equality as a long one, not by a lower range bound.",
+  "OCA has no 4-byte alignment rule on manifest_length; the legacy 1185 alignment stimulus has no OCA counterpart, and 4092 is aligned.",
+  "MANIFEST_ERR=0x00030001 is forbidden so a short declared length cannot pass as a truncated buffer: the ROM hands the library the full magic-selected body.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_correct_test"
+family = "manifest_toc"
+classification = "retired"
+reason = "OCA accepts only manifest_length equal to the variant body size (oca_check_manifest_length); there is no minor-dependent range in which a length other than 4096 is accepted, so no OCA image can make this case true."
+markers = [
+  "The accept side at a non-zero minor with the body size is the same predicate as sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test.",
+]
+
+[[testcase]]
+name = "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_large_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "primary_manifest_major_version_valid_minor_nonzero_length_large"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "primary", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "primary", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "primary", size = 4, value = 36864 } },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x100c], same_as = "signed" },
+  { range = [0x1014, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x0003001c",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "COPY_SRC=0x10001138",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_ERR=0x0003000d",
+  "MANIFEST_ERR=0x00030011",
+  "MANIFEST_ERR=0x00030101",
+  "OCA_BODY=0x00009000",
+  "NO_BL1_IMAGE",
+  "SBOOT_OFF",
+  "SPI init failed, using backup manifest",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x0003001c" = 1, "OCA_BODY=0x00001000" = 2, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x0009", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0009", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "36864 is the OCAP (PQC) body size, the DV member's value: it is legal for the other variant only, so the refusal shows the rule compares against the size the OCAC magic selects, not against any known body size.",
+  "OCA_BODY=0x00001000 for both slots and the forbidden OCA_BODY=0x00009000 show the ROM sized the read from the magic; a read following the declared length would cross 0x2000 and fail the primary_manifest span bound.",
+  "MANIFEST_ERR=0x00030011 (UNSUPPORTED_VARIANT) and 0x00030101 (STAGE_OVERFLOW) are forbidden so the large length cannot be refused as a variant or staging problem.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_manifest_major_version_invalid_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "backup_manifest_major_version_invalid"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "backup", size = 2, value = 2 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "backup", size = 2, value = 0 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "backup", size = 4, value = 4096 } },
+  { range = [0x41e64, 0x41e84], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x4100c], same_as = "signed" },
+  { range = [0x41014, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x00030004",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x0003001c",
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x00030004" = 1, "OCA_BODY=0x00001000" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x00030004" = 1 }
+expect_status = ["INFO 0x0212", "WARN 0x0006", "INFO 0x0212", "INFO 0x004c", "WARN 0x0007", "ERROR 0x0007", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0053", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x00030004"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest"]
+markers = [
+  "The primary's magic is broken, as in the DV member, so oca_peek_manifest refuses it with 0x00030002 before OCA_BODY=, a code the format-version check cannot produce.",
+  "The backup's terminal code is re-reported through status_for_result() as ERROR 0x0007 before ERROR 0x0213.",
+  "backup_payload exact 0 shows the backup was refused before its payload was fetched; the console alone cannot say that.",
+  "The FAILED verdict and terminal_token assert the halt; they do not prove the CPU stays in the WFI loop.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "backup_manifest_major_version_valid_minor_0_length_correct"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "primary", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "primary", size = 2, value = 0 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "primary", size = 4, value = 4092 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "backup", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "backup", size = 2, value = 0 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "backup", size = 4, value = 4096 } },
+  { range = [0x1e64, 0x1e84], differs_from = "signed" },
+  { range = [0x0, 0x100c], same_as = "signed" },
+  { range = [0x1014, 0x1c64], same_as = "signed" },
+  { range = [0x1de4, 0x1e64], same_as = "signed" },
+  { range = [0x1e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x0003001c",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "RSA_VERIFY_OK",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "COPY_SRC=0x10001138",
+  "BL1_COPIED",
+  "BL1_JUMP=0xc0000000",
+  "GO!",
+]
+forbid = [
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_ERR=0x0003000d",
+  "NO_BL1_IMAGE",
+  "SBOOT_OFF",
+  "SPI init failed, using backup manifest",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x0003001c" = 1, "OCA_BODY=0x00001000" = 2, "PUBK_AUTHORIZED" = 1, "RSA_EXEC" = 1, "RSA_VERIFY_OK" = 1, "MANIFEST_OK" = 1, "PAYLOAD_OK" = 1, "BL1_COPIED" = 1 }
+expect_status = ["INFO 0x0212", "INFO 0x004c", "WARN 0x0009", "INFO 0x0212", "INFO 0x004c", "INFO 0x0053", "INFO 0x0055", "INFO 0x0054"]
+forbid_status = ["ERROR 0x0009", "ERROR 0x0213"]
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_manifest", range = [0x1000, 0x2000], min = 1 },
+  { name = "primary_payload", range = [0x2000, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], min = 1 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_manifest", "backup_manifest", "backup_payload"]
+markers = [
+  "One run shows the length rule refuse and accept: the v1.0 primary declares 4092 (body-4) and is refused with 0x0003001c; the v1.0 backup declares exactly 4096 and boots, as in the DV member.",
+  "The primary refusal uses the length rule itself rather than a broken identifier, so the accepted backup is the only thing that separates this entry from the primary length-incorrect siblings.",
+  "The backup is byte-identical to the signed image; its version and length are pinned by image_asserts.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_manifest_major_version_valid_minor_0_length_incorrect_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "backup_manifest_major_version_valid_minor_0_length_incorrect"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "backup", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "backup", size = 2, value = 0 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "backup", size = 4, value = 4100 } },
+  { range = [0x41e64, 0x41e84], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x4100c], same_as = "signed" },
+  { range = [0x41014, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x0003001c",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x0003001c",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x00030004",
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x0003001c" = 1, "OCA_BODY=0x00001000" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x0003001c" = 1 }
+expect_status = ["INFO 0x0212", "WARN 0x0006", "INFO 0x0212", "INFO 0x004c", "WARN 0x0009", "ERROR 0x0009", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0053", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x0003001c"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest"]
+markers = [
+  "v1.0 backup with manifest_length 4100 (body+4), the DV member's values; the primary's broken magic refuses it at the peek with a code the length check cannot produce.",
+  "The backup's terminal code is re-reported through status_for_result() as ERROR 0x0009 before ERROR 0x0213.",
+  "backup_payload exact 0 shows the backup was refused before its payload was fetched.",
+  "The FAILED verdict and terminal_token assert the halt; they do not prove the CPU stays in the WFI loop.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_correct_test"
+family = "manifest_toc"
+classification = "retired"
+reason = "OCA accepts only manifest_length equal to the variant body size (oca_check_manifest_length); there is no minor-dependent range in which a length other than 4096 is accepted, so no OCA image can make this case true."
+markers = [
+  "The backup accept side with the body size is covered by sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_large_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "backup_manifest_major_version_valid_minor_nonzero_length_large"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "backup", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "backup", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "backup", size = 4, value = 36864 } },
+  { range = [0x41e64, 0x41e84], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x4100c], same_as = "signed" },
+  { range = [0x41014, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x0003001c",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x0003001c",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x00030004",
+  "MANIFEST_ERR=0x00030011",
+  "MANIFEST_ERR=0x00030101",
+  "OCA_BODY=0x00009000",
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x0003001c" = 1, "OCA_BODY=0x00001000" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x0003001c" = 1 }
+expect_status = ["INFO 0x0212", "WARN 0x0006", "INFO 0x0212", "INFO 0x004c", "WARN 0x0009", "ERROR 0x0009", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0053", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x0003001c"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest"]
+markers = [
+  "v1.1 backup declaring 36864, the OCAP (PQC) body size, as in the DV member: legal for the other variant only, so the refusal shows the rule compares against the size the OCAC magic selects.",
+  "OCA_BODY=0x00001000 and the backup_manifest span bound show the ROM read 4096 bytes, not the declared 36864.",
+  "backup_payload exact 0 shows the backup was refused before its payload was fetched.",
+  "The FAILED verdict and terminal_token assert the halt; they do not prove the CPU stays in the WFI loop.",
+]
+
+[[testcase]]
+name = "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test"
+family = "manifest_toc"
+classification = "vp-equivalent"
+image = "backup_manifest_major_version_valid_minor_nonzero_length_small_incorrect"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "FAILED"
+pytest_markers = ["needs_debug"]
+image_asserts = [
+  { range = [0x1000, 0x1004], all = 0x99 },
+  { field = { name = "OFF_MANIFEST_VERSION_MAJOR", slot = "backup", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_VERSION_MINOR", slot = "backup", size = 2, value = 1 } },
+  { field = { name = "OFF_MANIFEST_LENGTH", slot = "backup", size = 4, value = 4092 } },
+  { range = [0x41e64, 0x41e84], differs_from = "signed" },
+  { range = [0x0, 0x1000], same_as = "signed" },
+  { range = [0x1004, 0x4100c], same_as = "signed" },
+  { range = [0x41014, 0x41c64], same_as = "signed" },
+  { range = [0x41de4, 0x41e64], same_as = "signed" },
+  { range = [0x41e84, "end"], same_as = "signed" },
+]
+expect = [
+  "LC=PROD",
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_ERR=0x00030002",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "OCA_BODY=0x00001000",
+  "MFST_VER=0x00000000",
+  "MANIFEST_ERR=0x0003001c",
+  "MANIFEST_ALL_FAILED",
+  "MANIFEST_BOOT_FAIL=0x0003001c",
+  "[VP] SIMULATION OF THE TEST FAILED",
+]
+forbid = [
+  "MANIFEST_ERR=0x00030001",
+  "MANIFEST_ERR=0x00030004",
+  "PUBK_SEL=",
+  "PUBK_AUTHORIZED",
+  "RSA_EXEC",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "BL1_JUMP=",
+  "PRE_JUMP",
+  "GO!",
+  "SBOOT_OFF",
+  "[VP] SIMULATION OF THE TEST PASSED",
+]
+expect_counts = { "MANIFEST_PRIMARY" = 1, "MANIFEST_BACKUP" = 1, "MANIFEST_ERR=0x00030002" = 1, "MANIFEST_ERR=0x0003001c" = 1, "OCA_BODY=0x00001000" = 1, "MANIFEST_ALL_FAILED" = 1, "MANIFEST_BOOT_FAIL=0x0003001c" = 1 }
+expect_status = ["INFO 0x0212", "WARN 0x0006", "INFO 0x0212", "INFO 0x004c", "WARN 0x0009", "ERROR 0x0009", "ERROR 0x0213"]
+forbid_status = ["INFO 0x0053", "INFO 0x0055"]
+terminal_token = "MANIFEST_BOOT_FAIL=0x0003001c"
+spi_reads = [
+  { name = "descriptor", range = [0x0, 0x1000], exact = 0 },
+  { name = "primary_peek", range = [0x1000, 0x1014], min = 1 },
+  { name = "primary_rest", range = [0x1014, 0x40000], exact = 0 },
+  { name = "slot_gap", range = [0x40000, 0x41000], exact = 0 },
+  { name = "backup_manifest", range = [0x41000, 0x42000], min = 1 },
+  { name = "backup_payload", range = [0x42000, 0x80000], exact = 0 },
+  { name = "beyond", range = [0x80000, 0x1000000], exact = 0 },
+]
+spi_read_order = ["primary_peek", "backup_manifest"]
+markers = [
+  "v1.1 backup with manifest_length 4092 (body-4), the DV member's values; OCA has no alignment rule, so the legacy 1185 alignment stimulus has no counterpart and the short length is refused by the equality.",
+  "MANIFEST_ERR=0x00030001 is forbidden so a short declared length cannot pass as a truncated buffer.",
+  "Both payload spans are exact 0: neither slot got as far as fetching a payload, which the console cannot show.",
+  "The FAILED verdict and terminal_token assert the halt; they do not prove the CPU stays in the WFI loop.",
+]

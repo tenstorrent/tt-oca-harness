@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Sets the primary payload_hashed_length to zero and reseals the slot, so it passes the manifest
+# stage and only the payload stage can refuse it.
+base = "signed"
+ops = [
+  { op = "set_payload_hashed_length", slot = "primary", args = { value = 0 } },
+]

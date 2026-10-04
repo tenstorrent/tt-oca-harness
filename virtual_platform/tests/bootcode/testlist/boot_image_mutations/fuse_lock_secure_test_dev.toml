@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Narrows both slots' chiplet lifecycle constraint to the one state the cell runs in.
+base = "encrypted"
+ops = [
+  { op = "set_lifecycle_constraint", slot = "primary", args = { allowed = 0x1, level = "chiplet" } },
+  { op = "set_lifecycle_constraint", slot = "backup", args = { allowed = 0x1, level = "chiplet" } },
+]
