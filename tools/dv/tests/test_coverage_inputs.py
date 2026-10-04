@@ -159,7 +159,22 @@ class RunTree(unittest.TestCase):
             self.discover()
         shutil.rmtree(self.run_dir / "t_b")
         self.leaf("t_c", 1, fingerprint="fp2")
-        with self.assertRaisesRegex(CoverageCompatibilityError, "incompatible build fingerprints"):
+        with self.assertRaisesRegex(
+            CoverageCompatibilityError,
+            r"incompatible build fingerprints: fp1, fp2; "
+            r"fp1: \S*t_a/seed_1/attempt_0/result\.json; "
+            r"fp2: \S*t_c/seed_1/attempt_0/result\.json$",
+        ):
+            self.discover()
+
+    def test_a_fingerprint_refusal_names_three_carriers_and_counts_the_rest(self):
+        for seed in range(1, 6):
+            self.leaf("t_a", seed)
+        self.leaf("t_b", 1, fingerprint="fp2")
+        with self.assertRaisesRegex(
+            CoverageCompatibilityError,
+            r"fp1: (\S*t_a/seed_\d/attempt_0/result\.json, ){3}2 more; fp2: \S*t_b/",
+        ):
             self.discover()
 
     def test_provenance_free_inputs_merge_as_one_set(self):

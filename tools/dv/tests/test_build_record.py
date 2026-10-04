@@ -27,6 +27,7 @@ from runlib.stages import (  # noqa: E402
     _file_args_fingerprint,
     _filelist_sources,
     _filelist_sources_fingerprint,
+    _read_build_record,
     _write_build_record,
 )
 
@@ -123,3 +124,25 @@ class BuildRecordDecision(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReadBuildRecord(unittest.TestCase):
+    """The record a leaf reads beside the model it runs."""
+
+    def setUp(self):
+        self.model = Path(tempfile.mkdtemp(prefix="ocah-build-record-")) / "model"
+        self.addCleanup(shutil.rmtree, self.model.parent, ignore_errors=True)
+
+    def test_no_directory_no_file_or_no_json_reads_as_no_record(self):
+        self.assertIsNone(_read_build_record(self.model))
+        self.model.mkdir()
+        self.assertIsNone(_read_build_record(self.model))
+        (self.model / BUILD_RECORD_NAME).write_text("{not json", encoding="utf-8")
+        self.assertIsNone(_read_build_record(self.model))
+        (self.model / BUILD_RECORD_NAME).write_text("[]", encoding="utf-8")
+        self.assertIsNone(_read_build_record(self.model))
+
+    def test_a_written_record_reads_back(self):
+        _write_build_record(self.model / BUILD_RECORD_NAME, "fp-one", "vcs X", False)
+        record = _read_build_record(self.model)
+        self.assertEqual((record["fingerprint"], record["tool_version"]), ("fp-one", "vcs X"))
