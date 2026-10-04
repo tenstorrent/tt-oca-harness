@@ -9,27 +9,19 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.2,
+      "coverage_total_percent": 94.85,
       "flow": "dtp",
       "framework": "cocotb",
       "pass_rate": 100.0,
-      "tests_total": 154,
+      "tests_total": 155,
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.27,
+      "coverage_total_percent": null,
       "flow": "dtp",
       "framework": "uvm",
       "pass_rate": 100.0,
-      "tests_total": 154,
-      "tool": "vcs"
-    },
-    {
-      "coverage_total_percent": 89.57,
-      "flow": "dtp",
-      "framework": "",
-      "pass_rate": 100.0,
-      "tests_total": 308,
+      "tests_total": 155,
       "tool": "vcs"
     },
     {
@@ -105,7 +97,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-03T17:38:54+00:00",
+  "generated_at": "2026-10-04T06:08:46+00:00",
   "results": [
     {
       "coverage": {
@@ -125,14 +117,14 @@
     {
       "coverage": {
         "effective_metrics": {
-          "assertion": 96.24,
-          "branch": 86.69,
-          "condition": 84.93,
-          "fsm_state": 77.79,
+          "assertion": 98.86,
+          "branch": 96.31,
+          "condition": 94.86,
+          "fsm_state": 78.53,
           "functional": 100.0,
-          "line": 94.54,
-          "toggle": 84.2,
-          "user": 99.3949
+          "line": 97.98,
+          "toggle": 97.44,
+          "user": 100.0
         }
       },
       "flow": "dtp",
@@ -141,36 +133,10 @@
     },
     {
       "coverage": {
-        "effective_metrics": {
-          "assertion": 96.24,
-          "branch": 87.38,
-          "condition": 85.16,
-          "fsm_state": 77.68,
-          "functional": 100.0,
-          "line": 95.2,
-          "toggle": 83.2,
-          "user": 99.3949
-        }
+        "effective_metrics": {}
       },
       "flow": "dtp",
       "framework": "uvm",
-      "tool": "vcs"
-    },
-    {
-      "coverage": {
-        "effective_metrics": {
-          "assertion": 96.24,
-          "branch": 87.56,
-          "condition": 85.74,
-          "fsm_state": 77.89,
-          "functional": 100.0,
-          "line": 95.32,
-          "toggle": 84.24,
-          "user": 99.3949
-        }
-      },
-      "flow": "dtp",
-      "framework": "",
       "tool": "vcs"
     },
     {
