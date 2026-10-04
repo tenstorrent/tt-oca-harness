@@ -239,9 +239,10 @@ as <code>is_primary_i</code> selects it; the enable and the 64-bit count serve b
 sync-load and credit pulses cross into <code>clk_i</code> through a flop and a <code>prim_edge_detector</code>,
 which synchronizes them with two flops and turns each rising edge into a one-cycle pulse;
 an AND gate with <code>is_primary_i</code> on its inverted input masks each pulse in PRIMARY mode.
-The enable flop is sticky: an OR gate holds it set once <code>TIMER_START.START</code> or a
-sync-load pulse has set it. In SECONDARY mode, the sync-load pulse loads the preset, a
-credit pulse moves the count to the expected count plus CREDIT_VAL, and between pulses
+The enable flop is sticky: an OR gate holds it set once a PRIMARY-mode
+<code>TIMER_START.START</code> or a sync-load pulse has set it. In SECONDARY mode, the
+sync-load pulse loads the preset, a credit pulse moves the count to the
+expected count plus CREDIT_VAL, and between pulses
 the count advances by <code>CTRL.STEP</code>, which drives the core&#8217;s <code>timer_cnt_step_i</code>, while
 credits are left. The credit tracking block holds the <code>cur_credits</code> accumulator, which
 adds STEP each cycle while it is below CREDIT_VAL (<code>credits_left</code>); the expected count,
@@ -401,7 +402,7 @@ registers. Reset release must meet the integration&#8217;s timing requirements;
 this block does not synchronize reset deassertion internally.</p>
 </div>
 <div class="paragraph">
-<p>Enable is sticky after START or a received load edge. There is no stop CSR;
+<p>Enable is sticky after a PRIMARY-mode START or a received load edge. There is no stop CSR;
 writing START=0 does not stop counting. Configure role and timing before
 starting, and use system reset when a coordinated reconfiguration is needed.</p>
 </div>
@@ -412,82 +413,47 @@ starting, and use system reset when a coordinated reconfiguration is needed.</p>
 <h2 id="system-timer-octs-interface"><a class="anchor" href="#system-timer-octs-interface"></a><a class="link" href="#system-timer-octs-interface">3. Interface</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The System Timer OCTS IP provides interfaces supporting both PRIMARY and
-SECONDARY timer modes, with flexible support for either AXI4-Lite or
-APB4 bus protocols. All interface signals operate synchronously to the
-system clock.</p>
+<p>The System Timer OCTS IP has a 32-bit AXI4-Lite register interface. The
+<code>is_primary_i</code> input selects PRIMARY or SECONDARY mode at runtime. All
+signals are synchronous to <code>clk_i</code> except <code>timer_sync_load_i</code> and
+<code>timer_cnt_credit_i</code>, which are synchronized internally as described in
+<a href="#octs-pulses">Pulse Generation and Clock Crossing</a>.</p>
 </div>
 <div class="sect2">
-<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">3.1. Configuration Parameters</a></h3>
+<h3 id="ports"><a class="anchor" href="#ports"></a><a class="link" href="#ports">3.1. Ports</a></h3>
 <div class="paragraph">
-<p>The parameters and ports of <code>system_timer_octs</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/system_timer_octs/system_timer_octs.html" class="xref page">system_timer_octs</a>.</p>
+<p>The ports of <code>system_timer_octs</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/system_timer_octs/system_timer_octs.html" class="xref page">system_timer_octs</a>.</p>
 </div>
 <div class="paragraph">
-<p>The timer configuration is described in terms of a register interface
-protocol, <code>BUS_PROTOCOL</code> (AXI4-Lite or APB4, default AXI4-Lite), an address
-bus width, <code>ADDR_WIDTH</code> (default 32, 8 bits effective), and a data bus
-width, <code>DATA_WIDTH</code> (default 32).</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Timer mode selection (PRIMARY vs SECONDARY) is controlled at runtime
-via the <code>is_primary_i</code> input signal, not through a compile-time parameter.
-</td>
-</tr>
-</table>
+<p><code>system_timer_octs</code> has no parameters. Its AXI4-Lite request and response
+types, with 32-bit address and data, are defined in <code>system_timer_octs_pkg</code>.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="test-interface"><a class="anchor" href="#test-interface"></a><a class="link" href="#test-interface">3.2. Test Interface</a></h3>
-<div class="paragraph">
-<p>The test controls are <code>test_en_i</code>, an active-high test enable for
-manufacturing test mode and debug access, and <code>scan_rst_ni</code>, an active-low
-scan reset that gives the scan chain independent reset control for
-manufacturing test and ATPG.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="octs-synchronization-interface"><a class="anchor" href="#octs-synchronization-interface"></a><a class="link" href="#octs-synchronization-interface">3.3. OCTS Synchronization Interface</a></h3>
+<h3 id="octs-synchronization-interface"><a class="anchor" href="#octs-synchronization-interface"></a><a class="link" href="#octs-synchronization-interface">3.2. OCTS Synchronization Interface</a></h3>
 <div class="paragraph">
 <p>When operating in PRIMARY mode, the timer generates synchronization
-pulses: <code>timer_sync_load_o</code> is asserted when the START register is
-written, and <code>timer_cnt_credit_o</code> is asserted periodically according to
-internal credit generation logic. Any synchronization input signals are
-ignored in PRIMARY mode. In contrast, SECONDARY mode relies on input
-from the PRIMARY: <code>timer_sync_load_i</code> directs the timer to initialize
-using a preset value, and <code>timer_cnt_credit_i</code> delivers credit pulses
-that allow continuous synchronization. In this mode, the outputs remain
-inactive.</p>
+pulses: <code>timer_sync_load_o</code> is asserted for <code>CTRL.PULSE_WIDTH</code> cycles when
+the START register is written, and <code>timer_cnt_credit_o</code> is asserted for
+<code>CTRL.PULSE_WIDTH</code> cycles every <code>CTRL.CREDIT_VAL</code> cycles. Any
+synchronization input signals are ignored in PRIMARY mode. In contrast,
+SECONDARY mode relies on input from the PRIMARY: <code>timer_sync_load_i</code>
+directs the timer to initialize using a preset value, and
+<code>timer_cnt_credit_i</code> delivers credit pulses that allow continuous
+synchronization. In this mode, the outputs remain inactive.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="timer-counter-interface"><a class="anchor" href="#timer-counter-interface"></a><a class="link" href="#timer-counter-interface">3.4. Timer Counter Interface</a></h3>
+<h3 id="timer-count"><a class="anchor" href="#timer-count"></a><a class="link" href="#timer-count">3.3. Timer Count</a></h3>
 <div class="paragraph">
-<p>The step input, <code>timer_cnt_step_i</code>, is an 8-bit value used in SECONDARY
-mode.</p>
-</div>
-<div class="paragraph">
-<p>For SECONDARY timers, the step input (<code>timer_cnt_step_i</code>) enables
-granular control over the increment rate. Typically set to 1 for a
-standard per-cycle increment, this parameter can be tuned to adjust for
-differing clock ratios or calibration needs, but is only effective when
-credits are available (i.e., when the credit counter permits counting).</p>
-</div>
-<div class="paragraph">
-<p>The timer&#8217;s count output (<code>timer_count_o</code>) provides direct and
-continuous access to the current counter value, updating every clock
-cycle while the timer is running. This value is useful for timestamping,
-monitoring, or debugging, and can also be read from the COUNT_LO and
-COUNT_HI registers.</p>
+<p><code>timer_count_o</code> is the live 64-bit count, also readable through
+<code>TIMER_COUNT_LO</code> and <code>TIMER_COUNT_HI</code>. A PRIMARY advances it by one each
+<code>clk_i</code> cycle. A SECONDARY advances it by <code>CTRL.STEP</code> each cycle while
+credits remain.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="octs-interface-timing"><a class="anchor" href="#octs-interface-timing"></a><a class="link" href="#octs-interface-timing">3.5. Timing</a></h3>
+<h3 id="octs-interface-timing"><a class="anchor" href="#octs-interface-timing"></a><a class="link" href="#octs-interface-timing">3.4. Timing</a></h3>
 <div class="paragraph">
 <p>The RTL defines no setup, hold or clock-to-output limit, maximum clock
 frequency or frequency ratio between OCTS clock domains. Clock frequency,
@@ -608,7 +574,7 @@ is in the Programmer&#8217;s Guide.</p></td>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure<br>both primary and secondary are out of reset.</td></tr>
+<tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.<br>In SECONDARY mode, the write has no effect; a secondary starts on the primary&#x27;s sync-load pulse, which is what loads its preset.<br>Ensure both primary and secondary are out of reset.</td></tr>
 </table>
 <span id="CTRL"></span><h3 id="system_timer_octs-CTRL" data-register-alias="CTRL">CTRL</h3>
 <table>
@@ -622,7 +588,7 @@ is in the Programmer&#8217;s Guide.</p></td>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>RUNNING</td><td>R</td><td>0x0</td><td>Timer is currently enabled and running</td></tr>
+<tr><td>4</td><td>RUNNING</td><td>R</td><td>0x0</td><td>Timer is enabled and its count is nonzero.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>MODE</td><td>R</td><td>0x0</td><td>Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).</td></tr>
 </table>

@@ -2506,7 +2506,8 @@ used, and establish the required pad ownership and direction.</p>
 </li>
 <li>
 <p>Write <code>TIMER_START.START = 1</code> on the primary only. Its load pulse starts
-the secondaries after propagation and synchronization delay.</p>
+the secondaries after propagation and synchronization delay. A secondary
+ignores the write.</p>
 </li>
 <li>
 <p>Check mode and count progress with a bounded wait. Inspect <code>CREDIT_EXPIRED</code>

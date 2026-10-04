@@ -658,7 +658,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">system_timer_octs_core</h1>
-<p>Run the OCTS credit-based primary/secondary timer counter.</p><p>Primary emits sync and credit; secondary consumes them and may step by timer_cnt_step_i. A primary counts up by one per cycle from the preset loaded on reg_start_i and pulses timer_cnt_credit_o every reg_credit_val_i cycles. A secondary loads the preset on a sync pulse, adds timer_cnt_step_i each cycle until the steps since the last pulse reach reg_credit_val_i, and on each credit pulse jumps to the expected count, which grows by reg_credit_val_i per pulse. Inbound pulses are synchronized into clk_i and edge detected. Once started, the timer runs until reset. Register ports are bus-agnostic. credit_expired_o counts clk_i cycles a secondary spends without credits and clears on a credit or sync pulse or on credit_expired_clr_i. timer_cnt_step_i and credit_expired_* apply in secondary mode only.</p>
+<p>Run the OCTS credit-based primary/secondary timer counter.</p><p>Primary emits sync and credit; secondary consumes them and may step by timer_cnt_step_i. A primary counts up by one per cycle from the preset loaded on reg_start_i and pulses timer_cnt_credit_o every reg_credit_val_i cycles. A secondary ignores reg_start_i and starts on a sync pulse; it loads the preset there, adds timer_cnt_step_i each cycle until the steps since the last pulse reach reg_credit_val_i, and on each credit pulse jumps to the expected count, which grows by reg_credit_val_i per pulse. Inbound pulses are synchronized into clk_i and edge detected. Once started, the timer runs until reset. Register ports are bus-agnostic. credit_expired_o counts clk_i cycles a secondary spends without credits and clears on a credit or sync pulse or on credit_expired_clr_i. timer_cnt_step_i and credit_expired_* apply in secondary mode only.</p>
 <div class="ocah-reg-html">
 <h2>Ports</h2>
 <table id="trm-table-1">
@@ -666,7 +666,7 @@
 <tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>System clock.</td></tr>
 <tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Async reset, active-low.</td></tr>
 <tr><td><code>is_primary_i</code></td><td>input</td><td><code>logic</code></td><td>Runtime primary/secondary mode select; 1 selects primary.</td></tr>
-<tr><td><code>reg_start_i</code></td><td>input</td><td><code>logic</code></td><td>Software start pulse; in primary mode loads the preset and emits timer_sync_load_o.</td></tr>
+<tr><td><code>reg_start_i</code></td><td>input</td><td><code>logic</code></td><td>Software start pulse; loads the preset and emits timer_sync_load_o. Ignored in secondary mode.</td></tr>
 <tr><td><code>reg_credit_val_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>Credit period in cycles for a primary and count advance per credit pulse for a secondary; must exceed the pulse width.</td></tr>
 <tr><td><code>reg_preset_lo_i</code></td><td>input</td><td><code>logic [DataWidth-1:0]</code></td><td>Preset count low half.</td></tr>
 <tr><td><code>reg_preset_hi_i</code></td><td>input</td><td><code>logic [DataWidth-1:0]</code></td><td>Preset count high half.</td></tr>
