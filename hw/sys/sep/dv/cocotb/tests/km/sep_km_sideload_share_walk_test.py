@@ -58,7 +58,9 @@ Checkers (``r`` is the round, 1 or 2):
                 clear, so each is graded alone: after the shred only D is
                 delivered again and the read must fail (Z is clear); after a
                 second shred only Z is delivered again and the read must fail
-                (D is clear). The engine STATUS is logged, not graded: no SEP
+                (D is clear). Each single-half leg then delivers the other half
+                too and the read must complete, so the re-delivered half is
+                shown valid. The engine STATUS is logged, not graded: no SEP
                 document states it
   CHK-KMAC-CLR  a keyed operation on the delivered key with KEY_VALID clear
                 raises kmac_err with a non-zero ERR_CODE (doc/kmac.adoc). Both
@@ -700,10 +702,13 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             await zeroize(what=f"CHK-ABR-CLR-{tag} {name} recover")
 
         # D and Z one at a time: deliver one of them again, so the D||Z read
-        # can only fail on the other one's KEY_VALID.
-        for again, other in (
-            (KM_DEST_ABR_MLKEM_SEED_D, "Z"),
-            (KM_DEST_ABR_MLKEM_SEED_Z, "D"),
+        # can only fail on the other one's KEY_VALID. Then deliver the other one
+        # too and require the read to complete: that is the control that the
+        # first delivery made its half valid again, so the failure belongs to
+        # the shredded half and not to a re-transfer that set nothing.
+        for again, other, other_dest in (
+            (KM_DEST_ABR_MLKEM_SEED_D, "Z", KM_DEST_ABR_MLKEM_SEED_Z),
+            (KM_DEST_ABR_MLKEM_SEED_Z, "D", KM_DEST_ABR_MLKEM_SEED_D),
         ):
             if again == KM_DEST_ABR_MLKEM_SEED_Z:
                 await self._shred_all(r)
@@ -719,15 +724,34 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 f"the shred, the D||Z KV read reports ERROR={err} (status 0x{st:08x}), "
                 f"expected KV_READ_FAIL={KV_READ_FAIL}: the shred left {other} KEY_VALID set"
             )
+            await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} recover")
+            await self._transfer(r, self.handles[r][other_dest], other_dest)
+            st_ok, err_ok = await self._kv_read(
+                MLKEM_KV_SEED_RD_CTRL,
+                MLKEM_KV_SEED_RD_STATUS,
+                what=f"CHK-ABR-CLR-{tag} {DEST_NAME[again]} then {DEST_NAME[other_dest]}",
+            )
+            assert err_ok == KV_SUCCESS and kv_status_field(st_ok, "VALID") == 1, (
+                f"CHK-ABR-CLR-{tag} FAIL: with {DEST_NAME[again]} and then "
+                f"{DEST_NAME[other_dest]} delivered again, the D||Z KV read did not complete "
+                f"(status 0x{st_ok:08x} ERROR={err_ok}): the {DEST_NAME[again]} delivery did "
+                "not make its half valid, so the failed read above is not attributable to "
+                f"the shredded {other}"
+            )
             self.logger.info(
                 "CHK-ABR-CLR-%d PASS: only %s delivered again, D||Z KV read status 0x%08x "
-                "(ERROR=KV_READ_FAIL): the shred cleared %s",
+                "(ERROR=KV_READ_FAIL): the shred cleared %s; with %s delivered too the read "
+                "completes, status 0x%08x (VALID, ERROR=SUCCESS)",
                 tag,
                 DEST_NAME[again],
                 st,
                 other,
+                DEST_NAME[other_dest],
+                st_ok,
             )
-            await self._mlkem_zeroize(what=f"CHK-ABR-CLR-{tag} only {DEST_NAME[again]} recover")
+            await self._mlkem_zeroize(
+                what=f"CHK-ABR-CLR-{tag} {DEST_NAME[again]} then {DEST_NAME[other_dest]} recover"
+            )
         # Leave every destination shredded, as the round expects.
         await self._shred_all(r)
 
