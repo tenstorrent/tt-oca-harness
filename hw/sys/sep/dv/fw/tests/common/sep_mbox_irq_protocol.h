@@ -198,7 +198,7 @@
  * .sym; cookie ->
  * first data word at the SRAM base in out/test.preload.hex). Re-verify after any fw/linker change.
  */
-#define SMU015_SMC_ENTRY 0x00000000C00601B2    /* RECONCILE vs built image */
+#define SMU015_SMC_ENTRY 0x00000000C00601BE    /* RECONCILE vs built image */
 #define SMU015_SMC_IMAGE_FIRST_WORD 0x41014081 /* RECONCILE vs built image */
 
 #endif /* SEP_MBOX_IRQ_PROTOCOL_H */

@@ -36,7 +36,7 @@
 #define SMU_STALL_SMC_SRAM_BASE_ALIAS 0x40060000  /* SEP-view of SMC SRAM base */
 #define SMU_STALL_SMC_IMAGE_FIRST_WORD 0x41014081 /* exact preload cookie (SRAM[0]) */
 #define SMU_STALL_S0_FAIL 0x00460FA1              /* SEP->scratch3: preload never landed */
-#define SMU_STALL_SMC_ENTRY 0x00000000C00601B2ULL /* RECONCILE vs built image */
+#define SMU_STALL_SMC_ENTRY 0x00000000C00601BEULL /* RECONCILE vs built image */
 #define SMU_STALL_RESET_VECTOR_ALIAS 0x40039000   /* SEP-view of SMC RESET_VECTOR_0 */
 #define SMU_STALL_RESET_CTRL_ALIAS 0x40039020     /* SEP-view of SMC RESET_CTRL */
 #define SMU_STALL_RESET_CTRL_PULSE \

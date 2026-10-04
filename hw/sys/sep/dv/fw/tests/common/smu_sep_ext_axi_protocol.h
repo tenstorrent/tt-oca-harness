@@ -82,7 +82,7 @@
 /* ---- Built SMC image drift guards ----
  * The SEP firmware uses these to re-vector/release the SMC, while cocotb independently checks
  * them against the freshly built test.dis/test.preload.hex before loading the image. */
-#define EXTAXI_SMC_ENTRY 0xC00601B2 /* RECONCILE vs built image */
+#define EXTAXI_SMC_ENTRY 0xC00601BE /* RECONCILE vs built image */
 #define EXTAXI_SMC_IMAGE_FIRST_WORD 0x41014081
 
 /* ---- Aperture goldens (each firmware programs + reads back its OWN) ----
