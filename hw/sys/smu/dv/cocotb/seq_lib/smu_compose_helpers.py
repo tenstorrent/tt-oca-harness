@@ -3,24 +3,21 @@
 """Helpers shared by the SMU composition and bring-up sequences.
 
 The expected values the composition leaves compare against live here, each
-with the specification it is transcribed from. Two kinds of constant appear
-below and they do not carry the same weight:
-
-* A constant with a specification cite -- ``doc/integrator/src/smu.adoc``,
-  the SMU, SMC, SEP and DTP port tables, the SMC interrupt and fabric
-  documents, the SEP security-disable document, or a generated register
-  header -- is a golden. A compare against it may carry an evidence token.
-* A constant in the drift tables has no specification in this tree. It
-  records what the boundary elaborated to when it was recorded, so a compare
-  against it detects unintended change and proves no requirement. No compare
-  built on a drift constant carries an evidence token, and the plan cards say
-  which compares those are.
+with the specification it is transcribed from: ``doc/integrator/src/smu.adoc``
+and ``doc/integrator/src/smu-smc.adoc``, the SMU, SMC, SEP and DTP port
+tables, the SMC interrupt and fabric documents, the SEP security-disable
+document, or a generated register header. A value no specification in this
+tree states is not compared: the SMN crossbar's transaction-ID and user
+widths, the SEP inbound ID width, the packed layout of the crossbar's channel
+structs and the packed layout of the SMU build-configuration struct are read
+from the elaboration alone, and a compare against a recorded elaboration
+proves no requirement.
 
 The sections the cites name: "SMU Default Parameters", "Cross Trigger
-Parameters", "JTAG Configuration Parameters", "Pipeline Depth Parameters",
-"AXI Interface Configuration" and "Debug & Test Ports (DTP) Integration" in
-``doc/integrator/src/smu.adoc``; the "SMU Port Declaration" table in
-``hw/sys/smu/doc/port_table.adoc``.
+Parameters", "JTAG Configuration Parameters", "Pipeline Depth Parameters" and
+"Debug & Test Ports (DTP) Integration" in ``doc/integrator/src/smu.adoc``;
+"AXI Interface Configuration" in ``doc/integrator/src/smu-smc.adoc``; the
+"SMU Port Declaration" table in ``hw/sys/smu/doc/port_table.adoc``.
 """
 
 from __future__ import annotations
@@ -30,13 +27,12 @@ from typing import Any
 from cocotb.triggers import Timer
 
 # doc/integrator/src/smu.adoc "SMU Default Parameters" and "Cross Trigger
-# Parameters": 16 external CTPs, 8 SMU-exposed internal CT lanes, 8 SMU-exposed
-# clock-stop requests, and a 32-bit mode vector of which the low
-# XTRIG_NUM_INT_CT bits are consumed.
+# Parameters": 16 external CTPs, 8 SMU-exposed internal CT lanes and 8
+# SMU-exposed clock-stop requests; the low XTRIG_NUM_INT_CT bits of the mode
+# vector are the ones consumed.
 XTRIG_NUM_CTP = 16
 XTRIG_NUM_INT_CT = 8
 XTRIG_NUM_CLK_STOP_REQ = 8
-XTRIG_INT_CT_MODE_WIDTH = 32
 # doc/integrator/src/smu.adoc "Debug & Test Ports (DTP) Integration": the DTP
 # carries 10 internal CTs and 9 clock-stop requests, 8 and 8 of them exposed;
 # the lanes below the exposed ones are the SMC reservation, held in pulse-sync
@@ -58,9 +54,10 @@ LCC_DEMOTE_WIDTH = 2
 # hw/sys/smu/doc/port_table.adoc `ss_reset_ctrl_o` and `isolate_req_o`: 32
 # subsystems.
 NUM_SUBSYSTEMS = 32
-# doc/integrator/src/smu.adoc "AXI Interface Configuration" and
-# hw/sys/smc/doc/port_table.adoc `sys_axi_in_req_i`: 6-bit transaction IDs on
-# the SMC system AXI input, the port the crossbar's SMC leg lands on.
+# doc/integrator/src/smu-smc.adoc "AXI Interface Configuration" (`sys_axi_in`
+# "uses a 56-bit address space with 64-bit data width and 6-bit transaction
+# IDs") and hw/sys/smc/doc/port_table.adoc `sys_axi_in_req_i`: the SMC system
+# AXI input, the port the crossbar's SMC leg lands on.
 SMC_SYS_IN_ID_WIDTH = 6
 # hw/sys/sep/doc/security_disable.adoc: the security-disable token is a
 # 256-bit value.
@@ -73,157 +70,6 @@ SMC_OTP_PL_DEPTH = 3
 # doc/integrator/src/smu.adoc "JTAG Configuration Parameters": one extra STAP,
 # and the extra-STAP port arrays are as wide as the parameter.
 JTAG_NUM_EXTRA_STAPS = 1
-
-# Drift table: no specification in this tree states the SMN crossbar's
-# transaction-ID widths, the user sideband it carries, the SEP inbound ID
-# width, or the packed layout of the crossbar's channel structs. The address
-# and data widths match the `axi_56_64_req_t` type name port_table.adoc gives
-# the SMN inbound port; the rest is the recorded elaboration.
-XBAR_ADDR_WIDTH = 56
-XBAR_DATA_WIDTH = 64
-XBAR_USER_WIDTH = 12
-SMN_IN_ID_WIDTH = 8
-SMN_OUT_ID_WIDTH = 10
-SEP_IN_ID_WIDTH = 6
-
-# AMBA AXI4 channel field widths: AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE,
-# AxPROT, AxQOS, AxREGION, xRESP, xLAST. The 6-bit atomic-operation field on
-# the AW channel and the per-channel valid/ready and user bits are part of the
-# drift table above.
-_AXI_LEN = 8
-_AXI_SIZE = 3
-_AXI_BURST = 2
-_AXI_LOCK = 1
-_AXI_CACHE = 4
-_AXI_PROT = 3
-_AXI_QOS = 4
-_AXI_REGION = 4
-_AXI_RESP = 2
-_AXI_LAST = 1
-_AXI_ATOP = 6
-_AXI_AX_COMMON = (
-    XBAR_ADDR_WIDTH
-    + _AXI_LEN
-    + _AXI_SIZE
-    + _AXI_BURST
-    + _AXI_LOCK
-    + _AXI_CACHE
-    + _AXI_PROT
-    + _AXI_QOS
-    + _AXI_REGION
-    + XBAR_USER_WIDTH
-)
-
-
-def axi_req_bits(id_width: int) -> int:
-    """Packed width of a crossbar request struct for one ID width (drift table)."""
-    aw = id_width + _AXI_AX_COMMON + _AXI_ATOP
-    w = XBAR_DATA_WIDTH + XBAR_DATA_WIDTH // 8 + _AXI_LAST + XBAR_USER_WIDTH
-    ar = id_width + _AXI_AX_COMMON
-    return aw + 1 + w + 1 + 1 + ar + 1 + 1
-
-
-def axi_resp_bits(id_width: int) -> int:
-    """Packed width of a crossbar response struct for one ID width (drift table)."""
-    b = id_width + _AXI_RESP + XBAR_USER_WIDTH
-    r = id_width + XBAR_DATA_WIDTH + _AXI_RESP + _AXI_LAST + XBAR_USER_WIDTH
-    return 1 + 1 + 1 + 1 + b + 1 + r
-
-
-# Drift table: no specification in this tree states the packed field order or
-# the field widths of the SMU build-configuration struct. Decoding an
-# elaborated `CFG` with this layout and comparing the fields detects unintended
-# change in the elaborated build parameters and proves no requirement; no
-# compare that goes through `decode_cfg` carries an evidence token.
-CFG_LAYOUT: tuple[tuple[str, int], ...] = (
-    ("NUM_INT_TO_SMC", 32),
-    ("JTAG_BSR_ENABLE", 1),
-    ("JTAG_EXTEST_TRAIN_ENABLE", 1),
-    ("JTAG_EXTEST_PULSE_ENABLE", 1),
-    ("JTAG_INTEST_ENABLE", 1),
-    ("JTAG_CLAMP_ENABLE", 1),
-    ("JTAG_HIGHZ_ENABLE", 1),
-    ("JTAG_RUNBIST_ENABLE", 1),
-    ("JTAG_TMP_ENABLE", 1),
-    ("JTAG_IC_RESET_ENABLE", 1),
-    ("JTAG_SMC_DBG_ENABLE", 1),
-    ("JTAG_STAP_IO_ENABLE", 1),
-    ("JTAG_NUM_EXTRA_STAPS", 32),
-    ("JTAG_IDCODE_MFR_ID", 11),
-    ("JTAG_IDCODE_PART_NUM", 16),
-    ("JTAG_IDCODE_SI_REV", 4),
-    ("JTAG_OCH_VER", 8),
-    ("XTRIG_NUM_CTP", 32),
-    ("XTRIG_NUM_INT_CT", 32),
-    ("XTRIG_NUM_CLK_STOP_REQ", 32),
-    ("XTRIG_INT_CT_MODE", XTRIG_INT_CT_MODE_WIDTH),
-    ("SMC_OTP_RD_PL_DEPTH", 2),
-    ("SMC_OTP_WR_PL_DEPTH", 2),
-    ("SMC_RD_PL_DEPTH", 2),
-    ("SMC_WR_PL_DEPTH", 2),
-    ("MAX_TRANS", 32),
-    ("SMC_EFUSE_SHIM_SIZE", 32),
-    ("SEP", 1),
-    ("SEP_EFUSE_SHIM_SIZE", 32),
-    ("SEP_SEC_DISABLE_TOKEN", SEP_SEC_DISABLE_TOKEN_WIDTH),
-    ("EXT_TRNG_NUM_AXIS", 32),
-    ("SEP_KM_LATCHED_MEM_RDATA", 1),
-    ("SEP_ABR_MASKING_EN", 1),
-    ("SEP_ABR_SRAM_LATENCY", 32),
-)
-CFG_TOTAL_BITS = sum(width for _, width in CFG_LAYOUT)
-
-# doc/integrator/src/smu.adoc "SMU Default Parameters", field for field, with
-# NUM_INT_TO_SMC from the SMC port it sizes, MAX_TRANS from the GPIO row of
-# hw/sys/smc/doc/periphs.adoc "SMC Peripheral Parameter Overrides", and the two
-# eFuse shim sizes from doc/integrator/src/smu-smc.adoc "SHIM control address
-# window". XTRIG_INT_CT_MODE, SEP and SEP_SEC_DISABLE_TOKEN are absent because
-# the wrapper testbench elaborates them and the leaf supplies those
-# expectations, from +xtrig_int_ct_mode, +expected_sep and the digest the bench
-# binds; SEP_KM_LATCHED_MEM_RDATA and EXT_TRNG_NUM_AXIS are absent because no
-# specification states their defaults, so they are decoded and logged, not
-# compared.
-CFG_SPEC_DEFAULTS: dict[str, int] = {
-    "NUM_INT_TO_SMC": NUM_INT_TO_SMC,
-    "JTAG_BSR_ENABLE": 1,
-    "JTAG_EXTEST_TRAIN_ENABLE": 1,
-    "JTAG_EXTEST_PULSE_ENABLE": 1,
-    "JTAG_INTEST_ENABLE": 1,
-    "JTAG_CLAMP_ENABLE": 1,
-    "JTAG_HIGHZ_ENABLE": 1,
-    "JTAG_RUNBIST_ENABLE": 1,
-    "JTAG_TMP_ENABLE": 1,
-    "JTAG_IC_RESET_ENABLE": 1,
-    "JTAG_SMC_DBG_ENABLE": 1,
-    "JTAG_STAP_IO_ENABLE": 1,
-    "JTAG_NUM_EXTRA_STAPS": JTAG_NUM_EXTRA_STAPS,
-    "JTAG_IDCODE_MFR_ID": 0,
-    "JTAG_IDCODE_PART_NUM": 0,
-    "JTAG_IDCODE_SI_REV": 0,
-    "JTAG_OCH_VER": 0,
-    "XTRIG_NUM_CTP": XTRIG_NUM_CTP,
-    "XTRIG_NUM_INT_CT": XTRIG_NUM_INT_CT,
-    "XTRIG_NUM_CLK_STOP_REQ": XTRIG_NUM_CLK_STOP_REQ,
-    "SMC_OTP_RD_PL_DEPTH": SMC_OTP_PL_DEPTH,
-    "SMC_OTP_WR_PL_DEPTH": SMC_OTP_PL_DEPTH,
-    "SMC_RD_PL_DEPTH": 3,
-    "SMC_WR_PL_DEPTH": 3,
-    "MAX_TRANS": 2,
-    "SMC_EFUSE_SHIM_SIZE": 0x4,
-    "SEP_EFUSE_SHIM_SIZE": 0x4,
-    "SEP_ABR_MASKING_EN": 1,
-    "SEP_ABR_SRAM_LATENCY": 1,
-}
-
-
-def decode_cfg(raw: int) -> dict[str, int]:
-    """Split an elaborated build-configuration value into its named fields."""
-    fields: dict[str, int] = {}
-    shift = CFG_TOTAL_BITS
-    for name, width in CFG_LAYOUT:
-        shift -= width
-        fields[name] = (raw >> shift) & ((1 << width) - 1)
-    return fields
 
 
 def sample(signal: Any, name: str, *, allow_xz: bool = False) -> int:

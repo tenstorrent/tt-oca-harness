@@ -10,10 +10,10 @@ internal CT lanes, 10 at the DTP, the low 2 reserved for the SMC with their
 mode bits at zero. Those counts are the golden of the tokened S1 mask compare
 and the set of lanes the live leg walks.
 
-Reading the vector back and comparing it against the elaborated CFG field, or
-against the +xtrig_int_ct_mode the same build was elaborated with, is a drift
-check on the elaboration: both sides come from the build, so no RTL defect can
-separate them. Those compares carry no evidence token.
+Reading the vector back at the DTP against the +xtrig_int_ct_mode the bench
+elaborated the build with is a plumbing compare: it carries no evidence token,
+and it does not decode CFG, whose packed layout no specification in this tree
+states.
 
 The evidence is the live leg. Each external CTM lane is requested in turn and
 the ack pins are sampled: port_table.adoc states the ack ports are "Unused in
@@ -33,7 +33,6 @@ from seq_lib.smu_compose_helpers import (
     XTRIG_NUM_INT_CT,
     XTRIG_SMC_INT_CT_LANES,
     bit_width,
-    decode_cfg,
     hier,
     parse_plusarg_int,
     sample,
@@ -81,16 +80,10 @@ class smu_xtrig_mode_composition_seq:
             0,
             evidence="CHK-SMU-XTRIG-MODE-S1",
         )
-        cfg_fields = decode_cfg(sample(hier(smu, "CFG"), "smu.CFG"))
         sb.expect_eq(
-            "elaborated CFG.XTRIG_INT_CT_MODE drift against +xtrig_int_ct_mode",
-            cfg_fields["XTRIG_INT_CT_MODE"],
-            mode_contract,
-        )
-        sb.expect_eq(
-            "mode bits above the SMC reservation presented to DTP are CFG.XTRIG_INT_CT_MODE unmodified",
+            "mode bits above the SMC reservation presented to DTP are +xtrig_int_ct_mode",
             dtp_mode >> XTRIG_SMC_INT_CT_LANES,
-            cfg_fields["XTRIG_INT_CT_MODE"] & ((1 << XTRIG_NUM_INT_CT) - 1),
+            mode_contract & ((1 << XTRIG_NUM_INT_CT) - 1),
         )
         self.log.info("DTP mode vector 0x%03x = {0x%02x, 2'b00}", dtp_mode, mode_contract)
 
