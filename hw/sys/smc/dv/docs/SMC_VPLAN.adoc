@@ -246,7 +246,7 @@ feature rows.
 |`smc_sideband_protocol_smoke_test` |Run the AVSBus sideband CSR representative precheck.
 |`smc_telemetry_atb_capture_test` |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
 |`smc_telemetry_receiver_csr_test` |U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
-|`smc_wdt_key_csr_test` |CMP writes are gated by the KEY magic value, proven per core.
+|`smc_wdt_key_csr_test` |WDT writes are gated by the KEY magic value, COUNT_HI re-locks, and narrow writes are dropped, proven per core.
 |`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |Run zeroer over output-fabric payload bytes and check the model.
 |`smc_zeroer_multi_burst_test` |Clear a region larger than one AXI burst and check the first and last word of each half, with a witness word past the end.
@@ -1241,12 +1241,14 @@ Drive `smc_telemetry_receiver_csr_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: CMP writes are gated by the KEY magic value, proven per core.
+*Objective*: WDT writes are gated by the KEY magic value, COUNT_HI re-locks, and narrow writes are dropped, proven per core.
 
 *Test Coverage*:
 
 * **negative leg** -- write `CMP` with the block LOCKED; `CMP` must still read its generated reset `0x1000`;
 * **positive leg** -- write `KEY = 0x51F15E`, confirm `KEY` reads 1, write the same `CMP` probe, and require the exact probe back.
+* **COUNT_HI leg** -- `COUNT_HI` at 0xC reads 0. With the block unlocked, a 32-bit write to it leaves `COUNT` at 0 and makes `KEY` read 0.
+* **write-width leg** -- with the block unlocked, a 1-byte write to `CMP` answers OKAY, leaves `CMP` at reset and `KEY` at 1; a 2-byte write of the probe then reads back exactly and re-locks. A 1-byte write to `CTRL` byte 0 sets `wdogscale` and re-locks.
 
 *Test Procedure*:
 
@@ -1259,10 +1261,12 @@ Drive `smc_wdt_key_csr_test_seq`. Each checker below is a named compare the DUT 
 |===
 |Checker |Description
 |`CHK-WDT-KEY-PROTOCOL` |Named compare in `smc_wdt_key_csr_test_seq.py`; the run fails if it mismatches
+|`CHK-WDT-COUNTHI-RELOCK` |Named compare in `smc_wdt_key_csr_test_seq.py`; the run fails if it mismatches
+|`CHK-WDT-WRITE-WIDTH` |Named compare in `smc_wdt_key_csr_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-WDT-KEY-PROTOCOL` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-WDT-KEY-PROTOCOL`, `CHK-WDT-COUNTHI-RELOCK` and `CHK-WDT-WRITE-WIDTH` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-019-smc_wdt_timeout_pin_test]]

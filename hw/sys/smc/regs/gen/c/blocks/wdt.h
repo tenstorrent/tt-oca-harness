@@ -83,6 +83,18 @@ typedef union {
     uint32_t w;
 } wdt__COUNT_t;
 
+// reg - wdt::COUNT_HI
+#define WDT__COUNT_HI__WDOGCOUNTHI_bm 0xffffffff
+#define WDT__COUNT_HI__WDOGCOUNTHI_bp 0
+#define WDT__COUNT_HI__WDOGCOUNTHI_bw 32
+#define WDT__COUNT_HI__WDOGCOUNTHI_reset 0x0
+typedef union {
+    struct __attribute__ ((__packed__)) {
+        uint32_t wdogcounthi :32;
+    } f;
+    uint32_t w;
+} wdt__COUNT_HI_t;
+
 // reg - wdt::SCALED_COUNT
 #define WDT__SCALED_COUNT__WDOGS_bm 0xffff
 #define WDT__SCALED_COUNT__WDOGS_bp 0
@@ -138,7 +150,7 @@ typedef struct __attribute__ ((__packed__)) {
     wdt__CTRL_t CTRL;
     uint8_t RESERVED_4_7[0x4];
     wdt__COUNT_t COUNT;
-    uint8_t RESERVED_c_f[0x4];
+    wdt__COUNT_HI_t COUNT_HI;
     wdt__SCALED_COUNT_t SCALED_COUNT;
     uint8_t RESERVED_14_17[0x4];
     wdt__FEED_t FEED;
