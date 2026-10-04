@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-03T17:38:54+00:00",
+  "generated_at": "2026-10-04T13:18:52+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -911,6 +911,72 @@
         }
       ],
       "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 125,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-10-04T13:18:52+00:00",
+      "id": "404f4bd0413c88b2",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-5d4940d1570bb64c",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 100.0,
+            "branch": 100.0,
+            "condition": 100.0,
+            "functional": 100.0,
+            "line": 100.0,
+            "toggle": 99.34,
+            "user": 100.0
+          },
+          "flow": "smu",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "assertion": 100.0,
+            "branch": 50.0,
+            "condition": 40.0,
+            "functional": 70.0,
+            "line": 75.0,
+            "toggle": 66.83,
+            "user": 100.0
+          },
+          "status": "FAIL",
+          "target": "compile_smu_chiplet",
+          "threshold_met": true,
+          "tool": "vcs"
+        },
+        {
+          "comparison_key": null,
+          "coverage_status": "ERROR",
+          "effective_metrics": {},
+          "flow": "smu",
+          "framework": "uvm",
+          "holes_summary": {
+            "details_available": false
+          },
+          "raw_metrics": {},
+          "status": "FAIL",
+          "target": null,
+          "threshold_met": null,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 0.0
     }
   ],
   "schema_version": "0.2"
