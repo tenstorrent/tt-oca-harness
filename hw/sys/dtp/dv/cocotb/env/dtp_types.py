@@ -334,6 +334,9 @@ RESET_COUNT_CHECK_ID = "CHK-RESET-COUNT"
 ABORT_MIDFLIGHT_CHECK_ID = "CHK-J2A-ABORT-MIDFLIGHT"
 ABORT_FSM_CHECK_ID = "CHK-J2A-ABORT-FSM"
 CDC_CLEAR_CHECK_ID = "CHK-J2A-CDC-CLEAR"
+# A reset placed inside a CDC clear sequence lands in the phase the scenario
+# selected: the dtp_tb_if phase observable is set at the deposit.
+CDC_PHASE_CHECK_ID = "CHK-J2A-CDC-PHASE"
 ABORT_ESCAPE_CHECK_ID = "CHK-J2A-ABORT-ESCAPE"
 ABORT_RECOVERY_CHECK_ID = "CHK-J2A-ABORT-RECOVERY"
 # TCK-side clear evidence with a request held on the fabric: the held request

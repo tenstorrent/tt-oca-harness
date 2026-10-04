@@ -2002,6 +2002,23 @@ module dtp_uvm_top
   assign u_tb_if.sep_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk;
   assign u_tb_if.sep_otp_cdc_clear_seen = sep_otp_cdc_clear_seen;
 
+  // Phase of the CDC clear sequences, read from the smc_axi bridge's AW
+  // crossing, whose reset controller clocks half_a with TCK and half_b with
+  // the system clock. The bridges' controllers run in lockstep (dtp_tb_if),
+  // so this crossing stands for every crossing of every bridge.
+  assign u_tb_if.j2a_cdc_aclk_clear =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.initiator_state_q.name() == "CLEAR");
+  assign u_tb_if.j2a_cdc_aclk_wait_clear_phase_ack =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.initiator_state_q.name() == "WAIT_CLEAR_PHASE_ACK");
+  assign u_tb_if.j2a_cdc_aclk_post_clear =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.initiator_state_q.name() == "POST_CLEAR");
+  assign u_tb_if.j2a_cdc_aclk_finished =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.initiator_state_q.name() == "FINISHED");
+  assign u_tb_if.j2a_cdc_tck_dst_wait_ack =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_a.i_state_transition_cdc_dst.state_q.name() == "WAIT_DOWNSTREAM_ACK");
+  assign u_tb_if.j2a_cdc_aclk_dst_wait_ack =
+      (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_aw.i_cdc_reset_ctrlr.i_cdc_reset_ctrlr_half_b.i_state_transition_cdc_dst.state_q.name() == "WAIT_DOWNSTREAM_ACK");
+
   // XTRIG CSR AXI-Lite initiator: the shared ocah_axi_vip master (SV-UVM
   // agent or cocotb BFM) drives the CSR port (the initiator mirror of the
   // slave-port pattern: the master drives the request-side signals on the

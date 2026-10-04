@@ -22,6 +22,7 @@ from env.dtp_types import (
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
     DtpJtagInstr,
+    DtpTapState,
     get_jtag2axi_target,
     pack_series_ctrl,
     pack_series_data,
@@ -986,6 +987,37 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             self.scoreboard_arm_strobes(target, wstrb, addr, context="single_op")
         value = pack_single_op(op, addr, data, wstrb=wstrb, size=size, target=cfg)
         await self.write_tdr(cfg.single_op_reg, value)
+
+    async def scan_target_single_to_update_dr(
+        self,
+        target: str,
+        op: DtpJtag2AxiOp,
+        addr: int,
+        *,
+        data: int = 0,
+        wstrb: int = 0,
+        size: int | None = None,
+    ) -> None:
+        """Load the target's SINGLE_OP instruction and shift ``op`` in as raw TMS
+        steps that stop with the TAP in Update-DR and TCK idle.
+
+        The bridge latches the operation on the TCK edge that leaves Update-DR,
+        so the caller's next TCK step is the edge that launches it. No stimulus
+        intent is armed: the caller discards the operation before it reaches
+        the bus.
+        """
+        cfg = self.target_cfg(target)
+        size = cfg.default_size if size is None else size
+        value = pack_single_op(op, addr, data, wstrb=wstrb, size=size, target=cfg)
+        await self.load_ir(DtpJtagInstr[cfg.single_op_reg])
+        for tms in (1, 0, 0):
+            await self.tms_step(tms)
+        for bit_idx in range(cfg.single_op_len):
+            await self.tms_step(int(bit_idx == cfg.single_op_len - 1), tdi=(value >> bit_idx) & 1)
+        item = await self.tms_step(1)
+        self.assert_equal(
+            f"{target}.single_op_held_in_update_dr", item.result, DtpTapState.UPDATE_DR
+        )
 
     async def poll_target_single_status(self, target: str) -> tuple[int, int]:
         """Poll a target SINGLE_OP TDR until the bridge reports not-busy.

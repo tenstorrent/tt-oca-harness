@@ -8,7 +8,10 @@
 // through dtp_tb_if, then a second pulse once the first clear has
 // completed; the FSM's return to IDLE, both CDC TCK-side clears, the
 // absence of an escaped write, and the recovery status are recorded per
-// bridge. Then a SINGLE_OP read or write held on the fabric by a responder
+// bridge. A pulse then lands with the TAP holding Update-DR of a SINGLE_OP
+// on every bridge, a write then a read: the CDC's clear returns the state
+// machine from its address state with no request on the port, and SINGLE_OP
+// reads DECERR. Then a SINGLE_OP read or write held on the fabric by a responder
 // READY stall across a TCK-side clear (TRST, or a TMS walk into
 // Test-Logic-Reset), released inside the clear, after it, after it with a
 // request of the new session queued behind it, or a swept number of system

@@ -8,12 +8,14 @@ from dataclasses import dataclass
 from enum import Enum
 
 import cocotb
+from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
 from env.dtp_types import (
     ABORT_ESCAPE_CHECK_ID,
     ABORT_FSM_CHECK_ID,
     ABORT_MIDFLIGHT_CHECK_ID,
     ABORT_RECOVERY_CHECK_ID,
     CDC_CLEAR_CHECK_ID,
+    CDC_PHASE_CHECK_ID,
     FAULT_STATUS_CHECK_ID,
     ORPHAN_DISCARD_CHECK_ID,
     ORPHAN_DRAIN_CHECK_ID,
@@ -90,6 +92,32 @@ ORPHAN_ALIGN_SPAN = 6
 ORPHAN_SLOT_STRIDE = 3
 # Negative validation: flips bit 0 of every CHK-J2A-ORPHAN-* expectation.
 ORPHAN_NEGATIVE_KNOB = "DTP_J2A_ORPHAN_NEGATIVE"
+# Phases of the ACLK-side clear sequence a system reset is placed in while the
+# sequence runs: a bridge's pass takes the phase at its loop index plus the
+# scenario seed, so the passes visit every phase on every bridge.
+B2B_CLEAR_PHASES = ("clear", "wait_clear_phase_ack", "post_clear", "finished")
+# TCK cycles stepped in Run-Test/Idle while waiting for the phase, and after
+# the reset for the restarted sequence to complete: the four phase handshakes
+# each cost a few cycles of each clock, and TCK is the slower one.
+B2B_PHASE_TCK = 64
+# TCK or system clock edges after the other side's reset at which a four-phase
+# receiver spends one cycle waiting for its isolate acknowledge: the request
+# crosses two synchronizer stages, and the acknowledge flop loads on the third
+# edge while the receiver samples the value before it.
+B2B_RECEIVER_WAIT_EDGES = 3
+# First slot of the recovery accesses after the receiver legs; the per-bridge
+# loop takes the slots below it.
+B2B_RECOVERY_SLOT = 20
+
+
+@dataclass
+class _PhaseLanding:
+    """A system reset deposited on the system clock edge after a phase is observed:
+    ``fired`` once the phase is seen, ``landed`` once the pulse has been released."""
+
+    seen: int = 0
+    fired: bool = False
+    landed: bool = False
 
 
 class _OrphanDrain(Enum):
@@ -768,6 +796,161 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 f"{label}: {', '.join(stuck)} did not report the discarded read as DECERR"
             )
 
+    async def _reset_abort_address_phase(
+        self,
+        target: str,
+        rng,
+        *,
+        read: bool,
+        reset_cycles: int,
+        addr_idx: int,
+        context: str,
+    ) -> bool:
+        """System reset with the TAP holding Update-DR of a SINGLE_OP, so the CDC's
+        clear reaches the bridge in the one TCK cycle its state machine spends in
+        the address state.
+
+        The pulse lands with TCK idle. The bridge latches the operation on the
+        first TCK edge after it and moves onto the address path on the second;
+        the clear, two TCK edges behind the reset through the CDC's
+        synchronizer, returns the state machine to idle on the third with no
+        request pushed into the crossing. SINGLE_OP then reads DECERR, with a
+        zero data field for a read. Returns True when the discard was reported
+        and the recovery access ran.
+        """
+        tb_if = self.cfg.tb_if
+        size = self.target_cfg(target).default_size
+        addr = self._target_addr(target, addr_idx)
+        word = self.random_distinct_word(rng, target)
+        direction = "read" if read else "write"
+        if read:
+            self.write_target_mem_int(target, addr, word, size)
+        before = self.read_target_mem_int(target, addr, size)
+        await self.scan_target_single_to_update_dr(
+            target,
+            DtpJtag2AxiOp.READ if read else DtpJtag2AxiOp.WRITE,
+            addr,
+            data=0 if read else word,
+            wstrb=0 if read else self.target_full_wstrb(target, size),
+            size=size,
+        )
+        await self._clear_cdc_clear_seen()
+        await self.pulse_system_reset(cycles=reset_cycles)
+        # The reset clears the port's request counters: quiet means no request
+        # counted since the pulse.
+        activity_before = await self.target_activity_counts(target)
+        await self.tms_step(0)
+        await self.tms_step(0)
+        on_path = tb_if.bridge_fsm_on_path(target, read=read)
+        pending = tb_if.bridge_op_pending(target)
+        quiet = await self.target_activity_counts(target) == activity_before
+        self._record_abort_check(
+            target,
+            ABORT_MIDFLIGHT_CHECK_ID,
+            f"{context}.mid_flight",
+            int(on_path and pending and quiet),
+            1,
+            f"{direction}_path={on_path} pending={pending} port_quiet={int(quiet)} "
+            "in the address state",
+        )
+        await self.tms_step(0)
+        self._record_abort_check(
+            target,
+            ABORT_FSM_CHECK_ID,
+            f"{context}.fsm_idle",
+            int(tb_if.bridge_fsm_idle(target) and not tb_if.bridge_op_pending(target)),
+            1,
+            "one TCK edge after the address state",
+        )
+        self._record_abort_check(
+            target, CDC_CLEAR_CHECK_ID, f"{context}.cdc_clear", tb_if.cdc_clear_seen(target), 1
+        )
+        for _ in range(ABORT_CDC_CLEAR_TCK):
+            await self.tms_step(0)
+        quiet = await self.target_activity_counts(target) == activity_before
+        self._record_abort_check(
+            target,
+            ABORT_ESCAPE_CHECK_ID,
+            f"{context}.no_request",
+            int(quiet),
+            1,
+            "no AW, W or AR reached the port",
+        )
+        self._record_abort_check(
+            target,
+            ABORT_ESCAPE_CHECK_ID,
+            f"{context}.no_escape",
+            self.read_target_mem_int(target, addr, size),
+            before,
+            f"addr=0x{addr:x}",
+        )
+        status, rdata, captures = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
+        self.scoreboard_expect_completion(
+            target, status, context=f"{context}.recovery", polls=ABORT_RECOVERY_POLLS
+        )
+        recovered = self._record_abort_check(
+            target,
+            ABORT_RECOVERY_CHECK_ID,
+            f"{context}.recovery_status",
+            status,
+            DtpJtag2AxiStatus.DECERR,
+            f"status={DtpJtag2AxiStatus(status).name} "
+            f"captures={captures}/{ABORT_RECOVERY_POLLS} after the address-phase reset",
+        )
+        if read:
+            self._record_abort_check(
+                target,
+                ABORT_RECOVERY_CHECK_ID,
+                f"{context}.discarded_read_data",
+                rdata & self.target_data_mask(target),
+                0,
+                "data field of the discarded read",
+            )
+        self.status = DtpJtag2AxiStatus(status)
+        if recovered:
+            self.status = await self.verify_target_recovery(
+                target,
+                addr=addr + 0x200,
+                data=self.random_distinct_word(rng, target, word),
+                read=read,
+                context=context,
+            )
+        self.operation_count += 1
+        return recovered
+
+    async def _run_address_phase_aborts(
+        self, label: str, *, reset_cycles_hi: int, addr_offset: int
+    ) -> None:
+        """Discard a SINGLE_OP in its address state on every bridge, a write then a
+        read, then judge the pass on the collected evidence."""
+        rng = self.rng(label)
+        stuck = []
+        legs = [(target, read) for target in ROBUST_TARGETS for read in (False, True)]
+        for idx, (target, read) in enumerate(legs, start=1):
+            direction = "read" if read else "write"
+            self.log_iteration(
+                idx,
+                len(legs),
+                "target=%s system reset with the %s in its address state",
+                target,
+                direction,
+            )
+            recovered = await self._reset_abort_address_phase(
+                target,
+                rng,
+                read=read,
+                reset_cycles=rng.randint(1, reset_cycles_hi),
+                addr_idx=idx + addr_offset,
+                context=f"{label}.{target}.{direction}",
+            )
+            if not recovered:
+                stuck.append(f"{target}.{direction}")
+        if stuck:
+            raise AssertionError(
+                f"{label}: {', '.join(stuck)} did not report the operation discarded in its "
+                "address state as DECERR"
+            )
+
     async def _reset_abort_series(
         self, target: str, rng, *, addr_idx: int, reset_cycles: int, context: str
     ) -> bool:
@@ -939,6 +1122,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             second_reset=True,
         )
         await self._run_read_response_abort("narrow_reset_read", addr_offset=12)
+        await self._run_address_phase_aborts("address_phase", reset_cycles_hi=3, addr_offset=27)
         await self._run_tap_reset_orphans()
 
     async def run_cdc_clear_abort_back_to_back_reset(self) -> None:
@@ -962,6 +1146,10 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 expected,
                 context=f"back_to_back_reset.{target}.prime",
             )
+            phase = B2B_CLEAR_PHASES[(idx + (self.scenario_seed or 0)) % len(B2B_CLEAR_PHASES)]
+            await self._reset_in_clear_phase(
+                target, phase, rng.randint(1, 3), context=f"back_to_back_reset.{target}"
+            )
             tb_if.set_cdc_clear_seen_clear(1)
             await self.wait_sys_cycles(1)
             tb_if.set_cdc_clear_seen_clear(0)
@@ -978,6 +1166,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 1,
                 "tck-side isolate-and-clear after two resets",
             )
+            self._record_idle_bridge(target, f"back_to_back_reset.{target}.fsm_idle")
             status, _, captures = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
             self._record_abort_check(
                 target,
@@ -1001,6 +1190,205 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 data=data,
                 read=True,
                 context=f"back_to_back_reset_read.{target}",
+            )
+            self.operation_count += 1
+        seen = await self._tap_reset_in_receiver_wait(rng)
+        await self._judge_receiver_leg(rng, leg="tck_wda", seen=seen, slot=B2B_RECOVERY_SLOT)
+        seen = await self._system_reset_in_receiver_wait(rng)
+        await self._judge_receiver_leg(
+            rng, leg="aclk_wda", seen=seen, slot=B2B_RECOVERY_SLOT + len(ROBUST_TARGETS)
+        )
+
+    def _record_idle_bridge(self, target: str, name: str) -> None:
+        """CHK-J2A-ABORT-FSM on a bridge that has nothing in flight: its state machine
+        idle with no operation pending."""
+        tb_if = self.cfg.tb_if
+        idle = tb_if.bridge_fsm_idle(target)
+        pending = tb_if.bridge_op_pending(target)
+        self._record_abort_check(
+            target,
+            ABORT_FSM_CHECK_ID,
+            name,
+            int(idle == 1 and pending == 0),
+            1,
+            f"idle={idle} pending={pending} after the reset",
+        )
+
+    async def _trst_fall(self) -> None:
+        """Wait for TRST to fall, unless it already has."""
+        trst = self.cfg.tb_if.handle("jtag_trst")
+        if int(trst.value):
+            await FallingEdge(trst)
+
+    async def _reset_after(
+        self,
+        landing: _PhaseLanding,
+        trigger,
+        *,
+        flag: str,
+        edges: int,
+        cycles: int,
+        context: str,
+    ) -> None:
+        """Pulse the system reset for ``cycles`` system clocks from the falling system
+        clock edge ``edges`` rising edges after ``trigger`` completes, sampling the
+        ``dtp_tb_if`` phase observable ``flag`` at the deposit. The deposit lands half a
+        cycle inside a state at least one cycle wide that begins on the rising edge."""
+        tb_if = self.cfg.tb_if
+        await trigger
+        landing.fired = True
+        if edges:
+            await ClockCycles(tb_if.clk, edges)
+        await FallingEdge(tb_if.clk)
+        landing.seen = tb_if.sample(flag)
+        before = tb_if.sample("sys_rst_assert_count")
+        tb_if.sys_rst_n.value = 0
+        await ClockCycles(tb_if.clk, cycles)
+        tb_if.sys_rst_n.value = 1
+        await ClockCycles(tb_if.clk, cycles)
+        self.check_reset_counted(
+            "sys_rst_assert_count", before, tb_if.sample("sys_rst_assert_count"), context
+        )
+        landing.landed = True
+
+    async def _reset_in_clear_phase(
+        self, target: str, phase: str, cycles: int, *, context: str
+    ) -> None:
+        """Pulse the system reset while the ACLK-side clear sequence, restarted by a pulse
+        with TCK idle, is in ``phase``, then step TCK until the restarted sequence
+        completes. The watcher deposits the pulse once the phase is observed; the TCK
+        stepper stops after the step in which it landed, so no JTAG item is cut short."""
+        tb_if = self.cfg.tb_if
+        flag = f"j2a_cdc_aclk_{phase}"
+        self.log.info("%s: system reset in the %s phase, %d cycles wide", context, phase, cycles)
+        await self._clear_cdc_clear_seen()
+        await self.pulse_system_reset(cycles=1)
+        landing = _PhaseLanding()
+        watcher = cocotb.start_soon(
+            self._reset_after(
+                landing,
+                RisingEdge(tb_if.handle(flag)),
+                flag=flag,
+                edges=0,
+                cycles=cycles,
+                context=f"{context} in {phase}",
+            )
+        )
+        for _ in range(B2B_PHASE_TCK):
+            if landing.landed:
+                break
+            await self.tms_step(0)
+        if landing.fired:
+            await watcher
+        else:
+            watcher.cancel()
+        self._record_abort_check(
+            target,
+            CDC_PHASE_CHECK_ID,
+            f"{context}.phase.{phase}",
+            landing.seen,
+            1,
+            f"system reset deposited in {phase}, landed={int(landing.landed)}",
+        )
+        for _ in range(B2B_PHASE_TCK):
+            await self.tms_step(0)
+
+    async def _tap_reset_in_receiver_wait(self, rng) -> int:
+        """TRST in the one TCK cycle the TCK-side four-phase receivers wait for their
+        isolate acknowledge after a system reset with TCK idle; returns the receiver
+        observable sampled at the TRST deposit."""
+        hold = rng.randint(*ORPHAN_TRST_HOLD_TCK)
+        self.log.info(
+            "TRST %d TCK cycles after a system reset with TCK idle, held %d TCK cycles",
+            B2B_RECEIVER_WAIT_EDGES,
+            hold,
+        )
+        await self._clear_cdc_clear_seen()
+        await self.pulse_system_reset(cycles=1)
+        for _ in range(B2B_RECEIVER_WAIT_EDGES):
+            await self.tms_step(0)
+        seen = self.cfg.tb_if.sample("j2a_cdc_tck_dst_wait_ack")
+        await self._enter_tap_reset(via_trst=True, hold=hold)
+        await self._leave_tap_reset(via_trst=True, clear_tck=B2B_PHASE_TCK)
+        return seen
+
+    async def _system_reset_in_receiver_wait(self, rng) -> int:
+        """System reset in the one system clock cycle the ACLK-side four-phase receivers
+        wait for their isolate acknowledge after TRST; returns the receiver observable
+        sampled at the deposit. TRST is deposited half a system cycle from any system
+        clock edge, so the receivers' synchronizers take it on the next edge."""
+        tb_if = self.cfg.tb_if
+        cycles = rng.randint(1, 3)
+        hold = rng.randint(*ORPHAN_TRST_HOLD_TCK)
+        self.log.info(
+            "system reset %d system clock edges after TRST, %d cycles wide, TRST held %d TCK",
+            B2B_RECEIVER_WAIT_EDGES,
+            cycles,
+            hold,
+        )
+        await self._clear_cdc_clear_seen()
+        await FallingEdge(tb_if.clk)
+        landing = _PhaseLanding()
+        watcher = cocotb.start_soon(
+            self._reset_after(
+                landing,
+                self._trst_fall(),
+                flag="j2a_cdc_aclk_dst_wait_ack",
+                edges=B2B_RECEIVER_WAIT_EDGES,
+                cycles=cycles,
+                context="back_to_back_reset.aclk_wda",
+            )
+        )
+        await self._enter_tap_reset(via_trst=True, hold=hold)
+        await watcher
+        await self._leave_tap_reset(via_trst=True, clear_tck=B2B_PHASE_TCK)
+        return landing.seen
+
+    async def _judge_receiver_leg(self, rng, *, leg: str, seen: int, slot: int) -> None:
+        """Every bridge's evidence after a reset placed in its receivers' waiting cycle:
+        the receiver observable at the deposit, the TCK-side clear, the idle state
+        machine, the SINGLE_OP status at its reset value, and a recovery write and read
+        at slot ``slot`` onwards."""
+        tb_if = self.cfg.tb_if
+        for idx, target in enumerate(ROBUST_TARGETS):
+            context = f"back_to_back_reset.{leg}.{target}"
+            self._record_abort_check(
+                target,
+                CDC_PHASE_CHECK_ID,
+                f"{context}.phase",
+                seen,
+                1,
+                "receiver waiting for its isolate acknowledge at the reset",
+            )
+            self._record_abort_check(
+                target,
+                CDC_CLEAR_CHECK_ID,
+                f"{context}.cdc_clear",
+                tb_if.cdc_clear_seen(target),
+                1,
+                "tck-side isolate-and-clear after the reset",
+            )
+            self._record_idle_bridge(target, f"{context}.fsm_idle")
+            status, _, captures = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
+            self.scoreboard_expect_completion(
+                target, status, context=f"{context}.status", polls=ABORT_RECOVERY_POLLS
+            )
+            self._record_abort_check(
+                target,
+                ABORT_RECOVERY_CHECK_ID,
+                f"{context}.status",
+                status,
+                DtpJtag2AxiStatus.SUCCESS,
+                f"status={DtpJtag2AxiStatus(status).name} "
+                f"captures={captures}/{ABORT_RECOVERY_POLLS} on an idle bridge",
+            )
+            addr = self._target_addr(target, slot + idx)
+            data = self.random_distinct_word(rng, target)
+            await self.verify_target_recovery(
+                target, addr=addr, data=data, read=False, context=context
+            )
+            self.status = await self.verify_target_recovery(
+                target, addr=addr, data=data, read=True, context=f"{context}_read"
             )
             self.operation_count += 1
 

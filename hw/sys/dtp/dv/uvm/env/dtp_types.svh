@@ -334,6 +334,9 @@ localparam string DtpJ2aMemImageCheckId = "CHK-J2A-MEM-IMAGE";
 localparam string DtpJ2aAbortMidFlightCheckId = "CHK-J2A-ABORT-MIDFLIGHT";
 localparam string DtpJ2aAbortFsmCheckId = "CHK-J2A-ABORT-FSM";
 localparam string DtpJ2aCdcClearCheckId = "CHK-J2A-CDC-CLEAR";
+// A reset placed inside a CDC clear sequence lands in the phase the
+// scenario selected: the dtp_tb_if phase observable is set at the deposit.
+localparam string DtpJ2aCdcPhaseCheckId = "CHK-J2A-CDC-PHASE";
 localparam string DtpJ2aAbortEscapeCheckId = "CHK-J2A-ABORT-ESCAPE";
 localparam string DtpJ2aAbortRecoveryCheckId = "CHK-J2A-ABORT-RECOVERY";
 // TCK-side clear evidence with a request held on the fabric: the held
