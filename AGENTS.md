@@ -40,8 +40,11 @@ partial read costs far more time than a full one.
 | `scripts/docker.md` | Container subcommands, all environment variables, bubblewrap backend, GID fixup |
 | `nix/nix-infrastructure.md` | Nix flake structure, dev shell and container variants, adding packages, reproducibility |
 | `nix/glossary.md` | Plain-English definitions of Nix concepts (flake, derivation, overlay, dev shell) |
+| `flake.nix`, `ocah_deps.nix`, `nix/` | The nix-built container and dev shell: which packages and environment variables the image carries, including the VP's SystemC, CCI, Boost, OpenSSL and Whisper |
+| `virtual_platform/README.md` | Virtual platform: the three VP executables and which need Whisper, dependency resolution, the `sepvp` runner and pytest harness, container vs ambient build |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
+| `flows/cdc/README.md` | CDC/RDC sign-off collateral: where the block SDC, constraints and waivers live, the scenario and bounding knobs, replaying a block under a parent |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
 
 `make doc-trm-serve` builds a TRM-first preview with the other documentation
@@ -252,14 +255,70 @@ companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the shared tarball cache
 builds locally from the flake. `scripts/docker.md` is authoritative for the source selection
 controls.
 
+> **Any container command can start a full image build.** `run`, `run-here`, `shell`, `verify`
+> and the doc subcommands all go through that same selection, so a routine `make regen-regs`,
+> doc build or lint run falls back to building the image from source when no image with the
+> tree's tag is loaded, pullable or cached. The fallback announces itself with:
+>
+> ```
+> docker-run: <image>:<tag> (hash <tag>) absent locally and in cache; building
+> ```
+>
+> The build occupies many cores for a long time, and nothing serialises it: every worktree or
+> agent on the host that hits the fallback starts its own. The tag is a hash of the image
+> inputs, so a change to them on `main` leaves every checkout based on it without an image until
+> CI publishes the new tag. An agent that sees this message stops the command and asks the user
+> rather than letting the build run. Interrupting `docker-run.sh` does not necessarily stop the
+> build container, so check `podman ps` (or `docker ps`) afterwards. Once one pull or build has
+> loaded a tag, every checkout at that tag using the same engine reuses it. The bubblewrap
+> backend below never builds.
+
+That one image also carries the OCAH virtual platform's toolchain, so
+`make -C virtual_platform vp VP_CONTAINER=1` builds and runs `sep-vp` in it. `ocah_deps.nix`
+provides SystemC, CCI, Boost, OpenSSL and Whisper and exports `SYSTEMC_HOME`, `CCI_HOME`,
+`BOOST_ROOT`, `OPENSSL_ROOT` and `WHISPER_HOME`, so inside the container the VP resolves
+every dependency as explicit and builds none of them. Outside it, `virtual_platform/Makefile`
+still resolves or builds each one -- see `virtual_platform/README.md`.
+
+The model builds three VP executables and the harness builds all three. `sep-vp` is the
+default; `smc-vp` and `smu-vp` (the SMC+SEP integration, which runs both subsystems in
+one process) are **opt-in**, because asking for either first builds the Whisper ISS into
+`local/` — `make vp` never does, and needs no Whisper. They share a second build tree,
+`vp/build_smc`, since `WHISPER_HOME` is read at configure time and decides whether those
+platforms are generated at all. Their tests delegate to the model's own
+`sw/{smc,smu}-vp-tests` runners rather than the SEP-specific `sepvp` package. The image
+needs no extra packages for them.
+
+```bash
+make -C virtual_platform smc-vp smu-vp VP_CONTAINER=1
+make -C virtual_platform smc-test VP_CONTAINER=1   # SMC_ARGS=<one-test>
+make -C virtual_platform smu-test VP_CONTAINER=1   # SMU_ARGS=<one-test>
+```
+
+`smu-vp` has a companion artifact, `libsmc_cluster_smu.so`, built beside the target
+rather than into `bin/`. `smu-vp` bakes that build-tree path into its RUNPATH, so it runs
+in place — but a copy made without the `.so` binds silently to the build tree and then
+fails once that tree is gone. Carry both, or source the generated
+`setup_environment*.sh`, which puts its directory on `LD_LIBRARY_PATH`.
+
+```bash
+./scripts/docker-run.sh run-here sh -c 'g++ --version; cmake --version'  # the VP side
+```
+
+On a host with both podman and docker installed, `OCAH_ENGINE=docker` (or `podman`) pins
+which one `docker-run.sh` uses instead of taking whichever it finds first.
+
 A testbench that builds firmware as part of its own flow dispatches those builds through
 `scripts/docker-run.sh run-here`, so the container is used automatically while the simulator
 runs natively on the host. Not every testbench does this — check its Makefile rather than
 assuming.
 
 When `OCAH_TOOLCHAIN_ROOTFS` points at an extracted toolchain rootfs and `bwrap` is
-installed, `docker-run.sh` uses bubblewrap instead of a container engine. It is an opt-in
-either way: the companion sets it for you, and anyone can set it by hand. That path fails
+installed, `docker-run.sh` uses bubblewrap instead of a container engine. The rootfs must
+come from the merged image: both `usr/bin/riscv64-unknown-elf-gcc` and `usr/bin/g++` are
+probed, and a rootfs missing either is rejected up front with a warning and an automatic
+fall back to the container engine. It is an opt-in either way: the companion sets it for
+you, and anyone can set it by hand. That path fails
 when the checkout sits on a filesystem whose mountpoint bwrap cannot create inside its
 read-only rootfs, typically a networked or site-specific mount:
 
@@ -376,7 +435,8 @@ Whatever the testbench, these hold:
 | `hw/top/` | Top-level integration and wrapper sources |
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
-| `flows/` | Lint, format and synthesis flow makefiles |
+| `flows/` | Lint, format and synthesis flow makefiles; `synth/constraints/` shared SDC code and `cdc/` shared CDC/RDC sign-off collateral |
+| `virtual_platform/` | SystemC virtual platform: the `tt-oca-harness-model` submodule that provides `sep-vp`, `smc-vp` and `smu-vp`, the `sepvp` Python runner and its pytest suite, and the Makefile that builds them and their dependencies |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
 | `scripts/` | `docker-run.sh` container front door, CI helpers |
@@ -435,6 +495,26 @@ field named for the size a region used to have, a constant named after a mode th
 replaced — dates as quickly as a breadcrumb, and it forces a comment to explain a concept the
 code no longer has. Name what exists.
 
+### Simplify once the behavior works
+
+When the change behaves correctly and you have checked it, simplify what it added before you
+stop. Do this without being asked. It applies to the software in the change — Python, C, shell,
+Tcl, Makefiles — where a second reading can see repetition the first writing could not. Leave a
+hardware description as it is unless the shorter form is the same behavior, written in the
+style the file already uses.
+
+The aim is a smaller diff that is still easy to read. A reduction that is harder to follow, or
+that only moves the complexity into a new name or a comment, is not an improvement.
+
+- Delete what the new control flow made redundant: a helper, a branch, a parameter, or a copy
+  that nothing reads anymore.
+- Use a function, pattern, or name the file or its neighbors already have. Add a new one only
+  when none of those can carry the behavior.
+- Keep the control flow readable in one pass. A reduction that needs a comment to explain
+  itself has failed the comments rule above.
+- Keep the behavior. A shorter form that changes results, interfaces, or tests is a separate
+  change.
+
 ## Commit Conventions
 
 Follow the existing history: a lowercase path-like scope (one to three
@@ -465,6 +545,24 @@ issues (see `SECURITY.md`).
 
 Read `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md` rather than
 restating them. Allowed taxonomy values live in `.github/issue-taxonomy.yml`.
+
+### Answer questions about the tree from current `main`
+
+Whether an issue is still open work, whether a bug still exists, or what an audit finds
+are questions about the shared tree, not about your checkout. The working branch — and a
+`nonfree/` clone, which has its own branch — can be many commits behind, so findings made
+there can describe code `main` has already changed. Fetch both repositories and inspect
+`origin/main` of each:
+
+```bash
+git -C <repo> fetch origin && git -C <repo>/nonfree fetch origin
+git -C <repo> grep -n <pattern> origin/main -- <paths>
+git -C <repo>/nonfree grep -n <pattern> origin/main -- <paths>
+```
+
+Pass paths explicitly (`git -C`) rather than relying on the shell's current directory:
+inside `nonfree/`, a bare `git` command operates on the companion repository. State the
+commit each finding was made against.
 
 ### Issues
 
@@ -613,10 +711,12 @@ statement has the companion's own documentation.
 |---|---|
 | SystemVerilog lint (slang) | `make lint-slang-all` lints every `flow.mk` top (`dtp`, `sep`, `smc`, `smu`, `aou` today). `flows/common.mk` also globs `hw/ip/*/flow.mk`; none exist. `BLOCK=` is a top, not an IP. `make lint-slang` from a block's own flow lints that block alone |
 | SystemVerilog lint (Verilator) | `make lint-verilator-all` lints each discovered top the same way; add `BLOCK=<block…>` to restrict it |
+| Verilator `--public-flat-rw` build | `make lint-verilator-public-all BLOCK=smu` builds the block's packages under the flag cocotb's Verilator runner forces |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | SystemVerilog comments | `make lint-sv-comments` checks the `//` header and parameter/port clauses of every source the RTL Modules Reference documents; `tools/doc/check_sv_comments.py <files>` checks individual files |
+| SystemVerilog enums | `make lint-sv-enums` checks that every enum member outside `vendor/` and `regs/gen/` is UPPER_SNAKE_CASE and every enum type is lower_snake_case with an `_e` suffix; `scripts/ci/check_sv_enums.py <files>` checks individual files |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |
@@ -638,11 +738,20 @@ not hide findings from lint. Generated output and `vendor/<org>/<repo>/upstream/
 never patch upstream code for a style-only finding. Fix formatter-safe whitespace and wrapping
 after reviewing the diff, but treat types, range direction, assignment semantics, task
 lifetime, case completeness and hierarchy labels as manual changes requiring owner review.
-Parameter naming remains deferred to issue #1051 and is disabled in this pass.
+`parameter-name-style` requires ALL_CAPS parameter names and UpperCamelCase localparam
+names.
 
 Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
 owner's `lint/` directory: `*.verible.waiver`, `*.verilator.vlt`, and synthesis-only
-`*.slang.expected-errors`. Central Makefiles only discover or pass those files, and each block
+`*.slang.expected-errors`. VC SpyGlass lint, CDC and RDC waivers follow the same ownership as
+`hw/sys/<sys>/{lint,cdc,rdc}/<sys>.vc{lint,cdc,rdc}[.opensource_ip].waiver.tcl`: SPDX header
+plus `# tclint-disable line-length`, tclfmt-clean, hierarchical filter fields carrying the
+`${PREFIX}` token so a parent run can replay them, `#` blocks of one to three lines with the
+mechanism in `-comment {}`, and nothing about who sources the file. The CDC/RDC sign-off
+constraints live beside them under `hw/sys/<sys>/cdc/`, the block SDC under
+`hw/sys/<sys>/synth/`, and the shared pieces under `flows/cdc/` and
+`flows/synth/constraints/`; `flows/cdc/README.md` has the layout and the knobs. Central
+Makefiles only discover or pass those files, and each block
 `flow.mk` declares the exceptions relevant to its elaborated top. Use the narrowest
 diagnostic/path/hierarchy/source match and a constraint-focused rationale. Slang expected-error
 patterns must identify the path and message; the flow must fail if a pattern is unused or an
@@ -653,7 +762,7 @@ Verilator flow loads for every block. Its exact path and message matches cover o
 `field_combo` / `field_storage` aggregate `MULTIDRIVEN` reports, including block register
 modules and the copied SPI register module. They must never expand to member names or to
 `WIDTHEXPAND` / `WIDTHTRUNC`. Before changing the exception, run the unwaived integrated-SMU
-zero-overlap audit documented in `CONTRIBUTING.md`; its non-aggregate search must remain empty,
+zero-overlap audit documented in `doc/starting/src/workflows.adoc`; its non-aggregate search must remain empty,
 and the hand-authored findings must remain in the output.
 
 `OCAH_VERIBLE_LINT_EXCLUDES` and `OCAH_VERIBLE_FORMAT_EXCLUDES` are only for documented parser,

@@ -12,10 +12,11 @@
 // and m_checker.
 //
 // `en_passive` gates every wire-level observation stack, the covergroup
-// subscriber included: the ID-mismatch test clears it (uvm_config_db bit
-// "en_passive") because a corrupted response ID is an orphan completion to a
-// passive observer — the corruption evidence rides the env-owned scenario
-// checker instead.
+// subscriber included. A test clears it (uvm_config_db bit "en_passive")
+// when its scenario leaves the wires in a state a passive observer reports
+// as a defect: a corrupted response ID is an orphan completion, and a read
+// whose beats stop before RLAST is an in-flight transaction at the end of
+// the run. The evidence rides the env-owned scenario checker instead.
 
 class ocah_axi_vip_env extends uvm_env;
   `uvm_component_utils(ocah_axi_vip_env)

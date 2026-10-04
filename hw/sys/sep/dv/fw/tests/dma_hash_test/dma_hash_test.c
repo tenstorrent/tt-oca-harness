@@ -4,18 +4,15 @@
 /*
  * Secure DMA inline hash test: SHA-256 and SHA-384.
  *
- * Two passes over the same SRAM-to-DCCM path, both with the DMA's inline hash
- * engine enabled.
- *
- * Pass 1, SHA-256: transfers build-varying data and checks the hardware digest
- * against a software SHA-256 computed over the same bytes, plus a byte compare
- * of the copy.
- *
- * Pass 2, SHA-384: there is no 64-bit SHA-2 core in this firmware, so the
- * expectation is the published FIPS 180-4 digest for a fixed 56-byte message
- * rather than a software hash. The message is the input and the vector is the
- * expectation; neither is read back from the engine. The copy is checked too,
- * so a correct digest over a broken copy still fails.
+ * Every pass copies SRAM to DCCM with the DMA's inline hash engine enabled:
+ * - SHA-256 over pseudo-random data, against a software SHA-256 of the same
+ *   bytes, plus a byte compare of the copy.
+ * - SHA-384 over a fixed 56-byte message, against the published FIPS 180-4
+ *   digest (this firmware has no 64-bit SHA-2 core), plus a byte compare of
+ *   the copy, so a correct digest over a broken copy still fails.
+ * - SHA-256 over the same message in two chunks, against its FIPS 180-4 digest.
+ * - SHA-256 with and without the digest byte swap, which must byte-reverse
+ *   every digest word.
  */
 
 #include <stdio.h>
@@ -30,14 +27,13 @@
 #include "sha256.h"
 #include "sep_pic.h"
 
-// PIC source = sep_internal_interrupts index + 1 (done [8]->9, error [10]->11).
+// PIC sources of the secure DMA done and error interrupts.
 #define EXT_INT_DMA_DONE 9
 #define EXT_INT_DMA_ERROR 11
 
-// Flag set by interrupt handler
 static volatile uint32_t dma_interrupt_fired = 0;
 
-// DMA interrupt handler - clears interrupt at source
+// Clears the DMA interrupt at its source.
 void __attribute__((interrupt("machine"))) dma_isr(void) {
     dma_interrupt_fired = 1;
     volatile uint32_t *status = (volatile uint32_t *)SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR;
@@ -46,33 +42,27 @@ void __attribute__((interrupt("machine"))) dma_isr(void) {
     __asm__ volatile("fence" ::: "memory");
 }
 
-// CFG_REGWEN values (multi-bit bool)
-// CFG_REGWEN unlocked. SEP_DMA_REGWEN_UNLOCKED (fw/drivers/sep_dma.h) is
-// SECURE_DMA__CFG_REGWEN__REGWEN_reset from the generated header, so this
-// tracks an RDL change instead of rotting as a copied literal.
+// CFG_REGWEN reset value: the DMA configuration is writable.
 #define MUBI4_TRUE SEP_DMA_REGWEN_UNLOCKED
 
-// ASID / opcode / width used by this SHA-256 copy.
+// ASID / opcode / width used by every pass.
 #define ASID_OT_ADDR 0x7
 #define OPCODE_SHA256 0x1
-// SHA-384 opcode from the DV-owned encoding table (fw/drivers/sep_dma.h).
 #define OPCODE_SHA384 SEP_DMA_OPCODE_SHA384
 #define TRANSFER_WIDTH_FOUR_BYTE 0x2
 
-// SHA-384 digest is 384 bits = 12 of the 16 SHA2_DIGEST words.
+// A SHA-384 digest fills the first 12 of the 16 digest words.
 #define SHA384_DIGEST_WORDS 12
 #define SHA384_DIGEST_BYTES 48
 
-// FIPS 180-4 second SHA-2 test message, 56 bytes. Chosen over the one-block
-// "abc" vector because the DMA transfers whole 4-byte words, and 56 is a
-// multiple of 4 where 3 is not. The digest below is the published constant for
-// this exact message, not a value read back from the engine.
+// FIPS 180-4 two-block SHA-2 test message and its published digests. Chosen
+// over the one-block "abc" vector because the DMA transfers whole 4-byte words,
+// and 56 is a multiple of 4 where 3 is not.
 static const char kFips1804Msg[] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
 #define FIPS_MSG_LEN 56
 static const char kFips1804Sha384Hex[] =
     "3391fdddfc8dc7393707a65b1b4709397cf8b1d162af05abfe8f450de5f36bc6"
     "b0455a8520bc4e6f5fe95b1fe3c8452b";
-// FIPS 180-4 SHA-256 of the same 56-byte message, for the multi-chunk pass.
 static const char kFips1804Sha256Hex[] =
     "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1";
 #define SHA256_DIGEST_WORDS 8
@@ -81,29 +71,16 @@ static const char kFips1804Sha256Hex[] =
 // transfer width requires, and 28 != 56 is what makes the transfer multi-chunk.
 #define FIPS_CHUNK_LEN 28
 
-// Test data size in bytes - must be a multiple of 4
-// 64 bytes = 1 SHA block + padding = ~8-10K cycles for SW hash
-// 128 bytes = 2 SHA blocks + padding = ~12-15K cycles
-// 4096 (0x1000) bytes = 64 blocks = ~300-400K cycles
+// Bytes hashed by the first pass; must be a multiple of 4.
 #ifndef TEST_DATA_SIZE
 #define TEST_DATA_SIZE 0x100
 #endif
 
-//==============================================================================
-// Hashing Functions
-//==============================================================================
-
-// Function to compute the SHA256 hash
 void compute_sha256(const unsigned char *data, size_t data_len, unsigned char *hash_output) {
     SHA256_CTX ctx;
 
-    // Initialize the SHA256 context
     sha256_init(&ctx);
-
-    // Feed the data into the hash function
     sha256_update(&ctx, data, data_len);
-
-    // Finalize and retrieve the hash
     sha256_final(&ctx, hash_output);
 }
 
@@ -118,15 +95,10 @@ static void digest_to_hex(const uint8_t *digest, size_t n, char *out) {
     out[2 * n] = '\0';
 }
 
-//==============================================================================
-// Main Test
-//==============================================================================
-
 int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
-    // Set up DMA interrupts
     pic_register_handler(EXT_INT_DMA_DONE, dma_isr);
     pic_register_handler(EXT_INT_DMA_ERROR, dma_isr);
     pic_set_gateway(EXT_INT_DMA_DONE, 0, 0); // level-triggered, active-high
@@ -142,24 +114,19 @@ int main(void) {
 
     printf("=== Secure DMA SHA-256 Hash Test ===\n\n");
 
-    // Check that DMA is idle (CFG_REGWEN reads MUBI4 TRUE, its RDL reset)
+    // The DMA configuration must be writable before it is programmed; a
+    // write-enable stuck locked, or reading as unmapped zero, fails here.
     uint32_t cfg_regwen = READ_REG(SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
     printf("CFG_REGWEN = 0x%x (expected 0x%x for unlocked)\n", cfg_regwen, MUBI4_TRUE);
 
     if ((cfg_regwen & SECURE_DMA__CFG_REGWEN__REGWEN_bm) != MUBI4_TRUE) {
-        // This is the only check that the config write-enable is open before the
-        // DMA is programmed: a CFG_REGWEN stuck locked, or reading as an unmapped
-        // 0x0, fails the test here.
         printf("ERROR: CFG_REGWEN not unlocked (DMA busy or locked)\n");
         errors++;
     }
 
-    //==========================================================================
-    // Step 1: Configure the DMA enabled memory range (required before DMA use)
-    //==========================================================================
+    // The DMA rejects transfers until an allowed memory range is set and valid.
     printf("\nConfiguring DMA enabled memory range:\n");
 
-    // Set the allowed memory range for DMA operations
     WRITE_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
     printf("  ENABLED_MEMORY_RANGE_BASE = 0x%08x\n",
            READ_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR));
@@ -168,68 +135,52 @@ int main(void) {
     printf("  ENABLED_MEMORY_RANGE_LIMIT = 0x%08x\n",
            READ_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR));
 
-    // Mark the range as valid - this is required before DMA can operate
     secure_dma__RANGE_VALID_t range_valid = {.f = {.RANGE_VALID = 1}};
     WRITE_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, range_valid.w);
     printf("  RANGE_VALID = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR));
 
-    //==========================================================================
-    // Step 2: Write random data to SRAM
-    //==========================================================================
-
-    // Generate random data directly in SRAM (avoid stack overflow)
+    // The source data lives in SRAM rather than on the stack.
     printf("  Generating random data in SRAM...\n");
     volatile uint32_t *src_ptr = (volatile uint32_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
     for (int i = 0; i < TEST_DATA_SIZE / 4; i++) {
         src_ptr[i] = (uint32_t)rand();
     }
 
-    //==========================================================================
-    // Step 2: Configure the DMA transfer from SRAM to DCCM
-    //==========================================================================
     printf("\nConfiguring DMA transfer from SRAM to DCCM:\n");
 
-    // Set the source address
     WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR);
     WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR >> 32);
 
-    // Set the destination address (use high DCCM to avoid BSS overlap)
-    // BSS is at low DCCM (~0x80000-0x80FFF), so use 0x82000+
+    // The destination sits above .data/.bss, which start at the DCCM base.
 #define DMA_DST_ADDR (SEP_TOP_SEP_DCCM_BASE_ADDR + 0x2000)
     WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DMA_DST_ADDR);
     WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, DMA_DST_ADDR >> 32);
 
-    // Configure address space IDs (both internal OT addresses)
+    // Both ends are internal OT addresses.
     secure_dma__ADDR_SPACE_ID_t addr_space_id = {
         .f = {.SRC_ASID = ASID_OT_ADDR, .DST_ASID = ASID_OT_ADDR}};
     WRITE_REG(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, addr_space_id.w);
     printf("  ADDR_SPACE_ID = 0x%x (SRC=OT_ADDR, DST=OT_ADDR)\n",
            READ_REG(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
 
-    // Set the transfer width to 4 bytes
     secure_dma__TRANSFER_WIDTH_t transfer_width = {
         .f = {.TRANSACTION_WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
     WRITE_REG(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, transfer_width.w);
 
-    // Set the chunk data size (single chunk = total size)
+    // One chunk carries the whole transfer.
     WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, TEST_DATA_SIZE);
-
-    // Set the total data size
     WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, TEST_DATA_SIZE);
 
-    // Configure source: increment address after each transfer
     secure_dma__SRC_CONFIG_t src_config = {.f = {.INCREMENT = 1, .WRAP = 0}};
     WRITE_REG(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_config.w);
     printf("  SRC_CONFIG = 0x%x (INCREMENT enabled)\n",
            READ_REG(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR));
 
-    // Configure destination: increment address after each transfer
     secure_dma__DST_CONFIG_t dst_config = {.f = {.INCREMENT = 1, .WRAP = 0}};
     WRITE_REG(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_config.w);
     printf("  DST_CONFIG = 0x%x (INCREMENT enabled)\n",
            READ_REG(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR));
 
-    // Dump all configuration registers before starting transfer
     printf("\nDMA Configuration before GO:\n");
     printf("  SRC_ADDR    = 0x%08x%08x\n", READ_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR),
            READ_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR));
@@ -242,46 +193,38 @@ int main(void) {
     printf("  SRC_CONFIG  = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR));
     printf("  DST_CONFIG  = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR));
 
-    // Enable DMA interrupts in the DMA controller
     secure_dma__INTR_ENABLE_t intr_enable = {
         .f = {.DMA_DONE = 1, .DMA_CHUNK_DONE = 0, .DMA_ERROR = 1}};
     WRITE_REG(SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, intr_enable.w);
 
-    // Start the DMA transfer: OPCODE=SHA256 (0x1), INITIAL_TRANSFER=1 (bit 8), and GO=1 (bit 31)
-    // IMPORTANT: Printf before starting DMA to avoid DCCM contention (format strings are in DCCM)
+    // Print before GO: the format strings live in DCCM, and printing during the
+    // transfer contends with it.
     printf("\nStarting DMA transfer...\n");
     printf("  Waiting for DMA completion (WFI-based)...\n");
 
-    // Configure and start DMA transfer with SHA-256 hashing
     // DIGEST_SWAP converts digest to big-endian to match SW SHA-256 output
     secure_dma__CONTROL_t control = {
         .f = {.OPCODE = OPCODE_SHA256, .DIGEST_SWAP = 1, .INITIAL_TRANSFER = 1, .GO = 1}};
     WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, control.w);
 
-    // Wait for DMA completion using WFI
-    // The interrupt handler sets dma_interrupt_fired flag and clears STATUS.DONE
-    // So we check the flag instead of STATUS register
+    // The ISR clears the DMA status, so completion is seen through its flag.
     int timeout = 100000;
     while (timeout-- > 0) {
-        __asm__ volatile("wfi"); // Sleep until interrupt pending
+        __asm__ volatile("wfi");
 
-        // Check flag set by interrupt handler
         if (dma_interrupt_fired) break;
     }
 
-    // Check ERROR_CODE to see if there was an error
-    // (STATUS bits are cleared by the interrupt handler)
+    // The error code survives the ISR's status clear.
     secure_dma__ERROR_CODE_t error_code;
     error_code.w = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
 
-    // Process result
-    if (dma_interrupt_fired && error_code.w == 0) { // Success
+    if (dma_interrupt_fired && error_code.w == 0) {
         printf("  DMA transfer completed!\n");
-    } else if (error_code.w != 0) { // Error occurred
+    } else if (error_code.w != 0) {
         printf("  ERROR: DMA transfer failed!\n");
         printf("  ERROR_CODE = 0x%x\n", error_code.w);
 
-        // Decode error bits using struct fields
         if (error_code.f.SRC_ADDR_ERROR)
             printf("    - SRC_ADDR_ERROR: Source address is invalid\n");
         if (error_code.f.DST_ADDR_ERROR)
@@ -299,36 +242,25 @@ int main(void) {
         errors++;
     } else {
         printf("  ERROR: DMA transfer timeout!\n");
-        // Abort DMA
         secure_dma__CONTROL_t abort_ctrl = {.f = {.ABORT = 1}};
         WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, abort_ctrl.w);
         errors++;
     }
 
-    //============================================================================
-    // Step 3: Compute the SHA-256 hash using software library
-    //============================================================================
-
     printf("\nComputing SHA-256 hash using software library...\n");
 
-    // Compute the SHA-256 hash using software library
     uint8_t sw_hash[32];
     compute_sha256((unsigned char *)src_ptr, TEST_DATA_SIZE, sw_hash);
 
-    //==========================================================================
-    // Step 4: Verify the hash against the expected hash
-    //==========================================================================
     printf("\nVerifying SHA-256 hash against expected hash...\n");
 
-    uint32_t expected_hash[8];
+    uint32_t hw_digest_words[8];
     for (int i = 0; i < 8; i++) {
-        expected_hash[i] = READ_REG(SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
+        hw_digest_words[i] = READ_REG(SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
     }
 
-    // Cast the 32-bit array to an 8-bit pointer for memcmp
-    uint8_t *hw_hash = (uint8_t *)expected_hash;
+    uint8_t *hw_hash = (uint8_t *)hw_digest_words;
 
-    // Print neatly as a continuous hex string
     printf("  Expected (HW) = 0x");
     for (int i = 0; i < 32; i++) {
         printf("%02x", hw_hash[i]);
@@ -341,18 +273,13 @@ int main(void) {
     }
     printf("\n");
 
-    // Safe to use memcmp now! Both are treated as 32-byte streams.
     if (memcmp(hw_hash, sw_hash, 32) != 0) {
         printf("  ERROR: SHA-256 hash mismatch!\n");
         errors++;
     }
 
-    //==========================================================================
-    // Step 5: Verify data in SRAM and DCCM matches
-    //==========================================================================
     printf("\nVerifying data in SRAM and DCCM matches...\n");
 
-    // Get pointer to DCCM for comparison (must match DMA_DST_ADDR)
     volatile uint32_t *dccm_ptr = (volatile uint32_t *)DMA_DST_ADDR;
 
     int copy_mismatches = 0;
@@ -365,19 +292,11 @@ int main(void) {
         }
     }
 
-    // Gate the pass token on the compare it claims to report.
     if (copy_mismatches == 0) {
         printf("  PASS: SRAM and DCCM data matches!\n");
     }
 
-    //==========================================================================
-    // Step 6: Second pass -- inline SHA-384 over the FIPS 180-4 test message
-    //==========================================================================
-    // The SHA-256 pass above hashes seed-varying data and checks it against a
-    // software SHA-256 computed over the same bytes. There is no 64-bit SHA-2
-    // core in this firmware, so SHA-384 is instead pinned to the published FIPS
-    // 180-4 digest for a fixed message. The message is the input, the vector is
-    // the expectation, and neither comes from the DMA.
+    // Second pass: inline SHA-384 over the FIPS 180-4 test message.
     printf("\n=== Secure DMA SHA-384 (FIPS 180-4 vector) ===\n");
 
     // Stage the fixed message in SRAM, where the SHA-256 pass left random data.
@@ -414,8 +333,6 @@ int main(void) {
         WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, abort_ctrl.w);
         errors++;
     } else if (sha384_err.w != 0) {
-        // OPCODE_ERROR here would mean the engine does not accept OpcSha384 on
-        // this build, which is a real result and not something to skip past.
         printf("  ERROR: SHA-384 DMA transfer failed, ERROR_CODE = 0x%x\n", sha384_err.w);
         if (sha384_err.f.OPCODE_ERROR) printf("    - OPCODE_ERROR: SHA-384 opcode rejected\n");
         errors++;
@@ -440,8 +357,7 @@ int main(void) {
             printf("  PASS: SHA-384 digest matches the FIPS 180-4 vector\n");
         }
 
-        // The same transfer also copied the message; check it landed. A digest
-        // engine fed correctly while the copy path is broken still fails here.
+        // The same transfer also copied the message.
         volatile uint8_t *dst8 = (volatile uint8_t *)DMA_DST_ADDR;
         int msg_mismatches = 0;
         for (int i = 0; i < FIPS_MSG_LEN; i++) {
@@ -457,38 +373,49 @@ int main(void) {
         }
     }
 
-    //==========================================================================
-    // Step 7: Multi-chunk inline SHA-256 over the same FIPS message
-    //==========================================================================
-    // The passes above are single-chunk: CHUNK_DATA_SIZE == TOTAL_DATA_SIZE, so
-    // the hash engine sees the whole message in one go. Here the same 56 bytes
-    // are carried as two 28-byte chunks, and the digest must still be the
-    // published SHA-256 of the whole message -- a hash that restarted per chunk,
-    // or that dropped the tail, produces a different digest and fails.
+    // Multi-chunk inline SHA-256: the same 56 bytes as two 28-byte chunks must
+    // still give the published SHA-256 of the whole message. A hash that
+    // restarted per chunk, or that dropped the tail, gives a different digest.
     //
-    // Interrupts are disabled for this pass: the ISR clears STATUS.chunk_done,
-    // and chunk pacing has to read that bit.
+    // Interrupts are disabled for this pass: the ISR would clear the chunk-done
+    // status that chunk pacing polls.
     printf("\n=== Secure DMA multi-chunk SHA-256 (FIPS 180-4 vector) ===\n");
     WRITE_REG(SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, 0);
 
     WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
     WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_CHUNK_LEN);
 
+    // mc_chunks counts only polls that ended on CHUNK_DONE or DONE; a poll that
+    // runs out of budget is a failure and is never counted as a chunk. The poll
+    // budget matches the other DMA polls in this test: 100000 status reads stay
+    // inside the testbench run budget, so an expired poll reports its ERROR line
+    // instead of ending as a run-cycle timeout.
     uint32_t mc_status = 0;
     uint32_t mc_chunks = 0;
+    uint32_t mc_chunk_done = 0;
+    int mc_timed_out = 0;
     uint32_t mc_initial = SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm;
     for (uint32_t guard = 0; guard < 16u; guard++) {
         secure_dma__CONTROL_t mc_ctrl = {.f = {.OPCODE = OPCODE_SHA256, .DIGEST_SWAP = 1, .GO = 1}};
         WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, mc_ctrl.w | mc_initial);
 
-        int t = 200000;
+        int t = 100000;
         do {
             mc_status = READ_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         } while (!(mc_status & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
                                 SECURE_DMA__STATUS__CHUNK_DONE_bm)) &&
                  --t > 0);
         if (mc_status & SECURE_DMA__STATUS__ERROR_bm) break;
+        if (!(mc_status & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm))) {
+            printf("  ERROR: multi-chunk SHA-256 poll %u timed out with no CHUNK_DONE or DONE "
+                   "(status 0x%x)\n",
+                   (unsigned)mc_chunks, mc_status);
+            errors++;
+            mc_timed_out = 1;
+            break;
+        }
         mc_chunks++;
+        if (mc_status & SECURE_DMA__STATUS__CHUNK_DONE_bm) mc_chunk_done++;
         if (mc_status & SECURE_DMA__STATUS__DONE_bm) break;
         // Clear chunk_done and continue the same transfer.
         WRITE_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__CHUNK_DONE_bm);
@@ -496,14 +423,16 @@ int main(void) {
     }
 
     uint32_t mc_err = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
-    if (!(mc_status & SECURE_DMA__STATUS__DONE_bm) || mc_err != 0) {
+    if (mc_timed_out) {
+        // Already scored above.
+    } else if (!(mc_status & SECURE_DMA__STATUS__DONE_bm) || mc_err != 0) {
         printf("  ERROR: multi-chunk SHA-256 did not complete (status 0x%x err 0x%x "
                "chunks %u)\n",
                mc_status, mc_err, (unsigned)mc_chunks);
         errors++;
     } else if (mc_chunks < 2u) {
-        // Without this the pass could have been one chunk after all, and the
-        // digest compare below would say nothing about chunking.
+        // A single-chunk completion would make the digest compare say nothing
+        // about chunking.
         printf("  ERROR: multi-chunk SHA-256 completed in %u chunk(s); 56 bytes at a "
                "28-byte chunk size must take at least 2\n",
                (unsigned)mc_chunks);
@@ -515,7 +444,8 @@ int main(void) {
         }
         char mc_hex[2 * SHA256_DIGEST_BYTES + 1];
         digest_to_hex((const uint8_t *)hw256, SHA256_DIGEST_BYTES, mc_hex);
-        printf("  Chunks        = %u\n", (unsigned)mc_chunks);
+        printf("  Chunks        = %u (CHUNK_DONE seen %u)\n", (unsigned)mc_chunks,
+               (unsigned)mc_chunk_done);
         printf("  Computed (HW) = %s\n", mc_hex);
         printf("  Expected (NIST) = %s\n", kFips1804Sha256Hex);
         if (strcmp(mc_hex, kFips1804Sha256Hex) != 0) {
@@ -532,13 +462,9 @@ int main(void) {
                                                        SECURE_DMA__STATUS__ERROR_bm |
                                                        SECURE_DMA__STATUS__CHUNK_DONE_bm);
 
-    //==========================================================================
-    // Step 8: DIGEST_SWAP is the only thing that changes between these two runs
-    //==========================================================================
-    // Every pass above sets DIGEST_SWAP=1. Nothing so far shows the bit does
-    // anything: a DMA that ignored it would pass them all. Re-run the same
-    // single-chunk SHA-256 with DIGEST_SWAP=0 and require each digest word to be
-    // the byte-reverse of the swapped run. Equal words mean the bit is dead.
+    // DIGEST_SWAP: every pass above sets it, so a DMA that ignored it would pass
+    // them all. Re-run the same single-chunk SHA-256 with and without it; each
+    // unswapped digest word must be the byte-reverse of the swapped one.
     printf("\n=== Secure DMA DIGEST_SWAP ===\n");
 
     uint32_t swapped[SHA256_DIGEST_WORDS];
@@ -592,9 +518,7 @@ int main(void) {
     if (swap_mismatches) {
         errors++;
     } else if (swap_identical == SHA256_DIGEST_WORDS) {
-        // A palindromic digest would satisfy the reverse test without the bit
-        // doing anything. Vanishingly unlikely, but it is the one way this
-        // check could pass on a dead DIGEST_SWAP, so it is called out.
+        // A palindromic digest satisfies the reverse check with a dead DIGEST_SWAP.
         printf("  ERROR: every digest word is unchanged by DIGEST_SWAP -- the bit "
                "appears to have no effect\n");
         errors++;

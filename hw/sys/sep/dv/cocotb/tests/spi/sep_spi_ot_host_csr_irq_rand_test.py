@@ -6,16 +6,16 @@ SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the
 reference suite OT-SPI host-control directed family (fw spi_ot_reg / tx_fifo /
 cmd_queue / interrupt / error_handling / watermark / enable_disable) into ONE rep.
 Not folded, because nothing here checks them: clock_config (CFG.CLKDIV is
-R/W-walked but no transfer runs at a programmed divider), rx_fifo (the only RX
-touch is the empty-FIFO read that triggers UNDERFLOW), and mux_select (a no-op --
-the OT SPI host is already the active bare-SEP path). Drives the upstream OpenTitan
+R/W-walked but no transfer runs at a programmed divider) and rx_fifo (the only RX
+touch is the empty-FIFO read that triggers UNDERFLOW). Drives the upstream OpenTitan
 spi_host CSRs (@0x10B0_0000, NUM_CS=1) directly over the CPU-LSU AXI splice (no_cpu, no
 firmware, no flash BFM) -- this is the host CONTROL plane, DISTINCT from SPI flash command breadth
 (flash command datapath) and `sep_spi_ot_dma_rx_test` (flash READ + DMA).
 
 Randomization (SINGLE source of randomness): SepSpiHostCfg seeds
-legal field values for the register R/W walk + the watermark threshold from the
-runner seed. The golden is the documented reset values + RW/W1C/RO field semantics
+legal field values for the register R/W walk + two watermark thresholds from the
+runner seed, one from 2-4 and one from 5-8, in seeded order, each with its own
+fill depth. CHK-WATERMARK grades both on every seed. The golden is the documented reset values + RW/W1C/RO field semantics
 (seq_lib/sep_spi_host_csr_seq.py, taken from the generated spi_controller reg
 block, which reggen derives from upstream spi_host.hjson).
 
@@ -39,9 +39,10 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   with no bytes enabled, which neither this AXI master nor the
                   wrapper's bridge can present to the core.
   CHK-WATERMARK : STATUS.TXWM moves as the TX FIFO occupancy crosses TX_WATERMARK
-                  (occupancy proven by STATUS.TXQD).
-  CHK-ENABLE    : SPIEN=0 holds a queued TX command off (FIFO not drained);
-                  SPIEN=1 lets it execute (FIFO drains).
+                  (occupancy proven by STATUS.TXQD), for one threshold from
+                  each half of the draw range.
+  CHK-ENABLE    : SPIEN=0 with OUTPUT_EN=1 holds a queued TX command off (FIFO
+                  not drained); setting SPIEN alone lets it execute (FIFO drains).
   CHK-NONVAC    : every walked reg reads back different from its observed pre-write
                   value, so no entry in the walk is a no-op against a tied-off decode.
   CHK-ZERO-STRB : a 64-bit beat that enables only the CONTROL half returns OKAY,
@@ -124,6 +125,17 @@ _SPI_AGG = agg_from_pic("SPI IRQ")
 class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     """Walk the OT SPI host control plane (CSR/IRQ/error/watermark/enable)."""
 
+    required_evidence = (
+        "CHK-RESET",
+        "CHK-REG-RW",
+        "CHK-NONVAC",
+        "CHK-ZERO-STRB",
+        "CHK-INTR",
+        "CHK-ERR-W1C",
+        "CHK-WATERMARK",
+        "CHK-ENABLE",
+    )
+
     async def run_scenario(self) -> None:
         self.scfg = SepSpiHostCfg(self.random_seed())
         self.spi = SepSpiHost(self)
@@ -136,7 +148,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._chk_zero_strb()
         await self._chk_intr()
         await self._chk_err_w1c()
-        await self._chk_watermark()
+        for half, wm, fill in self.scfg.tx_wm_reps:
+            await self._chk_watermark(half, wm, fill)
         await self._chk_enable()
         self.logger.info("SPI host CSR/IRQ breadth ALL CHECKS PASS")
 
@@ -193,7 +206,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     # ---- CHK-REG-RW (+ CHK-NONVAC) ---------------------------------------
     async def _chk_reg_rw(self) -> None:
         for name, addr, wmask, impl_mask, val in self.scfg.rw_regs:
-            # The reference for CHK-NONVAC is the observed pre-write value, not the
+            # The baseline for CHK-NONVAC is the observed pre-write value, not the
             # reset table: the readback below is already asserted equal to the
             # written value, so a reset-table compare would grade the stimulus.
             pre = await self.spi.rd(addr)
@@ -430,7 +443,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         # from this path twice over: the AXI master cannot emit a zero-strobe
         # beat (ocah_axi_master_driver.check_strb rejects any partial strobe),
         # and the wrapper's bridge answers a zero-strobe write itself rather
-        # than forwarding it (axi_lite_to_tlul AckZeroStrobeWrite). Any other
+        # than forwarding it (axi_lite_to_tlul ACK_ZERO_STROBE_WRITE). Any other
         # byte count that happens to raise the bit would be an expectation taken
         # from the device, so the condition stays unclaimed.
         self.logger.info(
@@ -440,10 +453,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
 
     # ---- CHK-WATERMARK ----------------------------------------------------
-    async def _chk_watermark(self) -> None:
+    async def _chk_watermark(self, half: str, wm: int, fill: int) -> None:
         await self._sw_rst_pulse()
         # Program TX_WATERMARK; keep core disabled so the FIFO does not drain.
-        ctrl = CTRL_RESET | (self.scfg.tx_watermark << CTRL_TX_WM_LSB)
+        ctrl = CTRL_RESET | (wm << CTRL_TX_WM_LSB)
         await self.spi.wr(CONTROL, ctrl)
         st_empty = await self.spi.rd(STATUS)
         assert (st_empty & ST_TXQD) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
@@ -454,37 +467,47 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         assert st_empty & ST_TXWM, (
             f"CHK-WATERMARK STATUS.TXWM clear while TXQD=0 < wm (0x{st_empty:08x})"
         )
-        wm = self.scfg.tx_watermark
         for _ in range(wm - 1):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_below = await self.spi.rd(STATUS)
+        assert (st_below & ST_TXQD) == wm - 1, (
+            f"CHK-WATERMARK TXQD={st_below & ST_TXQD} != {wm - 1} below wm={wm} (0x{st_below:08x})"
+        )
         assert st_below & ST_TXWM, (
             f"CHK-WATERMARK STATUS.TXWM clear at TXQD={st_below & ST_TXQD} < wm={wm} "
             f"(0x{st_below:08x})"
         )
         await self.spi.wr(TXDATA, 0xA5A5_A5A5)  # the word that reaches the threshold
         st_at = await self.spi.rd(STATUS)
+        assert (st_at & ST_TXQD) == wm, (
+            f"CHK-WATERMARK TXQD={st_at & ST_TXQD} != {wm} at wm={wm} (0x{st_at:08x})"
+        )
         assert not (st_at & ST_TXWM), (
             f"CHK-WATERMARK STATUS.TXWM still set at TXQD={st_at & ST_TXQD} == wm={wm} "
             f"(0x{st_at:08x})"
         )
-        extra = self.scfg.tx_fill_words - wm
+        extra = fill - wm
         for _ in range(extra):
             await self.spi.wr(TXDATA, 0xA5A5_A5A5)
         st_full = await self.spi.rd(STATUS)
         txqd = st_full & ST_TXQD
-        assert txqd == self.scfg.tx_fill_words, (
-            f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {self.scfg.tx_fill_words}"
-        )
+        assert txqd == fill, f"CHK-WATERMARK TXQD 0x{txqd:x} != filled {fill} (wm={wm})"
         assert not (st_full & ST_TXWM), (
             f"CHK-WATERMARK STATUS.TXWM set after filling past wm={wm} (0x{st_full:08x})"
         )
         self.logger.info(
-            "CHK-WATERMARK PASS: TXWM 1->0 at exact wm=%d (TXQD %d->%d->%d, tx_wm = qd < wm)",
+            "CHK-WATERMARK PASS: %s half wm=%d, observed TXQD/TXWM %d/%d -> %d/%d -> %d/%d "
+            "-> %d/%d (tx_wm = qd < wm)",
+            half,
             wm,
-            wm - 1,
-            wm,
+            st_empty & ST_TXQD,
+            int(bool(st_empty & ST_TXWM)),
+            st_below & ST_TXQD,
+            int(bool(st_below & ST_TXWM)),
+            st_at & ST_TXQD,
+            int(bool(st_at & ST_TXWM)),
             txqd,
+            int(bool(st_full & ST_TXWM)),
         )
         await self._sw_rst_pulse()
 
@@ -526,7 +549,15 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         window = max(_NEG_WINDOW_MARGIN * calib, _NEG_WINDOW_FLOOR)
 
         # Negative leg: same stimulus, SPIEN=0, held for the calibrated window.
+        # OUTPUT_EN only enables the pad buffers, and SPIEN alone gates
+        # transactions, so the hold window runs with OUTPUT_EN=1: a device that
+        # gated commands on OUTPUT_EN instead of SPIEN would execute here.
         await self._queue_one_tx()  # _sw_rst_pulse leaves SPIEN=0
+        await self.spi.wr(CONTROL, CTRL_RESET | CTRL_OUTPUT_EN)
+        ctrl_hold = await self.spi.rd(CONTROL)
+        assert (ctrl_hold & (CTRL_SPIEN | CTRL_OUTPUT_EN)) == CTRL_OUTPUT_EN, (
+            f"CHK-ENABLE: hold-window CONTROL 0x{ctrl_hold:08x} is not SPIEN=0 OUTPUT_EN=1"
+        )
         assert not await self._poll_drain(window), (
             f"CHK-ENABLE: command executed while SPIEN=0 (drained within {window} "
             f"polls, {_NEG_WINDOW_MARGIN}x the {calib}-poll enabled drain)"
@@ -540,16 +571,25 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"CHK-ENABLE: TXEMPTY set while SPIEN=0 held the command (0x{st_held:08x})"
         )
 
-        # Positive leg: enabling the core releases that same queued command.
-        await self.spi.wr(CONTROL, CTRL_RESET | CTRL_SPIEN | CTRL_OUTPUT_EN)
+        # Positive leg: setting SPIEN, and changing no other bit, releases that
+        # same queued command.
+        await self.spi.wr(CONTROL, ctrl_hold | CTRL_SPIEN)
+        ctrl_rel = await self.spi.rd(CONTROL)
+        assert ctrl_rel ^ ctrl_hold == CTRL_SPIEN, (
+            f"CHK-ENABLE: release CONTROL 0x{ctrl_rel:08x} differs from the hold value "
+            f"0x{ctrl_hold:08x} in more than SPIEN"
+        )
         released = await self._poll_drain(_ENABLED_POLLS)
         assert released, "CHK-ENABLE: command did not execute after SPIEN=1"
         self.logger.info(
-            "CHK-ENABLE PASS: SPIEN=0 held the command for %d polls (%dx the %d-poll "
-            "enabled drain, TXQD stayed 1); SPIEN=1 drained it in %d",
+            "CHK-ENABLE PASS: CONTROL=0x%08x (SPIEN=0, OUTPUT_EN=1) held the command for "
+            "%d polls (%dx the %d-poll enabled drain, TXQD stayed 1); CONTROL=0x%08x "
+            "(SPIEN only changed) drained it in %d",
+            ctrl_hold,
             window,
             _NEG_WINDOW_MARGIN,
             calib,
+            ctrl_rel,
             released,
         )
         await self._sw_rst_pulse()

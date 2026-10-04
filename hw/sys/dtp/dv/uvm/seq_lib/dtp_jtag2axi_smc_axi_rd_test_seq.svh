@@ -302,8 +302,9 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
 
     `uvm_info(get_type_name(), "=== SMC_AXI_SINGLE_OP Randomized Reads ===", UVM_LOW)
     reset_and_idle();
-    for (int unsigned idx = 1; idx <= random_count; idx++) begin
-      size   = $urandom_range(3);
+    // Every pass reads each transfer size once before the drawn sizes.
+    for (int unsigned idx = 1; idx <= random_count + 4; idx++) begin
+      size   = (idx <= 4) ? idx - 1 : $urandom_range(3);
       beat   = random_upper_addr(t);
       beat |= random_target_aligned_addr(t, size);
       offset = 64'($urandom_range((t.beat_bytes >> size) - 1) << size);
@@ -317,7 +318,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/%0d: random read addr=0x%08h size=%0d data=0x%0h",
                 idx,
-                random_count,
+                random_count + 4,
                 addr,
                 size,
                 data

@@ -30,12 +30,13 @@ the wrap same-page widen does not fire there.
 
 SepInboundFilterWidenCfg covers the widen itself: with allow_burst=1 and
 START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
-whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
+whole page and traffic_filter.sv compares only addr[ADDR_WIDTH-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
-is write-once per fabric.adoc, so the field must not change once set. That
-document does not say how a write to a locked entry completes, so the
-completion code is not graded: the write must complete (no timeout), and the
-held field plus the still-granted page are the contract.
+is write-once, so the field must not change once set, and every later write to
+the entry's FILTER_CONFIG, START_ADDR and END_ADDR completes DECERR
+(filter_ctrl.rdl locked; hw/ip/axi_filter/doc/index.adoc "Locking a Filter
+Entry"). The held field, the DECERR code and the still-granted page are the
+contract.
 """
 
 from __future__ import annotations
@@ -114,7 +115,7 @@ BURST_ALLOW_SPAN = 0x2000
 # --- same-page 4 KB widen -----------------------------------------------------
 # axi_filter_wrap.sv rewrites an allow_burst=1 window whose START and END share a
 # 4 KB page to that whole page, and traffic_filter.sv then compares only
-# addr[AddrWidth-1:12]. memory_map.adoc packs distinct blocks of the SEP System
+# addr[ADDR_WIDTH-1:12]. memory_map.adoc packs distinct blocks of the SEP System
 # aperture at that same 4 KB pitch -- DMA CSR 0x1080_0000, WDT 0x1080_1000, the
 # dual scratch banks 0x1080_2000 -- so a grant that crossed the page edge would
 # reach a neighbouring block.
@@ -225,11 +226,20 @@ class SepInboundFilterCfg:
         return INFILT_BASE + self.entry * FILTER_STRIDE + FILTER_END_ADDR
 
     def config_word(
-        self, *, read_allowed: bool, write_allowed: bool, allow_burst: bool = False
+        self,
+        *,
+        read_allowed: bool,
+        write_allowed: bool,
+        allow_burst: bool = False,
+        allow_ns: bool = True,
     ) -> int:
         """FILTER_CONFIG lo: entry_enabled + allow_ns + src_id + per-dir enables.
-        Never sets the locked (woset) bit, so the entry stays reprogrammable."""
-        v = F_ENTRY_ENABLED | F_ALLOW_NS | (self.src_id << F_SRC_ID_LSB)
+        Never sets the locked (woset) bit, so the entry stays reprogrammable.
+        ``allow_ns`` is an equality match on prot[1], not a grant: False makes
+        the entry match secure transactions only."""
+        v = F_ENTRY_ENABLED | (self.src_id << F_SRC_ID_LSB)
+        if allow_ns:
+            v |= F_ALLOW_NS
         if read_allowed:
             v |= F_READ_ALLOWED
         if write_allowed:
@@ -394,10 +404,13 @@ class SepInboundFilter(SepAxiRegDriver):
     async def write_tolerant(self, addr: int, data: int) -> int:
         """Write accepting any AXI response; return the resp_code.
 
-        fabric.adoc does not specify how a write to a locked entry completes,
-        so the caller proves the lock by read-back. A timeout is not a
-        completion and fails here.
+        A write to a locked entry completes DECERR by the spec; the caller grades
+        the code and proves the lock by read-back. One DECERR credit is armed on
+        the bus monitor for the write and handed back when the write answers
+        anything else. A timeout is not a completion and fails here.
         """
+        mon = self.test.env.axi_monitor
+        mon.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
             "infilt_wr_tol",
             op=SepAxiOp.WRITE,
@@ -407,6 +420,8 @@ class SepInboundFilter(SepAxiRegDriver):
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
+        if seq.timed_out or seq.resp_code != RESP_DECERR:
+            mon.release_expected_decerr(1)
         assert not seq.timed_out, f"write 0x{addr:08x} to a locked entry timed out (no BRESP)"
         return seq.resp_code
 
@@ -439,6 +454,7 @@ class SepInboundFilter(SepAxiRegDriver):
         allow_burst: bool = False,
         end_addr: int | None = None,
         expect_page_widen: bool = False,
+        allow_ns: bool = True,
     ) -> None:
         """Program the inbound filter entry.
 
@@ -476,7 +492,10 @@ class SepInboundFilter(SepAxiRegDriver):
         await self._wr(
             cfg.cfg_addr,
             cfg.config_word(
-                read_allowed=read_allowed, write_allowed=write_allowed, allow_burst=allow_burst
+                read_allowed=read_allowed,
+                write_allowed=write_allowed,
+                allow_burst=allow_burst,
+                allow_ns=allow_ns,
             ),
         )
 

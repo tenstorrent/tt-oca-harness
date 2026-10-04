@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdbool.h>
 
 #include "smc_io.h"
@@ -18,26 +16,12 @@
 
 static int arr[INT_POW];
 
-/* Scratch for merge(), in .bss rather than on the stack.
- *
- * merge() used two VLAs, int L[n1] and int R[n2], whose combined length is the
- * span being merged. The top-level merge for the largest size class spans
- * ARRAY_SIZES-1 = 2048 elements, i.e. 8192 bytes of VLA in a single frame,
- * against __stack_size = 4K (toolchain.mk). The 1024 class needs 4096 bytes,
- * the whole stack, before counting the recursion frames beneath it. So the
- * three largest size classes ran off the bottom of the stack.
- *
- * Nothing caught it: mergesort never checks that the array came back sorted
- * and calls test_pass unconditionally, so corrupting whatever lies below the
- * stack produced a green run.
- *
- * INT_POW is the allocated length of arr[], so it is an upper bound on any
- * span merge() can be asked to handle.
- */
+/* Scratch for merge(), in .bss: the largest merges do not fit on the 4 KiB
+ * stack. INT_POW, the length of arr[], bounds any span merge() handles. */
 static int merge_lo[INT_POW];
 static int merge_hi[INT_POW];
 
-// Merge function to merge two halves
+// Merge the sorted spans arr[l..m] and arr[m+1..r] back into arr[l..r]
 void merge(int arr[], int l, int m, int r) {
     int i, j, k;
     int n1 = m - l + 1;
@@ -46,11 +30,9 @@ void merge(int arr[], int l, int m, int r) {
     int *L = merge_lo;
     int *R = merge_hi;
 
-    // Copy data to temp arrays L[] and R[]
     for (i = 0; i < n1; i++) L[i] = arr[l + i];
     for (j = 0; j < n2; j++) R[j] = arr[m + 1 + j];
 
-    // Merge the temp arrays back into arr[l..r]
     i = 0;
     j = 0;
     k = l;
@@ -65,14 +47,12 @@ void merge(int arr[], int l, int m, int r) {
         k++;
     }
 
-    // Copy the remaining elements of L[], if there are any
     while (i < n1) {
         arr[k] = L[i];
         i++;
         k++;
     }
 
-    // Copy the remaining elements of R[], if there are any
     while (j < n2) {
         arr[k] = R[j];
         j++;
@@ -80,21 +60,17 @@ void merge(int arr[], int l, int m, int r) {
     }
 }
 
-// Merge sort function
 void merge_sort(int arr[], int l, int r) {
     if (l < r) {
         int m = l + (r - l) / 2;
 
-        // Sort first and second halves
         merge_sort(arr, l, m);
         merge_sort(arr, m + 1, r);
 
-        // Merge the sorted halves
         merge(arr, l, m, r);
     }
 }
 
-// Utility function to fill array with random numbers
 void fill_array(int arr[], int size) {
     for (int i = 0; i < size; i++) {
         arr[i] = get_random_int() % 1000;
@@ -102,10 +78,8 @@ void fill_array(int arr[], int size) {
 }
 
 /* Require the array to be non-decreasing, and its element sum to be unchanged.
- *
- * Ordering alone is satisfied by a sort that drops or duplicates elements, so
- * the sum carried in from before the sort is what makes this a permutation
- * check rather than a monotonicity check. */
+ * The sum check catches most sorts that drop or duplicate elements, which the
+ * order check alone would accept. */
 static void check_sorted(int arr[], int size, int expect_sum, int size_log, int iter) {
     int sum = 0;
 
@@ -140,7 +114,6 @@ int main() {
             int size = (int)int_pow(2, size_log);
             start_counter();
             for (int i = 0; i < N_ITER; i++) {
-                // Measure the time taken for merge sort
                 fill_array(arr, size);
                 int expect_sum = 0;
                 for (int j = 0; j < size; j++) {
@@ -160,8 +133,6 @@ int main() {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

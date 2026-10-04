@@ -15,22 +15,33 @@ downstream evidence. On a bench without attached downstream TAPs the same
 flow runs against the wire loopbacks with the window and chain-readback
 evidence only.
 
-``config_hold`` and ``tms_hold`` drive one STAP's 3DCR through composed
-TAP_3DCR chain scans and judge the chain readback against the model:
-``config_hold`` proves which fields survive Test-Logic-Reset per CONFIG_HOLD
-polarity (and that TRST clears them all), ``tms_hold`` proves the parked host
-TMS polarity of a deselected STAP through the host-port window.
+``config_hold`` and ``tms_hold`` drive STAP 3DCRs through composed TAP_3DCR
+chain scans and judge the chain readback against the model: ``config_hold``
+proves which fields survive Test-Logic-Reset per CONFIG_HOLD polarity (and
+that TRST clears them at either polarity), ``tms_hold`` proves the parked
+host TMS polarity of a deselected STAP through the host-port window, then
+writes every 3DCR payload to all four STAPs and proves each port forwards
+while its select is set and parks at its TMS_HOLD otherwise, and parks at
+its stored TMS_HOLD under the four STAP disables.
 ``ext_stap_scan`` proves the extended STAP host scan interface against the
 host segment the bench places behind it: the host scan controls and the PTAP
 chain return follow the PTAP 3DCR select and ``stap_host``, and recover
 without reset.
+``stap_chain_hold`` proves that IR and DR scans under IDCODE and BYPASS leave
+the STAP chain untouched while the PTAP 3DCR select is clear.
 """
 
 from __future__ import annotations
 
 from env.dtp_dbg_disable import STAP_DISABLE
-from env.dtp_scan_ref_model import SCAN_MARKER_WIDTH, STAP_HOST_SEGMENT_WIDTH, STAP_ORDER
+from env.dtp_scan_ref_model import (
+    SCAN_MARKER_WIDTH,
+    STAP_HOST_SEGMENT_WIDTH,
+    STAP_ORDER,
+    Stap3dcrState,
+)
 from env.dtp_stap_ds_agent import STAP_DS_TDR_NAME
+from env.dtp_types import DTP_IR_WIDTH, DtpJtagInstr
 from ocah_jtag_vip import OcahJtagState
 
 from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
@@ -67,6 +78,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         ),
         "config_hold": frozenset({"CHK-TAP-RESET-TLR", "CHK-SCAN-CHAIN", "CHK-SCAN-OBS"}),
         "tms_hold": frozenset({"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN"}),
+        "stap_chain_hold": frozenset({"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN"}),
     }
 
     def __init__(self, name: str = "dtp_stap_scan_test_seq", *, scenario: str, **kwargs) -> None:
@@ -101,6 +113,8 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
                 await self.run_config_hold()
             case "tms_hold":
                 await self.run_tms_hold()
+            case "stap_chain_hold":
+                await self.run_stap_chain_hold()
             case _:
                 raise ValueError(f"unknown STAP scenario {self.scenario}")
         await self.enable_all_debug()
@@ -361,14 +375,11 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         self.check_stap_chain_readback(captured, context="ext.enabled_readback")
         self.check_stap_chain_marker(captured, marker, context="ext.enabled_marker")
 
-        # The host scan strobes follow every PTAP scan whatever the PTAP
-        # select (they are the TAP's; the select routes the scan data), so the
-        # deselected scan is judged for pulsing strobes, not for silence.
-        self.log_step(2, "PTAP_3DCR.SELECT=0: TDO carries the PTAP 3DCR")
+        self.log_step(2, "PTAP_3DCR.SELECT=0: TDO carries the PTAP 3DCR, the controls stay quiet")
         await self.stap_chain_write(ptap_select=0, context="ext.deselect")
         window = self.start_scan_window(controls)
         await self.read_ptap_3dcr_deselected(marker=marker, context="ext.deselected_readback")
-        self.check_scan_window(window, active=controls, context="ext.deselected_window")
+        self.check_scan_window(window, quiet=controls, context="ext.deselected_window")
 
         self.log_step(3, "stap_host gated: the controls stay quiet and scan-in is bypassed")
         await self.stap_chain_write(
@@ -419,9 +430,9 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             await self.apply_tlr()
         else:
             await self.apply_trst()
-        # The reset leaves IDCODE in the IR. Every IR scan shifts through the
-        # STAP chain, so TAP_3DCR is reloaded with a composed IR scan that
-        # rewrites the chain image it passes through.
+        # The reset leaves IDCODE in the IR. While the PTAP select is set every
+        # IR scan shifts through the STAP chain, so TAP_3DCR is reloaded with a
+        # composed IR scan that rewrites the chain image it passes through.
         await self.stap_chain_ir_write(context=f"{ctx}.reload_ir")
         if self.stap_model.ptap_select:
             captured = await self.stap_chain_maintain(context=f"{ctx}.ptap_readback")
@@ -451,7 +462,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             # Seeded per-pass order: each self-contained sub-case starts from
             # a flushed chain, so each loop proves a different sequencing of
             # preserve/clear behavior.
-            cases = [(1, "tlr"), (0, "tlr"), (1, "trst")]
+            cases = [(1, "tlr"), (0, "tlr"), (1, "trst"), (0, "trst")]
             rng.shuffle(cases)
             self.log_iteration(idx, len(staps), "STAP %s cases=%s", stap, cases)
             for step, (hold, reset) in enumerate(cases, start=1):
@@ -459,7 +470,9 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
                     step, "STAP %s: CONFIG_HOLD=%d, then %s, then read back", stap, hold, reset
                 )
                 await self._config_hold_case(stap, hold, reset)
-        self.log_summary("CONFIG_HOLD", staps=staps, cases=("hold1+tlr", "hold0+tlr", "hold1+trst"))
+        self.log_summary(
+            "CONFIG_HOLD", staps=staps, cases=("hold1+tlr", "hold0+tlr", "hold1+trst", "hold0+trst")
+        )
 
     # --- TMS_HOLD parked polarity ------------------------------------------------
     async def _tms_hold_case(self, stap: str, hold: int) -> None:
@@ -509,4 +522,91 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
                     step, "STAP %s: select (forwarding), deselect with TMS_HOLD=%d", stap, hold
                 )
                 await self._tms_hold_case(stap, hold)
-        self.log_summary("TMS_HOLD", staps=staps, polarities=(1, 0))
+        await self._payload_sweep()
+        self.log_summary("TMS_HOLD", staps=staps, polarities=(1, 0), payload_rounds=8)
+
+    async def _payload_sweep(self) -> None:
+        """Every 3DCR payload on every STAP, enabled and under the STAP
+        disables. Round ``r`` writes payload ``(r + i) % 8`` (bit 0
+        config_hold, bit 1 stap_sel, bit 2 tms_hold) to the i-th STAP in one
+        composed scan. Enabled, a port forwards while its select is set and
+        otherwise parks at its tms_hold; with the four STAP disables asserted
+        every port parks at its stored tms_hold. Both chain readbacks match
+        the model."""
+        watch = tuple(sig for name in STAP_ORDER for sig in self.stap_forwarding_watch(name))
+        gate = {STAP_DISABLE[name]: 1 for name in STAP_ORDER}
+        rounds = list(range(8))
+        self.rng("tms_hold_payload_sweep").shuffle(rounds)
+        self.log.info("STAP 3DCR payload sweep, round order %s", rounds)
+        await self.stap_chain_flush(context="sweep.flush")
+        await self.stap_chain_write(
+            ptap_select=1, sib_en={name: 1 for name in STAP_ORDER}, context="sweep.open_sibs"
+        )
+        for step, r in enumerate(rounds, start=1):
+            ctx = f"sweep.round{r}"
+            payloads = {
+                name: vars(Stap3dcrState.from_value((r + idx) % 8))
+                for idx, name in enumerate(STAP_ORDER)
+            }
+            self.log_step(step, "STAP 3DCR payloads %s, enabled then gated", payloads)
+            await self.stap_chain_write(payloads=payloads, context=f"{ctx}.write")
+            window = self.start_scan_window(watch)
+            captured = await self.stap_chain_maintain(context=f"{ctx}.observe")
+            edges, counts = self.check_scan_window(window, context=f"{ctx}.window")
+            for name in STAP_ORDER:
+                self.check_stap_forwarding(
+                    edges,
+                    counts,
+                    stap=name,
+                    forwarding=bool(payloads[name]["stap_sel"]),
+                    context=f"{ctx}.{name}",
+                )
+            self.check_stap_chain_readback(captured, context=f"{ctx}.readback")
+            await self.set_dbg_disable_vector(gate)
+            window = self.start_scan_window(watch)
+            captured = await self.stap_chain_maintain(dbg_disable=gate, context=f"{ctx}.gated")
+            edges, counts = self.check_scan_window(window, context=f"{ctx}.gated_window")
+            for name in STAP_ORDER:
+                self.check_stap_forwarding(
+                    edges, counts, stap=name, forwarding=False, context=f"{ctx}.gated.{name}"
+                )
+            self.check_stap_chain_readback(
+                captured, dbg_disable=gate, context=f"{ctx}.gated_readback"
+            )
+            await self.enable_all_debug()
+        await self.stap_chain_flush(context="sweep.cleanup")
+
+    # --- STAP chain holds while the PTAP select is clear -----------------------
+    CHAIN_HOLD_DR_WIDTHS = (3, 4, 8)
+
+    async def run_stap_chain_hold(self) -> None:
+        """Scan under IDCODE and BYPASS with the PTAP 3DCR select clear and
+        all-ones data, which would open every SIB and select every STAP were
+        the chain clocked. No host scan control pulses, no STAP forwards
+        (tdo_oen quiet, tms parked at the reset tms_hold of 0), and once the
+        select is set on its own the chain reads back with every SIB closed."""
+        self.log_banner("STAP chain holds while the PTAP 3DCR select is clear")
+        rng = self.rng("stap_chain_hold")
+        widths = (*self.CHAIN_HOLD_DR_WIDTHS, rng.randrange(9, 33))
+        watch = list(self.HOST_SCAN_CONTROLS)
+        for name in STAP_ORDER:
+            prefix = self.stap_signal_prefix(name)
+            watch += [f"{prefix}_tdo_oen", f"{prefix}_tms"]
+        await self.stap_chain_flush(context="hold.flush")
+        window = self.start_scan_window(tuple(watch))
+        self.log_step(1, "IDCODE DR scans of %s bits", widths)
+        await self.load_ir(DtpJtagInstr.IDCODE)
+        for width in widths:
+            await self.shift_dr(self.bit_mask(width), width)
+        self.log_step(2, "BYPASS IR and DR scans of all ones, %s bits", widths)
+        await self.shift_ir(self.bit_mask(DTP_IR_WIDTH), DTP_IR_WIDTH)
+        for width in widths:
+            await self.shift_dr(self.bit_mask(width), width)
+        self.check_scan_window(window, quiet=tuple(watch), context="hold.window")
+        self.log_step(3, "Set the PTAP select alone, then read the chain back")
+        await self.load_ir(DtpJtagInstr.TAP_3DCR)
+        await self.stap_chain_write(ptap_select=1, ptap_config_hold=0, context="hold.select")
+        captured = await self.stap_chain_maintain(context="hold.readback")
+        self.check_stap_chain_readback(captured, context="hold.readback")
+        await self.stap_chain_flush(context="hold.cleanup")
+        self.log_summary("STAP chain hold", dr_widths=widths)

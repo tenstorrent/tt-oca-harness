@@ -12,13 +12,26 @@ procedures for adopters integrating the SEP as part of the SMU or as a
 standalone out-of-context IP.
 
 For detailed architectural documentation about the SEP internal design, refer to
-the dedicated SEP documentation located in `hw/sys/sep/doc/`. The SEP hardware
-overview and interconnect fabric are described in
-`hw/sys/sep/doc/overview.adoc` and `hw/sys/sep/doc/fabric.adoc` respectively.
+the dedicated documentation located in the SEP reference manual. The SEP
+hardware overview and interconnect fabric are described in the SEP
+ifdef::backend-html5[]
+xref:sep:overview.adoc[Overview]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Overview_
+endif::backend-pdf[]
+and
+ifdef::backend-html5[]
+xref:sep:fabric.adoc[Interconnect]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Interconnect_
+endif::backend-pdf[]
+sections.
 
 == Module Overview
 
-The `sep.sv` module provides the complete SEP functionality with logic-level
+The module in `sep.sv` provides the complete SEP functionality with logic-level
 interfaces. Technology-specific components -- SRAM, ROM, and eFuse shims -- are
 instantiated by the adopter outside SEP, following the same vendor-neutral
 philosophy used for the SMC.
@@ -51,7 +64,8 @@ The SEP connects to the system through three AXI paths. The `smn_outbound_axi`
 master interface allows SEP firmware to access system resources outside the SEP
 domain, such as SMC registers or external memory. The `smn_inbound_axi` slave
 interface accepts requests from system masters requiring access to SEP-managed
-resources. The `sep_ext_to_smc_axi` output provides a dedicated AXI path for
+resources. System masters must access SEP register regions with single-beat
+transactions. The `sep_ext_to_smc_axi` output provides a dedicated AXI path for
 SEP-to-SMC transactions, connecting to the SMC's `sep_axi_in` port.
 
 An additional AXI extension port (`axi_extension_axi`) enables adopters to
@@ -72,7 +86,8 @@ The crypto subsystem requires additional memory interfaces.
 `sep_crypto_pka_imem_sram` and `sep_crypto_pka_dmem_sram` connect to the OTBN
 public key accelerator instruction and data memories respectively.
 `km_rom_mem` and `km_sram_mem` connect to the Key Manager's dedicated ROM and
-SRAM macros.
+SRAM macros. The KM SRAM must assert `rvalid` at least one cycle after the cycle
+in which it grants a read; a registered-read macro meets this.
 
 `abr_mem` connects the Adams Bridge working SRAM. On an idle cycle (`re` low),
 ABR expects the channel's read data to return 0 the following cycle.
@@ -104,17 +119,30 @@ window and forwards every access on `ext_trng_axil`. It does not decode offsets
 inside that window: the endpoint is an adopter-defined IP.
 
 The adopter must perform the intra-aperture decode. An address that owns no
-register must return SLVERR and must not alias onto a live register. When no
-external TRNG is connected, terminate `ext_trng_axil` with a DECERR slave.
+register must return an error response and must not alias onto a live register.
+When no external TRNG is connected, terminate `ext_trng_axil` with a DECERR
+slave.
+
+The TRNG path reaches `ext_trng_axil` through an AXI4-to-AXI-Lite conversion
+(64-to-32 downsizer and burst splitter). An errored read returns the slave's
+response verbatim. A single-beat write does too, so a DECERR slave answers
+both an errored read and an errored write with DECERR. A write the splitter
+breaks into more than one beat is reported as SLVERR when an earlier fragment
+erred and the last fragment is OKAY. An adopter whose endpoint returns DECERR
+for an unowned offset sees that code on a single-beat access.
 
 == eFuse and Lifecycle
 
-SEP has its own eFuse bank. Instantiate a separate SHIM and physical
-eFuse bank; do not share the SMC's. The SHIM contract is
-<<smc-efuse-connection>>. On `sep.sv` connect `efuse_bank_ctrl_*` and
-`efuse_shim_command_*`. Through the SMU those ports appear as
-`sep_efuse_bank_ctrl_*` and `sep_efuse_shim_command_*`. The SEP SHIM control
-CSRs sit at the base of `sep_external`; see <<efuse-bank-ctrl-window>>.
+SEP has its own eFuse bank. Instantiate a separate SHIM and physical eFuse bank;
+do not share the SMC's. The SHIM contract is the
+xref:smu-smc.adoc#smc-efuse-connection[eFuse Interface]. On `sep.sv`, connect
+`efuse_bank_ctrl_*` and `efuse_shim_command_*`. Through the SMU those ports
+appear as `sep_efuse_bank_ctrl_*` and `sep_efuse_shim_command_*`. The SEP SHIM
+control CSRs sit at the base of `sep_external`; see the
+xref:smu-smc.adoc#efuse-bank-ctrl-window[SHIM control address window]. SEP
+routes a burst on its first address, so a burst that begins in that window
+carries its later beats to the SHIM. An address that owns no SHIM register must
+return SLVERR and must not alias onto a live register.
 
 SEP senses this bank after its own reset. Watch `sep_fuse_sense_done_o`.
 On `sep.sv`, drive `smc_fuse_sense_done_i` from the SMC so firmware can
@@ -129,21 +157,41 @@ SEP latches it into `secure_tm_o` when fuse sensing completes, or at
 cold-reset release if SEC_DIS is already asserted. Secure test mode
 forces a no-secret, no-fuse-program configuration; it is not an
 authorization bit. See
+ifdef::backend-html5[]
 xref:ocah-docs:sep:test_mode.adoc#test-mode-entry[Test Mode Entry]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Test Mode Entry_
+endif::backend-pdf[]
 and
+ifdef::backend-html5[]
 xref:ocah-docs:sep:lifecycle_controller.adoc#secure-tm-vs-scandump[`secure_tm` and the Secure Scan Chain]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_`secure_tm` and the Secure Scan Chain_
+endif::backend-pdf[]
 in the TRM. `secure_tm_o` is also an SMU output.
 
 * `security_disable_o` is the SEC_DIS token-match result (emergency
 A0 unlock). On `sep.sv`, route it to SMC `sep_security_disable_i`; the
 SMU does that internally. See
+ifdef::backend-html5[]
 xref:ocah-docs:sep:security_disable.adoc#security-disable-sec_dis[Security Disable]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Security Disable_
+endif::backend-pdf[]
 in the TRM.
 
 * `lc_state_o` is the differentially encoded LC_STATE shadow.
 `lc_sigint_err_o` is the decode integrity error (fail-closed). Both
 are SMU outputs. See
+ifdef::backend-html5[]
 xref:ocah-docs:sep:lifecycle_controller.adoc#life-cycle-controller-lcc-life-cycle-controller-lcc[Life Cycle Controller]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_Life Cycle Controller_
+endif::backend-pdf[]
 in the TRM.
 
 * `dbg_disable_o` is the typed per-path debug/test disable vector
@@ -153,7 +201,12 @@ in the TRM.
 * `lcc_demote_state_1_o` / `lcc_demote_state_2_o` are differentially
 encoded in-field debug demotion. They leave the SMU for adopter
 lifecycle logic and are not connected to the SMC. See
+ifdef::backend-html5[]
 xref:ocah-docs:sep:lifecycle_controller.adoc#demote-1-2-in-field-debug-demotion[in-field debug demotion]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+_in-field debug demotion_
+endif::backend-pdf[]
 in the TRM.
 
 * `sep_fuse_dft_disable_o` / `smc_fuse_dft_disable_o` gate DFT-inserted
@@ -161,15 +214,67 @@ OTP access. Leave them open if no such path is inserted. They are SMU
 outputs.
 
 OTP debug AXI-Lite (`axil_sep_otp_jtag`) is connected to the DTP inside
-the SMU; when `SEP=0` the SMU instantiates an AXI-Lite error slave on
+the SMU; when `CFG.SEP=0` the SMU instantiates an AXI-Lite error slave on
 that path.
 
 == SPI Host Interface
 
 The SEP provides a SPI host controller through the `sep_io_spi` interface,
-supporting single and quad modes. The controller's own interrupt leaves the
-module as the `irq` field of `sep_io_spi_req_o`, so no separate interrupt
+supporting standard, dual and quad modes. The controller's own interrupt leaves
+the module as the `irq` field of `sep_io_spi_req_o`, so no separate interrupt
 output is needed.
+
+=== SEP SPI Host Pin Assignment
+
+When the SMU is built with the SEP, the SMU drives the SMC SPI port
+(`spi_*_i` of `smc.sv`) from `sep_io_spi_req_o` and returns the data-pad
+inputs to the SEP in `sep_io_spi_rsp_i.sd`. The SMC places these signals on
+GPIO 0-10 and 54. Inside `smc.sv`, no register selects another SPI source for
+these pads.
+
+[options="header", cols="1,2,4"]
+|===
+| GPIO | Function | SEP SPI host source
+
+| 0-3
+| SPI.DATA[0-3]
+| Lane n drives `sd[n]` with output enable `sd_oe[n]`; the pad input returns as `sd[n]`.
+
+| 4-7
+| SPI.DATA[4-7]
+| Not driven. Output disabled, input disabled.
+
+| 8
+| SPI.CS
+| `cs_n`, output enable `cs_oe`.
+
+| 9
+| SPI.CLK
+| `sck`, output enable `sck_oe`.
+
+| 10
+| SPI.DQS
+| Not driven. Output disabled, input disabled.
+
+| 54
+| SPI DQS Loopback
+| Not driven. Output disabled, input disabled.
+|===
+
+In standard mode, SPI.DATA[0] is the host output (COPI) and SPI.DATA[1] is the
+host input (CIPO).
+
+The SMC holds the SPI function select of these pads on whenever the SMU has
+the SEP. A pad follows the SEP SPI host once it is out of cold reset and while
+its GPIO `DATA_CTRL.lsio_disable` is clear; setting `lsio_disable` returns the
+pad to register control. A pad shim outside `smc.sv` can also hand a pad to a
+second function with its `CONTROL.hw2_ovrd`.
+
+On SPI.CS, SPI.CLK and SPI.DATA[0-3], the pad input is enabled only while the
+host does not drive that pad. The host drives a data lane only while chip
+select is asserted, and drives no pad until software sets its
+`CONTROL.OUTPUT_EN`. Until then SPI.CS is undriven, so its level comes from the
+pad pull; the GPIO pin table recommends a pull-up.
 
 == Bring-Up Considerations
 

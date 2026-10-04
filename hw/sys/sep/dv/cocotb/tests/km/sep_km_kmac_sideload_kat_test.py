@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> KMAC sideload consume-proof KAT (reference suite, sep_km_kmac_sideload_kat_test).
+"""KM -> KMAC sideload consume-proof KAT.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -8,35 +8,36 @@ then CMD_KEY_TRANSFERs it to the OpenTitan KMAC engine. KMAC computes a keyed
 KMAC-256 (cSHAKE, PREFIX="KMAC") over a fixed message; the test proves KMAC
 consumed exactly the sideloaded key.
 
-KMAC DOES have a CFG.sideload bit, so (like AES, unlike HMAC) the consume-proof is
-a sideload-vs-SW cross-check rather than a comparison against a known answer
-(env/sep_kmac_golden.py holds a bit-exact KMAC model; sep_kmac_mode_strength_rand_test
-compares it against this engine). The OSS port is a FRONTDOOR
-known-key variant: it loads a KNOWN distinct-word key, so the cross-check ties the
-sideload output to that specific key via the SW path, and the dummy-key negative
-reference proves the key actually drives the output. Consume-proof is
-sideload-vs-SW plus decoy difference, not a KMAC golden.
+KMAC has a CFG.sideload bit, so (like AES, unlike HMAC) the consume-proof is a
+sideload-vs-SW cross-check with a KNOWN distinct-word key, plus a dummy-key
+negative reference that proves the key drives the output. The SW-key digest is
+also compared against the bit-exact KMAC golden (env/sep_kmac_golden.py).
 
-VPLAN-parity checkers:
+Checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
   CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-NEG   negative ref: keyed MAC with a DUMMY SW key -> c_dummy (a real op)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only KMAC of the four
-            sideload targets released; AES/HMAC/OTBN parked
+            non-ABR sideload engines released; AES/HMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to KMAC
   PUB-OBS   public KMAC KEY_SHARE0/1 read back zero after sideload. NOT a checker:
             kmac.hjson declares them swaccess=wo, so the read cannot fail
   CHK-SIDE  sideload digest != dummy digest (the sideloaded key drives the output)
   CHK-MAC   sideload digest == SW-key(KNOWN key) digest (consume-proof: KMAC used
             exactly the KM-delivered known key)
+  CHK-MAC-GOLDEN  SW-key(KNOWN key) digest == KMAC256(K, X, 256, S="") from
+            env/sep_kmac_golden.py (NIST SP 800-185), so the keyed PREFIX and
+            the right_encode(L) tail the sequence drives are the spec encoding
   CHK-ENT   KMAC consumed real DRBG/EDN masking entropy during the keyed ops --
             proven by the CHK5_kmac sink (>=1 post-adapter crypto-EDN beat to KMAC),
-            the OSS frontdoor analog of the reference suite's backdoor kmac EDN ack-count delta
+            measured frontdoor rather than by counting EDN acks internally
   CHK-ERR   KMAC ERR_CODE == 0
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (KM boot/load consumer)
 
 Scope deltas vs the reference suite:
-  * Like the reference suite, no bit-exact KMAC golden -- the consume-proof is the cross-check.
+  * The consume-proof is the sideload-vs-SW cross-check. The SW-key digest is
+    also compared against the bit-exact KMAC golden (CHK-MAC-GOLDEN), which the
+    reference suite does not do.
     The OSS port strengthens it with a KNOWN distinct-word key (vs the reference suite's
     backdoor-reconstructed KM-generated key), so no backdoor and no key/mask
     non-degeneracy guards are needed (the known key is non-degenerate by
@@ -54,6 +55,7 @@ after which its keyed ops pull real EDN masking entropy (scored via CHK5_kmac).
 from __future__ import annotations
 
 import pyuvm
+from env.sep_kmac_golden import kmac_family_words
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_mailbox_seq import KM_DEST_KMAC, SepKmMailbox
 from seq_lib.sep_kmac_seq import SepKmac
@@ -109,14 +111,13 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         self.km = SepKmMailbox(self)
         self.kmac = SepKmac(self)
 
-        # All four sideload targets JTAG-held across rst_ni release, then parked in SW_RESET_N. KMAC is released only
+        # The four non-ABR sideload engines (OTBN, AES, HMAC, KMAC) are JTAG-held
+        # across rst_ni release, then parked in SW_RESET_N. KMAC is released only
         # before the transfer so its keyed ops pull EDN masking entropy.
 
-        # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
-        # (KM boot/load consumer). score_sinks kmac="observe": prove KMAC pulls real
-        # post-adapter crypto-EDN masking beats during its keyed ops -- the frontdoor
-        # analog of the reference suite's backdoor kmac EDN ack-count (CHK-ENT). The drain keeps the
-        # ESRC FIFO from overflowing during the long entropy phase.
+        # Strict bring-up: CHK1..CHK4 golden; CHK5_km observed. CHK5_kmac (CHK-ENT)
+        # proves KMAC pulls real crypto-EDN masking beats during its keyed ops. The
+        # drain keeps the ESRC FIFO from overflowing during the long entropy phase.
         await self.bring_up_entropy(
             strict=True, score_km="observe", score_sinks={"kmac": "observe"}
         )
@@ -157,7 +158,7 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
             [hex(w) for w in c_dummy],
         )
 
-        # CHK-ISO: only KMAC (of the four sideload targets) is released; others parked.
+        # CHK-ISO: only KMAC (of the four non-ABR sideload engines) is released; others parked.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["aes"])
@@ -213,11 +214,26 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
             f"  a_side ={[hex(w) for w in a_side]}\n"
             f"  b_swref={[hex(w) for w in b_swref]}"
         )
-        # Not "KAT": both digests come from this engine, so this is a cross-check
-        # against the known key, not a comparison with a known answer.
+        # Both digests come from this engine, so this is a cross-check against
+        # the known key, not a comparison with a known answer.
         self.logger.info(
             "CHK-MAC KM->KMAC sideload PASS: sideload digest == SW-key(known) digest "
             "(engine cross-check, not a golden)"
+        )
+        # CHK-MAC-GOLDEN: the SW-key digest against the SP 800-185 KMAC256 golden.
+        # A wrong PREFIX or message tail in the stimulus changes the digest, so it
+        # fails here and not only in a comparison of the engine with itself.
+        golden = kmac_family_words(
+            "kmac", 256, list(KMAC_MSG), len(b_swref) * 4, key_words=list(KAT_KEY)
+        )
+        assert b_swref == golden, (
+            "KMAC SW-key(known) digest != KMAC256 golden:\n"
+            f"  b_swref={[hex(w) for w in b_swref]}\n"
+            f"  golden ={[hex(w) for w in golden]}"
+        )
+        self.logger.info(
+            'CHK-MAC-GOLDEN PASS: SW-key(known) digest == KMAC256(K, X, L=256, S="") '
+            "golden (env/sep_kmac_golden.py)"
         )
 
         # CHK-ERR: KMAC raised no error across the keyed ops.

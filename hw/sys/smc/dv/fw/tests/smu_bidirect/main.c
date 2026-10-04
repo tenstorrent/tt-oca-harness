@@ -12,7 +12,6 @@
 #define SEP_SHARED_END_ADDR 0x000000001080203FULL
 #define SMC_TO_SEP_PATTERN 0xC001CAFEu
 #define SMC_TO_SEP_DONE_PATTERN 0xD0E0F00Du
-#define SEP_READY_PATTERN 0x51EAD001u
 #define SEP_TO_SMC_ACK_PATTERN 0x5E9ACCE5u
 #define SEP_ACK_SCRATCH_NUM 12u
 #define SEP_ACK_TIMEOUT_ITERS 1000000u
@@ -57,19 +56,13 @@ int main(void) {
     smu_sep_dv_test_bringup();
     open_smc_outbound_sep_shared_window();
 
-    /*
-     * No SEP_READY rendezvous here: the harness releases the SMC only after
-     * the SEP has finished its CSR/filter setup and is polling the shared
-     * address.
-     */
+    /* There is no ready handshake: the SEP must have finished its setup and
+     * be polling the shared address before the SMC starts. */
     write32(SEP_SHARED_ADDR, SMC_TO_SEP_PATTERN);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 
     if (!wait_for_shared(SMC_TO_SEP_PATTERN)) {
         test_fail(0);
-        while (true) {
-            __asm__ volatile("wfi");
-        }
     }
 
     for (uint32_t i = 0; i < SEP_ACK_TIMEOUT_ITERS; ++i) {
@@ -82,19 +75,10 @@ int main(void) {
             } else {
                 test_fail(0);
             }
-
-            while (true) {
-                __asm__ volatile("wfi");
-            }
         }
     }
 
     test_fail(0);
-    while (true) {
-        __asm__ volatile("wfi");
-    }
-
-    return 0;
 }
 
 int secondary_main(void) {

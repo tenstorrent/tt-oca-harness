@@ -33,7 +33,7 @@
 //   [S15]  EXT SRAM clear
 //   [S16]  ICCM clear
 //   [S17]  ROM self-hash → measurement slot 0
-//   [S18]  read sboot_dis fuse
+//   [S18]  read secure-boot posture fuses (SBOOT_DIS, CHIPLET_DBG)
 //   [S19]  stack canary write
 //   [S20]  DMA init
 //   [S21]  boot mode branch (SPI / recovery / secondary)
@@ -108,15 +108,7 @@ __attribute__((noreturn)) void trap_handler_c(uint32_t mcause, uint32_t mepc, ui
 static volatile uint32_t g_data_init = 0x12345678u;
 static volatile uint32_t g_bss_zero;
 
-// Warm reset is handled in vector.S ([S01]):
-// - vector.S reads cold_scratch[7] early,
-//   before touching DCCM (sp/scrub/.data/.bss), to preserve BL1 state.
-// - A valid ICCM address transfers directly to the warm handler and remains
-//   intact for subsequent watchdog resets.
-// - A zero slot selects cold boot; the cold path then poisons it with -1.
-// - An invalid nonzero slot stops in vector.S.
-//
-// The SEP scratch registers used:
+// Warm reset dispatch runs in vector.S [S01], before any DCCM access.
 //   cold_scratch[7]: warm reset handler pointer (survives watchdog reset)
 //   cold_scratch[0]: terminal ROM verdict
 
@@ -149,10 +141,11 @@ static volatile uint32_t g_bss_zero;
 #define ROM_ICCM_SIZE_BYTES ((uint32_t)SEP_TOP_SEP_ICCM_SIZE)
 #endif
 
-// MUST be 1 for release. Off here only because the clear costs ~1.84M cycles in
-// simulation; the Makefile carries the full reasoning and the residual risk.
 #ifndef ROM_ICCM_CLEAR_ENABLE
-#define ROM_ICCM_CLEAR_ENABLE 0
+#error "ROM_ICCM_CLEAR_ENABLE must come from the Makefile"
+#endif
+#ifndef ROM_ICCM_CLEAR_FULL
+#error "ROM_ICCM_CLEAR_FULL must come from the Makefile"
 #endif
 
 // Stack canary for the [S28] stack health check.
@@ -162,24 +155,6 @@ static volatile uint32_t g_bss_zero;
 extern uint8_t __stack_bottom[];       // defined in linker script
 extern uint8_t __stack_top[];          // defined in linker script
 
-enum {
-    ROM_ERR_RUNTIME_INIT_FAILED = 0x0000B001u,
-    // Retained for the error-code space only; the MEM_REPAIR gate moved to
-    // vector.S and reports STATUS_ENCODE(ERROR, SEP_MSG_MBIST_FAIL) directly,
-    // since rom_err_fail() needs a C stack that does not exist that early.
-    ROM_ERR_DFT_GATE_BLOCKED = 0x0000D001u,
-    ROM_ERR_SMC_COORD_NOT_READY = 0x0000C001u,
-    ROM_ERR_SPI_INIT_FAILED = 0x0000E001u,
-    ROM_ERR_STACK_OVERFLOW = 0x0000F001u,
-    ROM_ERR_CRYPTO_SELFTEST_FAILED = 0x0000F002u,
-    ROM_ERR_FUSE_SECRETS_NOT_LOCKED = 0x0000F003u,
-    // 0x0000F004 is ROM_ERR_HANDOFF_SELFCHECK_FAILED in the spec's registry,
-    // reserved here for the pre-hand-off self-check that has not landed yet.
-    ROM_ERR_ROM_HASH_MISMATCH = 0x0000F005u,
-    ROM_ERR_MEASUREMENT_FAILED = 0x0000F006u,
-    ROM_ERR_BL0_STATE_OVERLAPS_STACK = 0x0000F007u,
-};
-
 // ── [S30] Unified error convergence ──
 // All ROM error paths converge here.  Records the error in:
 // - BL0 state (error_code field, for BL1/debugger)
@@ -188,7 +163,7 @@ enum {
 // Then hangs (wfi loop).
 __attribute__((noreturn)) static void rom_err_fail(uint32_t error_code);
 
-// Non-static wrapper for rom_err_fail(), callable from lifecycle.c.
+// Non-static wrapper for rom_err_fail(), for callers outside this file.
 __attribute__((noreturn)) void rom_err_fail_ext(uint32_t error_code) {
     rom_err_fail(error_code);
 }
@@ -200,16 +175,7 @@ __attribute__((noreturn)) static void rom_err_fail(uint32_t error_code) {
         s->error_code = error_code;
     }
 
-    // Record in cold_scratch[1] for debugger visibility (STATUS_ENCODE format).
-    //
-    // Only for codes that ARE status values. A subsystem error carries its
-    // subsystem in the upper half (manifest errors are 0x0003xxxx), and
-    // truncating one to 16 bits lands it in the SEP_MSG_* numbering space where
-    // it decodes as an unrelated message: MANIFEST_ERR 0x00030012 came out as
-    // "SEP_MSG_BL1_SIZE_INVALID" on a payload-hash failure. Every such path has
-    // already reported its own specific ERROR status, so the truncated word adds
-    // nothing and actively misleads. The full 32-bit code still reaches the
-    // mailbox below, so DV loses no information.
+    // A subsystem code (upper half set) truncated to 16 bits decodes as an unrelated SEP_MSG_*.
     if ((error_code & 0xFFFF0000u) == 0u) {
         STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_ERROR, error_code & 0xFFFF));
     }
@@ -247,7 +213,7 @@ static void rom_smc_mem_sanity_check(void) {
             simputshex32("SMC_MEM_EXP=", patterns[i]);
             simputshex32("SMC_MEM_GOT=", rb);
             simputs("SMC_MEM_FAIL\n");
-            rom_err_fail(0x0000A001u);
+            rom_err_fail(ROM_ERR_SMC_SANITY_FAILED);
         }
     }
     // Clean up
@@ -369,8 +335,8 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
     }
 
 #if !BOOT_SPI_CONTROLLER_OT
-    // The Cadence path caches a PHY-tuning TLV whose primary slot may fail to
-    // load; the OpenTitan controller has no TLV, so this only applies there.
+    // An XIP controller driver may read a configuration TLV whose primary slot
+    // fails to load; the OpenTitan controller has no TLV, so the check is XIP-only.
     if (spi_primary_tlv_failed()) {
         simputs("SPI_PRIMARY_TLV_FAILED\n");
     }
@@ -382,7 +348,7 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
 // Manifest load → validate → handoff sequence.
 // Loads manifest via DMA from SPI/SMC SRAM, validates structure,
 // locks fuse secrets, and hands off to BL1.
-// spi_status: result of spi_init(); non-zero skips the primary manifest retry.
+// spi_status: result of rom_spi_init(); non-zero skips the primary manifest retry.
 __attribute__((noreturn)) static void
 rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status,
                               uint32_t lc_state) {
@@ -714,12 +680,15 @@ void rom_main(void) {
     rom_iccm_clear();
     simputs("<<C9b_ICCM_CLR\n");
 
-    // ── [S18] Read sboot_dis fuse ──
+    // ── [S18] Read secure-boot posture fuses ──
     // One read of the SBOOT_DIS shadow, masked to bit 0 and latched in
     // lifecycle.c. bl0_state, the boot measurement and the secure-boot callback
     // all take that latched value, so they cannot disagree about which bits of
     // the word matter or about when it was sampled. Terminal on a reserved bit.
     rom_sboot_dis_policy();
+    // CHIPLET_DBG from SIP_DIS / SYS_DIS, latched the same way. It makes a
+    // TEST_DEV or RMA_SiP part enforce secure boot, and SBOOT_DIS overrides it.
+    rom_chiplet_dbg_policy(lc_state);
 
     // ── [S19] Stack canary write ──
     // Place canary at __stack_bottom (lowest stack address, just above .bss).

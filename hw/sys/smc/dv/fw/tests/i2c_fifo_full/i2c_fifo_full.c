@@ -2,50 +2,21 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file i2c_fifo_full.c
- * @brief I2C FIFO fill/reset test for the four FIFOs of an I2C pair
+ * @brief I2C FIFO Fill/Reset Test - Controller and Target FIFOs
  *
- * I2C_0 runs as controller and I2C_1 as target, on the same bus, so every leg
- * below is driven entirely from firmware.
+ * Verifies fill and reset of the four FIFOs of an I2C pair, with I2C_0 as
+ * controller and I2C_1 as target on the same bus. The FMT and TX FIFOs are
+ * filled by software stores until they report full, and both the level and the
+ * store count must equal the configured depth. The RX and ACQ FIFOs are filled
+ * by a real bus transfer to an exact level below full, because only the bus can
+ * put entries in them. Each reset must empty its FIFO without the driver's
+ * software repair, which could otherwise produce the empty level by itself.
+ * RX full and ACQ full are not covered; ACQ full is covered by
+ * i2c_acq_fifo_stretch_reset.
  *
- * Scope, stated per FIFO rather than as "all four FIFOs full":
- *
- *   FMT (controller): filled to the configured depth by software stores until
- *     STATUS.FMTFULL asserts, then FMTRST. FMTLVL and the store count are both
- *     asserted against I2C_CONTROLLER_TX_FIFO_DEPTH, so a FIFO that reports full
- *     at some other depth fails here instead of passing on the flag alone.
- *   TX (target): the same walk against I2C_TARGET_TX_FIFO_DEPTH, then TXRST.
- *   RX (controller): filled by a *real* read transfer from the target, not by
- *     software stores -- nothing but the bus can put an entry in this FIFO. The
- *     level is proven non-zero (exactly the requested byte count) before RXRST
- *     is applied and the level is proven back to zero afterwards. RX *full* is
- *     out of scope: reaching it needs a 64-byte read, ~5.8 ms of standard-mode
- *     bus time, and nothing here observes STATUS.RXFULL asserted.
- *   ACQ (target): filled by a real write transfer from the controller. The
- *     entry count is asserted exactly (START + payload + STOP) before ACQRST and
- *     proven back to zero afterwards. ACQ *full* and the SCL stretch it causes
- *     are out of scope here and are proven in i2c_acq_fifo_stretch_reset.
- *
- * Why the RX and ACQ legs transfer at all: i2c_reset_fifos() repairs a FIFO that
- * the hardware reset failed to empty, by popping RDATA/ACQDATA in software. So
- * "the FIFO is empty after the reset" is a post-condition the helper itself can
- * manufacture, and asserting it straight after the helper cannot fail on any
- * RTL. Two things fix that: the level is made non-zero by a transfer the helper
- * cannot fake, and g_i2c_rx_reset_needed_drain / g_i2c_acq_reset_needed_drain
- * are read back so a repaired FIFO is reported as a failure rather than
- * laundered into a PASS.
- *
- * Leg markers in scratch[1] and the 0xBAD000xx codes in scratch[0] identify the
- * FIFO, not the execution order: FMT 0x40, RX 0x50, TX 0x60, ACQ 0x70. 0x80 and
- * 0x90 are avoided because the shared driver publishes them from inside
- * i2c_target_transmit() and i2c_controller_read() (i2c_opentitan.c), which this
- * test calls, so a hang parked there would be ambiguous.
- *
- * The two bus legs run first, while both instances are in their post-init state.
- * The two software fill legs run last and stop their FIFO's hardware consumer --
- * the controller FSM is disabled for the FMT fill, and nothing reads the target
- * while its TX FIFO is filled -- so in those two legs the level is the store
- * count and no bus traffic is left in flight behind them.
+ * Each leg publishes its own progress marker and failure code, distinct from
+ * the markers the shared I2C driver can publish, so a hang identifies the FIFO
+ * under test rather than the execution order.
  */
 
 #include <stdint.h>
@@ -55,57 +26,33 @@
 #include "smc_test.h"
 #include "i2c_opentitan.h"
 
-// Test parameters
 #define CONTROLLER_IDX 0 // I2C_0 for Controller mode (FMT, RX FIFO)
 #define TARGET_IDX 1     // I2C_1 for Target mode (TX, ACQ FIFO)
 #define TARGET_ADDR 0x10 // 7-bit target address programmed into I2C_1
 
-/* Depths come from the shared header, which transcribes the I2C interface
- * specification and the SMC override table in one place, instead of being
- * re-copied per test. */
 #define FMT_FIFO_DEPTH I2C_CONTROLLER_TX_FIFO_DEPTH
 #define TX_FIFO_DEPTH I2C_TARGET_TX_FIFO_DEPTH
 
-/* Bus stimulus for the two FIFOs that only the bus can fill. Both are far below
- * the 64-entry depth on purpose -- see the scope note in the file header. */
+/* Transfer lengths for the two FIFOs that only the bus can fill; both stay
+ * below the FIFO depth. */
 #define RX_READ_LEN 8u
 #define ACQ_WRITE_LEN 8u
-/* With CTRL.ACQ_START_STOP_EN set the target FSM pushes an AcqStart entry
- * carrying the address byte and an AcqStop entry around the payload, so a write
- * of N bytes lands N + 2 entries (same accounting as i2c_p0_fifo.c:65). */
+/* With start/stop capture enabled, the target adds a start entry (carrying the
+ * address) and a stop entry around the payload. */
 #define ACQ_EXPECTED_ENTRIES (1u + ACQ_WRITE_LEN + 1u)
 
-/* One accessor for every register in this file. The per-instance stride is the
- * same 0x200 in SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR() and in every per-register
- * macro (smc_addr.h:54,631...), so indexing the generated register macro is both
- * shorter and correct for idx != 0, unlike a base-plus-offset(0) expression. */
+/* Address of an I2C register of instance idx, from the generated macros. */
 #define I2C_REG(idx, REG) (SMC_TOP_SMC_I2C_WRAP_I2C_##REG##_BASE_ADDR(idx))
 
-/* Poll bounds, in loop iterations.
- *
- * Sized from measured cost, not guessed, at the corner the bench can draw. The
- * bench picks the core clock from 4-6 ns and the peripheral clock from 8-12 ns
- * independently. A single-register poll iteration costs 0.23 us at the 4 ns
- * core clock (4000 polls took 915 us) and about 0.34 us at 6 ns. The I2C timing
- * counters run on the peripheral clock, so the longest wait below -- an 8-byte
- * read plus its address and STOP -- takes ~0.69 ms at 8 ns and ~1.03 ms at
- * 12 ns.
- *
- * 12000 iterations is ~2.7 ms at the fastest core clock, 2.6x the slowest
- * transfer, and ~4.1 ms at the slowest, well inside the testbench's 20 ms
- * completion bound, so the diagnostics behind these bounds are reachable
- * instead of being preempted by the harness. 4000 expired at 0.92 ms with the
- * last byte still on the bus at the 4 ns / 12 ns corner.
- *
- * I2C_TIMEOUT_DEFAULT is deliberately not used here: it is 200000 iterations
- * (~90-230 ms), an order of magnitude past the harness bound, so a failure
- * branch guarded by it can never print.
- */
-#define XFER_POLL_BOUND 12000u
-#define IDLE_POLL_BOUND 12000u
+/* Poll bounds in loop iterations. They cover the longest standard-mode
+ * transfer in this test with margin and expire before the testbench's
+ * completion timeout, so the diagnostics behind them can print.
+ * I2C_TIMEOUT_DEFAULT is too long for that. */
+#define XFER_POLL_BOUND 16000u
+#define IDLE_POLL_BOUND 16000u
 
 /**
- * @brief Enable I2C Wrapper Control (LEVEL 1)
+ * @brief Enable the I2C wrapper in controller or target mode
  */
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
     uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
@@ -141,17 +88,10 @@ static uint32_t acq_level(uint32_t idx) {
     return (uint32_t)fifo_status.f.ACQLVL;
 }
 
-/* Report a FIFO reset that only took because i2c_reset_fifos() repaired the FIFO
- * in software.
- *
- * The helper drains RX/ACQ by hand and re-applies FMTRST/TXRST when the first
- * attempt leaves entries behind, so every "level is 0 after reset" compare in
- * this file is satisfied either by the hardware reset or by that repair, and the
- * level alone cannot tell them apart. The helper records which happened, per
- * call, and fails closed by default; this restates the same contract at the
- * point where each leg depends on it, and stays live if a future test clears
- * g_i2c_reset_repair_allowed for a window.
- */
+/* Fail a leg when i2c_reset_fifos() had to repair the FIFO in software, because
+ * then an empty level after the reset does not show that the hardware reset
+ * worked. The driver also fails closed by default; this check keeps each leg
+ * correct if the repair gate is opened. */
 static int check_reset_took(uint32_t needed_repair, uint32_t residual, const char *what) {
     if (needed_repair) {
         simputs("  ERROR: ");
@@ -168,14 +108,9 @@ static int check_reset_took(uint32_t needed_repair, uint32_t residual, const cha
 /**
  * @brief Test FMT FIFO full and empty states
  *
- * The controller FSM is stopped for the duration, so software stores are the
- * only producer, there is no consumer, and every level asserted here is the
- * store count. See the comment at the disable below for why that is not a
- * convenience.
- *
- * The controller is left disabled on return: this is the last leg that touches
- * I2C_0, and re-enabling it would only put the filler bytes of a subsequent
- * fill back on the bus.
+ * The controller is disabled for the duration, so software stores are the only
+ * producer and every level checked here is the store count. The controller is
+ * left disabled on return; no later leg uses it.
  */
 static int test_fmt_fifo_full_empty(uint32_t idx) {
     uint32_t pushed = 0;
@@ -185,26 +120,17 @@ static int test_fmt_fifo_full_empty(uint32_t idx) {
 
     simputs("\n=== Test FMT FIFO Full/Empty ===\n");
 
-    /* This leg stuffs the FMT FIFO with entries that are never transmitted, so
-     * it must not start on top of an in-flight transaction from an earlier leg.
-     */
+    /* The filler entries are never transmitted, so this leg must not start
+     * while an earlier transaction is still in flight. */
     if (!i2c_controller_is_idle(idx)) {
         simputs("  ERROR: controller not idle before the FMT fill\n");
         return I2C_ERROR;
     }
 
-    /* Stop the controller FSM before filling, so the FMT FIFO has exactly one
-     * producer and no consumer and every level below is the store count.
-     *
-     * The FSM leaves Idle as soon as the FMT FIFO is non-empty and the bus is
-     * free (i2c_controller_fsm.sv:672-676) -- a START flag is not required -- so
-     * with the controller enabled it starts clocking these filler bytes onto the
-     * bus and pops entries out from under the fill. It only failed to race the
-     * old version of this leg because a byte takes ~90 us on the wire while the
-     * whole fill takes ~64 us; that margin is not a property anything asserts.
-     * ENABLEHOST gates neither the FDATA write path (i2c_core.sv:379) nor
-     * STATUS.FMTFULL (:258), and only FMTRST clears the FIFO (:415), so nothing
-     * this leg checks depends on the FSM running. */
+    /* An enabled controller starts transmitting as soon as the FMT FIFO is
+     * non-empty and the bus is free, and would pop entries during the fill.
+     * Disabling it does not affect FIFO writes, the full flag or the FIFO
+     * reset. */
     i2c_controller_disable(idx);
 
     // Reset FMT FIFO first -- the anchor every level below is counted from
@@ -225,14 +151,9 @@ static int test_fmt_fifo_full_empty(uint32_t idx) {
     }
     simputs("  PASS: FMT FIFO is empty after reset\n");
 
-    /* Fill to full. STATUS.FMTFULL is read before each push because a store into
-     * a full FMT FIFO is dropped silently (fmt_fifo_wvalid ignores wready,
-     * i2c_core.sv:379), so an unchecked push would lose data instead of failing.
-     *
-     * The cap is depth + 6 pushes and the flag is then asserted, which keeps this
-     * fail-closed against the depth itself: if the FIFO were the IP default of
-     * 268 -- or anything above the cap -- the loop would run out without seeing
-     * full and this leg would fail rather than quietly pass. */
+    /* Check the full flag before each store, because a store into a full FIFO
+     * is dropped silently. The loop cap is a little above the configured depth,
+     * so a deeper FIFO never reports full and the leg fails. */
     for (uint32_t i = 0; i < FMT_FIFO_DEPTH + 6u; i++) {
         i2c__STATUS_t status_check = {.w = read_reg(I2C_REG(idx, STATUS))};
         if (status_check.f.FMTFULL) {
@@ -254,10 +175,8 @@ static int test_fmt_fifo_full_empty(uint32_t idx) {
         return I2C_ERROR;
     }
 
-    /* Two independent statements about the same fill: how many entries this test
-     * stored, and what the DUT says it holds. The flag alone cannot distinguish
-     * a FIFO that filled to the configured depth from one that reported full at
-     * some other depth. */
+    /* The store count and the DUT's level are independent checks; the full flag
+     * alone does not show that the FIFO filled to the configured depth. */
     if (pushed != FMT_FIFO_DEPTH) {
         simputshex32("  ERROR: FMTFULL asserted after ", pushed);
         simputshex32(" stores, expected the configured depth ", (uint32_t)FMT_FIFO_DEPTH);
@@ -305,13 +224,10 @@ static int test_fmt_fifo_full_empty(uint32_t idx) {
 /**
  * @brief Start a controller read without popping RDATA.
  *
- * Both FMT entries are written back-to-back, as i2c_controller_read() does
- * (i2c_opentitan.c:846-870): the OpenTitan controller FSM drops back to Idle
- * when fmt_fifo_depth_i == 1 (i2c_controller_fsm.sv:960-961), so the READ entry
- * has to be queued behind the address entry before the FSM pops the first one.
- *
- * Unlike i2c_controller_read() this deliberately does not drain the RX FIFO --
- * leaving the received bytes in it is the whole point of the RX leg.
+ * Both FMT entries are written back to back, as i2c_controller_read() does,
+ * because the controller returns to idle if the read entry is not queued
+ * behind the address entry before the first one is popped. Unlike
+ * i2c_controller_read(), this leaves the received bytes in the RX FIFO.
  */
 static void rx_start_read(uint32_t idx, uint8_t addr, uint32_t len) {
     i2c__FDATA_t fdata = {.w = 0};
@@ -332,10 +248,8 @@ static void rx_start_read(uint32_t idx, uint8_t addr, uint32_t len) {
 /**
  * @brief Test the controller RX FIFO: real fill, then RXRST.
  *
- * The target answers a read out of its TX FIFO, so the entries in RX arrive over
- * the bus. That is the state i2c_reset_fifos() cannot manufacture, and without
- * it the "empty after reset" compares at the end of this function are satisfied
- * by the driver's own repair path rather than by the DUT.
+ * The target answers a read from its TX FIFO, so the RX entries arrive over the
+ * bus, a state the driver's software repair cannot produce.
  */
 static int test_rx_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
     uint8_t tx_data[RX_READ_LEN];
@@ -362,8 +276,7 @@ static int test_rx_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
     }
 
     /* The target must be able to answer, and its ACQ FIFO must be empty when the
-     * read request arrives or it stretches SCL instead of replying
-     * (i2c_read_sanity.c:425-443). */
+     * read request arrives or it stretches SCL instead of replying. */
     i2c_reset_fifos(tgt_idx, false, false, true, true);
     ret = check_reset_took(g_i2c_acq_reset_needed_drain, g_i2c_acq_reset_residual,
                            "target ACQRST before the read");
@@ -380,16 +293,15 @@ static int test_rx_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
         return I2C_ERROR;
     }
 
-    /* TARGET_EVENTS is cleared *after* the preload, not before: filling the TX
-     * FIFO can itself raise an event, and an unhandled one makes the target
-     * stretch instead of answering the read request
-     * (i2c_p0_rdwr.c:425-433, same ordering). */
+    /* Clear target events after the preload, not before: filling the TX FIFO
+     * can raise an event, and an unhandled one makes the target stretch instead
+     * of answering the read request. */
     if (i2c_get_target_events(tgt_idx) != 0) {
         i2c_clear_target_events(tgt_idx, 0xFFFFFFFF);
     }
 
-    /* rx_start_read() needs both entries to fit; the FMT FIFO is untouched at
-     * this point in the run, so this is a checkable precondition. */
+    /* rx_start_read() needs room for both entries; the FMT FIFO is still empty
+     * at this point. */
     level = fmt_level(ctrl_idx);
     if (level != 0) {
         simputshex32("  ERROR: FMTLVL before the read request is ", level);
@@ -441,10 +353,9 @@ static int test_rx_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
     simputshex32("", level);
     simputs(" with RXEMPTY clear\n");
 
-    /* Let the transfer finish before resetting. While the controller is still
-     * clocking bytes in, "RXLVL is 0 after RXRST" is a race between the reset and
-     * the next byte rather than a property of RXRST, so the producer is stopped
-     * first and the level is re-read to prove nothing drained on its own. */
+    /* Let the transfer finish before the reset, or an empty level after the
+     * reset races the next byte. The level is re-read to show that nothing
+     * drained on its own. */
     ret = i2c_controller_wait_idle(ctrl_idx, IDLE_POLL_BOUND);
     if (ret != I2C_OK) {
         simputshex32("  ERROR: controller not idle after the read, STATUS=",
@@ -596,16 +507,11 @@ static int test_tx_fifo_full_empty(uint32_t idx) {
 /**
  * @brief Push a controller write of len bytes: START + address, payload, STOP.
  *
- * This is the same FDATA program i2c_controller_write() emits
- * (i2c_opentitan.c:659-706), reproduced here so that every wait in the ACQ leg
- * is bounded by XFER_POLL_BOUND. The driver's completion wait uses
- * I2C_TIMEOUT_DEFAULT (~90-230 ms), 5-10x the harness bound, so a transfer that
- * never completes would have the run killed by the testbench before any
- * FIFO-level diagnostic could print.
- *
- * STATUS.FMTFULL is polled before each push because an FDATA store into a full
- * FMT FIFO is dropped silently (i2c_core.sv:379), which would shorten the
- * payload -- and so the ACQ entry count -- with no error anywhere.
+ * Same FDATA sequence as i2c_controller_write(), but every wait is bounded by
+ * XFER_POLL_BOUND instead of the driver's much longer default timeout, so a
+ * stuck transfer reports a FIFO-level diagnostic before the testbench times
+ * out. The full flag is checked before each store because a store into a full
+ * FMT FIFO is dropped silently and would shorten the payload.
  */
 static int acq_push_write(uint32_t idx, uint8_t addr, const uint8_t *data, uint32_t len) {
     for (uint32_t i = 0; i <= len; i++) {
@@ -641,10 +547,9 @@ static int acq_push_write(uint32_t idx, uint8_t addr, const uint8_t *data, uint3
 /**
  * @brief Test the target ACQ FIFO: real fill, then ACQRST.
  *
- * The controller writes a known number of bytes to the target's address, so the
- * ACQ entries arrive over the bus -- the state i2c_reset_fifos() cannot
- * manufacture. Without it the "empty after reset" compares at the end of this
- * function are satisfied by the driver's own drain loop rather than by the DUT.
+ * The controller writes a known number of bytes to the target, so the ACQ
+ * entries arrive over the bus, a state the driver's software drain cannot
+ * produce.
  */
 static int test_acq_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
     uint8_t wr_data[ACQ_WRITE_LEN];
@@ -658,10 +563,8 @@ static int test_acq_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
         wr_data[i] = (uint8_t)(0xC1u + i);
     }
 
-    /* Anchor: the level this leg counts from. The read leg before it leaves its
-     * own START and STOP entries in the ACQ FIFO, so this reset is load-bearing
-     * and the entry count asserted below is only attributable to the write that
-     * follows it. */
+    /* Anchor: the RX leg leaves its own entries in the ACQ FIFO, so this reset
+     * makes the entry count below attributable to the write alone. */
     i2c_reset_fifos(tgt_idx, false, false, false, true);
     ret = check_reset_took(g_i2c_acq_reset_needed_drain, g_i2c_acq_reset_residual, "setup ACQRST");
     if (ret != I2C_OK) return ret;
@@ -678,12 +581,12 @@ static int test_acq_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
     i2c__CTRL_t target_ctrl = {.w = read_reg(I2C_REG(tgt_idx, CTRL))};
     if (!target_ctrl.f.ACQ_START_STOP_EN) {
         simputs("  ERROR: CTRL.ACQ_START_STOP_EN is 0 -- the entry count below assumes the\n");
-        simputs("         AcqStart and AcqStop entries are pushed\n");
+        simputs("         ACQ_START and ACQ_STOP entries are pushed\n");
         return I2C_ERROR;
     }
 
-    /* The FMT FIFO must be able to hold the whole program, and it is empty at
-     * this point in the run, so this is a checkable precondition. */
+    /* The FMT FIFO must be able to hold the whole write; it is still empty at
+     * this point. */
     level = fmt_level(ctrl_idx);
     if (level != 0) {
         simputshex32("  ERROR: FMTLVL before the write is ", level);
@@ -702,8 +605,7 @@ static int test_acq_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
         return ret;
     }
 
-    /* START entry + payload + STOP entry, stated against the stimulus this test
-     * issued rather than against anything read back from the DUT. */
+    /* The expected entry count comes from the stimulus, not from the DUT. */
     level = acq_level(tgt_idx);
     while (level < ACQ_EXPECTED_ENTRIES && polls < XFER_POLL_BOUND) {
         level = acq_level(tgt_idx);
@@ -743,12 +645,9 @@ static int test_acq_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
     simputshex32("", level);
     simputs(" (START + payload + STOP) with ACQEMPTY clear\n");
 
-    /* Both sides must be finished before the reset, for the same reason as the RX
-     * leg: with the controller still clocking bytes into the target, "ACQLVL is 0
-     * after ACQRST" would be a race against the next entry rather than a property
-     * of ACQRST. The AcqStop entry counted above already says the STOP reached
-     * the target, so these two waits are short; they also catch a controller that
-     * halted instead of completing the transaction. */
+    /* Both sides must be idle before the reset, for the same reason as in the RX
+     * leg. The waits also catch a controller that halted instead of completing
+     * the transaction. */
     ret = i2c_controller_wait_idle(ctrl_idx, IDLE_POLL_BOUND);
     if (ret != I2C_OK) {
         simputshex32("  ERROR: controller not idle after the write, STATUS=",
@@ -815,17 +714,15 @@ int main(void) {
     write_scratch(1, 0x00000010);
     write_scratch(1, 0x00000011);
 
-    // LEVEL 1 - Wrapper Control Enable (Controller Mode for I2C_0)
+    // Initialize I2C_0 as controller
     write_scratch(1, 0x00000020);
     i2c_wrapper_enable(CONTROLLER_IDX, true);
     write_scratch(1, 0x00000021);
 
-    // LEVEL 2 - I2C IP Initialization (Controller Mode for I2C_0)
     write_scratch(1, 0x00000030);
 
-    // Compute timing parameters
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};
@@ -837,7 +734,6 @@ int main(void) {
         i2c_get_default_timing(I2C_SPEED_STANDARD, 100, &computed_timing);
     }
 
-    // Initialize I2C as Controller
     i2c_controller_config_t ctrl_cfg = {
         .timing = computed_timing,
         .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH, .fmt_thresh = I2C_DEFAULT_FMT_THRESH},
@@ -851,15 +747,13 @@ int main(void) {
     }
     write_scratch(1, 0x00000031);
 
-    // LEVEL 1 - Wrapper Control Enable (Target Mode for I2C_1)
+    // Initialize I2C_1 as target
     write_scratch(1, 0x00000032);
     i2c_wrapper_enable(TARGET_IDX, false);
     write_scratch(1, 0x00000033);
 
-    // LEVEL 2 - I2C IP Initialization (Target Mode for I2C_1)
     write_scratch(1, 0x00000034);
 
-    // Initialize I2C_1 as Target
     i2c_target_config_t tgt_cfg = {.address0 = TARGET_ADDR,
                                    .mask0 = 0x7F,
                                    .address1 = 0,
@@ -882,18 +776,17 @@ int main(void) {
     }
     write_scratch(1, 0x00000035);
 
-    // Explicitly set ACQ_START_STOP_EN via generated field (not hand bit index).
+    // The ACQ leg expects start and stop entries around each write
     i2c__CTRL_t ctrl = {.w = read_reg(I2C_REG(TARGET_IDX, CTRL))};
     ctrl.f.ACQ_START_STOP_EN = 1;
     write_reg(I2C_REG(TARGET_IDX, CTRL), ctrl.w);
 
-    // Distinct setup marker (TB must not race this with final DONE).
+    // Setup-complete marker, distinct from the final done marker
     write_scratch(1, 0xEBEDEBE2);
 
     /* The two bus legs run first, from the post-init state of both instances.
-     * The software fill legs after them deliberately leave a FIFO full of
-     * entries the FSM never consumes, which is not a state to start a real
-     * transfer from. */
+     * The software fill legs leave a FIFO full of entries that nothing
+     * consumes, which is not a state to start a real transfer from. */
 
     // Test RX FIFO (I2C_0 receives from I2C_1 over the bus)
     write_scratch(1, 0x00000050);
@@ -935,10 +828,7 @@ int main(void) {
     }
     write_scratch(1, 0x00000061);
 
-    //=========================================================================
-    // Test Complete - Signal to testbench
-    //=========================================================================
-    // Final DONE marker for TB (distinct from setup 0xEBEDEBE2).
+    // Final done marker for the testbench
     write_scratch(1, 0xEBEDEBE4);
     simputs("\n");
     simputs("################################################\n");
@@ -947,11 +837,4 @@ int main(void) {
     simputs("\n");
 
     test_pass(0);
-
-    simputs("\n=== Test Complete ===\n");
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

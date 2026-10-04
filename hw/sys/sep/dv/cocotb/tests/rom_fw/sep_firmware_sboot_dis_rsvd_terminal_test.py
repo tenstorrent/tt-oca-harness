@@ -55,10 +55,8 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-# Same ROM build as the other rom_fw terminal tests. [S18] runs long before a
-# manifest transport is selected, so the SPI variant is irrelevant here and this
-# adds no new firmware build profile.
-_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
+# [S18] runs before any manifest transport is chosen, so the default ROM build suffices.
+_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 _EFUSE_PRELOAD = (

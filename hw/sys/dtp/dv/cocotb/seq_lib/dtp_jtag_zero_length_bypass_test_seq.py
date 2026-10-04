@@ -5,14 +5,15 @@
 The single-TAP leg checks ZERO_LENGTH_BYPASS pass-through against a plain
 BYPASS reference. The chain leg selects a seeded STAP with a downstream TAP
 behind it and scans the same chain under ZERO_LENGTH_BYPASS and then under
-BYPASS: the marker leaves TDO right after the STAP chain alone, then one TCK
-later, behind the bypass register's captured 0. The SV-UVM twin is
+BYPASS. With the PTAP 3DCR select set, ZERO_LENGTH_BYPASS is BYPASS: under
+both, the marker leaves TDO one TCK after the STAP chain, behind the bypass
+register's captured 0. The SV-UVM twin is
 ``uvm/seq_lib/dtp_jtag_zero_length_bypass_test_seq.svh``.
 """
 
 from __future__ import annotations
 
-from env.dtp_scan_ref_model import SCAN_MARKER_WIDTH
+from env.dtp_scan_ref_model import PTAP_3DCR_WIDTH, SCAN_MARKER_WIDTH
 from env.dtp_stap_ds_agent import STAP_DS_TDR_NAME
 from env.dtp_types import DtpJtagInstr
 
@@ -22,10 +23,7 @@ from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
 class dtp_jtag_zero_length_bypass_test_seq(dtp_scan_base_test_seq):
     """Run ZERO_LENGTH_BYPASS pass-through checks, alone and in a STAP chain."""
 
-    # STAP host ports the chain leg splices. Under ZERO_LENGTH_BYPASS the I/O
-    # STAP's host TDO lockup samples TDI itself on the falling TCK edge, so
-    # the length of its splice depends on when the master changes TDI.
-    CHAIN_STAPS = ("smc", "sep", "extra0")
+    CHAIN_STAPS = ("io", "smc", "sep", "extra0")
 
     async def body(self) -> None:
         await self.attach_family_checker(
@@ -54,9 +52,9 @@ class dtp_jtag_zero_length_bypass_test_seq(dtp_scan_base_test_seq):
         With the PTAP 3DCR select set, a seeded STAP selected, and its
         downstream TAP on ``DS_TDR``, a ZERO_LENGTH_BYPASS scan writes a
         seeded ``DS_TDR`` value and a maintain scan reads the chain back
-        (``CHK-SCAN-CHAIN``); under BYPASS the same chain reads back with
-        the bypass register ahead of it. Every scan carries a marker whose
-        position proves how many bits the PTAP adds (``CHK-ZLB-CHAIN-ALIGN``).
+        (``CHK-SCAN-CHAIN``); under BYPASS the same chain reads back the
+        same way. Every scan carries a marker whose position proves the PTAP
+        adds its one bypass bit under both (``CHK-ZLB-CHAIN-ALIGN``).
         """
         rng = self.rng("zlb_chain")
         stap = rng.choice(self.CHAIN_STAPS)
@@ -101,7 +99,7 @@ class dtp_jtag_zero_length_bypass_test_seq(dtp_scan_base_test_seq):
         self.check_stap_chain_readback(captured, context=f"{ctx}.zlb_read", scan_kind="zlb")
         self.check_zlb_chain_align(captured, marker, scan_kind="zlb", context=f"{ctx}.zlb_read")
 
-        self.log_step(4, "BYPASS: the same chain reads back behind the bypass register")
+        self.log_step(4, "BYPASS: the same chain reads back behind the same bypass register")
         await self.stap_chain_ir_write(
             ptap_instr=DtpJtagInstr.BYPASS_3F, context=f"{ctx}.load_bypass"
         )
@@ -113,7 +111,7 @@ class dtp_jtag_zero_length_bypass_test_seq(dtp_scan_base_test_seq):
             captured, marker, scan_kind="bypass", context=f"{ctx}.bypass_read"
         )
 
-        chain_len = len(self.stap_model.chain_layout(None, "zlb"))
+        chain_len = self.stap_chain_len()
         await self.stap_chain_flush(context=f"{ctx}.cleanup")
         self.log_summary(
             "ZERO_LENGTH_BYPASS chain",
@@ -126,28 +124,28 @@ class dtp_jtag_zero_length_bypass_test_seq(dtp_scan_base_test_seq):
     def check_zlb_chain_align(
         self, captured: int, marker: int, *, scan_kind: str, context: str
     ) -> None:
-        """``CHK-ZLB-CHAIN-ALIGN``: under ZERO_LENGTH_BYPASS the marker leaves
-        TDO right after the STAP chain; under BYPASS the bit after the chain
-        is the bypass register's captured 0 and the marker follows it.
+        """``CHK-ZLB-CHAIN-ALIGN``: with the PTAP 3DCR select set, the bit
+        after the STAP chain is the bypass register's captured 0 and the
+        marker follows it, under ZERO_LENGTH_BYPASS and BYPASS alike.
 
         Valid after a scan that leaves the chain layout as it found it, such
         as a maintain scan or a downstream register write.
         """
         assert scan_kind in ("zlb", "bypass"), f"no alignment rule for a {scan_kind} scan"
-        chain_len = len(self.stap_model.chain_layout(None, "zlb"))
-        ptap_bits = 1 if scan_kind == "bypass" else 0
-        name = (
-            "BYPASS: captured 0, then the marker"
-            if ptap_bits
-            else "ZERO_LENGTH_BYPASS: marker right after the STAP chain"
-        )
+        chain_len = self.stap_chain_len()
+        name = f"{self.CHAIN_SCAN_NAMES[scan_kind]}: captured 0, then the marker"
         self.family_check(
             "CHK-ZLB-CHAIN-ALIGN",
             name,
-            (captured >> chain_len) & self.bit_mask(SCAN_MARKER_WIDTH + ptap_bits),
-            marker << ptap_bits,
+            (captured >> chain_len) & self.bit_mask(SCAN_MARKER_WIDTH + 1),
+            marker << 1,
             context=(
                 f"{context} chain_len={chain_len} "
                 f"latency={captured.bit_length() - SCAN_MARKER_WIDTH} captured=0x{captured:x}"
             ),
         )
+
+    def stap_chain_len(self) -> int:
+        """STAP chain length: the TAP_3DCR layout less the PTAP 3DCR, which
+        holds no PTAP bypass bit."""
+        return len(self.stap_model.chain_layout(None, "dr")) - PTAP_3DCR_WIDTH

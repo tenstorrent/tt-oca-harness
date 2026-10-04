@@ -99,12 +99,12 @@ module gpio_filter
 
   // Connect demuxed port [0] to AXI-Lite error slave
   prim_axi_lite_err_slv #(
-    .AXI_ADDR_WIDTH(gpio_pkg::ADDR_WIDTH),
-    .AXI_DATA_WIDTH(gpio_pkg::DATA_WIDTH),
+    .AXI_ADDR_WIDTH(gpio_pkg::AddrWidth),
+    .AXI_DATA_WIDTH(gpio_pkg::DataWidth),
     .axil_req_t(gpio_axil_req_t),
     .axil_resp_t(gpio_axil_resp_t),
     .RESP(axi_pkg::RESP_DECERR),
-    .RESP_WIDTH(gpio_pkg::DATA_WIDTH),
+    .RESP_WIDTH(gpio_pkg::DataWidth),
     .RESP_DATA(32'hBADCAB1E),
     .MAX_TRANS(1)
   ) u_filter_err_slv (

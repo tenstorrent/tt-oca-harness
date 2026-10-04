@@ -4,12 +4,9 @@
 /*
  * sep_smu_remap - SMU-level SEP AP/STEE output-remap CSR frontdoor.
  *
- * Programs region-0 offsets via AXI-lite CSR (no TB Force of remap_table),
- * then parks in pass/fail loops for cocotb PC classification.
- *
- * Known offsets (must match cocotb golden check):
- *   AP   region0 = 0x00ABC00000
- *   STEE region0 = 0x0055000000
+ * Programs the region-0 offsets through the CSR interface, with no testbench
+ * force of the remap table, then parks in the pass loop for cocotb PC
+ * classification. The offsets must match the cocotb golden check.
  */
 
 #include <stdint.h>
@@ -25,7 +22,7 @@ static int program_output_remap(void) {
     output_remap__output_remap_region__REGION_ATTRS_t ap;
     output_remap__output_remap_region__REGION_ATTRS_t stee;
 
-    /* Write-only programming; cocotb observes remap_table after pass_loop. */
+    /* Write-only: cocotb checks the remap table after the pass loop. */
     ap.w = 0;
     ap.f.offset = AP_REGION0_OFFSET;
     ap.f.valid = 1;

@@ -63,6 +63,24 @@ tags = ["smoke", "ci", "axi_lite"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "ocah_axi_pipeline_test"
+# cocotb drives the AXI4-Lite bundle, SV-UVM the AXI4 bundle with single beats.
+module = { cocotb = "ocah_axi_lite_pipeline_test", uvm = "ocah_axi_pipeline_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_lite"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_axi_pipeline_missing_rlast_test"
+# The cocotb masters pipeline AXI4-Lite accesses only, and that bundle carries no RLAST.
+module = { cocotb = false, uvm = "ocah_axi_pipeline_missing_rlast_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_timeout"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "ocah_axi_lite_geometry_test"
 # The SV-UVM layer binds geometry through ocah_axi_config's masks.
 module = { cocotb = "ocah_axi_lite_geometry_test", uvm = false }
@@ -105,6 +123,8 @@ tests = [
     "ocah_axi_lite_partial_strobe_test",
     "ocah_axi_lite_read_pair_hold_test",
     "ocah_axi_lite_write_pair_skew_test",
+    "ocah_axi_pipeline_test",
+    "ocah_axi_pipeline_missing_rlast_test",
     "ocah_axi_lite_geometry_test",
     "ocah_axi_geometry_test",
     "ocah_axi_timeout_test",
@@ -121,6 +141,8 @@ tests = [
     "ocah_axi_lite_partial_strobe_test",
     "ocah_axi_lite_read_pair_hold_test",
     "ocah_axi_lite_write_pair_skew_test",
+    "ocah_axi_pipeline_test",
+    "ocah_axi_pipeline_missing_rlast_test",
     "ocah_axi_lite_geometry_test",
     "ocah_axi_geometry_test",
     "ocah_axi_timeout_test",
@@ -131,6 +153,7 @@ tests = [
 name = "axi_timeout"
 tests = [
     "ocah_axi_timeout_test",
+    "ocah_axi_pipeline_missing_rlast_test",
 ]
 
 [[groups]]
@@ -154,4 +177,5 @@ tests = [
     "ocah_axi_lite_partial_strobe_test",
     "ocah_axi_lite_read_pair_hold_test",
     "ocah_axi_lite_write_pair_skew_test",
+    "ocah_axi_pipeline_test",
 ]

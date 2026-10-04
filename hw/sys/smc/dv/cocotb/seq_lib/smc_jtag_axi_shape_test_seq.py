@@ -10,12 +10,12 @@ the JTAG port so the three managers are held to the same fabric behaviour:
 * INCR bursts of 2, 8 and 32 full-width beats into the SPM, each read back as
   one burst of the same length, so a splitter that drops, repeats or reorders
   beats on this port is caught on the data.
-* A read of the last page of ``ecam_region``, a generated-map region with no
-  block behind it, which the fabric error slave answers with DECERR.
+* A read of the last unmapped page below ``mmode_region``, which the fabric
+  error slave answers with DECERR.
 * The GPIO0 ACCESS_FILTER armed over SEP_IN with a privileged write, then an
   unprivileged JTAG write and read of the same register: the read is refused
-  with DECERR and the error-slave signature (``hw/ip/gpio/doc/programming.adoc``,
-  "Filter Configuration"), the write with an error response whose code is
+  with DECERR and the error-slave signature (``doc/programmer/src/smc-programming.adoc``,
+  "Configuring Access Filtering"), the write with an error response whose code is
   reported, and a privileged readback shows the refused write took no effect.
   The filter is restored to its generated reset before the sequence ends.
 * Three passes of outstanding writes, then of reads, over the eight scratch
@@ -63,10 +63,8 @@ BACKPRESSURE_PASSES = 3
 READY_HOLD_CYCLES = 64
 AXI_RESP_SLVERR = 2
 
-# Last page of ecam_region: a generated-map region with no block behind it.
-UNIMPLEMENTED_ADDR = (
-    smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
-)
+# Last page of the unmapped gap below mmode_region.
+UNIMPLEMENTED_ADDR = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR") - 0x1000
 
 GPIO0_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0)
 FILTER_RESET = GPIO_INTF_ACCESS_FILTER_REG_DEFAULT
@@ -325,7 +323,7 @@ class smc_jtag_axi_shape_test_seq(SmcCsrSeq):
             self.stalls["r"],
         )
         cocotb.log.info(
-            "CHK-JTAG-AXI-ERRORS: JTAG read and write of the unimplemented ecam_region page "
+            "CHK-JTAG-AXI-ERRORS: JTAG read and write of the unmapped page "
             "0x%08x answered %s and %s; with GPIO0 ACCESS_FILTER armed, the unprivileged JTAG "
             "write was refused with %s and took no effect, and the unprivileged JTAG read "
             "answered DECERR with 0x%08x; the read of the empty inbound mailbox answered %s",

@@ -6,9 +6,9 @@
 // Address rules use the Key Manager interface constants defined in km_intf_pkg. Routes to
 // KPV, KMCSR, DRBG sampler, mailbox, OTBN, AES, KMAC, HMAC, Adams Bridge, and the
 // OTP/eFuse pass-through at index 8. Uses the PULP axi_lite_xbar in zero-latency mode.
-// OTP addresses leave this block unchanged; key_manager remaps addr[31:12] before driving
-// efuse_req_o. An address outside every rule is answered with DECERR by the xbar. The
-// channel type parameters must match the req/resp types.
+// OTP addresses leave this block unchanged; key_manager filters them to the eFuse register
+// maps and remaps them before driving efuse_req_o. An address outside every rule is answered
+// with DECERR by the xbar. The channel type parameters must match the req/resp types.
 
 module km_axi_lite_xbar
   import km_intf_pkg::*;
@@ -59,8 +59,9 @@ module km_axi_lite_xbar
   input  axil_resp_t abr_resp_i,  // Master port response from Adams Bridge.
 
   output axil_req_t  otp_req_o,  // OTP/eFuse pass-through port request (index 8,
-                                 // OTP_BASE_ADDR-OTP_END_ADDR). Addresses are forwarded
-                                 // unchanged; key_manager.sv applies the OTP_EFUSE_REMAP_BASE
+                                 // OtpBaseAddr-OtpEndAddr). Addresses are forwarded
+                                 // unchanged; key_manager.sv refuses offsets outside the
+                                 // eFuse register maps and applies the OTP_EFUSE_REMAP_BASE
                                  // remap before driving efuse_req_o.
   input  axil_resp_t otp_resp_i  // OTP/eFuse pass-through port response.
 );
@@ -74,8 +75,8 @@ module km_axi_lite_xbar
   // Address-map rule for axi_lite_xbar (end_addr is 33 bits to handle overflow).
   typedef struct packed {
     int unsigned idx;
-    logic [KM_AXI_ADDR_WIDTH-1:0] start_addr;
-    logic [KM_AXI_ADDR_WIDTH:0]   end_addr;  // 33 bits for overflow
+    logic [KmAxiAddrWidth-1:0] start_addr;
+    logic [KmAxiAddrWidth:0]   end_addr;  // 33 bits for overflow
   } xbar_rule_t;
 
   // =========================================================================
@@ -95,8 +96,8 @@ module km_axi_lite_xbar
       AxiIdUsedSlvPorts: 1,  // Not used for AXI-Lite, but required
       UniqueIds: 1'b0,  // Not used for AXI-Lite
       SelHashIds: 1'b0,  // Not used for AXI-Lite
-      AxiAddrWidth: KM_AXI_ADDR_WIDTH,
-      AxiDataWidth: KM_AXI_DATA_WIDTH,
+      AxiAddrWidth: KmAxiAddrWidth,
+      AxiDataWidth: KmAxiDataWidth,
       NoAddrRules:
       10,  // 10 address ranges (KPV, KMCSR, DRBG, MBOX, OTBN, AES, KMAC, HMAC, OTP, ABR)
       default: '0
@@ -111,62 +112,62 @@ module km_axi_lite_xbar
       // Index 0: KPV
       '{
           idx: 0,
-          start_addr: KPV_BASE_ADDR,
-          end_addr: 33'(KPV_END_ADDR + 1'b1)
+          start_addr: KpvBaseAddr,
+          end_addr: 33'(KpvEndAddr + 1'b1)
       },
       // Index 1: KMCSR
       '{
           idx: 1,
-          start_addr: KMCSR_BASE_ADDR,
-          end_addr: 33'(KMCSR_END_ADDR + 1'b1)
+          start_addr: KmcsrBaseAddr,
+          end_addr: 33'(KmcsrEndAddr + 1'b1)
       },
       // Index 2: DRBG Sampler
       '{
           idx: 2,
-          start_addr: DRBG_SAMPLER_BASE_ADDR,
-          end_addr: 33'(DRBG_SAMPLER_END_ADDR + 1'b1)
+          start_addr: DrbgSamplerBaseAddr,
+          end_addr: 33'(DrbgSamplerEndAddr + 1'b1)
       },
       // Index 3: Mailbox
       '{
           idx: 3,
-          start_addr: MBOX_BASE_ADDR,
-          end_addr: 33'(MBOX_END_ADDR + 1'b1)
+          start_addr: MboxBaseAddr,
+          end_addr: 33'(MboxEndAddr + 1'b1)
       },
       // Index 4: OTBN
       '{
           idx: 4,
-          start_addr: OTBN_BASE_ADDR,
-          end_addr: 33'(OTBN_END_ADDR + 1'b1)
+          start_addr: OtbnBaseAddr,
+          end_addr: 33'(OtbnEndAddr + 1'b1)
       },
       // Index 5: AES
       '{
           idx: 5,
-          start_addr: AES_BASE_ADDR,
-          end_addr: 33'(AES_END_ADDR + 1'b1)
+          start_addr: AesBaseAddr,
+          end_addr: 33'(AesEndAddr + 1'b1)
       },
       // Index 6: KMAC
       '{
           idx: 6,
-          start_addr: KMAC_BASE_ADDR,
-          end_addr: 33'(KMAC_END_ADDR + 1'b1)
+          start_addr: KmacBaseAddr,
+          end_addr: 33'(KmacEndAddr + 1'b1)
       },
       // Index 7: HMAC
       '{
           idx: 7,
-          start_addr: HMAC_BASE_ADDR,
-          end_addr: 33'(HMAC_END_ADDR + 1'b1)
+          start_addr: HmacBaseAddr,
+          end_addr: 33'(HmacEndAddr + 1'b1)
       },
       // Index 8: OTP/eFuse
       '{
           idx: 8,
-          start_addr: OTP_BASE_ADDR,
-          end_addr: 33'(OTP_END_ADDR + 1'b1)
+          start_addr: OtpBaseAddr,
+          end_addr: 33'(OtpEndAddr + 1'b1)
       },
       // Index 9: Adams Bridge
       '{
           idx: 9,
-          start_addr: ABR_BASE_ADDR,
-          end_addr: 33'(ABR_END_ADDR + 1'b1)
+          start_addr: AbrBaseAddr,
+          end_addr: 33'(AbrEndAddr + 1'b1)
       }
   };
 
@@ -181,8 +182,8 @@ module km_axi_lite_xbar
 
   // Every rule is a power of two in size and aligned to that size.
   function automatic bit km_addr_map_aligned();
-    logic [KM_AXI_ADDR_WIDTH:0] base;
-    logic [KM_AXI_ADDR_WIDTH:0] size;
+    logic [KmAxiAddrWidth:0] base;
+    logic [KmAxiAddrWidth:0] size;
     for (int unsigned i = 0; i < XbarCfg.NoAddrRules; i++) begin
       base = {1'b0, AddrMap[i].start_addr};
       size = AddrMap[i].end_addr - base;

@@ -9,8 +9,8 @@
 // (hw/common/dv/docs/formal-property-style.adoc).
 //
 // The manager issues one write and one read at a time (dtp_cross_trigger_network_sby_env.sv), so
-// the address of the request a response answers is the one the helper flops recorded at the
-// last address handshake.
+// the address of the request a response answers, and of the request a crossbar master port
+// carries, is the one the helper flops recorded at the last address handshake.
 
 `include "ocah_fv_macros.svh"
 
@@ -44,23 +44,20 @@ module dtp_ctn_csr_props
   input logic [31:0]                   ctm_rd_data_i   // u_reg.cpuif_rd_data
 );
 
-  localparam logic [1:0] RESP_OKAY = 2'b00;
-  localparam logic [1:0] RESP_DECERR = 2'b11;
-  localparam logic [31:0] CTP_BASE = 32'h200;
-  localparam logic [31:0] MAP_END = CTP_BASE + 32'(NUM_CTP) * 32'h10;
+  localparam logic [1:0] RespOkay = 2'b00;
+  localparam logic [1:0] RespDecerr = 2'b11;
+  localparam logic [31:0] CtmEnd = 32'(CsrAddrCtmRegSize);
+  localparam logic [31:0] CtpBase = 32'h200;
+  localparam logic [31:0] MapEnd = CtpBase + 32'(NUM_CTP) * 32'h10;
 
-  // The network lists each window's end address as its last byte while the crossbar decoder
-  // treats the end address as exclusive, so the last byte address of every window (0x1FF,
-  // 0x20F and so on up to 0x2FF) decodes as unmapped; word-aligned accesses never reach it.
   function automatic logic mapped(input logic [31:0] addr);
-    if (addr < CTP_BASE) return addr != CTP_BASE - 32'h1;
-    return addr < MAP_END && addr[3:0] != 4'hF;
+    return addr < CtmEnd || (addr >= CtpBase && addr < MapEnd);
   endfunction
 
   // Crossbar master port of a mapped address: the matrix at 0, port n at n + 1.
   function automatic int unsigned port_of(input logic [31:0] addr);
-    if (addr < CTP_BASE) return 0;
-    return 1 + int'((addr - CTP_BASE) >> 4);
+    if (addr < CtpBase) return 0;
+    return 1 + int'((addr - CtpBase) >> 4);
   endfunction
 
   // The matrix block decodes address bits 7:2 only: CONFIG_0 of source k at 8k, nothing at 8k+4.
@@ -133,14 +130,46 @@ module dtp_ctn_csr_props
     end
   end
 
-  // Every crossbar master port carries a request only while the subordinate port does, and only
-  // the port the address map names.
+  // A master port holds VALID until its subordinate accepts the request, so the pending write
+  // or read has left the crossbar once a master port drops its AW or AR. Each forwarded flag
+  // holds from the cycle after that drop until the next address or response handshake of the
+  // subordinate port.
+  logic mst_aw_valid, mst_ar_valid, mst_aw_valid_q, mst_ar_valid_q;
+  logic wr_forwarded_q, rd_forwarded_q;
+  always_comb begin
+    mst_aw_valid = 1'b0;
+    mst_ar_valid = 1'b0;
+    for (int unsigned p = 0; p < NUM_MST; p++) begin
+      mst_aw_valid |= mst_req_i[p].aw_valid;
+      mst_ar_valid |= mst_req_i[p].ar_valid;
+    end
+  end
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      mst_aw_valid_q <= 1'b0;
+      mst_ar_valid_q <= 1'b0;
+      wr_forwarded_q <= 1'b0;
+      rd_forwarded_q <= 1'b0;
+    end else begin
+      mst_aw_valid_q <= mst_aw_valid;
+      mst_ar_valid_q <= mst_ar_valid;
+      if (aw_hs || b_hs) wr_forwarded_q <= 1'b0;
+      else if (wr_pending_q && mst_aw_valid_q && !mst_aw_valid) wr_forwarded_q <= 1'b1;
+      if (ar_hs || r_hs) rd_forwarded_q <= 1'b0;
+      else if (rd_pending_q && mst_ar_valid_q && !mst_ar_valid) rd_forwarded_q <= 1'b1;
+    end
+  end
+
+  // Every crossbar master port carries a request only while the subordinate port holds an
+  // accepted request that it has not answered and that the crossbar has not forwarded, and only
+  // the port the address map names for it. The subordinate-port spill registers present an
+  // accepted request from the cycle after its handshake.
   logic aw_mapped, ar_mapped;
   int unsigned aw_port, ar_port;
-  assign aw_mapped = req_i.aw_valid && mapped(req_i.aw.addr);
-  assign ar_mapped = req_i.ar_valid && mapped(req_i.ar.addr);
-  assign aw_port   = port_of(req_i.aw.addr);
-  assign ar_port   = port_of(req_i.ar.addr);
+  assign aw_mapped = wr_pending_q && !wr_forwarded_q && mapped(wr_addr_q);
+  assign ar_mapped = rd_pending_q && !rd_forwarded_q && mapped(rd_addr_q);
+  assign aw_port   = port_of(wr_addr_q);
+  assign ar_port   = port_of(rd_addr_q);
 
   logic aw_routed_alone, ar_routed_alone;
   always_comb begin
@@ -158,19 +187,19 @@ module dtp_ctn_csr_props
   // ---- Address map --------------------------------------------------------------------------
   `OCAH_FV_ASSERT(ast_csr_unmapped_decerr,
                   `OCAH_FV_IMPLIES(b_hs && wr_pending_q,
-                                   resp_i.b.resp == (mapped(wr_addr_q) ? RESP_OKAY : RESP_DECERR)) &&
+                                   resp_i.b.resp == (mapped(wr_addr_q) ? RespOkay : RespDecerr)) &&
                   `OCAH_FV_IMPLIES(r_hs && rd_pending_q,
-                                   resp_i.r.resp == (mapped(rd_addr_q) ? RESP_OKAY : RESP_DECERR)),
+                                   resp_i.r.resp == (mapped(rd_addr_q) ? RespOkay : RespDecerr)),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_csr_ctp_window, aw_routed_alone && ar_routed_alone, clk_i, rst_ni)
-  `OCAH_FV_ASSERT(ast_csr_ctm_aliases,
+  `OCAH_FV_ASSERT(ast_csr_ctm_readback,
                   `OCAH_FV_IMPLIES(ctm_req_i && !ctm_req_is_wr_i,
                                    ctm_rd_data_i == ctm_readback(ctm_addr_i)) &&
                   `OCAH_FV_IMPLIES(ctm_req_i && !ctm_req_is_wr_i && rd_pending_q,
                                    ctm_addr_i == {rd_addr_q[7:2], 2'b00}) &&
                   `OCAH_FV_IMPLIES(ctm_req_i && ctm_req_is_wr_i && wr_pending_q,
                                    ctm_addr_i == {wr_addr_q[7:2], 2'b00}) &&
-                  `OCAH_FV_IMPLIES(r_hs && rd_pending_q && mapped(rd_addr_q) && rd_addr_q < CTP_BASE,
+                  `OCAH_FV_IMPLIES(r_hs && rd_pending_q && mapped(rd_addr_q) && rd_addr_q < CtpBase,
                                    resp_i.r.data == ctm_rd_data_q),
                   clk_i, rst_ni)
 
@@ -184,7 +213,7 @@ module dtp_ctn_csr_props
                   `OCAH_FV_IMPLIES($past(rst_ni) && !$past(ctp0_stretch_write),
                                    ctp0_stretch == $past(ctp0_stretch)) &&
                   `OCAH_FV_IMPLIES(b_hs && wr_pending_q && mapped(wr_addr_q),
-                                   resp_i.b.resp == RESP_OKAY),
+                                   resp_i.b.resp == RespOkay),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_csr_strobe_masks_bytes,
                   `OCAH_FV_IMPLIES($past(rst_ni) && $past(ctp0_config_write),
@@ -208,22 +237,25 @@ module dtp_ctn_csr_props
                                                       3'b000,
                                                       ctp0_status_i.STATUS.BUSY.next}) &&
                   `OCAH_FV_IMPLIES(r_hs && rd_pending_q && mapped(rd_addr_q) &&
-                                   rd_addr_q >= CTP_BASE && rd_addr_q < CTP_BASE + 32'h10,
+                                   rd_addr_q >= CtpBase && rd_addr_q < CtpBase + 32'h10,
                                    resp_i.r.data == ctp0_rd_data_q),
                   clk_i, rst_ni)
 
   // ---- Covers -------------------------------------------------------------------------------
-  `OCAH_FV_COVER(cov_csr_decerr_write, b_hs && resp_i.b.resp == RESP_DECERR, clk_i, rst_ni)
-  `OCAH_FV_COVER(cov_csr_decerr_read, r_hs && resp_i.r.resp == RESP_DECERR, clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_csr_decerr_write, b_hs && resp_i.b.resp == RespDecerr, clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_csr_decerr_read, r_hs && resp_i.r.resp == RespDecerr, clk_i, rst_ni)
   `OCAH_FV_COVER(cov_csr_ctp_read_after_write,
-                 r_hs && rd_pending_q && rd_addr_q == CTP_BASE && resp_i.r.data[0], clk_i, rst_ni)
+                 r_hs && rd_pending_q && rd_addr_q == CtpBase && resp_i.r.data[0], clk_i, rst_ni)
   `OCAH_FV_COVER(cov_csr_ctm_read_after_write,
-                 r_hs && rd_pending_q && rd_addr_q < CTP_BASE && resp_i.r.data != '0, clk_i, rst_ni)
-  `OCAH_FV_COVER(cov_csr_ctm_alias_read,
-                 r_hs && rd_pending_q && rd_addr_q[8] && rd_addr_q < CTP_BASE, clk_i, rst_ni)
+                 r_hs && rd_pending_q && rd_addr_q < CtpBase && resp_i.r.data != '0, clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_csr_ctm_past_extent_decerr,
+                 r_hs && rd_pending_q && rd_addr_q >= CtmEnd && rd_addr_q < CtpBase &&
+                 resp_i.r.resp == RespDecerr, clk_i, rst_ni)
   `OCAH_FV_COVER(cov_csr_masked_write,
                  $past(ctp0_stretch_write) && $past(ctp0_wr_biten_i[15:0]) != '1 &&
                  $past(ctp0_wr_biten_i[15:0]) != '0, clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_csr_wr_forwarded, wr_pending_q && wr_forwarded_q && !b_hs, clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_csr_rd_forwarded, rd_pending_q && rd_forwarded_q && !r_hs, clk_i, rst_ni)
   // verilog_format: on
 
 endmodule : dtp_ctn_csr_props

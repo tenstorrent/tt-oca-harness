@@ -21,10 +21,6 @@
 #include "sep.h"
 #include "sep_smc_interface.h"
 
-// SMC CPU CTRL reset control register offset (holds SMC cores in reset).
-// Writing 1 to core*_reset_n_n0_scan bits asserts reset on each SMC core.
-#define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x0020u
-
 // ---------------------------------------------------------------------------
 // LC state read helper.
 // ---------------------------------------------------------------------------
@@ -46,16 +42,15 @@ bool lc_state_is_valid(uint32_t lc_state) {
     //   0x0:     TEST_DEV
     //   0x1:     PROD
     //   0x2-0x3: RMA_SiP   (4'b001?)
-    //   0x4-0x7: RMA_CHIPLET (4'b01??)
+    //   0x6-0x7: RMA_CHIPLET (4'b011?)
     //   0x8:     PROD_END
+    // Everything else is INVALID to the LCC.
     switch (lc_state) {
     case LC_STATE_TEST_DEV:
     case LC_STATE_PROD:
     case LC_STATE_RMA_SIP_LO:
     case LC_STATE_RMA_SIP_HI:
     case LC_STATE_RMA_CHIPLET_LO:
-    case 0x5u:
-    case 0x6u:
     case LC_STATE_RMA_CHIPLET_HI:
     case LC_STATE_PROD_END:
         return true;
@@ -71,7 +66,21 @@ bool lc_state_enforces_secure_boot(uint32_t lc_state) {
 }
 
 bool lc_state_is_rma(uint32_t lc_state) {
-    return (lc_state >= LC_STATE_RMA_SIP_LO && lc_state <= LC_STATE_RMA_CHIPLET_HI);
+    switch (lc_state) {
+    case LC_STATE_RMA_SIP_LO:
+    case LC_STATE_RMA_SIP_HI:
+    case LC_STATE_RMA_CHIPLET_LO:
+    case LC_STATE_RMA_CHIPLET_HI:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool lc_state_follows_debug_lock(uint32_t lc_state) {
+    // Not RMA_CHIPLET: it is manifest-optional whatever the disable vectors say.
+    return lc_state == LC_STATE_TEST_DEV || lc_state == LC_STATE_RMA_SIP_LO ||
+           lc_state == LC_STATE_RMA_SIP_HI;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,12 +115,6 @@ void lc_write_demotion_2(bool demote, bool lock) {
 // Full lifecycle policy ([S11])
 // ---------------------------------------------------------------------------
 
-// Error code for lifecycle validation failure.
-#define ROM_ERR_LIFECYCLE_INVALID 0x0000A002u
-
-// Forward declaration (defined in rom_main.c).
-__attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
-
 uint32_t rom_lifecycle_policy(void) {
     report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_LC_STATE);
 
@@ -131,11 +134,17 @@ uint32_t rom_lifecycle_policy(void) {
         // Put SMC in reset to make the whole SMU inoperative.
         // Invalid LC_STATE may indicate fuse attack or HW fault — do not let
         // SMC continue running in an unknown state.
-        uint32_t smc_base = sep_get_smc_base();
-        uint32_t rst = mmio_read32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET);
-        rst |= 0xFu; // core0~core3 reset_n bits → hold all cores in reset
-        mmio_write32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET, rst);
-        simputs("SMC_RESET_ON_INVALID_LC\n");
+        uint32_t reset_ctrl = sep_get_smc_base() + SMC_CPU_CTRL_RESET_CTRL_OFFSET;
+        uint32_t rst = mmio_read32(reset_ctrl);
+        rst &= ~(uint32_t)SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK;
+        mmio_write32(reset_ctrl, rst);
+        simputshex32("SMC_RESET_ON_INVALID_LC=", rst);
+        // Diagnostic only: the halt below happens either way. A core bit that
+        // reads back set means that core is still running.
+        rst = mmio_read32(reset_ctrl);
+        if ((rst & SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK) != 0u) {
+            simputshex32("SMC_RESET_NOT_HELD=", rst);
+        }
 
         rom_err_fail_ext(ROM_ERR_LIFECYCLE_INVALID);
     }
@@ -168,10 +177,11 @@ uint32_t rom_lifecycle_policy(void) {
     case LC_STATE_RMA_SIP_HI:
         simputs("LC=RMA_SIP\n");
         break;
+    case LC_STATE_RMA_CHIPLET_LO:
+    case LC_STATE_RMA_CHIPLET_HI:
+        simputs("LC=RMA_CHIPLET\n");
+        break;
     default:
-        if (lc_state >= LC_STATE_RMA_CHIPLET_LO && lc_state <= LC_STATE_RMA_CHIPLET_HI) {
-            simputs("LC=RMA_CHIPLET\n");
-        }
         break;
     }
 
@@ -182,9 +192,6 @@ uint32_t rom_lifecycle_policy(void) {
 // ---------------------------------------------------------------------------
 // Secure-boot chicken bit ([S18])
 // ---------------------------------------------------------------------------
-
-// Error code for a SBOOT_DIS reserved-bit fault.
-#define ROM_ERR_SBOOT_DIS_RSVD_SET 0x0000F008u
 
 // Latched by rom_sboot_dis_policy(). Zero-initialised, and zero reports "not
 // disabled", so a caller that runs before [S18] enforces secure boot.
@@ -213,4 +220,46 @@ void rom_sboot_dis_policy(void) {
     simputsdec24("FUSE: SBOOT_DIS: ", g_sboot_dis);
     report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SBOOT_DIS);
     report_status(STATUS_TYPE_INFO_EXT, g_sboot_dis);
+}
+
+// ---------------------------------------------------------------------------
+// Chiplet debug lock ([S18])
+// ---------------------------------------------------------------------------
+
+// Latched by rom_chiplet_dbg_policy() as "debug open", so that the
+// zero-initialised value reads as disabled and a caller that runs before [S18]
+// enforces secure boot.
+static bool g_chiplet_dbg_open;
+
+bool chiplet_debug_disabled(void) {
+    return !g_chiplet_dbg_open;
+}
+
+void rom_chiplet_dbg_policy(uint32_t lc_state) {
+    // The raw fuse shadows rather than FEAT_CTRL: SEC_DIS and TEST_DEV demotion
+    // both force FEAT_CTRL bits to 1, which would read as "debug enabled" on a
+    // part whose fuses disable it.
+    //
+    // A read-locked field returns a sentinel instead of its value, so a lock on
+    // either vector means the ROM cannot see that debug is open.
+    uint32_t locks = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR);
+    bool disabled = (locks & (SEP_EFUSE_MAP__LOCKS__SIP_DIS_READ_LOCK_bm |
+                              SEP_EFUSE_MAP__LOCKS__SYS_DIS_READ_LOCK_bm)) != 0u;
+    if (!disabled) {
+        // CHIPLET_DBG is in the low word of each 64-bit vector.
+        uint32_t sip = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SIP_DIS_BASE_ADDR);
+        uint32_t sys = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SYS_DIS_BASE_ADDR);
+        disabled = ((sip | sys) & SEP_EFUSE_MAP__LC_DISABLE__CHIPLET_DBG_bm) != 0u;
+    }
+    g_chiplet_dbg_open = !disabled;
+
+    simputsdec24("FUSE: CHIPLET_DBG_DIS: ", disabled);
+
+    // Reported only where the lock is what the device's enforcement rests on:
+    // PROD and PROD_END enforce regardless, RMA_CHIPLET never applies it, and
+    // SBOOT_DIS overrides it.
+    if (disabled && lc_state_follows_debug_lock(lc_state) && !sboot_dis_disabled()) {
+        simputs("SBOOT_DBG_LOCK\n");
+        report_status(STATUS_TYPE_INFO, SEP_MSG_SBOOT_DBG_LOCK);
+    }
 }

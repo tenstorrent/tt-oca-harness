@@ -2,25 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA vs CPU-LSU SRAM contention test (PyUVM).
 
-OSS port of the reference suite ``sep_dma_cpu_contention_test``.
-Boots the VeeR EL2 core and runs the dma_cpu_contention firmware: it starts a
-long SRAM->SRAM Secure-DMA copy and, while it is in flight, runs a CPU store
-loop into a disjoint SRAM region, so the DMA master and the CPU-LSU master
-arbitrate at the shared SRAM slave on the SEP-local xbar. All internal to bare
-``sep`` -- the firmware produces the contention, no testbench injection.
+The dma_cpu_contention firmware starts a long SRAM->SRAM Secure-DMA copy and, while it runs, a CPU
+store loop into a disjoint SRAM region, so both masters arbitrate at the SRAM slave on the
+SEP-local xbar with no testbench injection. The firmware checks overlap (STATUS BUSY and not DONE
+mid-flight), DONE with no error, the STATUS RW1C clear, and bit-exact DMA and CPU data; start.S
+emits PASS/FAIL magic that the boot scoreboard gates on.
 
-Firmware-self-checking: the firmware proves the streams overlapped (mid-flight
-STATUS BUSY && !DONE), that the DMA reached DONE with no error, the STATUS RW1C
-clear, and that BOTH the DMA-copied data and the CPU-written region are
-bit-exact afterward (so neither master was starved/corrupted). main() returns
-its error count and start.S emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF)
-magic on the 0x8000_0000 mailbox, which the boot scoreboard gates on, alongside
-the banner and ICCM-execution checks.
-
-The TB also counts cycles where the CPU-LSU and DMA local-crossbar inputs both
-present an SRAM request on the same AXI address channel. A positive count is
-the arbitration-contention proof; DMA BUSY alone proves only that the job was
-active during the CPU loop.
+The TB counts cycles where the CPU-LSU and DMA crossbar inputs both present an SRAM request on
+the same address channel; a positive count is the contention proof, which DMA BUSY alone is not.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
 """
@@ -56,7 +45,11 @@ _VERDICT_CLAUSES = (
         "the DMA busy and not done at store-loop exit",
     ),
     ("ERROR_CODE=0", "CHK-NOERR", "the DMA completing with no error"),
-    ("DONE+RW1C clear", "CHK-RW1C", "the done status clearing on write-one-to-clear"),
+    (
+        "DONE+RW1C clear",
+        "CHK-RW1C",
+        "the done status holding after the poll and clearing on write-one-to-clear",
+    ),
     ("dst==src", "CHK-DMA-DATA", "the DMA destination matching its source"),
     ("cont==cpu", "CHK-CPU-DATA", "the CPU region holding exactly what the CPU wrote"),
 )

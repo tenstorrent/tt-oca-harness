@@ -20,13 +20,12 @@ schema_version = 1
 #     fixed; the leaf then moves back to its feature testlist without the
 #     `expect_fail` pair. No `ci` tag: a graded expected failure must never
 #     count in the hosted set. One test per defect. The group currently holds
-#     `smc_filter_lock_window_test` and `smc_isolate_req_smc_lane_test`.
-#     `smc_deadspace_decode_test` left it and runs from `fabric.toml`.
-#   * `occp_boot` / `occp_dual` -- held out on runtime. The production ROM's
-#     whole reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) and the
-#     dual-SMC unsecure boot (hours of wall clock while a full sram image
-#     crosses a ~2.6 MHz serial bus that Verilator simulates cycle by cycle).
-#     Each runs on demand as its own group.
+#     `smc_isolate_req_smc_lane_test`.
+#     `smc_deadspace_decode_test` and `smc_filter_lock_window_test` left it
+#     and run from `fabric.toml`.
+#   * `occp_boot` -- held out on runtime. The production ROM's whole
+#     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
+#     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
 #   * `held_out` -- leaves whose current failure is a comparison the leaf
 #     cannot make on this RTL until a ruling. smc_ref_clock_timer_rate_test
 #     fails the rate comparison it was written to make: clk_rst.adoc places
@@ -41,20 +40,6 @@ schema_version = 1
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
-
-[[tests]]
-# A write queued right behind the write that locks a filter reaches filter_ctrl
-# after locked = 1: the inner demux at smc_internal_regs.sv:306 latches its lock
-# select into its AW spill register, and the outer demux forwards the next AW as
-# soon as the locking write's W has passed. locked is woset (filter_ctrl.rdl).
-name = "smc_filter_lock_window_test"
-module = "smc_filter_lock_window_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "FILTER_CONFIG lock: a write queued behind the locking write reaches the locked filter"
-expect_fail_match = "writes queued behind the locking write landed on locked filter"
 
 [[tests]]
 # ISOLATE_REQ_SMC_REG clears its FLR-latched request on any write with a byte
@@ -86,37 +71,6 @@ args = [
 ]
 
 [[tests]]
-name = "smc_occp_dual_unsecure_boot_test"
-module = "smc_occp_dual_unsecure_boot_test"
-target = "dual"
-seed = 1
-# Headroom, not a target. The payload is a full sram-mode image (~15 KB), and
-# every byte of it crawls over a ~2.6 MHz serial bus that Verilator simulates
-# cycle by cycle, so the run takes hours of wall clock.
-timeout_sec = 21600
-tags = ["dual", "occp_boot", "prod_rom"]
-run_modes = ["dual"]
-firmware = { name = "dual_occp", mode = "dual_occp" }
-# Three images, one per role. run_dv stages every declared c_build output next
-# to the simulator cwd, which is why these are bare basenames.
-#   +rom_bin64        target: production boot ROM (loaded into BOTH instances by
-#                     OCAH4CORECluster_rom_ext, then overridden on u_bfm below)
-#   +bfm_rom_hex      controller: the DV OCCP master image, applied to u_bfm
-#                     only, at #0.3 so it wins over the shared load
-#   +occp_payload_bin the image cocotb stages into the controller's SRAM over
-#                     AXI and the controller then streams over I3C. An ordinary
-#                     sram-mode test image; no ROM embedding and no striped
-#                     backdoor is involved
-#   +occp_payload_sym the test derives the OCCP JUMP entry offset from this
-#                     (&main - &_enter) rather than hardcoding it
-args = [
-    "+rom_bin64=prod_rom.bin64",
-    "+bfm_rom_hex=occp_unsecure_boot_test.rom.hex",
-    "+occp_payload_bin=hello_world.sram.bin",
-    "+occp_payload_sym=hello_world.sram.sym",
-]
-
-[[tests]]
 name = "smc_ref_clock_timer_rate_test"
 module = "smc_ref_clock_timer_rate_test"
 seed = 1
@@ -145,9 +99,8 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 2
+expected_count = 1
 tests = [
-    "smc_filter_lock_window_test",
     "smc_isolate_req_smc_lane_test",
 ]
 
@@ -156,13 +109,6 @@ tests = [
 name = "occp_boot"
 tests = [
     "smc_prod_rom_occp_ready_test",
-]
-
-[[groups]]
-# Dual-SMC OCCP unsecure boot; on demand, hours.
-name = "occp_dual"
-tests = [
-    "smc_occp_dual_unsecure_boot_test",
 ]
 
 [[groups]]

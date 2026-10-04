@@ -24,8 +24,9 @@ from seq_lib.smu_jtag_helpers import (
 )
 from seq_lib.smu_tb_pins import smu_scope
 
-# Whole multiple of every period smu_env_cfg.randomize_timing can draw
-# (smu 8/10/12, ref 10/12/16, periph 16/20/24, wdt 80/100/120 ns).
+# Whole multiple of every domain period: the pll_wrap clocks (smu 1.25 or 10,
+# ref 10, periph 5 ns) and every wdt period randomize_timing can draw
+# (80/100/120 ns).
 RATE_WINDOW_NS = 1200
 INDEP_WINDOW_NS = 240
 EDGE_SAMPLES = 4
@@ -112,8 +113,8 @@ class smu_clock_domain_composition_seq:
                 "CHK-SMU-CLK-DOMAINS-S3",
             ),
             (
-                "clk_periph_i",
-                dut.clk_periph_i,
+                "clk_periph_o",
+                dut.clk_periph_o,
                 {"u_smc.clk_periph_i": periph_clk},
                 "CHK-SMU-CLK-DOMAINS-S4",
             ),
@@ -138,10 +139,10 @@ class smu_clock_domain_composition_seq:
             RATE_WINDOW_NS,
         )
         expected = {
-            "telemetry": 2 * RATE_WINDOW_NS // periods["clk_ref_i"],
-            "sep_wdt": 2 * RATE_WINDOW_NS // periods["clk_sep_wdt_i"],
-            "periph": 2 * RATE_WINDOW_NS // periods["clk_periph_i"],
-            "smc": 2 * RATE_WINDOW_NS // periods["clk_smu_i"],
+            "telemetry": round(2 * RATE_WINDOW_NS / periods["clk_ref_i"]),
+            "sep_wdt": round(2 * RATE_WINDOW_NS / periods["clk_sep_wdt_i"]),
+            "periph": round(2 * RATE_WINDOW_NS / periods["clk_periph_i"]),
+            "smc": round(2 * RATE_WINDOW_NS / periods["clk_smu_i"]),
         }
         self.log.info("transitions over %d ns: %s expected %s", RATE_WINDOW_NS, counts, expected)
         tokens = {

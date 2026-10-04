@@ -29,125 +29,125 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 0x1008 | <<reg-{regmap-instance}-smc_cla-funnel-Trfunneldisinput,Trfunneldisinput>> | RW a| -
 | 0x1FF8 | <<reg-{regmap-instance}-smc_cla-funnel-ScratchLo,funnel.ScratchLo>> | RW a| Scratch register (low) for DV and potential ECO usage
 | 0x1FFC | <<reg-{regmap-instance}-smc_cla-funnel-ScratchHi,funnel.ScratchHi>> | RW a| Scratch register (high) for DV and potential ECO usage
-| 0x2100 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter0Cfg,CDbgClaCounter0Cfg>> | RW a| Configure CLA counter0. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
-| 0x2108 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter1Cfg,CDbgClaCounter1Cfg>> | RW a| Configure CLA counter1. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
-| 0x2110 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter2Cfg,CDbgClaCounter2Cfg>> | RW a| Configure CLA counter2. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
-| 0x2118 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter3Cfg,CDbgClaCounter3Cfg>> | RW a| Configure CLA counter3. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
-| 0x2120 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap0,CDbgNode0Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2128 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap1,CDbgNode0Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2130 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap0,CDbgNode1Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2138 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap1,CDbgNode1Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2140 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap0,CDbgNode2Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2148 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap1,CDbgNode2Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2150 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap0,CDbgNode3Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2158 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap1,CDbgNode3Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2160 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask0Lo,CDbgSignalMask0Lo>> | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
-| 0x2168 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch0Lo,CDbgSignalMatch0Lo>> | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
-| 0x2170 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask1Lo,CDbgSignalMask1Lo>> | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
-| 0x2178 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch1Lo,CDbgSignalMatch1Lo>> | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
-| 0x2180 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalEdgeDetectCfg,CDbgSignalEdgeDetectCfg>> | RW a| Register to configure debug bus for edge triggers.
-| 0x2188 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgEapStatus,CDbgEapStatus>> | RW a| Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)
-| 0x2190 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCtrlStatus,CDbgClaCtrlStatus>> | RW a| Ctrl/Status register to Enable EAP after EAP programming is complete, and read the current node.
-| 0x2198 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgMuxSelLo,CDbgMuxSelLo>> | RW a| -
-| 0x21A0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgRsvd1,CDbgRsvd1>> | RW a| Reserved Register that can be changed.
-| 0x21A8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgRsvd2,CDbgRsvd2>> | RW a| Reserved Register that can be changed.
-| 0x21B0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionMaskLo,CDbgTransitionMaskLo>> | RW a| 3 registers to configure "transition event". This register is to select the signals of interest using a mask.
-| 0x21B8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionFromValueLo,CDbgTransitionFromValueLo>> | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value A.
-| 0x21C0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionToValueLo,CDbgTransitionToValueLo>> | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value B.
-| 0x21C8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgOnesCountMaskLo,CDbgOnesCountMaskLo>> | RW a| 2 registers to configure "ones count" event. This register is to select the signals of interest using a mask.
-| 0x21D0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgOnesCountValue,CDbgOnesCountValue>> | RW a| 2 registers to configure "ones count" event. Event triggered when the sum of the signals match the value specified in this register.
-| 0x21D8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgAnyChangeLo,CDbgAnyChangeLo>> | RW a| Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.
-| 0x21E0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap0Lo,CDbgSignalSnapshotNode0Eap0Lo>> | R a| debug Bus Value when Node0 Eap0 Trigger is met.
-| 0x21E8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap1Lo,CDbgSignalSnapshotNode0Eap1Lo>> | R a| debug Bus Value when Node0 Eap1 Trigger is met.
-| 0x21F0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap0Lo,CDbgSignalSnapshotNode1Eap0Lo>> | R a| debug Bus Value when Node1 Eap0 Trigger is met.
-| 0x21F8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap1Lo,CDbgSignalSnapshotNode1Eap1Lo>> | R a| debug Bus Value when Node1 Eap0 Trigger is met.
-| 0x2200 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap0Lo,CDbgSignalSnapshotNode2Eap0Lo>> | R a| debug Bus Value when Node0 Eap0 Trigger is met.
-| 0x2208 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap1Lo,CDbgSignalSnapshotNode2Eap1Lo>> | R a| debug Bus Value when Node0 Eap1 Trigger is met.
-| 0x2210 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap0Lo,CDbgSignalSnapshotNode3Eap0Lo>> | R a| debug Bus Value when Node1 Eap0 Trigger is met.
-| 0x2218 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap1Lo,CDbgSignalSnapshotNode3Eap1Lo>> | R a| debug Bus Value when Node1 Eap0 Trigger is met.
-| 0x2220 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimeMatch,CDbgClaTimeMatch>> | RW a| This value is compared (greater than or equal to the programmed value) against the internal time register value of the core, and is used to generate a time match event for CLA. Needs to be non zero for the time match event signal to trigger. The event will only trigger an action if the EAP programming is done. Requires writing 0 to this register to stop the match event.
-| 0x2228 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask2Lo,CDbgSignalMask2Lo>> | RW a| Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.
-| 0x2230 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch2Lo,CDbgSignalMatch2Lo>> | RW a| Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.
-| 0x2238 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask3Lo,CDbgSignalMask3Lo>> | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
-| 0x2240 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch3Lo,CDbgSignalMatch3Lo>> | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
-| 0x2248 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap2,CDbgNode0Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2250 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap3,CDbgNode0Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2258 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap2,CDbgNode1Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2260 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap3,CDbgNode1Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2268 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap2,CDbgNode2Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2270 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap3,CDbgNode2Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2278 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap2,CDbgNode3Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2280 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap3,CDbgNode3Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
-| 0x2288 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap2Lo,CDbgSignalSnapshotNode0Eap2Lo>> | R a| debug Bus Value when Node0 Eap2 Trigger is met.
-| 0x2290 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap3Lo,CDbgSignalSnapshotNode0Eap3Lo>> | R a| debug Bus Value when Node0 Eap3 Trigger is met.
-| 0x2298 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap2Lo,CDbgSignalSnapshotNode1Eap2Lo>> | R a| debug Bus Value when Node1 Eap2 Trigger is met.
-| 0x22A0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap3Lo,CDbgSignalSnapshotNode1Eap3Lo>> | R a| debug Bus Value when Node1 Eap3 Trigger is met.
-| 0x22A8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap2Lo,CDbgSignalSnapshotNode2Eap2Lo>> | R a| debug Bus Value when Node2 Eap2 Trigger is met.
-| 0x22B0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap3Lo,CDbgSignalSnapshotNode2Eap3Lo>> | R a| debug Bus Value when Node2 Eap3 Trigger is met.
-| 0x22B8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap2Lo,CDbgSignalSnapshotNode3Eap2Lo>> | R a| debug Bus Value when Node3 Eap2 Trigger is met.
-| 0x22C0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap3Lo,CDbgSignalSnapshotNode3Eap3Lo>> | R a| debug Bus Value when Node3 Eap3 Trigger is met.
-| 0x22C8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalDelayMuxSel,CDbgSignalDelayMuxSel>> | RW a| -
-| 0x22D8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaXtriggerTimestretch,CDbgClaXtriggerTimestretch>> | RW a| This value determines the time stretched pulse duration for the cross trigger. 8 bits for each of the two triggers.
-| 0x22F0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestamp,CDbgClaTimestamp>> | RW a| 64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.
-| 0x22F8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampSync,CDbgClaTimestampSync>> | RW a| Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.
-| 0x2300 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampConfig,CDbgClaTimestampConfig>> | RW a| Timestamp configuration register. Controls resync behavior and debug marker.
-| 0x2308 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampOffset,CDbgClaTimestampOffset>> | RW a| Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.
-| 0x2400 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask0Hi,CDbgSignalMask0Hi>> | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
-| 0x2408 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch0Hi,CDbgSignalMatch0Hi>> | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
-| 0x2410 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask1Hi,CDbgSignalMask1Hi>> | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
-| 0x2418 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch1Hi,CDbgSignalMatch1Hi>> | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
-| 0x2420 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask2Hi,CDbgSignalMask2Hi>> | RW a| Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.
-| 0x2428 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch2Hi,CDbgSignalMatch2Hi>> | RW a| Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.
-| 0x2430 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask3Hi,CDbgSignalMask3Hi>> | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
-| 0x2438 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch3Hi,CDbgSignalMatch3Hi>> | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
-| 0x2440 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgMuxSelHi,CDbgMuxSelHi>> | RW a| -
-| 0x2448 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionMaskHi,CDbgTransitionMaskHi>> | RW a| 3 registers to configure "transition event". This register is to select the signals of interest using a mask.
-| 0x2450 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionFromValueHi,CDbgTransitionFromValueHi>> | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value A.
-| 0x2458 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionToValueHi,CDbgTransitionToValueHi>> | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value B.
-| 0x2460 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgOnesCountMaskHi,CDbgOnesCountMaskHi>> | RW a| 2 registers to configure "ones count" event. This register is to select the signals of interest using a mask.
-| 0x2468 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgAnyChangeHi,CDbgAnyChangeHi>> | RW a| Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.
-| 0x2470 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap0Hi,CDbgSignalSnapshotNode0Eap0Hi>> | R a| debug Bus Value when Node0 Eap0 Trigger is met.
-| 0x2478 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap1Hi,CDbgSignalSnapshotNode0Eap1Hi>> | R a| debug Bus Value when Node0 Eap1 Trigger is met.
-| 0x2480 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap0Hi,CDbgSignalSnapshotNode1Eap0Hi>> | R a| debug Bus Value when Node1 Eap0 Trigger is met.
-| 0x2488 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap1Hi,CDbgSignalSnapshotNode1Eap1Hi>> | R a| debug Bus Value when Node1 Eap0 Trigger is met.
-| 0x2490 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap0Hi,CDbgSignalSnapshotNode2Eap0Hi>> | R a| debug Bus Value when Node0 Eap0 Trigger is met.
-| 0x2498 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap1Hi,CDbgSignalSnapshotNode2Eap1Hi>> | R a| debug Bus Value when Node0 Eap1 Trigger is met.
-| 0x24A0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap0Hi,CDbgSignalSnapshotNode3Eap0Hi>> | R a| debug Bus Value when Node1 Eap0 Trigger is met.
-| 0x24A8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap1Hi,CDbgSignalSnapshotNode3Eap1Hi>> | R a| debug Bus Value when Node1 Eap0 Trigger is met.
-| 0x24B0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap2Hi,CDbgSignalSnapshotNode0Eap2Hi>> | R a| debug Bus Value when Node0 Eap2 Trigger is met.
-| 0x24B8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap3Hi,CDbgSignalSnapshotNode0Eap3Hi>> | R a| debug Bus Value when Node0 Eap3 Trigger is met.
-| 0x24C0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap2Hi,CDbgSignalSnapshotNode1Eap2Hi>> | R a| debug Bus Value when Node1 Eap2 Trigger is met.
-| 0x24C8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap3Hi,CDbgSignalSnapshotNode1Eap3Hi>> | R a| debug Bus Value when Node1 Eap3 Trigger is met.
-| 0x24D0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap2Hi,CDbgSignalSnapshotNode2Eap2Hi>> | R a| debug Bus Value when Node2 Eap2 Trigger is met.
-| 0x24D8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap3Hi,CDbgSignalSnapshotNode2Eap3Hi>> | R a| debug Bus Value when Node2 Eap3 Trigger is met.
-| 0x24E0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap2Hi,CDbgSignalSnapshotNode3Eap2Hi>> | R a| debug Bus Value when Node3 Eap2 Trigger is met.
-| 0x24E8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap3Hi,CDbgSignalSnapshotNode3Eap3Hi>> | R a| debug Bus Value when Node3 Eap3 Trigger is met.
-| 0x24F0 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgLfsr,CDbgLfsr>> | RW a| LFSR value.
-| 0x24F8 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgLfsrMask,CDbgLfsrMask>> | RW a| LFSR programming mask.
-| 0x2500 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgTimestampCapture,CDbgTimestampCapture>> | R a| Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.
-| 0x2508 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare0Lo,CDbgCompare0Lo>> | RW a| Value for arithmetic comparison.
-| 0x2510 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare0MaskLo,CDbgCompare0MaskLo>> | RW a| Value to mask the arithmetic comparison.
-| 0x2518 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare1Lo,CDbgCompare1Lo>> | RW a| Value for arithmetic comparison.
-| 0x2520 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare1MaskLo,CDbgCompare1MaskLo>> | RW a| Value to mask the arithmetic comparison.
-| 0x2528 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare2Lo,CDbgCompare2Lo>> | RW a| Value for arithmetic comparison.
-| 0x2530 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare2MaskLo,CDbgCompare2MaskLo>> | RW a| Value to mask the arithmetic comparison.
-| 0x2538 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare3Lo,CDbgCompare3Lo>> | RW a| Value for arithmetic comparison.
-| 0x2540 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare3MaskLo,CDbgCompare3MaskLo>> | RW a| Value to mask the arithmetic comparison.
-| 0x2548 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare0Hi,CDbgCompare0Hi>> | RW a| Value for arithmetic comparison.
-| 0x2550 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare0MaskHi,CDbgCompare0MaskHi>> | RW a| Value to mask the arithmetic comparison.
-| 0x2558 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare1Hi,CDbgCompare1Hi>> | RW a| Value for arithmetic comparison.
-| 0x2560 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare1MaskHi,CDbgCompare1MaskHi>> | RW a| Value to mask the arithmetic comparison.
-| 0x2568 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare2Hi,CDbgCompare2Hi>> | RW a| Value for arithmetic comparison.
-| 0x2570 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare2MaskHi,CDbgCompare2MaskHi>> | RW a| Value to mask the arithmetic comparison.
-| 0x2578 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare3Hi,CDbgCompare3Hi>> | RW a| Value for arithmetic comparison.
-| 0x2580 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare3MaskHi,CDbgCompare3MaskHi>> | RW a| Value to mask the arithmetic comparison.
-| 0x2FF8 | <<reg-{regmap-instance}-smc_cla-cla-0-Scratch,Scratch>> | RW a| Additional scratch register for DV and potential ECO usage
-| 0x3000 | <<reg-{regmap-instance}-smc_cla-dst-0-Trdstcontrol,Trdstcontrol>> | RW a| -
-| 0x3004 | <<reg-{regmap-instance}-smc_cla-dst-0-Trdstimpl,Trdstimpl>> | RW a| -
-| 0x3008 | <<reg-{regmap-instance}-smc_cla-dst-0-Trdstinstfeatures,Trdstinstfeatures>> | RW a| -
-| 0x31A0 | <<reg-{regmap-instance}-smc_cla-dst-0-CDbgDebugTraceCfg,CDbgDebugTraceCfg>> | RW a| -
-| 0x3FF8 | <<reg-{regmap-instance}-smc_cla-dst-0-ScratchLo,dst[0].ScratchLo>> | RW a| Scratch register (low) for DV and potential ECO usage
-| 0x3FFC | <<reg-{regmap-instance}-smc_cla-dst-0-ScratchHi,dst[0].ScratchHi>> | RW a| Scratch register (high) for DV and potential ECO usage
+| 0x2100 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaCounter0Cfg,CDbgClaCounter0Cfg>> | RW a| Configure CLA counter0. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
+| 0x2108 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaCounter1Cfg,CDbgClaCounter1Cfg>> | RW a| Configure CLA counter1. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
+| 0x2110 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaCounter2Cfg,CDbgClaCounter2Cfg>> | RW a| Configure CLA counter2. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
+| 0x2118 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaCounter3Cfg,CDbgClaCounter3Cfg>> | RW a| Configure CLA counter3. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
+| 0x2120 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode0Eap0,CDbgNode0Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2128 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode0Eap1,CDbgNode0Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2130 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode1Eap0,CDbgNode1Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2138 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode1Eap1,CDbgNode1Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2140 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode2Eap0,CDbgNode2Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2148 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode2Eap1,CDbgNode2Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2150 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode3Eap0,CDbgNode3Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2158 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode3Eap1,CDbgNode3Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2160 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask0Lo,CDbgSignalMask0Lo>> | RW a| Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match.
+| 0x2168 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch0Lo,CDbgSignalMatch0Lo>> | RW a| Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match.
+| 0x2170 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask1Lo,CDbgSignalMask1Lo>> | RW a| Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match.
+| 0x2178 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch1Lo,CDbgSignalMatch1Lo>> | RW a| Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match.
+| 0x2180 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalEdgeDetectCfg,CDbgSignalEdgeDetectCfg>> | RW a| Register to configure debug bus for edge triggers.
+| 0x2188 | <<reg-{regmap-instance}-smc_cla-cla-CDbgEapStatus,CDbgEapStatus>> | RW a| Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)
+| 0x2190 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaCtrlStatus,CDbgClaCtrlStatus>> | RW a| Ctrl/Status register to Enable EAP after EAP programming is complete, and read the current node.
+| 0x2198 | <<reg-{regmap-instance}-smc_cla-cla-CDbgMuxSelLo,CDbgMuxSelLo>> | RW a| Mode, ID, fine-grain time enable and lane selects for the CLA debug-bus mux, which builds the four 16-bit lanes of the CLA's 64-bit debug bus from 16 input segments. The mux ID is 0: the mode is taken while DbmId is 0, and the lane selects while DbmId is 0 and DbmMode is 1.
+| 0x21A0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgRsvd1,CDbgRsvd1>> | RW a| Reserved Register that can be changed.
+| 0x21A8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgRsvd2,CDbgRsvd2>> | RW a| Reserved Register that can be changed.
+| 0x21B0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgTransitionMaskLo,CDbgTransitionMaskLo>> | RW a| 3 registers to configure "transition event". This register is to select the signals of interest using a mask.
+| 0x21B8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgTransitionFromValueLo,CDbgTransitionFromValueLo>> | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value A.
+| 0x21C0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgTransitionToValueLo,CDbgTransitionToValueLo>> | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value B.
+| 0x21C8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgOnesCountMaskLo,CDbgOnesCountMaskLo>> | RW a| 2 registers to configure "ones count" event. This register is to select the signals of interest using a mask.
+| 0x21D0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgOnesCountValue,CDbgOnesCountValue>> | RW a| 2 registers to configure "ones count" event. Event triggered when the sum of the signals match the value specified in this register.
+| 0x21D8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgAnyChangeLo,CDbgAnyChangeLo>> | RW a| Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.
+| 0x21E0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap0Lo,CDbgSignalSnapshotNode0Eap0Lo>> | R a| debug Bus Value when Node0 Eap0 Trigger is met.
+| 0x21E8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap1Lo,CDbgSignalSnapshotNode0Eap1Lo>> | R a| debug Bus Value when Node0 Eap1 Trigger is met.
+| 0x21F0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap0Lo,CDbgSignalSnapshotNode1Eap0Lo>> | R a| debug Bus Value when Node1 Eap0 Trigger is met.
+| 0x21F8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap1Lo,CDbgSignalSnapshotNode1Eap1Lo>> | R a| debug Bus Value when Node1 Eap1 Trigger is met.
+| 0x2200 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap0Lo,CDbgSignalSnapshotNode2Eap0Lo>> | R a| debug Bus Value when Node2 Eap0 Trigger is met.
+| 0x2208 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap1Lo,CDbgSignalSnapshotNode2Eap1Lo>> | R a| debug Bus Value when Node2 Eap1 Trigger is met.
+| 0x2210 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap0Lo,CDbgSignalSnapshotNode3Eap0Lo>> | R a| debug Bus Value when Node3 Eap0 Trigger is met.
+| 0x2218 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap1Lo,CDbgSignalSnapshotNode3Eap1Lo>> | R a| debug Bus Value when Node3 Eap1 Trigger is met.
+| 0x2220 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaTimeMatch,CDbgClaTimeMatch>> | RW a| This value is compared (greater than or equal to the programmed value) against the internal time register value of the core, and is used to generate a time match event for CLA. Needs to be non zero for the time match event signal to trigger. The event will only trigger an action if the EAP programming is done. Requires writing 0 to this register to stop the match event.
+| 0x2228 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask2Lo,CDbgSignalMask2Lo>> | RW a| Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match.
+| 0x2230 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch2Lo,CDbgSignalMatch2Lo>> | RW a| Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match.
+| 0x2238 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask3Lo,CDbgSignalMask3Lo>> | RW a| Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match.
+| 0x2240 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch3Lo,CDbgSignalMatch3Lo>> | RW a| Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match.
+| 0x2248 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode0Eap2,CDbgNode0Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2250 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode0Eap3,CDbgNode0Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2258 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode1Eap2,CDbgNode1Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2260 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode1Eap3,CDbgNode1Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2268 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode2Eap2,CDbgNode2Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2270 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode2Eap3,CDbgNode2Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2278 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode3Eap2,CDbgNode3Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2280 | <<reg-{regmap-instance}-smc_cla-cla-CDbgNode3Eap3,CDbgNode3Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2288 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap2Lo,CDbgSignalSnapshotNode0Eap2Lo>> | R a| debug Bus Value when Node0 Eap2 Trigger is met.
+| 0x2290 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap3Lo,CDbgSignalSnapshotNode0Eap3Lo>> | R a| debug Bus Value when Node0 Eap3 Trigger is met.
+| 0x2298 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap2Lo,CDbgSignalSnapshotNode1Eap2Lo>> | R a| debug Bus Value when Node1 Eap2 Trigger is met.
+| 0x22A0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap3Lo,CDbgSignalSnapshotNode1Eap3Lo>> | R a| debug Bus Value when Node1 Eap3 Trigger is met.
+| 0x22A8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap2Lo,CDbgSignalSnapshotNode2Eap2Lo>> | R a| debug Bus Value when Node2 Eap2 Trigger is met.
+| 0x22B0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap3Lo,CDbgSignalSnapshotNode2Eap3Lo>> | R a| debug Bus Value when Node2 Eap3 Trigger is met.
+| 0x22B8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap2Lo,CDbgSignalSnapshotNode3Eap2Lo>> | R a| debug Bus Value when Node3 Eap2 Trigger is met.
+| 0x22C0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap3Lo,CDbgSignalSnapshotNode3Eap3Lo>> | R a| debug Bus Value when Node3 Eap3 Trigger is met.
+| 0x22C8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalDelayMuxSel,CDbgSignalDelayMuxSel>> | RW a| -
+| 0x22D8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaXtriggerTimestretch,CDbgClaXtriggerTimestretch>> | RW a| This value determines the time stretched pulse duration for the cross trigger. 8 bits for each of the two triggers.
+| 0x22F0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaTimestamp,CDbgClaTimestamp>> | RW a| 64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.
+| 0x22F8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaTimestampSync,CDbgClaTimestampSync>> | RW a| Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.
+| 0x2300 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaTimestampConfig,CDbgClaTimestampConfig>> | RW a| Timestamp configuration register. Controls resync behavior and debug marker.
+| 0x2308 | <<reg-{regmap-instance}-smc_cla-cla-CDbgClaTimestampOffset,CDbgClaTimestampOffset>> | RW a| Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).
+| 0x2400 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask0Hi,CDbgSignalMask0Hi>> | RW a| Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2408 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch0Hi,CDbgSignalMatch0Hi>> | RW a| Used to define debug bus match events. The positive match event (0x2) fires when debug_bus & mask = match; the negative match event (0x3) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2410 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask1Hi,CDbgSignalMask1Hi>> | RW a| Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2418 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch1Hi,CDbgSignalMatch1Hi>> | RW a| Used to define debug bus match events. The positive match event (0x4) fires when debug_bus & mask = match; the negative match event (0x5) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2420 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask2Hi,CDbgSignalMask2Hi>> | RW a| Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2428 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch2Hi,CDbgSignalMatch2Hi>> | RW a| Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus & mask = match; the negative match event (0x1D) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2430 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask3Hi,CDbgSignalMask3Hi>> | RW a| Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2438 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch3Hi,CDbgSignalMatch3Hi>> | RW a| Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus & mask = match; the negative match event (0x1F) fires when debug_bus & mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2440 | <<reg-{regmap-instance}-smc_cla-cla-CDbgMuxSelHi,CDbgMuxSelHi>> | RW a| No effect in the SMC. The CLA debug-bus mux has four output lanes and takes its mode, ID, fine-grain time enable and lane selects from CDbgMuxSelLo.
+| 0x2448 | <<reg-{regmap-instance}-smc_cla-cla-CDbgTransitionMaskHi,CDbgTransitionMaskHi>> | RW a| 3 registers to configure "transition event". This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2450 | <<reg-{regmap-instance}-smc_cla-cla-CDbgTransitionFromValueHi,CDbgTransitionFromValueHi>> | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value A. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2458 | <<reg-{regmap-instance}-smc_cla-cla-CDbgTransitionToValueHi,CDbgTransitionToValueHi>> | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value B. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2460 | <<reg-{regmap-instance}-smc_cla-cla-CDbgOnesCountMaskHi,CDbgOnesCountMaskHi>> | RW a| 2 registers to configure "ones count" event. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2468 | <<reg-{regmap-instance}-smc_cla-cla-CDbgAnyChangeHi,CDbgAnyChangeHi>> | RW a| Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2470 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap0Hi,CDbgSignalSnapshotNode0Eap0Hi>> | R a| debug Bus Value when Node0 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x2478 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap1Hi,CDbgSignalSnapshotNode0Eap1Hi>> | R a| debug Bus Value when Node0 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x2480 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap0Hi,CDbgSignalSnapshotNode1Eap0Hi>> | R a| debug Bus Value when Node1 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x2488 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap1Hi,CDbgSignalSnapshotNode1Eap1Hi>> | R a| debug Bus Value when Node1 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x2490 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap0Hi,CDbgSignalSnapshotNode2Eap0Hi>> | R a| debug Bus Value when Node2 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x2498 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap1Hi,CDbgSignalSnapshotNode2Eap1Hi>> | R a| debug Bus Value when Node2 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24A0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap0Hi,CDbgSignalSnapshotNode3Eap0Hi>> | R a| debug Bus Value when Node3 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24A8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap1Hi,CDbgSignalSnapshotNode3Eap1Hi>> | R a| debug Bus Value when Node3 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24B0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap2Hi,CDbgSignalSnapshotNode0Eap2Hi>> | R a| debug Bus Value when Node0 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24B8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap3Hi,CDbgSignalSnapshotNode0Eap3Hi>> | R a| debug Bus Value when Node0 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24C0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap2Hi,CDbgSignalSnapshotNode1Eap2Hi>> | R a| debug Bus Value when Node1 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24C8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap3Hi,CDbgSignalSnapshotNode1Eap3Hi>> | R a| debug Bus Value when Node1 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24D0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap2Hi,CDbgSignalSnapshotNode2Eap2Hi>> | R a| debug Bus Value when Node2 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24D8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap3Hi,CDbgSignalSnapshotNode2Eap3Hi>> | R a| debug Bus Value when Node2 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24E0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap2Hi,CDbgSignalSnapshotNode3Eap2Hi>> | R a| debug Bus Value when Node3 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24E8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap3Hi,CDbgSignalSnapshotNode3Eap3Hi>> | R a| debug Bus Value when Node3 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.
+| 0x24F0 | <<reg-{regmap-instance}-smc_cla-cla-CDbgLfsr,CDbgLfsr>> | RW a| LFSR value.
+| 0x24F8 | <<reg-{regmap-instance}-smc_cla-cla-CDbgLfsrMask,CDbgLfsrMask>> | RW a| LFSR programming mask.
+| 0x2500 | <<reg-{regmap-instance}-smc_cla-cla-CDbgTimestampCapture,CDbgTimestampCapture>> | R a| Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register. Never captured in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).
+| 0x2508 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare0Lo,CDbgCompare0Lo>> | RW a| Value for arithmetic comparison.
+| 0x2510 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare0MaskLo,CDbgCompare0MaskLo>> | RW a| Value to mask the arithmetic comparison.
+| 0x2518 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare1Lo,CDbgCompare1Lo>> | RW a| Value for arithmetic comparison.
+| 0x2520 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare1MaskLo,CDbgCompare1MaskLo>> | RW a| Value to mask the arithmetic comparison.
+| 0x2528 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare2Lo,CDbgCompare2Lo>> | RW a| Value for arithmetic comparison.
+| 0x2530 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare2MaskLo,CDbgCompare2MaskLo>> | RW a| Value to mask the arithmetic comparison.
+| 0x2538 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare3Lo,CDbgCompare3Lo>> | RW a| Value for arithmetic comparison.
+| 0x2540 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare3MaskLo,CDbgCompare3MaskLo>> | RW a| Value to mask the arithmetic comparison.
+| 0x2548 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare0Hi,CDbgCompare0Hi>> | RW a| Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2550 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare0MaskHi,CDbgCompare0MaskHi>> | RW a| Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2558 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare1Hi,CDbgCompare1Hi>> | RW a| Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2560 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare1MaskHi,CDbgCompare1MaskHi>> | RW a| Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2568 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare2Hi,CDbgCompare2Hi>> | RW a| Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2570 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare2MaskHi,CDbgCompare2MaskHi>> | RW a| Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2578 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare3Hi,CDbgCompare3Hi>> | RW a| Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2580 | <<reg-{regmap-instance}-smc_cla-cla-CDbgCompare3MaskHi,CDbgCompare3MaskHi>> | RW a| Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.
+| 0x2FF8 | <<reg-{regmap-instance}-smc_cla-cla-Scratch,Scratch>> | RW a| Additional scratch register for DV and potential ECO usage
+| 0x3000 | <<reg-{regmap-instance}-smc_cla-dst-Trdstcontrol,Trdstcontrol>> | RW a| -
+| 0x3004 | <<reg-{regmap-instance}-smc_cla-dst-Trdstimpl,Trdstimpl>> | RW a| -
+| 0x3008 | <<reg-{regmap-instance}-smc_cla-dst-Trdstinstfeatures,Trdstinstfeatures>> | RW a| -
+| 0x31A0 | <<reg-{regmap-instance}-smc_cla-dst-CDbgDebugTraceCfg,CDbgDebugTraceCfg>> | RW a| -
+| 0x3FF8 | <<reg-{regmap-instance}-smc_cla-dst-ScratchLo,dst.ScratchLo>> | RW a| Scratch register (low) for DV and potential ECO usage
+| 0x3FFC | <<reg-{regmap-instance}-smc_cla-dst-ScratchHi,dst.ScratchHi>> | RW a| Scratch register (high) for DV and potential ECO usage
 |===
 
 [#reg-{regmap-instance}-smc_cla-dst_sink-Trdstramcontrol]
@@ -339,7 +339,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 31:0 | `Data` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter0Cfg]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaCounter0Cfg]
 === CDbgClaCounter0Cfg
 
 [cols="1,3,1,1,6", options="header"]
@@ -353,7 +353,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter1Cfg]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaCounter1Cfg]
 === CDbgClaCounter1Cfg
 
 [cols="1,3,1,1,6", options="header"]
@@ -367,7 +367,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter2Cfg]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaCounter2Cfg]
 === CDbgClaCounter2Cfg
 
 [cols="1,3,1,1,6", options="header"]
@@ -381,7 +381,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter3Cfg]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaCounter3Cfg]
 === CDbgClaCounter3Cfg
 
 [cols="1,3,1,1,6", options="header"]
@@ -395,7 +395,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 15:0 | `Counter` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap0]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode0Eap0]
 === CDbgNode0Eap0
 
 [cols="1,3,1,1,6", options="header"]
@@ -417,7 +417,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap1]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode0Eap1]
 === CDbgNode0Eap1
 
 [cols="1,3,1,1,6", options="header"]
@@ -439,7 +439,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap0]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode1Eap0]
 === CDbgNode1Eap0
 
 [cols="1,3,1,1,6", options="header"]
@@ -461,7 +461,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap1]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode1Eap1]
 === CDbgNode1Eap1
 
 [cols="1,3,1,1,6", options="header"]
@@ -483,7 +483,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap0]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode2Eap0]
 === CDbgNode2Eap0
 
 [cols="1,3,1,1,6", options="header"]
@@ -505,7 +505,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap1]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode2Eap1]
 === CDbgNode2Eap1
 
 [cols="1,3,1,1,6", options="header"]
@@ -527,7 +527,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap0]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode3Eap0]
 === CDbgNode3Eap0
 
 [cols="1,3,1,1,6", options="header"]
@@ -549,7 +549,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap1]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode3Eap1]
 === CDbgNode3Eap1
 
 [cols="1,3,1,1,6", options="header"]
@@ -571,7 +571,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask0Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask0Lo]
 === CDbgSignalMask0Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -580,7 +580,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch0Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch0Lo]
 === CDbgSignalMatch0Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -589,7 +589,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask1Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask1Lo]
 === CDbgSignalMask1Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -598,7 +598,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch1Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch1Lo]
 === CDbgSignalMatch1Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -607,7 +607,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalEdgeDetectCfg]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalEdgeDetectCfg]
 === CDbgSignalEdgeDetectCfg
 
 [cols="1,3,1,1,6", options="header"]
@@ -620,7 +620,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 6:0 | `Signal0Select` | RW | 0x0 a| Define which signal to select for edge detection.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgEapStatus]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgEapStatus]
 === CDbgEapStatus
 
 [cols="1,3,1,1,6", options="header"]
@@ -662,7 +662,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 0 | `Node0Eap0` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCtrlStatus]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaCtrlStatus]
 === CDbgClaCtrlStatus
 
 [cols="1,3,1,1,6", options="header"]
@@ -672,34 +672,34 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 62:16 | `Rsvd6216` | RW | 0x0 a| reserved fields
 | 15 | `DisableLocalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to local clocks
 | 14 | `DisableGlobalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to global clocks
-| 13:7 | `ClaChainLoopDelay` | RW | 0x36 a| Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal
+| 13:7 | `ClaChainLoopDelay` | RW | 0x36 a| Self-filter delay, in CLA clock cycles, for the CLA's own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered.
 | 6 | `EnableCla` | RW | 0x0 a| Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated
 | 5 | `EnableEap` | RW | 0x0 a| Set Enable EAP to 1 after EAP programming is complete
 | 4:2 | `Reserved` | - | - a| Reserved
 | 1:0 | `CurrentNode` | R | 0x0 a| Read the current node.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgMuxSelLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgMuxSelLo]
 === CDbgMuxSelLo
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Muxselseg7` | RW | 0x0 a| -
-| 57:52 | `Muxselseg6` | RW | 0x0 a| -
-| 51:46 | `Muxselseg5` | RW | 0x0 a| -
-| 45:40 | `Muxselseg4` | RW | 0x0 a| -
-| 39:34 | `Muxselseg3` | RW | 0x0 a| Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...
-| 33:28 | `Muxselseg2` | RW | 0x0 a| Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...
-| 27:22 | `Muxselseg1` | RW | 0x0 a| Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...
-| 21:16 | `Muxselseg0` | RW | 0x0 a| Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...
+| 63:58 | `Muxselseg7` | RW | 0x0 a| No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
+| 57:52 | `Muxselseg6` | RW | 0x0 a| No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
+| 51:46 | `Muxselseg5` | RW | 0x0 a| No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
+| 45:40 | `Muxselseg4` | RW | 0x0 a| No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.
+| 39:34 | `Muxselseg3` | RW | 0x0 a| Binary segment select for lane 3 of the CLA debug bus, bits [63:48]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg3; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg2, and k from 1 to 13 selects Seg(k+2).
+| 33:28 | `Muxselseg2` | RW | 0x0 a| Binary segment select for lane 2 of the CLA debug bus, bits [47:32]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg2; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg1, and k from 1 to 13 selects Seg(k+2).
+| 27:22 | `Muxselseg1` | RW | 0x0 a| Binary segment select for lane 1 of the CLA debug bus, bits [31:16]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg1; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg0, and k from 1 to 13 selects Seg(k+2).
+| 21:16 | `Muxselseg0` | RW | 0x0 a| Binary segment select for lane 0 of the CLA debug bus, bits [15:0]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg0; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects the fine-grain time counter, and k from 1 to 13 selects Seg(k+2).
 | 15:9 | `Rsvd159` | RW | 0x0 a| -
 | 8 | `Finegraintime` | RW | 0x0 a| Fine Grain Time Enable. If this bit is set, the fine grain time is enabled.
 | 7:2 | `Dbmid` | RW | 0x0 a| Unique DBM ID of the DBM instance
 | 1:0 | `Dbmmode` | RW | 0x0 a| Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgRsvd1]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgRsvd1]
 === CDbgRsvd1
 
 [cols="1,3,1,1,6", options="header"]
@@ -708,7 +708,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value of reserved register.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgRsvd2]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgRsvd2]
 === CDbgRsvd2
 
 [cols="1,3,1,1,6", options="header"]
@@ -717,7 +717,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value of reserved register.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionMaskLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgTransitionMaskLo]
 === CDbgTransitionMaskLo
 
 [cols="1,3,1,1,6", options="header"]
@@ -726,7 +726,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionFromValueLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgTransitionFromValueLo]
 === CDbgTransitionFromValueLo
 
 [cols="1,3,1,1,6", options="header"]
@@ -735,7 +735,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionToValueLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgTransitionToValueLo]
 === CDbgTransitionToValueLo
 
 [cols="1,3,1,1,6", options="header"]
@@ -744,7 +744,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgOnesCountMaskLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgOnesCountMaskLo]
 === CDbgOnesCountMaskLo
 
 [cols="1,3,1,1,6", options="header"]
@@ -753,7 +753,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgOnesCountValue]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgOnesCountValue]
 === CDbgOnesCountValue
 
 [cols="1,3,1,1,6", options="header"]
@@ -762,7 +762,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgAnyChangeLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgAnyChangeLo]
 === CDbgAnyChangeLo
 
 [cols="1,3,1,1,6", options="header"]
@@ -771,7 +771,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Mask` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap0Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap0Lo]
 === CDbgSignalSnapshotNode0Eap0Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -780,7 +780,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap1Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap1Lo]
 === CDbgSignalSnapshotNode0Eap1Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -789,7 +789,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap0Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap0Lo]
 === CDbgSignalSnapshotNode1Eap0Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -798,7 +798,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap1Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap1Lo]
 === CDbgSignalSnapshotNode1Eap1Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -807,7 +807,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap0Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap0Lo]
 === CDbgSignalSnapshotNode2Eap0Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -816,7 +816,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap1Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap1Lo]
 === CDbgSignalSnapshotNode2Eap1Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -825,7 +825,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap0Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap0Lo]
 === CDbgSignalSnapshotNode3Eap0Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -834,7 +834,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap1Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap1Lo]
 === CDbgSignalSnapshotNode3Eap1Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -843,7 +843,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimeMatch]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaTimeMatch]
 === CDbgClaTimeMatch
 
 [cols="1,3,1,1,6", options="header"]
@@ -852,7 +852,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `TimeMatchVal` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask2Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask2Lo]
 === CDbgSignalMask2Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -861,7 +861,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch2Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch2Lo]
 === CDbgSignalMatch2Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -870,7 +870,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask3Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask3Lo]
 === CDbgSignalMask3Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -879,7 +879,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch3Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch3Lo]
 === CDbgSignalMatch3Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -888,7 +888,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap2]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode0Eap2]
 === CDbgNode0Eap2
 
 [cols="1,3,1,1,6", options="header"]
@@ -910,7 +910,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap3]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode0Eap3]
 === CDbgNode0Eap3
 
 [cols="1,3,1,1,6", options="header"]
@@ -932,7 +932,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap2]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode1Eap2]
 === CDbgNode1Eap2
 
 [cols="1,3,1,1,6", options="header"]
@@ -954,7 +954,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap3]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode1Eap3]
 === CDbgNode1Eap3
 
 [cols="1,3,1,1,6", options="header"]
@@ -976,7 +976,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap2]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode2Eap2]
 === CDbgNode2Eap2
 
 [cols="1,3,1,1,6", options="header"]
@@ -998,7 +998,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap3]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode2Eap3]
 === CDbgNode2Eap3
 
 [cols="1,3,1,1,6", options="header"]
@@ -1020,7 +1020,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap2]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode3Eap2]
 === CDbgNode3Eap2
 
 [cols="1,3,1,1,6", options="header"]
@@ -1042,7 +1042,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap3]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgNode3Eap3]
 === CDbgNode3Eap3
 
 [cols="1,3,1,1,6", options="header"]
@@ -1064,7 +1064,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `DestNode` | RW | 0x0 a| Select Destination Node
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap2Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap2Lo]
 === CDbgSignalSnapshotNode0Eap2Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1073,7 +1073,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap3Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap3Lo]
 === CDbgSignalSnapshotNode0Eap3Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1082,7 +1082,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap2Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap2Lo]
 === CDbgSignalSnapshotNode1Eap2Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1091,7 +1091,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap3Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap3Lo]
 === CDbgSignalSnapshotNode1Eap3Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1100,7 +1100,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap2Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap2Lo]
 === CDbgSignalSnapshotNode2Eap2Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1109,7 +1109,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap3Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap3Lo]
 === CDbgSignalSnapshotNode2Eap3Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1118,7 +1118,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap2Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap2Lo]
 === CDbgSignalSnapshotNode3Eap2Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1127,7 +1127,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap3Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap3Lo]
 === CDbgSignalSnapshotNode3Eap3Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1136,7 +1136,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalDelayMuxSel]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalDelayMuxSel]
 === CDbgSignalDelayMuxSel
 
 [cols="1,3,1,1,6", options="header"]
@@ -1161,7 +1161,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 1:0 | `Muxselseg0` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaXtriggerTimestretch]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaXtriggerTimestretch]
 === CDbgClaXtriggerTimestretch
 
 [cols="1,3,1,1,6", options="header"]
@@ -1172,7 +1172,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 7:0 | `Xtrigger0Stretch` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestamp]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaTimestamp]
 === CDbgClaTimestamp
 
 [cols="1,3,1,1,6", options="header"]
@@ -1182,7 +1182,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 7:0 | `TimestampLower` | RW | 0x0 a| Current timestamp value (lower 8 bits)
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampSync]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaTimestampSync]
 === CDbgClaTimestampSync
 
 [cols="1,3,1,1,6", options="header"]
@@ -1191,29 +1191,29 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `TimestampSync` | RW | 0x0 a| Sync value to load into timestamp
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampConfig]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaTimestampConfig]
 === CDbgClaTimestampConfig
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 63:10 | `Rsvd1` | RW | 0x0 a| Reserved
-| 9 | `TsCapture` | RW | 0x0 a| When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register
+| 9 | `TsCapture` | RW | 0x0 a| When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).
 | 8:1 | `DebugMarker` | RW | 0x0 a| Debug marker output value
 | 0 | `Resync` | RW | 0x0 a| When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgClaTimestampOffset]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgClaTimestampOffset]
 === CDbgClaTimestampOffset
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Rsvd0` | RW | 0x0 a| Reserved
-| 55:0 | `Offset` | RW | 0x0 a| Timestamp offset value
+| 55:0 | `Offset` | RW | 0x0 a| Timestamp offset value. No effect in the SMC.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask0Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask0Hi]
 === CDbgSignalMask0Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1222,7 +1222,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch0Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch0Hi]
 === CDbgSignalMatch0Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1231,7 +1231,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask1Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask1Hi]
 === CDbgSignalMask1Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1240,7 +1240,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch1Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch1Hi]
 === CDbgSignalMatch1Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1249,7 +1249,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask2Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask2Hi]
 === CDbgSignalMask2Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1258,7 +1258,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch2Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch2Hi]
 === CDbgSignalMatch2Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1267,7 +1267,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask3Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMask3Hi]
 === CDbgSignalMask3Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1276,7 +1276,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch3Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalMatch3Hi]
 === CDbgSignalMatch3Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1285,26 +1285,26 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgMuxSelHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgMuxSelHi]
 === CDbgMuxSelHi
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Muxselseg15` | RW | 0x0 a| -
-| 57:52 | `Muxselseg14` | RW | 0x0 a| -
-| 51:46 | `Muxselseg13` | RW | 0x0 a| -
-| 45:40 | `Muxselseg12` | RW | 0x0 a| -
-| 39:34 | `Muxselseg11` | RW | 0x0 a| Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...
-| 33:28 | `Muxselseg10` | RW | 0x0 a| Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...
-| 27:22 | `Muxselseg9` | RW | 0x0 a| Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...
-| 21:16 | `Muxselseg8` | RW | 0x0 a| Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...
+| 63:58 | `Muxselseg15` | RW | 0x0 a| No effect in the SMC.
+| 57:52 | `Muxselseg14` | RW | 0x0 a| No effect in the SMC.
+| 51:46 | `Muxselseg13` | RW | 0x0 a| No effect in the SMC.
+| 45:40 | `Muxselseg12` | RW | 0x0 a| No effect in the SMC.
+| 39:34 | `Muxselseg11` | RW | 0x0 a| No effect in the SMC.
+| 33:28 | `Muxselseg10` | RW | 0x0 a| No effect in the SMC.
+| 27:22 | `Muxselseg9` | RW | 0x0 a| No effect in the SMC.
+| 21:16 | `Muxselseg8` | RW | 0x0 a| No effect in the SMC.
 | 15:8 | `Rsvd158` | RW | 0x0 a| -
-| 7:2 | `Dbmid` | RW | 0x0 a| Unique DBM ID of the DBM instance
-| 1:0 | `Dbmmode` | RW | 0x0 a| Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
+| 7:2 | `Dbmid` | RW | 0x0 a| No effect in the SMC.
+| 1:0 | `Dbmmode` | RW | 0x0 a| No effect in the SMC.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionMaskHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgTransitionMaskHi]
 === CDbgTransitionMaskHi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1313,7 +1313,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionFromValueHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgTransitionFromValueHi]
 === CDbgTransitionFromValueHi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1322,7 +1322,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgTransitionToValueHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgTransitionToValueHi]
 === CDbgTransitionToValueHi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1331,7 +1331,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgOnesCountMaskHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgOnesCountMaskHi]
 === CDbgOnesCountMaskHi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1340,7 +1340,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgAnyChangeHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgAnyChangeHi]
 === CDbgAnyChangeHi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1349,7 +1349,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Mask` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap0Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap0Hi]
 === CDbgSignalSnapshotNode0Eap0Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1358,7 +1358,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap1Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap1Hi]
 === CDbgSignalSnapshotNode0Eap1Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1367,7 +1367,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap0Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap0Hi]
 === CDbgSignalSnapshotNode1Eap0Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1376,7 +1376,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap1Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap1Hi]
 === CDbgSignalSnapshotNode1Eap1Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1385,7 +1385,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap0Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap0Hi]
 === CDbgSignalSnapshotNode2Eap0Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1394,7 +1394,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap1Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap1Hi]
 === CDbgSignalSnapshotNode2Eap1Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1403,7 +1403,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap0Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap0Hi]
 === CDbgSignalSnapshotNode3Eap0Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1412,7 +1412,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap1Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap1Hi]
 === CDbgSignalSnapshotNode3Eap1Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1421,7 +1421,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap2Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap2Hi]
 === CDbgSignalSnapshotNode0Eap2Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1430,7 +1430,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap3Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode0Eap3Hi]
 === CDbgSignalSnapshotNode0Eap3Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1439,7 +1439,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap2Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap2Hi]
 === CDbgSignalSnapshotNode1Eap2Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1448,7 +1448,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap3Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode1Eap3Hi]
 === CDbgSignalSnapshotNode1Eap3Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1457,7 +1457,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap2Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap2Hi]
 === CDbgSignalSnapshotNode2Eap2Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1466,7 +1466,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode2Eap3Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode2Eap3Hi]
 === CDbgSignalSnapshotNode2Eap3Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1475,7 +1475,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap2Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap2Hi]
 === CDbgSignalSnapshotNode3Eap2Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1484,7 +1484,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode3Eap3Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgSignalSnapshotNode3Eap3Hi]
 === CDbgSignalSnapshotNode3Eap3Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1493,7 +1493,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgLfsr]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgLfsr]
 === CDbgLfsr
 
 [cols="1,3,1,1,6", options="header"]
@@ -1503,7 +1503,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 0 | `LfsrActive` | RW | 0x0 a| Enable the LFSR register.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgLfsrMask]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgLfsrMask]
 === CDbgLfsrMask
 
 [cols="1,3,1,1,6", options="header"]
@@ -1513,7 +1513,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 0 | `Rsvd0` | RW | 0x0 a| Reserved.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgTimestampCapture]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgTimestampCapture]
 === CDbgTimestampCapture
 
 [cols="1,3,1,1,6", options="header"]
@@ -1522,7 +1522,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Timestamp` | R | 0x0 a| Timestamp capture value.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare0Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare0Lo]
 === CDbgCompare0Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1531,7 +1531,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare0MaskLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare0MaskLo]
 === CDbgCompare0MaskLo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1540,7 +1540,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare1Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare1Lo]
 === CDbgCompare1Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1549,7 +1549,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare1MaskLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare1MaskLo]
 === CDbgCompare1MaskLo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1558,7 +1558,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare2Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare2Lo]
 === CDbgCompare2Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1567,7 +1567,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare2MaskLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare2MaskLo]
 === CDbgCompare2MaskLo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1576,7 +1576,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare3Lo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare3Lo]
 === CDbgCompare3Lo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1585,7 +1585,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare3MaskLo]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare3MaskLo]
 === CDbgCompare3MaskLo
 
 [cols="1,3,1,1,6", options="header"]
@@ -1594,7 +1594,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare0Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare0Hi]
 === CDbgCompare0Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1603,7 +1603,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare0MaskHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare0MaskHi]
 === CDbgCompare0MaskHi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1612,7 +1612,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare1Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare1Hi]
 === CDbgCompare1Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1621,7 +1621,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare1MaskHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare1MaskHi]
 === CDbgCompare1MaskHi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1630,7 +1630,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare2Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare2Hi]
 === CDbgCompare2Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1639,7 +1639,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare2MaskHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare2MaskHi]
 === CDbgCompare2MaskHi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1648,7 +1648,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare3Hi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare3Hi]
 === CDbgCompare3Hi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1657,7 +1657,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-CDbgCompare3MaskHi]
+[#reg-{regmap-instance}-smc_cla-cla-CDbgCompare3MaskHi]
 === CDbgCompare3MaskHi
 
 [cols="1,3,1,1,6", options="header"]
@@ -1666,7 +1666,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
-[#reg-{regmap-instance}-smc_cla-cla-0-Scratch]
+[#reg-{regmap-instance}-smc_cla-cla-Scratch]
 === Scratch
 
 [cols="1,3,1,1,6", options="header"]
@@ -1675,7 +1675,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63:0 | `Data` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-dst-0-Trdstcontrol]
+[#reg-{regmap-instance}-smc_cla-dst-Trdstcontrol]
 === Trdstcontrol
 
 [cols="1,3,1,1,6", options="header"]
@@ -1701,7 +1701,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 0 | `Trdstactive` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-dst-0-Trdstimpl]
+[#reg-{regmap-instance}-smc_cla-dst-Trdstimpl]
 === Trdstimpl
 
 [cols="1,3,1,1,6", options="header"]
@@ -1718,7 +1718,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 3:0 | `Trdstvermajor` | R | 0x1 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-dst-0-Trdstinstfeatures]
+[#reg-{regmap-instance}-smc_cla-dst-Trdstinstfeatures]
 === Trdstinstfeatures
 
 [cols="1,3,1,1,6", options="header"]
@@ -1733,7 +1733,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 0 | `Trdstinstnoaddrdiff` | R | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-dst-0-CDbgDebugTraceCfg]
+[#reg-{regmap-instance}-smc_cla-dst-CDbgDebugTraceCfg]
 === CDbgDebugTraceCfg
 
 [cols="1,3,1,1,6", options="header"]
@@ -1748,8 +1748,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 3:0 | `TraceSourceId` | RW | 0x0 a| Trace Source ID
 |===
 
-[#reg-{regmap-instance}-smc_cla-dst-0-ScratchLo]
-=== dst[0].ScratchLo
+[#reg-{regmap-instance}-smc_cla-dst-ScratchLo]
+=== dst.ScratchLo
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -1757,8 +1757,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 31:0 | `Data` | RW | 0x0 a| -
 |===
 
-[#reg-{regmap-instance}-smc_cla-dst-0-ScratchHi]
-=== dst[0].ScratchHi
+[#reg-{regmap-instance}-smc_cla-dst-ScratchHi]
+=== dst.ScratchHi
 
 [cols="1,3,1,1,6", options="header"]
 |===

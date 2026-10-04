@@ -14,12 +14,15 @@
 //   scrambler_key_i / scrambler_en_i from KMCSR.
 // - Odd-parity generation on the write path and checking on the read path; parity is
 //   computed before scrambling.
-// - Per-region write-lock (SRAM_LOCK_REGION_BYTES per region, so SRAM_NUM_LOCK_REGIONS is
-//   SRAM_SIZE_BYTES / SRAM_LOCK_REGION_BYTES): writes to a locked region are silently
+// - Per-region write-lock (SramLockRegionBytes per region, so SRAM_NUM_LOCK_REGIONS is
+//   SramSizeBytes / SramLockRegionBytes): writes to a locked region are silently
 //   dropped but still acknowledged, and write_lock_violation_region_o reports to KMCSR
 //   which region had an attempted write while locked.
 // - Requests are held off for two cycles after reset release.
 // - PicoRV32 look-ahead prefetch support for pipelined SRAM.
+//
+// The SRAM must return rvalid at least one cycle after accepting a read: the response is
+// descrambled and parity-checked with the address and strobes captured at the accept.
 
 module km_sram_interface
   import km_intf_pkg::*;
@@ -28,8 +31,8 @@ module km_sram_interface
   parameter int unsigned SRAM_ADDR_WIDTH = KM_SRAM_MEM_ADDR_WIDTH,                   // SRAM word-address width;
                                                                                      // must be 13 to match
                                                                                      // scrambler_8192x32.
-  parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS  // Number of write-lock regions,
-                                                                                     // each SRAM_LOCK_REGION_BYTES
+  parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SramNumLockRegions     // Number of write-lock regions,
+                                                                                     // each SramLockRegionBytes
                                                                                      // long.
 ) (
   input  logic clk_i,   // System clock.
@@ -92,17 +95,17 @@ module km_sram_interface
   // Write-Lock Check
   ////////////////////////////////////////////////////////////////////////////
   // Region index: region r covers
-  // [SRAM_BASE + r*SRAM_LOCK_REGION_BYTES, SRAM_BASE + (r+1)*SRAM_LOCK_REGION_BYTES).
+  // [SRAM_BASE + r*SramLockRegionBytes, SRAM_BASE + (r+1)*SramLockRegionBytes).
   // The SRAM base is naturally aligned to its own size, so word_addr is already
   // 0-based within the window and the region index is just its high bits.
   // Bits needed to index a write-lock region.
-  localparam int unsigned SRAM_LOCK_REGION_ADDR_W = $clog2(SRAM_NUM_LOCK_REGIONS);
+  localparam int unsigned SramLockRegionAddrW = $clog2(SRAM_NUM_LOCK_REGIONS);
   // Word-address bits consumed by one write-lock region.
-  localparam int unsigned SRAM_LOCK_REGION_WORD_W = $clog2(
-      km_intf_pkg::SRAM_LOCK_REGION_BYTES / (KM_MEM_DATA_WIDTH / 8)
+  localparam int unsigned SramLockRegionWordW = $clog2(
+      km_intf_pkg::SramLockRegionBytes / (KM_MEM_DATA_WIDTH / 8)
   );
-  logic [SRAM_LOCK_REGION_ADDR_W-1:0] write_region;
-  assign write_region = (word_addr >> SRAM_LOCK_REGION_WORD_W);
+  logic [SramLockRegionAddrW-1:0] write_region;
+  assign write_region = (word_addr >> SramLockRegionWordW);
 
   logic write_to_locked_region;
   assign write_to_locked_region = is_write_request && sram_lock_bits_i[write_region];
@@ -158,12 +161,7 @@ module km_sram_interface
       read_pending_q <= 1'b0;
       req_squelch_q <= '0;
     end else begin
-      // If complete and accept happen together:
-      // - pending=1: prior read completed and a new read accepted -> keep pending=1
-      // - pending=0: immediate response for just-accepted read -> keep pending=0
-      if (read_accept && read_complete) begin
-        read_pending_q <= read_pending_q;
-      end else if (read_accept) begin
+      if (read_accept) begin
         read_pending_q <= 1'b1;
       end else if (read_complete) begin
         read_pending_q <= 1'b0;
@@ -332,8 +330,8 @@ module km_sram_interface
   `OCAH_OT_ASSERT(MemReadyOnlyWhenValid_A, mem_ready_o |-> mem_valid_i, clk_i, !rst_ni)
 
   // SRAM reads only complete after a matching read request has been accepted.
-  `OCAH_OT_ASSERT(ReadCompletesAfterAccept_A,
-                  sram_mem_rsp_i.rvalid |-> read_pending_q || read_accept, clk_i, !rst_ni)
+  `OCAH_OT_ASSERT(ReadCompletesAfterAccept_A, sram_mem_rsp_i.rvalid |-> read_pending_q, clk_i,
+                  !rst_ni)
 
 endmodule : km_sram_interface
 

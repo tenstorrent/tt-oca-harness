@@ -71,6 +71,17 @@ for the full CTP register layout and field descriptions. The CTN decodes the
 AXI-Lite CSR window and presents each CTP's registers at a 16-byte stride
 starting at offset 0x0200.
 
+`MODE` and `INVERT` are static configuration, set once per boot in a single
+write before any CTM route selects or targets the port. The Programmer's Guide
+gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-cross-trigger[cross-trigger programming sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-cross-trigger[cross-trigger programming sequence]
+endif::backend-pdf[]
+with reconfiguration and deadlock recovery.
+
 ifdef::backend-pdf[]
 :imagesdir: assets
 endif::backend-pdf[]

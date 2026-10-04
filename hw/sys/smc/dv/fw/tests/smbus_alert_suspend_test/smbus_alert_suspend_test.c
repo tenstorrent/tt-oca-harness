@@ -2,12 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
- * @brief SMBus ALERT / SUSPEND — DUT-internal OpenTitan I2C loopback.
+ * @brief SMBus ALERT / SUSPEND test over a DUT-internal I2C loopback.
  *
- * I2C_0 Target asserts SMBALERT#; I2C_1 Controller detects, ARA-clears, then
- * asserts SMBSUS# which the Target observes on SMBUS_STATUS.
- * Both I2C instances are looped back inside the DUT; secondary_main is the crt0 weak default.
+ * The I2C_0 target raises ALERT; the I2C_1 controller sees it, clears it with
+ * an Alert Response Address read, then asserts and releases SUSPEND, which the
+ * target must follow. Both instances are looped back inside the DUT; only the
+ * boot hart runs this test.
  */
 
 #include <stdint.h>
@@ -117,7 +117,7 @@ int main(void) {
     write_scratch(1, 0x00000020);
 
     i2c_timing_physical_t physical = {.speed = I2C_SPEED_STANDARD,
-                                      .clock_period_nanos = 10,
+                                      .clock_period_nanos = 5,
                                       .sda_rise_nanos = 300,
                                       .sda_fall_nanos = 100,
                                       .scl_period_nanos = 0};
@@ -250,9 +250,4 @@ int main(void) {
     write_scratch(1, 0x00000090);
     simputs("[SMBUS] ALL CHECKS PASSED\n");
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-    return 0;
 }

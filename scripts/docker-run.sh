@@ -4,7 +4,7 @@
 
 # Helper for running repo commands in the OCAH nix-built container.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes|starting|datasheets]|doc-stage>
+#   Usage: docker-run.sh <build|ensure|image-hash|verify|run CMD...|run-here CMD...|shell|shell-here|nixos-shell|nix-fmt|nix-fmt-check|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes|starting|datasheets]|doc-stage>
 #   'doc-html all'  builds the real combined multi-book site (antora-playbook.yml) -- this
 #                   is what gets deployed
 #   'doc-stage'     adds PDFs + .nojekyll on top of an already-built combined site -- pure
@@ -12,6 +12,7 @@
 #   build           (re)build nix container image + publish to shared tarball cache
 #   ensure          make nix container image available (cache -> build); auto-run
 #                   by run/run-here/shell/verify, so bare `run` works on a fresh host
+#   image-hash      print the nix-derived image tag; identifies the image exactly
 #   verify          gcc version + multilibs
 #   shell           interactive shell
 #   nixos-shell     Open an interactive shell in the NixOS build container - useful
@@ -24,12 +25,21 @@
 #                               (default: docker.io/nixos/nix:latest)
 #      OCAH_IMAGE_WITH_UV      bundle uv-installed dependencies into nix-built
 #                               image (true/false, default: false)
+#      OCAH_NIX_MAX_JOBS       derivations nix builds in parallel; NIX_CONFIG
+#                               overrides nix.conf, so lower it here on a
+#                               shared host (default: auto, one per CPU)
 #      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the nix
 #                               container image; unset disables the cache
 #                               (site CI sets this, e.g. in its env setup)
 #      OCAH_CONTAINER_REGISTRY_IMAGE
 #                               optional registry repository, without a tag;
 #                               e.g. ghcr.io/tenstorrent/ocah-container
+#      OCAH_ENGINE             force `podman` or `docker` instead of preferring
+#                               whichever is found first (CI pins this so a
+#                               runner image shipping both is deterministic)
+#      OCAH_PODMAN_KEEP_ID     1/0 to force --userns=keep-id on or off; default
+#                               enables it only when /etc/subuid grants a range
+#                               wider than the caller's uid
 #      OCAH_DOCKER_UIDGID      container --user (default: empty for rootless
 #                               podman, caller's uid:gid for docker; set empty to
 #                               run as the image's own default user)
@@ -54,8 +64,19 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 NIXOS_IMAGE="${OCAH_NIXOS_IMAGE:-docker.io/nixos/nix:latest}"
 IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
 NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
-MANIFEST_SUBMODULE="hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
 REGISTRY_IMAGE="${OCAH_CONTAINER_REGISTRY_IMAGE:-}"
+NIX_CONFIG="experimental-features = nix-command flakes
+max-jobs = ${OCAH_NIX_MAX_JOBS:-auto}"
+
+# safe.directory lines for the container branch: the repo is owned by root
+# there, so git refuses to read it or any submodule without them.
+submodule_safe_dirs() {
+  local path
+  printf '%s' 'git config --global --add safe.directory $(pwd) &&'
+  while read -r _ path; do
+    printf '\n            %s' "git config --global --add safe.directory \$(pwd)/${path} &&"
+  done < <(git -C "$ROOT" config -f .gitmodules --get-regexp '^submodule\..*\.path$' || true)
+}
 
 NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
 
@@ -84,22 +105,77 @@ nix-fmt | nix-fmt-check | nixos-shell)
   ;;
 esac
 
-if command -v podman >/dev/null 2>&1; then
+# OCAH_ENGINE pins the engine; otherwise podman is preferred over docker. A
+# host with both installed otherwise changes engine depending on PATH order,
+# and CI pins this so a runner image shipping both stays deterministic.
+ENGINE="${OCAH_ENGINE:-}"
+if [[ -n "$ENGINE" ]]; then
+  case "$ENGINE" in
+  podman | docker) ;;
+  *)
+    echo "error: OCAH_ENGINE must be 'podman' or 'docker', not '$ENGINE'" >&2
+    exit 1
+    ;;
+  esac
+  if ! command -v "$ENGINE" >/dev/null 2>&1; then
+    # Only fatal when an engine is actually going to be used: a pinned engine
+    # that is absent must not break a request bwrap can serve.
+    [[ "$NEEDS_ENGINE" == 0 ]] ||
+      {
+        echo "error: OCAH_ENGINE=$ENGINE but $ENGINE is not on PATH" >&2
+        exit 1
+      }
+    ENGINE=none
+  fi
+elif command -v podman >/dev/null 2>&1; then
   ENGINE=podman
-  VOL=":Z"
-  PODMAN_STORAGE_FLAGS="--storage-opt=ignore_chown_errors=true \
-        --storage-opt=mount_program=$(which fuse-overlayfs)"
-  PODMAN_RUN_FLAGS="--userns=keep-id"
 elif command -v docker >/dev/null 2>&1; then
   ENGINE=docker
-  VOL=""
-  PODMAN_STORAGE_FLAGS=""
-  PODMAN_RUN_FLAGS=""
 elif [[ "$NEEDS_ENGINE" == 0 ]]; then
-  ENGINE=none VOL=""
+  ENGINE=none
 else
   echo "error: podman or docker is required" >&2
   exit 1
+fi
+
+if [[ "$ENGINE" == podman ]]; then
+  VOL=":Z"
+  PODMAN_STORAGE_FLAGS="--storage-opt=ignore_chown_errors=true"
+  # Only pass mount_program when fuse-overlayfs is actually installed: an empty
+  # value is not "unset", and podman rejects the malformed flag.
+  if _fuse_overlayfs="$(command -v fuse-overlayfs 2>/dev/null)"; then
+    PODMAN_STORAGE_FLAGS+=" --storage-opt=mount_program=${_fuse_overlayfs}"
+  fi
+  # --userns=keep-id makes the container see the caller's own uid rather than
+  # root. It needs the account's subuid allocation to be wide enough to map that
+  # uid inside the namespace: podman maps container uids 0..uid-1 onto the
+  # subuid range before pinning container uid == host uid. A large
+  # (LDAP/AD-assigned) uid with the customary 65536-wide range therefore does
+  # not fit, and podman fails before the container starts:
+  #   chowning container workdir to container root:
+  #   chown .../merged/work: invalid argument
+  # Rootless podman's DEFAULT mapping already maps container root to the
+  # caller's uid, so bind-mounted output comes out caller-owned either way --
+  # the same reason --user is not passed below -- so drop the flag instead of
+  # failing. Force it either way with OCAH_PODMAN_KEEP_ID=1/0.
+  PODMAN_RUN_FLAGS=""
+  if [[ -n "${OCAH_PODMAN_KEEP_ID:-}" ]]; then
+    [[ "$OCAH_PODMAN_KEEP_ID" == 1 ]] && PODMAN_RUN_FLAGS="--userns=keep-id"
+  else
+    _uid="$(id -u)"
+    # Sum every range granted to this account (by name or by uid); absent
+    # /etc/subuid or no entry yields 0, which correctly disables the flag.
+    _subuids="$(awk -F: -v u="$(id -un)" -v n="$_uid" \
+      '$1 == u || $1 == n { c += $3 } END { print c + 0 }' \
+      /etc/subuid 2>/dev/null)"
+    if [[ "${_subuids:-0}" -gt "$_uid" ]]; then
+      PODMAN_RUN_FLAGS="--userns=keep-id"
+    fi
+  fi
+else
+  VOL=""
+  PODMAN_STORAGE_FLAGS=""
+  PODMAN_RUN_FLAGS=""
 fi
 
 # Create a named network if it does not already exist. Both Docker and Podman
@@ -202,8 +278,12 @@ run_image() {
     f=(-it)
     shift
   }
+  # The image's python carries the uv workspace members as editable installs
+  # resolved through $REPO_ROOT when they are imported (nix/load-uv-env.nix), so
+  # it has to name the repository as the container sees it, not as the host does.
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
     "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+    -e "REPO_ROOT=${RUN_ROOT}" \
     -v "${ROOT}:${RUN_ROOT}${VOL}" -w "$RUN_ROOT" "$image" "$@"
 }
 
@@ -212,42 +292,13 @@ run_image() {
 # hosts without nix installed, it will use NIXOS_IMAGE, which defaults to
 # docker.io/nixos/nix
 nixos_run() {
-  # Nix Flakes and Nix-Command are required for this - enable them
-  local NIX_CONFIG="experimental-features = nix-command flakes"
-  local manifest_status=""
-  manifest_status="$(git -C "$ROOT" submodule status -- "$MANIFEST_SUBMODULE" 2>/dev/null || true)"
   if command -v nix >/dev/null 2>&1; then
-    if [[ -n "$manifest_status" && "$manifest_status" != -* ]]; then
-      NIX_CONFIG="$NIX_CONFIG" \
-        GIT_CONFIG_COUNT=3 \
-        GIT_CONFIG_KEY_0=protocol.file.allow \
-        GIT_CONFIG_VALUE_0=always \
-        GIT_CONFIG_KEY_1="url.file://${ROOT}/${MANIFEST_SUBMODULE}.insteadOf" \
-        GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git \
-        GIT_CONFIG_KEY_2="url.file://${ROOT}/${MANIFEST_SUBMODULE}.insteadOf" \
-        GIT_CONFIG_VALUE_2=ssh://git@github.com/tenstorrent/tt-oca-manifest.git \
-        bash -c "$*"
-    else
-      NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
-    fi
+    NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
   else
     # The repo in the container is owned by root, so nix/git will by default give untrusted errors when interacting with it.
-    local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
-            git config --global --add safe.directory \$(pwd)/${MANIFEST_SUBMODULE} &&"
-    local nix_git_env=()
-    if [[ -n "$manifest_status" && "$manifest_status" != -* ]]; then
-      nix_git_env=(
-        env
-        GIT_CONFIG_COUNT=3
-        GIT_CONFIG_KEY_0=protocol.file.allow
-        GIT_CONFIG_VALUE_0=always
-        "GIT_CONFIG_KEY_1=url.file://${RUN_ROOT}/${MANIFEST_SUBMODULE}.insteadOf"
-        GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git
-        "GIT_CONFIG_KEY_2=url.file://${RUN_ROOT}/${MANIFEST_SUBMODULE}.insteadOf"
-        GIT_CONFIG_VALUE_2=ssh://git@github.com/tenstorrent/tt-oca-manifest.git
-      )
-    fi
-    run_image "$NIXOS_IMAGE" "${nix_git_env[@]}" sh -c "
+    local GIT_ALLOW_CMD
+    GIT_ALLOW_CMD="$(submodule_safe_dirs)"
+    run_image "$NIXOS_IMAGE" sh -c "
             export NIX_CONFIG=\"$NIX_CONFIG\"
             export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
             $GIT_ALLOW_CMD
@@ -264,7 +315,6 @@ image_hash() {
 
 # Open a shell in the Nix Container - even on a nix-enabled host
 nixos_shell() {
-  local NIX_CONFIG="experimental-features = nix-command flakes"
   local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
         git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest &&"
   run_image $NIXOS_IMAGE -it sh -c "
@@ -442,11 +492,14 @@ bwrap_run() {
   # sandbox runs its own interpreter, and a caller's values point at host trees
   # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
   # can import 'encodings', which the firmware post-process steps run into.
+  # UV is dropped too: `uv run` exports its own host path there, and make's
+  # `UV ?= uv` then takes a binary the sandbox cannot see over the one on PATH.
   bwrap "${binds[@]}" --chdir "$workdir" \
     --setenv PATH "$sandbox_path" \
     --setenv HOME /tmp \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \
+    --unsetenv UV \
     "$@"
 }
 
@@ -491,6 +544,7 @@ run_image_1to1() {
   }
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
     "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+    -e "REPO_ROOT=${ROOT}" \
     -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
@@ -691,6 +745,7 @@ nix-fmt-check)
   nixos_run "nix fmt -- -f check $*"
   ;;
 ensure) ensure_image ;;
+image-hash) image_hash ;;
 verify)
   run riscv64-unknown-elf-gcc --version
   echo ---

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import re
-import tomllib
 from collections import Counter
 from dataclasses import dataclass
 from html import escape
@@ -12,7 +11,7 @@ from pathlib import Path
 from typing import Iterable
 
 from systemrdl import RDLCompiler, RDLListener, RDLWalker
-from systemrdl.node import AddrmapNode, FieldNode, RegNode, RootNode, SignalNode
+from systemrdl.node import FieldNode, RegNode, RootNode, SignalNode
 
 from .fieldprops import extract_field_props
 
@@ -36,6 +35,16 @@ class Reg:
     fields: list[Field]
 
 
+@dataclass
+class ArraySpec:
+    """Replication of one documented register across one or more array levels."""
+
+    base: str
+    last: str
+    total: int
+    levels: list[tuple[str, int, str | None]]
+
+
 def parse_rdl_params(raw: Iterable[str] | None) -> dict[str, int]:
     """Parse PeakRDL-style NAME=VALUE addrmap parameter overrides."""
     params: dict[str, int] = {}
@@ -45,22 +54,6 @@ def parse_rdl_params(raw: Iterable[str] | None) -> dict[str, int]:
             raise ValueError(f"RDL parameter {item!r} is not NAME=VALUE")
         params[name] = int(value, 0)
     return params
-
-
-def load_doc_overrides(rdl: str) -> dict[str, str]:
-    path = Path(rdl).with_name("regdoc.toml")
-    if not path.exists():
-        return {}
-    with path.open("rb") as stream:
-        data = tomllib.load(stream)
-    if data.get("version") != 1:
-        raise ValueError(f"{path}: expected version = 1")
-    registers = data.get("registers", {})
-    if not isinstance(registers, dict) or not all(
-        isinstance(key, str) and isinstance(value, str) for key, value in registers.items()
-    ):
-        raise ValueError(f"{path}: [registers] must map selectors to descriptions")
-    return registers
 
 
 def compile_root(
@@ -220,108 +213,102 @@ def bit_ranges(reg: RegNode) -> list[Field]:
     return out
 
 
-def array_ancestor(node: RegNode):
-    """Nearest enclosing array (a regfile or memory replicated per index), if any."""
-    parent = node.parent
-    while parent is not None and not isinstance(parent, (AddrmapNode, RootNode)):
-        if getattr(parent, "is_array", False):
-            return parent
-        parent = parent.parent
-    return None
+def array_lineage(node: RegNode):
+    """Every array in the node's lineage (the node itself when it is an array),
+    ordered outermost-first.
+
+    An enclosing addrmap, regfile, memory or register array all replicate the
+    register the same way, so none of them is a boundary: a register documented
+    once stands for every index of every array above it.
+    """
+    chain = []
+    cur = node
+    while cur is not None and not isinstance(cur, RootNode):
+        if getattr(cur, "is_array", False):
+            chain.append(cur)
+        cur = cur.parent
+    chain.reverse()
+    return chain
 
 
 class Collector(RDLListener):
-    def __init__(self, overrides: dict[str, str] | None = None):
+    def __init__(self):
         self.regs: list[Reg] = []
-        self.arrays: dict[str, tuple[int, str, str | None]] = {}
+        self.arrays: dict[str, ArraySpec] = {}
         self.seen: set[str] = set()
         self.qualified_names: dict[str, str] = {}
-        self.overrides = overrides or {}
-        self.used_overrides: set[str] = set()
 
     def enter_Reg(self, node: RegNode):
-        if node.is_array and any(i != 0 for i in (node.current_idx or [])):
-            return
-
-        # A register inside an array of regfiles is replicated the same way an
-        # array of registers is, so document one entry with the enclosing stride
-        # rather than one entry per index.
-        enclosing = array_ancestor(node)
-        if (
-            not node.is_array
-            and enclosing is not None
-            and any(i != 0 for i in (enclosing.current_idx or []))
-        ):
-            return
-
-        if node.is_array or enclosing is not None:
-            dim_node = node if node.is_array else enclosing
-            count = dim_node.array_dimensions[0] if dim_node.array_dimensions else 1
-            stride = getattr(dim_node, "array_stride", 0) or 0
-            base = node.absolute_address
-            last = base + (count - 1) * stride
-            if node.is_array:
-                name = f"{node.get_path_segment(array_suffix='')}[{count}]"
-            else:
-                name = f"{enclosing.get_path_segment(array_suffix='')}[{count}].{node.inst_name}"
-            addr = f"0x{base:X} - 0x{last:X}"
-            self.arrays[node.get_path()] = (
-                count,
-                f"0x{base:X}",
-                f"0x{stride:X}" if stride else None,
-            )
-        else:
-            name = node.inst_name
-            addr = f"0x{node.absolute_address:X}"
-
+        # The walk is not unrolled, so each declared register is visited once no
+        # matter how many array levels enclose it. self.seen stays as a guard.
         path = node.get_path()
         if path in self.seen:
             return
         self.seen.add(path)
-        qualified = path.split(".")[1:]
-        if node.is_array or enclosing is not None:
-            array_index = len(dim_node.get_path().split(".")) - 2
-            qualified[array_index] = f"{dim_node.inst_name}[{count}]"
-        self.qualified_names[path] = ".".join(qualified)
-        selector = ".".join(re.sub(r"\[\d+\]$", "", segment) for segment in path.split(".")[1:])
-        description = node.get_property("desc") or ""
-        if selector in self.overrides:
-            if description:
-                raise ValueError(
-                    f"{selector}: documentation override is redundant with an RDL description"
-                )
-            description = self.overrides[selector]
-            self.used_overrides.add(selector)
+
+        # The full relative path with every array level shown as "[count]", e.g.
+        # "KEY_ENTRY[64].WORD[16]"; this is also the collision-qualified name. A
+        # single-element array carries no useful index, so show it unbracketed.
+        qualified = node.get_path(empty_array_suffix="[{dim}]").split(".")[1:]
+        self.qualified_names[path] = re.sub(r"\[1\]", "", ".".join(qualified))
+
+        levels = array_lineage(node)
+        base = node.raw_absolute_address
+        total = 1
+        span = 0
+        note_levels: list[tuple[str, int, str | None]] = []
+        for level in levels:
+            count = level.n_elements
+            stride = getattr(level, "array_stride", 0) or 0
+            total *= count
+            span += (count - 1) * stride
+            if count > 1:
+                note_levels.append((level.inst_name, count, f"0x{stride:X}" if stride else None))
+        # A parameterized array instantiated with a single element is not a
+        # repetition: document it as a plain register, with no array note.
+        if total > 1:
+            last = base + span
+            # Short name from the outermost array level down, so a bank stays
+            # scoped (channels[2].scratch[4]) while a top-level array is bare
+            # (CTRL[64]).
+            start = len(levels[0].get_path().split(".")) - 2
+            name = re.sub(r"\[1\]", "", ".".join(qualified[start:]))
+            addr = f"0x{base:X} - 0x{last:X}"
+            self.arrays[path] = ArraySpec(
+                base=f"0x{base:X}",
+                last=f"0x{last:X}",
+                total=total,
+                levels=note_levels,
+            )
+        else:
+            name = node.inst_name
+            addr = f"0x{base:X}"
+
         self.regs.append(
             Reg(
                 name,
                 addr,
                 sw_access(node),
-                description,
+                node.get_property("desc") or "",
                 path,
                 bit_ranges(node),
             )
         )
 
 
-def collect(root, overrides: dict[str, str] | None = None) -> Collector:
-    c = Collector(overrides)
-    RDLWalker(unroll=True).walk(root, c)
+def collect(root) -> Collector:
+    c = Collector()
+    RDLWalker(unroll=False).walk(root, c)
     counts = Counter(reg.name for reg in c.regs)
     for reg in c.regs:
         if counts[reg.name] > 1:
             reg.name = c.qualified_names[reg.path]
     c.arrays = {reg.name: c.arrays[reg.path] for reg in c.regs if reg.path in c.arrays}
-    unmatched = set(c.overrides) - c.used_overrides
-    if unmatched:
-        raise ValueError(
-            "documentation override selectors matched no register: " + ", ".join(sorted(unmatched))
-        )
     return c
 
 
-def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
-    data = collect(root, overrides)
+def write_adoc(root, out: str):
+    data = collect(root)
     ident = first_addrmap_name(root)
     anchors = {
         r.path: "reg-{regmap-instance}-" + re.sub(r"[^A-Za-z0-9_-]+", "-", r.path)
@@ -347,9 +334,17 @@ def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
             "*Register Arrays:*",
             "",
         ]
-        for name, (count, base, stride) in data.arrays.items():
-            extra = f", stride {stride}" if stride else ""
-            lines.append(f"* *{name}*: {count} registers, base {base}{extra}")
+        for name, spec in data.arrays.items():
+            if len(spec.levels) == 1:
+                _, count, stride = spec.levels[0]
+                extra = f", stride {stride}" if stride else ""
+                lines.append(f"* *{name}*: {count} registers, base {spec.base}{extra}")
+            else:
+                dims = ", ".join(
+                    f"{label} x{count}" + (f" stride {stride}" if stride else "")
+                    for label, count, stride in spec.levels
+                )
+                lines.append(f"* *{name}*: {spec.total} registers, base {spec.base} ({dims})")
         lines.append("======\n")
     lines += [
         '[cols="1,4,1,6", options="header"]',
@@ -378,8 +373,8 @@ def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
     Path(out).write_text("\n".join(lines))
 
 
-def write_html(root, out: str, ident: str | None = None, overrides: dict[str, str] | None = None):
-    data = collect(root, overrides)
+def write_html(root, out: str, ident: str | None = None):
+    data = collect(root)
     ident = ident or first_addrmap_name(root)
     lines = [
         "<!-- SPDX-License-Identifier: Apache-2.0 -->",
@@ -397,11 +392,21 @@ def write_html(root, out: str, ident: str | None = None, overrides: dict[str, st
         lines.append(f"<p>{desc_html_text(desc)}</p>")
     if data.arrays:
         lines += ["<p><strong>Register Arrays:</strong></p>", "<ul>"]
-        for name, (count, base, stride) in data.arrays.items():
-            extra = f", stride {escape(stride)}" if stride else ""
-            lines.append(
-                f"<li><strong>{escape(name)}</strong>: {count} registers, base {escape(base)}{extra}</li>"
-            )
+        for name, spec in data.arrays.items():
+            if len(spec.levels) == 1:
+                _, count, stride = spec.levels[0]
+                extra = f", stride {escape(stride)}" if stride else ""
+                lines.append(
+                    f"<li><strong>{escape(name)}</strong>: {count} registers, base {escape(spec.base)}{extra}</li>"
+                )
+            else:
+                dims = ", ".join(
+                    f"{escape(label)} x{count}" + (f" stride {escape(stride)}" if stride else "")
+                    for label, count, stride in spec.levels
+                )
+                lines.append(
+                    f"<li><strong>{escape(name)}</strong>: {spec.total} registers, base {escape(spec.base)} ({dims})</li>"
+                )
         lines.append("</ul>")
     lines += [
         "<p><strong>Register List:</strong></p>",

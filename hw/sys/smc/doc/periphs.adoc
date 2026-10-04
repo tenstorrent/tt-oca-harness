@@ -12,6 +12,12 @@ communication capabilities for the OCAH system, supporting various
 protocols and interfaces required for system operation and external
 connectivity.
 
+ifdef::backend-html5[]
+* xref:dma.adoc[Direct Memory Access Engine]
+* xref:zeroer.adoc[Zeroer]
+* xref:watchdog.adoc[Watchdog Timers]
+endif::backend-html5[]
+
 <<smc-peripheral-summary-table>> summarizes the key peripherals, their communication
 protocols, and default instance counts:
 
@@ -54,11 +60,11 @@ rails and power conditions. |APB4/AXI4-Lite |1
 
 |xref:ip:gpio/doc/index.adoc[GPIO] |General Purpose Input/Output
 with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).
-|APB4/AXI4-Lite |65
+|AXI4-Lite |65
 
 |xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
 |Hardware component for decoding and processing telemetry data from
-multi-chiplet systems. |APB4/AXI4-Lite |3
+multi-chiplet systems. |AXI4-Lite |3
 
 |Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),
 subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
@@ -99,11 +105,11 @@ rails and power conditions. |APB4/AXI4-Lite |1
 
 |GPIO |General Purpose Input/Output
 with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).
-|APB4/AXI4-Lite |65
+|AXI4-Lite |65
 
 |Telemetry Receiver
 |Hardware component for decoding and processing telemetry data from
-multi-chiplet systems. |APB4/AXI4-Lite |3
+multi-chiplet systems. |AXI4-Lite |3
 
 |Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),
 subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
@@ -114,6 +120,9 @@ endif::backend-pdf[]
 |=======================================================================
 
 ifdef::backend-pdf[]
+include::dma.adoc[leveloffset=+1]
+include::zeroer.adoc[leveloffset=+1]
+include::watchdog.adoc[leveloffset=+1]
 include::../../../ip/axi_lite_mailbox_unit/doc/index.adoc[leveloffset=+1]
 
 include::../../../ip/system_timer_octs/doc/index.adoc[leveloffset=+1]
@@ -170,22 +179,26 @@ each peripheral's default values.
 |=======================================================================
 |Peripheral |Parameter |IP default |SMC value
 
-|Mailbox |`smc_pkg::NUM_MAILBOXES` |2 |32
+|Mailbox |`smc_pkg::NumMailboxes` |2 |32
 
-|Mailbox |`smc_pkg::MAILBOX_DEPTH` |8 |2
+|Mailbox |`smc_pkg::MailboxDepth` |8 |2
 
-|I2C |`smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH` |268 |64
+|I2C |`smc_config_pkg::I2cTargetRxFifoDepth` |268 |64
 
-|I3C |`smc_config_pkg::NUM_I3C` |2 |6
+|I3C |`smc_config_pkg::NumI3c` |2 |6
 
 |GPIO |`MAX_TRANS` (threaded from the `smc` module parameter) |32 |2
 
 |GPIO |`INPUT_BY_DEFAULT` (per instance, from
 `smc_padring_pkg::DefaultDirectionMap`) |input on all |input on 62 of 65
 GPIOs, output on the remaining 3
+
+|UART 16550 |`smc_config_pkg::UartTxFifoDepth` |16 |32
+
+|UART 16550 |`smc_config_pkg::UartRxFifoDepth` |16 |32
 |=======================================================================
 
 The System Timer OCTS takes no parameters. The eFuse overrides only bus
-widths and interface types. The UART 16550, Log Engine, AVSBus Controller,
-and Telemetry Receiver are configured explicitly through `smc_config_pkg`,
-but at values equal to their IP defaults.
+widths and interface types. The Log Engine, AVSBus Controller, and Telemetry
+Receiver are configured explicitly through `smc_config_pkg`, but at values
+equal to their IP defaults.

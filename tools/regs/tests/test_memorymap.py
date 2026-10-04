@@ -13,8 +13,8 @@ from tools.regs.common.memorymap import (
     compile_root,
     load_config,
     render_adoc,
+    render_py,
 )
-from tools.regs.common.rdlview import collect
 from tools.regs.stamp_spdx import stamp_file
 
 REGBLOCK_UDP = Path(__file__).resolve().parents[3] / "hw/common/regs/regblock_udps.rdl"
@@ -233,13 +233,6 @@ addrmap bounds_top {
         view = build_views(config, {"main": self.root})[0]
         self.assertEqual(view.base, view.rows[0].base)
 
-    def test_doc_override_is_validated(self):
-        data = collect(self.root, {"first.control": "Documented locally"})
-        control = next(reg for reg in data.regs if reg.path == "top.first.control")
-        self.assertEqual(control.desc, "Documented locally")
-        with self.assertRaisesRegex(ValueError, "matched no register"):
-            collect(self.root, {"first.missing": "Stale"})
-
     def test_xml_stamping_removes_exporter_trailing_space(self):
         xml = Path(self.temp.name) / "map.xml"
         xml.write_text('<?xml version="1.0"?>\n<description>text </description>  \n')
@@ -316,6 +309,34 @@ class ResponseColumnTest(unittest.TestCase):
             "|0x00000000 |256 B |12 B |plain |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / SLVERR\n",
             adoc,
         )
+
+    def test_python_data_matches_the_rendered_cells(self):
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS})
+        data: dict = {}
+        exec(render_py([view]), data)
+        rows = {row["label"]: row for row in data["VIEWS"]["map"]["rows"]}
+        self.assertEqual(list(rows), [row.label for row in view.rows])
+        plain = rows["plain"]
+        self.assertEqual(plain["end"], plain["base"] + plain["aperture_size"] - 1)
+        self.assertEqual(plain["occupied_size"], 12)
+        self.assertEqual(
+            plain["hole_responses"],
+            (("", {"rresp": "OKAY", "rdata": 0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
+        )
+        self.assertEqual(
+            plain["past_response"],
+            {
+                "rresp": "DECERR",
+                "rdata": 0xBADCAB1E,
+                "bresp": "SLVERR",
+                "text": "DECERR, 0xBADCAB1E / SLVERR",
+            },
+        )
+        self.assertEqual(
+            [label for label, _ in rows["composite"]["hole_responses"]], ["", "between sub-blocks"]
+        )
+        self.assertEqual(rows["memory"]["hole_responses"], ())
+        self.assertIsNone(rows["memory"]["past_response"])
 
     def test_override_beside_inheriting_sibling(self):
         cells = self.cells(self.view({"include_all": True, "columns": RESPONSE_COLUMNS}))

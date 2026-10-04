@@ -19,7 +19,7 @@ package sep_crypto_pkg;
   import prim_ram_1p_pkg::*;
 
 
-  parameter axi_pkg::xbar_rule_32_t otbn_rule = '{
+  parameter axi_pkg::xbar_rule_32_t OTBN_RULE = '{
       idx: 0,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_OTBN_BASE_ADDR,
       end_addr:
@@ -28,7 +28,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_OTBN_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t hmac_rule = '{
+  parameter axi_pkg::xbar_rule_32_t HMAC_RULE = '{
       idx: 1,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_HMAC_BASE_ADDR,
       end_addr:
@@ -37,7 +37,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_HMAC_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t aes_rule = '{
+  parameter axi_pkg::xbar_rule_32_t AES_RULE = '{
       idx: 2,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR,
       end_addr:
@@ -46,7 +46,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_AES_SIZE  // 256 bytes for AES.
   };
 
-  parameter axi_pkg::xbar_rule_32_t kmac_rule = '{
+  parameter axi_pkg::xbar_rule_32_t KMAC_RULE = '{
       idx: 3,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_KMAC_BASE_ADDR,
       end_addr:
@@ -56,7 +56,7 @@ package sep_crypto_pkg;
   };
 
   // Contiguous eFuse block: MAP -> INTERFACE CSR -> MMR.
-  parameter axi_pkg::xbar_rule_32_t fuse_rule = '{
+  parameter axi_pkg::xbar_rule_32_t FUSE_RULE = '{
       idx: 4,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR,
       end_addr:
@@ -65,7 +65,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t lifecycle_rule = '{
+  parameter axi_pkg::xbar_rule_32_t LIFECYCLE_RULE = '{
       idx: 5,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_BASE_ADDR,
       end_addr:
@@ -74,7 +74,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_SEP_LIFECYCLE_CTRL_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t km_rule = '{
+  parameter axi_pkg::xbar_rule_32_t KM_RULE = '{
       idx: 6,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_BASE_ADDR,
       end_addr:
@@ -83,7 +83,7 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_KM_MAILBOX_SEP_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t csrng_rule = '{
+  parameter axi_pkg::xbar_rule_32_t CSRNG_RULE = '{
       idx: 7,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_CSRNG_BASE_ADDR,
       end_addr:
@@ -92,13 +92,13 @@ package sep_crypto_pkg;
       sep_top_addrmap_pkg::SEP_TOP_CSRNG_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t edn_rule = '{
+  parameter axi_pkg::xbar_rule_32_t EDN_RULE = '{
       idx: 8,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR,
       end_addr: sep_top_addrmap_pkg::SEP_TOP_EDN_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_EDN_SIZE
   };
 
-  parameter axi_pkg::xbar_rule_32_t entropy_source_rule = '{
+  parameter axi_pkg::xbar_rule_32_t ENTROPY_SOURCE_RULE = '{
       idx: 9,
       start_addr: sep_top_addrmap_pkg::SEP_TOP_ENTROPY_SOURCE_BASE_ADDR,
       end_addr:
@@ -108,55 +108,50 @@ package sep_crypto_pkg;
   };
 
   // TRNG: OCH spec 0x1091_7000–0x1091_7FFF (4 kB) — passthrough to an external TRNG
-  localparam logic [31:0] TRNG_BASE_ADDR = 32'h1091_7000;
-  localparam logic [31:0] TRNG_END_ADDR = 32'h1091_8000;
+  localparam logic [31:0] TrngBaseAddr = 32'h1091_7000;
+  localparam logic [31:0] TrngEndAddr = 32'h1091_8000;
 
-  parameter axi_pkg::xbar_rule_32_t trng_rule = '{
+  parameter axi_pkg::xbar_rule_32_t TRNG_RULE = '{
       idx: 10,
-      start_addr: TRNG_BASE_ADDR,
-      end_addr: TRNG_END_ADDR
+      start_addr: TrngBaseAddr,
+      end_addr: TrngEndAddr
   };
 
-  // Adams Bridge (PQC: ML-DSA-87 / ML-KEM-1024): OCH spec 0x1094_0000-0x1094_FFFF
-  // (64 kB register aperture; AB's secret sk_ram is internal to the block).
-  localparam logic [31:0] ABR_REG_MAP_BASE_ADDR = 32'h1094_0000;
-  localparam logic [31:0] ABR_REG_MAP_END_ADDR = 32'h1095_0000;
-
-  parameter axi_pkg::xbar_rule_32_t abr_rule = '{
+  parameter axi_pkg::xbar_rule_32_t ABR_RULE = '{
       idx: 11,
-      start_addr: ABR_REG_MAP_BASE_ADDR,
-      end_addr: ABR_REG_MAP_END_ADDR
+      start_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR,
+      end_addr: sep_top_addrmap_pkg::SEP_TOP_ABR_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_ABR_SIZE
   };
 
   // AXI demux port indices (must match axi_demux master port order in sep_crypto.sv).
-  // Highest enum value must equal SEP_CRYPTO_NUM_AXI_MST - 1.
+  // Highest enum value must equal SepCryptoNumAxiMst - 1.
   typedef enum int unsigned {
-    SepCryptoAxiErrSlv       = 0,
-    SepCryptoAxiOtbn         = 1,
-    SepCryptoAxiHmac         = 2,
-    SepCryptoAxiAes          = 3,
-    SepCryptoAxiKmac         = 4,
-    SepCryptoAxiFuse         = 5,
-    SepCryptoAxiLifecycle    = 6,
-    SepCryptoAxiKm           = 7,
-    SepCryptoAxiCsrng        = 8,
-    SepCryptoAxiEdn          = 9,
-    SepCryptoAxiEntropySrc   = 10,
-    SepCryptoAxiTrng         = 11,
-    SepCryptoAxiAbr          = 12
+    SEP_CRYPTO_AXI_ERR_SLV       = 0,
+    SEP_CRYPTO_AXI_OTBN          = 1,
+    SEP_CRYPTO_AXI_HMAC          = 2,
+    SEP_CRYPTO_AXI_AES           = 3,
+    SEP_CRYPTO_AXI_KMAC          = 4,
+    SEP_CRYPTO_AXI_FUSE          = 5,
+    SEP_CRYPTO_AXI_LIFECYCLE     = 6,
+    SEP_CRYPTO_AXI_KM            = 7,
+    SEP_CRYPTO_AXI_CSRNG         = 8,
+    SEP_CRYPTO_AXI_EDN           = 9,
+    SEP_CRYPTO_AXI_ENTROPY_SRC   = 10,
+    SEP_CRYPTO_AXI_TRNG          = 11,
+    SEP_CRYPTO_AXI_ABR           = 12
   } sep_crypto_axi_port_e;
 
-  localparam int unsigned SEP_CRYPTO_NUM_AXI_MST = 13;
-  localparam int unsigned SEP_CRYPTO_NUM_AXI_MST_SEL = $clog2(SEP_CRYPTO_NUM_AXI_MST);
+  localparam int unsigned SepCryptoNumAxiMst = 13;
+  localparam int unsigned SepCryptoNumAxiMstSel = $clog2(SepCryptoNumAxiMst);
 
   // AXI-Stream endpoints on u_drbg_s3c_scan edn_axis_o, one per ext-TRNG mux leg:
   // [0]=Key Manager (mux0), [1]=crypto adapter (mux1), [2]=entropy-pool adapter (mux2)
-  localparam int unsigned SEP_CRYPTO_EDN_ENDPOINT_COUNT = 3;
+  localparam int unsigned SepCryptoEdnEndpointCount = 3;
   // Native EDN clients downstream of u_axis_edn_crypto_s3c_scan:
   // AES, KMAC, OTBN RND, OTBN URND
-  localparam int unsigned SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT = 4;
+  localparam int unsigned SepCryptoAxisEdnClientCount = 4;
   // Native EDN client downstream of u_axis_edn_pool_s3c_scan: the SEP entropy-pool FIFO
-  localparam int unsigned SEP_CRYPTO_POOL_EDN_CLIENT_COUNT = 1;
+  localparam int unsigned SepCryptoPoolEdnClientCount = 1;
 
   //////////
   // AXI4-Lite 32-bit typedefs for OTBN data width conversion
@@ -342,13 +337,13 @@ package sep_crypto_pkg;
   // External TRNG AXI-Stream interface (from outside sep → sep_crypto)
   //////////
 
-  localparam int unsigned EXT_TRNG_AXIS_DATA_WIDTH = 32;
-  localparam int unsigned EXT_TRNG_AXIS_STRB_WIDTH = EXT_TRNG_AXIS_DATA_WIDTH / 8;
+  localparam int unsigned ExtTrngAxisDataWidth = 32;
+  localparam int unsigned ExtTrngAxisStrbWidth = ExtTrngAxisDataWidth / 8;
 
   typedef struct packed {
     logic                                    tvalid;
-    logic [EXT_TRNG_AXIS_DATA_WIDTH-1:0]     tdata;
-    logic [EXT_TRNG_AXIS_STRB_WIDTH-1:0]     tstrb;
+    logic [ExtTrngAxisDataWidth-1:0]         tdata;
+    logic [ExtTrngAxisStrbWidth-1:0]         tstrb;
   } ext_trng_axis_req_t;
 
   typedef struct packed {logic tready;} ext_trng_axis_rsp_t;

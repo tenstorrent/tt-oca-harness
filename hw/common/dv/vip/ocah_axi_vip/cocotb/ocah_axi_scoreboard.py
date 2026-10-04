@@ -148,6 +148,9 @@ class OcahAxiScoreboard:
             state.model = model
         state.monitors.append(monitor)
         monitor.add_item_callback(lambda item: self.add_observed(item, stream=stream))
+        add_flush_callback = getattr(monitor, "add_flush_callback", None)
+        if add_flush_callback is not None:
+            add_flush_callback(lambda orders: self.void_commit_orders(orders, stream=stream))
 
     def set_stream_model(self, stream: str, model: OcahAxiRefModel) -> None:
         """Assign the reference model that predicts a stream's expectations."""
@@ -199,9 +202,32 @@ class OcahAxiScoreboard:
             )
             return
         state.reorder[order] = (item, violated, arrival_seq)
+        self._replay_in_order(stream, state)
+
+    def void_commit_orders(self, orders, *, stream: str = DEFAULT_STREAM) -> None:
+        """Release commit slots whose requests a reset ended without a completion.
+
+        Replay skips a voided slot, so completions that took later slots are
+        no longer held behind it.
+        """
+        state = self._stream(stream)
+        for order in sorted(int(order) for order in orders):
+            if order < state.next_order or order in state.reorder:
+                self._error(
+                    f"void of a processed or buffered commit_order={order} "
+                    f"(next expected {state.next_order}) on stream {stream!r}"
+                )
+                continue
+            state.reorder[order] = None
+        self._replay_in_order(stream, state)
+
+    def _replay_in_order(self, stream: str, state: _StreamState) -> None:
         while state.next_order in state.reorder:
-            queued_item, queued_violated, queued_seq = state.reorder.pop(state.next_order)
+            queued = state.reorder.pop(state.next_order)
             state.next_order += 1
+            if queued is None:
+                continue
+            queued_item, queued_violated, queued_seq = queued
             if not queued_violated:
                 self._process_observed(queued_item, stream, state, queued_seq)
 

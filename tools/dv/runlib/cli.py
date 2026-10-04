@@ -100,7 +100,14 @@ from .executors.manifest import (
     repo_identity,
     write_manifest,
 )
-from .junit import materialize_interruption_junit, materialize_stage_junit
+from .junit import (
+    discard_generated_junit,
+    ensure_graded_junit,
+    ensure_leaf_junit,
+    materialize_interruption_junit,
+    materialize_stage_junit,
+    results_xml_path,
+)
 from .logparse import validate_parser_extensions, validate_parser_registry
 from .models import ConfigError, Flow, StageResult, TestCatalog, TestEntry
 from .paths import configs_root, dut_runs_root, repo_path, repo_rel, repo_root
@@ -134,6 +141,7 @@ from .site import (
 from .stages import (
     cocotb_python_paths,
     item_artifact_dir,
+    mark_target_built,
     request_stage_cancellation,
     reset_stage_cancellation,
     resolve_coverage_policy,
@@ -3577,8 +3585,8 @@ def run_flow(
 
     # Stage tables are shared across leaves; the shallow copies a debug rerun takes of `args`
     # must share this set so a model built by one attempt counts as built for the rest.
-    if not isinstance(getattr(args, "_cocotb_prebuilt_targets", None), set):
-        args._cocotb_prebuilt_targets = set()
+    if not isinstance(getattr(args, "_built_targets", None), set):
+        args._built_targets = set()
     resources_by_stage: dict[str, ResourceRequest] = {}
 
     def stage_resources(stage: str) -> ResourceRequest:
@@ -3646,6 +3654,16 @@ def run_flow(
     # their leaves grade `dependency_blocked` instead of running.
     blocked_targets: dict[str, dict[str, Any]] = {}
 
+    def adopt_build(target: str, result: StageResult) -> None:
+        """Hand the identity a passing build recorded to the target's leaves."""
+        target_build = (result.metadata or {}).get("target_build")
+        if (
+            result.status == "PASS"
+            and isinstance(target_build, dict)
+            and target_build.get("build_dir")
+        ):
+            mark_target_built(args, target, target_build)
+
     def run_builds(stage: str, targets: list[str]) -> None:
         """Build every target of ``stage`` and append the results.
 
@@ -3670,6 +3688,7 @@ def run_flow(
                     nest=nest,
                 )
                 results.append(result)
+                adopt_build(target, result)
                 if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
                     break
             return
@@ -3756,7 +3775,7 @@ def run_flow(
                 stage=stage, status=result.status, duration_sec=result.duration_sec, target=target
             )
             if result.status == "PASS":
-                args._cocotb_prebuilt_targets.add(target)
+                adopt_build(target, result)
                 return
             blocked_targets[target] = {
                 "stage": stage,
@@ -3995,7 +4014,10 @@ def run_flow(
                 metadata={"seed": seed, "attempt": 0, "target": target},
                 target=target,
             )
-            finish_leaf(leaf, blocked, [regression_job(stage, item, seed, 0, blocked)])
+            leaf_dir = item_artifact_dir(run_dir, item, seed=seed, attempt=0, nest=nest)
+            blocked.result_json = repo_rel(root, leaf_dir / "result.json")
+            jobs = [regression_job(stage, item, seed, 0, blocked, blocked.result_json)]
+            finish_leaf(leaf, blocked, jobs)
 
         def attempt_done(task: LeafTask, result: StageResult) -> None:
             leaf = leaf_by_id[task.leaf_id]
@@ -4036,11 +4058,19 @@ def run_flow(
             if outcome.result is not None:
                 return outcome.result
             detail = outcome.error or reason or "no result"
-            return error_result(
-                task,
-                f"environment_error: attempt {task.task_id} ended "
-                f"{outcome.state.value.lower()}: {detail}",
+            ended = f"ended {outcome.state.value.lower()}: {detail}"
+            result = error_result(
+                task, f"environment_error: attempt {task.task_id} {ended}", signature=ended
             )
+            if executor_impl.requires_manifest and handle.native_job_id:
+                result.metadata = {
+                    **(result.metadata or {}),
+                    "scheduler": {"job_id": handle.native_job_id, "state": outcome.state.value},
+                }
+            if handle.executor_log and repo_path(root, handle.executor_log).is_file():
+                result.log = handle.executor_log
+                result.artifacts = {"executor_log": handle.executor_log}
+            return result
 
         for leaf in blocked_leaves:
             block_leaf(leaf)
@@ -4113,6 +4143,48 @@ def run_flow(
         else:
             executor_impl.close(wait=True)
 
+    def ensure_graded_leaf_junit(result: StageResult, item: str, seed: int) -> None:
+        """Structured XML for a graded leaf whose result names none.
+
+        A leaf that ran names its file in `results_xml`; any other gets a file in its graded
+        attempt's directory, pointing at the leaf's `result.json` when there is one and at
+        the run's otherwise. A marked file in that directory is overwritten; a native file
+        is kept, with the graded verdict in `graded.xml` beside it when it reads as a pass.
+        """
+        if args.dry_run or result.stage not in {"sim", "regress"} or result.status == "SKIP":
+            return
+        if (result.artifacts or {}).get("results_xml"):
+            return
+        attempt = int((result.metadata or {}).get("attempt") or 0)
+        leaf_dir = item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=nest)
+        leaf_json = leaf_dir / "result.json"
+        record = leaf_json if leaf_json.is_file() else run_dir / "result.json"
+        try:
+            discard_generated_junit(results_xml_path(leaf_dir))
+            written = ensure_leaf_junit(
+                flow=flow,
+                root=root,
+                run_dir=run_dir,
+                tool=tool,
+                result=result,
+                leaf_dir=leaf_dir,
+                result_json=record,
+            )
+            ensure_graded_junit(
+                flow=flow,
+                root=root,
+                run_dir=run_dir,
+                tool=tool,
+                result=result,
+                leaf_dir=leaf_dir,
+                result_json=record,
+            )
+        except Exception as exc:  # noqa: BLE001
+            console.event("warning", f"junit synthesis failed for {item}: {exc}", force=True)
+            return
+        if written is not None:
+            result.artifacts = {**(result.artifacts or {}), "results_xml": repo_rel(root, written)}
+
     def record_leaf(
         leaf: dict[str, Any],
         result: StageResult,
@@ -4122,6 +4194,7 @@ def run_flow(
     ) -> bool:
         item = str(leaf["item"])
         seed = int(leaf["seed"])
+        ensure_graded_leaf_junit(result, item, seed)
         results.append(result)
         runs_by_item.setdefault(item, []).append((seed, result))
         regression_jobs.extend(jobs)
@@ -4147,7 +4220,7 @@ def run_flow(
             and isinstance(sim_stage, dict)
             and str(sim_stage.get("kind", "")) in {"cocotb_sim", "cocotb_verilator"}
             and cocotb_build_defined
-            and target not in getattr(args, "_cocotb_prebuilt_targets", set())
+            and target not in getattr(args, "_built_targets", set())
         )
 
     previous_signal_handlers: dict[int, Any] = {}
@@ -4284,11 +4357,14 @@ def run_flow(
                             )
                         )
                 else:
+                    # The coverage stages read the model the one planned target built, so
+                    # they run on that target's config.
+                    stage_cfg = sim_cfg_for_item(None) if stage in _COVERAGE_STAGES else sim_cfg
                     results.append(
                         run_stage(
                             flow,
                             root,
-                            sim_cfg,
+                            stage_cfg,
                             catalog,
                             stage,
                             None,
@@ -4341,7 +4417,7 @@ def run_flow(
             )
 
         # Structured-result guarantee, leafless case: a non-passing run in which no sim
-        # leaf executed (compile/elaboration/filelist failure) gets one run-level stage
+        # leaf was graded (compile/elaboration/filelist failure) gets one run-level stage
         # XML so the failure is visible to JUnit consumers. Runs before result_payload
         # so the failing stage's artifact pointer lands in result.json; skipped on
         # coverage replay, which re-enters a run dir whose leaves did not rerun.

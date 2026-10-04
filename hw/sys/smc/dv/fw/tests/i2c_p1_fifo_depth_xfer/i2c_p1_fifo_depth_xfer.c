@@ -5,26 +5,11 @@
  * @file i2c_p1_fifo_depth_xfer.c
  * @brief I2C full-FIFO-depth transfer with an interleaved push-and-drain
  *
- * =============================================================================
- * Test Description
- * =============================================================================
- *
- * Moves a 64-byte payload -- the full FIFO depth, where every other I2C test in
- * this suite moves 1 to 5 bytes -- with the controller pushing while the target
- * drains, then compares length and every byte.
- *
- * No DMA is involved; the CPU moves the payload through the FMT FIFO.
- *
- * Test Objective:
- * - Verify I2C can perform a full-FIFO-depth data transfer
- * - Verify data integrity when push and drain overlap
- * - Verify I2C protocol remains valid throughout transfer
- *
- * Expected Result:
- * - The transfer completes and every byte matches
- * - I2C protocol compliance throughout transfer
- *
- * =============================================================================
+ * Verifies a 64-byte write, the full FIFO depth, from the I2C_0 controller to
+ * the I2C_1 target as one frame, with the CPU feeding the controller while it
+ * drains the target. Fails on any NACK or other non-data entry at the target,
+ * checks the received length and every byte, and checks that the target holds
+ * no residual entries afterwards. No DMA is involved.
  */
 
 #include <stdint.h>
@@ -39,6 +24,18 @@
 #define TARGET_ADDR 0x10
 #define LARGE_DATA_SIZE 64
 
+#define I2C_REG(idx, REG) (SMC_TOP_SMC_I2C_WRAP_I2C_##REG##_BASE_ADDR(idx))
+
+/* Polls of the controller allowed for one FMT entry to leave the FIFO. A
+ * standard-mode byte with its acknowledge occupies the wire for nine SCL
+ * periods, about 90 us; a poll is a few hundred nanoseconds, so this is well
+ * over ten byte-times at any clk_smc_i period the bench draws. */
+#define FMT_ROOM_POLL_BOUND 20000u
+
+/* Polls of the target's ACQ level after the last byte before a short transfer
+ * is declared. */
+#define TRAILING_DRAIN_POLL_BOUND 200000u
+
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
     uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(idx);
 
@@ -51,14 +48,10 @@ static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
 
 /* Drain every ACQ entry the target currently holds, appending payload to rx.
  *
- * Classification is by ACQ SIGNAL, deliberately, not by the driver's decoded
- * is_start / is_stop booleans. i2c_target_receive_entry maps the two NACK
- * signals I2C_ACQ_SIGNAL_NACK (4) and I2C_ACQ_SIGNAL_NACK_START (5) onto its
- * `default` leg (i2c_opentitan.c:1638-1642), which clears both booleans -- so a
- * filter written as `if (e.is_start || e.is_stop) continue;` accepts a byte the
- * target NACKed as a good payload byte and feeds it to the comparison. This
- * test asserts "I2C protocol remains valid throughout transfer", so any NACK or
- * NACK_STOP entry has to fail it rather than be laundered into rx.
+ * Entries are classified by their signal, not by the decoder's is_start and
+ * is_stop flags: the decoder leaves both flags false for a NACKed byte, so a
+ * flag-based filter would accept it as payload. Any entry that is neither
+ * framing nor data fails the transfer.
  *
  * Returns I2C_OK, or an error the caller must propagate to test_fail.
  */
@@ -91,71 +84,105 @@ static int drain_acq(uint32_t tgt_idx, uint8_t *rx, uint32_t rx_size, uint32_t *
     return I2C_OK;
 }
 
-/* Interleaved push and drain: the transfer this test is named for cannot work
- * any other way on a single-threaded CPU.
+/* Interleaved push and drain: a single-threaded CPU can move the full FIFO
+ * depth in one frame only this way.
  *
- * The target stretches SCL as soon as its ACQ FIFO has 2 or fewer free entries
- * (i2c_target_fsm.sv:271 `acq_fifo_plenty_space = remainder > 2`, :674
- * `stretch_rx = !acq_fifo_plenty_space || !can_auto_ack`, whose second term is
- * inactive here because ACK_CTRL mode is off), which with
- * smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH = 64 means it stretches at ACQ depth
- * 62. That is documented, intended flow control: the RDL describes the
- * ACQ_STRETCH interrupt as asserted "while the target is stretching the clock
- * because the Target RX FIFO is full" (i2c.rdl:116-122).
+ * With ACK control off, the target stretches SCL once its ACQ FIFO is within
+ * two entries of full; this is intended flow control. If all 64 bytes were
+ * queued before anything drained the target, the target would stretch near
+ * full, the controller could never retire its FMT entries, and the transfer
+ * would not complete.
  *
- * Pushing all 64 bytes and only then waiting for the controller cannot
- * complete: nothing drains the target in between, so the target stretches at
- * the 62-entry threshold, the controller can never retire its FMT entries, and
- * the wait burns its whole budget with the bus still not idle. That is flow
- * control, not an RTL defect.
+ * So the frame -- START, address, 64 data bytes, STOP -- is fed to the FMT FIFO
+ * one entry at a time. Before each push the CPU waits until at most one entry
+ * is left in the FMT FIFO (the byte on the wire) and drains whatever the target
+ * has accepted meanwhile. This keeps the bus streaming without an SCL-low gap
+ * between bytes and keeps the ACQ FIFO far below the stretch threshold. Bytes
+ * are collected here because a blocking receive cannot run while the same CPU
+ * has to keep pushing.
  *
- * So push a byte at a time and drain whatever the target has accepted after each
- * push, keeping ACQ far below the stretch threshold. Bytes are collected here
- * rather than by a separate receive call, because a blocking receive cannot run
- * while this same CPU has to keep pushing.
+ * The frame is written to the FMT FIFO directly rather than through
+ * i2c_controller_write, which emits a whole START..data frame per call, so
+ * feeding it byte by byte would produce 64 frames, each with its own START and
+ * address byte.
  */
+static int wait_fmt_room(uint32_t ctrl_idx, uint32_t tgt_idx, uint8_t *rx, uint32_t rx_size,
+                         uint32_t *got) {
+    uint32_t polls;
+    for (polls = 0; polls < FMT_ROOM_POLL_BOUND; polls++) {
+        int ret = drain_acq(tgt_idx, rx, rx_size, got);
+        if (ret != I2C_OK) {
+            return ret;
+        }
+        i2c__HOST_FIFO_STATUS_t fifo = {.w = read_reg(I2C_REG(ctrl_idx, HOST_FIFO_STATUS))};
+        if (fifo.f.FMTLVL <= 1u) {
+            return I2C_OK;
+        }
+    }
+    return I2C_ERROR_TIMEOUT;
+}
+
 static int push_and_drain(uint32_t ctrl_idx, uint32_t tgt_idx, uint8_t target_addr,
                           const uint8_t *tx, uint32_t len, uint8_t *rx, uint32_t rx_size,
                           uint32_t *rx_len) {
-    uint32_t sent = 0;
+    uint32_t sent;
     uint32_t got = 0;
     uint32_t spins;
     int ret;
+    i2c__FDATA_t fdata = {.w = 0};
 
     *rx_len = 0;
 
-    while (sent < len) {
-        bool last = (sent + 1u == len);
-        ret = i2c_controller_write(ctrl_idx, target_addr, &tx[sent], 1u, last);
-        if (ret != I2C_OK) {
-            simputs("  ERROR: controller write stalled at byte 0x");
-            simputshex32("", sent);
-            simputs("\n");
-            return ret;
-        }
-        sent++;
+    if (!i2c_controller_is_idle(ctrl_idx)) {
+        simputs("  ERROR: controller not idle before the frame\n");
+        return I2C_ERROR_BUSY;
+    }
 
-        ret = drain_acq(tgt_idx, rx, rx_size, &got);
+    fdata.f.FBYTE = (uint8_t)(target_addr << 1); /* write */
+    fdata.f.START = 1;
+    write_reg(I2C_REG(ctrl_idx, FDATA), fdata.w);
+
+    for (sent = 0; sent < len; sent++) {
+        ret = wait_fmt_room(ctrl_idx, tgt_idx, rx, rx_size, &got);
         if (ret != I2C_OK) {
+            i2c__HOST_FIFO_STATUS_t fifo = {.w = read_reg(I2C_REG(ctrl_idx, HOST_FIFO_STATUS))};
+            simputs("  ERROR: controller did not take byte 0x");
+            simputshex32("", sent);
+            simputs(" -- FMTLVL=0x");
+            simputshex32("", fifo.f.FMTLVL);
+            simputs(", STATUS=0x");
+            simputshex32("", i2c_get_status(ctrl_idx));
+            simputs(", CONTROLLER_EVENTS=0x");
+            simputshex32("", i2c_get_controller_events(ctrl_idx));
+            simputs("\n");
             *rx_len = got;
             return ret;
         }
+        fdata.w = 0;
+        fdata.f.FBYTE = tx[sent];
+        fdata.f.STOP = (sent + 1u == len) ? 1 : 0;
+        write_reg(I2C_REG(ctrl_idx, FDATA), fdata.w);
     }
 
     /* Trailing drain: the last bytes and the STOP may still be in flight.
-     * Bounded, and reaching the bound short of len is a real failure -- a short
-     * transfer must not read as a complete one. The inner drain always empties
-     * whatever is queued, so an over-long transfer lands as got > len and is
-     * caught by the caller's exact byte-count check just the same. */
-    for (spins = 0; spins < 200000u && got < len; spins++) {
+     * The drain is bounded; a short or over-long transfer is returned as is
+     * and fails the caller's exact byte-count check. */
+    for (spins = 0; spins < TRAILING_DRAIN_POLL_BOUND && got < len; spins++) {
         ret = drain_acq(tgt_idx, rx, rx_size, &got);
         if (ret != I2C_OK) {
             *rx_len = got;
             return ret;
         }
     }
-
     *rx_len = got;
+
+    /* Wait for the controller to go idle after the STOP; the residual check in
+     * main relies on a quiet bus. */
+    ret = i2c_controller_wait_idle(ctrl_idx, I2C_TIMEOUT_DEFAULT);
+    if (ret != I2C_OK) {
+        simputs("  ERROR: controller never returned to HOSTIDLE after the STOP\n");
+        return ret;
+    }
     return I2C_OK;
 }
 
@@ -186,7 +213,7 @@ int main(void) {
     simputs("Step 2: I2C Initialization\n");
 
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};
@@ -236,7 +263,6 @@ int main(void) {
     simputs("  Flushing and resetting ACQ FIFO...\n");
     uint32_t target_base = i2c_get_base(TARGET_IDX);
 
-    // Flush any existing data in ACQ FIFO
     uint32_t flush_count = 0;
     i2c__STATUS_t status = {
         .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
@@ -249,15 +275,10 @@ int main(void) {
         flush_count++;
     }
 
-    // Reset ACQ FIFO explicitly
     i2c_reset_fifos(TARGET_IDX, false, false, false, true);
     simputs("  ACQ FIFO reset completed\n");
 
-    /* Wait for the target to become idle -- and fail if it never does.
-     * TARGETIDLE is the real ready handshake, so it is polled to a bound rather
-     * than stood in for by a fixed delay tied to no spec bound, and expiry fails
-     * the test instead of printing "ready" either way.
-     */
+    /* Wait for the target to go idle; expiry fails the test. */
     simputs("  Waiting for Target to become idle...\n");
     bool target_idle_seen = false;
     uint32_t idle_wait_count;
@@ -290,12 +311,10 @@ int main(void) {
     }
     simputs("  Target ready for data reception (TARGETIDLE observed)\n");
 
-    /* No length header is sent: the payload goes on the wire as raw bytes after
-     * START+address, so the receive side must not consume the first byte as a
-     * count. That is why the drain below reads raw ACQ entries rather than
-     * calling i2c_target_receive_transaction, whose framing assumes a header
-     * this test never sends -- against this stimulus it took write_data[0] == 0
-     * as the length and returned success after a single byte. */
+    /* The payload follows START and address with no length header, so the
+     * drain reads raw ACQ entries rather than calling
+     * i2c_target_receive_transaction, which takes the first data byte as a
+     * length. */
 
     simputs("  [DEBUG] Pre-transfer status:\n");
     i2c__TARGET_FIFO_STATUS_t fifo_status = {
@@ -310,9 +329,8 @@ int main(void) {
     simputs(status_pre.f.TARGETIDLE ? "YES" : "NO");
     simputs("\n");
 
-    // Interleaved push/drain: the target stretches at ACQ depth 62, so a bulk
-    // push with nothing draining could not complete (see push_and_drain above).
-    simputs("  Transferring 64 bytes with interleaved ACQ drain...\n");
+    // One 64-byte frame with the target drained between entries (see wait_fmt_room)
+    simputs("  Transferring 64 bytes in one frame with interleaved ACQ drain...\n");
     ret = push_and_drain(CONTROLLER_IDX, TARGET_IDX, TARGET_ADDR, write_data, LARGE_DATA_SIZE,
                          read_buffer, sizeof(read_buffer), &received_len);
     if (ret != I2C_OK) {
@@ -325,10 +343,8 @@ int main(void) {
     simputshex32("", received_len);
     simputs(" bytes\n");
 
-    // The transfer is reconciled against the stimulus: both the byte count and
-    // every byte are compared, and the expected bytes are recomputed here from
-    // the same closed form that produced the stimulus rather than read back
-    // from the DUT.
+    // Compare the byte count and every byte with the stimulus pattern, recomputed
+    // here rather than read back from the DUT.
     if (received_len != LARGE_DATA_SIZE) {
         simputs("  ERROR: byte count mismatch -- expected 0x");
         simputshex32("", LARGE_DATA_SIZE);
@@ -354,22 +370,14 @@ int main(void) {
     }
     simputs("  All 64 bytes matched the transmitted pattern\n");
 
-    /* Nothing may be left behind in the target's ACQ FIFO.
+    /* Nothing may be left in the target's ACQ FIFO.
      *
-     * A residual entry after the expected payload has been drained means the
-     * target accepted traffic this test has not accounted for, so it fails here
-     * instead of being discarded as leftover state.
-     *
-     * CTRL.ACQ_START_STOP_EN is left at its reset value of 0 (i2c.rdl:580) and
-     * i2c_target_init never sets it, so the target writes no START/RESTART/STOP
-     * entries into the ACQ FIFO (i2c_target_fsm.sv:429,556,562,639). A healthy
-     * transfer therefore leaves the ACQ FIFO holding exactly the 64 payload
-     * bytes and nothing else, all of which have just been read out.
-     *
-     * The controller's final write carried STOP and so returned only after
-     * HOSTIDLE (i2c_opentitan.c:713), meaning the bus is quiet by the time this
-     * runs; the settle poll is there to catch a late arrival, not to wait for
-     * an expected one, which is why any nonzero level fails immediately. */
+     * A residual entry means the target accepted traffic this test has not
+     * accounted for. In its reset mode, which i2c_target_init keeps, the target
+     * records no START, RESTART or STOP entries, so a healthy transfer leaves
+     * exactly the 64 payload bytes, all already read out. The bus is quiet by
+     * now, so the settle poll only catches a late arrival and any nonzero level
+     * fails at once. */
     const uint32_t RESIDUAL_SETTLE_POLLS = 200;
     uint32_t residual_acq = 0;
     for (i = 0; i < RESIDUAL_SETTLE_POLLS; i++) {
@@ -398,6 +406,4 @@ int main(void) {
     simputs("###################################################\n");
     write_scratch(1, 0xEBEDEBE4);
     test_pass(0);
-
-    return I2C_OK;
 }

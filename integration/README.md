@@ -7,11 +7,11 @@ SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 Each subsystem or IP under `hw/{sys,ip}` keeps the canonical integration
 collateral beside its implementation. The `rdl/`, `ipxact/`, and
-`constraint/` directories centralize symlinks to those distributed files so
+`constraints/` directories centralize symlinks to those distributed files so
 integrators can find them in one place. The `filelists/` directory contains
-portable simulation (`<system>.<tool>.sim.f`) and synthesis
-(`<system>.synth.f`) views for SMU, SMC, and DTP, plus AoU's generic
-`aou.sim.f` and `aou.synth.f` views.
+portable simulation (`<system>.<tool>.sim.f`), synthesis
+(`<system>.synth.f`), and emulation (`<system>.emul.f`) views for SMU, SMC,
+and DTP, plus AoU's generic `aou.sim.f`, `aou.synth.f`, and `aou.emul.f` views.
 RDL and IP-XACT files are grouped into flat, self-contained subsystem folders.
 Filelist paths are relative to the repository root; invoke tools that consume
 them from that directory.
@@ -23,7 +23,9 @@ models, tool-selected stubs, supplemental sources, and testbench top. AoU's DV
 environment is maintained in its vendor folder, so it is not provided at the
 OCAH level.
 The synthesis lists use Bender's `synth` view and retain every `+define+`
-line it emits.
+line it emits. The emulation lists use the same `synth` view with `EMULATION`
+additionally defined, which keeps the vendor assertion macros compiled that a
+pure synthesis view drops.
 
 The symlink targets remain the canonical files. See the
 [Integrator Guide](../doc/integrator/) for detailed integration guidance.
@@ -34,8 +36,8 @@ Regenerate the symlink indexes after adding or moving collateral:
 python3 scripts/update_integration_symlinks.py
 ```
 
-Regenerate the simulation and synthesis filelists after changing a Bender
-manifest or one of the four subsystem flow descriptors:
+Regenerate the simulation, synthesis, and emulation filelists after changing a
+Bender manifest or one of the four subsystem flow descriptors:
 
 ```bash
 python3 scripts/update_integration_filelists.py

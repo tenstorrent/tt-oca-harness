@@ -12,7 +12,9 @@ region and seal/free slot pair through the mailbox; the ROM walks slot
 the selected SRAM region and W1C-clears the violation / IRQ, then runs
 the seal contrast: the same erase retires a sealed slot and frees an
 unsealed one.
-Result flags in KM SRAM word0 (the ``km_sram_word0_o`` probe).
+Result flags in KM SRAM word0 (the ``km_sram_word0_o`` probe). The data of
+the refused ``lock_use`` read is in KM SRAM word1 (``km_sram_probe_o``), read
+with no unknown bits allowed.
 """
 
 from __future__ import annotations
@@ -43,6 +45,8 @@ from seq_lib.sep_km_vault_seq import (
 )
 
 _MAX_KM_CYCLES = 40_000
+# km_sram_probe_o lane of KM SRAM word1 (0x8004).
+_KM_SRAM_WORD1_MASK = 0xFFFF_FFFF << 32
 
 
 @pyuvm.test()
@@ -86,20 +90,43 @@ class sep_km_key_policy_vault_test(sep_base_test):
         )
         _bit(FLAG_LOCKWR, "CHK-LOCKWR")
         self.logger.info(
-            "CHK-LOCKWR PASS: key-data write to write-locked slot %d raised AXI SLVERR",
+            "CHK-LOCKWR PASS: key-data store to slot %d left AXI_SLVERR clear before "
+            "lock_write (control: the 0xA11CE000 store read back), then the same store "
+            "on the write-locked slot raised AXI_SLVERR",
             cfg.slot,
         )
         _bit(FLAG_LOCKUSE, "CHK-LOCKUSE")
+        # The ROM stores the refused read's data in KM SRAM word1. rd() raises
+        # on an unknown bit, so X data fails here even if the ROM branch passed.
+        refused = self.rd(dut.km_sram_probe_o, _KM_SRAM_WORD1_MASK) >> 32
+        assert refused == 0, (
+            f"CHK-LOCKUSE FAIL: lock_use read of slot {cfg.slot} returned "
+            f"0x{refused:08x} (KM SRAM word1), expected 0"
+        )
         self.logger.info(
-            "CHK-LOCKUSE PASS: key-data read of the lock_use slot raised SLVERR and "
-            "returned zero, after a known non-zero store landed on that slot"
+            "CHK-LOCKUSE PASS: slot %d with lock_write only read back 0xA11CE000 with "
+            "AXI_SLVERR clear (control); after lock_use the same read raised SLVERR "
+            "and returned data=0x%08x (KM SRAM word1, fully known)",
+            cfg.slot,
+            refused,
         )
         _bit(FLAG_EXTENT, "CHK-EXTENT")
-        self.logger.info("CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR or AXI_DECERR")
+        self.logger.info(
+            "CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR with AXI_DECERR clear "
+            "(key_manager.rdl: unmapped offset inside a window answers SLVERR)"
+        )
         _bit(FLAG_DROP, "CHK-DROP")
-        self.logger.info("CHK-DROP PASS: locked SRAM write dropped (readback unchanged)")
+        self.logger.info(
+            "CHK-DROP PASS: write to locked SRAM region %d dropped (readback unchanged)",
+            cfg.region,
+        )
         _bit(FLAG_VIOL, "CHK-VIOL")
-        self.logger.info("CHK-VIOL PASS: SRAM_WRITE_LOCK_VIOLATION matching bit set")
+        self.logger.info(
+            "CHK-VIOL PASS: the ROM read SRAM_WRITE_LOCK_VIOLATION equal to 0x%08x "
+            "(only region %d)",
+            1 << cfg.region,
+            cfg.region,
+        )
         _bit(FLAG_IRQ, "CHK-IRQ")
         self.logger.info("CHK-IRQ PASS: IRQ_STATUS.SRAM_WRITE_LOCK_ERR set")
         _bit(FLAG_W1C, "CHK-W1C")

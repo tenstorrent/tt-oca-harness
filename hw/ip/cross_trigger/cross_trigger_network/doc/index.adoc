@@ -28,6 +28,13 @@ The CTN serves four purposes:
 
 == Configuration Parameters
 
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="ctn-configuration-parameters-table"></span>
+++++
+endif::backend-html5[]
+
 The CTN is configured through its external and internal port counts, the number of
 clock-stop request inputs, and the protocol of each internal CTP.
 
@@ -70,7 +77,27 @@ ifdef::backend-pdf[]
 include::interface.adoc[]
 endif::backend-pdf[]
 
+[[ctn-programming]]
+== Programming
+
+Cross-trigger configuration is static: every external CTP is configured once
+per boot before the CTM routes that use it are opened. The Programmer's Guide
+gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-cross-trigger[cross-trigger programming sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-cross-trigger[cross-trigger programming sequence]
+endif::backend-pdf[]
+with reconfiguration and handshake deadlock recovery.
+
 == Memory Map
+
+ifdef::backend-html5[]
+++++
+<span id="memory-map"></span>
+++++
+endif::backend-html5[]
 
 ifdef::backend-html5[]
 include::partial$cross_trigger_network/doc/memmap.adoc[]

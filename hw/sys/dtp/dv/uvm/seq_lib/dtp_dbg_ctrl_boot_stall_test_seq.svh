@@ -4,10 +4,10 @@
 // DEBUG_CONTROL boot stall: the exported jtag_boot_stall/_ovrd pins must
 // track every write of the 2x2 boot_stall_ovrd x boot_stall matrix (in a
 // shuffled per-pass order), boot_stall must toggle freely while the
-// override stays asserted, and the pair must be independent of the
-// clock-stop bits. A TAP reset over a seeded nonzero DEBUG_CONTROL[3:0]
-// deasserts both pins and reads back 0x00. Mirrors the cocotb
-// dtp_dbg_ctrl_boot_stall_test_seq.
+// override stays asserted, and every combination must be independent of
+// each clock-stop combination. A TAP reset over a seeded nonzero
+// DEBUG_CONTROL[3:0] deasserts both pins and reads back 0x00. Mirrors the
+// cocotb dtp_dbg_ctrl_boot_stall_test_seq.
 
 class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
   `uvm_object_utils(dtp_dbg_ctrl_boot_stall_test_seq)
@@ -51,6 +51,8 @@ class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"};
     bit [1:0] combos[4] = '{2'b00, 2'b01, 2'b10, 2'b11};  // {ovrd, stall}
     bit toggle_seq[4] = '{1'b0, 1'b1, 1'b0, 1'b1};
+    bit [1:0] stop_cases[3] = '{2'b10, 2'b01, 2'b11};  // {jtag_clock_stop, cla_clock_stop_en}
+    int unsigned interaction = 0;
     bit [63:0] readback, stale;
     string stale_ctx;
     seed_scenario_rng();
@@ -89,10 +91,15 @@ class dtp_dbg_ctrl_boot_stall_test_seq extends dtp_debug_tdr_base_test_seq;
       check_boot_stall_combo(1'b1, toggle_seq[idx], 1'b0, 1'b0, $sformatf("independent#%0d", idx + 1
                              ));
 
-    // Boot-stall fields are independent of the clock-stop bits.
-    check_boot_stall_combo(1'b1, 1'b1, 1'b1, 1'b0, "interaction#1");
-    check_boot_stall_combo(1'b1, 1'b1, 1'b0, 1'b1, "interaction#2");
-    check_boot_stall_combo(1'b1, 1'b1, 1'b1, 1'b1, "interaction#3");
+    // Boot-stall fields are independent of every clock-stop combination
+    // ({jtag_clock_stop, cla_clock_stop_en}).
+    foreach (combos[idx]) begin
+      foreach (stop_cases[s]) begin
+        interaction++;
+        check_boot_stall_combo(combos[idx][1], combos[idx][0], stop_cases[s][1], stop_cases[s][0],
+                               $sformatf("interaction#%0d", interaction));
+      end
+    end
 
     // TAP reset over a seeded nonzero DEBUG_CONTROL[3:0]. Capture-DR returns
     // the reset register, 0x00, not the stale value last shifted in.

@@ -20,12 +20,19 @@ class ocah_axi_item extends uvm_sequence_item;
   ocah_axi_dir_e      direction = OCAH_AXI_DIR_READ;
   bit [63:0]          address;
   bit [63:0]          data_words[$];       // one entry per beat (raw bus word)
+  // Read beats only, one entry per data_words entry: the bits of RDATA that
+  // were X or Z on the bus. data_words is two-state, so it holds those bits
+  // as 0; a caller that grades read data checks its lanes here.
+  bit [63:0]          data_xz_masks[$];
   bit [7:0]           strobes[$];          // write beats only
   int unsigned        size;                // AxSIZE
   ocah_axi_burst_e    burst = OCAH_AXI_BURST_INCR;
   bit [15:0]          transaction_id;
   bit [2:0]           prot;
   ocah_axi_resp_e     resp_list[$];        // per beat (reads) / single (writes)
+  // One entry per resp_list entry: the sampled BRESP/RRESP had an X or Z
+  // bit. resp_list is two-state, so such a response reads as a legal code.
+  bit                 resp_xz[$];
   int unsigned        expected_beats = 1;  // AxLEN + 1 recorded at the address phase
   bit                 expected_armed;      // expected items: non-OKAY was armed
   time                start_time;
@@ -50,9 +57,10 @@ class ocah_axi_item extends uvm_sequence_item;
   // response handshake (RLAST beat for reads) — never a copy of the issued
   // transaction_id. observed_id_valid stays 0 on ID-less buses
   // (cfg.id_width == 0) and on timeouts; timed_out reports a handshake
-  // watchdog expiry (see ocah_axi_master_config.timeout_cycles).
-  // hold_stable reports that RVALID stayed asserted with RDATA/RRESP
-  // unchanged across a nonzero r_ready_delay window (stays 1 otherwise).
+  // watchdog expiry (see ocah_axi_master_config.timeout_cycles). is_ok()
+  // is 0 on a timed-out result (the cocotb ok=False state). hold_stable
+  // reports that RVALID stayed asserted with RDATA/RRESP unchanged across
+  // a nonzero r_ready_delay window (stays 1 otherwise).
   bit [15:0]          observed_id;
   bit                 observed_id_valid;
   bit                 timed_out;
@@ -69,8 +77,43 @@ class ocah_axi_item extends uvm_sequence_item;
   int unsigned        ax_stall_cycles;
   bit                 ax_stable = 1'b1;
 
+  // Pipelined operation (pipeline_result, the cocotb pipeline_result
+  // parity): `ops` are single-beat reads and writes the master driver keeps
+  // in flight together, each filled like a plain result. In an op,
+  // aw/w/ar_valid_delay count the cycles from the start of the operation
+  // before that channel's VALID may assert; on the carrier item,
+  // b_ready_delay and r_ready_delay hold BREADY and RREADY low for that many
+  // cycles after the first BVALID and RVALID, and aw/w/ar_stall_cycles count
+  // the cycles each request channel held VALID while READY was low.
+  ocah_axi_item       ops[$];
+  int unsigned        ar_valid_delay;
+  int unsigned        aw_stall_cycles;
+  int unsigned        w_stall_cycles;
+  int unsigned        ar_stall_cycles;
+
   function new(string name = "ocah_axi_item");
     super.new(name);
+  endfunction
+
+  // Returns every field the master driver fills as a result to its default.
+  // The driver calls it at the start of each operation, so an item issued
+  // twice reports only the operation in flight.
+  function void clear_results();
+    resp_list.delete();
+    resp_xz.delete();
+    if (direction != OCAH_AXI_DIR_WRITE) begin
+      data_words.delete();
+      data_xz_masks.delete();
+    end
+    timed_out         = 1'b0;
+    observed_id       = '0;
+    observed_id_valid = 1'b0;
+    hold_stable       = 1'b1;
+    ax_stall_cycles   = 0;
+    ax_stable         = 1'b1;
+    aw_stall_cycles   = 0;
+    w_stall_cycles    = 0;
+    ar_stall_cycles   = 0;
   endfunction
 
   function ocah_axi_resp_e worst_resp();
@@ -78,7 +121,7 @@ class ocah_axi_item extends uvm_sequence_item;
   endfunction
 
   function bit is_ok();
-    return ocah_axi_resp_ok(resp_list);
+    return !timed_out && ocah_axi_resp_ok(resp_list);
   endfunction
 
   function int unsigned beat_count();
@@ -89,6 +132,15 @@ class ocah_axi_item extends uvm_sequence_item;
 
   function bit [63:0] first_data();
     return (data_words.size() > 0) ? data_words[0] : '0;
+  endfunction
+
+  function bit any_resp_xz();
+    foreach (resp_xz[i]) if (resp_xz[i]) return 1'b1;
+    return 1'b0;
+  endfunction
+
+  function bit [63:0] first_xz_mask();
+    return (data_xz_masks.size() > 0) ? data_xz_masks[0] : '0;
   endfunction
 
   // True when a live response ID was captured and it echoes the issued ID.
@@ -120,12 +172,14 @@ class ocah_axi_item extends uvm_sequence_item;
     direction      = rhs_item.direction;
     address        = rhs_item.address;
     data_words     = rhs_item.data_words;
+    data_xz_masks  = rhs_item.data_xz_masks;
     strobes        = rhs_item.strobes;
     size           = rhs_item.size;
     burst          = rhs_item.burst;
     transaction_id = rhs_item.transaction_id;
     prot           = rhs_item.prot;
     resp_list      = rhs_item.resp_list;
+    resp_xz        = rhs_item.resp_xz;
     expected_beats = rhs_item.expected_beats;
     expected_armed = rhs_item.expected_armed;
     start_time     = rhs_item.start_time;
@@ -135,6 +189,7 @@ class ocah_axi_item extends uvm_sequence_item;
     w_valid_delay  = rhs_item.w_valid_delay;
     b_ready_delay  = rhs_item.b_ready_delay;
     r_ready_delay  = rhs_item.r_ready_delay;
+    ar_valid_delay = rhs_item.ar_valid_delay;
     observed_id       = rhs_item.observed_id;
     observed_id_valid = rhs_item.observed_id_valid;
     timed_out         = rhs_item.timed_out;
@@ -142,6 +197,10 @@ class ocah_axi_item extends uvm_sequence_item;
     pair              = rhs_item.pair;
     ax_stall_cycles   = rhs_item.ax_stall_cycles;
     ax_stable         = rhs_item.ax_stable;
+    ops               = rhs_item.ops;
+    aw_stall_cycles   = rhs_item.aw_stall_cycles;
+    w_stall_cycles    = rhs_item.w_stall_cycles;
+    ar_stall_cycles   = rhs_item.ar_stall_cycles;
   endfunction
 
 endclass : ocah_axi_item

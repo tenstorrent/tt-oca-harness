@@ -4,14 +4,10 @@
 /*
  * OCCP Zero Length Operations Test
  *
- * This test exercises zero length write and read operations to understand
- * the expected behavior and observe OCCP status responses.
- *
- * Test Cases:
- * 1. Zero length write operations at various addresses
- * 2. Zero length read operations at various addresses
- * 3. Status monitoring after each operation
- * 4. Error code analysis
+ * Verifies how the SMC BL0 ROM handles zero-length OCCP transfers at both
+ * ends of the test range and at random addresses: a WRITE completes with
+ * success, a READ is rejected, and each one logs a matching overflow error
+ * in the SMC status buffer, which is drained once after all transfers.
  */
 
 #include "occp_test_common.h"
@@ -42,30 +38,21 @@ static void validate_smc_status_buffer(test_context_t *ctx, int exp_write_errors
 
         increment_cmd_count(ctx);
 
-        // If we get 0, the buffer is empty
-        if (smc_status == 0) {
-            simputs("SMC status buffer is empty (returned 0)\n");
-            break;
-        }
-
-        // Parse status message according to ROM specification:
-        // [31:28] - Firmware ID (0x2: SMC BL0)
-        // [27:24] - Message Type (0x2: error)
-        // [23:0]  - Message Value (OCCP error code)
+        // Split the entry into firmware ID, message type and message value
         uint32_t fw_id = (smc_status >> 28) & 0xF;
         uint32_t msg_type = (smc_status >> 24) & 0xF;
         uint32_t msg_value = smc_status & 0xFFFFFF;
 
-        // Check if this is an SMC ROM error about unknown OCCP command
-        if (fw_id == 0x2 && msg_type == 0x2) { // SMC BL0, Error type
-            if (msg_value == 0x120) {          // SMC_OCCP_ERROR_READ_OVERFLOW
+        // Count SMC BL0 overflow errors; tolerate command-failed errors and
+        // fail on any other SMC BL0 error
+        if (fw_id == 0x2 && msg_type == 0x2) {
+            if (msg_value == 0x120) {
                 simputs("  Found error SMC_OCCP_ERROR_READ_OVERFLOW\n");
                 total_read_errors++;
-            } else if (msg_value == 0x130) { // SMC_OCCP_ERROR_WRITE_OVERFLOW
+            } else if (msg_value == 0x130) {
                 simputs("  Found error SMC_OCCP_ERROR_WRITE_OVERFLOW\n");
                 total_write_errors++;
-                // we can ignore cmd failed errors, but don't expect any others
-            } else if ((msg_value & 0xFF0) != 0x110) { // SMC_OCCP_ERROR_CMD_FAILED
+            } else if ((msg_value & 0xFF0) != 0x110) {
                 simputshex32("FAIL: Found unknown error: 0x", msg_value);
                 ctx->overall_result = false;
             }
@@ -90,7 +77,7 @@ static void test_zero_length_write(test_context_t *ctx, uint64_t addr) {
     simputshex32("=== Testing Zero Length Write at 0x", addr);
     simputs(" ===\n");
 
-    // needs to be 8-byte aligned
+    // OCCP transfer addresses must be 8-byte aligned
     result = occp_send_write_command(ctx, ctx->slave_addr, addr & 0xfffffff8, &dummy_data, 0);
     if (result == OCCP_SUCCESS) {
         simputs("received success on zero-length write as expected\n");
@@ -110,7 +97,7 @@ static void test_zero_length_read(test_context_t *ctx, uint64_t addr) {
 
     simputshex64("Address: 0x", addr);
 
-    // needs to be 8-byte aligned
+    // OCCP transfer addresses must be 8-byte aligned
     result = occp_send_read_command(ctx, ctx->slave_addr, addr & 0xfffffff8, dummy_buffer, 0);
     if (result == OCCP_SUCCESS) {
         ctx->overall_result = false;
@@ -192,8 +179,6 @@ int main(void) {
     while (true) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {

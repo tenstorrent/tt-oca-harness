@@ -59,35 +59,35 @@ module smc #(
                                                                                                  // bank response
                                                                                                  // type.
 
-  localparam int unsigned NUM_CPU_CORES         = smc_4core_cpu_pkg::NUM_CPU_CORES,  // CPU cores in the SMC
+  localparam int unsigned NumCpuCores         = smc_4core_cpu_pkg::NumCpuCores,      // CPU cores in the SMC
                                                                                      // cluster; sizes the
                                                                                      // per-core writeback PC
                                                                                      // and watchdog timeout
                                                                                      // vectors.
-  localparam int unsigned NUM_CPU_INTERRUPTS    = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,  // Interrupt lines from
+  localparam int unsigned NumCpuInterrupts    = smc_4core_cpu_pkg::NumCpuInterrupts,      // Interrupt lines from
                                                                                           // smc_base to the CPU
                                                                                           // wrapper.
-  localparam int unsigned NUM_EXT_INTERRUPTS    = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS,  // External interrupt
+  localparam int unsigned NumExtInterrupts    = smc_4core_cpu_pkg::NumExtInterrupts,      // External interrupt
                                                                                           // lines accepted on
                                                                                           // smc_ext_interrupts_i.
 
-  localparam int unsigned NUM_SRAM_BANKS        = chipyard_4core_mem_pkg::NUM_SRAM_BANKS,  // Scratch RAM banks;
+  localparam int unsigned NumSramBanks        = chipyard_4core_mem_pkg::NumSramBanks,      // Scratch RAM banks;
                                                                                            // sizes the scratch RAM
                                                                                            // memory interface
                                                                                            // arrays.
-  localparam int unsigned NUM_ICACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS,  // L1 instruction-cache
+  localparam int unsigned NumIcacheTagBanks  = chipyard_4core_mem_pkg::NumIcacheTagBanks,        // L1 instruction-cache
                                                                                                  // tag banks; sizes the
                                                                                                  // I-cache tag memory
                                                                                                  // interface arrays.
-  localparam int unsigned NUM_ICACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS,  // L1 instruction-cache
+  localparam int unsigned NumIcacheDataBanks = chipyard_4core_mem_pkg::NumIcacheDataBanks,        // L1 instruction-cache
                                                                                                   // data banks; sizes the
                                                                                                   // I-cache data memory
                                                                                                   // interface arrays.
-  localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,  // L1 data-cache tag
+  localparam int unsigned NumDcacheTagBanks  = chipyard_4core_mem_pkg::NumDcacheTagBanks,        // L1 data-cache tag
                                                                                                  // banks; sizes the
                                                                                                  // D-cache tag memory
                                                                                                  // interface arrays.
-  localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS  // L1 data-cache data
+  localparam int unsigned NumDcacheDataBanks = chipyard_4core_mem_pkg::NumDcacheDataBanks        // L1 data-cache data
                                                                                                  // banks; sizes the
                                                                                                  // D-cache data memory
                                                                                                  // interface arrays.
@@ -193,17 +193,17 @@ module smc #(
                                                                         // response from the
                                                                         // shim state machine.
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select_o,  // LSIO select per pad,
+  output logic [smc_pkg::NumGpioWraps-1:0] lsio_interface_select_o,    // LSIO select per pad,
                                                                        // high where a
                                                                        // peripheral function
                                                                        // claims the pad.
-  input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_i,  // Value received from each GPIO
+  input  logic [smc_pkg::NumGpioWraps-1:0] pad2core_i,    // Value received from each GPIO
                                                           // pad.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_o,  // Value driven onto each GPIO
+  output logic [smc_pkg::NumGpioWraps-1:0] core2pad_o,    // Value driven onto each GPIO
                                                           // pad.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en_o,  // Input enable of each GPIO
+  output logic [smc_pkg::NumGpioWraps-1:0] pad2core_en_o,    // Input enable of each GPIO
                                                              // pad.
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en_o,  // Output enable of each GPIO
+  output logic [smc_pkg::NumGpioWraps-1:0] core2pad_en_o,    // Output enable of each GPIO
                                                              // pad.
 
   input logic rst_cool_n_from_pin_i,    // Cool reset from the external pin, active-low;
@@ -247,26 +247,26 @@ module smc #(
 
   input logic clk_telemetry_i,          // Telemetry clock for the ATB inputs, gated by the
                                         // telemetry clock-gate enable.
-  input logic rst_telemetry_ni,         // Telemetry-domain reset, active-low, passed to the
-                                        // telemetry receivers without synchronization.
+  input logic rst_telemetry_ni,         // Telemetry-domain reset, active-low, for the
+                                        // telemetry receivers' ATB FIFOs.
 
-  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atdata_i,  // ATB telemetry data,
+  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atdata_i,    // ATB telemetry data,
                                                                                                                      // one word per
                                                                                                                      // receiver, on the
                                                                                                                      // telemetry clock.
-  input  telemetry_receiver_pkg::atb_id_t         [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atid_i,  // ATB source ID
+  input  telemetry_receiver_pkg::atb_id_t         [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atid_i,    // ATB source ID
                                                                                                                    // accompanying each
                                                                                                                    // telemetry data word.
-  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atready_o,  // ATB ready from each
+  output logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atready_o,    // ATB ready from each
                                                                                                                       // telemetry receiver
                                                                                                                       // to its source.
-  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atvalid_i,  // ATB valid from each
+  input  logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_atvalid_i,    // ATB valid from each
                                                                                                                       // telemetry source.
-  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afvalid_o,  // ATB flush request
+  output logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_afvalid_o,    // ATB flush request
                                                                                                                       // from each telemetry
                                                                                                                       // receiver to its
                                                                                                                       // source.
-  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afready_i,  // ATB flush
+  input  logic                                    [smc_config_pkg::NumTelemetryReceivers-1:0] telemetry_afready_i,    // ATB flush
                                                                                                                       // acknowledge from
                                                                                                                       // each telemetry
                                                                                                                       // source.
@@ -288,7 +288,7 @@ module smc #(
                                                             // the smc_base REGION_SIZE
                                                             // register.
 
-  input logic [NUM_EXT_INTERRUPTS-1:0] smc_ext_interrupts_i,  // External interrupts,
+  input logic [NumExtInterrupts-1:0] smc_ext_interrupts_i,    // External interrupts,
                                                               // synchronized in smc_base
                                                               // onto the lowest CPU
                                                               // interrupt lines.
@@ -312,13 +312,15 @@ module smc #(
                                         // memory repair and MBIST.
   input  logic ext_boot_seq_done_i,     // External boot sequence done, active-high; the
                                         // fuse-released reset stays low until it is set.
+  output logic ext_boot_seq_done_qual_o,  // ext_boot_seq_done_i synchronized to the SMC
+                                          // clock and held set until cold reset.
 
   input logic sep_security_disable_i,   // Security disable from the SEP eFuse
                                         // controller, active-high; skips automatic fuse
                                         // sensing and releases the shadow registers
                                         // without it.
 
-  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,  // Differentially encoded
+  input  logic [2*smc_pkg::LcStateWidth-1:0] lc_state_i,    // Differentially encoded
                                                             // lifecycle state, used by the
                                                             // eFuse JTAG access filter and
                                                             // reported in chip_config.
@@ -326,18 +328,18 @@ module smc #(
                                                                  // differential decode of
                                                                  // lc_state_i, active-high.
 
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0] smc_ndmreset_request_i,  // Asynchronous NDM reset
+  input  logic [smc_config_pkg::CpuClusterCount - 1:0] smc_ndmreset_request_i,    // Asynchronous NDM reset
                                                                                   // request from each
                                                                                   // external CPU cluster;
                                                                                   // raised as a peripheral
                                                                                   // interrupt.
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0] smc_ndmreset_process_o,  // Firmware response to
+  output logic [smc_config_pkg::CpuClusterCount - 1:0] smc_ndmreset_process_o,    // Firmware response to
                                                                                   // each cluster's NDM
                                                                                   // reset request, from
                                                                                   // the NDMRESET_PROCESS
                                                                                   // register.
 
-  output logic [smc_pkg::NUM_MAILBOXES-1:0] smc_ext_mailbox_interrupts_o,  // Outbound
+  output logic [smc_pkg::NumMailboxes-1:0] smc_ext_mailbox_interrupts_o,   // Outbound
                                                                            // interrupts of the
                                                                            // SMC mailboxes, one
                                                                            // per mailbox.
@@ -373,28 +375,28 @@ module smc #(
   output rom_req_t            smc_rom_intf_req_o,  // Boot ROM read request from the CPU
                                                    // wrapper.
   input  rom_rsp_t            smc_rom_intf_rsp_i,  // Boot ROM read data.
-  output scratch_ram_req_t    smc_scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],  // Scratch RAM bank
+  output scratch_ram_req_t    smc_scratch_ram_intf_req_o [NumSramBanks-1:0],    // Scratch RAM bank
                                                                                 // requests, driven by
                                                                                 // the zero-fill until
                                                                                 // it completes.
-  input  scratch_ram_rsp_t    smc_scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],  // Scratch RAM bank
+  input  scratch_ram_rsp_t    smc_scratch_ram_intf_rsp_i [NumSramBanks-1:0],    // Scratch RAM bank
                                                                                 // read data.
-  output l1_icache_tag_req_t  smc_l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache
+  output l1_icache_tag_req_t  smc_l1_icache_tag_intf_req_o [NumIcacheTagBanks-1:0],     // Instruction-cache
                                                                                         // tag bank requests.
-  input  l1_icache_tag_rsp_t  smc_l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache
+  input  l1_icache_tag_rsp_t  smc_l1_icache_tag_intf_rsp_i [NumIcacheTagBanks-1:0],     // Instruction-cache
                                                                                         // tag bank read data.
-  output l1_icache_data_req_t smc_l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache
+  output l1_icache_data_req_t smc_l1_icache_data_intf_req_o [NumIcacheDataBanks-1:0],     // Instruction-cache
                                                                                           // data bank requests.
-  input  l1_icache_data_rsp_t smc_l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache
+  input  l1_icache_data_rsp_t smc_l1_icache_data_intf_rsp_i [NumIcacheDataBanks-1:0],     // Instruction-cache
                                                                                           // data bank read
                                                                                           // data.
-  output l1_dcache_tag_req_t  smc_l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag
+  output l1_dcache_tag_req_t  smc_l1_dcache_tag_intf_req_o [NumDcacheTagBanks-1:0],     // Data-cache tag
                                                                                         // bank requests.
-  input  l1_dcache_tag_rsp_t  smc_l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag
+  input  l1_dcache_tag_rsp_t  smc_l1_dcache_tag_intf_rsp_i [NumDcacheTagBanks-1:0],     // Data-cache tag
                                                                                         // bank read data.
-  output l1_dcache_data_req_t smc_l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data
+  output l1_dcache_data_req_t smc_l1_dcache_data_intf_req_o [NumDcacheDataBanks-1:0],     // Data-cache data
                                                                                           // bank requests.
-  input  l1_dcache_data_rsp_t smc_l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data
+  input  l1_dcache_data_rsp_t smc_l1_dcache_data_intf_rsp_i [NumDcacheDataBanks-1:0],     // Data-cache data
                                                                                           // bank read data.
 
   input  logic smc_disable_sram_auto_init_i,  // Skips zeroing of the scratch RAM after
@@ -483,31 +485,31 @@ module smc #(
   input  logic [3:0]  smc_cpu_jtag_version_i,  // Version reported in the CPU cluster JTAG
                                                // IDCODE.
 
-  input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,  // Read data from each
+  input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dat_mem_src_i,   // Read data from each
                                                                                    // I3C device address
                                                                                    // table memory.
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink_o,  // Request to each I3C
+  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink_o,   // Request to each I3C
                                                                                     // device address table
                                                                                     // memory.
-  input  i3c_pkg::dct_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,  // Read data from each
+  input  i3c_pkg::dct_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dct_mem_src_i,   // Read data from each
                                                                                    // I3C device
                                                                                    // characteristics table
                                                                                    // memory.
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink_o,  // Request to each I3C
+  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink_o,   // Request to each I3C
                                                                                     // device
                                                                                     // characteristics table
                                                                                     // memory.
-  input  i3c_pkg::rlt_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,  // Read data from each
+  input  i3c_pkg::rlt_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_rlt_mem_src_i,   // Read data from each
                                                                                    // I3C reverse-lookup
                                                                                    // table memory.
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink_o,  // Request to each I3C
+  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_sink_o,   // Request to each I3C
                                                                                     // reverse-lookup table
                                                                                     // memory.
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o,  // Interrupt from each GPIO
+  output logic [smc_pkg::NumGpioWraps-1:0]  gpio_interrupt_o,    // Interrupt from each GPIO
                                                                  // interface, active-high,
                                                                  // in the SMC clock domain.
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_o  // UART interrupt from each
+  output logic [smc_config_pkg::NumUart-1:0] uart_interrupt_o   // UART interrupt from each
                                                                 // UART on the peripheral
                                                                 // clock, excluding UART
                                                                 // error and log-engine
@@ -537,8 +539,8 @@ module smc #(
   logic [8:0]  system_timer_octs_credits_debug;
   logic        system_timer_octs_credits_left_debug;
 
-  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][3:0] telemetry_debug;
-  logic [smc_config_pkg::NUM_I2C-1:0][3:0]                 i2c_debug;
+  logic [smc_config_pkg::NumTelemetryReceivers-1:0][3:0]   telemetry_debug;
+  logic [smc_config_pkg::NumI2c-1:0][3:0]                  i2c_debug;
   logic [9:0]                                              efuse_debug;
 
   // ROM Flip Endianness bit from shadow registers
@@ -558,16 +560,16 @@ module smc #(
   smc_pkg::smc_axil_32_32_resp_t axil_peripherals_resp;
 
   // CPU wrapper bridge signals crossing between smc_base and smc_cpu_wrapper
-  logic [NUM_CPU_INTERRUPTS-1:0]              cpu_interrupts;
+  logic [NumCpuInterrupts-1:0]                cpu_interrupts;
   smc_pkg::smc_local_32_64_8_12_axi_req_t     cpu_axi_front_port_req;
   smc_pkg::smc_local_32_64_8_12_axi_resp_t    cpu_axi_front_port_resp;
   smc_pkg::smc_cpu_mmio_axi_req_t             cpu_axi_mmio_port_req;
   smc_pkg::smc_cpu_mmio_axi_resp_t            cpu_axi_mmio_port_resp;
-  logic [NUM_CPU_CORES-1:0][57:0]             cpu_wb_reg_pc;
-  logic [NUM_CPU_CORES-1:0]                   cpu_wdt_timeout_cluster;
+  logic [NumCpuCores-1:0][57:0]               cpu_wb_reg_pc;
+  logic [NumCpuCores-1:0]                     cpu_wdt_timeout_cluster;
 
   smc_base #(
-    .NO_ADDR_REMAP(smc_config_pkg::NO_ADDR_REMAP)  // Enable address remap in the output fabric
+    .NO_ADDR_REMAP(smc_config_pkg::NoAddrRemap)  // Enable address remap in the output fabric
   ) u_smc_base (
     // Clocks from PLLs
     .clk_smc_i                              (clk_smc_i),
@@ -675,7 +677,7 @@ module smc #(
   ///////////////////
 
   smc_cpu_wrapper #(
-    .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP),
+    .NO_ADDR_REMAP                      (smc_config_pkg::NoAddrRemap),
     .rom_req_t                          (rom_req_t),
     .rom_rsp_t                          (rom_rsp_t),
     .scratch_ram_req_t                  (scratch_ram_req_t),
@@ -846,6 +848,7 @@ module smc #(
 
     // Efuse dft signal
     .ext_boot_seq_done_i                   (ext_boot_seq_done_i),
+    .ext_boot_seq_done_qual_o              (ext_boot_seq_done_qual_o),
 
     // SEP security disable
     .sep_security_disable_i                (sep_security_disable_i),

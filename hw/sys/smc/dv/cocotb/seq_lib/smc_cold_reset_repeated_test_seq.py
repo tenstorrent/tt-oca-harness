@@ -220,6 +220,7 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
         than the 1 the floating pad produces.
         """
         last = -1
+        low_samples = 0
         for cycle in range(1, _SENSE_BOUND + 1):
             await ClockCycles(dut.clk_smc_i, 1)
             raw = dut.tb_fuse_sense_done.value
@@ -227,12 +228,18 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
             last = int(raw) & 1
             if last == 1:
                 break
+            low_samples += 1
         else:
             raise AssertionError(
                 f"tb_fuse_sense_done never rose within {_SENSE_BOUND} clk_smc_i "
                 f"cycles of the last reset release (last={last}): fuse sense "
                 f"did not re-complete after the repeated cold resets"
             )
+        assert low_samples, (
+            "tb_fuse_sense_done already read 1 on the first clk_smc_i sample after the last "
+            "reset release, so it was not seen low and its rise is not a re-completion of "
+            "fuse sense"
+        )
         self.skip_at_sense_done = self._skip_mem_repair(dut)
         assert self.skip_at_sense_done == 0, (
             f"skip_mem_repair_o read {self.skip_at_sense_done} when fuse sense "
@@ -240,10 +247,11 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
             f"path was bypassed with nothing requesting isolation"
         )
         cocotb.log.info(
-            "CHK-SENSE-DONE-REPAIR-ENABLED: tb_fuse_sense_done rose %d "
-            "clk_smc_i cycles after the last reset release with "
+            "CHK-SENSE-DONE-REPAIR-ENABLED: tb_fuse_sense_done read 0 for %d "
+            "clk_smc_i samples and rose %d cycles after the last reset release with "
             "tb_skip_mem_repair_o reading %d (isolate pin held low), against "
             "the %d it reads with the pad undriven",
+            low_samples,
             cycle,
             self.skip_at_sense_done,
             self.skip_pin_floating,

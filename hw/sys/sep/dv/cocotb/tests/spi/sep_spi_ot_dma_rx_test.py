@@ -2,24 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware-boot test (PyUVM).
 
-OSS port of the reference suite ``sep_spi_ot_dma_rx_test``. Boots the VeeR EL2 core and runs
-the spi_ot_dma_rx firmware: it configures the OpenTitan SPI host, arms the Secure
-DMA in hardware-handshake mode (SRC = SPI RXDATA fixed/WRAP, DST = SRAM
-incrementing), then issues a SPI flash READ. The SPI RX FIFO crossing its
-watermark raises ``lsio_trigger``, which drains a chunk to SRAM via the DMA
-hardware handshake -- an SPI + DMA + fabric + memory datapath that is internal to
-bare ``sep`` (SPI-FIFO -> DMA).
-
-Beyond the reference suite: the reference test clocks idle MISO (no flash model) and only
-checks "DMA done + no SPI error". Here the OSS flash BFM is preloaded with a known
-constant (0xA5) and the firmware value-checks every DMA-written SRAM word ==
-0xA5A5A5A5, so the SPI->DMA->SRAM data path is proven, not just completion. The
-firmware is self-checking (returns its error count; start.S emits PASS/FAIL magic
-on the 0x8000_0000 mailbox), and the boot scoreboard gates on the PASS magic, the
-banner, and ICCM execution. A SRAM == 0xA5A5A5A5 result can only come from the
-BFM's preloaded flash over the SPI -> RX-FIFO -> lsio_trigger -> DMA path, so the
-firmware self-check alone proves the datapath end-to-end: a different preload
-byte makes the firmware report a SRAM mismatch and the run fails.
+The spi_ot_dma_rx firmware arms the Secure DMA in hardware-handshake mode (SRC = SPI RXDATA
+fixed, DST = SRAM incrementing) and issues a SPI flash READ; each RX FIFO watermark crossing
+raises ``lsio_trigger`` and the DMA drains a chunk to SRAM. The flash BFM is preloaded with
+0xA5, and the firmware checks every DMA-written SRAM word against 0xA5A5A5A5, so a pass
+proves the data path, not only completion.
 """
 
 from __future__ import annotations
@@ -104,7 +91,11 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             # so dropping either half of the firmware check fails here.
             for token, chk, what in (
                 ("(0xA5)", "CHK-DATAPATH", "the preloaded pattern in the DMA-written SRAM"),
-                ("RW1C verified", "CHK-RW1C", "the DMA done status clearing on write-one-to-clear"),
+                (
+                    "RW1C verified",
+                    "CHK-RW1C",
+                    "the DMA done status holding after the poll and clearing on write-one-to-clear",
+                ),
             ):
                 assert token in verdict, (
                     f"firmware verdict line has no {token!r}, so {what} was not "

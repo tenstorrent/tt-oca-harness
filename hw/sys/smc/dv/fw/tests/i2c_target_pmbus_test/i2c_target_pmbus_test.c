@@ -4,75 +4,26 @@
 /**
  * @file i2c_target_pmbus_test.c
  * @brief I2C_0 in Target mode running a PMBus register model for an external
- *        cocotb I2cMaster VIP (tb_wrap_cocotb/tests/smc_i2c_target_pmbus.py).
+ *        I2C controller VIP.
  *
- * =============================================================================
- * Why this file exists
- * =============================================================================
+ * Checks that I2C_0 in target mode delivers the PMBus commands and payloads
+ * an external controller VIP sends, framed by START and STOP, while firmware
+ * keeps a PMBus register model with write protection. The firmware publishes
+ * what it acquired so the VIP can compare it against an expectation it stated
+ * before driving anything; the I2C block is only the transport under that
+ * model. I2C_1 and I2C_2 are disabled because all three instances share one
+ * bus in the default build, and a second responder would hide which instance
+ * answered.
  *
- * Every property the cocotb half judges -- WRITE_PROTECT storage, protection
- * enforcement on VOUT_COMMAND, STATUS_BYTE clearing on CLEAR_FAULTS -- is
- * firmware state, not RTL state. The I2C block is only the transport
- * underneath. This file is that firmware: it services the Target ACQ FIFO byte
- * by byte, maintains the PMBus register image in software, and publishes what
- * it actually acquired so the VIP can compare the received command and payload
- * against an expectation it stated before driving anything.
+ * The model implements a PMBus subset (PMBus Power System Mgmt Protocol Spec
+ * Part II, Rev 1.3.1, Table 31-1). WRITE_PROTECT either disables all writes
+ * except to WRITE_PROTECT itself or enables writes to all commands, so this
+ * model rejects CLEAR_FAULTS while protection is on. Whether this device
+ * should exempt CLEAR_FAULTS is an open design decision, so the sequence only
+ * exercises CLEAR_FAULTS with protection off.
  *
- * =============================================================================
- * Bus configuration
- * =============================================================================
- *
- * I2C_0 wrapper = Target mode, 7-bit address 0x40. The wrappers of I2C_1 and
- * I2C_2 are explicitly disabled first: in the default (shared-bus) compile
- * BP_GPIO[37]/[41]/[45] all tie to one i2c_scl and BP_GPIO[38]/[42]/[46] to one
- * i2c_sda, so leaving another instance enabled would put a second responder on
- * the same wire and make "who answered" unanswerable. With only I2C_0 enabled,
- * and with this firmware reading I2C_0's *own* ACQ FIFO, the instance identity
- * the log claims is measured rather than assumed.
- *
- * =============================================================================
- * PMBus subset implemented (PMBus Power System Mgmt Protocol Spec Part II,
- * Rev 1.3.1, Section 31 "Command Summary", Table 31-1)
- * =============================================================================
- *
- *   0x03 CLEAR_FAULTS   Send Byte  -- clears STATUS_BYTE
- *   0x10 WRITE_PROTECT  R/W Byte   -- protection control
- *   0x21 VOUT_COMMAND   R/W Word   -- LSB first on the wire
- *   0x78 STATUS_BYTE    Read Byte  -- fault summary
- *   0xD0 MFR_SPECIFIC_00           -- vendor sentinel, ends this test
- *
- * WRITE_PROTECT data-byte semantics, same specification, WRITE_PROTECT command
- * description:
- *   0x80 = disable all writes except to the WRITE_PROTECT command
- *   0x00 = enable writes to all commands
- *
- * Note on CLEAR_FAULTS: the 0x80 encoding above disables *all* writes other
- * than WRITE_PROTECT itself, so this model rejects CLEAR_FAULTS while
- * protection is on rather than treating it as an exemption. Whether this
- * device is meant to exempt CLEAR_FAULTS is a design decision; until it is
- * ruled on, the sequence only exercises CLEAR_FAULTS with protection off, so
- * neither reading is asserted.
- *
- * =============================================================================
- * Scratch protocol with the cocotb half
- * =============================================================================
- *
- * scratch[2] is the virtual console (simputs) and must not be reused here.
- *
- *   [0]  test status: TEST_PASS / TEST_FAIL / 0xBADxxxxx error code
- *   [1]  handshake: 0x00000031 target live -> 0xEBEDEBE2 setup done
- *                   -> 0xEBEDEBE4 test complete
- *   [3]  transaction counter -- number of STOP-framed transactions acquired.
- *        WRITTEN LAST, so a reader that sees this advance may trust [4]..[10].
- *   [4]  last DATA-BEARING transaction framing:
- *          (start_signal << 24) | (address_byte << 16) | (stop_signal << 8) | n_data
- *   [5]  that transaction's first four acquired data bytes, little-endian
- *        (byte 0 is the PMBus command code)
- *   [6]  model image: (WRITE_PROTECT << 24) | (STATUS_BYTE << 16) | VOUT_COMMAND
- *   [7]  (clear_faults_count << 16) | (blocked_write_count << 8) | accepted_write_count
- *   [8]  total ACQ data bytes acquired since target enable
- *   [9]  last transaction framing, data-bearing or not (same packing as [4])
- *   [10] (stop_detect_count << 16) | (sticky TARGET_EVENTS & 0xFFFF)
+ * scratch[2] is the virtual console (simputs) and must not be reused here;
+ * publish() defines the record layout the VIP reads.
  */
 
 #include <stdint.h>
@@ -100,31 +51,18 @@
 #define PMBUS_WP_ALL_BUT_WP 0x80u
 #define PMBUS_WP_NONE 0x00u
 
-/* Power-on image of the model. These are the values the cocotb half states as
- * its expectations before it drives a single bit, so they are part of the
- * contract, not an implementation detail.
- *
- * None of them is 0x00 or 0xFF on any byte lane. That is deliberate: on this
- * testbench the VIP samples SDA on the same handle it drives, and both a bus
- * nobody drives and a bus the VIP itself last deposited on read back as all-
- * ones (pull-up) or, with COCOTB_RESOLVE_X=ZEROS, as all-zeros. A readback of
- * 0x3C5A or 0x02 cannot be produced by either, so it is a positive control
- * that the byte came from this target. */
+/* Power-on image of the model. The VIP states these values as its
+ * expectations, so they are part of the contract with it. No byte lane is
+ * all-zeros or all-ones, so reading them back cannot come from an undriven
+ * bus and shows the byte came from this target. */
 #define PMBUS_WRITE_PROTECT_RESET 0x80u
 #define PMBUS_VOUT_COMMAND_RESET 0x3C5Au
 #define PMBUS_STATUS_BYTE_RESET 0x02u /* CML bit preset so CLEAR_FAULTS is observable */
 
-/* Service-loop bound, in iterations.
- *
- * Derivation, not a guess. The VIP sequence is ~60 bytes on a 100 kHz bus,
- * i.e. ~6 ms of bus time end to end, and this loop spins for the whole of it
- * because the target clock-stretches rather than dropping bytes. One iteration
- * is two register reads, so it costs on the order of 50 ns of simulation --
- * about 120000 iterations to cover the sequence. 2000000 is ~16x that and
- * still finite, so a hang ends in a diagnostic rather than running until the
- * harness kills it. The cocotb half bounds each operation far tighter (see
- * PMBUS_OP_TIMEOUT_NS there), so in practice this is the backstop, not the
- * first thing to fire. */
+/* Service-loop bound, in iterations. The loop spins for the whole VIP
+ * sequence, about 120000 iterations; this bound is about 16x that, so a hang
+ * ends in a diagnostic rather than a harness kill. The VIP bounds each
+ * operation more tightly, so this is a backstop. */
 #define PMBUS_SERVICE_BOUND (10u * I2C_TIMEOUT_DEFAULT)
 
 /* Largest number of acquired data bytes one transaction can carry here:
@@ -172,11 +110,7 @@ static void i2c_wrapper_set(uint32_t idx, bool enable, bool controller_mode) {
     write_reg(wrapper_addr, ctrl.w);
 }
 
-/* Report a failure and stop. This must not return: test_fail() only writes
- * TEST_FAIL into scratch[0], so a fail_with() that fell through would let main
- * carry on and overwrite it with TEST_PASS at the end -- a real failure turned
- * into a green run. Parking in WFI leaves TEST_FAIL standing for
- * monitor_test(), and the 0xBADxxxxx cause on the console. */
+/* Report a failure and stop. */
 __attribute__((noreturn)) static void fail_with(uint32_t code, const char *msg) {
     simputs("  ERROR: ");
     simputs(msg);
@@ -184,16 +118,12 @@ __attribute__((noreturn)) static void fail_with(uint32_t code, const char *msg) 
     simputshex32("  code=", code);
     write_scratch(0, code);
     test_fail(0);
-    while (true) {
-        __asm__("wfi");
-    }
 }
 
 /* Push one byte into the Target TX FIFO.
  *
- * Deliberately not i2c_target_transmit(): that driver helper writes debug
- * markers 0x80..0x85 into scratch[1], which is this test's handshake channel
- * with the cocotb half. Calling it mid-run would corrupt the handshake. */
+ * Not i2c_target_transmit(): its optional driver trace writes markers into
+ * scratch[1], which is this test's handshake channel with the VIP. */
 static void tx_push(uint8_t b) {
     i2c__TXDATA_t txdata = {.w = 0};
     txdata.f.DATA = b;
@@ -296,7 +226,6 @@ static void apply_write(const uint8_t *buf, uint32_t n) {
          * means in the specification. */
         if (payload != 1u) {
             fail_with(0xBAD00060, "WRITE_PROTECT wrong payload length");
-            return;
         }
         g_write_protect = buf[1];
         g_accepted_writes++;
@@ -305,7 +234,6 @@ static void apply_write(const uint8_t *buf, uint32_t n) {
     case PMBUS_CMD_VOUT_COMMAND:
         if (payload != 2u) {
             fail_with(0xBAD00061, "VOUT_COMMAND wrong payload length");
-            return;
         }
         if (g_write_protect != PMBUS_WP_NONE) {
             g_blocked_writes++; /* protected: the image must not move */
@@ -338,10 +266,8 @@ static bool acq_has_data(void) {
 
 /* Snapshot TARGET_EVENTS, fold it into the sticky record, then clear it.
  *
- * Clearing is not housekeeping: i2c_core.sv:1098 feeds TARGET_EVENTS.intr into
- * the target FSM's unhandled_tx_stretch_event, and i2c_target_fsm.sv:677 ORs
- * that into stretch_tx. A pending START_DETECT or STOP_DETECT therefore holds
- * SCL low on the next read until software acknowledges it. */
+ * An unhandled target event makes the target FSM stretch SCL on the next read,
+ * so a pending START_DETECT or STOP_DETECT holds the bus until it is cleared. */
 static void service_events(void) {
     i2c__TARGET_EVENTS_t ev = {.w = i2c_get_target_events(TARGET_IDX)};
 
@@ -354,11 +280,9 @@ static void service_events(void) {
     }
     if (ev.f.BUS_TIMEOUT) {
         fail_with(0xBAD00070, "TARGET_EVENTS.BUS_TIMEOUT");
-        return;
     }
     if (ev.f.ARBITRATION_LOST) {
         fail_with(0xBAD00071, "TARGET_EVENTS.ARBITRATION_LOST");
-        return;
     }
     i2c_clear_target_events(TARGET_IDX, ev.w);
 }
@@ -397,14 +321,12 @@ static void run_pmbus_target(void) {
             addr_byte = e.data;
             if ((addr_byte >> 1) != TARGET_ADDR) {
                 fail_with(0xBAD00072, "ACQ START for a foreign address");
-                return;
             }
             break;
 
         case I2C_ACQ_SIGNAL_DATA:
             if (!in_xact) {
                 fail_with(0xBAD00073, "ACQ DATA outside a transaction");
-                return;
             }
             if (n_data < PMBUS_MAX_XACT_BYTES) {
                 buf[n_data] = e.data;
@@ -428,7 +350,6 @@ static void run_pmbus_target(void) {
             }
             if (overrun) {
                 fail_with(0xBAD00074, "transaction longer than the PMBus model accepts");
-                return;
             }
 
             framing = pack_framing(start_sig, addr_byte, e.signal, n_data);
@@ -450,24 +371,11 @@ static void run_pmbus_target(void) {
              * staged when the command phase ended, and the target clock-
              * stretched until they were. */
 
-            /* Fold in THIS transaction's TARGET_EVENTS before publishing it.
-             *
-             * service_events() otherwise only runs at the top of the loop,
-             * while the STOP entry is popped further down the same iteration.
-             * The STOP that ends this transaction sets TARGET_EVENTS.STOP_DETECT
-             * in the same RTL cycle that writes the ACQ STOP entry
-             * (i2c_core.sv:673,1096), so by the time that entry has been read
-             * back over APB the bit is certainly set -- but the top-of-loop
-             * sample for this iteration already happened before the pop. Without
-             * this call the record published for transaction N carries the
-             * stop-detect count as of N-1 whenever the pop lands in the same
-             * iteration as the STOP, which is intermittent: an observed run had
-             * transaction 6 publish 6 and transaction 7 publish 6.
-             *
-             * With it, every published record is internally consistent --
-             * stop_detect_count equals txn_count -- which is what lets the
-             * cocotb half assert the exact equality instead of a weaker
-             * "advanced since last time". */
+            /* Fold in this transaction's TARGET_EVENTS before publishing it.
+             * The STOP sets STOP_DETECT in the same cycle it writes the ACQ
+             * STOP entry, which can be after this iteration's top-of-loop
+             * sample. Sampling again here keeps stop_detect_count equal to
+             * txn_count in every published record. */
             service_events();
 
             g_txn_count++;
@@ -483,11 +391,9 @@ static void run_pmbus_target(void) {
         case I2C_ACQ_SIGNAL_NACK:
         case I2C_ACQ_SIGNAL_NACK_START:
             fail_with(0xBAD00075, "target NACKed a byte the VIP sent");
-            return;
 
         default:
             fail_with(0xBAD00076, "unknown ACQ signal");
-            return;
         }
     }
 
@@ -537,7 +443,7 @@ static void check_final_state(void) {
 int main(void) {
     int ret;
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10, /* 100 MHz */
+                                             .clock_period_nanos = 5, /* 200 MHz peripheral clock */
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};
@@ -641,10 +547,4 @@ int main(void) {
     simputs("##           TEST PASSED                     ##\n");
     simputs("################################################\n");
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

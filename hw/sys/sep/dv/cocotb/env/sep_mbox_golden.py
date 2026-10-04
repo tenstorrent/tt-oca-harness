@@ -1,26 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""axil_mailbox config + golden depth model (outbound aperture, TX path).
+"""axil_mailbox config and golden depth model (outbound aperture, TX path).
 
-The SEP axil_mailbox (vendor/pulp-platform/axi/.../axi_lite_mailbox.sv, wrapped by
-hw/ip/axi_lite_mailbox_unit) is a two-port cross-FIFO. This test drives the SEP/CPU
-side over the CPU-LSU master (NO inbound filter): the OUTBOUND aperture
-(outbound_mailbox_0 @ 0x10A0_0000). WRITE_DATA(+0x00) pushes the TX FIFO (SEP->peer);
-READ_DATA(+0x08) pops the RX FIFO (peer->SEP), which stays EMPTY here because the
-peer (SMC) side is not driven -> read returns the 0xFEEDDEAD sentinel + SLVERR. So
-this is the TX-path test, exactly like the reference suite ("CPU not running -> RX always empty;
-verify the TX path").
+The SEP axil_mailbox is a two-port cross-FIFO. The test drives the SEP/CPU side through the
+CPU-LSU master (no inbound filter) on outbound_mailbox_0: WRITE_DATA pushes the TX FIFO
+(SEP->peer) and READ_DATA pops the RX FIFO (peer->SEP). The peer (SMC) side is not driven,
+so the RX FIFO stays empty and a read returns the 0xFEEDDEAD sentinel with SLVERR.
 
-STATUS has no exact-depth field (only empty/full/write_level_above/read_level_above),
-so the golden keeps the TX occupancy internally and predicts the visible bits.
-Thresholds compare with STRICT >. The config object is the single source of
-truth for DUT programming + golden.
+STATUS has no exact-depth field, so the golden keeps the TX occupancy and predicts the
+visible bits. Thresholds compare with strict >.
 
-Scope: data round-trip readback and the read threshold (RIRQT/read_level_above)
-both need the RX FIFO filled from the peer side, which this aperture cannot do, so
-the model covers outbound TX occupancy only and predicts read_level_above as
-constant False. The peer path is reachable only through the external smn_inbound
-master (inbound_mailbox_0 @ 0x10A0_0800, MAILBOX_SIZE=0x800).
+Data round-trip and the read threshold need the RX FIFO filled from the peer side, which
+only the external smn_inbound master (inbound_mailbox_0) can do, so read_level_above is
+predicted as constant False.
 """
 
 from __future__ import annotations
@@ -76,18 +68,40 @@ RESP_OKAY = 0
 RESP_SLVERR = 2
 
 
+def wirqt_halves(depth: int = MAILBOX_DEPTH) -> tuple[tuple[str, int, int], ...]:
+    """The legal write thresholds [1, depth-1] split into a low and a high half,
+    as (name, first, last). A threshold of 0 makes any fill "above" and one of
+    depth can never be exceeded, so neither end is a threshold test."""
+    return (("low", 1, depth // 2 - 1), ("high", depth // 2, depth - 1))
+
+
 class SepMboxCfg:
     """Config object: seeded WIRQT + message payloads. Single source of truth for
     DUT programming and golden expectations. Regression mode can sweep this via
-    TOML ``reseed = N``."""
+    TOML ``reseed = N``.
 
-    def __init__(self, seed: int = 1, *, depth: int = MAILBOX_DEPTH) -> None:
+    ``wirqt_range`` (inclusive) bounds the threshold draw; the default is every
+    legal threshold. ``rng`` lets several configs share one seeded stream."""
+
+    def __init__(
+        self,
+        seed: int = 1,
+        *,
+        depth: int = MAILBOX_DEPTH,
+        wirqt_range: tuple[int, int] | None = None,
+        half: str = "any",
+        rng: SepSeededRng | None = None,
+    ) -> None:
         self.seed = seed
         self.depth = depth
-        rng = SepSeededRng(seed)
-        # RANDOM write threshold in [1, depth-1]: "exceeds threshold" is reachable and
-        # a full FIFO always trips it.
-        self.wirqt = rng.randrange(1, depth)
+        self.half = half
+        rng = SepSeededRng(seed) if rng is None else rng
+        lo, hi = (1, depth - 1) if wirqt_range is None else wirqt_range
+        if not 1 <= lo <= hi <= depth - 1:
+            raise ValueError(f"WIRQT range [{lo}, {hi}] is outside [1, {depth - 1}]")
+        # RANDOM write threshold in [lo, hi] within [1, depth-1]: "exceeds
+        # threshold" is reachable and a full FIFO always trips it.
+        self.wirqt = rng.randrange(lo, hi + 1)
         # RANDOM "message length" for the first fill batch: enough to cross WIRQT but
         # not necessarily fill (the test then tops up to full for the overflow check).
         self.first_batch = rng.randrange(self.wirqt + 1, depth + 1)
@@ -99,9 +113,23 @@ class SepMboxCfg:
             if v != 0 and v not in self.payloads:
                 self.payloads.append(v)
 
+    @classmethod
+    def per_half(cls, seed: int, *, depth: int = MAILBOX_DEPTH) -> list["SepMboxCfg"]:
+        """One config per half of the legal thresholds, in seeded order, drawn
+        from one stream. A run then programs a low and a high threshold on
+        every seed instead of one threshold whose half the seed decides."""
+        rng = SepSeededRng(seed)
+        halves = list(wirqt_halves(depth))
+        if rng.getrandbits(1):
+            halves.reverse()
+        return [
+            cls(seed, depth=depth, wirqt_range=(lo, hi), half=name, rng=rng)
+            for name, lo, hi in halves
+        ]
+
     def summary(self) -> str:
         return (
-            f"seed={self.seed} depth={self.depth} wirqt={self.wirqt} "
+            f"seed={self.seed} depth={self.depth} half={self.half} wirqt={self.wirqt} "
             f"first_batch={self.first_batch} payloads={len(self.payloads)} "
             f"(random data+threshold+batch)"
         )
@@ -113,8 +141,8 @@ class SepMboxGolden:
     Predicts the outbound-aperture STATUS bits + the write-threshold IRQ from the TX
     occupancy. The RX side (READ_DATA) stays empty on bare-sep. Thresholds use
     strict greater-than (``architecture.adoc``: fill level exceeds the configured
-    threshold). SepMboxCfg draws wirqt in [1, depth-1], so every threshold the config
-    can program is below depth and needs no clamp.
+    threshold). SepMboxCfg draws wirqt inside [1, depth-1], so every threshold the
+    config can program is below depth and needs no clamp.
     """
 
     def __init__(self, cfg: SepMboxCfg) -> None:

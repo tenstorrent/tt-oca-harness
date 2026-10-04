@@ -1,31 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware test (OSS port of the
-// reference suite sep_spi_ot_dma_rx_test). The EL2 CPU configures the OpenTitan
-// SPI host, arms the Secure DMA in hardware-handshake mode (SRC = SPI RXDATA,
-// fixed/WRAP; DST = SRAM, incrementing), then issues a SPI read. As the SPI RX
-// FIFO crosses its watermark, the controller raises lsio_trigger, which drains a
-// chunk into SRAM via the DMA hardware handshake:
+// SEP OpenTitan SPI RX -> Secure DMA -> SRAM firmware test. The EL2 CPU
+// configures the OpenTitan SPI host, arms the Secure DMA in hardware-handshake
+// mode (source: the fixed SPI receive data register; destination: incrementing
+// SRAM), then issues a flash read. Each time the SPI RX FIFO crosses its
+// watermark, the controller raises its DMA trigger and the DMA drains one chunk
+// into SRAM:
 //
 //   spi_host.lsio_trigger_o -> sep.lsio_trigger[0] -> secure_dma.lsio_trigger_i[0]
 //
-// This whole datapath is internal to bare `sep`; hw/sys/sep/doc/spi.adoc names
-// the SPI host DMA trigger (`lsio_trigger_o`). Handshake index 0 is the
+// This whole datapath is internal to bare `sep`. Handshake index 0 is the
 // stimulus: on any other index the DMA gets no trigger, never reaches DONE, and
 // the test fails.
-// Exercises SPI-FIFO -> DMA on the OpenTitan SPI line.
 //
-// Beyond the reference suite: the reference test only checks "DMA done + no SPI error"
-// because it clocks idle MISO (no flash model) and leaves the received data
-// unchecked. Here the OSS flash BFM is preloaded with a known constant (0xA5),
-// the firmware issues a real flash READ (0x03), and then VALUE-CHECKS that every
-// DMA-written SRAM word == 0xA5A5A5A5 -- so the checker actually proves the
-// SPI->DMA->SRAM data path, not just completion. It also proves the DMA STATUS
-// RW1C clear contract (write-1-clear -> reads back 0).
+// The testbench preloads the flash model with a known byte, so every
+// DMA-written SRAM word is value-checked, which proves the data path and not
+// only completion. The test also checks that DMA DONE still reads set after the
+// poll and clears only on the write-one-to-clear.
 //
-// main() returns the error count; crt0.s turns 0 -> PASS magic, non-zero ->
-// FAIL magic on the 0x8000_0000 mailbox, which the boot scoreboard gates on.
+// main() returns the error count; crt0.s turns it into the pass/fail mailbox
+// word that the boot scoreboard gates on.
 
 #include <stdint.h>
 
@@ -36,11 +31,11 @@
 
 #define RX_SIZE 64u // bytes to receive (multiple of 4)
 #define RX_WORDS (RX_SIZE / 4u)
-#define DMA_CHUNK 16u   // RX_WM(4 words) * 4B: drain to below WM
-#define RX_WATERMARK 4u // RX FIFO words that assert lsio_trigger
+#define DMA_CHUNK 16u   // one chunk drains the FIFO below the watermark
+#define RX_WATERMARK 4u // RX FIFO words that raise the DMA trigger
 #define DST_STAGING_OFF 0x6000u
 #define DST_ADDR ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR + DST_STAGING_OFF)
-#define RX_PATTERN 0xA5u        // BFM-preloaded flash byte (see test .py)
+#define RX_PATTERN 0xA5u        // flash byte the testbench preloads
 #define EXPECT_WORD 0xA5A5A5A5u // 4 x RX_PATTERN, packing-agnostic
 #define FILL_WORD 0xDEADBEEFu   // pre-DMA SRAM marker
 #define SPI_READ_OPCODE 0x03u   // NOR-flash READ (1-1-1), 24-bit addr
@@ -64,8 +59,6 @@ int main(void) {
     sep_mbx_puts("STEP filter init done; flash model preloaded by the host\n");
 
     // --- OpenTitan SPI host init ---------------------------------------------
-    // RX watermark = 4 words (asserts lsio_trigger), TX watermark = 0, enable the
-    // controller + output.
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
            (RX_WATERMARK << SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp) |
                SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm | SPI_CONTROLLER__CONTROL__SPIEN_bm);
@@ -87,9 +80,9 @@ int main(void) {
     }
 
     // --- Arm the Secure DMA: RXDATA (fixed/WRAP) -> SRAM (incrementing) -------
-    // Hardware handshake from the SPI lsio_trigger (bit 0). lsio_trigger is
-    // FIFO-level based, so no interrupt-source clear is needed (the CTN clear bus
-    // is tied off in bare sep and would hang).
+    // Hardware handshake from the SPI DMA trigger. The trigger follows the FIFO
+    // level, so no interrupt-source clear is needed (the CTN clear bus is tied
+    // off in bare sep and would hang).
     sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
     sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
     sep_dma_wr(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, SECURE_DMA__RANGE_VALID__RANGE_VALID_bm);
@@ -115,11 +108,10 @@ int main(void) {
                    SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bm | SEP_DMA_OPCODE_COPY);
 
     // --- Issue the SPI flash READ --------------------------------------------
-    // TX segment: opcode 0x03 + 24-bit address 0 (4 bytes, LSB-first in TXDATA),
-    // CS held asserted (CSAAT). RX segment: clock in RX_SIZE bytes, release CS.
-    // The flash BFM streams its preloaded 0xA5 bytes back on MISO.
-    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
-           SPI_READ_OPCODE); // 0x03, then addr bytes 0,0,0
+    // The TX segment sends the opcode and a zero 24-bit address, low byte
+    // first, with CS held; the RX segment clocks in RX_SIZE bytes and releases
+    // CS. The flash model streams its preloaded bytes back.
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), SPI_READ_OPCODE);
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            (SPI_CMD_DIR_TX << SPI_CONTROLLER__COMMAND__DIRECTION_bp) |
                SPI_CONTROLLER__COMMAND__CSAAT_bm | ((4u - 1u) << SPI_CONTROLLER__COMMAND__LEN_bp));
@@ -155,16 +147,32 @@ int main(void) {
     }
 
     // --- RW1C status-clear proof ---------------------------------------------
-    // Prove the full status-clear contract, not just that DONE was observed:
-    // write 1 to the asserted RW1C status bits and confirm they read back 0.
+    // DONE is write-one-to-clear and a read has no side effect, so a second read
+    // after the poll must still show it set. That rules out a bit that clears on
+    // read or drops by itself, so the clear seen after the write is the write's.
+    uint32_t status_pre_w1c = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    if (!(status_pre_w1c & SECURE_DMA__STATUS__DONE_bm)) {
+        sep_mbx_puts("FAIL: CHK-RW1C DMA DONE not sticky before W1C status=");
+        sep_mbx_puthex(status_pre_w1c);
+        sep_mbx_putc('\n');
+        errors++;
+    }
+    // Write one to the status bits and check that they read back clear.
     sep_dma_wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, DMA_STATUS_RW1C_MASK);
     __asm__ volatile("fence" ::: "memory");
     uint32_t status_after_clear = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     sep_mbx_puts("STEP DMA polled to completion; status write-one-to-clear applied\n");
     if (status_after_clear & DMA_STATUS_RW1C_MASK) {
-        sep_mbx_puts("FAIL: DMA STATUS RW1C bits did not clear\n");
+        sep_mbx_puts("FAIL: CHK-RW1C DMA STATUS RW1C bits did not clear status=");
+        sep_mbx_puthex(status_after_clear);
+        sep_mbx_putc('\n');
         errors++;
     }
+    sep_mbx_puts("CHK-RW1C: dma_status_pre_w1c=");
+    sep_mbx_puthex(status_pre_w1c);
+    sep_mbx_puts(" dma_status_after_w1c=");
+    sep_mbx_puthex(status_after_clear);
+    sep_mbx_putc('\n');
 
     // --- SPI controller must be clean ----------------------------------------
     int spi_idle = (spi_wait_idle(SPI_POLL_TIMEOUT) == 0);
@@ -178,8 +186,7 @@ int main(void) {
         errors++;
     }
 
-    // CHK-NOERR evidence: the four values the legs above already read, so the
-    // checker is auditable from the log rather than only from a silent pass.
+    // Log the values behind the checks above, so a pass is auditable.
     sep_mbx_puts("CHK-NOERR: dma_status=");
     sep_mbx_puthex(status_after_clear);
     sep_mbx_puts(" dma_err_code=");
@@ -191,15 +198,10 @@ int main(void) {
     sep_mbx_putc('\n');
 
     // --- Value-check the received data ---------------------------------------
-    // The OSS OcahSpiFlash BFM preloads RX_PATTERN across the read window, so
-    // EXPECT_WORD is the only acceptable result and the compare is exclusive.
-    //
-    // All-ones must NOT be accepted here. The TB idles spi_miso_i high, the
-    // BFM's backing store is 0xFF everywhere outside the 64 preloaded bytes,
-    // and an unrecognised opcode drains to CS# high without ever driving MISO.
-    // So 0xFFFFFFFF is exactly the signature of a broken RX path -- mis-wired
-    // MISO, a garbled address phase, a misinterpreted opcode -- and accepting
-    // it would let all three of those pass while the log claimed 0xA5.
+    // The flash model preloads RX_PATTERN across the read window, so
+    // EXPECT_WORD is the only acceptable result. Do not accept all-ones: the
+    // idle receive line, the model's unprogrammed store and an unrecognised
+    // opcode all read as ones, so all-ones is the signature of a broken RX path.
     {
         uint32_t w0 = dst[0];
         int ok_pattern = (w0 == EXPECT_WORD);

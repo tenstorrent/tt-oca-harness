@@ -62,10 +62,10 @@ ocah_reg_ral_rename = $(OCAH_REG_RAL_RENAME_$(call ocah_reg_key,$(1)))
 ocah_reg_ral_output = $(call ocah_reg_ral_dir,$(1))/$(call ocah_reg_ral_model,$(1))_ral_pkg.sv
 ocah_reg_md_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1)).md
 ocah_reg_adoc_output = $(call ocah_reg_gen,$(1))/adoc/$(call ocah_reg_name,$(1)).adoc
-ocah_reg_doc_overrides = $(wildcard $(dir $(call ocah_reg_rdl,$(1)))regdoc.toml)
 ocah_reg_memory_map_config = $(abspath $(dir $(call ocah_reg_rdl,$(1)))/../doc/memmap.toml)
 ocah_reg_memory_map_output = $(call ocah_reg_gen,$(1))/adoc/memory_map.adoc
-ocah_reg_memory_map_target = $(if $(filter $(1),$(OCAH_REG_MEMORY_MAP_BLOCKS)),$(call ocah_reg_memory_map_output,$(1)))
+ocah_reg_memory_map_py_output = $(call ocah_reg_gen,$(1))/py/$(call ocah_reg_name,$(1))_memory_map.py
+ocah_reg_memory_map_target = $(if $(filter $(1),$(OCAH_REG_MEMORY_MAP_BLOCKS)),$(call ocah_reg_memory_map_output,$(1)) $(call ocah_reg_memory_map_py_output,$(1)))
 ocah_reg_memory_map_deps = $(OCAH_REG_MEMORY_MAP_DEPS_$(call ocah_reg_key,$(1)))
 
 # Per-sub-block output lists for a composite top (one file each, so make rebuilds

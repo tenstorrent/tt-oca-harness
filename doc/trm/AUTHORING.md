@@ -277,9 +277,20 @@ includes use `hw/<...>/regs/gen/adoc/`; HTML includes use staged partials from
 `hw/<...>/regs/gen/html/`. Do not copy field descriptions into prose and do not
 edit generated files — they are overwritten on every regen.
 
-Hardware operating requirements, power-on sequencing and register programming
-sequences needed to operate the hardware belong in the TRM. Driver recipes and
-OS-level flows belong in the Programmer's Guide.
+The TRM describes hardware: behaviour, structure, constraints, register
+semantics, reset values and timing. What software does belongs in the
+Programmer's Guide: ordered steps, initialization and bring-up, configuration
+procedures, interrupt servicing, recovery, code and worked examples, "software
+must" guidance, and debug-host procedures. Where a paragraph mixes the two, move
+the procedure to the Programmer's Guide and keep the hardware sentence in the
+TRM with a one-line pointer to the Programmer's Guide section. Manufacturing and
+tester procedures, such as HSM token provisioning and test-mode strap entry,
+stay in the TRM.
+
+Write the pointer as a guarded link: an `xref:ocah-programmer-guide::index.adoc#<id>[...]`
+in the HTML branch and the published
+`https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#<id>`
+URL in the PDF branch, since the PDF build cannot resolve Antora page IDs.
 
 ---
 

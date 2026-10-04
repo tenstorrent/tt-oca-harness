@@ -4,22 +4,22 @@
 
 // Adapt TL-UL device traffic onto a register read/write interface.
 //
-// Act as a TL-UL device. Accept Get, PutPartialData, and PutFullData on the A channel and
+// Act as a TL-UL device. Accept GET, PUT_PARTIAL_DATA, and PUT_FULL_DATA on the A channel and
 // pass each read or write to the register interface in the same cycle. Return the register
-// response on the D channel in the next cycle, whatever AccessLatency is. One request is
+// response on the D channel in the next cycle, whatever ACCESS_LATENCY is. One request is
 // outstanding at a time: A_READY stays low until the response is accepted.
 //
 // Forward a request only when every check passes:
 //
-// - A_OPCODE is Get, PutPartialData, or PutFullData.
+// - A_OPCODE is GET, PUT_PARTIAL_DATA, or PUT_FULL_DATA.
 // - A_SIZE is 0, 1, or 2 (a 1-, 2-, or 4-byte operation).
 // - A_ADDRESS is naturally aligned for the A_SIZE byte width, and word aligned for writes.
 // - A_MASK is true only for active byte lanes. The first active lane is the address modulo
 //   the TL-UL data-bus width.
 // - A_USER.INSTR_TYPE is a valid MuBi4 encoding.
-// - A_OPCODE is Get when A_USER.INSTR_TYPE is MuBi4True.
+// - A_OPCODE is GET when A_USER.INSTR_TYPE is MuBi4True.
 // - A_USER.INSTR_TYPE is not MuBi4True, or en_ifetch_i is MuBi4True.
-// - The command and A-channel data integrity checks pass, when CmdIntgCheck is set.
+// - The command and A-channel data integrity checks pass, when CMD_INTG_CHECK is set.
 //
 // A request that fails a check reaches no register and gets D_ERROR on the response. D_DATA
 // is all ones for writes and errored requests.
@@ -34,58 +34,58 @@ module tlul_adapter_reg
   `include "prim_assert.sv"
   import prim_mubi_pkg::mubi4_t;
 #(
-  parameter  bit CmdIntgCheck      = 0,  // Check A-channel command integrity with
-                                         // tlul_cmd_intg_chk. On a mismatch, re_o and we_o stay
-                                         // low, D_ERROR is set, and intg_error_o rises the next
-                                         // cycle.
-  parameter  bit EnableRspIntgGen  = 0,  // Generate D_USER.RSP_INTG; zero when clear.
-  parameter  bit EnableDataIntgGen = 0,  // Generate D_USER.DATA_INTG; zero when clear.
-  parameter  int RegAw             = 8,  // Register address width. Higher A_ADDRESS bits are
-                                         // ignored.
-  parameter  int RegDw             = 32, // Register data width. Must match the TL-UL data width
-                                         // (MatchedWidth_A).
-  parameter  int AccessLatency     = 0,  // 0 or 1. 0: the register response is combinatorial and
-                                         // is flopped here. 1: the response arrives the cycle
-                                         // after re_o/we_o and is forwarded combinatorially.
-  localparam int RegBw             = RegDw/8  // Register byte-enable width from RegDw.
+  parameter  bit CMD_INTG_CHECK       = 0,  // Check A-channel command integrity with
+                                            // tlul_cmd_intg_chk. On a mismatch, re_o and we_o stay
+                                            // low, D_ERROR is set, and intg_error_o rises the next
+                                            // cycle.
+  parameter  bit ENABLE_RSP_INTG_GEN  = 0,  // Generate D_USER.RSP_INTG; zero when clear.
+  parameter  bit ENABLE_DATA_INTG_GEN = 0,  // Generate D_USER.DATA_INTG; zero when clear.
+  parameter  int REG_AW               = 8,  // Register address width. Higher A_ADDRESS bits are
+                                            // ignored.
+  parameter  int REG_DW               = 32, // Register data width. Must match the TL-UL data width
+                                            // (MatchedWidth_A).
+  parameter  int ACCESS_LATENCY       = 0,  // 0 or 1. 0: the register response is combinatorial and
+                                            // is flopped here. 1: the response arrives the cycle
+                                            // after re_o/we_o and is forwarded combinatorially.
+  localparam int RegBw                = REG_DW/8  // Register byte-enable width from REG_DW.
 ) (
-  input clk_i,                       // System clock.
-  input rst_ni,                      // Active-low reset.
+  input clk_i,                        // System clock.
+  input rst_ni,                       // Active-low reset.
 
-  input  tl_h2d_t tl_i,              // TL-UL host-to-device request.
-  output tl_d2h_t tl_o,              // TL-UL device-to-host response.
+  input  tl_h2d_t tl_i,               // TL-UL host-to-device request.
+  output tl_d2h_t tl_o,               // TL-UL device-to-host response.
 
-  input  mubi4_t  en_ifetch_i,       // MuBi4True allows Gets whose A_USER.INSTR_TYPE is MuBi4True
-                                     // (processor fetches).
-  output logic    intg_error_o,      // Integrity error, sticky until reset. Only rises when
-                                     // CmdIntgCheck is set.
+  input  mubi4_t  en_ifetch_i,        // MuBi4True allows Gets whose A_USER.INSTR_TYPE is MuBi4True
+                                      // (processor fetches).
+  output logic    intg_error_o,       // Integrity error, sticky until reset. Only rises when
+                                      // CMD_INTG_CHECK is set.
 
-  output logic             re_o,     // Register read enable.
-  output logic             we_o,     // Register write enable.
-  output logic [RegAw-1:0] addr_o,   // A_ADDRESS[RegAw-1:0], bits 1:0 cleared; 0 if RegAw <= 2.
-  output logic [RegDw-1:0] wdata_o,  // Register write data.
-  output logic [RegBw-1:0] be_o,     // Register byte enables from the TL-UL mask.
-  input                    busy_i,   // Stall: A_READY drops and no new operation is accepted.
-  input        [RegDw-1:0] rdata_i,  // Register read data, AccessLatency cycles after re_o.
-  input                    error_i   // Register read or write error, AccessLatency cycles after
-                                     // re_o/we_o. Sets D_ERROR and forces D_DATA to '1.
+  output logic              re_o,     // Register read enable.
+  output logic              we_o,     // Register write enable.
+  output logic [REG_AW-1:0] addr_o,   // A_ADDRESS[REG_AW-1:0], bits 1:0 cleared; 0 if REG_AW <= 2.
+  output logic [REG_DW-1:0] wdata_o,  // Register write data.
+  output logic [RegBw-1:0]  be_o,     // Register byte enables from the TL-UL mask.
+  input                     busy_i,   // Stall: A_READY drops and no new operation is accepted.
+  input        [REG_DW-1:0] rdata_i,  // Register read data, ACCESS_LATENCY cycles after re_o.
+  input                     error_i   // Register read or write error, ACCESS_LATENCY cycles after
+                                      // re_o/we_o. Sets D_ERROR and forces D_DATA to '1.
 );
-  `OCAH_OT_ASSERT_INIT(AllowedLatency_A, AccessLatency inside {0, 1})
+  `OCAH_OT_ASSERT_INIT(AllowedLatency_A, ACCESS_LATENCY inside {0, 1})
 
-  localparam int IW  = $bits(tl_i.a_source);
-  localparam int SZW = $bits(tl_i.a_size);
+  localparam int Iw  = $bits(tl_i.a_source);
+  localparam int Szw = $bits(tl_i.a_size);
 
   logic outstanding_q;    // Indicates current request is pending
   logic a_ack, d_ack;
 
-  logic [RegDw-1:0] rdata, rdata_q;
-  logic             error_q, error, err_internal, instr_error, intg_error;
+  logic [REG_DW-1:0] rdata, rdata_q;
+  logic              error_q, error, err_internal, instr_error, intg_error;
 
   logic addr_align_err;     // Size and alignment
   logic tl_err;             // Common TL-UL error checker
 
-  logic [IW-1:0]  reqid_q;
-  logic [SZW-1:0] reqsz_q;
+  logic [Iw-1:0]  reqid_q;
+  logic [Szw-1:0] reqsz_q;
   tl_d_op_e       rspop_q;
 
   logic rd_req, wr_req;
@@ -93,18 +93,18 @@ module tlul_adapter_reg
   assign a_ack   = tl_i.a_valid & tl_o.a_ready;
   assign d_ack   = tl_o.d_valid & tl_i.d_ready;
   // Request signal
-  assign wr_req  = a_ack & ((tl_i.a_opcode == PutFullData) | (tl_i.a_opcode == PutPartialData));
-  assign rd_req  = a_ack & (tl_i.a_opcode == Get);
+  assign wr_req  = a_ack & ((tl_i.a_opcode == PUT_FULL_DATA) | (tl_i.a_opcode == PUT_PARTIAL_DATA));
+  assign rd_req  = a_ack & (tl_i.a_opcode == GET);
 
   assign we_o    = wr_req & ~err_internal;
   assign re_o    = rd_req & ~err_internal;
   assign wdata_o = tl_i.a_data;
   assign be_o    = tl_i.a_mask;
 
-  if (RegAw <= 2) begin : gen_only_one_reg
+  if (REG_AW <= 2) begin : gen_only_one_reg
     assign addr_o  = '0;
   end else begin : gen_more_regs
-    assign addr_o  = {tl_i.a_address[RegAw-1:2], 2'b00}; // generate always word-align
+    assign addr_o  = {tl_i.a_address[REG_AW-1:2], 2'b00}; // generate always word-align
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -117,16 +117,16 @@ module tlul_adapter_reg
     if (!rst_ni) begin
       reqid_q <= '0;
       reqsz_q <= '0;
-      rspop_q <= AccessAck;
+      rspop_q <= ACCESS_ACK;
     end else if (a_ack) begin
       reqid_q <= tl_i.a_source;
       reqsz_q <= tl_i.a_size;
-      // Return AccessAckData regardless of error
-      rspop_q <= (rd_req) ? AccessAckData : AccessAck ;
+      // Return ACCESS_ACK_DATA regardless of error
+      rspop_q <= (rd_req) ? ACCESS_ACK_DATA : ACCESS_ACK ;
     end
   end
 
-  if (AccessLatency == 1) begin : gen_access_latency1
+  if (ACCESS_LATENCY == 1) begin : gen_access_latency1
     logic a_ack_q, err_internal_q, wr_req_q;
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
@@ -183,15 +183,15 @@ module tlul_adapter_reg
 
   // outgoing integrity generation
   tlul_rsp_intg_gen #(
-    .EnableRspIntgGen(EnableRspIntgGen),
-    .EnableDataIntgGen(EnableDataIntgGen),
-    .UserInIsZero(1'b1)
+    .ENABLE_RSP_INTG_GEN(ENABLE_RSP_INTG_GEN),
+    .ENABLE_DATA_INTG_GEN(ENABLE_DATA_INTG_GEN),
+    .USER_IN_IS_ZERO(1'b1)
   ) u_rsp_intg_gen (
     .tl_i(tl_o_pre),
     .tl_o(tl_o)
   );
 
-  if (CmdIntgCheck) begin : gen_cmd_intg_check
+  if (CMD_INTG_CHECK) begin : gen_cmd_intg_check
     logic intg_error_q;
     tlul_cmd_intg_chk u_cmd_intg_chk (
       .tl_i(tl_i),
@@ -243,6 +243,6 @@ module tlul_adapter_reg
     .err_o (tl_err)
   );
 
-  `OCAH_OT_ASSERT_INIT(MatchedWidth_A, RegDw == top_pkg::TL_DW)
+  `OCAH_OT_ASSERT_INIT(MatchedWidth_A, REG_DW == top_pkg::TL_DW)
 
 endmodule

@@ -290,6 +290,22 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         await self.program_ijtag_sibs(0, dbg_disable=dbg_disable, context=context)
         self.check_scan_window(window, quiet=quiet, context=f"{context}.window")
 
+    def check_host_scan_out_reset(self, *, context: str) -> None:
+        """Before any scan captures into them, every iJTAG SIB and the extended
+        STAP chain drive a resolved 0 on their host scan output
+        (``CHK-SCAN-RESET``)."""
+        names = [f"{self.IJTAG_SIGNAL_PREFIX[name]}_host_scan_out" for name in IJTAG_SIB_ORDER]
+        names.append("jtag_stap_host_scan_out")
+        for name in names:
+            sampled = self.cfg.tb_if.handle(name).value
+            try:
+                observed = int(sampled)
+            except ValueError:
+                observed = -1
+            self.family_check(
+                "CHK-SCAN-RESET", name, observed, 0, context=f"{context} sampled={sampled}"
+            )
+
     # --- STAP / 3DCR ---------------------------------------------------------
     # The extended STAP host scan controls on dtp_scan_if.
     HOST_SCAN_CONTROLS = dtp_jtag_base_test_seq.scan_ctrl_signals("jtag_stap_host")
@@ -321,10 +337,12 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         return await self.read_tdr("TAP_3DCR", shift_value=shift_value)
 
     # --- composed TAP_3DCR chain scans (IEEE 1838 serial configuration) -------
-    # The TAP_3DCR data register is the 2-bit PTAP 3DCR followed serially by
-    # the STAP configuration chain, and the chain shifts on every scan, so
-    # each scan drives the full chain state. Scans are over-length: leading
-    # zeros pass through and the trailing bits land in the chain. 64 bits
+    # With the PTAP 3DCR select set, the TAP_3DCR data register is the 2-bit
+    # PTAP 3DCR followed serially by the STAP configuration chain, and the
+    # chain shifts on every scan, so each scan drives the full chain state.
+    # With the select clear the chain holds and a scan reaches only the PTAP
+    # 3DCR. Scans are over-length: leading zeros pass through and the
+    # trailing bits land in the chain. 64 bits
     # holds the worst case (PTAP 3DCR + a 32-bit downstream IDCODE + the
     # I/O STAP splice + four open SIBs with their 3DCRs + the host segment).
     STAP_CHAIN_SCAN_WIDTH = 64
@@ -387,11 +405,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         """Reset the scan network and load TAP_3DCR over a zeroed chain.
 
         TRST clears the PTAP 3DCR and every STAP SIB and 3DCR (a held
-        config_hold included) and parks the downstream TAPs on IDCODE. The
-        PTAP shifts every IR and DR scan through the STAP chain, so the
-        plain TAP_3DCR load that follows can reopen SIBs with the IR capture
-        bits; the over-length zero scan closes them again and zeroes every
-        field it reaches, leaving the chain in the model's flushed state.
+        config_hold included) and parks the downstream TAPs on IDCODE. With
+        the PTAP select clear the chain holds through the TAP_3DCR load and
+        the over-length zero scan, which leaves the PTAP 3DCR cleared.
         """
         self.log.info("%s reset and flush the TAP_3DCR configuration chain", context)
         await self.apply_trst()
@@ -435,10 +451,25 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         writes a spliced downstream TAP's selected (writable) register and
         ``host_segment`` the host segment while it is in the chain.
         ``marker`` rides in the leading bits that pass through the chain.
+        The chain moves only while the PTAP select is already set, so a call
+        that sets the select and writes chain fields first sets the select
+        in a scan of its own.
         """
         assert scan_kind == "dr" or (ptap_select is None and ptap_config_hold is None), (
             f"a {scan_kind} scan does not reach the PTAP 3DCR"
         )
+        if (
+            ptap_select
+            and not self.stap_model.ptap_select
+            and (sib_en or payloads or ds_values or host_segment is not None)
+        ):
+            await self.stap_chain_write(
+                ptap_select=ptap_select,
+                ptap_config_hold=ptap_config_hold,
+                dbg_disable=dbg_disable,
+                context=f"{context}.ptap_select",
+            )
+            ptap_select = ptap_config_hold = None
         kwargs = {
             "ptap_select": ptap_select,
             "ptap_config_hold": ptap_config_hold,
@@ -485,7 +516,8 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         With the PTAP 3DCR select set the IR shift-out feeds the STAP chain,
         so the scan carries the PTAP instruction, every SIB/3DCR field
         (maintained unless given), and each spliced downstream TAP's IR
-        (``ds_ir`` names new instructions; others keep the active one).
+        (``ds_ir`` names new instructions; others keep the active one). With
+        the select clear the scan carries the PTAP instruction alone.
         """
         kwargs = {
             "ds_ir": ds_ir,

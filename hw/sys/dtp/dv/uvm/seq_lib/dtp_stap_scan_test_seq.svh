@@ -28,13 +28,20 @@
 //       reset (TLR or TRST), reloaded with a composed IR scan, and read
 //       back against the model: hold=1 keeps the PTAP select and the STAP
 //       select/tms_hold across TLR, hold=0 lets TLR clear them, TRST clears
-//       them all; a PTAP whose select cleared is read over the TDR return
-//       path with a marker that proves the path;
+//       them at either hold; a PTAP whose select cleared is read over the
+//       TDR return path with a marker that proves the path;
 //   tms_hold       per STAP and polarity (seeded order): select the STAP
 //       with TMS_HOLD=h and prove over a maintain scan that the port
 //       forwards (the positive control of the deny that follows), deselect
 //       it, and prove over a whole maintain scan that the host TMS parks at
-//       h, tdo_oen stays quiet, and the 3DCR reads back through the chain.
+//       h, tdo_oen stays quiet, and the 3DCR reads back through the chain;
+//       then every 3DCR payload on all four STAPs: a port forwards while its
+//       select is set and otherwise parks at its TMS_HOLD, and under the
+//       four STAP disables every port parks at its stored TMS_HOLD;
+//   stap_chain_hold  with the PTAP 3DCR select clear, IR and DR scans of
+//       all ones under IDCODE and BYPASS leave the STAP chain untouched: no
+//       host scan control pulses, no STAP forwards, and once the select is
+//       set on its own the chain reads back with every SIB closed.
 
 class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
   `uvm_object_utils(dtp_stap_scan_test_seq)
@@ -278,14 +285,12 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     check_stap_chain_readback(captured, '0, "ext.enabled_readback");
     check_stap_chain_marker(captured, marker, '0, "ext.enabled_marker");
 
-    // Step 2: PTAP_3DCR.SELECT=0, TDO carries the PTAP 3DCR. The host scan
-    // strobes follow every PTAP scan whatever the PTAP select (they are the
-    // TAP's; the select routes the scan data), so the deselected scan is
-    // judged for pulsing strobes, not for silence.
+    // Step 2: PTAP_3DCR.SELECT=0, TDO carries the PTAP 3DCR and the controls
+    // stay quiet.
     stap_chain_write('0, 0, -1, no_sib, no_pl, "ext.deselect", unused);
     start_scan_window(controls);
     read_ptap_3dcr_deselected(marker, "ext.deselected_readback");
-    check_scan_window(none, controls, "ext.deselected_window");
+    check_scan_window(controls, none, "ext.deselected_window");
 
     // Step 3: stap_host gated, the controls stay quiet and scan-in is
     // bypassed.
@@ -331,9 +336,9 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     stap_chain_write('0, -1, -1, no_sib, payloads, {ctx, ".write_3dcr"}, unused);
     if (use_trst) apply_trst();
     else apply_tlr();
-    // The reset leaves IDCODE in the IR. Every IR scan shifts through the
-    // STAP chain, so TAP_3DCR is reloaded with a composed IR scan that
-    // rewrites the chain image it passes through.
+    // The reset leaves IDCODE in the IR. While the PTAP select is set every
+    // IR scan shifts through the STAP chain, so TAP_3DCR is reloaded with a
+    // composed IR scan that rewrites the chain image it passes through.
     stap_chain_ir_write('0, 6'(TAP_3DCR_INSTR), no_ir, no_sib, no_pl, {ctx, ".reload_ir"}, unused);
     if (stap_model.ptap_select) begin
       stap_chain_maintain('0, {ctx, ".ptap_readback"}, captured);
@@ -357,7 +362,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       // Seeded per-pass order: each self-contained sub-case starts from a
       // flushed chain, so each loop proves a different sequencing of
       // preserve/clear behavior.
-      int unsigned cases[$] = {0, 1, 2};
+      int unsigned cases[$] = {0, 1, 2, 3};
       shuffle(cases);
       `uvm_info(
           get_type_name(), $sformatf(
@@ -367,7 +372,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
         case (cases[c])
           0:       config_hold_case(.stap(staps[i]), .hold(1'b1), .use_trst(1'b0));
           1:       config_hold_case(.stap(staps[i]), .hold(1'b0), .use_trst(1'b0));
-          default: config_hold_case(.stap(staps[i]), .hold(1'b1), .use_trst(1'b1));
+          2:       config_hold_case(.stap(staps[i]), .hold(1'b1), .use_trst(1'b1));
+          default: config_hold_case(.stap(staps[i]), .hold(1'b0), .use_trst(1'b1));
         endcase
       end
     end
@@ -430,6 +436,99 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                 ), UVM_LOW)
       foreach (polarities[p]) tms_hold_case(staps[i], bit'(polarities[p]));
     end
+    payload_sweep();
+  endtask
+
+  // Every 3DCR payload on every STAP, enabled and under the STAP disables.
+  // Round r writes payload (r + s) % 8 (bit 0 config_hold, bit 1 stap_sel,
+  // bit 2 tms_hold) to STAP s in one composed scan. Enabled, a port forwards
+  // while its select is set and otherwise parks at its tms_hold; with the
+  // four STAP disables asserted every port parks at its stored tms_hold.
+  // Both chain readbacks match the model.
+  protected task payload_sweep();
+    int unsigned rounds[$] = {0, 1, 2, 3, 4, 5, 6, 7};
+    string watch[$];
+    int all_sib[int];
+    int no_sib[int];
+    dtp_stap_3dcr_state_t payloads[int];
+    dtp_stap_3dcr_state_t no_pl[int];
+    sep_lifecycle_ctrl_pkg::dbg_disable_t gate = '0;
+    bit [63:0] captured, unused;
+    int unsigned edges;
+    int unsigned counts[string];
+    for (int unsigned s = 0; s < DtpStapCount; s++) begin
+      all_sib[s] = 1;
+      stap_forwarding_watch(s, watch);
+      dtp_dbg_path_set(gate, dtp_stap_dbg_path(s));
+    end
+    shuffle(rounds);
+    `uvm_info(get_type_name(), $sformatf("STAP 3DCR payload sweep, round order %p", rounds),
+              UVM_LOW)
+    stap_chain_flush("sweep.flush");
+    stap_chain_write('0, 1, -1, all_sib, no_pl, "sweep.open_sibs", unused);
+    foreach (rounds[i]) begin
+      string ctx = $sformatf("sweep.round%0d", rounds[i]);
+      for (int unsigned s = 0; s < DtpStapCount; s++) begin
+        bit [2:0] payload = 3'((rounds[i] + s) % 8);
+        payloads[s] = '{payload[0], payload[1], payload[2]};
+      end
+      `uvm_info(get_type_name(), $sformatf(
+                "Step %0d: STAP 3DCR payloads %p, enabled then gated", i + 1, payloads), UVM_LOW)
+      stap_chain_write('0, -1, -1, no_sib, payloads, {ctx, ".write"}, unused);
+      start_scan_window(watch);
+      stap_chain_maintain('0, {ctx, ".observe"}, captured);
+      stop_scan_window(edges, counts);
+      check_window_shifted("CHK-SCAN-WIN", {ctx, ".window"});
+      for (int unsigned s = 0; s < DtpStapCount; s++)
+      check_stap_forwarding(edges, counts, s, payloads[s].stap_sel, {ctx, ".", stap_name(s)});
+      check_stap_chain_readback(captured, '0, {ctx, ".readback"});
+      set_dbg_disable_full(gate);
+      start_scan_window(watch);
+      stap_chain_maintain(gate, {ctx, ".gated"}, captured);
+      stop_scan_window(edges, counts);
+      check_window_shifted("CHK-SCAN-WIN", {ctx, ".gated_window"});
+      for (int unsigned s = 0; s < DtpStapCount; s++)
+      check_stap_forwarding(edges, counts, s, 1'b0, {ctx, ".gated.", stap_name(s)});
+      check_stap_chain_readback(captured, gate, {ctx, ".gated_readback"});
+      enable_all_debug();
+    end
+    stap_chain_flush("sweep.cleanup");
+  endtask
+
+  // Scan under IDCODE and BYPASS with the PTAP 3DCR select clear and
+  // all-ones data, which would open every SIB and select every STAP were the
+  // chain clocked. No host scan control pulses, no STAP forwards (tdo_oen
+  // quiet, tms parked at the reset tms_hold of 0), and once the select is
+  // set on its own the chain reads back with every SIB closed.
+  protected task run_stap_chain_hold();
+    int unsigned widths[$] = {3, 4, 8};
+    string watch[$];
+    string none[$];
+    int no_sib[int];
+    dtp_stap_3dcr_state_t no_pl[int];
+    bit [63:0] captured, unused;
+    `uvm_info(get_type_name(), "STAP chain holds while the PTAP 3DCR select is clear", UVM_LOW)
+    widths.push_back($urandom_range(32, 9));
+    watch.push_back("jtag_stap_host_select");
+    watch.push_back("jtag_stap_host_shift_en");
+    watch.push_back("jtag_stap_host_capture_en");
+    watch.push_back("jtag_stap_host_update_en");
+    for (int unsigned s = 0; s < DtpStapCount; s++) begin
+      watch.push_back({stap_prefix(s), "_tdo_oen"});
+      watch.push_back({stap_prefix(s), "_tms"});
+    end
+    stap_chain_flush("hold.flush");
+    start_scan_window(watch);
+    load_ir(6'(IDCODE_INSTR));
+    foreach (widths[i]) shift_dr(bit_mask(widths[i]), widths[i], unused);
+    ir_scan_raw(bit_mask(DtpPtapIrWidth), DtpPtapIrWidth, unused);
+    foreach (widths[i]) shift_dr(bit_mask(widths[i]), widths[i], unused);
+    check_scan_window(watch, none, "hold.window");
+    load_ir(6'(TAP_3DCR_INSTR));
+    stap_chain_write('0, 1, 0, no_sib, no_pl, "hold.select", unused);
+    stap_chain_maintain('0, "hold.readback", captured);
+    check_stap_chain_readback(captured, '0, "hold.readback");
+    stap_chain_flush("hold.cleanup");
   endtask
 
   // Per-pass evidence every STAP-selection pass must record (cocotb twin:
@@ -460,7 +559,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
                 required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN", "CHK-SCAN-OBS"};
       "config_hold":
                 required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-CHAIN", "CHK-SCAN-OBS"};
-      "tms_hold":
+      "tms_hold", "stap_chain_hold":
                 required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN"};
       default:
                 `uvm_fatal(get_type_name(), $sformatf(
@@ -479,6 +578,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       "ext_stap_scan":  run_ext_stap_scan();
       "config_hold":    run_config_hold();
       "tms_hold":       run_tms_hold();
+      "stap_chain_hold": run_stap_chain_hold();
       default: ;
     endcase
     enable_all_debug();

@@ -29,8 +29,9 @@ Open Chiplet Time Synchronization (OCTS) System Timer Registers
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `START` | RW 1P | 0x0 a| Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure
-both primary and secondary are out of reset.
+| 0 | `START` | RW 1P | 0x0 a| Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.
+In SECONDARY mode, the write has no effect; a secondary starts on the primary's sync-load pulse, which is what loads its preset.
+Ensure both primary and secondary are out of reset.
 |===
 
 [#reg-{regmap-instance}-system_timer_octs-CTRL]
@@ -52,9 +53,9 @@ both primary and secondary are out of reset.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
-| 4 | `RUNNING` | R | 0x0 a| Timer is currently enabled and running
+| 4 | `RUNNING` | R | 0x0 a| Timer is enabled and its count is nonzero.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `MODE` | R | 0x0 a| Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)
+| 0 | `MODE` | R | 0x0 a| Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).
 |===
 
 [#reg-{regmap-instance}-system_timer_octs-TIMER_PRESET_LO]

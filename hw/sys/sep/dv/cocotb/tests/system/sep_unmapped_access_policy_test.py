@@ -5,20 +5,38 @@
 no_cpu / +skip_fuse_sense. RAND-NONE: every address comes from the generated
 register export and is walked on every run.
 
-``hw/sys/sep/doc/memory_map.adoc`` states the rules this leaf holds the DUT to.
-An address between unit windows, or past the extent a unit allocates, is
-refused and never reaches a unit. Inside a unit's allocated extent, an offset
-that owns no register reads zero and discards a write, both OKAY. Neither rule
-names a refusal code, so the code each point gives is logged
-(``UNMAPPED-CODE``) and never failed.
+The SEP components view of the SystemRDL memory map
+(``hw/sys/sep/regs/gen/py/sep_memory_map.py``, generated from ``sep.rdl``)
+states the contract. Per unit it gives the Decoded Extent and, for a 32-bit
+access that no register backs, the read response, the read data and the write
+response: inside the extent, past it, and in a reserved row between apertures.
+``env/sep_decode_resp.py`` imports the view; the config refuses to build if a
+probe the refusal checkers grade is not a refusal there.
 
 CHK-UNMAPPED-LIVE is the positive control. Every programmed live word next to a
 probed hole is written with a distinct value and must read it back OKAY, so the
-bus reaches each block and a write or read alias is visible.
+bus reaches each block and a write or read alias is visible. A live word whose
+RDL field has no reset (the generated IP-XACT gives it no reset element) has no
+value before its first write, so it is written before any read of it.
 
 CHK-SYSCSR-HOLE-REFUSE, CHK-SYS-RESERVED-REFUSE, CHK-MBOX-UPPER-REFUSE,
-CHK-EFUSE-CTRL-PAST-REFUSE and CHK-EFUSE-MMR-PAST-REFUSE: every read and write in
-that set is refused (never OKAY, never a timeout).
+CHK-EFUSE-CTRL-PAST-REFUSE, CHK-EFUSE-MMR-PAST-REFUSE and CHK-SPI-PAST-REFUSE:
+every read and write in that set is refused (never OKAY, never a timeout).
+
+CHK-SYSCSR-HOLE-DECODE: no system-CSR hole or reserved-row probe reaches the
+system-CSR AXI-Lite port. The system-peripherals crossbar refuses them itself,
+so a write answers DECERR rather than the SLVERR the AXI-Lite converter makes of
+any write error behind it. A watched write and read of SEP_NMI_VEC must each
+show their handshake at that port, so a watcher that sees nothing fails.
+
+CHK-SYS-RESERVED-NO-LOOPBACK: no system-CSR hole or reserved-row probe arrives
+at the local crossbar's ext initiator. The peripheral crossbar forwards an
+address outside the mailbox and system CSR windows back to that initiator
+(``hw/sys/sep/doc/fabric.adoc``), so a reserved address the local crossbar sends
+to sep_system_peripherals returns there instead of being refused at its first
+decode. A watched write and read of the first External address, which takes
+that route, must each show their handshake at the ext initiator, so a watcher
+that sees nothing fails.
 
 CHK-TOKEN-FAULT-EXTENT: TOKEN_MATCH_FAULT, the last register the RDL gives the
 eFuse token MMR, reads OKAY with its RDL reset, and the first word after it is
@@ -26,12 +44,22 @@ refused. The extent therefore ends where the RDL ends it.
 
 CHK-ARRAY-TAIL: the tail of each remap / filter array slot (stride wider than
 the slot's registers) follows the extent rule. The array extent is base +
-SEP_TOP_<ARRAY>_TOTAL_SIZE from the generated sep_addr.h, the size the RDL
-allocates. Every tail inside it, the last slot's tail included, reads zero and
-accepts a write with OKAY. The first word past it is refused where no other
-RDL block owns that word. A re-read of an in-extent tail after its write answers
-OKAY with zero, so the write was discarded. A tail write never moves a word of
-its own slot or of the next slot.
+SEP_TOP_<ARRAY>_TOTAL_SIZE, the size the RDL allocates. Every tail inside it,
+the last slot's tail included, reads zero and accepts a write with OKAY. The
+first word past it is refused where no other RDL block owns that word. A
+re-read of an in-extent tail after its write answers OKAY with zero, so the
+write was discarded. A tail write never moves a word of its own slot or of the
+next slot.
+
+CHK-UNMAPPED-CODE: every probe and tail access answers the response code the
+map states for that address and channel, and every read returns the stated
+read data: a 32-bit RDL rdata on either bus half, and the upper word of a
+64-bit rdata for address bit 2. The tail words where the map and the RDL
+allocation disagree are graded by CHK-ARRAY-TAIL only and logged as
+UNMAPPED-MAP-DISAGREE. Past the efuse_interface_ctrl and spi_controller
+extents, reads cover both 32-bit lanes of the bus. The monitor lane-checks the read data of every error response for
+X/Z, so an unknown payload fails instead of reading as zero; every such read
+must have been lane-checked.
 
 CHK-UNMAPPED-NO-ALIAS: no refused read returns a programmed value, no probe
 write moves a watched live word, and a closing re-read of every live word
@@ -48,10 +76,12 @@ from collections import Counter
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_unmapped_access_seq import (
+    EXT_LOOPBACK_CTRL,
     GROUP_EFUSE_CTRL,
     GROUP_EFUSE_MMR,
     GROUP_MBOX,
     GROUP_RESERVED,
+    GROUP_SPI,
     GROUP_SYSCSR,
     LITE_WATCHED,
     REFUSE_GROUPS,
@@ -70,11 +100,23 @@ _CHK = {
     GROUP_MBOX: "CHK-MBOX-UPPER-REFUSE",
     GROUP_EFUSE_CTRL: "CHK-EFUSE-CTRL-PAST-REFUSE",
     GROUP_EFUSE_MMR: "CHK-EFUSE-MMR-PAST-REFUSE",
+    GROUP_SPI: "CHK-SPI-PAST-REFUSE",
 }
 
 
 def _code(resp: int) -> str:
     return RESP_NAME.get(resp, f"resp{resp}")
+
+
+def _grade(cfg: SepUnmappedCfg, where: str, addr: int, op: str, resp: int, rdata: int):
+    """Grade one access against the map; return a CHK-UNMAPPED-CODE failure or None."""
+    e = cfg.expect[(addr, op)]
+    graded = op == "r"
+    if resp == e.resp and (not graded or rdata == e.rdata):
+        return None
+    want = f"{_code(e.resp)}, 0x{e.rdata:08x}" if graded else _code(e.resp)
+    got = f"{_code(resp)}, 0x{rdata:08x}" if graded else _code(resp)
+    return f"{where} answered {got}; the map states {want} ({e.row}, {e.column})"
 
 
 @pyuvm.test()
@@ -98,10 +140,16 @@ class sep_unmapped_access_policy_test(sep_base_test):
         )
         self.logger.info(
             "CHK-UNMAPPED-LIVE PASS: %d programmed word(s) read back their distinct "
-            "value with OKAY; %d live word(s) snapshotted in total",
+            "value with OKAY (%d with no RDL reset, written before any read); %d "
+            "live word(s) snapshotted in total",
             len(cfg.programmed),
+            len(cfg.unreset),
             len(ua.snap),
         )
+
+        # --- Lite-port watcher control ---------------------------------------
+        lite_ctrl_fails = await ua.lite_control()
+        loop_fails: list[str] = await ua.ext_control()
 
         # --- TOKEN_MATCH_FAULT extent end -----------------------------------
         resp, val, to = await ua.access("r", TOKEN_MATCH_FAULT, may_refuse=True)
@@ -122,26 +170,43 @@ class sep_unmapped_access_policy_test(sep_base_test):
         lite: dict[tuple[str, str], list[int]] = {}
         alias_fails: list[str] = []
         per_group: dict[str, list[str]] = {g: [] for g in REFUSE_GROUPS}
+        code_fails: list[str] = []
+        decode_fails: list[str] = list(lite_ctrl_fails)
+        n_code = 0
+        n_watched = 0
         for p in cfg.probes:
             r = await ua.probe(p)
             key = (p.group, p.op)
             codes.setdefault(key, Counter())[_code(r.resp)] += 1
+            where = f"{p.op} 0x{p.addr:08x} ({p.note})"
             if r.lite_reached is not None:
                 tally = lite.setdefault(key, [0, 0])
                 tally[0] += int(r.lite_reached)
                 tally[1] += 1
-            where = f"{p.op} 0x{p.addr:08x} ({p.note})"
+                n_watched += 1
+                if r.lite_reached:
+                    decode_fails.append(f"{where} reached the system-CSR AXI-Lite port")
+                if r.ext_reached:
+                    loop_fails.append(f"{where} arrived at the local crossbar's ext initiator")
             if r.timed_out:
                 per_group[p.group].append(f"{where} timed out")
             elif r.resp == RESP_OKAY:
                 per_group[p.group].append(f"{where} answered OKAY")
+            if not r.timed_out:
+                n_code += 1
+                f = _grade(cfg, where, p.addr, p.op, r.resp, r.rdata)
+                if f:
+                    code_fails.append(f)
             if r.alias is not None:
                 alias_fails.append(f"{where} returned 0x{r.rdata:08x}, the value of {r.alias}")
             if r.changed:
                 alias_fails.append(f"{where} moved " + ", ".join(r.changed))
             lite_note = ""
             if r.lite_reached is not None:
-                lite_note = f" system-CSR Lite {'reached' if r.lite_reached else 'not reached'}"
+                lite_note = (
+                    f" system-CSR Lite {'reached' if r.lite_reached else 'not reached'},"
+                    f" ext initiator {'reached' if r.ext_reached else 'not reached'}"
+                )
             self.logger.info(
                 "UNMAPPED-PROBE: %s %s resp=%s rdata=0x%08x%s",
                 p.group,
@@ -158,8 +223,14 @@ class sep_unmapped_access_policy_test(sep_base_test):
                     )
         for g in REFUSE_GROUPS:
             verdict[_CHK[g]] = per_group[g]
+        if n_watched == 0:
+            decode_fails.append("no probe watched the system-CSR AXI-Lite port")
+        verdict["CHK-SYSCSR-HOLE-DECODE"] = decode_fails
+        if n_watched == 0:
+            loop_fails.append("no probe watched the local crossbar's ext initiator")
+        verdict["CHK-SYS-RESERVED-NO-LOOPBACK"] = loop_fails
 
-        # Report, not a verdict: the specification names no refusal code.
+        # Tally of the codes CHK-UNMAPPED-CODE graded, per group and channel.
         for (g, op), c in codes.items():
             line = ", ".join(f"{k}={v}" for k, v in sorted(c.items()))
             extra = ""
@@ -172,13 +243,6 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 "write BRESP" if op == "w" else "read RRESP",
                 line,
                 extra,
-            )
-        for g in LITE_WATCHED:
-            self.logger.info(
-                "UNMAPPED-CODE: %s: the Lite port has no response probe, so the "
-                "slave-side BRESP of a write is not observable here; a read RRESP "
-                "is the slave's code, passed through unchanged",
-                g,
             )
 
         # --- array tails ----------------------------------------------------
@@ -195,6 +259,20 @@ class sep_unmapped_access_policy_test(sep_base_test):
                     f"(base + TOTAL_SIZE 0x{ext_size:x})"
                 )
                 tail_codes[(t.in_extent, op, _code(resp))] += 1
+                if not to and t.addr in cfg.map_disagree:
+                    self.logger.info(
+                        "UNMAPPED-MAP-DISAGREE: %s answered %s, 0x%08x; graded by "
+                        "CHK-ARRAY-TAIL only; the map states %s",
+                        where,
+                        _code(resp),
+                        rdata,
+                        cfg.map_disagree[t.addr],
+                    )
+                elif not to:
+                    n_code += 1
+                    f = _grade(cfg, where, t.addr, op, resp, rdata)
+                    if f:
+                        code_fails.append(f)
                 if to:
                     tail_fails.append(f"{where} timed out")
                 elif t.in_extent:
@@ -244,6 +322,14 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 n,
             )
         verdict["CHK-ARRAY-TAIL"] = tail_fails
+        if n_code == 0:
+            code_fails.append("no probe or tail access completed, so no code was graded")
+        if ua.err_reads == 0 or ua.err_reads_lane_checked != ua.err_reads:
+            code_fails.append(
+                f"{ua.err_reads_lane_checked} of {ua.err_reads} error-response read(s) had "
+                "their read data lane-checked for X/Z"
+            )
+        verdict["CHK-UNMAPPED-CODE"] = code_fails
 
         # --- closing full compare -----------------------------------------
         moved = await ua.compare(list(ua.snap))
@@ -275,6 +361,11 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 f"and {n_past} past-extent tail access(es) were refused over "
                 f"{len(cfg.tails)} tail words"
             ),
+            "CHK-UNMAPPED-CODE": (
+                f"{n_code} probe and tail access(es) answered the response code and read "
+                f"data the SEP memory map states; all {ua.err_reads} error-response "
+                "read(s) were lane-checked for X/Z"
+            ),
             "CHK-UNMAPPED-NO-ALIAS": (
                 f"no refused read returned a programmed value, no probe write moved "
                 f"a watched word, and all {len(ua.snap)} live words match the snapshot"
@@ -287,6 +378,16 @@ class sep_unmapped_access_policy_test(sep_base_test):
         for g in REFUSE_GROUPS:
             n = sum(1 for p in cfg.probes if p.group == g)
             counts[_CHK[g]] = f"all {n} {g} probe(s) were refused"
+        counts["CHK-SYSCSR-HOLE-DECODE"] = (
+            f"the watcher saw the {cfg.lite_ctrl.name} control write and read at the "
+            f"system-CSR AXI-Lite port, and none of the {n_watched} "
+            f"{' and '.join(LITE_WATCHED)} probe(s) reached it"
+        )
+        counts["CHK-SYS-RESERVED-NO-LOOPBACK"] = (
+            f"the watcher saw the 0x{EXT_LOOPBACK_CTRL:08x} control write and read at the "
+            f"local crossbar's ext initiator, and none of the {n_watched} "
+            f"{' and '.join(LITE_WATCHED)} probe(s) arrived there"
+        )
         bad = []
         for chk, fails in verdict.items():
             if fails:

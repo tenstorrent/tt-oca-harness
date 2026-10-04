@@ -9,8 +9,9 @@ no_cpu / +skip_fuse_sense. RANDCFG: reserved gaps just above each live block
 every seed, plus seed-selected addresses drawn from every reserved row.
 
 The expectation comes from ``env/sep_axi_decode_map.py``. A reserved
-row allocates nothing, so an access there must not answer OKAY. DECERR
-versus SLVERR is unnamed, so the flavour is counted and logged.
+row allocates nothing, so an access there must be refused. This test
+grades refusal only, so DECERR and SLVERR both satisfy the check and the split
+is counted and logged. OKAY, EXOKAY and a timeout fail it.
 
 CHK-MAP-REFUSE-DATA: a refused read returns none of the live words sampled on
 the same bus (the live-bus control, SW_RESET_N, boot-ROM word 0). A refused
@@ -70,8 +71,12 @@ class sep_axi_map_refuse_test(sep_base_test):
             "refused-read data compare cannot fail"
         )
 
-        # Every probe is a reserved address this test asserts. Unnamed-refuse
-        # spans are excluded when the set is built.
+        # Every probe is a reserved address this test asserts. The spans in
+        # _PROBE_EXCLUDE are dropped when the set is built, each with its reason:
+        # the CPU TCM aperture (not fabric-decoded with the core held off), the
+        # TB-terminated external apertures, the adopter-defined SEP External
+        # window, and the system-bus reserved span that
+        # sep_unmapped_access_policy_test grades.
         fails: list[str] = []
         for item in cfg.probes:
             tag = "anchor" if item.anchor else "rand"
@@ -164,7 +169,7 @@ class sep_axi_map_refuse_test(sep_base_test):
         assert len(cfg.short_regions) <= SHORT_ROW_LIMIT, (
             f"CHK-RANDCFG FAIL: seed {cfg.seed} left "
             f"{len(cfg.short_regions)} row(s) short of quota, above the "
-            f"{SHORT_ROW_LIMIT} unnamed-refuse rows"
+            f"limit of {SHORT_ROW_LIMIT}"
         )
         self.logger.info(
             "CHK-RANDCFG PASS: walked %d probes (floor %d) with all %d "

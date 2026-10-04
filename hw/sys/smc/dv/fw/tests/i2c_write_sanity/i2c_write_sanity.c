@@ -2,35 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
- * @brief I2C P0 Write Test - Internal I2C Communication
+ * @file i2c_write_sanity.c
+ * @brief I2C controller-to-target write test between two on-chip instances
  *
- * =============================================================================
- * Test Configuration: I2C_1 Controller <-> I2C_0 Target
- * =============================================================================
- *
- * Approach: Configure I2C_1 as Controller (Master) and I2C_0 as Target (Slave)
- *           Use i2c_opentitan functions for write transactions
- *
- * Steps:
- *   1. Configure I2C_1 Controller settings (speed, address mode)
- *   2. Configure I2C_0 Target settings (address, FIFO thresholds)
- *   3. Write known data patterns from Controller to Target (multiple transactions)
- *   4. Verify received data matches expected data
- *
- * =============================================================================
- * Test Architecture: Two-Level I2C Control
- * =============================================================================
- *
- * LEVEL 1: Wrapper Control (0xC0009E00)
- *   - Controls GPIO pad multiplexing
- *   - Selects I2C mode (Controller/Target)
- *
- * LEVEL 2: IP Control (0xC0009000 + 0x200*idx)
- *   - OpenTitan I2C IP protocol layer
- *   - Handles timing, FIFO, interrupts, transactions
- *
- * =============================================================================
+ * Verifies that writes from I2C_1 as controller arrive intact at I2C_0 as
+ * target, over five 4-byte transactions with distinct data.
  */
 
 #include <stdint.h>
@@ -40,11 +16,9 @@
 #include "smc_test.h"
 #include "i2c_opentitan.h"
 
-/* Iteration budget for each ACQ FIFO drain loop. The FIFO is 64 entries deep
- * and each iteration is one register read, so 100 is comfortably above any
- * legitimate drain while still bounding the loop. Each loop gets its own
- * copy: a counter shared with an earlier drain makes the post-reset retry a
- * no-op whenever the first drain has already spent it. */
+/* Iteration budget for each ACQ FIFO drain loop: above the FIFO depth, but
+ * finite. Each loop needs its own budget, or the post-reset retry runs no
+ * iterations once the first drain has spent it. */
 #define ACQ_DRAIN_LOOP_LIMIT 100u
 
 //=============================================================================
@@ -79,15 +53,12 @@ static uint32_t i2c_target_check_and_clear_acq_fifo(uint32_t target_idx) {
     uint32_t acq_level = 0;
     uint32_t drained_count = 0;
 
-    // Check ACQ FIFO status
     i2c_target_get_fifo_status(target_idx, NULL, &acq_level);
 
     if (acq_level == 0 && i2c_target_acq_fifo_empty(target_idx)) {
-        // ACQ FIFO is already empty, nothing to do
         return 0;
     }
 
-    // ACQ FIFO is not empty, drain it
     simputs("  [ACQ FIFO] ACQ FIFO not empty (level=");
     simputshex32("", acq_level);
     simputs("), draining...\n");
@@ -114,14 +85,11 @@ static uint32_t i2c_target_check_and_clear_acq_fifo(uint32_t target_idx) {
         simputs(" entries\n");
     }
 
-    // Verify ACQ FIFO is empty after draining
     if (!i2c_target_acq_fifo_empty(target_idx)) {
         simputs("  [ACQ FIFO] WARNING: ACQ FIFO still not empty after draining, resetting...\n");
         i2c_reset_fifos(target_idx, false, false, false, true);
 
-        // Drain again after reset if still not empty, with its own budget: a
-        // counter shared with the loop above runs zero iterations once the first
-        // drain has spent it, and the reset path becomes a silent no-op.
+        // Drain again after the reset, with its own budget.
         uint32_t retry_timeout = ACQ_DRAIN_LOOP_LIMIT;
         if (!i2c_target_acq_fifo_empty(target_idx)) {
             while (!i2c_target_acq_fifo_empty(target_idx) && retry_timeout > 0) {
@@ -132,20 +100,8 @@ static uint32_t i2c_target_check_and_clear_acq_fifo(uint32_t target_idx) {
         }
     }
 
-    /* Fail closed if the FIFO is still not empty.
-     *
-     * Every exit from the draining above was previously silent: the first
-     * loop could expire with the FIFO full, the >64 safety check could break
-     * out, and the post-reset retry could expire too -- and the function
-     * returned normally in all three cases. The caller only inspects the
-     * return value to decide whether to print a message, so the test then ran
-     * its write transaction against a target whose ACQ FIFO it believed was
-     * clean. That is precisely the condition the comment at the call site says
-     * causes SCL stretching and deadlock, so leaving it undetected turns a
-     * setup failure into either a hang or a comparison against stale data.
-     *
-     * There is no recovery left to try at this point -- the FIFO has been
-     * drained and then reset -- so the honest outcome is to stop. */
+    /* Stop if the FIFO is still not empty after the drain and the reset: a
+     * stale ACQ FIFO can stall the write or leave stale data for the check. */
     if (!i2c_target_acq_fifo_empty(target_idx)) {
         simputs("  [ACQ FIFO] ERROR: ACQ FIFO not empty after drain and reset\n");
         write_scratch(0, 0xBAD00044);
@@ -165,28 +121,17 @@ int main(void) {
     const uint8_t TARGET_ADDR = 0x10;  // Target address (7-bit)
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##   I2C P0 Write Test - Internal I2C          ##\n");
     simputs("################################################\n");
     simputs("\n");
 
-    //=========================================================================
-    // Step 1: System Initialization
-    //=========================================================================
     write_scratch(1, 0x00000010);
     simputs("Step 1: System Initialization\n");
     simputs("  System ready\n");
     write_scratch(1, 0x00000011);
 
-    //=========================================================================
-    // Step 2: LEVEL 1 - Wrapper Control Enable
-    //         Enable GPIO pad mux for both Controller and Target
-    //=========================================================================
     write_scratch(1, 0x00000020);
     simputs("\nStep 2: LEVEL 1 - Wrapper Control Enable\n");
     simputs("  Enabling I2C_1 Controller (Master mode)...\n");
@@ -197,13 +142,10 @@ int main(void) {
 
     write_scratch(1, 0x00000021);
 
-    //=========================================================================
-    // Step 3: LEVEL 2 - I2C IP Initialization
-    //=========================================================================
     write_scratch(1, 0x00000030);
     simputs("\nStep 3: LEVEL 2 - I2C IP Initialization\n");
 
-    // Configure Controller timing
+    // Configure Controller timing. The I2C input clock for this image is 100 MHz.
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
                                              .clock_period_nanos = 10,
                                              .sda_rise_nanos = 300,
@@ -217,7 +159,6 @@ int main(void) {
         i2c_get_default_timing(I2C_SPEED_STANDARD, 100, &computed_timing);
     }
 
-    // Initialize Controller
     simputs("  Initializing I2C_1 Controller...\n");
     i2c_controller_config_t ctrlr_cfg = {.timing = computed_timing,
                                          .fifo = {.rx_thresh = I2C_DEFAULT_RX_THRESH,
@@ -235,7 +176,6 @@ int main(void) {
     }
     simputs("  Controller initialized successfully\n");
 
-    // Initialize Target
     simputs("  Initializing I2C_0 Target...\n");
     i2c_target_config_t tgt_cfg = {
         .address0 = TARGET_ADDR,
@@ -263,7 +203,6 @@ int main(void) {
 
     write_scratch(1, 0x00000031);
 
-    // Explicitly set ACQ_START_STOP_EN bit to 1
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -274,20 +213,15 @@ int main(void) {
     simputs("  Speed: Standard mode (100 kHz)\n");
     simputs("  Address mode: 7-bit addressing\n");
 
-    //=========================================================================
-    // Step 4: Write preset data from Controller to Target (multiple transactions)
-    //=========================================================================
     write_scratch(1, 0x00000040);
     simputs("\nStep 4: Write Preset Data from Controller to Target\n");
 
-    // Define number of transactions to test
     const uint32_t NUM_TRANSACTIONS = 5;
 
     // Test data patterns
     unsigned char test_data_base[] = {0xAC, 0x8F, 0x73, 0xB2};
     uint32_t data_size = sizeof(test_data_base);
 
-    // Allocate buffers for multiple transactions
     unsigned char test_data[NUM_TRANSACTIONS][4];     // Data to send (Controller -> Target)
     unsigned char recv_buffer[NUM_TRANSACTIONS][256]; // Received data (Target receives)
     uint32_t received_lens[NUM_TRANSACTIONS];
@@ -317,17 +251,14 @@ int main(void) {
         }
         simputs("\n");
 
-        // CRITICAL: Check and clear Target ACQ FIFO before each write transaction
-        // If ACQ FIFO is full or not empty, it can cause SCL stretching and deadlock
-        // Solution: Clear ACQ FIFO before Controller sends write command
+        // A non-empty target ACQ FIFO can stretch SCL and deadlock the write.
         uint32_t drained_count = i2c_target_check_and_clear_acq_fifo(TARGET_IDX);
         if (drained_count > 0) {
             simputs("  [PRE-WRITE] ACQ FIFO cleared before write transaction\n");
         }
 
-        // Controller write transaction (non-blocking to prevent ACQ FIFO overflow)
-        // For internal I2C communication, Target must receive immediately after Controller write
-        // to prevent ACQ FIFO overflow and SCL stretching
+        // Non-blocking write: the target must receive while the controller sends,
+        // or the ACQ FIFO overflows and stretches SCL.
         simputs("  Controller sending write transaction (non-blocking)...\n");
         ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX, TARGET_ADDR, test_data[txn],
                                                         data_size);
@@ -341,8 +272,7 @@ int main(void) {
 
         simputs("  Write command sent to FIFO\n");
 
-        // Target receive transaction immediately (without waiting for Controller idle)
-        // This prevents ACQ FIFO overflow which would cause SCL stretching and deadlock
+        // Receive without waiting for the controller to go idle.
         simputs("  Target receiving transaction (immediate read)...\n");
         ret = i2c_target_receive_transaction(TARGET_IDX, recv_buffer[txn], sizeof(recv_buffer[txn]),
                                              &received_lens[txn], I2C_TIMEOUT_DEFAULT);
@@ -368,9 +298,6 @@ int main(void) {
 
     write_scratch(1, 0x00000041); // Signal to TB: Write complete
 
-    //=========================================================================
-    // Step 5: Compare written and received data (All Transactions)
-    //=========================================================================
     write_scratch(1, 0x00000050);
     simputs("\nStep 5: Compare Written and Received Data\n");
     simputs("  ========================================\n");
@@ -399,7 +326,6 @@ int main(void) {
             test_fail(0);
         }
 
-        // Compare data byte by byte
         for (uint32_t i = 0; i < data_size; i++) {
             simputs("    Expected data byte[");
             simputshex32("", i);
@@ -445,9 +371,6 @@ int main(void) {
     simputs("  ========================================\n");
     write_scratch(1, 0x00000051);
 
-    //=========================================================================
-    // Test Complete - Signal to testbench
-    //=========================================================================
     write_scratch(1, 0x00000090);
 
     write_scratch(1, 0xEBEDEBE4);
@@ -472,13 +395,4 @@ int main(void) {
     simputs("\n################################################\n");
 
     test_pass(0);
-
-    simputs("\n=== Test Complete ===\n");
-
-    // Infinite loop to keep CPU in WFI state after test completion
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
 }

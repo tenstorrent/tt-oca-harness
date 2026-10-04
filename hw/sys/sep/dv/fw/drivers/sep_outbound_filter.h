@@ -23,11 +23,21 @@
 
 /*
  * FILTER_CONFIG open window. XBAR_SEP_OUTBOUND_CFG is the named golden
- * for the same word (read|write|entry_enabled|allow_burst plus the
- * protocol bit the XBAR check uses). Do NOT set ALLOW_NS: EnNsFilter=1
- * and SEP CPU traffic is secure (ns=0).
+ * for the same word: read | write | entry_enabled | allow_burst, with the
+ * read-only data_bus_width at its reset value and no bit set outside a
+ * field. Do NOT set ALLOW_NS: EN_NS_FILTER=1 and SEP CPU traffic is secure
+ * (ns=0).
  */
 #define SEP_OUTBOUND_FILTER_CFG_OPEN XBAR_SEP_OUTBOUND_CFG
+
+_Static_assert(SEP_OUTBOUND_FILTER_CFG_OPEN ==
+                   (FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm |
+                    FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |
+                    FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm |
+                    FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm |
+                    ((unsigned long long)FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_reset
+                     << FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp)),
+               "XBAR_SEP_OUTBOUND_CFG does not match the filter_ctrl.rdl field layout");
 
 /* Mailbox window: STDOUT (test_completion) plus a small pad. */
 #define SEP_OUTBOUND_FILTER_WIN_START ((uint64_t)(uint32_t)STDOUT)

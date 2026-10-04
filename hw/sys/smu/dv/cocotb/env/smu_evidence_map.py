@@ -389,30 +389,58 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-IJTAG-GATE",
             "CHK-SMU-IJTAG-GATE",
-            "none of the three iJTAG host selects asserts over a whole IDCODE "
-            "IR+DR scan, counted on jtag_tck",
+            "under SELECT_IJTAG with all three SIBs open every host select is high on at least as "
+            "many TCKs as the scan shifts and the scan returns the open-chain word; from the "
+            "Update-IR that loads IDCODE, none of the three selects asserts over an IDCODE DR "
+            "scan and the IR scan of a second IDCODE load, counted on jtag_tck, and the "
+            "open-chain word returns again afterwards",
         ),
         (
             "CHK-SMU-IJTAG-CHAIN",
             "CHK-SMU-IJTAG-CHAIN",
-            "under SELECT_IJTAG the DR closed through the wrapper scan pins "
-            "returns each payload exactly IJTAG_SIB_COUNT bits late, for "
-            "five directed and three seeded-random nonzero payloads",
+            "open pass: with all three SIBs held open the DR is six cells "
+            "(three SIB bits and the three bench loop cells), each payload "
+            "returns six bits late after the captured 0b101010, and the "
+            "dfd, dft and dft_secure host scan-out pins each carry the "
+            "modelled SIB stream on every Shift-DR TCK, count-gated; closed "
+            "pass, the control: with every SIB shut the DR is three cells "
+            "and each payload returns three bits late after 0b000; five "
+            "directed and three seeded-random nonzero payloads per pass",
         ),
         (
             "CHK-SMU-IJTAG-SIB",
             "CHK-SMU-IJTAG-SIB",
-            "Update-DR latches the SIB enables and the next Capture-DR reads "
-            "them back, for each SIB alone, all three, and none; the matching "
-            "host select asserts only while that SIB is open",
+            "Update-DR latches the SIB enables and the next scan returns "
+            "them, each open SIB followed by its bench cell, for each SIB "
+            "alone, all three, and none; the matching host select asserts "
+            "only while that SIB is open",
         ),
         (
             "CHK-SMU-STAP-IO-SELECT",
             "CHK-SMU-STAP-IO-SELECT",
-            "an unselected I/O STAP drives no TDO enable and its host TMS does "
-            "not follow the primary TAP; after a TAP_3DCR select the enable "
-            "covers exactly IR+DR TCKs, host TMS matches on every TCK, and the "
-            "extra STAP stays quiet",
+            "an unselected I/O STAP drives no TDO enable and its host TMS holds the TMS-Hold "
+            "reset value 0 on every TCK of an IDCODE scan; selected over TAP_3DCR, a network "
+            "IDCODE scan of 37 cells (the PTAP register, the I/O STAP's TDO and TDI lockup pair "
+            "over the bare bench return, one TCK, and four SIBs) and an 8-bit tail returns four "
+            "SIB bits of 0, the masked lockup bit, the IDCODE and the tail 37 bits late, "
+            "tb_stap_io_tdo carries the IDCODE LSB first then the tail and the zero fill behind "
+            "it on all 45 Shift-DR TCKs, the enable is high on every Shift-IR and Shift-DR TCK "
+            "and low on every other TCK, read against the PTAP state, and covers exactly the 6 + "
+            "45 shift TCKs, host TMS matches the primary TAP on every TCK, and the extra STAP "
+            "drives no TDO enable",
+        ),
+        (
+            "CHK-SMU-STAP-EXTRA-SELECT",
+            "CHK-SMU-STAP-EXTRA-SELECT",
+            "an unselected extra STAP drives no TDO enable and its host TMS holds the TMS-Hold "
+            "reset value 0 on every TCK of an IDCODE scan; selected over TAP_3DCR without "
+            "Config-Hold, a network IDCODE scan of 36 cells (the PTAP register, three SIBs ahead, "
+            "the bare bench return and its own SIB) and an 8-bit tail returns four SIB bits of 0, "
+            "the IDCODE and the tail 36 bits late, tb_stap_extra0_tdo carries three SIB captures, "
+            "the IDCODE LSB first, the tail and the zero fill behind it on all 44 Shift-DR TCKs, "
+            "the enable is high on every Shift-IR and Shift-DR TCK and low on every other TCK, "
+            "read against the PTAP state, and covers exactly the 6 + 44 shift TCKs, host TMS "
+            "matches the primary TAP on every TCK, and the I/O STAP drives no TDO enable",
         ),
     ],
     "smu_dtp_bsr_ijtag_scan_test": [
@@ -1256,7 +1284,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "after program window OKAY"),
     ],
     "smu_sys_in_filter_reprogram_shrink_test": [
-        ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "shrink restores BlockByDefault"),
+        ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "shrink restores BLOCK_BY_DEFAULT"),
     ],
     "smu_sys_in_filter_window_edge_test": [
         (
@@ -1398,13 +1426,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "telemetry stays released and clocked while primary/periph fall",
         ),
     ],
-    # CHK-SMU-SEC-TOKEN-S1 is logged by the body as an observation the card does not
-    # claim, so it is not a row here.
     "smu_composition_parameter_test": [
         (
             "CHK-SMU-SEC-TOKEN-S2",
             "CHK-SMU-SEC-TOKEN-S2",
-            "SEP_SEC_DISABLE_TOKEN is 256 bits at the wrapper and at smu and reaches smu unchanged",
+            "SEP_SEC_DISABLE_TOKEN is 256 bits at the SEP eFuse controller and is the digest "
+            "the bench binds in CFG",
         ),
         (
             "CHK-SMU-OTPAXI-SEP-S3",
@@ -1414,7 +1441,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-NOSEP-S4",
             "CHK-SMU-NOSEP-S4",
-            "Cfg reaches smu unchanged and each consumer parameter is its specified default",
+            "CFG reaches smu unchanged and each consumer parameter is its specified default",
         ),
     ],
     "smu_reset_release_sync_test": [

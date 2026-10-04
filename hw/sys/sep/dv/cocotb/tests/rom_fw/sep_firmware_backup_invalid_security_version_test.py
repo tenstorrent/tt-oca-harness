@@ -58,12 +58,12 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
 
     def corrupt_backup(self, buf: bytearray) -> None:
         mm.set_security_version(buf, "backup", _BACKUP_SECURITY_VERSION)
-        # Re-hash must have restored a valid TBS hash, or the backup is rejected in
+        # Re-hash must have restored a valid signed region hash, or the backup is rejected in
         # the manifest loop as HASH_MISMATCH and the rollback check never runs.
         mm.verify_layout(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-VERSION: backup security_version=%d vs fuse count %d "
-            "(reject expected because %d < %d), TBS re-hashed",
+            "(reject expected because %d < %d), signed region re-hashed",
             _BACKUP_SECURITY_VERSION,
             _FUSE_SECURITY_VERSION,
             _BACKUP_SECURITY_VERSION,

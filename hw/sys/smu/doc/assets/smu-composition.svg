@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="668" viewBox="0 0 1040 668" role="img" aria-labelledby="title desc">
+<title id="title">SMU composition</title>
+<desc id="desc">The OCAH SMU joins the SEP, the SMC and the DTP around an AXI4 crossbar with three initiators and three targets (SEP, SMC and the external SMN port), with no self-directed paths. The external port reaches the SMN through clock-domain crossings outside the SMU. The SEP is optional and drawn with a dashed outline. DTP bridges external JTAG to the SMC AXI port and to the SEP and SMC TAPs. The SEP to SMC direct port gives the SEP unfettered access to the SMC. The SMC clock control and reset manager drive chiplet clock and reset control. The SEP drives its OTP bank and passes its QSPI interface to the SMC. The SMC drives its OTP bank and 65 GPIO pads, which carry the QSPI, UART, I3C, I2C and AVSBus interfaces. A future safety bus links a future safety monitor to the SEP and SMC. Hatched blocks with dashed outlines are future.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="668" fill="#ffffff"/>
+<rect class="smu" x="84" y="90" width="712" height="352" rx="8"/>
+<text class="b" x="96" y="430" text-anchor="start">OCAH SMU</text>
+<rect class="fabric" x="100" y="106" width="540" height="58" rx="5"/>
+<text class="bs" x="370.0" y="130" text-anchor="middle">SMU AXI4 crossbar</text>
+<text class="s" x="370.0" y="149" text-anchor="middle">3 initiators × 3 targets, no self-directed paths</text>
+<text class="t" x="370.0" y="22" text-anchor="middle">to/from SMN</text>
+<path class="axi" d="M345,34 L345,93"/>
+<path class="axi" d="M405,34 L405,93"/>
+<path class="axi" d="M236,177 L236,219"/>
+<path class="axi" d="M276,177 L276,219"/>
+<path class="axi" d="M560,177 L560,219"/>
+<path class="axi" d="M600,177 L600,219"/>
+<path class="sigo" d="M662,244 L662,36"/>
+<path class="sigo" d="M740,244 L740,36"/>
+<text class="t" x="654" y="46" text-anchor="end">Chiplet clock control</text>
+<text class="t" x="748" y="46" text-anchor="start">Chiplet reset control</text>
+<rect class="core" x="100" y="244" width="76" height="96" rx="6"/>
+<text class="b" x="110" y="266" text-anchor="start">DTP</text>
+<path class="axi" d="M162,231 L162,198 L472,198 L472,252 L487,252"/>
+<path class="jtag" d="M176,296 L190,296 L190,206 L456,206 L456,288 L498,288"/>
+<path class="jtag" d="M176,322 L210,322"/>
+<path class="jtagb" d="M17,292 L97,292"/>
+<text class="t" x="14" y="282" text-anchor="start">JTAG</text>
+<rect class="core opt" x="214" y="232" width="222" height="160" rx="6"/>
+<text class="b" x="344.0" y="302" text-anchor="middle">SEP</text>
+<text class="t" x="344.0" y="322" text-anchor="middle">Security processor</text>
+<text class="s" x="344.0" y="347" text-anchor="middle">1× RV32 CPU, 640 KiB SRAM</text>
+<text class="si" x="344.0" y="368" text-anchor="middle">(optional)</text>
+<rect class="core" x="502" y="232" width="278" height="160" rx="6"/>
+<text class="b" x="641.0" y="322" text-anchor="middle">SMC</text>
+<text class="t" x="641.0" y="342" text-anchor="middle">System management controller</text>
+<text class="s" x="641.0" y="362" text-anchor="middle">4× RV64 CPU, 1 MiB SRAM</text>
+<rect class="fabric" x="628" y="244" width="68" height="42" rx="4"/>
+<text class="s" x="662" y="261" text-anchor="middle">Clock</text>
+<text class="s" x="662" y="277" text-anchor="middle">control</text>
+<rect class="fabric" x="706" y="244" width="68" height="42" rx="4"/>
+<text class="s" x="740" y="261" text-anchor="middle">Reset</text>
+<text class="s" x="740" y="277" text-anchor="middle">manager</text>
+<path class="axi" d="M451,372 L487,372"/>
+<path class="sig" d="M441,344 L497,344"/>
+<text class="s" x="468" y="336" text-anchor="middle">QSPI</text>
+<text class="s" x="467" y="410" text-anchor="middle">SEP to SMC direct port</text>
+<text class="si" x="467" y="426" text-anchor="middle">(unfettered SMC access)</text>
+<path class="network nostroke" d="M830,240 L854,254 L854,318 L830,332 Z"/>
+<path class="hatch" d="M831.5,250.5 L836.9,245.1 M831.5,259.5 L842.3,248.7 M831.5,268.5 L847.7,252.3 M831.5,277.5 L852.5,256.5 M831.5,286.5 L852.5,265.5 M831.5,295.5 L852.5,274.5 M831.5,304.5 L852.5,283.5 M831.5,313.5 L852.5,292.5 M831.5,322.5 L852.5,301.5 M834.5,328.5 L852.5,310.5"/>
+<path class="network fut" d="M830,240 L854,254 L854,318 L830,332 Z"/>
+<text class="s" x="842" y="390" text-anchor="middle">Safety bus</text>
+<path class="axio" d="M408,219 L408,190 L804,190 L804,258 L815,258"/>
+<path class="axio" d="M815,314 L795,314"/>
+<rect class="future nostroke" x="906" y="237" width="88" height="100" rx="6"/>
+<path class="hatch" d="M907.5,247.5 L916.5,238.5 M907.5,256.5 L925.5,238.5 M907.5,265.5 L934.5,238.5 M907.5,274.5 L943.5,238.5 M907.5,283.5 L952.5,238.5 M907.5,292.5 L961.5,238.5 M907.5,301.5 L970.5,238.5 M907.5,310.5 L979.5,238.5 M907.5,319.5 L988.5,238.5 M907.5,328.5 L992.5,243.5 M909.5,335.5 L992.5,252.5 M918.5,335.5 L992.5,261.5 M927.5,335.5 L992.5,270.5 M936.5,335.5 L992.5,279.5 M945.5,335.5 L992.5,288.5 M954.5,335.5 L992.5,297.5 M963.5,335.5 L992.5,306.5 M972.5,335.5 L992.5,315.5 M981.5,335.5 L992.5,324.5 M990.5,335.5 L992.5,333.5"/>
+<rect class="future fut" x="906" y="237" width="88" height="100" rx="6"/>
+<text class="bs" x="950.0" y="281" text-anchor="middle">Safety</text>
+<text class="bs" x="950.0" y="299" text-anchor="middle">monitor</text>
+<text class="si" x="950.0" y="317" text-anchor="middle">(future auto)</text>
+<path class="axio" d="M891,286 L869,286"/>
+<path class="sig" d="M380,395 L380,517"/>
+<text class="s" x="388" y="484" text-anchor="start">OTP ×1</text>
+<rect class="external" x="330" y="520" width="100" height="48" rx="6"/>
+<text class="s" x="380" y="540" text-anchor="middle">1 KiB OTP</text>
+<text class="s" x="380" y="556" text-anchor="middle">bank</text>
+<path class="sig" d="M620,395 L620,462"/>
+<text class="s" x="620" y="480" text-anchor="middle">GPIO pads ×65</text>
+<text class="si" x="620" y="496" text-anchor="middle">carry QSPI, UART, I3C, I2C, AVSBus</text>
+<path class="sig" d="M770,395 L770,517"/>
+<text class="s" x="778" y="484" text-anchor="start">OTP ×1</text>
+<rect class="external" x="720" y="520" width="100" height="48" rx="6"/>
+<text class="s" x="770" y="540" text-anchor="middle">1 KiB OTP</text>
+<text class="s" x="770" y="556" text-anchor="middle">bank</text>
+<text class="s" x="42" y="618" text-anchor="start">Manager port</text>
+<text class="s" x="166" y="618" text-anchor="start">Subordinate port</text>
+<text class="s" x="328" y="618" text-anchor="start">Clock-domain crossing</text>
+<rect class="future nostroke" x="474" y="604" width="40" height="18" rx="4"/>
+<path class="hatch" d="M475.5,614.5 L484.5,605.5 M478.5,620.5 L493.5,605.5 M487.5,620.5 L502.5,605.5 M496.5,620.5 L511.5,605.5 M505.5,620.5 L512.5,613.5"/>
+<rect class="future fut" x="474" y="604" width="40" height="18" rx="4"/>
+<text class="s" x="522" y="618" text-anchor="start">Future block</text>
+<rect class="core opt" x="632" y="604" width="40" height="18" rx="4"/>
+<text class="s" x="680" y="618" text-anchor="start">Optional (SEP parameter)</text>
+<path class="axi" d="M17,639 L51,639"/>
+<text class="s" x="62" y="644" text-anchor="start">AXI4</text>
+<path class="axio" d="M113,639 L147,639"/>
+<text class="s" x="158" y="644" text-anchor="start">Future</text>
+<path class="jtag" d="M226,639 L263,639"/>
+<text class="s" x="274" y="644" text-anchor="start">JTAG</text>
+<path class="sig" d="M325,639 L359,639"/>
+<text class="s" x="370" y="644" text-anchor="start">Signals</text>
+<rect class="pm" x="334.0" y="97.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="345" y="110.5" text-anchor="middle">M</text>
+<rect class="ps" x="394.0" y="97.0" width="22" height="18" rx="4"/>
+<text class="pst" x="405" y="110.5" text-anchor="middle">S</text>
+<rect class="pc" x="324.0" y="56.0" width="42" height="18" rx="4"/>
+<text class="pct" x="345" y="69.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="384.0" y="56.0" width="42" height="18" rx="4"/>
+<text class="pct" x="405" y="69.5" text-anchor="middle">CDC</text>
+<rect class="ps" x="225.0" y="155.0" width="22" height="18" rx="4"/>
+<text class="pst" x="236" y="168.5" text-anchor="middle">S</text>
+<rect class="pm" x="225.0" y="223.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="236" y="236.5" text-anchor="middle">M</text>
+<rect class="pm" x="265.0" y="155.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="276" y="168.5" text-anchor="middle">M</text>
+<rect class="ps" x="265.0" y="223.0" width="22" height="18" rx="4"/>
+<text class="pst" x="276" y="236.5" text-anchor="middle">S</text>
+<rect class="ps" x="549.0" y="155.0" width="22" height="18" rx="4"/>
+<text class="pst" x="560" y="168.5" text-anchor="middle">S</text>
+<rect class="pm" x="549.0" y="223.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="560" y="236.5" text-anchor="middle">M</text>
+<rect class="pm" x="589.0" y="155.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="600" y="168.5" text-anchor="middle">M</text>
+<rect class="ps" x="589.0" y="223.0" width="22" height="18" rx="4"/>
+<text class="pst" x="600" y="236.5" text-anchor="middle">S</text>
+<rect class="pm" x="151.0" y="235.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="162" y="248.5" text-anchor="middle">M</text>
+<rect class="pj" x="130.0" y="287.0" width="46" height="18" rx="4"/>
+<text class="pjt" x="153" y="300.5" text-anchor="middle">STAP</text>
+<rect class="pj" x="130.0" y="313.0" width="46" height="18" rx="4"/>
+<text class="pjt" x="153" y="326.5" text-anchor="middle">STAP</text>
+<rect class="ps" x="491.0" y="243.0" width="22" height="18" rx="4"/>
+<text class="pst" x="502" y="256.5" text-anchor="middle">S</text>
+<rect class="pj" x="502.0" y="279.0" width="38" height="18" rx="4"/>
+<text class="pjt" x="521" y="292.5" text-anchor="middle">TAP</text>
+<rect class="pj" x="214.0" y="313.0" width="38" height="18" rx="4"/>
+<text class="pjt" x="233" y="326.5" text-anchor="middle">TAP</text>
+<rect class="pm" x="425.0" y="363.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="436" y="376.5" text-anchor="middle">M</text>
+<rect class="ps" x="491.0" y="363.0" width="22" height="18" rx="4"/>
+<text class="pst" x="502" y="376.5" text-anchor="middle">S</text>
+<rect class="ps" x="397.0" y="223.0" width="22" height="18" rx="4"/>
+<text class="pst" x="408" y="236.5" text-anchor="middle">S</text>
+<rect class="pm" x="819.0" y="249.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="262.5" text-anchor="middle">M</text>
+<rect class="pm" x="819.0" y="305.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="318.5" text-anchor="middle">M</text>
+<rect class="ps" x="769.0" y="305.0" width="22" height="18" rx="4"/>
+<text class="pst" x="780" y="318.5" text-anchor="middle">S</text>
+<rect class="pm" x="895.0" y="277.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="906" y="290.5" text-anchor="middle">M</text>
+<rect class="ps" x="843.0" y="277.0" width="22" height="18" rx="4"/>
+<text class="pst" x="854" y="290.5" text-anchor="middle">S</text>
+<rect class="pm" x="14.0" y="604.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="25" y="617.5" text-anchor="middle">M</text>
+<rect class="ps" x="138.0" y="604.0" width="22" height="18" rx="4"/>
+<text class="pst" x="149" y="617.5" text-anchor="middle">S</text>
+<rect class="pc" x="280.0" y="604.0" width="42" height="18" rx="4"/>
+<text class="pct" x="301" y="617.5" text-anchor="middle">CDC</text>
+</svg>

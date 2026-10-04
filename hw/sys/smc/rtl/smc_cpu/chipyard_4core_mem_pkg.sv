@@ -13,24 +13,24 @@
 package chipyard_4core_mem_pkg;
 
   // Memory Parameters
-  localparam int unsigned NUM_SRAM_BANKS = 32;
-  localparam int unsigned NUM_ICACHE_TAG_BANKS = 4;
-  localparam int unsigned NUM_ICACHE_DATA_BANKS = 8;
-  localparam int unsigned NUM_DCACHE_TAG_BANKS = 4;
-  localparam int unsigned NUM_DCACHE_DATA_BANKS = 4;
+  localparam int unsigned NumSramBanks = 32;
+  localparam int unsigned NumIcacheTagBanks = 4;
+  localparam int unsigned NumIcacheDataBanks = 8;
+  localparam int unsigned NumDcacheTagBanks = 4;
+  localparam int unsigned NumDcacheDataBanks = 4;
 
-  // SRAM Size Parameters, 2^SRAM_SIZE bytes
-  localparam bit [5:0] SRAM_SIZE = 20;
+  // SRAM Size Parameters, 2^SramSize bytes
+  localparam bit [5:0] SramSize = 20;
 
-  localparam int unsigned SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH = 12;
-  localparam int unsigned SMC_4CORE_SCRATCH_RAM_DATA_WIDTH = 72;
+  localparam int unsigned Smc4coreScratchRamAddrWidth = 12;
+  localparam int unsigned Smc4coreScratchRamDataWidth = 72;
 
   `include "chipyard_mem_defines.svh"
 
   // define all the structs needed for chipyard cpu memory interfaces
-  `CHIPYARD_MEM_REQ_T(scratch_ram_req_t, SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH,
-                      SMC_4CORE_SCRATCH_RAM_DATA_WIDTH, 1)
-  `CHIPYARD_MEM_RSP_T(scratch_ram_rsp_t, SMC_4CORE_SCRATCH_RAM_DATA_WIDTH)
+  `CHIPYARD_MEM_REQ_T(scratch_ram_req_t, Smc4coreScratchRamAddrWidth, Smc4coreScratchRamDataWidth,
+                      1)
+  `CHIPYARD_MEM_RSP_T(scratch_ram_rsp_t, Smc4coreScratchRamDataWidth)
 
   `CHIPYARD_MEM_REQ_T(l1_icache_tag_req_t, 5, 94, 2)
   `CHIPYARD_MEM_RSP_T(l1_icache_tag_rsp_t, 94)

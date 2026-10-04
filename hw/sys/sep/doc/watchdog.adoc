@@ -30,10 +30,44 @@ The wrapper exports two signals: `intr_wdog_timer_bark_o`, the watchdog bark int
 
 Consult the
 https://opentitan.org/book/hw/ip/aon_timer/[OpenTitan Always-On Timer
-documentation] for the authoritative core functionality of the IP. The
+documentation] for the authoritative core functionality of the IP.
+The Programmer's Guide gives the
 ifdef::backend-html5[]
-register map is reported in the xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map].
+xref:ocah-programmer-guide::index.adoc#sep-watchdog[programming guidance]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-register map is reported in the <<sep-detailed-register-map,Detailed Register Map>>.
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-watchdog[programming guidance]
+endif::backend-pdf[]
+for this block.
+The
+ifdef::backend-html5[]
+register map follows below.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$aon_timer/regs/gen/html/aon_timer.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/gen/adoc/aon_timer.adoc[leveloffset=+2]
 endif::backend-pdf[]

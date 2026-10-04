@@ -37,22 +37,16 @@ module smu_wrapper
   import sep_io_pkg::*;
   import km_intf_pkg::*;
 #(
-  parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,
-  parameter bit           SEP                   = 1'b1,
-  parameter bit [255:0]   SEP_SEC_DISABLE_TOKEN = 256'b0,
-  parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,
+  parameter int unsigned CFG_IDX = 0,
+  parameter smu_pkg::smu_cfg_t CFG = smu_pkg::SmuConfigs[CFG_IDX],
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
 
-  localparam int unsigned  XTRIG_NUM_CTP          = Cfg.XTRIG_NUM_CTP,
-  localparam int unsigned  XTRIG_NUM_INT_CT       = Cfg.XTRIG_NUM_INT_CT,
-  localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = Cfg.XTRIG_NUM_CLK_STOP_REQ,
-  localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS =
-      (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1
+  localparam int unsigned  XtrigNumCtp          = CFG.XTRIG_NUM_CTP,
+  localparam int unsigned  XtrigNumIntCt        = CFG.XTRIG_NUM_INT_CT,
+  localparam int unsigned  XtrigNumClkStopReq   = CFG.XTRIG_NUM_CLK_STOP_REQ,
+  localparam int unsigned  JtagNumExtraStapPorts = smu_pkg::jtag_num_extra_stap_ports(CFG)
 ) (
   // Clock and Reset
-  input  logic  clk_smu_i,
-  input  logic  clk_ref_i,
-  input  logic  clk_periph_i,
   input  logic  rst_cold_ni,
 
   output logic  rst_cold_stable_ref_clk_no,
@@ -77,10 +71,10 @@ module smu_wrapper
   output logic            jtag_stap_io_host_tdo_oen_o,
 
   // Extra STAP Interfaces
-  output prim_jtag_pkg::jtag_tap_ctrl_t  jtag_stap_extra_host_tap_ctrl_o [JTAG_NUM_EXTRA_STAP_PORTS-1:0],
-  input  logic            jtag_stap_extra_host_tdi_i      [JTAG_NUM_EXTRA_STAP_PORTS-1:0],
-  output logic            jtag_stap_extra_host_tdo_o      [JTAG_NUM_EXTRA_STAP_PORTS-1:0],
-  output logic            jtag_stap_extra_host_tdo_oen_o  [JTAG_NUM_EXTRA_STAP_PORTS-1:0],
+  output prim_jtag_pkg::jtag_tap_ctrl_t  jtag_stap_extra_host_tap_ctrl_o [JtagNumExtraStapPorts-1:0],
+  input  logic            jtag_stap_extra_host_tdi_i      [JtagNumExtraStapPorts-1:0],
+  output logic            jtag_stap_extra_host_tdo_o      [JtagNumExtraStapPorts-1:0],
+  output logic            jtag_stap_extra_host_tdo_oen_o  [JtagNumExtraStapPorts-1:0],
 
   // Extended STAP Scan Interface
   output prim_jtag_pkg::jtag_scan_ctrl_t  jtag_stap_host_scan_ctrl_o,
@@ -112,31 +106,31 @@ module smu_wrapper
   output ic_reset_ext_t  jtag_ic_reset_ext_o,
 
   // Cross Trigger Matrix Interface
-  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_req_o,
-  input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_ack_i,
-  input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_req_i,
-  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_ack_o,
+  output logic [XtrigNumIntCt-1:0]  xtrig_ctm_src_req_o,
+  input  logic [XtrigNumIntCt-1:0]  xtrig_ctm_src_ack_i,
+  input  logic [XtrigNumIntCt-1:0]  xtrig_ctm_dst_req_i,
+  output logic [XtrigNumIntCt-1:0]  xtrig_ctm_dst_ack_o,
 
   // Clock Stop Request Interface
-  input  logic [XTRIG_NUM_CLK_STOP_REQ-1:0]  xtrig_clk_stop_req_i,
+  input  logic [XtrigNumClkStopReq-1:0]  xtrig_clk_stop_req_i,
 
   // Cross Trigger Port GPIO Interface
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_out_dout_o,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_out_dout_en_o,
-  input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_out_din_i,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_out_din_en_o,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_in_dout_o,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_in_dout_en_o,
-  input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_in_din_i,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_in_din_en_o,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_in_dout_o,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_in_dout_en_o,
-  input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_in_din_i,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_in_din_en_o,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_dout_o,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_dout_en_o,
-  input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_i,
-  output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_en_o,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_out_dout_o,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_out_dout_en_o,
+  input  logic [XtrigNumCtp-1:0]  xtrig_ctp_req_out_din_i,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_out_din_en_o,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_in_dout_o,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_in_dout_en_o,
+  input  logic [XtrigNumCtp-1:0]  xtrig_ctp_req_in_din_i,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_req_in_din_en_o,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_in_dout_o,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_in_dout_en_o,
+  input  logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_in_din_i,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_in_din_en_o,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_out_dout_o,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_out_dout_en_o,
+  input  logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_out_din_i,
+  output logic [XtrigNumCtp-1:0]  xtrig_ctp_ack_out_din_en_o,
 
   // SMC Resets
   output logic  rst_primary_ref_clk_no,
@@ -153,11 +147,11 @@ module smu_wrapper
 
   // GPIO control (lsio select passed through; per-pin pad I/O replaced by
   // gpio_pad_io below; per-pin CSR path terminated internally, see header)
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  lsio_interface_select_o,
+  output logic [smc_pkg::NumGpioWraps-1:0]  lsio_interface_select_o,
 
   // Physical GPIO pad bus -- one prim_pad_shim.sv per pin stands in for the
   // padring here.
-  inout  wire  [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_pad_io,
+  inout  wire  [smc_pkg::NumGpioWraps-1:0]  gpio_pad_io,
 
   // GPIO External Pins
   input  logic  rst_cool_n_from_pin_i,
@@ -165,12 +159,12 @@ module smu_wrapper
   // ATB Telemetry
   input  logic  clk_telemetry_i,
   input  logic  rst_telemetry_ni,
-  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_atdata_i,
-  input  telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_atid_i,
-  output logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_atready_o,
-  input  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_atvalid_i,
-  output logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_afvalid_o,
-  input  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_afready_i,
+  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_atdata_i,
+  input  telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_atid_i,
+  output logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_atready_o,
+  input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_atvalid_i,
+  output logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afvalid_o,
+  input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afready_i,
 
   // DED/WDT
   output logic  smc_cluster_ded_o,
@@ -183,7 +177,7 @@ module smu_wrapper
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,
 
   // External Interrupts
-  input  logic [Cfg.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,
+  input  logic [CFG.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,
 
   // Fuse Signals
   output logic  smc_fuse_sense_done_o,
@@ -194,15 +188,15 @@ module smu_wrapper
   input  logic  ext_boot_seq_done_i,
 
   // Lifecycle State (driven by SEP)
-  output logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  lc_state_o,
+  output logic [2*smc_pkg::LcStateWidth-1:0]    lc_state_o,
   output logic                                  lc_sigint_err_o,
 
   // NDM Reset signals
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_request_i,
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_process_o,
+  input  logic [smc_config_pkg::CpuClusterCount - 1:0]  smc_ndmreset_request_i,
+  output logic [smc_config_pkg::CpuClusterCount - 1:0]  smc_ndmreset_process_o,
 
   // Mailbox Interrupts
-  output logic [smc_pkg::NUM_MAILBOXES-1:0]  smc_ext_mailbox_interrupts_o,
+  output logic [smc_pkg::NumMailboxes-1:0]  smc_ext_mailbox_interrupts_o,
 
   // Reset Unit Signals
   input  logic  cfg_flr_pf_active_i,
@@ -233,9 +227,6 @@ module smu_wrapper
   input  logic mbist_done_i,
   input  logic mbist_pass_i,
   input  logic mbist_abort_i,
-
-  // OpenTitan SPI request, surfaced for observation; the loop closes in smu.sv
-  output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
 
   output logic  secure_tm_o,
 
@@ -271,8 +262,8 @@ module smu_wrapper
   // Debug bus
   input  logic [127:0]  ext_debug_bus_i,
 
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o,
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_o,
+  output logic [smc_pkg::NumGpioWraps-1:0]   gpio_interrupt_o,
+  output logic [smc_config_pkg::NumUart-1:0] uart_interrupt_o,
 
   // eFuse debug buses (internal shim state, surfaced for DV visibility)
   output logic [15:0] sep_efuse_debug_bus_o,
@@ -282,6 +273,10 @@ module smu_wrapper
   /////////////////////////
   // Signal Declarations //
   /////////////////////////
+
+  logic clk_sys;
+  logic clk_ref;
+  logic clk_periph;
 
   // Single AXI-Lite window covering the whole smc_external map; PLL, PVT,
   // GPIO control and the extension slot are decoded inside
@@ -297,38 +292,38 @@ module smu_wrapper
   chipyard_4core_mem_pkg::rom_req_t            smc_rom_intf_req;
   chipyard_4core_mem_pkg::rom_rsp_t            smc_rom_intf_rsp;
   chipyard_4core_mem_pkg::scratch_ram_req_t    smc_scratch_ram_intf_req
-        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumSramBanks-1:0];
   chipyard_4core_mem_pkg::scratch_ram_rsp_t    smc_scratch_ram_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumSramBanks-1:0];
   chipyard_4core_mem_pkg::l1_icache_tag_req_t  smc_l1_icache_tag_intf_req
-        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumIcacheTagBanks-1:0];
   chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  smc_l1_icache_tag_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumIcacheTagBanks-1:0];
   chipyard_4core_mem_pkg::l1_icache_data_req_t smc_l1_icache_data_intf_req
-        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumIcacheDataBanks-1:0];
   chipyard_4core_mem_pkg::l1_icache_data_rsp_t smc_l1_icache_data_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumIcacheDataBanks-1:0];
   chipyard_4core_mem_pkg::l1_dcache_tag_req_t  smc_l1_dcache_tag_intf_req
-        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumDcacheTagBanks-1:0];
   chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  smc_l1_dcache_tag_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumDcacheTagBanks-1:0];
   chipyard_4core_mem_pkg::l1_dcache_data_req_t smc_l1_dcache_data_intf_req
-        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumDcacheDataBanks-1:0];
   chipyard_4core_mem_pkg::l1_dcache_data_rsp_t smc_l1_dcache_data_intf_rsp
-        [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
+        [chipyard_4core_mem_pkg::NumDcacheDataBanks-1:0];
 
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en;
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en;
+  logic [smc_pkg::NumGpioWraps-1:0] pad2core;
+  logic [smc_pkg::NumGpioWraps-1:0] core2pad;
+  logic [smc_pkg::NumGpioWraps-1:0] pad2core_en;
+  logic [smc_pkg::NumGpioWraps-1:0] core2pad_en;
 
   // I3C table memory macros (smu <-> smc_ip_integration)
-  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src;
-  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink;
-  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
-  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
-  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
-  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
+  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_src;
+  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink;
+  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_src;
+  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink;
+  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_src;
+  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_sink;
 
   smc_pkg::smc_axil_32_32_req_t     smc_efuse_bank_ctrl_req;
   smc_pkg::smc_axil_32_32_resp_t    smc_efuse_bank_ctrl_resp;
@@ -345,8 +340,8 @@ module smu_wrapper
   sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req;
   sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp;
 
-  ext_trng_axis_req_t ext_trng_axis_req [EXT_TRNG_NUM_AXIS-1:0];
-  ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
+  ext_trng_axis_req_t ext_trng_axis_req [CFG.EXT_TRNG_NUM_AXIS-1:0];
+  ext_trng_axis_rsp_t ext_trng_axis_rsp [CFG.EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
 
@@ -378,15 +373,12 @@ module smu_wrapper
   /////////////////////
 
   smu #(
-    .Cfg                   (Cfg),
-    .SEP                   (SEP),
-    .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN),
-    .EXT_TRNG_NUM_AXIS     (EXT_TRNG_NUM_AXIS),
-    .ic_reset_ext_t         (ic_reset_ext_t)
+    .CFG            (CFG),
+    .ic_reset_ext_t (ic_reset_ext_t)
   ) u_smu (
-    .clk_smu_i,
-    .clk_ref_i,
-    .clk_periph_i,
+    .clk_smu_i    (clk_sys),
+    .clk_ref_i    (clk_ref),
+    .clk_periph_i (clk_periph),
     .rst_cold_ni,
     .rst_cold_stable_ref_clk_no,
     .powergood_i,
@@ -495,7 +487,6 @@ module smu_wrapper
     .mbist_pass_i,
     .mbist_abort_i,
     .entropy_rosc_sample_clk_i,
-    .sep_io_spi_req_o,
     .sep_cpu_trace_o,
     .sep_lockstep_ctrl_i,
     .sep_lockstep_status_o,
@@ -590,7 +581,9 @@ module smu_wrapper
   /////////////////////////
 
   smc_ip_integration u_smc_ip_integration (
-    .clk_smc_i               (clk_smu_i),
+    .clk_ref_o    (clk_ref),
+    .clk_sys_o    (clk_sys),
+    .clk_periph_o (clk_periph),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
     .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
@@ -644,10 +637,10 @@ module smu_wrapper
   /////////////////////////
 
   sep_ip_integration #(
-    .EXT_TRNG_NUM_AXIS (EXT_TRNG_NUM_AXIS),
-    .ABR_MASKING_EN    (Cfg.SEP_ABR_MASKING_EN)
+    .EXT_TRNG_NUM_AXIS (CFG.EXT_TRNG_NUM_AXIS),
+    .ABR_MASKING_EN    (CFG.SEP_ABR_MASKING_EN)
   ) u_sep_ip_integration (
-    .clk_i  (clk_smu_i),
+    .clk_i  (clk_sys),
     .rst_ni (rst_primary_smc_clk_no),
 
     .test_en_i (test_en_i),

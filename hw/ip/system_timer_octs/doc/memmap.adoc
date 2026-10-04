@@ -2,256 +2,46 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[system-timer-octs-memory-map]]
-== Memory Map
-
-The System Timer OCTS IP provides a concise and efficient register
-interface through a 32-byte address space (0x00-0x1F) accessible via
-AXI4-Lite or APB4 protocols. All registers are 32-bit aligned and
-optimized for both PRIMARY and SECONDARY timer modes.
-
-=== Programming Sequences
-
-Complete system initialization for multi-timer synchronization:
-
-1.  *Reset and Configuration*:
-+
-[source,sourceCode,c]
-----
-// Ensure all timers are in reset
-// Release reset to all timers simultaneously
-
-// Configure PRIMARY timer
-write32(primary_base + 0x04, 0x0001050A); // CTRL: STEP=1, PULSE_WIDTH=5, CREDIT_VAL=10
-write32(primary_base + 0x0C, preset_lo); // TIMER_PRESET_LO
-write32(primary_base + 0x10, preset_hi); // TIMER_PRESET_HI
-----
-2.  *Configure SECONDARY Timers*:
-+
-[source,sourceCode,c]
-----
-for (int i = 0; i < num_secondary; i++) {
-    write32(secondary_base[i] + 0x04, 0x0001050A); // Same CTRL settings
-    write32(secondary_base[i] + 0x0C, preset_lo); // Same preset
-    write32(secondary_base[i] + 0x10, preset_hi); // Same preset
-}
-----
-3.  *Start Synchronized Operation*:
-+
-[source,sourceCode,c]
-----
-// Start PRIMARY timer (generates sync_load to all SECONDARY)
-write32(primary_base + 0x00, 0x01); // TIMER_START.START = 1
-----
-4.  *Verify Synchronization*:
-+
-[source,sourceCode,c]
-----
-// Check all timers are running
-for (int i = 0; i < total_timers; i++) {
-    uint32_t status = read32(timer_base[i] + 0x08);
-    assert(status & 0x10); // RUNNING bit should be set
-}
-----
-
-=== Primary Timer Operation
-
-PRIMARY timer management and monitoring:
-
-1.  *Credit Generation Monitoring*:
-+
-[source,sourceCode,c]
-----
-// Monitor credit pulse generation (implementation dependent)
-// Check synchronization signal integrity at system level
-----
-2.  *Runtime Configuration Changes*:
-+
-[source,sourceCode,c]
-----
-// Pause timer if needed (implementation dependent)
-// Modify CTRL register for different credit parameters
-write32(primary_base + 0x04, new_ctrl_value);
-// Resume operation
-----
-3.  *Performance Monitoring*:
-+
-[source,sourceCode,c]
-----
-// Read current count for performance measurements
-uint32_t count_hi = read32(primary_base + 0x18);
-uint32_t count_lo = read32(primary_base + 0x14);
-uint64_t current_time = ((uint64_t)count_hi << 32) | count_lo;
-----
-
-=== Secondary Timer Operation
-
-SECONDARY timer synchronization monitoring and maintenance:
-
-1.  *Synchronization Health Check*:
-+
-[source,sourceCode,c]
-----
-uint32_t credit_expired = read32(secondary_base + 0x1C);
-
-if (credit_expired > SYNC_THRESHOLD) {
-    printf("Warning: Synchronization degraded, expired=%u\n", credit_expired);
-
-    // Reset credit expired counter
-    write32(secondary_base + 0x1C, 0);
-
-    // Check signal connectivity and PRIMARY timer operation
-}
-----
-2.  *Periodic Synchronization Validation*:
-+
-[source,sourceCode,c]
-----
-void validate_synchronization() {
-    // Read all timer values simultaneously
-    uint64_t primary_count = read_timer_64(primary_base);
-    uint64_t secondary_count = read_timer_64(secondary_base);
-
-    int64_t delta = (int64_t)(primary_count - secondary_count);
-
-    if (abs(delta) > MAX_SYNC_ERROR) {
-        printf("Synchronization error: delta=%ld cycles\n", delta);
-        // Implement recovery procedure
-    }
-}
-----
-
-=== Error Handling and Recovery
-
-The OCTS timer provides comprehensive error detection and recovery
-procedures:
-
-1.  *Synchronization Failure Recovery*:
-+
-[source,sourceCode,c]
-----
-void recover_synchronization() {
-    // Stop all timers (implementation dependent)
-
-    // Reset synchronization
-    for (int i = 0; i < num_secondary; i++) {
-        write32(secondary_base[i] + 0x1C, 0); // Reset CREDIT_EXPIRED
-    }
-
-    // Restart synchronized operation
-    write32(primary_base + 0x00, 0x01); // Restart PRIMARY
-
-    // Verify recovery
-    sleep_ms(100);
-    validate_synchronization();
-}
-----
-2.  *Clock Domain Issues*:
-+
-[source,sourceCode,c]
-----
-// Adjust pulse width for clock domain crossing issues
-uint32_t ctrl = read32(primary_base + 0x04);
-ctrl = (ctrl & 0x00FF) | (10 << 8); // Increase PULSE_WIDTH to 10
-write32(primary_base + 0x04, ctrl);
-----
-3.  *System Health Monitoring*:
-+
-[source,sourceCode,c]
-----
-void monitor_timer_health() {
-    // Check all timers are running
-    for (int i = 0; i < total_timers; i++) {
-        uint32_t status = read32(timer_base[i] + 0x08);
-        if (!(status & 0x10)) {
-            printf("Timer %d not running\n", i);
-            // Implement recovery
-        }
-    }
-
-    // Check synchronization health
-    for (int i = 0; i < num_secondary; i++) {
-        uint32_t expired = read32(secondary_base[i] + 0x1C);
-        if (expired > WARNING_THRESHOLD) {
-            printf("Secondary %d sync warning: %u cycles\n", i, expired);
-        }
-    }
-}
-----
-
-=== Address Alignment and Access Requirements
-
-The System Timer OCTS uses a 36-byte (0x00–0x23) register space, with
-each register 32-bit aligned for easy mapping on AXI4-Lite or APB4
-buses.
-
-Only 32-bit accesses are supported; byte or halfword accesses are not
-allowed and may cause errors. All writes must use full-word strobes
-(4'b1111).
-
-64-bit values (e.g., timer preset/count) are split into adjacent 32-bit
-low and high registers. To read atomically, check high, read low, then
-confirm high is unchanged. Always write the low word first, then the
-high word, to ensure correct latching.
-
-An example of this access pattern in C is shown below:
-
-[source,sourceCode,c]
-----
-// Reading a 64-bit value atomically
-uint32_t hi1, lo, hi2;
-do {
-    hi1 = read32(base + high_reg_addr);
-    lo  = read32(base + low_reg_addr);
-    hi2 = read32(base + high_reg_addr);
-} while (hi1 != hi2);
-uint64_t value = ((uint64_t)hi1 << 32) | lo;
-
-// Writing a 64-bit value
-write32(base + low_reg_addr, (uint32_t)(value & 0xFFFFFFFF));
-write32(base + high_reg_addr, (uint32_t)(value >> 32));
-----
-
-Following these guidelines ensures robust, predictable access to all
-timer registers—crucial for correct operation in high-reliability
-multi-chiplet systems.
-
-=== Reset Values and Power-On Behavior
-
-<<octs-register-reset-values-and-power-on-behavior-table>> lists the register reset
-values and their boot-time implications.
+== Memory Map and Register Reference
 
 ifdef::backend-html5[]
 ++++
-<div class="port-reference-scroll" role="region" aria-label="OCTS register reset values" tabindex="0">
+<span id="register-map"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+The register bank occupies `0x00`–`0x23` and uses 32-bit AXI4-Lite accesses.
+Use the enclosing subsystem's memory map for its base address.
+
+ifdef::backend-html5[]
+++++
+<span id="address-alignment-and-access-requirements"></span>
+<span id="reset-values-and-power-on-behavior"></span>
 ++++
 endif::backend-html5[]
 
 [[octs-register-reset-values-and-power-on-behavior-table]]
-.OCTS Register Reset Values and Power-On Behavior
-[cols="32,20,48",options="header",role="port-reference"]
-|=======================================================================
-|Register |Reset Value |Notes
-|`TIMER_START` |0x00000000 |No automatic start, requires software
-initiation
-
-|`CTRL` |0x0001020A |Default: CREDIT_VAL=10, PULSE_WIDTH=2, STEP=1
-
-|`STATUS` |0x0000000X |RUNNING=0 on reset; MODE reflects the runtime
-`is_primary_i` input signal (0=PRIMARY, 1=SECONDARY)
-
-|`TIMER_PRESET_LO/HI` |0x00000000 |Zero preset; must be configured by
-software before use
-
-|`TIMER_COUNT_LO/HI` |0x00000000 |Timer starts at zero count on reset
-
-|`CREDIT_EXPIRED` |0x00000000 |No credit expiration on startup
-|=======================================================================
-
+.OCTS register offsets and reset values
+[cols="2,1,1,3",options="header"]
+|===
+|Register |Offset |Reset |Meaning
+|`TIMER_START` |`0x00` |0 |START is a single-cycle command.
+|`CTRL` |`0x04` |`0x0001020A` |STEP=1, PULSE_WIDTH=2, CREDIT_VAL=10.
+|`STATUS` |`0x08` |0 |MODE subsequently reflects the role input; RUNNING reflects enable and nonzero count.
+|`TIMER_PRESET_LO/HI` |`0x0C/0x10` |0 |Two independently writable preset halves.
+|`TIMER_COUNT_LO/HI` |`0x14/0x18` |0 |Live count halves, with no snapshot latch; the
 ifdef::backend-html5[]
-++++
-</div>
-++++
+xref:ocah-programmer-guide::index.adoc#smc-octs-read-count[timestamp read sequence]
 endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-octs-read-count[timestamp read sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
+|`CREDIT_EXPIRED` |`0x1C` |0 |Saved maximum wait for credit; any write clears it.
+|`TIMER_GPIO_ENABLE` |`0x20` |0 |Timer GPIO LSIO selection starts disabled.
+|===
 
 === Detailed Register Map
 

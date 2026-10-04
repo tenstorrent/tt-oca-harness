@@ -5,9 +5,10 @@
 //
 // A sparse zero-default
 // byte memory answering FIXED/INCR/WRAP single- and multi-beat bursts with
-// ID echo, per-beat one-shot error matching (via ocah_axi_slave_config),
-// per-channel bounded READY backpressure, and single-outstanding registered
-// handshakes per direction. cfg.protocol
+// ID echo, per-beat one-shot error matching and a one-shot missing RLAST
+// per read address (via ocah_axi_slave_config), per-channel bounded READY
+// backpressure, and single-outstanding registered handshakes per
+// direction. cfg.protocol
 // selects AXI4-Lite (single-beat, no IDs/bursts; the AXI4-only vif fields
 // are never sampled).
 //
@@ -107,9 +108,10 @@ class ocah_axi_slave_driver extends uvm_component;
   // nonzero = READY low for N sampled edges, high for one, repeating until
   // the handshake lands — so a pending VALID completes within N+1 cycles).
   // Stall 0 keeps the assert-and-hold behavior. The knob is re-evaluated
-  // every pattern iteration, so a stall enabled while the responder is
-  // already parked waiting for VALID still takes effect before the next
-  // handshake (the cocotb pause generators likewise apply immediately).
+  // every sampled edge, so a stall enabled while the responder is already
+  // parked waiting for VALID still takes effect before the next handshake,
+  // and a stall disabled mid-pattern releases READY on the next edge (the
+  // cocotb pause generators likewise apply immediately).
   // All three return at the handshake edge (mon_cb holds that beat's
   // sampled values) or on reset deassertion — callers re-check aresetn.
 
@@ -128,7 +130,7 @@ class ocah_axi_slave_driver extends uvm_component;
         end
       end else begin
         cfg.vif.awready <= 1'b0;
-        repeat (cfg.aw_stall_cycles) begin
+        for (int unsigned n = 0; n < cfg.aw_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
           if (!cfg.vif.aresetn) return;
         end
@@ -156,7 +158,7 @@ class ocah_axi_slave_driver extends uvm_component;
         end
       end else begin
         cfg.vif.arready <= 1'b0;
-        repeat (cfg.ar_stall_cycles) begin
+        for (int unsigned n = 0; n < cfg.ar_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
           if (!cfg.vif.aresetn) return;
         end
@@ -181,7 +183,7 @@ class ocah_axi_slave_driver extends uvm_component;
         if (cfg.vif.mon_cb.wvalid && cfg.vif.mon_cb.wready) return;
       end else begin
         cfg.vif.wready <= 1'b0;
-        repeat (cfg.w_stall_cycles) begin
+        for (int unsigned n = 0; n < cfg.w_stall_cycles; n++) begin
           @(cfg.vif.mon_cb);
           if (!cfg.vif.aresetn) return;
         end
@@ -275,6 +277,7 @@ class ocah_axi_slave_driver extends uvm_component;
     bit [2:0]       size;
     bit [1:0]       burst;
     int unsigned    beats;
+    bit             drop_last;
     forever begin
       @(cfg.vif.mon_cb);
       if (!cfg.vif.aresetn) begin
@@ -304,9 +307,12 @@ class ocah_axi_slave_driver extends uvm_component;
                                        "%s: corrupting RID arid=0x%0h -> rid=0x%0h (mask=0x%0h)",
                                        cfg.name_tag, id, rid_out, corrupt_mask), UVM_LOW)
       end
+      // An armed missing RLAST keeps the final beat's RLAST low; the pump
+      // then idles, so the master waits for a beat that never comes.
+      drop_last = cfg.consume_missing_rlast(start_addr);
       // Data phase: one beat per accepted cycle.
       for (int unsigned beat = 0; beat < beats; beat++) begin
-        load_read_beat(addr, rid_out, beat == beats - 1);
+        load_read_beat(addr, rid_out, (beat == beats - 1) && !drop_last);
         cfg.vif.rvalid <= 1'b1;
         do
         @(cfg.vif.mon_cb);

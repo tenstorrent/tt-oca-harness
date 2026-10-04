@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= CPU & Memory System
+= CPU
 :description: SMC processor cluster, caches, local memory, isolation, interrupts, and debug.
 
 [[cpu-memory-system]]
@@ -27,9 +27,28 @@ management workloads
 
 [[smc-cpu-cluster-diagram]]
 .SMC CPU cluster and TileLink-to-AXI integration
-image::SMC_CPUCluster_FIG010.png[alt="SMC CPU cluster and TileLink-to-AXI integration",width=100%,pdfwidth=100%]
+image::smc-cpu-cluster.svg[alt="SMC CPU cluster: four Rocket tiles on the TileLink system bus, the control, front and memory buses, and the AXI4 bridges and isolation at the cluster boundary, with the scratchpad SRAM and boot ROM macros outside the SMC",width=100%,pdfwidth=100%]
 
-== Processor Core Overview
+The figure shows three nested boundaries: `u_digital_top`, the Chipyard-generated
+cluster; `u_smc_cpu`, which adds the boundary isolation, reset sequencing and scratch
+RAM zero-fill; and `u_smc_cpu_wrapper`, which adds the front-port demux, the `cpu_ctrl`
+registers and the boot ROM bridge. Thick lines are AXI4 and thin dark lines are
+TileLink, except for the AXI-Lite link to `cpu_ctrl`. Each tile has one manager port
+on the system bus (`sbus`) and one subordinate port, from the control bus (`cbus`),
+that reaches its Bus Error Unit (BEU). Debug-module system bus accesses (SBA) and
+the L2 frontend port enter the system bus through the front bus (`fbus`). The
+coherence manager (`coh_wrapper`, a TileLink broadcast hub) leads to the memory bus
+(`mbus`), which serves the scratchpad and the boot ROM port. The scratchpad block is
+logic only: 32 TLRAM banks with their SECDED ECC encode and decode. The
+technology-dependent SRAM macros that hold the scratchpad data, drawn in grey, sit
+outside the SMC, as do the boot ROM macro and the L1 cache tag and data arrays.
+`u_smc_cpu_wrapper` reaches them through memory interface ports, one 72-bit port per
+scratchpad bank, that `smc` carries to its own boundary. Interrupts from
+the four watchdog timers and the four BEUs reach the PLIC inside the cluster, which
+the figure does not draw.
+
+[[processor-core-overview]]
+== Processor Core
 
 <<smc-processor-core-features-table>> summarizes the key features of the Rocket CPU core, and
 its cache hierarchy
@@ -47,7 +66,8 @@ its cache hierarchy
 |Reset Vector |Per-core, independently configurable (56b)
 |========================================================
 
-== Cache and Memory Hierarchy
+[[cache-and-memory-hierarchy]]
+== Local Memory
 
 <<smc-cache-and-memory-hierarchy-table>> lists the default memory sizes and their
 configurability.
@@ -62,8 +82,8 @@ endif::backend-html5[]
 [cols="25%,20%,30%,25%",options="header",role="smc-memory-table"]
 .SMC cache and memory hierarchy
 |=======================================================================
-|Component |Default Size |Notes |Configurability
-|L1 I-Cache per core |4 KiB (32 sets × 2 ways) |Write-through, Parity
+|Component |Default Size |Notes |Macro configuration bus
+|L1 I-Cache per core |4 KiB (32 sets × 2 ways) |Read-only, Parity
 |icache_tag/data_cfg
 
 |L1 D-Cache per core |4 KiB (32 sets × 2 ways) |Write-back, SECDED ECC
@@ -81,13 +101,14 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-All memory components (SRAM, caches, ROM) are configurable via top-level
-parameters. The scratchpad SRAM allows deterministic accesses,
-independent of cache state, and supports per-bank sizing and power
-management.
+The sizes are fixed by the Chipyard generator configuration. The
+`*_cfg` buses are foundry memory configuration inputs, one per macro, passed
+unchanged to each SRAM or ROM macro; they do not change memory size. The
+scratchpad SRAM allows deterministic accesses, independent of cache state,
+and supports per-bank power management.
 
-Internally, the CPU cluster uses a TileLink bus to connect cores to the scratchpad, Boot ROM, PLIC, CLINT, and Bus Error Units.
-At the cluster boundary, TileLink is protocol-bridged to AXI4 and AXI4-Lite for integration with the SMC fabric (see
+Internally, the CPU cluster uses TileLink buses to connect the cores to the scratchpad and Boot ROM, to the PLIC, CLINT and Bus Error Units on the control bus, and to the watchdog timers on the peripheral bus.
+At the cluster boundary, TileLink is bridged to AXI4 for the MMIO manager port, and AXI4 is bridged to TileLink for the L2 frontend port. The only AXI4-Lite link is the one in `smc_cpu_wrapper` from the front-port demux to the `cpu_ctrl` registers. Both AXI4 ports connect to the SMC fabric (see
 ifdef::backend-html5[]
 xref:smc:fabric.adoc#fabric[Fabric]
 endif::backend-html5[]
@@ -97,7 +118,13 @@ endif::backend-pdf[]
 ).
 
 [[smc-per-core-reset]]
-== Reset, Boot, and Initialization
+== Reset and Boot
+
+ifdef::backend-html5[]
+++++
+<span id="reset-boot-and-initialization"></span>
+++++
+endif::backend-html5[]
 
 Each CPU core supports an independent reset mechanism and a programmable
 reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
@@ -154,8 +181,8 @@ completion before proceeding with boot operations.
 
 Memory repair integrates into the boot sequence as follows: after power-on reset
 deasserts and eFuse sensing begins, `smc_fuse_sense_done_o` assertion triggers
-repair operations. Repair data is read from eFuse shadow registers and applied
-to SRAM, with completion reported through DFT Control Status registers. MBIST
+repair operations. The external repair controller applies the repair data to
+SRAM, with completion reported through DFT Control Status registers. MBIST
 operations begin after repair completes (or is bypassed), and the CPU cluster
 reset releases after both repair and MBIST complete. The repair process must
 complete successfully before the CPU cluster can safely access SRAM arrays.
@@ -174,12 +201,20 @@ cluster interfaces.
 .SMC CPU system interfaces
 |==============================================
 |Interface |Protocol |Description
-|MMIO |AXI4-Lite |56b addressing, low-latency
+|MMIO |AXI4 |Manager port to the SMC fabric; 56-bit address, 64-bit data, 3-bit ID
 |L2 Frontend |AXI4 |For shared memory/coherency
-|Debug |APB, JTAG |Non-intrusive, per-core
+|Debug |JTAG |JTAG debug transport module into the debug module on the control bus;
+system bus access through the front bus
 |==============================================
 
 == CPU AXI Isolation
+
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="cluster-boundary-isolation"></span>
+++++
+endif::backend-html5[]
 
 The cluster is reset independently of the surrounding SMC fabric.
 If the cluster were reset while a transaction on one of its AXI ports
@@ -212,7 +247,14 @@ every core is released.
 
 === Drain Handshake
 
-A software reset through `CPU_CTRL.RESET_CTRL`, whether a core or uncore reset
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-core-reset-sequence[per-core reset sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-core-reset-sequence[per-core reset sequence]
+endif::backend-pdf[]
+in the Programmer's Guide gives the firmware steps. A software reset through `CPU_CTRL.RESET_CTRL`, whether a core or uncore reset
 bit or a core reset pulse, proceeds as follows:
 
 . Firmware writes `RESET_CTRL`.
@@ -279,7 +321,8 @@ watchdog timeout is followed by a cold reset, so the
 brief crossing window has no functional consequence. The CSR path is
 synchronous and crosses no domains.
 
-== Interrupt and Control Integration
+[[interrupt-and-control-integration]]
+== Interrupt Integration
 
 All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
 units; the authoritative `cpu_interrupts_o` map; PLIC/CLINT register
@@ -291,53 +334,244 @@ ifdef::backend-pdf[]
 <<interrupts,Interrupts>>.
 endif::backend-pdf[]
 
-== Watchdog Timer System
+== Watchdog Interface
 
-Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
-0x400), enabling per-core fault detection and recovery without impacting
-other cores. Base addresses and interrupt-related context for the WDT are
-summarized in
+Each core has a watchdog. See
 ifdef::backend-html5[]
-xref:smc:interrupts.adoc#interrupts[Interrupts].
+xref:watchdog.adoc[Watchdog Timers]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-<<interrupts,Interrupts>>.
+<<smc-watchdog,Watchdog Timers>>
 endif::backend-pdf[]
+for operation and the register reference.
 
-Timeouts are configurable to suit different workloads, and staged
-warnings (followed by reset) allow software intervention before hardware
-reset is triggered.
-
-Watchdog monitoring can be disabled during debugging to prevent false
-triggers, supporting uninterrupted development and troubleshooting.
+ifdef::backend-html5[]
+++++
+<span id="watchdog-timer-system"></span>
+++++
+endif::backend-html5[]
 
 == Advanced Bus Infrastructure Monitoring and Error Management
 
-Per-core bus error monitors (at 0xC801_0000 + N * 0x1000) track AXI
-transactions, allowing the system to quickly detect and respond to
-infrastructure faults that could impact system management.
+Each core has a Bus Error Unit (BEU) at 0xC801_0000 + N * 0x1000. It reports
+errors seen by that core's L1 caches:
 
-AXI error capture detects and logs decode, slave, and timeout errors so
-management software has clear insight into infrastructure health and can
-tailor its response.
+* instruction-cache correctable errors,
+* instruction-cache bus errors,
+* data-cache correctable errors,
+* data-cache uncorrectable errors, and
+* data-cache bus errors.
 
-Classifying errors lets software address each type effectively: decode
-errors may need reconfiguration; timeout errors may require isolating
-faults and recovery procedures.
+The BEU records a cause code for the first enabled error and, except for
+instruction-cache correctable errors, its physical address. It does not
+capture transaction data. An error response from the SMC fabric reaches the
+BEU only as a cache bus error; the BEU does not distinguish decode, slave or
+timeout errors.
 
-Error address and transaction capture aid debugging, preserving context
-like addresses and data to support thorough fault analysis and recovery
-coordination.
+Delivery and clearing are described in
+ifdef::backend-html5[]
+xref:smc:interrupts.adoc#smc-interrupts-bus-error-unit-interrupts[Bus Error Units].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-interrupts-bus-error-unit-interrupts,Bus Error Units>>.
+endif::backend-pdf[]
 
 == Debug
 
-Debugging is facilitated by a dedicated APB interface and JTAG, enabling
+The generated memory map below describes the hart-facing Debug Module memory
+region. Only the harts of the CPU cluster reach it, over the cluster's own control
+bus. The SMC fabric does not route it, so system, SEP and other SMC initiators
+receive DECERR at every address in the region. Debugger-facing registers such as
+`dmcontrol`, `dmstatus`, `abstractcs` and `sbcs` are accessed through the Debug
+Module Interface (DMI), not through that memory region.
+<<smc-debug-module-configuration>> describes them.
+
+Debugging is facilitated by JTAG, through the cluster's debug transport module and
+debug module, enabling
 per-core access to registers, memory, and both hardware and software
 breakpoints. These debug capabilities function independently of
 functional resets and allow override of reset vectors to support
 firmware development and diagnostics.
 
-== Detailed Register Map
+[[smc-debug-module-configuration]]
+=== Debug Module Configuration
+
+The Debug Module implements version 0.13 of the RISC-V External Debug Support
+specification for the four harts of the CPU cluster. A debugger discovers its
+configuration by reading DMI registers.
+<<smc-debug-module-capabilities-table>> lists the fixed capability values those
+registers return, and <<smc-debug-module-dmi-registers-table>> lists which DMI
+registers are implemented.
+
+[[smc-debug-module-capabilities-table]]
+[cols="18%,32%,12%,38%",options="header"]
+.SMC Debug Module capability readbacks
+|===
+|Register |Field |Value |Meaning
+|`dmstatus` |`version` |2 |Debug Specification 0.13
+|`dmstatus` |`authenticated` |1 |No authentication is required
+|`dmstatus` |`hasresethaltreq` |1 |Halt-on-reset is supported
+|`dmstatus` |`confstrptrvalid` |0 |No configuration string
+|`dmstatus` |`impebreak` |1 |An implicit `ebreak` follows the program buffer
+|`dmcontrol` |`hartsello` |2 bits |Harts 0 to 3; `hartselhi` reads 0
+|`abstractcs` |`progbufsize` |16 |`progbuf0` to `progbuf15`
+|`abstractcs` |`datacount` |4 |`data0` to `data3`
+|`abstractauto` |`autoexecdata` |4 bits |Auto-execution from `data0` to `data3`
+|`abstractauto` |`autoexecprogbuf` |16 bits |Auto-execution from `progbuf0` to `progbuf15`
+|`sbcs` |`sbversion` |1 |System bus access as defined by Debug Specification 0.13
+|`sbcs` |`sbasize` |56 |System bus address width in bits
+|`sbcs` |`sbaccess8`, `sbaccess16`, `sbaccess32`, `sbaccess64` |1 |8-, 16-, 32- and 64-bit system bus accesses
+|`sbcs` |`sbaccess128` |0 |No 128-bit system bus access
+|===
+
+The `command` register accepts only the Access Register command (`cmdtype` 0).
+With `transfer` set, Access Register reaches the general-purpose registers `x0` to
+`x31` (`regno` 0x1000 to 0x101F) with an `aarsize` of 2 or 3 (32 or 64 bits). With
+`transfer` clear, any `regno` and size is accepted. Any other command type, and
+any transfer outside those registers and sizes, sets `abstractcs.cmderr` to 2
+(not supported). The
+debugger reaches CSRs and floating-point registers by executing instructions from
+the program buffer. Reading `command` returns the last value written.
+
+`hawindowsel` reads 0 and ignores writes, so `hawindow` bits 3:0 hold the hart
+array mask for harts 0 to 3. `setresethaltreq` and `clrresethaltreq` in
+`dmcontrol` set and clear halt-on-reset for the selected harts.
+
+DMI address 0x32 provides the halt-group fields of the `dmcs2` register, which
+later versions of the specification define. A write with `hgwrite` set,
+`hgselect` clear and `haltgroup` 0 or 1 removes the selected harts from halt
+group 1 or adds them to it. When one hart in halt group 1 halts, the Debug Module
+halts the other harts in that group. A read returns the group of the hart selected
+by `hartsel` in `haltgroup`. External trigger groups (`hgselect` set) are not
+supported.
+// Retain bookmarks for replaced tables and renamed sections.
+ifdef::backend-html5[]
+++++
+<span id="abstractdata_12_"></span>
+<span id="debug_module-abstractdata_12_"></span>
+<span id="dmcontrol"></span>
+<span id="debug_module-dmcontrol"></span>
+<span id="dmstatus"></span>
+<span id="debug_module-dmstatus"></span>
+<span id="hartinfo"></span>
+<span id="debug_module-hartinfo"></span>
+<span id="haltsum1"></span>
+<span id="debug_module-haltsum1"></span>
+<span id="hawindowsel"></span>
+<span id="debug_module-hawindowsel"></span>
+<span id="hawindow"></span>
+<span id="debug_module-hawindow"></span>
+<span id="abstractcs"></span>
+<span id="debug_module-abstractcs"></span>
+<span id="command"></span>
+<span id="debug_module-command"></span>
+<span id="abstractauto"></span>
+<span id="debug_module-abstractauto"></span>
+<span id="confstrptr_3_"></span>
+<span id="debug_module-confstrptr_3_"></span>
+<span id="nextdm"></span>
+<span id="debug_module-nextdm"></span>
+<span id="progbuf_16_"></span>
+<span id="debug_module-progbuf_16_"></span>
+<span id="authdata"></span>
+<span id="debug_module-authdata"></span>
+<span id="haltsum2"></span>
+<span id="debug_module-haltsum2"></span>
+<span id="haltsum3"></span>
+<span id="debug_module-haltsum3"></span>
+<span id="sbaddress3"></span>
+<span id="debug_module-sbaddress3"></span>
+<span id="sbcs"></span>
+<span id="debug_module-sbcs"></span>
+<span id="sbaddress0"></span>
+<span id="debug_module-sbaddress0"></span>
+<span id="sbaddress1"></span>
+<span id="debug_module-sbaddress1"></span>
+<span id="sbaddress2"></span>
+<span id="debug_module-sbaddress2"></span>
+<span id="sbdata0"></span>
+<span id="debug_module-sbdata0"></span>
+<span id="sbdata1"></span>
+<span id="debug_module-sbdata1"></span>
+<span id="sbdata2"></span>
+<span id="debug_module-sbdata2"></span>
+<span id="sbdata3"></span>
+<span id="debug_module-sbdata3"></span>
+<span id="haltsum0"></span>
+<span id="debug_module-haltsum0"></span>
+++++
+endif::backend-html5[]
+
+DMI registers that the Debug Module does not implement read as 0 and ignore
+writes.
+
+[[smc-debug-module-dmi-registers-table]]
+[cols="18%,27%,55%",options="header"]
+.SMC Debug Module DMI register inventory
+|===
+|DMI address |Register |Implementation
+|0x04-0x07 |`data0`-`data3` |Implemented
+|0x08-0x0F |`data4`-`data11` |Not implemented
+|0x10 |`dmcontrol` |Implemented; `hartsello` bits 17:16 only, `hartselhi` reads 0
+|0x11 |`dmstatus` |Implemented
+|0x12 |`hartinfo` |Not implemented
+|0x13 |`haltsum1` |Implemented; bit 0 only
+|0x14 |`hawindowsel` |Reads 0
+|0x15 |`hawindow` |Implemented; bits 3:0 only
+|0x16 |`abstractcs` |Implemented
+|0x17 |`command` |Implemented; Access Register only
+|0x18 |`abstractauto` |Implemented; `autoexecdata` bits 3:0 only
+|0x19-0x1C |`confstrptr0`-`confstrptr3` |Not implemented
+|0x1D |`nextdm` |Not implemented; this is the only Debug Module
+|0x20-0x2F |`progbuf0`-`progbuf15` |Implemented
+|0x30 |`authdata` |Not implemented
+|0x32 |`dmcs2` |Implemented; halt groups 0 and 1 only
+|0x34 |`haltsum2` |Not implemented
+|0x35 |`haltsum3` |Not implemented
+|0x37 |`sbaddress3` |Not implemented
+|0x38 |`sbcs` |Implemented
+|0x39-0x3A |`sbaddress0`-`sbaddress1` |Implemented
+|0x3B |`sbaddress2` |Not implemented
+|0x3C-0x3D |`sbdata0`-`sbdata1` |Implemented
+|0x3E-0x3F |`sbdata2`-`sbdata3` |Not implemented
+|0x40 |`haltsum0` |Implemented; bits 3:0 only
+|===
+
+[[smc-debug-command-cmderr]]
+=== Abstract Command Writes While cmderr Is Set
+
+The Debug Module departs from the RISC-V External Debug Support specification
+(version 0.13) for writes to `command` while `abstractcs.cmderr` is nonzero.
+The specification ignores those writes. In this Debug Module, a `command` write
+made while no abstract command is executing (`abstractcs.busy` is 0) has two
+effects:
+
+* the written value replaces the stored command, whatever `cmderr` holds, and
+* a command type other than Access Register (`cmdtype` other than 0) sets
+  `cmderr` to 2 (not supported), replacing the error code it held.
+
+No abstract command executes while `cmderr` is nonzero. Once `cmderr` is
+cleared, an access that `abstractauto` selects re-executes the stored command,
+which is the last value written to `command`.
+
+A `command` write therefore discards the error code of a failed command unless
+`abstractcs` was read first. The Programmer's Guide gives the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#dtp-smc-cmderr[debugger sequence for clearing `cmderr`].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-smc-cmderr[debugger sequence for clearing `cmderr`].
+endif::backend-pdf[]
+
+[[detailed-register-map]]
+== Memory Map and Register Reference
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -345,14 +579,12 @@ include::partial$smc/regs/gen/html/blocks/cpu_ctrl.html[]
 include::partial$smc/regs/gen/html/blocks/clint.html[]
 include::partial$smc/regs/gen/html/blocks/debug_module.html[]
 include::partial$smc/regs/gen/html/blocks/bus_error_unit.html[]
-include::partial$smc/regs/gen/html/blocks/wdt.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[leveloffset=+1]
-include::../regs/gen/adoc/blocks/clint.adoc[leveloffset=+1]
-include::../regs/gen/adoc/blocks/debug_module.adoc[leveloffset=+1]
-include::../regs/gen/adoc/blocks/bus_error_unit.adoc[leveloffset=+1]
-include::../regs/gen/adoc/blocks/wdt.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/clint.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/debug_module.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/bus_error_unit.adoc[leveloffset=+2]
 endif::backend-pdf[]

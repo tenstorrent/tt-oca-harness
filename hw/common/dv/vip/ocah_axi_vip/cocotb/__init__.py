@@ -55,6 +55,8 @@ from .ocah_axi_item import (
     OcahAxiItem,
     OcahAxiLiteReadItem,
     OcahAxiLiteWriteItem,
+    OcahAxiPipelineOp,
+    OcahAxiPipelineResult,
     OcahAxiReadItem,
     OcahAxiReadPairResult,
     OcahAxiReadResult,
@@ -236,6 +238,8 @@ __all__ = [
     "OcahAxiWriteResult",
     "OcahAxiReadPairResult",
     "OcahAxiWritePairResult",
+    "OcahAxiPipelineOp",
+    "OcahAxiPipelineResult",
     # AXI response code constants
     "OcahAxiProtocol",
     "RESP_OKAY",

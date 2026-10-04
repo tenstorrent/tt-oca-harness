@@ -7,8 +7,9 @@
 // set, and provides helpers for secure boot enforcement and manifest
 // usage constraints validation.
 //
-// Also owns the SBOOT_DIS chicken bit, the device's other secure-boot posture
-// input, so that both halves of that posture are read and decided in one place.
+// Also owns the SBOOT_DIS chicken bit and the chiplet debug lock, the device's
+// other secure-boot posture inputs, so that the whole posture is read and
+// decided in one place.
 //
 // RTL reference: hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
 // Registers:
@@ -18,6 +19,8 @@
 // Efuse:
 //   LC_STATE   @ 0x1093000C (8-bit field; low 4 bits = raw LC state)
 //   SBOOT_DIS  @ 0x10930010 (disable_secure_boot[0] + rsvd[31:1])
+//   SIP_DIS    @ 0x10930018 (64-bit disable vector; CHIPLET_DBG = bit 1)
+//   SYS_DIS    @ 0x10930020 (64-bit disable vector; CHIPLET_DBG = bit 1)
 
 #pragma once
 
@@ -32,7 +35,7 @@
 #define LC_STATE_PROD 0x1u
 #define LC_STATE_RMA_SIP_LO 0x2u // RMA_SiP range: 0x2..0x3 (4'b001?)
 #define LC_STATE_RMA_SIP_HI 0x3u
-#define LC_STATE_RMA_CHIPLET_LO 0x4u // RMA_CHIPLET range: 0x4..0x7 (4'b01??)
+#define LC_STATE_RMA_CHIPLET_LO 0x6u // RMA_CHIPLET range: 0x6..0x7 (4'b011?)
 #define LC_STATE_RMA_CHIPLET_HI 0x7u
 #define LC_STATE_PROD_END 0x8u
 
@@ -55,6 +58,11 @@ bool lc_state_enforces_secure_boot(uint32_t lc_state);
 
 // Check if the given LC state is an RMA state (SiP or Chiplet).
 bool lc_state_is_rma(uint32_t lc_state);
+
+// Check if the given LC state enforces secure boot when chiplet debug is
+// disabled: TEST_DEV and RMA_SiP. PROD and PROD_END enforce regardless, and
+// RMA_CHIPLET never does.
+bool lc_state_follows_debug_lock(uint32_t lc_state);
 
 // Read FEAT_CTRL from the lifecycle controller (64-bit).
 // Returns the low 32 bits; *hi receives the high 32 bits.
@@ -90,3 +98,19 @@ void rom_sboot_dis_policy(void);
 // bit matters and when it was sampled. Reads false until [S18] runs, and false
 // enforces secure boot.
 bool sboot_dis_disabled(void);
+
+// ---------------------------------------------------------------------------
+// Chiplet debug lock (CHIPLET_DBG in SIP_DIS / SYS_DIS)
+// ---------------------------------------------------------------------------
+
+// Full chiplet debug-lock policy ([S18]): one read of each disable vector and
+// of their LOCKS read-lock bits, reported and latched for
+// chiplet_debug_disabled(). A read-locked vector counts as debug disabled.
+// Runs after rom_sboot_dis_policy(), whose latched value it reports against.
+void rom_chiplet_dbg_policy(uint32_t lc_state);
+
+// True when CHIPLET_DBG is disabled by SIP_DIS or SYS_DIS, as latched by
+// rom_chiplet_dbg_policy(). In TEST_DEV and RMA_SiP this makes secure boot
+// enforced.
+// Reads true until [S18] runs, and true enforces secure boot.
+bool chiplet_debug_disabled(void);

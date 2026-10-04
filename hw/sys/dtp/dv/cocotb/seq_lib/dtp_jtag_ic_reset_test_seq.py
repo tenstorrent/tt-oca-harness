@@ -94,25 +94,39 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_step(
             3, "Verify reset_hold=0 preserves enable/control bits and outputs through TLR"
         )
-        held_enable = {"smc": 0, "sep": 0, "ext": 1}
-        held_control = {"smc": 0, "sep": 1, "ext": 0}
-        held_pattern = await self.write_ic_reset(
-            reset_hold=0,
-            reset_enable=held_enable,
-            reset_control=held_control,
-        )
-        self.log_ic_reset("Held pattern before TLR", held_pattern)
-        await self.expect_slices(held_enable, held_control, context="reset_hold=0 directed pattern")
-        await self.drive_tlr_without_trst()
-        await self.expect_slices(
-            held_enable, held_control, context="reset_hold=0 in Test-Logic-Reset directed pattern"
-        )
-        expected = ic_reset_after_tlr(0, held_pattern, default_value)
-        held_observed = await self.read_ic_reset(shift_value=expected)
-        self.log_ic_reset("Held pattern after TLR", held_observed)
-        self.family_check(
-            "CHK-DBG-TDR", "IC_RESET reset_hold=0 TLR preserve", held_observed, expected
-        )
+        # (reset_enable, reset_control) per port, rotated so each slice
+        # takes all four values across the four patterns.
+        slice_values = ((0, 0), (0, 1), (1, 0), (1, 1))
+        for rotation in range(len(slice_values)):
+            held = {
+                name: slice_values[(rotation + idx) % len(slice_values)]
+                for idx, name in enumerate(self.PORTS)
+            }
+            held_enable = {name: value[0] for name, value in held.items()}
+            held_control = {name: value[1] for name, value in held.items()}
+            context = f"reset_hold=0 directed pattern#{rotation + 1}"
+            self.log_iteration(rotation + 1, len(slice_values), "%s", context)
+            held_pattern = await self.write_ic_reset(
+                reset_hold=0,
+                reset_enable=held_enable,
+                reset_control=held_control,
+            )
+            self.log_ic_reset("Held pattern before TLR", held_pattern)
+            await self.expect_slices(held_enable, held_control, context=context)
+            await self.drive_tlr_without_trst()
+            await self.expect_slices(
+                held_enable, held_control, context=f"{context} in Test-Logic-Reset"
+            )
+            expected = ic_reset_after_tlr(0, held_pattern, default_value)
+            held_observed = await self.read_ic_reset(shift_value=expected)
+            self.log_ic_reset("Held pattern after TLR", held_observed)
+            self.family_check(
+                "CHK-DBG-TDR",
+                "IC_RESET reset_hold=0 TLR preserve",
+                held_observed,
+                expected,
+                context=context,
+            )
 
         self.log_step(4, "Run seeded random reset_hold=0 preservation patterns")
         random_patterns = []

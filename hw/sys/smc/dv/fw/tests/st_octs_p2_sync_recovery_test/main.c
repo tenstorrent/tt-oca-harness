@@ -5,36 +5,21 @@
  * @file main.c
  * @brief OCTS P2 Sync Recovery Test - DUT as PRIMARY, BFM as SECONDARY
  *
- * DUT acts as PRIMARY timer (generates sync signals)
- * BFM acts as SECONDARY timer (receives signals and recovers from resets)
- *
- * Test verifies complex synchronization scenarios:
- *   1. Baseline: Normal synchronized operation
- *   2. Timeout: Detection when SYNC signal is absent
- *   3. Reset: Counter reset without rollback
- *   4. Recovery: Successful resynchronization after reset
- *
- * Steps:
- *   1. Initialize OCTS PRIMARY mode
- *   2. Phase A: Baseline normal sync (1ms)
- *   3. Phase B: Monitor timeout (SECONDARY observes timeout flag)
- *   4. Phase C: Reset and verify no rollback
- *   5. Phase D: Recovery verification (1ms)
- *   6. Report results via scratch registers
+ * Runs the DUT system timer as the OCTS PRIMARY through a baseline phase, a
+ * sync timeout window, an expected external reset and a recovery phase in
+ * which the firmware reprograms and restarts the timer. The firmware checks
+ * only that the count advances in the baseline and recovery phases; the
+ * timeout, the count after reset and any rollback are logged and reported via
+ * scratch registers, not checked.
  */
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "smc_defines.h"
 #include "smc_test.h"
 #include "virt_console.h"
 
-#define WAIT_CYCLES 50
-#define MAX_PRESET_VALUE 0x10000ULL
-#define PHASE_RUNTIME_CYCLES 100000 /* 1ms @ 100MHz */
-
-/* System Timer register definitions are provided by smc_defines.h -> smc_top_regs.h */
+#define PHASE_RUNTIME_CYCLES 100000 /* Busy-loop iterations per phase window */
 
 static void wait_cycles(uint32_t cycles) {
     for (volatile uint32_t i = 0; i < cycles; i++) {
@@ -61,11 +46,7 @@ static void timer_init(void) {
 
     simputs("Initializing OCTS PRIMARY timer (P2 Sync Recovery Test)\n");
 
-    /* CTRL Register Configuration (STEP << 16 | PULSE_WIDTH << 8 | CREDIT_VAL)
-     * CREDIT_VAL = 0x10 (16) - Must be > PULSE_WIDTH
-     * PULSE_WIDTH = 0x02 (2) - Must be < CREDIT_VAL
-     * STEP = 0x01 (1) - Step size for SECONDARY timer
-     */
+    /* The credit value must exceed the sync pulse width. */
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR, 0x00010210);
 
     ctrl_val = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR);
@@ -79,7 +60,7 @@ static void timer_init(void) {
     }
     simputs("CTRL register initialized: 0x00010210\n");
 
-    // Enable GPIO pad lsio interface to prevent X-prop on reset
+    // The timer needs its pad interface enabled to avoid X propagation from reset
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR, 1);
     wait_cycles(10);
     uint32_t gpio_enable_val = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR);
@@ -141,8 +122,6 @@ int main(void) {
     uint64_t count_after_reset;
     uint64_t count_recovery;
     uint64_t count_after_recovery;
-    uint32_t timeout_flag = 0;
-    uint32_t rollback_detected = 0;
 
     write_scratch(0, 0xcccccccc);
     simputs("st_octs_p2_sync_recovery_test - DUT PRIMARY mode with reset recovery\n");
@@ -157,7 +136,7 @@ int main(void) {
     timer_start(0x1000ULL);
     write_scratch(0, 0x01);
 
-    /* Phase A: Baseline normal sync (1ms) */
+    /* Phase A: the count advances during normal operation. */
     simputs("Phase A: Baseline - Normal synchronized operation (1ms)\n");
     write_scratch(0, 0x02);
 
@@ -178,23 +157,18 @@ int main(void) {
         }
     }
 
-    /* Phase B: Timeout monitoring
-     * Note: Cocotb will stop PRIMARY SYNC signal during this phase
-     * FW monitors status register for timeout flag
+    /* Phase B: the sync timeout is measured outside the firmware; this phase
+     * only logs the timer status over a fixed window.
      */
     simputs("Phase B: Timeout - Monitoring for timeout condition\n");
     write_scratch(0, 0x03);
 
-    /* Poll STATUS over a 2000-poll * 100-cycle window (~200us); the SECONDARY timeout
-     * fires 100k cycles after SYNC stops and is measured on the cocotb side.
-     */
     uint32_t timeout_poll_count = 0;
     uint32_t max_timeout_polls = 2000;
 
     for (timeout_poll_count = 0; timeout_poll_count < max_timeout_polls; timeout_poll_count++) {
         wait_cycles(100);
 
-        /* The timeout flag is observed on the cocotb side; this loop only logs STATUS. */
         if ((timeout_poll_count % 500) == 0) {
             uint32_t status = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR);
             simputshex32("  Status at poll ", timeout_poll_count);
@@ -205,9 +179,8 @@ int main(void) {
     simputs("Timeout observation phase completed\n");
     write_scratch(0, 0x04);
 
-    /* Phase C: Reset recovery
-     * Note: Cocotb will pulse hardware reset (BP_RESETN) to trigger complete reset
-     * After reset, firmware must reinitialize timer registers to ensure proper operation
+    /* Phase C: an external reset is expected to clear the timer here, so the
+     * firmware reprograms and restarts it afterwards.
      */
     simputs("Phase C: Reset - Verifying reset behavior\n");
     write_scratch(0, 0x05);
@@ -215,25 +188,11 @@ int main(void) {
     count_before_reset = timer_get_count();
     simputshex64("Count before reset: ", count_before_reset);
 
-    /* Wait for hardware reset pulse from Cocotb
-     * After reset completes, timer registers are reset to default values
-     * Firmware must reinitialize timer to ensure proper operation
-     */
+    /* Fixed wait for the reset to complete. */
+    wait_cycles(10000);
 
-    /* Wait for reset to complete and propagate */
-    wait_cycles(10000); /* reset propagation */
-
-    /* After hardware reset, timer registers are reset:
-     * - CTRL register resets to default (0x0000020A)
-     * - PRESET registers reset to 0
-     * - Counter resets to 0
-     * - Enable signal resets to 0
-     *
-     * Reinitialize timer registers to ensure proper operation
-     */
     simputs("Reinitializing timer after reset...\n");
 
-    /* Reinitialize CTRL register */
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR, 0x00010210);
     wait_cycles(10);
 
@@ -247,24 +206,20 @@ int main(void) {
         }
     }
 
-    /* Reset PRESET registers to ensure clean state */
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR, 0x0);
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR, 0x0);
     wait_cycles(10);
 
-    /* Check counter after reset - should be 0 */
+    /* A nonzero count after reset is logged and reported, not failed. */
     count_after_reset = timer_get_count();
     simputshex64("Count after reset (before restart): ", count_after_reset);
 
-    /* Verify counter was reset to 0 */
     if (count_after_reset != 0) {
         simputs("WARNING: Counter not zero after reset, value: ");
         simputshex64("", count_after_reset);
         simputs("\n");
-        /* Continue anyway - may be due to timing */
     }
 
-    /* Restart timer with new preset value */
     simputs("Restarting timer after reset...\n");
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR,
               (uint32_t)(0x1000ULL & 0xFFFFFFFF));
@@ -274,7 +229,7 @@ int main(void) {
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR, 1);
     wait_cycles(50);
 
-    /* Verify counter after restart */
+    /* A rollback is reported via scratch, not failed. */
     uint64_t count_after_restart = timer_get_count();
     simputshex64("Count after restart: ", count_after_restart);
 
@@ -283,30 +238,25 @@ int main(void) {
         write_scratch(6, 0); /* No rollback */
     } else if (count_after_restart > count_before_reset) {
         simputs("ERROR: Potential rollback detected - count increased after reset!\n");
-        rollback_detected = 1;
         write_scratch(6, 1); /* Rollback flag */
     } else {
         simputs("OK: Counter reset and restarted successfully\n");
         write_scratch(6, 0); /* No rollback */
     }
 
-    /* Phase D: Recovery verification (1ms)
-     * Verify that timer continues to increment properly after reset and restart
-     * Timer should have been restarted in Phase C, so it should be running now
-     */
+    /* Phase D: the restarted timer advances again. */
     simputs("Phase D: Recovery - Verifying normal operation after reset\n");
     write_scratch(0, 0x06);
 
-    /* Wait a bit to ensure timer is running after restart */
     wait_cycles(1000);
 
     count_recovery = timer_get_count();
     simputshex64("Recovery phase count start: ", count_recovery);
 
-    /* Verify timer is running (count should be > 0 after restart) */
+    /* A zero count gets one extended wait before the recovery window. */
     if (count_recovery == 0) {
         simputs("WARNING: Timer count is still 0 after restart, may need more time\n");
-        wait_cycles(10000); /* Wait longer */
+        wait_cycles(10000);
         count_recovery = timer_get_count();
         simputshex64("Recovery phase count start (after extended wait): ", count_recovery);
     }
@@ -327,14 +277,12 @@ int main(void) {
         }
     }
 
-    /* Calculate recovery phase deviation (count range)
-     * This is a simplified estimate
-     */
+    /* Deviation estimate: low byte of the count range over the recovery window. */
     uint64_t recovery_range = count_after_recovery - count_recovery;
     uint32_t deviation_estimate = (recovery_range > 0) ? (uint32_t)(recovery_range & 0xFF) : 0;
 
     /* Report results via scratch registers */
-    write_scratch(2, 0); /* Timeout precision (Cocotb measures this) */
+    write_scratch(2, 0); /* Timeout precision: not measured by firmware */
     write_scratch(3, (uint32_t)(count_baseline & 0xFFFFFFFF)); /* Baseline count */
     write_scratch(4, (count_after_reset == 0) ? 0 : 1);        /* Reset status */
     write_scratch(5, (uint32_t)(count_recovery & 0xFFFFFFFF)); /* Recovery count */
@@ -349,8 +297,6 @@ int main(void) {
     while (1) {
         __asm__("wfi");
     }
-
-    return 0;
 }
 
 int other_main(int hartid) {
@@ -358,7 +304,6 @@ int other_main(int hartid) {
     while (1) {
         __asm__("wfi");
     }
-    return 0;
 }
 
 int secondary_main(void) {

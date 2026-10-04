@@ -19,14 +19,14 @@
 `include "ocah_fcov_macros.svh"
 
 module smc_int_fcov #(
-  parameter int unsigned CpuInterruptCount = 328,
-  parameter int unsigned ExtInterruptCount = 256,
-  parameter int unsigned CpuClusterCount = 4
+  parameter int unsigned CPU_INTERRUPT_COUNT = 328,
+  parameter int unsigned EXT_INTERRUPT_COUNT = 256,
+  parameter int unsigned CPU_CLUSTER_COUNT = 4
 ) (
   input wire clk_smc_i,
   input wire rst_cold_ni,
 
-  input wire [CpuInterruptCount-1:0] cpu_interrupts_i,
+  input wire [CPU_INTERRUPT_COUNT-1:0] cpu_interrupts_i,
 
   // AXI hang detector legs, whose OR is the peripheral bit.
   input wire hang_sys_i,
@@ -43,11 +43,11 @@ module smc_int_fcov #(
   input wire [8:0] plic_maxdev0_i,
   input wire [2:0] plic_threshold0_i,
   input wire [6:0] plic_enables0_i,
-  input wire [CpuClusterCount-1:0] plic_meip_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] plic_meip_i,
 
   // NDM reset request, before and after the synchronizer.
-  input wire [CpuClusterCount-1:0] ndmreset_request_i,
-  input wire [CpuClusterCount-1:0] ndmreset_request_sync_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_request_sync_i,
 
   // SYNC_REG.sync reflected on sync_irq_o.
   input wire sync_irq_i
@@ -55,9 +55,9 @@ module smc_int_fcov #(
 
   wire in_reset = (rst_cold_ni !== 1'b1);
 
-  localparam int unsigned HangBit = ExtInterruptCount + 30;
-  localparam int unsigned NdmBit = ExtInterruptCount + 11;
-  localparam int unsigned ZeroerBit = ExtInterruptCount + 64 + 3;
+  localparam int unsigned HangBit = EXT_INTERRUPT_COUNT + 30;
+  localparam int unsigned NdmBit = EXT_INTERRUPT_COUNT + 11;
+  localparam int unsigned ZeroerBit = EXT_INTERRUPT_COUNT + 64 + 3;
 
   // ------------------------------------------------------------------
   // The AXI hang OR on its vector bit. The bit alone is the OR output; the

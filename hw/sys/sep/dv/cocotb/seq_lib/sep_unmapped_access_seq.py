@@ -2,26 +2,42 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Unmapped-access policy points for sep_unmapped_access_policy_test.
 
-``hw/sys/sep/doc/memory_map.adoc`` states two rules. The fabric refuses an
-address that falls between unit windows, or past the extent a unit allocates,
-and such an access never reaches a unit. Inside a unit's allocated extent, an
-offset that owns no register is accepted: reads return zero and writes are
-discarded, both with an OKAY response. Neither rule names a refusal code.
+The SEP components view of the SystemRDL memory map
+(``hw/sys/sep/regs/gen/py/sep_memory_map.py``, read through
+``env/sep_decode_resp.py``) states, per unit, its Decoded Extent and how a
+32-bit access that no register backs answers: one response for a hole inside
+the extent, one for the rest of the aperture, and one for a reserved row
+between apertures. Each response gives the read response, the read data and
+the write response.
 
 This module builds the address sets that sit next to live registers but own
 none, and that no other leaf probes:
 
 * system-CSR holes: the gaps between the remap, filter and SEP CPU control
-  blocks, and the space past the SEP CPU control extent;
+  blocks, the space past the SEP CPU control extent, and the gaps around the
+  cold and warm scratch banks;
 * the reserved row above SEP CPU control, walked one 64 KiB page at a time;
 * the upper half of the mailbox page, past the mailbox extent;
 * the space past each eFuse sibling block (interface control, token MMR);
+* the space past the SPI host extent, to the end of its aperture;
 * the tail of every remap and filter array slot, where the slot stride is
   wider than the slot's registers, and the first word past each array.
 
 An array's extent is ``SEP_TOP_<ARRAY>_TOTAL_SIZE`` from the generated
-``hw/sys/sep/regs/gen/c/sep_addr.h``: the size the RDL allocates to the whole
-array. Every slot tail, the last slot's tail included, is inside that extent.
+``hw/sys/sep/regs/gen/c/sep_addr.h``: the RDL allocates the whole stride to
+every slot, the last one included, so every slot tail is inside the extent and
+reads zero with OKAY. The array's aperture in the map must equal that size.
+
+``sep.rdl`` sets ``ocah_full_stride_extent`` on these arrays, so the map's
+Decoded Extent is the full allocation and the map states OKAY with zero for
+every tail. Where the map and the RDL allocation disagree on a tail word, the
+word is graded by the extent rule only and is listed in
+``SepUnmappedCfg.map_disagree``.
+
+Every other probe and tail access carries the response the map states for it
+(``SepUnmappedCfg.expect``). The config refuses to build if a refusal-group
+probe is not a refusal in the map, so each refusal checker grades a contract the
+map states.
 
 Every base, size and offset comes from the generated SystemRDL export
 (``hw/sys/sep/regs/gen/py/sep_reg.py`` through ``sep_reg_meta``). A dead
@@ -33,6 +49,14 @@ address bits would land. RTL decode tables are never read.
 The live words this module programs are the positive control: a write that
 lands and reads back proves the bus reaches that block, and a distinct value
 in each word is what makes a write alias or a read alias visible.
+
+A live word is read before its write, so the closing restore can write the
+pre-test value back. A word with a field that has no RDL reset (the eFuse token
+input words, ``hw/ip/efuse/regs/efuse_mmr.rdl`` RMA_TOKEN_I and
+SEC_DISABLE_TOKEN_I) has no value before its first write, so it is written
+first and is not restored. The generated IP-XACT states which fields carry a
+reset (``sep_reg_meta.word_has_unreset_field``); the generated ``_REG_DEFAULT``
+reads 0 for a field without one and is not used for this.
 """
 
 from __future__ import annotations
@@ -40,6 +64,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import Expected, expected_unbacked, logical_region, sep_map_row
 from env.sep_spec_tables import mailbox_depth
 from sep_reg_meta import (
     EFUSE_INTERFACE_CTRL,
@@ -52,6 +77,7 @@ from sep_reg_meta import (
     indexed_block_count,
     sep_addr_define,
     sym,
+    word_has_unreset_field,
 )
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -102,6 +128,17 @@ def _slot_size(prefix: str, i: int) -> int:
     return block_size(f"{prefix}_{i}_")
 
 
+def _scratch_count(bank: str) -> int:
+    """How many SCRATCH_<n> registers the export gives ``bank``, from 0 up."""
+    n = 0
+    while True:
+        try:
+            sym(f"{bank}_SCRATCH_{n}__REG_ADDR")
+        except KeyError:
+            return n
+        n += 1
+
+
 @dataclass(frozen=True)
 class LiveWord:
     """A live 32-bit word. ``value`` None means snapshot-only (read-only)."""
@@ -122,7 +159,7 @@ class Probe:
 @dataclass(frozen=True)
 class TailWord:
     """One word of an array slot tail (past the slot's registers, before the next
-    slot), or the first word past the array extent."""
+    slot), or the first word past the array aperture."""
 
     array: str
     slot: int
@@ -140,10 +177,27 @@ GROUP_RESERVED = "sys_reserved_row"
 GROUP_MBOX = "mailbox_upper_half"
 GROUP_EFUSE_CTRL = "efuse_ctrl_past_extent"
 GROUP_EFUSE_MMR = "efuse_mmr_past_extent"
-REFUSE_GROUPS = (GROUP_SYSCSR, GROUP_RESERVED, GROUP_MBOX, GROUP_EFUSE_CTRL, GROUP_EFUSE_MMR)
+GROUP_SPI = "spi_host_past_extent"
+REFUSE_GROUPS = (
+    GROUP_SYSCSR,
+    GROUP_RESERVED,
+    GROUP_MBOX,
+    GROUP_EFUSE_CTRL,
+    GROUP_EFUSE_MMR,
+    GROUP_SPI,
+)
 # Groups whose probes reach the system-CSR AXI-Lite port when the system CSR is
-# the point that refuses. The Lite handshake is logged for these.
+# the point that refuses. The Lite handshake is logged for these. The local
+# crossbar's ext initiator is watched for the same probes: an access that
+# sep_system_peripherals does not decode returns to the local crossbar there.
 LITE_WATCHED = (GROUP_SYSCSR, GROUP_RESERVED)
+
+# First word of the External row of the SEP CPU logical map. The local crossbar
+# sends it to sep_system_peripherals, whose peripheral crossbar forwards an
+# address outside the mailbox and system CSR windows to the local crossbar's
+# ext initiator (hw/sys/sep/doc/fabric.adoc). It is the ext-initiator watcher's
+# control.
+EXT_LOOPBACK_CTRL = logical_region("logical:external_region")[0]
 
 # TOKEN_MATCH_FAULT, the last RDL register of the eFuse token MMR.
 TOKEN_MATCH_FAULT = EFUSE_MMR.addr("TOKEN_MATCH_FAULT")
@@ -177,11 +231,19 @@ class SepUnmappedCfg:
         self.tails: list[TailWord] = []
         # array name -> (base, TOTAL_SIZE) from sep_addr.h
         self.array_extent: dict[str, tuple[int, int]] = {}
+        # tail word -> the map cell that disagrees with the RDL allocation
+        self.map_disagree: dict[int, str] = {}
+        # (addr, op) -> the response the map states
+        self.expect: dict[tuple[int, str], Expected] = {}
+        # Live words with a field that has no RDL reset: written before the
+        # first read, never pre-read or restored.
+        self.unreset: frozenset[int] = frozenset()
         self._build_arrays()
         self._build_syscsr()
         self._build_reserved_row()
         self._build_mailbox()
         self._build_efuse()
+        self._build_spi()
         self._self_check()
 
     # --- remap / filter arrays --------------------------------------------
@@ -201,9 +263,15 @@ class SepUnmappedCfg:
                         f"gives 0x{want:x}"
                     )
             total = sep_addr_define(f"SEP_TOP_{prefix}_TOTAL_SIZE")
-            extent_end = bases[0] + total
-            if bases[-1] + stride > extent_end:
+            if bases[-1] + stride > bases[0] + total:
                 raise RuntimeError(f"{name}: the last slot stride ends past TOTAL_SIZE 0x{total:x}")
+            row = sep_map_row(bases[0])
+            if row.base != bases[0] or row.end - row.base + 1 != total:
+                raise RuntimeError(
+                    f"{name}: map row {row.unit} 0x{row.base:08x}-0x{row.end:08x} is not the "
+                    f"array aperture base 0x{bases[0]:08x} + TOTAL_SIZE 0x{total:x}"
+                )
+            extent_end = bases[0] + total
             self.array_extent[name] = (bases[0], total)
             slot_words = [tuple(range(b, b + s, 4)) for b, s in zip(bases, sizes)]
             for i, base in enumerate(bases):
@@ -226,15 +294,16 @@ class SepUnmappedCfg:
                     self.tails.append(
                         TailWord(name, i, t, t < extent_end, neigh, f"{name}[{i}] tail")
                     )
-            # The first word past the array. It is a refusal point only where no
-            # other RDL block owns it: the word past the alias-remap array is
-            # AP_OUTPUT_REMAP_CTRL[0], a live word.
-            if _rdl_owner(extent_end) is None:
+            # The first word past the array aperture. It is a refusal point only
+            # where no other RDL block owns it: the word past the alias-remap
+            # array is AP_OUTPUT_REMAP_CTRL[0], a live word.
+            ap_end = bases[0] + total
+            if _rdl_owner(ap_end) is None:
                 self.tails.append(
                     TailWord(
                         name,
                         count,
-                        extent_end,
+                        ap_end,
                         False,
                         slot_words[-1],
                         f"{name} first word past base + TOTAL_SIZE",
@@ -287,13 +356,44 @@ class SepUnmappedCfg:
             ),
         ):
             self.live.append(LiveWord(label, base + REMAP_ATTRS, value & REMAP_OFFSET_LO_MASK))
-        self.live.append(
-            LiveWord(
-                "sep_cpu_ctrl.SEP_NMI_VEC",
-                cpu_base + nmi_off,
-                0x1357_9BDE & SEP_CPU_CTRL.mask32("SEP_NMI_VEC"),
-            )
+        # SEP_NMI_VEC is also the Lite-port watcher's control word.
+        self.lite_ctrl = LiveWord(
+            "sep_cpu_ctrl.SEP_NMI_VEC",
+            cpu_base + nmi_off,
+            0x1357_9BDE & SEP_CPU_CTRL.mask32("SEP_NMI_VEC"),
         )
+        self.live.append(self.lite_ctrl)
+
+        # Scratch banks: the first and last SCRATCH word of each bank. A bank's
+        # extent is its RDL size, so the word one extent up from SCRATCH_0 is
+        # the first word past that bank.
+        cold = RegBlock("SEP_SCRATCH_COLD")
+        warm = RegBlock("SEP_SCRATCH_WARM")
+        cold_base = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")
+        warm_base = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")
+        cold_end = cold_base + block_size("SEP_SCRATCH_COLD")
+        warm_end = warm_base + block_size("SEP_SCRATCH_WARM")
+        scratch_img = cold_base + _pow2_ceil(warm_end - cold_base)
+        scratch_last = _scratch_count("SEP_SCRATCH_COLD") - 1
+        if _scratch_count("SEP_SCRATCH_WARM") - 1 != scratch_last:
+            raise RuntimeError("cold and warm scratch banks differ in SCRATCH count")
+        for label, blk, reg, value in (
+            ("sep_scratch_cold.SCRATCH_0", cold, "SCRATCH_0_", 0x5C01_D000),
+            (
+                f"sep_scratch_cold.SCRATCH_{scratch_last}",
+                cold,
+                f"SCRATCH_{scratch_last}_",
+                0x5C01_D0F7,
+            ),
+            ("sep_scratch_warm.SCRATCH_0", warm, "SCRATCH_0_", 0x5CA2_3000),
+            (
+                f"sep_scratch_warm.SCRATCH_{scratch_last}",
+                warm,
+                f"SCRATCH_{scratch_last}_",
+                0x5CA2_30F7,
+            ),
+        ):
+            self.live.append(LiveWord(label, blk.addr(reg), value & blk.mask32(reg)))
 
         for addr, note in (
             (ap_end, "first word past the AP output-remap array"),
@@ -307,13 +407,17 @@ class SepUnmappedCfg:
             (cpu_base - 4, "last word before SEP CPU control"),
             (cpu_base + cpu_size, "first word past the SEP CPU control extent"),
             (self.cpu_img + nmi_off, "SEP_NMI_VEC, one SEP CPU control image up"),
+            (cold_end, "cold scratch SCRATCH_0, one bank extent up"),
+            (warm_base - 4, "last word before the warm scratch bank"),
+            (warm_end, "warm scratch SCRATCH_0, one bank extent up"),
+            (scratch_img - 4, "last word below one scratch-pair image up"),
         ):
             for op in ("r", "w"):
                 self.probes.append(Probe(g, addr, op, note))
 
     # --- reserved row above SEP CPU control --------------------------------
     def _build_reserved_row(self) -> None:
-        # The generated memory map (hw/sys/sep/regs/gen/adoc/memory_map.adoc)
+        # The SystemRDL memory map (hw/sys/sep/regs/gen/py/sep_memory_map.py)
         # marks everything from the end of the SEP CPU control aperture up to
         # the external IO bridge as one reserved row. Walk it one 64 KiB page at
         # a time, first and last word of each page.
@@ -419,8 +523,13 @@ class SepUnmappedCfg:
         )
         ctrl_img = _pow2_ceil(block_size("EFUSE_INTERFACE_CTRL"))
         mmr_img = _pow2_ceil(block_size("EFUSE_MMR"))
+        # The map states one read word past this extent. Probe both 32-bit lanes of
+        # the 64-bit bus: the first word past the extent, and the first word past
+        # it with the other value of address bit 2.
+        ctrl_other = ctrl_end + 4
         for addr, note in (
             (ctrl_end, "first word past the efuse_interface_ctrl extent"),
+            (ctrl_other, "second word past the efuse_interface_ctrl extent (other bus lane)"),
             (ctrl_base + ctrl_img + rto, "EFUSE_READ_REQ_TIMEOUT, one extent image up"),
             (ctrl_base + window // 2 + rto, "EFUSE_READ_REQ_TIMEOUT, half a window up"),
             (ctrl_base + window - 4, "last word of the efuse_interface_ctrl window"),
@@ -437,10 +546,64 @@ class SepUnmappedCfg:
                 self.probes.append(Probe(GROUP_EFUSE_MMR, addr, op, note))
         self.mmr_end = mmr_end
 
+    # --- SPI host past its extent ---------------------------------------
+    def _build_spi(self) -> None:
+        spi = RegBlock("SPI_CONTROLLER")
+        base = sym("SPI_CONTROLLER_REG_MAP_BASE_ADDR")
+        end = base + block_size("SPI_CONTROLLER")
+        aperture = sep_map_row(base).end + 1 - base
+        csid = spi.offset("CSID")
+        configopts = spi.offset("CONFIGOPTS")
+        # CSID only selects a chip select when a command is issued, and this leaf
+        # issues none, so a distinct value there has no side effect.
+        self.live.extend(
+            (
+                LiveWord("spi_controller.CSID", spi.addr("CSID"), 0x0000_5A5A & spi.mask32("CSID")),
+                LiveWord("spi_controller.CONFIGOPTS", spi.addr("CONFIGOPTS")),
+            )
+        )
+        img = _pow2_ceil(block_size("SPI_CONTROLLER"))
+        for addr, note in (
+            (end, "first word past the spi_controller extent"),
+            (end + 4, "second word past the spi_controller extent (other bus lane)"),
+            (base + img + csid, "CSID, one extent image up"),
+            (base + aperture // 2 + configopts, "CONFIGOPTS, half an aperture up"),
+            (base + aperture - 4, "last word of the spi_controller aperture"),
+        ):
+            for op in ("r", "w"):
+                self.probes.append(Probe(GROUP_SPI, addr, op, note))
+
     def _self_check(self) -> None:
+        for p in self.probes:
+            e = self.expect[(p.addr, p.op)] = expected_unbacked(p.addr, p.op)
+            if e.resp == RESP_OKAY:
+                raise RuntimeError(
+                    f"{p.group} probe {p.op} 0x{p.addr:08x} ({p.note}): the map states "
+                    f"OKAY ({e.row}, {e.column}), so it is not a refusal point"
+                )
+        for t in self.tails:
+            for op in ("r", "w"):
+                e = expected_unbacked(t.addr, op)
+                ok_zero = e.resp == RESP_OKAY and not e.rdata
+                if t.in_extent == ok_zero:
+                    self.expect[(t.addr, op)] = e
+                elif t.in_extent:
+                    self.map_disagree[t.addr] = f"{e.cell} ({e.row}, {e.column})"
+                else:
+                    raise RuntimeError(
+                        f"{t.label} {op} 0x{t.addr:08x} is past the RDL allocation but the "
+                        f"map states {e.cell!r} ({e.row}, {e.column})"
+                    )
         addrs = [w.addr for w in self.live]
         if len(addrs) != len(set(addrs)):
             raise RuntimeError("a live word is listed twice")
+        self.unreset = frozenset(a for a in addrs if word_has_unreset_field(a))
+        for w in self.live:
+            if w.addr in self.unreset and w.value is None:
+                raise RuntimeError(
+                    f"{w.name} 0x{w.addr:08x}: a field has no RDL reset, so a "
+                    "snapshot-only read of it has no defined value"
+                )
         values = [w.value for w in self.live if w.value is not None]
         if any(v == 0 for v in values) or len(values) != len(set(values)):
             raise RuntimeError(
@@ -458,6 +621,10 @@ class SepUnmappedCfg:
             ops = {p.op for p in self.probes if p.group == g}
             if ops != {"r", "w"}:
                 raise RuntimeError(f"{g}: both channels must be probed, got {sorted(ops)}")
+        for g in (GROUP_EFUSE_CTRL, GROUP_SPI):
+            lanes = {p.addr & 0x4 for p in self.probes if p.group == g and p.op == "r"}
+            if lanes != {0, 4}:
+                raise RuntimeError(f"{g}: reads must cover both 32-bit lanes of the bus")
         # TOKEN_MATCH_FAULT is the last word the RDL gives the token MMR.
         if TOKEN_MATCH_FAULT + 4 != self.mmr_end:
             raise RuntimeError(
@@ -482,6 +649,7 @@ class SepUnmappedCfg:
         n_in = sum(1 for t in self.tails if t.in_extent)
         return (
             f"live={len(self.live)} programmed={len(self.programmed)} "
+            f"no-rdl-reset={len(self.unreset)} "
             f"probes={len(self.probes)} [{per}] tails={len(self.tails)} "
             f"(in-extent={n_in}, past-extent={len(self.tails) - n_in})"
         )
@@ -494,6 +662,7 @@ class ProbeResult:
     rdata: int
     timed_out: bool
     lite_reached: bool | None = None
+    ext_reached: bool | None = None
     alias: str | None = None
     changed: tuple[str, ...] = ()
 
@@ -509,6 +678,9 @@ class SepUnmappedAccess:
         self.pre: dict[int, int] = {}
         self.names = {w.addr: w.name for w in cfg.live}
         self.decerr_reported = 0
+        # Error-response reads, and how many of them the monitor lane-checked.
+        self.err_reads = 0
+        self.err_reads_lane_checked = 0
 
     async def access(
         self, op: str, addr: int, *, wdata: int = 0, may_refuse: bool
@@ -521,6 +693,7 @@ class SepUnmappedAccess:
         mon = self.test.env.axi_monitor
         axi_op = SepAxiOp.WRITE if op == "w" else SepAxiOp.READ
         kwargs = {}
+        check_err_lanes = may_refuse and op == "r"
         if may_refuse:
             mon.arm_expected_decerr(1)
             if op == "w":
@@ -536,7 +709,20 @@ class SepUnmappedAccess:
             size=2,
             **kwargs,
         )
-        await self.test.start_seq(seq)
+        checked0 = mon.r_beats_lane_checked
+        if check_err_lanes:
+            # Lane-check the read data of an error response for X/Z too: the
+            # caller grades that data, and the driver would read X as 0.
+            mon.open_error_rdata_window()
+        try:
+            await self.test.start_seq(seq)
+        finally:
+            if check_err_lanes:
+                mon.close_error_rdata_window()
+        if check_err_lanes and not seq.timed_out and seq.resp_code != RESP_OKAY:
+            self.err_reads += 1
+            if mon.r_beats_lane_checked > checked0:
+                self.err_reads_lane_checked += 1
         if may_refuse:
             if seq.timed_out or seq.resp_code != RESP_DECERR:
                 mon.release_expected_decerr(1)
@@ -544,26 +730,91 @@ class SepUnmappedAccess:
                 self.decerr_reported += 1
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF, seq.timed_out
 
+    async def lite_control(self) -> list[str]:
+        """Watch one write and one read of a programmed system-CSR word.
+
+        Each must show its handshake at the system-CSR AXI-Lite port, so a
+        watcher that sees nothing cannot pass CHK-SYSCSR-HOLE-DECODE. The write
+        carries the word's programmed value, so the snapshot holds.
+        """
+        w = self.cfg.lite_ctrl
+        fails: list[str] = []
+        for op in ("w", "r"):
+            task, lite = self.test.watch_sys_csr_lite(write=op == "w")
+            try:
+                resp, _d, to = await self.access(op, w.addr, wdata=w.value, may_refuse=False)
+            finally:
+                task.kill()
+            where = f"control {op} {w.name} 0x{w.addr:08x}"
+            if to or resp != RESP_OKAY:
+                fails.append(f"{where} resp={resp} timed_out={to}")
+            elif not any((a & ~0x7) == (w.addr & ~0x7) for a in lite):
+                fails.append(f"{where} was not seen at the system-CSR AXI-Lite port")
+        return fails
+
+    async def ext_control(self) -> list[str]:
+        """Watch one write and one read of ``EXT_LOOPBACK_CTRL``.
+
+        Each must show its handshake at the local crossbar's ext initiator, so a
+        watcher that sees nothing cannot pass CHK-SYS-RESERVED-NO-LOOPBACK. The
+        response is not graded: the contract here is the route only.
+        """
+        fails: list[str] = []
+        for op in ("w", "r"):
+            task, ext = self.test.watch_xbar_ext_in(write=op == "w")
+            try:
+                resp, _d, to = await self.access(
+                    op, EXT_LOOPBACK_CTRL, wdata=PROBE_WDATA, may_refuse=True
+                )
+            finally:
+                task.kill()
+            where = f"control {op} 0x{EXT_LOOPBACK_CTRL:08x}"
+            self.log.info(
+                "UNMAPPED-EXT-CONTROL: %s resp=%s timed_out=%s; %d handshake(s) at the ext initiator",
+                where,
+                RESP_NAME.get(resp, resp),
+                to,
+                len(ext),
+            )
+            if to:
+                fails.append(f"{where} timed out")
+            elif not any((a & ~0x7) == (EXT_LOOPBACK_CTRL & ~0x7) for a in ext):
+                fails.append(f"{where} was not seen at the local crossbar's ext initiator")
+        return fails
+
     async def program_live(self) -> list[str]:
         """Write every programmed word, then snapshot every live word.
+
+        A word with an RDL reset is read first, for the restore. A word in
+        ``cfg.unreset`` is written with no read before it.
 
         Returns failure strings. A programmed word must read back its value
         exactly and with OKAY; a snapshot-only word must read OKAY.
         """
         fails: list[str] = []
+        reached: set[int] = set()
         for w in self.cfg.live:
-            resp, val, to = await self.access("r", w.addr, may_refuse=False)
-            if to or resp != RESP_OKAY:
-                fails.append(f"{w.name} 0x{w.addr:08x} pre-read resp={resp} timed_out={to}")
-                continue
-            self.pre[w.addr] = val
+            if w.addr in self.cfg.unreset:
+                self.log.info(
+                    "UNMAPPED-LIVE: %s 0x%08x has a field with no RDL reset; it is "
+                    "written before its first read and is not restored",
+                    w.name,
+                    w.addr,
+                )
+            else:
+                resp, val, to = await self.access("r", w.addr, may_refuse=False)
+                if to or resp != RESP_OKAY:
+                    fails.append(f"{w.name} 0x{w.addr:08x} pre-read resp={resp} timed_out={to}")
+                    continue
+                self.pre[w.addr] = val
             if w.value is not None:
                 resp, _d, to = await self.access("w", w.addr, wdata=w.value, may_refuse=False)
                 if to or resp != RESP_OKAY:
                     fails.append(f"{w.name} 0x{w.addr:08x} write resp={resp} timed_out={to}")
                     continue
+            reached.add(w.addr)
         for w in self.cfg.live:
-            if w.addr not in self.pre:
+            if w.addr not in reached:
                 continue
             resp, val, to = await self.access("r", w.addr, may_refuse=False)
             if to or resp != RESP_OKAY:
@@ -602,14 +853,17 @@ class SepUnmappedAccess:
         watch = p.group in LITE_WATCHED
         if watch:
             task, lite = self.test.watch_sys_csr_lite(write=p.op == "w")
+            ext_task, ext = self.test.watch_xbar_ext_in(write=p.op == "w")
         try:
             resp, rdata, to = await self.access(p.op, p.addr, wdata=PROBE_WDATA, may_refuse=True)
         finally:
             if watch:
                 task.kill()
+                ext_task.kill()
         res = ProbeResult(p, resp, rdata, to)
         if watch:
             res.lite_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in lite)
+            res.ext_reached = any((a & ~0x7) == (p.addr & ~0x7) for a in ext)
         if p.op == "r" and not to:
             res.alias = self.read_alias(rdata)
         if p.op == "w":
@@ -636,7 +890,10 @@ class SepUnmappedAccess:
         return resp, rdata, to, changed, reread
 
     async def restore(self) -> None:
-        """Write back the pre-test value of every programmed word."""
+        """Write back the pre-test value of every programmed word that has one.
+
+        A word in ``cfg.unreset`` has no pre-test value and is left as written.
+        """
         for w in self.cfg.programmed:
             if w.addr in self.pre:
                 await self.access("w", w.addr, wdata=self.pre[w.addr], may_refuse=False)

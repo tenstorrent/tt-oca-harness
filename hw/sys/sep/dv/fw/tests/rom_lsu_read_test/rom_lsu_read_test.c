@@ -1,31 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP boot-ROM LSU data-read + write-ignored firmware test (OSS rep boot-ROM LSU read). reference
-// suite provenance: uvm_tests/rom sep_rom_uvm_basic_read / sequential_read / content_verify /
-// addr_boundary / write_ignore.
+// SEP boot-ROM LSU read test. The ROM sanity test covers instruction fetch from
+// the boot ROM; this test covers CPU data reads from it and checks that a store
+// to it is silently dropped. The boot ROM is reachable only from the CPU, so the
+// test runs in cpu mode.
 //
-// The boot ROM sits on a DEDICATED CPU port (lsu_rom_axi -> u_boot_rom_axi_mux ->
-// memory_interface -> the OSS tb_boot_rom_responder; the production RTL puts a
-// sep_rom_interface_shim here, which the responder replaces with equivalent
-// read-only/write-ignored behavior), reachable only by the EL2 CPU
-// (the no_cpu AXI splice forces lsu_axi_req_o, which cannot reach it). So this is
-// cpu-mode. The ROM sanity test proves the CPU IFU *executes* from ROM; boot-ROM LSU read covers
-// the LSU *data* read-port + the write-silently-ignored negative contract.
-//
-// The boot ROM responder is preloaded with a known image via
-// +sep_boot_rom_hex=mem_rom_test_rom.hex (64-bit words; the CPU is rv32 so each
-// 64-bit word is read as two 32-bit LSU loads -- low half at +0, high half at +4).
-//
-// main() returns the error count; start.S turns 0 -> PASS magic / non-zero ->
-// FAIL magic on the 0x8000_0000 mailbox. Every checker logs a positive PASS line.
+// The testbench preloads the boot ROM from mem_rom_test_rom.hex. Each 64-bit ROM
+// word is read as two 32-bit loads, low half first.
 //
 // Checks:
-//   CHK-ROM-READ          : LSU reads of ROM words match the loaded image (exact).
+//   CHK-ROM-READ          : loads from the first ROM words match the loaded image.
 //   CHK-ROM-BOUNDARY      : the base word and the top valid ROM word read back exactly.
-//   CHK-ROM-WRITE-IGNORED : a store to a ROM word returns a normal response (no hang/
-//                           trap) AND a read-back shows the ORIGINAL content (write
-//                           silently dropped per sep_rom_interface_shim -- NOT DECERR).
+//   CHK-ROM-WRITE-IGNORED : a store to a ROM word completes without a hang or trap,
+//                           and the word still holds its image value.
 
 #include <stdint.h>
 
@@ -47,11 +35,10 @@ static inline void wr(uint32_t a, uint32_t v) {
 int main(void) {
     int errors = 0;
 
-    sep_outbound_filter_init(); // open the 0x8000_0000 console window
+    sep_outbound_filter_init(); // open the console window
     sep_mbx_puts("SEP boot ROM LSU read test\n");
 
-    // CHK-ROM-READ: the loaded image (mem_rom_test_rom.hex). Each 64-bit ROM word
-    // is read as low half (+0) then high half (+4). Words 0..4 are at indices 0..4.
+    // Image words 0..4, each read as low half then high half.
     struct {
         uint32_t addr;
         uint32_t exp;
@@ -81,7 +68,7 @@ int main(void) {
         sep_mbx_puts("CHK-ROM-READ PASS: LSU reads of ROM words match the loaded image\n");
     }
 
-    // CHK-ROM-BOUNDARY: base word (covered above) + top valid 64-bit word.
+    // The base word is covered by CHK-ROM-READ; read the top valid word here.
     uint32_t tlo = rd(ROM_TOP_LO);
     uint32_t thi = rd(ROM_TOP_LO + 4);
     if (tlo != 0xbaadf00d || thi != 0x0badc0de) {
@@ -95,16 +82,13 @@ int main(void) {
         sep_mbx_puts("CHK-ROM-BOUNDARY PASS: base and top valid ROM word read back exactly\n");
     }
 
-    // CHK-ROM-WRITE-IGNORED: a store to a ROM word must return normally (no hang/
-    // trap) and leave the content unchanged (silently dropped, not DECERR).
+    // A store to the ROM must complete and leave the word unchanged.
     uint32_t orig = rd(ROM_BASE + 0x00);
     wr(ROM_BASE + 0x00, 0xFFFFFFFFu);
     __asm__ volatile("fence" ::: "memory");
     uint32_t after = rd(ROM_BASE + 0x00);
-    // Compare against the literal from the loaded image, not against `orig` (a DUT
-    // read of the same address). Comparing two DUT reads would hold for any stable
-    // read, including a path stuck at 0x0 or 0xFFFFFFFF; CHK-ROM-READ pins this word
-    // against the image.
+    // Compare against the image value, not against `orig`: two reads of a stuck
+    // read path would also agree.
     if (after != 0x89abcdefu) {
         sep_mbx_puts("FAIL: CHK-ROM-WRITE-IGNORED content changed ");
         sep_mbx_puthex(after);

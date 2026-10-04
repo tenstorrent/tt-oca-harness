@@ -35,38 +35,37 @@
 package smc_scratch_map_pkg;
 
   // spm_memory.rdl: 131072 entries x 64 bits.
-  localparam int unsigned SCRATCH_NUM_ENTRIES = 131072;
-  localparam int unsigned SCRATCH_ENTRY_BITS = 64;
-  localparam int unsigned SCRATCH_BYTES_PER_ENTRY = SCRATCH_ENTRY_BITS / 8;
-  localparam int unsigned SCRATCH_TOTAL_BYTES = SCRATCH_NUM_ENTRIES * SCRATCH_BYTES_PER_ENTRY;
+  localparam int unsigned ScratchNumEntries = 131072;
+  localparam int unsigned ScratchEntryBits = 64;
+  localparam int unsigned ScratchBytesPerEntry = ScratchEntryBits / 8;
+  localparam int unsigned ScratchTotalBytes = ScratchNumEntries * ScratchBytesPerEntry;
   // cpu.adoc: 32 banks.
-  localparam int unsigned SCRATCH_NUM_BANKS = 32;
+  localparam int unsigned ScratchNumBanks = 32;
 
   // DV-owned interleave assumptions (see the header).
-  localparam int unsigned SCRATCH_BANK_STRIPE_BYTES = 64;
-  localparam int unsigned SCRATCH_BANKS_PER_GROUP = 4;
+  localparam int unsigned ScratchBankStripeBytes = 64;
+  localparam int unsigned ScratchBanksPerGroup = 4;
 
   // Derived: eight contiguous groups of four banks, 128 KiB each.
-  localparam int unsigned SCRATCH_NUM_GROUPS = SCRATCH_NUM_BANKS / SCRATCH_BANKS_PER_GROUP;
-  localparam int unsigned SCRATCH_GROUP_BYTES = SCRATCH_TOTAL_BYTES / SCRATCH_NUM_GROUPS;
-  localparam int unsigned SCRATCH_ENTRIES_PER_STRIPE =
-      SCRATCH_BANK_STRIPE_BYTES / SCRATCH_BYTES_PER_ENTRY;
+  localparam int unsigned ScratchNumGroups = ScratchNumBanks / ScratchBanksPerGroup;
+  localparam int unsigned ScratchGroupBytes = ScratchTotalBytes / ScratchNumGroups;
+  localparam int unsigned ScratchEntriesPerStripe = ScratchBankStripeBytes / ScratchBytesPerEntry;
 
   // Which of the 32 scratch_ram_intf_req[] ports serves this byte offset.
   // Offsets are relative to the base of the scratch window, so the group index
   // is just the high part of the offset.
   function automatic int unsigned smc_scratch_bank(input int unsigned offset);
-    return SCRATCH_BANKS_PER_GROUP * (offset / SCRATCH_GROUP_BYTES)
-         + ((offset / SCRATCH_BANK_STRIPE_BYTES) % SCRATCH_BANKS_PER_GROUP);
+    return ScratchBanksPerGroup * (offset / ScratchGroupBytes)
+         + ((offset / ScratchBankStripeBytes) % ScratchBanksPerGroup);
   endfunction
 
   // Which entry of that bank. address[16:8] concatenated with address[5:3],
   // written as arithmetic so it reads the same way as the bank function.
   function automatic int unsigned smc_scratch_entry(input int unsigned offset);
-    return ((offset % SCRATCH_GROUP_BYTES)
-              / (SCRATCH_BANK_STRIPE_BYTES * SCRATCH_BANKS_PER_GROUP))
-             * SCRATCH_ENTRIES_PER_STRIPE
-         + ((offset % SCRATCH_BANK_STRIPE_BYTES) / SCRATCH_BYTES_PER_ENTRY);
+    return ((offset % ScratchGroupBytes)
+              / (ScratchBankStripeBytes * ScratchBanksPerGroup))
+             * ScratchEntriesPerStripe
+         + ((offset % ScratchBankStripeBytes) / ScratchBytesPerEntry);
   endfunction
 
 endpackage : smc_scratch_map_pkg

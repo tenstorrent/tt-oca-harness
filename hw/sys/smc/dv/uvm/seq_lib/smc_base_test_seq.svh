@@ -132,7 +132,7 @@ class smc_base_test_seq extends ocah_sequence;
   // ------------------------------------------------------------------
 
   task wait_smc_cycles(int unsigned cycles);
-    #(cycles * env_cfg.clk_period_ns * 1ns);
+    #(cycles * env_cfg.smc_clk_period_ns * 1ns);
   endtask
 
   // ------------------------------------------------------------------

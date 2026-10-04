@@ -86,6 +86,13 @@ def _locked_field_irq_fixed(seed: int) -> dict[str, int]:
     return mod.SepLockedFieldIrqCfg(seed).image_fixed()
 
 
+def _program_lock_spares_fixed() -> dict[str, int]:
+    """Same pins as ``sep_efuse_program_lock_matrix_test``: every spare field at 0."""
+    mod = _load_env_module("sep_locked_field_irq", "sep_locked_field_irq.py")
+    pins: dict[str, int] = mod.spare_zero_pins()
+    return pins
+
+
 def _lc_transition_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_lcc_lc_state_transition_matrix_test``'s ``cfg.image_fixed()``.
 
@@ -111,6 +118,17 @@ def _set_only_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
     mod = _load_env_module("sep_efuse_set_only", "sep_efuse_set_only.py")
     return mod.SepEfuseSetOnlyCfg(seed).image_fixed()
+
+
+def _key_revocation_fixed(seed: int) -> dict[str, int]:
+    """Pins for ``sep_key_revocation_bitmap_random_test``.
+
+    The bitmap comes from ``env/sep_key_revocation_draw.py``, which the test also calls, so the
+    staged bitmap and the predicted outcome cannot drift.
+    """
+    mod = _load_env_module("sep_key_revocation_draw", "sep_key_revocation_draw.py")
+    fixed: dict[str, int] = mod.efuse_fixed(mod.draw(seed).bitmap)
+    return fixed
 
 
 def _km_otp_id_fixed(seed: int) -> dict[str, int]:
@@ -191,13 +209,22 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_km_command_set_rand_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_abr_seed_sideload_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_abr_mlkem_sideload_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_abr_mldsa_kat_test": {"mode": "random", "lc_raw": 0x1},
+    "sep_km_sideload_share_walk_test": {"mode": "random", "lc_raw": 0x1},
     "sep_drbg_real_sink_multi_km_aes_test": {"mode": "random", "lc_raw": 0x1},
-    # Spare-field lock x program. SPARE0..7 pinned 0 so the unlocked-then-lock
-    # walk starts from a known-zero field (lock_prob stays 0).
+    # Spare-field lock x program. Every spare field is pinned 0 so the
+    # unlocked-then-lock walk starts from a known-zero field (lock_prob stays 0).
     "sep_efuse_program_lock_matrix_test": {
         "mode": "random",
         "lc_raw": 0x0,
-        "fixed": {f"SPARE{i}": 0 for i in range(8)},
+        "fixed_from": "program_lock_spares",
+    },
+    # Same spare-zero image as the lock matrix: the read-back select test
+    # programs bits of one seed-selected spare field.
+    "sep_efuse_program_read_back_select_test": {
+        "mode": "random",
+        "lc_raw": 0x0,
+        "fixed_from": "program_lock_spares",
     },
     # Demote product starts at TEST_DEV with DIS=0; the pinned DIS pair is
     # W1S-programmed after the first LC walk.
@@ -283,6 +310,13 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "mode": "random",
         "lc_raw": 0x1,
         "fixed_from": "locked_field_irq",
+    },
+    # The bitmap draw is shared with the testcase so staging and prediction
+    # cannot drift onto different randomized revocation values.
+    "sep_key_revocation_bitmap_random_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "key_revocation_draw",
     },
     # KM public-ID readout. The three SEP_*_ID values and the one eFuse read
     # lock among them come from SepKmOtpIdCfg(seed); see _km_otp_id_fixed().
@@ -418,8 +452,12 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
             fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "lc_transition":
             fixed = _lc_transition_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "program_lock_spares":
+            fixed = _program_lock_spares_fixed()
         elif spec.get("fixed_from") == "locked_field_irq":
             fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "key_revocation_draw":
+            fixed = _key_revocation_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "km_otp_id":
             fixed = _km_otp_id_fixed(seed + int(spec.get("seed_offset", 0)))
         extra = spec.get("fixed_extra")

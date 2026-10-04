@@ -56,73 +56,71 @@ module cross_trigger_network_tb_top
   output wire [1:0]                          axil_rresp,
 
   // Clock stop control interface
-  input  wire [DEFAULT_NUM_CLK_STOP_REQ-1:0] clk_stop_req,
+  input  wire [DefaultNumClkStopReq-1:0]     clk_stop_req,
   input  wire                                jtag_clock_stop,
   output wire                                stop_clks,
   output wire                                cla_clock_stop,
 
   // Internal cross trigger interface (CLA side of the internal CT ports)
-  output wire [DEFAULT_NUM_INT_CT-1:0]       ctm_src_req,
-  input  wire [DEFAULT_NUM_INT_CT-1:0]       ctm_src_ack,
-  input  wire [DEFAULT_NUM_INT_CT-1:0]       ctm_dst_req,
-  output wire [DEFAULT_NUM_INT_CT-1:0]       ctm_dst_ack,
+  output wire [DefaultNumIntCt-1:0]       ctm_src_req,
+  input  wire [DefaultNumIntCt-1:0]       ctm_src_ack,
+  input  wire [DefaultNumIntCt-1:0]       ctm_dst_req,
+  output wire [DefaultNumIntCt-1:0]       ctm_dst_ack,
 
   // External CTP GPIO pad interface - CT_Req_out, and the shared wires the
   // pads sit on (pull per private wire, chiplet driver per pad, group mask
   // and group pull, resolved wire per pad, pull-mismatch flag per pad)
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_dout,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_dout_en,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_din,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_out_din_en,
-  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_wire_pull,
-  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_wire_ext_assert,
-  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_wire_group,
+  output wire [DefaultNumCtp-1:0]            ctp_req_out_dout,
+  output wire [DefaultNumCtp-1:0]            ctp_req_out_dout_en,
+  output wire [DefaultNumCtp-1:0]            ctp_req_out_din,
+  output wire [DefaultNumCtp-1:0]            ctp_req_out_din_en,
+  input  wire [DefaultNumCtp-1:0]            ctp_wire_pull,
+  input  wire [DefaultNumCtp-1:0]            ctp_wire_ext_assert,
+  input  wire [DefaultNumCtp-1:0]            ctp_wire_group,
   input  wire                                ctp_wire_group_pull,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_wire_mismatch,
+  output wire [DefaultNumCtp-1:0]            ctp_wire_mismatch,
 
   // Receive pulses of the external and internal ports inside the DUT
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ct_dst,
-  output wire [DEFAULT_NUM_INT_CT-1:0]       int_ct_dst,
+  output wire [DefaultNumCtp-1:0]          ctp_ct_dst,
+  output wire [DefaultNumIntCt-1:0]        int_ct_dst,
 
   // External CTP GPIO pad interface - CT_Req_in
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_in_dout,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_in_dout_en,
-  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_req_in_din,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_req_in_din_en,
+  output wire [DefaultNumCtp-1:0]          ctp_req_in_dout,
+  output wire [DefaultNumCtp-1:0]          ctp_req_in_dout_en,
+  input  wire [DefaultNumCtp-1:0]          ctp_req_in_din,
+  output wire [DefaultNumCtp-1:0]          ctp_req_in_din_en,
 
   // External CTP GPIO pad interface - CT_Ack_in
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_in_dout,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_in_dout_en,
-  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_in_din,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_in_din_en,
+  output wire [DefaultNumCtp-1:0]          ctp_ack_in_dout,
+  output wire [DefaultNumCtp-1:0]          ctp_ack_in_dout_en,
+  input  wire [DefaultNumCtp-1:0]          ctp_ack_in_din,
+  output wire [DefaultNumCtp-1:0]          ctp_ack_in_din_en,
 
   // External CTP GPIO pad interface - CT_Ack_out
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_out_dout,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_out_dout_en,
-  input  wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_out_din,
-  output wire [DEFAULT_NUM_CTP-1:0]          ctp_ack_out_din_en
+  output wire [DefaultNumCtp-1:0]          ctp_ack_out_dout,
+  output wire [DefaultNumCtp-1:0]          ctp_ack_out_dout_en,
+  input  wire [DefaultNumCtp-1:0]          ctp_ack_out_din,
+  output wire [DefaultNumCtp-1:0]          ctp_ack_out_din_en
 );
 
   // Internal CTP mode split: lower half wire-OR (0), upper half P2P (1).
-  localparam int unsigned NumIntCtWireOr = DEFAULT_NUM_INT_CT / 2;
-  localparam int unsigned NumIntCtP2p = DEFAULT_NUM_INT_CT - NumIntCtWireOr;
-  localparam logic [DEFAULT_NUM_INT_CT-1:0] IntCtMode = {
-    {NumIntCtP2p{1'b1}}, {NumIntCtWireOr{1'b0}}
-  };
+  localparam int unsigned NumIntCtWireOr = DefaultNumIntCt / 2;
+  localparam int unsigned NumIntCtP2p = DefaultNumIntCt - NumIntCtWireOr;
+  localparam logic [DefaultNumIntCt-1:0] IntCtMode = {{NumIntCtP2p{1'b1}}, {NumIntCtWireOr{1'b0}}};
 
   ctn_axil_req_t  axil_req;
   ctn_axil_resp_t axil_resp;
 
   // Shared wires: one private wire per pad, one wire for the group. A chiplet
   // driver pulls towards the level opposite its wire's pull.
-  logic [DEFAULT_NUM_CTP-1:0] private_wire;
-  logic [DEFAULT_NUM_CTP-1:0] private_mismatch;
+  logic [DefaultNumCtp-1:0]   private_wire;
+  logic [DefaultNumCtp-1:0]   private_mismatch;
   logic                       group_wire;
   logic                       group_mismatch;
 
-  for (genvar i = 0; i < DEFAULT_NUM_CTP; i++) begin : gen_private_wire
+  for (genvar i = 0; i < DefaultNumCtp; i++) begin : gen_private_wire
     ocah_open_drain_bus #(
-      .NumDrivers(2)
+      .NUM_DRIVERS(2)
     ) u_wire (
       .pull_i     (ctp_wire_pull[i]),
       .dout_i     ({~ctp_wire_pull[i], ctp_req_out_dout[i]}),
@@ -136,16 +134,16 @@ module cross_trigger_network_tb_top
   end
 
   ocah_open_drain_bus #(
-    .NumDrivers(2 * DEFAULT_NUM_CTP)
+    .NUM_DRIVERS(2 * DefaultNumCtp)
   ) u_group_wire (
     .pull_i     (ctp_wire_group_pull),
-    .dout_i     ({{DEFAULT_NUM_CTP{~ctp_wire_group_pull}}, ctp_req_out_dout}),
+    .dout_i     ({{DefaultNumCtp{~ctp_wire_group_pull}}, ctp_req_out_dout}),
     .dout_en_i  ({ctp_wire_ext_assert & ctp_wire_group, ctp_req_out_dout_en & ctp_wire_group}),
     .wire_o     (group_wire),
     .mismatch_o (group_mismatch)
   );
 
-  for (genvar i = 0; i < DEFAULT_NUM_INT_CT; i++) begin : gen_int_ct_dst
+  for (genvar i = 0; i < DefaultNumIntCt; i++) begin : gen_int_ct_dst
     assign int_ct_dst[i] = u_dut.gen_int_ctp[i].u_int_ctp_core.ct_dst_o;
   end
 
@@ -178,6 +176,7 @@ module cross_trigger_network_tb_top
   ) u_dut (
     .clk_i                 (clk),
     .rst_ni                (rst_n),
+    .test_en_i             (1'b0),
 
     .axil_req_i            (axil_req),
     .axil_resp_o           (axil_resp),

@@ -572,13 +572,11 @@ module smc_map_fcov (
   wire pll_obs_ctrl_e = `SMC_MAP_EXT(32'h0040_100C, 32'h0040_100F);
   wire pvt_obs_intf_e = `SMC_MAP_EXT(32'h0040_1010, 32'h0040_101B);
   wire pvt_obs_ctrl_e = `SMC_MAP_EXT(32'h0040_101C, 32'h0040_101F);
-  wire gpio_poc_pbias_e = `SMC_MAP_EXT(32'h0040_1020, 32'h0040_102B);
   wire gpio_refclk_ctrl_e = `SMC_MAP_EXT(32'h0040_102C, 32'h0040_102F);
   `OCAH_FCOV_COVER(c_pll_obs_intf_decode, pll_obs_intf_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_pll_obs_ctrl_decode, pll_obs_ctrl_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_pvt_obs_intf_decode, pvt_obs_intf_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_pvt_obs_ctrl_decode, pvt_obs_ctrl_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_gpio_poc_pbias_decode, gpio_poc_pbias_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_refclk_ctrl_decode, gpio_refclk_ctrl_e, clk_smc_i, in_reset)
 
   // Per-pad GPIO control, 65 instances 0x20 apart from +0x1100.
@@ -764,7 +762,7 @@ module smc_map_fcov (
       RomLo,
       ClaLo,
       32'(SMC_TOP_SMC_EXTERNAL_BASE_ADDR - LocalBase),
-      32'(SMC_TOP_ECAM_REGION_BASE_ADDR - LocalBase)
+      32'(SMC_TOP_MMODE_REGION_BASE_ADDR - LocalBase)
   };
   localparam logic [31:0] RegionHi[NumRegions] = '{
       32'h0000_0FFF,

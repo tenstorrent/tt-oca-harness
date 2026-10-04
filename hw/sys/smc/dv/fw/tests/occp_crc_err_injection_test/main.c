@@ -5,40 +5,6 @@
 #include "smc_defines.h"
 #include "smc_test.h"
 
-static int exp_num_cmd_failed_errors = 0;
-
-static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
-    simputs("=== Reading and validating SMC status buffer ===\n");
-    if (ctx->status_reporting_disabled) {
-        simputs("STATUS_RPT_DISABLE strap active; skipping SMC status buffer validation\n");
-        return;
-    }
-    uint32_t status_data = 0xdeadbeef;
-    int num_cmd_failed_errors = 0;
-    while (status_data != 0x0) {
-        int retval = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status_data);
-        if (retval != OCCP_SUCCESS) {
-            simputs("FAIL: Failed to get SMC status\n");
-            ctx->overall_result = false;
-            return;
-        }
-        simputshex32("SMC Status: ", status_data);
-        if (occp_status_matches_expected(status_data, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
-                                         OCCP_SPEC_ERROR_CMD_FAILED, false)) {
-            num_cmd_failed_errors++;
-        }
-    }
-    if (num_cmd_failed_errors != exp_num_cmd_failed_errors) {
-        simputshex32("FAIL: Expected ", exp_num_cmd_failed_errors);
-        simputshex32(" CMD_FAILED errors, got ", num_cmd_failed_errors);
-        ctx->overall_result = false;
-        return;
-    } else {
-        simputshex32("PASS: ", exp_num_cmd_failed_errors);
-        simputs(" CMD_FAILED errors found\n");
-    }
-}
-
 static void reset_injection_config(test_context_t *ctx) {
     ctx->header_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
     ctx->body_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
@@ -50,17 +16,23 @@ static void configure_injection(test_context_t *ctx, occp_crc_inject_mode_t head
     ctx->body_crc_err_inject_mode = body_mode;
 }
 
+static void clear_consecutive_error_count(test_context_t *ctx) {
+    uint32_t status = 0;
+    int retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status);
+    if (retval != OCCP_SUCCESS) {
+        simputs("FAIL: Failed to get version command\n");
+        ctx->overall_result = false;
+    }
+    increment_cmd_count(ctx);
+}
+
 static bool run_header_body_combo(test_context_t *ctx, occp_crc_inject_mode_t header_mode,
                                   occp_crc_inject_mode_t body_mode) {
-    /* Force error injection on this transaction */
-    bool expect_header_error = (header_mode == OCCP_CRC_INJECT_DETECTABLE);
-    bool expect_body_error = (!expect_header_error) && (body_mode == OCCP_CRC_INJECT_DETECTABLE);
-    bool accept_any = (!expect_header_error && !expect_body_error);
     configure_injection(ctx, header_mode, body_mode);
     uint8_t data[MAX_OCCP_READ_SIZE];
 
     for (int i = 0; i < 2; i++) {
-        // don't send get version for body corruption (no body)
+        // Body-CRC cases skip the commands that carry no request body.
         int cmd_low_bound =
             (header_mode == OCCP_CRC_INJECT_NONE) ? OCCP_GET_SEP_STATUS : OCCP_GET_VERSION;
         int cmd_upper_bound = is_secure_mode() ? OCCP_VALIDATE_BOOT : OCCP_JUMP;
@@ -148,46 +120,32 @@ int main(void) {
 
     reset_injection_config(&ctx);
 
-    /* Warm-up valid commands */
     execute_random_commands(&ctx, 5);
 
-    /* Four combinations: detectable/undetectable for header and body */
-    // 1) Detectable header CRC error -> expect header error
     simputs("-- Case 1: Detectable header CRC error --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_DETECTABLE, OCCP_CRC_INJECT_NONE);
-    exp_num_cmd_failed_errors += 2;
 
-    // 2) Possibly undetectable header CRC error -> expect header error
     simputs("-- Case 2: Possibly undetectable header CRC error --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_UNDETECTABLE, OCCP_CRC_INJECT_NONE);
-    exp_num_cmd_failed_errors += 2;
 
-    // relatch to recover
-    execute_random_commands(&ctx, 1);
+    clear_consecutive_error_count(&ctx);
 
-    // 3) detectable body -> expect body error
     simputs("-- Case 3: Undetectable body CRC error --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_NONE, OCCP_CRC_INJECT_DETECTABLE);
-    exp_num_cmd_failed_errors += 2;
 
-    // 4) undetectable body -> accept error or non-error
     simputs("-- Case 4: Possibly undetectable body CRC error --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_NONE, OCCP_CRC_INJECT_UNDETECTABLE);
-    exp_num_cmd_failed_errors += 2;
 
-    execute_random_commands(&ctx, 1);
+    clear_consecutive_error_count(&ctx);
 
-    // 5) Corrupt header crc -> expect header error
     simputs("-- Case 5: Corrupt header CRC --\n");
     run_header_body_combo(&ctx, OCCP_CORRUPT_CRC, OCCP_CRC_INJECT_NONE);
-    exp_num_cmd_failed_errors += 2;
 
-    // 6) Corrupt body crc -> expect body error
     simputs("-- Case 6: Corrupt body CRC --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_NONE, OCCP_CORRUPT_CRC);
-    exp_num_cmd_failed_errors += 2;
 
     reset_injection_config(&ctx);
+    clear_consecutive_error_count(&ctx);
 
     /* CRC-error entries carry no fixed status code, so the SMC status buffer is not
      * validated here. */

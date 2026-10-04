@@ -23,8 +23,8 @@ One DUT view lives in this DV root:
 the same module in its `UVM` shape under `--framework uvm`
 |===
 
-Logs carry `DUT_TAG=WRAPPER`. The SEP=0 composition (`smu #(.SEP(0))`) is
-not elaborated by this package; `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`
+Logs carry `DUT_TAG=WRAPPER`. The SEP=0 composition (`smu #(.CFG(smu_pkg::NoSepCfg))`) is
+not elaborated by this package; `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`
 holds the names that need it.
 
 === Directory Structure
@@ -51,9 +51,11 @@ the SMU wrote out, one-shot SLVERR/DECERR injection, bounded READY stalls).
 [cols=",",options="header",]
 |===
 |Component |Role
-|`SmuEnvCfg` |Clock periods (`ref`, `smu`, `periph`, `jtag`), idle TCK count and
-post-reset settle cycles, randomised from the run seed; the outbound SMN
-geometry, memory span, and slave sequence (`axi_out_mem`)
+|`SmuEnvCfg` |Clock periods: `ref`, `smu`, `periph` as `pll_wrap` defines them
+(100 / 800 / 200 MHz, `+pll_sys_period_ns=10` for a 100 MHz `smu`), `jtag` and the
+SEP watchdog clock randomised from the run seed together with the idle TCK count
+and post-reset settle cycles; the outbound SMN geometry, memory span, and slave
+sequence (`axi_out_mem`)
 |`SmuScoreboard` |Every check in the suite goes through it; see
 <<smu-checking-strategy,Checking Strategy>>
 |`smu_evidence_map.py` |Per-testcase `(CHK_ID, TOKEN, EXPECT)` token contracts,
@@ -63,18 +65,24 @@ plus the `UNMAPPED_TESTS` declarations for testcases that run without rows
 
 === Clock and Reset Strategy
 
-`smu_base_test.bring_up()` starts `clk_smu_i`, `clk_ref_i`, `clk_periph_i` and
-the JTAG clock at the periods `SmuEnvCfg` derived from the seed, then releases
-the resets and waits `post_reset_settle_cycles`.
+`smu_base_test.bring_up()` starts `clk_smu_i`, `clk_ref_i`, `clk_periph_i`, the
+SEP watchdog clock and the JTAG clock, then releases the resets, waits for the
+three primary resets, and measures the `pll_wrap` outputs against the
+`SmuEnvCfg` periods. The three domain clocks toggle the oscillators of the
+`pll_wrap` model inside the wrapper (`hw/sys/smc/dv/models/pll_wrap.sv`, with
+`+pll_osc_bench` keeping its own generators off), so the wrapper's clock mux
+chain is in the path while the bench keeps the pre-edge sampling every cocotb
+driver relies on under Verilator.
 
 Clocks must be scheduled with `cocotb.start_soon(Clock(...).start())`. A bare
 `.start()` returns a coroutine nobody awaits: every clock stays dead, the
 simulation never advances, and the test ends early looking like a fast pass.
 
-Timing is the randomised axis of this environment. `--seed N` reaches the
-sequences as `RANDOM_SEED`, `SmuEnvCfg.randomize_timing(seed)` turns it into
-clock periods and settle counts, and the chosen values are logged at the start
-of every run.
+`--seed N` reaches the sequences as `RANDOM_SEED`;
+`SmuEnvCfg.randomize_timing(seed)` turns it into the JTAG and SEP watchdog
+periods and the reset settle counts, `SmuEnvCfg.resolve_pll_timing()` reads
+`+pll_sys_period_ns`, and the chosen values are logged at the start of every
+run.
 
 === Stimulus Strategy
 
@@ -84,7 +92,7 @@ SEP=1 leaves; it and every other stand-in on a proof path (the fuse-sense
 skip, the `abr_reg.sv` waiver, the scan-chain loopbacks, the `prim_sync`
 stand-ins, the eFuse models) have a six-field entry in the *Bench stand-ins
 and exceptions* section of
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`. A scenario that needs a
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`. A scenario that needs a
 force or deposit outside that record is not reportable as PASS and is
 classified OUT in the same document.
 
@@ -219,7 +227,7 @@ registers are preloaded under `+skip_fuse_sense`
 
 The last three rows are stand-ins on a proof path; their scope and approval
 fields are the *Bench stand-ins and exceptions* entries in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 === Testlists
 
@@ -230,7 +238,7 @@ selects; the groups it declares, and what each group is for, are the
 own name or by any group it belongs to.
 
 Names classified deferred or OUT are catalogued in
-`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`; none of them is enrolled and
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`; none of them is enrolled and
 none is reportable as a PASS.
 
 [[sv-uvm-realization]]

@@ -16,12 +16,52 @@ Trace storage uses the connected external sink-memory interface. Several
 capabilities of the generic DFD block are not connected in SMC, as detailed below.
 
 [[smc-dfd-diagram]]
-.DFD reference architecture
-image::SMC_DFD_FIG028.png[alt="DFD reference architecture",width=100%,pdfwidth=100%]
+.SMC DFD block diagram
+image::smc-dfd.svg[alt="SMC DFD block diagram: the debug-bus mux tree, clock gate and time-tick generator in smc_dfd_wrap, and the CLA, debug signal trace, trace network and registers of the DFD IP, with the parts SMC does not build or connect drawn dashed",width=100%,pdfwidth=100%]
 
-<<smc-dfd-diagram>> shows the full `tt-dfd` block. SMC does not connect the instruction
-trace (N-Trace) input; its CLA and debug-signal trace paths provide the
-observation functions described here.
+<<smc-dfd-diagram>> shows the DFD block as SMC instantiates it. `smc_dfd_wrap`
+contains the DFD IP `dfd_top_cla_dst_apb` (`u_dfd_top`), configured with one
+CLA and one debug signal trace (DST) instance. Parts of the generic block
+that SMC does not build are drawn as dashed grey boxes. Inputs and outputs
+that SMC ties off or leaves unconnected are drawn as dashed lines. The
+instruction trace (N-Trace) is not built. The trace AXI master and the JTAG
+register port are tied off, and the timestamp inputs are tied to zero.
+The CLA and DST paths provide the observation functions described here.
+
+The debug bus from `smc_base` has 64 lanes of 16 bits. Eight level-3 and
+four level-2 debug-bus muxes reduce it to the 16 lanes that enter the CLA,
+under the select register in the DFX CSRs. The CLA's own mux stage then
+selects the 64-bit debug bus that the CLA evaluates and passes to the DST.
+The wrapper gates `clk_smc_i` for the muxes and the IP under `dfd_cg_en`,
+and it counts `clk_ref_i` edges into the CLA time tick. The trace sink
+writes eight external trace RAMs of 256 × 64 bits, 16 KiB in total.
+
+Software programs the mux tree one mux at a time through the single
+`DEBUG_BUS_MUX` register. The level-3 muxes have IDs 7 to 14 and each takes
+eight consecutive debug-bus lanes; the level-2 muxes have IDs 3 to 6 and each
+drives four consecutive CLA input lanes. A mux takes `Dbmmode` while `Dbmid`
+equals its ID, and its lane selects while `Dbmid` equals its ID and its mode
+is 1. Each lane select is a binary index: 0 passes input lane _n_ to output
+lane _n_, and 1 to 4 select input lanes 4 to 7. The CLA's own stage,
+programmed through `CDbgMuxSelLo` with `DbmId` 0, decodes its selects the
+same way, so 1 to 12 select CLA input lanes 4 to 15. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-dfd-capture[capture set-up sequence]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-dfd-capture[capture set-up sequence]
+endif::backend-pdf[]
+is in the Programmer's Guide.
+
+Bit 0 of `xtrig_clk_halt_mask` in the DFX CSRs masks the CLA cross-trigger
+and halt-clock outputs, with every cross-trigger lane masked together; bits
+15:1 have no effect. The clocks-stopped output also requires
+`tdr_dbg_ctrl_clock_stop_en_i`, and it drives a CPU interrupt and a DTP
+clock-stop request. The debug interrupt drives a CPU interrupt. The sixteen
+custom actions leave the SMC, and the SMU wires five of them to the SEP CPU
+debug controls. The CLA debug marker returns to the SMC debug bus. The
+`debug_marker`, `chiplet_enable`, `gpio_en`, `dtb_ns_en` and `dtb_ew_en`
+fields of `DEBUG_CTRL` have no effect in SMC.
 
 Key features include:
 
@@ -110,6 +150,14 @@ The integration does not provide the advertised global timestamp alignment
 through those inputs. In particular, the time-match event consumes the tied-off
 timestamp rather than the running CLA timestamp register.
 
+Because of timestamp scheme 0 and the 64-bit CLA debug bus, several CLA
+registers have no effect in SMC. `TsCapture`, `CDbgTimestampCapture` and
+`CDbgClaTimestampOffset` serve only the reference-timestamp scheme. The Hi
+halves of the match, compare, transition, ones-count, change and snapshot
+registers serve only a 128-bit debug bus. `CDbgMuxSelHi`, and `Muxselseg4`
+to `Muxselseg7` of `CDbgMuxSelLo`, select lanes beyond the four that the CLA
+mux drives.
+
 == Interrupts
 
 The SMC interrupt table lists the two CLA-driven sources. See
@@ -123,13 +171,21 @@ endif::backend-pdf[]
 * *CLA clock stop* — asserted while the CLA has stopped clocks.
 * *CLA debug interrupt* — the debug interrupt raised by a CLA action.
 
-== Register Map
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-map"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 The CLA counter values and timestamp fields are software-writable. Software
 writes take priority over simultaneous hardware updates; later hardware updates
 can advance or clear them according to their configured controls. The sink's
-`trDstRamWPHigh` register likewise accepts software writes. Treat these as live
-read/write state when programming or testing them, not read-only status.
+`trDstRamWPHigh` register likewise accepts software writes. These are live
+read/write state, not read-only status.
 
 The generated `smc_cla` map is the programmer view of this aperture (see
 ifdef::backend-html5[]
@@ -140,6 +196,8 @@ ifdef::backend-pdf[]
 endif::backend-pdf[]
 ).
 
+=== Detailed Register Map
+
 ifdef::backend-html5[]
 ++++
 include::ip:partial$dfd/regs/gen/html/smc_cla.html[]
@@ -147,5 +205,5 @@ include::ip:partial$dfd/regs/gen/html/smc_cla.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/dfd/regs/gen/adoc/smc_cla.adoc[leveloffset=+1]
+include::../../../ip/dfd/regs/gen/adoc/smc_cla.adoc[leveloffset=+2]
 endif::backend-pdf[]

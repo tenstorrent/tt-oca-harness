@@ -4,54 +4,41 @@
 [[gpio-peripheral]]
 = GPIO Peripheral
 
+ifdef::backend-html5[]
+++++
+<span id="description-and-features"></span>
+++++
+endif::backend-html5[]
+
 == Overview
 
-The GPIO (General Purpose Input/Output) peripheral provides programmable
-digital I/O capabilities for the OCAH system. It serves as a flexible
-interface for configuration straps, general-purpose signaling, and
-bit-banging protocols. The peripheral features dual-mode operation
-supporting both register-driven control and LSIO (Low Speed
-Input/Output) interface control with comprehensive access filtering and
-interrupt generation capabilities.
+GPIO connects software and low-speed I/O (LSIO) peripherals to individual
+pads. Software can drive or sample a pad, select an interrupt trigger, and
+read its boot strap. Hardware LSIO requests take priority over software
+control unless software explicitly disables LSIO.
 
-== Description and Features
+Each pad uses two blocks: `gpio` selects data and direction; `gpio_shim`
+selects electrical settings and captures the strap. Each has its own
+32-bit AXI4-Lite register interface. The surrounding padring instantiates
+these blocks for its pads and supplies the address mapping and LSIO wiring.
 
-* *Dual Control Modes*: Register-driven control or LSIO interface
-selection with programmable direction control
-* *Flexible I/O Configuration*: Bidirectional data path with independent
-RX/TX enable controls
-* *Security & Access Control*: Advanced register access filtering with
-AXI protection level requirements
-* *Configuration Strap Support*: Hardware strap capture during system
-reset for boot-time configuration
-* *Comprehensive Interrupt System*: Configurable interrupt generation
-with multiple trigger modes
-* *Programmable Electrical Characteristics*: Software-configurable drive
-strength and pull resistors
-* *Standard Bus Interfaces*: Support for both APB4 and AXI4-Lite
-register interfaces
+The sections below explain ownership and reset behavior, list the interfaces
+and give the register maps. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-gpio[GPIO section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-gpio[GPIO section]
+endif::backend-pdf[]
+of the Programmer's Guide gives the programming sequences.
 
 ifdef::backend-html5[]
 include::partial$gpio/doc/architecture.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::architecture.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
 include::partial$gpio/doc/interface.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::interface.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
 include::partial$gpio/doc/memmap.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
+include::architecture.adoc[]
+include::interface.adoc[]
 include::memmap.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::partial$gpio/doc/programming.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::programming.adoc[]
 endif::backend-pdf[]

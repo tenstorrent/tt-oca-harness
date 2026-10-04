@@ -11,6 +11,8 @@
 # --- Naming-convention patterns (no editing needed for new images) ---
 !ocah-*.png
 !ocah_*.png
+!ocah-*.svg
+!ocah_*.svg
 
 # --- One-off exceptions ---
 !self-test-*.png

@@ -2,38 +2,20 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SEP Sequence Number Validation Test Firmware
+ * SEP Sequence Number Validation Test
  *
- * Tests that SMC firmware validates the sequence number field in each
- * service request and rejects out-of-order or replayed requests with a
- * STATUS_SEQ_ERROR sentinel, while continuing to handle subsequent correctly-
- * sequenced requests.
+ * Verifies that SMC firmware, serving requests from a SEP-side peer over
+ * scratch registers, rejects a request whose sequence number is skipped or
+ * replayed and keeps serving correctly sequenced requests. The request format
+ * and operations are the same as in sep_service_req.
  *
- * Spec basis: OCAH Specification §Crypto Key Manager — the KM command message
- * format encodes a sequence_number[7:0] in the header, enabling detection of
- * replayed or lost messages.  This test exercises analogous sequence-number
- * enforcement on the SMC side using scratch registers as the transport.
+ * A rejected request returns the sequence-error sentinel and does not advance
+ * the expected sequence number, so the peer must retry with the correct one.
  *
- * Protocol (same wire format as sep_service_req):
- *   scratch[HANDSHAKE_SCRATCH] = CMD_READY_TOKEN          (FW signals ready)
- *   scratch[CMD_SCRATCH_NUM]   = {op_code[7:0], seq[15:8], 0[31:16]}
- *   scratch[DATA_SCRATCH_NUM]  = operand data
- *
- *   On correct sequence number:
- *     scratch[HANDSHAKE_SCRATCH] = computed result        (FW signals done)
- *
- *   On wrong sequence number (skipped or replayed):
- *     scratch[HANDSHAKE_SCRATCH] = STATUS_SEQ_ERROR       (error sentinel)
- *     expected_seq is NOT advanced — TB must retry with the correct seq
- *
- *   scratch[CMD_SCRATCH_NUM]   = 0                        (TB acknowledges)
- *
- * NOTE: secondary_main is not defined here.  The weak default in crt0.S
- * routes only the boot hart to main(); non-boot harts spin in WFI.
+ * Only the boot hart runs this test; the other harts park in WFI.
  */
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include "smc_defines.h"
 #include "smc_test.h"
@@ -94,21 +76,18 @@ int main(void) {
             cmd_hdr = read_scratch(CMD_SCRATCH_NUM);
         } while (cmd_hdr == 0U);
 
-        /* Extract fields from command header */
         uint32_t op_code = cmd_hdr & 0xFFU;
         uint32_t seq = (cmd_hdr >> 8) & 0xFFU;
         uint32_t data = read_scratch(DATA_SCRATCH_NUM);
 
         /* Validate sequence number */
         if (seq != (expected_seq & 0xFFU)) {
-            /* Sequence error: reject request, do NOT advance expected_seq.
-             * Write STATUS_SEQ_ERROR to both STATUS scratch and HANDSHAKE
-             * scratch so the TB can detect the error via dut.scratch_1. */
+            /* The handshake register also carries the sentinel, so the peer
+             * sees the rejection without reading the status register. */
             write_scratch(RESULT_SCRATCH_NUM, 0U);
             write_scratch(STATUS_SCRATCH_NUM, STATUS_SEQ_ERROR);
             write_scratch(HANDSHAKE_SCRATCH, STATUS_SEQ_ERROR);
         } else {
-            /* Correct sequence: dispatch and advance counter */
             expected_seq++;
 
             uint32_t result = 0U;
@@ -153,12 +132,4 @@ int main(void) {
     }
 
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-    return 0;
 }
-
-/* secondary_main is not defined here: the crt0 weak default routes only the
- * boot hart to main() and parks the other harts in WFI. */

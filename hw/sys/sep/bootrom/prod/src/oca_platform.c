@@ -39,11 +39,11 @@
 #include "rsa_verify.h"
 #include "sep_addr.h"
 
-// Entropy chain bring-up is behind SEP_ENTROPY_BRINGUP while it is being brought
-// up; with the flag off the crypto blocks still rely on the DV
-// +sep_crypto_edn_force shortcut, which is what this replaces. Wrapped in a
-// macro so the two crypto gates below read the same either way and the
-// conditional lives in exactly one place.
+// Entropy chain bring-up is behind SEP_ENTROPY_BRINGUP for diagnostic builds.
+// With the flag off, this ROM does not provide entropy to crypto blocks and
+// entropy-dependent secure boot cannot complete. Wrapped in a macro so the two
+// crypto gates below read the same either way and the conditional lives in
+// exactly one place.
 #if SEP_ENTROPY_BRINGUP
 #include "sep_entropy.h"
 #define ENTROPY_PREREQ() sep_entropy_init()
@@ -308,10 +308,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 // nothing here verifies a PQC signature, so authorizing one would hand a key to
 // a verifier that cannot check it.
 //
-// NOTE the addresses are the generated symbols, not the previous ROM's
-// CHIPLET_PUBK_REVOKE_BASE + 0x100 / + 0x120 arithmetic, which landed on
-// SPI_PHY_DLL_SLAVE and the middle of CHIPLET_PUBK_HASH0. That path was never
-// exercised -- only ROM slot 0 is used by any test -- so the bug sat latent.
+// The fuse-bank addresses are the generated SEP_TOP_SEP_EFUSE_MAP_* symbols.
 // The RDL's description text spans the full octets, [7:0] and [15:8]. This ROM
 // narrows each: the top two slots of both ROM octets are reserved, so the
 // classical band is [5:0] and the PQC band is [13:8]. The narrowing lives here
@@ -563,8 +560,6 @@ static oca_hw_result_t plat_get_lifecycle_state(oca_lifecycle_level_t level,
         *out_state = OCA_LIFECYCLE_RMA_SIP;
         break;
     case LC_STATE_RMA_CHIPLET_LO:
-    case 0x5u:
-    case 0x6u:
     case LC_STATE_RMA_CHIPLET_HI:
         *out_state = OCA_LIFECYCLE_RMA_CHIPLET;
         break;
@@ -597,7 +592,17 @@ static oca_hw_result_t plat_get_version(oca_version_level_t level, uint16_t *out
 
 static oca_secure_bool_t plat_is_secure_boot_active(void) {
     uint32_t lc = lc_read_state();
-    return lc_state_enforces_secure_boot(lc) ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
+    if (lc_state_enforces_secure_boot(lc)) {
+        return OCA_SECURE_TRUE;
+    }
+    // A TEST_DEV or RMA_SiP part with chiplet debug disabled enforces secure
+    // boot, so a locked debug posture cannot be bypassed by loading unsigned code.
+    //
+    // Latched at [S18] so the answer cannot move under the validator's re-checks.
+    if (lc_state_follows_debug_lock(lc) && chiplet_debug_disabled()) {
+        return OCA_SECURE_TRUE;
+    }
+    return OCA_SECURE_FALSE;
 }
 
 static oca_secure_bool_t plat_is_secure_boot_disabled(void) {

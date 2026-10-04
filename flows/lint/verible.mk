@@ -19,7 +19,11 @@ LINT_PATH ?= $(OCAH_VERIBLE_PATHS)
 FORMAT_PATH ?= $(OCAH_VERIBLE_PATHS)
 endif
 
-# parameter-name-style is deferred to issue #1051. line-length is disabled
+# parameter-name-style wants ALL_CAPS parameters and UpperCamelCase
+# localparams. Verible's CamelCase pattern also accepts all-caps names such as
+# WIDTH, so the localparam regex requires a lowercase letter unless the name is
+# a single capital. enum-name-style accepts the _e suffix alone, as
+# lint-sv-enums does. line-length is disabled
 # outright: the port/parameter/net alignment mode below (preserve) never
 # wraps an aligned declaration regardless of its width, and Verible never
 # reflows comment text, so most violations are structurally unfixable; the
@@ -36,7 +40,7 @@ endif
 # sep_no_tcm_preload, ...), which is exactly what $test$plusargs is for -
 # none of them extract a value, so the rule's suggested $value$plusargs
 # would be wrong for all of them.
-OCAH_LINT_VERIBLE_RULES ?= -parameter-name-style,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
+OCAH_LINT_VERIBLE_RULES ?= parameter-name-style=parameter_style:ALL_CAPS;localparam_style:;localparam_style_regex:[A-Z]|[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*(_[0-9]+)?,enum-name-style=style_regex:[a-z_0-9]+_e,-line-length,-unpacked-dimensions-range-ordering,-plusarg-assignment
 OCAH_VERIBLE_EMPTY :=
 OCAH_VERIBLE_SPACE := $(OCAH_VERIBLE_EMPTY) $(OCAH_VERIBLE_EMPTY)
 OCAH_VERIBLE_COMMA := ,
@@ -110,11 +114,12 @@ OCAH_VERIBLE_FORMAT_EXCLUDES := \
 # copied vendor trees, PeakRDL output, generated fabrics and CPU internals,
 # OCAH-owned OpenTitan chip config packages, the individually
 # generated overlay files that ship pre-generated rather than built by
-# this tree, and the eFuse DV model's register block, which PeakRDL
-# generated once into dv/models/
-# (outside any regs/gen/ tree) and which stays hand-maintained rather than
-# regenerated (see hw/ip/efuse/dv/models/README.md), so its struct/union
-# style still reflects that origin rather than this repo's conventions.
+# this tree, and the eFuse DV model's register block and address-map package,
+# which PeakRDL generated once into dv/models/
+# (outside any regs/gen/ tree) and which stay hand-maintained rather than
+# regenerated (see hw/ip/efuse/dv/models/README.md), so their struct/union
+# and naming style still reflects that origin rather than this repo's
+# conventions.
 ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv' -o -name '*.svh' -o -name '*.v' \) \
 	-not -path '*/build/*' \
 	-not -path '$(OCAH_ROOT)/vendor/*/*/upstream/*' \
@@ -127,6 +132,7 @@ ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv'
 	-not -path '$(OCAH_ROOT)/vendor/pulp-platform/idma/overlay/target/rtl/*' \
 	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg.sv' \
 	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv' \
+	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_addrmap_pkg.sv' \
 	$(foreach file,$(2),-not -path '$(OCAH_ROOT)/$(file)')
 
 ocah_verible_check_files = @$(call ocah_verible_find,$(1),$(2)) -print -quit 2>/dev/null | grep -q . || { \
@@ -139,8 +145,8 @@ ocah_verible_check_files = @$(call ocah_verible_find,$(1),$(2)) -print -quit 2>/
 ## Lint SystemVerilog style with verible-verilog-lint (no autofix; hand-fix
 ## reported violations). Requires `verible-verilog-lint` on PATH; otherwise
 ## install it or run via `./scripts/docker-run.sh run-here make lint-sv-verible`.
-## parameter-name-style is deferred to issue #1051; line-length is disabled
-## outright (see OCAH_LINT_VERIBLE_RULES above).
+## parameter-name-style wants ALL_CAPS parameters and UpperCamelCase
+## localparams; line-length is disabled outright (see OCAH_LINT_VERIBLE_RULES above).
 ## @param LINT_PATH=hw/sys/smu Optional path(s) to scope the lint; default hw vendor
 ## @param BLOCK=smu Shorthand for the above (LINT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-lint-sv-verible

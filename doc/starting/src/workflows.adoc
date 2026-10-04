@@ -165,8 +165,15 @@ Outputs land under `hw/sys/smc/bootrom/dummy/build/tests/dummy/` (e.g.
 Build the production ROM from the same container (self-contained Makefile, not
 the shared `compile.mk` engine).
 See https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/README.md[`hw/sys/smc/bootrom/prod/README.md`] and
-https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/doc/index.adoc[`hw/sys/smc/bootrom/prod/doc/`] for
-the full target list, build variables, and architecture.
+the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-boot-rom[SMC Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide for the full target list, build variables, and
+architecture.
 
 The build splits across two halves so each runs in the right environment:
 
@@ -194,21 +201,27 @@ It implements the full secure-boot flow — manifest loading, RSA-3072 signature
 A build that carries its own drivers overrides the stubs at link time: it passes the driver sources as `OCAH_FW_OVERLAY_SOURCES_sep`, and the include flags (`-I<dir>`) for their register headers as `OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep`, on the `make` command line.
 The Makefile ignores both variables when they are set only in the environment, so a value exported in a shell cannot change an open-tree ROM.
 See https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/README.md[`hw/sys/sep/bootrom/prod/README.md`] and
-https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/doc/index.adoc[`hw/sys/sep/bootrom/prod/doc/`] for
-the full target list, build variables, key provisioning, and boot flow.
+the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-boot-rom[SEP Boot ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide for the full target list, build variables, key
+provisioning, and boot flow.
 
-The ROM supports two SPI transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
-The open-source OpenTitan SPI host (`BOOT_SPI_CONTROLLER_OT=1`) is the recommended transport and the one to use from the open tree.
-A proprietary memory-mapped SPI controller (`BOOT_SPI_CONTROLLER_OT=0`) is also supported via the SEP extension port but is not available in the open tree.
-The flag defaults to `0` in the Makefile; the named targets `ot-toolchain-images` and `ot-pio-toolchain-images` set it to `1` for you.
+The ROM supports two flash transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
+The default (`BOOT_SPI_CONTROLLER_OT=1`) uses the OpenTitan SPI host, and `BOOT_OT_SPI_USE_PIO` selects its RX-drain method (secure DMA by default, or CPU-programmed I/O).
+`BOOT_SPI_CONTROLLER_OT=0` reads memory-mapped flash through the external XIP window; its controller driver is optional from the open tree's perspective and is supplied by an integrator through the weak hooks in `src/sep_spi.c`.
 
-The DV `sep` testbench has no SPI flash, so the ROM stubs SPI (`src/sep_spi.c`) and boots instead from the SMC-SRAM manifest path; `make oca-images` builds and packs the matching manifest+BL1 image (`build/smc_mem.hex`).
+The DV `sep` testbench has no SPI flash, so it boots instead from the SMC-SRAM manifest path: `oca-images` packs the non-secure boot-manifest image rebased to the SMC-SRAM base (`build/oca_smc_mem.hex`).
 
 The build splits into two halves so each can run in the correct environment:
 
-* `ot-toolchain-images` — RISC-V/picolibc compilation with the OpenTitan SPI host; use the container when `RISCV_TOOLCHAIN` is unset.
+* `toolchain-images` — RISC-V/picolibc compilation; use the container when `RISCV_TOOLCHAIN` is unset.
 * `key-digests` and `oca-images` — pure Python via `uv`, which the container carries; can run in the container or on the host.
-  `oca-images` is transport-agnostic: the same manifest+BL1 payload works with all three ROM variants, so no extra flags are needed after `ot-toolchain-images`.
+  `oca-images` is transport-agnostic: the same manifest+BL1 payload works with every ROM build profile, so no extra flags are needed after `toolchain-images`.
 
 The manifest-tool submodule must be initialized before running `oca-images`:
 
@@ -221,30 +234,37 @@ DV test manifest configs live under `configs/`; the corresponding test signing k
 `release_signing_keys/` and refuses to produce images anchored on test keys).
 
 ```bash
-# Recommended: compile with the OpenTitan SPI host (outputs to build_ot/):
+# OpenTitan SPI-host build (outputs to build/):
 # - Prefix with `scripts/docker-run.sh run-here` to run in the container
-make -C hw/sys/sep/bootrom/prod ot-toolchain-images
+make -C hw/sys/sep/bootrom/prod toolchain-images
 
 # Pack all OCA test images (signed, encrypted, per-ROM-key, and negative cases):
 make -C hw/sys/sep/bootrom/prod oca-images
 ```
 
-ROM images land under `build_ot/` (the OpenTitan variant's build directory):
+Outputs land under `hw/sys/sep/bootrom/prod/build/`:
 
 * `boot_rom.vmem` — 64-bit VMEM for the Boot ROM responder.
-* `boot_rom.itcm.hex` — ROM `.text` as ICCM-relative byte hex.
-* `boot_rom.dtcm.hex` — `.data`/`.bss` initial image as DCCM-relative byte hex.
+* `boot_rom.itcm.hex` — ROM read-only sections as ICCM-relative byte hex.
+* `boot_rom.dtcm.hex` — DCCM `.data`/`.bss` initial image as DCCM-relative byte hex.
+* `oca_*.bin` / `oca_*.spi_preload` — OCA boot-manifest images, one per validator path (`OCA_IMAGES` in the Makefile).
+* `oca_smc_mem.hex` — the non-secure image rebased to the SMC-SRAM base, for the DV testbench.
 
-Packed flash images from `oca-images` always land under `build/`, regardless of which ROM variant was compiled:
-
-* `smc_mem.hex` — packed manifest+BL1 image rebased to the SMC-SRAM base, for the DV testbench.
-* `secure_boot.spi_preload` / `encrypted_boot.spi_preload` — signed and AES-encrypted SPI flash preload images.
+The `pio-toolchain-images` target builds the CPU-PIO drain ROM into `build_pio/`; the packed images stay under `build/`.
 
 === KM application ROM
 
 The Key Manager (KM) subsystem (PicoRV32) runs its firmware from ROM.
 That firmware is not only a boot loader: it is the KM runtime, serving the SEP mailbox, until the SEP loads alternative firmware into KM SRAM and hands over to it.
 It therefore lives in `hw/ip/key_manager/approm/prod/` rather than a `bootrom/` directory, and builds with a self-contained `Makefile` there.
+The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#km-application-rom[Key Manager Application ROM appendix]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#km-application-rom[Key Manager Application ROM appendix]
+endif::backend-pdf[]
+of the Programmer's Guide describes the firmware.
 
 The entry point is `src/rom_main.c`.
 The whole image — vectors, code, constants and the `.data` load image — links into the 16 KB ROM through `link/km_production.ld`.
@@ -396,6 +416,96 @@ The `--waves-on-fail` flag may be used instead of `--waves`, to only generate wa
 * https://surfer-project.org[Surfer project website]
 * https://ics.jku.at/files/2024RISCVSummit_Surfer.pdf[RISC-V Summit paper on Surfer]
 
+== Virtual Platform
+
+The OCA Harness Virtual Platform (VP) is a SystemC-based simulation environment for testing chiplets, provided by the `tt-oca-harness-model` submodule under `virtual_platform/`. It runs firmware (including production boot ROMs) faster than RTL simulation. The VP includes three executables:
+
+* `sep-vp` — the SEP subsystem (default).
+* `smc-vp` — the SMC subsystem (requires Whisper ISS).
+* `smu-vp` — the SMC and SEP subsystems in one process (for cross-subsystem testing).
+
+=== Prerequisites
+
+* A C{plus}{plus}20 compiler (e.g., `g{plus}{plus}-12`).
+* SystemC, CCI, Boost and OpenSSL, built into `virtual_platform/local/` when the host does not provide them.
+* The Whisper ISS, for `smc-vp` and `smu-vp` only; it is built on first use.
+* A RISC-V toolchain with picolibc for the SEP boot ROM and firmware tests; without one those builds fall back to the container.
+* `uv` for the Python environment.
+
+With `VP_CONTAINER=1` the container provides all of these.
+
+=== Initialising the Virtual Platform
+
+To use the container to build and run the VP, set `VP_CONTAINER=1`
+
+```bash
+# Initialize the model submodule
+make ocah-vp-init
+
+# Build dependencies (if not provided by host)
+make ocah-vp-deps
+```
+
+=== Running Tests on the Virtual Platform
+
+==== SEP Virtual Platform
+
+The SEP Virtual Platform is integrated with multiple different test suites:
+
+```bash
+# Build
+make -C virtual_platform vp
+
+# Run the SEP test suite
+make -C virtual_platform vp-test # pass extra arguments with PYTEST_ARGS='<args>'
+
+# Run a software test
+make -C virtual_platform smoke SW_TEST='<test>' # See virtual_platform/tt-oca-harness-model/sw/sep-vp-tests
+
+# Run a fw test
+make -C virtual_platform fw-run FW_TEST='<test>' # See hw/sys/sep/dv/fw
+
+# Build and run the SEP BOOT ROM
+make -C virtual_platform boot-build
+make -C virtual_platform boot-run # Configure with BOOT_ARGS='<args>'
+```
+
+==== SMC and SMU Virtual Platforms
+
+The SMC Virtual Platform provides a single test suite, while the SMU integrates the SMC and SEP, to provide a combined test environment and suite.
+
+For the SMC:
+
+```bash
+# build smc-vp (requires Whisper ISS)
+make -C virtual_platform smc-vp
+
+# Run test suite
+make -C virtual_platform smc-test
+
+# Run single test, see virtual_platform/tt-oca-harness-model/sw/smc-vp-tests
+make -C virtual_platform smc-test SMC_ARGS='<test-name>'
+```
+
+For the SMU:
+```bash
+# build smu-vp (requires Whisper ISS)
+make -C virtual_platform smu-vp
+
+# Run test suite
+make -C virtual_platform smu-test
+
+# Run single test, see virtual_platform/tt-oca-harness-model/sw/smu-vp-tests
+make -C virtual_platform smu-test SMU_ARGS='<test-name>'
+```
+
+=== Further Reading
+- `virtual_platform/Makefile` for detailed build options (`make -C virtual_platform help`).
+- `virtual_platform/README.md` for the three executables, dependency resolution and the containerized flow.
+- `virtual_platform/BUILDING_NATIVELY.md` for building and running the VP on your own host.
+- `virtual_platform/sepvp/README.md` for the `sepvp` runner: boot straps, fuse maps and status channels.
+- `virtual_platform/RUNNING_THE_SMC_BOOT_ROM.md` for guidance on running the SMC Boot ROM on the Virtual Platform.
+
 == Synthesis
 
 OCAH is designed around open-source workflows. For this reason, we have chosen to
@@ -502,6 +612,11 @@ make lint-verilator-all BLOCK=smu \
   OCAH_LINT_VERILATOR_EXTRA_FLAGS="-Wall -Wpedantic" \
   2>&1 | tee "$TMPDIR/verilator-smu-unwaived.log"
 ```
+
+cocotb's Verilator runner always passes `--public-flat-rw`, and some package
+parameters under it fail only in the generated C++, which lint never compiles.
+`make lint-verilator-public-all BLOCK=smu` builds the block's packages under
+the flag; CI runs it for `smu`, whose filelist includes SEP and SMC.
 
 ==== Style and Lint checking with Slang
 
@@ -753,7 +868,8 @@ contributor enables the hook.
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
-`lint-sv-comments`, `lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`,
+`lint-sv-comments`, `lint-sv-enums`, `lint-yaml`, `lint-toml`, `lint-markdown`,
+`lint-make`, `lint-shell`,
 `regen-regs`, and `vendor-diff` on pull requests and pushes to `main`
 (`lint-sv-verible` is temporarily disabled). Setup jobs share `bender`,
 Verilator, and reviewdog artifacts; jobs report through
@@ -763,7 +879,7 @@ status when that post does not succeed.
 
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
-child. The required `verilator-smoke (dtp)` / `(sep)` and GitLab checks still
+child; `lint-vale`, which checks documentation prose, runs on every diff. The required `verilator-smoke (dtp)` / `(sep)` and GitLab checks still
 report success. `scripts/ci/diff_class.py --self-test` checks the classifier.
 Scheduled and manually dispatched pipelines always run in full.
 
@@ -777,7 +893,8 @@ Scheduled and manually dispatched pipelines always run in full.
 
 | `lint-sv-verilator`
 | `lint-sv-verilator/<block>` for `aou`, `dtp`, `sep`, `smc`, and `smu`
-| `make lint-verilator-all [BLOCK=<block>]`
+| `make lint-verilator-all [BLOCK=<block>]`, plus
+`make lint-verilator-public-all BLOCK=smu` on the `smu` row
 
 | `lint-sv-verible` (disabled in CI)
 | `lint-sv-verible`
@@ -810,6 +927,10 @@ Scheduled and manually dispatched pipelines always run in full.
 | `lint-sv-comments`
 | `lint-sv-comments`
 | `make ocah-lint-sv-comments`
+
+| `lint-sv-enums`
+| `lint-sv-enums`
+| `make ocah-lint-sv-enums`
 
 | `lint-yaml`
 | `lint-yaml`

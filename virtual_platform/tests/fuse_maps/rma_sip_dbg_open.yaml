@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# RMA_SiP, secure boot not disabled, chiplet debug open: both disable vectors
+# clear and neither read-locked. Secure boot stays manifest-optional.
+lc_state: RMA_SIP
+sboot_dis: 0
+locks_lo: 0xA800

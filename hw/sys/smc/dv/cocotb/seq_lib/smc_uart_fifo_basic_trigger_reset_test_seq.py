@@ -105,6 +105,10 @@ _SLOW_CHAR_CLOCKS = _UART_OVERSAMPLE * _CHAR_BITS_8N1 * _DLL_SLOW
 # Samples of IIR required to show NO RCVR-data-available while the RX FIFO sits
 # below the programmed trigger level.
 _PRE_HOLD_SAMPLES = 4
+# Divisor of the loopback legs; the hold samples above are spread over one
+# character time at it, so the receiver's four-character-time reception
+# timeout (IIR id 0x6) cannot fire on the queued characters while they wait.
+_DLL_FAST = 1
 
 
 def _iir_id(iir: int) -> int:
@@ -161,11 +165,16 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         # DLL/DLH are the DLAB=1 aliases of the RBR/IER addresses; the labels
         # name both so every register name in the kept log resolves to the
         # symbol that addressed it.
-        await self.csr_write("DLL_via_UART_RBR", UART_RBR, 1)
+        await self.csr_write("DLL_via_UART_RBR", UART_RBR, _DLL_FAST)
         await self.csr_write("DLH_via_UART_IER", UART_IER, 0)
         await self.csr_write("LCR_8N1", UART_LCR, LCR_WLS)
         await self.csr_write("MCR_LOOP", UART_MCR, MCR_LOOP | MCR_RTS)
         await self.csr_write("IER_ERBFI", UART_IER, IER_ERBFI)
+
+    def _hold_step_ns(self) -> int:
+        """A quarter of the character time at the fast divisor, in ns."""
+        char_ns = _UART_OVERSAMPLE * _CHAR_BITS_8N1 * _DLL_FAST * self.cfg.periph_clk_period_ns
+        return max(1, int(char_ns / 4))
 
     async def _wait_iir_id(self, label: str, expect_id: int, iters: int = 256) -> int:
         iir = 0
@@ -242,7 +251,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
                     f"FCR.RCVR_TRIGGER programmed to {depth} "
                     f"(sample {sample}, IIR=0x{held:08x})"
                 )
-            await Timer(1, unit="us")
+            await Timer(self._hold_step_ns(), unit="ns")
 
         # Threshold character.
         await self.csr_write(f"{label}_THR_TRIG", UART_RBR, 0x30 + depth)

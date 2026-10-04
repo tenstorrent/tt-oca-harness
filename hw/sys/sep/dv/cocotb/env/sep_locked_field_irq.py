@@ -14,8 +14,11 @@ SECURE_TM payloads always change a bit. That is the seed-to-image map for
 
 from __future__ import annotations
 
+import re
+
 from sep_efuse_field_map import spec_secure_tm_blocked
 from sep_efuse_image import LOCK_BITS_PER_SLOT
+from sep_reg_meta import RegBlock, sep_reg  # the generated export, path set up by sep_reg_meta
 from sep_seeded_rng import SepSeededRng
 from sep_spec_tables import agg_from_pic
 
@@ -24,9 +27,40 @@ IRQ_LOCKED_FIELD = agg_from_pic("Locked field access")
 # control). It is not an expected value here: no staged pattern may equal it, so
 # a read-lock readback that returns it still differs from the stored field.
 DENY_DATA_MARKER = 0xBADCAB1E
-SPARE_COUNT = 8
+
+
+def _spare_count() -> int:
+    """Number of spare fuse fields, from the generated SystemRDL export.
+
+    otp_fuse_controller.adoc gives LOCKS_SPARE slots 32-40, one per spare
+    field SPARE0..SPARE8. The export carries the same set twice: the
+    ``SEP_EFUSE_MAP_SPARE<k>`` field offsets and the ``spare<k>_write_lock``
+    bits of LOCKS_SPARE. Both must agree, and the indices must run from 0
+    without a gap, or a spare is left out of every walk that uses the count.
+    """
+    fields = sorted(
+        int(m.group(1))
+        for n in dir(sep_reg)
+        if (m := re.fullmatch(r"SEP_EFUSE_MAP_SPARE(\d+)_REG_OFFSET", n))
+    )
+    locks = sorted(
+        int(m.group(1))
+        for name, *_ in sep_reg.SEP_EFUSE_MAP_LOCKS_SPARE_reg_t._fields_
+        if (m := re.fullmatch(r"spare(\d+)_write_lock", name))
+    )
+    if not fields or fields != list(range(len(fields))) or fields != locks:
+        raise RuntimeError(
+            f"spare fields {fields} and LOCKS_SPARE write-locks {locks} do not "
+            "form one gap-free set in the generated eFuse map"
+        )
+    return len(fields)
+
+
+SPARE_COUNT = _spare_count()
 # otp_fuse_controller.adoc LOCKS slots 0–31, LOCKS_SPARE slots 32–40. Spare k is slot 32+k.
 SPARE0_SLOT = 32
+# LOCKS_SPARE starts at bit 64 of the 96-bit LOCKS+LOCKS_SPARE vector.
+_LOCKS_SPARE_VECTOR_LSB = SPARE0_SLOT * LOCK_BITS_PER_SLOT
 
 
 def spare_field_name(spare_idx: int) -> str:
@@ -45,11 +79,19 @@ def spare_read_lock_bit(spare_idx: int) -> int:
     return spare_write_lock_bit(spare_idx) + 1
 
 
+def spare_zero_pins() -> dict[str, int]:
+    """OTP image pins that stage every spare field at 0."""
+    return {spare_field_name(k): 0 for k in range(SPARE_COUNT)}
+
+
 def _locks_spare_bit(vector_bit: int) -> int:
-    """LOCKS_SPARE bit of a spare lock (96-bit vector bits 64..79 -> 0..15)."""
-    if not 64 <= vector_bit < 80:
-        raise ValueError(f"spare lock vector bit {vector_bit} not in 64..79")
-    return vector_bit - 64
+    """LOCKS_SPARE bit of a spare lock (vector bits 64..81 -> 0..17 for 9 spares)."""
+    top = _LOCKS_SPARE_VECTOR_LSB + SPARE_COUNT * LOCK_BITS_PER_SLOT
+    if not _LOCKS_SPARE_VECTOR_LSB <= vector_bit < top:
+        raise ValueError(
+            f"spare lock vector bit {vector_bit} not in {_LOCKS_SPARE_VECTOR_LSB}..{top - 1}"
+        )
+    return vector_bit - _LOCKS_SPARE_VECTOR_LSB
 
 
 def _nonzero_pattern(rng: SepSeededRng, forbidden: set[int]) -> int:
@@ -67,12 +109,16 @@ def _nonzero_pattern(rng: SepSeededRng, forbidden: set[int]) -> int:
 # (otp_fuse_controller.adoc). LOCKS and LOCKS_SPARE are one 96-bit LOCK field.
 SECURE_TM_LOCK_FIELDS = spec_secure_tm_blocked()
 
-# LC_STATE bytes [31:8] OR-merge as ordinary shadow bytes and do not disturb the
-# lifecycle nibble, so they are the safe payload for this field.
-LC_STATE_UPPER_MASK = 0xFFFF_FF00
+_EFUSE_MAP = RegBlock("SEP_EFUSE_MAP")
 
-# Lock slot 31 is SEP_SYS_ID (otp_fuse_controller.adoc); write-lock is bit 2n = 62.
-SEP_SYS_ID_WRITE_LOCK_BIT = 62
+# LC_STATE bytes [31:8] (the RDL rsvd field) OR-merge as ordinary shadow bytes
+# and do not disturb the lifecycle nibble, so they are the safe payload for
+# this field.
+LC_STATE_UPPER_MASK = _EFUSE_MAP.field_mask("LC_STATE", "rsvd")
+
+# Lock slot 31 is SEP_SYS_ID (otp_fuse_controller.adoc); its write-lock is the
+# LOCKS.SEP_SYS_ID_WRITE_LOCK field (bit 2n = 62).
+SEP_SYS_ID_WRITE_LOCK_BIT = _EFUSE_MAP.field_lsb("LOCKS", "sep_sys_id_write_lock")
 SEP_SYS_ID_WRITE_LOCK_WORD = SEP_SYS_ID_WRITE_LOCK_BIT // 32
 
 
@@ -164,10 +210,15 @@ class SepLockedFieldIrqCfg:
 
 
 def _selftest() -> None:
+    # otp_fuse_controller.adoc: nine spares, slots 32-40.
+    assert SPARE_COUNT == 9, f"SPARE_COUNT={SPARE_COUNT}, spec gives SPARE0..SPARE8"
     assert spare_write_lock_bit(0) == 64
     assert spare_read_lock_bit(0) == 65
+    assert spare_read_lock_bit(SPARE_COUNT - 1) == 81
     assert _locks_spare_bit(64) == 0
     assert _locks_spare_bit(65) == 1
+    assert _locks_spare_bit(81) == 17
+    assert set(spare_zero_pins()) == {f"SPARE{k}" for k in range(SPARE_COUNT)}
     cfg = SepLockedFieldIrqCfg(1)
     assert len({cfg.write_spare, cfg.read_spare, cfg.unlocked_spare}) == 3
     assert cfg.locks_spare != 0

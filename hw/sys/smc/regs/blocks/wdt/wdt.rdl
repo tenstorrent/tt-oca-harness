@@ -6,7 +6,11 @@
 
 addrmap wdt {
     name = "Watchdog Timer Address Map";
-    desc = "Watchdog timer configuration, counter, compare, and feed and key registers.";
+    desc = "Watchdog timer configuration, counter, compare, and feed and key registers.
+
+            A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+            Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.";
     
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
@@ -65,7 +69,8 @@ addrmap wdt {
         field {
             sw=rw;
             hw=r;
-            desc="Pending interrupt";
+            desc="Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.
+                  To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.";
         } wdogip0[28:28] = 0x0;
 
         field {
@@ -85,6 +90,14 @@ addrmap wdt {
         } wdogcount[30:0] = 0x0;
     };
 
+    reg COUNT_HI {
+        field {
+            sw=w;
+            hw=r;
+            desc="Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.";
+        } wdogcounthi[31:0] = 0x0;
+    };
+
     reg SCALED_COUNT {
         field {
             sw=rw;
@@ -98,7 +111,7 @@ addrmap wdt {
         field {
             sw=rw;
             hw=r;
-            desc="Feed register. Writing 0xD09F00D will reset the counter value back to 0.
+            desc="Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.
             KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.";
         } wdogfeed[31:0] = 0x0;
     };
@@ -127,14 +140,11 @@ addrmap wdt {
 
     CTRL            CTRL            @0x0;
     COUNT           COUNT           @0x8;
+    COUNT_HI        COUNT_HI        @0xc;
     SCALED_COUNT    SCALED_COUNT    @0x10;
     FEED            FEED            @0x18;
     KEY             KEY             @0x1c;
     CMP             CMP             @0x20;
-
-`ifdef OCAH_DOC_MEMORY_MAP
-    ocah_hole_note = "Offset 0xC holds the watchdog's countHi register, which this map does not list; a 32-bit write there locks the watchdog key again.";
-`endif
 };
 
 `endif

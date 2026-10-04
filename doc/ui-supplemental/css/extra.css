@@ -10,9 +10,19 @@
 /* Hide placeholder navbar items (upstream demo content only: any leftover
    Home/Products/Services/Download not otherwise replaced) -- explicit
    exceptions for every real item we've added. */
-.navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu),
-.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu) {
+.navbar-end > .navbar-item.has-dropdown:not(.guides-menu):not(.downloads-menu):not(.datasheets-menu):not(.versions-menu),
+.navbar-end > .navbar-item:not(.navbar-brand):not(.tt-link):not(.guides-menu):not(.downloads-menu):not(.datasheets-menu):not(.versions-menu) {
     display: none !important;
+}
+
+/* version-menu.js reveals the menu once versions.json lists a release */
+.navbar-end .navbar-item.versions-menu {
+    display: none !important;
+}
+
+.navbar-end .navbar-item.versions-menu.is-ready {
+    display: flex !important;
+    align-items: center;
 }
 
 /* Guides / Downloads / Datasheets dropdowns -- keep visible, style to match navbar */
@@ -238,6 +248,119 @@
     color: var(--oca-gold) !important;
 }
 
+/* Home sidebar: a titled list in doc/home/modules/ROOT/nav.adoc (Guides)
+   renders as a section that is always open, with a label rather than a
+   collapsible entry, so the books are visible without scrolling Home. */
+.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-item-toggle {
+    display: none;
+}
+
+.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list {
+    display: block;
+}
+
+.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text {
+    display: block;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--oca-gold) !important;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: default !important;
+}
+
+.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 -0.5rem;
+    padding: 0.35rem 0.5rem;
+    border-left: 2px solid transparent;
+    border-radius: 2px;
+}
+
+.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link::after {
+    content: "\2192";
+    padding-left: 0.5rem;
+    opacity: 0.5;
+}
+
+.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link:hover,
+.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link:focus-visible {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-left-color: var(--oca-gold);
+}
+
+.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link:hover::after,
+.nav-container[data-component="ocah-home"] .nav-menu > .nav-list > .nav-item[data-depth="0"] > .nav-text ~ .nav-list > .nav-item > .nav-link:focus-visible::after {
+    opacity: 1;
+}
+
+/* Home page Guides card (doc/home/src/index.adoc). Shown only below the
+   stock theme's 1024px breakpoint, where the sidebar starts hidden; above
+   it the sidebar Guides section is on screen instead. */
+.doc .home-guides {
+    display: none;
+}
+
+@media screen and (max-width: 1023.5px) {
+    .doc .home-guides {
+        display: block;
+        margin: 1.5rem 0;
+        padding: 0.75rem 1rem 0.25rem;
+        background-color: var(--oca-cream-light);
+        border: 1px solid var(--oca-cream);
+        border-left: 3px solid var(--oca-green);
+        border-radius: 4px;
+    }
+
+    .doc .home-guides > .title {
+        margin: 0 0 0.25rem;
+        font-style: normal;
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--oca-gold-accessible);
+    }
+
+    .doc .home-guides ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .doc .home-guides li {
+        margin: 0;
+    }
+
+    .doc .home-guides li + li {
+        border-top: 1px solid rgba(16, 53, 37, 0.1);
+    }
+
+    .doc .home-guides li p {
+        margin: 0;
+    }
+
+    .doc .home-guides a {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.65rem 0;
+        color: var(--oca-green);
+        font-weight: 500;
+        text-decoration: none;
+    }
+
+    .doc .home-guides a::after {
+        content: "\2192";
+        color: var(--oca-gold-accessible);
+    }
+}
+
 /* Keep the desktop navigation within the viewport while the menu tree uses
    its existing internal scroll area. */
 @media screen and (min-width: 1024px) {
@@ -308,11 +431,6 @@
 .doc h4 { font-size: 1.2em; }
 .doc h5 { font-size: 1.1em; }
 .doc h6 { font-size: 1em; }
-
-.doc .block-references {
-    font-size: 0.85em;
-    color: var(--oca-text);
-}
 
 /* Body copy */
 .doc {

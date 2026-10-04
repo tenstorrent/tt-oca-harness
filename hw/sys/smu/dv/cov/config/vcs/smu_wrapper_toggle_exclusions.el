@@ -11,7 +11,7 @@
 // drops and why; the ANNOTATION before each class repeats the reason.
 //==================================================
 
-CHECKSUM: "842126896 374546350"
+CHECKSUM: "2930932474 3844207666"
 MODULE: smu_wrapper
 
 ANNOTATION: "SMU-WRAPPER-TGL-AXI-USER: AXI user sideband words on the crossbar's inbound and outbound ports. The SMU neither reads nor writes them; the crossbar carries them beside the channel unchanged, so their bits toggle only when a master or the bench varies a field nothing in the SMU consumes."
@@ -159,16 +159,8 @@ Toggle smc_shadow_regs_o.fields.spare[25].rsvd "logic smc_shadow_regs_o.fields.s
 Toggle smc_shadow_regs_o.fields.spare[26].rsvd "logic smc_shadow_regs_o.fields.spare[26].rsvd[255:0]"
 Toggle smc_shadow_regs_o.fields.spare[27].rsvd "logic smc_shadow_regs_o.fields.spare[27].rsvd[255:0]"
 
-ANNOTATION: "SMU-WRAPPER-TGL-SEP-OWNED: SEP passthroughs with no wrapper-level observable on this bench: the SEP SPI host and CPU trace need SEP firmware, the lockstep pair is inert without RV_LOCKSTEP_ENABLE, the SEP external interrupts and entropy sample clock terminate inside the SEP, and the lifecycle signal-integrity error needs a fault injected inside it. The SEP bench grades each of them."
+ANNOTATION: "SMU-WRAPPER-TGL-SEP-OWNED: SEP passthroughs with no wrapper-level observable on this bench: the SEP CPU trace needs SEP firmware, the lockstep pair is inert without RV_LOCKSTEP_ENABLE, the SEP external interrupts and entropy sample clock terminate inside the SEP, and the lifecycle signal-integrity error needs a fault injected inside it. The SEP bench grades each of them."
 Toggle lc_sigint_err_o "logic lc_sigint_err_o"
-Toggle sep_io_spi_req_o.lsio_trigger "logic sep_io_spi_req_o.lsio_trigger"
-Toggle sep_io_spi_req_o.irq "logic sep_io_spi_req_o.irq"
-Toggle sep_io_spi_req_o.sd_oe "logic sep_io_spi_req_o.sd_oe[3:0]"
-Toggle sep_io_spi_req_o.sd "logic sep_io_spi_req_o.sd[3:0]"
-Toggle sep_io_spi_req_o.cs_oe "logic sep_io_spi_req_o.cs_oe"
-Toggle sep_io_spi_req_o.cs_n "logic sep_io_spi_req_o.cs_n"
-Toggle sep_io_spi_req_o.sck_oe "logic sep_io_spi_req_o.sck_oe"
-Toggle sep_io_spi_req_o.sck "logic sep_io_spi_req_o.sck"
 Toggle entropy_rosc_sample_clk_i "logic entropy_rosc_sample_clk_i"
 Toggle sep_cpu_trace_o.trace_rv_i_tval_ip "logic sep_cpu_trace_o.trace_rv_i_tval_ip[31:0]"
 Toggle sep_cpu_trace_o.trace_rv_i_interrupt_ip "logic sep_cpu_trace_o.trace_rv_i_interrupt_ip"

@@ -37,6 +37,7 @@ SMC_SCRATCH8_ADDR = 0x4003_90C0  # manifest offset from the SMC-SRAM base
 SMC_SCRATCH9_ADDR = 0x4003_90C8  # SMC->SEP status word the ROM polls
 SMC_SCRATCH10_ADDR = 0x4003_90D0  # raw DFX status the ROM publishes when it blocks
 SMC_DFT_STATUS_ADDR = 0x4000_B800  # DFX_CTRL_STATUS_SMU, the MEM_REPAIR/MBIST gate's word
+SMC_CPU_CTRL_RESET_CTRL_ADDR = 0x4003_9020  # RESET_CTRL, core{0..3}_reset_n in [3:0]
 SMC_STRAPS_LO_ADDR = 0x4040_5800  # STRAPS_LO, bits [31:0] of the strap word
 SMC_STRAPS_HI_ADDR = SMC_STRAPS_LO_ADDR + 4  # STRAPS_HI, bits [63:32]
 
@@ -99,14 +100,7 @@ def preload_smc_mem(
     plusargs: Mapping[str, object],
     log: logging.Logger,
 ) -> None:
-    """Program the responder's memory the way the Boot ROM expects to find it.
-
-    The ``+sep_smc_mem_hex`` image lands after the defaults and the explicit
-    injections land after the image, so an explicit request wins over whatever
-    the image covers. ``+sep_boot_from_spi`` and ``+sep_straps_lo`` OR into
-    STRAPS_LO so both combine; ``+sep_dft_status`` and ``+sep_straps_hi`` set
-    their whole word.
-    """
+    """Write the ROM's default SMC words, then the hex image, then plusarg overrides."""
     mem.write32(SMC_SCRATCH9_ADDR, SMC_SEP_STATUS_DEFAULT)
     mem.write32(SMC_SCRATCH8_ADDR, SMC_MANIFEST_OFFSET_DEFAULT)
     mem.write32(SMC_DFT_STATUS_ADDR, SMC_DFT_STATUS_DEFAULT)
@@ -149,3 +143,7 @@ def preload_smc_mem(
             (straps_hi >> 22) & 1,
             (straps_hi >> 26) & 1,
         )
+    scratch8 = _hex_plusarg(plusargs, "sep_smc_scratch8")
+    if scratch8 is not None:
+        mem.write32(SMC_SCRATCH8_ADDR, scratch8)
+        log.info("[smc_mem] scratch[8] manifest offset = 0x%08x (+sep_smc_scratch8)", scratch8)

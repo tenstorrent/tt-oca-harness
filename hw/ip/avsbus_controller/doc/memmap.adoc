@@ -2,9 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[avsbus-controller-memory-map]]
-== Memory Map
+== Memory Map and Register Reference
 
-=== Overview
+ifdef::backend-html5[]
+++++
+<span id="overview-2"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 The AVSBus Controller occupies a 128-byte address space (0x00-0x7F) reached
 through its AXI4-Lite port. The register map holds the command and readback
@@ -12,7 +18,7 @@ FIFO windows, status registers for monitoring the bus and the target,
 interrupt status, mask and clear registers, and configuration registers for
 the clock, the retry budget and the resync interval.
 
-=== Address Alignment and Access Requirements
+==== Address Alignment and Access Requirements
 
 All registers are 32 bits wide and aligned to a 4-byte boundary. The highest
 allocated offset is `0x58`; offsets `0x5C` through `0x7F` are unallocated and
@@ -40,12 +46,13 @@ returns the same data without popping.
 
 Neither FIFO window back-pressures the bus; both report a failed access
 instead. A write to `AVS_CMD` while the command FIFO is full is dropped, and a
-read of `AVS_READBACK` while the readback FIFO is empty returns the FIFO
-contents at the read pointer rather than a defined value. Each case raises its
-interrupt and completes the access with an error response, so software can
-detect the condition from the bus response alone. `AVS_DEBUG_READBACK` reads
-0xFFFFFFFF when the FIFO is empty and never errors, which makes it the safer
-register to poll.
+read of `AVS_READBACK` while the readback FIFO is empty returns 0 without
+popping. Each case raises its interrupt and completes the access with an error
+response, so software can detect the condition from the bus response alone.
+An all-zero word is also a well-formed target response, so the read data does
+not identify an empty read; only the error response or `READBACK_UNDERFLOW_INT`
+does. `AVS_DEBUG_READBACK` reads 0xFFFFFFFF when the FIFO is empty and never
+errors, which makes it the safer register to poll.
 
 === Detailed Register Map
 

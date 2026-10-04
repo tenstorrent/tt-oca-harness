@@ -18,20 +18,20 @@ module uart_core
   parameter int unsigned RX_FIFO_DEPTH = 16,  // Receive FIFO depth. In uart_16550, a power of 2
                                               // from 4 to 4096.
 
-  localparam int unsigned BAUD_CNT_WIDTH = 16,  // Baud-rate divider counter width.
-  localparam type         baud_cnt_t = logic [BAUD_CNT_WIDTH-1:0],  // Baud divider counter type.
+  localparam int unsigned BaudCntWidth = 16,  // Baud-rate divider counter width.
+  localparam type         baud_cnt_t = logic [BaudCntWidth-1:0],  // Baud divider counter type.
 
-  localparam int unsigned RX_FIFO_DEPTH_WIDTH = $clog2(RX_FIFO_DEPTH + 1),  // Bits to hold an RX FIFO fill level of 0 to RX_FIFO_DEPTH.
-  localparam type         rx_fifo_depth_t = logic [RX_FIFO_DEPTH_WIDTH-1:0],  // RX FIFO fill-level type.
+  localparam int unsigned RxFifoDepthWidth = $clog2(RX_FIFO_DEPTH + 1),  // Bits to hold an RX FIFO fill level of 0 to RX_FIFO_DEPTH.
+  localparam type         rx_fifo_depth_t = logic [RxFifoDepthWidth-1:0],  // RX FIFO fill-level type.
 
-  localparam int unsigned RX_FIFO_THRESHOLD_WIDTH = $clog2(4096 + 1),  // Bits to hold the largest RX trigger level, 4096 entries.
-  localparam type         rx_fifo_threshold_t = logic [RX_FIFO_THRESHOLD_WIDTH-1:0],  // RX FIFO threshold type.
+  localparam int unsigned RxFifoThresholdWidth = $clog2(4096 + 1),  // Bits to hold the largest RX trigger level, 4096 entries.
+  localparam type         rx_fifo_threshold_t = logic [RxFifoThresholdWidth-1:0],  // RX FIFO threshold type.
 
-  localparam int unsigned TIMEOUT_CNT_WIDTH = $clog2(MAX_FRAME_LEN * TIMEOUT_CHAR_CNT),  // Bits to count baud ticks over four maximum-length frames.
-  localparam type         timeout_cnt_t = logic [TIMEOUT_CNT_WIDTH-1:0],  // Character-timeout counter type.
+  localparam int unsigned TimeoutCntWidth = $clog2(MaxFrameLen * TimeoutCharCnt),  // Bits to count baud ticks over four maximum-length frames.
+  localparam type         timeout_cnt_t = logic [TimeoutCntWidth-1:0],  // Character-timeout counter type.
 
-  localparam int unsigned TRIGGER_LEVEL_WIDTH = $clog2(NUM_TRIGGER_LEVELS),  // Bits to encode one of the RX trigger levels.
-  localparam type         trigger_level_t = logic [TRIGGER_LEVEL_WIDTH-1:0]  // RX trigger-level select type.
+  localparam int unsigned TriggerLevelWidth = $clog2(NumTriggerLevels),    // Bits to encode one of the RX trigger levels.
+  localparam type         trigger_level_t = logic [TriggerLevelWidth-1:0]  // RX trigger-level select type.
 ) (
   input  logic                clk_i,    // System clock.
   input  logic                rst_ni,   // Active-low reset.
@@ -208,12 +208,12 @@ module uart_core
   end
 
   prim_fifo_sync_parity #(
-    .Width             (8),
-    .Pass              (1'b0),
-    .Depth             (TX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)  // Pointer and data error checking
+    .WIDTH                (8),
+    .PASS                 (1'b0),
+    .DEPTH                (TX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)  // Pointer and data error checking
   ) u_uart_txfifo (
     .clk_i,
     .rst_ni,
@@ -416,12 +416,12 @@ module uart_core
   end
 
   prim_fifo_sync_parity #(
-    .Width             ($bits(rx_fifo_rbr_entry_t)),
-    .Pass              (1'b0),
-    .Depth             (RX_FIFO_DEPTH),
-    .OutputZeroIfEmpty (1'b1),
-    .NeverClears       (1'b0),
-    .Secure            (1'b1)  // Error checking
+    .WIDTH                ($bits(rx_fifo_rbr_entry_t)),
+    .PASS                 (1'b0),
+    .DEPTH                (RX_FIFO_DEPTH),
+    .OUTPUT_ZERO_IF_EMPTY (1'b1),
+    .NEVER_CLEARS         (1'b0),
+    .SECURE               (1'b1)  // Error checking
   ) u_uart_rxfifo (
     .clk_i,
     .rst_ni,

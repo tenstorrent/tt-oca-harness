@@ -20,8 +20,8 @@ class SepDatasheetTests(unittest.TestCase):
             self.root / "hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl"
         ).read_text(encoding="utf-8")
 
-        self.assertRegex(sep_package, r"NUM_MAILBOXES\s*=\s*8;")
-        self.assertRegex(sep_package, r"MAILBOX_DEPTH\s*=\s*8;")
+        self.assertRegex(sep_package, r"NumMailboxes\s*=\s*8;")
+        self.assertRegex(sep_package, r"MailboxDepth\s*=\s*8;")
         self.assertIn("secure_dma #(", sep_dma)
         for mode in ("OpcSha256", "OpcSha384", "OpcSha512"):
             self.assertIn(mode, secure_dma)

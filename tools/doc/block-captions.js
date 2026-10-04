@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Asciidoctor extension for Antora TRM pages that numbers and captions figures
-// and tables within each page, including generated register HTML tables. Adds
-// section-local references and records metadata for the lists of figures and
-// tables built by block-indexes.js.
+// and tables within each page, including generated register HTML tables.
+// Records metadata for the lists of figures and tables built by block-indexes.js.
 
 'use strict'
 
@@ -15,13 +14,47 @@ function tableTitle (section, headings) {
   return section
 }
 
+// A page may include several generated register maps, each carrying the same
+// unscoped field ids (INTR_STATE, CTRL, …). Namespace every map's fragment ids
+// so they stay unique. A generated map opens with an id="regmap-<ns>" heading;
+// <ns> scopes the other ids in that map, which are also tagged with a
+// data-register-alias for the legacy-fragment pass. regmap- anchors stay
+// unscoped so a cross-reference to a whole map keeps resolving.
+function scopeRegisterIds (html) {
+  return html.split(/(?=<[^>]*\bid="regmap-)/).map((region) => {
+    const marker = region.match(/\bid="regmap-([^"]+)"/)
+    if (!marker) return region
+    const ns = marker[1]
+    const ids = new Set(
+      [...region.matchAll(/\bid="([^"]+)"/g)]
+        .map((match) => match[1])
+        .filter((id) => !id.startsWith('regmap-'))
+    )
+    return region
+      .replace(/\bid="([^"]+)"/g, (whole, id) =>
+        ids.has(id) ? `id="${ns}-${id}" data-register-alias="${id}"` : whole)
+      .replace(/\bhref="#([^"]+)"/g, (whole, id) =>
+        ids.has(id) ? `href="#${ns}-${id}"` : whole)
+  }).join('')
+}
+
 exports.register = function (registry, { file } = {}) {
   registry.treeProcessor(function () {
     this.process(function (doc) {
+      // Keep legacy fragments at their first table while scoped IDs address
+      // each map independently on pages containing several register banks.
+      const legacyIds = new Set()
+      for (const block of doc.findBy()) {
+        if (block.getContext() !== 'pass') continue
+        block.lines = [scopeRegisterIds(block.getSource()).replace(/(<h[1-6]\b[^>]* data-register-alias="([^"]+)"[^>]*>)/g, (heading, tag, id) => {
+          if (legacyIds.has(id) || doc.getCatalog().refs['$key?'](id)) return heading
+          legacyIds.add(id)
+          return `<span id="${id}"></span>${heading}`
+        })]
+      }
       if (!doc.hasAttribute('ocah-trm')) return doc
       const counts = { image: 0, table: 0 }
       const entries = []
-      const owners = new Map()
       const refs = doc.getCatalog().refs
       const allocated = new Set()
       const uniqueId = (base) => {
@@ -82,16 +115,6 @@ exports.register = function (registry, { file } = {}) {
         block.setCaption(`${label}. `)
         block.setNumeral(counts[kind])
         doc.$register('refs', [id, block])
-        if (owner) {
-          if (!owners.has(owner)) owners.set(owner, [])
-          owners.get(owner).push(`<a href="#${encodeURIComponent(id)}">${label}</a>`)
-        }
-      }
-      for (const [owner, links] of owners) {
-        const blocks = owner.getBlocks()
-        const firstSection = blocks.findIndex((block) => block.getContext() === 'section')
-        const paragraph = this.createBlock(owner, 'pass', `<p class="block-references">Figures and tables: ${links.join('; ')}.</p>`)
-        blocks.splice(firstSection < 0 ? blocks.length : firstSection, 0, paragraph)
       }
       if (file) file.blockCatalog = entries
       return doc

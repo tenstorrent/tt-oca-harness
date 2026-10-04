@@ -135,7 +135,7 @@ package smc_efuse_pkg;
   );  // 10 bits to encode 1024 bytes <- used to create byte address type for bank
   // NOTE: $clog2(256)=8 can only represent 0-255, but we need to represent 256 words
   localparam int unsigned NumFuseWordsWidth = $clog2(NumFuseWords + 1);
-  localparam int unsigned SHADOW_REG_BITS = NumEfuseBits;
+  localparam int unsigned ShadowRegBits = NumEfuseBits;
 
   typedef logic [NumFuseBitsWidth-1:0] efuse_addr_bit_t;
   typedef logic [NumFuseByteWidth-1:0] efuse_addr_byte_t;
@@ -152,13 +152,13 @@ package smc_efuse_pkg;
   localparam int unsigned NumSpareRegions = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
 
   // LOCKS meta-field + 4 functional fields + NumSpareRegions spare regions (idx 0-31).
-  localparam int unsigned NUM_EFUSE_FIELDS = 5 + NumSpareRegions;
-  localparam logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] LOCKS_META_IDX = '1;
-  localparam logic [1:0] WRITE_UNLOCK = 2'b00;
-  localparam logic [1:0] WRITE_SET_ONLY = 2'b10;
-  localparam logic [1:0] WRITE_LOCK = 2'b11;
-  localparam logic READ_UNLOCK = 1'b0;
-  localparam logic READ_LOCK = 1'b1;
+  localparam int unsigned NumEfuseFields = 5 + NumSpareRegions;
+  localparam logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] LocksMetaIdx = '1;
+  localparam logic [1:0] WriteUnlock = 2'b00;
+  localparam logic [1:0] WriteSetOnly = 2'b10;
+  localparam logic [1:0] WriteLock = 2'b11;
+  localparam logic ReadUnlock = 1'b0;
+  localparam logic ReadLock = 1'b1;
 
   // Physical OTP bits covered by LOCKS
   localparam int unsigned LockFieldBits = $bits(smc_efuse_map_locks_reg_t);
@@ -188,37 +188,37 @@ package smc_efuse_pkg;
   // Lock field Description
   // lock[2:1] write: 00 -> unlock;11 -> lock ;10 -> set only;
   // lock[0]  read: 0 -> readable; 1 -> read locked
-  function automatic efuse_pkg::rule_t [NUM_EFUSE_FIELDS-1:0] build_efuse_field_map();
-    efuse_pkg::rule_t [NUM_EFUSE_FIELDS-1:0] map;
+  function automatic efuse_pkg::rule_t [NumEfuseFields-1:0] build_efuse_field_map();
+    efuse_pkg::rule_t [NumEfuseFields-1:0] map;
 
     // Hardware never applies lock bits to this entry.
     map[0] = '{
-        idx: LOCKS_META_IDX,
-        lock: {WRITE_SET_ONLY, READ_UNLOCK},
+        idx: LocksMetaIdx,
+        lock: {WriteSetOnly, ReadUnlock},
         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR),
         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR)-1
     };
     map[1] = '{ // JTAG_PUBLIC_IDENTITY (idx 0)
         idx: 6'd0,
-        lock: {WRITE_UNLOCK, READ_UNLOCK},
+        lock: {WriteUnlock, ReadUnlock},
         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR),
         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0))-1
     };
     map[2] = '{ // I2C_I3C_ID[9] -- all nine elements share one slot (idx 1)
         idx: 6'd1,
-        lock: {WRITE_UNLOCK, READ_UNLOCK},
+        lock: {WriteUnlock, ReadUnlock},
         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(0)),
         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR)-1
     };
     map[3] = '{ // SMC_CONFIG (idx 2)
         idx: 6'd2,
-        lock: {WRITE_UNLOCK, READ_UNLOCK},
+        lock: {WriteUnlock, ReadUnlock},
         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR),
         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR)-1
     };
     map[4] = '{ // OCCP_TRANSPORT_TIMEOUT (idx 3)
         idx: 6'd3,
-        lock: {WRITE_UNLOCK, READ_UNLOCK},
+        lock: {WriteUnlock, ReadUnlock},
         start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR),
         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0))-1
     };
@@ -226,8 +226,8 @@ package smc_efuse_pkg;
     // SPARE[0..NumSpareRegions-1] take slots 4 onwards, one each.
     for (int unsigned k = 0; k < NumSpareRegions; k++) begin
       map[5+k] = '{
-          idx: efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH'(4 + k),
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          idx: efuse_pkg::EfuseFieldMapIdxWidth'(4 + k),
+          lock: {WriteUnlock, ReadUnlock},
           start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(k)),
           end_addr:
           (
@@ -243,6 +243,6 @@ package smc_efuse_pkg;
     return map;
   endfunction
 
-  localparam efuse_pkg::rule_t [NUM_EFUSE_FIELDS-1:0] EfuseFieldMap = build_efuse_field_map();
+  localparam efuse_pkg::rule_t [NumEfuseFields-1:0] EfuseFieldMap = build_efuse_field_map();
 
 endpackage

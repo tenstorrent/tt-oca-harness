@@ -14,7 +14,7 @@ on:
       - 'ocah_deps.nix'
       - 'pyproject.toml'
       - 'uv.lock'
-      - 'hw/common/dv/pyproject.toml'
+      - 'hw/common/dv/**'
       - 'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest'
       - 'scripts/docker-run.sh'
       - 'scripts/docker.md'
@@ -29,11 +29,21 @@ on:
       - 'ocah_deps.nix'
       - 'pyproject.toml'
       - 'uv.lock'
-      - 'hw/common/dv/pyproject.toml'
+      - 'hw/common/dv/**'
       - 'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest'
       - 'scripts/docker-run.sh'
       - 'scripts/docker.md'
   workflow_dispatch:
+
+# Serialise runs per ref, and let the one in flight finish. The content tag is
+# write-once and names a closure rather than a commit, so an image built for an
+# earlier push satisfies every later tree that resolves to the same hash --
+# which most pushes do, since only the flake inputs move it. Cancelling
+# discards work the next run would have reused, and on a branch that is pushed
+# to often it can restart a multi-hour build indefinitely and publish nothing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -45,14 +55,15 @@ env:
 jobs:
   # Build the image with Nix and publish it to GHCR under its immutable
   # content-hash tag. skopeo streams the nix-built archive straight to the
-  # registry: no `docker load`, so nothing unpacks the multi-GB image onto the
-  # runner's small root volume. This keeps the heavy build off the daemon and
-  # lets the job fit a stock ubuntu-latest. DV_LARGE_RUNNER promotes it to a
-  # larger runner once that label exists:
-  #   gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
+  # registry, so the build never goes through a container engine.
   build-and-publish:
     name: Build and publish Nix image
-    runs-on: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+    # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
+    # granted neither packages: write to publish nor the access a private
+    # package needs to pull. Skip rather than fail a contributor's run for
+    # something they cannot fix; main republishes the image on merge.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest-16-cores
     timeout-minutes: 240
     outputs:
       image_hash: ${{ steps.build.outputs.image_hash }}
@@ -64,34 +75,20 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Checkout manifest submodule
-        env:
-          MANIFEST_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+      # Both: the uv workspace names tt-oca-manifest as a member, and
+      # nix/packages/whisper.nix reads the pinned revision out of the model's
+      # own CI workflow, so the flake cannot evaluate without either one.
+      - name: Check out the submodules
         run: |
-          test -n "$MANIFEST_TOKEN"
-          git -c "url.https://x-access-token:${MANIFEST_TOKEN}@github.com/tenstorrent/.insteadOf=git@github.com:tenstorrent/" \
-            submodule update --init --recursive hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
-
-      # ocah_deps.nix builds gcc, boost and openssl from source; the closure
-      # outgrows a hosted runner's root volume and the failure surfaces deep in a
-      # build as "ld.bfd: final link failed: No space left on device". Reclaim the
-      # preinstalled toolchains this job never uses before building.
-      - name: Free disk space for the nix build
-        run: |
-          echo "before:"; df -h / | tail -1
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
-                      /usr/local/.ghcup /usr/local/share/boost \
-                      /usr/local/lib/node_modules /opt/hostedtoolcache \
-                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
-          sudo docker image prune -af >/dev/null 2>&1 || true
-          sudo install -d -m 0755 /mnt/nix-build
-          echo "after:"; df -h / | tail -1
+          git submodule update --init --recursive \
+              hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
+              virtual_platform/tt-oca-harness-model
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
         with:
           extra_nix_config: |
-            build-dir = /mnt/nix-build
+            max-jobs = auto
 
       - name: Ensure skopeo
         run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
@@ -103,51 +100,33 @@ jobs:
 
       - name: Build and publish full image
         id: build
-        env:
-          # Nix clones submodules while copying the flake into its store. Use
-          # the checkout populated above so the token is not needed while Nix
-          # evaluates or builds the image.
-          GIT_CONFIG_COUNT: 3
-          GIT_CONFIG_KEY_0: protocol.file.allow
-          GIT_CONFIG_VALUE_0: always
-          GIT_CONFIG_KEY_1: url.file://${{ github.workspace }}/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest.insteadOf
-          GIT_CONFIG_VALUE_1: git@github.com:tenstorrent/tt-oca-manifest.git
-          GIT_CONFIG_KEY_2: url.file://${{ github.workspace }}/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest.insteadOf
-          GIT_CONFIG_VALUE_2: ssh://git@github.com/tenstorrent/tt-oca-manifest.git
         run: |
-          archive=$(nix build \
-            .#dockerContainers.x86_64-linux.with_uv_deps \
-            --no-link \
-            --print-out-paths)
+          # The content-hash tag is write-once: the first build to publish a
+          # given closure hash is canonical, and the published bytes are what
+          # consumers pull and what verify runs against. Resolving that hash is
+          # a pure evaluation, so ask the registry before building -- on a hit
+          # there is nothing to publish, and building only to discard the result
+          # costs hours. It also means the image is never compared against a
+          # local rebuild, which the Nix image build could not match anyway: it
+          # is not bit-reproducible, so identical closures differ byte for byte.
           image_hash=$(nix eval --raw .#containerHashes.with_uv_deps)
           echo "image_hash=${image_hash}" >> "$GITHUB_OUTPUT"
 
           registry_ref="${REGISTRY_IMAGE}:${image_hash}"
 
-          # The content-hash tag is write-once: the first build to publish a
-          # given closure hash is canonical, and a later build of the same hash
-          # reuses it rather than overwriting it. The Nix image build is not
-          # bit-reproducible, so a rebuilt archive can differ byte-for-byte from
-          # the published image while denoting the same closure. Reuse the
-          # published bytes -- which consumers already pull and which verify runs
-          # against -- and never push over them.
-          if remote_digest=$(skopeo inspect --insecure-policy \
+          if digest=$(skopeo inspect --insecure-policy \
               --format '{{.Digest}}' "docker://${registry_ref}" 2>/dev/null); then
-            local_digest=$(skopeo inspect --insecure-policy \
-              --format '{{.Digest}}' "docker-archive:${archive}")
-            if [ "${remote_digest}" = "${local_digest}" ]; then
-              echo "already published (identical bytes): ${registry_ref}"
-            else
-              echo "::notice::${registry_ref} already published as ${remote_digest};" \
-                   "reusing it (local rebuild ${local_digest} differs: the image" \
-                   "build is not bit-reproducible)"
-            fi
-            digest="${remote_digest}"
+            echo "already published: ${registry_ref} (${digest}); skipping the build"
           else
+            archive=$(nix build \
+              .#dockerContainers.x86_64-linux.with_uv_deps \
+              --no-link \
+              --print-out-paths)
             # docker-archive reads the gzip archive; skopeo relays its compressed
             # layers to the registry without unpacking them to disk. --digestfile
-            # records the digest of the manifest it actually pushed.
-            skopeo copy --insecure-policy --digestfile=digest.txt \
+            # records the digest of the manifest it actually pushed. A dropped
+            # blob upload is retried, since failing here discards the whole build.
+            skopeo copy --insecure-policy --retry-times 3 --digestfile=digest.txt \
               "docker-archive:${archive}" "docker://${registry_ref}"
             digest=$(cat digest.txt)
           fi
@@ -160,14 +139,17 @@ jobs:
             echo "- digest: \`${digest}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Pull the freshly published image on a clean runner and exercise it. Because
-  # this runner never ran the nix build, the ~30 GB the image unpacks into on
-  # `docker pull` has the whole root volume to itself and fits where the combined
-  # build+load did not. Only after this passes is the consumed :main tag moved.
+  # Pull the published image on a clean runner and exercise it. Only after this
+  # passes is the consumed :main tag moved.
   verify-and-promote:
     name: Verify image and promote main
+    # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
+    # granted neither packages: write to publish nor the access a private
+    # package needs to pull. Skip rather than fail a contributor's run for
+    # something they cannot fix; main republishes the image on merge.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     needs: build-and-publish
-    runs-on: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest-16-cores
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -176,25 +158,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Checkout manifest submodule
-        env:
-          MANIFEST_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+      # Both: the uv workspace names tt-oca-manifest as a member, and
+      # nix/packages/whisper.nix reads the pinned revision out of the model's
+      # own CI workflow, so the flake cannot evaluate without either one.
+      - name: Check out the submodules
         run: |
-          test -n "$MANIFEST_TOKEN"
-          git -c "url.https://x-access-token:${MANIFEST_TOKEN}@github.com/tenstorrent/.insteadOf=git@github.com:tenstorrent/" \
-            submodule update --init --recursive hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
-
-      # docker pull unpacks the multi-GB image into the daemon's data-root on the
-      # small root volume; reclaim the preinstalled toolchains first.
-      - name: Free disk space for the image pull
-        run: |
-          echo "before:"; df -h / | tail -1
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
-                      /usr/local/.ghcup /usr/local/share/boost \
-                      /usr/local/lib/node_modules /opt/hostedtoolcache \
-                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
-          sudo docker image prune -af >/dev/null 2>&1 || true
-          echo "after:"; df -h / | tail -1
+          git submodule update --init --recursive \
+              hw/sys/sep/bootrom/prod/tools/tt-oca-manifest \
+              virtual_platform/tt-oca-harness-model
 
       # docker-run.sh resolves the image tag from the flake via `nix eval`, then
       # pulls REGISTRY_IMAGE:<hash>; a native nix keeps that off the container.

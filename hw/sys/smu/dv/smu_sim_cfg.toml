@@ -61,7 +61,34 @@ extra_ignore_patterns = [
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_key_manager_s3c_scan\..*: at time',
   'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_dma_wrap\.(u_secure_dma|gen_alert_receivers)\b.*: at time',
 ]
-extra_hard_fail_patterns = ['assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]']
+# One guard per ignore class, in the form SEP (`sep_sim_cfg.toml`) and SMC
+# (`smc_sim_cfg.toml`) use for `abr_reg`. The runner reads
+# `hard_fail_patterns` before `ignore_patterns` (`tools/dv/runlib/logparse.py`),
+# so a guard here overrides the ignore it pairs with.
+#
+# The SEP assertions above have no clock or reset for `disable iff` to gate --
+# the SEP bench says so where it scopes them off (`hw/sys/sep/dv/tb/tb_top.sv`
+# 245-250) -- so each fires on the X of elaboration and at no later time. A
+# firing at a non-zero time is therefore a real event, and the guard turns it
+# back into a hard failure. The SPI host's guard starts where its ignore stops,
+# at ten digits of femtoseconds, because that ignore already carries the
+# first-microsecond bound.
+#
+# The `abr_reg` class takes no time bound: on this SEP=1 profile the ABR
+# datapath is not exercised and the assertion fires at time 0 and again after
+# reset release, which the first pattern below still catches on the
+# companion timestamped line. Narrowing its ignore in time would fail every
+# run rather than guard it.
+extra_hard_fail_patterns = [
+  'assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_trng\..*(: at time [1-9]|failed at [1-9])',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_axis_edn_(crypto|pool)_s3c_scan\..*(: at time [1-9]|failed at [1-9])',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_efuse_wrapper\.u_efuse_interface_controller\.gen_mmr_reg\.u_efuse_token_processing\..*\.ValidDigestModeFlag_A(: at time [1-9]|.*failed at [1-9])',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_sep_crypto_otbn_wrapper_s3c_scan\..*\.UrndNoReseedOnReset_A(: at time [1-9]|.*failed at [1-9])',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_io\.u_sep_ot_spi_wrap\.u_spi_host\..*: at time \d{10,}',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_crypto\.u_key_manager_s3c_scan\..*(: at time [1-9]|failed at [1-9])',
+  'u_dut\.u_smu\.gen_sep\.u_sep\.u_sep_dma_wrap\.(u_secure_dma|gen_alert_receivers)\b.*(: at time [1-9]|failed at [1-9])',
+]
 
 [native.stages.clean]
 kind = "clean"
@@ -102,24 +129,6 @@ incdirs = [
   "hw/sys/smu/dv/tb",
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
-]
-# Vendor simulation collateral that an overlay of the sep bender graph can pull
-# in and that the smu_wrapper hierarchy never instantiates: a licensed SPI
-# controller wrapper and its DLL PHY, the pad and ESD libraries,
-# padring_dv_wrapper and the SPI flash models. Excluded so Verilator is not
-# made to parse their switch-level primitives.
-exclude_files = [
-  "sep_cdns_spi_wrap.sv",
-  "cdn_ip6184_19e8_dll_phy",
-  "cdn_xspi",
-  "ln04lpp_gpio_lib_t12.v",
-  "ln04lpp_gpio_lib_t18.v",
-  "ln04lpp_esd_lib_t12.v",
-  "ln04lpp_esd_lib_t18.v",
-  "padring_dv_wrapper.sv",
-  "tt_spi_devices.sv",
-  "tt_bidir_delay.sv",
-  "meta/models/spi",
 ]
 stubs = [
   # Stand-in for the ocah_prim prim_sync3 cell, emitted ahead of the Bender
@@ -225,7 +234,7 @@ policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.to
 # directory this DUT never compiles into, so design_db names the database the
 # profile writes. cov/config/vcs/README.md explains the scope file and how a
 # finished run is read.
-# `smu_wrapper_cov_scope.hier` is written by gen_smu_cov_scope.py beside it;
+# `smu_wrapper_cov_scope.hier` is written by the companion's gen_smu_cov_scope.py;
 # regenerate it after a build, then `--rebuild`.
 # Two DUTs share this dv tree, so the policy is named per DUT rather than
 # discovered at cov/config/vcs/coverage_policy.toml.
@@ -271,6 +280,11 @@ python_paths = [
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+# The bench toggles the pll_wrap oscillators itself (tb_wrapper_top.sv); the
+# model's own generators stay off.
+[frameworks.cocotb.sim]
+args = ["+pll_osc_bench"]
 
 # Firmware/preload builds. Outputs are the staging manifest: the sim stage
 # copies each declared output into the per-test run directory, where the
@@ -625,7 +639,7 @@ flags = [
 ]
 
 [targets.compile_smu_chiplet]
-description = "OSS smu_wrapper with DefaultCfg, SEP=1, and the real EL2 CPU"
+description = "OSS smu_wrapper with DefaultCfg (SEP=1) and the real EL2 CPU"
 build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
 ]
@@ -731,7 +745,9 @@ sources = [
 ]
 
 [frameworks.uvm.sim]
-args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+# The embedded DTP env counts in whole nanoseconds, so the SV-UVM flow runs pll_wrap's 10 ns
+# sys-period alternative.
+args = ["+UVM_VERBOSITY=UVM_MEDIUM", "+pll_sys_period_ns=10"]
 
 # The bare `UVM` define (selects the SV-UVM shape of the shared tb_wrapper_top.sv) comes from
 # the native profile's [frameworks.uvm] overlay -- no per-DUT copy. Both targets share one
@@ -741,5 +757,5 @@ description = "SMU SV-UVM default target"
 build_dir = "hw/sys/smu/dv/build/uvm"
 
 [frameworks.uvm.targets.compile_smu_chiplet]
-description = "SMU SV-UVM view of the OSS smu_wrapper (DefaultCfg, SEP=1, real EL2 CPU)"
+description = "SMU SV-UVM view of the OSS smu_wrapper (DefaultCfg (SEP=1), real EL2 CPU)"
 build_dir = "hw/sys/smu/dv/build/uvm"

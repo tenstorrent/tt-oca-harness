@@ -1,10 +1,45 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// ---------------------------------------------------------------------------
+// Testbench. SEP DV code states no SEP RTL contract, so its code is not in the
+// number. u_dut (sep_wrapper) and everything under it stays graded unless a
+// rule below removes it.
+//
+// sep_uvm_top body: the cocotb top (hw/sys/sep/dv/tb/tb_top.sv). Depth 1 drops
+// the top's own code only; its child instances keep their own rules.
 -tree sep_uvm_top 1
+// u_mbx: sep_outbound_mbx (hw/sys/sep/dv/tb/sep_outbound_mbx.sv), the TB
+// outbound-mailbox responder and firmware-console monitor.
 -tree sep_uvm_top.u_mbx
+// u_sep_fcov: sep_fcov (hw/sys/sep/dv/cov/sv/sep_fcov.sv), the passive
+// covergroup collector. Its covergroups are the separate functional number;
+// its procedural code is TB code and is not part of the code-coverage score.
+-tree sep_uvm_top.u_sep_fcov
+// u_ic_reset_sep: a TB-side jtag_ic_reset_reg (hw/ip/jtag/jtag_ptap/rtl) that
+// drives the SEP IC-reset inputs from the cocotb JTAG pins. In the system this
+// register is in the JTAG PTAP, outside the SEP hierarchy, and the JTAG DV
+// grades it there.
+-tree sep_uvm_top.u_ic_reset_sep
+// Kept graded on purpose: u_tbadp_vehicle is a drbg_axil64_lane_adapter
+// (hw/ip/drbg/rtl) that the TB instantiates as a test vehicle.
+// sep_drbg_axil_adapter_port_arbitration_test drives its ports directly and
+// grades the adapter contract, so its coverage is SEP RTL coverage.
+//
+// ocah_axi_sva: the AXI protocol checker (hw/common/dv/vip/ocah_axi_vip/sva),
+// bound into the DUT. It is a DV checker, not SEP RTL.
 -module ocah_axi_sva
--tree sep_uvm_top.u_dut.u_sep.u_sep_cpu
+
+// ---------------------------------------------------------------------------
+// SEP CPU core complex. el2_veer_wrapper is the vendored VeeR EL2 core with
+// its PIC, debug module and ICCM/DCCM controllers
+// (vendor/chipsalliance/Cores-VeeR-EL2). It is third-party functional IP with
+// its own upstream verification -- the same ownership decision as the
+// OWNERSHIP SCOPE below. The TT wrapper around it, sep_cpu
+// (hw/sys/sep/rtl/sep_cpu.sv), stays graded: the LSU/IFU/debug window
+// remaps, the IFU and LSU demux decode and the reset-run synchroniser are
+// where SEP states its CPU integration contract.
+-tree sep_uvm_top.u_dut.u_sep.u_sep_cpu.u_el2_veer_wrapper
 
 // ---------------------------------------------------------------------------
 // Library cells. These implement no SEP contract: a generic FIFO, synchroniser
@@ -17,9 +52,11 @@
 // about which no SEP test states a requirement. `/upstream/` in the source path
 // is the common case, not the rule -- the TT-owned ocah_prim and
 // ocah_prim_generic cells below are library-class too, and each block states
-// its own reason. A `vendor/` rule would be wrong in the other direction: SEP's
-// own SPI controller, TCM wrapper and clock gate live under
-// vendor/.../overlay/, so it would drop TT logic.
+// its own reason. A `vendor/` or `/upstream/` path rule would be wrong in both
+// directions: TT-authored files sit under vendor/ (the overlay/prim_shim
+// cells, for example vendor/chipsalliance/adams-bridge/overlay/prim_shim), and
+// a path rule would not separate a library cell from a functional IP in the
+// same upstream tree.
 //
 // Functional third-party IP is handled by the ownership scope below. Keeping
 // that policy separate prevents a library-cell rule from silently deciding
@@ -129,9 +166,10 @@
 //
 // The two wrapper error slaves are named by INSTANCE, not by module. `-module`
 // would also match TT-owned prim_axi_lite_err_slv instances elsewhere in SEP:
-// sep_efuse_wrapper.sv:259, sep_system_csr.sv:571, :690, :930, sep_io.sv:179
-// and sep_crypto.sv:573. sep_axi_map_refuse_test and the dead-space decode
-// tests grade those refusals. The third-party axi_err_slv module is handled by
+// sep_efuse_wrapper.sv:277, sep_system_csr.sv:590, :709, :949, sep_io.sv:188,
+// sep_crypto.sv:653 and key_manager.sv:373. sep_axi_map_refuse_test, the
+// dead-space decode tests and sep_km_otp_shim_unreachable_test grade those
+// refusals. The third-party axi_err_slv module is handled by
 // the ownership scope below.
 -module efuse_bank_model
 -tree sep_uvm_top.u_dut.u_sep_ip_integration.u_ext_trng_axil_err_slv
@@ -148,11 +186,12 @@
 
 // SystemVerilog packages. A package holds types, parameters and functions; it
 // has no instance and no state, so it can only ever score 0.00 and drags the
-// average with a denominator that represents no logic. axi_pkg carries one
-// unnamed immediate assertion, inside wrap_boundary() (axi_pkg.sv:134-142),
-// which fires only for an AXI BURST_WRAP transfer. Nothing in SEP issues a
-// wrapping burst -- the crossbars and every master use INCR -- so that
-// assertion has no antecedent in this elaboration.
+// average with a denominator that represents no logic. axi_pkg also carries
+// one unnamed immediate assertion, inside wrap_boundary()
+// (vendor/pulp-platform/axi/upstream/src/axi_pkg.sv:134-142), on the length of
+// an AXI BURST_WRAP transfer. It is a protocol check on the caller's burst, not
+// SEP logic; the SEP burst-type tests that issue WRAP bursts grade the SEP
+// response at the bus.
 -module axi_pkg
 
 // TT-owned CDC, reset and code-conversion primitives (hw/common/ocah_prim).
@@ -237,11 +276,13 @@
 // means the score no longer points at them; the tests that target them still
 // run and still fail.
 //
-// 248 modules. urg writes a `(x)` suffix on a multi-instance module; that
+// 248 modules and 4 SystemVerilog interfaces (the interfaces carry the
+// vendor's own bus and memory ports). urg writes a `(x)` suffix on a multi-instance module; that
 // suffix is stripped before the name is matched, or modules like kmac(x) and
 // axi_dw_downsizer(x) silently miss their -module line and stay in the score.
 //
-// MEASURED, 169-leaf `all` regression either side of this block:
+// MEASURED at the 248-module scope, 169-leaf `all` regression either side of
+// this block:
 //
 //              SCORE   LINE   COND  TOGGLE    FSM  BRANCH
 //   before     59.40  56.01  56.55   50.97  39.67   54.63   run 20260923_160542
@@ -252,12 +293,15 @@
 // was dragging it down -- line most of all, 56.01 to 90.21.
 // ===========================================================================
 
-// chipsalliance/adams-bridge -- 74 modules.
+// chipsalliance/adams-bridge -- 74 modules and 3 interfaces.
 // Adams Bridge PQC core. Verified upstream against the ACVP vectors, which SEP's own
 // KAT leaves re-run at the aperture. SEP does not modify the core; the TT wrapper
 // around it stays graded.
 -module abr_add_sub_mod
 -module abr_adder
+-module abr_mem_if
+-module abr_sram_be_if
+-module abr_sram_if
 -module abr_ahb_slv_sif
 -module abr_ctrl
 -module abr_keccak_2share
@@ -476,12 +520,13 @@
 // pulp-platform APB infrastructure. Same reasoning as the AXI library above.
 -module apb_demux
 
-// pulp-platform/axi -- 36 modules.
+// pulp-platform/axi -- 36 modules and 1 interface.
 // pulp-platform AXI infrastructure. Third-party fabric IP with its own upstream
 // verification. NOTE the trade: SEP chooses these parameters (AxiMaxReads, the width
 // ratios) and integration defects DO surface inside this RTL. Scoping it out is an
 // ownership decision, not a claim that it cannot fail. The TT wrappers and
 // interconnect stay graded.
+-module AXI_LITE
 -module axi_atop_filter
 -module axi_burst_splitter
 -module axi_burst_splitter_gran
@@ -521,9 +566,54 @@
 
 // tenstorrent/tt-picorv32 -- 5 modules.
 // picorv32 core, vendored upstream and unmodified. TT owns the fork, not the logic;
-// SEP's claim is the CPU integration, which lives in sep_cpu and stays graded.
+// SEP's claim is the KM CPU integration, which lives in picorv32_wrapper
+// (hw/ip/key_manager/rtl/picorv32_wrapper.sv) and stays graded.
 -module picorv32
 -module picorv32_axi_adapter
 -module picorv32_pcpi_div
 -module picorv32_pcpi_mul
 -module picorv32_regs
+
+// lowRISC/opentitan TL-UL library -- 14 modules (hw/common/tlul/rtl).
+// The TL-UL bus cells the OpenTitan cores and the TT AXI-Lite-to-TL-UL bridges
+// use. Each file keeps the lowRISC header, "Copyright lowRISC contributors
+// (OpenTitan project)." at line 1. TT carries local edits in this copy (the
+// OCAH_OT_ASSERT macros, for example tlul_err.sv:103), but the header is not
+// Tenstorrent, so the logic is third-party by the same rule as the OpenTitan
+// block above. The TT bridges around these cells -- axi_lite_to_tlul and
+// tlul_to_axi_lite (hw/common/axi) -- stay graded.
+// lowRISC: hw/common/tlul/rtl/tlul_adapter_host.sv:1
+-module tlul_adapter_host
+// lowRISC: hw/common/tlul/rtl/tlul_adapter_reg.sv:1
+-module tlul_adapter_reg
+// lowRISC: hw/common/tlul/rtl/tlul_adapter_sram.sv:1
+-module tlul_adapter_sram
+// lowRISC: hw/common/tlul/rtl/tlul_cmd_intg_chk.sv:1
+-module tlul_cmd_intg_chk
+// lowRISC: hw/common/tlul/rtl/tlul_cmd_intg_gen.sv:1
+-module tlul_cmd_intg_gen
+// lowRISC: hw/common/tlul/rtl/tlul_data_integ_dec.sv:1
+-module tlul_data_integ_dec
+// lowRISC: hw/common/tlul/rtl/tlul_data_integ_enc.sv:1
+-module tlul_data_integ_enc
+// lowRISC: hw/common/tlul/rtl/tlul_err.sv:1
+-module tlul_err
+// lowRISC: hw/common/tlul/rtl/tlul_err_resp.sv:1
+-module tlul_err_resp
+// lowRISC: hw/common/tlul/rtl/tlul_fifo_sync.sv:1
+-module tlul_fifo_sync
+// lowRISC: hw/common/tlul/rtl/tlul_rsp_intg_chk.sv:1
+-module tlul_rsp_intg_chk
+// lowRISC: hw/common/tlul/rtl/tlul_rsp_intg_gen.sv:1
+-module tlul_rsp_intg_gen
+// lowRISC: hw/common/tlul/rtl/tlul_socket_1n.sv:1
+-module tlul_socket_1n
+// lowRISC: hw/common/tlul/rtl/tlul_sram_byte.sv:1
+-module tlul_sram_byte
+
+// chipsalliance/Cores-VeeR-EL2 -- 1 interface.
+// el2_mem_if is the VeeR memory-export interface. sep_cpu instantiates it
+// (hw/sys/sep/rtl/sep_cpu.sv:174) outside u_el2_veer_wrapper, so the -tree rule
+// for the core above does not reach it. Same ownership decision as that rule.
+// Western Digital: vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/el2_mem_if.sv:3
+-module el2_mem_if

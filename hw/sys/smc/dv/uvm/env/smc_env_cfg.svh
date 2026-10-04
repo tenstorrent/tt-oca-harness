@@ -12,9 +12,11 @@
 class smc_env_cfg extends ocah_env_cfg;
   `uvm_object_utils(smc_env_cfg)
 
-  // clk_period_ns (base) is the smc clock; the other two domains follow.
-  int unsigned ref_clk_period_ns    = 10;
-  int unsigned periph_clk_period_ns = 10;
+  // The three pll_wrap clock periods; the base class clk_period_ns is unused
+  // because the smc clock period is not an integer number of nanoseconds.
+  real ref_clk_period_ns    = 10.0;
+  real smc_clk_period_ns    = 1.25;
+  real periph_clk_period_ns = 5.0;
   // SEP_IN master handshake watchdog (smc-clock cycles per wait).
   int unsigned axi_timeout_cycles = 10_000;
   // Scoreboard negative hooks, one per feature predictor: corrupt the
@@ -35,7 +37,7 @@ class smc_env_cfg extends ocah_env_cfg;
 
   static function smc_env_cfg from_test_cfg(smc_test_cfg t);
     smc_env_cfg c = smc_env_cfg::type_id::create("env_cfg");
-    c.clk_period_ns           = t.smc_clk_period_ns;
+    c.smc_clk_period_ns       = t.smc_clk_period_ns;
     c.ref_clk_period_ns       = t.ref_clk_period_ns;
     c.periph_clk_period_ns    = t.periph_clk_period_ns;
     c.axi_timeout_cycles      = t.axi_timeout_cycles;
@@ -52,9 +54,10 @@ class smc_env_cfg extends ocah_env_cfg;
 
   virtual function string convert2string();
     return $sformatf(
-        "%s ref_clk_period_ns=%0d periph_clk_period_ns=%0d axi_timeout_cycles=%0d",
+        "%s ref_clk_period_ns=%0g smc_clk_period_ns=%0g periph_clk_period_ns=%0g axi_timeout_cycles=%0d",
         super.convert2string(),
         ref_clk_period_ns,
+        smc_clk_period_ns,
         periph_clk_period_ns,
         axi_timeout_cycles
     );

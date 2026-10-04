@@ -109,6 +109,11 @@
 // still gates on a_valid, so a DMA-issued command is required. See the
 // force block below.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
+// HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
+// side idle so the hash engine stops consuming and the FIFO fills. A port rather
+// than a plusarg so a test can raise it after the ROM's short self-test hash.
+// See the force block below.
+`SEP_TB_IN(logic, hmac_fifo_drain_stall_i)
 
 // ------------------------------------------------------------------
 // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
@@ -312,6 +317,13 @@
 // the AXI ready/valid combinational cones.
 `SEP_TB_OUT(logic [63:0], sram_word0_probe_o)
 `SEP_TB_OUT(logic [383:0], sram_payload_probe_o)
+// The ML-KEM seed Z words inside the Adams Bridge engine (the scratch copy the
+// ML-KEM KEYGEN reads). Software cannot read Z back, and after a KV seed read
+// the decapsulation key reads as zero, so this read-only XMR is the only view of
+// the Z a KV read delivered. Word i occupies bits [32*i +: 32]. Zero in a build
+// without Adams Bridge. Owners: sep_km_sideload_share_walk_test,
+// sep_km_abr_mlkem_sideload_test.
+`SEP_TB_OUT(logic [255:0], abr_mlkem_seed_z_probe_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this
 // design does not implement -- see the SMC address decode check in tb_top.
@@ -383,6 +395,10 @@
 // signature: the adapter has accepted nothing and no channel can retire.
 `SEP_TB_OUT(logic [5:0], drbg_csrng_axil_chan_o)  // CSRNG lane adapter port
 `SEP_TB_OUT(logic [5:0], drbg_edn_axil_chan_o)  // EDN lane adapter port
+// {ar_valid, aw_valid | w_valid} on each DUT lane adapter's AXI-Lite-32 side:
+// the adapter presents a request to its TL-UL bridge.
+`SEP_TB_OUT(logic [1:0], drbg_csrng_fwd_o)
+`SEP_TB_OUT(logic [1:0], drbg_edn_fwd_o)
 
 // Port-level arbitration vehicle for drbg_axil64_lane_adapter.
 //
@@ -416,6 +432,10 @@
 `SEP_TB_OUT(logic [63:0], tbadp_r_data_o)
 `SEP_TB_OUT(logic [1:0], tbadp_b_resp_o)  // BRESP: OKAY vs the unsupported-access SLVERR
 `SEP_TB_OUT(logic [1:0], tbadp_r_resp_o)  // RRESP: same, for the read leg
+// {ar_valid, aw_valid | w_valid} on the vehicle's AXI-Lite-32 side: the
+// adapter presents a downstream request. An unsupported access must leave both
+// bits low, because the adapter answers it itself and forwards nothing.
+`SEP_TB_OUT(logic [1:0], tbadp_fwd_o)
 `SEP_TB_OUT(logic, km_entropy_tvalid_o)  // CHK5: post-mux EDN->KM tvalid (entropy_muxed_req[0])
 `SEP_TB_OUT(logic [31:0], km_entropy_tdata_o)  // CHK5: post-mux EDN->KM tdata word
 `SEP_TB_OUT(logic, km_entropy_tready_o)  // CHK5: KM tready (entropy_muxed_rsp[0]) -> real handshake
@@ -466,13 +486,23 @@
 `SEP_TB_OUT(logic, hmac_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, hmac_host_isolated_probe_o)
 `SEP_TB_OUT(logic, hmac_km_isolated_probe_o)
+// Host-path isolate request, high from the software reset request until
+// release. See "Crypto reset-sequencer probes" in
+// hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc.
+`SEP_TB_OUT(logic, hmac_host_isolate_req_probe_o)
 `SEP_TB_OUT(logic, kmac_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, kmac_host_isolated_probe_o)
 `SEP_TB_OUT(logic, kmac_km_isolated_probe_o)
+`SEP_TB_OUT(logic, kmac_host_isolate_req_probe_o)
 `SEP_TB_OUT(logic, abr_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, abr_host_isolated_probe_o)
 `SEP_TB_OUT(logic, abr_km_isolated_probe_o)
-// IP-interrupt aggregator: observation-only mirror of the 34-bit
+`SEP_TB_OUT(logic, abr_host_isolate_req_probe_o)
+// AES and OTBN gated resets, for timing the crypto EDN endpoint cancel against
+// the reset it precedes.
+`SEP_TB_OUT(logic, aes_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, otbn_gated_rst_n_probe_o)
+// IP-interrupt aggregator: observation-only mirror of the NUM_INTERNAL_IRQS-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
 // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
@@ -481,6 +511,22 @@
 // Saturating count of cycles where CPU-LSU and DMA simultaneously present an
 // SRAM request on the same local-crossbar address channel.
 `SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
+// SPI-to-DMA transmit pacing, observation-only: the OpenTitan SPI host
+// transmit-FIFO depth, the SPI trigger bit at the secure DMA input, and the
+// DMA STATUS.busy flop. No CSR shows the trigger or the FIFO depth while the
+// DMA moves data, so the DMA-TX test reads them here to grade the refill
+// pacing (owner `sep_spi_ot_dma_tx_test`).
+`SEP_TB_OUT(logic [7:0], spi_tx_qd_probe_o)
+`SEP_TB_OUT(logic, spi_lsio_trigger_probe_o)
+`SEP_TB_OUT(logic, dma_busy_probe_o)
+// W handshakes at the AXI-Lite port of each fabric remap/filter slot register
+// block in sep_system_csr: saturating count of all beats, saturating count of
+// beats with non-zero data on a byte lane whose WSTRB bit is 0, and one sticky
+// bit per slot for the second kind. Slot order: alias [15:0], AP [31:16],
+// STEE [47:32], outbound filter [79:48], inbound filter [95:80].
+`SEP_TB_OUT(logic [31:0], fabric_slot_w_beats_o)
+`SEP_TB_OUT(logic [31:0], fabric_slot_w_fill_beats_o)
+`SEP_TB_OUT(logic [95:0], fabric_slot_w_fill_seen_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
 `SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)
@@ -497,6 +543,16 @@
 `SEP_TB_OUT(logic, sys_csr_axil_awvalid_o)
 `SEP_TB_OUT(logic, sys_csr_axil_awready_o)
 `SEP_TB_OUT(logic [31:0], sys_csr_axil_awaddr_o)
+// AR/AW handshakes at the local crossbar's `ext` initiator: the requests
+// sep_system_peripherals forwards into the local crossbar (SMN inbound traffic,
+// and local-master traffic that the peripheral crossbar does not decode).
+// Observation-only, outside the tb s_axi / m_axi ready/valid cones.
+`SEP_TB_OUT(logic, xbar_ext_in_arvalid_o)
+`SEP_TB_OUT(logic, xbar_ext_in_arready_o)
+`SEP_TB_OUT(logic [31:0], xbar_ext_in_araddr_o)
+`SEP_TB_OUT(logic, xbar_ext_in_awvalid_o)
+`SEP_TB_OUT(logic, xbar_ext_in_awready_o)
+`SEP_TB_OUT(logic [31:0], xbar_ext_in_awaddr_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -550,6 +606,8 @@
 `SEP_TB_OUT(logic [1:0], lcc_demote_state_2_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_1_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_2_probe_o)
+// The packed 64-bit sep_efuse_map_lc_disable_reg_t feature-control vector, read-only XMR.
+`SEP_TB_OUT(logic [63:0], lcc_feat_ctrl_probe_o)
 // Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
 // read these by name so a packed-struct reorder cannot swap two same-case
 // bits past the golden. The flattened vector stays for a width self-test.
@@ -584,7 +642,7 @@
 // test can prove the direction: a push at the inbound aperture raises the CPU
 // PIC source and leaves this line low; a push at the outbound aperture raises
 // this line and no PIC source. One bit per mailbox channel.
-`SEP_TB_OUT(logic [sep_pkg::NUM_MAILBOXES-1:0], smc_mailbox_interrupt_o)
+`SEP_TB_OUT(logic [sep_pkg::NumMailboxes-1:0], smc_mailbox_interrupt_o)
 `SEP_TB_OUT(logic, spi_cs_n_o)
 `SEP_TB_OUT(logic, spi_sck_o)
 `SEP_TB_OUT(logic, spi_mosi_o)

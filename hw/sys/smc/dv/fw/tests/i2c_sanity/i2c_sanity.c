@@ -5,43 +5,23 @@
 
 /**
  * @file i2c_sanity.c
- * @brief SMC_I2C_001 — controller bring-up, FMT write+STOP, CMD_COMPLETE lifecycle
+ * @brief SMC_I2C_001 - controller bring-up, write with STOP, command-complete lifecycle
  *
- * I2C_0 = Controller, I2C_1 = Target (ACK peer). Evidence is AXI CSR frontdoor only.
+ * Checks I2C controller bring-up and a basic write, with I2C_0 as controller
+ * and I2C_1 as the acknowledging target: timing readback before enable, a
+ * hardware FIFO reset, an in-order three-byte write, the command-complete
+ * interrupt from set through delivery to clear, and a NACK that halts the
+ * controller. Evidence comes from register reads only, and every check
+ * prints a CHK-* token.
  *
- * Each checker is a property the DUT can fail:
- *
- *  - CHK-TIMING-BEFORE-ENABLE compares the TIMING0-4 readback field by field
- *    against the values i2c_compute_timing_from_physical() produced, not
- *    merely for "not zero".
- *  - CHK-FIFO-RESET-ENABLE proves the hardware FMT reset on a FIFO it first
- *    fills and observes non-empty, driving FIFO_CTRL directly with no repairing
- *    helper in between, and then asserts that i2c_reset_fifos() needed no
- *    software repair.
- *  - CHK-TIMEOUT-PATHS reports the iteration count each bounded wait actually
- *    consumed, and runs a wait that is *expected* to expire, so the expiry leg
- *    executes at least once per run.
- *  - The CMD_COMPLETE lifecycle "observed" leg reads the PLIC pending bit for
- *    this instance -- a downstream consumer of i2c irq_o -- across 0 -> 1,
- *    rather than recomputing INTR_STATE & INTR_ENABLE from values the firmware
- *    itself wrote.
- *  - CHK-CTRL-HALT-CONTROL provokes a NACK against an address no target
- *    answers and observes INTR_STATE.CONTROLLER_HALT go 1 then back to 0, so
- *    the CONTROLLER_HALT == 0 term in CHK-CTRL-WRITE-COMPLETE is read against
- *    a demonstrated one rather than against a possibly stuck-at-0 bit.
- *  - Every bound is sized to expire inside the enclosing cocotb budget, so a
- *    hang produces this firmware's 0xBAD______ diagnostics rather than a bare
- *    harness timeout.
- *  - There is no CHK-NONVAC: ordering a software counter against itself is
- *    true by construction on any RTL, including a dead one.
+ * Every wait is bounded to expire inside the testbench time budget, so a
+ * hang ends with this firmware's failure code, not a harness timeout.
  */
 
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "metal/atomic.h"
 #include "metal/cpu.h"
-#include "metal/lock.h"
 #include "smc_io.h"
 #include "smc_test.h"
 #include "tt_smc_interrupts.h"
@@ -51,9 +31,8 @@
 #define TARGET_IDX 1u
 #define TARGET_ADDR 0x10u
 
-/* No target answers this address: I2C_1 matches 0x10 with mask 0x7F, so the
- * address phase is NACKed and the controller halts. Used by S6 as the positive
- * control for CONTROLLER_HALT. */
+/* No target answers this address, so the address phase is NACKed and the
+ * controller halts. S6 uses it as the positive control for CONTROLLER_HALT. */
 #define UNUSED_ADDR 0x55u
 
 /* Distinct payload bytes, so the byte-for-byte compare in S3 can tell a
@@ -68,34 +47,21 @@
  * non-zero before the reset is applied. */
 #define FMT_FILL_ENTRIES 3u
 
-/* Bounded-wait budget, in poll iterations.
- *
- * Sized *below* the enclosing cocotb budget rather than above it, at the
- * corner the bench can draw: a 4 ns core clock makes a poll iteration cost
- * 0.23 us (measured in i2c_fifo_full), and a 12 ns peripheral clock stretches
- * every transfer 1.5x against the 8 ns figure. The longest legitimate wait on
- * this proof path is the 5-byte standard-mode transfer (START+addr, length
- * header, three data bytes), roughly 0.5-0.75 ms, i.e. up to ~3300 iterations
- * at the fastest core clock. 12000 iterations is ~2.7-4.1 ms, a 3.6x margin
- * over the real need at the worst corner, and still expires inside the harness
- * window. smc_i2c_sanity.py documents the other half of that arithmetic. A
- * bound of I2C_TIMEOUT_DEFAULT (200000 iterations, ~46-68 ms) would be past the
- * harness budget and make every fail-on-expiry leg below dead code, because
- * the cocotb SimTimeoutError fires first. */
+/* Bounded-wait budget, in poll iterations. It must cover the longest
+ * legitimate wait, the 5-byte standard-mode transfer (about 3300 iterations at
+ * the fastest core clock), with margin, and still expire inside the testbench
+ * time budget; I2C_TIMEOUT_DEFAULT is too long for that. */
 #define I2C_WAIT_BOUND 12000u
 
 /* Deliberate-expiry control (S5). Long enough that a genuinely pending
  * CMD_COMPLETE would be seen, short enough to cost ~0.1-0.2 ms. */
 #define IDLE_HOLD_BOUND 200u
 
-/* irq_o -> PLIC observation window. The path is i2c irq_o -> peripheral
- * interrupt -> 2-flop CDC into the SMC clock -> PLIC gateway, a handful of
- * cycles; a CSR read costs about a microsecond, so this is generous. */
+/* I2C interrupt to PLIC observation window. The interrupt reaches the PLIC
+ * within a few cycles and each poll is a CSR read, so this is generous. */
 #define PLIC_PENDING_BOUND 200u
 
-/* PLIC source for the controller instance. CONTROLLER_IDX is 0 and
- * peripheral_interrupts[25:23] carry i2c[2:0] (tt_smc_interrupts.h), so I2C_0
- * is PLIC ID 280. Keep in step if CONTROLLER_IDX changes. */
+/* PLIC source of the controller instance. Keep in step with CONTROLLER_IDX. */
 #define CONTROLLER_PLIC_ID ((uint32_t)I2C_0_INTERRUPT_ID)
 
 /* Measured values carried between steps for the evidence tokens. */
@@ -153,13 +119,10 @@ static void i2c_wr(uint32_t base, uint32_t abs_base_for_idx0, uint32_t value) {
 }
 
 /**
- * STEP S1 — program TIMING0-4 before ENABLEHOST; emit CHK-TIMING-BEFORE-ENABLE.
+ * STEP S1 - program TIMING0-4 before ENABLEHOST; emit CHK-TIMING-BEFORE-ENABLE.
  *
- * Two properties, both falsifiable: TIMING is programmed while ENABLEHOST is 0
- * (asserted before and after the program), and every TIMING field reads back
- * the value i2c_compute_timing_from_physical() computed. The expectation is
- * independent of the DUT -- it comes from the SPEC formula, not from the
- * register that was written.
+ * Requires ENABLEHOST to stay 0 across the timing program, and every timing
+ * field to read back the value i2c_compute_timing_from_physical() computed.
  */
 static void step_s1_timing_before_enable(uint32_t idx, const i2c_timing_config_t *timing) {
     uint32_t base = i2c_get_base(idx);
@@ -190,8 +153,8 @@ static void step_s1_timing_before_enable(uint32_t idx, const i2c_timing_config_t
     t3.w = i2c_rd(base, SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR(0));
     t4.w = i2c_rd(base, SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR(0));
 
-    /* Field widths mirror i2c_config_timing()'s masks (i2c_opentitan.c), which
-     * are the register widths in i2c.rdl. */
+    /* Truncate each computed value to its field width, as i2c_config_timing()
+     * does. */
     if (t0.f.THIGH != (timing->thigh & 0x1FFFu) || t0.f.TLOW != (timing->tlow & 0x1FFFu) ||
         t1.f.T_R != (timing->t_r & 0x3FFu) || t1.f.T_F != (timing->t_f & 0x1FFu) ||
         t2.f.TSU_STA != (timing->tsu_sta & 0x1FFFu) ||
@@ -240,19 +203,12 @@ static void step_s1_timing_before_enable(uint32_t idx, const i2c_timing_config_t
 }
 
 /**
- * @brief Prove FMTRST empties a FIFO that was observed non-empty.
+ * @brief Prove the hardware FMT reset empties a FIFO observed non-empty.
  *
- * Reading HOST_FIFO_STATUS after i2c_reset_fifos() and asserting zero proves
- * nothing: when the hardware reset leaves entries behind, the helper drains or
- * re-applies it before returning, so that post-condition is the helper's, not
- * the DUT's, and an already-empty FIFO reads zero even if RXRST/FMTRST did
- * nothing at all.
- *
- * So: fill the FMT FIFO while ENABLEHOST is 0 (the FSM cannot pop it -- the
- * FDATA write path is not gated by ENABLEHOST, but fmt_fifo_rready is), require
- * the level to read back non-zero, then write FIFO_CTRL.FMTRST (a singlepulse
- * field) directly and require the level to be zero. Both terms are DUT reads
- * and the first one failing is as informative as the second.
+ * Fills the FMT FIFO while the controller is disabled, so the FSM cannot pop
+ * it, and requires the level to read back. Then resets the FIFO directly, not
+ * through i2c_reset_fifos(), which repairs a reset that did not take, and
+ * requires the level to be zero.
  */
 static void prove_fmt_reset(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
@@ -263,8 +219,7 @@ static void prove_fmt_reset(uint32_t idx) {
     i2c__CTRL_t ctrl;
     uint32_t i;
 
-    /* The fill is only safe, and the level only stable, while the FSM cannot
-     * pop the FIFO. S1 left ENABLEHOST at 0; say so here rather than assume it. */
+    /* The level is only stable while the FSM cannot pop the FIFO. */
     ctrl.w = i2c_rd(base, SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0));
     if (ctrl.f.ENABLEHOST != 0) {
         fail_with(0xBAD00028, "ENABLEHOST set before the FMT reset proof");
@@ -310,7 +265,7 @@ static void prove_fmt_reset(uint32_t idx) {
 }
 
 /**
- * STEP S2 — prove the FMT reset, reset-all, thresholds, clear INTR, ENABLEHOST=1.
+ * STEP S2 - prove the FMT reset, reset-all, thresholds, clear INTR, ENABLEHOST=1.
  */
 static void step_s2_fifo_reset_enable(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
@@ -325,9 +280,8 @@ static void step_s2_fifo_reset_enable(uint32_t idx) {
 
     i2c_reset_fifos(idx, true, true, true, true);
 
-    /* The helper repairs a reset that did not take, and records that it had to.
-     * Reading those flags is how a caller tells the hardware's post-condition
-     * from the helper's (i2c_opentitan.c, g_i2c_*_reset_* declarations). */
+    /* i2c_reset_fifos() repairs a reset that did not take and records it in
+     * these flags; a repair means the hardware reset failed. */
     if (g_i2c_acq_reset_needed_drain != 0 || g_i2c_rx_reset_needed_drain != 0 ||
         g_i2c_fmt_reset_needed_retry != 0 || g_i2c_tx_reset_needed_retry != 0) {
         simputs("  ERROR: reset-all needed software repair acq=");
@@ -425,14 +379,12 @@ static void init_target_peer(const i2c_timing_config_t *timing) {
 }
 
 /**
- * STEP S3 — n-byte write; prove the controller consumed the STOP-flagged entry.
+ * STEP S3 - n-byte write; prove the controller consumed the STOP-flagged entry.
  *
- * The token deliberately does not claim a STOP was observed on the target side.
- * i2c_target_receive_transaction() returns as soon as the length header's worth
- * of data bytes has arrived, before the ACQ STOP entry is read, so saw_stop is
- * never set on this path. What is proven is HOSTIDLE plus
- * STATUS.FMTEMPTY == 1: the controller consumed every FDATA entry including the
- * STOP-flagged one.
+ * HOSTIDLE with an empty FMT FIFO proves the controller consumed every FDATA
+ * entry, including the STOP-flagged one. The target side does not prove a
+ * STOP: i2c_target_receive_transaction() returns once the header's byte count
+ * has arrived, before the STOP entry is read.
  */
 static void step_s3_write_stop(void) {
     uint32_t base = i2c_get_base(CONTROLLER_IDX);
@@ -547,7 +499,7 @@ static void step_s3_write_stop(void) {
 }
 
 /**
- * STEP S4 + S5 — bounded CMD_COMPLETE wait, lifecycle, W1C clear.
+ * STEP S4 + S5 - bounded CMD_COMPLETE wait, lifecycle, W1C clear.
  */
 static void step_s4_s5_cmd_complete_life(void) {
     uint32_t base = i2c_get_base(CONTROLLER_IDX);
@@ -591,10 +543,8 @@ static void step_s4_s5_cmd_complete_life(void) {
     }
     simputs("  lifecycle set: INTR_STATE.CMD_COMPLETE=1 after transfer\n");
 
-    /* observed — the interrupt as a downstream consumer sees it. The PLIC
-     * pending bit is the first software-visible point past irq_o; recomputing
-     * INTR_ENABLE.CMD_COMPLETE && INTR_STATE.CMD_COMPLETE from values the
-     * firmware itself wrote could not fail for any interrupt-delivery defect. */
+    /* observed: the PLIC pending bit is the first software-visible point past
+     * the I2C interrupt output. */
     for (i = 0; i < PLIC_PENDING_BOUND; i++) {
         g_plic_pending_set = plic_pending_bit(CONTROLLER_PLIC_ID);
         if (g_plic_pending_set != 0u) {
@@ -686,18 +636,15 @@ static void step_s4_s5_cmd_complete_life(void) {
 }
 
 /**
- * STEP S6 — positive control for CONTROLLER_HALT.
+ * STEP S6 - positive control for CONTROLLER_HALT.
  *
- * S3 asserts INTR_STATE.CONTROLLER_HALT == 0. On its own that is
- * indistinguishable from an unwired or stuck-at-0 bit, so this step
- * makes the same bit go to 1: a START + address for an address no target on
- * this bus answers is NACKed, which sets CONTROLLER_EVENTS.NACK and halts the
- * FSM (i2c_core.sv:395-402). Clearing CONTROLLER_EVENTS clears the halt --
- * INTR_STATE.CONTROLLER_HALT is sw=r/hw=w in i2c.rdl, so it follows the events
- * register rather than being W1C.
+ * S3 requires CONTROLLER_HALT to be 0, which a stuck-at-0 bit would also
+ * pass, so this step makes the same bit go to 1: an address no target answers
+ * is NACKed, which sets the NACK controller event and halts the FSM.
+ * CONTROLLER_HALT follows the controller events register and is not
+ * write-1-to-clear, so clearing the events must clear it.
  *
- * Runs last on purpose: it leaves the controller needing recovery, and nothing
- * after it depends on the bus.
+ * Runs last: it leaves the controller needing recovery.
  */
 static void step_s6_controller_halt_control(void) {
     uint32_t base = i2c_get_base(CONTROLLER_IDX);
@@ -786,7 +733,7 @@ static void step_s6_controller_halt_control(void) {
 
 int main(void) {
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};
@@ -828,11 +775,6 @@ int main(void) {
     simputs("\n## SMC_I2C_001 evidence tokens emitted ##\n");
     write_scratch(0, TEST_PASS);
     test_pass(0);
-
-    while (true) {
-        __asm__("wfi");
-    }
-    return 0;
 }
 
 int other_main(int hartid) {

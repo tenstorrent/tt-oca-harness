@@ -2,18 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA inline SHA-256 firmware-boot test (PyUVM).
 
-OSS port of the reference suite ``sep_dma_hash_test``. Boots the VeeR EL2 core and runs the
-dma_hash firmware, which programs the Secure DMA to copy a buffer with the
-inline SHA-256 engine, waits for the DMA-done interrupt through the VeeR PIC
-(WFI + ISR), and self-checks the hardware digest against a software SHA-256, the
-copied data, and the DMA error code. Proves DMA plus inline SHA-256, and
-DMA-done IRQ through the PIC to a CPU ISR.
-
-Like the reference test this is firmware-self-checking: the firmware returns its
-error count and start.S emits the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on
-the 0x8000_0000 mailbox, which the boot scoreboard gates on (so a digest/data
-mismatch inside the firmware surfaces as fw_pass=False). The scoreboard also
-checks the firmware banner and that the core actually executed out of ICCM.
+The dma_hash firmware programs the Secure DMA to copy a buffer through the inline SHA-256 engine,
+waits for the DMA-done interrupt through the VeeR PIC (WFI + ISR), and checks the hardware digest
+against a software SHA-256, the copied data and the DMA error code. It returns its error count and
+start.S emits PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) on the 0x8000_0000 mailbox, which the boot
+scoreboard gates on with the banner and ICCM-execution checks.
 """
 
 from __future__ import annotations
@@ -75,14 +68,22 @@ class sep_dma_hash_test(sep_base_test):
         # each leg's PASS line -- an image built before those legs existed
         # reaches the PASS magic with three contracts never exercised.
         console = self.sb.console_text()
-        for needle, what in (
-            ("PASS: SHA-384 digest matches", "the SHA-384 FIPS 180-4 vector"),
-            ("PASS: multi-chunk SHA-256 digest matches", "the multi-chunk SHA-256 pass"),
-            ("under DIGEST_SWAP=0 are the byte-reverse", "the DIGEST_SWAP=0 comparison"),
+        for needle, chk, what in (
+            ("PASS: SHA-384 digest matches", "CHK-SHA384", "the SHA-384 FIPS 180-4 vector"),
+            (
+                "PASS: multi-chunk SHA-256 digest matches",
+                "CHK-MULTICHUNK",
+                "the multi-chunk SHA-256 pass",
+            ),
+            (
+                "under DIGEST_SWAP=0 are the byte-reverse",
+                "CHK-DIGEST-SWAP",
+                "the DIGEST_SWAP=0 comparison",
+            ),
         ):
             assert needle in console, (
-                f"firmware console has no {needle!r} line, so {what} did not run "
-                f"or did not pass. Console was:\n{console}"
+                f"{chk} FAIL: firmware console has no {needle!r} line, so {what} did "
+                f"not run or did not pass. Console was:\n{console}"
             )
         self.logger.info(
             "CHK-SHA384 / CHK-MULTICHUNK / CHK-DIGEST-SWAP PASS: all three hash "

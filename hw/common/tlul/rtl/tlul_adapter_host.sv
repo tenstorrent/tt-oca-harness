@@ -15,15 +15,15 @@
 // The outgoing address is always word aligned and the access size is always the TL word
 // size (TL_DW). The A-channel opcode and mask follow the access:
 //
-// - Full-lane writes use PutFullData.
-// - Other writes use PutPartialData, with the mask generated from be_i.
+// - Full-lane writes use PUT_FULL_DATA.
+// - Other writes use PUT_PARTIAL_DATA, with the mask generated from be_i.
 // - Reads enable every lane in the mask as required by TL-UL.
 //
 // Integrity handling is optional:
 //
-// - When EnableDataIntgGen is set, compute data integrity on host write data; otherwise
+// - When ENABLE_DATA_INTG_GEN is set, compute data integrity on host write data; otherwise
 //   send wdata_intg_i.
-// - Response integrity is always checked. When EnableRspDataIntgCheck is set, also check
+// - Response integrity is always checked. When ENABLE_RSP_DATA_INTG_CHECK is set, also check
 //   integrity on returned read data.
 
 module tlul_adapter_host
@@ -33,8 +33,8 @@ module tlul_adapter_host
   import prim_mubi_pkg::mubi4_t;
 #(
   parameter int unsigned MAX_REQS = 2,              // Maximum outstanding host requests.
-  parameter bit EnableDataIntgGen = 0,              // Compute data integrity on write data.
-  parameter bit EnableRspDataIntgCheck = 0          // Check integrity on returned read data.
+  parameter bit ENABLE_DATA_INTG_GEN = 0,           // Compute data integrity on write data.
+  parameter bit ENABLE_RSP_DATA_INTG_CHECK = 0      // Check integrity on returned read data.
 ) (
   input clk_i,                                      // System clock.
   input rst_ni,                                     // Active-low reset.
@@ -44,15 +44,15 @@ module tlul_adapter_host
   input  logic [top_pkg::TL_AW-1:0]  addr_i,        // Host byte address; word-aligned on tl_o.
   input  logic                       we_i,          // Host write enable.
   input  logic [top_pkg::TL_DW-1:0]  wdata_i,       // Host write data.
-  input  logic [DataIntgWidth-1:0]   wdata_intg_i,  // Integrity bits sent with wdata_i when
-                                                    // EnableDataIntgGen is clear.
+  input  logic [DATA_INTG_WIDTH-1:0] wdata_intg_i,  // Integrity bits sent with wdata_i when
+                                                    // ENABLE_DATA_INTG_GEN is clear.
   input  logic [top_pkg::TL_DBW-1:0] be_i,          // Host byte enables; form the TL-UL mask.
   input  mubi4_t                     instr_type_i,  // MuBi4 instruction-type user bit.
-  input  logic [RsvdWidth-1:0]       user_rsvd_i,   // Reserved A-channel user bits.
+  input  logic [RSVD_WIDTH-1:0]      user_rsvd_i,   // Reserved A-channel user bits.
 
   output logic                       valid_o,       // Host response valid.
   output logic [top_pkg::TL_DW-1:0]  rdata_o,       // Host read data.
-  output logic [DataIntgWidth-1:0]   rdata_intg_o,  // Integrity bits with rdata_o.
+  output logic [DATA_INTG_WIDTH-1:0] rdata_intg_o,  // Integrity bits with rdata_o.
   output logic                       err_o,         // d_error or an integrity failure on this
                                                     // response.
   output logic                       intg_err_o,    // Integrity failure; sticky until reset.
@@ -99,15 +99,15 @@ module tlul_adapter_host
     assign tl_source = top_pkg::TL_AIW'(source_q);
   end
 
-  // For TL-UL Get opcode all active bytes must have their mask bit set, so all reads get all tl_be
+  // For TL-UL GET opcode all active bytes must have their mask bit set, so all reads get all tl_be
   // bits set. For writes the supplied be_i is used as the mask.
   assign tl_be = ~we_i ? {top_pkg::TL_DBW{1'b1}} : be_i;
 
   assign tl_out = '{
     a_valid:   req_i,
-    a_opcode:  (~we_i) ? Get           :
-               (&be_i) ? PutFullData   :
-                         PutPartialData,
+    a_opcode:  (~we_i) ? GET           :
+               (&be_i) ? PUT_FULL_DATA   :
+                         PUT_PARTIAL_DATA,
     a_param:   3'h0,
     a_size:    top_pkg::TL_SZW'(WordSize),
     a_mask:    tl_be,
@@ -118,7 +118,7 @@ module tlul_adapter_host
     d_ready:   1'b1
   };
 
-  tlul_cmd_intg_gen #(.EnableDataIntgGen (EnableDataIntgGen)) u_cmd_intg_gen (
+  tlul_cmd_intg_gen #(.ENABLE_DATA_INTG_GEN (ENABLE_DATA_INTG_GEN)) u_cmd_intg_gen (
     .tl_i(tl_out),
     .tl_o(tl_o)
   );
@@ -131,7 +131,7 @@ module tlul_adapter_host
 
   logic intg_err;
   tlul_rsp_intg_chk #(
-    .EnableRspDataIntgCheck(EnableRspDataIntgCheck)
+    .ENABLE_RSP_DATA_INTG_CHECK(ENABLE_RSP_DATA_INTG_CHECK)
   ) u_rsp_chk (
     .tl_i,
     .err_o(intg_err)

@@ -15,7 +15,8 @@
 #   leg 1  store to the ABR wrapper key aperture
 #   leg 2  load from the ABR wrapper key aperture
 #   leg 3  load from KMCSR base + KMCSR size, the first address after the
-#          generated KMCSR register block and inside its 4 KB page
+#          generated KMCSR register block and inside its 2 KB (0x800) decode
+#          window (hw/ip/key_manager/regs/key_manager.rdl)
 #
 # The host grades every code. The image publishes them in KM SRAM word0 (the
 # km_sram_word0_o probe) and blocks on an inbound mailbox word before each
@@ -36,10 +37,9 @@
     .equ MBOX_READ_DATA,   (KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
     .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
 
-    # The KM SRAM is a memory, not a register block, so the generated register
-    # header carries no symbol for its base. km_csr.rdl documents SRAM lock
-    # region 0 as 0x8000-0x83FF, which is where the memory starts.
-    .equ KM_SRAM_BASE, 0x00008000
+    # KM SRAM base from the generated map. km_csr.rdl SRAM lock region 0
+    # starts at this base.
+    .equ KM_SRAM_BASE, KEY_MANAGER_SRAM_BASE_ADDR
 
     .equ SLVERR_BIT,   KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm
     .equ DECERR_BIT,   KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bm
@@ -122,7 +122,7 @@ _start:
     # Block until the inbound mailbox holds a word, then consume it.
 wait_mbox:
     lw    x6, MBOX_STATUS(x1)
-    andi  x6, x6, 0x1              # inbound_empty
+    andi  x6, x6, KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bm
     bnez  x6, wait_mbox
     lw    x6, MBOX_READ_DATA(x1)
     jr    x13

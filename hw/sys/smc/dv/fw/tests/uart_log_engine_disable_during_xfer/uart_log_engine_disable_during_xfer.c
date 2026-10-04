@@ -1,23 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// smc_uart_log_engine_disable_during_xfer_test
-//
-// Clearing CTRL.EN mid-transfer halts the engine and leaves the wrapper
-// usable. The engine writes into the UART with MCR.LOOP set, so every byte it
-// moves comes back through RBR and the firmware can count what was moved:
-//   * Scenario A triggers a 32-byte entry -- the UART TX FIFO holds 32, so the
-//     writer is still moving bytes when CTRL.EN is cleared one register access
-//     later -- then drains RBR as the bytes arrive and requires at least one
-//     and fewer than 32, no further byte once the FIFOs are idle, and
-//     INTR_STATUS = 0. A re-trigger
-//     of a 16-byte entry must then deliver exactly 16 bytes in order.
-//   * Scenario C repeats the abort with the fetch FSM past its first beat and
-//     pins the same three things, then the same recovery.
-//
-// Per RDL "CTRL.EN=0 resets all FSMs, flops, and FIFOs"; the value LOG_CTRL[i]
-// reads under EN=0 is not specified, so LOG_CTRL[0] is logged at several points
-// and its expected value is not pinned.
+/**
+ * @brief UART Log Engine Disable During Transfer
+ *
+ * Verifies that disabling the log engine in the middle of a transfer halts it
+ * and leaves the engine usable. The engine writes into the UART in internal
+ * loopback, so the firmware counts the bytes it moved. Each abort must move at
+ * least one byte and fewer than the entry holds, all from the slot, and none
+ * once the UART is idle; a following 16-byte entry must then deliver exactly
+ * its bytes in order without an error. The first abort lands one register
+ * access after the trigger and must not raise an error; the second lands after
+ * a short spin, and its error status is only logged. The entry length read
+ * while the engine is disabled is not specified, so it is only logged.
+ */
 
 #include <stdint.h>
 
@@ -72,11 +68,11 @@
 #define UART_LSR_DR 0x1u
 #define UART_LSR_TEMT 0x40u
 
-#define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u) // SRAM scratch area
-#define LOG_REGION_SIZE 0x100u // 256 bytes (slot 0 covers 256/16 = 16 bytes)
+#define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
+#define LOG_REGION_SIZE 0x100u // 16-byte slots
 // The abort scenarios use a 32-byte slot: as deep as the UART TX FIFO, so the
 // writer cannot finish before the disable one register access later lands.
-#define ABORT_REGION_SIZE 0x200u // 512 bytes (slot 0 covers 512/16 = 32 bytes)
+#define ABORT_REGION_SIZE 0x200u // 32-byte slots
 #define ABORT_ENTRY_BYTES 32u
 #define RETRIGGER_ENTRY_BYTES 16u
 
@@ -151,18 +147,14 @@ static void check_aborted_transfer(const char *tag, uint8_t (*expect)(uint32_t))
 // back, re-enable, trigger a 16-byte entry and require exactly those 16 bytes.
 static void check_retrigger_delivers(const char *tag, uint8_t (*expect)(uint32_t)) {
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, LOG_REGION_SIZE);
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u); // W1C any stale bits
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u); // clear stale error status
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, RETRIGGER_ENTRY_BYTES);
     {
-        /* Poll bound, in LOG_CTRL reads. The engine writes one byte per UART
-         * byte time, about 34 us with the bench's 10 ns peripheral clock, so a
-         * 16-byte entry takes about 0.55 ms to hwclr; a LOG_CTRL read crosses
-         * into the peripheral domain and costs about 2.7 us with the 4 ns core
-         * clock. 200 reads is 0.54 ms, no margin at all, and the leaf failed at
-         * that corner on both simulators; 500 reads is 1.35 ms, a 2.5x margin,
-         * and still expires inside the harness budget. */
-        uint32_t timeout = 500u;
+        /* Poll bound: a 16-byte entry takes ~2600 peripheral clocks at the
+         * fastest divisor, about 650 register reads at the 1.25 ns core clock;
+         * the bound must expire before the harness timeout. */
+        uint32_t timeout = 4000u;
         while (timeout > 0u && (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF) & 0xFFFFu) != 0u) {
             timeout--;
         }
@@ -192,53 +184,33 @@ static void check_retrigger_delivers(const char *tag, uint8_t (*expect)(uint32_t
 int main(void) {
     info_msg_s(0, "smc_uart_log_engine_disable_during_xfer_test start");
 
-    //--------------------------------------------------------------------------
-    // Pre-load SRAM with a known pattern. Per slot math, entry 0 starts at
-    // LOG_REGION_ADDR + (LOG_REGION_SIZE / 16) * 0 = LOG_REGION_ADDR.
-    //--------------------------------------------------------------------------
+    // Entry 0's slot starts at the region base
     volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
     for (uint32_t i = 0; i < ABORT_ENTRY_BYTES; i++) {
         buf[i] = abort_pattern_a(i);
     }
 
-    // Disable engine + UART CSR access path entirely before configuring
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    write_reg(WRAP0_CTRL_REG, 1u); // pad-mux enable so UART is reachable
+    write_reg(WRAP0_CTRL_REG, 1u);
 
-    // Engine to line-loopback through UART RBR/THR: set LOG_WRITE_ADDR to the
-    // UART RBR/THR offset and set MCR.LINE_LOOPBACK so TX feeds back into RX.
-    /* Configure the UART before pointing the engine at it.
-     *
-     * This test wrote MCR and nothing else. Its two passing siblings
-     * (uart_log_engine_single_entry, uart_log_engine_region_size) program the
-     * divisor and line control first, and skipping that is not cosmetic here:
-     * LOG_WRITE_ADDR is set to UART offset 0 below, which is THR only while
-     * DLAB=0 -- with DLAB left set, all sixteen log bytes land in the divisor
-     * latch instead of the transmit register. The line is also left at whatever
-     * word length and rate reset produced.
-     */
-    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u); // DLAB=1
-    write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u); // DLL = 1 (fastest)
-    write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u); // DLM = 0
-    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u); // DLAB=0, 8-bit words
-    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u); // FCR: FIFOs on
-    /* MCR.LOOP (bit 4), not LINE_LOOPBACK (bit 5).
-     * uart_16550_main.rdl puts LOOP at [4] and LINE_LOOPBACK at [5]; only LOOP
-     * is the internal TX->RX loop this test needs. LINE_LOOPBACK drives tx_o
-     * from rx_i and pins rx_in to idle, so every RBR drain below was reading a
-     * permanently empty FIFO. The passing sibling uart_log_engine_single_entry
-     * uses 0x10 for the same purpose. */
-    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u); // MCR.LOOP = 1
+    /* UART at the fastest rate with 8-bit words, FIFOs and internal loopback,
+     * so every byte the engine writes comes back on the receive side. The
+     * engine writes to UART offset 0, which is the transmit register only
+     * while divisor latch access is off, so the UART is set up first. */
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u);
+    write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u);
+    write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u);
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u);
+    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u);
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u);
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, ABORT_REGION_SIZE);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
     write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
-    /* Enable the two error interrupts so a latched error would also reach
-     * irq_o. INTR_STATUS itself latches whether or not the interrupt is enabled
-     * (INTR_ENABLE masks the output only), so the INTR_STATUS checks below are
-     * live either way; enabling keeps the line as a second witness. */
+    /* Error status latches whether or not its interrupt is enabled; enabling
+     * also drives the interrupt line on an error. */
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0x11u);
-    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u); // engine enable
+    write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
 
     //--------------------------------------------------------------------------
     // SCENARIO A: trigger entry 0 with the 32-byte slot and disable one register
@@ -247,18 +219,15 @@ int main(void) {
     info_msg_s(0, "scenario A: disable mid-transfer");
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, ABORT_ENTRY_BYTES);
 
-    // Snapshot LOG_CTRL[0] right after trigger
     uint32_t snap1 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF);
     info_msg_hex32_s(0, "LOG_CTRL[0] post-trigger=", snap1);
 
-    // Disable engine mid-transfer
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
 
-    // Snapshot LOG_CTRL[0] after disable
     uint32_t snap2 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF);
     info_msg_hex32_s(0, "LOG_CTRL[0] post-disable=", snap2);
 
-    // INTR_STATUS must be 0 — disable should not raise errors
+    // Disabling must not raise an error
     {
         uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u;
         if (s != 0u) {
@@ -277,50 +246,30 @@ int main(void) {
     check_retrigger_delivers("scenario A re-trigger", abort_pattern_a);
 
     //--------------------------------------------------------------------------
-    // SCENARIO B: long-burst log entry let to complete fully — exercises
-    // log_fetch FSM ST_LOG_FETCH_REQ → ST_LOG_FETCH_WAIT → ST_LOG_FETCH_REQ
-    // cycles (multi-cycle fetch) and log_write FSM REQ → WAIT → REQ similarly.
-    // Use the full slot 0 size = LOG_REGION_SIZE/16 = 16 bytes — but multiple
-    // entries in quick succession trigger the WAIT→REQ multi-cycle path
-    // through arbitration.
+    // SCENARIO B: four entries triggered together must all complete. The
+    // looped-back bytes are discarded unchecked.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario B: multi-entry simultaneous trigger");
 
-/* From the generated map, not a hand-written base: the LOG_CTRL array starts
- * at 0x40 (LOG_ENGINE_BASE = 0xC0006200, LOG_CTRL[j] = 0xC0006240 + j*4) and
- * offset 0 is the CTRL register, so a hand-written `(i)*4u` would write the
- * length into CTRL -- clearing EN -- and then poll CTRL for a zero that never
- * comes. */
 #define LE_LOG_CTRL_I_OFF(i) \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, (i)) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 
-    // Pre-load all 16 slots' worth of pattern bytes
+    // Scenario C's abort reads this pattern too
     for (uint32_t i = 0; i < LOG_REGION_SIZE; i++) {
         buf[i] = (uint8_t)(0xC0u + (i & 0x3Fu));
     }
 
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
 
-    // Trigger entries 0,1,2,3 simultaneously — log_engine round-robins through
-    // them, exercising the REQ→WAIT→REQ FSM cycles in both fetch + write
-    // domains plus log_index arbitration.
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(0), 16u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(1), 16u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(2), 16u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(3), 16u);
 
-    // Let all 4 transfers complete (no disable this round) — captures the
-    // natural WAIT → REQ cycles inside each entry and the
-    // multi-entry round-robin handoff.
     {
-        /* Bound sized to the harness, not to a round number.
-         *
-         * 500000 polls is ~575 ms at the measured ~115 cycles/iteration, against
-         * a ~4 ms harness bound -- so the FAIL diagnostic below could never
-         * reach the log and the loop only ever ended by the run being killed.
-         * The four entries completed in 174 iterations when observed; 4000 is
-         * ~23x that and still finishes inside the harness bound. */
+        /* Poll bound: far longer than the four entries take to complete, and
+         * it must expire before the harness timeout. */
         uint32_t timeout = 4000u;
         while (timeout > 0u) {
             uint32_t c0 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(0)) & 0xFFFFu;
@@ -335,36 +284,29 @@ int main(void) {
             test_fail(0);
         }
     }
-    // Drain whatever landed in UART RBR
+    // Discard the looped-back bytes
     for (int i = 0; i < 64; i++) {
         (void)read_reg(WRAP0_UART_BASE + UART_RBR_OFF);
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO C: abort mid-WAIT — trigger a slot, wait long enough for the
-    // fetch FSM to reach the WAIT state (at least one beat fetched), then
-    // disable. Covers ST_LOG_FETCH_WAIT → ST_LOG_FETCH_IDLE and the
-    // analogous log_write WAIT → IDLE drain transitions.
+    // SCENARIO C: disable a 32-byte entry a short time after it starts, then
+    // require the same halt and recovery as scenario A.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario C: abort while FSM is in WAIT");
 
-    // Reset state cleanly and give the abort the 32-byte slot again. The slot
-    // reads scenario B's fill, which stays in place for the bench's own compare.
+    // Give the abort the 32-byte slot again; it now holds scenario B's pattern
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, ABORT_REGION_SIZE);
 
-    // Re-enable + trigger the 32-byte entry
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, ABORT_ENTRY_BYTES);
 
-    // Spin a few cycles so the FSM advances past REQ into WAIT.
-    // ~50 cycles should be enough at SMC clock for the first AXI read to
-    // land and the fetch FSM to transition.
-    for (volatile int i = 0; i < 50; i++) { /* settle */
+    // Short spin intended to let the first fetch go out before the disable
+    for (volatile int i = 0; i < 50; i++) {
     }
 
-    // Now disable — this catches the FSM in WAIT and forces WAIT → IDLE
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
 
     {
@@ -380,9 +322,7 @@ int main(void) {
     check_retrigger_delivers("scenario C re-trigger", abort_pattern_c);
 
     //--------------------------------------------------------------------------
-    // SCENARIO D: alternate replica wrap (UART_LOG_ENGINE_WRAP_1) — drives the
-    // gen_uart_log_engine_wraps[1] replica's log_fetch_fsm IDLE → REQ → ... →
-    // IDLE path.
+    // SCENARIO D: UART log engine wrapper 1 runs one entry to completion
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario D: drive replica[1] log_engine");
 
@@ -399,16 +339,13 @@ int main(void) {
 #define WRAP1_UART_MCR UART_MCR_OFF
 
     write_reg(WRAP1_CTRL_REG, 1u);
-    /* Replica 1's UART needs the same configuration as replica 0 (see the
-     * scenario-A setup): LOG_WRITE_ADDR below points at UART offset 0, which is
-     * THR only while DLAB=0. Only MCR was written here, so the log bytes went to
-     * the divisor latch and the transfer never completed. */
-    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x80u);   // DLAB=1
-    write_reg(WRAP1_UART_BASE + UART_RBR_OFF, 0x01u);   // DLL = 1
-    write_reg(WRAP1_UART_BASE + UART_IER_OFF, 0x00u);   // DLM = 0
-    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x03u);   // DLAB=0, 8-bit
-    write_reg(WRAP1_UART_BASE + UART_IIR_OFF, 0x01u);   // FCR: FIFOs on
-    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0x10u); // MCR.LOOP = 1 (see wrap 0)
+    // Same UART setup as wrapper 0, for the same reason
+    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x80u);
+    write_reg(WRAP1_UART_BASE + UART_RBR_OFF, 0x01u);
+    write_reg(WRAP1_UART_BASE + UART_IER_OFF, 0x00u);
+    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x03u);
+    write_reg(WRAP1_UART_BASE + UART_IIR_OFF, 0x01u);
+    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0x10u);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_SIZE, LOG_REGION_SIZE);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR, LOG_BUFFER_BASE);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR + 4, 0u);
@@ -416,16 +353,11 @@ int main(void) {
     write_reg(WRAP1_LE_BASE + WRAP1_LE_CTRL_OFF, 1u);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0, 16u);
 
-    // Let replica[1] complete naturally
     {
-        /* Poll bound, in LOG_CTRL reads. The engine writes one byte per UART
-         * byte time, about 34 us with the bench's 10 ns peripheral clock, so a
-         * 16-byte entry takes about 0.55 ms to hwclr; a LOG_CTRL read crosses
-         * into the peripheral domain and costs about 2.7 us with the 4 ns core
-         * clock. 200 reads is 0.54 ms, no margin at all, and the leaf failed at
-         * that corner on both simulators; 500 reads is 1.35 ms, a 2.5x margin,
-         * and still expires inside the harness budget. */
-        uint32_t timeout = 500u;
+        /* Poll bound: a 16-byte entry takes ~2600 peripheral clocks at the
+         * fastest divisor, about 650 register reads at the 1.25 ns core clock;
+         * the bound must expire before the harness timeout. */
+        uint32_t timeout = 4000u;
         while (timeout > 0u && (read_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0) & 0xFFFFu) != 0u) {
             timeout--;
         }
@@ -441,12 +373,9 @@ int main(void) {
 
     // Cleanup
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0u); // clear LINE_LOOPBACK
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0u);
     write_reg(WRAP0_CTRL_REG, 0u);
 
     info_msg_s(0, "smc_uart_log_engine_disable_during_xfer_test done");
     test_pass(0);
-
-    while (1) __asm__("wfi");
-    return 0;
 }

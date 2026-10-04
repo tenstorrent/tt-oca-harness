@@ -27,12 +27,41 @@ yosys write_rtlil "$tmp_dir/${proj_name}_elaborated.il"
 # Basic cleanup permits a second structural check without area/timing mapping.
 yosys opt_expr
 yosys opt_clean
-yosys select -assert-none {t:$dlatch} {t:$adlatch} {t:$dlatchsr} {t:$_DLATCH*}
+# Modules whose latches are intentional. Elaboration uniquifies instances as
+# <module>$<hierarchy>, so both spellings are matched. Latches in any other
+# module fail the check.
+set latch_allowed_modules {
+    prim_clock_gating
+    efuse_token_digest_sha256
+}
+set latch_select_expr {t:$dlatch t:$adlatch %u t:$dlatchsr %u t:$_DLATCH* %u}
+set first_allowed 1
+foreach mod $latch_allowed_modules {
+    foreach pattern [list "${mod}/*" "${mod}\$*/*"] {
+        append latch_select_expr " $pattern"
+        if { !$first_allowed } {
+            append latch_select_expr " %u"
+        }
+        set first_allowed 0
+    }
+}
+append latch_select_expr " %d"
+yosys select -assert-none {*}$latch_select_expr
 yosys select -assert-none a:blackbox
+# The entropy-source ring oscillators are intentional combinational loops: the
+# RO feedback path is the physical TRNG noise source, not a design error. Keep
+# the module unflattened so the post-flatten structural check can waive it by
+# scope. Elaboration uniquifies instances as <module>$<hierarchy>, so both
+# spellings are matched.
+yosys setattr -mod -set keep_hierarchy 1 \
+    entropy_ring_oscillator {entropy_ring_oscillator$*}
 yosys flatten
 yosys opt_expr
 yosys opt_clean
-yosys tee -o "$rep_dir/${proj_name}_readiness.rpt" check -assert
+# Check the flattened top only: every module without keep_hierarchy collapses
+# into it, so this still asserts on any real loop while leaving the retained
+# entropy_ring_oscillator loops (above) waived.
+yosys tee -o "$rep_dir/${proj_name}_readiness.rpt" check -assert $top_design
 yosys tee -o "$rep_dir/${proj_name}_readiness_stat.rpt" stat
 yosys write_rtlil "$out_dir/${proj_name}_readiness.il"
 puts "STRUCTURAL_READINESS_PASS: $top_design (frontend warnings require review)"

@@ -43,7 +43,7 @@ endif::backend-html5[]
 
 |`test_en_i` |`logic` |Input |1 |DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs. |Test controller |1'b0
 |`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller |1'b1
-|`ext_boot_seq_done_i` |`logic` |Input |1 |External boot sequence completion (memory repair and shadow register override done); gates reset release. |External boot/repair controller |1'b1
+|`ext_boot_seq_done_i` |`logic` |Input |1 |Boot sequence completion qualified to `clk_i` (memory repair and shadow register override done); gates reset release. In SMU, driven from SMC-qualified logic. In standalone SEP, synchronize and qualify before this port. |SMC-qualified boot done or external synchronizer |1'b1
 
 |`dmi_core_enable_i` |`logic` |Input |1 |Enables DMI accesses to the core debug module (addresses 0x00-0x4F). Tied high at SMU; TAP access is already lifecycle-gated. |Debug infrastructure |1'b1
 |`dmi_uncore_enable_i` |`logic` |Input |1 |Enables DMI accesses to an external uncore aperture (addresses 0x50+). Unused: the core debug module AXI master already reaches the SEP fabric. |Debug infrastructure |Tie to '0 if unused
@@ -105,7 +105,7 @@ endif::backend-html5[]
 |`sep_io_spi_req_o` |`sep_io_spi_req_t` |Output |- |SPI host controller request. |SPI pad interface |N/A
 |`sep_io_spi_rsp_i` |`sep_io_spi_rsp_t` |Input |- |SPI host controller response. |SPI pad interface |N/A
 
-|`lc_state_o` |`logic` |Output |`[2*LC_STATE_BIT_WIDTH-1:0]` |Lifecycle state output (differentially encoded). Routed to SMC and the SMU external output; debug-disable control to DTP is via `dbg_disable_o`. |SMC, SMU external |N/A
+|`lc_state_o` |`logic` |Output |`[2*LcStateBitWidth-1:0]` |Lifecycle state output (differentially encoded). Routed to SMC and the SMU external output; debug-disable control to DTP is via `dbg_disable_o`. |SMC, SMU external |N/A
 |`dbg_disable_o` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |Output |- |Typed debug-disable struct routed by SMU to DTP debug-disable control. |SMU → DTP |N/A
 |`sep_fuse_dft_disable_o` |`logic` |Output |1 |Gate for the DFT-inserted access path into the SEP OTP, composed as Case 3 AND `SEP_FUSE_DBG`. Unconnected in the functional design; an adopter's DFT insertion connects it. |Adopter DFT insertion |Leave open if no path is inserted
 |`smc_fuse_dft_disable_o` |`logic` |Output |1 |Gate for the DFT-inserted access path into the SMC OTP, composed as Case 2 AND `SMC_FUSE_DBG`. Unconnected in the functional design; an adopter's DFT insertion connects it. |Adopter DFT insertion |Leave open if no path is inserted
@@ -113,7 +113,7 @@ endif::backend-html5[]
 |`security_disable_o` |`logic` |Output |1 |Security disable output. |SMU |N/A
 |`secure_tm_o` |`logic` |Output |1 |Secure test mode output. |SMU |N/A
 
-|`smc_mailbox_interrupt_o` |`logic` |Output |`[NUM_MAILBOXES-1:0]` |Mailbox interrupt outputs to SMC. |SMC interrupt aggregator |N/A
+|`smc_mailbox_interrupt_o` |`logic` |Output |`[NumMailboxes-1:0]` |Mailbox interrupt outputs to SMC. |SMC interrupt aggregator |N/A
 
 |`smc_fuse_sense_done_i` |`logic` |Input |1 |SMC fuse sense done indication. |SMC `fuse_sense_done_o` |N/A
 |`sep_fuse_sense_done_o` |`logic` |Output |1 |SEP fuse sense done output. |System integration |N/A

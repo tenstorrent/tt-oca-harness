@@ -100,10 +100,7 @@ class _EvidenceFilter(logging.Filter):
     # `own`, which is what a floor grades. Empty: bring-up logs no named CHK.
     BASE_IDS: frozenset[str] = frozenset()
 
-    # Empty: firmware-console leaves emit CHK-FW-CONSOLE from poll_boot after
-    # the mailbox PASS magic is observed. That ID is intentionally not in
-    # BASE_IDS, so it counts as the leaf's own evidence. This list may only
-    # shrink. A new exemption is a logging gap, not a verification gap.
+    # Leaves allowed to pass with no own CHK record. A new entry hides a logging gap.
     NO_OWN_EVIDENCE: dict[str, str] = {}
 
     def __init__(self) -> None:
@@ -329,6 +326,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
         self._set_if_exists(dut, "token_digest_test_en_inject_i", 0)
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
+        self._set_if_exists(dut, "hmac_fifo_drain_stall_i", 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
         # bus. Called before start_clocks. Env-built tests drive the same idle.
@@ -343,7 +341,8 @@ class sep_base_test(uvm_test):
         # reset with its request channels idle. It is a live instance in every
         # build, so leaving its inputs unresolved would drive X into its
         # ASSERT_KNOWN checks in tests that never use it.
-        # sep_drbg_axil_adapter_port_arbitration_test releases it itself.
+        # sep_drbg_axil_adapter_port_arbitration_test and
+        # sep_drbg_axil_adapter_refusal_test release it themselves.
         self._set_if_exists(dut, "tbadp_rst_ni_i", 0)
         for pin in ("aw_valid", "w_valid", "ar_valid"):
             self._set_if_exists(dut, f"tbadp_{pin}_i", 0)
@@ -779,7 +778,10 @@ class sep_base_test(uvm_test):
         if sb.console:
             self.logger.info("firmware console: %r", sb.console_text())
         if sb.fw_done and sb.fw_pass:
-            self.logger.info("CHK-FW-CONSOLE PASS: firmware mailbox completion with PASS magic")
+            if gate_on_scratch:
+                self.logger.info("CHK-VERDICT PASS: firmware completed through cold_scratch[0]")
+            else:
+                self.logger.info("CHK-FW-CONSOLE PASS: firmware mailbox completion with PASS magic")
         if not (sb.fw_done and sb.fw_pass):
             # Hang, no-boot, run-cycle exhaustion, or firmware FAIL: put the
             # symbolized backtrace in the log before the scoreboard's
@@ -886,21 +888,29 @@ class sep_base_test(uvm_test):
         ``sys_csr_axil_*`` observation ports. Lite has no AxLEN; each handshake
         is one converted single.
         """
+        return self._watch_handshakes("sys_csr_axil", write=write)
+
+    def watch_xbar_ext_in(self, *, write: bool) -> tuple[object, list[int]]:
+        """Record AW (``write``) or AR handshakes at the local crossbar's ``ext``
+        initiator (``xbar_ext_in_*``) until the caller kills the task.
+
+        Returns ``(task, addrs)`` as ``watch_sys_csr_lite`` does. The port carries
+        what ``sep_system_peripherals`` forwards into the local crossbar.
+        """
+        return self._watch_handshakes("xbar_ext_in", write=write)
+
+    def _watch_handshakes(self, port: str, *, write: bool) -> tuple[object, list[int]]:
         dut = cocotb.top
+        ch = "aw" if write else "ar"
+        valid = getattr(dut, f"{port}_{ch}valid_o")
+        ready = getattr(dut, f"{port}_{ch}ready_o")
+        addr = getattr(dut, f"{port}_{ch}addr_o")
         addrs: list[int] = []
 
         async def _mon() -> None:
             while True:
                 await RisingEdge(dut.clk_i)
                 await ReadOnly()
-                if write:
-                    valid = dut.sys_csr_axil_awvalid_o
-                    ready = dut.sys_csr_axil_awready_o
-                    addr = dut.sys_csr_axil_awaddr_o
-                else:
-                    valid = dut.sys_csr_axil_arvalid_o
-                    ready = dut.sys_csr_axil_arready_o
-                    addr = dut.sys_csr_axil_araddr_o
                 if self.rd_known(valid) and self.rd_known(ready):
                     addrs.append(self.rd_known(addr) & 0xFFFF_FFFF)
 
@@ -1220,16 +1230,11 @@ class sep_base_test(uvm_test):
         score_km: bool | str = True,
         score_sinks: dict | None = None,
     ):
-        """Bring up the real ESRC->DRBG->CSRNG->EDN entropy stack and return the
-        started CHK1..CHK5 scoreboard (also stored as ``self.drbg_sb``).
+        """Bring up the ESRC->DRBG->CSRNG->EDN stack and return the started CHK1..CHK5
+        scoreboard (also ``self.drbg_sb``), which drives deterministic ESRC noise.
 
-        Shared by every entropy-consumer test: starts the golden-vs-probe
-        scoreboard (which drives the deterministic ESRC noise so the ring
-        oscillators are alive under Verilator), proves the noise force took, then
-        runs the reference suite bring-up order (configure ESRC generators-off, enable CSRNG,
-        stage EDN, enable generators, wait for a seed, enable EDN). The caller does
-        the consumer-specific steps afterwards (fork the FIFO drain, wait_genbits,
-        release/boot its consumer). ``cfg`` defaults to ``SepEntropyCfg()``.
+        The caller does the consumer-specific steps afterwards: FIFO drain, ``wait_genbits``,
+        and consumer release. ``cfg`` defaults to ``SepEntropyCfg()``.
 
         ``strict=True`` makes the scoreboard ``report()`` raise on any golden
         mismatch or under-evidence stream. ``score_km`` defaults to True for

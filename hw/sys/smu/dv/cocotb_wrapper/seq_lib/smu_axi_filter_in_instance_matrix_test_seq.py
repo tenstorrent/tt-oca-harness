@@ -3,7 +3,7 @@
 """OSS SMU Tier A: inbound filter instance independence (FAB_SMC_023 subset).
 
 SEP=1 honest scope (no sep_in / no Force):
-  S4  post-reset BlockByDefault DECERR on VERSION_LO (captured before CSR writes)
+  S4  post-reset BLOCK_BY_DEFAULT DECERR on VERSION_LO (captured before CSR writes)
   S1  J2A program+readback on instances 0/1/7/14/15 (DECODE independence)
   S2  pairwise isolation: inst0 WDT page vs inst1 VERSION page + src_id
   S3  address AND src_id AND prot on inst3 CPU_SCRATCH page

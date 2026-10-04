@@ -42,7 +42,7 @@ it, and why that is still a real DUT path). The helpers that set it live in
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.050 | the functional acceptance backend | 5.050 specifically: 5.046 miscompiles the C++ init of nested unpacked structs this TB elaborates |
+| Verilator 5.052 | the functional acceptance backend | the CI and `ocah-container` release; 5.046 miscompiles the C++ init of nested unpacked structs this TB elaborates |
 | g++ 13.2.1 | C++20 for cocotb `-fcoroutines` | an older g++ fails with `unrecognized command line option '-fcoroutines'` |
 | Python ≥ 3.11 | launcher | `tools/dv/run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi); there is nothing to source. Set `OCAH_DV_SKIP_UV=1` only inside a pre-provisioned environment that already supplies the `dv` group |
 | Bender | filelist (`--stage flist`) | must be on `PATH` |
@@ -107,7 +107,7 @@ python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
 ### Nightly `all` group
 
 The nightly command for the `all` group (every test the VPLAN grades:
-`hosted` + `fw` + `dual`; `testlists/all.toml` defines the set), one
+`hosted` + `fw` + `sanity`; `testlists/all.toml` defines the set), one
 fresh seed per leaf:
 
 ```bash
@@ -140,8 +140,10 @@ Hosted GitHub nightly and weekly (`.github/workflows/regress.yml`) run
 runners have no RISC-V toolchain. `hosted` is `all` without twenty leaves: the
 fifteen `fw` leaves, the three dual-target leaves, and
 `smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test`.
-`testlists/holdout.toml` defines every leaf outside `all` and `docs/SMC_VPLAN.adoc` (Known Limitations)
-records each with the reason, its owner and its closing condition.
+`testlists/holdout.toml` defines the non-ROM leaves outside `all`;
+`testlists/smc_rom.toml` defines the ROM/OCCP cases selected through
+`occp_rom`. `docs/SMC_VPLAN.adoc` records the sign-off holdouts and their
+closing conditions.
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 1
@@ -217,28 +219,34 @@ The dual path has fewer escapes than the `smc_base_test` one: no
 `min_evidence` floor and no `NO_OWN_EVIDENCE` exemption, so a dual leaf that
 emits no `CHK-*` line of its own always fails. The one `target = "dual"` leaf
 outside `all` is `smc_occp_dual_unsecure_boot_test`, held out on runtime and
-run as `occp_dual`; it still builds the harness directly, so it prints no
+run as part of `occp_rom`; it still builds the harness directly, so it prints no
 `EVIDENCE_SUMMARY`.
 
 ## Code coverage
 
 `--cov` collects native coverage. VCS grades the SV covergroups under
 `cov/sv/` (`cov/config/vcs/`); on Verilator, `cov/config/verilator/coverage_policy.toml`
-grades the `cov/sv` cover properties in the `user` family together with line,
-branch and expression. Neither
+grades the `cov/sv` cover properties in the `user` family and reports line,
+branch and expression beside them. The `user` row is the only threshold in
+either policy: no code-metric family carries a floor, as on DTP and SEP.
+Neither
 scheduled tier collects coverage (`.github/workflows/regress.yml`): the coverage
 regression runs on the licensed flow outside hosted CI. Coverage intent, the
 VPLAN-to-FCOV traceability and the closure policy (public versus commercial
-evidence, structural OUT versus waiver holes, waiver fields) are in
-`docs/SMC_FCOV.adoc`.
+evidence, structural OUT versus waiver holes, waiver fields, who reviews an
+exclusion and what reopens it) are in `docs/SMC_FCOV.adoc`; the class facts
+behind the exclusion files are in `cov/config/vcs/README.md`. The companion's
+SV-UVM bench grades a different top with its own hierarchy file and its own
+exclusion set, which this policy does not read and the runner does not merge
+(`cov/config/vcs/README.md`, "The companion bench's exclusion set").
 
 ```bash
 # Coverage merge accepts one elaboration. `hosted` and `fw` build the default
-# model. `--target` over `all` would run the three `dual` leaves on that model.
+# model. `--target` over `all` would run the three `sanity` leaves on that model.
 python3 tools/dv/run_dv.py --dut smc --items hosted fw --tool vcs --regress --cov
 
 # SMC_DUAL is a separate pass and collects no coverage.
-python3 tools/dv/run_dv.py --dut smc --items dual --tool vcs --regress --target dual
+python3 tools/dv/run_dv.py --dut smc --items sanity --tool vcs --regress --target dual
 ```
 
 ## Run modes, targets, and groups
@@ -250,15 +258,22 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate (`sim.yml`): `smc_canonical_smoke_test`, `smc_cold_reset_test`, `smc_register_sanity_test` |
-| `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `dual`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `dual` elaborates a second build target the coverage merge cannot combine with `default` |
+| `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `sanity`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `sanity` elaborates a second build target the coverage merge cannot combine with `default` |
 | `hosted` | toolchain-free class, single-instance model; the nightly and weekly tiers (one seed) |
 | `fw` | firmware class: the fifteen CPU-boot leaves whose image `c_compile` builds |
-| `dual` | SMC_DUAL class: the three `target = "dual"` leaves, each loading a ROM or firmware image |
+| `sanity` | SMC_DUAL class: the three `target = "dual"` leaves enrolled in `all`, each loading a ROM or firmware image |
 | `axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` | feature subsets of `all` for a local run of one area |
-| `occp_boot`, `occp_dual`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
+| `occp_rom` | all 34 BL0/SMC ROM cases; includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
+| `occp_boot`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
 
-Every leaf outside `all` is defined in `testlists/holdout.toml`, which states
-why, and has its card under Known Limitations in `docs/SMC_VPLAN.adoc`.
+Non-ROM leaves outside `all` are defined in `testlists/holdout.toml`, which
+states why. ROM/OCCP leaves outside `all` are defined in
+`testlists/smc_rom.toml` and selected together with `--items occp_rom`.
+That group runs all 34 ROM cases, including the hours-long unsecure-boot leaf:
+
+```bash
+python3 tools/dv/run_dv.py --dut smc --items occp_rom --tool verilator --regress
+```
 
 | Run mode / target | Meaning |
 |---|---|
@@ -410,13 +425,16 @@ hw/sys/smc/dv/
 │                           #   postprocess.mk. Needs the RISC-V toolchain; not
 │                           #   required by the `smoke` or `hosted` groups. The Boot ROM is NOT
 │                           #   here — it lives outside DV at ../bootrom/prod/
-├── efuse_preload/          # generator for the eFuse OTP image the `dual` run
-│                           #   mode senses: efuse_schema.toml declares the
-│                           #   fields, configurations/*.toml an image, and
+├── efuse_preload/          # generators for the eFuse OTP images the bench
+│                           #   senses: efuse_schema.toml declares the fields,
+│                           #   configurations/*.toml an image, and
 │                           #   generate_efuse_preload.py / randomize_efuse.py
-│                           #   emit build/efuse/smc_efuse_generated.hex at
-│                           #   c_compile. Build-time tooling, not part of any
-│                           #   test's proof path
+│                           #   emit build/efuse/smc_efuse_generated.hex for the
+│                           #   `dual` run mode at c_compile. pattern_efuse.py
+│                           #   writes the full-width configuration each
+│                           #   smc_efuse_image_*_test leaf generates into its
+│                           #   run directory at test start; those leaves derive
+│                           #   their expectations from that image
 ├── assets/                 # the committed images: the hand-maintained eFuse
 │                           #   image and shadow-register preload the
 │                           #   single-instance run modes load
@@ -432,7 +450,8 @@ hw/sys/smc/dv/
 │                           #   smc_public_scope.vlt, verilator_stubs/
 ├── testlists/              # native TOML testlists: all.toml owns the groups
 │                           #   and includes the per-feature leaf files;
-│                           #   holdout.toml defines every leaf outside `all`
+│                           #   smc_rom.toml owns ROM/OCCP leaves and groups;
+│                           #   holdout.toml owns the other leaves outside `all`
 ├── smc_sim_cfg.toml        # sole launch config: build/filelist manifest, run
 │                           #   modes, tool knobs, [frameworks.cocotb] +
 │                           #   [frameworks.uvm]
@@ -464,12 +483,14 @@ hw/sys/smc/dv/
   not fit.
 * `uvm/` — the SV-UVM shape of the same scenarios, selected by
   `--framework uvm`; it shares `tb/tb_top.sv` with the cocotb shape.
-* `efuse_preload/` — the schema and generator that produce the eFuse image the
-  `dual` run mode senses (`build/efuse/smc_efuse_generated.hex`). It does not
-  produce `assets/smc_efuse_default.hex`, which is hand-maintained; the two
-  targets sense different images, and `smc_sim_cfg.toml` (`[run_modes.dual]`)
-  says why. Keeping the generator beside the schema is what lets a reviewer
-  read which field a configuration sets.
+* `efuse_preload/` — the schema and generators that produce the eFuse image the
+  `dual` run mode senses (`build/efuse/smc_efuse_generated.hex`) and the image
+  each `smc_efuse_image_*_test` leaf writes into its run directory and names
+  through its own `+smc_efuse_hex`. It does not produce
+  `assets/smc_efuse_default.hex`, which is hand-maintained; the two targets
+  sense different images, and `smc_sim_cfg.toml` (`[run_modes.dual]`) says why.
+  Keeping the generators beside the schema is what lets a reviewer read which
+  field a configuration sets.
 * `smc_sim.core` — a FuseSoC/CAPI-2 view of the same Bender targets for an
   external consumer; `run_dv.py` does not read it, and it is kept here so the
   two descriptions of the build sit in one directory.

@@ -25,6 +25,7 @@
 #include <stdint.h>
 
 #include "errors.h"
+#include "harden.h"
 #include "otbn_driver.h"
 
 // RSA-3072 sizes.
@@ -62,6 +63,15 @@ static const uint32_t pkcs1_di_words[5] = {
 // Expected value for the header word (word[95]).
 #define PKCS1_HEADER_WORD 0x0001FFFFu
 
+// Per-pass "comparison succeeded" tokens. Their XOR must not be a value a fault
+// reaches cheaply, which rules out complements (XOR 0xFFFFFFFF) and equal tokens
+// (XOR 0) as much as it rules out 0 for a single token.
+#define PKCS1_PASS_TOKEN_A 0x5A3C96E1u
+#define PKCS1_PASS_TOKEN_B 0x93B7D42Cu
+_Static_assert((PKCS1_PASS_TOKEN_A ^ PKCS1_PASS_TOKEN_B) != 0u &&
+                   (PKCS1_PASS_TOKEN_A ^ PKCS1_PASS_TOKEN_B) != 0xFFFFFFFFu,
+               "pass tokens XOR to a value a stuck-at fault produces for free");
+
 // ---------------------------------------------------------------------------
 // Byte-to-OTBN-word conversion helpers
 // ---------------------------------------------------------------------------
@@ -93,8 +103,9 @@ static void digest_to_otbn_words(const uint8_t *digest, uint32_t *dst) {
 // ---------------------------------------------------------------------------
 
 // Verify the OTBN modexp result matches expected PKCS#1 v1.5 structure.
-// Returns 0 if valid, non-zero if invalid.
-static int verify_pkcs1_v15(const uint32_t *result, const uint8_t *digest) {
+// Returns its pass token if valid, 0 if invalid.
+static uint32_t verify_pkcs1_v15(const uint32_t *result, const uint8_t *digest,
+                                 uint32_t pass_token) {
     volatile uint32_t diff = 0;
 
     // 1. Compare hash words (words[0..7]).
@@ -117,7 +128,9 @@ static int verify_pkcs1_v15(const uint32_t *result, const uint8_t *digest) {
     // 4. Verify header word (word[95] = 0x0001FFFF).
     diff |= result[95] ^ PKCS1_HEADER_WORD;
 
-    return (diff != 0) ? -1 : 0;
+    // A pass returns the caller's token rather than 0, so the accept path needs a
+    // specific value that a fault cannot produce by clearing a register.
+    return (diff != 0) ? 0u : pass_token;
 }
 
 // ---------------------------------------------------------------------------
@@ -165,13 +178,43 @@ int rsa_3072_verify(const uint8_t *digest, const uint8_t *signature, const uint8
         return rc;
     }
 
-    // 6. Read result from OTBN DMEM.
+    // 6. Read the result back from OTBN DMEM.
     uint32_t result[RSA_3072_NUM_WORDS];
-    otbn_dmem_read(DMEM_INOUT_OFFSET, result, RSA_3072_NUM_WORDS);
+    uint32_t *rp = result;
+    otbn_dmem_read(DMEM_INOUT_OFFSET, rp, RSA_3072_NUM_WORDS);
 
-    // 7. Verify PKCS#1 v1.5 padding and digest match.
-    rc = verify_pkcs1_v15(result, digest);
-    if (rc != 0) {
+    // 7. The result shares `inout` with the signature, so a modexp that did not
+    //    happen leaves the caller's own signature bytes in `result`, and a
+    //    signature authored as a well-formed PKCS#1 v1.5 block would verify
+    //    against itself. sig^e mod n cannot equal sig for a value that also
+    //    parses as that block, so an unchanged buffer means no modexp ran.
+    //    otbn_execute() already rejects a command that never started; this is
+    //    the same conclusion drawn from the data rather than from the block.
+    //
+    //    Both operands are public, so the fold is not for secrecy. It is one
+    //    exit instead of a return per word, leaving no early branch for a fault
+    //    to skip.
+    uint32_t diff = 0;
+    for (int i = 0; i < RSA_3072_NUM_WORDS; ++i) {
+        diff |= result[i] ^ sig_words[i];
+    }
+    if (diff == 0u) {
+        simputs("RSA_INOUT_UNCHANGED\n");
+        return -1;
+    }
+
+    // 8. Verify PKCS#1 v1.5 padding and digest match. A fault on this comparison accepts any
+    //    signature, so it runs twice over independent DMEM reads and laundered operands.
+    const uint32_t cmp1 = verify_pkcs1_v15(rp, digest, PKCS1_PASS_TOKEN_A);
+    simputs("RSA_CMP1\n");
+
+    otbn_dmem_read(DMEM_INOUT_OFFSET, harden_ptr(rp), RSA_3072_NUM_WORDS);
+    const uint32_t cmp2 = verify_pkcs1_v15(harden_ptr(rp), harden_ptr(digest), PKCS1_PASS_TOKEN_B);
+    simputs("RSA_CMP2\n");
+
+    // Both passes must return their tokens; any other value, including zero, rejects. A single
+    // branch remains, so this raises what one fault must achieve, not how many are needed.
+    if ((harden_u32(cmp1) ^ harden_u32(cmp2)) != (PKCS1_PASS_TOKEN_A ^ PKCS1_PASS_TOKEN_B)) {
         simputs("RSA_PKCS1_FAIL\n");
         return -1;
     }

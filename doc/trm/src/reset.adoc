@@ -57,8 +57,14 @@ The reset hierarchy within the SMU proceeds as follows:
 . *Debug reset overrides.* The DTP provides JTAG IC_RESET controls that can
   override the fuse, cold, cool, warm, and per-subsystem reset domains
   independently for debug scenarios. These are wired through the SMU into the
-  SMC reset unit and the SEP reset controller. The DTP JTAG chapter states the
-  programming order these overrides require.
+  SMC reset unit and the SEP reset controller. The Programmer's Guide gives
+  the
+ifdef::backend-html5[]
+  xref:ocah-programmer-guide::index.adoc#dtp-ic-reset-overrides[programming order these overrides require].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#dtp-ic-reset-overrides[programming order these overrides require].
+endif::backend-pdf[]
 
 [[ocah-ic-reset]]
 == IC_RESET TDR
@@ -93,4 +99,12 @@ ifdef::backend-pdf[]
 <<clock-and-reset-management,Clock and Reset Management>>
 endif::backend-pdf[]
 
-For integration-level reset procedures, refer to the Integrator Guide.
+For integration-level reset procedures, refer to the Integrator Guide. The
+Programmer's Guide collects every reset that software or a debugger requests
+in its
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#reset-control[Reset Control chapter].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#reset-control[Reset Control chapter].
+endif::backend-pdf[]

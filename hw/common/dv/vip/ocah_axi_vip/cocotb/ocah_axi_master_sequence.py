@@ -153,11 +153,16 @@ class OcahAxiMasterSequence:
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
         user: int = 0,
+        attrs: dict[str, int] | None = None,
     ) -> OcahAxiWriteResult:
         """Issue a write of an explicit byte payload and return a plain result.
 
         Use this when the transfer length is not one beat at ``data_width`` /
         ``size`` (for example a 4-byte access on a 64-bit bus).
+
+        ``attrs`` sets the AW attributes the other arguments do not name:
+        ``lock``, ``cache``, ``qos``, ``region`` and ``wuser``. An absent key
+        keeps the driver default.
         """
         return await self._write_bytes_result(
             addr,
@@ -170,6 +175,7 @@ class OcahAxiMasterSequence:
             timeout_ns=timeout_ns,
             allow_timeout=allow_timeout,
             user=user,
+            attrs=attrs,
         )
 
     async def read_result(
@@ -214,11 +220,16 @@ class OcahAxiMasterSequence:
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
         user: int = 0,
+        attrs: dict[str, int] | None = None,
     ) -> OcahAxiReadResult:
         """Issue a read of ``length`` bytes and return a plain result.
 
         Use this when the transfer length is not one beat at ``data_width`` /
         ``size`` (for example a 4-byte access on a 64-bit bus).
+
+        ``attrs`` sets the AR attributes the other arguments do not name:
+        ``lock``, ``cache``, ``qos`` and ``region``. An absent key keeps the
+        driver default.
         """
         return await self._read_bytes_result(
             addr,
@@ -231,6 +242,7 @@ class OcahAxiMasterSequence:
             timeout_ns=timeout_ns,
             allow_timeout=allow_timeout,
             user=user,
+            attrs=attrs,
         )
 
     async def burst_write(
@@ -405,10 +417,15 @@ class OcahAxiMasterSequence:
         timeout_ns: int | None,
         allow_timeout: bool,
         user: int = 0,
+        attrs: dict[str, int] | None = None,
     ) -> OcahAxiWriteResult:
         capture = self.driver.start_response_id_capture("b")
         event = self.driver.init_write(
-            addr, payload, id=id, size=size, **self._axkwargs(burst, prot, user)
+            addr,
+            payload,
+            id=id,
+            size=size,
+            **self._axkwargs(burst, prot, user, attrs, self._WRITE_ATTRS),
         )
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
@@ -454,10 +471,15 @@ class OcahAxiMasterSequence:
         timeout_ns: int | None,
         allow_timeout: bool,
         user: int = 0,
+        attrs: dict[str, int] | None = None,
     ) -> OcahAxiReadResult:
         capture = self.driver.start_response_id_capture("r")
         event = self.driver.init_read(
-            addr, length, id=id, size=size, **self._axkwargs(burst, prot, user)
+            addr,
+            length,
+            id=id,
+            size=size,
+            **self._axkwargs(burst, prot, user, attrs, self._READ_ATTRS),
         )
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
@@ -497,13 +519,28 @@ class OcahAxiMasterSequence:
         self._maybe_raise("read from", addr, result.ok, result.resp, check_response)
         return result
 
+    _READ_ATTRS = frozenset({"lock", "cache", "qos", "region"})
+    _WRITE_ATTRS = _READ_ATTRS | {"wuser"}
+
     @staticmethod
-    def _axkwargs(burst: int | None, prot: int | None, user: int = 0) -> dict[str, int]:
+    def _axkwargs(
+        burst: int | None,
+        prot: int | None,
+        user: int = 0,
+        attrs: dict[str, int] | None = None,
+        allowed: frozenset[str] = frozenset(),
+    ) -> dict[str, int]:
         kwargs: dict[str, int] = {"user": user}
         if burst is not None:
             kwargs["burst"] = burst
         if prot is not None:
             kwargs["prot"] = prot
+        for key, value in (attrs or {}).items():
+            if key not in allowed:
+                raise ValueError(
+                    f"unknown AXI attribute {key!r}; expected one of {sorted(allowed)}"
+                )
+            kwargs[key] = int(value)
         return kwargs
 
     def _maybe_raise(self, verb: str, addr: int, ok: bool, resp: int, check_response: bool) -> None:

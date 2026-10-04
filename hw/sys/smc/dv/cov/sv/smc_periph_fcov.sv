@@ -20,7 +20,7 @@
 `include "ocah_fcov_macros.svh"
 
 module smc_periph_fcov #(
-  parameter int unsigned GpioWidth = 64
+  parameter int unsigned GPIO_WIDTH = 64
 ) (
   input wire clk_periph_i,
   input wire clk_smc_i,
@@ -49,9 +49,9 @@ module smc_periph_fcov #(
   input wire gpio_core2pad_any_i,
   input wire gpio_core2pad_en_any_i,
   input wire gpio_pad2core_en_any_i,
-  input wire [GpioWidth-1:0] core2pad_i,
-  input wire [GpioWidth-1:0] core2pad_en_i,
-  input wire [GpioWidth-1:0] lsio_select_i,
+  input wire [GPIO_WIDTH-1:0] core2pad_i,
+  input wire [GPIO_WIDTH-1:0] core2pad_en_i,
+  input wire [GPIO_WIDTH-1:0] lsio_select_i,
   input wire gpio_pad57_i,
 
   // Interrupt sources.
@@ -188,14 +188,14 @@ module smc_periph_fcov #(
   `OCAH_FCOV_COVER(c_gpio_pad2core_en_active, gpio_pad2core_en_active_e, clk_periph_i, in_reset)
 
   // The single-pad point counts the output enables GPIO software owns: a pad
-  // an LSIO function selects is driven by that function (gpio
-  // programming.adoc, LSIO Interface Operation), and several such pads are
+  // an LSIO function selects is driven by that function (Programmer's
+  // Guide, Selecting and Reclaiming LSIO), and several such pads are
   // enabled from reset.
-  logic [$clog2(GpioWidth+1)-1:0] core2pad_en_count, sw_core2pad_en_count;
+  logic [$clog2(GPIO_WIDTH+1)-1:0] core2pad_en_count, sw_core2pad_en_count;
   always_comb begin
     core2pad_en_count = '0;
     sw_core2pad_en_count = '0;
-    for (int unsigned i = 0; i < GpioWidth; i++) begin
+    for (int unsigned i = 0; i < GPIO_WIDTH; i++) begin
       if (core2pad_en_i[i] === 1'b1) core2pad_en_count = core2pad_en_count + 1'b1;
       if ((core2pad_en_i[i] === 1'b1) && (lsio_select_i[i] === 1'b0))
         sw_core2pad_en_count = sw_core2pad_en_count + 1'b1;
@@ -209,7 +209,7 @@ module smc_periph_fcov #(
   `OCAH_FCOV_COVER(c_gpio_multi_pad_enabled, gpio_multi_pad_enabled_e, clk_periph_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_output_value_driven, gpio_output_value_set_e, clk_periph_i, in_reset)
 
-  // BOOT_STALL_PAD at both values through the pad shim. Both are product
+  // BootStallPad at both values through the pad shim. Both are product
   // states, but one of them is whatever the straps leave at power-up, so
   // each level is qualified by the pad having changed at least once --
   // otherwise the power-on value is covered with no stimulus at all.

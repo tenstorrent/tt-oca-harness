@@ -11,20 +11,21 @@ __pycache__/
 # that happens to be named nonfree is not.
 /nonfree
 
-# The DV runner's site-local override layer: one deployment's tool binaries,
-# launcher prefixes, and environment hooks (tools/dv/doc/run-dv.adoc).
-/hw/common/dv/configs/site.local.toml
-
-# Transient per-block build outputs. The build_ot* variants come from the SEP
-# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images); build_release
-# is the same ROM's BUILD_TYPE=release tree; build_dual is the dual-SMC DV tree,
-# kept separate from build/ so concurrent --rebuild runs do not race on bender
+# Transient per-block build outputs. build_pio comes from the SEP boot ROM
+# BUILD_DIR override (the CPU-PIO drain variant); build_release is the same
+# ROM's BUILD_TYPE=release tree; build_dual is the dual-SMC DV tree, kept
+# separate from build/ so concurrent --rebuild runs do not race on bender
 # filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
 **/build/
 **/build_dual/
 **/build_ot/
 **/build_ot_pio/
+**/build_pio/
 **/build_release/
+
+# The DV runner's site-local override layer: one deployment's tool binaries,
+# launcher prefixes, and environment hooks (tools/dv/doc/run-dv.adoc).
+/hw/common/dv/configs/site.local.toml
 
 # Legacy generated register markdown is not part of the current doc flow.
 **/regs/gen/adoc/**/*.md
@@ -68,6 +69,7 @@ doc/integrator/assets/*
 doc/*/modules/ROOT/pages/
 doc/*/modules/ROOT/partials/hw/
 doc/*/modules/ROOT/partials/rtl-modules/
+doc/*/modules/ROOT/partials/meta/
 doc/*/modules/ROOT/assets/
 doc/*/modules/smc/
 doc/*/modules/smc-bootrom-prod/
@@ -135,9 +137,16 @@ vendor/**/Bender.lock
 tools/a11y/node_mo#dules/
 tools/a11y/report/
 
+/.dv/artifacts/
+/.dv/lsf/
+
 # Rendered doc output (sep_book.html / sep_book.pdf)
 doc_render/
 
+# sep-vp writes its CSML global log into the current working directory, so it
+# lands wherever the simulator was started from (repo root for
+# `docker-run.sh vp-run .../sep-vp`, virtual_platform/ under pytest).
+och_sep_ss.log
 # Nix Builds and Direnv Cache
 local/
 .direnv/

@@ -27,10 +27,15 @@ development
 After fuse sense completes, software program and read requests share one
 command path to the OTP bank. `EFUSE_PROGRAM_CTRL.program_enable` takes
 that path in preference to `EFUSE_READ_CTRL.read_enable`, so the two
-enables must be asserted exclusively. `program_enable` is a mode-ownership
-bit: after `PROGRAM_DONE`, software deasserts `program_enable`
-before any later read. The programming sequence is in
-<<smc-dv-efuse-programming>>.
+enables must be asserted exclusively; a read issued while `program_enable`
+is set does not reach the bank. The program and read sequences are in the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-efuse[eFuse section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-efuse[eFuse section]
+endif::backend-pdf[]
+of the Programmer's Guide.
 
 === Destination Endpoints
 
@@ -215,7 +220,7 @@ range with a 4-bit `lock` permission field:
 [source,sourceCode,systemverilog]
 ----
 typedef struct packed {
-    logic [EFUSE_FIELD_MAP_IDX_WIDTH-1:0] idx;        // Field index
+    logic [EfuseFieldMapIdxWidth-1:0] idx;        // Field index
     logic [3:0]                           lock;       // Permission bits
     logic [31:0]                          start_addr; // Field start address
     logic [31:0]                          end_addr;   // Field end address

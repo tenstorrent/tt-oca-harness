@@ -9,7 +9,8 @@ UVM realization of the same testbench top selected by `--framework uvm` (VCS).
 (`hw/sys/sep/rtl/sep.sv`) plus its IP integration
 (`hw/top/sep_ip_integration.sv`: real memory macros and the generic eFuse model).
 The OpenTitan SPI host is inside the `sep` core (`sep_io` / `sep_ot_spi_wrap`);
-its pads come out of the wrapper. There is no SPI pad mux in this build.
+its pads come out of the wrapper. No select steers the OT SPI host, so no
+test programs one.
 **Stimulus** = a cocotbext-axi master on the CPU LSU splice (`s_axi_*`), a second
 master on the real SMN-inbound port (`m_axi_*`, inbound filter), and VeeR EL2
 firmware boot on the `cpu` / `rom_fw` paths.
@@ -175,10 +176,11 @@ EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
 
 `own` excludes the records `sep_base_test` emits during bring-up, so a leaf
 cannot satisfy the gate on infrastructure alone. A leaf whose `own` count is
-zero **fails**. Firmware-console leaves emit `CHK-FW-CONSOLE` from `poll_boot`
-after the mailbox PASS magic, and that ID is not in `BASE_IDS`, so it counts
-as the leaf's own evidence. `_EvidenceFilter.NO_OWN_EVIDENCE` is empty and
-may only shrink.
+zero **fails**. Firmware leaves emit `CHK-FW-CONSOLE` from `poll_boot` after
+the mailbox PASS magic, or `CHK-VERDICT` after `cold_scratch[0]` reports
+completion on the scratch0-gated leaves; neither ID is in `BASE_IDS`, so
+either counts as the leaf's own evidence. `_EvidenceFilter.NO_OWN_EVIDENCE`
+is empty and may only shrink.
 
 Leaves may also declare more: `min_evidence = N` sets a floor on `own`, and
 `required_evidence = ("CHK-A", ...)` names IDs that must appear.
@@ -209,6 +211,14 @@ both compile (`{build_cov_dir}`) and sim (`{cov_dir}/simv.vdb`), merged by
 fails that C++ compile (`__PVT__MLKEM_SHARED_KEY` under `VM_COVERAGE=1`);
 5.050 compiles. Hosted weekly coverage (`.github/workflows/regress.yml`) is
 Verilator `--items cpu_stub` on the large runner, not this VCS number.
+
+`cov/config/vcs/coverage_policy.toml` sets no `[[thresholds]]` and no
+`[[holes]]`, and `sep_sim_cfg.toml` sets no `fail_under`: no
+code-metric family carries a floor, and a run's status comes from its tests.
+The policy names the compile-time scope file and the report-time exclusion
+lists. [`docs/SEP_COV_WAIVERS.adoc`](docs/SEP_COV_WAIVERS.adoc) states the RTL
+fact behind each list, and [`docs/SEP_FCOV.adoc`](docs/SEP_FCOV.adoc), "Closure
+Policy", states who reviews an exclusion and what reopens it.
 
 ```bash
 python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
@@ -245,7 +255,7 @@ What the resulting number is not:
   right thing" stays with the checkers in
   [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
 * **TT-owned SEP integration RTL, not the whole DUT.**
-  `cov/config/vcs/sep_cov_scope.hier` removes the testbench, CPU subtree,
+  `cov/config/vcs/sep_cov_scope.hier` removes the testbench, the VeeR core complex,
   library-class cells, DV models and complete third-party IP modules at compile
   time across code and assertion coverage (`-cm_hier` with
   `-cm_common_hier`). Quote that scope with the percentage; never call it bare
@@ -270,9 +280,9 @@ uv run --locked python3 tools/dv/fw_coverage/gen_sep_rom_coverage.py \
 ```
 
 The generator accepts only passing, complete traces and uses the leaf-local
-`boot_rom.elf` staged by the firmware profile. It reports `boot_rom`,
-`boot_rom_ot`, and `boot_rom_ot_pio` separately because their PCs cannot be
-interpreted with one shared ELF. See
+`boot_rom.elf` staged by the firmware profile. It reports `boot_rom` and
+`boot_rom_pio` separately because their PCs cannot be interpreted with one
+shared ELF. See
 [`tools/dv/fw_coverage/README.md`](../../../../tools/dv/fw_coverage/README.md)
 for the complete command and tool prerequisites.
 

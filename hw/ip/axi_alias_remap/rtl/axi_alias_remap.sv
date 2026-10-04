@@ -32,7 +32,7 @@ module axi_alias_remap #(
 
   parameter int unsigned  NUM_CHUNKS_CARRY_SELECT_ADDER   = 2, // Carry-select adder chunk count.
 
-  localparam int unsigned ALIAS_REMAP_OFFSET_WIDTH        = AXI_ADDR_WIDTH - ALIAS_REMAP_IDX_START // Width of the remapped upper address field.
+  localparam int unsigned AliasRemapOffsetWidth        = AXI_ADDR_WIDTH - ALIAS_REMAP_IDX_START // Width of the remapped upper address field.
 ) (
   input   remap_region_t                      remap_regions_i [NUM_REGIONS-1:0], // Per-region remap configuration.
   output  remap_debug_t                       remap_debug_o, // Index of the lowest-numbered region
@@ -50,7 +50,7 @@ module axi_alias_remap #(
   typedef logic [RemapIndexW-1:0] remap_idx_t;
   typedef logic [NUM_REGIONS-1:0] remap_vector_t;
   // we do addition/subtraction with remapped addr, need one extra bit in case of overflow
-  typedef logic [ALIAS_REMAP_OFFSET_WIDTH:0] remap_addr_t;
+  typedef logic [AliasRemapOffsetWidth:0] remap_addr_t;
   typedef logic [AXI_ADDR_WIDTH-1:0] addr_t;
 
   remap_vector_t aw_remap_hit, ar_remap_hit;
@@ -87,17 +87,15 @@ module axi_alias_remap #(
     .empty_o(no_read_hit)
   );
 
-  generate
-    if (DEBUG_OUTPUT == 1) begin : gen_remap_debug
-      assign remap_debug_o.aw_remap_hit_debug = aw_remap_idx;
-      assign remap_debug_o.ar_remap_hit_debug = ar_remap_idx;
-    end else begin : gen_no_remap_debug
-      assign remap_debug_o = '0;
-    end
-  endgenerate
+  if (DEBUG_OUTPUT == 1) begin : gen_remap_debug
+    assign remap_debug_o.aw_remap_hit_debug = aw_remap_idx;
+    assign remap_debug_o.ar_remap_hit_debug = ar_remap_idx;
+  end else begin : gen_no_remap_debug
+    assign remap_debug_o = '0;
+  end
 
   prim_carry_select_adder #(
-    .DATA_WIDTH (ALIAS_REMAP_OFFSET_WIDTH+1),
+    .DATA_WIDTH (AliasRemapOffsetWidth+1),
     .NUM_CHUNKS (NUM_CHUNKS_CARRY_SELECT_ADDER)
   ) u_aw_addr_adder (
     .a_i   ({1'b0, remap_regions_i[aw_remap_idx].offset[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
@@ -107,7 +105,7 @@ module axi_alias_remap #(
   );
 
   prim_carry_select_adder #(
-    .DATA_WIDTH (ALIAS_REMAP_OFFSET_WIDTH+1),
+    .DATA_WIDTH (AliasRemapOffsetWidth+1),
     .NUM_CHUNKS (NUM_CHUNKS_CARRY_SELECT_ADDER)
   ) u_ar_addr_adder (
     .a_i   ({1'b0, remap_regions_i[ar_remap_idx].offset[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
@@ -117,12 +115,12 @@ module axi_alias_remap #(
   );
 
   assign aw_remapped_addr = {
-        aw_addr_modified[ALIAS_REMAP_OFFSET_WIDTH-1:0], axi_in_req_i.aw.addr[ALIAS_REMAP_IDX_START-1:0]
+        aw_addr_modified[AliasRemapOffsetWidth-1:0], axi_in_req_i.aw.addr[ALIAS_REMAP_IDX_START-1:0]
     };
   assign aw_remapped_cacheable = remap_regions_i[aw_remap_idx].cacheable;
 
   assign ar_remapped_addr = {
-        ar_addr_modified[ALIAS_REMAP_OFFSET_WIDTH-1:0], axi_in_req_i.ar.addr[ALIAS_REMAP_IDX_START-1:0]
+        ar_addr_modified[AliasRemapOffsetWidth-1:0], axi_in_req_i.ar.addr[ALIAS_REMAP_IDX_START-1:0]
     };
   assign ar_remapped_cacheable = remap_regions_i[ar_remap_idx].cacheable;
 

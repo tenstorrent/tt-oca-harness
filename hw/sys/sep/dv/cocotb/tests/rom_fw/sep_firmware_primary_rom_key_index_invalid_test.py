@@ -2,63 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest names a reserved key slot; the backup boots.
 
-The PRIMARY's ``public_key_select`` names slot 26. The format reserves
-``[31:26]``, so the platform refuses it with ``PUBK_SLOT_RESERVED`` before looking
-for an anchor, returning ``MANIFEST_ERR_KEY_UNAUTHORIZED`` -- the one code every
-arm of ``plat_is_key_authorized()`` returns.
+The primary's ``public_key_select`` names slot 26 (``OCA_KEY_SLOT_MAX + 1``), the smallest
+reserved slot, so only this value tells a ``>`` bound from a ``>=`` one. The ROM refuses it
+with ``PUBK_SLOT_RESERVED`` and ``MANIFEST_ERR_KEY_UNAUTHORIZED`` before the anchor lookup, the
+revocation read and ``rsa_3072_verify``. Only the selector changes, and the re-hash keeps the
+signed region hash valid, so the primary reaches key authorization; the stale signature is
+never examined.
 
-THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. Only ``public_key_select`` is
-written, and deliberately NOT the primary's ``manifest_identifier`` the way its
-backup-side sibling does, because the primary has to REACH the check
-under test. So there is no BAD_MAGIC failover trigger here.
+``sep_firmware_primary_invalid_public_key_selection_test`` gets the same code for two selected
+slots, so ``PUBK_SLOT_RESERVED`` is required and ``PUBK_SEL_AMBIGUOUS`` is forbidden. The
+backup boots and prints ``PUBK_REVOKE=``, so that token must occur once, after the backup read.
 
-The expected outcome is A Completed boot. Its backup-side sibling is the terminal one,
-grading the same rejection ``ERROR:``.
-
-WHY 26 AND NOT 31. Twenty-six is ``OCA_KEY_SLOT_MAX + 1`` exactly -- the
-smallest slot the bound must refuse. A larger value would pass just as well
-against a ROM that had written ``>=`` instead of ``>``, so only the boundary pins
-the comparison. Slot 25 is a fuse-held chiplet key and would be accepted, which
-is what makes this the boundary rather than merely a large number.
-
-This is A DIFFERENT ARM FROM ``sep_firmware_primary_invalid_public_key_selection_test``.
-That testcase names TWO slots and is refused for ambiguity, before any slot number is
-resolved. This one names exactly one slot, which is resolved and echoed, and then
-refused for being reserved. Both return ``MANIFEST_ERR_KEY_UNAUTHORIZED``, so
-``PUBK_SEL_AMBIGUOUS`` is forbidden here and ``PUBK_SLOT_RESERVED`` required -- the
-console token is the only discriminator.
-
-**THE LOAD-BEARING CHECK IS THE ``PUBK_REVOKE=`` COUNT, AND IT CANNOT BE A PLAIN
-FORBID.** The reserved-range check runs inside ``is_key_authorized``, which the
-validator calls BEFORE the revocation check, and that ordering is a security
-property rather than a detail: revocation indexes its bitmap by slot number, so a
-reserved slot the bound let through would consult a bit belonging to no key. The
-backup-side sibling can forbid the fuse echo outright because nothing in its run
-reaches the revocation check; here the BACKUP boots and legitimately prints
-``PUBK_REVOKE=0x00000000``. So the assertion is that the token occurs exactly ONCE
-and only AFTER the backup read -- which says the same thing about the primary
-without weakening into "the token may appear". ``PUBK_SLOT_UNPROVISIONED`` is
-forbidden for the same reason one step later: a reserved slot must never reach
-the anchor lookup.
-
-Platform adaptation -- MARKER, AND THE GAP IS WIDER THAN THE ERROR TOKEN. So the
-substitution is not confined to the rejection reason: the architected ring carries only
-the generic terminal code plus ``MANIFEST_VALIDATED`` / ``COPY_AND_EXEC_IMAGE`` /
-``EXEC_IMAGE``, and the debug console supplies everything else.
-
-A Second narrowing, DISCLOSED. The mechanism is pinned rather than assumed --
-``primary_expected_rsa_starts = 0`` requires the primary never to reach
-``rsa_3072_verify`` -- but the narrowing is real and slot 0 of the revoke family is
-where this group's strict form lives instead.
-
-``public_key_sel`` is at manifest offset 166, inside the TBS, so the helper
-re-hashes. No re-sign: the index is rejected before ``rsa_3072_verify``, so the now-stale signature is never examined, and the
-base's ``primary_expected_rsa_starts = 0`` is what checks that rather than assuming
-it.
-
-Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
-runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
-assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
+Needs ``+esrc_noise_force``: the backup runs a full RSA-3072 modexp.
 """
 
 from __future__ import annotations
@@ -94,7 +49,7 @@ _REVOKE_ECHO = "PUBK_REVOKE="
 
 @pyuvm.test()
 class sep_firmware_primary_rom_key_index_invalid_test(sep_primary_fail_backup_boot_base):
-    """Primary names ROM key index 6 -> rejected at the bound -> backup boots."""
+    """Primary names reserved slot 26 -> rejected at the bound -> backup boots."""
 
     primary_defect_marker = "PUBK_SLOT_RESERVED"
     primary_expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED
@@ -105,10 +60,10 @@ class sep_firmware_primary_rom_key_index_invalid_test(sep_primary_fail_backup_bo
     # backup's good one. Without the second, "the backup booted" is not tied to a
     # slot.
     extra_required = (_PRIMARY_SEL_ECHO, _BACKUP_SEL_ECHO)
-    # PUBK_SEL_AMBIGUOUS is the discriminator against the unassigned-SOURCE arm, which
-    # shares this error code. PUBK_SLOT_UNPROVISIONED must not appear at all: reaching the
-    # digest table with index 6 would be a read past a six-entry array. The rest
-    # are the later arms, none of which either slot may reach.
+    # PUBK_SEL_AMBIGUOUS is the discriminator against the unassigned-SOURCE arm,
+    # which shares this error code. PUBK_SLOT_UNPROVISIONED must not appear:
+    # slot 26 is rejected by the global reserved bound before any anchor lookup.
+    # The rest are later arms, none of which either slot may reach.
     extra_forbidden = (
         "PUBK_SEL_AMBIGUOUS",
         "PUBK_SLOT_UNPROVISIONED",
@@ -126,12 +81,8 @@ class sep_firmware_primary_rom_key_index_invalid_test(sep_primary_fail_backup_bo
             f"primary public_key_sel names slot {got}, expected "
             f"{_BAD_PUBK_SEL_VALUE} (the first reserved slot)"
         )
-        # Exactly one bit, or this would be the PUBK_SEL_AMBIGUOUS testcase
-        # wearing this one's name. get_public_key_sel raises on any other count,
-        # so reaching here at all is the assertion.
-        # The re-hash must have restored a valid TBS hash, or the primary is thrown
-        # out in the manifest loop before key selection and this testcase would be
-        # asserting on the wrong rejection.
+        # get_public_key_sel raises unless exactly one bit is set. verify_layout confirms the
+        # re-hash, so the primary reaches key selection instead of failing in the manifest loop.
         mm.verify_layout(buf, "primary")
         mm.verify_public_key(buf, "primary")
         self.logger.info(

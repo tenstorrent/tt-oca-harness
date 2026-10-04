@@ -32,10 +32,10 @@ Accelerator for Keccak-based keyed hash message authentication code and SHA-3 ha
 | 0x24 | <<reg-{regmap-instance}-kmac-ENTROPY_REFRESH_HASH_CNT,ENTROPY_REFRESH_HASH_CNT>> | R a| -
 | 0x28 | <<reg-{regmap-instance}-kmac-ENTROPY_REFRESH_THRESHOLD_SHADOWED,ENTROPY_REFRESH_THRESHOLD_SHADOWED>> | RW a| -
 | 0x2C | <<reg-{regmap-instance}-kmac-ENTROPY_SEED,ENTROPY_SEED>> | W a| -
-| 0x30 - 0x6C | <<reg-{regmap-instance}-kmac-KEY_SHARE0-0-,KEY_SHARE0[16]>> | W a| -
-| 0x70 - 0xAC | <<reg-{regmap-instance}-kmac-KEY_SHARE1-0-,KEY_SHARE1[16]>> | W a| -
+| 0x30 - 0x6C | <<reg-{regmap-instance}-kmac-KEY_SHARE0-,KEY_SHARE0[16]>> | W a| -
+| 0x70 - 0xAC | <<reg-{regmap-instance}-kmac-KEY_SHARE1-,KEY_SHARE1[16]>> | W a| -
 | 0xB0 | <<reg-{regmap-instance}-kmac-KEY_LEN,KEY_LEN>> | W a| -
-| 0xB4 - 0xDC | <<reg-{regmap-instance}-kmac-PREFIX-0-,PREFIX[11]>> | RW a| -
+| 0xB4 - 0xDC | <<reg-{regmap-instance}-kmac-PREFIX-,PREFIX[11]>> | RW a| -
 | 0xE0 | <<reg-{regmap-instance}-kmac-ERR_CODE,ERR_CODE>> | R a| -
 |===
 
@@ -297,7 +297,7 @@ The exact period of the timer pulse is unknown as the KMAC input clock may conta
 | 31:0 | `seed` | W | - a| 32-bit chunk of the entropy generator seed
 |===
 
-[#reg-{regmap-instance}-kmac-KEY_SHARE0-0-]
+[#reg-{regmap-instance}-kmac-KEY_SHARE0-]
 === KEY_SHARE0[16]
 
 [cols="1,3,1,1,6", options="header"]
@@ -306,7 +306,7 @@ The exact period of the timer pulse is unknown as the KMAC input clock may conta
 | 31:0 | `key_0` | W | - a| 32-bit chunk of up-to 512-bit Secret Key
 |===
 
-[#reg-{regmap-instance}-kmac-KEY_SHARE1-0-]
+[#reg-{regmap-instance}-kmac-KEY_SHARE1-]
 === KEY_SHARE1[16]
 
 [cols="1,3,1,1,6", options="header"]
@@ -325,7 +325,7 @@ The exact period of the timer pulse is unknown as the KMAC input clock may conta
 | 2:0 | `len` | W | 0x0 a| Key length choice
 |===
 
-[#reg-{regmap-instance}-kmac-PREFIX-0-]
+[#reg-{regmap-instance}-kmac-PREFIX-]
 === PREFIX[11]
 
 [cols="1,3,1,1,6", options="header"]

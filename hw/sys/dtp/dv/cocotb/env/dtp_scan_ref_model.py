@@ -418,19 +418,24 @@ class DtpStap3dcrModel:
     last STAP's scan-out is the chain return and the segment holds its value.
 
     The PTAP forwards its scan controls to the STAP chain on every IR and DR
-    scan and, with the PTAP 3DCR select set, routes the instruction
-    register's scan-out into the chain: an IR scan is then the 6-bit PTAP IR
-    followed by the STAP chain (the PTAP 3DCR itself is a data register and
-    stays out of IR scans), and Update-IR commits SIB/3DCR fields and the
-    downstream IRs exactly as Update-DR does. Every scan issued while a STAP
-    is selected must therefore be composed over the full network.
+    scan only while the PTAP 3DCR select is set, and then routes the
+    instruction register's scan-out into the chain: an IR scan is the 6-bit
+    PTAP IR followed by the STAP chain (the PTAP 3DCR itself is a data
+    register and stays out of IR scans), and Update-IR commits SIB/3DCR
+    fields and the downstream IRs exactly as Update-DR does. Every scan
+    issued while the select is set must therefore be composed over the full
+    network. While the select is clear the chain, host segment included,
+    holds through every scan and a scan covers only the PTAP segment, so the
+    select must be set by a scan of its own before a scan can write the
+    chain.
 
     A data scan under any other PTAP instruction runs through the STAP chain
     as well while the PTAP 3DCR select is set, and its Update-DR commits the
-    chain fields without reaching the PTAP 3DCR. Under ZERO_LENGTH_BYPASS TDI
-    enters the chain directly, so the scan is the STAP chain alone
-    (``"zlb"``); under BYPASS the one-bit bypass register, which captures 0,
-    precedes the chain (``"bypass"``).
+    chain fields without reaching the PTAP 3DCR. Under BYPASS the one-bit
+    bypass register, which captures 0, precedes the chain (``"bypass"``).
+    ZERO_LENGTH_BYPASS (``"zlb"``) is BYPASS while the PTAP 3DCR select is
+    set, and the zero-length TDI-to-TDO path, with no chain, while it is
+    clear.
     """
 
     # Extra full-cycle flops a STAP's selected splice inserts into the chain.
@@ -496,8 +501,10 @@ class DtpStap3dcrModel:
 
         ``scan_kind`` is ``"dr"`` (TAP_3DCR data scan: PTAP 3DCR first),
         ``"ir"`` (instruction scan: PTAP IR first, PTAP 3DCR absent),
-        ``"zlb"`` (data scan under ZERO_LENGTH_BYPASS: no PTAP flop), or
+        ``"zlb"`` (data scan under ZERO_LENGTH_BYPASS: the ``"bypass"`` layout
+        while the PTAP select is set, no PTAP flop while it is clear), or
         ``"bypass"`` (data scan under BYPASS: the PTAP bypass register first).
+        With the PTAP select clear the chain is out of the scan path.
         """
         gates = self.gates(dbg_disable)
         flops: list[ChainFlop] = []
@@ -505,10 +512,12 @@ class DtpStap3dcrModel:
             flops.extend(ChainFlop("ptap", "ir", bit) for bit in range(DTP_IR_WIDTH - 1, -1, -1))
         elif scan_kind == "dr":
             flops.extend((ChainFlop("ptap", "stap_sel"), ChainFlop("ptap", "config_hold")))
-        elif scan_kind == "bypass":
+        elif scan_kind == "bypass" or (scan_kind == "zlb" and self.ptap_select):
             flops.append(ChainFlop("ptap", "bypass"))
         elif scan_kind != "zlb":
             raise ValueError(f"unknown scan kind {scan_kind!r}")
+        if not self.ptap_select:
+            return flops
         for name in STAP_ORDER:
             if self.staps[name].stap_sel and not gates[name]:
                 if self.attached(name):
@@ -677,8 +686,11 @@ class DtpStap3dcrModel:
         ``ptap_select`` and ``ptap_config_hold`` None and the PTAP 3DCR as
         it is; SIB/3DCR fields per the gating rules; a spliced downstream
         TAP latches its (writable) selected register, and the host segment
-        its value; deselected or gated ports park their downstream TAP."""
+        its value; deselected or gated ports park their downstream TAP. The
+        chain fields, downstream TAPs and host segment take part only when
+        the PTAP select was set before the scan."""
         gates = self.gates(dbg_disable)
+        chain_live = self._chain_live(dbg_disable)
         in_chain = dict(self.sib_en)
         spliced = self.spliced_downstream(dbg_disable)
         segment_in_chain = self.host_segment_in_chain(dbg_disable)
@@ -686,11 +698,14 @@ class DtpStap3dcrModel:
             self.ptap_select = ptap_select & 1
         if ptap_config_hold is not None:
             self.ptap_config_hold = ptap_config_hold & 1
-        self._apply_chain_update(gates=gates, in_chain=in_chain, sib_en=sib_en, payloads=payloads)
-        for name in spliced:
-            ds = self.downstream[name]
-            ds.latch((ds_values or {}).get(name, ds.shift_default("dr")))
-        self._latch_host_segment(segment_in_chain, host_segment)
+        if chain_live:
+            self._apply_chain_update(
+                gates=gates, in_chain=in_chain, sib_en=sib_en, payloads=payloads
+            )
+            for name in spliced:
+                ds = self.downstream[name]
+                ds.latch((ds_values or {}).get(name, ds.shift_default("dr")))
+            self._latch_host_segment(segment_in_chain, host_segment)
         self._park_downstream(gates)
 
     def apply_ir_scan(
@@ -709,27 +724,50 @@ class DtpStap3dcrModel:
         scan, then parking as for a data scan."""
         del ptap_instr  # the PTAP instruction is tracked by the sequence's driver
         gates = self.gates(dbg_disable)
-        in_chain = dict(self.sib_en)
-        spliced = self.spliced_downstream(dbg_disable)
-        segment_in_chain = self.host_segment_in_chain(dbg_disable)
-        self._apply_chain_update(gates=gates, in_chain=in_chain, sib_en=sib_en, payloads=payloads)
-        for name in spliced:
-            if ds_ir and name in ds_ir:
-                self.downstream[name].update_ir(ds_ir[name])
-        self._latch_host_segment(segment_in_chain, host_segment)
+        if self._chain_live(dbg_disable):
+            in_chain = dict(self.sib_en)
+            spliced = self.spliced_downstream(dbg_disable)
+            segment_in_chain = self.host_segment_in_chain(dbg_disable)
+            self._apply_chain_update(
+                gates=gates, in_chain=in_chain, sib_en=sib_en, payloads=payloads
+            )
+            for name in spliced:
+                if ds_ir and name in ds_ir:
+                    self.downstream[name].update_ir(ds_ir[name])
+            self._latch_host_segment(segment_in_chain, host_segment)
         self._park_downstream(gates)
 
     def flush_scan(self, dbg_disable: Mapping[str, int] | None = None) -> None:
-        """Commit an all-zero over-length data scan: every in-chain field
-        cleared, a spliced downstream's writable register latched to zero."""
-        for name in self.spliced_downstream(dbg_disable):
-            self.downstream[name].latch(0)
-        self._latch_host_segment(self.host_segment_in_chain(dbg_disable), 0)
+        """Commit an all-zero over-length data scan: the PTAP 3DCR cleared
+        and, when the PTAP select was set before the scan, every in-chain
+        field cleared and a spliced downstream's writable register and the
+        host segment latched to zero."""
+        if self._chain_live(dbg_disable):
+            for name in self.spliced_downstream(dbg_disable):
+                self.downstream[name].latch(0)
+            self._latch_host_segment(self.host_segment_in_chain(dbg_disable), 0)
+            for name in STAP_ORDER:
+                self.sib_en[name] = 0
+                self.staps[name] = Stap3dcrState()
         self.ptap_select = 0
         self.ptap_config_hold = 0
-        for name in STAP_ORDER:
-            self.sib_en[name] = 0
-            self.staps[name] = Stap3dcrState()
+
+    def _chain_live(self, dbg_disable: Mapping[str, int] | None) -> bool:
+        """True when the next scan moves the STAP chain (PTAP select set).
+
+        A STAP left selected while the PTAP select is clear still forwards
+        the live TMS and scan data to its downstream TAP, whose registers the
+        model does not predict, so such a scan is rejected.
+        """
+        if self.ptap_select:
+            return True
+        spliced = self.spliced_downstream(dbg_disable)
+        if spliced:
+            raise ValueError(
+                f"scan with the PTAP select clear while downstream TAPs {spliced} are "
+                "spliced: their register contents are not modelled"
+            )
+        return False
 
     def expected_capture(
         self, dbg_disable: Mapping[str, int] | None = None, scan_kind: str = "dr"
@@ -921,8 +959,13 @@ def _selftest() -> None:
                 model.attach(
                     stap, _Device(f"{stap}_ds", 0x1D51_0001 | (STAP_ORDER.index(stap) << 8), 12)
                 )
-            # Select the STAP: PTAP select, open its SIB, write the payload.
+            # With the PTAP select clear the chain holds: a scan that sets the
+            # select cannot open a SIB in the same Update-DR.
+            assert len(model.chain_layout()) == 2
             model.apply_scan(ptap_select=1, ptap_config_hold=1, sib_en={stap: 1})
+            assert not model.sib_en[stap] and len(model.chain_layout()) == 2 + 4
+            # Select the STAP: open its SIB, write the payload.
+            model.apply_scan(sib_en={stap: 1})
             model.apply_scan(payloads={stap: Stap3dcrState(1, 1, 1)})
             layout = model.chain_layout()
             expect_len = 2 + 4 + STAP_3DCR_WIDTH + DtpStap3dcrModel.SPLICE_EXTRA[stap]
@@ -971,6 +1014,8 @@ def _selftest() -> None:
             composed = model.compose_scan(width)
             assert (composed >> (width - 1)) & 1 == 1  # PTAP stap_sel
             model.flush_scan()
+            assert len(model.chain_layout()) == 2
+            model.apply_scan(ptap_select=1)
             assert len(model.chain_layout()) == 2 + 4
     _selftest_host_segment(width)
     _selftest_zlb_bypass(width, _Device("smc_ds", 0x1D51_0101, 12))
@@ -982,6 +1027,7 @@ def _selftest_host_segment(width: int) -> None:
     keeps its value through a gated scan, and clears in Test-Logic-Reset."""
     model = DtpStap3dcrModel()
     model.attach_host_segment()
+    model.apply_scan(ptap_select=1)
     gate = {STAP_DISABLE["stap_host"]: 1}
     seg_len = STAP_HOST_SEGMENT_WIDTH
     assert len(model.chain_layout()) == PTAP_3DCR_WIDTH + STAP_SIB_COUNT + seg_len
@@ -1002,18 +1048,21 @@ def _selftest_host_segment(width: int) -> None:
 
 
 def _selftest_zlb_bypass(width: int, device) -> None:
-    """A data scan under ZERO_LENGTH_BYPASS is the STAP chain alone and one
-    under BYPASS starts with the bypass register's captured 0; neither
-    reaches the PTAP 3DCR, and the spliced downstream register latches the
-    value composed for it."""
+    """With the PTAP select set, a data scan under ZERO_LENGTH_BYPASS is the
+    BYPASS scan: the bypass register's captured 0 precedes the STAP chain,
+    neither reaches the PTAP 3DCR, and the spliced downstream register
+    latches the value composed for it. With the select clear neither layout
+    holds a chain flop."""
+    assert DtpStap3dcrModel().chain_layout(scan_kind="zlb") == []
     model = DtpStap3dcrModel()
     model.attach("smc", device)
-    model.apply_scan(ptap_select=1, ptap_config_hold=1, sib_en={"smc": 1})
+    model.apply_scan(ptap_select=1, ptap_config_hold=1)
+    model.apply_scan(sib_en={"smc": 1})
     model.apply_scan(payloads={"smc": Stap3dcrState(0, 1, 0)})
     model.apply_ir_scan(0x3D, ds_ir={"smc": 0x02})
     zlb = model.chain_layout(scan_kind="zlb")
-    assert model.chain_layout(scan_kind="dr")[PTAP_3DCR_WIDTH:] == zlb
-    assert model.chain_layout(scan_kind="bypass") == [ChainFlop("ptap", "bypass"), *zlb]
+    chain = model.chain_layout(scan_kind="dr")[PTAP_3DCR_WIDTH:]
+    assert zlb == model.chain_layout(scan_kind="bypass") == [ChainFlop("ptap", "bypass"), *chain]
     composed = model.compose_scan(width, ds_values={"smc": 0xABC}, scan_kind="zlb")
     depth0 = next(d for d, f in enumerate(zlb) if f.owner == "smc" and f.field == "ds")
     assert (composed >> (width - depth0 - 12)) & 0xFFF == 0xABC
@@ -1021,10 +1070,9 @@ def _selftest_zlb_bypass(width: int, device) -> None:
     assert model.ptap_select == 1 and model.ptap_config_hold == 1
     lsb, seg = model.ds_capture_slice("smc", scan_kind="zlb")
     expected, care, chain_len = model.expected_capture(scan_kind="zlb")
-    assert chain_len == len(zlb) and seg == 12 and (expected >> lsb) & 0xFFF == 0xABC
-    expected, care, chain_len = model.expected_capture(scan_kind="bypass")
-    assert chain_len == len(zlb) + 1
-    assert (care >> len(zlb)) & 1 == 1 and (expected >> len(zlb)) & 1 == 0
+    assert chain_len == len(chain) + 1 and seg == 12 and (expected >> lsb) & 0xFFF == 0xABC
+    assert (care >> len(chain)) & 1 == 1 and (expected >> len(chain)) & 1 == 0
+    assert model.expected_capture(scan_kind="bypass") == (expected, care, chain_len)
 
 
 if __name__ == "__main__":

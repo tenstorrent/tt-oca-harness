@@ -67,7 +67,7 @@ class smc_env extends ocah_env;
     if (!uvm_config_db#(virtual smc_tb_if)::get(this, "", "tb_vif", tb_vif))
       `uvm_fatal(get_type_name(), "virtual smc_tb_if `tb_vif` not found in uvm_config_db")
     tb_vif.ref_clk_period_ns    = cfg.ref_clk_period_ns;
-    tb_vif.smc_clk_period_ns    = cfg.clk_period_ns;
+    tb_vif.smc_clk_period_ns    = cfg.smc_clk_period_ns;
     tb_vif.periph_clk_period_ns = cfg.periph_clk_period_ns;
     `uvm_info(get_type_name(), {"env cfg: ", cfg.convert2string()}, UVM_MEDIUM)
 

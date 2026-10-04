@@ -3,19 +3,41 @@
 #
 # tclint-disable line-length
 #
-# DTP SpyGlass RDC waivers for Tenstorrent-owned RTL and OpenTitan prim_*
+# DTP VC SpyGlass RDC waivers for Tenstorrent-owned RTL and OpenTitan prim_*
 # primitives. PULP axi_cdc_clearable / cdc_fifo_gray_clearable /
 # cdc_reset_ctrlr waivers live in dtp.vcrdc.opensource_ip.waiver.tcl.
+
+# general_waiver.tcl -- DTP RDC waivers
 #
 # All violations waived here have been individually reviewed. Each waiver entry
 # documents the design intent and justification for why the flagged condition is
 # safe or expected.
 
+# --- hierarchy-reuse tokens -------------------------------------------------------
+# ${PREFIX} re-anchors hierarchical filter fields at the parent instance path. A parent
+# run that replays this block predefines PREFIX and apply_prefix before sourcing this
+# file; in the block's own run PREFIX is "". ${BLOCKINST} is the containing instance of a
+# block-top violation (the design name here, the instance path at the parent).
+if { ![info exists PREFIX] } { set PREFIX "" }
+if { [info procs apply_prefix] eq "" } {
+    proc apply_prefix { filter } {
+        set out [string map [list {${PREFIX}} $::PREFIX] $filter]
+        if { $::PREFIX eq "" } {
+            set bi $::env(DESIGN_NAME)
+        } else {
+            set bi [string trimright $::PREFIX "/."]
+        }
+        set out [string map [list {${BLOCKINST}} $bi] $out]
+        return $out
+    }
+}
+# ----------------------------------------------------------------------------------
+
 #=======================================================================================================================
 # INTEGRITY_RESET_GLITCH : combinational logic in JTAG domain async reset paths
 #=======================================================================================================================
 # Two groups of violations share the same root cause: a flop output drives an async
-# reset pin through a single-gate combinational cell (prim_or2, prim_and2, or prim_inv).
+# reset pin through a single-gate combinational cell (prim_or2 or prim_and2).
 #
 # Group 1 -- 3DCR scan register update flops (5 violations: PTAP + 4 STAPs):
 #   u_*stap*/u_3dcr_scan_reg/gen_rst_n_reset.u_update_flop reset pin is driven by
@@ -29,10 +51,10 @@
 #
 # Group 2 -- IC Reset enable-control scan register update flop (1 violation):
 #   u_reset_enable_control_scan_reg/gen_rst_n_reset.u_update_flop reset pin is driven
-#   by u_rst_n_or (prim_or2) combining:
-#     - u_reset_hold_inv/out_o     (prim_inv of u_reset_hold_scan_reg, TCK-domain)
-#     - scan_ctrl_i.rst_n          (TAP !test_logic_reset, TCK-domain TLR)
-#   Both sources are TCK-domain flops; the primitive merge is glitch-free because
+#   by reset_enable_control_scan_ctrl.rst_n combining:
+#     - u_reset_hold_scan_reg/gen_rst_n_reset.u_update_flop/q_o  (TCK-domain scan flop)
+#     - u_test_logic_reset_flop/q_o                               (JTAG TLR soft reset)
+#   Both sources are TCK-domain flops; the combinational merge is glitch-free because
 #   both inputs only toggle synchronously with TCK.
 #
 # The "glitch" concern only applies when a flop output changes asynchronously relative
@@ -42,12 +64,12 @@
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_INTEGRITY_RESET_GLITCH_3dcr_scan_regs} \
     -comment {Five 3DCR scan register update flop async reset pins are driven through prim_or2 from u_config_hold_sticky_flop (TCK-domain) OR the local TRST_N gated reset. The config_hold_sticky_flop output is TCK-synchronous; it cannot glitch the async reset independently of TCK transitions. Single-gate combinational logic with TCK-synchronous inputs is glitch-free.} \
-    -filter {(Tag == "INTEGRITY_RESET_GLITCH") AND (Module == "dtp")} \
+    -filter {(Tag == "INTEGRITY_RESET_GLITCH") AND (GlitchyDestObjectList:GlitchyDestObject =~ "*/u_3dcr_scan_reg/*")} \
     -app { rdc } -tag { INTEGRITY_RESET_GLITCH } -user { bmelton } -timestamp { 15-05-2026 11:30:00 }
 
 waive_violation -add {ocah_dtp_INTEGRITY_RESET_GLITCH_ic_reset_scan_reg} \
-    -comment {IC Reset enable-control scan register update flop async reset is driven through prim_or2 of prim_inv(u_reset_hold_scan_reg) and TAP TLR (scan_ctrl_i.rst_n). Both sources are TCK-synchronous; no asynchronous glitch is possible on the combined reset net.} \
-    -filter {(Tag == "INTEGRITY_RESET_GLITCH") AND (ContainerInstance =~ "*u_jtag_ptap*")} \
+    -comment {IC Reset enable-control scan register update flop async reset is driven by the combinational merge of u_reset_hold_scan_reg output (TCK-domain scan flop) and the JTAG TLR flop output (also TCK-domain). Both sources are TCK-synchronous; no asynchronous glitch is possible on the combined reset net.} \
+    -filter {(Tag == "INTEGRITY_RESET_GLITCH") AND (GlitchyDestObjectList:GlitchyDestObject =~ "*u_jtag_ic_reset_reg/u_reset_enable_control_scan_reg/*")} \
     -app { rdc } -tag { INTEGRITY_RESET_GLITCH } -user { bmelton } -timestamp { 15-05-2026 11:30:00 }
 
 #=======================================================================================================================
@@ -76,7 +98,7 @@ waive_violation -add {ocah_dtp_rdc_SETUP_CLOCK_UNUSED_output_tck_clocks} \
 # feeds the gate/flop that computes C, which is by definition how a generated reset
 # is constructed. This is declared design intent, not uncontrolled overlap.
 #
-# Reset hierarchy (declared in dtp.timing_post.tcl):
+# Reset hierarchy (declared in dtp.resets.tcl):
 #
 #   pwr_on_rst_ni                         (create_reset)
 #     └── trst_n_combined                 (= prim_and2(pwr_on_rst_ni, TRST_N))
@@ -102,12 +124,12 @@ waive_violation -add {ocah_dtp_rdc_SETUP_CLOCK_UNUSED_output_tck_clocks} \
 # Edge: pwr_on_rst_ni -> trst_n_combined
 waive_violation -add {ocah_dtp_rdc_SETUP_RESET_OVERLAP_pwr_on_rst_to_trst_n_combined} \
     -comment {Declared edge pwr_on_rst_ni (create_reset) -> trst_n_combined (create_generated_reset). trst_n_combined = prim_and2(pwr_on_rst_ni, TRST_N pin); the master physically reaching its child's AND gate is by construction.} \
-    -filter {(Tag == "SETUP_RESET_OVERLAP") AND (SrcRstInfo:ResetName == "pwr_on_rst_ni") AND (DesRstInfo:ResetName == "trst_n_combined")} \
+    -filter {(Tag == "SETUP_RESET_OVERLAP") AND ((SrcRstInfo:ResetName == "pwr_on_rst_ni") OR (SrcRstInfo:ResetName == "POWERGOOD_STABLE_N")) AND (DesRstInfo:ResetName == "trst_n_combined")} \
     -app { rdc } -tag { SETUP_RESET_OVERLAP } -user { bmelton } -timestamp { 17-05-2026 17:30:00 }
 
 # Edges: trst_n_combined -> {5 STAP gated resets, ic_reset_ctrl_rst_n}
 waive_violation -add {ocah_dtp_rdc_SETUP_RESET_OVERLAP_trst_n_combined_to_children} \
-    -comment {Declared edges trst_n_combined -> {stap_sep_dbg_rst, stap_io_rst, stap_3dcr_rst, stap_extra0_rst, stap_smc_dbg_rst, ic_reset_ctrl_rst_n}. Each child is computed as prim_and2(trst_n_combined, local enable); the master physically feeding its child's AND gate is by construction. Hierarchy declared in dtp.timing_post.tcl.} \
+    -comment {Declared edges trst_n_combined -> {stap_sep_dbg_rst, stap_io_rst, stap_3dcr_rst, stap_extra0_rst, stap_smc_dbg_rst, ic_reset_ctrl_rst_n}. Each child is computed as prim_and2(trst_n_combined, local enable); the master physically feeding its child's AND gate is by construction. Hierarchy declared in dtp.resets.tcl.} \
     -filter {(Tag == "SETUP_RESET_OVERLAP") AND (SrcRstInfo:ResetName == "trst_n_combined") AND ((DesRstInfo:ResetName == "stap_sep_dbg_rst") OR (DesRstInfo:ResetName == "stap_io_rst") OR (DesRstInfo:ResetName == "stap_3dcr_rst") OR (DesRstInfo:ResetName == "stap_extra0_rst") OR (DesRstInfo:ResetName == "stap_smc_dbg_rst") OR (DesRstInfo:ResetName == "ic_reset_ctrl_rst_n"))} \
     -app { rdc } -tag { SETUP_RESET_OVERLAP } -user { bmelton } -timestamp { 17-05-2026 17:30:00 }
 
@@ -118,56 +140,9 @@ waive_violation -add {ocah_dtp_rdc_SETUP_RESET_OVERLAP_tlr_reset_to_siblings} \
     -app { rdc } -tag { SETUP_RESET_OVERLAP } -user { bmelton } -timestamp { 17-05-2026 17:30:00 }
 
 #=======================================================================================================================
-# RDC_CORRUPT_OBSERVED : JTAG scan chain data registers with no async reset (Groups A-C)
-#=======================================================================================================================
-# JTAG scan chain registers (prim_jtag_scan_reg, jtag_stap SIB mux, jtag_intf_unit scan data)
-# follow IEEE 1149.1 conventions:
-#
-#   u_update_flop: Has async reset (cleared on TRST_N / TLR). Its output drives the
-#                  shift-register chain as the last-updated value.
-#   scan_data:     Does NOT have async reset by design. Scan chain data represents the
-#                  last JTAG-programmed value; resetting it would discard valid content.
-#                  The JTAG protocol (not the hardware reset) initializes scan_data.
-#
-# When TRST_N or TLR asserts asynchronously:
-#   - u_update_flop is immediately cleared (async reset)
-#   - On the next TCK rising edge, scan_data captures the cleared value
-#   - This is exactly IEEE 1149.1 behavior: all JTAG registers initialize to their
-#     default values on TRST_N via the scan update protocol, not via async reset pins
-#
-# The RDC tool flags this because it sees a reset propagating from u_update_flop to
-# scan_data without a blocking synchronizer, but the propagation is intentional and
-# bounded to one TCK clock cycle. Both source and destination are in the same TCK
-# clock domain; the "corruption" concern only applies across clock domain boundaries.
-#
-# Group A: prim_jtag_scan_reg internal (V2: RDC:1678, V3: RDC:1689, V8: RDC:1866, V10: RDC:1914)
-# Group B: jtag_stap 3DCR update flop → SIB mux scan_data (V9: RDC:1883, V11: RDC:1919)
-# Group C: jtag_intf_unit flops → scan_data (V5: RDC:1833, V6: RDC:1861, V7: RDC:1863)
-#=======================================================================================================================
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_scan_reg_update_to_scan_data} \
-    -comment {prim_jtag_scan_reg: u_update_flop (has async reset) drives scan_data (no reset) within the same TCK clock domain. IEEE 1149.1 JTAG scan chain design: scan_data holds the last JTAG-programmed value and is not reset asynchronously; on TRST/TLR the update_flop is cleared and the reset value propagates to scan_data on the next TCK edge. Both flops are in the same clock domain; RDC corruption concern requires a cross-domain boundary, which is absent here.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "prim_jtag_scan_reg") AND (DestObject =~ "*scan_data*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
-
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_stap_scan_data} \
-    -comment {jtag_stap: 3DCR scan register update_flop output (stap_*_rst reset) drives sib_mux_pre scan_data (no reset) within the same JTAG_TCK clock domain. By IEEE 1149.1 convention, scan_data in the SIB mux has no async reset; the JTAG update protocol initializes it. Reset assertion clears the update_flop, and scan_data takes the cleared value on the next TCK cycle -- intentional single-domain behavior, not a real cross-domain corruption path.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag_stap") AND (DestObject =~ "*scan_data*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
-
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_intf_unit_scan_data} \
-    -comment {jtag_intf_unit: Three intra-TCK-domain paths where a JTAG control flop (dbg_disable_sync output, shift_dr_flop, or dfd_sib update_flop -- all reset by JTAG resets) drives a downstream scan_data register (no reset). All source and destination flops share JTAG_TCK. Scan_data registers in JTAG scan chains intentionally have no async reset per IEEE 1149.1; they are initialized by JTAG scan protocol. No cross-domain boundary is involved.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag_intf_unit") AND (DestObject =~ "*scan_data*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
-
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_ptap_scan_data} \
-    -comment {jtag_ptap: TAP controller state flop (u_current_state_flop, trst_n_combined reset) drives the debug_ctrl scan register scan_data (no reset) within the same JTAG_TCK domain. Same IEEE 1149.1 scan chain pattern as prim_jtag_scan_reg Group A: scan_data intentionally has no async reset; the TAP state drives scan_data via normal shift/update protocol. No cross-domain boundary.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag_ptap") AND (DestObject =~ "*scan_data*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
-
-#=======================================================================================================================
 # RDC_CORRUPT_OBSERVED : debug_ctrl scan reg → clock-stop synchronizer (dtp, cross-domain)
 #=======================================================================================================================
-# RDC:1644 — Module: dtp
+# Module: dtp
 #   Source : u_debug_ctrl_scan_reg/gen_rst_n_reset.u_update_flop/q_o/Q[3]
 #            (JTAG_TCK domain, reset by JTAG reset hierarchy)
 #   Dest   : u_cross_trigger_network/u_clock_stop_ctrl/u_clk_stop_sync/u_sync_1/q_o/Q[0]
@@ -188,7 +163,7 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_ptap_scan_data} \
 # asynchronous domain change.
 #=======================================================================================================================
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_debug_ctrl_clk_stop_sync} \
-    -comment {dtp: JTAG debug_ctrl scan register update_flop (TCK domain, JTAG reset) drives DTPCLK clock-stop synchronizer (u_clk_stop_sync, 2-stage SYNC_BY_NFF). When TRST asserts the update_flop is cleared, deassserting clock-stop in the DTPCLK domain -- intentional safe behavior so JTAG reset does not leave the chip clock-stopped. u_sync_1 is the CDC synchronizer first stage (SYNC_BY_NFF); the RDC tool flags this as corruption but the synchronizer correctly captures the async change within one DTPCLK cycle. No missing blocking scheme -- the synchronizer is the scheme.} \
+    -comment {dtp: JTAG debug_ctrl scan register update_flop (TCK domain, JTAG reset) drives DTPCLK clock-stop synchronizer (u_clk_stop_sync, 2-stage SYNC_BY_NFF). When TRST asserts the update_flop is cleared, deasserting clock-stop in the DTPCLK domain -- intentional safe behavior so JTAG reset does not leave the chip clock-stopped. u_sync_1 is the CDC synchronizer first stage (SYNC_BY_NFF); the RDC tool flags this as corruption but the synchronizer correctly captures the async change within one DTPCLK cycle. No missing blocking scheme -- the synchronizer is the scheme.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "dtp") AND (DestObject =~ "*clk_stop_sync*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
 
@@ -203,14 +178,12 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_debug_ctrl_clk_stop_sync} \
 # trst_n_combined/tlr_reset.
 #
 # Module-scoped waivers for the PULP primitives themselves (Module == "axi_cdc_clearable" /
-# "cdc_fifo_gray_clearable" / "cdc_reset_ctrlr") live in dtp.vcrdc.opensource_ip.waiver.tcl.  The waivers in this
+# "cdc_fifo_gray_clearable" / "cdc_reset_ctrlr") live in opensource_ip_waiver.tcl.  The waivers in this
 # section target Module == "jtag2axi" or Module == "prim_fifo_sync" (OpenTitan primitive used by jtag2axi).
-# Equivalent CDC convergence violation at the same boundary is waived as
-# ocah_dtp_CDC_COHERENCY_RECONV_SEQ_jtag2axi_axi_state_fsm in vccdc/inputs/waivers/general_waiver.tcl.
 #
-# Filter ORDER matters: VC Static credits the first matching waiver.  Per-register
-# waivers are placed before broader DestObject globs so each named register
-# carries its own justification.
+# Filter ORDER matters: VC Static credits the first matching waiver.  Per-register waivers are deliberately
+# placed BEFORE the same-Module catch-all so each named register carries its own justification; the catch-all
+# documents exactly what remains uncovered.
 #=======================================================================================================================
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -231,43 +204,31 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_debug_ctrl_clk_stop_sync} \
 # under the same clearable-protocol argument.
 #-----------------------------------------------------------------------------------------------------------------------
 
-# RDC:2568 — current_addr_tclk (smc_jtag2axi): per-read AXI read address
+# current_addr_tclk (smc_jtag2axi): per-read AXI read address
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_current_addr_tclk} \
-    -comment {RDC:2568 — jtag2axi (smc_jtag2axi): cdc_fifo_gray_clearable_ar half_b (rst_n_i, DTPCLK) state reaches current_addr_tclk (no reset, JTAG_TCK). This register holds the current AXI read address; it has no reset because it is loaded from each JTAG command. The clearable protocol guarantees no AXI read is active during reset, so stale address content cannot affect any in-flight transaction. FSM reloads it at the start of each new read.} \
+    -comment {jtag2axi (smc_jtag2axi): cdc_fifo_gray_clearable_ar half_b (rst_n_i, DTPCLK) state reaches current_addr_tclk (no reset, JTAG_TCK). This register holds the current AXI read address; it has no reset because it is loaded from each JTAG command. The clearable protocol guarantees no AXI read is active during reset, so stale address content cannot affect any in-flight transaction. FSM reloads it at the start of each new read.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND (DestObject =~ "*current_addr_tclk*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:2308 — current_incr_series_addr_tclk (sep_otp_jtag2axi): running incrementing-series address
+# current_incr_series_addr_tclk (sep_otp_jtag2axi): running incrementing-series address
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_current_incr_series_addr_tclk} \
-    -comment {RDC:2308 — jtag2axi (sep_otp_jtag2axi): cdc_fifo_gray_clearable_aw half_b (rst_n_i, DTPCLK) state reaches current_incr_series_addr_tclk (no reset, JTAG_TCK). This register holds the running AXI address for an incrementing write series; it has no reset because it is loaded from each JTAG command. The clearable protocol guarantees no AXI transaction is active during reset, so stale address content cannot be forwarded. FSM reloads it before any new series begins.} \
+    -comment {jtag2axi (sep_otp_jtag2axi): cdc_fifo_gray_clearable_aw half_b (rst_n_i, DTPCLK) state reaches current_incr_series_addr_tclk (no reset, JTAG_TCK). This register holds the running AXI address for an incrementing write series; it has no reset because it is loaded from each JTAG command. The clearable protocol guarantees no AXI transaction is active during reset, so stale address content cannot be forwarded. FSM reloads it before any new series begins.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND (DestObject =~ "*current_incr_series_addr_tclk*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:2318 — current_tx_stale_tclk (smc_jtag2axi): per-transaction stale/abort flag
+# current_tx_stale_tclk (smc_jtag2axi): per-transaction stale/abort flag
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_current_tx_stale_tclk} \
-    -comment {RDC:2318 — jtag2axi (smc_jtag2axi): CDC reset controller half_b (rst_n_i, DTPCLK) state reaches current_tx_stale_tclk (no reset, JTAG_TCK). This register marks whether the current AXI transaction has stalled; it has no reset because the TCK FSM manages it per-transaction. The clearable protocol guarantees no transaction is active during reset; stale content cannot affect any in-flight operation. FSM clears this at the start of each new transaction.} \
+    -comment {jtag2axi (smc_jtag2axi): CDC reset controller half_b (rst_n_i, DTPCLK) state reaches current_tx_stale_tclk (no reset, JTAG_TCK). This register marks whether the current AXI transaction has stalled; it has no reset because the TCK FSM manages it per-transaction. The clearable protocol guarantees no transaction is active during reset; stale content cannot affect any in-flight operation. FSM clears this at the start of each new transaction.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND (DestObject =~ "*current_tx_stale_tclk*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:1936 — last_single_op_was_read_tclk (smc_otp_jtag2axi): inter-transaction status
+# last_single_op_was_read_tclk (smc_otp_jtag2axi): inter-transaction status
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_last_single_op_was_read_tclk} \
-    -comment {RDC:1936 — jtag2axi (smc_otp_jtag2axi): CDC reset controller half_a (rst_n_i, DTPCLK) state reaches last_single_op_was_read_tclk (no reset, JTAG_TCK). This TCK-domain status register tracks the last AXI transaction type; it has no reset because its value is irrelevant between transactions and the clearable protocol guarantees no AXI transaction is active during reset. The FSM reinitialises it on the first post-reset transaction.} \
+    -comment {jtag2axi (smc_otp_jtag2axi): CDC reset controller half_a (rst_n_i, DTPCLK) state reaches last_single_op_was_read_tclk (no reset, JTAG_TCK). This TCK-domain status register tracks the last AXI transaction type; it has no reset because its value is irrelevant between transactions and the clearable protocol guarantees no AXI transaction is active during reset. The FSM reinitialises it on the first post-reset transaction.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND (DestObject =~ "*last_single_op_was_read_tclk*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:1315 — orphan_r_count_q / orphan_b_count_q (smc_jtag2axi): DTPCLK outstanding-response counters
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_orphan_count_q} \
-    -comment {RDC:1315 — jtag2axi (smc_jtag2axi): cdc_reset_ctrlr half_a data_src_q (trst_n_combined/tlr_reset, JTAG_TCK) reaches orphan_r_count_q / orphan_b_count_q (rst_n_i, DTPCLK). These counters track in-flight AXI R/B beats across the clearable CDC; they are asynchronously reset by rst_n_i on the DTPCLK side. The 4-phase clearable protocol isolates both domains before reset-induced CDC state can be consumed, so a stale count cannot affect an in-flight transaction.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND (DestObject =~ "*orphan_*_count_q*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 01-09-2026 18:10:00 }
-
-# RDC:1953 — DTPCLK-side AXI fall-through FIFOs and outstanding/discard state
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_dtpclk_ft_and_outstanding} \
-    -comment {RDC:1953 — jtag2axi (smc_jtag2axi): cdc_reset_ctrlr half_a data_src_q (trst_n_combined/tlr_reset, JTAG_TCK) reaches DTPCLK-side fall-through FIFO pointers (*_ft_reg/i_fifo/*_pointer_q), outstanding counters (*_outstanding_q), and dst_clear/discard response flags. All are asynchronously reset by rst_n_i. The 4-phase clearable protocol isolates the AXI CDC before these registers can consume reset-induced source state.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND ((DestObject =~ "*_ft_reg*") OR (DestObject =~ "*_outstanding_q*") OR (DestObject =~ "*dst_clear_pending*") OR (DestObject =~ "*discard_rsp_q*"))} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 01-09-2026 18:10:00 }
-
-# RDC:1989 — remaining TCK-domain command-processor *_tclk registers
+# remaining TCK-domain command-processor *_tclk registers
 #   Covers the remaining *_tclk register patterns not enumerated above, e.g.:
 #     axi_state_q_tclk                    (jtag2axi command FSM state)
 #     current_custom_wstrb_tclk           (latched custom WSTRB for current op)
@@ -292,7 +253,7 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_dtpclk_ft_and_outst
 #   under the protocol's quiescence guarantee; each register is also
 #   independently reset by trst_n_combined/tlr_reset on the TCK side.
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_command_state_tclk_regs} \
-    -comment {RDC:1989 — jtag2axi command processor: DTPCLK-side clearable reset controller half_b data_src_q (rst_n_i) reaches TCK-domain *_tclk command-state registers (trst_n_combined/tlr_reset). The 4-phase clearable protocol forces the destination side into isolation when rst_n_i asserts, so the TCK-domain command processor observes safe isolated values. All TCK-side registers are also independently reset by trst_n_combined/tlr_reset. Catches the remaining *_tclk register patterns beyond the four register-specific waivers above (axi_state_q_tclk, current_custom_wstrb_tclk, current_data_tclk, current_is_series_data_with_error_status_op_tclk, current_jtag_size_tclk, current_op_tclk, current_tx_is_from_single_buffer_tclk, current_tx_is_series_read_tclk, current_use_custom_wstrb_tclk, last_read_data_tclk, last_single_op_status_tclk, plain_reads_pending_tclk, series_errstat_pending_tclk, series_reads_in_flight_tclk, shift_register_q_tclk, single_op_pending_tclk, single_tx_req_valid_tclk, sticky_axi_status_tclk).} \
+    -comment {jtag2axi command processor: DTPCLK-side clearable reset controller half_b data_src_q (rst_n_i) reaches TCK-domain *_tclk command-state registers (trst_n_combined/tlr_reset). The 4-phase clearable protocol forces the destination side into isolation when rst_n_i asserts, so the TCK-domain command processor observes safe isolated values. All TCK-side registers are also independently reset by trst_n_combined/tlr_reset. Catches the remaining *_tclk register patterns beyond the four register-specific waivers above (axi_state_q_tclk, current_custom_wstrb_tclk, current_data_tclk, current_is_series_data_with_error_status_op_tclk, current_jtag_size_tclk, current_op_tclk, current_tx_is_from_single_buffer_tclk, current_tx_is_series_read_tclk, current_use_custom_wstrb_tclk, last_read_data_tclk, last_single_op_status_tclk, plain_reads_pending_tclk, series_errstat_pending_tclk, series_reads_in_flight_tclk, shift_register_q_tclk, single_op_pending_tclk, single_tx_req_valid_tclk, sticky_axi_status_tclk).} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND (DestObject =~ "*_tclk*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
@@ -300,27 +261,23 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_command_state_tclk_
 # jtag2axi and prim_fifo_sync: internal FIFO storage (no-reset by design)
 #-----------------------------------------------------------------------------------------------------------------------
 
-# RDC:1701 — prim_fifo_sync read pointer vs storage (smc_otp_jtag2axi series_request_fifo)
+# prim_fifo_sync read pointer vs storage (smc_otp_jtag2axi series_request_fifo)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_prim_fifo_sync_rptr_storage} \
-    -comment {RDC:1701 — prim_fifo_sync (smc_otp_jtag2axi series_request_fifo): read pointer rptr_wrap_cnt_q (has reset) is visible at storage array (no reset), both in JTAG_TCK domain. prim_fifo_sync intentionally omits storage reset: pointer reset declares the FIFO empty (rptr==wptr), making all storage entries invalid without clearing them. No stale entry can be read because the occupancy is tracked by pointers alone. Standard FIFO design; no real corruption path.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "prim_fifo_sync") AND (DestObject =~ "*storage*")} \
+    -comment {prim_fifo_sync (smc_otp_jtag2axi series_request_fifo): read pointer rptr_wrap_cnt_q (has reset) is visible at storage array (no reset), both in JTAG_TCK domain. prim_fifo_sync intentionally omits storage reset: pointer reset declares the FIFO empty (rptr==wptr), making all storage entries invalid without clearing them. No stale entry can be read because the occupancy is tracked by pointers alone. Standard FIFO design; no real corruption path.} \
+    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "prim_fifo_sync") AND (ContainerInstance =~ "*jtag2axi*") AND (DestObject =~ "*storage*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:1807 — jtag2axi series_rsp_fifo storage (smc_jtag2axi B-channel response)
+# jtag2axi series_rsp_fifo storage (smc_jtag2axi B-channel response)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_series_rsp_fifo_storage} \
-    -comment {RDC:1807 — jtag2axi (smc_jtag2axi): cdc_fifo_gray_clearable_b half_a (rst_n_i, DTPCLK) reset state reaches TCK-domain series_rsp_fifo storage (no reset). The 4-phase clearable-reset protocol ensures B-channel FIFO is drained before the reset state change affects active logic; storage reset is omitted by design (pointer reset declares FIFO empty). Equivalent to the prim_fifo_sync storage waiver above.} \
+    -comment {jtag2axi (smc_jtag2axi): cdc_fifo_gray_clearable_b half_a (rst_n_i, DTPCLK) reset state reaches TCK-domain series_rsp_fifo storage (no reset). The 4-phase clearable-reset protocol ensures B-channel FIFO is drained before the reset state change affects active logic; storage reset is omitted by design (pointer reset declares FIFO empty). Equivalent to the prim_fifo_sync storage waiver above.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND (DestObject =~ "*series_rsp_fifo*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# RDC:1708 — jtag2axi series_request_fifo storage (smc_otp_jtag2axi A-channel request)
+# jtag2axi series_request_fifo storage (smc_otp_jtag2axi A-channel request)
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_series_request_fifo_storage} \
-    -comment {RDC:1708 — jtag2axi (smc_otp_jtag2axi): series_request_fifo_din_tclk.addr (no reset, JTAG_TCK) drives series_request_fifo storage (no reset, JTAG_TCK). Both are in the same clock domain. FIFO storage has no reset by design; FIFO pointers are reset on TRST/TLR declaring all entries invalid without requiring storage clearance. Same prim_fifo_sync design rationale as RDC:1701. No cross-domain boundary; no real corruption path.} \
+    -comment {jtag2axi (smc_otp_jtag2axi): series_request_fifo_din_tclk.addr (no reset, JTAG_TCK) drives series_request_fifo storage (no reset, JTAG_TCK). Both are in the same clock domain. FIFO storage has no reset by design; FIFO pointers are reset on TRST/TLR declaring all entries invalid without requiring storage clearance. Same prim_fifo_sync design rationale as RDC:1701. No cross-domain boundary; no real corruption path.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND (DestObject =~ "*series_request_fifo*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 17-05-2026 21:00:00 }
 
-# PULP stream_fork outstanding-state flops inside jtag2axi (inp_state_q /
-# gen_oup_state[*].oup_state_q). Attributed to Module==jtag2axi, reset by rst_n_i.
-waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_write_fork_state} \
-    -comment {jtag2axi: PULP stream_fork u_write_fork inp_state_q / gen_oup_state[*].oup_state_q (DTPCLK, rst_n_i) observe TCK-side cdc_reset_ctrlr half_a data_src_q (trst_n_combined/tlr_reset). The 4-phase clearable protocol isolates the AXI CDC before these handshake flops can consume reset-induced source state; each dest is independently reset by rst_n_i.} \
-    -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag2axi") AND (DestObject =~ "*u_write_fork*")} \
-    -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 01-09-2026 18:12:00 }
+# TCK-side clear-sequence observers in the DTPCLK (rst_n_i) domain
+waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag2axi_tck_clear_seq_observers} -comment {trst_n_combined/tlr_reset-sourced cdc_reset_ctrlr state reaching the DTPCLK (rst_n_i) consumers of the clearable-CDC clear sequence inside jtag2axi: the CDC dst spill registers and the abort/drain bookkeeping (dst_clear_pending_q, outstanding/orphan counters, discard flags, u_write_fork state). The sequence arrives through the cdc_4phase synchronizer and only drains or discards transactions a TAP reset abandoned; no payload.} -filter [apply_prefix {(RdcSourceResets:ResetName == "trst_n_combined") AND (SrcObject =~ "${PREFIX}u_jtag_intf_unit/u_jtag_ptap/*jtag2axi*/u_axi_cdc/*/i_cdc_reset_ctrlr/*/i_state_transition_cdc_src/data_src_q/*") AND (DestObject =~ "${PREFIX}u_jtag_intf_unit/u_jtag_ptap/*jtag2axi*/*") AND ((RdcDestResets:DestResetInfo:ResetName == "rst_n_i") OR (RdcDestResets:DestResetInfo:ResetName == "PRIMARY_RESET_N_SMC_CLK")) AND ((DestClockInfoList:DestClockInfo:ClockName == "DTPCLK") OR (DestClockInfoList:DestClockInfo:ClockName == "SMUCLK"))}] -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { nbetik } -timestamp { 17-09-2026 18:15:09 }

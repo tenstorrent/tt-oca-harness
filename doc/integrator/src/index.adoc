@@ -14,7 +14,10 @@ ifdef::backend-pdf[]
 :imagesdir: ../assets
 endif::backend-pdf[]
 
-This guide provides instructions and best practices for integrating OCAH
+[[integrator-guide-about]]
+== About this Guide
+
+This guide provides instructions and best practices for integrating OCA Harness
 subsystems into your chiplet design.
 
 The integrator guide is split into multiple chapters. Each of these chapters
@@ -32,7 +35,9 @@ ifdef::backend-html5[]
 * xref:defines.adoc[Project Defines] - Compile-time defines that apply OCAH-wide
 * xref:prim.adoc[Prim Cell Replacement] - Guidelines for how to define prim cells
 * xref:cdc.adoc[CDC Timing Constraints] - Timing constraints that ship with OCAH
+ifndef::release[]
 * xref:revision.adoc[Revision History] - Major revisions and updates to the OCAH Integrator Guide
+endif::release[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
@@ -44,5 +49,7 @@ include::aou.adoc[]
 include::defines.adoc[]
 include::prim.adoc[]
 include::cdc.adoc[]
+ifndef::release[]
 include::revision.adoc[]
+endif::release[]
 endif::backend-pdf[]

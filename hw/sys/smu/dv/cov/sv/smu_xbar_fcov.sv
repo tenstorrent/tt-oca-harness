@@ -36,7 +36,7 @@ module smu_xbar_fcov #(
   // SEP CSR block, so smu.sv's gen_no_sep branch ties base and size to '0
   // and they can never move; the points that watch them move are dropped
   // rather than carried unhittable.
-  parameter bit SepPresent = 1'b1
+  parameter bit SEP_PRESENT = 1'b1
 ) (
   input wire clk_smu_i,
   input wire rst_cold_ni,
@@ -116,7 +116,7 @@ module smu_xbar_fcov #(
 
   // The SEP aperture, watched the same way. Only elaborated with SEP
   // present: base and size are tied to '0 without it and never move.
-  if (SepPresent) begin : g_sep
+  if (SEP_PRESENT) begin : g_sep
     logic [55:0] sep_base_q, sep_size_q;
     logic sep_base_prog_q, sep_size_prog_q, sep_size_reprog_q;
 
@@ -145,16 +145,29 @@ module smu_xbar_fcov #(
     `OCAH_FCOV_COVER(c_map_sep_base_programmed, sep_base_programmed_e, clk_smu_i, in_reset)
     `OCAH_FCOV_COVER(c_map_sep_size_programmed, sep_size_programmed_e, clk_smu_i, in_reset)
     `OCAH_FCOV_COVER(c_map_sep_size_reprogrammed, sep_size_reprogrammed_e, clk_smu_i, in_reset)
+    // A zero SEP_REGION_SIZE cannot be programmed on this bench: the crossbar
+    // rule it forms has start == end, and the decoder's map check
+    // (addr_decode_dync check_start) accepts only start < end or end == 0.
+    // Phase 2 (SMU_FCOV.adoc).
+`ifdef SMU_FCOV_PHASE2
     `OCAH_FCOV_COVER(c_map_sep_size_zero, sep_size_zero_e, clk_smu_i, in_reset)
+`endif
 
 `ifndef VERILATOR
     // Commercial-simulator covergroup: the states the SEP window passes
     // through. A zero size is only recorded once the size has been
-    // programmed, so an unprogrammed zero-size state does not exist.
+    // programmed, so an unprogrammed zero-size state does not exist. The
+    // programmed-zero state is Phase 2, as c_map_sep_size_zero above.
     covergroup cg_sep_window with function sample (logic [1:0] prog_zero);
       option.per_instance = 1;
       cp_state: coverpoint prog_zero {
-        bins unprogrammed = {2'b00}; bins programmed = {2'b10}; bins programmed_zero = {2'b11};
+        bins unprogrammed = {2'b00};
+        bins programmed = {2'b10};
+`ifdef SMU_FCOV_PHASE2
+        bins programmed_zero = {2'b11};
+`else
+        ignore_bins programmed_zero = {2'b11};
+`endif
       }
     endgroup
 

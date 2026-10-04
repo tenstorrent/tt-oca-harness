@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[revision-history]]
+= Revision History
+
+== Document history
+
+This document tracks major revisions and updates to the OCAH Getting Started Guide.
+
+.Revision History
+[width="100%",cols="15%,15%,15%,55%",options="header",]
+|=======================================================================
+|Version |Date |Author |Description
+|0.0.1 |2026-09-10 |Alessandro Ottaviano, Andrew Hsiao, Ben Melton, Bruce
+Hsu, Calvin McCoy, Colin McKellar, Daniel Green, James McCorrie, Jay Alphey,
+Nicole Boettcher, Nils Wistoff, Noah Betik |Initial Getting Started
+guide: repository structure, dependencies, environment setup, workflows,
+guidelines, licensing and contribution.
+|=======================================================================

@@ -76,6 +76,11 @@
 `SMU_TB_OUT(logic [31:0], dtp_smc_dbg_b_count_o)
 `SMU_TB_IN(logic, clk_ref_i)
 `SMU_TB_IN(logic, clk_periph_i)
+// The clocks pll_wrap delivers to the SMU: the model's own outputs, so a
+// test measures the tree the core runs on rather than the bench stimulus.
+`SMU_TB_OUT(logic, clk_smu_o)
+`SMU_TB_OUT(logic, clk_ref_o)
+`SMU_TB_OUT(logic, clk_periph_o)
 `SMU_TB_IN(logic, clk_sep_wdt_i)
 // ESRC ring-oscillator sample clock. A separate, faster clock than clk_smu:
 // the entropy source samples its noise lanes on this one, so with it static
@@ -227,7 +232,7 @@
 `SMU_TB_OUT(jtag_inst_reg_pkg::jtag_instruction_decoded_e, jtag_ptap_inst_decoded)
 // The decoded instruction as a plain vector: VCS hands an enum-typed port
 // to cocotb as a 32-bit integer.
-`SMU_TB_OUT(logic [jtag_inst_reg_pkg::DECODED_IR_WIDTH-1:0], tb_ptap_inst_decoded)
+`SMU_TB_OUT(logic [jtag_inst_reg_pkg::DecodedIrWidth-1:0], tb_ptap_inst_decoded)
 `SMU_TB_OUT(logic [55:0], sep_global_base_o)
 `SMU_TB_OUT(logic [55:0], sep_region_size_o)
 `SMU_TB_OUT(logic [55:0], smc_global_base_o)
@@ -251,11 +256,11 @@
 `SMU_TB_OUT(logic, jtag_ic_reset_smc_ovrd)
 `SMU_TB_OUT(logic, jtag_ic_reset_smc_ctrl_n)
 `SMU_TB_IN(logic, gpio_boot_stall_drive_i)
-`SMU_TB_IN(logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0], xtrig_ctm_dst_req)
-`SMU_TB_IN(logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0], xtrig_ctm_src_ack)
+`SMU_TB_IN(logic [dtp_pkg::DefaultNumIntCt-3:0], xtrig_ctm_dst_req)
+`SMU_TB_IN(logic [dtp_pkg::DefaultNumIntCt-3:0], xtrig_ctm_src_ack)
 `SMU_TB_IN(logic, xtrig_clk_stop_req)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0], xtrig_ctm_dst_ack)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0], xtrig_ctm_src_req)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumIntCt-3:0], xtrig_ctm_dst_ack)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumIntCt-3:0], xtrig_ctm_src_req)
 // DTP clock-stop grant, as tb/tb_top.sv exposes it. Sampled by
 // smu_clock_stop_coordination_test.
 `SMU_TB_OUT(logic, dtp_stop_clks_o)
@@ -301,7 +306,7 @@
 `SMU_TB_OUT(logic [15:0], smu_axi_out_aw_ready_cycles_o)
 `SMU_TB_OUT(logic [15:0], smu_axi_out_w_valid_cycles_o)
 `SMU_TB_OUT(logic [15:0], smu_axi_out_w_ready_cycles_o)
-`SMU_TB_OUT(logic [smc_pkg::NUM_MAILBOXES-1:0], ext_mailbox_interrupts_o)
+`SMU_TB_OUT(logic [smc_pkg::NumMailboxes-1:0], ext_mailbox_interrupts_o)
 // SEP run-gate / IFU bring-up probes (keep nets visible under VCS)
 `SMU_TB_OUT(logic [15:0], sep_cla_custom_o)
 `SMU_TB_OUT(logic, sep_mpc_reset_run_o)
@@ -349,14 +354,18 @@
 `SMU_TB_OUT(logic, obs_smu_axi_awready_o)
 `SMU_TB_OUT(logic, obs_xtrig_src_req0_o)
 // Secondary-TAP and iJTAG scan-chain hosts. smu_wrapper is the scan master
-// on all of them, so the bench has to supply the client side; tb_top.sv
-// closes each chain with scan_in <- scan_out and this does the same, so a
-// shift through the primary TAP leaves the wrapper at its boundary pins and
-// re-enters there. The select and TDO-enable taps are what separates
-// "the chain shifted" from "the host was never selected".
+// on all of them, so the bench has to supply the client side: the STAP and
+// BSR chains close with scan_in <- scan_out, and each iJTAG chain through one
+// bench scan cell, so a shift through the primary TAP leaves the wrapper at
+// its boundary pins and re-enters there. The select, scan-out and TDO-enable
+// taps are what separates "the chain shifted" from "the host was never
+// selected".
 `SMU_TB_OUT(logic, tb_dfd_select)
 `SMU_TB_OUT(logic, tb_dft_select)
 `SMU_TB_OUT(logic, tb_dft_secure_select)
+`SMU_TB_OUT(logic, tb_dfd_scan_out)
+`SMU_TB_OUT(logic, tb_dft_scan_out)
+`SMU_TB_OUT(logic, tb_dft_secure_scan_out)
 `SMU_TB_OUT(logic, tb_stap_host_select)
 `SMU_TB_OUT(logic, tb_stap_io_tms)
 `SMU_TB_OUT(logic, tb_stap_io_tdo)
@@ -365,14 +374,14 @@
 `SMU_TB_OUT(logic, tb_stap_extra0_tdo)
 `SMU_TB_OUT(logic, tb_stap_extra0_tdo_oen)
 // ATB telemetry sources, one lane per receiver; lane 0 is the low bits.
-`SMU_TB_IN(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][7:0], tb_telemetry_atdata)
-`SMU_TB_IN(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][6:0], tb_telemetry_atid)
-`SMU_TB_IN(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0], tb_telemetry_atvalid)
-`SMU_TB_IN(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0], tb_telemetry_afready)
-`SMU_TB_OUT(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0], tb_telemetry_atready)
-`SMU_TB_OUT(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0], tb_telemetry_afvalid)
+`SMU_TB_IN(logic [smc_config_pkg::NumTelemetryReceivers-1:0][7:0], tb_telemetry_atdata)
+`SMU_TB_IN(logic [smc_config_pkg::NumTelemetryReceivers-1:0][6:0], tb_telemetry_atid)
+`SMU_TB_IN(logic [smc_config_pkg::NumTelemetryReceivers-1:0], tb_telemetry_atvalid)
+`SMU_TB_IN(logic [smc_config_pkg::NumTelemetryReceivers-1:0], tb_telemetry_afready)
+`SMU_TB_OUT(logic [smc_config_pkg::NumTelemetryReceivers-1:0], tb_telemetry_atready)
+`SMU_TB_OUT(logic [smc_config_pkg::NumTelemetryReceivers-1:0], tb_telemetry_afvalid)
 // SMC boundary inputs, and the outputs they and the SMC CSRs drive.
-`SMU_TB_IN(logic [smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0], tb_smc_ext_interrupts)
+`SMU_TB_IN(logic [smc_4core_cpu_pkg::NumExtInterrupts-1:0], tb_smc_ext_interrupts)
 `SMU_TB_IN(logic [3:0], tb_smc_ndmreset_request)
 `SMU_TB_IN(logic, tb_cfg_flr_pf_active)
 `SMU_TB_IN(logic, tb_mem_repair_abort)
@@ -403,15 +412,15 @@
 `SMU_TB_OUT(logic, tb_smc_cluster_ded)
 `SMU_TB_OUT(logic, tb_smc_wdt_first_timeout)
 `SMU_TB_OUT(logic, tb_smc_wdt_second_timeout)
-`SMU_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_gpio_interrupt)
-`SMU_TB_OUT(logic [smc_config_pkg::NUM_UART-1:0], tb_uart_interrupt)
+`SMU_TB_OUT(logic [smc_pkg::NumGpioWraps-1:0], tb_gpio_interrupt)
+`SMU_TB_OUT(logic [smc_config_pkg::NumUart-1:0], tb_uart_interrupt)
 // GPIO pin 0 pad drive, weak so a core output still wins, matching the
 // boot-stall strap drive on pin 57 below.
 `SMU_TB_IN(logic, tb_gpio0_drive_en)
 `SMU_TB_IN(logic, tb_gpio0_drive_val)
 // Per-pad drive for the whole GPIO bus, on the same weak terms as pin 0.
-`SMU_TB_IN(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_gpio_drive_en)
-`SMU_TB_IN(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_gpio_drive_val)
+`SMU_TB_IN(logic [smc_pkg::NumGpioWraps-1:0], tb_gpio_drive_en)
+`SMU_TB_IN(logic [smc_pkg::NumGpioWraps-1:0], tb_gpio_drive_val)
 // SEP secure test-mode request strap. The SEP eFuse wrapper samples it on
 // the rising edge of its fuse-sense-done, so a leaf drives it across a cold
 // reset rather than at an arbitrary time.
@@ -425,24 +434,24 @@
 // share, resting at the board pull for the port's INVERT sense; the bench
 // pulls the wire from a chiplet driver instead of driving the pad. The
 // other three pad groups keep the direct data-input drive.
-`SMU_TB_IN(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_wire_pull)
-`SMU_TB_IN(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_wire_ext_assert)
-`SMU_TB_IN(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_wire_group)
+`SMU_TB_IN(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_wire_pull)
+`SMU_TB_IN(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_wire_ext_assert)
+`SMU_TB_IN(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_wire_group)
 `SMU_TB_IN(logic, tb_xtrig_ctp_wire_group_pull)
-`SMU_TB_IN(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_req_in_din)
-`SMU_TB_IN(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_ack_in_din)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_req_out_dout)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_req_out_dout_en)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_req_out_din_en)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_req_out_din)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_wire_mismatch)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_ct_dst)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_req_in_dout)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_req_in_dout_en)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_req_in_din_en)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_ack_in_dout)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_ack_in_dout_en)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_ack_in_din_en)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_ack_out_dout)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_ack_out_dout_en)
-`SMU_TB_OUT(logic [dtp_pkg::DEFAULT_NUM_CTP-1:0], tb_xtrig_ctp_ack_out_din_en)
+`SMU_TB_IN(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_req_in_din)
+`SMU_TB_IN(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_ack_in_din)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_req_out_dout)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_req_out_dout_en)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_req_out_din_en)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_req_out_din)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_wire_mismatch)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_ct_dst)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_req_in_dout)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_req_in_dout_en)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_req_in_din_en)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_ack_in_dout)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_ack_in_dout_en)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_ack_in_din_en)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_ack_out_dout)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_ack_out_dout_en)
+`SMU_TB_OUT(logic [dtp_pkg::DefaultNumCtp-1:0], tb_xtrig_ctp_ack_out_din_en)

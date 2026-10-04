@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // DV-only compile-time STUB of sep_cpu (no VeeR EL2) for the no_cpu
-// (Verilator and VCS) targets.
+// lsu_stub_* targets: cocotb on Verilator and SV-UVM on VCS. The cocotb VCS
+// coverage build (--target default) does not use this stub; it keeps the full
+// sep_cpu and tb_top force-splices the LSU request instead.
 //
 // The real sep_cpu (hw/sys/sep/rtl/sep_cpu.sv) instantiates el2_veer_wrapper (the full
 // VeeR EL2 RISC-V core complex), which is heavy to elaborate/build and is not
@@ -149,7 +151,7 @@ module sep_cpu
 
   sep_32_64_3_12_axi_req_t  [SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_req;
   sep_32_64_3_12_axi_resp_t [SEP_LSU_DEMUX_NUM_PORTS-1:0] lsu_demux_resp;
-  sep_lsu_demux_port_t lsu_aw_select, lsu_ar_select;
+  sep_lsu_demux_port_e lsu_aw_select, lsu_ar_select;
 
   always_comb begin
     if ((lsu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin

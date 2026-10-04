@@ -19,7 +19,7 @@ module smc_dfd_wrap #(
                                           // counters. Bounds how far clk_gated_i may fall
                                           // behind clk_ref_i before ticks are lost;
                                           // 2**REF_CNT_W ref cycles of slack.
-  localparam int unsigned LANE_WIDTH = 16  // Width of one debug-bus lane in the mux tree and the
+  localparam int unsigned LaneWidth = 16   // Width of one debug-bus lane in the mux tree and the
                                            // DFD IP.
 ) (
   input  logic clk_smc_i,               // SMC core clock, gated locally to clock the debug-bus
@@ -59,7 +59,7 @@ module smc_dfd_wrap #(
   input  tt_dbm_pkg::DbgMuxSelMmr_s             dbg_mux_sel_csr_i,  // Debug-bus mux select register,
                                                                     // shared by every level-2 and
                                                                     // level-3 mux.
-  input  logic [NUM_INPUT_LANES*LANE_WIDTH-1:0] debug_bus_i,  // Debug-bus lanes from the SMC into
+  input  logic [NUM_INPUT_LANES*LaneWidth-1:0] debug_bus_i,   // Debug-bus lanes from the SMC into
                                                               // the level-3 mux stage.
   output logic [7:0]                            debug_marker_o,  // Debug marker from the CLA.
 
@@ -95,8 +95,8 @@ module smc_dfd_wrap #(
   logic [REF_CNT_W-1:0] ref_cnt_gray, ref_cnt_gray_sync;
   logic [REF_CNT_W-1:0] ref_cnt_sync, tick_cnt;
 
-  logic [LANE_WIDTH*16-1:0] debug_bus_l2;
-  logic [LANE_WIDTH*32-1:0] debug_bus_l3;
+  logic [LaneWidth*16-1:0] debug_bus_l2;
+  logic [LaneWidth*32-1:0] debug_bus_l3;
 
   logic clk_gated_i;
 
@@ -124,19 +124,19 @@ module smc_dfd_wrap #(
 
   for (genvar i = 1; i <= 8; i++) begin : gen_dbm_l3
 
-    localparam int unsigned MUX_ID = 6 + i;
+    localparam int unsigned MuxId = 6 + i;
 
     tt_debug_bus_mux #(
-      .DEBUG_MUX_OUTPUT_WIDTH (LANE_WIDTH*4),
-      .LANE_WIDTH          (LANE_WIDTH),
+      .DEBUG_MUX_OUTPUT_WIDTH (LaneWidth*4),
+      .LANE_WIDTH          (LaneWidth),
       .NUM_INPUT_LANES     (8),
       .DISABLE_OUTPUT_FLOP (1),
-      .DEBUG_MUX_ID        (MUX_ID)
+      .DEBUG_MUX_ID        (MuxId)
     ) u_debug_bus_mux_l3 (
       .clk                 (clk_gated_i),
       .reset_n             (rst_primary_ni),
-      .debug_signals_in    (debug_bus_i[LANE_WIDTH*8*i -1:LANE_WIDTH*8*(i-1)]),
-      .debug_bus_out       (debug_bus_l3[LANE_WIDTH*4*i -1:LANE_WIDTH*4*(i-1)]),
+      .debug_signals_in    (debug_bus_i[LaneWidth*8*i -1:LaneWidth*8*(i-1)]),
+      .debug_bus_out       (debug_bus_l3[LaneWidth*4*i -1:LaneWidth*4*(i-1)]),
       .debug_clken         (/* UNUSED */),
       .DbgMuxSelMmr        (dbg_mux_sel_csr_i)
     );
@@ -148,18 +148,18 @@ module smc_dfd_wrap #(
 
   for (genvar i = 1; i <= 4; i++) begin : gen_dbm_l2
 
-    localparam int unsigned MUX_ID = 2 + i;
+    localparam int unsigned MuxId = 2 + i;
 
     tt_debug_bus_mux #(
-      .DEBUG_MUX_OUTPUT_WIDTH (LANE_WIDTH*4),
-      .LANE_WIDTH          (LANE_WIDTH),
+      .DEBUG_MUX_OUTPUT_WIDTH (LaneWidth*4),
+      .LANE_WIDTH          (LaneWidth),
       .NUM_INPUT_LANES     (8),
-      .DEBUG_MUX_ID        (MUX_ID)
+      .DEBUG_MUX_ID        (MuxId)
     ) u_debug_bus_mux_l2 (
       .clk                 (clk_gated_i),
       .reset_n             (rst_primary_ni),
-      .debug_signals_in    (debug_bus_l3[LANE_WIDTH*8*i -1:LANE_WIDTH*8*(i-1)]),
-      .debug_bus_out       (debug_bus_l2[LANE_WIDTH*4*i -1:LANE_WIDTH*4*(i-1)]),
+      .debug_signals_in    (debug_bus_l3[LaneWidth*8*i -1:LaneWidth*8*(i-1)]),
+      .debug_bus_out       (debug_bus_l2[LaneWidth*4*i -1:LaneWidth*4*(i-1)]),
       .debug_clken         (/* UNUSED */),
       .DbgMuxSelMmr        (dbg_mux_sel_csr_i)
     );
@@ -173,7 +173,7 @@ module smc_dfd_wrap #(
     .NUM_CLA_INST                           (1),
     .NUM_DST_INST                           (1),
     .DEBUG_SIGNAL_WIDTH                     (64),
-    .LANE_WIDTH                             (LANE_WIDTH),
+    .LANE_WIDTH                             (LaneWidth),
     .NUM_INPUT_LANES                        (16),
     .DEBUGMARKER_WIDTH                      (8),
     .TRC_SIZE_IN_KB                         (16),
@@ -380,6 +380,6 @@ module smc_dfd_wrap #(
   // Cross Triggers //
   ////////////////////
 
-  assign xtrigger_ss_o = smc_xtrigger_out_o & {smc_pkg::XTRIGGER_WIDTH{dfd_enables_i.xtrig_clk_halt_mask[0]}};
+  assign xtrigger_ss_o = smc_xtrigger_out_o & {smc_pkg::XtriggerWidth{dfd_enables_i.xtrig_clk_halt_mask[0]}};
 
 endmodule

@@ -15,10 +15,13 @@
 // Per-bridge security_disable inputs are active-high (1 disables the bridge),
 // synchronized to TCK upstream.
 //
-// The STAP scan interface carries both IR and DR scans. While the 3DCR STAP-select bit is set,
-// TDO comes from stap_host_scan_in_i instead of the IR or selected TDR. TDO is retimed on the
-// falling TCK edge, except during a ZERO_LENGTH_BYPASS DR shift, where TDI reaches TDO
-// combinationally.
+// The STAP scan interface carries both IR and DR scans while the 3DCR STAP-select bit is set, and
+// TDO then comes from stap_host_scan_in_i instead of the IR or selected TDR. While the bit is
+// clear, the select, capture, shift and update strobes of the STAP scan interface stay low, so
+// the STAP chain holds its state through every scan. TDO is retimed on the
+// falling TCK edge, except during a ZERO_LENGTH_BYPASS DR shift with the bit clear, where TDI
+// reaches TDO combinationally. While the bit is set, ZERO_LENGTH_BYPASS behaves as BYPASS: the
+// bypass register leads the STAP chain and its return is retimed.
 //
 // System clk_i/rst_n_i clock jtag2axi; pwr_on_rst_ni is ANDed with trst_n for the JTAG logic
 // and for the TRST forwarded on host_tap_ctrl_o.
@@ -114,7 +117,8 @@ module jtag_ptap
                                                 // active-low TRST.
     input  logic            client_tdi_i,  // Client serial test data input.
     output logic            client_tdo_o,  // Client serial test data output, retimed on the falling
-                                           // TCK edge except during a ZERO_LENGTH_BYPASS DR shift.
+                                           // TCK edge except during a ZERO_LENGTH_BYPASS DR shift
+                                           // with the 3DCR STAP-select bit clear.
     output logic            client_tdo_oen_o,  // Client TDO output enable, active-high during
                                                // Shift-IR and Shift-DR.
 
@@ -137,11 +141,16 @@ module jtag_ptap
     output logic             ijtag_host_scan_out_o,  // Client TDI forwarded to the iJTAG network.
 
     output jtag_scan_ctrl_t  stap_host_scan_ctrl_o,  // DR scan control with select, capture, shift
-                                                     // and update ORed with the IR scan control.
+                                                     // and update ORed with the IR scan control,
+                                                     // and held low while the 3DCR STAP-select
+                                                     // bit is clear.
     input  logic             stap_host_scan_in_i,  // STAP chain return; drives TDO while the 3DCR
                                                    // STAP-select bit is set.
-    output logic             stap_host_scan_out_o,  // IR or selected TDR output, or TDI under
-                                                    // ZERO_LENGTH_BYPASS, toward the STAP chain.
+    output logic             stap_host_scan_out_o,  // IR or selected TDR output toward the STAP
+                                                    // chain; the bypass register under
+                                                    // ZERO_LENGTH_BYPASS while the 3DCR
+                                                    // STAP-select bit is set, and TDI while it
+                                                    // is clear.
 
     output jtag_instruction_decoded_e  inst_decoded_o,  // Decoded PTAP instruction.
 
@@ -166,6 +175,8 @@ module jtag_ptap
 
     input  logic                     clk_i,  // System clock for the JTAG2AXI bridges.
     input  logic                     rst_n_i,  // Active-low system reset for the JTAG2AXI bridges.
+    input  logic                     test_en_i,  // DFT test-mode enable, active-high, for the
+                                                 // JTAG2AXI bridges.
 
     input  logic                     pwr_on_rst_ni,  // Power-on reset (active low), ANDed with the
                                                      // client TRST.
@@ -254,6 +265,7 @@ module jtag_ptap
     logic zlb_tdr_mux;        // Zero-length bypass TDR multiplexer intermediate output
     logic tdo_retimed;        // Retimed TDO output
     logic dr_scan_select_reg; // Registered DR scan select to avoid glitches
+    logic zlb_select;         // ZERO_LENGTH_BYPASS DR scan with STAP select clear
 
     // jtag2axi scan chain outputs
     logic smc_otp_jtag2axi_scan_out;
@@ -264,7 +276,7 @@ module jtag_ptap
     logic smc_jtag2axi_security_disable;
 
     // 3DCR register is only needed when STAPs are enabled
-    localparam bit PTAP_3DCR_ENABLE = (STAP_IO_ENABLE != 0 || SEP_DBG_ENABLE != 0 || NUM_EXTRA_STAPS != 0 ||
+    localparam bit Ptap3dcrEnable = (STAP_IO_ENABLE != 0 || SEP_DBG_ENABLE != 0 || NUM_EXTRA_STAPS != 0 ||
                                         SMC_DBG_ENABLE != 0);
 
     //--------------------------------------------------------------------------
@@ -278,13 +290,13 @@ module jtag_ptap
     // (lowest scan indices), matching IEEE 1149.1 §17 which interleaves
     // `{reset_enable, reset_control}` per port.
     //--------------------------------------------------------------------------
-    localparam int unsigned NUM_SMC_IC_RESET = IC_RESET_SMC_ENABLE ? ($bits(ic_reset_smc_t) / 2) : 0;
-    localparam int unsigned NUM_SEP_IC_RESET = IC_RESET_SEP_ENABLE ? ($bits(ic_reset_sep_t) / 2) : 0;
-    localparam int unsigned NUM_EXT_IC_RESET = IC_RESET_EXT_ENABLE ? ($bits(ic_reset_ext_t) / 2) : 0;
-    localparam int unsigned NUM_IC_RESET     = NUM_SMC_IC_RESET + NUM_SEP_IC_RESET + NUM_EXT_IC_RESET;
+    localparam int unsigned NumSmcIcReset  = IC_RESET_SMC_ENABLE ? ($bits(ic_reset_smc_t) / 2) : 0;
+    localparam int unsigned NumSepIcReset  = IC_RESET_SEP_ENABLE ? ($bits(ic_reset_sep_t) / 2) : 0;
+    localparam int unsigned NumExtIcReset  = IC_RESET_EXT_ENABLE ? ($bits(ic_reset_ext_t) / 2) : 0;
+    localparam int unsigned NumIcReset     = NumSmcIcReset + NumSepIcReset + NumExtIcReset;
 
     // Any-slice enable drives TAP-level IC_RESET instruction decode and CAPS reporting.
-    localparam bit IC_RESET_ENABLE = IC_RESET_SMC_ENABLE | IC_RESET_SEP_ENABLE | IC_RESET_EXT_ENABLE;
+    localparam bit IcResetEnable = IC_RESET_SMC_ENABLE | IC_RESET_SEP_ENABLE | IC_RESET_EXT_ENABLE;
 
     // Bridge disables are derived in the LCC (see sep_lifecycle_ctrl.sv).
     // Local wire names preserved so downstream instances and DV probe paths
@@ -353,7 +365,7 @@ module jtag_ptap
                 byp_reg_scan_ctrl.select = dr_scan_ctrl.select;
             end
             inst_decoded_o[IC_RESET_INSTR]: begin
-                byp_reg_scan_ctrl.select = dr_scan_ctrl.select && !IC_RESET_ENABLE;
+                byp_reg_scan_ctrl.select = dr_scan_ctrl.select && !IcResetEnable;
             end
              inst_decoded_o[EXTEST_TRAIN_INSTR]: begin
                  byp_reg_scan_ctrl.select = dr_scan_ctrl.select && (!EXTEST_TRAIN_ENABLE || !BSR_ENABLE);
@@ -372,7 +384,7 @@ module jtag_ptap
                  byp_reg_scan_ctrl.select = dr_scan_ctrl.select && !TMP_ENABLE;
              end
              inst_decoded_o[TAP_3DCR_INSTR]: begin
-                 byp_reg_scan_ctrl.select = dr_scan_ctrl.select && !PTAP_3DCR_ENABLE;
+                 byp_reg_scan_ctrl.select = dr_scan_ctrl.select && !Ptap3dcrEnable;
              end
              inst_decoded_o[RUNBIST_INSTR]: begin
                  byp_reg_scan_ctrl.select = dr_scan_ctrl.select && !RUNBIST_ENABLE;
@@ -380,8 +392,9 @@ module jtag_ptap
              inst_decoded_o[DEBUG_CONTROL_INSTR]: begin
                  byp_reg_scan_ctrl.select = 1'b0;
              end
+             // ZERO_LENGTH_BYPASS is BYPASS while STAP select is set.
              inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR]: begin
-                 byp_reg_scan_ctrl.select = 1'b0;  // Zero-length bypass: no register, bypass handled at TDO output mux
+                 byp_reg_scan_ctrl.select = dr_scan_ctrl.select && stap_select;
              end
              inst_decoded_o[JTAG_CAPS_INSTR]: begin
                  byp_reg_scan_ctrl.select = 1'b0;
@@ -483,11 +496,11 @@ module jtag_ptap
     // Select is asserted when TAP_3DCR instruction is active and 3DCR is enabled
     always_comb begin
         tap_3dcr_reg_scan_ctrl = dr_scan_ctrl;
-        tap_3dcr_reg_scan_ctrl.select = dr_scan_ctrl.select && PTAP_3DCR_ENABLE &&
+        tap_3dcr_reg_scan_ctrl.select = dr_scan_ctrl.select && Ptap3dcrEnable &&
                                          inst_decoded_o[TAP_3DCR_INSTR];
     end
 
-    if (PTAP_3DCR_ENABLE) begin : gen_tap_3dcr_reg
+    if (Ptap3dcrEnable) begin : gen_tap_3dcr_reg
     jtag_3dcr_reg u_jtag_3dcr_reg (
         // JTAG DR scan control interface
         .scan_ctrl_i  (tap_3dcr_reg_scan_ctrl),
@@ -664,21 +677,21 @@ module jtag_ptap
 
     // Combined per-port scan outputs from jtag_ic_reset_reg, sliced into typed struct outputs
     // below. Index layout (high → low, matches TDI → TDO):
-    //   SMC bits : [NUM_IC_RESET-1              : NUM_SEP_IC_RESET+NUM_EXT_IC_RESET]
-    //   SEP bits : [NUM_SEP_IC_RESET+NUM_EXT_IC_RESET-1 : NUM_EXT_IC_RESET]
-    //   EXT bits : [NUM_EXT_IC_RESET-1          : 0]
+    //   SMC bits : [NumIcReset-1                  : NumSepIcReset+NumExtIcReset]
+    //   SEP bits : [NumSepIcReset+NumExtIcReset-1 : NumExtIcReset]
+    //   EXT bits : [NumExtIcReset-1               : 0]
     //
     // POLARITY: `ic_reset_ovrd_bus` is the ACTIVE-HIGH override signal
     // (i.e. `!reset_enable`) as emitted by jtag_ic_reset_reg; it is *not* the
     // raw IEEE §17 `reset_enable` TDR field. See `jtag_ic_reset_reg` header
     // for the full convention. The bus is forwarded verbatim into the
     // downstream `.ovrd` struct members below — no further inversion.
-    logic [((NUM_IC_RESET == 0) ? 0 : NUM_IC_RESET-1):0]  ic_reset_ovrd_bus;
-    logic [((NUM_IC_RESET == 0) ? 0 : NUM_IC_RESET-1):0]  ic_reset_ctrl_n_bus;
+    logic [((NumIcReset == 0) ? 0 : NumIcReset-1):0]  ic_reset_ovrd_bus;
+    logic [((NumIcReset == 0) ? 0 : NumIcReset-1):0]  ic_reset_ctrl_n_bus;
 
-    if (IC_RESET_ENABLE && (NUM_IC_RESET > 0)) begin : gen_ic_reset_reg
+    if (IcResetEnable && (NumIcReset > 0)) begin : gen_ic_reset_reg
         jtag_ic_reset_reg #(
-            .NUM_IC_RESET_PORTS(NUM_IC_RESET)
+            .NUM_IC_RESET_PORTS(NumIcReset)
         ) u_jtag_ic_reset_reg (
             // JTAG DR scan control interface
             .scan_ctrl_i   (ic_reset_reg_scan_ctrl),
@@ -712,8 +725,8 @@ module jtag_ptap
                                   $bits(smc_width_probe.ovrd) == $bits(smc_width_probe.val))
 
         ic_reset_smc_t smc_w;
-        assign smc_w.ovrd = ic_reset_ovrd_bus[NUM_IC_RESET-1 -: NUM_SMC_IC_RESET];
-        assign smc_w.val  = ic_reset_ctrl_n_bus[NUM_IC_RESET-1 -: NUM_SMC_IC_RESET];
+        assign smc_w.ovrd = ic_reset_ovrd_bus[NumIcReset-1 -: NumSmcIcReset];
+        assign smc_w.val  = ic_reset_ctrl_n_bus[NumIcReset-1 -: NumSmcIcReset];
         assign ic_reset_smc_o = smc_w;
     end else begin : gen_ic_reset_smc_tie
         assign ic_reset_smc_o = '0;
@@ -725,8 +738,8 @@ module jtag_ptap
                                   $bits(sep_width_probe.ovrd) == $bits(sep_width_probe.val))
 
         ic_reset_sep_t sep_w;
-        assign sep_w.ovrd = ic_reset_ovrd_bus[NUM_SEP_IC_RESET+NUM_EXT_IC_RESET-1 -: NUM_SEP_IC_RESET];
-        assign sep_w.val  = ic_reset_ctrl_n_bus[NUM_SEP_IC_RESET+NUM_EXT_IC_RESET-1 -: NUM_SEP_IC_RESET];
+        assign sep_w.ovrd = ic_reset_ovrd_bus[NumSepIcReset+NumExtIcReset-1 -: NumSepIcReset];
+        assign sep_w.val  = ic_reset_ctrl_n_bus[NumSepIcReset+NumExtIcReset-1 -: NumSepIcReset];
         assign ic_reset_sep_o = sep_w;
     end else begin : gen_ic_reset_sep_tie
         assign ic_reset_sep_o = '0;
@@ -738,8 +751,8 @@ module jtag_ptap
                                   $bits(ext_width_probe.ovrd) == $bits(ext_width_probe.val))
 
         ic_reset_ext_t ext_w;
-        assign ext_w.ovrd = ic_reset_ovrd_bus[NUM_EXT_IC_RESET-1 -: NUM_EXT_IC_RESET];
-        assign ext_w.val  = ic_reset_ctrl_n_bus[NUM_EXT_IC_RESET-1 -: NUM_EXT_IC_RESET];
+        assign ext_w.ovrd = ic_reset_ovrd_bus[NumExtIcReset-1 -: NumExtIcReset];
+        assign ext_w.val  = ic_reset_ctrl_n_bus[NumExtIcReset-1 -: NumExtIcReset];
         assign ic_reset_ext_o = ext_w;
     end else begin : gen_ic_reset_ext_tie
         assign ic_reset_ext_o = '0;
@@ -794,13 +807,13 @@ module jtag_ptap
         .HIGHZ_ENABLE        (HIGHZ_ENABLE),
         .RUNBIST_ENABLE      (RUNBIST_ENABLE),
         .TMP_ENABLE          (TMP_ENABLE),
-        .IC_RESET_ENABLE     (IC_RESET_ENABLE),
+        .IC_RESET_ENABLE     (IcResetEnable),
         .SMC_DBG_ENABLE      (SMC_DBG_ENABLE),
         .SEP_DBG_ENABLE      (SEP_DBG_ENABLE),
         .STAP_IO_ENABLE      (STAP_IO_ENABLE),
-        .NUM_SMC_IC_RESET    (NUM_SMC_IC_RESET),
-        .NUM_SEP_IC_RESET    (NUM_SEP_IC_RESET),
-        .NUM_EXT_IC_RESET    (NUM_EXT_IC_RESET),
+        .NUM_SMC_IC_RESET    (NumSmcIcReset),
+        .NUM_SEP_IC_RESET    (NumSepIcReset),
+        .NUM_EXT_IC_RESET    (NumExtIcReset),
         .NUM_EXTRA_STAPS     (NUM_EXTRA_STAPS),
         .NUM_XTRIG_CTP       (NUM_XTRIG_CTP),
         .NUM_XTRIG_INT_CT    (NUM_XTRIG_INT_CT),
@@ -890,24 +903,24 @@ module jtag_ptap
 
     // SMC OTP AXI-Lite
     smc_otp_axil_req_t  smc_otp_dummy_req;
-    localparam int unsigned SMC_OTP_ADDR_WIDTH = $bits(smc_otp_dummy_req.aw.addr);
-    localparam int unsigned SMC_OTP_DATA_WIDTH = $bits(smc_otp_dummy_req.w.data);
-    localparam int unsigned SMC_OTP_ID_WIDTH   = 1;  // AXI4-Lite has no ID
-    localparam int unsigned SMC_OTP_USER_WIDTH = 1;  // Minimal user width
+    localparam int unsigned SmcOtpAddrWidth = $bits(smc_otp_dummy_req.aw.addr);
+    localparam int unsigned SmcOtpDataWidth = $bits(smc_otp_dummy_req.w.data);
+    localparam int unsigned SmcOtpIdWidth   = 1;  // AXI4-Lite has no ID
+    localparam int unsigned SmcOtpUserWidth = 1;  // Minimal user width
 
     // SEP OTP AXI-Lite
     sep_otp_axil_req_t  sep_otp_dummy_req;
-    localparam int unsigned SEP_OTP_ADDR_WIDTH = $bits(sep_otp_dummy_req.aw.addr);
-    localparam int unsigned SEP_OTP_DATA_WIDTH = $bits(sep_otp_dummy_req.w.data);
-    localparam int unsigned SEP_OTP_ID_WIDTH   = 1;  // AXI4-Lite has no ID
-    localparam int unsigned SEP_OTP_USER_WIDTH = 1;  // Minimal user width
+    localparam int unsigned SepOtpAddrWidth = $bits(sep_otp_dummy_req.aw.addr);
+    localparam int unsigned SepOtpDataWidth = $bits(sep_otp_dummy_req.w.data);
+    localparam int unsigned SepOtpIdWidth   = 1;  // AXI4-Lite has no ID
+    localparam int unsigned SepOtpUserWidth = 1;  // Minimal user width
 
     // SMC Fabric AXI
     smc_jtag_axi_req_t  smc_dummy_req;
-    localparam int unsigned SMC_ADDR_WIDTH = $bits(smc_dummy_req.aw.addr);
-    localparam int unsigned SMC_DATA_WIDTH = $bits(smc_dummy_req.w.data);
-    localparam int unsigned SMC_ID_WIDTH   = $bits(smc_dummy_req.aw.id);
-    localparam int unsigned SMC_USER_WIDTH = $bits(smc_dummy_req.aw.user);
+    localparam int unsigned SmcAddrWidth = $bits(smc_dummy_req.aw.addr);
+    localparam int unsigned SmcDataWidth = $bits(smc_dummy_req.w.data);
+    localparam int unsigned SmcIdWidth   = $bits(smc_dummy_req.aw.id);
+    localparam int unsigned SmcUserWidth = $bits(smc_dummy_req.aw.user);
 
     //--------------------------------------------------------------------------
     // jtag2axi Module Instantiations
@@ -916,10 +929,10 @@ module jtag_ptap
     // SMC OTP AXI-Lite jtag2axi instance
     if (SMC_DBG_ENABLE) begin : gen_smc_otp_jtag2axi
         jtag2axi #(
-            .ADDR_WIDTH  (SMC_OTP_ADDR_WIDTH),
-            .DATA_WIDTH  (SMC_OTP_DATA_WIDTH),
-            .ID_WIDTH    (SMC_OTP_ID_WIDTH),
-            .USER_WIDTH  (SMC_OTP_USER_WIDTH),
+            .ADDR_WIDTH  (SmcOtpAddrWidth),
+            .DATA_WIDTH  (SmcOtpDataWidth),
+            .ID_WIDTH    (SmcOtpIdWidth),
+            .USER_WIDTH  (SmcOtpUserWidth),
             .FIFO_DEPTH  (SMC_OTP_RD_PL_DEPTH),
             .ATOP_WIDTH  (6)
         ) u_smc_otp_jtag2axi (
@@ -943,6 +956,7 @@ module jtag_ptap
             // AXI Interface (ACLK Domain)
             .aclk_i    (clk_i),
             .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI-Lite Write Address Channel
             .awid_o     (/* UNUSED */),
@@ -1007,10 +1021,10 @@ module jtag_ptap
     // SEP OTP AXI-Lite jtag2axi instance
     if (SEP_DBG_ENABLE) begin : gen_sep_otp_jtag2axi
         jtag2axi #(
-            .ADDR_WIDTH  (SEP_OTP_ADDR_WIDTH),
-            .DATA_WIDTH  (SEP_OTP_DATA_WIDTH),
-            .ID_WIDTH    (SEP_OTP_ID_WIDTH),
-            .USER_WIDTH  (SEP_OTP_USER_WIDTH),
+            .ADDR_WIDTH  (SepOtpAddrWidth),
+            .DATA_WIDTH  (SepOtpDataWidth),
+            .ID_WIDTH    (SepOtpIdWidth),
+            .USER_WIDTH  (SepOtpUserWidth),
             .FIFO_DEPTH  (SEP_OTP_RD_PL_DEPTH),
             .ATOP_WIDTH  (6)
         ) u_sep_otp_jtag2axi (
@@ -1034,6 +1048,7 @@ module jtag_ptap
             // AXI Interface (ACLK Domain)
             .aclk_i    (clk_i),
             .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI-Lite Write Address Channel
             .awid_o     (/* UNUSED */),
@@ -1098,10 +1113,10 @@ module jtag_ptap
     // SMC Fabric AXI jtag2axi instance
     if (SMC_DBG_ENABLE) begin : gen_smc_jtag2axi
         jtag2axi #(
-            .ADDR_WIDTH  (SMC_ADDR_WIDTH),
-            .DATA_WIDTH  (SMC_DATA_WIDTH),
-            .ID_WIDTH    (SMC_ID_WIDTH),
-            .USER_WIDTH  (SMC_USER_WIDTH),
+            .ADDR_WIDTH  (SmcAddrWidth),
+            .DATA_WIDTH  (SmcDataWidth),
+            .ID_WIDTH    (SmcIdWidth),
+            .USER_WIDTH  (SmcUserWidth),
             .FIFO_DEPTH  (SMC_RD_PL_DEPTH),
             .ATOP_WIDTH  (6)
         ) u_smc_jtag2axi (
@@ -1125,6 +1140,7 @@ module jtag_ptap
             // AXI Interface (ACLK Domain)
             .aclk_i    (clk_i),
             .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI Write Address Channel
             .awid_o     (axi_smc_dbg_req_o.aw.id),
@@ -1233,10 +1249,10 @@ module jtag_ptap
                     tdr_mux = TMP_ENABLE ? tmp_status_reg_scan_out : byp_reg_scan_out;
 
                 inst_decoded_o[IC_RESET_INSTR]:
-                    tdr_mux = IC_RESET_ENABLE ? ic_reset_reg_scan_out : byp_reg_scan_out;
+                    tdr_mux = IcResetEnable ? ic_reset_reg_scan_out : byp_reg_scan_out;
 
                 inst_decoded_o[TAP_3DCR_INSTR]:
-                    tdr_mux = PTAP_3DCR_ENABLE ? tap_3dcr_reg_scan_out : byp_reg_scan_out;
+                    tdr_mux = Ptap3dcrEnable ? tap_3dcr_reg_scan_out : byp_reg_scan_out;
 
                 inst_decoded_o[DEBUG_CONTROL_INSTR]:
                     tdr_mux = debug_ctrl_reg_scan_out;  // Debug control register
@@ -1295,13 +1311,19 @@ module jtag_ptap
 
     // Scan input mux: Implements zero-length bypass and STAP selection using explicit mux cells
     // to avoid glitches.
-    // Logic: stap_select ? stap_host_scan_in_i : ((inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg) ? client_tdi_i : tdr_mux)
+    // Logic: stap_select ? stap_host_scan_in_i : (zlb_select ? client_tdi_i : tdr_mux)
+
+    // The zero-length path exists only while STAP select is clear. The STAP chain return must
+    // leave TDO through the falling-edge retimer, so with STAP select set a ZERO_LENGTH_BYPASS
+    // DR scan is a BYPASS scan.
+    assign zlb_select = inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg &&
+                        !stap_select;
 
     // First mux: Select between client_tdi_i (zero-length bypass) and tdr_mux
     prim_stdmux2 u_zlb_tdr_mux (
         .i0_i  (tdr_mux),
         .i1_i  (client_tdi_i),
-        .sel_i (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
+        .sel_i (zlb_select),
         .y_o   (zlb_tdr_mux)
     );
 
@@ -1317,13 +1339,17 @@ module jtag_ptap
     // STAP Clock/Control Outputs (IEEE 1838 Section 5.4)
     //--------------------------------------------------------------------------
 
-    // STAP scan control signals (OR of IR and DR controls)
+    // STAP scan control signals (OR of IR and DR controls, gated by the 3DCR STAP-select bit)
     always_comb begin
         stap_host_scan_ctrl_o = dr_scan_ctrl;
-        stap_host_scan_ctrl_o.select     = dr_scan_ctrl.select     | ir_scan_ctrl.select;
-        stap_host_scan_ctrl_o.capture_en = dr_scan_ctrl.capture_en | ir_scan_ctrl.capture_en;
-        stap_host_scan_ctrl_o.shift_en   = dr_scan_ctrl.shift_en   | ir_scan_ctrl.shift_en;
-        stap_host_scan_ctrl_o.update_en  = dr_scan_ctrl.update_en  | ir_scan_ctrl.update_en;
+        stap_host_scan_ctrl_o.select     = stap_select &&
+                                           (dr_scan_ctrl.select     | ir_scan_ctrl.select);
+        stap_host_scan_ctrl_o.capture_en = stap_select &&
+                                           (dr_scan_ctrl.capture_en | ir_scan_ctrl.capture_en);
+        stap_host_scan_ctrl_o.shift_en   = stap_select &&
+                                           (dr_scan_ctrl.shift_en   | ir_scan_ctrl.shift_en);
+        stap_host_scan_ctrl_o.update_en  = stap_select &&
+                                           (dr_scan_ctrl.update_en  | ir_scan_ctrl.update_en);
     end
 
     // STAP scan data output (from zero-length bypass TDR multiplexer to STAP chain)
@@ -1351,13 +1377,13 @@ module jtag_ptap
     //--------------------------------------------------------------------------
 
     // Use explicit mux cell to bypass retimer for ZERO_LENGTH_BYPASS instruction
-    // For ZERO_LENGTH_BYPASS: select tdo_mux directly (bypass retimer) during data shift only
-    // For all other instructions: select retimed TDO
+    // ZERO_LENGTH_BYPASS DR scan with STAP select clear: select tdo_mux, bypassing the retimer
+    // Otherwise: select retimed TDO
     // Use registered DR scan select to avoid glitches
     prim_stdmux2 u_tdo_bypass_mux (
         .i0_i  (tdo_retimed),
         .i1_i  (tdo_mux),
-        .sel_i (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
+        .sel_i (zlb_select),
         .y_o   (client_tdo_o)
     );
 

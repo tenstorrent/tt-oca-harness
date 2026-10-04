@@ -9,8 +9,8 @@
 module tlul_data_integ_enc
   import tlul_pkg::*;
 (
-  input        [DataMaxWidth-1:0]               data_i,      // Raw data word to protect.
-  output logic [DataMaxWidth+DataIntgWidth-1:0] data_intg_o  // Data with generated integrity.
+  input        [DATA_MAX_WIDTH-1:0]                 data_i,      // Raw data word to protect.
+  output logic [DATA_MAX_WIDTH+DATA_INTG_WIDTH-1:0] data_intg_o  // Data with generated integrity.
 );
   prim_secded_inv_39_32_enc u_data_gen (
     .data_i,

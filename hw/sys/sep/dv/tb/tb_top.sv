@@ -138,11 +138,11 @@ module sep_uvm_top
     // table: 8 ports when SEP=1 (doc/integrator/src/smu.adoc). The TAP
     // instruction that selects the TDR is outside this DUT. tdr_en selects
     // the register; otherwise the per-port pins drive the same struct.
-    localparam int unsigned SEP_IC_RESET_PORTS = 8;
+    localparam int unsigned SepIcResetPorts = 8;
     prim_jtag_pkg::jtag_scan_ctrl_t ic_reset_scan_ctrl;
     prim_jtag_pkg::jtag_tap_ctrl_t  ic_reset_tap_ctrl;
-    logic [SEP_IC_RESET_PORTS-1:0]  ic_reset_ovrd_w;
-    logic [SEP_IC_RESET_PORTS-1:0]  ic_reset_ctrl_n_w;
+    logic [SepIcResetPorts-1:0]     ic_reset_ovrd_w;
+    logic [SepIcResetPorts-1:0]     ic_reset_ctrl_n_w;
     sep_pkg::jtag_sep_reset_ctrl_t  ic_reset_sep_packed;
     always_comb begin
         ic_reset_scan_ctrl         = '0;
@@ -158,7 +158,7 @@ module sep_uvm_top
         ic_reset_tap_ctrl.tck      = jtag_ic_reset_tck_i;
     end
     jtag_ic_reset_reg #(
-        .NUM_IC_RESET_PORTS(SEP_IC_RESET_PORTS)
+        .NUM_IC_RESET_PORTS(SepIcResetPorts)
     ) u_ic_reset_sep (
         .scan_ctrl_i      (ic_reset_scan_ctrl),
         .scan_in_i        (jtag_ic_reset_tdi_i),
@@ -241,8 +241,10 @@ module sep_uvm_top
     //
     // Scope is by subtree because these are generate-loop instances with no single
     // name to target, which also disables every other assertion under those three
-    // blocks. The contracts re-armed by name are the crypto EDN arbiter
-    // hold-until-grant assume, its lock assert, and FipsWindowFloor_A.
+    // blocks. The contracts re-armed by name are the EDN arbiter hold-until-grant
+    // assume and lock assert, the crypto EDN adapter's clear and per-endpoint
+    // cancel contracts, the pool EDN adapter's clear contracts, and
+    // FipsWindowFloor_A.
 `ifndef VERILATOR
     initial begin
         // Scope-level $assertoff: these instances have no clock or reset for
@@ -251,8 +253,10 @@ module sep_uvm_top
         $assertoff(0, `SEP_ESRC);
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan);
-        // req_chk_i gates these two. The adapter scope stays off because
-        // AxisEdnEndpointCount_A is an immediate assert with no reset.
+        // The adapter waives the arbiter's request checks only on the first
+        // cycle of an endpoint flush, so these two stay live for every other
+        // request. The adapter scope stays off because AxisEdnEndpointCount_A
+        // is an immediate assert with no reset.
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .u_arbiter.ReqStaysHighUntilGranted0_M);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
@@ -265,7 +269,7 @@ module sep_uvm_top
             .AxisEdnAllAckSmHealthy_A);
         // Unrolled: a generate-block index must resolve at elaboration, so a
         // procedural loop variable cannot select gen_ep[]. One line per
-        // endpoint of SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT (AES, KMAC, OTBN RND,
+        // endpoint of SepCryptoAxisEdnClientCount (AES, KMAC, OTBN RND,
         // OTBN URND).
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .gen_ep[0].AxisEdnNoAckDuringClear_A);
@@ -275,12 +279,58 @@ module sep_uvm_top
             .gen_ep[2].AxisEdnNoAckDuringClear_A);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .gen_ep[3].AxisEdnNoAckDuringClear_A);
-        // req_chk_i changed on this instance too, so its arbiter contracts
+        // The upstream side of the same clear: neither adapter takes an
+        // AXI-Stream beat while clear_i is high. The pool adapter's clear is
+        // the TRNG reset (trng_reset_active), so its single endpoint must not
+        // acknowledge during it either.
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .AxisEdnNoReadyDuringClear_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+            .AxisEdnNoReadyDuringClear_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+            .gen_ep[0].AxisEdnNoAckDuringClear_A);
+        // Per-endpoint cancel contracts. A cancelled endpoint neither requests,
+        // takes a word, nor acknowledges, and an ungranted request only drops
+        // under a flush of that endpoint.
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+        // The pool adapter shares the same arbiter, so its arbiter contracts
         // must be live for the same reason.
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
             .u_arbiter.ReqStaysHighUntilGranted0_M);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
             .u_arbiter.LockArbDecision_A);
+        // A JTAG reset override skips isolation, so an engine can drop an
+        // ungranted EDN request with no cancel; no word is lost or misrouted.
+        if ($test$plusargs("sep_edn_jtag_reset_waive")) begin
+            $display("[tb] crypto EDN request-hold checks off (+sep_edn_jtag_reset_waive)");
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .u_arbiter.ReqStaysHighUntilGranted0_M);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .u_arbiter.LockArbDecision_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+            $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+                .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+        end
         // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
         // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
         // out-of-spec window must fail rather than be swept up by the line above.
@@ -371,7 +421,7 @@ module sep_uvm_top
     logic jtag_tdi   = 1'b0;
     logic jtag_trst_n = 1'b0;
 
-    localparam logic [4:0] RESET_VECTOR_TDR_IR = 5'h18;
+    localparam logic [4:0] ResetVectorTdrIr = 5'h18;
 
     task automatic jtag_tb_clock(input logic tms, input logic tdi);
         jtag_tms = tms;
@@ -406,7 +456,7 @@ module sep_uvm_top
         jtag_tb_clock(1'b0, 1'b0); // Capture-IR
         jtag_tb_clock(1'b0, 1'b0); // Shift-IR
         for (bit_idx = 0; bit_idx < 5; bit_idx++) begin
-            jtag_tb_clock(bit_idx == 4, RESET_VECTOR_TDR_IR[bit_idx]);
+            jtag_tb_clock(bit_idx == 4, ResetVectorTdrIr[bit_idx]);
         end
         jtag_tb_clock(1'b1, 1'b0); // Update-IR
         jtag_tb_clock(1'b0, 1'b0); // Run-Test/Idle
@@ -460,7 +510,7 @@ module sep_uvm_top
     // (the vendored VeeR tap has no reset-vector TDR).
     // ------------------------------------------------------------------
     sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_w;
-    // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT (3):
+    // EXT_TRNG_NUM_AXIS must equal sep_crypto_pkg::SepCryptoEdnEndpointCount (3):
     // sep_crypto.u_sep_trng binds u_drbg_s3c_scan.edn_axis_o/i to drbg_int_axis_req/rsp as a
     // DIRECT packed-array connection, one mux leg per DRBG EDN endpoint
     // ([0]=Key Manager, [1]=crypto adapter, [2]=entropy pool). Width 2 truncates
@@ -481,7 +531,7 @@ module sep_uvm_top
     // SHA-256 of the all-zero 32-byte token so a frontdoor write of zeros can
     // take the match. This is the TB stand-in for the metal ECO; it does not
     // force security_disable.
-    localparam bit [255:0] SEC_DIS_TB_DIGEST =
+    localparam bit [255:0] SecDisTbDigest =
         256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
     // SMC fuse-sense completion. No SMC RTL is instantiated in this top, so the TB
     // stands in for what the SoC provides: the SMC finishes sensing its eFuse array
@@ -521,7 +571,7 @@ module sep_uvm_top
 
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
-        .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
+        .SEP_SEC_DISABLE_TOKEN (SecDisTbDigest)
     ) u_dut (
         // Clocks / resets
         .clk_i                        (clk_i),
@@ -687,28 +737,41 @@ module sep_uvm_top
     // ROM presents, so a wrong SEP<->SMC offset is invisible to the boot flow
     // -- the testbench seeds the wrong address too and every test stays
     // green. This checker supplies the one property a flat memory lacks: an
-    // access outside a register window that exists is an ERROR. The windows
-    // below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen as
-    // 0x4000_XXXX from SEP, the identity mapping this tb configures via
-    // smc_global_base_addr_i). Keep them in step with that header; when the
-    // ROM needs a new block, add its authoritative base/size here rather than
-    // widening an existing window.
+    // access outside a register window that exists is an ERROR. Block bases
+    // and sizes come from the generated SMC address map (smc_top_addrmap_pkg,
+    // hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv). The package gives SMC-local
+    // addresses (0xC000_XXXX); SEP sees them at 0x4000_XXXX, the identity
+    // mapping this tb configures via smc_global_base_addr_i. When the ROM needs
+    // a new block, add its generated base/size here rather than widening an
+    // existing window.
+    localparam logic [63:0] SmcLocalBase = 64'hC000_0000;
+    localparam logic [63:0] SmcSepViewBase = 64'h4000_0000;
     localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
     localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
-        56'h4000_2000,  // SMC_RESET_UNIT
-        56'h4000_2900,  // SMC_MISC_WRAP_CHIP_CONFIG (CHIP_ID, LC_STATE)
-        56'h4000_7000,  // SMC_EFUSE_MAP             (chiplet/package ID)
-        56'h4000_B800,  // DFX_CTRL                  (STATUS_SMU)
-        56'h4003_9000,  // SMC_CPU_CTRL              (scratch[0..15] at +0x80)
-        56'h4006_0000,  // SPM_MEMORY                (manifest + BL1)
-        SmcStrapsLoAddr // SMC_EXTERNAL straps      (STRAPS_LO/HI)
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_MISC_WRAP_CHIP_CONFIG: CHIP_ID, LC_STATE
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR - SmcLocalBase +
+            SmcSepViewBase),
+        // SMC_EFUSE_MAP: chiplet/package ID
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // DFX_CTRL: STATUS_SMU
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_CPU_CTRL: scratch[0..15] at +0x80
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SPM_MEMORY: manifest + BL1
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        SmcStrapsLoAddr  // SMC_EXTERNAL straps (STRAPS_LO/HI)
     };
     localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
-        56'h0000_00CC, 56'h0000_0014, 56'h0000_0C00,
-        56'h0000_0018, 56'h0000_02C0, 56'h0010_0000,
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE),
         56'h0000_0008
     };
 
@@ -788,7 +851,7 @@ module sep_uvm_top
         for (int unsigned i = 0; i < 4; i++) bd_km_word_parity[i] = ~^w[8*i +: 8];
     endfunction
 
-    localparam logic [38:0] BD_OTBN_ZERO = prim_secded_pkg::SecdedInv3932ZeroWord;
+    localparam logic [38:0] BdOtbnZero = prim_secded_pkg::SecdedInv3932ZeroWord;
 
 `define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.u_ram.ram_core
 `define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.u_ram.ram_core
@@ -801,9 +864,9 @@ module sep_uvm_top
         for (int i = 0; i < 8192; i++)
             `SEP_IPI.u_km_sram.gen_ram_inst[0].u_mem.mem[i] = {4'hF, 32'h0};
         for (int i = 0; i < 4096; i++)
-            `SEP_IPI.u_otbn_imem_sram.mem[i] = BD_OTBN_ZERO;
+            `SEP_IPI.u_otbn_imem_sram.mem[i] = BdOtbnZero;
         for (int i = 0; i < 1024; i++)
-            `SEP_IPI.u_otbn_dmem_sram.mem[i] = {8{BD_OTBN_ZERO}};
+            `SEP_IPI.u_otbn_dmem_sram.mem[i] = {8{BdOtbnZero}};
     end
 
 `ifndef VERILATOR
@@ -813,7 +876,11 @@ module sep_uvm_top
     initial begin : backdoor_default_fill_zero
         for (int i = 0; i < 32768; i++)
             `SEP_IPI.u_sep_sram.gen_ram_inst[0].u_mem.mem[i] = 64'h0;
-        for (int i = 0; i < 16384; i++)
+        for (
+            int i = 0;
+            i < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE / 8;
+            i++
+        )
             `SEP_IPI.u_sep_boot_rom.mem[i] = 64'h0;
         for (int r = 0; r < 16384; r++) begin
             `BD_ICCM(0)[r] = 39'h0; `BD_ICCM(1)[r] = 39'h0;
@@ -1178,6 +1245,153 @@ module sep_uvm_top
         end
     end
 
+    // SPI-to-DMA transmit pacing probes (read-only XMR, no force).
+    assign spi_tx_qd_probe_o =
+        `SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.tx_qd;
+    assign spi_lsio_trigger_probe_o = `SEP_CORE.lsio_trigger[0];
+    assign dma_busy_probe_o =
+        `SEP_CORE.u_sep_dma_wrap.u_secure_dma.reg2hw.status.busy.q;
+
+    // Fabric-slot W channel, sampled at the AXI-Lite port of each of the 96
+    // remap/filter slot register blocks in sep_system_csr (the block that
+    // applies WSTRB). A beat counts as fill when a byte lane whose WSTRB bit is
+    // 0 carries non-zero data. Slot order as in the signal list. Explicit
+    // per-index assigns avoid a genvar-indexed XMR. Observation-only: reads
+    // the regblock ports and drives no DUT signal.
+    localparam int unsigned FabricSlots = $bits(fabric_slot_w_fill_seen_o);
+    logic [FabricSlots-1:0] fabric_slot_w_hs;
+    logic [FabricSlots-1:0] fabric_slot_w_fill;
+
+    function automatic logic fabric_w_inactive_data(input logic [63:0] data,
+                                                    input logic [7:0] strb);
+        logic [63:0] inactive;
+        for (int lane = 0; lane < 8; lane++) begin
+            inactive[8*lane +: 8] = {8{~strb[lane]}};
+        end
+        return |(data & inactive);
+    endfunction
+
+`define FABRIC_SLOT_W(k, blk) \
+    assign fabric_slot_w_hs[k] = \
+        (`SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.blk.s_axil_wvalid === 1'b1) && \
+        (`SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.blk.s_axil_wready === 1'b1); \
+    assign fabric_slot_w_fill[k] = fabric_slot_w_hs[k] && fabric_w_inactive_data( \
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.blk.s_axil_wdata, \
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.blk.s_axil_wstrb)
+    `FABRIC_SLOT_W(0, gen_local_master_alias_remap_reg[0].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(1, gen_local_master_alias_remap_reg[1].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(2, gen_local_master_alias_remap_reg[2].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(3, gen_local_master_alias_remap_reg[3].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(4, gen_local_master_alias_remap_reg[4].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(5, gen_local_master_alias_remap_reg[5].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(6, gen_local_master_alias_remap_reg[6].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(7, gen_local_master_alias_remap_reg[7].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(8, gen_local_master_alias_remap_reg[8].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(9, gen_local_master_alias_remap_reg[9].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(10, gen_local_master_alias_remap_reg[10].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(11, gen_local_master_alias_remap_reg[11].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(12, gen_local_master_alias_remap_reg[12].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(13, gen_local_master_alias_remap_reg[13].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(14, gen_local_master_alias_remap_reg[14].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(15, gen_local_master_alias_remap_reg[15].u_local_masters_alias_remap_reg);
+    `FABRIC_SLOT_W(16, gen_ap_output_remap_reg[0].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(17, gen_ap_output_remap_reg[1].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(18, gen_ap_output_remap_reg[2].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(19, gen_ap_output_remap_reg[3].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(20, gen_ap_output_remap_reg[4].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(21, gen_ap_output_remap_reg[5].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(22, gen_ap_output_remap_reg[6].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(23, gen_ap_output_remap_reg[7].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(24, gen_ap_output_remap_reg[8].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(25, gen_ap_output_remap_reg[9].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(26, gen_ap_output_remap_reg[10].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(27, gen_ap_output_remap_reg[11].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(28, gen_ap_output_remap_reg[12].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(29, gen_ap_output_remap_reg[13].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(30, gen_ap_output_remap_reg[14].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(31, gen_ap_output_remap_reg[15].u_ap_output_remap_reg);
+    `FABRIC_SLOT_W(32, gen_stee_output_remap_reg[0].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(33, gen_stee_output_remap_reg[1].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(34, gen_stee_output_remap_reg[2].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(35, gen_stee_output_remap_reg[3].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(36, gen_stee_output_remap_reg[4].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(37, gen_stee_output_remap_reg[5].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(38, gen_stee_output_remap_reg[6].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(39, gen_stee_output_remap_reg[7].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(40, gen_stee_output_remap_reg[8].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(41, gen_stee_output_remap_reg[9].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(42, gen_stee_output_remap_reg[10].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(43, gen_stee_output_remap_reg[11].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(44, gen_stee_output_remap_reg[12].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(45, gen_stee_output_remap_reg[13].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(46, gen_stee_output_remap_reg[14].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(47, gen_stee_output_remap_reg[15].u_stee_output_remap_reg);
+    `FABRIC_SLOT_W(48, gen_outbound_filter_reg[0].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(49, gen_outbound_filter_reg[1].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(50, gen_outbound_filter_reg[2].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(51, gen_outbound_filter_reg[3].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(52, gen_outbound_filter_reg[4].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(53, gen_outbound_filter_reg[5].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(54, gen_outbound_filter_reg[6].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(55, gen_outbound_filter_reg[7].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(56, gen_outbound_filter_reg[8].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(57, gen_outbound_filter_reg[9].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(58, gen_outbound_filter_reg[10].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(59, gen_outbound_filter_reg[11].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(60, gen_outbound_filter_reg[12].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(61, gen_outbound_filter_reg[13].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(62, gen_outbound_filter_reg[14].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(63, gen_outbound_filter_reg[15].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(64, gen_outbound_filter_reg[16].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(65, gen_outbound_filter_reg[17].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(66, gen_outbound_filter_reg[18].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(67, gen_outbound_filter_reg[19].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(68, gen_outbound_filter_reg[20].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(69, gen_outbound_filter_reg[21].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(70, gen_outbound_filter_reg[22].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(71, gen_outbound_filter_reg[23].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(72, gen_outbound_filter_reg[24].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(73, gen_outbound_filter_reg[25].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(74, gen_outbound_filter_reg[26].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(75, gen_outbound_filter_reg[27].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(76, gen_outbound_filter_reg[28].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(77, gen_outbound_filter_reg[29].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(78, gen_outbound_filter_reg[30].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(79, gen_outbound_filter_reg[31].u_outbound_filter_reg);
+    `FABRIC_SLOT_W(80, gen_inbound_filter_reg[0].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(81, gen_inbound_filter_reg[1].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(82, gen_inbound_filter_reg[2].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(83, gen_inbound_filter_reg[3].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(84, gen_inbound_filter_reg[4].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(85, gen_inbound_filter_reg[5].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(86, gen_inbound_filter_reg[6].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(87, gen_inbound_filter_reg[7].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(88, gen_inbound_filter_reg[8].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(89, gen_inbound_filter_reg[9].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(90, gen_inbound_filter_reg[10].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(91, gen_inbound_filter_reg[11].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(92, gen_inbound_filter_reg[12].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(93, gen_inbound_filter_reg[13].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(94, gen_inbound_filter_reg[14].u_inbound_filter_reg);
+    `FABRIC_SLOT_W(95, gen_inbound_filter_reg[15].u_inbound_filter_reg);
+`undef FABRIC_SLOT_W
+
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            fabric_slot_w_beats_o      <= '0;
+            fabric_slot_w_fill_beats_o <= '0;
+            fabric_slot_w_fill_seen_o  <= '0;
+        end else begin
+            if (|fabric_slot_w_hs && !(&fabric_slot_w_beats_o)) begin
+                fabric_slot_w_beats_o <= fabric_slot_w_beats_o + 1'b1;
+            end
+            if (|fabric_slot_w_fill && !(&fabric_slot_w_fill_beats_o)) begin
+                fabric_slot_w_fill_beats_o <= fabric_slot_w_fill_beats_o + 1'b1;
+            end
+            fabric_slot_w_fill_seen_o <= fabric_slot_w_fill_seen_o | fabric_slot_w_fill;
+        end
+    end
+
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
@@ -1199,6 +1413,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
     assign hmac_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
+    assign hmac_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_hmac;
 
     // KMAC per-IP gated reset and its two isolate-completion bits.
     assign kmac_gated_rst_n_probe_o =
@@ -1207,6 +1423,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_kmac;
     assign kmac_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_kmac;
+    assign kmac_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_kmac;
 
     // Adams Bridge per-IP gated reset and the two isolate-completion bits its
     // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
@@ -1217,6 +1435,16 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
     assign abr_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
+    assign abr_host_isolate_req_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolate_req_i.host_abr;
+
+    // AES and OTBN per-IP gated resets. A software reset of either cancels its
+    // crypto EDN endpoints before this reset asserts; the isolation test times
+    // that cancel against these. Read-only XMR, same class as the KMAC probe.
+    assign aes_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.aes;
+    assign otbn_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.otbn;
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
@@ -1226,6 +1454,8 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
     assign lcc_demote_lock_2_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_2.lock;
+    // XMR, not AXI: the AXI read is inbound-filtered at PROD_END once sep_debug is 0.
+    assign lcc_feat_ctrl_probe_o = `SEP_CORE.feat_ctrl;
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
     // req is a wrapper-internal net (u_sep -> ip_integration).
@@ -1271,6 +1501,14 @@ module sep_uvm_top
     assign sys_csr_axil_awaddr_o =
         `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
 
+    // Local crossbar `ext` initiator (sep.sv smn_inbound_to_sep_axi_*). See port comment.
+    assign xbar_ext_in_arvalid_o = `SEP_CORE.smn_inbound_to_sep_axi_req.ar_valid;
+    assign xbar_ext_in_arready_o = `SEP_CORE.smn_inbound_to_sep_axi_resp.ar_ready;
+    assign xbar_ext_in_araddr_o  = `SEP_CORE.smn_inbound_to_sep_axi_req.ar.addr[31:0];
+    assign xbar_ext_in_awvalid_o = `SEP_CORE.smn_inbound_to_sep_axi_req.aw_valid;
+    assign xbar_ext_in_awready_o = `SEP_CORE.smn_inbound_to_sep_axi_resp.aw_ready;
+    assign xbar_ext_in_awaddr_o  = `SEP_CORE.smn_inbound_to_sep_axi_req.aw.addr[31:0];
+
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
     // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during
     // boot, and these memory-array reads sit outside the ready/valid cones.
@@ -1281,6 +1519,15 @@ module sep_uvm_top
     `SRAM_PL(0); `SRAM_PL(1); `SRAM_PL(2);
     `SRAM_PL(3); `SRAM_PL(4); `SRAM_PL(5);
 `undef SRAM_PL
+
+    // Read-only XMR of the ML-KEM seed Z the Adams Bridge engine holds. See the
+    // port comment in sep_tb_signal_list.svh.
+`ifdef SEP_ABR_EN
+    assign abr_mlkem_seed_z_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_top.abr_ctrl_inst.abr_scratch_reg.mlkem_enc.seed_z;
+`else
+    assign abr_mlkem_seed_z_probe_o = '0;
+`endif
 
     // ------------------------------------------------------------------
     // Warm-reset handler seed: +sep_cold_scratch7=<hex32>
@@ -1526,8 +1773,8 @@ module sep_uvm_top
     // command user code -- the engine always emits a matching pair. When
     // dma_host_intg_inject_i=1, force the host-adapter checker input
     // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
-    // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
-    // frontdoor or the aggregate interrupt probe. Re-issue every clock
+    // err_o. err_o stays gated on a_valid. STATUS / PIC source 42 (vector
+    // bit [41]) / CLEAR stay frontdoor or the aggregate interrupt probe. Re-issue every clock
     // (Verilator snapshots a force RHS). Release when the port drops.
     // Default 0; outside the AXI ready/valid cones.
 `define DMA_HOST_CMD_INTG_DI \
@@ -1541,6 +1788,47 @@ module sep_uvm_top
         end
     end
 `undef DMA_HOST_CMD_INTG_DI
+
+    // ------------------------------------------------------------------
+    // HMAC message-FIFO drain stall.
+    // ------------------------------------------------------------------
+    // hmac_fifo_drain_stall_i=1 holds the message FIFO's rready low, so the hash
+    // engine stops consuming and the FIFO fills: the wedge the ROM's bounded
+    // FIFO waits must turn into a hash failure. fifo_rready is the hmac-local
+    // net that drives the FIFO's read side. Re-issued every clock for Verilator,
+    // released when the port drops.
+`define HMAC_FIFO_RREADY `SEP_CORE.u_sep_crypto.u_hmac_wrapper_s3c_scan.u_tt_hmac.fifo_rready
+    always @(posedge clk_i) begin
+        if (hmac_fifo_drain_stall_i === 1'b1) begin
+            force `HMAC_FIFO_RREADY = 1'b0;
+        end else begin
+            release `HMAC_FIFO_RREADY;
+        end
+    end
+`undef HMAC_FIFO_RREADY
+
+    // ------------------------------------------------------------------
+    // DMA host-port stall.
+    // ------------------------------------------------------------------
+    // +sep_dma_host_stall holds the host TL-UL response idle -- a_ready and
+    // d_valid both 0 -- so the secure DMA can neither issue a request nor see a
+    // response: it stays busy and reports neither DONE nor ERROR, which is the
+    // wedge the ROM's bounded completion poll must turn into an error. The whole
+    // struct is forced, since d_valid=0 keeps its integrity fields unchecked.
+    // The force targets the wrapper-local net the adapter drives, not the
+    // engine's input port. Re-issued every clock for Verilator, as above.
+    logic dma_host_stall_on;
+    initial begin
+        dma_host_stall_on = $test$plusargs("sep_dma_host_stall");
+        if (dma_host_stall_on) begin
+            $display("[tb] +sep_dma_host_stall: secure DMA host port held idle");
+        end
+    end
+`define DMA_HOST_RSP `SEP_CORE.u_sep_dma_wrap.host_tl_h_i
+    always @(posedge clk_i) begin
+        if (dma_host_stall_on) force `DMA_HOST_RSP = '0;
+    end
+`undef DMA_HOST_RSP
 
     // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
@@ -1586,58 +1874,35 @@ module sep_uvm_top
     end
 `undef ESRC_NOISE_FORCE
 
-    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
-    // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
-    // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
+    // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
+    // every command write, leaving the block powered, idle and error-free while
+    // no program ever runs.
     //
-    // Prefer +esrc_noise_force. The SEP boot ROM brings the real entropy chain up
-    // itself (src/sep_entropy.c), so a crypto test needs only raw noise injected
-    // -- the ring oscillators do not self-oscillate in simulation -- and the
-    // DRBG/CSRNG/EDN handshakes stay real. This force cannot do that: forcing
-    // edn_ack violates the EDN req/ack data-hold protocol and trips
-    // prim_sync_reqack_data's SyncReqAckDataHold* assertions. Testlist entries
-    // still passing it are being migrated.
-    //
-    // Kept for now as a debug lever only. It is a candidate for deletion once
-    // the real-entropy path has some mileage.
-    logic edn_force_on;
-    logic otbn_rnd_ack_q, otbn_urnd_ack_q;
+    // This is the "the CMD store never landed" case: what an instruction-skip
+    // glitch on the store produces deliberately, and what clock or reset
+    // mis-sequencing produces by accident. It is worth injecting because the
+    // block is indistinguishable from a completed run on the two registers the
+    // ROM used to consult -- STATUS reads IDLE (the state it was already in) and
+    // ERR_BITS reads 0 (nothing ran to fail). INTR_STATE.done is the only signal
+    // that separates them, which is what otbn_execute() now requires.
+    logic otbn_cmd_drop_on;
     initial begin
-        edn_force_on = $test$plusargs("sep_crypto_edn_force");
-        if (edn_force_on) begin
-            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN EDN grants are");
-            $display("[tb] *** forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
+        otbn_cmd_drop_on = $test$plusargs("sep_otbn_cmd_drop");
+        if (otbn_cmd_drop_on) begin
+            $display("[tb] *** FAULT INJECTION: +sep_otbn_cmd_drop -- OTBN command writes");
+            $display("[tb] *** are dropped; no OTBN program will execute.");
         end
     end
 
-// Target the driver-side net inside sep_crypto rather than the wrapper's input
-// port -- a `force` on a module instance input is rejected (ASSIGNIN).
-// Client indices from sep_crypto.sv: 0 = AES, 1 = KMAC, 2 = OTBN RND,
-// 3 = OTBN URND. KMAC is not forced -- the ROM's SHA-256 goes through HMAC.
-`define OTBN_RND_RSP  `SEP_CORE.u_sep_crypto.crypto_edn_rsp[2]
-`define OTBN_URND_RSP `SEP_CORE.u_sep_crypto.crypto_edn_rsp[3]
-`define OTBN_RND_REQ  `SEP_CORE.u_sep_crypto.crypto_edn_req[2]
-`define OTBN_URND_REQ `SEP_CORE.u_sep_crypto.crypto_edn_req[3]
-    // ack pulses for one cycle per request rather than sitting high, so a
-    // multi-word reseed is delivered as a sequence of beats like the real EDN.
+// reg2hw.cmd.qe is the write-enable otbn.sv decodes CmdExecute from
+// (otbn.sv:852-854), so holding it low drops commands without disturbing
+// anything else the block reports.
+`define OTBN_CMD_QE \
+    `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.reg2hw.cmd.qe
     always @(posedge clk_i) begin
-        if (edn_force_on) begin
-            otbn_rnd_ack_q  <= `OTBN_RND_REQ.edn_req  & ~otbn_rnd_ack_q;
-            otbn_urnd_ack_q <= `OTBN_URND_REQ.edn_req & ~otbn_urnd_ack_q;
-            force `OTBN_RND_RSP.edn_ack   = otbn_rnd_ack_q;
-            force `OTBN_RND_RSP.edn_fips  = 1'b1;
-            force `OTBN_RND_RSP.edn_bus   = $urandom();
-            force `OTBN_URND_RSP.edn_ack  = otbn_urnd_ack_q;
-            force `OTBN_URND_RSP.edn_fips = 1'b1;
-            force `OTBN_URND_RSP.edn_bus  = $urandom();
-        end
+        if (otbn_cmd_drop_on) force `OTBN_CMD_QE = 1'b0;
     end
-`undef AES_RSP
-`undef AES_REQ
-`undef OTBN_RND_RSP
-`undef OTBN_URND_RSP
-`undef OTBN_RND_REQ
-`undef OTBN_URND_REQ
+`undef OTBN_CMD_QE
 
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
@@ -1695,6 +1960,20 @@ module sep_uvm_top
         `SEP_DRBG.u_edn_axil_adapter.axil64_req_i.w_valid,
         `SEP_DRBG.u_edn_axil_adapter.axil64_req_i.aw_valid
     };
+    // Each DUT lane adapter's downstream request into its AXI-Lite-32 to
+    // TL-UL bridge: {ar_valid, aw_valid | w_valid}. Observation-only. An
+    // access the adapter refuses must leave both bits low on every cycle; no
+    // CSR shows a request that the bridge then answered without error.
+    assign drbg_csrng_fwd_o = {
+        `SEP_DRBG.u_csrng_axil_adapter.axil32_req_o.ar_valid,
+        `SEP_DRBG.u_csrng_axil_adapter.axil32_req_o.aw_valid
+            | `SEP_DRBG.u_csrng_axil_adapter.axil32_req_o.w_valid
+    };
+    assign drbg_edn_fwd_o = {
+        `SEP_DRBG.u_edn_axil_adapter.axil32_req_o.ar_valid,
+        `SEP_DRBG.u_edn_axil_adapter.axil32_req_o.aw_valid
+            | `SEP_DRBG.u_edn_axil_adapter.axil32_req_o.w_valid
+    };
 
     // ---------------------------------------------------------------------
     // Port-level arbitration vehicle: a TB-owned second instance of
@@ -1742,12 +2021,16 @@ module sep_uvm_top
     assign tbadp_r_valid_o = tbadp_rsp.r_valid;
     assign tbadp_r_data_o  = tbadp_rsp.r.data;
     // The response CODES, not just the valids. An access the adapter rejects
-    // as unsupported answers SLVERR from StIdle without forwarding anything,
+    // as unsupported answers SLVERR from ST_IDLE without forwarding anything,
     // and retires just as promptly as a real one -- so a control that only
     // watched the valid could not tell a live forwarding path from a rejected
     // access.
     assign tbadp_b_resp_o  = tbadp_rsp.b.resp;
     assign tbadp_r_resp_o  = tbadp_rsp.r.resp;
+    // The adapter's downstream request, as the AXI-Lite-32 responder sees it.
+    // A refused access must not drive it; a forwarded one must.
+    assign tbadp_fwd_o     = {tbadp_req32.ar_valid,
+                              tbadp_req32.aw_valid | tbadp_req32.w_valid};
 
     // Always-ready axil32 responder: every ready is an unconditional 1'b1.
     // Not gated on the peer channel's valid: cross-gating the
@@ -2278,6 +2561,28 @@ module sep_uvm_top
     always @(negedge rst_ni) rst_assert_count <= rst_assert_count + 32'd1;
     assign u_tb_if.rst_assert_count = rst_assert_count;
 
+    // Observation probes the sequences read through sep_tb_if.
+    assign u_tb_if.sep_internal_interrupts   = sep_internal_interrupts_probe_o;
+    assign u_tb_if.efuse_shadow              = efuse_shadow_probe_o;
+    assign u_tb_if.otbn_imem_req_count       = otbn_imem_req_count_o;
+    assign u_tb_if.otbn_imem_write_count     = otbn_imem_write_count_o;
+    assign u_tb_if.otbn_dmem_req_count       = otbn_dmem_req_count_o;
+    assign u_tb_if.otbn_dmem_write_count     = otbn_dmem_write_count_o;
+    assign u_tb_if.km_rom_req_count          = km_rom_req_count_o;
+    assign u_tb_if.km_sram_probe             = km_sram_probe_o;
+    assign u_tb_if.km_sram_rd_accept_count   = km_sram_rd_accept_count_o;
+    assign u_tb_if.km_sram_rd_b2b_diff_count = km_sram_rd_b2b_diff_count_o;
+    assign u_tb_if.km_sram_rd_lat1_count     = km_sram_rd_lat1_count_o;
+    assign u_tb_if.km_sram_rd_lat_err_count  = km_sram_rd_lat_err_count_o;
+    assign u_tb_if.km_sram_req_count         = km_sram_req_count_o;
+    assign u_tb_if.km_sram_scr_rd_count      = km_sram_scr_rd_count_o;
+    assign u_tb_if.km_sram_scr_wr_addr       = km_sram_scr_wr_addr_o;
+    assign u_tb_if.km_sram_scr_wr_cell       = km_sram_scr_wr_cell_o;
+    assign u_tb_if.km_sram_scr_wr_count      = km_sram_scr_wr_count_o;
+    assign u_tb_if.km_sram_scr_wr_data       = km_sram_scr_wr_data_o;
+    assign u_tb_if.km_sram_word0             = km_sram_word0_o;
+    assign u_tb_if.km_sram_write_count       = km_sram_write_count_o;
+
     // CPU-LSU initiator: the shared ocah_axi_vip UVM master agent drives the
     // s_axi_* request side (the agent's driver procedurally drives the
     // request payloads and valids plus bready/rready on the master
@@ -2460,6 +2765,7 @@ module sep_uvm_top
     assign token_cmp_fault_sel_i    = '0;
     assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
+    assign hmac_fifo_drain_stall_i  = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
     assign tcm_load_i               = 1'b0;
@@ -2513,6 +2819,7 @@ module sep_uvm_top
         .lsu_ar_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.addr),
         .lsu_ar_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar_valid),
         .lsu_ar_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready),
+        .lsu_ar_size_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.size),
         .lsu_r_data_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.data),
         .lsu_r_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.resp),
         .lsu_r_last_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.last),
@@ -2536,9 +2843,14 @@ module sep_uvm_top
         .hmac_gated_rst_n_i    (hmac_gated_rst_n_probe_o),
         .hmac_host_isolated_i  (hmac_host_isolated_probe_o),
         .hmac_km_isolated_i    (hmac_km_isolated_probe_o),
+        .hmac_host_isolate_req_i (hmac_host_isolate_req_probe_o),
         .abr_gated_rst_n_i     (abr_gated_rst_n_probe_o),
         .abr_host_isolated_i   (abr_host_isolated_probe_o),
         .abr_km_isolated_i     (abr_km_isolated_probe_o),
+        .abr_host_isolate_req_i  (abr_host_isolate_req_probe_o),
+        // sep.sv wires the WDT bark to the CPU NMI input; read-only, like the
+        // LSU request bus above.
+        .wdt_bark_irq_i        (`SEP_CORE.intr_wdog_timer_bark),
 
         .cpu_trace_valid_i     (cpu_trace_valid_o),
         .cpu_trace_addr_i      (cpu_trace_addr_o),
@@ -2568,7 +2880,7 @@ module sep_uvm_top
         // frontdoor first, so the frontdoor path cannot observe RMA_SIP_0 /
         // RMA_CHIP_0 at all.
         .efuse_lc_raw_i        (efuse_shadow_probe_o[
-            32 * efuse_pkg::SHADOW_IDX_LC_STATE +: 4]),
+            32 * efuse_pkg::ShadowIdxLcState +: 4]),
         .efuse_read_state_i    (efuse_read_state_o),
         .efuse_program_state_i  (efuse_program_state_o),
         .secure_tm_i           (secure_tm_o),
@@ -2576,8 +2888,10 @@ module sep_uvm_top
         .demote_1_i            (lcc_demote_state_1_probe_o),
         .demote_2_i            (lcc_demote_state_2_probe_o),
         .cpu_reset_n_i         (sep_cpu_reset_n_o),
+        .sep_reset_n_i         (dbg_sep_reset_n_o),
         .spi_cs_n_i            (spi_cs_n_o),
         .spi_sck_i             (spi_sck_o),
+        .spi_mosi_i            (spi_mosi_o),
         // Values SEP receives, after the pin-or-TDR mux.
         .jtag_sep_reset_n_ovrd_i (jtag_sep_reset_ctrl_drive.ovrd.sep_reset_n_ovrd),
         .jtag_sep_reset_n_val_i  (jtag_sep_reset_ctrl_drive.val.sep_reset_n_val)

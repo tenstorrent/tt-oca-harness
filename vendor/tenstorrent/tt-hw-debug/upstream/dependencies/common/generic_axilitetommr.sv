@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 `include "generic_macro_assertion.vh"
 
 // AXI to MMR Coverter :: It Can Handle Single beat and 4/8B Byte aligned AXI Xfers on 8B/4B AXI Bus

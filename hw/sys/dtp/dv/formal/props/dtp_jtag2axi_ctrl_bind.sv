@@ -6,7 +6,7 @@
 
 bind jtag2axi dtp_jtag2axi_ctrl_props #(
   .FIFO_DEPTH (FIFO_DEPTH),
-  .SR_LEN     (SHARED_SR_LEN)
+  .SR_LEN     (SharedSrLen)
 ) u_dtp_jtag2axi_ctrl_props (
   .tck_i                  (tck_i),
   .trst_ni                (trst_ni),
@@ -29,7 +29,8 @@ bind jtag2axi dtp_jtag2axi_ctrl_props #(
   .next_status_i          (next_status_tclk_comb),
   .sticky_status_i        (sticky_axi_status_tclk),
   .sticky_full_i          (sticky_axi_status_full_tclk),
-  .ctrl_reset_bit_i       (update_register_q_tclk[AXISERIESCTRL_RESET_HIGH]),
+  .ctrl_reset_bit_i       (update_register_q_tclk[AxiSeriesCtrlResetHigh]),
+  .ctrl_op_i              (update_register_q_tclk[AxiSeriesCtrlOpHigh:AxiSeriesCtrlOpLow]),
   .current_op_i           (current_op_tclk),
   .single_tx_i            (current_tx_is_from_single_buffer_tclk),
   .single_valid_i         (single_tx_req_valid_tclk),
@@ -39,6 +40,9 @@ bind jtag2axi dtp_jtag2axi_ctrl_props #(
   .reads_pushed_i         (series_reads_pushed_tclk),
   .plain_reads_pending_i  (plain_reads_pending_tclk),
   .pipeline_depth_i       (series_ctrl_pipeline_depth_tclk_r),
+  .series_op_mode_i       (series_ctrl_op_mode_tclk_r),
+  .req_fifo_push_i        (series_request_fifo_push_tclk),
+  .req_fifo_push_op_i     (series_request_fifo_din_tclk.op),
   .update_register_i      (update_register_q_tclk),
   .write_outstanding_i    (write_outstanding_q),
   .read_outstanding_i     (read_outstanding_q),

@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include "virt_console.h"
 
-#define NUM_SMC_MAILBOXES (32)
 #define MAILBOX_TEST_DATA (0xdeadbeefu)
 
 _Atomic volatile int core_setup_done[4] = {0, 0, 0, 0};
@@ -33,7 +32,7 @@ void mailbox_interrupt_handler(int id, void *priv) {
     simputshex16("Interrupted by Mailbox ID", mailbox_id);
     simputshex32("Mailbox Data:", (uint32_t)mailbox_data);
 
-    // Validate that the correct core triggered the interrupt.
+    // Validate that the interrupt came from the expected mailbox.
     // Hart N expects mailbox (N-1) mod 4 (C0 ← mb3). Use unsigned mod so C0 is 3, not -1.
     if (mailbox_id != (int)(((unsigned)hartid + 3u) % 4u)) {
         simputs("Unexpected mailbox interrupt!");
@@ -162,8 +161,6 @@ int main(void) {
 
         // Send mailbox interrupt
         write_mailbox_int(0);
-
-        // Send interrupt to mailbox 0
         simputs("Sent interrupt to mailbox 0\n");
 
         // Wait until the mailbox-3 handler has run and validated the payload.
@@ -207,8 +204,6 @@ int main(void) {
 
         // Send mailbox interrupt
         write_mailbox_int(hartid);
-
-        // Send interrupt to mailbox hartid
         snprintf(debug_msg[hartid], sizeof(debug_msg[hartid]), "Sent interrupt to mailbox %d\n",
                  hartid);
         simputs(debug_msg[hartid]);
@@ -218,8 +213,6 @@ int main(void) {
             __asm__ volatile("wfi");
         }
     }
-
-    return 0;
 }
 
 int secondary_main(void) {

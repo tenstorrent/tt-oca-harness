@@ -2,31 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Register metadata accessor over the generated SystemRDL Python header.
 
-Tests and sequences must NOT keep their own copies of register offsets, reset
-values, or field masks: expected values are source-derived, never hardcoded
-literals. ``hw/sys/sep/regs/gen/py/sep_reg.py`` is the authoritative
-machine-readable export of ``hw/sys/sep/regs/**/*.rdl``, so this module wraps it
-and hands out three things per register:
+Wraps ``hw/sys/sep/regs/gen/py/sep_reg.py`` so tests take offsets, resets and field
+masks from the RDL instead of hardcoded literals. Per register it returns:
 
-* ``offset`` / ``addr`` — from ``<BLOCK>_<REG>_REG_OFFSET`` / ``_REG_ADDR``
-* ``reset``  — from ``<BLOCK>_<REG>_REG_DEFAULT``
-* ``mask``   — the union of the register's implemented field bits, probed from
-  the generated ctypes bitfield struct. Probing (rather than summing widths)
-  keeps the mask correct for registers whose fields are not bit-0-contiguous.
+* ``offset`` / ``addr`` -- from ``<BLOCK>_<REG>_REG_OFFSET`` / ``_REG_ADDR``
+* ``reset``  -- from ``<BLOCK>_<REG>_REG_DEFAULT``
+* ``mask()``     -- software-usable field bits; RDL ``reserved`` fields excluded
+* ``mask_all()`` -- every field bit, reserved included: the storage mask
 
-The mask matters because a write/readback check must compare against
-``pattern & mask``: RDL placeholder registers (``TIMEOUT_COUNT``,
-``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) carry a single implemented bit, so a
-32-bit pattern reads back as just that bit.
-
-Two masks:
-  ``mask()``     — software-usable fields only; RDL ``reserved`` fields excluded.
-  ``mask_all()`` — every field bit, reserved included: the STORAGE mask.
-They differ wherever a placeholder field is declared ``sw=rw`` yet named
-``reserved`` (``TIMEOUT_COUNT``/``TIMEOUT_ENABLE``, sep_cpu_ctrl.rdl:76-80): real
-read/write storage that software must not treat as an implemented field. Use
-``mask()`` to ask "what may software use", ``mask_all()`` to ask "did the write
-reach storage" — a write/readback check wants the latter.
+Masks are probed from the generated ctypes bitfield struct, so non-contiguous fields
+are correct. The two masks differ where a ``sw=rw`` field is named ``reserved``
+(``TIMEOUT_COUNT``, ``TIMEOUT_ENABLE``); a write/readback check wants ``mask_all()``.
 
 Usage:
     from sep_reg_meta import SEP_CPU_CTRL as CPU_CTRL
@@ -42,6 +28,7 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 # The generated header is not a package and is not on `python_paths`, so resolve it
@@ -238,14 +225,10 @@ class RegBlock:
         return bin(mask).count("1")
 
     def mask_all(self, name: str) -> int:
-        """Union of EVERY field bit, reserved included -- the storage mask.
+        """Union of every field bit, reserved included: the storage mask.
 
-        Distinct from mask(), which reports only software-usable fields. Use this
-        when the question is "did the write reach storage", not "what may software
-        use". TIMEOUT_COUNT is the case that forces the distinction: its lone
-        field is declared `sw=rw; hw=r` yet named `reserved`
-        (sep_cpu_ctrl.rdl:76-80), so it is real read/write storage that mask()
-        must not count as implemented but a storage proof still can.
+        Use it to ask "did the write reach storage"; mask() answers "what may software
+        use". They differ where a `sw=rw` field is named `reserved` (TIMEOUT_COUNT).
         """
         struct = self._sym(name, "reg_t", alias_ok=True)
         union = getattr(sep_reg, struct.__name__.replace("_reg_t", "_reg_u"))
@@ -436,6 +419,38 @@ class RegAccess:
         return self.access == frozenset({"read-only"}) and not self.declared_reset
 
 
+def _iter_ipxact_registers():
+    """Yield ``(address, width_bits, field_nodes)`` for every register element.
+
+    An array (``dim``) yields one tuple per element, at its absolute address.
+    """
+
+    def text(node: ET.Element, child: str) -> str | None:
+        found = node.find(_IPXACT_NS + child)
+        return None if found is None else found.text
+
+    def walk(node: ET.Element, base: int):
+        for child in node:
+            kind = child.tag.split("}")[-1]
+            if kind == "registerFile":
+                offset = _ipxact_num(text(child, "addressOffset")) or 0
+                stride = _ipxact_num(text(child, "range")) or 0
+                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                    yield from walk(child, base + offset + index * stride)
+            elif kind == "register":
+                offset = _ipxact_num(text(child, "addressOffset")) or 0
+                width = _ipxact_num(text(child, "size")) or 32
+                fields = child.findall(_IPXACT_NS + "field")
+                for index in range(_ipxact_num(text(child, "dim")) or 1):
+                    yield base + offset + index * (width // 8), width, fields
+            elif kind == "addressBlock":
+                yield from walk(child, base + (_ipxact_num(text(child, "baseAddress")) or 0))
+            else:
+                yield from walk(child, base)
+
+    yield from walk(ET.parse(_GEN_IPXACT).getroot(), 0)
+
+
 def _ipxact_access() -> dict[int, RegAccess]:
     """Absolute address -> access shape, from the generated IP-XACT.
 
@@ -445,41 +460,154 @@ def _ipxact_access() -> dict[int, RegAccess]:
     on, so the join cannot be broken by a naming convention change.
     """
     out: dict[int, RegAccess] = {}
-
-    def text(node: ET.Element, child: str) -> str | None:
-        found = node.find(_IPXACT_NS + child)
-        return None if found is None else found.text
-
-    def walk(node: ET.Element, base: int) -> None:
-        for child in node:
-            kind = child.tag.split("}")[-1]
-            if kind == "registerFile":
-                offset = _ipxact_num(text(child, "addressOffset")) or 0
-                stride = _ipxact_num(text(child, "range")) or 0
-                for index in range(_ipxact_num(text(child, "dim")) or 1):
-                    walk(child, base + offset + index * stride)
-            elif kind == "register":
-                offset = _ipxact_num(text(child, "addressOffset")) or 0
-                width = _ipxact_num(text(child, "size")) or 32
-                fields = child.findall(_IPXACT_NS + "field")
-                shape = RegAccess(
-                    frozenset(text(one, "access") or "read-write" for one in fields),
-                    any(one.find(_IPXACT_NS + "resets") is not None for one in fields),
-                )
-                for index in range(_ipxact_num(text(child, "dim")) or 1):
-                    out[base + offset + index * (width // 8)] = shape
-            elif kind == "addressBlock":
-                walk(child, base + (_ipxact_num(text(child, "baseAddress")) or 0))
-            else:
-                walk(child, base)
-
-    walk(ET.parse(_GEN_IPXACT).getroot(), 0)
+    for addr, _width, fields in _iter_ipxact_registers():
+        out[addr] = RegAccess(
+            frozenset((one.findtext(_IPXACT_NS + "access") or "read-write") for one in fields),
+            any(one.find(_IPXACT_NS + "resets") is not None for one in fields),
+        )
     if not out:
         raise RuntimeError(
             f"{_GEN_IPXACT} yielded no registers; the IP-XACT schema changed and "
             "every access-shaped exclusion would silently exclude nothing"
         )
     return out
+
+
+@lru_cache(maxsize=1)
+def _ipxact_unreset_words() -> dict[int, int]:
+    """32-bit word address -> bits of that word held by fields with no RDL reset.
+
+    PeakRDL IP-XACT emits a ``resets`` element exactly for a field that the RDL
+    gives a reset value. The generated ``_REG_DEFAULT`` reads 0 for a field with
+    none (``tools/regs/common/regcollect.py``), so it cannot answer this.
+    """
+    out: dict[int, int] = {}
+    for addr, width, fields in _iter_ipxact_registers():
+        bits = 0
+        for one in fields:
+            if one.find(_IPXACT_NS + "resets") is not None:
+                continue
+            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            bits |= ((1 << width_f) - 1) << lsb
+        for word in range(max(width // 32, 1)):
+            out[addr + 4 * word] = (bits >> (32 * word)) & 0xFFFF_FFFF
+    if not out:
+        raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
+    return out
+
+
+def word_unreset_mask(addr: int) -> int:
+    """Bits of the 32-bit word at ``addr`` held by fields with no RDL reset value.
+
+    Those bits have no defined value before their first write, and the generated
+    ``_REG_DEFAULT`` holds a 0 placeholder for them, so a reset compare must leave
+    them out. Raises ``KeyError`` for an address the IP-XACT gives no register.
+    """
+    words = _ipxact_unreset_words()
+    if addr not in words:
+        raise KeyError(f"0x{addr:08x} is not a register word in {_GEN_IPXACT.name}")
+    return words[addr]
+
+
+def word_has_unreset_field(addr: int) -> bool:
+    """Whether a field in the 32-bit word at ``addr`` has no RDL reset value.
+
+    Such a word has no defined value before its first write, so a read before
+    that write grades nothing and reads X on a 4-state simulator. Raises
+    ``KeyError`` for an address the IP-XACT gives no register.
+    """
+    return word_unreset_mask(addr) != 0
+
+
+@dataclass(frozen=True)
+class FieldMeta:
+    """One RDL field of a register, as the generated IP-XACT declares it."""
+
+    name: str
+    lsb: int
+    width: int
+    # IP-XACT access: `read-write`, `read-only` or `write-only`.
+    access: str
+    # RDL reset value, or None when the field declares none.
+    reset: int | None
+    # IP-XACT modifiedWriteValue `oneToSet` (RDL `onwrite = woset`): a written
+    # 1 sets the bit and a written 0 leaves it.
+    one_to_set: bool
+
+    @property
+    def mask(self) -> int:
+        return ((1 << self.width) - 1) << self.lsb
+
+
+@lru_cache(maxsize=1)
+def _ipxact_fields() -> dict[int, tuple[int, tuple[FieldMeta, ...]]]:
+    out: dict[int, tuple[int, tuple[FieldMeta, ...]]] = {}
+    for addr, width, fields in _iter_ipxact_registers():
+        metas = []
+        for one in fields:
+            reset = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
+            metas.append(
+                FieldMeta(
+                    name=one.findtext(_IPXACT_NS + "name") or "",
+                    lsb=_ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0,
+                    width=_ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1,
+                    access=one.findtext(_IPXACT_NS + "access") or "read-write",
+                    reset=None if reset is None else _ipxact_num(reset.text),
+                    one_to_set=(one.findtext(_IPXACT_NS + "modifiedWriteValue") == "oneToSet"),
+                )
+            )
+        out[addr] = (width, tuple(metas))
+    if not out:
+        raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
+    return out
+
+
+@lru_cache(maxsize=1)
+def _ipxact_reset_words() -> dict[int, int]:
+    """32-bit word address -> reset value assembled from the IP-XACT field resets.
+
+    Covers registers wider than 32 bits word by word, which the generated
+    ``_REG_DEFAULT`` symbols do not (a 256-bit field has none). A field with no
+    ``resets`` element contributes 0; ``word_reset`` refuses such a word.
+    """
+    out: dict[int, int] = {}
+    for addr, width, fields in _iter_ipxact_registers():
+        value = 0
+        for one in fields:
+            lsb = _ipxact_num(one.findtext(_IPXACT_NS + "bitOffset")) or 0
+            width_f = _ipxact_num(one.findtext(_IPXACT_NS + "bitWidth")) or 1
+            node = one.find(f"{_IPXACT_NS}resets/{_IPXACT_NS}reset/{_IPXACT_NS}value")
+            if node is not None:
+                value |= (_ipxact_num(node.text) & ((1 << width_f) - 1)) << lsb
+        for word in range(max(width // 32, 1)):
+            out[addr + 4 * word] = (value >> (32 * word)) & 0xFFFF_FFFF
+    if not out:
+        raise RuntimeError(f"{_GEN_IPXACT} yielded no registers")
+    return out
+
+
+def register_fields(addr: int) -> tuple[int, tuple[FieldMeta, ...]]:
+    """``(width_bits, fields)`` of the register at absolute ``addr``.
+
+    Bits outside every field are reserved. Raises ``KeyError`` for an address
+    the IP-XACT gives no register.
+    """
+    regs = _ipxact_fields()
+    if addr not in regs:
+        raise KeyError(f"0x{addr:08x} is not a register in {_GEN_IPXACT.name}")
+    return regs[addr]
+
+
+def word_reset(addr: int) -> int:
+    """RDL reset value of the 32-bit word at ``addr``, from the IP-XACT.
+
+    Raises ``KeyError`` for an address the IP-XACT gives no register, and
+    ``ValueError`` for a word with a field that has no RDL reset.
+    """
+    if word_has_unreset_field(addr):
+        raise ValueError(f"0x{addr:08x} holds a field with no RDL reset value")
+    return _ipxact_reset_words()[addr]
 
 
 # The shape of ordinary read-write storage, and the default for a hand-built
@@ -500,6 +628,9 @@ class RegInfo:
     mask_all: int
     # Access shape from the IP-XACT; see _STORAGE_ACCESS for the default.
     access: RegAccess = _STORAGE_ACCESS
+    # Bits held by fields with no RDL reset (word_unreset_mask). ``reset`` is a
+    # 0 placeholder on these bits, not a POR value.
+    unreset: int = 0
 
     @property
     def reserved(self) -> int:
@@ -770,7 +901,9 @@ def iter_register_walk() -> RegisterWalk:
         if shape is None:
             unjoined.append(f"{block}.{reg} @{addr:#010x}")
             continue
-        found.append(RegInfo(block, reg, addr, reset, mask, mask_all, shape))
+        found.append(
+            RegInfo(block, reg, addr, reset, mask, mask_all, shape, word_unreset_mask(addr))
+        )
     if unjoined:
         raise RuntimeError(
             f"{len(unjoined)} inventory register(s) have no IP-XACT entry at their "
@@ -1111,6 +1244,19 @@ def _selftest() -> int:
         shape = readable.get(name)
         if shape is None or shape.access != frozenset({"read-only"}) or not shape.declared_reset:
             failures.append(f"{name} is no longer read-only with a declared reset: {shape}")
+
+    # Unreset-field masks, read off the IP-XACT `resets` elements. HMAC CFG
+    # leaves hmac_en/sha_en without a reset and resets its other fields;
+    # DIGEST_0 is one 32-bit field with none. A reset sweep masks the first and
+    # skips the second, so a generator change that moves either fails here.
+    unreset = {f"{i.block}.{i.name}": i.unreset for i in shapes}
+    for name, want in (
+        ("HMAC.CFG", 0x3),
+        ("HMAC.DIGEST_0_", 0xFFFF_FFFF),
+        ("SEP_CPU_CTRL.SEP_VERSION_ID", 0x0),
+    ):
+        if unreset.get(name) != want:
+            failures.append(f"{name} unreset mask {unreset.get(name)} != 0x{want:x}")
 
     if failures:
         for line in failures:

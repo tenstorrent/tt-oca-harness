@@ -27,12 +27,21 @@ reported in the `MSR` register in the opposite polarity (a bit reads `1`
 while its pin is asserted low), and a change on any of them raises the
 Modem Status Interrupt. None of them gates the datapath: this component
 implements no automatic flow control, so software must act on the
-interrupt to throttle traffic. See the Programming section.
+interrupt to throttle traffic. The
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-uart-flow-control[software flow control procedure]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-uart-flow-control[software flow control procedure]
+endif::backend-pdf[]
+is in the Programmer's Guide.
 
 === DMA Interface
 
 The DMA interface provides signals for Direct Memory Access controllers
-to manage data transfers automatically.
+to manage data transfers automatically. The `rxrdy_o` and `txrdy_o` signals
+indicate when DMA operations can proceed, with behavior configurable through
+FIFO control modes.
 
 === Interface Timing Considerations
 

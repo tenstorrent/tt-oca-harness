@@ -42,16 +42,20 @@
 // --- values ----------------------------------------------------------------
 // Ring oscillators: sample clock on, generators off (PHASE A) then everything
 // on (PHASE B). The generators must not run before the rest is configured.
-#define ESRC_RING_OSC_SAMPLECLK_ONLY 0x00FFF000u
-#define ESRC_RING_OSC_ALL_ON 0x00FFFFFFu
+#define ESRC_RING_OSC_SAMPLECLK_ONLY ENTROPY_SOURCE__RING_OSC_ENABLE__SAMPLE_CLK_ENABLE_bm
+#define ESRC_RING_OSC_ALL_ON \
+    (ENTROPY_SOURCE__RING_OSC_ENABLE__SAMPLE_CLK_ENABLE_bm | \
+     ENTROPY_SOURCE__RING_OSC_ENABLE__ENABLE_bm)
 
 // DECORRELATOR_CTRL.SAMPLE_CLK_DIV in [31:12]; 0x3F => divide by 64. The DV
 // default policy; the /8 variant exists for faster smoke runs.
-#define ESRC_DECOR_CTRL_DIV64 0x0003F000u
+#define ESRC_DECOR_CTRL_DIV64 (0x3Fu << ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_bp)
 
 // rep_limit=50, repetition/APT/Markov health tests enabled. HEALTH_TEST_WINDOW_SIZE
 // is deliberately left at its 2048-sample reset.
-#define ESRC_HEALTH_CTRL 0x00003207u
+#define ESRC_HEALTH_CTRL \
+    ((50u << ENTROPY_SOURCE__HEALTH_TEST_CTRL__REPETITION_LIMIT_bp) | \
+     (0x7u << ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bp))
 
 // MuBi4: true = 0x6, false = 0x9. Every control field below is MuBi4.
 #define MUBI4_TRUE 0x6u
@@ -105,10 +109,6 @@
     ((uint32_t)(ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bm | \
                 ENTROPY_SOURCE__CTRL__SHA256_WHITENING_ENABLE_bm))
 
-// Terminal-failure hook, defined in rom_main.c. Same idiom lifecycle.c uses for
-// an invalid life-cycle state: a device-level condition no retry can fix.
-__attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
-
 // A failed entropy bring-up STOPS secure boot. It is a device failure, not a bad
 // image: the backup manifest slot carries the same crypto requirement, so
 // rotating to it cannot help, and letting the failure surface as a signature
@@ -116,7 +116,7 @@ __attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
 // each crypto init that depends on it.
 __attribute__((noreturn)) static void entropy_fail(void) {
     report_status(STATUS_TYPE_ERROR, SEP_MSG_ENTROPY_INIT_FAILED);
-    rom_err_fail_ext(SEP_MSG_ENTROPY_INIT_FAILED);
+    rom_err_fail_ext(ROM_ERR_ENTROPY_INIT_FAILED);
 }
 
 // Apply a write-one-to-set lock and confirm it took.
@@ -273,7 +273,7 @@ int sep_entropy_init(void) {
 
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR, ESRC_RING_OSC_SAMPLECLK_ONLY);
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_DECORRELATOR_CTRL_BASE_ADDR, ESRC_DECOR_CTRL_DIV64);
-    mmio_write32(SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR, 0x1u);
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR, ENTROPY_SOURCE__FIFO_CTRL__ENABLE_bm);
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_HEALTH_TEST_CTRL_BASE_ADDR, ESRC_HEALTH_CTRL);
     mmio_write32(SEP_TOP_ENTROPY_SOURCE_CTRL_BASE_ADDR, ESRC_CTRL_CONFIGURED);
 

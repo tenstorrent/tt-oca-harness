@@ -8,7 +8,7 @@
 // sep_global_base_addr_o and sep_region_size_o publish the SEP aperture from sep_cpu_ctrl
 // CSRs for the SMU AXI crossbar SEP-target rule.
 // External-aperture requests inside the eFuse shim CSR window are diverted to the eFuse
-// wrapper; the rest leave on sep_external_axi_req_o. PIC source i+1 is internal interrupt i
+// wrapper; the rest leave on sep_external_axi_req_o through an axi_cut. PIC source i+1 is internal interrupt i
 // for the NUM_INTERNAL_IRQS internal sources (mailbox, DMA, WDT, SPI, crypto, eFuse and
 // bridge faults), followed by extintsrc_req_i. The WDT bark drives the CPU NMI, which jumps
 // to SEP_NMI_VEC.
@@ -182,7 +182,7 @@ module sep #(
                                                          // plus the SPI interrupt and DMA trigger.
   input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,  // SPI data-lane inputs from the pads.
 
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,  // Differentially encoded lifecycle
+  output logic [2*sep_pkg::LcStateBitWidth-1:0] lc_state_o,     // Differentially encoded lifecycle
                                                                 // state from the eFuse shadow
                                                                 // registers.
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,  // Per-interface debug disables for
@@ -202,7 +202,7 @@ module sep #(
                                               // security is disabled, otherwise when fuse sensing
                                               // finishes.
 
-  output logic [sep_pkg::NUM_MAILBOXES-1:0] smc_mailbox_interrupt_o,  // Per-mailbox outbound-data interrupts to the SMC.
+  output logic [sep_pkg::NumMailboxes-1:0] smc_mailbox_interrupt_o,  // Per-mailbox outbound-data interrupts to the SMC.
 
   input  logic smc_fuse_sense_done_i,         // SMC fuse sense completion, reflected in
                                               // SMC_FUSE_SENSE_STATUS; requests to the SMC hang
@@ -265,9 +265,9 @@ module sep #(
   logic [5:0] sep_efuse_token_match_chiplet_debug;
 
   sep_pkg::remap_debug_t         local_masters_remap_debug;
-  logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0]
+  logic [$clog2(sep_pkg::OutboundFilterNumFilters)-1:0]
       outbound_write_filter_hit_debug, outbound_read_filter_hit_debug;
-  logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]
+  logic [$clog2(sep_pkg::InboundFilterNumFilters)-1:0]
       inbound_write_filter_hit_debug, inbound_read_filter_hit_debug;
 
 
@@ -326,7 +326,7 @@ module sep #(
   // WDT sleep mode - tie low for normal operation (watchdog always counts)
   assign wdt_debug_sleep_mode = 1'b0;
 
-  logic [sep_pkg::NUM_MAILBOXES-1:0] sep_mailbox_interrupt;
+  logic [sep_pkg::NumMailboxes-1:0] sep_mailbox_interrupt;
   logic km_mbox_irq;
   logic entropy_source_irq;
   logic ext_trng_irq;
@@ -471,25 +471,25 @@ module sep #(
   // eFuse shim CSR lives in sep_external addr map but must pass through efuse controller before reaching ip_integration
   // Added demux to reroute eFuse shim traffic from xbar external to efuse_wrapper
 
-  localparam logic [31:0] EFUSE_SHIM_BASE =
+  localparam logic [31:0] EfuseShimBase =
         32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR);
 
-  localparam int unsigned NUM_EXT_DEMUX_PORTS = 2;
+  localparam int unsigned NumExtDemuxPorts = 2;
   typedef enum logic [$clog2(
-NUM_EXT_DEMUX_PORTS
+NumExtDemuxPorts
 )-1:0] {
     EXT_DEMUX_EXTERNAL   = 1'd0,
     EXT_DEMUX_EFUSE_SHIM = 1'd1
   } ext_demux_target_e;
 
-  sep_pkg::sep_32_64_6_12_axi_req_t  [NUM_EXT_DEMUX_PORTS-1:0] ext_demux_req;
-  sep_pkg::sep_32_64_6_12_axi_resp_t [NUM_EXT_DEMUX_PORTS-1:0] ext_demux_resp;
+  sep_pkg::sep_32_64_6_12_axi_req_t  [NumExtDemuxPorts-1:0]    ext_demux_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t [NumExtDemuxPorts-1:0]    ext_demux_resp;
   ext_demux_target_e                                           ext_demux_aw_select;
   ext_demux_target_e                                           ext_demux_ar_select;
 
   function automatic ext_demux_target_e ext_demux_decode(
       input logic [sep_pkg::SEP_32_64_6_12_ADDR_WIDTH-1:0] addr);
-    if (addr >= EFUSE_SHIM_BASE && addr < EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE) begin
+    if (addr >= EfuseShimBase && addr < EfuseShimBase + EFUSE_SHIM_SIZE) begin
       return EXT_DEMUX_EFUSE_SHIM;
     end else begin
       return EXT_DEMUX_EXTERNAL;
@@ -511,7 +511,7 @@ NUM_EXT_DEMUX_PORTS
     .r_chan_t    (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
     .axi_req_t   (sep_pkg::sep_32_64_6_12_axi_req_t),
     .axi_resp_t  (sep_pkg::sep_32_64_6_12_axi_resp_t),
-    .NoMstPorts  (NUM_EXT_DEMUX_PORTS),
+    .NoMstPorts  (NumExtDemuxPorts),
     .MaxTrans    (4),
     .AxiLookBits (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
     .UniqueIds   (1'b0),
@@ -533,10 +533,25 @@ NUM_EXT_DEMUX_PORTS
     .mst_resps_i     (ext_demux_resp)
   );
 
-  assign sep_external_axi_req_o                = ext_demux_req [EXT_DEMUX_EXTERNAL];
-  assign ext_demux_resp[EXT_DEMUX_EXTERNAL]    = sep_external_axi_resp_i;
   assign efuse_shim_axi_req                    = ext_demux_req [EXT_DEMUX_EFUSE_SHIM];
   assign ext_demux_resp[EXT_DEMUX_EFUSE_SHIM]  = efuse_shim_axi_resp;
+
+  axi_cut #(
+    .aw_chan_t  (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
+    .w_chan_t   (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
+    .b_chan_t   (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
+    .ar_chan_t  (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
+    .r_chan_t   (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
+    .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t)
+  ) u_sep_external_cut (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .slv_req_i  (ext_demux_req[EXT_DEMUX_EXTERNAL]),
+    .slv_resp_o (ext_demux_resp[EXT_DEMUX_EXTERNAL]),
+    .mst_req_o  (sep_external_axi_req_o),
+    .mst_resp_i (sep_external_axi_resp_i)
+  );
 
   /////////////////////
   // Interrupt Logic //
@@ -701,6 +716,81 @@ NUM_EXT_DEMUX_PORTS
   // SRAM Memory Interface //
   ///////////////////////////
 
+
+  localparam int unsigned NumSramDemuxPorts = 2;
+  typedef enum logic [$clog2(
+NumSramDemuxPorts
+)-1:0] {
+    SRAM_DEMUX_MEM     = 1'd0,
+    SRAM_DEMUX_ERR_SLV = 1'd1
+  } sram_demux_target_e;
+
+  sep_pkg::sep_32_64_6_12_axi_req_t  [NumSramDemuxPorts-1:0]     sram_demux_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t [NumSramDemuxPorts-1:0]     sram_demux_resp;
+  sram_demux_target_e                                            sram_demux_aw_select;
+  sram_demux_target_e                                            sram_demux_ar_select;
+
+  function automatic sram_demux_target_e sram_demux_decode(input axi_pkg::len_t len,
+                                                           input axi_pkg::burst_t burst);
+    if ((len != '0) && (burst != axi_pkg::BURST_INCR)) begin
+      return SRAM_DEMUX_ERR_SLV;
+    end else begin
+      return SRAM_DEMUX_MEM;
+    end
+  endfunction
+
+  always_comb begin
+    sram_demux_aw_select = sram_demux_decode(sram_req.aw.len, sram_req.aw.burst);
+    sram_demux_ar_select = sram_demux_decode(sram_req.ar.len, sram_req.ar.burst);
+  end
+
+  axi_demux #(
+    .AxiIdWidth  (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .AtopSupport (1'b0),
+    .aw_chan_t   (sep_pkg::sep_32_64_6_12_axi_aw_chan_t),
+    .w_chan_t    (sep_pkg::sep_32_64_6_12_axi_w_chan_t),
+    .b_chan_t    (sep_pkg::sep_32_64_6_12_axi_b_chan_t),
+    .ar_chan_t   (sep_pkg::sep_32_64_6_12_axi_ar_chan_t),
+    .r_chan_t    (sep_pkg::sep_32_64_6_12_axi_r_chan_t),
+    .axi_req_t   (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_resp_t  (sep_pkg::sep_32_64_6_12_axi_resp_t),
+    .NoMstPorts  (NumSramDemuxPorts),
+    .MaxTrans    (4),
+    .AxiLookBits (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .UniqueIds   (1'b0),
+    .SpillAw     (1'b0),
+    .SpillW      (1'b0),
+    .SpillB      (1'b0),
+    .SpillAr     (1'b0),
+    .SpillR      (1'b0)
+  ) u_sram_burst_demux (
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .test_i          (test_en_i),
+    .slv_req_i       (sram_req),
+    .slv_resp_o      (sram_rsp),
+    .slv_aw_select_i (sram_demux_aw_select),
+    .slv_ar_select_i (sram_demux_ar_select),
+    .sel_hash_i      ('0),
+    .mst_reqs_o      (sram_demux_req),
+    .mst_resps_i     (sram_demux_resp)
+  );
+
+  axi_err_slv #(
+    .AxiIdWidth (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t),
+    .Resp       (axi_pkg::RESP_SLVERR),
+    .ATOPs      (1'b0),
+    .MaxTrans   (4)
+  ) u_sram_burst_err_slv (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (test_en_i),
+    .slv_req_i  (sram_demux_req[SRAM_DEMUX_ERR_SLV]),
+    .slv_resp_o (sram_demux_resp[SRAM_DEMUX_ERR_SLV])
+  );
+
   memory_interface #(
     .MEM_ADDR_WIDTH   (sep_pkg::SEP_MEM_ADDR_WIDTH),
     .MEM_DATA_WIDTH   (sep_pkg::SEP_MEM_DATA_WIDTH),
@@ -719,8 +809,8 @@ NUM_EXT_DEMUX_PORTS
   ) u_sram_memory_interface (
     .clk_i                (clk_i),
     .rst_ni               (sep_reset_n),
-    .mem_axi_req_i        (sram_req),
-    .mem_axi_resp_o       (sram_rsp),
+    .mem_axi_req_i        (sram_demux_req[SRAM_DEMUX_MEM]),
+    .mem_axi_resp_o       (sram_demux_resp[SRAM_DEMUX_MEM]),
     .csr_in_axil_req_i    ('0),
     .csr_in_axil_resp_o   (/* UNUSED */),
     .csr_out_axil_req_o   (/* UNUSED */),
@@ -1107,16 +1197,16 @@ NUM_EXT_DEMUX_PORTS
 
   sep_dma_wrap #(
     .SECURE_DMA_REG_MAP_BASE_ADDR (32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR)),
-    .AlertAsyncOn           ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
-    .AlertSkewCycles        (1'b0),
-    .EnableDataIntgGen      (1'b1),  // ENABLE integrity generation (was 1'b0)
-    .EnableRspDataIntgCheck (1'b1),  // ENABLE integrity checking (was 1'b0)
-    .TlUserRsvd             ('0),
-    .SysRaclRole            ('0),
-    .OtAgentId              ('0),
-    .EnableRacl             (1'b0),
-    .RaclErrorRsp           (1'b0),
-    .RaclPolicySelVec       ('{secure_dma_reg_pkg::NumRegs{0}})
+    .ALERT_ASYNC_ON             ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
+    .ALERT_SKEW_CYCLES          (1'b0),
+    .ENABLE_DATA_INTG_GEN       (1'b1),  // ENABLE integrity generation (was 1'b0)
+    .ENABLE_RSP_DATA_INTG_CHECK (1'b1),  // ENABLE integrity checking (was 1'b0)
+    .TL_USER_RSVD               ('0),
+    .SYS_RACL_ROLE              ('0),
+    .OT_AGENT_ID                ('0),
+    .ENABLE_RACL                (1'b0),
+    .RACL_ERROR_RSP             (1'b0),
+    .RACL_POLICY_SEL_VEC        ('{secure_dma_reg_pkg::NumRegs{0}})
   ) u_sep_dma_wrap (
     .clk_i,
     .rst_ni                 (sep_reset_n),
@@ -1174,11 +1264,11 @@ NUM_EXT_DEMUX_PORTS
                                     ({8'b0, local_masters_remap_debug}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugOutboundFilterLaneWidth_A, $bits
-      ({{(16 - 2 * $clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)
+      ({{(16 - 2 * $clog2(sep_pkg::OutboundFilterNumFilters)
        ) {1'b0}}, outbound_write_filter_hit_debug, outbound_read_filter_hit_debug}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugInboundFilterLaneWidth_A, $bits
-      ({{(16 - 2 * $clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)
+      ({{(16 - 2 * $clog2(sep_pkg::InboundFilterNumFilters)
        ) {1'b0}}, inbound_write_filter_hit_debug, inbound_read_filter_hit_debug}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugReservedLanesWidth_A, $bits(160'b0) == 10 * 16)
 
@@ -1258,14 +1348,14 @@ NUM_EXT_DEMUX_PORTS
 
     // [191:176] Outbound filter hit debug
     {(16 - 2 * $clog2(
-        sep_pkg::OUTBOUND_FILTER_NUM_FILTERS
+        sep_pkg::OutboundFilterNumFilters
     )) {1'b0}},
     outbound_write_filter_hit_debug,
     outbound_read_filter_hit_debug,
 
     // [175:160] Inbound filter hit debug
     {(16 - 2 * $clog2(
-        sep_pkg::INBOUND_FILTER_NUM_FILTERS
+        sep_pkg::InboundFilterNumFilters
     )) {1'b0}},
     inbound_write_filter_hit_debug,
     inbound_read_filter_hit_debug,

@@ -273,6 +273,10 @@ class TaskAndResultTest(unittest.TestCase):
         result = error_result(task, "environment_error: gone")
         self.assertEqual((result.status, result.reason), ("ERROR", "environment_error: gone"))
         self.assertEqual(result.metadata["attempt"], 0)
+        self.assertEqual(
+            result.failure_buckets,
+            [{"kind": "environment_error", "signature": "environment_error: gone", "count": 1}],
+        )
 
 
 class LocalExecutorTest(unittest.TestCase):

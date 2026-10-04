@@ -21,4 +21,6 @@ import ocah_axi_vip_seq_lib_pkg::*;
 `include "ocah_axi_vip_base_test.svh"
 `include "ocah_axi_id_match_test.svh"
 `include "ocah_axi_id_mismatch_test.svh"
+`include "ocah_axi_pipeline_test.svh"
+`include "ocah_axi_pipeline_missing_rlast_test.svh"
 `include "ocah_axi_struct_bridge_test.svh"

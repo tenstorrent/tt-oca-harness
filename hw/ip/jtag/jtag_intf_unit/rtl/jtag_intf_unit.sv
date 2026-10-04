@@ -81,7 +81,7 @@ module jtag_intf_unit
   parameter logic [7:0]   OCH_VER           = 8'h00,  // DTP IP major version number reported in
                                                       // JTAG_CAPS.
 
-  localparam int unsigned  NUM_EXTRA_STAP_PORTS = (NUM_EXTRA_STAPS > 0) ? NUM_EXTRA_STAPS : 1,  // Width of the additional-STAP port arrays.
+  localparam int unsigned  NumExtraStapPorts = (NUM_EXTRA_STAPS > 0) ? NUM_EXTRA_STAPS : 1,     // Width of the additional-STAP port arrays.
                                                                                                 // It is 1 when NUM_EXTRA_STAPS is 0, and that
                                                                                                 // single slot is then unused.
 
@@ -134,6 +134,8 @@ module jtag_intf_unit
 ) (
   input  logic clk_i,                   // System clock for the JTAG2AXI bridges.
   input  logic rst_n_i,                 // Active-low system reset for the JTAG2AXI bridges.
+  input  logic test_en_i,               // DFT test-mode enable, active-high, for the JTAG2AXI
+                                        // bridges.
 
   input  logic pwr_on_rst_ni,           // Active-low power-on reset, ANDed with TRST for the PTAP
                                         // and STAPs; sets the dbg_disable_i synchronizers to
@@ -149,7 +151,7 @@ module jtag_intf_unit
   input  logic            ptap_client_tdi_i,  // PTAP client serial test data input.
   output logic            ptap_client_tdo_o,  // PTAP client serial test data output, retimed on the
                                               // falling TCK edge except during a ZERO_LENGTH_BYPASS
-                                              // DR shift.
+                                              // DR shift with the PTAP 3DCR STAP-select bit clear.
   output logic            ptap_client_tdo_oen_o,  // PTAP client TDO output enable, active-high
                                                   // during Shift-IR and Shift-DR.
 
@@ -188,15 +190,15 @@ module jtag_intf_unit
                                                     // active-high while that STAP is selected and
                                                     // shifting.
 
-  output jtag_tap_ctrl_t  stap_extra_host_tap_ctrl_o [NUM_EXTRA_STAP_PORTS-1:0],  // Additional DTP STAP host TAP-control
+  output jtag_tap_ctrl_t  stap_extra_host_tap_ctrl_o [NumExtraStapPorts-1:0],     // Additional DTP STAP host TAP-control
                                                                                   // bundle: TCK, TMS, and active-low TRST.
                                                                                   // Only TCK is driven when NUM_EXTRA_STAPS is 0.
   /* verilator lint_off UNUSEDSIGNAL */
-  input  logic            stap_extra_host_tdi_i      [NUM_EXTRA_STAP_PORTS-1:0],  // Additional DTP STAP host serial test data input; unused
+  input  logic            stap_extra_host_tdi_i      [NumExtraStapPorts-1:0],     // Additional DTP STAP host serial test data input; unused
                                                                                   // when NUM_EXTRA_STAPS is 0.
   /* verilator lint_on UNUSEDSIGNAL */
-  output logic            stap_extra_host_tdo_o      [NUM_EXTRA_STAP_PORTS-1:0],  // Additional DTP STAP host serial test data output.
-  output logic            stap_extra_host_tdo_oen_o  [NUM_EXTRA_STAP_PORTS-1:0],  // Additional DTP STAP host TDO output
+  output logic            stap_extra_host_tdo_o      [NumExtraStapPorts-1:0],     // Additional DTP STAP host serial test data output.
+  output logic            stap_extra_host_tdo_oen_o  [NumExtraStapPorts-1:0],     // Additional DTP STAP host TDO output
                                                                                   // enable, active-high while that STAP is
                                                                                   // selected and shifting.
 
@@ -272,7 +274,7 @@ module jtag_intf_unit
   //--------------------------------------------------------------------------
   // Local parameters
   //--------------------------------------------------------------------------
-  localparam int unsigned DBG_DISABLE_WIDTH = $bits(sep_lifecycle_ctrl_pkg::dbg_disable_t);
+  localparam int unsigned DbgDisableWidth = $bits(sep_lifecycle_ctrl_pkg::dbg_disable_t);
 
   //--------------------------------------------------------------------------
   // Internal Signals
@@ -301,8 +303,8 @@ module jtag_intf_unit
   logic dft_nonsecure_security_disable;
   logic dfd_security_disable;
 
-  logic [DBG_DISABLE_WIDTH-1:0]           dbg_disable_bits;
-  logic [DBG_DISABLE_WIDTH-1:0]           dbg_disable_bits_q_n0_scan;
+  logic [DbgDisableWidth-1:0]             dbg_disable_bits;
+  logic [DbgDisableWidth-1:0]             dbg_disable_bits_q_n0_scan;
   sep_lifecycle_ctrl_pkg::dbg_disable_t   dbg_disable_q;
 
   assign dbg_disable_bits = dbg_disable_i;
@@ -311,7 +313,7 @@ module jtag_intf_unit
   // These synchronizers are downstream of the Class 1 LC_STATE, SIP_DIS, and
   // SYS_DIS fields and directly control JTAG/test enablement. Both stages
   // must therefore remain outside scan.
-  for (genvar i = 0; i < DBG_DISABLE_WIDTH; i++) begin : gen_dbg_disable_sync_n0_scan
+  for (genvar i = 0; i < DbgDisableWidth; i++) begin : gen_dbg_disable_sync_n0_scan
     prim_flop_2sync #(
       .Width(1),
       .ResetValue(1'b1)
@@ -410,6 +412,7 @@ module jtag_intf_unit
     // System clock and reset (for jtag2axi modules)
     .clk_i                          (clk_i),
     .rst_n_i                        (rst_n_i),
+    .test_en_i                      (test_en_i),
 
     // Power-on reset (for JTAG logic)
     .pwr_on_rst_ni                  (pwr_on_rst_ni),
@@ -559,7 +562,7 @@ module jtag_intf_unit
       jtag_stap #(
         .SCAN_IN_PIPE        (0),
         .TDI_LOCKUP          (0),  // No lockup latch needed for on-chip connections
-        .SCAN_OUT_LOCKUP     (NUM_EXTRA_STAPS-1),
+        .SCAN_OUT_LOCKUP     (0),
         .jtag_scan_ctrl_t    (jtag_scan_ctrl_t),
         .jtag_tap_ctrl_t     (jtag_tap_ctrl_t)
       ) u_stap_extra (

@@ -90,7 +90,13 @@ from .coverage_policy import (
     native_policy_manifest,
 )
 from .formal import grade_formal_stage
-from .junit import discard_generated_junit, ensure_leaf_junit, results_xml_path
+from .junit import (
+    discard_generated_junit,
+    ensure_graded_junit,
+    ensure_leaf_junit,
+    graded_xml_path,
+    results_xml_path,
+)
 from .logparse import observed_failure_messages, parse_stage_result
 from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatalog, TestEntry
 from .paths import repo_path, repo_rel
@@ -415,6 +421,26 @@ def _write_build_record(
     write_text_file(record_path, json.dumps(payload, indent=2) + "\n", dry_run)
 
 
+def _read_build_record(build_dir: Path) -> dict[str, Any] | None:
+    """The record a build wrote beside its model, or None when none parses."""
+    try:
+        record = json.loads((build_dir / BUILD_RECORD_NAME).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return record if isinstance(record, dict) else None
+
+
+def _vcs_cocotb_access(build: dict[str, Any], waves: bool) -> list[str]:
+    """Return ``[build.vcs].cocotb_access``, the VCS debug access of a cocotb build.
+
+    An empty list keeps the access cocotb's Vcs runner grants itself, which a
+    build that dumps waves always keeps.
+    """
+    if waves:
+        return []
+    return as_str_list(build_vcs_cfg(build).get("cocotb_access"), "build.vcs.cocotb_access")
+
+
 def _verilator_public_scope_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
     scope = str(build_verilator_cfg(build).get("public_scope") or "").strip()
     if not scope:
@@ -424,20 +450,78 @@ def _verilator_public_scope_fingerprint(root: Path, build: dict[str, Any]) -> li
     return [f"verilator_public_scope={scope}", "verilator_public_scope_text=" + text]
 
 
-def _prebuilt_targets(args: argparse.Namespace) -> set[str]:
-    targets = getattr(args, "_cocotb_prebuilt_targets", None)
+def _built_targets(args: argparse.Namespace) -> set[str]:
+    targets = getattr(args, "_built_targets", None)
     if not isinstance(targets, set):
         targets = set()
-        setattr(args, "_cocotb_prebuilt_targets", targets)
+        setattr(args, "_built_targets", targets)
     return targets
 
 
-def _mark_cocotb_prebuilt(args: argparse.Namespace, target_name: str) -> None:
-    _prebuilt_targets(args).add(target_name)
+def mark_target_built(
+    args: argparse.Namespace, target_name: str, target_build: dict[str, Any] | None = None
+) -> None:
+    """Mark the target's model as built for this run, with the identity its build recorded."""
+    _built_targets(args).add(target_name)
+    if target_build:
+        builds = getattr(args, "_handed_target_builds", None)
+        if not isinstance(builds, dict):
+            builds = {}
+            setattr(args, "_handed_target_builds", builds)
+        builds[target_name] = dict(target_build)
 
 
-def _is_cocotb_prebuilt(args: argparse.Namespace, target_name: str) -> bool:
-    return target_name in _prebuilt_targets(args)
+def _is_target_built(args: argparse.Namespace, target_name: str) -> bool:
+    return target_name in _built_targets(args)
+
+
+def _handed_target_build(args: argparse.Namespace, target_name: str) -> dict[str, Any] | None:
+    """The identity a build of the target handed down for its leaves, or None.
+
+    A leaf handed an identity reports that build's directory and fingerprint rather than
+    recomputing them on its own host, where a slow `vcs -ID` or an unreadable source changes
+    the digest. A wave-debug rerun changes the build inputs, so it computes its own.
+    """
+    if getattr(args, "_wave_debug_rerun", False) or not _is_target_built(args, target_name):
+        return None
+    builds = getattr(args, "_handed_target_builds", None)
+    recorded = builds.get(target_name) if isinstance(builds, dict) else None
+    return recorded if isinstance(recorded, dict) and recorded.get("build_dir") else None
+
+
+def _built_model_dir(args: argparse.Namespace, sim_cfg: dict[str, Any]) -> Path | None:
+    """The directory of the model this run built for the config's target, or None."""
+    handed = _handed_target_build(args, _target_name(sim_cfg))
+    return Path(handed["build_dir"]) if handed else None
+
+
+def _leaf_target_build(
+    args: argparse.Namespace,
+    *,
+    target_name: str,
+    tool: str,
+    build_dir: Path,
+    fingerprint: str | None,
+) -> dict[str, Any]:
+    """The identity a sim leaf reports for the model under ``build_dir``.
+
+    The identity the run's build handed down names the model every leaf of the run shares.
+    A leaf handed none reports the record the build wrote beside the model, and a model
+    without one is named by ``fingerprint``, the leaf's own digest. A wave-debug rerun
+    changes the build inputs, so it reports its own.
+    """
+    handed = _handed_target_build(args, target_name)
+    if handed:
+        return handed
+    record: dict[str, Any] = {}
+    if not getattr(args, "_wave_debug_rerun", False):
+        record = _read_build_record(Path(build_dir)) or {}
+    return _target_build_metadata(
+        target_name=target_name,
+        tool=tool,
+        build_dir=build_dir,
+        fingerprint=str(record.get("fingerprint") or fingerprint or "") or None,
+    )
 
 
 # The expected-failure record keeps at most this many failure messages, each cut to this width.
@@ -815,6 +899,15 @@ def artifact_root(
     if item is None:
         return run_dir / "stages" / stage
     return item_artifact_dir(run_dir, item, seed=seed, attempt=attempt, nest=nest)
+
+
+def framework_results_dir(leaf_dir: Path, args: argparse.Namespace) -> Path:
+    """Where a leaf's framework writes its structured results and its parser reads them.
+
+    A wave-debug rerun uses ``debug/``, so nothing it writes sits under the ``results/`` a
+    JUnit consumer reads.
+    """
+    return leaf_dir / ("debug" if getattr(args, "_wave_debug_rerun", False) else "results")
 
 
 def seed_for_item(
@@ -1207,6 +1300,9 @@ def stage_tool_launch(args: argparse.Namespace, tool: str) -> ToolLaunch:
 # The executable cocotb's Python runner probes on PATH per tool, and the runner class.
 COCOTB_DEFAULT_BINARY = {"verilator": "verilator", "xcelium": "xrun", "vcs": "vcs"}
 COCOTB_RUNNER_CLASS = {"verilator": "Verilator", "xcelium": "Xcelium", "vcs": "Vcs"}
+# The debug access cocotb's Vcs runner adds to every build; `[build.vcs].cocotb_access`
+# replaces it.
+COCOTB_VCS_DEFAULT_ACCESS = ("-debug_access+all", "+acc+3")
 
 
 def reject_cocotb_launcher(launch: ToolLaunch) -> None:
@@ -1381,6 +1477,40 @@ def cocotb_public_scope(vlt_path: str):
     finally:
         for cls, original in patched:
             cls._build_command = original
+
+
+@contextmanager
+def cocotb_vcs_access(access: list[str]):
+    """Replace the debug access cocotb's Vcs runner grants with ``access``.
+
+    cocotb's Vcs runner adds ``-debug_access+all +acc+3`` to every build, which
+    keeps every object in the design visible and writable and stops VCS from
+    optimizing the DUT. A DUT whose bench needs less states its access in
+    ``[build.vcs].cocotb_access``. This wraps the runner's ``_build_opts`` at
+    runtime rather than editing the installed ``cocotb_tools/runner.py``, which
+    ``uv sync`` recreates.
+    """
+    if not access:
+        yield
+        return
+    module = importlib.import_module("cocotb_tools.runner")
+    cls = getattr(module, "Vcs", None)
+    original = cls.__dict__.get("_build_opts") if cls is not None else None
+    if not isinstance(original, property) or original.fget is None:
+        raise ConfigError(
+            "configured [build.vcs].cocotb_access but cocotb's Vcs runner has no _build_opts"
+        )
+    getter = original.fget
+
+    def _build_opts(self: Any) -> list[str]:
+        opts = [opt for opt in getter(self) if opt not in COCOTB_VCS_DEFAULT_ACCESS]
+        return [*opts, *access]
+
+    cls._build_opts = property(_build_opts)
+    try:
+        yield
+    finally:
+        cls._build_opts = original
 
 
 def generate_filelist(
@@ -2001,6 +2131,8 @@ def _cocotb_build_info(
     public_scope_extra = (
         _verilator_public_scope_fingerprint(root, build) if tool == "verilator" else []
     )
+    vcs_access = _vcs_cocotb_access(build, bool(wave_format)) if tool == "vcs" else []
+    vcs_access_extra = [f"vcs_cocotb_access={' '.join(vcs_access)}"] if vcs_access else []
     fingerprint = build_fingerprint(
         build_args=build_args,
         top_module=top_module,
@@ -2010,6 +2142,7 @@ def _cocotb_build_info(
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, run_target),
             *public_scope_extra,
+            *vcs_access_extra,
             *_filelist_sources_fingerprint(root, filelist),
             *_file_args_fingerprint(root, build_args),
             f"waves={wave_format}",
@@ -2089,6 +2222,9 @@ def cocotb_build(
         if _scope_rel:
             public_scope_vlt = str(repo_path(root, _scope_rel))
             console.artifact("public_scope", public_scope_vlt)
+    vcs_access = _vcs_cocotb_access(build, bool(info["wave_format"])) if tool == "vcs" else []
+    if vcs_access:
+        console.artifact("cocotb_access", " ".join(vcs_access))
     rebuild_note = f"rebuild={info['rebuild']}"
     if info["rebuild_reason"]:
         rebuild_note += f" reason={info['rebuild_reason']}"
@@ -2101,7 +2237,7 @@ def cocotb_build(
     )
     write_env_snapshot(env_path, env, args.dry_run)
     if args.dry_run:
-        _mark_cocotb_prebuilt(args, target_name)
+        mark_target_built(args, target_name, _cocotb_target_build_metadata(info, tool))
         return 0
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2116,6 +2252,7 @@ def cocotb_build(
                     scoped_environ(env),
                     cocotb_make_jobs(_build_jobs),
                     cocotb_public_scope(public_scope_vlt),
+                    cocotb_vcs_access(vcs_access),
                     cocotb_tool_binary(tool, launch.binary),
                 ):
                     runner.build(
@@ -2131,7 +2268,7 @@ def cocotb_build(
                         always=info["rebuild"],
                     )
     _write_build_record(info["build_record"], info["fingerprint"], info["tool_version"], False)
-    _mark_cocotb_prebuilt(args, target_name)
+    mark_target_built(args, target_name, _cocotb_target_build_metadata(info, tool))
     return 0
 
 
@@ -2209,13 +2346,14 @@ def cocotb_sim(
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
 
-    results_dir = item_dir / "results"
+    results_dir = framework_results_dir(item_dir, args)
     waves_dir = item_dir / "waves"
     cov_dir = item_dir / "coverage"
     results_xml = results_dir / "results.xml"
     build_args = list(info["build_args"])
     top_module = str(info["top_module"])
-    sim_build = info["sim_build"]
+    recorded = _handed_target_build(args, target_name)
+    sim_build = Path(recorded["build_dir"]) if recorded else info["sim_build"]
     rebuild = bool(info["rebuild"])
     wave_format = str(info["wave_format"])
     test_args = (
@@ -2304,6 +2442,7 @@ def cocotb_sim(
         _scope_rel = str(build_verilator_cfg(build).get("public_scope") or "").strip()
         if _scope_rel:
             public_scope_vlt = str(repo_path(root, _scope_rel))
+    vcs_access = _vcs_cocotb_access(build, bool(wave_format)) if tool == "vcs" else []
 
     console = console_from_args(args)
     console.artifact("xml", results_xml)
@@ -2354,13 +2493,15 @@ def cocotb_sim(
         "waves": bool(wave_format),
         "wave_format": wave_format,
         "seed": int(seed),
-        "do_build": not _is_cocotb_prebuilt(args, target_name),
+        "do_build": not _is_target_built(args, target_name),
         "rebuild": bool(rebuild),
         "build_record": str(info["build_record"]),
         "fingerprint": str(info["fingerprint"]),
         "tool_version": str(info["tool_version"]),
         "python_paths": [str(path) for path in python_paths if str(path)],
         "public_scope_vlt": public_scope_vlt,
+        "vcs_access": vcs_access,
+        "vcs_default_access": list(COCOTB_VCS_DEFAULT_ACCESS),
         "binary": launch.binary,
         "default_binary": COCOTB_DEFAULT_BINARY.get(tool, tool),
         "runner_class": COCOTB_RUNNER_CLASS.get(tool, ""),
@@ -2480,6 +2621,27 @@ def scoped_verilator_wave_format(tool, wave_format):
             cls._test_command = original_test
 
 @contextmanager
+def scoped_vcs_access(tool, access, default_access):
+    if tool != "vcs" or not access:
+        yield
+        return
+    import importlib
+    cls = getattr(importlib.import_module("cocotb_tools.runner"), "Vcs", None)
+    original = cls.__dict__.get("_build_opts") if cls is not None else None
+    if not isinstance(original, property) or original.fget is None:
+        raise RuntimeError("configured [build.vcs].cocotb_access but cocotb's Vcs runner has no _build_opts")
+    getter = original.fget
+
+    def _build_opts(self):
+        return [opt for opt in getter(self) if opt not in default_access] + list(access)
+
+    cls._build_opts = property(_build_opts)
+    try:
+        yield
+    finally:
+        cls._build_opts = original
+
+@contextmanager
 def scoped_tool_binary(tool, runner_class, default, binary):
     if not runner_class or binary == default:
         yield
@@ -2527,7 +2689,7 @@ def scoped_tool_binary(tool, runner_class, default, binary):
 
 print(f"# cocotb {{payload['tool']}} runner", flush=True)
 runner = get_runner(payload["tool"])
-with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_format(payload["tool"], payload["wave_format"]), scoped_tool_binary(payload["tool"], payload["runner_class"], payload["default_binary"], payload["binary"]):
+with scoped_public_scope(payload["public_scope_vlt"]), scoped_vcs_access(payload["tool"], payload["vcs_access"], payload["vcs_default_access"]), scoped_verilator_wave_format(payload["tool"], payload["wave_format"]), scoped_tool_binary(payload["tool"], payload["runner_class"], payload["default_binary"], payload["binary"]):
     if payload["do_build"]:
         print(f"# cocotb {{payload['tool']}} build model", flush=True)
         runner.build(
@@ -2689,10 +2851,20 @@ def _vcs_uum_elab_args(
 
 
 def _vcs_resolve_build(
-    flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    *,
+    model_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Resolve the (fingerprinted) VCS build dir and simv path. Shared by build and sim stages so
-    the sim stage locates the exact simv the build stage produced."""
+    """Resolve the VCS build directory and simv path.
+
+    Shared by the build and sim stages so the sim stage runs the simv the build produced. A
+    build fingerprints its inputs, which also selects the directory under ``cache_enabled``.
+    A sim leaf handed ``model_dir`` runs the model there and fingerprints nothing: the tool
+    version and the source digests are read on the build host alone.
+    """
     build = build_cfg(flow, sim_cfg)
     target_name = _target_name(sim_cfg)
     compile_target = selected_compile_target(sim_cfg)
@@ -2732,26 +2904,33 @@ def _vcs_resolve_build(
             tool_cov.get("compile_args"), "coverage.vcs.compile_args"
         )
 
-    filelist_text = (
-        filelist.read_text(encoding="utf-8", errors="replace")
-        if filelist.is_file()
-        else str(filelist)
-    )
-    fingerprint = build_fingerprint(
-        build_args=elab_args,
-        top_module=top,
-        tool_version=vcs_version(root),
-        filelist_text=filelist_text,
-        extra=[
-            *cache_key_extra(options),
-            *_target_fingerprint_extra(target_name, compile_target),
-            *_bender_sources_fingerprint(root, build),
-            f"waves={wave_format}",
-            f"cov={bool(args.cov)}",
-            *coverage_compile_args,
-        ],
-    )
-    build_dir = resolve_build_dir(base_build, options, fingerprint)
+    fingerprint: str | None
+    tool_version: str | None
+    if model_dir is None:
+        filelist_text = (
+            filelist.read_text(encoding="utf-8", errors="replace")
+            if filelist.is_file()
+            else str(filelist)
+        )
+        tool_version = vcs_version(root)
+        fingerprint = build_fingerprint(
+            build_args=elab_args,
+            top_module=top,
+            tool_version=tool_version,
+            filelist_text=filelist_text,
+            extra=[
+                *cache_key_extra(options),
+                *_target_fingerprint_extra(target_name, compile_target),
+                *_bender_sources_fingerprint(root, build),
+                f"waves={wave_format}",
+                f"cov={bool(args.cov)}",
+                *coverage_compile_args,
+            ],
+        )
+        build_dir = resolve_build_dir(base_build, options, fingerprint)
+    else:
+        fingerprint = tool_version = None
+        build_dir = model_dir
     coverage_args = _render_list(
         coverage_compile_args,
         {
@@ -2773,6 +2952,7 @@ def _vcs_resolve_build(
         "filelist": filelist,
         "build_dir": build_dir,
         "fingerprint": fingerprint,
+        "tool_version": tool_version,
         "simv": build_dir / "simv",
         "elab_args": elab_args,
         "coverage_args": coverage_args,
@@ -2833,6 +3013,45 @@ def vcs_analyze(
     )
 
 
+def _run_elaboration(
+    info: dict[str, Any],
+    args: argparse.Namespace,
+    argv: list[str],
+    root: Path,
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+    launch: ToolLaunch,
+) -> int:
+    """Run a native elaboration in its build directory and record the model it leaves there.
+
+    The record is removed before the tool runs and written only after it succeeds, so a
+    failed or interrupted elaboration leaves no record beside a model it may have replaced.
+    """
+    build_dir = Path(info["build_dir"])
+    record = build_dir / BUILD_RECORD_NAME
+    if not args.dry_run:
+        record.unlink(missing_ok=True)
+    rc = run_subprocess(
+        argv,
+        root,
+        log_path,
+        args.dry_run,
+        script_path,
+        env_path,
+        args.quiet,
+        cwd=build_dir,
+        verbose=args.verbose,
+        timeout_sec=args.timeout,
+        launch=launch,
+    )
+    if rc == 0:
+        _write_build_record(
+            record, str(info["fingerprint"]), str(info["tool_version"]), bool(args.dry_run)
+        )
+    return rc
+
+
 def vcs_build(
     flow: Flow,
     root: Path,
@@ -2878,19 +3097,7 @@ def vcs_build(
     console = console_from_args(args)
     console.artifact("build", build_dir)
     console.artifact("simv", info["simv"])
-    return run_subprocess(
-        argv,
-        root,
-        log_path,
-        args.dry_run,
-        script_path,
-        env_path,
-        args.quiet,
-        cwd=build_dir,
-        verbose=args.verbose,
-        timeout_sec=args.timeout,
-        launch=launch,
-    )
+    return _run_elaboration(info, args, argv, root, log_path, script_path, env_path, launch)
 
 
 def vcs_sim(
@@ -2908,12 +3115,12 @@ def vcs_sim(
     test_args: list[str] | None = None,
 ) -> int:
     """Run a built simv for one test/seed. The simv is reused across all seeds."""
-    info = _vcs_resolve_build(flow, root, sim_cfg, args)
+    info = _vcs_resolve_build(flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg))
     simv = info["simv"]
     vcs_cfg = info["vcs_cfg"]
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
-    results_dir = item_dir / "results"
+    results_dir = framework_results_dir(item_dir, args)
     waves_dir = item_dir / "waves"
     uvm_test = test.module or test.name
 
@@ -3011,10 +3218,20 @@ def _xcelium_common(xcelium_cfg: dict[str, Any], framework: str) -> list[str]:
 
 
 def _xcelium_resolve_build(
-    flow: Flow, root: Path, sim_cfg: dict[str, Any], args: argparse.Namespace
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    args: argparse.Namespace,
+    *,
+    model_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Resolve the (fingerprinted) Xcelium build dir + snapshot name. Shared by build and sim stages
-    so the sim stage locates the exact snapshot the build stage produced."""
+    """Resolve the Xcelium build directory and snapshot name.
+
+    Shared by the build and sim stages so the sim stage runs the snapshot the build produced.
+    A build fingerprints its inputs, which also selects the directory under ``cache_enabled``.
+    A sim leaf handed ``model_dir`` runs the model there and fingerprints nothing: the tool
+    version and the source digests are read on the build host alone.
+    """
     build = build_cfg(flow, sim_cfg)
     target_name = _target_name(sim_cfg)
     compile_target = selected_compile_target(sim_cfg)
@@ -3040,24 +3257,31 @@ def _xcelium_resolve_build(
     if wave_format:
         elab_args += ["-access", "+rwc"]
 
-    filelist_text = (
-        filelist.read_text(encoding="utf-8", errors="replace")
-        if filelist.is_file()
-        else str(filelist)
-    )
-    fingerprint = build_fingerprint(
-        build_args=[*elab_args, *_xcelium_defines(compile_target, args)],
-        top_module=top,
-        tool_version=xcelium_version(root),
-        filelist_text=filelist_text,
-        extra=[
-            *cache_key_extra(options),
-            *_target_fingerprint_extra(target_name, compile_target),
-            *_bender_sources_fingerprint(root, build),
-            f"waves={wave_format}",
-        ],
-    )
-    build_dir = resolve_build_dir(base_build, options, fingerprint)
+    fingerprint: str | None
+    tool_version: str | None
+    if model_dir is None:
+        filelist_text = (
+            filelist.read_text(encoding="utf-8", errors="replace")
+            if filelist.is_file()
+            else str(filelist)
+        )
+        tool_version = xcelium_version(root)
+        fingerprint = build_fingerprint(
+            build_args=[*elab_args, *_xcelium_defines(compile_target, args)],
+            top_module=top,
+            tool_version=tool_version,
+            filelist_text=filelist_text,
+            extra=[
+                *cache_key_extra(options),
+                *_target_fingerprint_extra(target_name, compile_target),
+                *_bender_sources_fingerprint(root, build),
+                f"waves={wave_format}",
+            ],
+        )
+        build_dir = resolve_build_dir(base_build, options, fingerprint)
+    else:
+        fingerprint = tool_version = None
+        build_dir = model_dir
     return {
         "target_name": target_name,
         "compile_target": compile_target,
@@ -3066,6 +3290,7 @@ def _xcelium_resolve_build(
         "filelist": filelist,
         "build_dir": build_dir,
         "fingerprint": fingerprint,
+        "tool_version": tool_version,
         "snapshot": snapshot,
         "elab_args": elab_args,
     }
@@ -3153,19 +3378,7 @@ def xcelium_build(
     console = console_from_args(args)
     console.artifact("build", build_dir)
     console.artifact("snapshot", info["snapshot"])
-    return run_subprocess(
-        argv,
-        root,
-        log_path,
-        args.dry_run,
-        script_path,
-        env_path,
-        args.quiet,
-        cwd=build_dir,
-        verbose=args.verbose,
-        timeout_sec=args.timeout,
-        launch=launch,
-    )
+    return _run_elaboration(info, args, argv, root, log_path, script_path, env_path, launch)
 
 
 def xcelium_sim(
@@ -3183,11 +3396,13 @@ def xcelium_sim(
     test_args: list[str] | None = None,
 ) -> int:
     """Run a built snapshot for one test/seed with xmsim. The snapshot is reused across all seeds."""
-    info = _xcelium_resolve_build(flow, root, sim_cfg, args)
+    info = _xcelium_resolve_build(
+        flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg)
+    )
     xcelium_cfg = info["xcelium_cfg"]
     test = catalog.tests[item]
     run_mode = selected_run_mode(sim_cfg, test, args)
-    results_dir = item_dir / "results"
+    results_dir = framework_results_dir(item_dir, args)
     waves_dir = item_dir / "waves"
     uvm_test = test.module or test.name
 
@@ -3275,10 +3490,13 @@ def _coverage_design_db(
     template = tool_cov.get("design_artifact")
     if not isinstance(template, str) or not template:
         return None
-    # The design database lands where the elaboration's `-cm_dir` pointed:
-    # the UVM framework builds through the native VCS resolver, cocotb
-    # through the cocotb build info.
-    if flow.framework == "uvm":
+    # The design database lands where the elaboration's `-cm_dir` pointed: the
+    # model this run built, else the directory the UVM framework resolves through
+    # the native VCS resolver and cocotb through the cocotb build info.
+    model_dir = _built_model_dir(args, sim_cfg)
+    if model_dir is not None:
+        build_dir = model_dir
+    elif flow.framework == "uvm":
         build_dir = Path(_vcs_resolve_build(flow, root, sim_cfg, args)["build_dir"])
     else:
         build_info = _cocotb_build_info(flow, root, sim_cfg, args, "vcs")
@@ -3931,6 +4149,7 @@ def run_stage(
     try:
         if stage_name in {"sim", "regress"} and item is not None and not args.dry_run:
             discard_generated_junit(results_xml_path(stage_dir))
+            discard_generated_junit(graded_xml_path(stage_dir))
         if kind == "noop":
             note = str(stage.get("note", "no operation"))
             console.event("note", note)
@@ -4093,12 +4312,19 @@ def run_stage(
                 "rebuild": bool(args.rebuild),
             }
             sim_info = _cocotb_build_info(flow, root, sim_cfg, args, tool)
-            metadata["target_build"] = _cocotb_target_build_metadata(sim_info, tool)
+            target_build = _leaf_target_build(
+                args,
+                target_name=str(sim_info["target_name"]),
+                tool=tool,
+                build_dir=sim_info["sim_build"],
+                fingerprint=str(sim_info.get("fingerprint") or "") or None,
+            )
+            metadata["target_build"] = target_build
             _stamp_provenance(
                 root,
                 log_path,
                 metadata,
-                fingerprint=str(sim_info.get("fingerprint", "")) or None,
+                fingerprint=str(target_build.get("fingerprint") or "") or None,
                 filelist=sim_info.get("filelist"),
                 dry_run=bool(args.dry_run),
                 sim_args=sim_args,
@@ -4196,18 +4422,22 @@ def run_stage(
                 seed,
                 test_args=sim_args,
             )
-            info = _vcs_resolve_build(flow, root, sim_cfg, args)
-            metadata["target_build"] = _target_build_metadata(
+            info = _vcs_resolve_build(
+                flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg)
+            )
+            target_build = _leaf_target_build(
+                args,
                 target_name=info["target_name"],
                 tool="vcs",
                 build_dir=info["build_dir"],
                 fingerprint=info["fingerprint"],
             )
+            metadata["target_build"] = target_build
             _stamp_provenance(
                 root,
                 log_path,
                 metadata,
-                fingerprint=str(info.get("fingerprint", "")) or None,
+                fingerprint=target_build.get("fingerprint"),
                 filelist=None,
                 dry_run=bool(args.dry_run),
                 sim_args=sim_args,
@@ -4252,6 +4482,14 @@ def run_stage(
         elif kind == "xrun_sim":
             if item is None:
                 raise ConfigError("xrun_sim stage requires a test item")
+            sim_args = _sim_test_args(
+                sim_cfg,
+                selected_run_mode(sim_cfg, catalog.tests[item], args),
+                catalog.tests[item],
+                args,
+                seed,
+                root,
+            )
             rc = xcelium_sim(
                 flow,
                 root,
@@ -4264,13 +4502,28 @@ def run_stage(
                 script_path,
                 env_path,
                 seed,
+                test_args=sim_args,
             )
-            info = _xcelium_resolve_build(flow, root, sim_cfg, args)
-            metadata["target_build"] = _target_build_metadata(
+            info = _xcelium_resolve_build(
+                flow, root, sim_cfg, args, model_dir=_built_model_dir(args, sim_cfg)
+            )
+            target_build = _leaf_target_build(
+                args,
                 target_name=info["target_name"],
                 tool="xcelium",
                 build_dir=info["build_dir"],
                 fingerprint=info["fingerprint"],
+            )
+            metadata["target_build"] = target_build
+            _stamp_provenance(
+                root,
+                log_path,
+                metadata,
+                fingerprint=target_build.get("fingerprint"),
+                filelist=None,
+                dry_run=bool(args.dry_run),
+                sim_args=sim_args,
+                cwd=stage_dir,
             )
         else:
             raise ConfigError(f"{flow.path}: unsupported native stage kind `{kind}`")
@@ -4368,7 +4621,7 @@ def run_stage(
                 simulators=simulators,
                 root=root,
                 log_path=log_path,
-                results_dir=stage_dir / "results",
+                results_dir=framework_results_dir(stage_dir, args),
                 return_code=rc,
             )
             status = decision.status
@@ -4389,7 +4642,7 @@ def run_stage(
                     policies=policies,
                     simulators=simulators,
                     log_path=log_path,
-                    results_dir=stage_dir / "results",
+                    results_dir=framework_results_dir(stage_dir, args),
                 )
     except StageTimeoutError as exc:
         rc = 124
@@ -4594,12 +4847,19 @@ def run_stage(
         else None,
         formal=formal_report,
     )
-    # Structured-result guarantee: every executed leaf ends with results/results.xml —
-    # the framework's own file when it wrote one, a synthesized single-testcase file
-    # otherwise. Runs after classification and must never affect status or exit.
-    if stage_name in {"sim", "regress"} and item is not None and not args.dry_run:
+    # Structured-result guarantee: every executed leaf ends with results/results.xml, the
+    # framework's own file when it wrote one and a synthesized single-testcase file
+    # otherwise, plus results/graded.xml when the framework's file reads as a pass for a
+    # leaf that did not pass. A wave-debug rerun never grades the leaf and gets neither. Runs
+    # after classification and must never affect status or exit.
+    if (
+        stage_name in {"sim", "regress"}
+        and item is not None
+        and not args.dry_run
+        and not getattr(args, "_wave_debug_rerun", False)
+    ):
         try:
-            native_xml = stage_dir / "results" / "results.xml"
+            native_xml = results_xml_path(stage_dir)
             if native_xml.is_file():
                 artifacts["results_xml"] = repo_rel(root, native_xml)
             else:
@@ -4613,6 +4873,14 @@ def run_stage(
                 )
                 if generated is not None:
                     artifacts["results_xml"] = repo_rel(root, generated)
+            ensure_graded_junit(
+                flow=flow,
+                root=root,
+                run_dir=run_dir,
+                tool=tool,
+                result=result,
+                leaf_dir=stage_dir,
+            )
         except Exception as exc:  # noqa: BLE001
             console.event("warning", f"junit synthesis failed for {item}: {exc}", force=True)
     return result

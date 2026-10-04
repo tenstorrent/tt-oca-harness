@@ -846,7 +846,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
                                    int unsigned size,
                                    input int increment,  // <0: no increment/status bit in the TDR
                                    output bit [63:0] result);
-    int unsigned payload_bits = 8 * size_bytes(size);
+    int unsigned payload_bits = 8 * size_bytes(dtp_j2a_axsize(t, size));
     int unsigned width = payload_bits + ((increment >= 0) ? 1 : 0);
     dtp_jtag2axi_series_data_seq shift =
             dtp_jtag2axi_series_data_seq::type_id::create("series_data");
@@ -876,7 +876,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // capture rather than the 64-bit result word.
   task series_data_with_status(dtp_j2a_target_t t, bit [63:0] data, int unsigned size,
                                bit increment, output bit [63:0] rdata, output bit status_bit);
-    int unsigned payload_bits = 8 * size_bytes(size);
+    int unsigned payload_bits = 8 * size_bytes(dtp_j2a_axsize(t, size));
     dtp_jtag2axi_series_data_seq shift =
             dtp_jtag2axi_series_data_seq::type_id::create("series_data_status");
     shift.target    = t;
@@ -887,7 +887,7 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     run_jtag_op(shift);
     check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SERIES_DATA shift");
     note_tdr_access(payload_bits + 1, $sformatf("%s series_data", t.name));
-    rdata      = shift.captured & data_mask(size);
+    rdata      = shift.captured & data_mask(dtp_j2a_axsize(t, size));
     status_bit = shift.captured_status;
   endtask
 
@@ -898,7 +898,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // `addr` (CHK-AXI-WMEM).
   task series_write_beat(dtp_j2a_target_t t, bit [63:0] data, bit [63:0] addr, int unsigned size,
                          bit increment, string context_s);
-    bit [63:0] payload = data & data_mask(size);
+    int unsigned eff = dtp_j2a_axsize(t, size);
+    bit [63:0] payload = data & data_mask(eff);
     int unsigned completed = port_history(t.name).count(1'b0);
     int unsigned aw0, w0, ar0;
     bit done;
@@ -910,9 +911,9 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     if (!done)
       `uvm_error("jtag2axi_activity_chk", $sformatf(
                  "%s: %s write did not complete", context_s, t.name))
-    expect_bus_request(t, 1'b0, addr, size, dtp_j2a_series_wdata(t, payload, addr, size),
-                       dtp_j2a_series_wstrb(t, addr, size), context_s);
-    check_target_memory(t, addr, payload, size, {context_s, ".mem"});
+    expect_bus_request(t, 1'b0, addr, eff, dtp_j2a_series_wdata(t, payload, addr, eff),
+                       dtp_j2a_series_wstrb(t, addr, eff), context_s);
+    check_target_memory(t, addr, payload, eff, {context_s, ".mem"});
   endtask
 
   // Read `addr` through SERIES_CTRL(READ) and two SERIES_DATA shifts,
@@ -935,9 +936,9 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     if (!done)
       `uvm_error("jtag2axi_activity_chk", $sformatf(
                  "%s: %s read did not complete", context_s, t.name))
-    expect_bus_request(t, 1'b1, addr, size, '0, '0, context_s);
+    expect_bus_request(t, 1'b1, addr, dtp_j2a_axsize(t, size), '0, '0, context_s);
     series_data_shift(t, instr, '0, size, -1, raw);
-    observed = raw & data_mask(size);
+    observed = raw & data_mask(dtp_j2a_axsize(t, size));
   endtask
 
   // Read the fixed series address `addr` `beats` times, `status` returning
@@ -1225,6 +1226,16 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
 
   function void clear_target_backpressure(dtp_j2a_target_t t);
     responder(t).disable_backpressure();
+  endfunction
+
+  // Arms the target's responder so the W beat of the next write is accepted
+  // while its AW waits against a stalled AWREADY (the cocotb RAM responder's
+  // order); later writes take AW first. Call it with the write channels idle.
+  function void arm_target_w_before_aw(dtp_j2a_target_t t);
+    dtp_axi_slave_driver drv;
+    if (!$cast(drv, responder(t).responder))
+      `uvm_fatal(get_type_name(), $sformatf("%s responder is not a dtp_axi_slave_driver", t.name))
+    drv.w_before_aw = 1'b1;
   endfunction
 
   // --- request-activity evidence (security gating) -----------------------

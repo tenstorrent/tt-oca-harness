@@ -28,8 +28,10 @@ module dtp_fcov (
   input wire        tdi_i,
   input wire        tdo_i,
   input wire        trst_ni,
+  input wire        por_ni,          // power-on reset, ANDed with TRST into the TAP reset
   input wire [15:0] tap_state_i,     // one-hot jtag_tap_pkg::tap_state_e
   input wire [63:0] inst_decoded_i,  // one-hot decoded IR
+  input wire        stap_select_i,   // PTAP TAP_3DCR select: the STAP chain return drives TDO
   input wire sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_i
 );
 
@@ -38,14 +40,24 @@ module dtp_fcov (
   // IR scan, completed DR scan) map onto the UPDATE_* one-hot TAP states;
   // per-area transaction events are wired in by each section.
   //
-  // Timing: the TAP state and the decoded IR are registered on TCK, so at
-  // a posedge sample tap_state_q/tms_q describe the transition taken INTO
-  // tap_state_i, and *_committed means the UPDATE_* state was left on this
-  // edge with inst_decoded_i already showing the committed instruction.
+  // Timing: the TAP state and the decoded IR are registered on TCK, so a
+  // posedge sample reads the state the TAP held up to this edge, and
+  // tap_state_q/tms_q describe the transition taken INTO tap_state_i.
+  // update_dr is the edge that leaves UPDATE_DR, with the DR scan complete
+  // under the instruction it scanned; ir_committed is the edge after the one
+  // that left UPDATE_IR, with inst_decoded_i showing the committed
+  // instruction. A TRST or the end of a test can follow a scan with no
+  // further TCK edge, so DR-scan points sample on update_dr.
   // ------------------------------------------------------------------
   wire in_reset  = (trst_ni !== 1'b1);
   wire update_ir = (tap_state_i == jtag_tap_pkg::UPDATE_IR);
   wire update_dr = (tap_state_i == jtag_tap_pkg::UPDATE_DR);
+
+  // Source of the most recent move to Test-Logic-Reset.
+  localparam logic [1:0] RstNone = 2'd0;
+  localparam logic [1:0] RstTrst = 2'd1;
+  localparam logic [1:0] RstPor = 2'd2;
+  localparam logic [1:0] RstTms = 2'd3;
 
   // No declaration initializers: VCS rejects them on always_ff-driven
   // variables (initializer_driver_checks). Before the first TCK edge the
@@ -54,14 +66,18 @@ module dtp_fcov (
   logic [15:0] tap_state_q;
   logic        tms_q;
   logic        ir_loaded_since_tlr;
+  logic        ir_shifted_since_capture;
+  logic [1:0]  last_reset_q;
+  logic        por_seen_q;
+  logic        trst_q;
 
-  always_ff @(posedge tck_i) begin
-    tap_state_q <= tap_state_i;
-    tms_q       <= tms_i;
-    if (tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET || in_reset) begin
-      ir_loaded_since_tlr <= 1'b0;
-    end else if (tap_state_i == jtag_tap_pkg::UPDATE_IR) begin
-      ir_loaded_since_tlr <= 1'b1;
+  // Power-on reset holds this set and the next TCK edge clears it, so that
+  // edge reads 1 even when TCK stayed idle across the pulse.
+  always_ff @(posedge tck_i or negedge por_ni) begin
+    if (!por_ni) begin
+      por_seen_q <= 1'b1;
+    end else begin
+      por_seen_q <= 1'b0;
     end
   end
 
@@ -73,16 +89,49 @@ module dtp_fcov (
   wire [15:0] tap_state_prev = tap_state_q;
   wire        tms_prev = tms_q;
   wire        ir_seen_since_tlr = ir_loaded_since_tlr;
+  wire        ir_zero_shift = !ir_shifted_since_capture;
+  wire [1:0]  last_reset = last_reset_q;
+  wire        por_seen = por_seen_q;
+  wire        trst_prev = trst_q;
 
   wire ir_committed = (tap_state_prev == jtag_tap_pkg::UPDATE_IR) && !in_reset;
-  wire dr_committed = (tap_state_prev == jtag_tap_pkg::UPDATE_DR) && !in_reset;
+  wire dr_scan_done = update_dr && !in_reset;
   // First rising edge inside SHIFT_DR: the first captured bit is on TDO.
   wire first_dr_bit =
       (tap_state_prev == jtag_tap_pkg::CAPTURE_DR)
       && (tap_state_i == jtag_tap_pkg::SHIFT_DR);
+  wire prev_active = (tap_state_prev != '0)
+      && (tap_state_prev != jtag_tap_pkg::TEST_LOGIC_RESET);
+  // Every TMS-driven entry to Test-Logic-Reset from another state takes the
+  // Select-IR-Scan TMS=1 arc.
+  wire tms_to_tlr_e = (tap_state_prev == jtag_tap_pkg::SELECT_IR_SCAN)
+      && tms_prev && (tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET);
+
+  always_ff @(posedge tck_i) begin
+    tap_state_q <= tap_state_i;
+    tms_q       <= tms_i;
+    trst_q      <= trst_ni;
+    if (tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET || in_reset) begin
+      ir_loaded_since_tlr <= 1'b0;
+    end else if (tap_state_i == jtag_tap_pkg::UPDATE_IR) begin
+      ir_loaded_since_tlr <= 1'b1;
+    end
+    if (tap_state_i == jtag_tap_pkg::CAPTURE_IR) begin
+      ir_shifted_since_capture <= 1'b0;
+    end else if (tap_state_i == jtag_tap_pkg::SHIFT_IR) begin
+      ir_shifted_since_capture <= 1'b1;
+    end
+    if (in_reset) begin
+      last_reset_q <= RstTrst;
+    end else if (por_seen) begin
+      last_reset_q <= RstPor;
+    end else if (tms_to_tlr_e) begin
+      last_reset_q <= RstTms;
+    end
+  end
 
   // ------------------------------------------------------------------
-  // Instruction categories (jtag_instruction_cg.category): one mask per
+  // Instruction categories (cg_jtag_instruction.cp_category): one mask per
   // category over the 64-bit one-hot decode; every opcode belongs to
   // exactly one category (checked at time zero below).
   // ------------------------------------------------------------------
@@ -122,18 +171,16 @@ module dtp_fcov (
     end
   end
 
-  // Gated JTAG2AXI data-path TDR opcodes per bridge (caps TDRs stay readable).
+  // Instructions whose data register a dbg_disable_t field gates. A gated
+  // instruction decodes as itself and keeps its register on the scan path:
+  // a bridge field blocks that bridge's TDR updates and AXI traffic, and a
+  // SIB field holds its SIB closed in the iJTAG network that SELECT_IJTAG
+  // and RUNBIST select.
   localparam logic [63:0] SmcJtag2axiOps = 64'h0000_1F00_0000_0000;  // 0x28-0x2C
   localparam logic [63:0] SmcOtpJtag2axiOps = 64'h0000_0001_F000_0000;  // 0x1C-0x20
   localparam logic [63:0] SepOtpJtag2axiOps = 64'h0000_007C_0000_0000;  // 0x22-0x26
   localparam logic [63:0] SelectIjtag = 64'h0000_0000_0400_0000;  // 0x1A
-
-  wire disabled_instruction_committed = ir_committed && (
-      (|(inst_decoded_i & SmcJtag2axiOps) && dbg_disable_i.smc_jtag2axi)
-   || (|(inst_decoded_i & SmcOtpJtag2axiOps) && dbg_disable_i.smc_otp_jtag2axi)
-   || (|(inst_decoded_i & SepOtpJtag2axiOps) && dbg_disable_i.sep_otp_jtag2axi)
-   || (|(inst_decoded_i & SelectIjtag) && dbg_disable_i.dft_secure
-       && dbg_disable_i.dft_nonsecure && dbg_disable_i.dfd));
+  localparam logic [63:0] Runbist = 64'h0000_0000_0000_0004;  // 0x02
 
   // ------------------------------------------------------------------
   // Scan-boundary liveness points.
@@ -142,8 +189,8 @@ module dtp_fcov (
   `OCAH_FCOV_COVER(c_completed_dr_scan, update_dr, tck_i, in_reset)
 
   // ------------------------------------------------------------------
-  // tap_state_cg: all 16 IEEE 1149.1 states, all 32 legal (state, tms)
-  // arcs, and the two reset-reachability bins.
+  // cg_tap_state and cg_tap_arc: all 16 IEEE 1149.1 states and all 32
+  // legal (state, tms) arcs.
   // ------------------------------------------------------------------
   `define DTP_FCOV_STATE(__label, __state)                                    \
     wire __label``_e = (tap_state_i == jtag_tap_pkg::__state);           \
@@ -206,34 +253,55 @@ module dtp_fcov (
   `DTP_FCOV_ARC(c_arc_upir_tms1_seldr, UPDATE_IR, 1'b1, SELECT_DR_SCAN)
   `undef DTP_FCOV_ARC
 
-  // Reset reachability. TRST covers must stay armed while reset is asserted,
-  // so they carry no reset disable.
-  wire trst_from_active_e = !trst_ni && (tap_state_prev != '0)
-      && (tap_state_prev != jtag_tap_pkg::TEST_LOGIC_RESET);
-  wire tms_to_tlr_e = (tap_state_prev == jtag_tap_pkg::SELECT_IR_SCAN)
-      && tms_prev && (tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET);
+  // ------------------------------------------------------------------
+  // cg_tap_smoke: the reset that moves the TAP from an active state to
+  // Test-Logic-Reset, the IDCODE reads, and the IDCODE marker bit.
+  // ------------------------------------------------------------------
+  // TRST covers must stay armed while reset is asserted, so they carry no
+  // reset disable. Power-on reset high on the TRST edge and TRST high on the
+  // power-on edge make each the only reset source of its point.
+  //
+  // trst_from_state is the state the TAP held when TRST fell: the controller's
+  // asynchronous reset moves tap_state_i to Test-Logic-Reset only after
+  // trst_ni has fallen, so the latch has already closed. A TRST point samples
+  // at the first TCK edge under TRST, and only when that state was active.
+  logic [15:0] trst_from_state;
+  always_latch begin
+    if (trst_ni) begin
+      trst_from_state = tap_state_i;
+    end
+  end
+  wire trst_start_active = (trst_from_state != '0)
+      && (trst_from_state != jtag_tap_pkg::TEST_LOGIC_RESET);
+  wire trst_from_active_e = !trst_ni && trst_prev && por_ni && trst_start_active;
+  wire por_from_active_e = por_seen && prev_active
+      && (tap_state_i == jtag_tap_pkg::TEST_LOGIC_RESET);
   `OCAH_FCOV_COVER(c_reset_trst_from_active, trst_from_active_e, tck_i, 1'b0)
+  `OCAH_FCOV_COVER(c_reset_por_from_active, por_from_active_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_reset_tms5_from_active, tms_to_tlr_e, tck_i, in_reset)
 
-  // ------------------------------------------------------------------
-  // tap_smoke_cg: TAP reset source and IDCODE access.
-  // ------------------------------------------------------------------
-  wire trst_low_e = !trst_ni;
+  // While the TAP_3DCR select is set TDO carries the STAP chain return, so
+  // the first bit of a DR scan is not the IDCODE marker.
   wire idcode_active = (inst_decoded_i == 64'h2);
-  wire idcode_default_e = dr_committed && idcode_active && !ir_seen_since_tlr;
-  wire idcode_explicit_e = dr_committed && idcode_active && ir_seen_since_tlr;
+  wire idcode_dr_scan = dr_scan_done && idcode_active && !stap_select_i;
+  wire idcode_default_e = idcode_dr_scan && !ir_seen_since_tlr;
+  wire idcode_default_after_trst_e = idcode_default_e && (last_reset == RstTrst);
+  wire idcode_default_after_por_e = idcode_default_e && (last_reset == RstPor);
+  wire idcode_default_after_tms5_e = idcode_default_e && (last_reset == RstTms);
+  wire idcode_explicit_e = idcode_dr_scan && ir_seen_since_tlr;
   // First captured IDCODE bit on TDO is the IEEE 1149.1 marker (must be 1);
   // an invalid marker is a checker failure, never a coverage bin.
-  wire idcode_marker_e = first_dr_bit && idcode_active && tdo_i;
-  `OCAH_FCOV_COVER(c_smoke_reset_source_trst, trst_low_e, tck_i, 1'b0)
-  `OCAH_FCOV_COVER(c_smoke_reset_source_tms_to_tlr, tms_to_tlr_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_smoke_idcode_default_after_reset, idcode_default_e, tck_i, in_reset)
+  wire idcode_marker_read = first_dr_bit && idcode_active && !stap_select_i;
+  wire idcode_marker_e = idcode_marker_read && tdo_i;
+  `OCAH_FCOV_COVER(c_smoke_idcode_default_after_trst, idcode_default_after_trst_e, tck_i, in_reset)
+  `OCAH_FCOV_COVER(c_smoke_idcode_default_after_por, idcode_default_after_por_e, tck_i, in_reset)
+  `OCAH_FCOV_COVER(c_smoke_idcode_default_after_tms5, idcode_default_after_tms5_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_smoke_idcode_explicit_instruction, idcode_explicit_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_smoke_idcode_marker_1, idcode_marker_e, tck_i, in_reset)
 
   // ------------------------------------------------------------------
-  // jtag_instruction_cg: all 64 opcodes at completed IR scans, the eight
-  // instruction categories, and the disabled-behavior bins.
+  // cg_jtag_instruction: all 64 opcodes at completed IR scans, the eight
+  // instruction categories, and the two ways Update-IR loads the register.
   // ------------------------------------------------------------------
   // One labeled point per opcode: a generate loop would collapse into a
   // single aggregated coverage point (Verilator merges generate-array
@@ -322,31 +390,91 @@ module dtp_fcov (
   `DTP_FCOV_CATEGORY(c_ir_category_undefined, CatUndefined)
   `undef DTP_FCOV_CATEGORY
 
-  wire behavior_enabled_e = ir_committed && !disabled_instruction_committed
-      && (|(inst_decoded_i & ~(CatReserved | CatUndefined)));
-  wire behavior_undefined_e =
-      ir_committed && (|(inst_decoded_i & (CatReserved | CatUndefined)));
-  `OCAH_FCOV_COVER(c_ir_behavior_enabled_instruction, behavior_enabled_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_ir_behavior_undefined_to_bypass, behavior_undefined_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_ir_behavior_disabled_to_bypass, disabled_instruction_committed, tck_i,
-                   in_reset)
+  // An Update-IR with no Shift-IR cycle since Capture-IR latches the
+  // Capture-IR pattern 6'b000001, the IDCODE opcode.
+  wire ir_update_shifted_e = ir_committed && !ir_zero_shift;
+  wire ir_update_capture_pattern_e = ir_committed && ir_zero_shift && idcode_active;
+  `OCAH_FCOV_COVER(c_ir_update_shifted, ir_update_shifted_e, tck_i, in_reset)
+  `OCAH_FCOV_COVER(c_ir_update_capture_pattern, ir_update_capture_pattern_e, tck_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // cg_dr_scan: a completed DR scan under each IEEE 1149.1 and TMP
+  // instruction, and the two ZERO_LENGTH_BYPASS paths.
+  // ------------------------------------------------------------------
+  `define DTP_FCOV_DR_SCAN(__label, __mask)                                         \
+    wire __label``_e = dr_scan_done && (|(inst_decoded_i & (__mask)));         \
+    `OCAH_FCOV_COVER(__label, __label``_e, tck_i, in_reset)
+
+  `DTP_FCOV_DR_SCAN(c_dr_scan_bypass_alt, 64'h1 << 'h00)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_idcode, 64'h1 << 'h01)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_runbist, 64'h1 << 'h02)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_sample_preload, 64'h1 << 'h03)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_extest, 64'h1 << 'h04)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_extest_train, 64'h1 << 'h05)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_extest_pulse, 64'h1 << 'h06)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_clamp, 64'h1 << 'h07)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_highz, 64'h1 << 'h08)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_intest, 64'h1 << 'h09)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_clamp_hold, 64'h1 << 'h0A)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_clamp_release, 64'h1 << 'h0B)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_reserved, CatReserved)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_undefined, CatUndefined)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_zero_length_bypass, 64'h1 << 'h3D)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_inv_bypass, 64'h1 << 'h3E)
+  `DTP_FCOV_DR_SCAN(c_dr_scan_bypass, 64'h1 << 'h3F)
+  `undef DTP_FCOV_DR_SCAN
+
+  // ZERO_LENGTH_BYPASS connects TDI to TDO while the TAP_3DCR select is
+  // clear and behaves exactly as BYPASS while it is set.
+  wire zlb_zero_length_e = c_dr_scan_zero_length_bypass_e && !stap_select_i;
+  wire zlb_as_bypass_e = c_dr_scan_zero_length_bypass_e && stap_select_i;
+  `OCAH_FCOV_COVER(c_dr_scan_zlb_zero_length, zlb_zero_length_e, tck_i, in_reset)
+  `OCAH_FCOV_COVER(c_dr_scan_zlb_as_bypass, zlb_as_bypass_e, tck_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // cg_instruction_gate: a completed DR scan under each gated instruction
+  // with the dbg_disable_t field that gates its register clear and set.
+  // ------------------------------------------------------------------
+  `define DTP_FCOV_GATE(__label, __mask, __field, __value)                          \
+    wire __label``_e = dr_scan_done && (|(inst_decoded_i & (__mask)))           \
+        && (dbg_disable_i.__field == (__value));                                       \
+    `OCAH_FCOV_COVER(__label, __label``_e, tck_i, in_reset)
+
+  `DTP_FCOV_GATE(c_gate_smc_axi_tdr_clear, SmcJtag2axiOps, smc_jtag2axi, 1'b0)
+  `DTP_FCOV_GATE(c_gate_smc_axi_tdr_set, SmcJtag2axiOps, smc_jtag2axi, 1'b1)
+  `DTP_FCOV_GATE(c_gate_smc_otp_tdr_clear, SmcOtpJtag2axiOps, smc_otp_jtag2axi, 1'b0)
+  `DTP_FCOV_GATE(c_gate_smc_otp_tdr_set, SmcOtpJtag2axiOps, smc_otp_jtag2axi, 1'b1)
+  `DTP_FCOV_GATE(c_gate_sep_otp_tdr_clear, SepOtpJtag2axiOps, sep_otp_jtag2axi, 1'b0)
+  `DTP_FCOV_GATE(c_gate_sep_otp_tdr_set, SepOtpJtag2axiOps, sep_otp_jtag2axi, 1'b1)
+  `DTP_FCOV_GATE(c_gate_ijtag_dft_secure_clear, SelectIjtag, dft_secure, 1'b0)
+  `DTP_FCOV_GATE(c_gate_ijtag_dft_secure_set, SelectIjtag, dft_secure, 1'b1)
+  `DTP_FCOV_GATE(c_gate_ijtag_dft_nonsecure_clear, SelectIjtag, dft_nonsecure, 1'b0)
+  `DTP_FCOV_GATE(c_gate_ijtag_dft_nonsecure_set, SelectIjtag, dft_nonsecure, 1'b1)
+  `DTP_FCOV_GATE(c_gate_ijtag_dfd_clear, SelectIjtag, dfd, 1'b0)
+  `DTP_FCOV_GATE(c_gate_ijtag_dfd_set, SelectIjtag, dfd, 1'b1)
+  `DTP_FCOV_GATE(c_gate_runbist_dft_nonsecure_clear, Runbist, dft_nonsecure, 1'b0)
+  `DTP_FCOV_GATE(c_gate_runbist_dft_nonsecure_set, Runbist, dft_nonsecure, 1'b1)
+  `undef DTP_FCOV_GATE
 
 `ifndef VERILATOR
   // ------------------------------------------------------------------
   // Commercial-simulator covergroups mirroring the cover-property bins.
   // ------------------------------------------------------------------
-  function automatic logic [3:0] state_index(logic [15:0] onehot);
+  import jtag_tap_pkg::*;
+
+  // A value that is not one-hot maps past the last index.
+  function automatic logic [4:0] state_code(logic [15:0] onehot);
     for (int i = 0; i < 16; i++) begin
-      if (onehot[i]) return 4'(i);
+      if (onehot == (16'h1 << i)) return 5'(i);
     end
-    return '0;
+    return 5'd16;
   endfunction
 
-  function automatic logic [5:0] opcode_index(logic [63:0] onehot);
+  function automatic logic [6:0] opcode_code(logic [63:0] onehot);
     for (int i = 0; i < 64; i++) begin
-      if (onehot[i]) return 6'(i);
+      if (onehot == (64'h1 << i)) return 7'(i);
     end
-    return '0;
+    return 7'd64;
   endfunction
 
   function automatic logic [2:0] category_index(logic [63:0] onehot);
@@ -360,6 +488,29 @@ module dtp_fcov (
     return 3'd7;  // undefined
   endfunction
 
+  // IEEE 1149.1 state graph: the state TMS selects from each state.
+  function automatic logic [15:0] tap_next(logic [15:0] st, logic tms);
+    case (st)
+      TEST_LOGIC_RESET: return tms ? TEST_LOGIC_RESET : RUN_TEST_IDLE;
+      RUN_TEST_IDLE:    return tms ? SELECT_DR_SCAN : RUN_TEST_IDLE;
+      SELECT_DR_SCAN:   return tms ? SELECT_IR_SCAN : CAPTURE_DR;
+      CAPTURE_DR:       return tms ? EXIT1_DR : SHIFT_DR;
+      SHIFT_DR:         return tms ? EXIT1_DR : SHIFT_DR;
+      EXIT1_DR:         return tms ? UPDATE_DR : PAUSE_DR;
+      PAUSE_DR:         return tms ? EXIT2_DR : PAUSE_DR;
+      EXIT2_DR:         return tms ? UPDATE_DR : SHIFT_DR;
+      UPDATE_DR:        return tms ? SELECT_DR_SCAN : RUN_TEST_IDLE;
+      SELECT_IR_SCAN:   return tms ? TEST_LOGIC_RESET : CAPTURE_IR;
+      CAPTURE_IR:       return tms ? EXIT1_IR : SHIFT_IR;
+      SHIFT_IR:         return tms ? EXIT1_IR : SHIFT_IR;
+      EXIT1_IR:         return tms ? UPDATE_IR : PAUSE_IR;
+      PAUSE_IR:         return tms ? EXIT2_IR : PAUSE_IR;
+      EXIT2_IR:         return tms ? UPDATE_IR : SHIFT_IR;
+      UPDATE_IR:        return tms ? SELECT_DR_SCAN : RUN_TEST_IDLE;
+      default:          return '0;
+    endcase
+  endfunction
+
   covergroup cg_scan_boundary @(posedge tck_i);
     option.per_instance = 1;
     cp_boundary: coverpoint {
@@ -369,29 +520,29 @@ module dtp_fcov (
     }
   endgroup
 
-  covergroup cg_tap_state with function sample (logic [3:0] st);
+  covergroup cg_tap_state with function sample (logic [4:0] st);
     option.per_instance = 1;
-    cp_state: coverpoint st {bins state[] = {[0 : 15]};}
+    cp_state: coverpoint st {
+      bins state[] = {[0 : 15]};
+      // The controller holds exactly one state bit.
+      illegal_bins not_onehot = {5'd16};
+    }
   endgroup
 
-  // Bin values are the same one-hot positions state_index() reports at run
-  // time; the labels follow the c_arc_* cover properties.
-  `define DTP_FCOV_ARC_BIN(__label, __from, __tms, __to)                        \
-    bins __label = {{4'($clog2(jtag_tap_pkg::__from)), (__tms),               \
-                     4'($clog2(jtag_tap_pkg::__to))}};
+  // An arc off the state graph samples ArcIllegal unless it ends in
+  // Test-Logic-Reset: TRST and power-on reset hold or move the TAP there
+  // whatever TMS is, so the first arc after a reset can end there off the
+  // graph, and cg_tap_arc does not sample it.
+  localparam logic [9:0] ArcIllegal = 10'h200;
 
-  covergroup cg_tap_arc with function sample (logic [3:0] prev, logic tms, logic [3:0] nxt);
+  // Bin values are the same one-hot positions state_code() reports at run
+  // time; the labels follow the c_arc_* cover properties.
+  `define DTP_FCOV_ARC_BIN(__label, __from, __tms, __to) \
+    bins __label = {{1'b0, 4'($clog2(__from)), (__tms), 4'($clog2(__to))}};
+
+  covergroup cg_tap_arc with function sample (logic [9:0] arc);
     option.per_instance = 1;
-    cp_prev: coverpoint prev {bins state[] = {[0 : 15]};}
-    cp_tms: coverpoint tms;
-    cp_next: coverpoint nxt {bins state[] = {[0 : 15]};}
-    // TMS reaches exactly one next state from each state, so the 32 arcs
-    // below are the only (prev, tms, next) triples the controller produces;
-    // a TRST pulse between two TCK edges lands in TEST_LOGIC_RESET from any
-    // state and is collected by c_reset_trst_from_active instead.
-    cp_arc: coverpoint {
-      prev, tms, nxt
-    } {
+    cp_arc: coverpoint arc {
       `DTP_FCOV_ARC_BIN(tlr_tms0_rti, TEST_LOGIC_RESET, 1'b0, RUN_TEST_IDLE)
       `DTP_FCOV_ARC_BIN(tlr_tms1_tlr, TEST_LOGIC_RESET, 1'b1, TEST_LOGIC_RESET)
       `DTP_FCOV_ARC_BIN(rti_tms0_rti, RUN_TEST_IDLE, 1'b0, RUN_TEST_IDLE)
@@ -424,16 +575,53 @@ module dtp_fcov (
       `DTP_FCOV_ARC_BIN(ex2ir_tms1_upir, EXIT2_IR, 1'b1, UPDATE_IR)
       `DTP_FCOV_ARC_BIN(upir_tms0_rti, UPDATE_IR, 1'b0, RUN_TEST_IDLE)
       `DTP_FCOV_ARC_BIN(upir_tms1_seldr, UPDATE_IR, 1'b1, SELECT_DR_SCAN)
+      // TMS selects exactly one next state from each state.
+      illegal_bins off_graph = {ArcIllegal};
     }
   endgroup
   `undef DTP_FCOV_ARC_BIN
 
-  covergroup cg_jtag_instruction with function sample (
-      logic [5:0] opcode, logic [2:0] category, logic disabled_to_bypass
+  covergroup cg_tap_smoke with function sample (
+      logic [1:0] reset_source,
+      logic [4:0] trst_from,
+      logic idcode_read,
+      logic [2:0] idcode_origin,
+      logic marker_read,
+      logic marker
   );
     option.per_instance = 1;
-    cp_opcode: coverpoint opcode {bins op[] = {[0 : 63]};}
-    cp_category: coverpoint category {
+    cp_reset_source: coverpoint reset_source iff (reset_source != RstNone) {
+      bins trst = {RstTrst}; bins por = {RstPor}; bins tms5 = {RstTms};
+    }
+    cp_trst_from_state: coverpoint trst_from iff (reset_source == RstTrst) {
+      bins state[] = {[1 : 15]};
+      // The controller holds exactly one state bit.
+      illegal_bins not_onehot = {5'd16};
+    }
+    // idcode_origin is {an IR update since Test-Logic-Reset, last reset source}.
+    cp_idcode_read: coverpoint idcode_origin iff (idcode_read) {
+      bins default_after_trst = {{1'b0, RstTrst}};
+      bins default_after_por = {{1'b0, RstPor}};
+      bins default_after_tms5 = {{1'b0, RstTms}};
+      bins explicit_instruction = {[3'b100 : 3'b111]};
+    }
+    cp_idcode_marker: coverpoint marker iff (marker_read) {
+      bins marker_1 = {1'b1};
+      // IEEE 1149.1 fixes the first IDCODE bit at 1.
+      illegal_bins marker_0 = {1'b0};
+    }
+  endgroup
+
+  covergroup cg_jtag_instruction with function sample (
+      logic [6:0] opcode, logic [2:0] category, logic zero_shift
+  );
+    option.per_instance = 1;
+    cp_opcode: coverpoint opcode {
+      bins op[] = {[0 : 63]};
+      // The instruction register decodes exactly one opcode.
+      illegal_bins not_onehot = {7'd64};
+    }
+    cp_category: coverpoint category iff (opcode != 7'd64) {
       bins mandatory = {3'd0};
       bins optional_instr = {3'd1};
       bins ieee1838 = {3'd2};
@@ -443,25 +631,124 @@ module dtp_fcov (
       bins reserved = {3'd6};
       bins undefined = {3'd7};
     }
-    cp_disabled_behavior: coverpoint disabled_to_bypass {
-      bins enabled_or_undefined = {1'b0}; bins disabled_to_bypass = {1'b1};
+    cp_ir_update: coverpoint {
+      zero_shift, opcode == 7'd1
+    } {
+      bins shifted = {2'b00, 2'b01};
+      bins capture_pattern = {2'b11};
+      // The Capture-IR pattern is the IDCODE opcode.
+      illegal_bins capture_not_idcode = {2'b10};
     }
+  endgroup
+
+  covergroup cg_dr_scan with function sample (logic [6:0] opcode, logic stap_select);
+    option.per_instance = 1;
+    cp_dr_instruction: coverpoint opcode {
+      bins bypass_alt = {7'h00};
+      bins idcode = {7'h01};
+      bins runbist = {7'h02};
+      bins sample_preload = {7'h03};
+      bins extest = {7'h04};
+      bins extest_train = {7'h05};
+      bins extest_pulse = {7'h06};
+      bins clamp = {7'h07};
+      bins highz = {7'h08};
+      bins intest = {7'h09};
+      bins clamp_hold = {7'h0A};
+      bins clamp_release = {7'h0B};
+      bins reserved = {[7'h10 : 7'h17]};
+      bins undefined = {7'h0F, [7'h2D : 7'h3C]};
+      bins zero_length_bypass = {7'h3D};
+      bins inv_bypass = {7'h3E};
+      bins bypass = {7'h3F};
+    }
+    cp_zero_length_path: coverpoint stap_select iff (opcode == 7'h3D) {
+      bins zero_length = {1'b0}; bins as_bypass = {1'b1};
+    }
+  endgroup
+
+  localparam logic [2:0] GateSmcAxi = 3'd0;
+  localparam logic [2:0] GateSmcOtp = 3'd1;
+  localparam logic [2:0] GateSepOtp = 3'd2;
+  localparam logic [2:0] GateIjtagDftSecure = 3'd3;
+  localparam logic [2:0] GateIjtagDftNonsecure = 3'd4;
+  localparam logic [2:0] GateIjtagDfd = 3'd5;
+  localparam logic [2:0] GateRunbistDftNonsecure = 3'd6;
+
+  // The cross carries the score; its two operands only name the axes.
+  covergroup cg_instruction_gate with function sample (logic [2:0] gate, logic disabled);
+    option.per_instance = 1;
+    cp_gate: coverpoint gate {
+      option.weight = 0;
+      type_option.weight = 0;
+      bins smc_axi_tdr = {GateSmcAxi};
+      bins smc_otp_tdr = {GateSmcOtp};
+      bins sep_otp_tdr = {GateSepOtp};
+      bins ijtag_dft_secure = {GateIjtagDftSecure};
+      bins ijtag_dft_nonsecure = {GateIjtagDftNonsecure};
+      bins ijtag_dfd = {GateIjtagDfd};
+      bins runbist_dft_nonsecure = {GateRunbistDftNonsecure};
+    }
+    cp_disabled: coverpoint disabled {
+      option.weight = 0; type_option.weight = 0; bins clear = {1'b0}; bins set = {1'b1};
+    }
+    cx_gate_disabled: cross cp_gate, cp_disabled;
   endgroup
 
   cg_scan_boundary u_cg_scan_boundary = new();
   cg_tap_state u_cg_tap_state = new();
   cg_tap_arc u_cg_tap_arc = new();
+  cg_tap_smoke u_cg_tap_smoke = new();
   cg_jtag_instruction u_cg_jtag_instruction = new();
+  cg_dr_scan u_cg_dr_scan = new();
+  cg_instruction_gate u_cg_instruction_gate = new();
+
+  wire [1:0] reset_source_now = trst_from_active_e ? RstTrst
+      : (!in_reset && por_from_active_e) ? RstPor
+      : (!in_reset && tms_to_tlr_e) ? RstTms : RstNone;
+
+  wire [4:0] prev_code = state_code(tap_state_q);
+  wire [4:0] next_code = state_code(tap_state_i);
+  wire [4:0] trst_from_code = state_code(trst_from_state);
+  wire [2:0] idcode_origin_now = {ir_seen_since_tlr, last_reset};
 
   always_ff @(posedge tck_i) begin
+    u_cg_tap_smoke.sample(reset_source_now, trst_from_code, idcode_dr_scan, idcode_origin_now,
+                          idcode_marker_read && !in_reset, tdo_i);
     if (!in_reset) begin
-      u_cg_tap_state.sample(state_index(tap_state_i));
-      if ($onehot(tap_state_q)) begin
-        u_cg_tap_arc.sample(state_index(tap_state_q), tms_q, state_index(tap_state_i));
+      if (!$isunknown(tap_state_i)) begin
+        u_cg_tap_state.sample(next_code);
       end
-      if (ir_committed && $onehot(inst_decoded_i)) begin
-        u_cg_jtag_instruction.sample(opcode_index(inst_decoded_i), category_index(inst_decoded_i),
-                                     disabled_instruction_committed);
+      if ($onehot(tap_state_q) && $onehot(tap_state_i)) begin
+        if (tap_state_i == tap_next(tap_state_q, tms_q)) begin
+          u_cg_tap_arc.sample({1'b0, prev_code[3:0], tms_q, next_code[3:0]});
+        end else if (tap_state_i != TEST_LOGIC_RESET) begin
+          u_cg_tap_arc.sample(ArcIllegal);
+        end
+      end
+      if (ir_committed && !$isunknown(inst_decoded_i)) begin
+        u_cg_jtag_instruction.sample(opcode_code(inst_decoded_i), category_index(inst_decoded_i),
+                                     ir_zero_shift);
+      end
+      if (dr_scan_done && !$isunknown(inst_decoded_i)) begin
+        u_cg_dr_scan.sample(opcode_code(inst_decoded_i), stap_select_i);
+        if (|(inst_decoded_i & SmcJtag2axiOps)) begin
+          u_cg_instruction_gate.sample(GateSmcAxi, dbg_disable_i.smc_jtag2axi);
+        end
+        if (|(inst_decoded_i & SmcOtpJtag2axiOps)) begin
+          u_cg_instruction_gate.sample(GateSmcOtp, dbg_disable_i.smc_otp_jtag2axi);
+        end
+        if (|(inst_decoded_i & SepOtpJtag2axiOps)) begin
+          u_cg_instruction_gate.sample(GateSepOtp, dbg_disable_i.sep_otp_jtag2axi);
+        end
+        if (|(inst_decoded_i & SelectIjtag)) begin
+          u_cg_instruction_gate.sample(GateIjtagDftSecure, dbg_disable_i.dft_secure);
+          u_cg_instruction_gate.sample(GateIjtagDftNonsecure, dbg_disable_i.dft_nonsecure);
+          u_cg_instruction_gate.sample(GateIjtagDfd, dbg_disable_i.dfd);
+        end
+        if (|(inst_decoded_i & Runbist)) begin
+          u_cg_instruction_gate.sample(GateRunbistDftNonsecure, dbg_disable_i.dft_nonsecure);
+        end
       end
     end
   end

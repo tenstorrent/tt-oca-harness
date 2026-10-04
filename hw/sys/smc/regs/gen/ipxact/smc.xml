@@ -20,7 +20,11 @@
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core0_wdt</ipxact:name>
           <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
-          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.
+
+A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</ipxact:description>
           <ipxact:addressOffset>'hc0000000</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -126,7 +130,8 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogip0</ipxact:name>
-              <ipxact:description>Pending interrupt</ipxact:description>
+              <ipxact:description>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.
+To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -168,6 +173,23 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
+            <ipxact:name>COUNT_HI</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>wdogcounthi</ipxact:name>
+              <ipxact:description>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
             <ipxact:name>SCALED_COUNT</ipxact:name>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
@@ -191,7 +213,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogfeed</ipxact:name>
-              <ipxact:description>Feed register. Writing 0xD09F00D will reset the counter value back to 0.
+              <ipxact:description>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.
 KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -243,7 +265,11 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core1_wdt</ipxact:name>
           <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
-          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.
+
+A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</ipxact:description>
           <ipxact:addressOffset>'hc0000400</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -349,7 +375,8 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogip0</ipxact:name>
-              <ipxact:description>Pending interrupt</ipxact:description>
+              <ipxact:description>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.
+To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -391,6 +418,23 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
+            <ipxact:name>COUNT_HI</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>wdogcounthi</ipxact:name>
+              <ipxact:description>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
             <ipxact:name>SCALED_COUNT</ipxact:name>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
@@ -414,7 +458,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogfeed</ipxact:name>
-              <ipxact:description>Feed register. Writing 0xD09F00D will reset the counter value back to 0.
+              <ipxact:description>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.
 KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -466,7 +510,11 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core2_wdt</ipxact:name>
           <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
-          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.
+
+A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</ipxact:description>
           <ipxact:addressOffset>'hc0000800</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -572,7 +620,8 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogip0</ipxact:name>
-              <ipxact:description>Pending interrupt</ipxact:description>
+              <ipxact:description>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.
+To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -614,6 +663,23 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
+            <ipxact:name>COUNT_HI</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>wdogcounthi</ipxact:name>
+              <ipxact:description>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
             <ipxact:name>SCALED_COUNT</ipxact:name>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
@@ -637,7 +703,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogfeed</ipxact:name>
-              <ipxact:description>Feed register. Writing 0xD09F00D will reset the counter value back to 0.
+              <ipxact:description>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.
 KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -689,7 +755,11 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core3_wdt</ipxact:name>
           <ipxact:displayName>Watchdog Timer Address Map</ipxact:displayName>
-          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.</ipxact:description>
+          <ipxact:description>Watchdog timer configuration, counter, compare, and feed and key registers.
+
+A write takes effect only if its byte enables cover all four bytes of COUNT, COUNT_HI, FEED or KEY, or bytes 0 and 1 of SCALED_COUNT or CMP; each CTRL byte is written on its own. Any other write returns OKAY and changes nothing, not even the lock.
+
+Each effective write to a register other than KEY locks the watchdog, and changes no field if it was already locked. A 64-bit write at 0x18 writes FEED and KEY together and leaves the watchdog locked.</ipxact:description>
           <ipxact:addressOffset>'hc0000c00</ipxact:addressOffset>
           <ipxact:range>'h24</ipxact:range>
           <ipxact:register>
@@ -795,7 +865,8 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogip0</ipxact:name>
-              <ipxact:description>Pending interrupt</ipxact:description>
+              <ipxact:description>Pending interrupt. Hardware sets this bit on every cycle the scaled count has reached the compare value.
+To clear it, write KEY and then write 0 to this bit while the scaled count is below the compare value. Writing FEED does not clear it.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -837,6 +908,23 @@ KEY reg must be written to before any other register in this addrmap can be writ
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
+            <ipxact:name>COUNT_HI</ipxact:name>
+            <ipxact:addressOffset>'hc</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>wdogcounthi</ipxact:name>
+              <ipxact:description>Upper word of the counter. The counter is 31 bits wide and lies entirely in COUNT, so this register has no storage and reads 0. A write covering all four bytes leaves the counter unchanged but locks the WDT, so KEY must be written again before the next write.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
             <ipxact:name>SCALED_COUNT</ipxact:name>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
@@ -860,7 +948,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>wdogfeed</ipxact:name>
-              <ipxact:description>Feed register. Writing 0xD09F00D will reset the counter value back to 0.
+              <ipxact:description>Feed register. Writing 0xD09F00D will reset the counter value back to 0. Feeding does not clear CTRL.wdogip0.
 KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
@@ -912,7 +1000,7 @@ KEY reg must be written to before any other register in this addrmap can be writ
         <ipxact:registerFile>
           <ipxact:name>debug_module</ipxact:name>
           <ipxact:displayName>Debug Module Hart Interface</ipxact:displayName>
-          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
+          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. Only the harts of the CPU cluster reach this region; SMC bus initiators outside the cluster do not. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
           <ipxact:addressOffset>'hc0001000</ipxact:addressOffset>
           <ipxact:range>'h868</ipxact:range>
           <ipxact:register>
@@ -1987,7 +2075,8 @@ Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0</ipxact:
               <ipxact:description>Read or write type: [list]
 [*]0x0 - Commit Write
 [*]0x1 - Hold Write
-[*]0x2 - Read
+[*]0x2 - Reserved
+[*]0x3 - Read
 [/list]</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
@@ -2034,7 +2123,7 @@ this register causes the AVS response readback fifo pointer to advance.</ipxact:
    [*]0x4-0x7 - Manufacturer-specific  [/list]
 [*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec
 [*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned
-[*]If master issued a write (rw!=0x2) in previous master subframe, this field is 0xffff
+[*]If master issued a write (rw!=0x3) in previous master subframe, this field is 0xffff
 [/list]</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
@@ -2244,7 +2333,7 @@ space is freed by an AVS_READBACK access</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>AVS_SLAVE_IS_IN_RESYNC</ipxact:name>
-              <ipxact:description>Indicates that the AVS master is issuing a slave resync operation (34 clock cycles of holding mdata high)</ipxact:description>
+              <ipxact:description>Indicates that the AVS master is issuing a slave resync operation (35 AVS clock cycles of holding mdata high)</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2731,7 +2820,7 @@ full =&gt; response was dropped</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>RESYNC_INTERVAL</ipxact:name>
-              <ipxact:description>Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</ipxact:description>
+              <ipxact:description>Interval between periodic slave resync operations on the AVS bus, in APB clock cycles counted from the end of the previous resync. The resulting request then crosses a 3-stage AVS clock synchronizer, and the resync starts once any frame in flight has completed.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2743,8 +2832,9 @@ full =&gt; response was dropped</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>MAX_RETRIES</ipxact:name>
-              <ipxact:description>Maximum number of times to attempt a retry if an AVS command returns a fail
-status (either due to targeted resource being busy or CRC failure)</ipxact:description>
+              <ipxact:description>Maximum number of retries, after the original attempt, if an AVS command returns a fail
+status (either due to targeted resource being busy or CRC failure). A value of 0 disables
+retries and MAX_RETRIES_ATTEMPTED_INT.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2780,7 +2870,7 @@ status (either due to targeted resource being busy or CRC failure)</ipxact:descr
             <ipxact:field>
               <ipxact:name>STOP_AVS_CLOCK_ON_IDLE</ipxact:name>
               <ipxact:description>When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.
-The master will always first issue 34 slave-resync cycles when the clock first restarts.</ipxact:description>
+The master always issues a slave resync first when the clock restarts.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2792,7 +2882,7 @@ The master will always first issue 34 slave-resync cycles when the clock first r
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>FORCE_SLAVE_RESYNC_OPERATION</ipxact:name>
-              <ipxact:description>Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</ipxact:description>
+              <ipxact:description>Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.</ipxact:description>
               <ipxact:bitOffset>9</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3876,8 +3966,8 @@ bit is:
         should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
         flags to detect Start/Stop events.
 * `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
-        When a START (or repeated START) is detected, an `AcqStart` or `AcqRestart`
-        entry is written. When a STOP is detected, an `AcqStop` or `AcqNackStop`
+        When a START (or repeated START) is detected, an `ACQ_START` or `ACQ_RESTART`
+        entry is written. When a STOP is detected, an `ACQ_STOP` or `ACQ_NACK_STOP`
         entry is written.</ipxact:description>
                 <ipxact:bitOffset>7</ipxact:bitOffset>
                 <ipxact:resets>
@@ -5134,7 +5224,7 @@ detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</ipxact:
           <ipxact:registerFile>
             <ipxact:name>i2c_ctrl_regs</ipxact:name>
             <ipxact:displayName>I2C Control Address Map</ipxact:displayName>
-            <ipxact:description>Top-level enable registers selecting I2C, controller-mode, and SMBus operation.</ipxact:description>
+            <ipxact:description>Per-instance pad-function select, SMBus pad direction, and SMBus alert enable.</ipxact:description>
             <ipxact:addressOffset>'he00</ipxact:addressOffset>
             <ipxact:range>'hc</ipxact:range>
             <ipxact:register>
@@ -5145,7 +5235,7 @@ detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</ipxact:
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>I2C_EN</ipxact:name>
-                <ipxact:description>I2C Enable.</ipxact:description>
+                <ipxact:description>I2C Pad Function Select. When set, the integration routes this instance's SCL, SDA, SMBus alert and SMBus suspend signals to their pads. Does not enable the I2C core; CTRL.ENABLEHOST and CTRL.ENABLETARGET select the core's operating mode.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -5157,7 +5247,7 @@ detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</ipxact:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>I2C_CONTROLLER_MODE_EN</ipxact:name>
-                <ipxact:description>I2C Controller Mode Enable.</ipxact:description>
+                <ipxact:description>SMBus Pad Direction. When set, the SMBus alert pad is an input and the SMBus suspend pad is an output, as for an SMBus host. When clear, the alert pad is an output and the suspend pad is an input, as for an SMBus target. SCL and SDA are unaffected. Program it to agree with the core's CTRL.ENABLEHOST and CTRL.ENABLETARGET setting.</ipxact:description>
                 <ipxact:bitOffset>4</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -5961,8 +6051,11 @@ writing `0` releases it.</ipxact:description>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
                   <ipxact:name>EN</ipxact:name>
-                  <ipxact:description>Log Engine Enable. When set, enables the Log Engine. When unset, disables the
-Log Engine and resets all FSMs, flops, and FIFOs.</ipxact:description>
+                  <ipxact:description>Log Engine Enable. When set, enables the Log Engine. When cleared, the engine
+stops fetching and writing, discards buffered log data and resets transfer
+progress. Configuration and pending LOG_LEN values are retained, so a pending
+entry restarts from the start of its slot when the engine is enabled again.
+Clearing does not wait for outstanding bus responses.</ipxact:description>
                   <ipxact:bitOffset>0</ipxact:bitOffset>
                   <ipxact:resets>
                     <ipxact:reset>
@@ -6164,7 +6257,9 @@ an error.</ipxact:description>
                 <ipxact:field>
                   <ipxact:name>LOG_LEN</ipxact:name>
                   <ipxact:description>Log Length. Writing a nonzero value representing the log length in bytes to this field
-starts the log transfer process. There are 16 copies of this register, each representing
+starts the log transfer process. The field holds the requested length until the
+transfer completes, when hardware clears it to zero; it is not a remaining-byte
+counter. There are 16 copies of this register, each representing
 a log entry. The log entries go through round robin arbitration.</ipxact:description>
                   <ipxact:bitOffset>0</ipxact:bitOffset>
                   <ipxact:resets>
@@ -7651,7 +7746,10 @@ itself after the flush completes.</ipxact:description>
               <ipxact:field>
                 <ipxact:name>BUFFER_THRESHOLD</ipxact:name>
                 <ipxact:description>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is
-asserted when the number of entries in the buffer is greater than this value.</ipxact:description>
+asserted when the number of entries in the buffer is greater than this value.
+Only the low log2(queue depth)+1 bits are compared, so values alias modulo
+twice the queue depth, and only values below the queue depth can assert the
+interrupt.</ipxact:description>
                 <ipxact:bitOffset>12</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -7870,8 +7968,9 @@ at the bottom of the Telemetry Message Buffer.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>START</ipxact:name>
-              <ipxact:description>Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure
-both primary and secondary are out of reset.</ipxact:description>
+              <ipxact:description>Start the system timer. In PRIMARY mode, a write of 1 loads the preset and pulses the sync-load output for PULSE_WIDTH cycles.
+In SECONDARY mode, the write has no effect; a secondary starts on the primary's sync-load pulse, which is what loads its preset.
+Ensure both primary and secondary are out of reset.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7932,7 +8031,7 @@ both primary and secondary are out of reset.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>MODE</ipxact:name>
-              <ipxact:description>Timer mode: 0=PRIMARY, 1=SECONDARY (set by module parameter)</ipxact:description>
+              <ipxact:description>Timer mode driven by the is_primary_i input: 0=PRIMARY (is_primary_i=1), 1=SECONDARY (is_primary_i=0).</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7945,7 +8044,7 @@ both primary and secondary are out of reset.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>RUNNING</ipxact:name>
-              <ipxact:description>Timer is currently enabled and running</ipxact:description>
+              <ipxact:description>Timer is enabled and its count is nonzero.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8075,7 +8174,7 @@ If PRIMARY, this field is always 0.</ipxact:description>
         <ipxact:registerFile>
           <ipxact:name>dfx_ctrl</ipxact:name>
           <ipxact:displayName>DFX Control and Status Address Map</ipxact:displayName>
-          <ipxact:description>Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.</ipxact:description>
+          <ipxact:description>Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.</ipxact:description>
           <ipxact:addressOffset>'hc000b800</ipxact:addressOffset>
           <ipxact:range>'h18</ipxact:range>
           <ipxact:register>
@@ -8173,7 +8272,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>chiplet_enable</ipxact:name>
-              <ipxact:description>Chiplet Enable Used for Triggering</ipxact:description>
+              <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8185,7 +8284,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>gpio_en</ipxact:name>
-              <ipxact:description>GPIO en</ipxact:description>
+              <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8197,7 +8296,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>cg_en</ipxact:name>
-              <ipxact:description>Clock gating en</ipxact:description>
+              <ipxact:description>DFD clock stop. 1 stops the clock to the debug-bus muxes and the CLA unless
+force_clk_en is 1; 0 lets it run. The clock also runs while the SMC is in
+reset.</ipxact:description>
               <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8209,7 +8310,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>force_clk_en</ipxact:name>
-              <ipxact:description>Force clk en</ipxact:description>
+              <ipxact:description>Design-for-debug (DFD) clock force. 1 keeps the DFD clock running whatever the
+value of cg_en.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8221,7 +8323,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dtb_ns_en</ipxact:name>
-              <ipxact:description>DTB NS enable</ipxact:description>
+              <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8233,7 +8335,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dtb_ew_en</ipxact:name>
-              <ipxact:description>DTB E/W enable</ipxact:description>
+              <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8245,7 +8347,10 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>xtrig_clk_halt_mask</ipxact:name>
-              <ipxact:description>Mask==0 (default) -&gt; disabled; Mask==1 -&gt; enabled</ipxact:description>
+              <ipxact:description>CLA cross-trigger and halt-clock enable. Bit 0 (register bit 7) enables every
+CLA cross-trigger output lane together with the CLA halt-clock request; 0 holds
+them all inactive. Bits 15:1 hold the written value for software to read back
+and have no effect.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8257,7 +8362,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>debug_marker</ipxact:name>
-              <ipxact:description>Debug marker</ipxact:description>
+              <ipxact:description>Holds the written value for software to read back. It has no effect in the SMC;
+the debug marker on the SMC debug bus comes from the core logic analyzer (CLA).</ipxact:description>
               <ipxact:bitOffset>23</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8270,7 +8376,10 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>DEBUG_BUS_MUX</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:description>Mode, ID and lane selects for the twelve debug-bus muxes that reduce the SMC debug
+bus to the 16 CLA input lanes. Each mux takes its mode while Dbmid equals its ID,
+and its lane selects while Dbmid equals its ID and its mode is 1, so program one mux
+at a time.</ipxact:description>
             <ipxact:addressOffset>'h10</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -8287,7 +8396,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Dbmid</ipxact:name>
-              <ipxact:description>Unique DBM ID of the DBM instance</ipxact:description>
+              <ipxact:description>ID of the debug-bus mux to program: 3 to 6 address the level-2 muxes and 7 to 14 the
+level-3 muxes.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8310,7 +8420,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg0</ipxact:name>
-              <ipxact:description>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</ipxact:description>
+              <ipxact:description>Binary input-lane select for output lane 0 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 0; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8322,7 +8434,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg1</ipxact:name>
-              <ipxact:description>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</ipxact:description>
+              <ipxact:description>Binary input-lane select for output lane 1 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 1; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
               <ipxact:bitOffset>22</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8334,7 +8448,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg2</ipxact:name>
-              <ipxact:description>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</ipxact:description>
+              <ipxact:description>Binary input-lane select for output lane 2 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 2; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8346,7 +8462,9 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg3</ipxact:name>
-              <ipxact:description>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</ipxact:description>
+              <ipxact:description>Binary input-lane select for output lane 3 of the addressed debug-bus mux, which
+takes eight 16-bit input lanes and drives four. 0 selects input lane 3; a value k
+from 1 to 4 selects input lane k+3, so 4 selects lane 7; 5 to 63 drive zero.</ipxact:description>
               <ipxact:bitOffset>34</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8358,6 +8476,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg4</ipxact:name>
+              <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitOffset>40</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8369,6 +8489,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg5</ipxact:name>
+              <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitOffset>46</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8380,6 +8502,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg6</ipxact:name>
+              <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitOffset>52</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8391,6 +8515,8 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Muxselseg7</ipxact:name>
+              <ipxact:description>No effect in the SMC: each debug-bus mux has four output lanes, selected by
+Muxselseg0 to Muxselseg3.</ipxact:description>
               <ipxact:bitOffset>58</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8448,7 +8574,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>size</ipxact:name>
-              <ipxact:description>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</ipxact:description>
+              <ipxact:description>Region size for SMC resources, sizing both the local alias window and the global aperture. Must be a non-zero power of two: the fabric derives its local-alias address mask as (size - 1), so any other value produces a discontiguous mask and misroutes accesses. Zero leaves no reachable local aperture. GLOBAL_BASE and LOCAL_BASE must be aligned to this size. Inbound accesses to a unit whose window extends past this size answer DECERR. Defaults to 16MB (0x100_0000); FW reprograms per chiplet spec.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8549,7 +8675,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>output_fabric_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for address remapper register logic</ipxact:description>
+              <ipxact:description>Clock gate enable for the output fabric remap demux and mux</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8573,7 +8699,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>i3c_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for i3c</ipxact:description>
+              <ipxact:description>Clock gate enable for I3C. While set, the I3C peripheral clock is stopped and every access to the OCA_I3C_WRAP window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>9</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8585,7 +8711,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>avs_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for AVSBus</ipxact:description>
+              <ipxact:description>Clock gate enable for AVSBus. While set, the AVSBus controller clocks are stopped and every access to the SMC_AVSBUS_CONTROLLER window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>10</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8597,7 +8723,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>i2c_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for i2c</ipxact:description>
+              <ipxact:description>Clock gate enable for I2C. While set, the I2C peripheral clock is stopped and every access to the SMC_I2C_WRAP window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>11</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8609,7 +8735,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>uart_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for UART</ipxact:description>
+              <ipxact:description>Clock gate enable for UART. While set, the UART peripheral clock is stopped and every access to the SMC_UART_WRAP window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8621,7 +8747,7 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>telemetry_cg_en</ipxact:name>
-              <ipxact:description>Clock gate enable for telemetry</ipxact:description>
+              <ipxact:description>Clock gate enable for telemetry. While set, the telemetry receiver clocks are stopped and every access to the SMC_TELEMETRY_RECEIVER_WRAP window answers SLVERR with read data 0xBADCAB1E.</ipxact:description>
               <ipxact:bitOffset>13</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31788,7 +31914,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DECOUPLE_AW</ipxact:name>
-              <ipxact:description>Not used</ipxact:description>
+              <ipxact:description>Write-address decoupling. 0: the write address of each burst is held until the first read data beat of the matching read burst returns. 1: write addresses are issued without waiting for read data.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31800,7 +31926,7 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>DECOUPLE_RW</ipxact:name>
-              <ipxact:description>Not used</ipxact:description>
+              <ipxact:description>Read/write decoupling. 0: read and write bursts are formed in lockstep, one write burst per read burst. 1: read and write bursts are formed and issued independently; this mode can deadlock.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31812,7 +31938,7 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>SRC_REDUCE_LEN</ipxact:name>
-              <ipxact:description>Not used</ipxact:description>
+              <ipxact:description>Source burst-length reduction. 1: read bursts are limited by SRC_MAX_LLEN. 0: a read burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31824,7 +31950,7 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>DST_REDUCE_LEN</ipxact:name>
-              <ipxact:description>Not used</ipxact:description>
+              <ipxact:description>Destination burst-length reduction. 1: write bursts are limited by DST_MAX_LLEN. 0: a write burst is at most 256 beats and does not cross a 2 KiB-aligned boundary.</ipxact:description>
               <ipxact:bitOffset>3</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31836,7 +31962,7 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>SRC_MAX_LLEN</ipxact:name>
-              <ipxact:description>Not used</ipxact:description>
+              <ipxact:description>Base-2 logarithm of the maximum read burst length in 64-bit beats, applied when SRC_REDUCE_LEN is 1. A read burst does not cross a boundary aligned to 2^(SRC_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when SRC_REDUCE_LEN is 0.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31848,7 +31974,7 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>DST_MAX_LLEN</ipxact:name>
-              <ipxact:description>Not used</ipxact:description>
+              <ipxact:description>Base-2 logarithm of the maximum write burst length in 64-bit beats, applied when DST_REDUCE_LEN is 1. A write burst does not cross a boundary aligned to 2^(DST_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when DST_REDUCE_LEN is 0.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31860,7 +31986,7 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ENABLED_ND</ipxact:name>
-              <ipxact:description>Not used</ipxact:description>
+              <ipxact:description>Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.</ipxact:description>
               <ipxact:bitOffset>10</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31877,7 +32003,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31895,7 +32021,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31913,7 +32039,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31931,7 +32057,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31949,7 +32075,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31967,7 +32093,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31985,7 +32111,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32003,7 +32129,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32021,7 +32147,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32039,7 +32165,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32057,7 +32183,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32075,7 +32201,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32093,7 +32219,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32111,7 +32237,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32129,7 +32255,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32147,7 +32273,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32758,7 +32884,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DATA</ipxact:name>
-              <ipxact:description>Destination address for DMA to write to, upper 32 bits</ipxact:description>
+              <ipxact:description>Destination address for DMA to write to, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32792,7 +32918,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DATA</ipxact:name>
-              <ipxact:description>Source address for DMA to read from, upper 32 bits.</ipxact:description>
+              <ipxact:description>Source address for DMA to read from, upper 32 bits. Bits [31:24] (combined address bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32826,7 +32952,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DATA</ipxact:name>
-              <ipxact:description>Number of bytes to move, upper 32 bits.</ipxact:description>
+              <ipxact:description>Number of bytes to move, upper 32 bits. Bits [31:24] (combined length bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32860,7 +32986,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DATA</ipxact:name>
-              <ipxact:description>Stride amount on destination address side, upper 32 bits</ipxact:description>
+              <ipxact:description>Stride amount on destination address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32894,7 +33020,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DATA</ipxact:name>
-              <ipxact:description>Stride amount on source address side, upper 32 bits</ipxact:description>
+              <ipxact:description>Stride amount on source address side, upper 32 bits. Bits [31:24] (combined stride bits [63:56]) are discarded, not checked; program them as zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32911,7 +33037,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DATA</ipxact:name>
-              <ipxact:description>Number of times transfer should be repeated, lower 32 bits. If stride is set, stride will be added to address after every repetition</ipxact:description>
+              <ipxact:description>Number of rows to copy, including the first, lower 32 bits. SRC_STRIDE and DST_STRIDE are added to the addresses between rows. Takes effect only when CONFIG.ENABLED_ND is 1.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32928,7 +33054,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DATA</ipxact:name>
-              <ipxact:description>Number of times transfer should be repeated, upper 32 bits. If stride is set, stride will be added to address after every repetition</ipxact:description>
+              <ipxact:description>Number of rows to copy, upper 32 bits. The DMA uses only the low 32 bits of the row count, so this register is discarded, not checked; program it as zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33089,8 +33215,8 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core0_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override the pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33102,8 +33228,8 @@ This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core1_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[1] so a 0 in core_reset_n[1] will override the pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33115,8 +33241,8 @@ This pulse is ANDed with core_reset_n[1] so a 0 in core_reset_n[1] will override
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core2_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[2] so a 0 in core_reset_n[2] will override the pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33128,8 +33254,8 @@ This pulse is ANDed with core_reset_n[2] so a 0 in core_reset_n[2] will override
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core3_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-This pulse is ANDed with core_reset_n[3] so a 0 in core_reset_n[3] will override the pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33171,7 +33297,7 @@ WARNING: using this can cause any outstanding axi requests to and from the clust
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>pre_reset_count</ipxact:name>
-              <ipxact:description>Core reset pulse count pre-reset. The duration of the pulse is the set value + 1.</ipxact:description>
+              <ipxact:description>Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33183,7 +33309,7 @@ WARNING: using this can cause any outstanding axi requests to and from the clust
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>post_reset_count</ipxact:name>
-              <ipxact:description>Core reset pulse count post-reset. The duration of the pulse is the set value + 1.</ipxact:description>
+              <ipxact:description>Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33272,7 +33398,10 @@ timeout_value and remains high until the request is deasserted. Set in both mode
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>rc</ipxact:name>
-              <ipxact:description>Reference counter for the CPU</ipxact:description>
+              <ipxact:description>Reference counter for the CPU. Write once, then poll this register until
+the readback reflects the written value before writing again. The counter
+keeps advancing, so the readback is at or just above the written value
+rather than equal to it.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -33677,6 +33806,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
               <ipxact:register>
                 <ipxact:name>HCI_VERSION</ipxact:name>
                 <ipxact:displayName>HCI Version</ipxact:displayName>
+                <ipxact:description>Identifies the implemented MIPI I3C HCI version.</ipxact:description>
                 <ipxact:addressOffset>'h0</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -33694,6 +33824,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
               <ipxact:register>
                 <ipxact:name>HC_CONTROL</ipxact:name>
                 <ipxact:displayName>Control</ipxact:displayName>
+                <ipxact:description>Controls host-controller bus operation, mode selection, transaction abort, and Hot-Join handling.</ipxact:description>
                 <ipxact:addressOffset>'h4</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -33863,6 +33994,7 @@ Write 1 to resume Controller operations.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>CONTROLLER_DEVICE_ADDR</ipxact:name>
                 <ipxact:displayName>Dynamic address</ipxact:displayName>
+                <ipxact:description>Configures the controller dynamic address and indicates whether that address is valid.</ipxact:description>
                 <ipxact:addressOffset>'h8</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -33901,6 +34033,7 @@ Write 1 to resume Controller operations.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>HC_CAPABILITIES</ipxact:name>
                 <ipxact:displayName>Capabilities</ipxact:displayName>
+                <ipxact:description>Reports the host-controller capabilities implemented by this instance.</ipxact:description>
                 <ipxact:addressOffset>'hc</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34128,6 +34261,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>RESET_CONTROL</ipxact:name>
                 <ipxact:displayName>Reset controls</ipxact:displayName>
+                <ipxact:description>Requests a controller soft reset or selective PIO queue and FIFO resets. Reset requests are self-clearing.</ipxact:description>
                 <ipxact:addressOffset>'h10</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34218,6 +34352,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PRESENT_STATE</ipxact:name>
                 <ipxact:displayName>Active controller</ipxact:displayName>
+                <ipxact:description>Reports current controller state, including active-controller bus ownership.</ipxact:description>
                 <ipxact:addressOffset>'h14</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34242,6 +34377,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>INTR_STATUS</ipxact:name>
                 <ipxact:displayName>Status</ipxact:displayName>
+                <ipxact:description>Reports host-controller error and exceptional-condition status.</ipxact:description>
                 <ipxact:addressOffset>'h20</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34323,6 +34459,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>INTR_STATUS_ENABLE</ipxact:name>
                 <ipxact:displayName>Enable status reporting</ipxact:displayName>
+                <ipxact:description>Enables individual host-controller interrupt status sources.</ipxact:description>
                 <ipxact:addressOffset>'h24</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34394,6 +34531,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>INTR_SIGNAL_ENABLE</ipxact:name>
                 <ipxact:displayName>Enable status interrupts</ipxact:displayName>
+                <ipxact:description>Routes enabled host-controller interrupt sources to the interrupt output.</ipxact:description>
                 <ipxact:addressOffset>'h28</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34465,6 +34603,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>INTR_FORCE</ipxact:name>
                 <ipxact:displayName>Force status and interrupt</ipxact:displayName>
+                <ipxact:description>Forces host-controller interrupts for software testing.</ipxact:description>
                 <ipxact:addressOffset>'h2c</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34536,6 +34675,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>DAT_SECTION_OFFSET</ipxact:name>
                 <ipxact:displayName>DAT section offset</ipxact:displayName>
+                <ipxact:description>Reports the Device Address Table section offset and size.</ipxact:description>
                 <ipxact:addressOffset>'h30</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34583,6 +34723,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>DCT_SECTION_OFFSET</ipxact:name>
                 <ipxact:displayName>DCT section offset</ipxact:displayName>
+                <ipxact:description>Configures the Device Characteristic Table section offset, size, and ENTDAA index.</ipxact:description>
                 <ipxact:addressOffset>'h34</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34665,6 +34806,7 @@ all other reserved.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PIO_SECTION_OFFSET</ipxact:name>
                 <ipxact:displayName>PIO section offset</ipxact:displayName>
+                <ipxact:description>Reports the PIO section offset.</ipxact:description>
                 <ipxact:addressOffset>'h3c</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34945,6 +35087,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>COMMAND_PORT</ipxact:name>
                 <ipxact:displayName>Command issue port</ipxact:displayName>
+                <ipxact:description>Accepts a 64-bit command descriptor as two consecutive 32-bit writes. The second write enqueues the descriptor.</ipxact:description>
                 <ipxact:addressOffset>'h0</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34958,6 +35101,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>RESPONSE_PORT</ipxact:name>
                 <ipxact:displayName>Command response port</ipxact:displayName>
+                <ipxact:description>Returns one 32-bit response descriptor from the response queue.</ipxact:description>
                 <ipxact:addressOffset>'h4</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34972,6 +35116,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>TX_DATA_PORT</ipxact:name>
                 <ipxact:displayName>Transferred data access port</ipxact:displayName>
+                <ipxact:description>Writes transmit data to the TX FIFO. This port shares its address with the read-only RX data port.</ipxact:description>
                 <ipxact:addressOffset>'h8</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34985,6 +35130,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>RX_DATA_PORT</ipxact:name>
                 <ipxact:displayName>Received data access port</ipxact:displayName>
+                <ipxact:description>Reads received data from the RX FIFO. This port shares its address with the write-only TX data port.</ipxact:description>
                 <ipxact:addressOffset>'h8</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -34999,6 +35145,7 @@ other values - not supported.</ipxact:description>
               <ipxact:register>
                 <ipxact:name>IBI_PORT</ipxact:name>
                 <ipxact:displayName>IBI descriptor access port</ipxact:displayName>
+                <ipxact:description>Returns IBI status and payload data. Payload data is padded to a 4-byte boundary.</ipxact:description>
                 <ipxact:addressOffset>'hc</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35020,6 +35167,7 @@ This can be determined from the value of field DATA_LENGTH in the IBI Status Des
               <ipxact:register>
                 <ipxact:name>QUEUE_THLD_CTRL</ipxact:name>
                 <ipxact:displayName>The Queue Threshold Control register for the Command Queue, the Response Queue, and the IBI Queue</ipxact:displayName>
+                <ipxact:description>Configures command, response, and IBI queue thresholds as raw entry counts.</ipxact:description>
                 <ipxact:addressOffset>'h10</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35080,6 +35228,7 @@ This can be determined from the value of field DATA_LENGTH in the IBI Status Des
               <ipxact:register>
                 <ipxact:name>DATA_BUFFER_THLD_CTRL</ipxact:name>
                 <ipxact:displayName>RX/TX queue threshold control</ipxact:displayName>
+                <ipxact:description>Configures TX and RX start and ready thresholds, each encoding 2^(N+1) entries.</ipxact:description>
                 <ipxact:addressOffset>'h14</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35138,6 +35287,7 @@ This can be determined from the value of field DATA_LENGTH in the IBI Status Des
               <ipxact:register>
                 <ipxact:name>QUEUE_SIZE</ipxact:name>
                 <ipxact:displayName>Queue sizes</ipxact:displayName>
+                <ipxact:description>Reports command, response, IBI, TX, and RX queue depths.</ipxact:description>
                 <ipxact:addressOffset>'h18</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35196,6 +35346,7 @@ This can be determined from the value of field DATA_LENGTH in the IBI Status Des
               <ipxact:register>
                 <ipxact:name>ALT_QUEUE_SIZE</ipxact:name>
                 <ipxact:displayName>Alternate queue sizes</ipxact:displayName>
+                <ipxact:description>Reports extended IBI and alternate response queue sizes.</ipxact:description>
                 <ipxact:addressOffset>'h1c</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35242,6 +35393,7 @@ ALT_RESP_QUEUE_SIZE contains response queue size</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PIO_INTR_STATUS</ipxact:name>
                 <ipxact:displayName>PIO interrupt status</ipxact:displayName>
+                <ipxact:description>Reports PIO queue-threshold and transfer-event interrupt status.</ipxact:description>
                 <ipxact:addressOffset>'h20</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35347,6 +35499,7 @@ ALT_RESP_QUEUE_SIZE contains response queue size</ipxact:description>
               </ipxact:register>
               <ipxact:register>
                 <ipxact:name>PIO_INTR_STATUS_ENABLE</ipxact:name>
+                <ipxact:description>Enables individual PIO interrupt status sources.</ipxact:description>
                 <ipxact:addressOffset>'h24</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35444,6 +35597,7 @@ ALT_RESP_QUEUE_SIZE contains response queue size</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PIO_INTR_SIGNAL_ENABLE</ipxact:name>
                 <ipxact:displayName>Interrupt Signal Enable</ipxact:displayName>
+                <ipxact:description>Routes enabled PIO interrupt sources to the interrupt output.</ipxact:description>
                 <ipxact:addressOffset>'h28</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -35638,6 +35792,7 @@ ALT_RESP_QUEUE_SIZE contains response queue size</ipxact:description>
               <ipxact:register>
                 <ipxact:name>PIO_CONTROL</ipxact:name>
                 <ipxact:displayName>PIO control</ipxact:displayName>
+                <ipxact:description>Controls run/stop and forced abort of enqueued commands.</ipxact:description>
                 <ipxact:addressOffset>'h30</ipxact:addressOffset>
                 <ipxact:size>32</ipxact:size>
                 <ipxact:field>
@@ -36809,7 +36964,7 @@ Enforced to 256 bytes (64 DWORDs) by Caliptra Subsystem Recovery Sequence</ipxac
                 <ipxact:register>
                   <ipxact:name>STBY_CR_CONTROL</ipxact:name>
                   <ipxact:displayName>Standby Controller Control</ipxact:displayName>
-                  <ipxact:description></ipxact:description>
+                  <ipxact:description>Configures standby-controller operation, dynamic-address-assignment methods, target transactions, and controller-role handoff.</ipxact:description>
                   <ipxact:addressOffset>'h4</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>
@@ -37034,7 +37189,7 @@ to receive its Dynamic Address before operating in Standby Controller mode.</ipx
                 <ipxact:register>
                   <ipxact:name>STBY_CR_DEVICE_ADDR</ipxact:name>
                   <ipxact:displayName>Standby Controller Device Address</ipxact:displayName>
-                  <ipxact:description></ipxact:description>
+                  <ipxact:description>Configures standby-controller dynamic and static addresses.</ipxact:description>
                   <ipxact:addressOffset>'h8</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>
@@ -37103,7 +37258,7 @@ to receive its Dynamic Address before operating in Standby Controller mode.</ipx
                 <ipxact:register>
                   <ipxact:name>STBY_CR_CAPABILITIES</ipxact:name>
                   <ipxact:displayName>Standby Controller Capabilities</ipxact:displayName>
-                  <ipxact:description></ipxact:description>
+                  <ipxact:description>Reports standby-controller capabilities.</ipxact:description>
                   <ipxact:addressOffset>'hc</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>
@@ -38011,7 +38166,7 @@ STBY_CR_INTR_SIGNAL_ENABLE</ipxact:description>
                 <ipxact:register>
                   <ipxact:name>STBY_CR_CCC_CONFIG_RSTACT_PARAMS</ipxact:name>
                   <ipxact:displayName>Standby Controller CCC Configuration RSTACT</ipxact:displayName>
-                  <ipxact:description></ipxact:description>
+                  <ipxact:description>Reports the defining byte of the last RSTACT CCC received and configures the reset recovery times.</ipxact:description>
                   <ipxact:addressOffset>'h34</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>
@@ -40697,6 +40852,7 @@ PENDING_IBI and PENDING_INTERRUPT track live conditions.</ipxact:description>
                 <ipxact:register>
                   <ipxact:name>REC_INTF_CFG</ipxact:name>
                   <ipxact:displayName>Configuration of Recovery Interface</ipxact:displayName>
+                  <ipxact:description>Configures the recovery interface and signals payload completion to the recovery handler.</ipxact:description>
                   <ipxact:addressOffset>'hc</ipxact:addressOffset>
                   <ipxact:size>32</ipxact:size>
                   <ipxact:field>
@@ -43862,7 +44018,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask0Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h160</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43880,7 +44036,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch0Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h168</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43898,7 +44054,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask1Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h170</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43916,7 +44072,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch1Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h178</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44432,7 +44588,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>ClaChainLoopDelay</ipxact:name>
-                <ipxact:description>Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal</ipxact:description>
+                <ipxact:description>Self-filter delay, in CLA clock cycles, for the CLA's own cross-triggers. When an EAP action drives cross-trigger output n, the CLA ignores incoming cross-trigger n for one cycle, ClaChainLoopDelay cycles later, so that its own trigger returning through the cross-trigger network does not retrigger it; with 0 it ignores the input in the same cycle. A further own trigger while the delay counts does not restart it. Incoming clock halt is not filtered.</ipxact:description>
                 <ipxact:bitOffset>7</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44493,6 +44649,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgMuxSelLo</ipxact:name>
+              <ipxact:description>Mode, ID, fine-grain time enable and lane selects for the CLA debug-bus mux, which builds the four 16-bit lanes of the CLA's 64-bit debug bus from 16 input segments. The mux ID is 0: the mode is taken while DbmId is 0, and the lane selects while DbmId is 0 and DbmMode is 1.</ipxact:description>
               <ipxact:addressOffset>'h198</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44544,7 +44701,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg0</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</ipxact:description>
+                <ipxact:description>Binary segment select for lane 0 of the CLA debug bus, bits [15:0]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg0; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects the fine-grain time counter, and k from 1 to 13 selects Seg(k+2).</ipxact:description>
                 <ipxact:bitOffset>16</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44556,7 +44713,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg1</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</ipxact:description>
+                <ipxact:description>Binary segment select for lane 1 of the CLA debug bus, bits [31:16]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg1; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg0, and k from 1 to 13 selects Seg(k+2).</ipxact:description>
                 <ipxact:bitOffset>22</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44568,7 +44725,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg2</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</ipxact:description>
+                <ipxact:description>Binary segment select for lane 2 of the CLA debug bus, bits [47:32]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg2; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg1, and k from 1 to 13 selects Seg(k+2).</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44580,7 +44737,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg3</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</ipxact:description>
+                <ipxact:description>Binary segment select for lane 3 of the CLA debug bus, bits [63:48]. The input segments are 16 bits wide: Seg0 = input bits [15:0], Seg1 = [31:16], and so on to Seg15. 0 selects Seg3; a value k from 1 to 12 selects Seg(k+3), so 1 selects Seg4 and 4 selects Seg7; 13 to 63 drive zero. When FineGrainTime is set, the fine-grain time counter is inserted below Seg0: 0 selects Seg2, and k from 1 to 13 selects Seg(k+2).</ipxact:description>
                 <ipxact:bitOffset>34</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44592,6 +44749,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg4</ipxact:name>
+                <ipxact:description>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</ipxact:description>
                 <ipxact:bitOffset>40</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44603,6 +44761,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg5</ipxact:name>
+                <ipxact:description>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</ipxact:description>
                 <ipxact:bitOffset>46</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44614,6 +44773,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg6</ipxact:name>
+                <ipxact:description>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</ipxact:description>
                 <ipxact:bitOffset>52</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44625,6 +44785,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg7</ipxact:name>
+                <ipxact:description>No effect in the SMC: the CLA debug-bus mux has four output lanes, selected by Muxselseg0 to Muxselseg3.</ipxact:description>
                 <ipxact:bitOffset>58</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44829,7 +44990,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap1Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap1 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h1f8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44847,7 +45008,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap0Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap0 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h200</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44865,7 +45026,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap1Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap1 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap1 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h208</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44883,7 +45044,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap0Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap0 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h210</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44901,7 +45062,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap1Lo</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap1 Trigger is met.</ipxact:description>
               <ipxact:addressOffset>'h218</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44936,7 +45097,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask2Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h228</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44954,7 +45115,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch2Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h230</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44972,7 +45133,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask3Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h238</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44990,7 +45151,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch3Lo</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match.</ipxact:description>
               <ipxact:addressOffset>'h240</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46871,7 +47032,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>TsCapture</ipxact:name>
-                <ipxact:description>When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register</ipxact:description>
+                <ipxact:description>When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).</ipxact:description>
                 <ipxact:bitOffset>9</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -46897,12 +47058,12 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgClaTimestampOffset</ipxact:name>
-              <ipxact:description>Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.</ipxact:description>
+              <ipxact:description>Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value. No effect in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).</ipxact:description>
               <ipxact:addressOffset>'h308</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
                 <ipxact:name>Offset</ipxact:name>
-                <ipxact:description>Timestamp offset value</ipxact:description>
+                <ipxact:description>Timestamp offset value. No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -46927,7 +47088,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask0Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h400</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46945,7 +47106,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch0Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x2) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x2) fires when debug_bus &amp; mask = match; the negative match event (0x3) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h408</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46963,7 +47124,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask1Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h410</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46981,7 +47142,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch1Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x4) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x4) fires when debug_bus &amp; mask = match; the negative match event (0x5) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h418</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46999,7 +47160,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask2Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h420</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47017,7 +47178,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch2Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1C) fires when debug_bus &amp; mask = match; the negative match event (0x1D) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h428</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47035,7 +47196,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMask3Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h430</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47053,7 +47214,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalMatch3Hi</ipxact:name>
-              <ipxact:description>Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus &amp; mask = match.</ipxact:description>
+              <ipxact:description>Used to define debug bus match events. The positive match event (0x1E) fires when debug_bus &amp; mask = match; the negative match event (0x1F) fires when debug_bus &amp; mask != match. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h438</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47071,11 +47232,12 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgMuxSelHi</ipxact:name>
+              <ipxact:description>No effect in the SMC. The CLA debug-bus mux has four output lanes and takes its mode, ID, fine-grain time enable and lane selects from CDbgMuxSelLo.</ipxact:description>
               <ipxact:addressOffset>'h440</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
                 <ipxact:name>Dbmmode</ipxact:name>
-                <ipxact:description>Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47087,7 +47249,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Dbmid</ipxact:name>
-                <ipxact:description>Unique DBM ID of the DBM instance</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47110,7 +47272,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg8</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>16</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47122,7 +47284,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg9</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>22</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47134,7 +47296,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg10</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47146,7 +47308,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg11</ipxact:name>
-                <ipxact:description>Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...</ipxact:description>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>34</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47158,6 +47320,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg12</ipxact:name>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>40</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47169,6 +47332,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg13</ipxact:name>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>46</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47180,6 +47344,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg14</ipxact:name>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>52</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47191,6 +47356,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Muxselseg15</ipxact:name>
+                <ipxact:description>No effect in the SMC.</ipxact:description>
                 <ipxact:bitOffset>58</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -47203,7 +47369,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgTransitionMaskHi</ipxact:name>
-              <ipxact:description>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask.</ipxact:description>
+              <ipxact:description>3 registers to configure &quot;transition event&quot;. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h448</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47220,7 +47386,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgTransitionFromValueHi</ipxact:name>
-              <ipxact:description>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value A.</ipxact:description>
+              <ipxact:description>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value A. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h450</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47237,7 +47403,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgTransitionToValueHi</ipxact:name>
-              <ipxact:description>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value B.</ipxact:description>
+              <ipxact:description>3 registers to configure &quot;transition event&quot;. The event is triggered on transition from Value A to Value B. This register specifies Value B. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h458</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47254,7 +47420,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgOnesCountMaskHi</ipxact:name>
-              <ipxact:description>2 registers to configure &quot;ones count&quot; event. This register is to select the signals of interest using a mask.</ipxact:description>
+              <ipxact:description>2 registers to configure &quot;ones count&quot; event. This register is to select the signals of interest using a mask. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h460</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47271,7 +47437,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgAnyChangeHi</ipxact:name>
-              <ipxact:description>Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.</ipxact:description>
+              <ipxact:description>Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h468</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47288,7 +47454,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode0Eap0Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node0 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h470</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47306,7 +47472,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode0Eap1Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap1 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node0 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h478</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47324,7 +47490,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap0Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h480</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47342,7 +47508,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap1Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h488</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47360,7 +47526,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap0Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h490</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47378,7 +47544,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap1Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap1 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h498</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47396,7 +47562,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap0Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap0 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4a0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47414,7 +47580,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap1Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap0 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap1 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4a8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47432,7 +47598,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode0Eap2Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap2 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node0 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4b0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47450,7 +47616,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode0Eap3Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node0 Eap3 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node0 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4b8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47468,7 +47634,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap2Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap2 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4c0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47486,7 +47652,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode1Eap3Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node1 Eap3 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node1 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4c8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47504,7 +47670,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap2Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node2 Eap2 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4d0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47522,7 +47688,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode2Eap3Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node2 Eap3 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node2 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4d8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47540,7 +47706,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap2Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node3 Eap2 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap2 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4e0</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47558,7 +47724,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgSignalSnapshotNode3Eap3Hi</ipxact:name>
-              <ipxact:description>debug Bus Value when Node3 Eap3 Trigger is met.</ipxact:description>
+              <ipxact:description>debug Bus Value when Node3 Eap3 Trigger is met. Never captured in the SMC, whose CLA evaluates a 64-bit debug bus.</ipxact:description>
               <ipxact:addressOffset>'h4e8</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47637,7 +47803,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgTimestampCapture</ipxact:name>
-              <ipxact:description>Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.</ipxact:description>
+              <ipxact:description>Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register. Never captured in the SMC, where the CLA timestamp counts the local time tick (timestamp scheme 0).</ipxact:description>
               <ipxact:addressOffset>'h500</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47800,7 +47966,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare0Hi</ipxact:name>
-              <ipxact:description>Value for arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h548</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47818,7 +47984,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare0MaskHi</ipxact:name>
-              <ipxact:description>Value to mask the arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h550</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47836,7 +48002,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare1Hi</ipxact:name>
-              <ipxact:description>Value for arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h558</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47854,7 +48020,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare1MaskHi</ipxact:name>
-              <ipxact:description>Value to mask the arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h560</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47872,7 +48038,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare2Hi</ipxact:name>
-              <ipxact:description>Value for arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h568</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47890,7 +48056,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare2MaskHi</ipxact:name>
-              <ipxact:description>Value to mask the arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h570</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47908,7 +48074,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare3Hi</ipxact:name>
-              <ipxact:description>Value for arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value for arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h578</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -47926,7 +48092,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgCompare3MaskHi</ipxact:name>
-              <ipxact:description>Value to mask the arithmetic comparison.</ipxact:description>
+              <ipxact:description>Value to mask the arithmetic comparison. No effect in the SMC, whose CLA evaluates a 64-bit debug bus; only the Lo register is used.</ipxact:description>
               <ipxact:addressOffset>'h580</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -48541,8 +48707,9 @@ Interrupts start counting at 1.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Interrupt &amp; claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu</ipxact:description>
+              <ipxact:description>Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>3</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -48568,8 +48735,9 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Interrupt &amp; claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu</ipxact:description>
+              <ipxact:description>Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>3</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -48595,8 +48763,9 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Interrupt &amp; claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu</ipxact:description>
+              <ipxact:description>Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>3</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -48622,8 +48791,9 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Interrupt &amp; claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu</ipxact:description>
+              <ipxact:description>Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>3</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -48649,8 +48819,9 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Interrupt &amp; claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu</ipxact:description>
+              <ipxact:description>Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>3</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -48676,8 +48847,9 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Interrupt &amp; claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu</ipxact:description>
+              <ipxact:description>Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>3</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -48703,8 +48875,9 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Interrupt &amp; claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu</ipxact:description>
+              <ipxact:description>Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>3</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -48730,8 +48903,9 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Interrupt &amp; claim threshold. Maximum value is 7.
-Any interrupt with a priority less than the threshold cannot interrupt the cpu</ipxact:description>
+              <ipxact:description>Interrupt notification threshold. Maximum value is 7.
+The context's external interrupt is raised only while the highest-priority pending, enabled source has a priority strictly greater than the threshold.
+The threshold does not gate claims: a claim read returns the highest-priority pending, enabled source regardless of the threshold.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>3</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -48795,7 +48969,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>count</ipxact:name>
-              <ipxact:description>Cycle count value to be used for comparison, triggers interrupt once count value matches this</ipxact:description>
+              <ipxact:description>Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>64</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>

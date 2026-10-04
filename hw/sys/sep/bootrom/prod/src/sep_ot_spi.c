@@ -29,7 +29,8 @@
 #include "sep_ot_spi.h"
 #include "sep_ot_flash_opcodes.h"
 #include "sep_ot_spi_profiles.h"
-#include "sep_helpers.h" /* contains_range: 32-bit bounded-memory check   */
+#include "sep_helpers.h"       /* contains_range: 32-bit bounded-memory check   */
+#include "sep_smc_interface.h" /* sep_get_smc_sram_base, SMC_SRAM_SIZE_BYTES */
 
 /* CMD.direction encodings. */
 #define OT_DIR_DUMMY 0u
@@ -170,7 +171,12 @@ static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     mmio_write32(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Clear any latched error bits (write-1-to-clear). */
-    mmio_write32(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
+    mmio_write32(
+        SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
+        SPI_CONTROLLER__ERROR_STATUS__CMDBUSY_bm | SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_bm |
+            SPI_CONTROLLER__ERROR_STATUS__UNDERFLOW_bm | SPI_CONTROLLER__ERROR_STATUS__CMDINVAL_bm |
+            SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bm |
+            SPI_CONTROLLER__ERROR_STATUS__ACCESSINVAL_bm);
 
     if (ot_spi_wait_ready() != 0) {
         return SEP_MSG_SPI_OT_INIT_FAILED;
@@ -184,8 +190,7 @@ __attribute__((weak)) void ot_spi_select_pad_mux(void) {
 uint32_t ot_spi_init(void) {
     ot_spi_select_pad_mux();
     /* Select the boot profile: build-time default BOOT_OT_SPI_PROFILE (0 = safe
-     * default). Deferred runtime auto-selection (device probe / OTP fuse) will
-     * replace this fixed choice here. */
+     * default). There is no runtime device probe or OTP-driven selection. */
     ot_spi_select_profile(BOOT_OT_SPI_PROFILE);
     uint32_t rc = ot_apply_profile(g_profile);
     if (rc != OT_SPI_OK) {
@@ -249,20 +254,12 @@ static uint32_t ot_spi_error_status(void) {
     return v;
 }
 
-/* ── Destination policy (extension point) ─────────────────────────────────────
+/* ── Destination policy ───────────────────────────────────────────────────────
  *
- * The single place that knows which SEP locations a flash read may target and how
- * the DMA reaches each one. The boot ROM only stages into SEP SRAM, so that is the
- * sole destination declared here. To repurpose the driver for another destination
- * (ICCM, SMC SRAM, a SoC window, …):
- *   1. add its {base, size, dst_asid} row to ot_spi_dst_regions[]; and
- *   2. if the target needs bus-specific DMA handling beyond range + ASID — e.g. a
- *      non-OtInternal ASID (whose enabled-range IS hardware-enforced), or the ICCM
- *      address-remap workaround in sep_dma.c — add its case to ot_spi_dma_dst_setup().
- *
- * The transport code below is destination-agnostic: both the PIO and DMA paths
- * validate dst against this table before touching any CSR, and the DMA path drives
- * the hardware from the matched row. */
+ * Declares which SEP locations a flash read may target: SEP SRAM, and SMC SRAM for a
+ * manifest with use_ext_sram=0. Both PIO and DMA paths validate dst here before any CSR
+ * write. A new destination needs a row in ot_spi_dst_regions[] and, if it needs more than
+ * range + ASID (e.g. the ICCM address remap in sep_dma.c), a case in ot_spi_dma_dst_setup(). */
 
 /* SECURE_DMA address-space-id nibble. The flash-read source is always the fixed
  * OT-internal RXDATA FIFO; only the destination nibble varies per region. */
@@ -280,6 +277,11 @@ static const ot_spi_dst_region_t ot_spi_dst_regions[] = {
 };
 #define OT_SPI_DST_REGION_COUNT (sizeof(ot_spi_dst_regions) / sizeof(ot_spi_dst_regions[0]))
 
+/* SMC SRAM destination. Its base comes from the straps, so it is filled in on each lookup;
+ * the address is stable, so both hardened lookups in ot_spi_dst_valid() return the same
+ * pointer. ASID 0x7 covers SEP SRAM, SMC SRAM and ICCM. */
+static ot_spi_dst_region_t ot_spi_dst_smc = {0u, 0u, OT_DMA_ASID_OT_INTERNAL};
+
 /* Return the declared destination region wholly containing [dst, dst+len), or NULL
  * if none does. Single evaluation — used to drive destination-specific DMA setup
  * after the transfer has been validated by ot_spi_dst_valid(). */
@@ -289,6 +291,14 @@ static const ot_spi_dst_region_t *ot_spi_dst_region(uint32_t dst, uint32_t len) 
             return &ot_spi_dst_regions[i];
         }
     }
+
+    const uint32_t smc_sram = sep_get_smc_sram_base();
+    if (contains_range(smc_sram, (uint32_t)SMC_SRAM_SIZE_BYTES, dst, len)) {
+        ot_spi_dst_smc.base = smc_sram;
+        ot_spi_dst_smc.size = (uint32_t)SMC_SRAM_SIZE_BYTES;
+        return &ot_spi_dst_smc;
+    }
+
     return NULL;
 }
 
@@ -424,20 +434,20 @@ uint32_t ot_spi_flash_read(uint32_t flash_off, uint32_t dst_sram, uint32_t len) 
 /* ── Flash read transport - DMA-streamed drain ────────────────────────────── */
 
 /* SECURE_DMA field values for draining the fixed RXDATA FIFO into a destination
- * region. Written as raw register values, matching the sibling DMA code
- * (sep_dma.c). The address-space-id is composed per destination in
+ * region. The address-space-id is composed per destination in
  * ot_spi_dma_dst_setup() from the region's dst_asid. */
-#define OT_DMA_WIDTH_4B 0x2u  /* 4-byte transfer width                  */
-#define OT_DMA_SRC_FIXED 0x2u /* wrap set, increment clear -> fixed src */
-#define OT_DMA_DST_INCR 0x1u  /* increment -> walk the destination      */
-#define OT_DMA_CTRL_GO (1u << 31)
-#define OT_DMA_CTRL_INITIAL (1u << 8)
-#define OT_DMA_CTRL_HSHAKE (1u << 4) /* hardware_handshake_enable              */
-#define OT_DMA_CTRL_ABORT (1u << 27) /* abort: forces idle; NOT cfg_regwen-gated */
-#define OT_DMA_STATUS_BUSY (1u << 0)
-#define OT_DMA_STATUS_DONE (1u << 1)
-#define OT_DMA_STATUS_ABORTED (1u << 2)
-#define OT_DMA_STATUS_ERROR (1u << 3)
+#define OT_DMA_WIDTH_4B 0x2u /* 4-byte transfer width */
+/* wrap set, increment clear -> fixed src */
+#define OT_DMA_SRC_FIXED SECURE_DMA__SRC_CONFIG__WRAP_bm
+#define OT_DMA_DST_INCR SECURE_DMA__DST_CONFIG__INCREMENT_bm /* walk the destination */
+#define OT_DMA_CTRL_GO SECURE_DMA__CONTROL__GO_bm
+#define OT_DMA_CTRL_INITIAL SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm
+#define OT_DMA_CTRL_HSHAKE SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bm
+#define OT_DMA_CTRL_ABORT SECURE_DMA__CONTROL__ABORT_bm /* forces idle; NOT cfg_regwen-gated */
+#define OT_DMA_STATUS_BUSY SECURE_DMA__STATUS__BUSY_bm
+#define OT_DMA_STATUS_DONE SECURE_DMA__STATUS__DONE_bm
+#define OT_DMA_STATUS_ABORTED SECURE_DMA__STATUS__ABORTED_bm
+#define OT_DMA_STATUS_ERROR SECURE_DMA__STATUS__ERROR_bm
 /* Latched W1C status bits (done/aborted/error) that survive a transfer until
  * explicitly cleared; cleared before arming so a poll can't see a stale value. */
 #define OT_DMA_STATUS_CLEAR (OT_DMA_STATUS_DONE | OT_DMA_STATUS_ABORTED | OT_DMA_STATUS_ERROR)
@@ -509,10 +519,8 @@ static void ot_spi_dma_dst_setup(const ot_spi_dst_region_t *region, uint32_t dst
     mmio_write32(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
     mmio_write32(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
     mmio_write32(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
-                 ((uint32_t)region->dst_asid << 4) | OT_DMA_ASID_OT_INTERNAL);
-
-    /* TODO(repurpose): destination-specific setup — e.g. the ICCM address-remap
-     * workaround (SEP_REGION_SIZE=0) from sep_dma.c — keyed on `region`, goes here. */
+                 ((uint32_t)region->dst_asid << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp) |
+                     (OT_DMA_ASID_OT_INTERNAL << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp));
 }
 
 /* Stream `dma_len` bytes (a whole multiple of `chunk_bytes`) from flash into SRAM

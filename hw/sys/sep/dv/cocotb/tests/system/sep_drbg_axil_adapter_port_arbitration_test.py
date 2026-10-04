@@ -29,14 +29,16 @@ separated by the same gap the overlap cells use, all retire AND answer OKAY.
 The gapped leg is what excludes the channel separation itself as the cause of
 an overlap-cell failure; without it that exclusion would rest on reading the
 RTL. Both halves matter: an access the adapter rejects as unsupported is
-answered SLVERR straight out of StIdle with nothing forwarded, and retires
+answered SLVERR straight out of ST_IDLE with nothing forwarded, and retires
 just as promptly as a real one, so the response code is what shows the
 forwarding leg is alive. Without the controls every ordering would report as
 stalled on a broken driver.
 
 CHK-PORT-STIM: the ordering the port actually presented, read off
-`tbadp_chan_o`, not the offsets requested. A cell whose presentation does not
-match is a stimulus failure and is reported as one, not scored as coverage.
+`tbadp_chan_o`, not the offsets requested. In `aw-then-ar` and `w-then-ar` the
+cell must also reach the half-committed state: a cycle with AR valid, one write
+half handshaken and the other pending. A cell that misses either is a stimulus
+failure and is reported as one, not scored as coverage.
 
 CHK-PORT-PROGRESS: both accesses retire -- BVALID and RVALID both seen.
 The check is a bounded cycle count plus the longest run of
@@ -109,7 +111,7 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                 f"nothing"
             )
         # Retiring is not enough. An access the adapter rejects as unsupported
-        # is answered SLVERR out of StIdle with nothing forwarded, and retires
+        # is answered SLVERR out of ST_IDLE with nothing forwarded, and retires
         # just as promptly -- so a control that only watched the valid would
         # accept a dead forwarding path. The response code is what separates
         # them, and OKAY can only come from the far side.
@@ -203,8 +205,31 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                     hs["ar"],
                 )
             if order in ("aw-then-ar", "w-then-ar"):
-                # AR is presented after the leading write half, so it arrives
-                # while that half is pending and must wait for both.
+                # The cell grades the half-committed state: AR valid while one
+                # write half has handshaken and the other is still pending. That
+                # state spans cycles first_w+1 .. last_w, so it exists only if
+                # the halves handshook in different cycles and AR went valid by
+                # last_w. A cell that never reached it is a stimulus miss.
+                if not (first_w < last_w and obs["valid"]["ar"] <= last_w):
+                    stim_fails.append(
+                        f"[{order}] the half-committed state was not reached: "
+                        f"AR valid at cycle {obs['valid']['ar']}, write halves "
+                        f"handshook at AW={hs['aw']} W={hs['w']}, so no cycle "
+                        f"had AR valid with one half accepted and the other "
+                        f"pending; {summary}"
+                    )
+                    self.logger.error("CHK-PORT-STIM FAIL: %s", stim_fails[-1])
+                    continue
+                self.logger.info(
+                    "CHK-PORT-STIM OK: %s reached the half-committed state "
+                    "(AR valid=%d, first write half hs=%d, second hs=%d)",
+                    order,
+                    obs["valid"]["ar"],
+                    first_w,
+                    last_w,
+                )
+                # AR arrives while the leading half is pending and must wait
+                # for both.
                 if hs["ar"] <= max(hs["aw"], hs["w"]):
                     fails.append(
                         f"[{order}] AR handshook at cycle {hs['ar']} before both "
@@ -239,7 +264,8 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
             f"exercised for them: {'; '.join(stim_fails)}"
         )
         self.logger.info(
-            "CHK-PORT-STIM PASS: all %d ordering(s) presented at the port: %s",
+            "CHK-PORT-STIM PASS: all %d ordering(s) presented at the port: %s; "
+            "aw-then-ar and w-then-ar reached the half-committed state",
             len(ORDER_NAMES),
             ", ".join(ORDER_NAMES),
         )

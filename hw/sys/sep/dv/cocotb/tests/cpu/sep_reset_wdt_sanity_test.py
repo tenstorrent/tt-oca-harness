@@ -2,33 +2,27 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP reset-controller + WDT sanity test (PyUVM).
 
-OSS port combining the reference suite ``sep_reset_ctrl_csr_test`` and ``wdt_sanity_test``.
-Boots the VeeR EL2 core and runs the reset_wdt_sanity firmware, which:
-  * verifies SW_RESET_N default 0x7E and that pulsing each crypto/TRNG/ABR reset bit
-    clears the corresponding probe CSRs, and that each probe is writable again after
-    the release;
-  * proves a write + a read to an unmapped fabric gap each raise a D-bus-error
-    NMI (count == 2);
-  * exercises the WDT bark -> NMI, pet, disable-freeze, and re-bark; then lets the
-    WDT run on to BITE.
+The reset_wdt_sanity firmware:
+  * checks SW_RESET_N default 0x7E, that pulsing each crypto/TRNG/ABR reset bit clears that
+    domain's probe CSRs and leaves every probe outside that reset bit unchanged, and that each
+    probe is writable again after release;
+  * checks that a write and a read to an unmapped fabric gap each raise a D-bus-error NMI
+    (count == 2);
+  * exercises WDT bark -> NMI, pet, disable-freeze and re-bark, then lets the WDT run to BITE.
 
-Firmware-self-checking (start.S emits PASS/FAIL magic from main()'s return code).
-On top of that, this test observes the BITE reset request on the real ``sep``
-output ``wdt_timer_rst_req_o`` (brought out in tb_top): after the firmware PASSes
-(2nd bark), the still-enabled WDT advances to BITE_THOLD and asserts the reset
-request, which the cocotb side must see -- the WDT's headline safety function.
+start.S emits PASS/FAIL magic from main()'s return code. After PASS the test also observes the
+BITE reset request on the ``sep`` output ``wdt_timer_rst_req_o``.
 
-No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
-JTAG-holds OTBN/AES/HMAC/KMAC across ``rst_ni`` release and fuse sense so they
-never raise crypto ``edn_req`` while the fabric is opening, then drops the
-override. The hold must not outlast sense: the firmware probes each engine's
-reset wire, and a held engine's registers are unreachable, so the probe write
-traps instead of landing.
+No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``. OTBN/AES/HMAC/KMAC are
+JTAG-held across ``rst_ni`` release and fuse sense so they raise no crypto ``edn_req`` while the
+fabric opens. The hold must end with sense: a held engine's registers are unreachable, so the
+firmware's reset-wire probe write would trap.
 """
 
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import cocotb
@@ -52,6 +46,13 @@ _PROGRESS_EVERY = 5_000
 _BADADDR_LINE = "reset_ctrl bad-address NMI count == 2 OK"
 _SWRST_DEFAULT_NEEDLE = "PASS: SW_RESET_N default"
 _RESET_WIRE_IPS = ("otbn", "aes", "hmac", "kmac", "abr", "esrc", "csrng", "edn")
+# Reset bit of each probe's domain: esrc, csrng and edn share the TRNG bit.
+_RESET_DOMAIN = {ip: ("trng" if ip in ("esrc", "csrng", "edn") else ip) for ip in _RESET_WIRE_IPS}
+# Each reset-wire line ends with the count of other-domain probes the firmware
+# found unchanged after the pulse.
+_WIRE_LINE_RE = re.compile(
+    r"(\w+) reset wire OK, writable after release, other-domain probes unchanged 0x([0-9a-f]{8})"
+)
 # The firmware prints this after "<ip>" only once the probe, rewritten after the
 # release, reads back its non-reset value.
 _WRITABLE_SUFFIX = " reset wire OK, writable after release"
@@ -109,10 +110,21 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             f"{sorted(_RESET_WIRE_IPS)}; a missing domain is an unexercised reset bit. "
             f"Console was:\n{console}"
         )
+        unchanged = {m.group(1): int(m.group(2), 16) for m in _WIRE_LINE_RE.finditer(console)}
+        want_unchanged = {
+            ip: sum(1 for nb in _RESET_WIRE_IPS if _RESET_DOMAIN[nb] != _RESET_DOMAIN[ip])
+            for ip in _RESET_WIRE_IPS
+        }
+        assert unchanged == want_unchanged, (
+            f"CHK-SWRST-WIRE FAIL: other-domain probes found unchanged per pulse "
+            f"{unchanged}, expected {want_unchanged}; a pulse that checked fewer "
+            f"domains leaves a cross-wired reset bit unseen. Console was:\n{console}"
+        )
         self.logger.info(
-            "CHK-SWRST-WIRE PASS: %d reset domains each returned their probe and left "
-            "the neighbour untouched",
+            "CHK-SWRST-WIRE PASS: %d reset bits each returned their probe and left every "
+            "probe outside that bit unchanged (per pulse: %s)",
             len(wired),
+            ", ".join(f"{ip}={unchanged[ip]}" for ip in _RESET_WIRE_IPS),
         )
         writable = [ip for ip in _RESET_WIRE_IPS if f"{ip}{_WRITABLE_SUFFIX}" in console]
         assert len(writable) == len(_RESET_WIRE_IPS), (

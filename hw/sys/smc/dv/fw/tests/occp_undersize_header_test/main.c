@@ -13,7 +13,6 @@ int main(void) {
     if (!initialize_interface(&ctx)) {
         simputs("FAIL: Interface initialization failed\n");
         test_fail(0);
-        return 0;
     }
 
     ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
@@ -49,17 +48,9 @@ int main(void) {
     increment_cmd_count(&ctx);
     execute_random_commands(&ctx, 5);
 
-    uint32_t result_code =
-        ctx.overall_result ? SMC_SCRATCHPAD_SIM_PASS_CODE : SMC_SCRATCHPAD_SIM_FAIL_CODE;
-
     if (ctx.overall_result) {
         test_pass(0);
     } else {
         test_fail(0);
     }
-
-    while (1) {
-        __asm__("wfi");
-    }
-    return 0;
 }

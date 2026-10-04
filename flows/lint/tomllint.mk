@@ -17,7 +17,7 @@ TOML_PATH ?= .
 # local uv venv (which vendors its own third-party Cargo.toml resources).
 ocah_toml_files = $(shell cd $(OCAH_ROOT) && find $(TOML_PATH) -name '*.toml' \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
-	-not -path '*/build/*' -not -path '*/build_ot/*' -not -path '*/build_ot_pio/*' \
+	-not -path '*/build/*' -not -path '*/build_pio/*' \
 	-not -path '*/.venv/*' 2>/dev/null)
 
 ocah_toml_check_files = @[ -n "$(strip $(ocah_toml_files))" ] || { echo "error: no .toml files under $(if $(TOML_PATH),$(TOML_PATH),repo root)" >&2; exit 1; }

@@ -4,10 +4,13 @@
 
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
-Loads an 8-word palindromic seed over the mailbox (dest ABR ML-DSA seed),
-pulls it through the KV seed-read control, and runs KEYGEN. The public key
-must match a direct-seed KEYGEN of the same words. The palindrome absorbs
-the KV dword reversal. Masking entropy is RANDCFG; the seed itself is
+Loads an 8-word seed over the mailbox (dest ABR ML-DSA seed), pulls it
+through the KV seed-read control, and runs KEYGEN. The public key must match
+a direct-seed KEYGEN of the same words. Key Manager word i and register
+index MLDSA_SEED[i] carry the same dword (doc/adams_bridge.adoc,
+abr-seed-word-order), and the eight seed words are pairwise distinct, so a
+delivery that permutes the words -- a dword reversal included -- changes the
+seed and fails the compare. Masking entropy is RANDCFG; the seed itself is
 directed so the two KEYGENs stay comparable.
 """
 
@@ -36,34 +39,37 @@ from seq_lib.sep_abr_keygen_seq import (
 )
 from seq_lib.sep_km_mailbox_seq import KM_DEST_ABR_MLDSA_SEED, KM_RC_SUCCESS, SepKmMailbox
 
-# fw/tests/sep_abr_km_seed_test/sep_abr_km_seed_test.c
-_ABR_SEED_PAL = [
+# Two directed seeds. Each has eight pairwise-distinct words, so any word
+# permutation in delivery yields a different seed and a different public key.
+_ABR_SEED = [
     0x0BADC0DE,
     0x13572468,
     0xA5A5A5A5,
     0xFEEDFACE,
-    0xFEEDFACE,
-    0xA5A5A5A5,
-    0x13572468,
-    0x0BADC0DE,
+    0x2468ACE0,
+    0x5A5A0F0F,
+    0x97531ECA,
+    0x600DF00D,
 ]
 
 # A second, distinct seed for the KM sideload leg. The sideload must not reuse
-# _ABR_SEED_PAL: the direct keygen above already wrote that value into
+# _ABR_SEED: the direct keygen above already wrote that value into
 # MLDSA_SEED, so a ZEROIZE that failed to clear the register would produce the
 # same public key and CHK-PK could not tell a working sideload from a stale
-# seed. Palindromic like the first, so the word order of the KM transfer is
-# still not what the compare depends on.
+# seed.
 _ABR_SEED_ALT = [
     0x1234ABCD,
     0x0F0F0F0F,
     0xC0FFEE00,
     0x5EED5EED,
-    0x5EED5EED,
-    0xC0FFEE00,
-    0x0F0F0F0F,
-    0x1234ABCD,
+    0x7E57CA5E,
+    0x31415926,
+    0x4B1D2C3E,
+    0x8BADF00D,
 ]
+
+for _seed in (_ABR_SEED, _ABR_SEED_ALT):
+    assert len(set(_seed)) == len(_seed), "test construction error: repeated seed word"
 
 _POLL_ITERS = 20000
 _POLL_GAP = 200
@@ -117,7 +123,7 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         self.logger.info("CHK0 PASS: rom_main booted, RESP_KM_READY over the mailbox")
 
         await self._wait_status(abr, ST_READY, ST_READY, what="direct READY")
-        pk_direct = await self._keygen(abr, _ABR_SEED_PAL, cfg.entropy, what="CHK-DIRECT")
+        pk_direct = await self._keygen(abr, _ABR_SEED, cfg.entropy, what="CHK-DIRECT")
         self.logger.info(
             "CHK-DIRECT PASS: direct-seed PK[0..3]=0x%08x 0x%08x 0x%08x 0x%08x",
             pk_direct[0],
@@ -132,7 +138,7 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         assert contrast != cfg.entropy, "CHK-RANDCFG FAIL: invert collapsed to cfg.entropy"
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         await self._wait_status(abr, ST_READY, ST_READY, what="contrast READY")
-        pk_contrast = await self._keygen(abr, _ABR_SEED_PAL, contrast, what="CHK-RANDCFG")
+        pk_contrast = await self._keygen(abr, _ABR_SEED, contrast, what="CHK-RANDCFG")
         assert pk_contrast == pk_direct, (
             "CHK-RANDCFG FAIL: inverted masking entropy changed the public key"
         )
@@ -183,13 +189,19 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
             "a delivered one"
         )
         assert pk_km == pk_alt, (
-            "CHK-PK FAIL: KM-sideloaded PK != direct alternate-seed PK:\n"
+            "CHK-PK FAIL: KM-sideloaded PK != direct alternate-seed PK, so Key "
+            "Manager word i did not reach MLDSA_SEED[i] (a lost, stale or "
+            "reordered seed word):\n"
             f"  alt[0..3]={[hex(w) for w in pk_alt[:4]]}\n"
             f"  km[0..3] ={[hex(w) for w in pk_km[:4]]}"
         )
         self.logger.info(
-            "CHK-PK PASS: KM-sideloaded PK equals the direct-seed PK (%d words)",
+            "CHK-PK PASS: KM-sideloaded PK equals the direct-seed PK of the same "
+            "word order (%d words, pk[0]=0x%08x); seed[0]=0x%08x seed[7]=0x%08x",
             PK_WORDS,
+            pk_km[0],
+            _ABR_SEED_ALT[0],
+            _ABR_SEED_ALT[7],
         )
 
         await self.stop_fifo_drain()

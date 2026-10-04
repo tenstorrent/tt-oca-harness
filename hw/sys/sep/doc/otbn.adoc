@@ -95,10 +95,44 @@ material.
 
 Consult the
 https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN
-documentation] for the authoritative core functionality of the IP. The
+documentation] for the authoritative core functionality of the IP.
+The Programmer's Guide gives the
 ifdef::backend-html5[]
-register map is reported in the xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map].
+xref:ocah-programmer-guide::index.adoc#sep-otbn[programming guidance]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-register map is reported in the <<sep-detailed-register-map,Detailed Register Map>>.
+https://tenstorrent.github.io/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-otbn[programming guidance]
+endif::backend-pdf[]
+for this block.
+The
+ifdef::backend-html5[]
+register map follows below.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+register map follows below.
+endif::backend-pdf[]
+
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$otbn/regs/gen/html/otbn.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/otbn/regs/gen/adoc/otbn.adoc[leveloffset=+2]
 endif::backend-pdf[]

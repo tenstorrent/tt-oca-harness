@@ -11,19 +11,24 @@
 // IR (IR scans) or selected data register (DR scans) when a device is
 // attached, and one extra full-cycle flop on ports with a TDI lockup latch
 // (the I/O STAP). The PTAP forwards its scan controls to the STAP chain on
-// every IR and DR scan and, with the PTAP 3DCR select set, routes the
-// instruction register's scan-out into the chain, so an IR scan is the
-// 6-bit PTAP IR followed by the STAP chain and Update-IR commits SIB/3DCR
-// fields and the downstream IRs exactly as Update-DR does. A data scan under
-// any other PTAP instruction runs through the STAP chain as well while the
-// select is set, and its Update-DR commits the chain fields without
-// reaching the PTAP 3DCR: under ZERO_LENGTH_BYPASS TDI enters the chain
-// directly (DTP_SCAN_ZLB, the STAP chain alone); under BYPASS the one-bit
-// bypass register, which captures 0, precedes the chain (DTP_SCAN_BYPASS).
-// An attached host segment (tb_top) follows the last STAP, at the TDO end of
-// every scan, while stap_host is enabled; with stap_host disabled the last
-// STAP's scan-out is the chain return and the segment holds its value. Plain
-// model class, built with new(); no reporting. Types come from dtp_types.svh.
+// every IR and DR scan only while the PTAP 3DCR select is set, and then
+// routes the instruction register's scan-out into the chain, so an IR scan
+// is the 6-bit PTAP IR followed by the STAP chain and Update-IR commits
+// SIB/3DCR fields and the downstream IRs exactly as Update-DR does. A data
+// scan under any other PTAP instruction runs through the STAP chain as well
+// while the select is set, and its Update-DR commits the chain fields
+// without reaching the PTAP 3DCR: under BYPASS the one-bit bypass register,
+// which captures 0, precedes the chain (DTP_SCAN_BYPASS), and
+// ZERO_LENGTH_BYPASS (DTP_SCAN_ZLB) is BYPASS while the select is set; with
+// the select clear it is the zero-length TDI-to-TDO path. An attached host
+// segment (tb_top) follows the last STAP, at the TDO end of every scan,
+// while stap_host is enabled; with
+// stap_host disabled the last STAP's scan-out is the chain return and the
+// segment holds its value. While the PTAP select is clear the chain, host
+// segment included, holds through every scan and a scan covers only the
+// PTAP segment, so the select must be set by a scan of its own before a
+// scan can write the chain. Plain model class, built with new(); no
+// reporting. Types come from dtp_types.svh.
 
 // Reference state for the PTAP 3DCR, the STAP 3DCRs, and downstream TAPs.
 class dtp_stap_3dcr_model;
@@ -132,8 +137,25 @@ class dtp_stap_3dcr_model;
       ds[s].reset_instruction();
   endfunction
 
+  // True when the next scan moves the STAP chain (PTAP select set). A STAP
+  // left selected while the PTAP select is clear still forwards the live TMS
+  // and scan data to its downstream TAP, whose registers the model does not
+  // predict, so such a scan is fatal.
+  protected function bit chain_live(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
+    int unsigned spliced_list[$];
+    if (ptap_select) return 1'b1;
+    spliced_downstream(d, spliced_list);
+    if (spliced_list.size() != 0)
+      `uvm_fatal(
+          "dtp_stap_3dcr_model", $sformatf(
+          "scan with the PTAP select clear while downstream TAPs %p are spliced", spliced_list))
+    return 1'b0;
+  endfunction
+
   // --- composed-chain layout -------------------------------------------------
   // (owner, field, bit) per chain flop in TDI-to-TDO order, current state.
+  // With the PTAP select clear the chain is out of the scan path, and a
+  // DTP_SCAN_ZLB layout is empty.
   function void chain_layout(sep_lifecycle_ctrl_pkg::dbg_disable_t d, ref layout_entry_t layout[$],
                              input dtp_scan_kind_e kind = DTP_SCAN_DR);
     bit g[DtpStapCount];
@@ -144,9 +166,10 @@ class dtp_stap_3dcr_model;
     end else if (kind == DTP_SCAN_DR) begin
       layout.push_back('{-1, FLD_STAP_SEL, 0});
       layout.push_back('{-1, FLD_CONFIG_HOLD, 0});
-    end else if (kind == DTP_SCAN_BYPASS) begin
+    end else if (kind == DTP_SCAN_BYPASS || (kind == DTP_SCAN_ZLB && ptap_select)) begin
       layout.push_back('{-1, FLD_BYPASS, 0});
     end
+    if (!ptap_select) return;
     for (int unsigned s = 0; s < DtpStapCount; s++) begin
       if (staps[s].stap_sel && !g[s]) begin
         if (ds[s] != null)
@@ -311,7 +334,8 @@ class dtp_stap_3dcr_model;
   // args and leaves the PTAP 3DCR as it is; SIB/3DCR fields per the gating
   // rules; a spliced downstream TAP latches its (writable) selected
   // register, and the host segment its value; deselected or gated ports
-  // park their downstream TAP.
+  // park their downstream TAP. The chain fields, downstream TAPs and host
+  // segment take part only when the PTAP select was set before the scan.
   function void apply_scan_ds(sep_lifecycle_ctrl_pkg::dbg_disable_t d, int new_ptap_select,
                               int new_ptap_config_hold, int new_sib_en[int],
                               dtp_stap_3dcr_state_t new_payloads[int],
@@ -320,18 +344,21 @@ class dtp_stap_3dcr_model;
     bit in_chain[DtpStapCount];
     int unsigned spliced_list[$];
     bit segment_in_chain = host_segment_in_chain(d);
+    bit live = chain_live(d);
     gates(d, g);
     for (int unsigned s = 0; s < DtpStapCount; s++) in_chain[s] = sib_en[s];
     spliced_downstream(d, spliced_list);
     if (new_ptap_select >= 0) ptap_select = bit'(new_ptap_select);
     if (new_ptap_config_hold >= 0) ptap_config_hold = bit'(new_ptap_config_hold);
-    apply_chain_update(g, in_chain, new_sib_en, new_payloads);
-    foreach (spliced_list[i]) begin
-      int unsigned s = spliced_list[i];
-      ds[s].latch(new_ds_values.exists(int'(s)) ? new_ds_values[int'(s)] : ds[s].shift_default(
-                  DTP_SCAN_DR));
+    if (live) begin
+      apply_chain_update(g, in_chain, new_sib_en, new_payloads);
+      foreach (spliced_list[i]) begin
+        int unsigned s = spliced_list[i];
+        ds[s].latch(new_ds_values.exists(int'(s)) ? new_ds_values[int'(s)] : ds[s].shift_default(
+                    DTP_SCAN_DR));
+      end
+      latch_host_segment(segment_in_chain, new_host_segment);
     end
-    latch_host_segment(segment_in_chain, new_host_segment);
     park_downstream(g);
   endfunction
 
@@ -354,30 +381,36 @@ class dtp_stap_3dcr_model;
     int unsigned spliced_list[$];
     bit segment_in_chain = host_segment_in_chain(d);
     gates(d, g);
-    for (int unsigned s = 0; s < DtpStapCount; s++) in_chain[s] = sib_en[s];
-    spliced_downstream(d, spliced_list);
-    apply_chain_update(g, in_chain, new_sib_en, new_payloads);
-    foreach (spliced_list[i]) begin
-      int unsigned s = spliced_list[i];
-      if (new_ds_ir.exists(int'(s))) ds[s].update_ir(new_ds_ir[int'(s)]);
+    if (chain_live(d)) begin
+      for (int unsigned s = 0; s < DtpStapCount; s++) in_chain[s] = sib_en[s];
+      spliced_downstream(d, spliced_list);
+      apply_chain_update(g, in_chain, new_sib_en, new_payloads);
+      foreach (spliced_list[i]) begin
+        int unsigned s = spliced_list[i];
+        if (new_ds_ir.exists(int'(s))) ds[s].update_ir(new_ds_ir[int'(s)]);
+      end
+      latch_host_segment(segment_in_chain, new_host_segment);
     end
-    latch_host_segment(segment_in_chain, new_host_segment);
     park_downstream(g);
   endfunction
 
-  // Commit an all-zero over-length data scan: every in-chain field
-  // cleared, a spliced downstream's writable register latched to zero.
+  // Commit an all-zero over-length data scan: the PTAP 3DCR cleared and,
+  // when the PTAP select was set before the scan, every in-chain field
+  // cleared and a spliced downstream's writable register and the host
+  // segment latched to zero.
   function void flush_scan(sep_lifecycle_ctrl_pkg::dbg_disable_t d = '0);
     int unsigned spliced_list[$];
-    spliced_downstream(d, spliced_list);
-    foreach (spliced_list[i]) ds[spliced_list[i]].latch('0);
-    latch_host_segment(host_segment_in_chain(d), 0);
+    if (chain_live(d)) begin
+      spliced_downstream(d, spliced_list);
+      foreach (spliced_list[i]) ds[spliced_list[i]].latch('0);
+      latch_host_segment(host_segment_in_chain(d), 0);
+      for (int unsigned s = 0; s < DtpStapCount; s++) begin
+        sib_en[s] = 1'b0;
+        staps[s]  = '{1'b0, 1'b0, 1'b0};
+      end
+    end
     ptap_select      = 1'b0;
     ptap_config_hold = 1'b0;
-    for (int unsigned s = 0; s < DtpStapCount; s++) begin
-      sib_en[s] = 1'b0;
-      staps[s]  = '{1'b0, 1'b0, 1'b0};
-    end
   endfunction
 
   // (expected, care_mask, chain_len) for a readback with PTAP select=1.

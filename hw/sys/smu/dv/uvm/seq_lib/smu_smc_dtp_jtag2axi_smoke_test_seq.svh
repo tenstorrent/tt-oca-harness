@@ -11,8 +11,8 @@
 // live boot-ROM mailbox (CHK-JTAG2AXI-SMOKE-SCRATCH); S3 a 64-bit SINGLE_OP
 // write and readback of the SPM base word (CHK-JTAG2AXI-SMOKE-SPM); S4 a
 // series DATA_INCR write then readback at SPM+0x40 (CHK-JTAG2AXI-SMOKE-
-// SERIES-INCR); TIMEOUT the bounded-wait inventory (CHK-TIMEOUT-PATHS) and
-// the ordered step fence (CHK-NONVAC). The directed patterns of the cocotb
+// SERIES-INCR); TIMEOUT the bounded-wait inventory (CHK-TIMEOUT-PATHS). The
+// directed patterns of the cocotb
 // twin run on pass 0; later passes draw seeded patterns. Independently, the
 // embedded DTP's jtag2axi_req feature pairs every bridge transaction the
 // passive monitor sees on the SMC debug port with the request the scan

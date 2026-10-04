@@ -25,7 +25,7 @@
 `include "ocah_fcov_macros.svh"
 
 module smc_reset_fcov #(
-  parameter int unsigned CpuClusterCount = 4
+  parameter int unsigned CPU_CLUSTER_COUNT = 4
 ) (
   input wire clk_ref_i,
   input wire clk_smc_i,
@@ -36,7 +36,7 @@ module smc_reset_fcov #(
   input wire rst_cool_ni,
   input wire sep_wdt_reset_ni,
   input wire cfg_flr_pf_active_i,
-  input wire [CpuClusterCount-1:0] ndmreset_request_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
 
   // Reset observables (DUT -> TB).
   input wire powergood_stable_i,
@@ -48,7 +48,7 @@ module smc_reset_fcov #(
   input wire rst_cool_from_flr_ni,
   input wire fuse_reset_ni,
   input wire ss0_warm_reset_ni,
-  input wire [CpuClusterCount-1:0] ndmreset_process_i,
+  input wire [CPU_CLUSTER_COUNT-1:0] ndmreset_process_i,
   input wire ndmreset_irq_i
 );
 
@@ -172,10 +172,10 @@ module smc_reset_fcov #(
       logic cold, logic cool, logic wdt, logic warm, logic ndm, logic flr
   );
     option.per_instance = 1;
-    cp_cold: coverpoint cold;
+    cp_cold: coverpoint cold {bins released = {1'b0}; bins asserted = {1'b1};}
     cp_cool: coverpoint cool;
     cp_wdt: coverpoint wdt;
-    cp_warm: coverpoint warm;
+    cp_warm: coverpoint warm {bins released = {1'b0}; bins asserted = {1'b1};}
     cp_ndm: coverpoint ndm;
     cp_flr: coverpoint flr;
     x_cold_warm: cross cp_cold, cp_warm;

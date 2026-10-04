@@ -18,27 +18,28 @@ module smc_fabric #(
                                                   // ID-width converter, which reduces area.
                                                   // The input fabric's alias remap remains.
   parameter int unsigned SYS_IN_ID_WIDTH = 9,  // Unused; the input fabric takes the system input ID
-                                               // width from smc_pkg::SYS_IN_ID_WIDTH.
+                                               // width from smc_pkg::SysInIdWidth.
 
-  parameter int unsigned NumInboundFilters       = 16,  // Number of filter entries on the system
-                                                        // AXI input; sizes the inbound filter CSR
-                                                        // arrays and the input fabric hit-index
-                                                        // outputs.
-  parameter int unsigned NumOutboundFilters      = 16,  // Number of filter entries on the system
-                                                        // AXI output; sizes the outbound filter CSR
-                                                        // arrays and the output fabric hit-index
-                                                        // outputs.
-  parameter int unsigned MaxTrans                = smc_pkg::FABRIC_MAX_TRANS,  // Outstanding transactions per ID bucket
-                                                                               // tracked by the output fabric remap demux
-                                                                               // and mux; unused when NO_ADDR_REMAP is set.
-  parameter bit          FilterReqPipelineEnable = 1'b0,  // Adds spill registers on the request
-                                                          // channels at the inbound and outbound
-                                                          // filter boundaries, trading a cycle of
-                                                          // latency for easier timing closure.
-  parameter bit          FilterRspPipelineEnable = 1'b0  // Adds spill registers on the response
-                                                         // channels at the inbound and outbound
-                                                         // filter boundaries, trading a cycle of
-                                                         // latency for easier timing closure.
+  parameter int unsigned NUM_INBOUND_FILTERS        = 16,  // Number of filter entries on the system
+                                                           // AXI input; sizes the inbound filter
+                                                           // CSR arrays and the input fabric
+                                                           // hit-index outputs.
+  parameter int unsigned NUM_OUTBOUND_FILTERS       = 16,  // Number of filter entries on the system
+                                                           // AXI output; sizes the outbound filter
+                                                           // CSR arrays and the output fabric
+                                                           // hit-index outputs.
+  parameter int unsigned MAX_TRANS                  = smc_pkg::FabricMaxTrans,    // Outstanding transactions per ID bucket
+                                                                                  // tracked by the output fabric remap demux
+                                                                                  // and mux; unused when NO_ADDR_REMAP is set.
+  parameter bit          FILTER_REQ_PIPELINE_ENABLE = 1'b0,  // Adds spill registers on the request
+                                                             // channels at the inbound and outbound
+                                                             // filter boundaries, trading a cycle
+                                                             // of latency for easier timing
+                                                             // closure.
+  parameter bit          FILTER_RSP_PIPELINE_ENABLE = 1'b0  // Adds spill registers on the response
+                                                            // channels at the inbound and outbound
+                                                            // filter boundaries, trading a cycle of
+                                                            // latency for easier timing closure.
 ) (
   input  logic clk_i,                   // SMC core clock.
   input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
@@ -173,57 +174,49 @@ module smc_fabric #(
   input  smc_pkg::smc_sys_out_56_64_8_12_axi_resp_t axi_filtered_remapped_resp_i,  // System AXI output
                                                                                    // response.
 
-  input  filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_i [NumOutboundFilters-1:0],  // Per-entry
+  input  filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_i [NUM_OUTBOUND_FILTERS-1:0],  // Per-entry
+                                                                                                     // configuration
+                                                                                                     // of the system
+                                                                                                     // outbound filter.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_o [NUM_OUTBOUND_FILTERS-1:0],  // Per-entry
+                                                                                                       // status of the
+                                                                                                       // system outbound
+                                                                                                       // filter.
+  input  filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_i [NUM_INBOUND_FILTERS-1:0],  // Per-entry
                                                                                                    // configuration
                                                                                                    // of the system
-                                                                                                   // outbound filter.
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_o [NumOutboundFilters-1:0],  // Per-entry
+                                                                                                   // inbound filter.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_o [NUM_INBOUND_FILTERS-1:0],  // Per-entry
                                                                                                      // status of the
-                                                                                                     // system outbound
+                                                                                                     // system inbound
                                                                                                      // filter.
-  input  filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_i [NumInboundFilters-1:0],  // Per-entry
-                                                                                                 // configuration
-                                                                                                 // of the system
-                                                                                                 // inbound filter.
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_o [NumInboundFilters-1:0],  // Per-entry
-                                                                                                   // status of the
-                                                                                                   // system inbound
-                                                                                                   // filter.
 
-  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],  // M-mode output
+  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NumMmodeOutputRemapRegions-1:0],      // M-mode output
                                                                                                              // remap region
                                                                                                              // configuration.
-  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],  // Xvisor output
+  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NumXvisorOutputRemapRegions-1:0],      // Xvisor output
                                                                                                               // remap region
                                                                                                               // configuration.
-  input  alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Alias remap
+  input  alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_i [smc_pkg::NumAliasRemapRegions-1:0],     // Alias remap
                                                                                                       // region
                                                                                                       // configuration.
 
-  output smc_pkg::remap_debug_t                 remap_debug_mmio_o,  // Alias region index hit by the MMIO
-                                                                     // path.
-  output smc_pkg::remap_debug_t                 remap_debug_jtag_o,  // Alias region index hit by the JTAG
-                                                                     // path.
-  output smc_pkg::remap_debug_t                 remap_debug_log_o,  // Alias region index hit by the log
-                                                                    // path.
-  output smc_pkg::remap_debug_t                 remap_debug_dma_o,  // Alias region index hit by the data
-                                                                    // accelerator path.
-  output logic [$clog2(NumInboundFilters)-1:0]  outbound_write_filter_hit_debug_o,  // Write hit index of the
-                                                                                    // system inbound filter
-                                                                                    // in the input fabric;
-                                                                                    // tied to zero.
-  output logic [$clog2(NumInboundFilters)-1:0]  outbound_read_filter_hit_debug_o,  // Read hit index of the
-                                                                                   // system inbound filter
-                                                                                   // in the input fabric;
-                                                                                   // tied to zero.
-  output logic [$clog2(NumOutboundFilters)-1:0] inbound_write_filter_hit_debug_o,  // Write hit index of the
-                                                                                   // system outbound filter
-                                                                                   // in the output fabric;
-                                                                                   // tied to zero.
-  output logic [$clog2(NumOutboundFilters)-1:0] inbound_read_filter_hit_debug_o,  // Read hit index of the
-                                                                                  // system outbound filter
-                                                                                  // in the output fabric;
-                                                                                  // tied to zero.
+  output smc_pkg::remap_debug_t                   remap_debug_mmio_o,  // Alias region index hit by the MMIO
+                                                                       // path.
+  output smc_pkg::remap_debug_t                   remap_debug_jtag_o,  // Alias region index hit by the JTAG
+                                                                       // path.
+  output smc_pkg::remap_debug_t                   remap_debug_log_o,  // Alias region index hit by the log
+                                                                      // path.
+  output smc_pkg::remap_debug_t                   remap_debug_dma_o,  // Alias region index hit by the data
+                                                                      // accelerator path.
+  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  inbound_write_filter_hit_debug_o,  // Lowest system inbound filter
+                                                                                     // entry hit by a write.
+  output logic [$clog2(NUM_INBOUND_FILTERS)-1:0]  inbound_read_filter_hit_debug_o,  // Lowest system inbound filter
+                                                                                    // entry hit by a read.
+  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] outbound_write_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                                      // entry hit by a write.
+  output logic [$clog2(NUM_OUTBOUND_FILTERS)-1:0] outbound_read_filter_hit_debug_o,  // Lowest system outbound filter
+                                                                                     // entry hit by a read.
 
   output logic fabric_clk_active_o,     // High while the output fabric remap clock runs; low when
                                         // NO_ADDR_REMAP is set.
@@ -253,9 +246,9 @@ module smc_fabric #(
   ////////////////////////
 
   smc_input_fabric #(
-    .FilterReqPipelineEnable    (FilterReqPipelineEnable),
-    .FilterRspPipelineEnable    (FilterRspPipelineEnable),
-    .NumFilters                 (NumInboundFilters)
+    .FILTER_REQ_PIPELINE_ENABLE (FILTER_REQ_PIPELINE_ENABLE),
+    .FILTER_RSP_PIPELINE_ENABLE (FILTER_RSP_PIPELINE_ENABLE),
+    .NUM_FILTERS                (NUM_INBOUND_FILTERS)
   ) u_smc_input_fabric (
     .clk_i                      (clk_i),
     .rst_ni                     (rst_ni),
@@ -303,8 +296,8 @@ module smc_fabric #(
     .remap_debug_jtag_o         (remap_debug_jtag_o),
     .remap_debug_log_o          (remap_debug_log_o),
     .remap_debug_dma_o          (remap_debug_dma_o),
-    .write_filter_hit_debug_o   (outbound_write_filter_hit_debug_o),
-    .read_filter_hit_debug_o    (outbound_read_filter_hit_debug_o),
+    .write_filter_hit_debug_o   (inbound_write_filter_hit_debug_o),
+    .read_filter_hit_debug_o    (inbound_read_filter_hit_debug_o),
 
     // Clock gater activity indicators
     .sys_in_filter_clk_active_o (sys_in_filter_clk_active_o),
@@ -360,11 +353,11 @@ module smc_fabric #(
   ////////////////////////
 
   smc_output_fabric #(
-    .NO_ADDR_REMAP             (NO_ADDR_REMAP),
-    .NumFilters                (NumOutboundFilters),
-    .MaxTrans                  (MaxTrans),
-    .FilterReqPipelineEnable   (FilterReqPipelineEnable),
-    .FilterRspPipelineEnable   (FilterRspPipelineEnable)
+    .NO_ADDR_REMAP              (NO_ADDR_REMAP),
+    .NUM_FILTERS                (NUM_OUTBOUND_FILTERS),
+    .MAX_TRANS                  (MAX_TRANS),
+    .FILTER_REQ_PIPELINE_ENABLE (FILTER_REQ_PIPELINE_ENABLE),
+    .FILTER_RSP_PIPELINE_ENABLE (FILTER_RSP_PIPELINE_ENABLE)
   ) u_smc_output_fabric (
     .clk_i                        (clk_i),
     .rst_ni                       (rst_ni),
@@ -391,8 +384,8 @@ module smc_fabric #(
     .xR_ctrl_i                    (xR_ctrl_i),
 
     // Debug outputs
-    .write_filter_hit_debug_o     (inbound_write_filter_hit_debug_o),
-    .read_filter_hit_debug_o      (inbound_read_filter_hit_debug_o),
+    .write_filter_hit_debug_o     (outbound_write_filter_hit_debug_o),
+    .read_filter_hit_debug_o      (outbound_read_filter_hit_debug_o),
 
     // Clock gater activity indicators
     .fabric_clk_active_o         (fabric_clk_active_o),

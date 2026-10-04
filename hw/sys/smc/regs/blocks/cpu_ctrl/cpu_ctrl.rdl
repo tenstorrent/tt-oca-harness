@@ -49,29 +49,29 @@ addrmap cpu_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc = "Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-                    This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override the pulse.";
+            desc = "Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+                    A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.";
         } core0_reset_pulse_start_n0_scan[4:4] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc = "Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-                    This pulse is ANDed with core_reset_n[1] so a 0 in core_reset_n[1] will override the pulse.";
+            desc = "Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+                    A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.";
         } core1_reset_pulse_start_n0_scan[5:5] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc = "Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-                    This pulse is ANDed with core_reset_n[2] so a 0 in core_reset_n[2] will override the pulse.";
+            desc = "Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+                    A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.";
         } core2_reset_pulse_start_n0_scan[6:6] = 0x0;
 
         field {
             sw=rw;
             hw=r;
-            desc = "Writing a 1 to this register triggers a core reset pulse, the duration of which is set by CORE_RESET_PULSE_COUNT.
-                    This pulse is ANDed with core_reset_n[3] so a 0 in core_reset_n[3] will override the pulse.";
+            desc = "Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+                    A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.";
         } core3_reset_pulse_start_n0_scan[7:7] = 0x0;
 
         field {
@@ -95,13 +95,13 @@ addrmap cpu_ctrl {
         field  {
             sw=rw;
             hw=r;
-            desc="Core reset pulse count pre-reset. The duration of the pulse is the set value + 1.";
+            desc="Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.";
         } pre_reset_count [15:0] = 0x8;
 
         field  {
             sw=rw;
             hw=r;
-            desc="Core reset pulse count post-reset. The duration of the pulse is the set value + 1.";
+            desc="Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.";
         } post_reset_count [31:16] = 0x10;
 
         field {
@@ -153,7 +153,10 @@ addrmap cpu_ctrl {
             sw=rw;
             hw=rw;
             wr_swacc = true;
-            desc="Reference counter for the CPU";
+            desc="Reference counter for the CPU. Write once, then poll this register until
+                  the readback reflects the written value before writing again. The counter
+                  keeps advancing, so the readback is at or just above the written value
+                  rather than equal to it.";
         } rc [63:0] = 0x0;
     };
 

@@ -73,9 +73,9 @@ module km_mailbox
   //=========================================================================
 
   // FIFO word width: 32-bit data plus 1 separator bit for message framing.
-  localparam int unsigned FIFO_WIDTH = 33;
+  localparam int unsigned FifoWidth = 33;
   // FIFO depth counter width (sized to represent 0..MAILBOX_DEPTH).
-  localparam int unsigned FIFO_DEPTH_W = $clog2(MAILBOX_DEPTH + 1);
+  localparam int unsigned FifoDepthW = $clog2(MAILBOX_DEPTH + 1);
 
   //=========================================================================
   // Inbound FIFO (SEP→KM)
@@ -85,7 +85,7 @@ module km_mailbox
   logic inbound_rvalid, inbound_rready;
   logic [32:0] inbound_wdata, inbound_rdata;  // [31:0] data, [32] separator
   logic inbound_full, inbound_empty;
-  logic [FIFO_DEPTH_W-1:0] inbound_depth;
+  logic [FifoDepthW-1:0] inbound_depth;
 
   // Flush: when either side sets CTRL.FLUSH=1, clear both FIFOs
   // Hardware monitors the register bits and clears them after flush completes
@@ -93,7 +93,7 @@ module km_mailbox
   assign fifo_clr = km_flush_active || sep_flush_active;
 
   prim_fifo_sync #(
-    .Width(FIFO_WIDTH),
+    .Width(FifoWidth),
     .Depth(MAILBOX_DEPTH),
     .Pass(1'b0),  // No pass-through
     .OutputZeroIfEmpty(1'b1)
@@ -122,10 +122,10 @@ module km_mailbox
   logic outbound_rvalid, outbound_rready;
   logic [32:0] outbound_wdata, outbound_rdata;  // [31:0] data, [32] separator
   logic outbound_full, outbound_empty;
-  logic [FIFO_DEPTH_W-1:0] outbound_depth;
+  logic [FifoDepthW-1:0] outbound_depth;
 
   prim_fifo_sync #(
-    .Width(FIFO_WIDTH),
+    .Width(FifoWidth),
     .Depth(MAILBOX_DEPTH),
     .Pass(1'b0),  // No pass-through
     .OutputZeroIfEmpty(1'b1)
@@ -362,13 +362,13 @@ module km_mailbox
   //
   // Portal compares span the register block's address width: a wider slice
   // would match every address that repeats a portal's offset.
-  localparam int unsigned KM_REG_ADDR_W = km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH;
+  localparam int unsigned KmRegAddrW = km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH;
 
-  logic [KM_REG_ADDR_W-1:0] km_aw_addr, km_ar_addr;
+  logic [KmRegAddrW-1:0] km_aw_addr, km_ar_addr;
   logic km_aw_is_write_data, km_ar_is_read_data, km_aw_is_reg_block, km_ar_is_reg_block;
 
-  assign km_aw_addr = km_axil_req_i.aw.addr[KM_REG_ADDR_W-1:0];
-  assign km_ar_addr = km_axil_req_i.ar.addr[KM_REG_ADDR_W-1:0];
+  assign km_aw_addr = km_axil_req_i.aw.addr[KmRegAddrW-1:0];
+  assign km_ar_addr = km_axil_req_i.ar.addr[KmRegAddrW-1:0];
 
   assign km_aw_is_write_data = (km_aw_addr == KM_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR);
   assign km_ar_is_read_data = (km_ar_addr == KM_MAILBOX_KM_KM_READ_DATA_BASE_ADDR);
@@ -393,8 +393,8 @@ module km_mailbox
   assign km_hwif_in.KM_STATUS.outbound_empty.next = outbound_empty;
   assign km_hwif_in.KM_STATUS.outbound_full.next  = outbound_full;
   // Zero-extend depth to 8 bits to prevent X propagation
-  assign km_hwif_in.KM_STATUS.inbound_depth.next  = {{(8-FIFO_DEPTH_W){1'b0}}, inbound_depth};
-  assign km_hwif_in.KM_STATUS.outbound_depth.next = {{(8-FIFO_DEPTH_W){1'b0}}, outbound_depth};
+  assign km_hwif_in.KM_STATUS.inbound_depth.next  = {{(8-FifoDepthW){1'b0}}, inbound_depth};
+  assign km_hwif_in.KM_STATUS.outbound_depth.next = {{(8-FifoDepthW){1'b0}}, outbound_depth};
   assign km_hwif_in.KM_STATUS.inbound_separator.next  = inbound_separator_q;
   assign km_hwif_in.KM_STATUS.outbound_separator.next = outbound_separator_q;
   assign km_hwif_in.KM_WRITE_SEPARATOR.set.next =
@@ -410,8 +410,8 @@ module km_mailbox
   assign sep_hwif_in.SEP_STATUS.outbound_empty.next = outbound_empty;
   assign sep_hwif_in.SEP_STATUS.outbound_full.next  = outbound_full;
   // Zero-extend depth to 8 bits to prevent X propagation
-  assign sep_hwif_in.SEP_STATUS.inbound_depth.next  = {{(8-FIFO_DEPTH_W){1'b0}}, inbound_depth};
-  assign sep_hwif_in.SEP_STATUS.outbound_depth.next = {{(8-FIFO_DEPTH_W){1'b0}}, outbound_depth};
+  assign sep_hwif_in.SEP_STATUS.inbound_depth.next  = {{(8-FifoDepthW){1'b0}}, inbound_depth};
+  assign sep_hwif_in.SEP_STATUS.outbound_depth.next = {{(8-FifoDepthW){1'b0}}, outbound_depth};
   assign sep_hwif_in.SEP_STATUS.inbound_separator.next  = inbound_separator_q;
   assign sep_hwif_in.SEP_STATUS.outbound_separator.next = outbound_separator_q;
   assign sep_hwif_in.SEP_WRITE_SEPARATOR.set.next =
@@ -590,7 +590,7 @@ module km_mailbox
   // KM Register Block Interface
   //-------------------------------------------------------------------------
   logic km_reg_awready, km_reg_awvalid;
-  logic [KM_REG_ADDR_W-1:0] km_reg_awaddr;
+  logic [KmRegAddrW-1:0] km_reg_awaddr;
   logic [2:0] km_reg_awprot;
   logic km_reg_wready, km_reg_wvalid;
   logic [31:0] km_reg_wdata;
@@ -598,7 +598,7 @@ module km_mailbox
   logic km_reg_bready, km_reg_bvalid;
   logic [1:0] km_reg_bresp;
   logic km_reg_arready, km_reg_arvalid;
-  logic [KM_REG_ADDR_W-1:0] km_reg_araddr;
+  logic [KmRegAddrW-1:0] km_reg_araddr;
   logic [2:0] km_reg_arprot;
   logic km_reg_rready, km_reg_rvalid;
   logic [31:0] km_reg_rdata;
@@ -606,14 +606,14 @@ module km_mailbox
 
   // Route to register block only for register addresses
   assign km_reg_awvalid = km_axil_req_i.aw_valid && km_aw_is_reg_block;
-  assign km_reg_awaddr  = km_axil_req_i.aw.addr[KM_REG_ADDR_W-1:0];
+  assign km_reg_awaddr  = km_axil_req_i.aw.addr[KmRegAddrW-1:0];
   assign km_reg_awprot  = km_axil_req_i.aw.prot;
   assign km_reg_wvalid  = km_axil_req_i.w_valid && km_aw_is_reg_block;
   assign km_reg_wdata   = km_axil_req_i.w.data;
   assign km_reg_wstrb   = km_axil_req_i.w.strb;
   assign km_reg_bready  = km_axil_req_i.b_ready;
   assign km_reg_arvalid = km_axil_req_i.ar_valid && km_ar_is_reg_block;
-  assign km_reg_araddr  = km_axil_req_i.ar.addr[KM_REG_ADDR_W-1:0];
+  assign km_reg_araddr  = km_axil_req_i.ar.addr[KmRegAddrW-1:0];
   assign km_reg_arprot  = km_axil_req_i.ar.prot;
   assign km_reg_rready  = km_axil_req_i.r_ready;
 

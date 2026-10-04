@@ -8,7 +8,7 @@
 
 addrmap telemetry_receiver_wrap #(
     // TODO: Fix
-    // longint unsigned MAX_NUM_TELEMETRY_RECEIVERS = 16
+    // longint unsigned MaxNumTelemetryReceivers = 16
     longint unsigned NUM_TELEMETRY_RECEIVERS = 3
 ) {
     name = "Telemetry Receiver Wrapper Address Map";

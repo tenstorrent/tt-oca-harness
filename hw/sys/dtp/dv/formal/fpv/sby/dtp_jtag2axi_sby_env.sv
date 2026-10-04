@@ -15,15 +15,11 @@
 // dtp_jtag2axi_axi_fv_bind.sv on the CDC's response side toward the request machine, which the
 // task file cuts so that the machine sees a free responder instead of the CDC round trip and its
 // post-reset clear handshake. Every request the bridge issues is a single
-// beat, so every read returns one; this module states that fact on both sides. The request's
-// size field admits a transfer wider than the bus when the bus is 32 bits, and the bridge forwards
-// it unchanged, so the host is held to the bus width here.
+// beat, so every read returns one; this module states that fact on both sides.
 
 `include "ocah_fv_macros.svh"
 
-module dtp_jtag2axi_sby_env #(
-  parameter int DATA_WIDTH = 32
-) (
+module dtp_jtag2axi_sby_env (
   input logic tck_i,
   input logic trst_ni,
   input logic aclk_i,
@@ -37,7 +33,6 @@ module dtp_jtag2axi_sby_env #(
   input logic select_AXISeriesDataNoIncr_i,
   input logic select_AXISeriesDataWithErrorStatus_i,
   input logic security_disable_i,
-  input logic [2:0] axsize_i,  // current_axi_axsize_tclk
   input logic rvalid_i,
   input logic rlast_i,
   // The CDC's response side toward the request machine, a cutpoint in the task file
@@ -89,8 +84,6 @@ module dtp_jtag2axi_sby_env #(
   `OCAH_FV_ASSUME(asm_j2a_controls_tck_synchronous,
                   security_disable_i == disable_at_negedge_q && update_en_i == update_at_negedge_q,
                   tck_i, trst_ni)
-  // The host requests no transfer wider than the bus (IHI 0022 A3.4.1).
-  `OCAH_FV_ASSUME(asm_j2a_size_within_bus, axsize_i <= 3'($clog2(DATA_WIDTH / 8)), tck_i, trst_ni)
   // Every request is a single beat, so every read returns one, on the AXI ports and on the CDC's
   // response side.
   `OCAH_FV_ASSUME(asm_j2a_r_single_beat, `OCAH_FV_IMPLIES(rvalid_i, rlast_i), aclk_i, arst_ni)
@@ -101,9 +94,7 @@ module dtp_jtag2axi_sby_env #(
 
 endmodule : dtp_jtag2axi_sby_env
 
-bind jtag2axi dtp_jtag2axi_sby_env #(
-  .DATA_WIDTH(DATA_WIDTH)
-) u_dtp_jtag2axi_sby_env (
+bind jtag2axi dtp_jtag2axi_sby_env u_dtp_jtag2axi_sby_env (
   .tck_i                                 (tck_i),
   .trst_ni                               (trst_ni),
   .aclk_i                                (aclk_i),
@@ -117,7 +108,6 @@ bind jtag2axi dtp_jtag2axi_sby_env #(
   .select_AXISeriesDataNoIncr_i          (select_AXISeriesDataNoIncr_i),
   .select_AXISeriesDataWithErrorStatus_i (select_AXISeriesDataWithErrorStatus_i),
   .security_disable_i                    (security_disable_i),
-  .axsize_i                              (current_axi_axsize_tclk),
   .rvalid_i                              (rvalid_i),
   .rlast_i                               (rlast_i),
   .src_r_valid_i                         (src_resp.r_valid),

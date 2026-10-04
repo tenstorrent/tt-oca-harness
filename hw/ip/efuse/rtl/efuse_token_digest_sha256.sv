@@ -34,10 +34,10 @@ module efuse_token_digest_sha256
 );
 
   typedef enum logic [2:0] {
-    StIdle,
-    StStart,
-    StStream,
-    StWait
+    ST_IDLE,
+    ST_START,
+    ST_STREAM,
+    ST_WAIT
   } feeder_st_e;
 
   feeder_st_e state_q, state_d;
@@ -76,46 +76,46 @@ module efuse_token_digest_sha256
     fifo_rvalid  = 1'b0;
 
     unique case (state_q)
-      StIdle: begin
+      ST_IDLE: begin
         word_idx_d = 3'd0;
         if (start_i && idle) begin
-          state_d = StStart;
+          state_d = ST_START;
         end
       end
 
-      StStart: begin
+      ST_START: begin
         hash_start = 1'b1;
         word_idx_d = 3'd0;
-        state_d    = StStream;
+        state_d    = ST_STREAM;
       end
 
-      StStream: begin
+      ST_STREAM: begin
         fifo_rvalid = 1'b1;
         if (fifo_rready) begin
           if (word_idx_q == 3'd7) begin
             // 8th / last word consumed this cycle
-            state_d = StWait;
+            state_d = ST_WAIT;
           end else begin
             word_idx_d = word_idx_q + 3'd1;
           end
         end
       end
 
-      StWait: begin
+      ST_WAIT: begin
         // Start the hash process to pad and hash the block. Wait for the hash to complete.
         hash_process = 1'b1;
         if (hash_done) begin
-          state_d = StIdle;
+          state_d = ST_IDLE;
         end
       end
 
-      default: state_d = StIdle;
+      default: state_d = ST_IDLE;
     endcase
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      state_q    <= StIdle;
+      state_q    <= ST_IDLE;
       word_idx_q <= 3'd0;
     end else begin
       state_q    <= state_d;

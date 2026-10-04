@@ -2,10 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Host-side Key Manager (KM) mailbox command driver.
 
-Reproduces the SEP<->KM mailbox wire protocol that the real KM ROM firmware
-(`hw/ip/key_manager/approm/prod`, `rom_main`) implements, so an OSS cocotb test
-can drive the KM the same way the reference suite `sep_subsystem_km_consume_base_seq` does:
-send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse the responses.
+Implements the SEP<->KM mailbox wire protocol of the KM ROM firmware
+(`hw/ip/key_manager/approm/prod`, `rom_main`): sends framed commands and parses
+the responses.
 
 Frame format (32-bit words, little-endian on the wire):
   header = {crc8[31:24], payload_len[23:16], cmd_id[15:8], seq_num[7:0]}
@@ -15,8 +14,6 @@ Frame format (32-bit words, little-endian on the wire):
 The separator bit is applied to the LAST written word (write WRITE_SEPARATOR=1
 immediately before writing that word). A response is read word-by-word until the
 STATUS OUTBOUND_SEPARATOR bit marks the final word.
-
-All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 """
 
 from __future__ import annotations
@@ -224,9 +221,8 @@ class SepKmMailbox:
     """Drives the KM mailbox over the SEP AXI agent.
 
     The test owns one instance (``self.km = SepKmMailbox(self)``) and calls the
-    high-level command methods. ``seq_num`` is tracked here exactly like the reference suite
-    base sequence (incremented per command, must match the firmware's expected
-    sequence counter).
+    high-level command methods. ``seq_num`` is tracked here: incremented per
+    command, and it must match the firmware's expected sequence counter.
     """
 
     def __init__(self, test, *, base: int = KM_MBOX_BASE, logger=None) -> None:
@@ -355,13 +351,23 @@ class SepKmMailbox:
         return False
 
     async def recv_resp_cmd(
-        self, expected_cmd_id: int, expected_cmd_seq: int, *, timeout: int = 200_000
+        self,
+        expected_cmd_id: int,
+        expected_cmd_seq: int,
+        *,
+        timeout: int = 200_000,
+        require_arg: bool = False,
     ) -> tuple[int, int]:
         """Receive and fully validate a RESP_CMD for a command we sent, returning
         (return_code_signed, return_arg). recv_frame() has already checked header/
         payload CRCs and the response sequence; here we additionally require the
         frame to be a RESP_CMD that echoes our command's sequence and id (RESP_CMD
-        payload = [cmd_seq, cmd_id, rc, arg?], per rom_msg_rx.c send_resp_cmd)."""
+        payload = [cmd_seq, cmd_id, rc, arg?], per rom_msg_rx.c send_resp_cmd).
+
+        RETURN_ARG is optional on the wire and reads as 0 when absent. A caller
+        whose command the KM firmware specification defines with a return
+        argument passes ``require_arg=True``, so a response without one fails
+        here instead of reading as a zero argument."""
         words = await self.recv_frame(timeout=timeout)
         resp_id = (words[0] >> 8) & 0xFF
         payload_len = (words[0] >> 16) & 0xFF
@@ -384,7 +390,13 @@ class SepKmMailbox:
             )
         rc_raw = words[3] & 0xFF
         return_code = rc_raw - 256 if rc_raw >= 128 else rc_raw  # signed int8
-        return_arg = words[4] if (payload_len >= 4 and len(words) >= 5) else 0
+        has_arg = payload_len >= 4 and len(words) >= 5
+        if require_arg and not has_arg:
+            raise AssertionError(
+                f"RESP_CMD for cmd 0x{expected_cmd_id:02x} carries no RETURN_ARG "
+                f"(payload_len {payload_len}); this command's response defines one"
+            )
+        return_arg = words[4] if has_arg else 0
         return return_code, return_arg
 
     # --- high-level commands ----------------------------------------------
@@ -611,9 +623,13 @@ class SepKmMailbox:
 
         Used after a rejected command as a liveness-and-no-side-effect probe:
         a KM that answers STAT normally has stayed in its command loop rather
-        than wedging or faulting on the rejected frame."""
+        than wedging or faulting on the rejected frame.
+
+        The response must carry RETURN_ARG: hw/ip/key_manager/doc/firmware.adoc
+        ("0x03 - CMD_STAT") defines it as the KM status word, so a missing
+        argument is a failure rather than a status of 0."""
         seq = await self.send_command(KM_CMD_STAT, [])
-        rc, arg = await self.recv_resp_cmd(KM_CMD_STAT, seq, timeout=timeout)
+        rc, arg = await self.recv_resp_cmd(KM_CMD_STAT, seq, timeout=timeout, require_arg=True)
         await self.check_outbound_empty("POST-STAT")
         return rc, arg
 

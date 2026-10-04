@@ -156,10 +156,11 @@ Non-proxy evidence, by area — what lets a group record
 |Output fabric |`smc_output_fabric_wr_rd_responder_test`, `smc_input_output_fabric_wr_rd_test`, `smc_output_filter_remap_security_test` |`tb_top` exposes flattened `s_axi_*` / `jtag_axi_*` inputs; SEP_IN programs the fabric and JTAG AXI traffic drives a DV-only output-fabric responder. Checks write/read completion, readback data, blocked-write `DECERR`, and `tb_output_axi_*` counters
 |I2C |`smc_i2c_master_target_test`, `smc_i2c_p1_rdwr_protocol_test`, `smc_i2c_error_fifo_depth_test` |I2C0 resolved SCL/SDA exposed; release/pull-low behavior checked through the DUT override path
 |I3C |`smc_i3c_to_fabric_test` |I3C0 resolved SCL/SDA exposed; external pull-low/release verified via `check_i3c0_external_pull_low`; the CSR window gate is HCI_VERSION decode. The test records `proxy=True` — no protocol-level VIP traffic runs
-|CPU JTAG |`smc_ijtag_basic_test`, `smc_jtag_dmi_smoke_test`, `smc_efuse_jtag_lc_negative_test`, `smc_jtag_reset_proxy_test` |TCK/TMS/TDI/reset/TDO exposed with fixed ID fields; resolvable TDO required
+|CPU JTAG |`smc_ijtag_basic_test`, `smc_jtag_dmi_smoke_test`, `smc_jtag_dm_cmderr_command_test`, `smc_efuse_jtag_lc_negative_test`, `smc_jtag_reset_proxy_test` |TCK/TMS/TDI/reset/TDO exposed with fixed ID fields; resolvable TDO required
 |Mailbox |`smc_mailbox_irq_test`, `smc_mailbox_data_error_test`, `smc_mailbox_event_irq_test` |DV-only `tb_sep_mailbox_interrupts` source + `tb_mailbox_irq_any` checker prove SEP mailbox interrupt bits reach the SMC peripheral vector
 |GPIO / external IRQ |`smc_gpio_irq_active_test`, `smc_ext_interrupts_pin_test` |DV-only `tb_gpio_ext_drive_en/value`; GPIO0 as active-low input IRQ, checker verifies deassert/assert/deassert. Strap capture has no testcase: `tb_captured_straps` has no `smc_wrapper` pin to drive (`docs/SMC_VPLAN.adoc`, Known Limitations).
-|Sideband (AVSBus/OCTS) |`smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`, `smc_avsbus_clock_config_proxy_test`, `smc_octs_sanity_test` |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug` bounded observability alongside real CSR decode/timeout. These tests record `proxy=True`; full promotion needs a real pad-level AVSBus/OCTS BFM
+|Sideband (AVSBus/OCTS) |`smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`, `smc_avsbus_clock_config_proxy_test`, `smc_octs_sanity_test` |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug` bounded observability alongside real CSR decode and the SLVERR/0xBADCAB1E answer of the gated AVSBus window. These tests record `proxy=True`; full promotion needs a real pad-level AVSBus/OCTS BFM
+|Peripheral clock gates |`smc_periph_cg_access_error_test` |Each `CLOCK_GATE_CONTROL` peripheral enable (AVSBus, I2C, UART, telemetry, I3C) set in turn; the gated window answers SLVERR with 0xBADCAB1E on read, SLVERR on write, and its recorded word again once ungated
 |CPU / OCCP |`smc_cpu_sanity_test`, `smc_cpu_ctrl_scratch_window_test`, `smc_cpu_ctrl_map_depth_test`, `smc_cpu_to_sep_axi_test`, `smc_occp_sanity_secure_error_test` |SEP_IN AXI master-BFM substitutes for firmware traffic; CPU-control map + scratch write/read/restore + reset/powergood checks
 |eFuse / OTP |`smc_efuse_permission_boundary_test`, `smc_efuse_chip_config_read_test`, `smc_efuse_otp_clock_config_depth_test`, `smc_efuse_otp_clock_test` |eFuse-derived chip-config surface for version/LC/RAS semantics + OTP clock-gate restore + eFuse-bank AXI-Lite idle checker
 |ECC / DFD / DBS |`smc_dfd_sanity_test`, `smc_dbs_idle_test`, `smc_ecc_dfd_dbs_sanity_test`, `smc_cpu_ecc_lint_pint_depth_test` |RAS/debug CSR checks plus bounded fault observability on sync IRQ, downstream AXI-Lite idle, and reset
@@ -263,8 +264,9 @@ takes over (see <<sv-uvm-realization>>).
 |GPIO |DV-only `tb_gpio_ext_drive_en/value`
 |Mailbox |DV-only `tb_sep_mailbox_interrupts` + `tb_mailbox_irq_any`
 |Sideband |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug`
-|Clocks / resets |cocotb drives `clk_ref_i`, `clk_smc_i`, `clk_periph_i`, power-good, `rst_cold_ni`;
-the UVM harness generates the clocks and sequences the resets through `smc_tb_if`
+|Clocks / resets |cocotb drives `clk_ref_i`, `clk_smc_i`, `clk_periph_i` into the `pll_wrap`
+oscillators (`+pll_osc_bench`), plus power-good and `rst_cold_ni`; under SV-UVM the model
+free-runs and the harness sequences the resets through `smc_tb_if`
 |Scan / test |Ties `test_mode_i` to `1'b0` and `scan_rst_n_i` to `1'b1`
 |===
 
@@ -388,16 +390,16 @@ Replicate this skeleton for every new agent + scoreboard hook.
 [cols=",,",options="header",]
 |===
 |Clock / Reset |Source |Notes
-|`clk_ref_i` / `clk_smc_i` / `clk_periph_i` |`smc_base_test._bring_up()` |Three SMC clock domains
+|`clk_ref_i` / `clk_smc_i` / `clk_periph_i` |`smc_base_test._bring_up()` |100 / 800 / 200 MHz into the `pll_wrap` oscillators; `+pll_sys_period_ns=10` runs the smc clock at 100 MHz. `_bring_up()` measures the model's `clk_*_o` outputs after reset release and holds them to `SmcEnvCfg`
 |power-good |`_bring_up()` |Asserted before cold-reset release
 |`rst_cold_ni` |`_bring_up()` |Released after power-good; pad defaults driven first
 |post-reset settle |`SmcEnvCfg.post_reset_settle_cycles` |500 cycles; the reset stretcher is 255
 |JTAG TCK / TRST |`SmcJtagTap` / `cocotbext.jtag` |CPU TAP domain
 |AXI completion bound |`SmcEnvCfg.axi_timeout_ns` |50,000 ns default
-|`clk_ref_i` / `clk_smc_i` / `clk_periph_i` (SV-UVM) |`tb_top.sv` harness `always` blocks, periods from `smc_tb_if` |`smc_test_cfg` draws the three periods from the runner seed over the cocotb choice sets
+|`clk_ref_i` / `clk_smc_i` / `clk_periph_i` (SV-UVM) |`pll_wrap` free-runs inside the DUT |`smc_test_cfg` carries the same periods for the sequences' wait-math and publishes them on `smc_tb_if`
 |power-good / `rst_cold_ni` / `rst_cool_ni` (SV-UVM) |`smc_base_test.bring_up()` through `smc_tb_if` |Same ladder as `_bring_up()`; the pad defaults are harness tie-offs
 |post-reset settle (SV-UVM) |`smc_test_cfg.post_reset_settle_cycles` |500 ref cycles
-|AXI completion bound (SV-UVM) |`smc_test_cfg.axi_timeout_cycles` |10,000 smc-clock cycles per handshake, the SEP_IN master driver's watchdog
+|AXI completion bound (SV-UVM) |`smc_test_cfg.axi_timeout_cycles` |40,000 smc-clock cycles per handshake, the SEP_IN master driver's watchdog
 |===
 
 `_bring_up()` is the power-good plus cold-reset sequence: it drives idle-safe
@@ -451,12 +453,13 @@ stimulus in `run_scenario()`; do not re-implement `run_phase`.
 [[2-base-test--cocotbtestssmc_base_testpy]]
 ===== 2. Base test — `cocotb/tests/smc_base_test.py`
 
-* `build_phase()` builds `SmcEnvCfg`, randomizes timing from the seed, publishes
-cfg to `ConfigDB`, builds `SmcEnv`.
+* `build_phase()` builds `SmcEnvCfg`, resolves the smc-clock period from
+`+pll_sys_period_ns`, publishes cfg to `ConfigDB`, builds `SmcEnv`.
 * `_bring_up()` — the *power-good + cold-reset* sequence: drives all idle-safe
 pad defaults (i2c/i3c/jtag/spi/telemetry/avsbus/octs), starts the three clocks
 (`clk_ref_i / clk_smc_i / clk_periph_i`), asserts power-good, releases
-`rst_cold_ni`, settles, then sets `cfg.reset_done`. (SEP contrast: SEP gates on
+`rst_cold_ni`, settles, measures the `pll_wrap` clocks against the cfg periods,
+then sets `cfg.reset_done`. (SEP contrast: SEP gates on
 `sep_fuse_sense_done_o` and has no-cpu / cpu-boot / firmware-boot variants.)
 * `start_seq(seq, sequencer=None)` — runs a sequence, injecting `seq.cfg`/
 `seq.env`; defaults to the `i2c_agent` sequencer, so *pass the sequencer you
@@ -672,8 +675,8 @@ There is exactly ONE testbench top module: `smc_uvm_top` in `tb/tb_top.sv`,
 shared between both realizations. The bare `+define+UVM` (set by the native
 profile's `[frameworks.uvm]` overlay) switches its shape: without it the
 module exposes the cocotb pin port list; with it the ports become internal TB
-signals and an in-module harness adds the three clocks (periods from
-`smc_tb_if`), the shared AXI VIP interface instances on the SEP_IN ingress,
+signals, the `pll_wrap` clocks free-run, and an in-module harness adds the
+shared AXI VIP interface instances on the SEP_IN ingress,
 the protocol SVA, quiescent tie-offs for every other cocotb-driven pin at the
 idle value `smc_base_test._bring_up` uses, the `uvm_config_db` publication of
 every virtual interface, and `run_test()`. The class library mirrors the
@@ -690,7 +693,7 @@ on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
   collateral. The SEP_IN AXI4 ingress is the first driven interface: the
   active `ocah_axi_master_env` issues the traffic and a monitor-only passive
   `ocah_axi_env` feeds the SMC scoreboard.
-. `tb/smc_tb_if.sv` — the SMC-local TB interface: harness clock periods,
+. `tb/smc_tb_if.sv` — the SMC-local TB interface: the wait-math clock periods,
   power-good and the cold/cool reset pins, the reset-unit outputs, the
   fuse-sense / warm-domain release observables, the cold-reset assertion
   counter, the SVA enable.

@@ -36,11 +36,11 @@ module dtp
   parameter int unsigned JTAG_IC_RESET_SEP_ENABLE = 1,  // Bit 0 enables the SEP slice of the
                                                         // IC_RESET TDR. int unsigned so SpyGlass
                                                         // elaborate -param can override it; in smu
-                                                        // it follows SEP.
+                                                        // it follows CFG.SEP.
   parameter int unsigned JTAG_SEP_DBG_ENABLE      = 1,  // Bit 0 enables the SEP debug STAP and the
                                                         // JTAG2AXI bridge to the SEP OTP. int
                                                         // unsigned so SpyGlass elaborate -param can
-                                                        // override it; in smu it follows SEP.
+                                                        // override it; in smu it follows CFG.SEP.
 
   parameter int unsigned  JTAG_NUM_EXTRA_STAPS = 1,  // Number of additional STAPs for local
                                                      // connectivity.
@@ -51,11 +51,11 @@ module dtp
   parameter logic [7:0]   JTAG_OCH_VER         = 8'h00,  // DTP IP major version number reported in
                                                          // JTAG_CAPS.
 
-  localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (JTAG_NUM_EXTRA_STAPS > 0) ? JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
+  localparam int unsigned  JtagNumExtraStapPorts = (JTAG_NUM_EXTRA_STAPS > 0) ? JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
 
-  parameter int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DEFAULT_NUM_CTP,  // Number of external cross-trigger ports.
-  parameter int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DEFAULT_NUM_INT_CT,  // Number of internal cross-trigger interfaces.
-  parameter int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ,  // Number of clock-stop request inputs.
+  parameter int unsigned  XTRIG_NUM_CTP          = dtp_pkg::DefaultNumCtp,  // Number of external cross-trigger ports.
+  parameter int unsigned  XTRIG_NUM_INT_CT       = dtp_pkg::DefaultNumIntCt,  // Number of internal cross-trigger interfaces.
+  parameter int unsigned  XTRIG_NUM_CLK_STOP_REQ = dtp_pkg::DefaultNumClkStopReq,  // Number of clock-stop request inputs.
 
   parameter logic [XTRIG_NUM_INT_CT-1:0]  XTRIG_INT_CT_MODE = '0,  // Per-lane CTM protocol: 0 =
                                                                    // pulse sync (ack unused), 1 =
@@ -141,11 +141,11 @@ module dtp
   output logic            jtag_stap_sep_host_tdo_o,  // SEP debug STAP TDO.
   output logic            jtag_stap_sep_host_tdo_oen_o,  // SEP debug STAP TDO output enable.
 
-  output jtag_tap_ctrl_t  jtag_stap_extra_host_tap_ctrl_o [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP host TAP controls
+  output jtag_tap_ctrl_t  jtag_stap_extra_host_tap_ctrl_o [JtagNumExtraStapPorts-1:0],      // Extra STAP host TAP controls
                                                                                             // Tie off with 0 if JTAG_NUM_EXTRA_STAPS == 0.
-  input  logic            jtag_stap_extra_host_tdi_i      [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP TDI bits.
-  output logic            jtag_stap_extra_host_tdo_o      [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP TDO bits.
-  output logic            jtag_stap_extra_host_tdo_oen_o  [JTAG_NUM_EXTRA_STAP_PORTS-1:0],  // Extra STAP TDO output enables.
+  input  logic            jtag_stap_extra_host_tdi_i      [JtagNumExtraStapPorts-1:0],      // Extra STAP TDI bits.
+  output logic            jtag_stap_extra_host_tdo_o      [JtagNumExtraStapPorts-1:0],      // Extra STAP TDO bits.
+  output logic            jtag_stap_extra_host_tdo_oen_o  [JtagNumExtraStapPorts-1:0],      // Extra STAP TDO output enables.
 
   output jtag_scan_ctrl_t  jtag_stap_host_scan_ctrl_o,  // Extended STAP scan control
                                                         // Tie scan in to scan out if unused.
@@ -235,9 +235,11 @@ module dtp
   input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_i,  // CTP ack-out pad input.
   output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_en_o,  // CTP ack-out pad input enable.
 
-  input  logic  test_en_i,                      // DFT test enable; not connected inside DTP.
-  input  logic  scan_rst_ni                     // DFT scan reset, active-low; not connected inside
-                                                // DTP.
+  input  logic  test_en_i,                      // DFT test-mode enable, active-high, for the
+                                                // JTAG2AXI bridges and the CTN CSR crossbar.
+  input  logic  scan_rst_ni                     // DFT scan reset, active-low; unused. DTP has no
+                                                // reset synchronizer, so rst_n_i must arrive
+                                                // scan-controlled.
 );
 
   //--------------------------------------------------------------------------
@@ -292,6 +294,7 @@ module dtp
   ) u_jtag_intf_unit (
     .clk_i                       (clk_i),
     .rst_n_i                     (rst_n_i),
+    .test_en_i                   (test_en_i),
     .pwr_on_rst_ni               (pwr_on_rst_ni),
     .dbg_disable_i               (dbg_disable_i),
     .ptap_client_tap_ctrl_i      (jtag_ptap_client_tap_ctrl_i),
@@ -361,6 +364,7 @@ module dtp
   ) u_cross_trigger_network (
     .clk_i               (clk_i),
     .rst_ni              (rst_n_i),
+    .test_en_i           (test_en_i),
 
     // AXI-Lite CSR interface
     .axil_req_i          (axil_xtrig_req_i),
