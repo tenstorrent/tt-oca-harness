@@ -9,7 +9,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 94.86,
+      "coverage_total_percent": 94.84,
       "flow": "dtp",
       "framework": "cocotb",
       "pass_rate": 100.0,
@@ -17,7 +17,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 95.28,
+      "coverage_total_percent": 95.1,
       "flow": "dtp",
       "framework": "uvm",
       "pass_rate": 100.0,
@@ -25,7 +25,7 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 95.57,
+      "coverage_total_percent": 95.33,
       "flow": "dtp",
       "framework": "",
       "pass_rate": 100.0,
@@ -105,7 +105,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-10-04T12:08:00+00:00",
+  "generated_at": "2026-10-04T12:37:16+00:00",
   "results": [
     {
       "coverage": {
@@ -128,10 +128,10 @@
           "assertion": 98.86,
           "branch": 96.31,
           "condition": 94.81,
-          "fsm_state": 78.63,
+          "fsm_state": 78.53,
           "functional": 100.0,
           "line": 97.98,
-          "toggle": 97.4,
+          "toggle": 97.41,
           "user": 100.0
         }
       },
@@ -144,11 +144,11 @@
         "effective_metrics": {
           "assertion": 98.86,
           "branch": 97.07,
-          "condition": 95.13,
-          "fsm_state": 79.79,
+          "condition": 95.1,
+          "fsm_state": 78.53,
           "functional": 100.0,
           "line": 98.71,
-          "toggle": 97.42,
+          "toggle": 97.44,
           "user": 100.0
         }
       },
@@ -161,11 +161,11 @@
         "effective_metrics": {
           "assertion": 98.86,
           "branch": 97.32,
-          "condition": 96.14,
-          "fsm_state": 80.21,
+          "condition": 96.04,
+          "fsm_state": 78.63,
           "functional": 100.0,
           "line": 98.85,
-          "toggle": 97.62,
+          "toggle": 97.59,
           "user": 100.0
         }
       },
