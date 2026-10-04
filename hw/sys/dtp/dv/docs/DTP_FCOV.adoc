@@ -1054,10 +1054,11 @@ changes, and the review accepts no entry that stimulus can reach.
 `cov/config/vcs/dtp_waivers.el` is the URG exclusion list of the points the
 bench reaches by no stimulus the DTP's interface contract allows. Each is a
 DTP input, a JTAG2AXI bridge point that only a response outside the AXI
-protocol reaches, a bench checker rule, an assertion, or a point the
-cross-trigger network's register map and crossbar flow control rule out, none
-of which the formal unreachability analysis proves, and the `ANNOTATION`
-before each entry states the fact that rules it out:
+protocol reaches or that the bridge's one transaction in flight through its
+clock-domain crossing rules out, a bench checker rule, an assertion, or a
+point the cross-trigger network's register map and crossbar flow control rule
+out, none of which the formal unreachability analysis proves, and the
+`ANNOTATION` before each entry states the fact that rules it out:
 
 [cols=",",options="header",]
 |===
@@ -1065,6 +1066,7 @@ before each entry states the fact that rules it out:
 |BID and RID toggles of `axi_smc_dbg_resp_i` at `u_dut`, `u_jtag_intf_unit` and `u_jtag_ptap`, and of the SMC fabric bridge's `bid_i` and `rid_i`, its response structures on both sides of its clock-domain crossing and that crossing's response ports |The JTAG2AXI bridge issues every SMC fabric request with ID 0, and an AXI subordinate returns the request's ID
 |BID and RID toggles inside the SMC fabric bridge's B and R clock-domain-crossing FIFOs: the source input, the storage and its next-state value, both halves and the destination spill register |The source input, and the next-state value at the write pointer, carry the `axi_smc_dbg_resp_i` ID that the row above waives; every beat the FIFO stores carries the ID of its request, which the bridge issues as 0
 |The EXOKAY fall-through of the B and R response decode in every JTAG2AXI bridge, as condition and branch rows |The bridge issues every access with AxLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access
+|The `AXI_SEND_DATA_W` state of every JTAG2AXI bridge's state machine, with its arcs, its case arm, the lines it alone runs and the write-path condition rows that name it |The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused
 |`xtrig_ctp_ack_out_din_i` toggles at `u_dut`, and `ctp_ack_out_din_i` at `u_cross_trigger_network` |CT_Ack_out is output-only: the cross-trigger network holds the pad input enables low and reads the pad inputs only into its lint sink
 |The FIXED and WRAP burst rules and the multi-beat covers of `u_m_axi_sva` |The bridge issues every SMC fabric request as a single-beat INCR burst
 |The `RECEIVER_WAIT_REQ_DEASSERT` arm of every external CTP's receiver with CT_Req_in high |The receiver enters the state with CT_Req_in low; a four-phase sender raises its next request only after it sees CT_Ack_out fall, which the receiver drives low in that same transition

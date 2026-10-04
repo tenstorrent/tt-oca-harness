@@ -4,10 +4,11 @@
 // DTP VCS coverage waivers: points the bench reaches by no stimulus the DTP's
 // interface contract allows, for the fact the ANNOTATION before each item
 // states. They are DTP inputs, JTAG2AXI bridge points that only a response
-// outside the AXI protocol reaches, bench checkers, assertions, or points the
-// cross-trigger network's register map and crossbar flow control rule out,
-// none of which the formal unreachability analysis proves, so they are not
-// in dtp_unreachable.el.
+// outside the AXI protocol reaches or that the bridge's one transaction in
+// flight through its clock-domain crossing rules out, bench checkers,
+// assertions, or points the cross-trigger network's register map and crossbar
+// flow control rule out, none of which the formal unreachability analysis
+// proves, so they are not in dtp_unreachable.el.
 // Format Version: 2
 // ExclMode: default
 //
@@ -208,7 +209,7 @@ INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.gen_ext_ctp[15].u_ctp.u_core
 ANNOTATION: "The receiver enters WAIT_REQ_DEASSERT with CT_Req_in low, and this arm needs CT_Req_in high on the next cycle. A four-phase sender raises its next request only after it sees CT_Ack_out fall, which the receiver drives low in that same transition, so the request stays low for longer."
 Branch 1 "2756334046" "receiver_state_q" (5) "receiver_state_q RECEIVER_WAIT_REQ_DEASSERT ,-,-,0"
 
-CHECKSUM: "817838655 1854703041"
+CHECKSUM: "3274065962 1854703041"
 INSTANCE: dtp_uvm_top.u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.i_r_spill_reg.spill_register_flushable_i
 ANNOTATION: "No crossbar subordinate returns R data with bit 26 or 30 set: a CT_SRC select holds 26 bits, every CTP register fewer, and the decode-error subordinate answers 0xBADCAB1E."
 Toggle 0to1 gen_spill_reg.a_data_q.data [26] "logic gen_spill_reg.a_data_q.data[31:0]"
@@ -227,7 +228,34 @@ Toggle 0to1 gen_spill_reg.b_data_q.data [30] "logic gen_spill_reg.b_data_q.data[
 ANNOTATION: "No crossbar subordinate returns R data with bit 26 or 30 set: a CT_SRC select holds 26 bits, every CTP register fewer, and the decode-error subordinate answers 0xBADCAB1E."
 Toggle 1to0 gen_spill_reg.b_data_q.data [30] "logic gen_spill_reg.b_data_q.data[31:0]"
 
-CHECKSUM: "3654346658 1710099946"
+CHECKSUM: "1896393302 607314066"
+INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Block 230 "2910851960" "axi_state_d_tclk = AXI_SEND_DATA_W;"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Block 232 "3886741111" "src_req.w_valid = 1'b1;"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Block 233 "1958727761" "axi_state_d_tclk = AXI_WAIT_BRESP;"
+
+CHECKSUM: "1896393302 3294061647"
+INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Block 230 "2910851960" "axi_state_d_tclk = AXI_SEND_DATA_W;"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Block 232 "3886741111" "src_req.w_valid = 1'b1;"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Block 233 "1958727761" "axi_state_d_tclk = AXI_WAIT_BRESP;"
+
+CHECKSUM: "1896393302 2318195184"
+INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Block 230 "2910851960" "axi_state_d_tclk = AXI_SEND_DATA_W;"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Block 232 "3886741111" "src_req.w_valid = 1'b1;"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Block 233 "1958727761" "axi_state_d_tclk = AXI_WAIT_BRESP;"
+
+CHECKSUM: "1896393302 1710099946"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
 ANNOTATION: "The JTAG2AXI bridge issues every write as a normal access, with AWLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no B response reaches the EXOKAY fall-through."
 Condition 28 "4088657890" "((src_resp.b.resp == 2'b11) ? CaptureStatusDecerr : CaptureStatusSlverr) 1 -1" (1 "0")
@@ -237,8 +265,12 @@ ANNOTATION: "The JTAG2AXI bridge issues every read as a normal access, with ARLO
 Condition 37 "291669865" "((src_resp.r.resp == 2'b11) ? CaptureStatusDecerr : CaptureStatusSlverr) 1 -1" (1 "0")
 ANNOTATION: "The JTAG2AXI bridge issues every read as a normal access, with ARLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no R response reaches the EXOKAY fall-through."
 Condition 38 "3057482173" "(src_resp.r.resp == 2'b11) 1 -1" (1 "0")
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Condition 98 "2967350065" "((axi_state_q_tclk == AXI_SEND_ADDR_W) || (axi_state_q_tclk == AXI_SEND_DATA_W) || (axi_state_q_tclk == AXI_WAIT_BRESP)) 1 -1" (3 "010")
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Condition 100 "487014391" "(axi_state_q_tclk == AXI_SEND_DATA_W) 1 -1" (2 "1")
 
-CHECKSUM: "3654346658 1710099946"
+CHECKSUM: "1896393302 1710099946"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
 ANNOTATION: "The JTAG2AXI bridge issues every write as a normal access, with AWLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no B response reaches the EXOKAY fall-through."
 Condition 28 "4088657890" "((src_resp.b.resp == 2'b11) ? CaptureStatusDecerr : CaptureStatusSlverr) 1 -1" (1 "0")
@@ -248,8 +280,12 @@ ANNOTATION: "The JTAG2AXI bridge issues every read as a normal access, with ARLO
 Condition 37 "291669865" "((src_resp.r.resp == 2'b11) ? CaptureStatusDecerr : CaptureStatusSlverr) 1 -1" (1 "0")
 ANNOTATION: "The JTAG2AXI bridge issues every read as a normal access, with ARLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no R response reaches the EXOKAY fall-through."
 Condition 38 "3057482173" "(src_resp.r.resp == 2'b11) 1 -1" (1 "0")
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Condition 98 "2967350065" "((axi_state_q_tclk == AXI_SEND_ADDR_W) || (axi_state_q_tclk == AXI_SEND_DATA_W) || (axi_state_q_tclk == AXI_WAIT_BRESP)) 1 -1" (3 "010")
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Condition 100 "487014391" "(axi_state_q_tclk == AXI_SEND_DATA_W) 1 -1" (2 "1")
 
-CHECKSUM: "3654346658 3828155932"
+CHECKSUM: "1896393302 3828155932"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
 ANNOTATION: "The JTAG2AXI bridge issues every write as a normal access, with AWLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no B response reaches the EXOKAY fall-through."
 Condition 28 "4088657890" "((src_resp.b.resp == 2'b11) ? CaptureStatusDecerr : CaptureStatusSlverr) 1 -1" (1 "0")
@@ -259,29 +295,69 @@ ANNOTATION: "The JTAG2AXI bridge issues every read as a normal access, with ARLO
 Condition 37 "291669865" "((src_resp.r.resp == 2'b11) ? CaptureStatusDecerr : CaptureStatusSlverr) 1 -1" (1 "0")
 ANNOTATION: "The JTAG2AXI bridge issues every read as a normal access, with ARLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no R response reaches the EXOKAY fall-through."
 Condition 38 "3057482173" "(src_resp.r.resp == 2'b11) 1 -1" (1 "0")
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Condition 98 "2967350065" "((axi_state_q_tclk == AXI_SEND_ADDR_W) || (axi_state_q_tclk == AXI_SEND_DATA_W) || (axi_state_q_tclk == AXI_WAIT_BRESP)) 1 -1" (3 "010")
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Condition 100 "487014391" "(axi_state_q_tclk == AXI_SEND_DATA_W) 1 -1" (2 "1")
 
-CHECKSUM: "3654346658 2238901397"
+CHECKSUM: "1896393302 2238901397"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
 ANNOTATION: "The JTAG2AXI bridge issues every write as a normal access, with AWLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no B response reaches the EXOKAY fall-through."
 Branch 16 "1709732032" "axi_state_q_tclk" (16) "axi_state_q_tclk AXI_WAIT_BRESP ,-,-,-,-,-,-,-,-,-,-,1,0,0,0,-,-,-,-,-,-,-,-"
 ANNOTATION: "The JTAG2AXI bridge issues every read as a normal access, with ARLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no R response reaches the EXOKAY fall-through."
 Branch 16 "1709732032" "axi_state_q_tclk" (27) "axi_state_q_tclk AXI_WAIT_RDATA ,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,1,-,0,0,0,-"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Branch 16 "1709732032" "axi_state_q_tclk" (9) "axi_state_q_tclk AXI_SEND_ADDR_W ,-,-,-,-,-,-,-,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Branch 16 "1709732032" "axi_state_q_tclk" (11) "axi_state_q_tclk AXI_SEND_DATA_W ,-,-,-,-,-,-,-,-,-,1,-,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Branch 16 "1709732032" "axi_state_q_tclk" (12) "axi_state_q_tclk AXI_SEND_DATA_W ,-,-,-,-,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,-,-"
 
-CHECKSUM: "3654346658 1198256725"
+CHECKSUM: "1896393302 1198256725"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
 ANNOTATION: "The JTAG2AXI bridge issues every write as a normal access, with AWLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no B response reaches the EXOKAY fall-through."
 Branch 16 "1709732032" "axi_state_q_tclk" (16) "axi_state_q_tclk AXI_WAIT_BRESP ,-,-,-,-,-,-,-,-,-,-,1,0,0,0,-,-,-,-,-,-,-,-"
 ANNOTATION: "The JTAG2AXI bridge issues every read as a normal access, with ARLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no R response reaches the EXOKAY fall-through."
 Branch 16 "1709732032" "axi_state_q_tclk" (27) "axi_state_q_tclk AXI_WAIT_RDATA ,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,1,-,0,0,0,-"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Branch 16 "1709732032" "axi_state_q_tclk" (9) "axi_state_q_tclk AXI_SEND_ADDR_W ,-,-,-,-,-,-,-,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Branch 16 "1709732032" "axi_state_q_tclk" (11) "axi_state_q_tclk AXI_SEND_DATA_W ,-,-,-,-,-,-,-,-,-,1,-,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Branch 16 "1709732032" "axi_state_q_tclk" (12) "axi_state_q_tclk AXI_SEND_DATA_W ,-,-,-,-,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,-,-"
 
-CHECKSUM: "3654346658 884625925"
+CHECKSUM: "1896393302 884625925"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
 ANNOTATION: "The JTAG2AXI bridge issues every write as a normal access, with AWLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no B response reaches the EXOKAY fall-through."
 Branch 16 "1709732032" "axi_state_q_tclk" (16) "axi_state_q_tclk AXI_WAIT_BRESP ,-,-,-,-,-,-,-,-,-,-,1,0,0,0,-,-,-,-,-,-,-,-"
 ANNOTATION: "The JTAG2AXI bridge issues every read as a normal access, with ARLOCK 0, and an AXI subordinate returns EXOKAY only to an exclusive access, so no R response reaches the EXOKAY fall-through."
 Branch 16 "1709732032" "axi_state_q_tclk" (27) "axi_state_q_tclk AXI_WAIT_RDATA ,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,1,-,0,0,0,-"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Branch 16 "1709732032" "axi_state_q_tclk" (9) "axi_state_q_tclk AXI_SEND_ADDR_W ,-,-,-,-,-,-,-,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Branch 16 "1709732032" "axi_state_q_tclk" (11) "axi_state_q_tclk AXI_SEND_DATA_W ,-,-,-,-,-,-,-,-,-,1,-,-,-,-,-,-,-,-,-,-,-,-"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+Branch 16 "1709732032" "axi_state_q_tclk" (12) "axi_state_q_tclk AXI_SEND_DATA_W ,-,-,-,-,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,-,-"
 
-CHECKSUM: "3654346658 1009589673"
+CHECKSUM: "1896393302 2682701681"
+INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi
+Fsm axi_state_q_tclk "316004285"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+State AXI_SEND_DATA_W "2"
+
+CHECKSUM: "1896393302 2682701681"
+INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi
+Fsm axi_state_q_tclk "316004285"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+State AXI_SEND_DATA_W "2"
+
+CHECKSUM: "1896393302 2682701681"
+INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
+Fsm axi_state_q_tclk "316004285"
+ANNOTATION: "The bridge keeps one AXI transaction in flight and its isolate override drops AW and W together, so the AW and W clock-domain-crossing FIFOs, which share one depth, are ready together outside isolation: AW is never accepted while W is refused and the state machine never enters AXI_SEND_DATA_W."
+State AXI_SEND_DATA_W "2"
+
+CHECKSUM: "1896393302 1009589673"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with AWID 0, and an AXI subordinate returns the request's ID as BID, so BID stays 0 on a compliant fabric."
 Toggle bid_i "logic bid_i[1:0]"
@@ -307,7 +383,7 @@ Toggle dst_resp_i.r.id "logic dst_resp_i.r.id[1:0]"
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with AWID 0, and an AXI subordinate returns the request's ID as BID, so BID stays 0 on a compliant fabric."
 Toggle dst_resp_i.b.id "logic dst_resp_i.b.id[1:0]"
 
-CHECKSUM: "2346334635 3239658498"
+CHECKSUM: "2734477473 3239658498"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with AWID 0, and an AXI subordinate returns the request's ID as BID, so BID stays 0 on a compliant fabric."
 Toggle src_data_i.id "logic src_data_i.id[1:0]"
@@ -406,7 +482,7 @@ Toggle async_data_i[7].id "logic async_data_i[7].id[1:0]"
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with AWID 0, and an AXI subordinate returns the request's ID as BID, so BID stays 0 on a compliant fabric."
 Toggle dst_data.id "logic dst_data.id[1:0]"
 
-CHECKSUM: "817838655 3201749725"
+CHECKSUM: "3274065962 3201749725"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_b.i_dst.i_spill_register
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with AWID 0, and an AXI subordinate returns the request's ID as BID, so BID stays 0 on a compliant fabric."
 Toggle data_i.id "logic data_i.id[1:0]"
@@ -417,7 +493,7 @@ Toggle gen_spill_reg.a_data_q.id "logic gen_spill_reg.a_data_q.id[1:0]"
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with AWID 0, and an AXI subordinate returns the request's ID as BID, so BID stays 0 on a compliant fabric."
 Toggle gen_spill_reg.b_data_q.id "logic gen_spill_reg.b_data_q.id[1:0]"
 
-CHECKSUM: "2346334635 3206091600"
+CHECKSUM: "2734477473 3206091600"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with ARID 0, and an AXI subordinate returns the request's ID as RID, so RID stays 0 on a compliant fabric."
 Toggle src_data_i.id "logic src_data_i.id[1:0]"
@@ -516,7 +592,7 @@ Toggle async_data_i[7].id "logic async_data_i[7].id[1:0]"
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with ARID 0, and an AXI subordinate returns the request's ID as RID, so RID stays 0 on a compliant fabric."
 Toggle dst_data.id "logic dst_data.id[1:0]"
 
-CHECKSUM: "817838655 3644409070"
+CHECKSUM: "3274065962 3644409070"
 INSTANCE: dtp_uvm_top.u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.i_cdc_fifo_gray_clearable_r.i_dst.i_spill_register
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with ARID 0, and an AXI subordinate returns the request's ID as RID, so RID stays 0 on a compliant fabric."
 Toggle data_i.id "logic data_i.id[1:0]"
@@ -526,9 +602,9 @@ ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with ARID 0, an
 Toggle gen_spill_reg.a_data_q.id "logic gen_spill_reg.a_data_q.id[1:0]"
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request with ARID 0, and an AXI subordinate returns the request's ID as RID, so RID stays 0 on a compliant fabric."
 Toggle gen_spill_reg.b_data_q.id "logic gen_spill_reg.b_data_q.id[1:0]"
-
 // An Assert entry applies only while its instance checksum matches the design,
 // so a change to the checker drops these with a URG warning.
+
 CHECKSUM: "3246710229"
 INSTANCE: dtp_uvm_top.u_m_axi_sva
 ANNOTATION: "The JTAG2AXI bridge issues every SMC fabric request as an INCR burst, so the FIXED-burst length rule has no antecedent."
